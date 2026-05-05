@@ -1,0 +1,7 @@
+{
+    "name": "Calendar",
+    "slug": "calendar",
+    "version": "1.0.0",
+    "description": "Calendar engine for Boss888 LevelUp OS",
+    "status": "active"
+}

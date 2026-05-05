@@ -1,0 +1,2055 @@
+/* ============================================================================
+ * BOSS888 Builder v5.0.0 - Phase 1 (Renderer Only)
+ * ============================================================================
+ *
+ * Ported from levelup-core v3.1.34 reference on 2026-04-10.
+ * Reference file: /tmp/levelup-builder-engine-reference.js
+ *
+ * Phase 1 scope: schema converter (flatToNested), helpers, sanitizer, state,
+ * type resolvers, BLD_TYPES, bldLoadEditorPage, full renderer chain.
+ *
+ * NOT YET PORTED (Phase 2-6, will warn on interaction):
+ *   - drag-and-drop, properties panel, save/autosave/publish/preview,
+ *     blocks/library/pages left-panel, AI integration, dynamic data layer.
+ *
+ * NOT REGRESSED (verified untouched):
+ *   - core.js _doLogin / _luFetch
+ *   - /api/builder/load/{id} route
+ *   - /api/auth/login route
+ *   - .env, sshd_config
+ *   - No setInterval / no recursive setTimeout fetch - no polling.
+ * ============================================================================ */
+
+// === Phase 1 stubs DELETED in v5.0.1 — old builder.js provides these symbols ===
+
+
+// === v5.0.5 PATCHES =========================================================
+
+// PREVIEW FIX: old builder.js renderSectionsHTML (line 11054) reads `txt`
+// without declaring it in scope. Caller has its own local `txt` but doesn't
+// pass it as a parameter. The unscoped read throws ReferenceError on first
+// heading, killing the Preview path. Declaring `txt` here as a global gives
+// the unscoped read a fallback default (#1a1a2e dark text). Per-section
+// `secTxt` is computed correctly inside the function so we don't need to
+// declare it.
+var txt = '#1a1a2e';
+
+// PHASE ARTHUR FIX (v5.0.5): smart fetch interceptor that bridges the inline
+// action panel to the backend Arthur controller. The frontend posts to
+// /api/builder/ai with action_type=improve|rewrite|expand|shorten|fix and
+// expects {success, data, ai_action}. The backend defaults to mode='wizard'
+// and returns {reply, extracted, ready}. The backend has an inline() method
+// that returns {content: {text: '...'}} when called with mode='inline' and
+// proper payload. We detect inline action types, translate the request to
+// inline mode, then translate the response into a synthetic update_section
+// action that the frontend's _bldApplyAIResponse already knows how to apply.
+// For non-inline action types (e.g. action_type='chat') we fall through to
+// the simpler chat-mode bridge.
+//
+// Wizard onboarding interview uses /api/builder/arthur (different route),
+// so it is NOT touched by this interceptor.
+(function() {
+  if (window.__bld_v5_arthur_patched) return;
+  window.__bld_v5_arthur_patched = true;
+  var _origFetch = window.fetch;
+
+  var INLINE_ACTIONS = ['improve','rewrite','expand','shorten','fix'];
+
+  function _addSuccessFlag(response) {
+    if (!response.ok) return Promise.resolve(response);
+    var cloned;
+    try { cloned = response.clone(); } catch(e) { return Promise.resolve(response); }
+    return cloned.json().then(function(data) {
+      if (data && typeof data === 'object' && 'ai_action' in data && !('success' in data)) {
+        data.success = true;
+        return new Response(JSON.stringify(data), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      }
+      return response;
+    }).catch(function() { return response; });
+  }
+
+  function _synth(payload, status) {
+    return new Response(JSON.stringify(payload), {
+      status: status || 200,
+      statusText: 'OK',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  function _handleInlineAction(body, init, url) {
+    // v5.0.7: branch on action_type. Improve = design cycle (frontend),
+    // Rewrite = text via backend inline() (the v5.0.5 path).
+    var action = body.action_type || body.command || 'rewrite';
+    if (action === 'improve') {
+      return _handleImproveDesign(body);
+    }
+    return _handleRewriteText(body, init, url);
+  }
+
+  // === IMPROVE: cycle through design variations (frontend-only, no LLM) ===
+  var DESIGN_VARIATIONS = [
+    { gradient: "linear-gradient(135deg, var(--lubld-primary,#6C5CE7) 0%, var(--lubld-secondary,#A855F7) 100%)", bg: "", color: "#FFFFFF", paddingTop: "100px", paddingBottom: "100px", paddingX: "32px", textAlign: "center" },
+    { gradient: "linear-gradient(135deg, #00E5A8 0%, #0099CC 100%)", bg: "", color: "#FFFFFF", paddingTop: "100px", paddingBottom: "100px", paddingX: "32px", textAlign: "center" },
+    { gradient: "linear-gradient(135deg, #FF6B6B 0%, #FFD93D 100%)", bg: "", color: "#1a1a2e", paddingTop: "100px", paddingBottom: "100px", paddingX: "32px", textAlign: "center" },
+    { gradient: "linear-gradient(135deg, #1a1535 0%, #3d2466 100%)", bg: "", color: "#FFFFFF", paddingTop: "100px", paddingBottom: "100px", paddingX: "32px", textAlign: "center" },
+    { gradient: "", bg: "#0F1117", color: "#E8E9F0", paddingTop: "80px", paddingBottom: "80px", paddingX: "32px", textAlign: "center" },
+    { gradient: "linear-gradient(135deg, #4C1D95 0%, #DB2777 100%)", bg: "", color: "#FFFFFF", paddingTop: "100px", paddingBottom: "100px", paddingX: "32px", textAlign: "center" },
+    { gradient: "linear-gradient(135deg, #A7F3D0 0%, #67E8F9 100%)", bg: "", color: "#1a1a2e", paddingTop: "100px", paddingBottom: "100px", paddingX: "32px", textAlign: "center" },
+    { gradient: "", bg: "#FFFFFF", color: "#1a1a2e", paddingTop: "80px", paddingBottom: "80px", paddingX: "32px", textAlign: "center" }
+  ];
+
+  function _handleImproveDesign(body) {
+    var si = (body.context && typeof body.context.section_index === 'number')
+      ? body.context.section_index
+      : (typeof _bldSelSec === 'number' ? _bldSelSec : null);
+
+    if (typeof si !== 'number' || !window.bldCurrentPage || !window.bldCurrentPage.sections || !window.bldCurrentPage.sections[si]) {
+      return Promise.resolve(_synth({ success: false, error: 'Arthur: no section selected. Click an element first.' }));
+    }
+
+    var section = window.bldCurrentPage.sections[si];
+    var siteName = (window.bldCurrentPage && window.bldCurrentPage.title) || 'this site';
+    var industry = (window.wsCurrentSite && window.wsCurrentSite.industry) ||
+                   (window.bldCurrentPage && window.bldCurrentPage.theme && window.bldCurrentPage.theme.industry) || '';
+    var businessName = (window.wsCurrentSite && window.wsCurrentSite.title) ||
+                       (window.bldCurrentPage && window.bldCurrentPage.title) || '';
+
+    // Build focused design improvement prompt
+    var prompt = "Improve the visual design of section at index " + si +
+      " (type: " + (section.type || 'custom') + "). " +
+      "Site: " + (businessName || siteName) +
+      (industry ? " (industry: " + industry + ")" : "") + ". " +
+      "Return ai_action='update_section' with a section object whose 'style' field has new values for: " +
+      "bg or gradient, color, paddingTop, paddingBottom, paddingX, fontFamily, textAlign. " +
+      "Use a tasteful gradient background and bold typography that matches the business industry. " +
+      "Use generous padding (80-120px). Keep ALL text content (heading, body, items) unchanged - only update the style.";
+
+    var chatBody = {
+      mode: 'chat',
+      command: prompt,
+      page_structure: { sections: window.bldCurrentPage.sections },
+      site_name: siteName
+    };
+
+    var newInit = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(chatBody)
+    };
+
+    console.log('[bld v5.0.8] Improve: calling backend chat() for design improvement on section', si);
+
+    return _origFetch.call(window, '/api/builder/ai', newInit).then(function(response) {
+      if (!response.ok) {
+        console.warn('[bld v5.0.8] Improve: backend HTTP', response.status, '— falling back to cycle');
+        return _improveFallbackCycle(si, section);
+      }
+      return response.json().then(function(data) {
+        // Check if LLM returned a usable structured action
+        var hasUsableData = data && data.ai_action &&
+          data.ai_action !== 'text_response' && data.data &&
+          (data.data.section || data.data.style);
+
+        if (!hasUsableData) {
+          console.warn('[bld v5.0.8] Improve: LLM returned text_response or empty — falling back to cycle');
+          return _improveFallbackCycle(si, section);
+        }
+
+        // Normalize: ensure success flag and section_index
+        if (!('success' in data)) data.success = true;
+        if (data.data && typeof data.data.section_index !== 'number') {
+          data.data.section_index = si;
+        }
+        // If LLM returned data.style without wrapping in section, wrap it
+        if (data.data && data.data.style && !data.data.section) {
+          var wrappedSec = JSON.parse(JSON.stringify(section));
+          wrappedSec.style = Object.assign({}, wrappedSec.style || {}, data.data.style);
+          data.data.section = wrappedSec;
+        }
+        // Ensure the returned section preserves the original text content
+        if (data.data && data.data.section) {
+          var newSec = data.data.section;
+          // Preserve original heading/body/items if LLM accidentally changed them
+          if (section.heading && !newSec.heading) newSec.heading = section.heading;
+          if (section.body && !newSec.body) newSec.body = section.body;
+          if (section.subheading && !newSec.subheading) newSec.subheading = section.subheading;
+          if (section.cta_text && !newSec.cta_text) newSec.cta_text = section.cta_text;
+          if (section.cta_link && !newSec.cta_link) newSec.cta_link = section.cta_link;
+          if (Array.isArray(section.items) && !newSec.items) newSec.items = section.items;
+          // Preserve flatToNested-generated components
+          if (Array.isArray(section.components) && !Array.isArray(newSec.components)) {
+            newSec.components = section.components;
+          }
+          // Preserve type
+          if (!newSec.type) newSec.type = section.type;
+          data.data.section = newSec;
+        }
+        console.log('[bld v5.0.8] Improve: LLM returned structured update_section');
+        return _synth(data);
+      }).catch(function(e) {
+        console.warn('[bld v5.0.8] Improve: parse error', e, '— falling back to cycle');
+        return _improveFallbackCycle(si, section);
+      });
+    }).catch(function(e) {
+      console.warn('[bld v5.0.8] Improve: fetch error', e, '— falling back to cycle');
+      return _improveFallbackCycle(si, section);
+    });
+  }
+
+  // Fallback: cycle through preset variations if LLM fails
+  function _improveFallbackCycle(si, section) {
+    var idx = (typeof section.__variation_idx === 'number') ? (section.__variation_idx + 1) : 0;
+    idx = idx % DESIGN_VARIATIONS.length;
+    var updatedSec = JSON.parse(JSON.stringify(section));
+    var existingStyle = updatedSec.style || {};
+    updatedSec.style = Object.assign({}, existingStyle, DESIGN_VARIATIONS[idx]);
+    updatedSec.__variation_idx = idx;
+    console.log('[bld v5.0.8] Improve fallback: variation', idx + 1, '/', DESIGN_VARIATIONS.length);
+    return Promise.resolve(_synth({
+      success: true,
+      ai_action: 'update_section',
+      data: { section_index: si, section: updatedSec },
+      explanation: 'Design variation ' + (idx + 1) + ' / ' + DESIGN_VARIATIONS.length + ' (LLM unavailable)'
+    }));
+  }
+
+  // === REWRITE: text update via backend inline() (preserved from v5.0.5) ===
+  function _handleRewriteText(body, init, url) {
+    // Resolve which section/component the user is editing
+    var si = (body.context && typeof body.context.section_index === 'number')
+      ? body.context.section_index
+      : (typeof _bldSelSec === 'number' ? _bldSelSec : null);
+
+    if (typeof si !== 'number' || !window.bldCurrentPage || !window.bldCurrentPage.sections || !window.bldCurrentPage.sections[si]) {
+      return Promise.resolve(_synth({ success: false, error: 'Arthur: no section selected. Click an element first.' }));
+    }
+
+    var section = window.bldCurrentPage.sections[si];
+    var ci = (typeof _bldSelCmp === 'number') ? _bldSelCmp : null;
+    var elementType, existingContent, applyTo;
+
+    if (typeof ci === 'number' && section.components && section.components[ci]) {
+      var cmp = section.components[ci];
+      elementType = cmp.type || 'text';
+      var curText = cmp.text || (cmp.content && cmp.content.text) || '';
+      existingContent = { text: curText };
+      applyTo = { kind: 'component', ci: ci };
+    } else {
+      // Section selected (no specific component) — default to its heading
+      elementType = 'heading';
+      existingContent = { text: section.heading || (section.components && section.components[0] && section.components[0].text) || '' };
+      applyTo = { kind: 'section_heading' };
+    }
+
+    if (!existingContent.text) {
+      return Promise.resolve(_synth({ success: false, error: 'Arthur: no text to edit on this element.' }));
+    }
+
+    var inlineBody = {
+      mode: 'inline',
+      command: body.action_type || body.command || 'improve',
+      element_type: elementType,
+      existing_content: existingContent,
+      site_name: (window.bldCurrentPage && window.bldCurrentPage.title) || 'this site',
+    };
+
+    var newInit = Object.assign({}, init, { body: JSON.stringify(inlineBody) });
+
+    return _origFetch.call(window, url, newInit).then(function(response) {
+      if (!response.ok) return response;
+      return response.json().then(function(inlineResult) {
+        var newText = (inlineResult && inlineResult.content && inlineResult.content.text) || '';
+        if (!newText) {
+          return _synth({ success: false, error: 'Arthur returned empty content. Try rephrasing.' });
+        }
+
+        // Build updated section by deep-copying and patching the right field
+        var updatedSec = JSON.parse(JSON.stringify(section));
+        if (applyTo.kind === 'component') {
+          var tci = applyTo.ci;
+          if (updatedSec.components && updatedSec.components[tci]) {
+            updatedSec.components[tci].text = newText;
+            if (updatedSec.components[tci].content) updatedSec.components[tci].content.text = newText;
+            // Also propagate to flat field if this component is the section's primary heading/body
+            if (updatedSec.components[tci].type === 'heading' && tci === 0) updatedSec.heading = newText;
+            if (updatedSec.components[tci].type === 'text') updatedSec.body = newText;
+          }
+        } else {
+          updatedSec.heading = newText;
+          if (updatedSec.components && updatedSec.components[0] && updatedSec.components[0].type === 'heading') {
+            updatedSec.components[0].text = newText;
+            if (updatedSec.components[0].content) updatedSec.components[0].content.text = newText;
+          }
+        }
+
+        // Synthesize a response the frontend's _bldApplyAIResponse can apply
+        return _synth({
+          success: true,
+          ai_action: 'update_section',
+          data: {
+            section_index: si,
+            section: updatedSec,
+          },
+          explanation: 'Arthur updated the ' + elementType + '.',
+        });
+      }).catch(function(e) {
+        console.warn('[bld v5.0.5] inline action parse error', e);
+        return _synth({ success: false, error: 'Arthur response parse error: ' + e.message });
+      });
+    }).catch(function(e) {
+      console.warn('[bld v5.0.5] inline action fetch error', e);
+      return _synth({ success: false, error: 'Arthur network error: ' + e.message });
+    });
+  }
+
+  window.fetch = function(input, init) {
+    var url = (typeof input === 'string') ? input : (input && input.url) || '';
+    if (url.indexOf('/api/builder/ai') !== -1 && init && init.method === 'POST') {
+      var body = null;
+      try {
+        if (typeof init.body === 'string') body = JSON.parse(init.body);
+      } catch(e) {}
+
+      // Inline action path — translate via backend inline() mode
+      if (body && INLINE_ACTIONS.indexOf(body.action_type) !== -1) {
+        return _handleInlineAction(body, init, url);
+      }
+
+      // Other paths — chat mode bridge
+      if (body && !body.mode) {
+        body.mode = 'chat';
+        init = Object.assign({}, init, { body: JSON.stringify(body) });
+      }
+      return _origFetch.call(this, input, init).then(_addSuccessFlag);
+    }
+    return _origFetch.apply(this, arguments);
+  };
+  console.log('[bld v5.0.5] Arthur fetch interceptor active (inline + chat modes)');
+})();
+
+
+
+
+
+// === flatToNested (ref 321-479) ===
+function flatToNested(sec) {
+  if (!sec || typeof sec !== 'object') return sec;
+  // Already nested? Pass through unchanged.
+  if (Array.isArray(sec.components) && sec.components.length > 0) return sec;
+
+  const out = {
+    type: sec.type || 'custom',
+    label: sec.label || sec.type || 'Section',
+    style: sec.style || {},
+    props: sec.props || {},
+    components: []
+  };
+  // Preserve any other top-level fields the renderer reads
+  if (sec._layout) out._layout = sec._layout;
+  if (sec._columns) out._columns = sec._columns;
+  if (sec._variant) out._variant = sec._variant;
+
+  // Type-specific expansion
+  switch (sec.type) {
+    case 'hero': {
+      if (sec.background_image) {
+        out.style = out.style || {};
+        out.style.bgImage = sec.background_image;
+        out.style.bgSize = 'cover';
+        // Add dark overlay for text readability
+        out.style.bgOverlay = 'linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.6))';
+      }
+      if (!out.style.bgImage && (!out.style || !out.style.gradient)) {
+        out.style = out.style || {};
+        out.style.gradient = 'linear-gradient(135deg, var(--lubld-primary,#6C5CE7) 0%, var(--lubld-secondary,#A855F7) 100%)';
+      }
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 1 } });
+      if (sec.subheading) out.components.push({ type: 'text',    component_type: 'text',    text: sec.subheading, content: { text: sec.subheading } });
+      if (sec.cta_text)   out.components.push({ type: 'button',  component_type: 'button',  text: sec.cta_text, href: sec.cta_link || '#', content: { label: sec.cta_text, href: sec.cta_link || '#', variant: 'primary' } });
+      break;
+    }
+    case 'features': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      if (sec.body)       out.components.push({ type: 'text',    component_type: 'text',    text: sec.body,    content: { text: sec.body } });
+      if (Array.isArray(sec.items)) {
+        out.components.push({
+          type: 'cards', component_type: 'cards',
+          items: sec.items,
+          content: { items: sec.items }
+        });
+      }
+      break;
+    }
+    case 'cta': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      if (sec.body)       out.components.push({ type: 'text',    component_type: 'text',    text: sec.body,    content: { text: sec.body } });
+      if (sec.cta_text)   out.components.push({ type: 'button',  component_type: 'button',  text: sec.cta_text, href: sec.cta_link || '#', content: { label: sec.cta_text, href: sec.cta_link || '#', variant: 'primary' } });
+      break;
+    }
+    case 'contact':
+    case 'contact_form': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      if (sec.body)       out.components.push({ type: 'text',    component_type: 'text',    text: sec.body,    content: { text: sec.body } });
+      out.components.push({
+        type: 'form', component_type: 'form',
+        fields: sec.fields || [
+          { label: 'Name', placeholder: 'Your name' },
+          { label: 'Email', placeholder: 'you@example.com' },
+          { label: 'Message', placeholder: 'How can we help?' }
+        ],
+        content: { submit_label: sec.cta_text || 'Send Message' }
+      });
+      break;
+    }
+    case 'pricing': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      if (sec.body)       out.components.push({ type: 'text',    component_type: 'text',    text: sec.body,    content: { text: sec.body } });
+      const tiers = sec.tiers || sec.items || [];
+      tiers.forEach(t => {
+        out.components.push({
+          type: 'pricing', component_type: 'pricing',
+          content: {
+            name: t.name || t.heading,
+            price: t.price,
+            period: t.period || '/mo',
+            features: t.features || []
+          }
+        });
+      });
+      break;
+    }
+    case 'faq': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      out.components.push({
+        type: 'faq', component_type: 'faq',
+        items: sec.items || [],
+        content: { items: sec.items || [] }
+      });
+      break;
+    }
+    case 'testimonials': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      (sec.items || []).forEach(t => {
+        out.components.push({
+          type: 'testimonial', component_type: 'testimonial',
+          content: {
+            quote: t.quote || t.text,
+            author: t.name || t.author,
+            role: t.role || t.title || ''
+          }
+        });
+      });
+      break;
+    }
+    case 'services':
+    case 'service_grid': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      if (sec.body)       out.components.push({ type: 'text',    component_type: 'text',    text: sec.body,    content: { text: sec.body } });
+      if (Array.isArray(sec.items)) {
+        out.components.push({
+          type: 'cards', component_type: 'cards',
+          items: sec.items,
+          content: { items: sec.items }
+        });
+      }
+      break;
+    }
+    case 'about':
+    case 'story':
+    case 'text_block': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      if (sec.body)       out.components.push({ type: 'text',    component_type: 'text',    text: sec.body,    content: { text: sec.body } });
+      break;
+    }
+    case 'gallery': {
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      out.components.push({
+        type: 'gallery', component_type: 'gallery',
+        images: sec.images || sec.items || [],
+        content: { images: sec.images || sec.items || [] }
+      });
+      break;
+    }
+    case 'header':
+    case 'navigation': {
+      if (sec.logo)       out.components.push({ type: 'image',   component_type: 'image',   src: sec.logo, content: { src: sec.logo, alt: 'Logo' } });
+      // Nav links rendered by section-level renderer
+      break;
+    }
+    case 'footer': {
+      if (sec.heading)    out.components.push({ type: 'text',    component_type: 'text',    text: sec.heading, content: { text: sec.heading } });
+      if (sec.body)       out.components.push({ type: 'text',    component_type: 'text',    text: sec.body,    content: { text: sec.body } });
+      break;
+    }
+    case 'header': {
+      out.style = out.style || {};
+      out.style.bg = 'rgba(15,17,23,0.95)';
+      var navItems = (sec.nav_items || []).map(function(n){ return '<a href="' + (n.href||'#') + '" style="color:#9CA3AF;text-decoration:none;font-size:13px;font-weight:500">' + (n.label||'') + '</a>'; }).join('');
+      out.components.push({ type: 'raw_html', component_type: 'raw_html', content: { html:
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 32px;max-width:1200px;margin:0 auto">' +
+          '<div style="font-family:var(--lubld-font_heading,Syne);font-size:20px;font-weight:800;color:var(--lubld-primary,#6C5CE7)">' + (sec.logo_text||'Brand') + '</div>' +
+          '<nav style="display:flex;gap:24px;align-items:center">' + navItems +
+            (sec.cta_text ? '<a href="' + (sec.cta_href||'#') + '" style="background:var(--lubld-primary,#6C5CE7);color:#fff;padding:8px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">' + sec.cta_text + '</a>' : '') +
+          '</nav></div>'
+      }});
+      break;
+    }
+    case 'footer': {
+      out.style = out.style || {};
+      out.style.bg = '#0B0E14';
+      var fNav = (sec.nav_items || []).map(function(n){ return '<a href="' + (n.href||'#') + '" style="color:#6B7280;text-decoration:none;font-size:12px">' + (n.label||'') + '</a>'; }).join(' \u00B7 ');
+      out.components.push({ type: 'raw_html', component_type: 'raw_html', content: { html:
+        '<div style="padding:40px 32px;max-width:1200px;margin:0 auto">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">' +
+            '<div><div style="font-family:var(--lubld-font_heading,Syne);font-size:18px;font-weight:800;color:var(--lubld-primary,#6C5CE7);margin-bottom:4px">' + (sec.business_name||'Brand') + '</div>' +
+              '<div style="font-size:12px;color:#6B7280">' + (sec.tagline||'') + '</div></div>' +
+            '<nav>' + fNav + '</nav></div>' +
+          '<div style="border-top:1px solid #1E2230;padding-top:16px;font-size:11px;color:#4A566B;text-align:center">' + (sec.copyright||'') + '</div></div>'
+      }});
+      break;
+    }
+    default: {
+      // Unknown section type — emit heading + body if present so something
+      // shows up. The renderer's section-level path may also handle it
+      // via _p2Items / _p2Heading detection.
+      if (sec.heading)    out.components.push({ type: 'heading', component_type: 'heading', text: sec.heading, content: { text: sec.heading, level: 2 } });
+      if (sec.body || sec.subheading) {
+        const bodyText = sec.body || sec.subheading;
+        out.components.push({ type: 'text', component_type: 'text', text: bodyText, content: { text: bodyText } });
+      }
+      if (Array.isArray(sec.items) && sec.items.length) {
+        out.components.push({
+          type: 'cards', component_type: 'cards',
+          items: sec.items,
+          content: { items: sec.items }
+        });
+      }
+      break;
+    }
+  }
+  return out;
+}
+
+// === _bldSafeText (ref 489-495) ===
+function _bldSafeText(v){
+  if(typeof v==='string') return v;
+  if(v===null||v===undefined) return '';
+  if(Array.isArray(v)) return v.map(function(x){return typeof x==='string'?x:typeof x==='object'&&x&&x.text?String(x.text):String(x||'')}).join(' ');
+  if(typeof v==='object'){if(v.text) return String(v.text); if(v.content) return String(v.content); if(v.label) return String(v.label); if(v.heading) return String(v.heading); try{return JSON.stringify(v)}catch(e){return '';}}
+  return String(v);
+}
+
+// === esc (ref 498-498) ===
+function esc(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// === escH (ref 501-501) ===
+function escH(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// === _bldSanitizeSections (ref 506-595) ===
+function _bldSanitizeSections(sections) {
+  if (!Array.isArray(sections)) return [];
+  var fixed = 0;
+  for (var s = 0; s < sections.length; s++) {
+    var sec = sections[s];
+    if (!sec || typeof sec !== 'object') continue;
+    // Sanitize section-level fields
+    if (sec.label && typeof sec.label !== 'string') { sec.label = _bldSafeText(sec.label); fixed++; }
+    if (sec.type && typeof sec.type !== 'string') { sec.type = String(sec.type); fixed++; }
+    // Preserve and normalize props (layout, columns, variant)
+    if (sec.props && typeof sec.props === 'object') {
+      if (!sec.style) sec.style = {};
+      // Merge layout props into section for renderer access
+      if (sec.props.layout) sec._layout = sec.props.layout;
+      if (sec.props.columns) sec._columns = parseInt(sec.props.columns) || 1;
+      if (sec.props.variant) sec._variant = sec.props.variant;
+      // Preserve bgImage from props
+      if (sec.props.backgroundImage && !sec.style.bgImage) sec.style.bgImage = sec.props.backgroundImage;
+      if (sec.props.backgroundColor && !sec.style.bg) sec.style.bg = sec.props.backgroundColor;
+    }
+    if (!Array.isArray(sec.components)) sec.components = [];
+    for (var c = 0; c < sec.components.length; c++) {
+      var cmp = sec.components[c];
+      if (!cmp || typeof cmp !== 'object') continue;
+      // Normalize component_type → type for old renderer compatibility
+      if (cmp.component_type && !cmp.type) { cmp.type = cmp.component_type; fixed++; }
+      if (cmp.type && !cmp.component_type) { cmp.component_type = cmp.type; }
+
+      // Flatten new component types from content
+      if (cmp.type === 'gallery' && cmp.content && Array.isArray(cmp.content.images) && !cmp.images) { cmp.images = cmp.content.images; }
+      if (cmp.type === 'catalog' && cmp.content && Array.isArray(cmp.content.items) && !cmp.items) { cmp.items = cmp.content.items; }
+      if (cmp.type === 'carousel' && cmp.content && Array.isArray(cmp.content.slides) && !cmp.slides) { cmp.slides = cmp.content.slides; }
+      if (cmp.type === 'map' && cmp.content && (cmp.content.embedUrl || cmp.content.src) && !cmp.embedUrl) { cmp.embedUrl = cmp.content.embedUrl || cmp.content.src; }
+      if (cmp.type === 'embed' && cmp.content && (cmp.content.src || cmp.content.html) && !cmp.src) { cmp.src = cmp.content.src; cmp.html = cmp.content.html; }
+      if (cmp.type === 'video' && cmp.content && cmp.content.src && !cmp.src) { cmp.src = cmp.content.src; }
+
+      // Flatten content into component if needed (AI sometimes nests wrong)
+      if (typeof cmp.content === 'object' && cmp.content !== null && !Array.isArray(cmp.content)) {
+        // Merge content fields up
+        var ct = cmp.content;
+        for (var k in ct) {
+          if (typeof ct[k] !== 'string' && ct[k] !== null && ct[k] !== undefined && k !== 'items' && k !== 'fields' && k !== 'buttons' && k !== 'level') {
+            ct[k] = _bldSafeText(ct[k]); fixed++;
+          }
+        }
+        // Populate flat fields for old renderer compatibility
+        if (ct.text && !cmp.text) cmp.text = ct.text;
+        if (ct.label && !cmp.text) cmp.text = ct.label;
+        if (ct.heading && !cmp.text) cmp.text = ct.heading;
+        if (ct.src && !cmp.src) cmp.src = ct.src;
+        if (ct.alt && !cmp.alt) cmp.alt = ct.alt;
+        if (ct.href && !cmp.href) cmp.href = ct.href;
+        if (ct.variant && !cmp.variant) cmp.variant = ct.variant;
+        if (ct.level && !cmp.tag) cmp.tag = 'h' + ct.level;
+        // Cards items
+        if (Array.isArray(ct.items) && !cmp.items) cmp.items = ct.items;
+        // Form fields
+        if (Array.isArray(ct.fields) && !cmp.fields) cmp.fields = ct.fields;
+        // Button label → text for old renderer
+        if (cmp.type === 'button' && ct.label && !cmp.text) cmp.text = ct.label;
+      }
+      // Sanitize flat fields
+      var textFields = ['text','label','heading','title','description','src','alt','href','variant','tag','quote','author','role','name','price','period'];
+      for (var f = 0; f < textFields.length; f++) {
+        var fk = textFields[f];
+        if (cmp[fk] !== undefined && typeof cmp[fk] !== 'string') { cmp[fk] = _bldSafeText(cmp[fk]); fixed++; }
+      }
+      if (cmp.content && typeof cmp.content === 'object') {
+        for (var f = 0; f < textFields.length; f++) {
+          var fk = textFields[f];
+          if (cmp.content[fk] !== undefined && typeof cmp.content[fk] !== 'string') { cmp.content[fk] = _bldSafeText(cmp.content[fk]); fixed++; }
+        }
+      }
+      // Sanitize card items
+      var items = (cmp.items || (cmp.content && cmp.content.items));
+      if (Array.isArray(items)) {
+        for (var i = 0; i < items.length; i++) {
+          if (!items[i] || typeof items[i] !== 'object') continue;
+          for (var fk in items[i]) {
+            if (typeof items[i][fk] !== 'string' && items[i][fk] !== null && items[i][fk] !== undefined && !Array.isArray(items[i][fk]) && typeof items[i][fk] !== 'number') {
+              items[i][fk] = _bldSafeText(items[i][fk]); fixed++;
+            }
+          }
+        }
+      }
+    }
+  }
+  if (fixed > 0) console.log('[BLD] Sanitized ' + fixed + ' non-string fields in sections');
+  return sections;
+}
+
+// === bldNonce (ref 604-604) ===
+var bldNonce = ""; // Phase 1: WP nonce replaced by Bearer token in fetch sites
+
+// === bldPages (ref 612-612) ===
+var bldPages = [];
+
+// === bldCurrentPageId (ref 615-615) ===
+var bldCurrentPageId = null;
+
+// === bldCurrentPage (ref 618-618) ===
+var bldCurrentPage = null;
+
+// === bldSelectedComp (ref 621-621) ===
+var bldSelectedComp = null;
+
+// === bldDevice (ref 624-624) ===
+var bldDevice = 'desktop';
+
+// === bldDirty (ref 627-627) ===
+var bldDirty = false;
+
+// === _bldSelSec (ref 642-642) ===
+var _bldSelSec = null;
+
+// === _bldSelCmp (ref 645-645) ===
+var _bldSelCmp = null;
+
+// === _bldPageSource (ref 648-648) ===
+var _bldPageSource = 'standalone';
+
+// === _bldResolveMigratedType (ref 659-695) ===
+function _bldResolveMigratedType(section) {
+  if (!section || !section.components) return section;
+  var type = (section.type || '').toLowerCase();
+  var comps = section.components || [];
+
+  // Already a known type? Keep it
+  if (LU_BLOCK_REGISTRY[type]) return section;
+
+  // Pattern matching
+  var hasMultipleImages = comps.filter(function(c){return c.type==='image'||c.component_type==='image';}).length >= 3;
+  var hasCards = comps.some(function(c){return c.type==='cards'||c.component_type==='cards';});
+  var hasForm = comps.some(function(c){return c.type==='form'||c.component_type==='form';});
+  var hasMap = comps.some(function(c){return c.type==='map'||c.component_type==='map';});
+  var hasCatalog = comps.some(function(c){return c.type==='catalog'||c.component_type==='catalog';});
+  var hasEmbed = comps.some(function(c){return c.type==='embed'||c.component_type==='embed';});
+  var hasHeading = comps.some(function(c){return c.type==='heading'||c.component_type==='heading';});
+  var textCount = comps.filter(function(c){return c.type==='text'||c.component_type==='text';}).length;
+
+  // Resolve
+  if (hasMultipleImages && !hasCards) { section.type = 'gallery'; }
+  else if (hasMap) { section.type = 'contact'; }
+  else if (hasCatalog) { section.type = 'service_grid'; }
+  else if (hasForm) { section.type = 'contact_form'; }
+  else if (hasEmbed) { section.type = 'custom'; }
+  else if (hasCards && type !== 'hero') { section.type = 'features'; }
+  else if (hasHeading && textCount >= 2) { section.type = 'text_block'; }
+  else if (!hasHeading && textCount >= 1) { section.type = 'text_block'; }
+  else { section.type = 'custom'; }
+
+  // Map labels
+  if (!section.label || section.label === section.type) {
+    var labels = {gallery:'Gallery',contact:'Contact',service_grid:'Services',contact_form:'Contact Form',features:'Features',text_block:'Content',custom:'Section'};
+    section.label = labels[section.type] || section.type;
+  }
+
+  return section;
+}
+
+// === _bldResolveMigratedSections (ref 700-706) ===
+function _bldResolveMigratedSections(sections) {
+  if (!Array.isArray(sections)) return sections;
+  for (var i = 0; i < sections.length; i++) {
+    sections[i] = _bldResolveMigratedType(sections[i]);
+  }
+  return sections;
+}
+
+// === BLD_TYPES DELETED in v5.0.2 — old builder.js declares an identical const BLD_TYPES at line 4839; v5 references it from the global scope ===
+
+// === bldLoadEditorPage (ref 1629-1682) ===
+async function bldLoadEditorPage() {
+  try {
+    let data;
+    if (_bldPageSource === 'standalone') {
+      // Use core builder endpoint
+      const r = await fetch('/api/builder/load/' + bldCurrentPageId, {
+        headers: {
+          'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+          'Accept': 'application/json'
+        }
+      });
+      data = await r.json();
+      // Schema bridge: flat (DB) -> nested (renderer). Idempotent.
+      if (Array.isArray(data.sections)) {
+        data.sections = data.sections.map(flatToNested);
+      }
+      // Normalize into builder state format — NO page_json shadow copy
+      bldCurrentPage = {
+        id: data.id,
+        title: data.title || 'Untitled',
+        slug: data.slug || '',
+        status: data.status || 'draft',
+        sections: data.sections || (data.page_json?.sections) || [],
+        theme: data.theme || {},
+        _source: 'standalone',
+      };
+      // PHASE 6: Check sessionStorage for a more recent unsaved state
+      // (e.g. user refreshed mid-edit before autosave fired)
+      var recovered = _bldSessionRecover(bldCurrentPageId, data.updated_at);
+      if (recovered) {
+        // v5.0.3 FIX: normalize the recovered snapshot through flatToNested in
+        // case it was saved before flatToNested existed (stale snapshot from an
+        // earlier debug session would otherwise overwrite the freshly converted
+        // server data and leave components without flat fields, causing the
+        // properties panel to show blank inputs). flatToNested is idempotent.
+        var _recSecs = recovered.sections || bldCurrentPage.sections;
+        if (Array.isArray(_recSecs)) {
+          _recSecs = _recSecs.map(flatToNested);
+        }
+        bldCurrentPage.sections = _recSecs;
+        bldCurrentPage.theme    = recovered.theme    || bldCurrentPage.theme;
+        bldDirty = true; // mark dirty so next autosave persists the recovered state
+        showToast('✓ Restored your last unsaved changes', 'success');
+        console.log('[BLD Recovery] Session snapshot restored for page', bldCurrentPageId);
+      }
+      // R1 FIX: Inject wizard context from wsCurrentSite into bldCurrentPage.
+      // wsCurrentSite.arthur_context is populated by the PHP websites list endpoint
+      // from lu_websites.config. This makes core_service/tone/audience available
+      // to _bldGetAIContext() and therefore to every Arthur AI call.
+      if (wsCurrentSite && wsCurrentSite.arthur_context) {
+        bldCurrentPage.arthur_context = wsCurrentSite.arthur_context;
+      } else {
+        bldCurrentPage.arthur_context = {};
+      }
+      console.log('[BLD Load] Standalone page loaded:', bldCurrentPage.id, 'sections:', bldCurrentPage.sections.length);
+      // Sanitize loaded sections (may contain AI-generated data)
+      if (bldCurrentPage.sections) bldCurrentPage.sections = _bldSanitizeSections(bldCurrentPage.sections);
+    } else {
+      // Legacy lubld fallback
+      // Phase 1: lubld legacy fallback not supported. Standalone is the only path.
+      console.warn('[bld v5] lubld page source not supported in Phase 1');
+      return;
+    }
+    var _ttl = document.getElementById('bld-page-title-label'); if (_ttl) { _ttl.textContent = bldCurrentPage.title; }
+    var badge = document.getElementById('bld-page-status-badge');
+    if (badge) {
+      badge.textContent = bldCurrentPage.status;
+      badge.style.background = bldCurrentPage.status === 'published' ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.15)';
+      badge.style.color       = bldCurrentPage.status === 'published' ? '#10B981' : 'var(--am)';
+    }
+    bldRenderCanvas();
+    bldRenderLayers();
+  } catch(e) { console.error('bldLoadEditorPage',e); }
+}
+
+// === bldRenderCanvas (ref 1726-1778) ===
+function bldRenderCanvas() {
+  const canvas = document.getElementById('bld-canvas');
+  if (!canvas) return;
+  if (!bldCurrentPage) { canvas.innerHTML = '<div style="padding:60px;text-align:center;color:var(--t3)">No page loaded.</div>'; return; }
+  // Sanitize sections before render to prevent crashes from AI data
+  if (bldCurrentPage.sections) bldCurrentPage.sections = _bldSanitizeSections(bldCurrentPage.sections);
+  console.log('[BLD RENDER] Canvas: ' + (bldCurrentPage.sections||[]).length + ' sections, source=' + (bldCurrentPage._source||'?'));
+
+  // PHASE 4: Debounced autosave — fires 2s after any canvas change
+  if (bldDirty && bldCurrentPageId) {
+    clearTimeout(window._bldAutoSaveTimer);
+    window._bldAutoSaveTimer = setTimeout(function() {
+      if (bldDirty && bldCurrentPageId) {
+        _bldAutoSave();
+      }
+    }, 2000);
+  }
+
+  const widths = {desktop:'100%', tablet:'768px', mobile:'375px'};
+  canvas.style.maxWidth = widths[bldDevice];
+  canvas.style.overflow = 'auto'; // ensure content is visible
+
+  const isStandalone = bldCurrentPage._source === 'standalone' || _bldPageSource === 'standalone';
+  const sections = bldCurrentPage.sections;
+
+  // ── STAGE C: Read brand settings (safe for all paths) ─────────────
+  var wsSettings = {};
+  try {
+    var _wss = window.wsCurrentSite && window.wsCurrentSite.settings_json;
+    if (typeof _wss === 'string') wsSettings = JSON.parse(_wss);
+    else if (_wss && typeof _wss === 'object') wsSettings = _wss;
+  } catch(_) {}
+
+  // ── STANDALONE PATH ────────────────────────────────────────────────
+  if (isStandalone) {
+    try {
+      // STAGE C: Apply brand tokens before rendering
+      var _tokenStyle = document.getElementById('lubld-brand-tokens');
+      if (_tokenStyle) _tokenStyle.remove();
+      _tokenStyle = document.createElement('style');
+      _tokenStyle.id = 'lubld-brand-tokens';
+      _tokenStyle.textContent = ':root{--lubld-primary:' + (wsSettings.primary_color||'#6C5CE7') + ';--lubld-secondary:' + (wsSettings.secondary_color||'#00E5A8') + ';--lubld-accent:' + (wsSettings.accent_color||'#F4F7FB') + ';--lubld-font_heading:' + (wsSettings.font_heading||'Syne') + ';--lubld-font_body:' + (wsSettings.font_body||'DM Sans') + '}';
+      document.head.appendChild(_tokenStyle);
+      // Load custom fonts
+      if (wsSettings.font_heading && wsSettings.font_heading !== 'Syne') {
+        var _fl = document.createElement('link');
+        _fl.rel = 'stylesheet';
+        _fl.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(wsSettings.font_heading) + ':wght@400;700&family=' + encodeURIComponent(wsSettings.font_body||'DM Sans') + ':wght@400;500&display=swap';
+        document.head.appendChild(_fl);
+      }
+      _bldRenderStandalone(canvas, sections);
+    } catch(err) {
+      console.error('[BLD RENDER ERROR]', err);
+      canvas.innerHTML = '<div style="padding:40px;color:#F87171;font-size:14px"><strong>Render Error:</strong> ' + esc(err.message) + '<br><br><button onclick="bldRenderCanvas()" style="background:var(--p);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Retry</button></div>';
+    }
+    if (typeof _bldInitCanvasDrag === 'function') _bldInitCanvasDrag();
+    return;
+  }
+
+  // ── LEGACY LUBLD PATH ──────────────────────────────────────────────
+  if ((!sections || !sections.length) && bldCurrentPage.page_json) {
+    let bp = bldCurrentPage.page_json;
+    if (typeof bp === 'string') try { bp = JSON.parse(bp); } catch(e) { bp = null; }
+    if (bp?.sections?.length) { canvas.innerHTML = _bldRenderBlueprintPreview(bp, bldCurrentPage.title); return; }
+  }
+  if (!sections || !sections.length) {
+    canvas.innerHTML = '<div style="padding:80px;text-align:center;color:var(--t3)"><div style="font-size:32px;margin-bottom:12px">+</div><div>Add your first section</div></div>';
+    return;
+  }
+  // wsSettings already declared above
+  // Contrast helper — returns true if color is light (needs dark text)
+  function _isLight(hex) {
+    if (!hex || hex.charAt(0) !== '#') return false;
+    var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return (r*0.299 + g*0.587 + b*0.114) > 160;
+  }
+  var _primaryIsLight = _isLight(wsSettings.primary_color);
+  var _secondaryIsLight = _isLight(wsSettings.secondary_color);
+  var _accentIsLight = _isLight(wsSettings.accent_color);
+
+  const theme = Object.assign({
+    primary: wsSettings.primary_color || '#6C5CE7',
+    secondary: wsSettings.secondary_color || '#00E5A8',
+    accent: wsSettings.accent_color || '#F4F7FB',
+    // Contrast-aware text colors
+    t1: _primaryIsLight ? '#1a1a2e' : '#F8F9FA',
+    t2: _primaryIsLight ? '#4a4a6a' : '#9CA3AF',
+    btn_text: _primaryIsLight ? '#1a1a2e' : '#ffffff',
+    font_heading: wsSettings.font_heading || 'Syne',
+    font_body: wsSettings.font_body || 'DM Sans',
+    bg: '#0F1117',
+    t1: '#F8F9FA',
+    t2: '#9CA3AF',
+    s1: '#171A21',
+    s2: '#1E2230',
+    radius_md: '10px',
+  }, bldCurrentPage.theme?.tokens || {});
+  let html = bldBuildThemeCssVars(theme) + bldBuildCanvasBaseStyles();
+  sections.forEach((sec, si) => { html += bldRenderCanvasSection(sec, si, theme); });
+  html += '<div style="padding:24px;text-align:center"><button onclick="bldAddSection()" style="background:transparent;border:1.5px dashed rgba(108,92,231,.4);color:var(--pu);border-radius:8px;padding:10px 24px;font-size:13px;cursor:pointer">+ Add Section</button></div>';
+  canvas.innerHTML = html;
+}
+
+// === _bldRenderStandalone (ref 1786-2527) ===
+function _bldRenderStandalone(canvas, sections) {
+  console.log('[BLD RENDER] Standalone:', sections.length, 'sections');
+  if (!sections || !sections.length) {
+    canvas.innerHTML = '<div style="padding:60px;text-align:center;color:var(--t3)">' +
+      '<div style="font-size:48px;margin-bottom:16px">🏗️</div>' +
+      '<div style="font-size:18px;font-weight:600;color:var(--t1);margin-bottom:8px">Your page is empty</div>' +
+      '<div style="font-size:13px;margin-bottom:24px">Click a <strong>Block</strong> from the left panel to add content.</div>' +
+      '<button onclick="bldInsertCoreBlock(\'hero\')" style="background:var(--p);border:none;color:#fff;border-radius:8px;padding:12px 28px;font-size:14px;font-weight:600;cursor:pointer">+ Add Hero Section</button>' +
+      '</div>';
+    return;
+  }
+
+  var parts = [];
+  parts.push('<style>');
+  parts.push('.bld-sec{cursor:grab;transition:all .2s}');
+  parts.push('.bld-sec:active{cursor:grabbing}');
+  parts.push('.bld-sec.bld-dragging{opacity:.3;outline:2px dashed rgba(108,92,231,.3)}');
+  parts.push('.bld-sec.bld-drop-target{outline:2px dashed #8b5cf6;outline-offset:2px;background:rgba(108,92,231,.05)!important}');
+  parts.push('.bld-dropzone{transition:all .15s}');
+  parts.push('.bld-dropzone.bld-dz-active{height:40px!important;background:rgba(108,92,231,.12)!important;border:2px dashed var(--pu)!important;border-radius:8px!important;margin:6px 0!important}');
+  parts.push('</style>');
+  parts.push('<div style="padding:16px">');
+
+  // Page title
+  parts.push('<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px">');
+  parts.push('<span style="font-size:20px">✏️</span>');
+  parts.push('<span style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1)">' + esc(bldCurrentPage.title || 'Page') + '</span>');
+  parts.push('<span style="font-size:11px;color:var(--t3)">' + sections.length + ' sections</span>');
+  parts.push('</div>');
+
+  var secIcons = {header:'🔝',navigation:'☰',footer:'🔻',banner:'📢',sidebar:'📎',hero:'🎯',features:'⭐',cta:'📣',text_block:'📝',testimonials:'💬',service_grid:'🔧',faq:'❓',contact_form:'📋',pricing:'💰',story:'📖',custom:'▪',contact:'📋',gallery:'🖼️',map:'📍',catalog:'🛒',carousel:'🎠',video:'▶',services:'🔧',about:'ℹ️',content:'📄',team:'👥',stats:'📊',blog_list:'📰',logo_cloud:'🏢',tabs:'📑',accordion:'🪗',timeline:'📅',table:'📋',comparison:'⚖️',before_after:'🔄',masonry:'🧱',raw_html:'<>',unknown_fallback:'❓',crm_form:'📥',booking_widget:'📆',review_feed:'⭐',social_feed:'📱',whatsapp_cta:'💬',ai_widget:'🤖',property_list:'🏠',product_grid:'🛍️',quote_form:'📝',seo_local:'📍'};
+
+  for (var si = 0; si < sections.length; si++) {
+    var sec = sections[si];
+    var icon = secIcons[sec.type] || '▪';
+    var comps = sec.components || [];
+    var ss = sec.style || {};
+
+    // ── DROP ZONE before each section (insertion point) ──
+    parts.push('<div class="bld-dropzone" data-insert-at="' + si + '" ondragover="bldDropZoneOver(event,' + si + ')" ondragleave="bldDropZoneLeave(event)" ondrop="bldDropZoneDrop(event,' + si + ')" style="height:6px;margin:0 0 2px 0;border-radius:4px;transition:all .2s"></div>');
+
+    // Build section style string
+    var secCss = 'border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:2px;position:relative;transition:all .2s;cursor:grab;';
+    var _canvasBg = (ss.bg && ss.bg.indexOf('gradient') === -1) ? ss.bg : '';
+    if (_canvasBg) secCss += 'background:' + _canvasBg + ';';
+    else secCss += 'background:var(--s2);';
+    if (ss.gradient) secCss = secCss.replace(/background:[^;]+;/, 'background:' + ss.gradient + ';');
+    else if (ss.bg && ss.bg.indexOf('gradient') !== -1) secCss = secCss.replace(/background:[^;]+;/, 'background:' + ss.bg + ';');
+    if (ss.bgImage) {
+      if (ss.bgOverlay) {
+        secCss += 'background-image:' + ss.bgOverlay + ',url(' + ss.bgImage + ');background-size:' + (ss.bgSize || 'cover') + ';background-position:center;';
+      } else {
+        secCss += 'background-image:url(' + ss.bgImage + ');background-size:' + (ss.bgSize || 'cover') + ';background-position:center;';
+      }
+    }
+    if (ss.opacity && ss.opacity !== '1') secCss += 'opacity:' + ss.opacity + ';';
+    if (ss.blur && ss.blur !== '0') secCss += 'filter:blur(' + ss.blur + 'px);';
+    if (ss.border) secCss += 'border:' + ss.border + ';';
+    if (ss.borderRadius) secCss += 'border-radius:' + ss.borderRadius + ';';
+    if (ss.shadow) secCss += 'box-shadow:' + ss.shadow + ';';
+    if (ss.paddingTop)    secCss += 'padding-top:'    + ss.paddingTop    + ';';
+    if (ss.paddingBottom) secCss += 'padding-bottom:' + ss.paddingBottom + ';';
+    if (ss.paddingX)      secCss += 'padding-left:'   + ss.paddingX      + ';padding-right:' + ss.paddingX + ';';
+    if (ss.marginBottom)  secCss += 'margin-bottom:'  + ss.marginBottom  + ';';
+    // FIX 5: Section text color — was written to state but never applied to canvas
+    if (ss.color)         secCss += 'color:'          + ss.color         + ';';
+    // FIX 6: Section typography + layout — were written to state but never applied to canvas
+    if (ss.fontFamily)    secCss += 'font-family:'    + ss.fontFamily    + ';';
+    if (ss.textAlign)     secCss += 'text-align:'     + ss.textAlign     + ';';
+    if (ss.maxWidth)      secCss += 'max-width:'      + ss.maxWidth      + ';margin-left:auto;margin-right:auto;';
+    if (ss.gap)           secCss += 'gap:'            + ss.gap           + ';';
+
+    // Section wrapper — DRAGGABLE
+    parts.push('<div class="bld-sec" data-si="' + si + '" draggable="true"');
+    parts.push(' ondragstart="bldSecDragStart(event,' + si + ')"');
+    parts.push(' ondragover="bldSecDragOver(event,' + si + ')"');
+    parts.push(' ondragleave="bldSecDragLeave(event)"');
+    parts.push(' ondrop="bldSecDrop(event,' + si + ')"');
+    parts.push(' ondragend="bldSecDragEnd(event)"');
+    parts.push(' onclick="bldSelectComponent(' + si + ',null)"');
+    parts.push(' style="' + secCss + '">');
+
+    // Toolbar — drag handle + AI + move + delete
+    parts.push('<div style="position:absolute;top:6px;right:6px;display:flex;gap:4px;align-items:center">');
+    parts.push('<span style="cursor:grab;color:var(--t3);font-size:12px;padding:2px 4px" title="Drag to reorder">⠿</span>');
+    if (si > 0) parts.push('<button onclick="event.stopPropagation();bldMoveSection(' + si + ',-1)" style="background:var(--s3);border:1px solid var(--bd);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:var(--t2)">↑</button>');
+    if (si < sections.length - 1) parts.push('<button onclick="event.stopPropagation();bldMoveSection(' + si + ',1)" style="background:var(--s3);border:1px solid var(--bd);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:var(--t2)">↓</button>');
+    parts.push('<button onclick="event.stopPropagation();bldDeleteSection(' + si + ')" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:#F87171">✕</button>');
+    parts.push('</div>');
+
+    // Section header
+    parts.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">');
+    parts.push('<span style="font-size:16px">' + icon + '</span>');
+    parts.push('<span style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">' + esc((sec.type || 'section').replace(/_/g, ' ')) + ' · ' + (si + 1) + '</span>');
+    if (sec._layout || (sec.props && sec.props.layout && sec.props.layout !== 'default')) {
+      var layoutLabel = (sec._layout || (sec.props && sec.props.layout) || '').replace(/_/g, ' ');
+      var colLabel = sec._columns || (sec.props && sec.props.columns) || '';
+      parts.push('<span style="font-size:9px;color:var(--pu);background:rgba(108,92,231,.1);padding:2px 6px;border-radius:4px">' + esc(layoutLabel) + (colLabel > 1 ? ' · ' + colLabel + 'col' : '') + '</span>');
+    }
+    parts.push('</div>');
+
+    // ── Phase 2: Dedicated section-type visual renderers ──────────
+    // These render the ENTIRE section content for advanced block types
+    // instead of falling through to the generic component-by-component loop
+    var _p2Items = []; // extract cards items for section-level rendering
+    var _p2Heading = '';
+    var _p2Text = '';
+    for (var _pi = 0; _pi < comps.length; _pi++) {
+      if ((comps[_pi].type === 'cards' || comps[_pi].component_type === 'cards') && Array.isArray(comps[_pi].items || (comps[_pi].content && comps[_pi].content.items))) {
+        _p2Items = comps[_pi].items || (comps[_pi].content && comps[_pi].content.items) || [];
+      }
+      if ((comps[_pi].type === 'heading' || comps[_pi].component_type === 'heading')) {
+        _p2Heading = comps[_pi].text || (comps[_pi].content && comps[_pi].content.text) || '';
+      }
+      if ((comps[_pi].type === 'text' || comps[_pi].component_type === 'text') && !_p2Text) {
+        _p2Text = comps[_pi].text || (comps[_pi].content && comps[_pi].content.text) || '';
+      }
+      if ((comps[_pi].type === 'gallery' || comps[_pi].component_type === 'gallery')) {
+        _p2Items = comps[_pi].images || (comps[_pi].content && comps[_pi].content.images) || comps[_pi].items || [];
+      }
+    }
+    var _p2Rendered = false;
+    var _p2Clk = ' onclick="event.stopPropagation();bldSelectComponent(' + si + ',null)"';
+
+    if (sec.type === 'tabs' && _p2Items.length) {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px">' + esc(_p2Heading) + '</div>');
+      var tabId = 'lu-tab-' + si;
+      parts.push('<div' + _p2Clk + '>');
+      parts.push('<div style="display:flex;border-bottom:2px solid var(--bd);margin-bottom:12px;gap:0">');
+      for (var ti = 0; ti < _p2Items.length; ti++) {
+        parts.push('<button onclick="event.stopPropagation();document.querySelectorAll(\'[data-tabgroup=' + tabId + ']\').forEach(function(p){p.style.display=\'none\'});document.getElementById(\'' + tabId + '-' + ti + '\').style.display=\'block\';this.parentNode.querySelectorAll(\'button\').forEach(function(b){b.style.borderBottom=\'2px solid transparent\';b.style.color=\'var(--t3)\'});this.style.borderBottom=\'2px solid var(--pu)\';this.style.color=\'var(--t1)\'" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;' + (ti === 0 ? 'border-bottom:2px solid var(--pu);color:var(--t1)' : 'border-bottom:2px solid transparent;color:var(--t3)') + '">' + esc(_p2Items[ti].heading || _p2Items[ti].title || 'Tab ' + (ti+1)) + '</button>');
+      }
+      parts.push('</div>');
+      for (var ti = 0; ti < _p2Items.length; ti++) {
+        parts.push('<div id="' + tabId + '-' + ti + '" data-tabgroup="' + tabId + '" style="padding:12px 4px;' + (ti === 0 ? '' : 'display:none') + '">');
+        parts.push('<div style="font-size:13px;color:var(--t2);line-height:1.6">' + esc(_p2Items[ti].text || '') + '</div>');
+        parts.push('</div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'accordion' && _p2Items.length) {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px">' + esc(_p2Heading) + '</div>');
+      parts.push('<div' + _p2Clk + ' style="display:flex;flex-direction:column;gap:6px">');
+      for (var ai = 0; ai < _p2Items.length; ai++) {
+        var accId = 'lu-acc-' + si + '-' + ai;
+        parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:8px;overflow:hidden">');
+        parts.push('<button onclick="event.stopPropagation();var p=document.getElementById(\'' + accId + '\');var open=p.style.display!==\'none\';p.style.display=open?\'none\':\'block\';this.querySelector(\'span\').textContent=open?\'▸\':\'▾\'" style="width:100%;display:flex;align-items:center;gap:8px;padding:12px 14px;border:none;background:none;cursor:pointer;text-align:left;color:var(--t1)">');
+        parts.push('<span style="font-size:14px;color:var(--pu)">' + (ai === 0 ? '▾' : '▸') + '</span>');
+        parts.push('<span style="font-size:13px;font-weight:600;flex:1">' + esc(_p2Items[ai].heading || _p2Items[ai].title || 'Item') + '</span></button>');
+        parts.push('<div id="' + accId + '" style="padding:0 14px 12px;font-size:12px;color:var(--t2);line-height:1.6;' + (ai === 0 ? '' : 'display:none') + '">' + esc(_p2Items[ai].text || '') + '</div>');
+        parts.push('</div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'timeline' && _p2Items.length) {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:16px">' + esc(_p2Heading) + '</div>');
+      parts.push('<div' + _p2Clk + ' style="position:relative;padding-left:28px">');
+      parts.push('<div style="position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--pu);opacity:.3;border-radius:1px"></div>');
+      for (var tli = 0; tli < _p2Items.length; tli++) {
+        parts.push('<div style="position:relative;padding-bottom:20px">');
+        parts.push('<div style="position:absolute;left:-24px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--pu);border:2px solid var(--s1)"></div>');
+        parts.push('<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:2px">' + esc(_p2Items[tli].heading || _p2Items[tli].title || '') + '</div>');
+        parts.push('<div style="font-size:12px;color:var(--t2);line-height:1.5">' + esc(_p2Items[tli].text || '') + '</div>');
+        parts.push('</div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'stats' && _p2Items.length) {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px;text-align:center">' + esc(_p2Heading) + '</div>');
+      parts.push('<div' + _p2Clk + ' style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:16px;text-align:center">');
+      for (var sti = 0; sti < _p2Items.length; sti++) {
+        parts.push('<div style="padding:16px 12px;background:var(--s3);border:1px solid var(--bd);border-radius:10px">');
+        if (_p2Items[sti].icon) parts.push('<div style="font-size:20px;margin-bottom:6px">' + esc(_p2Items[sti].icon) + '</div>');
+        parts.push('<div style="font-family:var(--fh);font-size:28px;font-weight:800;color:var(--pu);line-height:1">' + esc(_p2Items[sti].heading || _p2Items[sti].title || '0') + '</div>');
+        parts.push('<div style="font-size:11px;color:var(--t3);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">' + esc(_p2Items[sti].text || '') + '</div>');
+        parts.push('</div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'logo_cloud') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:12px;text-align:center">' + esc(_p2Heading) + '</div>');
+      var logos = _p2Items.length ? _p2Items : [];
+      parts.push('<div' + _p2Clk + ' style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center;padding:12px 0">');
+      if (logos.length) {
+        for (var li = 0; li < logos.length; li++) {
+          var lSrc = typeof logos[li] === 'string' ? logos[li] : (logos[li].src || logos[li].image || '');
+          if (lSrc) parts.push('<img src="' + esc(lSrc) + '" style="height:40px;max-width:120px;object-fit:contain;opacity:.7;filter:grayscale(30%);transition:opacity .2s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.7">');
+          else parts.push('<div style="width:100px;height:40px;background:var(--s3);border:1px solid var(--bd);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--t3)">Logo</div>');
+        }
+      } else {
+        parts.push('<div style="padding:24px;color:var(--t3);font-size:12px">Add partner logos in section properties</div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'table') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:8px">' + esc(_p2Heading) + '</div>');
+      parts.push('<div' + _p2Clk + ' style="overflow-x:auto;border:1px solid var(--bd);border-radius:8px">');
+      if (_p2Text) {
+        var tRows = _p2Text.split('\\n').length > 1 ? _p2Text.split('\\n') : _p2Text.split('\n');
+        if (tRows.length > 0) {
+          parts.push('<table style="width:100%;border-collapse:collapse;font-size:12px">');
+          for (var ri = 0; ri < tRows.length; ri++) {
+            var cells = tRows[ri].split('|').map(function(c){ return c.trim(); }).filter(function(c){ return c; });
+            if (!cells.length) continue;
+            var tag = ri === 0 ? 'th' : 'td';
+            var rowBg = ri === 0 ? 'background:var(--s3);' : (ri % 2 === 0 ? 'background:rgba(255,255,255,.02);' : '');
+            parts.push('<tr style="' + rowBg + '">');
+            for (var ci2 = 0; ci2 < cells.length; ci2++) {
+              parts.push('<' + tag + ' style="padding:8px 12px;border-bottom:1px solid var(--bd);text-align:left;color:' + (ri === 0 ? 'var(--t3)' : 'var(--t1)') + ';font-weight:' + (ri === 0 ? '600' : '400') + ';font-size:' + (ri === 0 ? '10px' : '12px') + ';' + (ri === 0 ? 'text-transform:uppercase;letter-spacing:.04em' : '') + '">' + esc(cells[ci2]) + '</' + tag + '>');
+            }
+            parts.push('</tr>');
+          }
+          parts.push('</table>');
+        }
+      } else if (_p2Items.length) {
+        var cols2 = Object.keys(_p2Items[0]).filter(function(k){ return k !== 'icon'; });
+        parts.push('<table style="width:100%;border-collapse:collapse;font-size:12px">');
+        parts.push('<tr style="background:var(--s3)">');
+        for (var c2 = 0; c2 < cols2.length; c2++) parts.push('<th style="padding:8px 12px;border-bottom:1px solid var(--bd);text-align:left;color:var(--t3);font-size:10px;font-weight:600;text-transform:uppercase">' + esc(cols2[c2]) + '</th>');
+        parts.push('</tr>');
+        for (var r2 = 0; r2 < _p2Items.length; r2++) {
+          parts.push('<tr>');
+          for (var c3 = 0; c3 < cols2.length; c3++) parts.push('<td style="padding:8px 12px;border-bottom:1px solid var(--bd);color:var(--t1)">' + esc(_p2Items[r2][cols2[c3]] || '') + '</td>');
+          parts.push('</tr>');
+        }
+        parts.push('</table>');
+      } else {
+        parts.push('<div style="padding:24px;text-align:center;color:var(--t3);font-size:12px">Add table data — use pipe-separated text (Header1 | Header2)</div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'comparison' && _p2Items.length) {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px;text-align:center">' + esc(_p2Heading) + '</div>');
+      parts.push('<div' + _p2Clk + ' style="display:grid;grid-template-columns:repeat(' + Math.min(_p2Items.length, 3) + ',1fr);gap:16px">');
+      var compColors = ['var(--pu)', 'var(--ac)', 'var(--bl)', 'var(--am)'];
+      for (var cpi = 0; cpi < _p2Items.length; cpi++) {
+        var accent = compColors[cpi % compColors.length];
+        parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:12px;padding:20px;text-align:center;border-top:3px solid ' + accent + '">');
+        if (_p2Items[cpi].icon) parts.push('<div style="font-size:28px;margin-bottom:8px">' + esc(_p2Items[cpi].icon) + '</div>');
+        parts.push('<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:8px">' + esc(_p2Items[cpi].heading || _p2Items[cpi].title || 'Option') + '</div>');
+        parts.push('<div style="font-size:12px;color:var(--t2);line-height:1.5">' + esc(_p2Items[cpi].text || '') + '</div>');
+        parts.push('</div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'before_after') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:10px;text-align:center">' + esc(_p2Heading) + '</div>');
+      var baImgs = comps.filter(function(c){ return c.type === 'image' || c.component_type === 'image'; });
+      parts.push('<div' + _p2Clk + ' style="display:grid;grid-template-columns:1fr 1fr;gap:12px">');
+      var baLabels = ['Before', 'After'];
+      for (var bi = 0; bi < 2; bi++) {
+        var baSrc = baImgs[bi] ? (baImgs[bi].src || (baImgs[bi].content && baImgs[bi].content.src) || '') : '';
+        parts.push('<div style="position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--bd)">');
+        if (baSrc) parts.push('<img src="' + esc(baSrc) + '" style="width:100%;aspect-ratio:4/3;object-fit:cover">');
+        else parts.push('<div style="width:100%;aspect-ratio:4/3;background:var(--s3);display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:24px">🖼</div>');
+        parts.push('<div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600">' + baLabels[bi] + '</div>');
+        parts.push('</div>');
+      }
+      parts.push('</div>');
+      if (_p2Text) parts.push('<div style="font-size:12px;color:var(--t3);text-align:center;margin-top:8px">' + esc(_p2Text) + '</div>');
+    }
+
+    else if (sec.type === 'masonry') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:10px">' + esc(_p2Heading) + '</div>');
+      var mImgs = _p2Items.length ? _p2Items : comps.filter(function(c){ return c.type === 'image'; });
+      parts.push('<div' + _p2Clk + ' style="columns:3;column-gap:8px">');
+      if (mImgs.length) {
+        for (var mi2 = 0; mi2 < mImgs.length; mi2++) {
+          var mSrc = typeof mImgs[mi2] === 'string' ? mImgs[mi2] : (mImgs[mi2].src || mImgs[mi2].image || (mImgs[mi2].content && mImgs[mi2].content.src) || '');
+          if (mSrc) parts.push('<img src="' + esc(mSrc) + '" style="width:100%;border-radius:8px;margin-bottom:8px;break-inside:avoid">');
+        }
+      } else {
+        for (var mf = 0; mf < 6; mf++) {
+          var heights = ['120px','180px','140px','200px','150px','170px'];
+          parts.push('<div style="width:100%;height:' + heights[mf] + ';background:var(--s3);border:1px solid var(--bd);border-radius:8px;margin-bottom:8px;break-inside:avoid;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:11px">Image</div>');
+        }
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'raw_html') {
+      _p2Rendered = true;
+      var rawCode = '';
+      for (var rhi = 0; rhi < comps.length; rhi++) {
+        if (comps[rhi].type === 'html' && (comps[rhi].code || (comps[rhi].content && comps[rhi].content.code))) {
+          rawCode = comps[rhi].code || comps[rhi].content.code || '';
+          break;
+        }
+        if (comps[rhi].text) rawCode = comps[rhi].text;
+      }
+      parts.push('<div' + _p2Clk + ' style="background:rgba(0,0,0,.3);border:1px solid var(--bd);border-radius:8px;overflow:hidden">');
+      parts.push('<div style="padding:6px 12px;background:rgba(108,92,231,.1);font-size:10px;font-weight:600;color:var(--pu);display:flex;align-items:center;gap:6px"><span>&lt;/&gt;</span> Raw HTML</div>');
+      parts.push('<pre style="margin:0;padding:12px;font-family:monospace;font-size:11px;color:var(--t2);white-space:pre-wrap;max-height:200px;overflow:auto">' + esc(rawCode || 'No HTML code yet — edit in properties') + '</pre>');
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'unknown_fallback') {
+      _p2Rendered = true;
+      parts.push('<div' + _p2Clk + ' style="background:rgba(245,158,11,.05);border:1px dashed rgba(245,158,11,.3);border-radius:10px;padding:16px">');
+      parts.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:18px">❓</span><span style="font-size:12px;font-weight:600;color:var(--am)">Imported Block — may need editing</span></div>');
+      for (var ufi = 0; ufi < comps.length; ufi++) {
+        var ufText = comps[ufi].text || (comps[ufi].content && comps[ufi].content.text) || '';
+        if (ufText) parts.push('<div style="font-size:12px;color:var(--t2);margin-bottom:4px;padding:4px 0">' + esc(ufText) + '</div>');
+      }
+      if (!comps.length) parts.push('<div style="font-size:11px;color:var(--t3)">No content detected in this imported block.</div>');
+      parts.push('</div>');
+    }
+
+    // ── Phase 3: Dynamic / Platform block renderers ────────────────
+    else if (sec.type === 'crm_form') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px">' + esc(_p2Heading) + '</div>');
+      var crmFields = [];
+      for (var cfi = 0; cfi < comps.length; cfi++) { if (comps[cfi].type === 'form' && Array.isArray(comps[cfi].fields || (comps[cfi].content && comps[cfi].content.fields))) { crmFields = comps[cfi].fields || comps[cfi].content.fields; break; } }
+      parts.push('<div' + _p2Clk + ' style="max-width:440px">');
+      parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:12px;padding:20px">');
+      parts.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:11px;color:var(--ac);font-weight:600;text-transform:uppercase;letter-spacing:.5px"><span>📥</span> CRM Lead Capture</div>');
+      if (crmFields.length) {
+        for (var cf2 = 0; cf2 < crmFields.length; cf2++) {
+          var fld = crmFields[cf2];
+          parts.push('<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--t3);display:block;margin-bottom:3px">' + esc(fld.label || fld.name || 'Field') + (fld.required ? ' *' : '') + '</label>');
+          if (fld.type === 'textarea') parts.push('<textarea name="' + esc(fld.label || '') + '" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;min-height:60px;box-sizing:border-box;resize:vertical" placeholder="' + esc(fld.label || '') + '"></textarea>');
+          else parts.push('<input name="' + esc(fld.label || '') + '" type="' + esc(fld.type || 'text') + '" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;box-sizing:border-box" placeholder="' + esc(fld.label || '') + '">');
+          parts.push('</div>');
+        }
+      } else {
+        parts.push('<input name="name" placeholder="Name" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;margin-bottom:8px;box-sizing:border-box">');
+        parts.push('<input name="email" placeholder="Email" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;margin-bottom:8px;box-sizing:border-box">');
+        parts.push('<textarea name="message" placeholder="Message" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;min-height:60px;box-sizing:border-box;resize:vertical"></textarea>');
+      }
+      parts.push('<button onclick="event.stopPropagation();_bldSubmitCrmForm(this.parentNode.parentNode,' + si + ')" style="margin-top:10px;width:100%;background:var(--ac);border:none;color:#0F1117;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Submit Lead →</button>');
+      parts.push('<div class="lu-form-status" style="margin-top:6px;font-size:11px;min-height:16px"></div>');
+      parts.push('</div></div>');
+    }
+
+    else if (sec.type === 'booking_widget') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px">' + esc(_p2Heading) + '</div>');
+      if (_p2Text) parts.push('<div style="font-size:13px;color:var(--t2);margin-bottom:12px">' + esc(_p2Text) + '</div>');
+      parts.push('<div' + _p2Clk + ' style="background:var(--s3);border:1px solid var(--bd);border-radius:12px;padding:20px">');
+      parts.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:11px;color:var(--pu);font-weight:600;text-transform:uppercase;letter-spacing:.5px"><span>📆</span> Appointment Scheduler</div>');
+      // Mini calendar preview
+      var days = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+      parts.push('<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:12px">');
+      for (var di = 0; di < 7; di++) parts.push('<div style="text-align:center;font-size:9px;color:var(--t3);font-weight:600;padding:4px">' + days[di] + '</div>');
+      var today = new Date().getDate();
+      for (var dd = 1; dd <= 28; dd++) {
+        var isToday = dd === today;
+        parts.push('<div style="text-align:center;font-size:11px;padding:6px 2px;border-radius:6px;cursor:default;' + (isToday ? 'background:var(--pu);color:#fff;font-weight:700' : 'color:var(--t2)') + '">' + dd + '</div>');
+      }
+      parts.push('</div>');
+      parts.push('<div style="display:flex;gap:6px;flex-wrap:wrap">');
+      var slots = ['9:00 AM','10:00 AM','11:00 AM','2:00 PM','3:00 PM','4:00 PM'];
+      for (var sl = 0; sl < slots.length; sl++) {
+        parts.push('<div style="padding:6px 12px;border:1px solid var(--bd);border-radius:6px;font-size:11px;color:var(--t2);cursor:default">' + slots[sl] + '</div>');
+      }
+      parts.push('</div>');
+      parts.push('<button style="margin-top:12px;width:100%;background:var(--pu);border:none;color:#fff;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:default;opacity:.7">Book Appointment</button>');
+      var calData = _bldGetDynData('booking_widget');
+      var hasSlots = calData && ((calData.events && calData.events.length) || (calData.bookings && calData.bookings.length));
+      parts.push('<div style="margin-top:8px;font-size:10px;color:var(--t3);text-align:center">' + (hasSlots ? '✓ Calendar connected — ' + (calData.events||[]).length + ' events loaded' : 'Connect Calendar engine in Settings → Integrations to enable live booking') + '</div>');
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'review_feed') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px">' + esc(_p2Heading) + '</div>');
+      var reviews = _p2Items.length ? _p2Items : [{icon:'⭐⭐⭐⭐⭐',heading:'No reviews yet',text:'Reviews will appear here when connected to your review feed.'}];
+      parts.push('<div' + _p2Clk + ' style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">');
+      for (var rvi = 0; rvi < reviews.length; rvi++) {
+        var rv = reviews[rvi];
+        parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:10px;padding:16px">');
+        parts.push('<div style="font-size:14px;margin-bottom:6px">' + esc(rv.icon || '⭐⭐⭐⭐⭐') + '</div>');
+        parts.push('<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">' + esc(rv.heading || rv.author || 'Customer') + '</div>');
+        parts.push('<div style="font-size:12px;color:var(--t2);line-height:1.5;font-style:italic">' + esc(rv.text || rv.quote || '') + '</div>');
+        parts.push('</div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'social_feed') {
+      _p2Rendered = true;
+      parts.push('<div' + _p2Clk + ' style="background:var(--s3);border:1px solid var(--bd);border-radius:12px;padding:20px">');
+      parts.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span style="font-size:20px">📱</span><span style="font-size:14px;font-weight:600;color:var(--t1)">Social Feed</span></div>');
+      parts.push('<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">');
+      for (var sfi = 0; sfi < 6; sfi++) {
+        parts.push('<div style="aspect-ratio:1;background:var(--s2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:20px">' + ['📸','🎥','📷','🖼','📹','📸'][sfi] + '</div>');
+      }
+      parts.push('</div>');
+      var socialData = _bldGetDynData('social_feed');
+      var hasSocial = Array.isArray(socialData) && socialData.length > 0;
+      parts.push('<div style="margin-top:10px;font-size:10px;color:var(--t3);text-align:center">' + (hasSocial ? '✓ ' + socialData.length + ' posts loaded from social accounts' : '📱 <a onclick="nav(\'social\')" style="color:var(--pu);cursor:pointer;text-decoration:underline">Connect social accounts</a> in the Social engine to display live posts') + '</div>');
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'blog_list') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px">' + esc(_p2Heading) + '</div>');
+      var blogData = _bldGetDynData('blog_list');
+      var posts = _p2Items.length ? _p2Items : [];
+      if (!posts.length && Array.isArray(blogData) && blogData.length) {
+        posts = blogData.map(function(p) { return { icon: '📄', heading: p.title || 'Post', text: p.excerpt || '', image: p.image || '' }; });
+      }
+      if (!posts.length) posts = [{icon:'📰',heading:'No posts yet',text:'Create blog posts in WordPress or use the Content engine to generate articles automatically.'}];
+      parts.push('<div' + _p2Clk + ' style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">');
+      for (var bli = 0; bli < posts.length; bli++) {
+        var post = posts[bli];
+        parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:10px;overflow:hidden">');
+        parts.push('<div style="height:120px;background:linear-gradient(135deg,var(--s2),var(--s3));display:flex;align-items:center;justify-content:center;font-size:28px">' + esc(post.icon || '📰') + '</div>');
+        parts.push('<div style="padding:14px">');
+        parts.push('<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">' + esc(post.heading || post.title || 'Post') + '</div>');
+        parts.push('<div style="font-size:11px;color:var(--t3);line-height:1.4">' + esc(post.text || post.excerpt || '') + '</div>');
+        parts.push('</div></div>');
+      }
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'whatsapp_cta') {
+      _p2Rendered = true;
+      var waNumber = '';
+      for (var wai = 0; wai < comps.length; wai++) { if (comps[wai].type === 'button' && comps[wai].href) { waNumber = comps[wai].href; break; } if (comps[wai].content && comps[wai].content.href) { waNumber = comps[wai].content.href; break; } }
+      if (!waNumber || waNumber === 'https://wa.me/') waNumber = _bldGetWhatsAppUrl();
+      parts.push('<div' + _p2Clk + ' style="background:linear-gradient(135deg,#075E54,#128C7E);border-radius:12px;padding:24px;text-align:center">');
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#fff;margin-bottom:8px">' + esc(_p2Heading) + '</div>');
+      if (_p2Text) parts.push('<div style="font-size:13px;color:rgba(255,255,255,.8);margin-bottom:14px">' + esc(_p2Text) + '</div>');
+      parts.push('<a href="' + esc(waNumber) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer">');
+      parts.push('<span style="font-size:20px">💬</span> Chat on WhatsApp</a>');
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'ai_widget') {
+      _p2Rendered = true;
+      parts.push('<div' + _p2Clk + ' style="background:linear-gradient(135deg,rgba(108,92,231,.1),rgba(168,85,247,.1));border:1px solid rgba(108,92,231,.3);border-radius:12px;padding:24px;text-align:center">');
+      parts.push('<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#6C5CE7,#A855F7);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px">🤖</div>');
+      parts.push('<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:6px">AI Assistant</div>');
+      parts.push('<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Visitors can chat with your AI assistant for instant help</div>');
+      parts.push('<button onclick="event.stopPropagation();_bldOpenAiWidget()" style="background:var(--pu);border:none;color:#fff;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Start Chat →</button>');
+      parts.push('<div style="margin-top:8px;font-size:10px;color:var(--t3)">Powered by Arthur AI</div>');
+      parts.push('</div>');
+    }
+
+    else if (sec.type === 'property_list' || sec.type === 'product_grid') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px">' + esc(_p2Heading) + '</div>');
+      var catComps = comps.filter(function(c){ return c.type === 'catalog' || c.component_type === 'catalog'; });
+      var gridItems = [];
+      if (catComps.length) gridItems = catComps[0].items || (catComps[0].content && catComps[0].content.items) || [];
+      if (!gridItems.length) gridItems = _p2Items;
+      var isProperty = (sec.type === 'property_list');
+      if (gridItems.length) {
+        parts.push('<div' + _p2Clk + ' style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">');
+        for (var gi2 = 0; gi2 < gridItems.length; gi2++) {
+          var item = gridItems[gi2];
+          parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:10px;overflow:hidden">');
+          if (item.image) parts.push('<img src="' + esc(item.image) + '" style="width:100%;height:150px;object-fit:cover">');
+          else parts.push('<div style="height:100px;background:linear-gradient(135deg,var(--s2),var(--s3));display:flex;align-items:center;justify-content:center;font-size:28px">' + (isProperty ? '🏠' : '🛍️') + '</div>');
+          parts.push('<div style="padding:12px">');
+          parts.push('<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">' + esc(item.title || item.heading || 'Item') + '</div>');
+          if (item.price) parts.push('<div style="font-size:15px;font-weight:700;color:var(--ac);margin-bottom:4px">' + esc(item.price) + '</div>');
+          if (item.text) parts.push('<div style="font-size:11px;color:var(--t3);line-height:1.4">' + esc(item.text) + '</div>');
+          parts.push('</div></div>');
+        }
+        parts.push('</div>');
+      } else {
+        parts.push('<div' + _p2Clk + ' style="padding:32px;text-align:center;background:var(--s3);border:1px dashed var(--bd);border-radius:10px;color:var(--t3);font-size:13px">No ' + (isProperty ? 'properties' : 'products') + ' yet — add items in section properties</div>');
+      }
+    }
+
+    else if (sec.type === 'quote_form') {
+      _p2Rendered = true;
+      if (_p2Heading) parts.push('<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:12px">' + esc(_p2Heading) + '</div>');
+      var qFields = [];
+      for (var qfi = 0; qfi < comps.length; qfi++) { if (comps[qfi].type === 'form' && Array.isArray(comps[qfi].fields || (comps[qfi].content && comps[qfi].content.fields))) { qFields = comps[qfi].fields || comps[qfi].content.fields; break; } }
+      parts.push('<div' + _p2Clk + ' style="max-width:500px">');
+      parts.push('<div style="background:linear-gradient(135deg,rgba(0,229,168,.05),rgba(16,185,129,.05));border:1px solid rgba(0,229,168,.2);border-radius:12px;padding:20px">');
+      parts.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:11px;color:var(--ac);font-weight:600;text-transform:uppercase;letter-spacing:.5px"><span>📝</span> Quote Request</div>');
+      if (qFields.length) {
+        for (var qf2 = 0; qf2 < qFields.length; qf2++) {
+          var qf = qFields[qf2];
+          parts.push('<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--t3);display:block;margin-bottom:3px">' + esc(qf.label || '') + '</label>');
+          if (qf.type === 'textarea') parts.push('<textarea style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;min-height:60px;box-sizing:border-box;resize:vertical" placeholder="' + esc(qf.label || '') + '"></textarea>');
+          else parts.push('<input type="text" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;box-sizing:border-box" placeholder="' + esc(qf.label || '') + '">');
+          parts.push('</div>');
+        }
+      } else {
+        parts.push('<input placeholder="Service needed" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;margin-bottom:8px;box-sizing:border-box">');
+        parts.push('<input placeholder="Budget range" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;margin-bottom:8px;box-sizing:border-box">');
+        parts.push('<textarea placeholder="Details" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px;color:var(--t1);font-size:12px;min-height:60px;box-sizing:border-box;resize:vertical"></textarea>');
+      }
+      parts.push('<button onclick="event.stopPropagation();_bldSubmitQuoteForm(this.parentNode)" style="margin-top:10px;width:100%;background:var(--ac);border:none;color:#0F1117;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Get Quote →</button>');
+      parts.push('<div class="lu-form-status" style="margin-top:6px;font-size:11px;min-height:16px"></div>');
+      parts.push('</div></div>');
+    }
+
+    else if (sec.type === 'seo_local') {
+      _p2Rendered = true;
+      var bizData = _bldGetDynData('seo_local');
+      var bizCtx = (bizData && bizData.business) ? bizData.business : bizData || {};
+      var bizName = bizCtx.business_name || bizCtx.name || (window.LU_CFG ? window.LU_CFG.bn : 'Your Business');
+      var bizAddr = bizCtx.address || bizCtx.location || '';
+      var bizPhone = bizCtx.phone || '';
+      parts.push('<div' + _p2Clk + ' style="background:var(--s3);border:1px solid var(--bd);border-radius:12px;padding:20px">');
+      parts.push('<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:24px">📍</span><div><div style="font-size:15px;font-weight:700;color:var(--t1)">' + esc(bizName) + '</div><div style="font-size:11px;color:var(--ac)">Local Business</div></div></div>');
+      if (_p2Items.length) {
+        parts.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">');
+        for (var sli2 = 0; sli2 < _p2Items.length; sli2++) {
+          parts.push('<div style="padding:10px;background:var(--s2);border-radius:8px"><div style="font-size:12px;font-weight:600;color:var(--t1)">' + esc(_p2Items[sli2].icon || '') + ' ' + esc(_p2Items[sli2].heading || '') + '</div><div style="font-size:11px;color:var(--t2);margin-top:2px">' + esc(_p2Items[sli2].text || '') + '</div></div>');
+        }
+        parts.push('</div>');
+      }
+      // Map embed placeholder
+      var mapCmp = comps.find(function(c){ return c.type === 'map' || c.component_type === 'map'; });
+      var mapUrl2 = mapCmp ? (mapCmp.embedUrl || (mapCmp.content && mapCmp.content.embedUrl) || mapCmp.src || '') : '';
+      if (mapUrl2) parts.push('<iframe src="' + esc(mapUrl2) + '" style="width:100%;height:180px;border:none;border-radius:8px;margin-top:12px" loading="lazy"></iframe>');
+      else parts.push('<div style="width:100%;height:120px;background:var(--s2);border-radius:8px;margin-top:12px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:12px">📍 Add Google Maps embed URL</div>');
+      parts.push('</div>');
+    }
+
+    // ── End Phase 2 + Phase 3 renderers ──
+    if (!_p2Rendered) {
+    // Components — render-safe: one bad component never crashes canvas
+    for (var ci = 0; ci < comps.length; ci++) {
+      try {
+      var cmp = comps[ci];
+      if (!cmp || typeof cmp !== 'object') { parts.push('<div style="color:var(--am);font-size:10px;padding:4px">[invalid component]</div>'); continue; }
+      var isSel = (_bldSelSec === si && _bldSelCmp === ci);
+      var selCss = isSel ? 'outline:2px solid var(--p);outline-offset:2px;' : '';
+      var clk = ' onclick="event.stopPropagation();bldSelectComponent(' + si + ',' + ci + ')"';
+
+      // Apply custom component styles — FIX 4: cover ALL properties panel writes
+      var cStyle = cmp.style || {};
+      var extraCss = '';
+      if (cStyle.color)          extraCss += 'color:'           + cStyle.color          + ';';
+      // gradient takes priority over solid bg
+      if (cStyle.gradient)       extraCss += 'background:'      + cStyle.gradient       + ';';
+      else if (cStyle.bg)        extraCss += 'background:'      + cStyle.bg             + ';';
+      if (cStyle.fontSize)       extraCss += 'font-size:'       + cStyle.fontSize       + ';';
+      if (cStyle.fontWeight)     extraCss += 'font-weight:'     + cStyle.fontWeight     + ';';
+      if (cStyle.fontFamily)     extraCss += 'font-family:'     + cStyle.fontFamily     + ';';
+      if (cStyle.textAlign)      extraCss += 'text-align:'      + cStyle.textAlign      + ';';
+      if (cStyle.lineHeight)     extraCss += 'line-height:'     + cStyle.lineHeight     + ';';
+      if (cStyle.letterSpacing)  extraCss += 'letter-spacing:'  + cStyle.letterSpacing  + ';';
+      if (cStyle.textTransform)  extraCss += 'text-transform:'  + cStyle.textTransform  + ';';
+      if (cStyle.textDecoration) extraCss += 'text-decoration:' + cStyle.textDecoration + ';';
+      if (cStyle.padding)        extraCss += 'padding:'         + cStyle.padding        + ';';
+      if (cStyle.margin)         extraCss += 'margin:'          + cStyle.margin         + ';';
+      if (cStyle.maxWidth)       extraCss += 'max-width:'       + cStyle.maxWidth       + ';';
+      if (cStyle.width)          extraCss += 'width:'           + cStyle.width          + ';';
+      if (cStyle.borderRadius)   extraCss += 'border-radius:'   + cStyle.borderRadius   + ';';
+      if (cStyle.border)         extraCss += 'border:'          + cStyle.border         + ';';
+      if (cStyle.boxShadow)      extraCss += 'box-shadow:'      + cStyle.boxShadow      + ';';
+      if (cStyle.opacity && cStyle.opacity !== '1') extraCss += 'opacity:' + cStyle.opacity + ';';
+
+      if (cmp.type === 'heading') {
+        var tag = cmp.tag || 'h2';
+        var sz = tag === 'h1' ? '24px' : tag === 'h2' ? '20px' : '16px';
+        parts.push('<div contenteditable="true" style="font-family:var(--fh);font-size:' + sz + ';font-weight:700;color:var(--t1);margin-bottom:8px;padding:2px 4px;border-radius:4px;cursor:text;' + selCss + extraCss + '" onblur="bldCurrentPage.sections[' + si + '].components[' + ci + '].text=this.textContent;bldDirty=true"' + clk + '>' + esc(cmp.text || 'Heading') + '</div>');
+      }
+      else if (cmp.type === 'text') {
+        parts.push('<div contenteditable="true" style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:8px;padding:2px 4px;border-radius:4px;cursor:text;' + selCss + extraCss + '" onblur="bldCurrentPage.sections[' + si + '].components[' + ci + '].text=this.textContent;bldDirty=true"' + clk + '>' + esc(cmp.text || 'Text') + '</div>');
+      }
+      else if (cmp.type === 'button') {
+        parts.push('<div style="margin:8px 0;' + selCss + extraCss + 'border-radius:8px;padding:2px"' + clk + '>');
+        parts.push('<span contenteditable="true" style="display:inline-block;background:var(--p);color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:text" onblur="bldCurrentPage.sections[' + si + '].components[' + ci + '].text=this.textContent;bldDirty=true">' + esc(cmp.text || 'Button') + '</span>');
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'cards') {
+        var items = Array.isArray(cmp.items) ? cmp.items : [];
+        var gridCols = (sec._columns && sec._columns >= 2) ? 'repeat(' + sec._columns + ',1fr)' : 'repeat(auto-fit,minmax(140px,1fr))';
+        parts.push('<div style="display:grid;grid-template-columns:' + gridCols + ';gap:10px;margin:8px 0;' + selCss + extraCss + 'border-radius:8px;padding:2px"' + clk + '>');
+        for (var ki = 0; ki < items.length; ki++) {
+          var card = items[ki] || {};
+          parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center">');
+          parts.push('<div style="font-size:24px;margin-bottom:6px">' + (card.icon || '') + '</div>');
+          parts.push('<div contenteditable="true" style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px" onblur="bldCurrentPage.sections[' + si + '].components[' + ci + '].items[' + ki + '].heading=this.textContent;bldDirty=true">' + esc(card.heading || card.title || '') + '</div>');
+          parts.push('<div contenteditable="true" style="font-size:11px;color:var(--t3)" onblur="bldCurrentPage.sections[' + si + '].components[' + ci + '].items[' + ki + '].text=this.textContent;bldDirty=true">' + esc(card.text || card.description || '') + '</div>');
+          parts.push('</div>');
+        }
+        if (!items.length) parts.push('<div style="padding:16px;text-align:center;color:var(--t3);font-size:11px;border:1px dashed var(--bd);border-radius:6px">No cards — edit in properties</div>');
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'form') {
+        var fields = Array.isArray(cmp.fields) ? cmp.fields : [];
+        parts.push('<div style="display:flex;flex-direction:column;gap:8px;margin:8px 0;max-width:400px;' + selCss + extraCss + 'padding:2px"' + clk + '>');
+        for (var fi = 0; fi < fields.length; fi++) {
+          var f = fields[fi] || {};
+          parts.push('<div><div style="font-size:10px;color:var(--t3);margin-bottom:4px">' + esc(f.label || f.name || 'Field') + '</div>');
+          parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--t3);' + ((f.type === 'textarea' || f.field_type === 'textarea') ? 'min-height:60px' : '') + '">' + esc(f.label || f.name || '') + '...</div></div>');
+        }
+        if (!fields.length) parts.push('<div style="padding:12px;text-align:center;color:var(--t3);font-size:11px;border:1px dashed var(--bd);border-radius:6px">No fields — edit in properties</div>');
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'divider') {
+        parts.push('<hr style="border:none;border-top:1px solid var(--bd);margin:12px 0;' + selCss + extraCss + '"' + clk + '>');
+      }
+      else if (cmp.type === 'spacer') {
+        parts.push('<div style="height:' + (cmp.height || cmp.size || '40px') + ';' + selCss + extraCss + '"' + clk + '></div>');
+      }
+      else if (cmp.type === 'image') {
+        parts.push('<div style="margin:8px 0;' + selCss + extraCss + 'border-radius:8px"' + clk + '>');
+        if (cmp.src) {
+          parts.push('<img src="' + esc(cmp.src) + '" alt="' + esc(cmp.alt || '') + '" style="max-width:100%;border-radius:8px">');
+        } else {
+          parts.push('<div style="background:var(--s3);border:1px dashed var(--bd);border-radius:8px;padding:40px;text-align:center;color:var(--t3);font-size:12px">Set image URL in properties</div>');
+        }
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'list') {
+        var listItems = Array.isArray(cmp.items) ? cmp.items : [];
+        parts.push('<div style="margin:8px 0;padding-left:16px;' + selCss + extraCss + '"' + clk + '>');
+        for (var li = 0; li < listItems.length; li++) {
+          var item = typeof listItems[li] === 'string' ? listItems[li] : (listItems[li].text || listItems[li].label || '');
+          parts.push('<div style="font-size:13px;color:var(--t2);padding:2px 0">• ' + esc(item) + '</div>');
+        }
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'gallery') {
+        var imgs = Array.isArray(cmp.images) ? cmp.images : (cmp.items || []);
+        parts.push('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:8px 0;' + selCss + extraCss + 'border-radius:8px;padding:2px"' + clk + '>');
+        for (var gi = 0; gi < imgs.length; gi++) {
+          var img = typeof imgs[gi] === 'string' ? {src:imgs[gi]} : imgs[gi];
+          parts.push('<div style="aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--s3)">');
+          if (img.src) parts.push('<img src="' + esc(img.src) + '" alt="' + esc(img.alt||'') + '" style="width:100%;height:100%;object-fit:cover">');
+          else parts.push('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:20px">🖼</div>');
+          parts.push('</div>');
+        }
+        if (!imgs.length) parts.push('<div style="padding:24px;text-align:center;color:var(--t3);font-size:11px;border:1px dashed var(--bd);border-radius:6px;grid-column:1/-1">No images — edit in properties</div>');
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'map') {
+        var mapUrl = cmp.embedUrl || cmp.src || cmp.url || '';
+        parts.push('<div style="margin:8px 0;border-radius:8px;overflow:hidden;' + selCss + extraCss + '"' + clk + '>');
+        if (mapUrl) {
+          parts.push('<iframe src="' + esc(mapUrl) + '" style="width:100%;height:250px;border:none;border-radius:8px" loading="lazy" allowfullscreen></iframe>');
+        } else {
+          parts.push('<div style="width:100%;height:200px;background:var(--s3);border:1px dashed var(--bd);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px">📍 Map — set embed URL in properties</div>');
+        }
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'catalog') {
+        var catItems = Array.isArray(cmp.items) ? cmp.items : [];
+        parts.push('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:8px 0;' + selCss + extraCss + '"' + clk + '>');
+        for (var pi = 0; pi < catItems.length; pi++) {
+          var prod = catItems[pi] || {};
+          parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:10px;overflow:hidden">');
+          if (prod.image) parts.push('<img src="' + esc(prod.image) + '" alt="' + esc(prod.title||'') + '" style="width:100%;height:140px;object-fit:cover">');
+          else parts.push('<div style="width:100%;height:100px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:28px">🛒</div>');
+          parts.push('<div style="padding:12px">');
+          parts.push('<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">' + esc(prod.title||prod.heading||'Item') + '</div>');
+          if (prod.price) parts.push('<div style="font-size:14px;font-weight:700;color:var(--ac);margin-bottom:4px">' + esc(prod.price) + '</div>');
+          if (prod.text) parts.push('<div style="font-size:11px;color:var(--t3)">' + esc(prod.text) + '</div>');
+          parts.push('</div></div>');
+        }
+        if (!catItems.length) parts.push('<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--t3);font-size:11px;border:1px dashed var(--bd);border-radius:6px">No items — edit in properties</div>');
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'carousel') {
+        var slides = Array.isArray(cmp.slides) ? cmp.slides : (cmp.items || []);
+        parts.push('<div style="position:relative;margin:8px 0;border-radius:8px;overflow:hidden;' + selCss + extraCss + '"' + clk + '>');
+        if (slides.length) {
+          var sl = slides[0]; // Show first slide
+          if (typeof sl === 'string') sl = {src:sl};
+          if (sl.src) parts.push('<img src="' + esc(sl.src) + '" alt="' + esc(sl.alt||'') + '" style="width:100%;height:250px;object-fit:cover;border-radius:8px">');
+          else parts.push('<div style="width:100%;height:200px;background:var(--s3);display:flex;align-items:center;justify-content:center;color:var(--t3)"><div style="text-align:center"><div style="font-size:24px;margin-bottom:8px">🎠</div><div>' + esc(sl.text||sl.heading||'Slide 1') + '</div></div></div>');
+          parts.push('<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px">');
+          for (var di = 0; di < Math.min(slides.length,6); di++) {
+            parts.push('<div style="width:8px;height:8px;border-radius:50%;background:' + (di===0?'#fff':'rgba(255,255,255,.4)') + '"></div>');
+          }
+          parts.push('</div>');
+        } else {
+          parts.push('<div style="width:100%;height:200px;background:var(--s3);border:1px dashed var(--bd);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px">🎠 Carousel — add slides in properties</div>');
+        }
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'embed') {
+        var embedHtml = cmp.html || cmp.embedHtml || cmp.content || '';
+        var embedUrl = cmp.src || cmp.url || cmp.embedUrl || '';
+        parts.push('<div style="margin:8px 0;border-radius:8px;overflow:hidden;' + selCss + extraCss + '"' + clk + '>');
+        if (embedUrl) {
+          parts.push('<iframe src="' + esc(embedUrl) + '" style="width:100%;height:300px;border:none;border-radius:8px" loading="lazy" allowfullscreen></iframe>');
+        } else if (typeof embedHtml === 'string' && embedHtml.length > 10) {
+          parts.push('<div style="background:var(--s3);border:1px solid var(--bd);border-radius:8px;padding:12px;font-size:11px;color:var(--t3);max-height:200px;overflow:auto"><div style="font-size:10px;color:var(--pu);margin-bottom:4px;font-weight:600">EMBED BLOCK</div>' + embedHtml.slice(0,500) + '</div>');
+        } else {
+          parts.push('<div style="width:100%;height:150px;background:var(--s3);border:1px dashed var(--bd);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px">🔗 Embed — set URL or HTML in properties</div>');
+        }
+        parts.push('</div>');
+      }
+      else if (cmp.type === 'video') {
+        var vidSrc = cmp.src || cmp.url || '';
+        parts.push('<div style="margin:8px 0;border-radius:8px;overflow:hidden;aspect-ratio:16/9;background:var(--s3);' + selCss + extraCss + '"' + clk + '>');
+        if (vidSrc && vidSrc.match(/youtube|vimeo/)) {
+          var embedSrc = vidSrc.replace('watch?v=','embed/').replace('youtu.be/','youtube.com/embed/');
+          parts.push('<iframe src="' + esc(embedSrc) + '" style="width:100%;height:100%;border:none" allowfullscreen></iframe>');
+        } else if (vidSrc) {
+          parts.push('<video src="' + esc(vidSrc) + '" controls style="width:100%;height:100%"></video>');
+        } else {
+          parts.push('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px">▶ Video — set URL in properties</div>');
+        }
+        parts.push('</div>');
+      }
+      else {
+        // Unknown type — render gracefully instead of crashing
+        parts.push('<div style="font-size:12px;color:var(--t3);padding:4px;border:1px dashed var(--bd);border-radius:4px;margin:4px 0;' + selCss + '"' + clk + '>[' + esc(cmp.type || '?') + '] ' + esc(cmp.text || cmp.content || '') + '</div>');
+      }
+      } catch(renderErr) {
+        console.warn('[BLD Render] Component error at section ' + si + ' component ' + ci + ':', renderErr);
+        parts.push('<div style="color:var(--am);font-size:10px;padding:4px;border:1px dashed var(--am);border-radius:4px;margin:4px 0">[render error: ' + esc(String(renderErr.message || renderErr)) + ']</div>');
+      }
+    }
+
+    // Empty section hint
+    if (comps.length === 0) {
+      parts.push('<div style="padding:20px;text-align:center;color:var(--t3);font-size:12px;border:1px dashed var(--bd);border-radius:6px">Empty section — click an Element from the left panel to add content here</div>');
+    }
+    } // end if (!_p2Rendered)
+
+    parts.push('</div>'); // close section
+  }
+
+  // ── DROP ZONE after last section ──
+  parts.push('<div class="bld-dropzone" data-insert-at="' + sections.length + '" ondragover="bldDropZoneOver(event,' + sections.length + ')" ondragleave="bldDropZoneLeave(event)" ondrop="bldDropZoneDrop(event,' + sections.length + ')" style="height:6px;margin:0 0 8px 0;border-radius:4px;transition:all .2s"></div>');
+
+  // Add section button
+  parts.push('<div style="text-align:center;padding:16px 0">');
+  parts.push('<button onclick="bldInsertCoreBlock(\'custom\')" style="background:transparent;border:1.5px dashed rgba(108,92,231,.4);color:var(--pu);border-radius:8px;padding:10px 24px;font-size:13px;cursor:pointer">+ Add Section</button>');
+  parts.push('</div>');
+  parts.push('</div>');
+
+  var finalHtml = parts.join('');
+  canvas.innerHTML = finalHtml;
+  console.log('[BLD] Standalone render complete:', sections.length, 'sections, HTML length:', finalHtml.length);
+}
+
+// === _bldRenderBlueprintPreview (ref 2532-2668) ===
+function _bldRenderBlueprintPreview(blueprint, pageTitle, editable) {
+  const sections = blueprint.sections || [];
+  const icons = {hero:'🎯',service_grid:'🔧',features:'⭐',testimonials:'💬',cta:'📣',contact_form:'📋',portfolio:'🎨',team:'👥',text_image:'📝',faq:'❓',steps:'📊',pricing:'💰',blog_grid:'📰',map:'📍',newsletter:'✉',values:'💎',social_proof:'🏆',benefits:'✓',guarantee:'🛡',logos:'📰',categories:'📂',product_grid:'🛒',case_studies:'📈',case_study:'📈',text:'📄',story:'📖',custom:'▪',contact:'📋'};
+
+  let html = `<div style="padding:20px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--bd)">
+      <div style="background:linear-gradient(135deg,var(--p),#9B8DF8);width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">${editable?'✏️':'🪄'}</div>
+      <div>
+        <div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1)" ${editable?'contenteditable="true" onblur="bldCurrentPage.title=this.textContent;bldDirty=true"':''}>${esc(pageTitle || 'Page')}</div>
+        <div style="font-size:11px;color:var(--t3)">${sections.length} sections${editable?' · Click any text to edit':''}${!editable?' · Generated by Website Wizard':''}</div>
+      </div>
+    </div>`;
+
+  sections.forEach((sec, si) => {
+    const icon = icons[sec.type] || '▪';
+    const hasComponents = Array.isArray(sec.components) && sec.components.length;
+    // Legacy blueprint format
+    const content = sec.content || {};
+    const heading = content.heading || content.title || sec.label || sec.type;
+    const sub = content.subheading || content.text || '';
+    const items = content.items || content.steps || content.members || content.plans || content.fields || [];
+
+    html += `<div class="${editable?'bld-sec':''}" style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:10px;transition:border-color .15s,opacity .2s;position:relative"
+      ${editable?`draggable="true" ondragstart="bldSecDragStart(event,${si})" ondragover="bldSecDragOver(event,${si})" ondragleave="bldSecDragLeave(event)" ondrop="bldSecDrop(event,${si})" ondragend="bldSecDragEnd(event)"`:''}
+      onmouseenter="this.style.borderColor='rgba(108,92,231,.4)'" onmouseleave="this.style.borderColor='var(--bd)'"
+      onclick="${editable?`bldSelectComponent(${si},null)`:''}">`;
+
+    // Section toolbar (editable mode only)
+    if (editable) {
+      html += `<div style="position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:.6">
+        ${si>0?`<button onclick="bldMoveSection(${si},-1);bldRenderCanvas()" style="background:var(--s3);border:1px solid var(--bd);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:var(--t2)">↑</button>`:''}
+        ${si<sections.length-1?`<button onclick="bldMoveSection(${si},1);bldRenderCanvas()" style="background:var(--s3);border:1px solid var(--bd);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:var(--t2)">↓</button>`:''}
+        <button onclick="bldDeleteSection(${si})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;color:#F87171">✕</button>
+      </div>`;
+    }
+
+    // Section header
+    html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:18px">${icon}</span>
+      <div style="flex:1">
+        <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">${esc(sec.type.replace(/_/g,' '))} · Section ${si+1}</div>
+      </div>
+    </div>`;
+
+    // Render components (standalone format)
+    if (hasComponents) {
+      sec.components.forEach((cmp, ci) => {
+        const ce = editable ? 'contenteditable="true"' : '';
+        const blur = editable ? `onblur="bldCurrentPage.sections[${si}].components[${ci}].text=this.textContent;bldDirty=true"` : '';
+        const isSel = editable && _bldSelSec === si && _bldSelCmp === ci;
+        const selBorder = isSel ? 'outline:2px solid var(--p);outline-offset:2px;' : '';
+        const click = editable ? `onclick="event.stopPropagation();bldSelectComponent(${si},${ci})"` : '';
+
+        // Drag wrapper for components (editable mode)
+        if (editable) {
+          html += `<div class="bld-cmp-drag" draggable="true" data-si="${si}" data-ci="${ci}"
+            ondragstart="bldCmpDragStart(event,${si},${ci})" ondragover="bldCmpDragOver(event,${si},${ci})"
+            ondragleave="bldCmpDragLeave(event)" ondrop="bldCmpDrop(event,${si},${ci})" ondragend="bldCmpDragEnd(event)">`;
+        }
+
+        if (cmp.type === 'heading') {
+          const tag = cmp.tag || 'h2';
+          const sz = tag==='h1'?'24px':tag==='h2'?'20px':'16px';
+          html += `<div style="font-family:var(--fh);font-size:${sz};font-weight:700;color:var(--t1);margin-bottom:8px;outline:none;border-radius:4px;cursor:text;${selBorder}" ${ce} ${blur} ${click}>${esc(cmp.text||'')}</div>`;
+        }
+        else if (cmp.type === 'text') {
+          html += `<div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:8px;outline:none;border-radius:4px;cursor:text;${selBorder}" ${ce} ${blur} ${click}>${esc(cmp.text||'')}</div>`;
+        }
+        else if (cmp.type === 'button') {
+          html += `<div style="margin:8px 0;${selBorder}border-radius:8px" ${click}><span style="display:inline-block;background:var(--p);color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:default" ${editable?`contenteditable="true" onblur="bldCurrentPage.sections[${si}].components[${ci}].text=this.textContent;bldDirty=true"`:''} >${esc(cmp.text||'Button')}</span></div>`;
+        }
+        else if (cmp.type === 'cards' && Array.isArray(cmp.items)) {
+          html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:8px 0;${selBorder}border-radius:8px" ${click}>`;
+          cmp.items.forEach((card, ki) => {
+            html += `<div style="background:var(--s3);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:24px;margin-bottom:6px">${card.icon||'⭐'}</div>
+              <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px" ${editable?`contenteditable="true" onblur="bldCurrentPage.sections[${si}].components[${ci}].items[${ki}].heading=this.textContent;bldDirty=true"`:''} >${esc(card.heading||'')}</div>
+              <div style="font-size:11px;color:var(--t3)" ${editable?`contenteditable="true" onblur="bldCurrentPage.sections[${si}].components[${ci}].items[${ki}].text=this.textContent;bldDirty=true"`:''} >${esc(card.text||'')}</div>
+            </div>`;
+          });
+          html += '</div>';
+        }
+        else if (cmp.type === 'form' && Array.isArray(cmp.fields)) {
+          html += `<div style="display:flex;flex-direction:column;gap:8px;margin:8px 0;max-width:400px;${selBorder}border-radius:8px" ${click}>`;
+          cmp.fields.forEach(f => {
+            html += `<div><div style="font-size:10px;color:var(--t3);margin-bottom:4px">${esc(f.label)}</div><div style="background:var(--s3);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;${f.type==='textarea'?'min-height:60px;':''}font-size:12px;color:var(--t3)">${esc(f.label)}…</div></div>`;
+          });
+          html += '</div>';
+        }
+        else if (cmp.type === 'divider') {
+          html += `<hr style="border:none;border-top:1px solid var(--bd);margin:12px 0;${selBorder}" ${click}>`;
+        }
+        else if (cmp.type === 'spacer') {
+          html += `<div style="height:${cmp.height||'40px'};${selBorder}" ${click}></div>`;
+        }
+        else if (cmp.type === 'image') {
+          html += `<div style="margin:8px 0;${selBorder}border-radius:8px" ${click}>${cmp.src ? `<img src="${esc(cmp.src)}" alt="${esc(cmp.alt||'')}" style="max-width:100%;border-radius:8px">` : '<div style="background:var(--s3);border:1px dashed var(--bd);border-radius:8px;padding:40px;text-align:center;color:var(--t3);font-size:12px">🖼 Click to set image URL in properties</div>'}</div>`;
+        }
+
+        // Close drag wrapper
+        if (editable) html += '</div>';
+      });
+    }
+    // Legacy blueprint format fallback
+    else {
+      if (heading) html += `<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(heading)}</div>`;
+      if (sub) html += `<div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:4px">${esc(typeof sub==='string'?sub.slice(0,120):'')}</div>`;
+      if (Array.isArray(items) && items.length) {
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+        items.slice(0,6).forEach(item => {
+          const label = typeof item === 'string' ? item : (item.title||item.name||item.text||item.question||JSON.stringify(item).slice(0,30));
+          html += `<span style="background:var(--s3);border:1px solid var(--bd);border-radius:5px;padding:3px 8px;font-size:10px;color:var(--t2)">${esc(String(label).slice(0,40))}</span>`;
+        });
+        html += '</div>';
+      }
+      if (content.cta_text) html += `<div style="margin-top:8px"><span style="background:var(--p);color:#fff;padding:4px 12px;border-radius:5px;font-size:11px;font-weight:600">${esc(content.cta_text)}</span></div>`;
+    }
+
+    html += '</div>';
+  });
+
+  if (editable) {
+    html += `<div style="text-align:center;padding:16px 0;border-top:1px dashed var(--bd);margin-top:8px">
+      <button onclick="bldAddSection()" style="background:transparent;border:1.5px dashed rgba(108,92,231,.4);color:var(--pu);border-radius:8px;padding:10px 24px;font-size:13px;cursor:pointer">+ Add Section</button>
+    </div>`;
+  } else {
+    html += `<div style="text-align:center;padding:16px 0;border-top:1px dashed var(--bd);margin-top:8px">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:10px">This is a blueprint preview. Hydrate to convert into editable sections.</div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="ct-btn primary" onclick="bldHydratePage()" style="font-size:12px;padding:8px 20px">🔧 Hydrate &amp; Edit</button>
+        <button class="ct-btn" onclick="bldExportPage()" style="font-size:12px;padding:8px 20px;border:1px solid var(--bd)">📤 Publish as HTML</button>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+// === bldBuildThemeCssVars (ref 2672-2676) ===
+function bldBuildThemeCssVars(tokens) {
+  if (!Object.keys(tokens).length) return '';
+  const vars = Object.entries(tokens).map(([k,v]) => `--lubld-${k}:${v}`).join(';');
+  return `<style>:root{${vars}}body{background:var(--lubld-bg,#0F1117);color:var(--lubld-t1,#F8F9FA);font-family:var(--lubld-font_body,"DM Sans",sans-serif)}</style>`;
+}
+
+// === bldBuildCanvasBaseStyles (ref 2680-2708) ===
+function bldBuildCanvasBaseStyles() {
+  return `<style>
+    .bld-sec{position:relative;transition:outline .15s,opacity .2s}.bld-sec:hover{outline:1.5px dashed rgba(108,92,231,.4)}
+    .bld-sec[draggable]{cursor:grab}.bld-sec[draggable]:active{cursor:grabbing}
+    .bld-sec.bld-dragging{opacity:.35;outline:2px dashed rgba(108,92,231,.3)}
+    .bld-sec.bld-drop-target{outline:2px dashed #8b5cf6;outline-offset:2px;background:rgba(108,92,231,.04)}
+    .bld-sec-toolbar{display:none;position:absolute;top:8px;right:8px;z-index:10;gap:4px}
+    .bld-sec:hover .bld-sec-toolbar{display:flex}
+    .bld-stb{background:rgba(15,17,23,.9);backdrop-filter:blur(8px);border:1px solid rgba(108,92,231,.3);border-radius:6px;color:#fff;padding:4px 8px;font-size:11px;cursor:pointer;white-space:nowrap}
+    .bld-cmp-wrap{position:relative;border-radius:4px;transition:outline .15s,opacity .2s}.bld-cmp-wrap:hover{outline:1.5px solid var(--lubld-primary,#6C5CE7)}
+    .bld-cmp-drag{cursor:grab}.bld-cmp-drag:active{cursor:grabbing}
+    .bld-cmp-drag.bld-dragging{opacity:.35}
+    .bld-cmp-drag.bld-drop-target{outline:2px dashed #8b5cf6;outline-offset:1px}
+    .bld-cmp-toolbar{display:none;position:absolute;top:-28px;left:0;z-index:10;gap:4px;background:var(--lubld-primary,#6C5CE7);border-radius:4px;padding:2px 4px}
+    .bld-cmp-wrap:hover .bld-cmp-toolbar{display:flex}
+    .bld-ctb{background:transparent;border:none;color:#fff;padding:2px 5px;font-size:10px;cursor:pointer}
+    h1,h2,h3,h4,h5,h6{font-family:var(--lubld-font_heading,"Syne",sans-serif);color:var(--lubld-t1,#F8F9FA);line-height:1.2;margin-bottom:8px}
+    p{color:var(--lubld-t2,#9CA3AF);line-height:1.6;margin-bottom:8px}
+    .lubld-btn{display:inline-flex;align-items:center;padding:10px 22px;border-radius:var(--lubld-radius_md,10px);font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;transition:all .2s;border:none}
+    .lubld-btn-primary{background:var(--lubld-primary,#6C5CE7);color:var(--lubld-btn_text,#fff)}.lubld-btn-outline{background:transparent;border:1.5px solid var(--lubld-primary,#6C5CE7);color:var(--lubld-primary,#6C5CE7)}
+    .lubld-btn-secondary{background:var(--lubld-s2,#1E2230);color:var(--lubld-t1,#F8F9FA)}
+    .lubld-btn-group{display:flex;gap:12px;flex-wrap:wrap}
+    blockquote{border-left:3px solid var(--lubld-primary,#6C5CE7);padding-left:20px}
+    hr{border:none;border-top:1px solid rgba(255,255,255,.1)}
+    ul,ol{padding-left:20px;color:var(--lubld-t2,#9CA3AF)}
+    .bld-col-drop{min-height:60px;border:1.5px dashed rgba(108,92,231,.2);border-radius:6px;padding:8px;transition:all .2s}
+    .bld-col-drop.drag-over{border-color:var(--lubld-primary,#6C5CE7);background:rgba(108,92,231,.05)}
+  </style>`;
+}
+
+// === bldRenderCanvasSection (ref 2712-2743) ===
+function bldRenderCanvasSection(sec, si, theme) {
+  const layout  = sec.layout || {};
+  const cols    = parseInt(layout.columns) || 1;
+  const py      = bldSpacing(layout.padding_y || 'xl');
+  const px      = bldSpacing(layout.padding_x || 'md');
+  const gap     = bldSpacing(layout.gap || 'md');
+  const bg      = bldResolveBg(layout, theme);
+  const grid    = cols > 1 ? `display:grid;grid-template-columns:repeat(${cols},1fr);gap:${gap}` : '';
+
+  let contHtml  = '';
+  (sec.containers || []).forEach((con, ci) => {
+    contHtml += `<div class="bld-col-drop" data-si="${si}" data-ci="${ci}">`;
+    (con.components || []).forEach((cmp, mi) => {
+      contHtml += bldRenderCanvasComponent(cmp, si, ci, mi, theme);
+    });
+    contHtml += `<div onclick="bldAddComponent(${si},${ci})" style="text-align:center;padding:8px;cursor:pointer;color:var(--t3);font-size:12px;opacity:.6" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.6'">+ Component</div>`;
+    contHtml += `</div>`;
+  });
+
+  return `<div class="bld-sec" data-si="${si}" style="padding:${py} ${px};${bg}position:relative">
+    <div class="bld-sec-toolbar">
+      <button class="bld-stb" onclick="bldMoveSection(${si},-1)">↑</button>
+      <button class="bld-stb" onclick="bldMoveSection(${si},1)">↓</button>
+      <button class="bld-stb" onclick="bldEditSection(${si})">⚙</button>
+      <button class="bld-stb" onclick="bldDuplicateSection(${si})">⧉</button>
+      <button class="bld-stb" onclick="bldDeleteSection(${si})" style="color:#F87171">✕</button>
+    </div>
+    <div style="max-width:var(--lubld-container_width,1200px);margin:0 auto;${grid}">
+      ${contHtml}
+    </div>
+  </div>`;
+}
+
+// === bldRenderCanvasComponent (ref 2747-2770) ===
+function bldRenderCanvasComponent(cmp, si, ci, mi, theme) {
+  // FIX 7: Dual-key type read — matches the fix already applied to bldShowComponentProps.
+  // AI-created components have cmp.type only; manual components have cmp.component_type.
+  const type    = cmp.component_type || cmp.type;
+  const content = cmp.content || {};
+  const styles  = cmp.styles  || {};
+  const tokens  = cmp.tokens  || {};
+  const isSelected = bldSelectedComp &&
+    bldSelectedComp.si === si && bldSelectedComp.ci === ci && bldSelectedComp.mi === mi;
+
+  const styleStr = bldStylesToInline(styles, tokens, theme);
+  const selStyle = isSelected ? 'outline:2px solid var(--lubld-primary,#6C5CE7);' : '';
+
+  return `<div class="bld-cmp-wrap" style="${selStyle}" onclick="event.stopPropagation();bldSelectComponent(${si},${ci},${mi})">
+    <div class="bld-cmp-toolbar">
+      <button class="bld-ctb" onclick="event.stopPropagation();bldMoveComponent(${si},${ci},${mi},-1)">↑</button>
+      <button class="bld-ctb" onclick="event.stopPropagation();bldMoveComponent(${si},${ci},${mi},1)">↓</button>
+      <button class="bld-ctb" onclick="event.stopPropagation();bldDeleteComponent(${si},${ci},${mi})" style="color:#F87171">✕</button>
+    </div>
+    <div style="${styleStr}">
+      ${bldRenderComponentPreview(type, content, theme)}
+    </div>
+  </div>`;
+}
+
+// === bldRenderComponentPreview (ref 2774-2847) ===
+function bldRenderComponentPreview(type, content, theme) {
+  const t = k => _bldSafeText(content[k]);
+  switch(type) {
+    case 'heading':
+      const lvl = parseInt(t('level')) || 2;
+      return `<h${lvl} style="margin:0">${t('text') || 'Heading'}</h${lvl}>`;
+    case 'text':
+      return `<p style="margin:0">${t('text') || 'Text content'}</p>`;
+    case 'image':
+      return t('src')
+        ? `<img src="${escH(t('src'))}" alt="${escH(t('alt'))}" style="max-width:100%;height:auto;border-radius:6px">`
+        : `<div style="background:rgba(255,255,255,.05);aspect-ratio:16/9;border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.3);font-size:13px">🖼 Image</div>`;
+    case 'button':
+      return `<a href="#" class="lubld-btn lubld-btn-${escH(t('variant')||'primary')}" style="pointer-events:none">${escH(t('label')||'Button')}</a>`;
+    case 'divider':
+      return `<hr style="border:none;border-top:${escH(t('thickness')||'1px')} solid rgba(255,255,255,.1);margin:0">`;
+    case 'spacer':
+      return `<div style="height:${escH(t('height')||'40px')}"></div>`;
+    case 'cta':
+      const btns = (content.buttons||[]).map(b=>`<a href="#" class="lubld-btn lubld-btn-${escH(b.variant||'primary')}" style="pointer-events:none">${escH(b.label)}</a>`).join('');
+      return `<div style="text-align:center">
+        <h2 style="margin-bottom:10px">${escH(t('heading')||'CTA Heading')}</h2>
+        <p style="margin-bottom:20px">${escH(t('subtext')||'Subtext here')}</p>
+        <div class="lubld-btn-group" style="justify-content:center">${btns||'<a href="#" class="lubld-btn lubld-btn-primary" style="pointer-events:none">Get Started</a>'}</div>
+      </div>`;
+    case 'testimonial':
+      return `<blockquote><p style="font-style:italic;color:var(--lubld-t1,#F8F9FA);margin-bottom:8px">"${escH(t('quote')||'Testimonial quote')}"</p><cite style="font-style:normal;font-size:12px;color:var(--lubld-t2,#9CA3AF)">${escH(t('author')||'Author')}${t('role')?' — '+escH(t('role')):''}</cite></blockquote>`;
+    case 'pricing':
+      return `<div style="text-align:center"><h3 style="margin-bottom:4px">${escH(t('name')||'Plan Name')}</h3><div style="font-size:40px;font-weight:700;color:var(--lubld-t1,#F8F9FA)">${escH(t('price')||'$99')}<span style="font-size:14px;color:var(--lubld-t2)">${escH(t('period')||'/mo')}</span></div></div>`;
+    case 'faq':
+      const items = (content.items||[]).slice(0,2);
+      return '<div>' + items.map(i=>`<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div style="font-weight:600;font-size:13px;color:var(--lubld-t1)">${escH(i.question||'')}</div><div style="font-size:12px;color:var(--lubld-t2);margin-top:4px">${escH(i.answer||'')}</div></div>`).join('') + '</div>';
+    case 'form':
+      const fs = (content.fields||[]).slice(0,3);
+      return '<div>' + fs.map(f=>`<div style="margin-bottom:10px"><label style="font-size:12px;color:rgba(255,255,255,.6);display:block;margin-bottom:3px">${escH(f.label||'')}</label><div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:7px 10px;font-size:12px;color:rgba(255,255,255,.3)">${escH(f.placeholder||'...')}</div></div>`).join('') + `<button class="lubld-btn lubld-btn-primary" style="margin-top:4px;pointer-events:none;font-size:12px">${escH(content.submit_label||'Submit')}</button></div>`;
+    case 'card':
+      return `<div style="background:var(--lubld-s2,#1E2230);border-radius:8px;overflow:hidden">${t('image')?`<img src="${escH(t('image'))}" style="width:100%;height:120px;object-fit:cover">`:''}<div style="padding:16px"><h3 style="font-size:14px;margin-bottom:6px">${escH(t('heading')||'Card Heading')}</h3><p style="font-size:12px;margin:0">${escH(t('text')||'')}</p></div></div>`;
+    case 'list':
+      return '<ul style="padding-left:18px;font-size:13px">' + (content.items||[{text:'List item'}]).map(i=>`<li>${escH(i.text||'')}</li>`).join('') + '</ul>';
+    case 'html':
+      return `<div style="background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.1);border-radius:6px;padding:12px;font-family:monospace;font-size:11px;color:rgba(255,255,255,.4)">${escH((content.code||'<HTML>').slice(0,80))}</div>`;
+    case 'video':
+      var vSrc = t('src') || t('url') || '';
+      if (vSrc && vSrc.match(/youtube|vimeo/)) {
+        var vEmbed = vSrc.replace('watch?v=','embed/').replace('youtu.be/','youtube.com/embed/');
+        return `<iframe src="${escH(vEmbed)}" style="width:100%;aspect-ratio:16/9;border:none;border-radius:8px" allowfullscreen></iframe>`;
+      }
+      return `<div style="background:rgba(0,0,0,.3);aspect-ratio:16/9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px">▶</div>`;
+    case 'gallery': {
+      let gImgs = content.images || content.items || [];
+      return '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">' + (gImgs.length ? gImgs.slice(0,6).map(img => { let s = typeof img==='string'?img:(img.src||''); return s ? `<img src="${escH(s)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px">` : '<div style="aspect-ratio:1;background:rgba(255,255,255,.05);border-radius:6px;display:flex;align-items:center;justify-content:center">🖼</div>'; }).join('') : '<div style="grid-column:1/-1;padding:20px;text-align:center;color:rgba(255,255,255,.3);font-size:11px">Gallery</div>') + '</div>';
+    }
+    case 'map': {
+      let mUrl = t('embedUrl') || t('src') || t('url');
+      return mUrl ? `<iframe src="${escH(mUrl)}" style="width:100%;height:200px;border:none;border-radius:6px" loading="lazy"></iframe>` : '<div style="width:100%;height:150px;background:rgba(255,255,255,.05);border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.3)">📍 Map</div>';
+    }
+    case 'catalog': {
+      let cItems = content.items || [];
+      return '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">' + (cItems.length ? cItems.slice(0,4).map(p => '<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:10px;font-size:11px"><div style="font-weight:600;color:var(--lubld-t1,#F8F9FA)">' + escH(p.title||p.heading||'Item') + '</div>' + (p.price?'<div style="color:#00E5A8;font-weight:700">'+escH(p.price)+'</div>':'') + '</div>').join('') : '<div style="grid-column:1/-1;padding:16px;text-align:center;color:rgba(255,255,255,.3);font-size:11px">Catalog</div>') + '</div>';
+    }
+    case 'carousel': {
+      let cSlides = content.slides || content.items || [];
+      if (!cSlides.length) return '<div style="height:120px;background:rgba(255,255,255,.05);border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.3)">🎠 Carousel</div>';
+      let s0 = typeof cSlides[0]==='string'?{src:cSlides[0]}:cSlides[0];
+      return '<div style="position:relative;border-radius:6px;overflow:hidden">' + (s0.src ? `<img src="${escH(s0.src)}" style="width:100%;height:180px;object-fit:cover">` : `<div style="height:150px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center">${escH(s0.text||s0.heading||'Slide')}</div>`) + '<div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:4px">' + cSlides.slice(0,5).map((_,i) => `<div style="width:6px;height:6px;border-radius:50%;background:${i===0?'#fff':'rgba(255,255,255,.4)'}"></div>`).join('') + '</div></div>';
+    }
+    case 'embed': {
+      let eUrl = t('src') || t('url') || t('embedUrl');
+      return eUrl ? `<iframe src="${escH(eUrl)}" style="width:100%;height:200px;border:none;border-radius:6px" loading="lazy"></iframe>` : '<div style="height:120px;background:rgba(255,255,255,.05);border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.3)">🔗 Embed</div>';
+    }
+    case 'raw_html':
+    case 'html':
+    case 'custom_html':
+      return content.html || '<div style="padding:16px;color:rgba(255,255,255,.3);text-align:center">Custom HTML block</div>';
+    default:
+      return `<div style="padding:16px;border:1px dashed rgba(255,255,255,.15);border-radius:6px;font-size:12px;color:rgba(255,255,255,.3);text-align:center">${type}</div>`;
+  }
+}
+
+// === bldHydratePage (ref 2858-2880) ===
+async function bldHydratePage() {
+  // Phase 4 stub - blueprint hydration is not part of Phase 1.
+  console.warn('[bld v5] bldHydratePage - Phase 4');
+}
+
+// === bldSpacing (ref 3478-3480) ===
+function bldSpacing(k) {
+  return {none:'0',xs:'8px',sm:'16px',md:'24px',lg:'48px',xl:'80px','2xl':'120px'}[k] || k;
+}
+
+// === bldResolveBg (ref 3483-3491) ===
+function bldResolveBg(layout, tokens) {
+  const {bg_type='none', bg_value=''} = layout;
+  if (bg_type === 'none')   return '';
+  if (bg_type === 'color')  return 'background:'+bg_value+';';
+  if (bg_type === 'token')  return 'background:var(--lubld-'+bg_value+',' + (tokens[bg_value]||bg_value) + ');';
+  if (bg_type === 'gradient') return 'background:'+bg_value+';';
+  if (bg_type === 'image')  return 'background-image:url('+bg_value+');background-size:cover;background-position:center;';
+  return '';
+}
+
+// === bldStylesToInline (ref 3494-3525) ===
+function bldStylesToInline(styles, tokens, themeTokens) {
+  const parts = [];
+  // PATCH 5: Expanded CSS property map — previously only 9 keys; AI (Railway + Arthur)
+  // writes font_family, line_height, letter_spacing, opacity, max_width, width etc.
+  // Unlisted keys were silently dropped. Added all properties from ARTHUR_SCHEMA.
+  const props = {
+    color:          'color',
+    bg:             'background',
+    font_size:      'font-size',
+    font_weight:    'font-weight',
+    font_family:    'font-family',
+    text_align:     'text-align',
+    line_height:    'line-height',
+    letter_spacing: 'letter-spacing',
+    padding:        'padding',
+    margin:         'margin',
+    border_radius:  'border-radius',
+    border:         'border',
+    shadow:         'box-shadow',
+    opacity:        'opacity',
+    max_width:      'max-width',
+    width:          'width',
+    gradient:       'background', // gradient value is a full CSS gradient string
+  };
+  const merged = Object.assign({}, styles, tokens);
+  for (const [k, v] of Object.entries(merged)) {
+    if (!v || !props[k]) continue;
+    const resolved = v.startsWith('@') ? 'var(--lubld-'+v.slice(1)+','+(themeTokens[v.slice(1)]||v)+')' : v;
+    parts.push(props[k]+':'+resolved);
+  }
+  return parts.join(';');
+}
+
+// === v5.0.7 COLOR PICKER OVERRIDE ===========================================
+// Old _epColor renders an INVISIBLE color picker (opacity:0, pointer-events:none)
+// — only the hex text field is usable. Override with a visible 36x32 native
+// picker plus a hex text field. Same input id so the existing apply path
+// (_bldApplyCmpProps / _bldApplySecProps / _bldApplyPageSettings) is unchanged.
+function _epColor(label, id, val) {
+  var safe = val || '';
+  // Native <input type=color> only accepts #rrggbb. Use a fallback for the picker
+  // when the value is empty or non-hex (rgb(), color name, gradient, etc).
+  var pickerVal = /^#[0-9a-fA-F]{6}$/.test(safe) ? safe : '#000000';
+  var labelEsc = (typeof bld_escH === 'function') ? bld_escH(label) : String(label);
+  var safeEsc = (typeof bld_escH === 'function') ? bld_escH(safe) : safe;
+  return '<div class="ep-row ep-color-row" style="margin-bottom:10px">'
+    + '<label class="ep-lbl" style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">' + labelEsc + '</label>'
+    + '<div style="display:flex;gap:6px;align-items:center">'
+    + '<input type="color" id="' + id + '-picker" value="' + pickerVal + '"'
+    + ' style="width:36px;height:32px;border:1px solid var(--bd);border-radius:6px;cursor:pointer;background:var(--s2);padding:2px;flex-shrink:0;outline:none"'
+    + ' oninput="document.getElementById(\'' + id + '\').value=this.value;document.getElementById(\'' + id + '\').dispatchEvent(new Event(\'input\',{bubbles:true}));if(typeof _epColorSync===\'function\')_epColorSync(\'' + id + '\',this.value);">'
+    + '<input id="' + id + '" type="text" value="' + safeEsc + '" placeholder="#000000"'
+    + ' oninput="if(typeof _epColorSync===\'function\')_epColorSync(\'' + id + '\',this.value);if(/^#[0-9a-fA-F]{6}$/.test(this.value)){var pk=document.getElementById(\'' + id + '-picker\');if(pk)pk.value=this.value;}"'
+    + ' style="flex:1;font-size:12px;padding:7px 9px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);color:var(--t1);font-family:monospace;outline:none;box-sizing:border-box">'
+    + '</div></div>';
+}
+console.log('[bld v5.0.7] _epColor override active (visible color picker) + Improve/Rewrite split');
+// === END v5.0.7 ============================================================

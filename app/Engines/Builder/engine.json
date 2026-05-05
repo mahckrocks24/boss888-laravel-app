@@ -1,0 +1,7 @@
+{
+    "name": "Builder",
+    "slug": "builder",
+    "version": "1.0.0",
+    "description": "Builder engine for Boss888 LevelUp OS",
+    "status": "active"
+}

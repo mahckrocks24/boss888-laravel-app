@@ -1,0 +1,959 @@
+<?php
+
+namespace App\Engines\Builder\Services;
+
+use App\Connectors\DeepSeekConnector;
+use App\Core\Intelligence\EngineIntelligenceService;
+use App\Core\Billing\TrialService;
+use App\Engines\Creative\Services\CreativeService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+class BuilderService
+{
+    public function __construct(
+        private DeepSeekConnector         $llm,
+        private EngineIntelligenceService  $engineIntel,
+        private CreativeService            $creative,
+        private TrialService               $trial,
+        private \App\Connectors\RuntimeClient $runtime,
+    ) {}
+
+    // ── Creative blueprint helper ────────────────────────────────────────────
+    private function blueprint(int $wsId, string $type, array $context = []): array
+    {
+        try {
+            $result = $this->creative->generateThroughBlueprint('builder', $type, $wsId, $context);
+            return $result['output'] ?? [];
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // WEBSITES
+    // ═══════════════════════════════════════════════════════
+
+    public function createWebsite(int $wsId, array $data): array
+    {
+        // ── Plan limit enforcement ──────────────────────────────────
+        $currentCount = DB::table('websites')
+            ->where('workspace_id', $wsId)
+            ->whereNull('deleted_at')
+            ->count();
+        $plan = \App\Models\Plan::find(
+            \App\Models\Subscription::where('workspace_id', $wsId)
+                ->where('status', 'active')->latest()->value('plan_id')
+        ) ?? \App\Models\Plan::where('slug', 'free')->first();
+        $maxWebsites = (int) ($plan->max_websites ?? 1);
+        if ($currentCount >= $maxWebsites) {
+            return [
+                'success' => false,
+                'error' => "Website limit reached ({$maxWebsites} on {$plan->name} plan). Upgrade to create more.",
+                'limit_reached' => true,
+                'current' => $currentCount,
+                'max' => $maxWebsites,
+            ];
+        }
+        // ────────────────────────────────────────────────────────────
+        $id = DB::table('websites')->insertGetId([
+            'workspace_id'  => $wsId,
+            'name'          => $data['name'] ?? 'My Website',
+            'domain'        => $data['domain'] ?? null,
+            'subdomain'     => $data['subdomain'] ?? null, // Set by customer on first publish
+            'status'        => 'draft',
+            'template'      => $data['template'] ?? null,
+            'settings_json' => json_encode($data['settings'] ?? ['theme' => 'modern', 'primary_color' => '#6C5CE7', 'secondary_color' => '#00E5A8', 'accent_color' => '#F4F7FB', 'font_heading' => 'Syne', 'font_body' => 'DM Sans']),
+            'seo_json'      => json_encode($data['seo'] ?? []),
+            'created_by'    => $data['user_id'] ?? null,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+
+        $this->engineIntel->recordToolUsage('builder', 'create_website');
+
+        // ── Trial activation — fires on first website creation ───────────────────
+        try {
+            $ws = \App\Models\Workspace::find($wsId);
+            if ($ws && !$ws->trial_started_at && !$this->trial->hasHadTrial($wsId)) {
+                $siteCount = \Illuminate\Support\Facades\DB::table('websites')
+                    ->where('workspace_id', $wsId)
+                    ->whereNull('deleted_at')
+                    ->count();
+                if ($siteCount === 1) {
+                    $this->trial->activateTrial($wsId);
+                }
+            }
+        } catch (\Throwable) {
+            // Trial activation NEVER blocks website creation
+        }
+        // ────────────────────────────────────────────────────────────────────────
+
+        return ['website_id' => $id, 'status' => 'draft'];
+    }
+
+    public function getWebsite(int $wsId, int $id): ?object
+    {
+        $site = DB::table('websites')->where('workspace_id', $wsId)->where('id', $id)->first();
+        if ($site) {
+            $site->page_count = DB::table('pages')->where('website_id', $id)->count();
+        }
+        return $site;
+    }
+
+    public function listWebsites(int $wsId): array
+    {
+        $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')
+            ->orderByDesc('created_at')->get();
+        $websites = $sites->map(function($s) {
+            $s->title = $s->name;
+            $s->slug = \Illuminate\Support\Str::slug($s->name ?? '');
+            $s->page_count = DB::table('pages')->where('website_id', $s->id)->count();
+            $s->publish_state = $s->published_at ? 'published' : 'draft';
+            $s->description = $s->description ?? '';
+            return $s;
+        })->toArray();
+
+        // ── Usage metadata for frontend limit display ───────────────
+        $plan = \App\Models\Plan::find(
+            \App\Models\Subscription::where('workspace_id', $wsId)
+                ->where('status', 'active')->latest()->value('plan_id')
+        ) ?? \App\Models\Plan::where('slug', 'free')->first();
+        // ────────────────────────────────────────────────────────────
+
+        return [
+            'websites' => $websites,
+            'usage' => [
+                'count' => count($websites),
+                'limit' => (int) ($plan->max_websites ?? 1),
+                'plan'  => $plan->name ?? 'Free',
+            ],
+        ];
+    }
+
+    public function publishWebsite(int $websiteId): array
+    {
+        DB::table('websites')->where('id', $websiteId)->update([
+            'status' => 'published', 'published_at' => now(), 'updated_at' => now(),
+        ]);
+        // Also publish all draft pages
+        DB::table('pages')->where('website_id', $websiteId)->where('status', 'draft')
+            ->update(['status' => 'published']);
+
+        // Invalidate published site cache
+        $this->invalidatePublishedCache($websiteId);
+
+        return ['published' => true];
+    }
+
+    public function deleteWebsite(int $id): void
+    {
+        $this->invalidatePublishedCache($id);
+        DB::table('websites')->where('id', $id)->update(['deleted_at' => now()]);
+    }
+
+    /**
+     * Clear Redis cache for all published pages of a website.
+     */
+    private function invalidatePublishedCache(int $websiteId): void
+    {
+        $website = DB::table('websites')->where('id', $websiteId)->first();
+        if (!$website || !$website->subdomain) return;
+
+        $subdomain = str_replace('.levelupgrowth.io', '', $website->subdomain);
+        $pages = DB::table('pages')->where('website_id', $websiteId)->pluck('slug');
+
+        foreach ($pages as $slug) {
+            \Illuminate\Support\Facades\Cache::forget("published_site:{$subdomain}:{$slug}");
+        }
+        \Illuminate\Support\Facades\Cache::forget("published_site:{$subdomain}:home");
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // PAGES
+    // ═══════════════════════════════════════════════════════
+
+    public function createPage(int $websiteId, array $data): array
+    {
+        $position = DB::table('pages')->where('website_id', $websiteId)->max('position') ?? 0;
+        $id = DB::table('pages')->insertGetId([
+            'website_id' => $websiteId,
+            'title' => $data['title'] ?? 'New Page',
+            'slug' => $data['slug'] ?? Str::slug($data['title'] ?? 'page'),
+            'type' => $data['type'] ?? 'page',
+            'status' => 'draft',
+            'sections_json' => json_encode(
+                (isset($data['sections']) && is_array($data['sections']) && isset($data['sections'][0]))
+                    ? ['schemaVersion' => 1, 'sections' => $data['sections']]  // wrap raw array
+                    : ($data['sections'] ?? $this->defaultPageSchema())         // already wrapped or default
+            ),
+            'seo_json' => json_encode($data['seo'] ?? ['title' => $data['title'] ?? '', 'description' => '']),
+            'position' => $position + 1,
+            'is_homepage' => $data['is_homepage'] ?? false,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        return ['page_id' => $id, 'status' => 'draft'];
+    }
+
+    public function updatePage(int $pageId, array $data): void
+    {
+        $update = array_intersect_key($data, array_flip(['title', 'slug', 'type', 'status', 'is_homepage', 'position']));
+        if (isset($data['sections_json']) && !isset($data['sections'])) { $data['sections'] = is_string($data['sections_json']) ? json_decode($data['sections_json'], true) : $data['sections_json']; }
+        if (isset($data['sections'])) $update['sections_json'] = json_encode($data['sections']);
+        if (isset($data['seo'])) $update['seo_json'] = json_encode($data['seo']);
+        $update['updated_at'] = now();
+        DB::table('pages')->where('id', $pageId)->update($update);
+
+        // Invalidate published site cache for this page's website
+        $page = DB::table('pages')->where('id', $pageId)->first();
+        if ($page) {
+            $this->invalidatePublishedCache($page->website_id);
+        }
+    }
+
+    public function listPages(int $websiteId): array
+    {
+        $rows = DB::table('pages')->where('website_id', $websiteId)->orderBy('position')->get();
+        return $rows->map(function($p) {
+            $p->has_content = !empty($p->sections_json) && strlen($p->sections_json) > 50;
+            $p->slug = $p->slug ?? \Illuminate\Support\Str::slug($p->title ?? '');
+            $p->page_type = $p->page_type ?? strtolower(preg_replace('/[^a-z]/i', '', $p->title ?? 'page'));
+            $p->thumb_color = $p->thumb_color ?? '#6C5CE7';
+            return $p;
+        })->toArray();
+    }
+
+    public function getPage(int $pageId): ?object
+    {
+        return DB::table('pages')->where('id', $pageId)->first();
+    }
+
+    public function deletePage(int $pageId): void
+    {
+        DB::table('pages')->where('id', $pageId)->delete();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ARTHUR WIZARD — AI website generation
+    // ═══════════════════════════════════════════════════════
+
+    public function wizardGenerate(int $wsId, array $params): array
+    {
+        $businessName = $params['business_name'] ?? 'My Business';
+        $industry     = $params['industry'] ?? 'general';
+        $goal         = $params['goal'] ?? 'leads';
+        $services     = $params['services'] ?? [];
+        if (is_string($services)) $services = array_map('trim', explode(',', $services));
+
+        // Extra wizard context fields (ported from WP arthur_context)
+        $location     = $params['location']     ?? '';
+        $tone         = $params['tone']         ?? '';
+        $audience     = $params['audience']     ?? '';
+        $coreService  = $params['core_service'] ?? ($services[0] ?? '');
+
+        // ── Creative blueprint ──────────────────────────────────────────────
+        $bp = $this->blueprint($wsId, 'page', [
+            'goal'      => "Build a website for {$businessName}",
+            'audience'  => "potential customers of a {$industry} business",
+            'page_type' => 'website wizard',
+        ]);
+        $heroHeadline  = $bp['headline_angle'] ?? $businessName;
+        $subheadline   = $bp['subheadline_hint'] ?? "Your trusted {$industry} partner";
+        $ctaPrimary    = $bp['cta_primary'] ?? null;
+        $trustSignals  = $bp['trust_signals'] ?? [];
+        // ───────────────────────────────────────────────────────────────────
+
+        $primaryColor   = $params['primary_color'] ?? '#6C5CE7';
+        $secondaryColor = $params['secondary_color'] ?? '#00E5A8';
+        $accentColor    = $params['accent_color'] ?? '#F4F7FB';
+        $fontHeading    = $params['font_heading'] ?? 'Syne';
+        $fontBody       = $params['font_body'] ?? 'DM Sans';
+
+        $site = $this->createWebsite($wsId, [
+            'name'     => $businessName,
+            'template' => 'ai_generated',
+            'user_id'  => $params['user_id'] ?? null,
+            'settings' => [
+                'theme'           => 'modern',
+                'primary_color'   => $primaryColor,
+                'secondary_color' => $secondaryColor,
+                'accent_color'    => $accentColor,
+                'font_heading'    => $fontHeading,
+                'font_body'       => $fontBody,
+            ],
+        ]);
+
+        // Seed brand identity for the workspace
+        DB::table('creative_brand_identities')->updateOrInsert(
+            ['workspace_id' => $wsId],
+            [
+                'primary_color'   => $primaryColor,
+                'secondary_color' => $secondaryColor,
+                'accent_color'    => $accentColor,
+                'colors_json'     => json_encode([$primaryColor, $secondaryColor, $accentColor]),
+                'fonts_json'      => json_encode(['heading' => $fontHeading, 'body' => $fontBody]),
+                'visual_style'    => 'modern',
+                'industry'        => $industry,
+                'updated_at'      => now(),
+                'created_at'      => now(),
+            ]
+        );
+
+        $websiteId = $site['website_id'];
+
+        $pageTemplates = $this->getWizardPages($goal, $industry, $services);
+
+        // ── STAGE 1: Build all page layouts (template-based, fast) ──────────
+        $pageLayouts = [];
+        foreach ($pageTemplates as $i => $template) {
+            $sections = $this->generatePageSections($template, $businessName, $industry, $goal, [
+                'hero_headline'  => $i === 0 ? $heroHeadline : null,
+                'hero_sub'       => $i === 0 ? $subheadline : null,
+                'cta_primary'    => $ctaPrimary,
+                'trust_signals'  => $trustSignals,
+            ]);
+            $pageLayouts[] = [
+                'template' => $template,
+                'sections' => $sections,
+                'index'    => $i,
+            ];
+        }
+
+        // ── STAGE 2: AI copy generation per page (DeepSeek) ─────────────────
+        $aiCopyMap   = [];
+        $aiEnhanced  = false;
+        $failedSlugs = [];
+
+        $copyConfig = [
+            'business_name' => $businessName,
+            'industry'      => $industry,
+            'location'      => $location,
+            'tone'          => $tone,
+            'audience'      => $audience,
+            'core_service'  => $coreService,
+        ];
+
+        // MIGRATED 2026-04-13 (Phase 0.17b): switched from aiRun('builder_generate', ...)
+        // fold-pattern (which was returning narrative text and producing 0 structured
+        // pages in the e2e verify run) to chatJson with the per-page copy prompt as
+        // system + a minimal user trigger. The runtime forces JSON mode + parses
+        // server-side, and we read sections directly out of the parsed object.
+        if ($this->runtime->isConfigured()) {
+            foreach ($pageLayouts as $pl) {
+                $slug          = $pl['template']['slug'];
+                $pageSections  = $pl['sections']['sections'] ?? [];
+
+                try {
+                    $copyInstructions = $this->buildCopyPrompt($slug, $pageSections, $copyConfig);
+                    if (!$copyInstructions) {
+                        $failedSlugs[] = $slug;
+                        continue;
+                    }
+
+                    // chat_json requires a JSON OBJECT (not a bare array), so we
+                    // ask for {"sections":[...]} and read .sections back out.
+                    $systemPrompt = $copyInstructions
+                                  . "\n\nIMPORTANT: Return ONLY a valid JSON object of the form "
+                                  . '{"sections":[...]} where the sections array follows the schema above. '
+                                  . 'No markdown, no commentary outside the JSON.';
+
+                    $result = $this->runtime->chatJson(
+                        $systemPrompt,
+                        'Generate the page sections now for the ' . $slug . ' page.',
+                        [
+                            'page_slug'     => $slug,
+                            'business_name' => $businessName,
+                            'industry'      => $industry,
+                            'location'      => $location,
+                            'tone'          => $tone,
+                            'core_service'  => $coreService,
+                        ],
+                        3000
+                    );
+
+                    if (!($result['success'] ?? false) || !is_array($result['parsed'] ?? null)) {
+                        $failedSlugs[] = $slug;
+                        continue;
+                    }
+
+                    $aiSections = $result['parsed']['sections'] ?? null;
+                    if (is_array($aiSections) && !empty($aiSections)) {
+                        $aiCopyMap[$slug] = $aiSections;
+                    } else {
+                        $failedSlugs[] = $slug;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Builder AI copy failed for page (runtime)', [
+                        'slug'  => $slug,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $failedSlugs[] = $slug;
+                }
+            }
+
+            if (!empty($aiCopyMap)) {
+                $aiEnhanced = true;
+            }
+        } else {
+            // DeepSeek not configured — all pages use template fallback
+            foreach ($pageLayouts as $pl) {
+                $failedSlugs[] = $pl['template']['slug'];
+            }
+        }
+
+        // ── STAGE 3: Merge AI copy into templates and save ──────────────────
+        $pagesCreated = 0;
+        foreach ($pageLayouts as $pl) {
+            $slug     = $pl['template']['slug'];
+            $template = $pl['template'];
+            $sections = $pl['sections'];
+
+            // Merge AI content if available for this page
+            if (!empty($aiCopyMap[$slug]) && !empty($sections['sections'])) {
+                $sections['sections'] = $this->mergeAiCopy(
+                    $sections['sections'],
+                    $aiCopyMap[$slug]
+                );
+            }
+
+            $this->createPage($websiteId, [
+                'title'       => $template['title'],
+                'slug'        => $template['slug'],
+                'type'        => $template['type'],
+                'is_homepage' => $pl['index'] === 0,
+                'sections'    => $sections,
+                'seo'         => [
+                    'title'       => "{$template['title']} | {$businessName}",
+                    'description' => "{$businessName} - {$template['title']}",
+                ],
+            ]);
+            $pagesCreated++;
+        }
+
+        $this->engineIntel->recordToolUsage('builder', 'wizard_generate', 0.85);
+
+        return [
+            'website_id'    => $websiteId,
+            'pages_created' => $pagesCreated,
+            'status'        => 'draft',
+            'ai_enhanced'   => $aiEnhanced,
+            'failed_slugs'  => $failedSlugs,
+        ];
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // DASHBOARD
+    // ═══════════════════════════════════════════════════════
+
+    public function getDashboard(int $wsId): array
+    {
+        $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at');
+        $totalPages = DB::table('pages')
+            ->join('websites', 'pages.website_id', '=', 'websites.id')
+            ->where('websites.workspace_id', $wsId)->count();
+
+        return [
+            'total_websites' => (clone $sites)->count(),
+            'published' => (clone $sites)->where('status', 'published')->count(),
+            'draft' => (clone $sites)->where('status', 'draft')->count(),
+            'total_pages' => $totalPages,
+            'websites' => (clone $sites)->orderByDesc('updated_at')->limit(5)->get(),
+        ];
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // PRIVATE — Wizard helpers
+    // ═══════════════════════════════════════════════════════
+
+    private function getWizardPages(string $goal, string $industry, array $services): array
+    {
+        $pages = [
+            ['title' => 'Home', 'slug' => 'home', 'type' => 'page'],
+            ['title' => 'About Us', 'slug' => 'about', 'type' => 'page'],
+        ];
+
+        if (!empty($services)) {
+            $pages[] = ['title' => 'Services', 'slug' => 'services', 'type' => 'page'];
+        }
+
+        if (in_array($goal, ['portfolio', 'brand'])) {
+            $pages[] = ['title' => 'Portfolio', 'slug' => 'portfolio', 'type' => 'page'];
+        }
+
+        if (in_array($goal, ['leads', 'ecommerce'])) {
+            $pages[] = ['title' => 'Contact', 'slug' => 'contact', 'type' => 'page'];
+        }
+
+        $pages[] = ['title' => 'Blog', 'slug' => 'blog', 'type' => 'blog_post'];
+
+        return $pages;
+    }
+
+    private function generatePageSections(array $template, string $business, string $industry, string $goal, array $bpOverrides = []): array
+    {
+        $sections = [];
+
+        if ($template['slug'] === 'home') {
+            $sections[] = $this->heroSection($business, $industry, $goal, $bpOverrides);
+            $sections[] = $this->featuresSection($business, $bpOverrides['trust_signals'] ?? [], $industry, $goal);
+            $sections[] = $this->ctaSection($goal, $bpOverrides['cta_primary'] ?? null);
+        } elseif ($template['slug'] === 'about') {
+            $sections[] = ['type' => 'text', 'heading' => "About {$business}", 'body' => "We are a {$industry} business dedicated to excellence."];
+            $sections[] = ['type' => 'team', 'heading' => 'Our Team'];
+        } elseif ($template['slug'] === 'services') {
+            $sections[] = ['type' => 'services_grid', 'heading' => 'Our Services'];
+        } elseif ($template['slug'] === 'contact') {
+            $sections[] = ['type' => 'contact_form', 'heading' => 'Get in Touch', 'fields' => ['name', 'email', 'phone', 'message']];
+            $sections[] = ['type' => 'map', 'heading' => 'Find Us'];
+        } else {
+            $sections[] = ['type' => 'text', 'heading' => $template['title'], 'body' => ''];
+        }
+
+        // Wrap with header (navigation) and footer
+        $pageNames = array_map(fn($p) => $p['title'], $pageTemplates);
+        $header = [
+            'type' => 'header',
+            'style' => ['bg' => 'rgba(15,17,23,0.95)'],
+            'components' => [
+                ['type' => 'heading', 'text' => $business],
+                ['type' => 'text', 'text' => implode(' · ', $pageNames)],
+                ['type' => 'button', 'text' => 'Contact Us', 'href' => '#contact', 'variant' => 'primary'],
+            ],
+        ];
+        $footer = [
+            'type' => 'footer',
+            'business_name' => $business,
+            'tagline' => "Your trusted {$industry} partner",
+            'nav_items' => array_map(fn($p) => ['label' => $p, 'href' => '#' . strtolower($p)], $pageNames),
+            'copyright' => '© ' . date('Y') . ' ' . $business . '. All rights reserved.',
+        ];
+
+        array_unshift($sections, $header);
+        $sections[] = $footer;
+
+        return ['schemaVersion' => 1, 'sections' => $sections];
+    }
+
+    private function heroSection(string $business, string $industry, string $goal, array $bp = []): array
+    {
+        $cta = $bp['cta_primary'] ?? match ($goal) {
+            'leads'     => 'Get a Free Quote',
+            'ecommerce' => 'Shop Now',
+            'brand'     => 'Learn More',
+            'portfolio' => 'View Our Work',
+            default     => 'Get Started',
+        };
+
+        // Look up industry hero image from builder_default_assets
+        $industryKey = $this->mapIndustryToKey($industry);
+        $heroImage = DB::table('builder_default_assets')
+            ->where('industry', $industryKey)
+            ->where('asset_type', 'hero')
+            ->value('url');
+
+        // Fallback to default
+        $heroImage = $heroImage ?? DB::table('builder_default_assets')
+            ->where('industry', 'default')
+            ->where('asset_type', 'hero')
+            ->value('url');
+
+        return [
+            'type'             => 'hero',
+            'heading'          => $bp['hero_headline'] ?? $business,
+            'subheading'       => $bp['hero_sub'] ?? "Your trusted {$industry} partner",
+            'cta_text'         => $cta,
+            'cta_link'         => '#contact',
+            'background_image' => $heroImage,
+        ];
+    }
+
+    private function mapIndustryToKey(string $industry): string
+    {
+        $lower = strtolower($industry);
+        if (preg_match('/interior|design|furniture|home decor/i', $lower)) return 'interior_design';
+        if (preg_match('/restaurant|food|cafe|bakery|catering/i', $lower)) return 'restaurant';
+        if (preg_match('/fitness|gym|sport|yoga|wellness/i', $lower)) return 'fitness';
+        if (preg_match('/health|medical|dental|clinic|pharma/i', $lower)) return 'healthcare';
+        if (preg_match('/law|legal|attorney/i', $lower)) return 'legal';
+        if (preg_match('/real.estate|property|realty/i', $lower)) return 'real_estate';
+        if (preg_match('/fashion|retail|clothing|boutique/i', $lower)) return 'fashion';
+        if (preg_match('/tech|software|saas|digital|it/i', $lower)) return 'technology';
+        if (preg_match('/event|wedding|conference|catering/i', $lower)) return 'events';
+        if (preg_match('/beauty|spa|salon|cosmetic/i', $lower)) return 'beauty';
+        if (preg_match('/finance|accounting|bank|insurance/i', $lower)) return 'legal';
+        return 'default';
+    }
+
+    private function featuresSection(string $business, array $trustSignals = [], string $industry = '', string $goal = ''): array
+    {
+        // Try AI-generated industry-specific features
+        if ($this->runtime->isConfigured() && $industry) {
+            try {
+                $result = $this->runtime->chatJson(
+                    "You are a copywriter for {$industry} businesses. Output JSON only.",
+                    "Generate 3 compelling features/benefits for '{$business}' ({$industry}).
+                    Return: {\"features\":[{\"icon\":\"emoji\",\"title\":\"4-6 words\",\"description\":\"1 sentence\"}]}",
+                    ['industry' => $industry], 400
+                );
+                if (($result['success'] ?? false) && !empty($result['parsed']['features'])) {
+                    return ['type' => 'features', 'heading' => "Why Choose {$business}", 'items' => $result['parsed']['features']];
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::debug('[Builder] AI features failed, using defaults: ' . $e->getMessage());
+            }
+        }
+
+        // Industry-specific fallbacks
+        $items = $this->defaultFeatures($industry);
+        return ['type' => 'features', 'heading' => "Why Choose {$business}", 'items' => $items];
+    }
+
+    private function defaultFeatures(string $industry): array
+    {
+        $lower = strtolower($industry);
+        if (str_contains($lower, 'interior') || str_contains($lower, 'design') || str_contains($lower, 'furniture')) {
+            return [
+                ['icon' => '🏠', 'title' => 'Bespoke Design Solutions', 'description' => 'Custom interiors tailored to your lifestyle and space.'],
+                ['icon' => '✨', 'title' => 'Premium Materials', 'description' => 'Only the finest materials sourced from trusted suppliers.'],
+                ['icon' => '🎯', 'title' => 'On-Time Delivery', 'description' => 'Projects completed on schedule with meticulous attention to detail.'],
+            ];
+        }
+        if (str_contains($lower, 'restaurant') || str_contains($lower, 'food') || str_contains($lower, 'cafe')) {
+            return [
+                ['icon' => '👨‍🍳', 'title' => 'Expert Chefs', 'description' => 'Culinary masters crafting memorable dishes daily.'],
+                ['icon' => '🌿', 'title' => 'Fresh Ingredients', 'description' => 'Locally sourced, seasonal ingredients in every dish.'],
+                ['icon' => '⭐', 'title' => 'Award-Winning Service', 'description' => 'Hospitality that keeps guests coming back.'],
+            ];
+        }
+        if (str_contains($lower, 'legal') || str_contains($lower, 'law') || str_contains($lower, 'finance')) {
+            return [
+                ['icon' => '⚖️', 'title' => 'Expert Legal Counsel', 'description' => 'Decades of experience protecting your interests.'],
+                ['icon' => '🔒', 'title' => 'Confidential & Secure', 'description' => 'Your privacy is our highest priority.'],
+                ['icon' => '📊', 'title' => 'Proven Results', 'description' => 'Track record of successful outcomes for our clients.'],
+            ];
+        }
+        if (str_contains($lower, 'health') || str_contains($lower, 'medical') || str_contains($lower, 'clinic')) {
+            return [
+                ['icon' => '🏥', 'title' => 'Expert Medical Team', 'description' => 'Board-certified professionals dedicated to your wellbeing.'],
+                ['icon' => '💚', 'title' => 'Patient-Centered Care', 'description' => 'Personalized treatment plans for every individual.'],
+                ['icon' => '🔬', 'title' => 'Advanced Technology', 'description' => 'State-of-the-art equipment for accurate diagnosis.'],
+            ];
+        }
+        // Generic fallback
+        return [
+            ['icon' => '⭐', 'title' => 'Quality Service', 'description' => 'We deliver excellence in everything we do.'],
+            ['icon' => '⚡', 'title' => 'Fast Delivery', 'description' => 'Quick turnaround without compromising quality.'],
+            ['icon' => '🛡️', 'title' => 'Trusted Team', 'description' => 'Experienced professionals you can rely on.'],
+        ];
+    }
+
+    private function ctaSection(string $goal, ?string $ctaText = null): array
+    {
+        return [
+            'type'     => 'cta',
+            'heading'  => 'Ready to Get Started?',
+            'cta_text' => $ctaText ?? ($goal === 'leads' ? 'Contact Us Today' : 'Get Started'),
+            'cta_link' => '#contact',
+        ];
+    }
+
+    private function defaultPageSchema(): array
+    {
+        return ['schemaVersion' => 1, 'sections' => [['type' => 'text', 'heading' => 'New Page', 'body' => '']]];
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // AI COPY GENERATION — Ported from WP class-lubld-website.php
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * Build a DeepSeek prompt for one page's copy.
+     * Ported from: lu_wizard_build_copy_prompt (WP line 1322)
+     */
+    private function buildCopyPrompt(string $slug, array $sections, array $config): string
+    {
+        $business    = $config['business_name'] ?? '';
+        $industry    = $config['industry']      ?? '';
+        $location    = $config['location']      ?? '';
+        $tone        = $config['tone']          ?? '';
+        $audience    = $config['audience']      ?? '';
+        $coreService = $config['core_service']  ?? '';
+
+        if (!$business && !$industry) return '';
+
+        // Map section labels/types to canonical spec keys
+        $sectionTypes = [];
+        foreach ($sections as $sec) {
+            $secType = strtolower($sec['type'] ?? '');
+            if ($secType === 'header' || $secType === 'footer') continue;
+
+            $label = strtolower($sec['label'] ?? $sec['heading'] ?? '');
+            if (str_contains($label, 'hero')        || $secType === 'hero')           $sectionTypes[] = 'hero';
+            elseif (str_contains($label, 'stats'))                                     $sectionTypes[] = 'trust_bar';
+            elseif (str_contains($label, 'service')  || $secType === 'services_grid')  $sectionTypes[] = 'service_grid';
+            elseif (str_contains($label, 'testimonial'))                               $sectionTypes[] = 'testimonials';
+            elseif (str_contains($label, 'cta')      || $secType === 'cta')            $sectionTypes[] = 'cta';
+            elseif (str_contains($label, 'story')    || str_contains($label, 'about')) $sectionTypes[] = 'story';
+            elseif (str_contains($label, 'process'))                                   $sectionTypes[] = 'process';
+            elseif (str_contains($label, 'faq'))                                       $sectionTypes[] = 'faq';
+            elseif (str_contains($label, 'contact')  || $secType === 'contact_form')   $sectionTypes[] = 'contact_form';
+            elseif (str_contains($label, 'team')     || $secType === 'team')           $sectionTypes[] = 'team';
+            elseif (str_contains($label, 'pric'))                                      $sectionTypes[] = 'pricing';
+            elseif (str_contains($label, 'portfolio')|| str_contains($label, 'project')) $sectionTypes[] = 'portfolio';
+            elseif (str_contains($label, 'case'))                                      $sectionTypes[] = 'case_studies';
+            elseif (str_contains($label, 'value'))                                     $sectionTypes[] = 'values';
+            elseif (str_contains($label, 'why')      || str_contains($label, 'feature') || $secType === 'features') $sectionTypes[] = 'features';
+            else $sectionTypes[] = $secType ?: 'features';
+        }
+
+        if (empty($sectionTypes)) return '';
+
+        $schemaSpec  = $this->sectionSchemaSpec($sectionTypes);
+        $locStr      = $location    ? " based in {$location}"            : '';
+        $audStr      = $audience    ? " targeting {$audience}"           : '';
+        $svcStr      = $coreService ? " specialising in {$coreService}" : '';
+        $toneStr     = $tone        ? " Tone: {$tone}." : '';
+        $pageContext  = ucwords(str_replace(['-', '_'], ' ', $slug)) . ' page';
+
+        return 'Write compelling website copy for the ' . $pageContext . ' of ' . $business
+            . $locStr . $svcStr . $audStr . '. Industry: ' . $industry . '.' . $toneStr . "\n\n"
+            . "Return a JSON array of sections matching this schema:\n"
+            . "[\n" . $schemaSpec . "\n]\n\n"
+            . 'RULES: Return ONLY the JSON array. Never return null or empty strings. '
+            . 'Make copy specific to this business. '
+            . 'Testimonial names must be authentic for ' . ($location ?: 'Middle East / International') . '. '
+            . 'Icons must be real emoji. Stat numbers must be plausible. CTA button text max 4 words.';
+    }
+
+    /**
+     * JSON schema spec per section type — tells DeepSeek what structure to return.
+     * Ported from: lu_wizard_section_schema_spec (WP line 707)
+     */
+    private function sectionSchemaSpec(array $sectionTypes): string
+    {
+        $specs = [
+            'hero'         => '{"type":"hero","components":[{"type":"heading","text":"<headline 6-9 words, bold statement>"},{"type":"text","text":"<subheadline 12-18 words, value prop>"},{"type":"button","text":"<CTA label 3-4 words>","href":"#contact"},{"type":"button","text":"<secondary CTA 3-4 words>","href":"#about"}]}',
+            'features'     => '{"type":"features","label":"<section title>","components":[{"type":"heading","text":"<section heading 5-8 words>"},{"type":"text","text":"<intro sentence 10-15 words>"},{"type":"cards","items":[{"icon":"<emoji>","heading":"<service name>","text":"<1 sentence benefit>"},{"icon":"<emoji>","heading":"<service name>","text":"<1 sentence benefit>"},{"icon":"<emoji>","heading":"<service name>","text":"<1 sentence benefit>"}]}]}',
+            'service_grid' => '{"type":"features","label":"Services","components":[{"type":"heading","text":"<section heading>"},{"type":"cards","items":[{"icon":"<emoji>","heading":"<service>","text":"<1 sentence>"},{"icon":"<emoji>","heading":"<service>","text":"<1 sentence>"},{"icon":"<emoji>","heading":"<service>","text":"<1 sentence>"},{"icon":"<emoji>","heading":"<service>","text":"<1 sentence>"}]}]}',
+            'testimonials' => '{"type":"testimonials","label":"Testimonials","components":[{"type":"heading","text":"<section heading 5-7 words>"},{"type":"cards","items":[{"name":"<realistic name>","role":"<role/title>","text":"<authentic testimonial 20-30 words, specific result>"},{"name":"<realistic name>","role":"<role/title>","text":"<authentic testimonial 20-30 words>"},{"name":"<realistic name>","role":"<role/title>","text":"<authentic testimonial 20-30 words>"}]}]}',
+            'cta'          => '{"type":"cta","label":"CTA","components":[{"type":"heading","text":"<compelling CTA headline 6-10 words>"},{"type":"text","text":"<supporting sentence 10-15 words>"},{"type":"button","text":"<primary action label 3-4 words>","href":"#contact"}]}',
+            'story'        => '{"type":"features","label":"Our Story","components":[{"type":"heading","text":"<section heading>"},{"type":"text","text":"<founding story 30-40 words, specific and authentic>"},{"type":"text","text":"<mission statement or values 15-20 words>"}]}',
+            'process'      => '{"type":"features","label":"Our Process","components":[{"type":"heading","text":"<process section heading>"},{"type":"cards","items":[{"icon":"1️⃣","heading":"<step name>","text":"<step description 1 sentence>"},{"icon":"2️⃣","heading":"<step name>","text":"<step description>"},{"icon":"3️⃣","heading":"<step name>","text":"<step description>"},{"icon":"4️⃣","heading":"<step name>","text":"<step description>"}]}]}',
+            'faq'          => '{"type":"features","label":"FAQ","components":[{"type":"heading","text":"<FAQ section heading>"},{"type":"cards","items":[{"heading":"<question>","text":"<clear answer 15-25 words>"},{"heading":"<question>","text":"<clear answer>"},{"heading":"<question>","text":"<clear answer>"}]}]}',
+            'contact_form' => '{"type":"features","label":"Contact","components":[{"type":"heading","text":"<contact section heading>"},{"type":"text","text":"<inviting contact message 10-15 words>"},{"type":"form","fields":[{"label":"Full Name","type":"text"},{"label":"Email Address","type":"email"},{"label":"Phone Number","type":"tel"},{"label":"Message","type":"textarea"}]},{"type":"button","text":"Send Message","href":"#"}]}',
+            'team'         => '{"type":"features","label":"Our Team","components":[{"type":"heading","text":"<team section heading>"},{"type":"text","text":"<team intro sentence 10-15 words>"},{"type":"cards","items":[{"icon":"👤","heading":"<name>","text":"<title and 1 sentence expertise>"},{"icon":"👤","heading":"<name>","text":"<title and expertise>"},{"icon":"👤","heading":"<name>","text":"<title and expertise>"}]}]}',
+            'pricing'      => '{"type":"features","label":"Pricing","components":[{"type":"heading","text":"<pricing section heading>"},{"type":"cards","items":[{"heading":"<plan name>","text":"<what is included, 2-3 sentences>"},{"heading":"<plan name>","text":"<what is included>"},{"heading":"<plan name>","text":"<what is included>"}]}]}',
+            'portfolio'    => '{"type":"features","label":"Portfolio","components":[{"type":"heading","text":"<portfolio heading>"},{"type":"text","text":"<portfolio intro 10-15 words>"},{"type":"cards","items":[{"icon":"🏆","heading":"<project name>","text":"<project description 1 sentence>"},{"icon":"🏆","heading":"<project name>","text":"<project description>"},{"icon":"🏆","heading":"<project name>","text":"<project description>"}]}]}',
+            'trust_bar'    => '{"type":"features","label":"Stats","components":[{"type":"cards","items":[{"icon":"<emoji>","heading":"<stat number>","text":"<stat label>"},{"icon":"<emoji>","heading":"<stat number>","text":"<stat label>"},{"icon":"<emoji>","heading":"<stat number>","text":"<stat label>"}]}]}',
+            'case_studies' => '{"type":"features","label":"Case Studies","components":[{"type":"heading","text":"<case studies heading>"},{"type":"cards","items":[{"icon":"📋","heading":"<client/project>","text":"<result achieved, specific and credible, 1-2 sentences>"},{"icon":"📋","heading":"<client/project>","text":"<result>"},{"icon":"📋","heading":"<client/project>","text":"<result>"}]}]}',
+            'values'       => '{"type":"features","label":"Our Values","components":[{"type":"heading","text":"<values heading>"},{"type":"cards","items":[{"icon":"<emoji>","heading":"<value name>","text":"<value description 1 sentence>"},{"icon":"<emoji>","heading":"<value name>","text":"<value description>"},{"icon":"<emoji>","heading":"<value name>","text":"<value description>"}]}]}',
+        ];
+
+        $result = [];
+        foreach ($sectionTypes as $type) {
+            $result[] = $specs[$type]
+                ?? '{"type":"' . $type . '","components":[{"type":"heading","text":"<section heading>"},{"type":"text","text":"<section content 15-20 words>"}]}';
+        }
+        return implode(",\n", $result);
+    }
+
+    /**
+     * Parse and validate AI JSON response into sections array.
+     * Ported from: lu_wizard_parse_ai_sections (WP line ~1300)
+     *
+     * @return array|null  Array of sections on success, null on any failure
+     */
+    private function parseAiSections(string $raw): ?array
+    {
+        if (empty($raw)) return null;
+
+        $text = $raw;
+
+        // If the raw string is itself JSON (e.g. from chatJson), extract text/content
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $text = $decoded['text'] ?? $decoded['content'] ?? $raw;
+        }
+
+        if (!$text || !is_string($text)) return null;
+
+        // Strip markdown fences
+        $text = preg_replace('/```(?:json)?\s*([\s\S]*?)\s*```/', '$1', $text);
+
+        // Extract first JSON array
+        if (!preg_match('/\[[\s\S]*\]/', $text, $m)) return null;
+
+        $sections = json_decode($m[0], true);
+        if (!is_array($sections) || empty($sections)) return null;
+
+        return $sections;
+    }
+
+    /**
+     * Merge AI-generated copy into template sections using type-based matching.
+     * Ported from: lu_wizard_merge_ai_copy (WP line ~1420)
+     *
+     * Template = source of truth for section order, IDs, styles
+     * AI = source of truth for all text/copy content
+     */
+    private function mergeAiCopy(array $sections, array $aiSections): array
+    {
+        $allowedTypes = ['heading', 'text', 'button', 'cards', 'form', 'image', 'list',
+                         'gallery', 'divider', 'spacer', 'video', 'testimonials'];
+
+        // Index AI sections by type (type-based matching, not index-based)
+        $aiByType    = [];
+        foreach ($aiSections as $aiSec) {
+            $t = strtolower($aiSec['type'] ?? '');
+            if (!isset($aiByType[$t])) $aiByType[$t] = [];
+            $aiByType[$t][] = $aiSec;
+        }
+        $aiTypeCursor = [];
+
+        $merged = [];
+        foreach ($sections as $templateSec) {
+            $tmplType = strtolower($templateSec['type'] ?? '');
+
+            // Never AI-modify header or footer
+            if ($tmplType === 'header' || $tmplType === 'footer') {
+                $merged[] = $templateSec;
+                continue;
+            }
+
+            // Find matching AI section by type
+            $cursor = $aiTypeCursor[$tmplType] ?? 0;
+            $aiSec  = $aiByType[$tmplType][$cursor] ?? null;
+            $aiTypeCursor[$tmplType] = $cursor + 1;
+
+            // Fallback: if no type match, try positional from remaining AI sections
+            if (!$aiSec) {
+                $aiSec = array_shift($aiSections);
+            }
+
+            if (!$aiSec || !isset($aiSec['components'])) {
+                // No AI data — check for flat keys (heading, subheading, body, cta_text)
+                // to merge AI content into the simpler Laravel section format
+                if ($aiSec && is_array($aiSec)) {
+                    $mergedSec = $templateSec;
+                    if (!empty($aiSec['heading']))    $mergedSec['heading']    = $aiSec['heading'];
+                    if (!empty($aiSec['subheading']))  $mergedSec['subheading'] = $aiSec['subheading'];
+                    if (!empty($aiSec['body']))        $mergedSec['body']       = $aiSec['body'];
+                    if (!empty($aiSec['cta_text']))    $mergedSec['cta_text']   = $aiSec['cta_text'];
+                    if (!empty($aiSec['label']))       $mergedSec['label']      = $aiSec['label'];
+                    if (!empty($aiSec['items']) && is_array($aiSec['items'])) {
+                        $mergedSec['items'] = $aiSec['items'];
+                    }
+                    $merged[] = $mergedSec;
+                } else {
+                    $merged[] = $templateSec;
+                }
+                continue;
+            }
+
+            $mergedSec = $templateSec; // preserve style, id, section_order from template
+            $mergedComponents = [];
+
+            // If template has 'components' array, do component-level merge
+            if (!empty($templateSec['components'])) {
+                foreach ($templateSec['components'] as $ci => $templateCmp) {
+                    $ctype = $templateCmp['type'] ?? 'text';
+
+                    // Validate component type against whitelist
+                    if (!in_array($ctype, $allowedTypes, true)) {
+                        $ctype = 'text';
+                        $templateCmp['type'] = 'text';
+                    }
+
+                    // Find matching AI component by type
+                    $aiCmp = null;
+                    foreach ($aiSec['components'] as $aiC) {
+                        if (($aiC['type'] ?? '') === $ctype) {
+                            $aiCmp = $aiC;
+                            break;
+                        }
+                    }
+                    // Positional fallback
+                    if (!$aiCmp) $aiCmp = $aiSec['components'][$ci] ?? null;
+
+                    $mergedCmp = $templateCmp;
+
+                    if ($aiCmp) {
+                        switch ($ctype) {
+                            case 'heading':
+                            case 'text':
+                                if (!empty($aiCmp['text'])) {
+                                    $mergedCmp['text'] = strip_tags($aiCmp['text']);
+                                }
+                                break;
+                            case 'button':
+                                if (!empty($aiCmp['text'])) {
+                                    $mergedCmp['text']  = strip_tags($aiCmp['text']);
+                                    $mergedCmp['label'] = $mergedCmp['text'];
+                                }
+                                // Never overwrite href from template
+                                break;
+                            case 'cards':
+                                if (!empty($aiCmp['items']) && is_array($aiCmp['items'])) {
+                                    $aiItems   = $aiCmp['items'];
+                                    $tmplItems = $templateCmp['items'] ?? [];
+                                    $count     = max(count($tmplItems), min(count($aiItems), 6));
+                                    $mergedItems = [];
+                                    for ($k = 0; $k < $count; $k++) {
+                                        $aiItem   = $aiItems[$k]   ?? $aiItems[0]   ?? [];
+                                        $tmplItem = $tmplItems[$k]  ?? $tmplItems[0]  ?? [];
+                                        $mergedItems[] = [
+                                            'icon'    => strip_tags($aiItem['icon']    ?? $tmplItem['icon']    ?? ''),
+                                            'heading' => strip_tags($aiItem['heading'] ?? $tmplItem['heading'] ?? ''),
+                                            'text'    => strip_tags($aiItem['text']    ?? $tmplItem['text']    ?? ''),
+                                            'name'    => strip_tags($aiItem['name']    ?? $tmplItem['name']    ?? ''),
+                                            'role'    => strip_tags($aiItem['role']    ?? $tmplItem['role']    ?? ''),
+                                            'title'   => strip_tags($aiItem['title']   ?? $tmplItem['title']   ?? ''),
+                                        ];
+                                    }
+                                    $mergedCmp['items'] = $mergedItems;
+                                }
+                                break;
+                            case 'form':
+                                // Never overwrite form fields — template structure is authoritative
+                                break;
+                        }
+                    }
+                    $mergedComponents[] = $mergedCmp;
+                }
+                $mergedSec['components'] = $mergedComponents;
+            } else {
+                // Template uses flat keys (heading, body, etc.) — merge AI component text into flat fields
+                foreach ($aiSec['components'] as $aiCmp) {
+                    $cmpType = $aiCmp['type'] ?? '';
+                    if ($cmpType === 'heading' && !empty($aiCmp['text'])) {
+                        $mergedSec['heading'] = strip_tags($aiCmp['text']);
+                    } elseif ($cmpType === 'text' && !empty($aiCmp['text'])) {
+                        // Use 'subheading' for hero, 'body' for others
+                        if ($tmplType === 'hero') {
+                            $mergedSec['subheading'] = strip_tags($aiCmp['text']);
+                        } else {
+                            $mergedSec['body'] = strip_tags($aiCmp['text']);
+                        }
+                    } elseif ($cmpType === 'button' && !empty($aiCmp['text'])) {
+                        $mergedSec['cta_text'] = strip_tags($aiCmp['text']);
+                    } elseif ($cmpType === 'cards' && !empty($aiCmp['items'])) {
+                        $mergedSec['items'] = array_map(function ($item) {
+                            return [
+                                'icon'    => strip_tags($item['icon']    ?? ''),
+                                'heading' => strip_tags($item['heading'] ?? $item['title'] ?? ''),
+                                'text'    => strip_tags($item['text']    ?? $item['description'] ?? ''),
+                                'name'    => strip_tags($item['name']    ?? ''),
+                                'role'    => strip_tags($item['role']    ?? ''),
+                            ];
+                        }, $aiCmp['items']);
+                    }
+                }
+            }
+
+            $merged[] = $mergedSec;
+        }
+
+        return $merged;
+    }
+}

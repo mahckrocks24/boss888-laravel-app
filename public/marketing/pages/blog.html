@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog — AI Marketing Insights | LevelUpGrowth</title>
+<meta name="description" content="Expert insights on AI marketing, SEO, social media, and content strategy for SMBs. Written by Sarah, your AI Digital Marketing Manager.">
+<meta property="og:title" content="Blog — AI Marketing Insights | LevelUpGrowth">
+<meta property="og:description" content="Expert insights on AI marketing, SEO, social media, and content strategy for SMBs.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://levelupgrowth.io/blog">
+<link rel="stylesheet" href="/marketing/css/site.css">
+<link rel="stylesheet" href="/marketing/css/orb.css">
+<style>
+.blog-hero{padding:120px 28px 60px;text-align:center;position:relative}
+.blog-hero h1{margin-bottom:12px}
+.blog-cats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
+.blog-cat{padding:6px 16px;border-radius:100px;font-size:13px;font-weight:600;font-family:var(--ff-h);cursor:pointer;transition:all .2s;border:1px solid var(--border);color:var(--muted);background:transparent}
+.blog-cat:hover,.blog-cat.active{background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.4);color:var(--violet)}
+.blog-featured{max-width:900px;margin:0 auto 48px;background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer;transition:all .28s;display:none}
+.blog-featured:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(0,0,0,.3)}
+.blog-featured-img{height:320px;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-size:80px}
+.blog-featured-body{padding:28px 32px}
+.blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1180px;margin:0 auto;padding:0 28px}
+.blog-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;transition:all .28s}
+.blog-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.3);border-color:rgba(124,58,237,.3)}
+.blog-card-img{height:180px;background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(59,130,246,.3));display:flex;align-items:center;justify-content:center;font-size:48px;position:relative}
+.blog-card-cat{position:absolute;top:12px;left:12px;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--ff-h);background:rgba(0,0,0,.5);color:#fff;backdrop-filter:blur(4px)}
+.blog-card-body{padding:20px}
+.blog-card-title{font-family:var(--ff-h);font-weight:700;font-size:17px;margin-bottom:8px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.blog-card-excerpt{color:var(--muted);font-size:13.5px;line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.blog-card-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--faint)}
+.blog-card-meta img{width:24px;height:24px;border-radius:50%}
+.blog-pagination{display:flex;justify-content:center;gap:8px;margin-top:48px;padding-bottom:48px}
+.blog-pagination button{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:13px;cursor:pointer;transition:all .2s}
+.blog-pagination button:hover,.blog-pagination button.active{background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.4);color:var(--violet)}
+.blog-pagination button:disabled{opacity:.3;cursor:not-allowed}
+.blog-empty{text-align:center;padding:80px 20px;color:var(--muted);grid-column:1/-1}
+@media(max-width:768px){.blog-grid{grid-template-columns:1fr}.blog-featured-img{height:200px}}
+</style>
+</head>
+<body>
+<div id="site-nav"></div>
+
+<section class="blog-hero">
+  <div class="hero-bg-1" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(ellipse,rgba(124,58,237,.1) 0%,transparent 68%);pointer-events:none"></div>
+  <div style="position:relative;z-index:1">
+    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.28);border-radius:100px;padding:6px 14px;font-family:var(--ff-h);font-size:12px;color:var(--violet);font-weight:500;margin-bottom:18px"><span style="width:6px;height:6px;background:var(--green);border-radius:50%;display:inline-block"></span>AI Marketing Insights</div>
+    <h1>The LevelUp <span class="g-text2">Growth Blog</span></h1>
+    <p style="color:var(--muted);font-size:17px;max-width:560px;margin:12px auto 0">Expert insights on AI marketing, SEO, content strategy, and growing your business — written by Sarah, your AI Digital Marketing Manager.</p>
+  </div>
+</section>
+
+<div id="blog-categories" class="blog-cats"></div>
+<div id="blog-featured" class="blog-featured" onclick="if(this.dataset.slug)location.href='/blog/'+this.dataset.slug"></div>
+<div id="blog-grid" class="blog-grid"></div>
+<div id="blog-pagination" class="blog-pagination"></div>
+
+<div id="site-foot"></div>
+
+<script src="/marketing/js/orb.js"></script>
+<script src="/marketing/js/site.js"></script>
+<script>
+(function() {
+  var API = '/api/blog';
+  var currentPage = 1;
+  var currentCat = 'all';
+  var totalPages = 1;
+
+  // Category icons
+  var CAT_ICONS = {'AI Marketing':'🤖','SEO':'🔍','Content':'✍️','Social Media':'📱','Case Studies':'📊','all':'📰'};
+  var CAT_COLORS = {'AI Marketing':'#7C3AED','SEO':'#3B82F6','Content':'#00E5A8','Social Media':'#EC4899','Case Studies':'#F59E0B'};
+
+  function formatDate(d) {
+    if (!d) return '';
+    var dt = new Date(d);
+    return dt.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+  }
+
+  async function loadCategories() {
+    try {
+      var r = await fetch(API+'/categories');
+      var d = await r.json();
+      var el = document.getElementById('blog-categories');
+      el.innerHTML = (d.categories||[]).map(function(c) {
+        var name = c.blog_category || 'all';
+        var label = name === 'all' ? 'All Posts' : name;
+        var icon = CAT_ICONS[name] || '📄';
+        return '<button class="blog-cat'+(name===currentCat?' active':'')+'" onclick="blogFilter(\''+name+'\')" data-cat="'+name+'">'+icon+' '+label+' <span style="opacity:.5">('+c.count+')</span></button>';
+      }).join('');
+    } catch(e) {}
+  }
+
+  window.blogFilter = function(cat) {
+    currentCat = cat;
+    currentPage = 1;
+    document.querySelectorAll('.blog-cat').forEach(function(b){b.classList.toggle('active',b.dataset.cat===cat)});
+    loadPosts();
+  };
+
+  async function loadPosts() {
+    try {
+      var url = API+'/posts?page='+currentPage+'&per_page=6';
+      if (currentCat && currentCat !== 'all') url += '&category='+encodeURIComponent(currentCat);
+      var r = await fetch(url);
+      var d = await r.json();
+      var articles = d.articles || [];
+      totalPages = d.pagination?.total_pages || 1;
+
+      var grid = document.getElementById('blog-grid');
+      var featured = document.getElementById('blog-featured');
+
+      // Featured: first article on page 1
+      if (currentPage === 1 && articles.length > 0) {
+        var f = articles[0];
+        var fIcon = CAT_ICONS[f.category] || '📄';
+        var fColor = CAT_COLORS[f.category] || 'var(--purple)';
+        featured.style.display = 'block';
+        featured.dataset.slug = f.slug;
+        featured.innerHTML =
+          '<div class="blog-featured-img" style="'+(f.featured_image_url?'background-image:url('+f.featured_image_url+');background-size:cover;background-position:center':'')+'">'+(!f.featured_image_url?fIcon:'')+'</div>'
+          +'<div class="blog-featured-body">'
+          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--ff-h);background:'+fColor+'22;color:'+fColor+';border:1px solid '+fColor+'33">'+f.category+'</span><span style="font-size:12px;color:var(--faint)">'+formatDate(f.published_at)+' · '+f.read_time+' min read</span></div>'
+          +'<h2 style="font-size:28px;margin-bottom:10px">'+f.title+'</h2>'
+          +'<p style="color:var(--muted);font-size:15px;line-height:1.7;margin-bottom:16px">'+f.excerpt+'</p>'
+          +'<div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-size:14px">👩</div><span style="font-size:13px;color:var(--muted)">Sarah · AI Digital Marketing Manager</span></div>'
+          +'</div>';
+        articles = articles.slice(1);
+      } else {
+        featured.style.display = 'none';
+      }
+
+      if (articles.length === 0 && currentPage === 1) {
+        grid.innerHTML = '<div class="blog-empty"><div style="font-size:48px;margin-bottom:16px">📝</div><p style="font-size:16px">No articles yet. Check back soon!</p></div>';
+      } else {
+        grid.innerHTML = articles.map(function(a) {
+          var icon = CAT_ICONS[a.category] || '📄';
+          return '<div class="blog-card" onclick="location.href=\'/blog/'+a.slug+'\'">'
+            +'<div class="blog-card-img" style="'+(a.featured_image_url?'background-image:url('+a.featured_image_url+');background-size:cover;background-position:center':'')+'">'+(!a.featured_image_url?icon:'')+'<div class="blog-card-cat">'+(a.category||'Blog')+'</div></div>'
+            +'<div class="blog-card-body">'
+            +'<div class="blog-card-title">'+a.title+'</div>'
+            +'<div class="blog-card-excerpt">'+a.excerpt+'</div>'
+            +'<div class="blog-card-meta"><div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-size:10px">👩</div>Sarah · '+formatDate(a.published_at)+' · '+a.read_time+' min</div>'
+            +'</div></div>';
+        }).join('');
+      }
+
+      // Pagination
+      var pagEl = document.getElementById('blog-pagination');
+      if (totalPages > 1) {
+        var ph = '<button '+(currentPage<=1?'disabled':'')+' onclick="blogPage('+(currentPage-1)+')">← Prev</button>';
+        for (var i=1;i<=totalPages;i++) ph += '<button class="'+(i===currentPage?'active':'')+'" onclick="blogPage('+i+')">'+i+'</button>';
+        ph += '<button '+(currentPage>=totalPages?'disabled':'')+' onclick="blogPage('+(currentPage+1)+')">Next →</button>';
+        pagEl.innerHTML = ph;
+      } else {
+        pagEl.innerHTML = '';
+      }
+    } catch(e) {
+      document.getElementById('blog-grid').innerHTML = '<div class="blog-empty"><p>Could not load articles.</p></div>';
+    }
+  }
+
+  window.blogPage = function(p) {
+    currentPage = p;
+    loadPosts();
+    window.scrollTo({top:document.getElementById('blog-grid').offsetTop - 100, behavior:'smooth'});
+  };
+
+  loadCategories();
+  loadPosts();
+})();
+</script>
+</body>
+</html>

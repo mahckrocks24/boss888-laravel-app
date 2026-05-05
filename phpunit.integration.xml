@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Phase 5 integration tests — REAL infrastructure.
+  Run with: php artisan test --configuration=phpunit.integration.xml
+  
+  Requires:
+    - MySQL running (DB_DATABASE=boss888_test)
+    - Redis running
+    - Queue workers NOT needed (tests dispatch but don't wait for workers)
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true">
+    <testsuites>
+        <testsuite name="Integration">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_DATABASE" value="boss888_test"/>
+        <env name="CACHE_DRIVER" value="redis"/>
+        <env name="QUEUE_CONNECTION" value="redis"/>
+        <env name="SOCIAL_MOCK_MODE" value="true"/>
+        <env name="BOSS888_DEBUG_ENABLED" value="true"/>
+    </php>
+</phpunit>

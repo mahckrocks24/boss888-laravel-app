@@ -1,0 +1,25 @@
+{
+    "name": "CRM",
+    "slug": "crm",
+    "version": "1.0.0",
+    "description": "Customer Relationship Management engine",
+    "capabilities": [
+        {
+            "action": "create_lead",
+            "label": "Create Lead",
+            "credit_cost": 1,
+            "requires_approval": false
+        },
+        {
+            "action": "list_leads",
+            "label": "List Leads",
+            "credit_cost": 0,
+            "requires_approval": false
+        }
+    ],
+    "routes": "Http/Routes.php",
+    "metadata": {
+        "icon": "users",
+        "color": "#3B8BF5"
+    }
+}

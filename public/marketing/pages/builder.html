@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Builder + Hosting — LevelUpGrowth</title>
+<link rel="stylesheet" href="/marketing/css/site.css">
+<link rel="stylesheet" href="/marketing/css/orb.css">
+<style>
+@media(max-width:768px){.feat-grid{grid-template-columns:repeat(2,1fr)!important}}
+
+/* ── Arthur Chat Simulation ──────────────────────────────────── */
+.arthur-wrap{max-width:720px;margin:0 auto}
+.arthur-window{background:var(--card2);border:1px solid var(--border2);border-radius:20px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.45)}
+
+/* Header */
+.arthur-head{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px}
+.arthur-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:600;font-family:var(--ff-h)}
+.arthur-status-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 1.4s infinite;flex-shrink:0}
+
+/* Messages */
+.arthur-msgs{padding:20px;display:flex;flex-direction:column;gap:14px;min-height:340px;max-height:440px;overflow-y:auto}
+.arthur-msg{display:flex;align-items:flex-start;gap:10px;max-width:88%}
+.arthur-msg.user{align-self:flex-end;flex-direction:row-reverse}
+.arthur-bubble{padding:11px 15px;border-radius:14px;font-size:13.5px;line-height:1.6}
+.arthur-msg.bot .arthur-bubble{background:var(--card);border:1px solid var(--border);color:#D1D5DB;border-radius:14px 14px 14px 3px}
+.arthur-msg.user .arthur-bubble{background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;border-radius:14px 14px 3px 14px}
+
+/* Typing */
+.arthur-typing{display:flex;gap:4px;padding:12px 15px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:14px 14px 14px 3px}
+.arthur-typing span{width:7px;height:7px;background:var(--faint);border-radius:50%;animation:arthurBounce 1.2s ease infinite}
+.arthur-typing span:nth-child(2){animation-delay:.15s}
+.arthur-typing span:nth-child(3){animation-delay:.3s}
+@keyframes arthurBounce{0%,80%,100%{transform:translateY(0);opacity:.45}40%{transform:translateY(-6px);opacity:1}}
+
+/* Building animation */
+.arthur-build{background:var(--card);border:1px solid var(--border);border-radius:14px 14px 14px 3px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.arthur-build-title{font-family:var(--ff-h);font-weight:700;font-size:13px;color:#D1D5DB;margin-bottom:4px}
+.build-step{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);transition:color .3s}
+.build-step.done{color:var(--green)}
+.build-step.active{color:#D1D5DB}
+.build-icon{width:18px;height:18px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;transition:all .3s;display:flex;align-items:center;justify-content:center;font-size:9px}
+.build-step.done .build-icon{border-color:var(--green);background:rgba(0,229,168,.12);color:var(--green)}
+.build-step.active .build-icon{border-color:var(--violet);animation:buildPulse .8s ease-in-out infinite}
+@keyframes buildPulse{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.4)}50%{box-shadow:0 0 0 5px rgba(124,58,237,0)}}
+.build-bar{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:4px}
+.build-bar-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--blue));border-radius:2px;width:0;transition:width .6s ease}
+
+/* Progress bar */
+.arthur-progress{padding:14px 20px;border-top:1px solid var(--border);background:var(--card2)}
+.arthur-progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--faint);font-family:var(--ff-h);margin-bottom:8px}
+.arthur-progress-bar{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.arthur-progress-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--blue));border-radius:2px;width:0;transition:width .5s ease}
+
+/* Done state */
+.arthur-done{text-align:center;padding:20px 16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.arthur-done-icon{font-size:36px}
+.arthur-done-title{font-family:var(--ff-h);font-weight:800;font-size:17px;color:var(--green)}
+.arthur-done-sub{font-size:13.5px;color:var(--muted);line-height:1.6}
+.arthur-done-cta{margin-top:6px}
+@media(max-width:768px){.arthur-msgs{min-height:280px;max-height:360px}}
+</style>
+</head>
+<body>
+<div class="page-hero"><div class="page-hero-glow"></div>
+  <div class="tag" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:var(--blue)">Website Builder</div>
+  <h1>Build a Professional Website<br/><span class="g-text">in Minutes with AI</span></h1>
+  <p>Describe your business. Your AI team generates a complete, SEO-optimized website — with hosting included.</p>
+  <div class="hero-ctas"><a href="/app/#signup" class="btn btn-primary btn-lg">Build My Website →</a><a href="#demo" class="btn btn-ghost btn-lg">See It Live ▼</a></div>
+  <div style="margin-top:20px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+    <span style="font-size:13px;color:var(--faint)">✓ Hosting included</span>
+    <span style="font-size:13px;color:var(--faint)">✓ Mobile responsive</span>
+    <span style="font-size:13px;color:var(--faint)">✓ SEO optimized</span>
+    <span style="font-size:13px;color:var(--faint)">✓ Custom domain</span>
+  </div>
+</div>
+
+<!-- ── Arthur Demo ── -->
+<section id="demo" style="padding:80px 28px;background:rgba(18,24,38,.45)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="tag" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);color:var(--blue)">Live Demo</div>
+      <h2>Watch Arthur <span class="g-text">Build a Website</span></h2>
+      <p>Arthur is your AI website builder. Watch him take a business brief and turn it into a complete website in real time.</p>
+    </div>
+
+    <div class="arthur-wrap reveal">
+      <div class="arthur-window">
+        <!-- Header -->
+        <div class="arthur-head">
+          <div id="arthur-orb"></div>
+          <div style="flex:1">
+            <div style="font-family:var(--ff-h);font-weight:700;font-size:15px;color:#E5E7EB">Arthur — AI Website Builder</div>
+            <div class="arthur-status"><span class="arthur-status-dot"></span>Online — ready to build</div>
+          </div>
+          <div style="font-size:11px;color:var(--faint);text-align:right">Powered by<br/>LevelUp AI</div>
+        </div>
+
+        <!-- Messages -->
+        <div class="arthur-msgs" id="arthur-msgs"></div>
+
+        <!-- Progress bar (hidden initially) -->
+        <div class="arthur-progress" id="arthur-progress" style="display:none">
+          <div class="arthur-progress-label">
+            <span id="arthur-progress-label">Building your website…</span>
+            <span id="arthur-progress-pct">0%</span>
+          </div>
+          <div class="arthur-progress-bar">
+            <div class="arthur-progress-fill" id="arthur-progress-fill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section id="features" style="padding:80px 28px">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>Everything in One <span class="g-text">Builder</span></h2></div>
+    <div class="feat-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
+      <div class="card card-glow reveal a1"><div style="font-size:28px;margin-bottom:14px">🤖</div><h3>AI Website Generation</h3><p style="color:var(--muted);font-size:13.5px;line-height:1.65;margin-top:8px">Enter your business name and industry. AI builds your complete website in under 5 minutes — pages, copy, and layout included.</p></div>
+      <div class="card card-glow reveal a2"><div style="font-size:28px;margin-bottom:14px">🖱️</div><h3>Drag-and-Drop Editor</h3><p style="color:var(--muted);font-size:13.5px;line-height:1.65;margin-top:8px">Edit any element with an intuitive visual editor. No coding. Move blocks, change colors, and update content instantly.</p></div>
+      <div class="card card-glow reveal a3"><div style="font-size:28px;margin-bottom:14px">☁️</div><h3>Hosting Included</h3><p style="color:var(--muted);font-size:13.5px;line-height:1.65;margin-top:8px">Your website is hosted on our global CDN. Fast load times everywhere. SSL included. 99.9% uptime guaranteed.</p></div>
+      <div class="card card-glow reveal a1"><div style="font-size:28px;margin-bottom:14px">🔗</div><h3>Custom Domain</h3><p style="color:var(--muted);font-size:13.5px;line-height:1.65;margin-top:8px">Connect your own domain or get a free subdomain. One-click domain connection with automatic SSL.</p></div>
+      <div class="card card-glow reveal a2"><div style="font-size:28px;margin-bottom:14px">📱</div><h3>Mobile-First Design</h3><p style="color:var(--muted);font-size:13.5px;line-height:1.65;margin-top:8px">Every website is perfectly responsive on all devices. Mobile performance is optimized automatically.</p></div>
+      <div class="card card-glow reveal a3"><div style="font-size:28px;margin-bottom:14px">📈</div><h3>SEO Built-In</h3><p style="color:var(--muted);font-size:13.5px;line-height:1.65;margin-top:8px">Meta tags, schema markup, page speed optimization, and keyword targeting — all configured by your AI team.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-section"><div class="cta-glow"></div><div class="cta-inner reveal"><h2>Your Website is <span class="g-text2">Ready to Build</span></h2><p style="color:var(--muted);font-size:17px;max-width:440px;margin:16px auto 36px;line-height:1.7">Start free. No credit card required.</p><a href="/app/#signup" class="btn btn-primary btn-lg">Build My Website Free →</a></div></div>
+
+<div id="site-footer-placeholder"></div>
+<script src="/marketing/js/site.js"></script>
+<script src="/marketing/js/orb.js"></script>
+<script>
+// ── Arthur simulation ─────────────────────────────────────────────────────
+var ARTHUR_COLOR = '#3B82F6';
+
+// Script: alternating bot/user messages then building sequence
+var SCRIPT = [
+  {role:'bot',  delay:600,  text:"Hi! I'm Arthur, your AI website builder. Tell me about your business and I'll have your website ready in minutes. What's your business name?"},
+  {role:'user', delay:2400, text:'Nexus Consulting Group — we help businesses scale with strategy and operations consulting.'},
+  {role:'bot',  delay:1800, text:'Love it. Nexus Consulting Group — professional services, authority positioning. What's your primary goal for the website — generate leads, establish credibility, or both?'},
+  {role:'user', delay:2000, text:'Both. We want leads, but we need to look premium.'},
+  {role:'bot',  delay:1600, text:'Perfect brief. Premium look with a clear lead capture flow. I\'m pulling your industry keyword map — consulting, strategy, B2B. Who\'s your target client?'},
+  {role:'user', delay:1900, text:'Mid-size companies, usually 50–500 employees, looking for growth strategy.'},
+  {role:'bot',  delay:1500, text:'Got it. B2B mid-market. I\'ll build a clean, high-authority design with a strong case studies section and a consultation booking form. One last thing — your brand color preference?'},
+  {role:'user', delay:1600, text:'Dark navy and gold. Professional, not boring.'},
+  {role:'bot',  delay:1400, text:'Dark navy and gold — excellent choice. I have everything I need. Generating your website now. This takes about 60 seconds…'},
+  {role:'build', delay:1000}
+];
+
+var BUILD_STEPS = [
+  {label:'Designing page structure and layout',      dur:1800},
+  {label:'Writing homepage headline and hero copy',  dur:2200},
+  {label:'Building Services and Pricing pages',      dur:2000},
+  {label:'Generating Case Studies section',          dur:1900},
+  {label:'Creating Consultation booking form',       dur:1700},
+  {label:'Optimizing SEO — meta tags and schema',    dur:1600},
+  {label:'Configuring mobile responsiveness',        dur:1400},
+  {label:'Finalizing and deploying to hosting',      dur:1500},
+];
+
+function sleep(ms) { return new Promise(function(r){ setTimeout(r, ms); }); }
+
+function getOrb(size, state) {
+  if (typeof OrbAvatar !== 'undefined') {
+    return OrbAvatar.buildOrb('technical', size || 'sm', state || 'idle', '', 'senior');
+  }
+  return '';
+}
+
+function addMsg(role, text) {
+  var msgs = document.getElementById('arthur-msgs');
+  if (!msgs) return;
+  var d = document.createElement('div');
+  d.className = 'arthur-msg ' + role;
+  if (role === 'bot') {
+    d.innerHTML = getOrb('sm','idle') + '<div class="arthur-bubble">' + text + '</div>';
+  } else {
+    d.innerHTML = '<div class="arthur-bubble">' + text + '</div>';
+  }
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  var msgs = document.getElementById('arthur-msgs');
+  if (!msgs) return null;
+  var d = document.createElement('div');
+  d.className = 'arthur-msg bot';
+  d.id = 'arthur-typing-el';
+  d.innerHTML = getOrb('sm','thinking') + '<div class="arthur-typing"><span></span><span></span><span></span></div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+  return d;
+}
+
+async function runBuildSequence() {
+  var msgs = document.getElementById('arthur-msgs');
+  var prog = document.getElementById('arthur-progress');
+  var progFill = document.getElementById('arthur-progress-fill');
+  var progLabel = document.getElementById('arthur-progress-label');
+  var progPct = document.getElementById('arthur-progress-pct');
+
+  // Show progress bar
+  if (prog) prog.style.display = 'block';
+
+  // Build steps card in messages
+  var card = document.createElement('div');
+  card.className = 'arthur-msg bot';
+  var stepsHtml = BUILD_STEPS.map(function(s, i) {
+    return '<div class="build-step" id="bstep-' + i + '">'
+      + '<div class="build-icon" id="bicon-' + i + '"></div>'
+      + '<span id="blabel-' + i + '">' + s.label + '</span>'
+      + '</div>';
+  }).join('');
+  card.innerHTML = getOrb('sm','executing')
+    + '<div class="arthur-build">'
+    + '<div class="arthur-build-title">⚡ Building nexusconsultinggroup.com</div>'
+    + stepsHtml
+    + '<div class="build-bar"><div class="build-bar-fill" id="build-bar-fill"></div></div>'
+    + '</div>';
+  msgs.appendChild(card);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // Animate each step
+  var totalDur = BUILD_STEPS.reduce(function(a,b){ return a + b.dur; }, 0);
+  var elapsed = 0;
+
+  for (var i = 0; i < BUILD_STEPS.length; i++) {
+    var stepEl  = document.getElementById('bstep-'  + i);
+    var iconEl  = document.getElementById('bicon-'  + i);
+
+    if (stepEl) stepEl.classList.add('active');
+    if (iconEl) iconEl.textContent = '';
+
+    var pct = Math.round((elapsed / totalDur) * 100);
+    if (progFill) progFill.style.width = pct + '%';
+    if (progPct)  progPct.textContent  = pct + '%';
+    if (progLabel) progLabel.textContent = BUILD_STEPS[i].label + '…';
+
+    await sleep(BUILD_STEPS[i].dur);
+    elapsed += BUILD_STEPS[i].dur;
+
+    if (stepEl) { stepEl.classList.remove('active'); stepEl.classList.add('done'); }
+    if (iconEl) iconEl.textContent = '✓';
+
+    // Update bar fill
+    var barFill = document.getElementById('build-bar-fill');
+    if (barFill) barFill.style.width = Math.round(((i+1)/BUILD_STEPS.length)*100) + '%';
+  }
+
+  if (progFill) progFill.style.width = '100%';
+  if (progPct)  progPct.textContent  = '100%';
+
+  await sleep(500);
+  if (prog) prog.style.display = 'none';
+
+  // Done message
+  await sleep(300);
+  var doneEl = document.createElement('div');
+  doneEl.className = 'arthur-msg bot';
+  doneEl.innerHTML = getOrb('sm','success')
+    + '<div class="arthur-build arthur-done">'
+    + '<div class="arthur-done-icon">🎉</div>'
+    + '<div class="arthur-done-title">Website Ready!</div>'
+    + '<div class="arthur-done-sub">Your Nexus Consulting Group website is live — 7 pages, full SEO, mobile-optimized, and ready for leads. Your consultation booking form is active.</div>'
+    + '<div class="arthur-done-cta"><a href="/app/#signup" class="btn btn-primary">Start Building Your Real Website →</a></div>'
+    + '</div>';
+  msgs.appendChild(doneEl);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // Orb back to idle
+  if (typeof setOrbState !== 'undefined') setOrbState('technical', 'idle');
+}
+
+async function runArthur() {
+  for (var i = 0; i < SCRIPT.length; i++) {
+    var step = SCRIPT[i];
+    await sleep(step.delay || 800);
+
+    if (step.role === 'build') {
+      if (typeof setOrbState !== 'undefined') setOrbState('technical', 'executing');
+      await runBuildSequence();
+    } else {
+      // Show typing indicator for bot messages
+      var typingEl = null;
+      if (step.role === 'bot') {
+        typingEl = showTyping();
+        if (typeof setOrbState !== 'undefined') setOrbState('technical', 'thinking');
+        await sleep(900 + step.text.length * 12);
+        if (typingEl) typingEl.remove();
+        if (typeof setOrbState !== 'undefined') setOrbState('technical', 'idle');
+      }
+      addMsg(step.role, step.text);
+    }
+
+    var msgs = document.getElementById('arthur-msgs');
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Init Arthur orb immediately
+  var headOrb = document.getElementById('arthur-orb');
+  if (headOrb && typeof OrbAvatar !== 'undefined') {
+    headOrb.innerHTML = OrbAvatar.buildOrb('technical', 'md', 'idle', '', 'senior');
+  }
+  // Start simulation after a short pause — no scroll trigger needed
+  setTimeout(function() {
+    runArthur();
+  }, 800);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\Agent;
+
+class AgentSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $agents = [
+            ['name'=>'Sarah','slug'=>'sarah','title'=>'Digital Marketing Manager','description'=>'Lead agent. Orchestrates the team, sets goals, monitors execution.','category'=>'dmm','level'=>'senior','orb_type'=>'dmm','color'=>'#F59E0B','is_dmm'=>true,'capabilities_json'=>['autonomous_goal','list_goals','agent_status','strategy_planning','campaign_oversight','task_delegation'],'skills_json'=>['Strategy','Campaign Management','Team Coordination','Goal Setting']],
+            // SEO (5)
+            ['name'=>'James','slug'=>'james','title'=>'SEO Strategist','description'=>'Keyword research, SERP analysis, and organic growth strategy.','category'=>'seo','level'=>'junior','orb_type'=>'seo','color'=>'#3B82F6','is_dmm'=>false,'capabilities_json'=>['serp_analysis','ai_report','deep_audit','keyword_research'],'skills_json'=>['Keyword Research','SERP Analysis','Competitor Research']],
+            ['name'=>'Alex','slug'=>'alex','title'=>'Technical SEO Engineer','description'=>'Site audits, Core Web Vitals, schema markup, and indexing.','category'=>'seo','level'=>'senior','orb_type'=>'technical','color'=>'#06B6D4','is_dmm'=>false,'capabilities_json'=>['link_suggestions','insert_link','dismiss_link','outbound_links','check_outbound','deep_audit'],'skills_json'=>['Site Audits','Core Web Vitals','Schema Markup']],
+            ['name'=>'Diana','slug'=>'diana','title'=>'Local SEO Specialist','description'=>'Google Business, local citations, and map pack rankings.','category'=>'seo','level'=>'junior','orb_type'=>'seo','color'=>'#3B82F6','is_dmm'=>false,'capabilities_json'=>['local_seo','citations','map_pack'],'skills_json'=>['Google Business','Local Citations','Map Pack']],
+            ['name'=>'Ryan','slug'=>'ryan','title'=>'Link Building Specialist','description'=>'Backlink acquisition, digital PR, and authority building.','category'=>'seo','level'=>'junior','orb_type'=>'technical','color'=>'#06B6D4','is_dmm'=>false,'capabilities_json'=>['link_outreach','digital_pr','authority_building'],'skills_json'=>['Link Outreach','Digital PR','Authority Building']],
+            ['name'=>'Sofia','slug'=>'sofia','title'=>'International SEO Director','description'=>'Multi-market SEO strategy, hreflang, and international search presence.','category'=>'seo','level'=>'senior','orb_type'=>'seo','color'=>'#3B82F6','is_dmm'=>false,'capabilities_json'=>['international_seo','hreflang','multi_market'],'skills_json'=>['Multi-market SEO','Hreflang','International SEO']],
+            // Content (5)
+            ['name'=>'Priya','slug'=>'priya','title'=>'Content Manager','description'=>'Blog articles, website copy, and marketing content creation.','category'=>'content','level'=>'specialist','orb_type'=>'content','color'=>'#7C3AED','is_dmm'=>false,'capabilities_json'=>['write_article','improve_draft','generate_outline','generate_meta'],'skills_json'=>['Blog Writing','Landing Pages','SEO Copy']],
+            ['name'=>'Leo','slug'=>'leo','title'=>'Brand Copywriter','description'=>'Conversion-focused copy, brand messaging, and ad headlines.','category'=>'content','level'=>'specialist','orb_type'=>'content','color'=>'#7C3AED','is_dmm'=>false,'capabilities_json'=>['write_article','generate_headlines','ad_copy'],'skills_json'=>['Ad Copy','Brand Voice','Conversion Copy']],
+            ['name'=>'Maya','slug'=>'maya','title'=>'Social Content Writer','description'=>'Captions, hashtag strategies, and platform-specific content.','category'=>'content','level'=>'junior','orb_type'=>'content','color'=>'#7C3AED','is_dmm'=>false,'capabilities_json'=>['write_caption','hashtag_strategy','platform_content'],'skills_json'=>['Captions','Hashtags','Platform Formats']],
+            ['name'=>'Chris','slug'=>'chris','title'=>'Video Script Writer','description'=>'Short-form video scripts, reels hooks, and ad video copy.','category'=>'content','level'=>'junior','orb_type'=>'ads','color'=>'#F97316','is_dmm'=>false,'capabilities_json'=>['write_script','reel_hooks','video_copy'],'skills_json'=>['Video Scripts','Reel Hooks','TikTok Copy']],
+            ['name'=>'Nora','slug'=>'nora','title'=>'Content Strategy Director','description'=>'Full content calendars, thought leadership, and editorial strategy.','category'=>'content','level'=>'senior','orb_type'=>'content','color'=>'#7C3AED','is_dmm'=>false,'capabilities_json'=>['content_strategy','editorial_calendar','thought_leadership'],'skills_json'=>['Editorial Strategy','Content Calendars','Thought Leadership']],
+            // Social (5)
+            ['name'=>'Marcus','slug'=>'marcus','title'=>'Social Media Manager','description'=>'Multi-platform content creation and posting schedule management.','category'=>'social','level'=>'specialist','orb_type'=>'social','color'=>'#EC4899','is_dmm'=>false,'capabilities_json'=>['social_create_post','social_schedule','social_analytics'],'skills_json'=>['Content Creation','Scheduling','Engagement']],
+            ['name'=>'Zara','slug'=>'zara','title'=>'Instagram Growth Specialist','description'=>'Instagram Reels, Stories, and follower growth strategies.','category'=>'social','level'=>'junior','orb_type'=>'social','color'=>'#EC4899','is_dmm'=>false,'capabilities_json'=>['instagram_reels','instagram_stories','follower_growth'],'skills_json'=>['Instagram Reels','Stories','Follower Growth']],
+            ['name'=>'Tyler','slug'=>'tyler','title'=>'LinkedIn Marketing Expert','description'=>'B2B LinkedIn strategy, thought leadership posts, and lead gen.','category'=>'social','level'=>'junior','orb_type'=>'social','color'=>'#EC4899','is_dmm'=>false,'capabilities_json'=>['linkedin_posts','b2b_strategy','linkedin_leadgen'],'skills_json'=>['LinkedIn Posts','B2B Strategy','Lead Gen']],
+            ['name'=>'Aria','slug'=>'aria','title'=>'TikTok & Reels Creator','description'=>'Short-form video strategy, trending formats, and viral hooks.','category'=>'social','level'=>'junior','orb_type'=>'ads','color'=>'#F97316','is_dmm'=>false,'capabilities_json'=>['tiktok_strategy','trending_formats','viral_hooks'],'skills_json'=>['TikTok Strategy','Trending Formats','Viral Hooks']],
+            ['name'=>'Jordan','slug'=>'jordan','title'=>'Social Analytics Director','description'=>'Cross-platform analytics, ROI reporting, and audience insights.','category'=>'social','level'=>'senior','orb_type'=>'social','color'=>'#EC4899','is_dmm'=>false,'capabilities_json'=>['social_analytics','roi_reporting','audience_insights'],'skills_json'=>['Analytics','ROI Reporting','Audience Insights']],
+            // CRM / Growth (5)
+            ['name'=>'Elena','slug'=>'elena','title'=>'Lead & CRM Manager','description'=>'Lead capture, pipeline management, and automated follow-ups.','category'=>'crm','level'=>'junior','orb_type'=>'crm','color'=>'#00E5A8','is_dmm'=>false,'capabilities_json'=>['create_lead','update_lead','pipeline_management','followup_sequences'],'skills_json'=>['Lead Capture','Pipeline','Follow-up Sequences']],
+            ['name'=>'Sam','slug'=>'sam','title'=>'Email Marketing Specialist','description'=>'Campaign creation, segmentation, and email automation flows.','category'=>'crm','level'=>'specialist','orb_type'=>'crm','color'=>'#00E5A8','is_dmm'=>false,'capabilities_json'=>['create_campaign','send_campaign','email_automation','segmentation'],'skills_json'=>['Email Campaigns','Automation','Segmentation']],
+            ['name'=>'Kai','slug'=>'kai','title'=>'Lead Nurturing Specialist','description'=>'Drip sequences, lead scoring, and conversion optimization.','category'=>'crm','level'=>'junior','orb_type'=>'crm','color'=>'#00E5A8','is_dmm'=>false,'capabilities_json'=>['drip_sequences','lead_scoring','nurture_flows'],'skills_json'=>['Drip Sequences','Lead Scoring','Nurture Flows']],
+            ['name'=>'Vera','slug'=>'vera','title'=>'Marketing Automation Expert','description'=>'Workflow automation, trigger logic, and multi-channel sequences.','category'=>'crm','level'=>'junior','orb_type'=>'ads','color'=>'#F97316','is_dmm'=>false,'capabilities_json'=>['workflow_builder','trigger_logic','multi_channel'],'skills_json'=>['Workflow Builder','Trigger Logic','Multi-channel']],
+            ['name'=>'Max','slug'=>'max','title'=>'Growth & CRO Director','description'=>'Conversion rate optimization, funnel analysis, and A/B testing.','category'=>'crm','level'=>'senior','orb_type'=>'crm','color'=>'#00E5A8','is_dmm'=>false,'capabilities_json'=>['cro','funnel_analysis','ab_testing'],'skills_json'=>['CRO','Funnel Analysis','A/B Testing']],
+        ];
+
+        foreach ($agents as $data) {
+            Agent::updateOrCreate(['slug' => $data['slug']], array_merge($data, ['status' => 'active']));
+        }
+    }
+}

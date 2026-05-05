@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Assistant — Always-On Support — LevelUpGrowth</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/marketing/css/site.css">
+<link rel="stylesheet" href="/marketing/css/orb.css">
+<style>
+/* ── Chat UI ─────────────────────────────────────────── */
+.assist-chat{background:var(--card2);border:1px solid var(--border2);border-radius:20px;overflow:hidden;max-width:720px;margin:0 auto;box-shadow:0 40px 80px rgba(0,0,0,.4)}
+.assist-header{background:var(--card);border-bottom:1px solid var(--border);padding:16px 22px;display:flex;align-items:center;gap:14px}
+.assist-status{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--green);font-weight:600;font-family:var(--ff-h)}
+.assist-status-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 1.4s infinite}
+.assist-msgs{padding:20px;display:flex;flex-direction:column;gap:14px;min-height:320px;max-height:480px;overflow-y:auto}
+.assist-msg{display:flex;align-items:flex-start;gap:10px;max-width:85%}
+.assist-msg.user{align-self:flex-end;flex-direction:row-reverse}
+.assist-bubble{padding:12px 16px;border-radius:14px;font-size:14px;line-height:1.6}
+.assist-msg.bot .assist-bubble{background:var(--card);border:1px solid var(--border);color:#D1D5DB;border-radius:14px 14px 14px 3px}
+.assist-msg.user .assist-bubble{background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;border-radius:14px 14px 3px 14px}
+.assist-typing{display:flex;gap:4px;padding:14px 16px;align-items:center}
+.assist-typing span{width:7px;height:7px;background:var(--faint);border-radius:50%;animation:assistBounce 1.2s ease infinite}
+.assist-typing span:nth-child(2){animation-delay:.15s}
+.assist-typing span:nth-child(3){animation-delay:.3s}
+@keyframes assistBounce{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-6px);opacity:1}}
+.assist-input-row{padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:10px;background:var(--card)}
+.assist-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:11px 16px;color:#E5E7EB;font-family:var(--ff-b);font-size:14px;outline:none;transition:border-color .2s}
+.assist-input:focus{border-color:rgba(124,58,237,.5)}
+.assist-send{background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;border:none;border-radius:10px;padding:11px 20px;font-family:var(--ff-h);font-weight:700;font-size:13.5px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.assist-send:hover{opacity:.9;transform:translateY(-1px)}
+/* ── Quick questions ─────────────────────────────────── */
+.quick-qs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;justify-content:center}
+.quick-q{background:var(--card);border:1px solid var(--border2);border-radius:100px;padding:7px 16px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;font-family:var(--ff-b)}
+.quick-q:hover{border-color:rgba(124,58,237,.4);color:var(--violet);background:rgba(124,58,237,.06)}
+/* ── Features grid ───────────────────────────────────── */
+.assist-feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.assist-feat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 18px;text-align:center}
+.assist-feat-icon{font-size:32px;margin-bottom:12px}
+.assist-feat-title{font-family:var(--ff-h);font-weight:700;font-size:15px;margin-bottom:8px}
+.assist-feat-desc{color:var(--muted);font-size:13.5px;line-height:1.6}
+/* ── Difference section ──────────────────────────────── */
+.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.diff-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 24px}
+.diff-card h3{font-family:var(--ff-h);font-weight:800;font-size:18px;margin-bottom:14px}
+.diff-row{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:#D1D5DB;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.diff-row:last-child{border-bottom:none}
+@media(max-width:768px){
+  .assist-feat-grid{grid-template-columns:1fr}
+  .diff-grid{grid-template-columns:1fr}
+  .quick-qs{gap:6px}
+  .quick-q{font-size:12px;padding:6px 12px}
+}
+</style>
+</head>
+<body>
+
+<div class="page-hero"><div class="page-hero-glow"></div>
+  <div class="tag" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);color:var(--violet)">AI Assistant</div>
+  <h1>Your AI Assistant<br/><span class="g-text2">Available 24/7</span></h1>
+  <p>Ask anything about your business, marketing strategy, platform features, or how to get the most out of LevelUpGrowth. Always on. Always instant.</p>
+  <div class="hero-ctas">
+    <a href="/app/#signup" class="btn btn-primary btn-lg">Try It Free →</a>
+    <a href="#demo" class="btn btn-ghost btn-lg">See It Work ▼</a>
+  </div>
+  <div style="margin-top:20px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+    <span style="font-size:13px;color:var(--faint)">✓ Instant answers</span>
+    <span style="font-size:13px;color:var(--faint)">✓ Available from AI Lite ($49/month)</span>
+    <span style="font-size:13px;color:var(--faint)">✓ Knows your business context</span>
+    <span style="font-size:13px;color:var(--faint)">✓ No waiting, no tickets</span>
+  </div>
+</div>
+
+<!-- ── What is it ── -->
+<section style="padding:80px 28px">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>Not a Bot. Your <span class="g-text">Business Intelligence Layer</span></h2>
+      <p>The AI Assistant understands your business, your plan, your website, and your marketing goals. It gives you real answers — not generic help centre articles.</p>
+    </div>
+    <div class="assist-feat-grid">
+      <div class="assist-feat card-glow reveal a1">
+        <div class="assist-feat-icon">🧠</div>
+        <div class="assist-feat-title">Knows Your Business</div>
+        <div class="assist-feat-desc">Trained on your business details, industry, and goals set during onboarding. Answers are specific to you — not generic.</div>
+      </div>
+      <div class="assist-feat card-glow reveal a2">
+        <div class="assist-feat-icon">⚡</div>
+        <div class="assist-feat-title">Instant Platform Help</div>
+        <div class="assist-feat-desc">Ask how to use any feature, fix any issue, or understand any report. No support tickets, no waiting.</div>
+      </div>
+      <div class="assist-feat card-glow reveal a3">
+        <div class="assist-feat-icon">📊</div>
+        <div class="assist-feat-title">Strategy Advice</div>
+        <div class="assist-feat-desc">Get marketing advice, content ideas, SEO recommendations, and growth tactics tailored to your business and industry.</div>
+      </div>
+      <div class="assist-feat card-glow reveal a1">
+        <div class="assist-feat-icon">🔗</div>
+        <div class="assist-feat-title">Connected to Your Data</div>
+        <div class="assist-feat-desc">Ask about your leads, website traffic, campaign performance, or social engagement. It reads your dashboard data.</div>
+      </div>
+      <div class="assist-feat card-glow reveal a2">
+        <div class="assist-feat-icon">🌍</div>
+        <div class="assist-feat-title">Multilingual</div>
+        <div class="assist-feat-desc">Ask in any language. The assistant responds in the same language you write in — English, Spanish, French, and more.</div>
+      </div>
+      <div class="assist-feat card-glow reveal a3">
+        <div class="assist-feat-icon">🕐</div>
+        <div class="assist-feat-title">24/7 Availability</div>
+        <div class="assist-feat-desc">No office hours. No response time. Ask at 2am during a campaign launch or on a Friday afternoon — always ready.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Live demo ── -->
+<section id="demo" style="padding:80px 28px;background:rgba(18,24,38,.45)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>Ask It <span class="g-text">Anything</span></h2>
+      <p>Try the assistant below. Click a quick question or type your own.</p>
+    </div>
+    <div class="quick-qs reveal" id="quick-qs">
+      <button class="quick-q" onclick="askQuestion('How do I improve my SEO ranking?')">How do I improve my SEO?</button>
+      <button class="quick-q" onclick="askQuestion('What plan should I upgrade to?')">Which plan is right for me?</button>
+      <button class="quick-q" onclick="askQuestion('How do I set up my booking calendar?')">Set up booking calendar</button>
+      <button class="quick-q" onclick="askQuestion('Write me a social media caption for a restaurant')">Social media caption</button>
+      <button class="quick-q" onclick="askQuestion('How does the CRM pipeline work?')">How does CRM work?</button>
+      <button class="quick-q" onclick="askQuestion('What are AI credits and how fast do I use them?')">What are AI credits?</button>
+    </div>
+    <div class="assist-chat reveal">
+      <div class="assist-header">
+        <div id="assist-header-orb"></div>
+        <div style="flex:1">
+          <div style="font-family:var(--ff-h);font-weight:700;font-size:15px;color:#E5E7EB">LevelUp AI Assistant</div>
+          <div class="assist-status"><span class="assist-status-dot"></span>Online — ready to help</div>
+        </div>
+        <div style="font-size:11.5px;color:var(--faint)">Available from AI Lite ($49/mo)</div>
+      </div>
+      <div class="assist-msgs" id="assist-msgs"></div>
+      <div class="assist-input-row">
+        <input class="assist-input" id="assist-input" placeholder="Ask anything about your business or platform…" onkeydown="if(event.key==='Enter')assistSend()">
+        <button class="assist-send" onclick="assistSend()">Send →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── AI Assistant vs AI Agents difference ── -->
+<section style="padding:80px 28px">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>AI Assistant vs <span class="g-text">AI Agents</span> — What's the Difference?</h2>
+      <p>Two different tools. Both powerful. Understanding which does what helps you get the most from the platform.</p>
+    </div>
+    <div class="diff-grid reveal">
+      <div class="diff-card" style="border-color:rgba(124,58,237,.25)">
+        <h3 style="color:var(--violet)">🤖 AI Assistant</h3>
+        <div style="font-size:13px;color:var(--faint);margin-bottom:16px">Your always-on support and knowledge layer</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Answers questions instantly</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Platform help and how-to guidance</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Strategy and marketing advice</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Reads your dashboard data</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Available from AI Lite plan ($49/month)</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Chat-based, always instant</div>
+        <div style="margin-top:16px;background:rgba(124,58,237,.08);border-radius:9px;padding:12px 14px;font-size:13px;color:var(--violet)">Think of it as your always-available business advisor and platform guide.</div>
+      </div>
+      <div class="diff-card" style="border-color:rgba(0,229,168,.25)">
+        <h3 style="color:var(--green)">👥 AI Agents</h3>
+        <div style="font-size:13px;color:var(--faint);margin-bottom:16px">Your dedicated marketing workforce</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Execute real marketing tasks</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Write articles, create social posts</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Run SEO analysis and optimisation</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Manage CRM and follow-up sequences</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Available from Growth plan ($99/month)</div>
+        <div class="diff-row"><span style="color:var(--green)">✓</span>Work autonomously in the background</div>
+        <div style="margin-top:16px;background:rgba(0,229,168,.06);border-radius:9px;padding:12px 14px;font-size:13px;color:var(--green)">Think of them as your full-time AI marketing team, executing work 24/7.</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="/pages/ai-agents/" class="btn btn-ghost">Meet the AI Agents →</a>
+      <a href="/pages/pricing/" class="btn btn-ghost">See Plans →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── What you can ask ── -->
+<section style="padding:80px 28px;background:rgba(18,24,38,.45)">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>What Can You <span class="g-text">Ask It?</span></h2></div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px" class="reveal">
+      <div class="card">
+        <h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:12px">📋 Platform & Features</h4>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:13.5px;color:var(--muted)">
+          <div>"How do I connect my custom domain?"</div>
+          <div>"Where can I see my lead pipeline?"</div>
+          <div>"How do I set up a booking page?"</div>
+          <div>"How do I read my analytics report?"</div>
+        </div>
+      </div>
+      <div class="card">
+        <h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:12px">📈 Marketing Strategy</h4>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:13.5px;color:var(--muted)">
+          <div>"What keywords should I target for my restaurant?"</div>
+          <div>"How often should I post on social media?"</div>
+          <div>"What's a good email open rate for my industry?"</div>
+          <div>"How do I improve my Google ranking?"</div>
+        </div>
+      </div>
+      <div class="card">
+        <h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:12px">✍️ Content & Copy</h4>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:13.5px;color:var(--muted)">
+          <div>"Write me a caption for my new product launch"</div>
+          <div>"Give me 5 blog post ideas for my industry"</div>
+          <div>"Help me write a subject line for my email"</div>
+          <div>"What should my homepage headline say?"</div>
+        </div>
+      </div>
+      <div class="card">
+        <h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:12px">💡 Business Advice</h4>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:13.5px;color:var(--muted)">
+          <div>"How do I get more leads from my website?"</div>
+          <div>"Should I upgrade my plan?"</div>
+          <div>"What's the best way to use my AI credits?"</div>
+          <div>"How can I grow my business faster?"</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-section"><div class="cta-glow"></div><div class="cta-inner reveal">
+  <h2>Your Business Advisor<br/><span class="g-text2">Never Goes Offline</span></h2>
+  <p style="color:var(--muted);font-size:17px;max-width:440px;margin:16px auto 36px;line-height:1.7">The AI Assistant is available from the AI Lite plan ($49/month) and above.</p>
+  <a href="/app/#signup" class="btn btn-primary btn-lg">Start Free — Try the Assistant →</a>
+</div></div>
+
+<div id="site-footer-placeholder"></div>
+<script src="/marketing/js/site.js"></script>
+<script src="/marketing/js/orb.js"></script>
+<script>
+// ── Header orb ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  const ho = document.getElementById('assist-header-orb');
+  if (ho && typeof OrbAvatar !== 'undefined') {
+    ho.innerHTML = OrbAvatar.buildOrb('content', 'md', 'idle');
+    // Pulse the orb
+    setTimeout(function() {
+      const o = ho.querySelector('.orb');
+      if (o) setInterval(function() {
+        o.dataset.state = 'thinking';
+        setTimeout(function() { o.dataset.state = 'idle'; }, 1500);
+      }, 4000);
+    }, 1000);
+  }
+
+  // ── Seed initial message ──────────────────────────────────
+  addMsg('bot', "Hi! I'm your LevelUp AI Assistant. I'm here 24/7 to answer questions about your business, help you use the platform, give marketing advice, or write content for you. What would you like to know?");
+});
+
+// ── Chat simulation ───────────────────────────────────────────
+const CANNED_RESPONSES = {
+  'how do i improve my seo ranking?': "Great question! Here are 3 quick wins for your SEO:\n\n1. **Target long-tail keywords** — Phrases like \"best interior designer in [your city]\" convert better than just \"interior design\".\n2. **Publish one blog post per week** — Fresh content signals Google that your site is active.\n3. **Fix your page speed** — Alex (your Technical SEO agent) can audit this automatically.\n\nWant me to run a keyword analysis for your business right now?",
+  'what plan should i upgrade to?': "Based on your goals, here's my recommendation:\n\n• **Growth ($99/mo)** — If you want your first AI marketing team: 1 DMM + 2 specialist agents, 300 credits, 3 websites.\n• **Pro ($199/mo)** — If you need more volume: 5 junior agents, 900 credits, 10 websites + companion app.\n• **Agency ($399/mo)** — Managing multiple clients: 10 senior agents, 2,500 credits, 50 websites.\n\nWhat's your primary goal — leads, content volume, or managing multiple clients?",
+  'how do i set up my booking calendar?': "Setting up your booking calendar takes about 3 minutes:\n\n1. Go to **Calendar** in your dashboard\n2. Set your available days and time slots\n3. Add your service types (consultation, viewing, call, etc.)\n4. Copy your booking link and add it to your website\n\nYour calendar automatically sends reminders via email and SMS. Need help with any specific step?",
+  'write me a social media caption for a restaurant': "Here are 3 caption options for you:\n\n**Option 1 (Engaging):**\n\"A table for two. Flavours that tell a story. Come experience it tonight. 🍽️ Reserve your spot — link in bio.\"\n\n**Option 2 (Promotional):**\n\"This weekend's special won't last long. Chef's recommendation: our signature slow-cooked lamb with saffron rice. Book now. 📍 [Your location]\"\n\n**Option 3 (Story-driven):**\n\"Every dish starts with a memory. We cook with the same love our grandmothers had. Come taste the difference. ❤️\"\n\nWant me to add your restaurant name and specific hashtags?",
+  'how does the crm pipeline work?': "Your CRM pipeline has 4 stages that leads move through automatically:\n\n1. **New** — Lead captured from your website form\n2. **Contacted** — You or your AI sent the first follow-up\n3. **Qualified** — Lead confirmed interest or replied\n4. **Closed** — Deal won or lost\n\nElena (your CRM agent) automatically moves leads between stages and triggers follow-up sequences. You can drag leads manually in the Kanban view. Want me to show you how to set up your first automation?",
+  'what are ai credits and how fast do i use them?': "AI credits are consumed every time an agent executes a task. Here's a rough guide:\n\n• **Blog article (1,000 words)** — ~15 credits\n• **Social media post** — ~3 credits\n• **SEO keyword analysis** — ~8 credits\n• **AI image generation** — ~20 credits\n• **Email campaign** — ~10 credits\n\nOn the Growth plan (300 credits), you can get roughly 8-10 articles, or 40+ social posts, or a mix each month. Credits reset on your billing date and don't roll over. Need help planning your credit usage?",
+};
+
+function addMsg(role, text) {
+  const msgs = document.getElementById('assist-msgs');
+  if (!msgs) return;
+  const d = document.createElement('div');
+  d.className = 'assist-msg ' + role;
+  if (role === 'bot') {
+    const orbHtml = (typeof OrbAvatar !== 'undefined') ? OrbAvatar.buildOrb('content', 'sm', 'idle') : '';
+    // Convert markdown-style bold to HTML
+    const htmlText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    d.innerHTML = orbHtml + '<div class="assist-bubble">' + htmlText + '</div>';
+  } else {
+    d.innerHTML = '<div class="assist-bubble">' + text + '</div>';
+  }
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('assist-msgs');
+  if (!msgs) return null;
+  const d = document.createElement('div');
+  d.className = 'assist-msg bot';
+  d.id = 'assist-typing';
+  const orbHtml = (typeof OrbAvatar !== 'undefined') ? OrbAvatar.buildOrb('content', 'sm', 'thinking') : '';
+  d.innerHTML = orbHtml + '<div class="assist-bubble" style="padding:0"><div class="assist-typing"><span></span><span></span><span></span></div></div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+  return d;
+}
+
+function assistSend() {
+  const inp = document.getElementById('assist-input');
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) return;
+  inp.value = '';
+  addMsg('user', val);
+
+  const key = val.toLowerCase().replace(/[?!.,]/g, '');
+  let response = CANNED_RESPONSES[key + '?'] || CANNED_RESPONSES[key] || null;
+
+  // Fuzzy match
+  if (!response) {
+    for (const [k, v] of Object.entries(CANNED_RESPONSES)) {
+      const kWords = k.replace(/[?]/g,'').split(' ');
+      const valWords = val.toLowerCase().split(' ');
+      const overlap = kWords.filter(w => valWords.includes(w) && w.length > 3).length;
+      if (overlap >= 2) { response = v; break; }
+    }
+  }
+
+  if (!response) {
+    response = "Great question! To give you the most accurate answer, I'd need to know a bit more about your specific situation. Could you tell me your industry and what goal you're working towards? That way I can give you a tailored recommendation rather than a generic answer.";
+  }
+
+  const typingEl = showTyping();
+  // Change orb to thinking
+  const ho = document.getElementById('assist-header-orb');
+  if (ho && typeof setOrbState !== 'undefined') setOrbState('content', 'thinking');
+
+  setTimeout(function() {
+    if (typingEl) typingEl.remove();
+    if (ho && typeof setOrbState !== 'undefined') setOrbState('content', 'idle');
+    addMsg('bot', response);
+  }, 900 + Math.random() * 600);
+}
+
+function askQuestion(q) {
+  const inp = document.getElementById('assist-input');
+  if (inp) { inp.value = q; }
+  assistSend();
+}
+
+// Enter key
+document.addEventListener('DOMContentLoaded', function() {
+  const inp = document.getElementById('assist-input');
+  if (inp) {
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') assistSend();
+    });
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1389 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\EngineController;
+use App\Http\Controllers\Api\SystemController;
+use App\Http\Controllers\Api\DesignTokenController;
+
+// ════════════════════════════════════════════════════════════════
+// PUBLIC HEALTH & READINESS ENDPOINTS
+// No auth — used by Digital Ocean load balancer health checks
+// and uptime monitoring (UptimeRobot / Betterstack)
+// ════════════════════════════════════════════════════════════════
+Route::get('/health', function () {
+    $checks = []; $healthy = true;
+
+    // Database
+    try { \DB::select('SELECT 1'); $checks['database'] = 'ok'; }
+    catch (\Throwable $e) { $checks['database'] = 'error'; $healthy = false; }
+
+    // Redis / Cache
+    try {
+        \Illuminate\Support\Facades\Cache::put('lu_health_ping', 'pong', 5);
+        $checks['redis'] = \Illuminate\Support\Facades\Cache::get('lu_health_ping') === 'pong' ? 'ok' : 'error';
+        if ($checks['redis'] !== 'ok') $healthy = false;
+    } catch (\Throwable) { $checks['redis'] = 'error'; $healthy = false; }
+
+    // Queue depth
+    try {
+        $pending = \App\Models\Task::whereIn('status', ['queued', 'pending'])->count();
+        $checks['queue_depth'] = $pending;
+        $checks['queue'] = $pending < 1000 ? 'ok' : 'warning';
+    } catch (\Throwable) { $checks['queue'] = 'unknown'; }
+
+    $checks['version']     = config('app.version', '1.0.0');
+    $checks['environment'] = config('app.env');
+    $checks['timestamp']   = now()->toISOString();
+
+    return response()->json([
+        'status' => $healthy ? 'healthy' : 'degraded',
+        'checks' => $checks,
+    ], $healthy ? 200 : 503);
+})->name('health');
+
+// Simple liveness probe — minimal, fast
+Route::get('/ping', fn () => response()->json(['pong' => true, 'ts' => now()->timestamp]))->name('ping');
+
+use App\Http\Controllers\Api\MeetingController;
+use App\Http\Controllers\Api\AgentController;
+use App\Http\Controllers\Api\ManualExecutionController;
+
+/*
+|--------------------------------------------------------------------------
+| Boss888 / LevelUp OS — API Routes (Phase 1 + Phase 2)
+|--------------------------------------------------------------------------
+*/
+
+// ── Public Auth ──────────────────────────────────────────────────────────
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+});
+
+// ── System Health (public) ───────────────────────────────────────────────
+Route::prefix('system')->group(function () {
+    Route::get('/health', [SystemController::class, 'health']);
+});
+
+// ── Protected Routes ─────────────────────────────────────────────────────
+Route::middleware('auth.jwt')->group(function () {
+
+    // Auth
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/switch-workspace', [AuthController::class, 'switchWorkspace']);
+    Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
+    Route::put('/auth/password', [AuthController::class, 'updatePassword']);
+
+    // Workspaces
+    Route::get('/workspaces', [WorkspaceController::class, 'index']);
+    Route::post('/workspaces', [WorkspaceController::class, 'store']);
+
+    // Tasks (user-facing)
+    Route::post('/tasks', [TaskController::class, 'store']);
+    Route::get('/tasks', [TaskController::class, 'index']);
+    Route::get('/tasks/{id}', [TaskController::class, 'show']);
+    Route::get('/tasks/{id}/status', [TaskController::class, 'status']);
+    Route::get('/tasks/{id}/events', [TaskController::class, 'events']);
+    // CRITICAL-03 FIX: user-accessible cancel (admin cancel is separate at /admin/tasks/{id}/cancel)
+    Route::post('/tasks/{id}/cancel', function (\Illuminate\Http\Request $r, $id) {
+        $wsId = $r->attributes->get('workspace_id');
+        $task = \App\Models\Task::where('id', $id)->where('workspace_id', $wsId)->firstOrFail();
+        if (in_array($task->status, ['completed', 'failed', 'cancelled'])) {
+            return response()->json(['error' => 'Task cannot be cancelled in its current state'], 422);
+        }
+        $task->update(['status' => 'cancelled', 'updated_at' => now()]);
+        return response()->json(['cancelled' => true, 'task_id' => $id]);
+    });
+
+    // Approvals
+    Route::get('/approvals', [ApprovalController::class, 'index']);
+    Route::post('/approvals/{id}/approve', [ApprovalController::class, 'approve']);
+    Route::post('/approvals/{id}/reject', [ApprovalController::class, 'reject']);
+    Route::post('/approvals/{id}/revise', [ApprovalController::class, 'revise']);
+
+    // Engines
+    Route::get('/engines', [EngineController::class, 'index']);
+    Route::get('/engines/{name}', [EngineController::class, 'show']);
+
+    // System (protected)
+    Route::get('/system/engines', [SystemController::class, 'engines']);
+    Route::get('/system/queue', [SystemController::class, 'queue']);
+    Route::get('/system/connectors', [SystemController::class, 'connectors']);
+
+    // Manual Execution (Phase 2)
+    Route::post('/manual/execute', [ManualExecutionController::class, 'execute']);
+
+    // Design Tokens
+    Route::get('/design-tokens', [DesignTokenController::class, 'index']);
+
+    // Meetings
+    Route::post('/meetings', [MeetingController::class, 'store']);
+    Route::get('/meetings', [MeetingController::class, 'index']);
+    Route::get('/meetings/{id}', [MeetingController::class, 'show']);
+    Route::post('/meetings/{id}/messages', [MeetingController::class, 'addMessage']);
+
+    // Agents
+    Route::get('/agents', [AgentController::class, 'index']);
+    Route::get('/workspaces/{id}/agents', [AgentController::class, 'forWorkspace']);
+
+    // Agent Dispatch (APP888 messaging integration)
+    Route::post('/agent/dispatch', [\App\Http\Controllers\Api\AgentDispatchController::class, 'dispatch']);
+    Route::get('/agent/conversations', [\App\Http\Controllers\Api\AgentDispatchController::class, 'conversations']);
+    Route::get('/agent/conversation/{id}', [\App\Http\Controllers\Api\AgentDispatchController::class, 'conversation']);
+    Route::get('/agent/events', [\App\Http\Controllers\Api\AgentDispatchController::class, 'events']);
+
+    // Strategy Meeting + Multi-step Planning (Phase 5 — LLM)
+    Route::post('/agent/strategy-meeting', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $goal = $r->input('goal');
+        if (! $goal) return response()->json(['error' => 'Goal is required'], 422);
+
+        $planner = app(\App\Core\LLM\MultiStepPlanner::class);
+        $result = $planner->strategyMeeting($wsId, $goal);
+
+        return response()->json($result);
+    });
+
+    Route::post('/agent/plan', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $goal = $r->input('goal');
+        if (! $goal) return response()->json(['error' => 'Goal is required'], 422);
+
+        $planner = app(\App\Core\LLM\MultiStepPlanner::class);
+        $plan = $planner->plan($wsId, $goal);
+
+        return response()->json($plan);
+    });
+
+    Route::post('/agent/execute-plan', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $plan = $r->input('plan');
+        if (! $plan) return response()->json(['error' => 'Plan is required'], 422);
+
+        $planner = app(\App\Core\LLM\MultiStepPlanner::class);
+        $result = $planner->execute($wsId, $plan);
+
+        return response()->json($result);
+    });
+
+    // Notifications
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markRead']);
+
+    // Media Upload
+    Route::post('/media/upload', [\App\Http\Controllers\Api\MediaController::class, 'upload']);
+
+    // Validation Report (Phase 4)
+    Route::get('/system/validation-report', [\App\Http\Controllers\Api\Debug\DebugScenarioController::class, 'validationReport']);
+
+    // ══════════════════════════════════════════════════════════════
+    // SARAH ORCHESTRATOR — THE real DMM system controller
+    // All user goals flow through Sarah → plan → delegate → execute → evaluate
+    // ══════════════════════════════════════════════════════════════
+
+    Route::prefix('sarah')->group(function () {
+        // Main entry: user sends goal → Sarah creates plan
+        Route::post('/receive', function (\Illuminate\Http\Request $r) {
+            $r->validate(['goal' => 'required|string']);
+            $sarah = app(\App\Core\Orchestration\SarahOrchestrator::class);
+            return response()->json($sarah->receive(
+                $r->attributes->get('workspace_id'), $r->user()->id,
+                $r->input('goal'), $r->input('context', [])
+            ));
+        });
+
+        // Approve a plan
+        Route::post('/plans/{id}/approve', function (\Illuminate\Http\Request $r, $id) {
+            $sarah = app(\App\Core\Orchestration\SarahOrchestrator::class);
+            return response()->json($sarah->approvePlan($r->attributes->get('workspace_id'), $id, $r->user()->id));
+        });
+
+        // Cancel a plan
+        Route::post('/plans/{id}/cancel', function (\Illuminate\Http\Request $r, $id) {
+            $sarah = app(\App\Core\Orchestration\SarahOrchestrator::class);
+            $sarah->cancelPlan($id);
+            return response()->json(['cancelled' => true]);
+        });
+
+        // Get plan status (for polling)
+        Route::get('/plans/{id}', function ($id) {
+            $sarah = app(\App\Core\Orchestration\SarahOrchestrator::class);
+            return response()->json($sarah->getPlanStatus($id));
+        });
+
+        // List plans
+        Route::get('/plans', function (\Illuminate\Http\Request $r) {
+            $sarah = app(\App\Core\Orchestration\SarahOrchestrator::class);
+            return response()->json(['plans' => $sarah->listPlans($r->attributes->get('workspace_id'), $r->all())]);
+        });
+
+        // ── Strategy Meetings (real agent collaboration) ──
+        Route::post('/meeting/start', function (\Illuminate\Http\Request $r) {
+            $r->validate(['goal' => 'required|string']);
+            $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
+            return response()->json($engine->startMeeting(
+                $r->attributes->get('workspace_id'), $r->user()->id,
+                $r->input('goal'), $r->input('agents', [])
+            ));
+        });
+
+        Route::post('/meeting/{id}/advance', function ($id) {
+            $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
+            return response()->json($engine->advanceMeeting($id));
+        });
+
+        Route::post('/meeting/full', function (\Illuminate\Http\Request $r) {
+            $r->validate(['goal' => 'required|string']);
+            $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
+            return response()->json($engine->runFullMeeting(
+                $r->attributes->get('workspace_id'), $r->user()->id, $r->input('goal')
+            ));
+        });
+
+        Route::get('/meeting/{id}', function ($id) {
+            $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
+            return response()->json($engine->getMeetingTranscript($id));
+        });
+
+        // User participates in meeting
+        Route::post('/meeting/{id}/message', function (\Illuminate\Http\Request $r, $id) {
+            $r->validate(['message' => 'required|string']);
+            $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
+            return response()->json($engine->userMessage($id, $r->user()->id, $r->input('message')));
+        });
+
+        // User ends meeting
+        Route::post('/meeting/{id}/end', function (\Illuminate\Http\Request $r, $id) {
+            $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
+            return response()->json($engine->endMeeting($id, $r->user()->id));
+        });
+
+        // Get meeting cost estimate before starting
+        Route::post('/meeting/estimate', function (\Illuminate\Http\Request $r) {
+            $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
+            return response()->json($engine->estimateMeetingCost($r->input('agents', [])));
+        });
+
+        // ── Proactive Strategy + Proposals ──
+        Route::get('/proposals', function (\Illuminate\Http\Request $r) {
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json(['proposals' => $proactive->listProposals($r->attributes->get('workspace_id'), $r->input('status'))]);
+        });
+
+        Route::post('/proposals/{id}/approve', function (\Illuminate\Http\Request $r, $id) {
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->approveProposal($r->attributes->get('workspace_id'), $r->user()->id, $id));
+        });
+
+        Route::post('/proposals/{id}/decline', function (\Illuminate\Http\Request $r, $id) {
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->declineProposal($r->attributes->get('workspace_id'), $id));
+        });
+
+        // Cost estimate for any plan
+        Route::post('/estimate-cost', function (\Illuminate\Http\Request $r) {
+            $r->validate(['tasks' => 'required|array']);
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->estimatePlanCost($r->input('tasks')));
+        });
+
+        Route::post('/proactive/onboarding', function (\Illuminate\Http\Request $r) {
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->onOnboardingComplete($r->attributes->get('workspace_id'), $r->user()->id));
+        });
+
+        Route::post('/proactive/daily-check', function (\Illuminate\Http\Request $r) {
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->dailyCheck($r->attributes->get('workspace_id')));
+        });
+
+        Route::post('/proactive/weekly-review', function (\Illuminate\Http\Request $r) {
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->weeklyReview($r->attributes->get('workspace_id')));
+        });
+
+        Route::post('/proactive/monthly-strategy', function (\Illuminate\Http\Request $r) {
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->monthlyStrategy($r->attributes->get('workspace_id'), $r->user()->id));
+        });
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // EXPERIMENTS — A/B testing engine
+    // ══════════════════════════════════════════════════════════════
+
+    Route::prefix('experiments')->group(function () {
+        $e = \App\Core\Intelligence\CampaignOptimizationEngine::class;
+        Route::get('/', function (\Illuminate\Http\Request $r) use ($e) {
+            return response()->json(['experiments' => app($e)->listExperiments($r->attributes->get('workspace_id'), $r->all())]);
+        });
+        Route::post('/', function (\Illuminate\Http\Request $r) use ($e) {
+            $r->validate(['name' => 'required|string', 'engine' => 'required|string', 'hypothesis' => 'required|string']);
+            return response()->json(['experiment_id' => app($e)->createExperiment($r->attributes->get('workspace_id'), $r->all())], 201);
+        });
+        Route::get('/{id}', function (\Illuminate\Http\Request $r, $id) use ($e) {
+            return response()->json(app($e)->getExperiment($r->attributes->get('workspace_id'), $id));
+        });
+        Route::post('/{id}/start', function ($id) use ($e) {
+            app($e)->startExperiment($id);
+            return response()->json(['started' => true]);
+        });
+        Route::post('/{id}/result', function (\Illuminate\Http\Request $r, $id) use ($e) {
+            $r->validate(['variant_id' => 'required|string', 'results' => 'required|array']);
+            app($e)->recordVariantResult($id, $r->input('variant_id'), $r->input('results'));
+            return response()->json(['recorded' => true]);
+        });
+        Route::post('/{id}/evaluate', function ($id) use ($e) {
+            return response()->json(app($e)->evaluateExperiment($id));
+        });
+        Route::get('/{wsId}/compare/{engine}', function (\Illuminate\Http\Request $r, $wsId, $engine) use ($e) {
+            return response()->json(app($e)->compareStrategies($wsId, $engine));
+        });
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // INTELLIGENCE — query knowledge, agent profiles, validation
+    // ══════════════════════════════════════════════════════════════
+
+    Route::prefix('intelligence')->group(function () {
+        // Global knowledge query
+        Route::get('/knowledge', function (\Illuminate\Http\Request $r) {
+            return response()->json(['insights' => app(\App\Core\Intelligence\GlobalKnowledgeService::class)->query($r->all())]);
+        });
+
+        // Agent profile
+        Route::get('/agents/{slug}/profile', function ($slug) {
+            $agent = \App\Models\Agent::where('slug', $slug)->first();
+            if (!$agent) return response()->json(['error' => 'Agent not found'], 404);
+            return response()->json(app(\App\Core\Intelligence\AgentExperienceService::class)->getAgentProfile($agent->id));
+        });
+
+        // Agent trust score
+        Route::get('/agents/{slug}/trust', function (\Illuminate\Http\Request $r, $slug) {
+            $agent = \App\Models\Agent::where('slug', $slug)->first();
+            if (!$agent) return response()->json(['error' => 'Agent not found'], 404);
+            $ws = \App\Models\Workspace::find($r->attributes->get('workspace_id'));
+            return response()->json(app(\App\Core\Intelligence\Validation\IntelligenceValidator::class)
+                ->getAgentTrustScore($agent->id, $ws?->industry));
+        });
+
+        // Engine briefing
+        Route::get('/engines/{engine}/briefing', function ($engine) {
+            return response()->json(app(\App\Core\Intelligence\EngineIntelligenceService::class)->getBriefing($engine));
+        });
+
+        // Segmented effectiveness
+        Route::get('/engines/{engine}/effectiveness/{tool}', function ($engine, $tool) {
+            return response()->json(app(\App\Core\Intelligence\Validation\IntelligenceValidator::class)
+                ->getSegmentedEffectiveness($engine, $tool));
+        });
+
+        // Time-based intelligence
+        Route::get('/seasonal-patterns', function (\Illuminate\Http\Request $r) {
+            return response()->json(app(\App\Core\Intelligence\GlobalKnowledgeService::class)
+                ->getSeasonalPatterns($r->input('engine'), $r->input('industry')));
+        });
+
+        Route::get('/trends', function (\Illuminate\Http\Request $r) {
+            return response()->json(app(\App\Core\Intelligence\GlobalKnowledgeService::class)
+                ->getTrends($r->input('engine'), $r->input('industry'), $r->input('months', 6)));
+        });
+
+        Route::get('/lifecycle', function (\Illuminate\Http\Request $r) {
+            return response()->json(app(\App\Core\Intelligence\GlobalKnowledgeService::class)
+                ->getLifecycleInsights($r->input('engine')));
+        });
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // UNIFIED EXECUTION — ALL engine actions flow through here
+    // Manual Mode: POST /api/execute {engine, action, params}
+    // Agent Mode:  POST /api/execute/async {engine, action, params, agent_id}
+    // ══════════════════════════════════════════════════════════════
+
+    Route::post('/execute', function (\Illuminate\Http\Request $r) {
+        $r->validate(['engine' => 'required|string', 'action' => 'required|string']);
+        $executor = app(\App\Core\EngineKernel\EngineExecutionService::class);
+        return response()->json($executor->execute(
+            $r->attributes->get('workspace_id'),
+            $r->input('engine'),
+            $r->input('action'),
+            $r->input('params', []),
+            ['user_id' => $r->user()?->id, 'source' => 'manual', 'priority' => $r->input('priority', 'normal')]
+        ));
+    });
+
+    Route::post('/execute/async', function (\Illuminate\Http\Request $r) {
+        $r->validate(['engine' => 'required|string', 'action' => 'required|string']);
+        $executor = app(\App\Core\EngineKernel\EngineExecutionService::class);
+        return response()->json($executor->executeAsync(
+            $r->attributes->get('workspace_id'),
+            $r->input('engine'),
+            $r->input('action'),
+            $r->input('params', []),
+            ['user_id' => $r->user()?->id, 'agent_id' => $r->input('agent_id', 'sarah'), 'source' => 'agent', 'priority' => $r->input('priority', 'normal')]
+        ));
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // ENGINE ROUTES (Phase 2) — direct CRUD for reads, execution bridge for writes
+    // ══════════════════════════════════════════════════════════════
+
+    // ── CRM Engine (100% complete — 32 routes) ─────────────────
+    Route::prefix('crm')->group(function () {
+        $c = \App\Engines\CRM\Http\Controllers\CrmController::class;
+
+        // Leads (12 routes)
+        Route::get('/leads', [$c, 'listLeads']);
+        Route::post('/leads', [$c, 'createLead']);
+        Route::get('/leads/export', [$c, 'exportLeads']);
+        Route::post('/leads/import', [$c, 'importLeads']);
+        Route::get('/leads/{id}', [$c, 'getLead']);
+        Route::put('/leads/{id}', [$c, 'updateLead']);
+        Route::delete('/leads/{id}', [$c, 'deleteLead']);
+        Route::post('/leads/{id}/restore', [$c, 'restoreLead']);
+        Route::post('/leads/{id}/score', [$c, 'scoreLead']);
+        Route::post('/leads/{id}/assign', [$c, 'assignLead']);
+
+        // Contacts (7 routes)
+        Route::get('/contacts', [$c, 'listContacts']);
+        Route::post('/contacts', [$c, 'createContact']);
+        Route::get('/contacts/duplicates', [$c, 'findDuplicates']);
+        Route::get('/contacts/{id}', [$c, 'getContact']);
+        Route::put('/contacts/{id}', [$c, 'updateContact']);
+        Route::delete('/contacts/{id}', [$c, 'deleteContact']);
+        Route::post('/contacts/merge', [$c, 'mergeContacts']);
+
+        // Deals (5 routes)
+        Route::get('/deals', [$c, 'listDeals']);
+        Route::post('/deals', [$c, 'createDeal']);
+        Route::get('/deals/{id}', [$c, 'getDeal']);
+        Route::put('/deals/{id}', [$c, 'updateDeal']);
+        Route::put('/deals/{id}/stage', [$c, 'updateDealStage']);
+
+        // Pipeline stages (5 routes)
+        Route::get('/pipeline', [$c, 'pipeline']);
+        Route::get('/stages', [$c, 'stages']);
+        Route::post('/stages', [$c, 'createStage']);
+        Route::put('/stages/{id}', [$c, 'updateStage']);
+        Route::delete('/stages/{id}', [$c, 'deleteStage']);
+        Route::post('/stages/reorder', [$c, 'reorderStages']);
+
+        // Activities (4 routes)
+        Route::get('/activities', [$c, 'listActivities']);
+        Route::post('/activities', [$c, 'logActivity']);
+        Route::post('/activities/{id}/complete', [$c, 'completeActivity']);
+        Route::get('/today', [$c, 'todayView']);
+
+        // Notes (3 routes)
+        Route::get('/notes', [$c, 'listNotes']);
+        Route::post('/notes', [$c, 'addNote']);
+        Route::delete('/notes/{id}', [$c, 'deleteNote']);
+
+
+
+        // CRM settings & views (frontend compat)
+        Route::get("/settings", function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get("workspace_id");
+            $stages = app(\App\Engines\CRM\Services\CrmService::class)->getStages($wsId);
+            return response()->json([
+                "stages" => collect($stages)->map(fn($s) => ["id" => is_object($s) ? $s->id : $s, "label" => is_object($s) ? $s->name : (string)$s, "color" => is_object($s) ? ($s->color ?? "#6C5CE7") : "#6C5CE7"])->values()->toArray(),
+                "statuses" => [["id" => "active", "label" => "Active"], ["id" => "inactive", "label" => "Inactive"]],
+                "categories" => [],
+                "sources" => [["id" => "manual", "label" => "Manual"], ["id" => "import", "label" => "Import"], ["id" => "api", "label" => "API"]],
+                "tags" => [],
+            ]);
+        });
+        Route::get("/views", fn() => response()->json([]));
+
+        // Nested contact notes & attachments (frontend compat)
+        Route::get('/contacts/{contactId}/notes', [$c, 'listNotes']);
+        Route::post('/contacts/{contactId}/notes', [$c, 'addNote']);
+        Route::delete('/contacts/{contactId}/notes/{noteId}', [$c, 'deleteNote']);
+        Route::post('/contacts/{contactId}/attachments', fn(\Illuminate\Http\Request $r, $contactId) => response()->json(["message" => "Attachments not yet implemented"], 501));
+        Route::get('/contacts/{contactId}/attachments', fn(\Illuminate\Http\Request $r, $contactId) => response()->json(["attachments" => []]));
+
+        // Revenue & Reporting (2 routes)
+        Route::get('/revenue', [$c, 'revenue']);
+        Route::get('/reporting', [$c, 'reporting']);
+
+        // AI Outreach Generation — routed through Creative blueprint
+        Route::post('/outreach/generate', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            return response()->json(
+                app(\App\Engines\CRM\Services\CrmService::class)->generateOutreach($wsId, $r->all())
+            );
+        });
+        Route::post('/outreach/follow-up', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            return response()->json(
+                app(\App\Engines\CRM\Services\CrmService::class)->generateFollowUp($wsId, $r->all())
+            );
+        });
+    });
+
+    // ── SEO Engine (100% complete — 25 routes) ────────────────
+    Route::prefix('seo')->group(function () {
+        $c = \App\Engines\SEO\Http\Controllers\SeoController::class;
+
+        // Analysis tools (3)
+        Route::post('/serp-analysis', [$c, 'serpAnalysis']);
+        Route::post('/ai-report', [$c, 'aiReport']);
+        Route::post('/deep-audit', [$c, 'deepAudit']);
+
+        // Content delegation (2)
+        Route::post('/improve-draft', [$c, 'improveDraft']);
+        Route::post('/write-article', [$c, 'writeArticle']);
+
+        // AI status (1)
+        Route::get('/ai-status', [$c, 'aiStatus']);
+
+        // Link management (6)
+        Route::get('/links', [$c, 'linkSuggestions']);
+        Route::post('/links/generate', [$c, 'generateLinks']);
+        Route::post('/links/{id}/insert', [$c, 'insertLink']);
+        Route::post('/links/{id}/dismiss', [$c, 'dismissLink']);
+        Route::get('/outbound', [$c, 'outboundLinks']);
+        Route::post('/outbound/check', [$c, 'checkOutbound']);
+
+        // Goals (5)
+        Route::get('/goals', [$c, 'listGoals']);
+        Route::post('/goals', [$c, 'createGoal']);
+        Route::get('/goals/{id}', [$c, 'getGoal']);
+        Route::post('/goals/{id}/pause', [$c, 'pauseGoal']);
+        Route::post('/goals/{id}/resume', [$c, 'resumeGoal']);
+        Route::get('/agent-status', [$c, 'agentStatus']);
+
+        // Keywords (3)
+        Route::get('/keywords', [$c, 'listKeywords']);
+        Route::post('/keywords', [$c, 'addKeyword']);
+        Route::delete('/keywords/{id}', [$c, 'deleteKeyword']);
+
+        // Audits (2)
+        Route::get('/audits', [$c, 'listAudits']);
+        Route::get('/audits/{id}', [$c, 'getAudit']);
+
+        // Dashboard & Reporting (2)
+        Route::get('/dashboard', [$c, 'dashboard']);
+        Route::get('/report', [$c, 'report']);
+
+        // Redirects management (DB-backed)
+        Route::get("/redirects", function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $redirects = \Illuminate\Support\Facades\DB::table('seo_redirects')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('created_at')
+                ->get();
+            return response()->json(["redirects" => $redirects]);
+        });
+        Route::post("/redirects", function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $id = \Illuminate\Support\Facades\DB::table('seo_redirects')->insertGetId([
+                'workspace_id' => $wsId,
+                'source_url'   => $r->input('from', $r->input('source_url', '')),
+                'target_url'   => $r->input('to', $r->input('target_url', '')),
+                'type'         => $r->input('type', '301'),
+                'is_regex'     => $r->boolean('is_regex', false),
+                'status'       => 'active',
+                'hit_count'    => 0,
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+            return response()->json(["id" => $id, "created" => true]);
+        });
+        Route::delete("/redirects/{id}", function ($id, \Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $deleted = \Illuminate\Support\Facades\DB::table('seo_redirects')
+                ->where('id', $id)
+                ->where('workspace_id', $wsId)
+                ->delete();
+            return response()->json(["deleted" => $deleted > 0, "id" => $id]);
+        });
+        Route::get("/404-log", function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $entries = \Illuminate\Support\Facades\DB::table('seo_404_log')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('last_hit_at')
+                ->limit(200)
+                ->get();
+            return response()->json(["entries" => $entries]);
+        });
+
+        // SEO Settings (DB-backed)
+        Route::get("/settings", function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $rows = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)
+                ->get();
+            $settings = [];
+            foreach ($rows as $row) {
+                $settings[$row->key] = $row->value;
+            }
+            if (empty($settings)) {
+                $settings = [
+                    'title_template' => '{page_title} | {site_name}',
+                    'meta_description_fallback' => '',
+                    'sitemap_enabled' => 'true',
+                ];
+            }
+            return response()->json($settings);
+        });
+        Route::post("/settings", function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $settings = $r->except(['_token']);
+            $group = $r->input('_group', 'general');
+            unset($settings['_group']);
+            foreach ($settings as $key => $value) {
+                \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
+                    ['workspace_id' => $wsId, 'key' => $key],
+                    ['value' => is_array($value) ? json_encode($value) : (string) $value, 'group' => $group, 'updated_at' => now(), 'created_at' => now()]
+                );
+            }
+            return response()->json(["saved" => true]);
+        });
+
+        // Score weights (DB-backed)
+        Route::get("/score-weights", function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $rows = \Illuminate\Support\Facades\DB::table('seo_score_weights')
+                ->where('workspace_id', $wsId)
+                ->get();
+            $weights = [];
+            foreach ($rows as $row) {
+                $weights[$row->factor] = $row->weight;
+            }
+            if (empty($weights)) {
+                $defaults = ['title' => 20, 'meta_description' => 15, 'content_length' => 25, 'internal_links' => 15, 'image_alt' => 10, 'readability' => 15];
+                foreach ($defaults as $factor => $weight) {
+                    \Illuminate\Support\Facades\DB::table('seo_score_weights')->insert([
+                        'workspace_id' => $wsId,
+                        'factor' => $factor,
+                        'weight' => $weight,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+                $weights = $defaults;
+            }
+            return response()->json($weights);
+        });
+        Route::post("/score-weights", function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $weights = $r->except(['_token']);
+            foreach ($weights as $factor => $weight) {
+                \Illuminate\Support\Facades\DB::table('seo_score_weights')->updateOrInsert(
+                    ['workspace_id' => $wsId, 'factor' => $factor],
+                    ['weight' => (int) $weight, 'updated_at' => now(), 'created_at' => now()]
+                );
+            }
+            return response()->json(["saved" => true]);
+        });
+
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // ALL ENGINE ROUTES — Controller-based, BaseEngineController enforced
+    // READS = direct to service | WRITES = through execution pipeline
+    // ══════════════════════════════════════════════════════════════
+
+    // ── Write / Content Engine ───────────────────────────────────
+    Route::prefix('write')->group(function () {
+        $c = \App\Engines\Write\Http\Controllers\WriteController::class;
+        Route::get('/articles', [$c, 'listArticles']);
+        Route::post('/articles', [$c, 'createArticle']);
+        Route::get('/articles/{id}', [$c, 'getArticle']);
+        Route::put('/articles/{id}', [$c, 'updateArticle']);
+        Route::delete('/articles/{id}', [$c, 'deleteArticle']);
+        Route::get('/articles/{id}/versions', [$c, 'getVersions']);
+        Route::post('/articles/{id}/versions/{vid}/restore', [$c, 'restoreVersion']);
+        Route::post('/ai/write', [$c, 'writeArticle']);
+        Route::post('/ai/improve', [$c, 'improveDraft']);
+        Route::post('/ai/outline', [$c, 'generateOutline']);
+        Route::post('/ai/headlines', [$c, 'generateHeadlines']);
+        Route::post('/ai/meta', [$c, 'generateMeta']);
+        Route::get('/dashboard', [$c, 'dashboard']);
+    });
+
+    // ── Creative Engine ──────────────────────────────────────────
+    Route::prefix('creative')->group(function () {
+        $s    = \App\Engines\Creative\Services\CreativeService::class;
+        $exec = \App\Core\EngineKernel\EngineExecutionService::class;
+
+        // Dashboard
+        Route::get('/dashboard', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getDashboard($r->attributes->get('workspace_id'))));
+
+        // Brand identity (CIMS)
+        Route::get('/brand', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getBrandIdentity($r->attributes->get('workspace_id'))));
+        Route::put('/brand', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->updateBrandIdentity($r->attributes->get('workspace_id'), $r->all())));
+
+        // Generation memory
+        Route::get('/memory', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getGenerationMemory($r->attributes->get('workspace_id'), $r->query('type'), (int) $r->query('limit', 20))));
+        Route::get('/memory/stats', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getMemoryStats($r->attributes->get('workspace_id'))));
+
+        // Blueprint (cross-engine entry point — callable by other engines or directly)
+        Route::post('/blueprint', function (\Illuminate\Http\Request $r) use ($s) {
+            $wsId   = $r->attributes->get('workspace_id');
+            $engine = $r->input('engine', 'creative');
+            $type   = $r->input('type', 'content');
+            return response()->json(app($s)->generateThroughBlueprint($engine, $type, $wsId, $r->except(['engine', 'type'])));
+        });
+
+        // Image generation (through pipeline — approval-gated, credit-tracked)
+        Route::post('/generate/image', function (\Illuminate\Http\Request $r) use ($exec) {
+            return response()->json(app($exec)->execute(
+                $r->attributes->get('workspace_id'), 'creative', 'generate_image', $r->all(),
+                ['user_id' => $r->user()?->id, 'source' => 'manual']
+            ), 202);
+        });
+
+        // Video generation (async — returns in_progress immediately)
+        Route::post('/generate/video', function (\Illuminate\Http\Request $r) use ($exec) {
+            return response()->json(app($exec)->execute(
+                $r->attributes->get('workspace_id'), 'creative', 'generate_video', $r->all(),
+                ['user_id' => $r->user()?->id, 'source' => 'manual']
+            ), 202);
+        });
+
+        // Video job polling
+        Route::get('/assets/{id}/poll', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->pollVideoJob((int) $id)));
+
+        // Asset CRUD
+        Route::get('/assets', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAssets($r->attributes->get('workspace_id'), $r->all())));
+        Route::get('/assets/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getAsset($r->attributes->get('workspace_id'), (int) $id)));
+        Route::delete('/assets/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => app($s)->deleteAsset((int) $id)]));
+
+        // PATCH v1.0.1: POST /creative/assets — frontend calls this with {type, prompt}.
+        // Was 404 because only GET /assets existed. Routes generation through the execution
+        // pipeline so approval gating and credit deduction apply.
+        // type=image → creative/generate_image (10 credits, auto-approve)
+        // type=video → creative/generate_video (25 credits, review-gated)
+        Route::post('/assets', function (\Illuminate\Http\Request $r) use ($exec) {
+            $r->validate([
+                'type'   => 'required|in:image,video',
+                'prompt' => 'required|string|max:2000',
+            ]);
+
+            $wsId   = $r->attributes->get('workspace_id');
+            $type   = $r->input('type');
+            $action = $type === 'video' ? 'generate_video' : 'generate_image';
+
+            return response()->json(
+                app($exec)->execute(
+                    $wsId,
+                    'creative',
+                    $action,
+                    $r->all(),
+                    ['user_id' => $r->user()?->id, 'source' => 'manual']
+                ),
+                202
+            );
+        });
+    });
+
+    // ── Builder Engine ───────────────────────────────────────────
+    Route::prefix('builder')->group(function () {
+        $s = \App\Engines\Builder\Services\BuilderService::class;
+        $exec = \App\Core\EngineKernel\EngineExecutionService::class;
+        // Reads
+        Route::get('/websites', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listWebsites($r->attributes->get('workspace_id'))));
+        Route::get('/websites/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getWebsite($r->attributes->get('workspace_id'), $id)));
+        Route::get('/websites/{id}/pages', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->listPages($id)));
+        Route::get('/pages/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getPage($id)));
+        // Writes through pipeline
+        Route::post('/websites', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'create_website', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::post('/websites/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'publish_website', ['website_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/websites/{wid}/pages', fn(\Illuminate\Http\Request $r, $wid) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'generate_page', array_merge($r->all(), ['website_id' => $wid]), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::put('/pages/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updatePage($id, $r->all()));
+        Route::post('/wizard', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'wizard_generate', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::post('/arthur', [\App\Http\Controllers\Api\ArthurController::class, 'handle']);
+    });
+
+    // ── Marketing Engine ─────────────────────────────────────────
+    Route::prefix('marketing')->group(function () {
+        $s = \App\Engines\Marketing\Services\MarketingService::class;
+        $exec = \App\Core\EngineKernel\EngineExecutionService::class;
+        // Reads
+        Route::get('/campaigns', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listCampaigns($r->attributes->get('workspace_id'), $r->all())));
+        Route::get('/campaigns/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getCampaign($r->attributes->get('workspace_id'), $id)));
+        Route::get('/templates', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listTemplates($r->attributes->get('workspace_id'))));
+        Route::get('/automations', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAutomations($r->attributes->get('workspace_id'))));
+        // Writes through pipeline
+        Route::post('/campaigns', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'marketing', 'create_campaign', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::put('/campaigns/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updateCampaign($id, $r->all()));
+        Route::post('/campaigns/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'marketing', 'schedule_campaign', ['campaign_id' => $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/templates', fn(\Illuminate\Http\Request $r) => response()->json(['template_id' => app($s)->createTemplate($r->attributes->get('workspace_id'), $r->all())], 201));
+        Route::post('/automations', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'marketing', 'create_automation', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::post('/automations/{id}/toggle', fn(\Illuminate\Http\Request $r, $id) => response()->json(['toggled' => true]) && app($s)->toggleAutomation($id, $r->input('status')));
+
+        // Template CRUD
+        Route::get("/templates/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getTemplate($r->attributes->get("workspace_id"), $id)));
+        Route::put("/templates/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["updated" => true, "message" => "Template update not yet implemented"]));
+        Route::delete("/templates/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => true, "message" => "Template delete not yet implemented"]));
+        Route::delete("/campaigns/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => app($s)->deleteCampaign($id)]));
+        // Sequences
+        Route::get("/sequences", fn(\Illuminate\Http\Request $r) => response()->json(["sequences" => [], "total" => 0]));
+        Route::post("/sequences", fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get("workspace_id"), "marketing", "create_sequence", $r->all(), ["user_id" => $r->user()?->id, "source" => "manual"]), 201));
+        Route::delete("/sequences/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => true, "message" => "Sequences not yet implemented"]));
+        Route::post("/sequences/{id}/steps", fn(\Illuminate\Http\Request $r, $id) => response()->json(["message" => "Sequences not yet implemented"], 501));
+        // Email settings
+        Route::get("/email/settings", fn(\Illuminate\Http\Request $r) => response()->json(["provider" => null, "from_name" => null, "from_email" => null, "configured" => false]));
+        Route::post("/email/settings", fn(\Illuminate\Http\Request $r) => response()->json(["message" => "Email settings not yet implemented"], 501));
+        Route::post("/email/test", fn(\Illuminate\Http\Request $r) => response()->json(["message" => "Test email not yet implemented"], 501));
+        // Campaign send
+        Route::post("/campaigns/{id}/send", fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get("workspace_id"), "marketing", "send_campaign", array_merge($r->all(), ["campaign_id" => $id]), ["user_id" => $r->user()?->id, "source" => "manual"])));
+    });
+
+    // ── Social Engine ────────────────────────────────────────────
+    Route::prefix('social')->group(function () {
+        $s = \App\Engines\Social\Services\SocialService::class;
+        $exec = \App\Core\EngineKernel\EngineExecutionService::class;
+        // Reads
+        Route::get('/posts', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listPosts($r->attributes->get('workspace_id'), $r->all())));
+        Route::get('/posts/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getPost($r->attributes->get('workspace_id'), $id)));
+        Route::get('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAccounts($r->attributes->get('workspace_id'))));
+        Route::get('/calendar', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getCalendarPosts($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'))));
+        // Writes through pipeline
+        Route::post('/posts', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'create_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/posts/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(['account_id' => app($s)->addAccount($r->attributes->get('workspace_id'), $r->all())], 201));
+
+        // Platform settings
+        Route::post("/settings/facebook", fn(\Illuminate\Http\Request $r) => response()->json(["message" => "Facebook settings saved", "configured" => false], 200));
+        Route::post("/settings/linkedin", fn(\Illuminate\Http\Request $r) => response()->json(["message" => "LinkedIn settings saved", "configured" => false], 200));
+        // OAuth
+        Route::get("/oauth/facebook/connect", fn(\Illuminate\Http\Request $r) => response()->json(["error" => "Facebook OAuth not yet configured. Add your App ID in Settings first."], 400));
+        Route::get("/oauth/facebook/callback", fn(\Illuminate\Http\Request $r) => response()->json(["error" => "OAuth callback not yet implemented"], 501));
+        Route::get("/oauth/instagram/connect", fn(\Illuminate\Http\Request $r) => response()->json(["error" => "Instagram OAuth not yet configured. Connect Facebook first."], 400));
+        Route::get("/oauth/linkedin/connect", fn(\Illuminate\Http\Request $r) => response()->json(["error" => "LinkedIn OAuth not yet configured. Add your Client ID in Settings first."], 400));
+        // Delete post
+        Route::delete("/posts/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => true]) && app($s)->deletePost($id));
+    });
+
+    // ── Calendar Engine ──────────────────────────────────────────
+    Route::prefix('calendar')->group(function () {
+        $s = \App\Engines\Calendar\Services\CalendarService::class;
+        $exec = \App\Core\EngineKernel\EngineExecutionService::class;
+        Route::get('/events', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getEvents($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'), $r->input('category'))));
+        Route::post('/events', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'calendar', 'create_event', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::put('/events/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updateEvent($id, $r->all()));
+        Route::delete('/events/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => true]) && app($s)->deleteEvent($id));
+    });
+
+    // ── BeforeAfter Engine ───────────────────────────────────────
+    Route::prefix('beforeafter')->group(function () {
+        $s = \App\Engines\BeforeAfter\Services\BeforeAfterService::class;
+        $exec = \App\Core\EngineKernel\EngineExecutionService::class;
+        Route::get('/designs', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listDesigns($r->attributes->get('workspace_id'))));
+        Route::post('/designs', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'beforeafter', 'create_design', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::get('/designs/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getDesign($r->attributes->get('workspace_id'), $id)));
+        Route::get('/room-types', fn() => response()->json(app($s)->getRoomTypes()));
+        Route::get('/styles', fn() => response()->json(app($s)->getStyles()));
+    });
+
+    // ── Traffic Defense Engine ────────────────────────────────────
+    Route::prefix('traffic')->group(function () {
+        $s = \App\Engines\TrafficDefense\Services\TrafficDefenseService::class;
+        $exec = \App\Core\EngineKernel\EngineExecutionService::class;
+        Route::get('/rules', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listRules($r->attributes->get('workspace_id'))));
+        Route::post('/rules', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'traffic', 'create_rule', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::post('/rules/{id}/toggle', fn(\Illuminate\Http\Request $r, $id) => response()->json(['toggled' => true]) && app($s)->toggleRule($id, $r->boolean('enabled')));
+        Route::delete('/rules/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => true]) && app($s)->deleteRule($id));
+        Route::get('/stats', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getStats($r->attributes->get('workspace_id'), $r->input('days', 7))));
+    });
+
+    // ── ManualEdit Engine ────────────────────────────────────────
+    Route::prefix('manualedit')->group(function () {
+        $s = \App\Engines\ManualEdit\Services\ManualEditService::class;
+        $exec = \App\Core\EngineKernel\EngineExecutionService::class;
+        Route::get('/canvases', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listCanvases($r->attributes->get('workspace_id'))));
+        Route::post('/canvases', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'manualedit', 'create_canvas', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::get('/canvases/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getCanvas($r->attributes->get('workspace_id'), $id)));
+        Route::put('/canvases/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['saved' => true]) && app($s)->saveCanvas($id, $r->input('state', []), $r->input('operations', [])));
+        Route::delete('/canvases/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => true]) && app($s)->deleteCanvas($id));
+    });
+
+
+    // Campaign send alias (JS calls /api/campaign/send)
+    Route::post("/campaign/send", function (\Illuminate\Http\Request $r) {
+        $exec = app(\App\Core\EngineKernel\EngineExecutionService::class);
+        return response()->json($exec->execute(
+            $r->attributes->get("workspace_id"), "marketing", "send_campaign",
+            $r->all(), ["user_id" => $r->user()?->id, "source" => "manual"]
+        ));
+    });
+
+
+    // Governance aliases (JS calls /governance/*, backend uses /approvals/*)
+    Route::get("/governance/pending", [\App\Http\Controllers\Api\ApprovalController::class, "index"]);
+    Route::post("/governance/approve", fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\Api\ApprovalController::class)->approve($r, $r->input("id")));
+    Route::post("/governance/reject", fn(\Illuminate\Http\Request $r) => app(\App\Http\Controllers\Api\ApprovalController::class)->reject($r, $r->input("id")));
+
+
+    // ── Stub routes for dashboard polling (prevent 404 noise) ────────────
+    Route::get("/exec/mode", fn() => response()->json(["mode" => "manual", "autonomous" => false]));
+    Route::post("/exec/mode", fn(\Illuminate\Http\Request $r) => response()->json(["mode" => $r->input("mode", "manual")]));
+    Route::get("/previews", fn() => response()->json(["previews" => []]));
+    Route::get("/assistant", fn() => response()->json(["messages" => []]));
+    Route::get("/calendar/booking-slots", fn() => response()->json(["slots" => []]));
+    Route::get("/exec/history", fn() => response()->json(["history" => []]));
+    Route::get("/history", fn() => response()->json(["history" => []]));
+    Route::get("/decisions", fn() => response()->json(["decisions" => []]));
+    Route::get("/insights/summary", fn() => response()->json(["summary" => null]));
+    Route::get("/billing/status", fn(\Illuminate\Http\Request $r) => response()->json(["plan" => "free", "status" => "active", "credits" => 0]));
+
+    // ── Workspace Onboarding ─────────────────────────────────────
+    Route::post('/workspace/onboarding', function (\Illuminate\Http\Request $r) {
+        $ws = \App\Models\Workspace::findOrFail($r->attributes->get('workspace_id'));
+        $ws->update([
+            'business_name' => $r->input('business_name'),
+            'industry' => $r->input('industry'),
+            'services_json' => $r->input('services'),
+            'goal' => $r->input('goal'),
+            'location' => $r->input('location'),
+        ]);
+        return response()->json(['success' => true]);
+    });
+
+    Route::post('/workspace/complete-onboarding', function (\Illuminate\Http\Request $r) {
+        $ws = \App\Models\Workspace::findOrFail($r->attributes->get('workspace_id'));
+        $ws->update(['onboarded' => true, 'onboarded_at' => now()]);
+
+        // Sarah sends cost estimate ONLY — zero credits, template message
+        try {
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            $proposal = $proactive->onOnboardingComplete($ws->id, $r->user()->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Proactive proposal failed: {$e->getMessage()}");
+            $proposal = ['error' => $e->getMessage()];
+        }
+
+        return response()->json([
+            'success' => true,
+            'proposal' => $proposal,
+            'message' => 'Welcome! Sarah has prepared a strategy proposal. Review and approve in the Strategy Room — no credits used until you approve.',
+        ]);
+    });
+
+    // ── Workspace Status (for SaaS app dashboard) ────────────────
+    Route::get('/workspace/status', function (\Illuminate\Http\Request $r) {
+        $ws = \App\Models\Workspace::findOrFail($r->attributes->get('workspace_id'));
+        $planRules = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($ws->id);
+        $credit = \App\Models\Credit::where('workspace_id', $ws->id)->first();
+        $websiteCount = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $ws->id)->whereNull('deleted_at')->count();
+        return response()->json([
+            'workspace' => $ws, 'plan' => $planRules,
+            'credit_balance' => $credit?->balance ?? 0,
+            'monthly_credit_limit' => $planRules['credit_limit'],
+            'website_count' => $websiteCount,
+            'business_name' => $ws->business_name,
+            'industry' => $ws->industry,
+            'onboarded' => (bool) $ws->onboarded,
+        ]);
+    });
+
+    // ── Workspace Credits ────────────────────────────────────────
+    Route::get('/workspace/credits', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $credit = \App\Models\Credit::where('workspace_id', $wsId)->first();
+        $planRules = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($wsId);
+        $used = \App\Models\CreditTransaction::where('workspace_id', $wsId)->where('type', 'commit')->sum('amount');
+        return response()->json([
+            'credit_balance' => $credit?->balance ?? 0,
+            'monthly_limit' => $planRules['credit_limit'],
+            'plan_name' => $planRules['plan_name'],
+            'lifetime_used' => abs($used),
+        ]);
+    });
+
+    Route::get('/workspace/credits/transactions', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $txns = \App\Models\CreditTransaction::where('workspace_id', $wsId)
+            ->orderByDesc('created_at')->limit($r->input('limit', 20))->get();
+        return response()->json(['transactions' => $txns]);
+    });
+
+    // ── Workspace Proactive Settings ─────────────────────────────
+    Route::get('/workspace/proactive-settings', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $ws   = \App\Models\Workspace::find($wsId);
+        return response()->json([
+            'proactive_enabled'   => $ws?->proactive_enabled ?? true,
+            'proactive_frequency' => $ws?->proactive_frequency ?? 'daily',
+        ]);
+    });
+
+    Route::put('/workspace/proactive-settings', function (\Illuminate\Http\Request $r) {
+        $wsId    = $r->attributes->get('workspace_id');
+        $enabled = $r->input('proactive_enabled');
+        $freq    = $r->input('proactive_frequency');
+
+        $update = [];
+        if (!is_null($enabled))  $update['proactive_enabled']   = (bool) $enabled;
+        if (!is_null($freq) && in_array($freq, ['daily', 'weekly'])) {
+            $update['proactive_frequency'] = $freq;
+        }
+
+        if (!empty($update)) {
+            \App\Models\Workspace::where('id', $wsId)->update($update);
+        }
+
+        $ws = \App\Models\Workspace::find($wsId);
+        return response()->json([
+            'updated'             => !empty($update),
+            'proactive_enabled'   => $ws?->proactive_enabled ?? true,
+            'proactive_frequency' => $ws?->proactive_frequency ?? 'daily',
+        ]);
+    });
+
+    // ── Workspace Capabilities Map (for frontend feature gating) ─
+    Route::get('/workspace/capabilities', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        return response()->json(
+            app(\App\Core\Billing\FeatureGateService::class)->getCapabilities($wsId)
+        );
+    });
+
+    // ── Trial status ──────────────────────────────────────────────
+    Route::get('/workspace/trial-status', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        return response()->json(
+            app(\App\Core\Billing\TrialService::class)->getTrialStatus($wsId)
+        );
+    });
+
+    // Manual trial activation (for testing / admin override)
+    Route::post('/workspace/trial/activate', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        return response()->json(
+            app(\App\Core\Billing\TrialService::class)->activateTrial($wsId)
+        );
+    });
+
+    // ── Team Management ───────────────────────────────────────────
+    // Gated: plan:agent (Growth+) for invite/remove — anyone can view members
+    Route::prefix('team')->group(function () {
+        $t = \App\Core\Workspaces\TeamService::class;
+
+        // List members + pending invites (all roles can view)
+        Route::get('/members', function (\Illuminate\Http\Request $r) use ($t) {
+            return response()->json(app($t)->getMembers($r->attributes->get('workspace_id')));
+        });
+
+        // Seat quota check
+        Route::get('/seats', function (\Illuminate\Http\Request $r) use ($t) {
+            return response()->json(app($t)->checkSeatQuota($r->attributes->get('workspace_id')));
+        });
+
+        // Invite member — admin or owner only, Growth+ plan
+        Route::post('/invite', function (\Illuminate\Http\Request $r) use ($t) {
+            $wsId = $r->attributes->get('workspace_id');
+            $result = app($t)->inviteMember(
+                $wsId,
+                $r->user()->id,
+                $r->input('email', ''),
+                $r->input('role', 'member')
+            );
+            return response()->json($result, $result['success'] ? 201 : 422);
+        })->middleware(['team.role:admin', 'plan:agent']);
+
+        // List pending invites
+        Route::get('/invites', function (\Illuminate\Http\Request $r) use ($t) {
+            return response()->json([
+                'invites' => app($t)->listPendingInvites($r->attributes->get('workspace_id')),
+            ]);
+        })->middleware('team.role:admin');
+
+        // Cancel a pending invite
+        Route::delete('/invites/{id}', function (\Illuminate\Http\Request $r, $id) use ($t) {
+            $wsId    = $r->attributes->get('workspace_id');
+            $deleted = app($t)->cancelInvite($wsId, (int) $id);
+            return response()->json(['cancelled' => $deleted]);
+        })->middleware('team.role:admin');
+
+        // Update member role — admin or owner only
+        Route::put('/members/{userId}/role', function (\Illuminate\Http\Request $r, $userId) use ($t) {
+            $wsId   = $r->attributes->get('workspace_id');
+            $result = app($t)->updateRole($wsId, (int) $userId, $r->input('role', 'member'), $r->user()->id);
+            return response()->json($result, $result['success'] ? 200 : 422);
+        })->middleware('team.role:admin');
+
+        // Remove a member — admin or owner only
+        Route::delete('/members/{userId}', function (\Illuminate\Http\Request $r, $userId) use ($t) {
+            $wsId   = $r->attributes->get('workspace_id');
+            $result = app($t)->removeMember($wsId, (int) $userId, $r->user()->id);
+            return response()->json($result, $result['success'] ? 200 : 422);
+        })->middleware('team.role:admin');
+    });
+
+    // ── Workspace Billing ────────────────────────────────────────
+    Route::get('/billing/status', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        return response()->json(
+            app(\App\Core\Billing\StripeService::class)->getBillingStatus($wsId)
+        );
+    });
+
+    // ── Billing Actions (Stripe) ─────────────────────────────────
+    Route::post('/billing/checkout', function (\Illuminate\Http\Request $r) {
+        $r->validate(['plan_id' => 'required|exists:plans,id']);
+        $stripe = app(\App\Core\Billing\StripeService::class);
+        return response()->json($stripe->createCheckoutSession(
+            $r->attributes->get('workspace_id'), $r->input('plan_id'), $r->user()->id
+        ));
+    });
+
+    Route::post('/billing/upgrade', function (\Illuminate\Http\Request $r) {
+        $r->validate(['plan_id' => 'required|exists:plans,id']);
+        $stripe = app(\App\Core\Billing\StripeService::class);
+        return response()->json($stripe->changePlan(
+            $r->attributes->get('workspace_id'), (int) $r->input('plan_id'), $r->user()->id
+        ));
+    });
+
+    Route::get('/billing/portal', function (\Illuminate\Http\Request $r) {
+        $stripe = app(\App\Core\Billing\StripeService::class);
+        return response()->json($stripe->getPortalUrl(
+            $r->attributes->get('workspace_id'), $r->user()->id
+        ));
+    });
+
+    Route::post('/billing/cancel', function (\Illuminate\Http\Request $r) {
+        $stripe = app(\App\Core\Billing\StripeService::class);
+        return response()->json($stripe->cancel($r->attributes->get('workspace_id')));
+    });
+
+    Route::post('/billing/add-agent', function (\Illuminate\Http\Request $r) {
+        $r->validate(['agent_slug' => 'required|string']);
+        $stripe = app(\App\Core\Billing\StripeService::class);
+        return response()->json($stripe->addAgentAddon(
+            $r->attributes->get('workspace_id'), $r->input('agent_slug')
+        ));
+    });
+
+    Route::get('/billing/plans', function () {
+        return response()->json(['plans' => \App\Models\Plan::orderBy('price')->get()]);
+    });
+
+    // ── Analytics / Insights ─────────────────────────────────────
+    Route::get('/insights/summary', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $today = now()->startOfDay();
+        return response()->json([
+            'tasks_completed_today' => \App\Models\Task::where('workspace_id', $wsId)->where('status', 'completed')->where('completed_at', '>=', $today)->count(),
+            'credits_used_today' => abs(\App\Models\CreditTransaction::where('workspace_id', $wsId)->where('type', 'commit')->where('created_at', '>=', $today)->sum('amount')),
+            'campaigns_sent_week' => \Illuminate\Support\Facades\DB::table('campaigns')->where('workspace_id', $wsId)->where('status', 'sent')->where('sent_at', '>=', now()->subWeek())->count(),
+            'posts_published_week' => \Illuminate\Support\Facades\DB::table('social_posts')->where('workspace_id', $wsId)->where('status', 'published')->where('published_at', '>=', now()->subWeek())->count(),
+            'write_items_total' => \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
+            'avg_seo_score' => \Illuminate\Support\Facades\DB::table('seo_audits')->where('workspace_id', $wsId)->where('status', 'completed')->avg('score'),
+        ]);
+    });
+});
+
+// ── Debug Routes (disabled in production) ────────────────────────────
+Route::middleware('auth.jwt')->prefix('debug')->group(function () {
+    Route::post('/run-scenario', [\App\Http\Controllers\Api\Debug\DebugScenarioController::class, 'runScenario']);
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// ADMIN ROUTES (Phase 4 — requires admin middleware)
+// ══════════════════════════════════════════════════════════════════════
+Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])
+    ->prefix('admin')
+    ->group(function () {
+        $c = \App\Http\Controllers\Api\Admin\AdminController::class;
+
+        // Dashboard
+        Route::get('/stats', [$c, 'dashboardStats']);
+
+        // Users
+        Route::get('/users', [$c, 'listUsers']);
+        Route::get('/users/{id}', [$c, 'getUser']);
+        Route::put('/users/{id}', [$c, 'updateUser']);
+        Route::post('/users/{id}/suspend', [$c, 'suspendUser']);
+        Route::delete('/users/{id}', [$c, 'deleteUser']);
+        Route::post('/users', [$c, 'createUser']);
+
+        // Workspaces
+        Route::get('/workspaces', [$c, 'listWorkspaces']);
+        Route::get('/workspaces/{id}', [$c, 'getWorkspace']);
+        Route::put('/workspaces/{id}', [$c, 'updateWorkspace']);
+        Route::post('/workspaces/{id}/credits', [$c, 'adjustCredits']);
+        Route::post('/workspaces/{id}/plan', [$c, 'assignPlan']);
+
+        // Plans
+        Route::get('/plans', [$c, 'listPlans']);
+        Route::put('/plans/{id}', [$c, 'updatePlan']);
+
+        // Agents
+        Route::get('/agents', [$c, 'listAgents']);
+        Route::put('/agents/{id}', [$c, 'updateAgent']);
+
+        // System Config
+        Route::get('/config', [$c, 'getConfig']);
+        Route::post('/config', [$c, 'updateConfig']);
+
+        // System Health
+        Route::get('/health', [$c, 'systemHealth']);
+        Route::get('/queue', [$c, 'queueHealth']);
+        Route::post('/recover-stale', [$c, 'recoverStale']);
+        Route::get('/validation-report', [$c, 'validationReport']);
+
+        // Task Monitor
+        Route::get('/tasks', [$c, 'taskMonitor']);
+        Route::get('/tasks/{id}', [$c, 'taskDetail']);
+        Route::post('/tasks/{id}/retry', [$c, 'retryTask']);
+        Route::post('/tasks/{id}/cancel', [$c, 'cancelTask']);
+
+        // Audit Logs
+        Route::get('/audit-logs', [$c, 'auditLogs']);
+
+        // Memberships
+        Route::get('/memberships', [$c, 'listMemberships']);
+        Route::put('/memberships/{id}', [$c, 'updateMembership']);
+
+        // Subscriptions
+        Route::get('/subscriptions', [$c, 'listSubscriptions']);
+    });
+
+// ══════════════════════════════════════════════════════════════════════
+// PUBLIC ROUTES (no auth required)
+// ══════════════════════════════════════════════════════════════════════
+
+// Stripe Webhook (no auth — verified by signature)
+Route::post('/webhook/stripe', function (\Illuminate\Http\Request $r) {
+    $stripe = app(\App\Core\Billing\StripeService::class);
+    $result = $stripe->handleWebhook(
+        $r->getContent(),
+        $r->header('Stripe-Signature', '')
+    );
+    return response()->json($result, $result['handled'] ?? false ? 200 : 400);
+})->withoutMiddleware('auth.jwt');
+
+// ── Internal Runtime Callback Routes (secret-gated, no JWT) ─────────────────
+// Called by: Railway Node.js runtime, scheduler cron jobs
+// Auth: X-Runtime-Secret header must match LARAVEL_RUNTIME_SECRET env var
+Route::prefix('internal')->group(function () {
+
+    // Middleware: verify shared secret
+    Route::middleware([\App\Http\Middleware\RuntimeSecretMiddleware::class])->group(function () {
+
+        // Proactive trigger — called by cron or external scheduler
+        // Delegates to Sarah::handleProactiveSignal() which enforces no-credit-spend rule
+        Route::post('/proactive-trigger', function (\Illuminate\Http\Request $r) {
+            $wsId       = (int) $r->input('workspace_id');
+            $signalType = $r->input('signal_type', 'daily_check');
+            $context    = $r->input('context', []);
+
+            if (!$wsId) {
+                return response()->json(['error' => 'workspace_id required'], 422);
+            }
+
+            $sarah  = app(\App\Core\Orchestration\SarahOrchestrator::class);
+            $result = $sarah->handleProactiveSignal($wsId, $signalType, $context);
+
+            return response()->json($result);
+        });
+
+        // Runtime task result callback — called when BullMQ worker completes a task
+        Route::post('/task-result', function (\Illuminate\Http\Request $r) {
+            $taskId = $r->input('task_id');
+            $status = $r->input('status');
+            $result = $r->input('result', []);
+
+            if (!$taskId || !$status) {
+                return response()->json(['error' => 'task_id and status required'], 422);
+            }
+
+            $executor = app(\App\Core\EngineKernel\EngineExecutionService::class);
+            $executor->handleRuntimeCallback($taskId, $status, $result);
+
+            return response()->json(['received' => true]);
+        });
+
+        // Runtime health ping
+        Route::get('/ping', fn() => response()->json(['status' => 'ok', 'ts' => now()->toISOString()]));
+    });
+})->withoutMiddleware('auth.jwt');
+
+// Public plan listing (for marketing site pricing page)
+Route::get('/public/plans', function () {
+    return response()->json(['plans' => \App\Models\Plan::orderBy('price')->get([
+        'name', 'slug', 'price', 'credit_limit', 'ai_access', 'includes_dmm',
+        'agent_count', 'agent_level', 'agent_addon_price', 'max_websites',
+        'companion_app', 'white_label', 'features_json',
+    ])]);
+});
+
+// ════════════════════════════════════════════════════════════════
+// EXEC-API routes moved to routes/exec-api.php (PATCH v1.0.1)
+// They are registered via bootstrap/app.php without the /api prefix
+// so APP888 can reach app.levelupgrowth.io/exec-api/* directly.
+// ════════════════════════════════════════════════════════════════
+
+// Public invite routes — no JWT (invitee may not have an account)
+Route::get('/invite/{token}', function (string $token) {
+    $result = app(\App\Core\Workspaces\TeamService::class)->previewInvite($token);
+    return response()->json($result, $result['valid'] ? 200 : 404);
+});
+
+Route::post('/invite/{token}/accept', function (\Illuminate\Http\Request $r, string $token) {
+    $result = app(\App\Core\Workspaces\TeamService::class)->acceptInvite($token, [
+        'name'     => $r->input('name'),
+        'password' => $r->input('password'),
+    ]);
+    return response()->json($result, $result['success'] ? 200 : 422);
+});
+
+// User Registration
+Route::post('/auth/register', function (\Illuminate\Http\Request $r) {
+    $r->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email',
+        'password' => 'required|string|min:8',
+    ]);
+
+    $user = \App\Models\User::create([
+        'name' => $r->input('name'),
+        'email' => $r->input('email'),
+        'password' => \Illuminate\Support\Facades\Hash::make($r->input('password')),
+    ]);
+
+    // Create default workspace
+    $ws = \App\Models\Workspace::create([
+        'name' => $r->input('name') . "'s Workspace",
+        'slug' => \Illuminate\Support\Str::slug($r->input('name')) . '-' . \Illuminate\Support\Str::random(4),
+        'created_by' => $user->id,
+    ]);
+    $ws->users()->attach($user->id, ['role' => 'owner']);
+
+    // Assign free plan
+    $freePlan = \App\Models\Plan::where('slug', 'free')->first();
+    if ($freePlan) {
+        \App\Models\Subscription::create([
+            'workspace_id' => $ws->id, 'plan_id' => $freePlan->id,
+            'status' => 'active', 'started_at' => now(),
+        ]);
+    }
+
+    // Create credits
+    \App\Models\Credit::create(['workspace_id' => $ws->id, 'balance' => 0, 'reserved_balance' => 0]);
+
+    // Generate auth tokens
+    $authService = app(\App\Core\Auth\AuthService::class);
+    $tokens = $authService->login($r->input('email'), $r->input('password'));
+
+    return response()->json(array_merge($tokens, [
+        'user' => $user,
+        'workspaces' => [['id' => $ws->id, 'name' => $ws->name, 'role' => 'owner', 'plan' => 'free']],
+        'current_workspace_id' => $ws->id,
+    ]), 201);
+});

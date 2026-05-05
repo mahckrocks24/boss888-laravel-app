@@ -1,0 +1,7 @@
+{
+    "name": "TrafficDefense",
+    "slug": "traffic_defense",
+    "version": "1.0.0",
+    "description": "TrafficDefense engine for Boss888 LevelUp OS",
+    "status": "active"
+}

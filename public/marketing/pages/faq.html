@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAQ — LevelUpGrowth</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/marketing/css/site.css">
+<link rel="stylesheet" href="/marketing/css/orb.css">
+<style>
+.faq-list{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:0}
+.faq-item{border-bottom:1px solid rgba(255,255,255,.06)}
+.faq-q{width:100%;background:none;border:none;text-align:left;padding:20px 0;color:#E5E7EB;font-family:var(--ff-h);font-weight:700;font-size:15.5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;transition:color .2s}
+.faq-q:hover{color:#fff}
+.faq-icon{font-size:18px;flex-shrink:0;color:var(--faint);transition:transform .25s}
+.faq-a{overflow:hidden;max-height:0;transition:max-height .35s ease}
+.faq-a-inner{padding-bottom:18px;color:var(--muted);font-size:14.5px;line-height:1.75}
+.faq-item.open .faq-icon{transform:rotate(45deg);color:var(--purple)}
+.faq-item.open .faq-a{max-height:400px}
+.faq-cat-title{font-family:var(--ff-h);font-weight:800;font-size:18px;margin-bottom:20px;margin-top:48px;padding-bottom:10px;border-bottom:1px solid var(--border);color:#D1D5DB}
+.faq-cat-title:first-child{margin-top:0}
+</style>
+</head>
+<body>
+<div class="page-hero"><div class="page-hero-glow"></div>
+  <div class="tag" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);color:var(--blue)">FAQ</div>
+  <h1>Frequently Asked<br/><span class="g-text">Questions</span></h1>
+  <p>Everything you need to know about LevelUpGrowth and how your AI marketing team works.</p>
+</div>
+
+<section style="padding:80px 28px">
+  <div class="wrap">
+    <div class="faq-list">
+
+      <div class="faq-cat-title">Getting Started</div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">What is LevelUpGrowth?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">LevelUpGrowth is an AI-powered marketing operating system. It includes a website builder, SEO engine, CRM, email marketing, social media automation, creative engine, AI video generator, and a 6-agent AI team — all connected in one platform. Instead of using and paying for multiple separate tools, you get everything in one place with AI that actually executes tasks for you.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How quickly can I get started?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">Very fast. Signup takes 60 seconds. Onboarding takes 2 minutes. Your website is generated and live within 5 minutes. By the end of your first hour, you'll have a professional website ready to launch. If you're on the Growth plan or above, your AI agents will begin working on your marketing immediately after setup.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Do I need any technical skills?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">None at all. LevelUpGrowth is designed for business owners, not developers. You never write code. You never configure servers. You describe your business in plain language, and your AI team handles everything else — website generation, SEO, content, social media, and more.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is there a free plan?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">Yes. The Free plan is available permanently at $0/month and includes:
+
+• 1 website (subdomain)
+• Website Builder
+• CRM and Calendar tools
+
+The Free plan does not include AI features or AI agents.
+
+AI access is available from the AI Lite plan ($49/month).
+
+A 3-day AI trial (50 credits) is activated after you create your first website — not at signup.</div></div></div>
+
+      <div class="faq-cat-title">AI Agents</div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Who are the 6 AI agents?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">On the Growth plan and above, your team includes: Sarah (Digital Marketing Manager — strategy + coordination), James (SEO Strategist — keywords + rankings), Priya (Content Manager — blog articles + copy), Marcus (Social Media Manager — content + scheduling), Elena (Lead & CRM Manager — lead capture + follow-ups), and Alex (Technical SEO Engineer — site performance + indexing).
+
+AI agents are not available on the Free, Starter, or AI Lite plans.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do AI agents actually work?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">Each agent has a specific role and set of tools they can use. When you start a meeting or dispatch a task (available on Growth plan and above), the relevant agents receive the brief, plan their approach, use their tools (SEO analysis, content generation, CRM updates, etc.), and deliver results. They communicate with each other and coordinate automatically — you just see the finished outputs.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I talk to my AI agents directly?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">Yes — on Growth, Pro, or Agency plans. The Strategy Room lets you start a meeting with your full AI team. Describe your goal, ask questions, or request specific tasks. Your agents respond in real time and execute immediately. AI agents are not available on Free, Starter, or AI Lite plans.</div></div></div>
+
+      <div class="faq-cat-title">Website & Hosting</div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is hosting included?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">Yes. Every website built on LevelUpGrowth is hosted on our infrastructure — included in your subscription. You don't need to arrange separate hosting, configure servers, or deal with technical setup. Your site is live on fast, reliable hosting from the moment it's generated.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I connect my own domain?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">Yes. You can connect any domain you own with a simple one-click connection process. SSL is automatically configured. If you don't have a domain yet, you can use your free LevelUpGrowth subdomain and connect a custom domain later.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I edit my website after it's generated?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">Absolutely. Your website has a drag-and-drop editor that lets you change any element — text, images, colors, layouts, and blocks. You can also ask your AI assistant to make changes in plain language: "Change the hero headline" or "Add a testimonials section" and it updates automatically.</div></div></div>
+
+      <div class="faq-cat-title">Pricing & Plans</div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">What are the available plans?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">There are 6 plans:
+
+• Free ($0/mo) — Website Builder, CRM, Calendar. No AI.
+• Starter ($19/mo) — Custom domain, Marketing, Social, Automation. No AI.
+• AI Lite ($49/mo) — AI research + brainstorming only. 50 credits/month. No content or image generation.
+• Growth ($99/mo) — Full AI (content + images). 1 DMM + 2 Specialist agents. 300 credits/month. Up to 3 websites.
+• Pro ($199/mo) — 1 DMM + 5 Junior agents. 900 credits/month. Up to 10 websites. Companion app.
+• Agency ($399/mo) — 1 DMM + 10 Senior agents. 2,500 credits/month. Up to 50 websites. Unlimited team members.
+
+AI agents are only available from the Growth plan.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">What are AI credits?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">AI credits are consumed when your agents execute tasks — generating content, running SEO analysis, creating images, producing videos, and more. Each action costs a small number of credits depending on its complexity. The Growth plan includes 300 credits/month. Pro includes 900 credits/month. Agency includes 2,500 credits/month. Credits reset monthly and do not roll over. Unused credits don't roll over.</div></div></div>
+
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I cancel anytime?<span class="faq-icon">+</span></button><div class="faq-a"><div class="faq-a-inner">Yes. All plans are month-to-month with no long-term contracts. You can cancel at any time from your account settings. If you cancel, you keep access until the end of your current billing period. Your data and websites remain accessible for 30 days after cancellation.</div></div></div>
+
+    </div>
+
+    <div style="text-align:center;margin-top:56px;padding:32px;background:var(--card);border-radius:16px;border:1px solid var(--border)">
+      <h3 style="font-family:var(--ff-h);font-size:18px;font-weight:700;margin-bottom:10px">Still have questions?</h3>
+      <p style="color:var(--muted);font-size:14.5px;margin-bottom:20px">Start your free account and your AI team will answer everything in the Strategy Room.</p>
+      <a href="/app/#signup" class="btn btn-primary">Start Free →</a>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer-placeholder"></div>
+<script src="/marketing/js/site.js"></script>
+<script src="/marketing/js/orb.js"></script>
+<script>
+function toggleFaq(btn) {
+  const item = btn.parentElement;
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { font-family: 'Inter', sans-serif; }
+h1, h2, h3, h4, h5, h6, .font-heading { font-family: 'Manrope', sans-serif; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111318; }
+::-webkit-scrollbar-thumb { background: #2A2E3A; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3A3E4A; }
+
+/* Toast */
+.toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 10px; font-size: 13px; z-index: 9999; transform: translateY(20px); opacity: 0; transition: all 0.3s; }
+.toast-show { transform: translateY(0); opacity: 1; }
+.toast-info { background: #7C3AED20; color: #A78BFA; border: 1px solid #7C3AED30; }
+.toast-error { background: #F8717120; color: #F87171; border: 1px solid #F8717130; }

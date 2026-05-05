@@ -1,0 +1,88 @@
+# ═══════════════════════════════════════════════════════════════════
+# BOSS888 Recovery — .gitignore
+# ═══════════════════════════════════════════════════════════════════
+
+# ─── Secrets — NEVER commit ────────────────────────────────────────
+.env
+.env.local
+.env.staging
+.env.production
+.env.*.local
+*.env.backup-*
+# Allow templates with placeholders only:
+!.env.template
+!.env.example
+
+# ─── Apr 25 baseline tarball ───────────────────────────────────────
+# pre-audit-code-backup.tar.gz is 276 MB — exceeds GitHub's 100 MB
+# per-file hard limit AND contains the real staging .env with live
+# secrets. Keep it OUT of git history forever.
+# Original location preserved in 00-baseline\BASELINE-LOCATION.md
+00-baseline/*.tar.gz
+00-baseline/*.tgz
+00-baseline/*.tar
+
+# ─── Anything else > 90 MB, just to be safe ────────────────────────
+# (Use git LFS or external storage for large assets.)
+
+# ─── Laravel ───────────────────────────────────────────────────────
+vendor/
+node_modules/
+public/storage
+storage/app/*
+!storage/app/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
+!storage/framework/cache/data/.gitkeep
+!storage/framework/sessions/.gitkeep
+!storage/framework/testing/.gitkeep
+!storage/framework/views/.gitkeep
+bootstrap/cache/*
+!bootstrap/cache/.gitkeep
+
+# ─── Composer / npm ────────────────────────────────────────────────
+.composer/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── IDE / Editor / OS ─────────────────────────────────────────────
+.idea/
+.vscode/
+.fleet/
+*.sublime-*
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+
+# ─── PHP / Laravel artifacts ───────────────────────────────────────
+*.cache
+phpunit.cache/
+.phpunit.result.cache
+
+# ─── Local databases ───────────────────────────────────────────────
+*.sqlite
+*.sqlite-journal
+
+# ─── Backup files in working dirs ──────────────────────────────────
+*.bak
+*.bak-*
+*~
+
+# ─── Stricter secret catch-all (added 2026-05-05) ──────────────────
+# Replaces the buggy *.env.backup-* rule. Catches every variant
+# including .env.apr25-secrets, .env.bak1, .env.bak2 etc.
+.env
+.env.*
+!.env.example
+*.secrets
+_backup/
+.archives/
+.puppeteer-cache/

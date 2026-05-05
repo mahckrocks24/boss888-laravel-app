@@ -1,0 +1,255 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Connectors\DeepSeekConnector;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class ArthurController
+{
+    private DeepSeekConnector $llm;
+    private \App\Connectors\RuntimeClient $runtime;
+
+    /**
+     * NOTE 2026-04-12 (Phase 2L Arthur / doc 14): all 3 modes refactored to
+     * route through RuntimeClient as a stopgap until Phase 2B.4 deletes this
+     * controller entirely (gated on Phase 2B.8 retiring old builder.js).
+     * The planner directive says "delete and rebuild, do not patch" — but
+     * while the backend stays alive (because builder.js still has 7+ callers),
+     * leaving it on direct DeepSeek violates the hands-vs-brain pattern. The
+     * runtime swap eliminates 3 LLM bypass sites without affecting the
+     * eventual deletion plan.
+     */
+    public function __construct(DeepSeekConnector $llm, \App\Connectors\RuntimeClient $runtime)
+    {
+        $this->llm = $llm;
+        $this->runtime = $runtime;
+    }
+
+    /**
+     * Helper: route an Arthur LLM call through runtime + parse JSON response.
+     *
+     * MIGRATED 2026-04-13 (Phase 0.17b): switched from aiRun('builder_generate', ...)
+     * fold-pattern to chatJson. The system prompt now flows through directly,
+     * the runtime forces JSON mode + parses server-side, and we read parsed straight.
+     * All 3 callers (wizard / inline / chat) keep the same return shape.
+     */
+    private function arthurRuntimeCall(string $systemPrompt, string $userPrompt, array $context, int $maxTokens): array
+    {
+        $sysWithJsonHint = $systemPrompt
+                         . "\n\nOutput ONLY a valid JSON object — no markdown, no commentary.";
+
+        $result = $this->runtime->chatJson($sysWithJsonHint, $userPrompt, $context, $maxTokens);
+
+        return [
+            'success' => $result['success'] ?? false,
+            'content' => $result['text'] ?? '',
+            'parsed'  => is_array($result['parsed'] ?? null) ? $result['parsed'] : null,
+        ];
+    }
+
+    /**
+     * POST /api/builder/arthur
+     * Handles all 3 Arthur modes based on request payload.
+     */
+    public function handle(Request $request): JsonResponse
+    {
+        $mode = $request->input('mode', 'wizard');
+
+        try {
+            return match ($mode) {
+                'wizard' => $this->wizard($request),
+                'inline' => $this->inline($request),
+                'chat'   => $this->chat($request),
+                default  => response()->json(['error' => 'Unknown mode', 'reply' => 'I didn\'t understand that request mode.'], 400),
+            };
+        } catch (\Throwable $e) {
+            Log::error('[Arthur] Unhandled exception', ['mode' => $mode, 'error' => $e->getMessage()]);
+            return response()->json([
+                'reply' => 'Sorry, I hit a snag. Let me try again in a moment.',
+                'extracted' => new \stdClass(),
+                'ready' => false,
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal error',
+            ], 500);
+        }
+    }
+
+    /**
+     * MODE 1 — Wizard: conversational website-building interview.
+     */
+    private function wizard(Request $request): JsonResponse
+    {
+        $message = $request->input('message', '');
+        $arthurState = $request->input('arthur_state', []);
+        $history = $request->input('history', []);
+
+        $systemPrompt = 'You are Arthur, the AI website builder assistant for LevelUp Growth Platform. '
+            . 'Your job is to have a friendly, natural conversation to collect business details for building a website. '
+            . "\n\nREQUIRED (must have ALL 3 before setting ready=true):\n"
+            . "- business_name: the name of the business\n"
+            . "- industry: what industry/sector they operate in\n"
+            . "- core_service: their main product or service offering\n\n"
+            . "NICE TO HAVE (ask only if conversation flows naturally):\n"
+            . "- location: where they are based\n"
+            . "- tone: desired website tone (professional, casual, luxury, etc.)\n"
+            . "- audience: target customer/client\n\n"
+            . "CRITICAL RULES:\n"
+            . "- UNDERSTAND what the user is telling you. Read between the lines. INFER context.\n"
+            . "- The business name often implies the industry. 'MR Digital Media' = digital marketing. 'Bright Smile Dental' = healthcare. 'Johnson Law' = legal. INFER the industry from the name.\n"
+            . "- If the user mentions services like 'SEO and website design', that IS the core_service. Extract it. Do NOT ask what their main service is.\n"
+            . "- If you can infer ALL 3 required fields (business_name, industry, core_service) from a SINGLE message, extract them all and set ready=true IMMEDIATELY. Do NOT ask unnecessary follow-up questions.\n"
+            . "- Example: 'MR Digital Media in Dubai, we do SEO and website design for SMEs' gives you: business_name=MR Digital Media, industry=digital marketing, core_service=SEO and website design, location=Dubai. That is EVERYTHING. Set ready=true.\n"
+            . "- NEVER re-ask for information already stated or inferable from context.\n"
+            . "- NEVER contradict yourself. If you say 'I have everything', ready MUST be true.\n"
+            . "- Be warm, professional, brief. Only ask when you genuinely cannot infer.\n"
+            . "- Always respond as valid JSON: {\"reply\": \"string\", \"extracted\": {\"field\": \"value\"}, \"ready\": boolean}\n";
+
+        if (!empty($arthurState)) {
+            $known = array_filter($arthurState);
+            if (!empty($known)) {
+                $systemPrompt .= "\nALREADY KNOWN (do NOT re-ask these):\n" . json_encode($known, JSON_PRETTY_PRINT);
+                $missing = [];
+                if (empty($arthurState['business_name'])) $missing[] = 'business_name';
+                if (empty($arthurState['industry'])) $missing[] = 'industry';
+                if (empty($arthurState['core_service'])) $missing[] = 'core_service';
+                if (!empty($missing)) {
+                    $systemPrompt .= "\nSTILL NEEDED: " . implode(', ', $missing);
+                } else {
+                    $systemPrompt .= "\nYou have all required fields. Set ready=true and confirm to the user.";
+                }
+            }
+        }
+
+        $messages = [['role' => 'system', 'content' => $systemPrompt]];
+
+        // Append conversation history (last 8 turns max)
+        $historySlice = array_slice($history, -8);
+        foreach ($historySlice as $turn) {
+            if (!empty($turn['role']) && isset($turn['content'])) {
+                $messages[] = [
+                    'role' => $turn['role'] === 'assistant' ? 'assistant' : 'user',
+                    'content' => (string) $turn['content'],
+                ];
+            }
+        }
+
+        $messages[] = ['role' => 'user', 'content' => $message];
+
+        // Build the user prompt as a flat conversation transcript
+        $userPrompt = "CONVERSATION HISTORY:\n";
+        foreach ($historySlice as $turn) {
+            if (!empty($turn['role']) && isset($turn['content'])) {
+                $role = $turn['role'] === 'assistant' ? 'Arthur' : 'User';
+                $userPrompt .= "{$role}: {$turn['content']}\n";
+            }
+        }
+        $userPrompt .= "\nUser: {$message}\n\nArthur (respond as JSON):";
+
+        $result = $this->arthurRuntimeCall($systemPrompt, $userPrompt, ['mode' => 'wizard'], 500);
+
+        if (!$result['success']) {
+            Log::warning('[Arthur Wizard] runtime call failed');
+            return response()->json([
+                'reply' => 'I\'m having a moment — could you say that again?',
+                'extracted' => new \stdClass(),
+                'ready' => false,
+            ]);
+        }
+
+        // chatJson provides parsed output if JSON was valid
+        if (!empty($result['parsed']) && is_array($result['parsed'])) {
+            $parsed = $result['parsed'];
+            return response()->json([
+                'reply' => $parsed['reply'] ?? $result['content'],
+                'extracted' => $parsed['extracted'] ?? new \stdClass(),
+                'ready' => (bool) ($parsed['ready'] ?? false),
+            ]);
+        }
+
+        // JSON parse failed — return raw text
+        return response()->json([
+            'reply' => $result['content'] ?? 'Let\'s keep going — tell me about your business!',
+            'extracted' => new \stdClass(),
+            'ready' => false,
+        ]);
+    }
+
+    /**
+     * MODE 2 — Inline: element-level editing commands.
+     */
+    private function inline(Request $request): JsonResponse
+    {
+        $command = $request->input('command', '');
+        $elementType = $request->input('element_type', 'text');
+        $existingContent = $request->input('existing_content', []);
+        $siteName = $request->input('site_name', 'the website');
+
+        $systemPrompt = "You are Arthur, the LevelUp AI builder assistant. "
+            . "The user selected a '{$elementType}' element with content: " . json_encode($existingContent) . ". "
+            . "Business: {$siteName}. "
+            . "Request: '{$command}'. "
+            . "Return ONLY a raw JSON object — the updated content. No markdown, no explanation. "
+            . "For heading/text: {\"text\":\"...\"}. "
+            . "For button: {\"label\":\"...\",\"href\":\"#\",\"variant\":\"primary\"}. "
+            . "For testimonial: {\"quote\":\"...\",\"author\":\"...\",\"role\":\"...\"}. "
+            . "Match the existing content structure.";
+
+        $result = $this->arthurRuntimeCall($systemPrompt, $command, ['mode' => 'inline', 'element_type' => $elementType], 300);
+
+        if (!$result['success']) {
+            Log::warning('[Arthur Inline] runtime call failed');
+            return response()->json([
+                'content' => $existingContent,
+                'raw' => '',
+                'error' => 'Arthur could not process that edit right now.',
+            ]);
+        }
+
+        return response()->json([
+            'content' => $result['parsed'] ?? $existingContent,
+            'raw' => $result['content'] ?? '',
+        ]);
+    }
+
+    /**
+     * MODE 3 — Chat: sidebar builder commands (create/update sections, pages).
+     */
+    private function chat(Request $request): JsonResponse
+    {
+        $command = $request->input('command', '');
+        $pageStructure = $request->input('page_structure', []);
+        $siteName = $request->input('site_name', 'the website');
+
+        $systemPrompt = "You are Arthur, the AI builder assistant. "
+            . "The user is editing a website page. "
+            . "Current page structure: " . json_encode($pageStructure) . ". "
+            . "Business: {$siteName}. "
+            . "Available actions: create_section, update_section, update_component, create_page. "
+            . "Available section types: hero, features, cta, text, testimonials, service_grid, faq, contact_form, pricing, team, gallery, stats. "
+            . "Return JSON: {\"ai_action\": \"string\", \"data\": {}, \"explanation\": \"string\"}. "
+            . "If the request is just a question, use ai_action:'text_response' and put your answer in explanation.";
+
+        $result = $this->arthurRuntimeCall($systemPrompt, $command, ['mode' => 'chat'], 800);
+
+        if (!$result['success']) {
+            Log::warning('[Arthur Chat] runtime call failed');
+            return response()->json([
+                'ai_action' => 'text_response',
+                'data' => new \stdClass(),
+                'explanation' => 'Sorry, I couldn\'t process that. Try rephrasing your request.',
+            ]);
+        }
+
+        if (!empty($result['parsed']) && is_array($result['parsed'])) {
+            return response()->json($result['parsed']);
+        }
+
+        return response()->json([
+            'ai_action' => 'text_response',
+            'data' => new \stdClass(),
+            'explanation' => $result['content'] ?? 'I didn\'t quite catch that. Could you rephrase?',
+        ]);
+    }
+}

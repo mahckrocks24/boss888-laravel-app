@@ -1,0 +1,812 @@
+/* ── LevelUp Studio Engine v0.1 (MVP) ────────────────────────────────
+ * AI-powered social-media image editor.
+ * Two screens: Design Gallery + Canvas Editor.
+ * Editor renders layers_json as scaled HTML/CSS, supports inline text edit,
+ * background image swap via openMediaPicker, palette swap, PNG export via html2canvas.
+ * Author: 2026-04-20
+ */
+(function () {
+  'use strict';
+
+  // ── Module state ──────────────────────────────────────────────────
+  var STD = {
+    view: 'gallery',      // 'gallery' | 'editor' | 'pick'
+    designs: [],
+    templates: [],
+    pickFormat: 'square',
+    pickCategory: 'all',
+    design: null,         // current design { id, layers }
+    selectedTextId: null,
+    isDirty: false,
+    saveTimer: null,
+  };
+  window._lustudio = STD;
+
+  var TOKEN_HDR = function () {
+    var t = localStorage.getItem('lu_token') || '';
+    return { 'Authorization': 'Bearer ' + t, 'Accept': 'application/json' };
+  };
+
+  // ── 10 brand palettes (must match seeder list) ────────────────────
+  var PALETTES = [
+    { id:'dark_bold',    name:'Dark Bold',    bg:'#0A0A0A', accent:'#FF4D00', text:'#FFFFFF', muted:'rgba(255,255,255,0.65)' },
+    { id:'navy_gold',    name:'Navy Gold',    bg:'#0F2044', accent:'#C9943A', text:'#FFFFFF', muted:'rgba(255,255,255,0.7)' },
+    { id:'minimal',      name:'Pure Minimal', bg:'#FFFFFF', accent:'#1A1A1A', text:'#333333', muted:'#666666' },
+    { id:'luxury_dark',  name:'Luxury Dark',  bg:'#1C1C1E', accent:'#C9943A', text:'#FAF7F2', muted:'rgba(250,247,242,0.65)' },
+    { id:'fresh_green',  name:'Fresh Green',  bg:'#F0F7F0', accent:'#16A34A', text:'#1A1A1A', muted:'#546454' },
+    { id:'blush_rose',   name:'Blush Rose',   bg:'#FDF0F3', accent:'#B76E79', text:'#2D1B1E', muted:'#7A5A5E' },
+    { id:'ocean_blue',   name:'Ocean Blue',   bg:'#EBF4FF', accent:'#2563EB', text:'#0F172A', muted:'#475569' },
+    { id:'warm_cream',   name:'Warm Cream',   bg:'#FDF6EC', accent:'#D4622A', text:'#2C1810', muted:'#7A5A44' },
+    { id:'bold_red',     name:'Bold Red',     bg:'#1A0000', accent:'#DC2626', text:'#FFFFFF', muted:'rgba(255,255,255,0.7)' },
+    { id:'sage_natural', name:'Sage Natural', bg:'#F2F7F2', accent:'#4A7C59', text:'#1A2A1A', muted:'#5C6E5F' },
+  ];
+  var FONTS = ['Bebas Neue','Playfair Display','Inter','Space Grotesk','Cormorant Garamond','Montserrat','DM Sans','Nunito','Barlow Condensed','Libre Baskerville'];
+  var FORMATS = [
+    { id:'square',    label:'Square',    w:1080, h:1080 },
+    { id:'portrait',  label:'Portrait',  w:1080, h:1350 },
+    { id:'story',     label:'Story',     w:1080, h:1920 },
+    { id:'landscape', label:'Landscape', w:1200, h:628 },
+    { id:'pinterest', label:'Pinterest', w:1000, h:1500 },
+  ];
+
+  function _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  // ── Public entry: window.studioLoad(rootEl) ───────────────────────
+  window.studioLoad = function (root) {
+    if (!root) return;
+    STD.root = root;
+    STD.view = 'gallery';
+    _renderGallery();
+  };
+
+  // ── Load Google Fonts for the 10 template typefaces ──────────────
+  function _ensureFonts() {
+    if (document.getElementById('lu-studio-fonts')) return;
+    var families = [
+      'Bebas+Neue',
+      'Playfair+Display:wght@400;500;600;700',
+      'Inter:wght@400;500;600;700',
+      'Space+Grotesk:wght@400;500;600;700',
+      'Cormorant+Garamond:wght@400;500;600;700',
+      'Montserrat:wght@400;500;600;700',
+      'DM+Sans:wght@400;500;700',
+      'Nunito:wght@400;600;700;800',
+      'Barlow+Condensed:wght@400;600;700',
+      'Libre+Baskerville:wght@400;700',
+    ].map(function (f) { return 'family=' + f; }).join('&');
+    var pre = document.createElement('link');
+    pre.rel = 'preconnect'; pre.href = 'https://fonts.gstatic.com'; pre.crossOrigin = '';
+    document.head.appendChild(pre);
+    var l = document.createElement('link');
+    l.id = 'lu-studio-fonts';
+    l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?' + families + '&display=swap';
+    document.head.appendChild(l);
+  }
+
+  // ── Inject CSS once ───────────────────────────────────────────────
+  function _ensureCss() {
+    _ensureFonts();
+    if (document.getElementById('lu-studio-css')) return;
+    var s = document.createElement('style');
+    s.id = 'lu-studio-css';
+    s.textContent = [
+      '.std-wrap{display:flex;flex-direction:column;height:100%;color:var(--t1,#e0e0e0);font-family:var(--fb,system-ui)}',
+      '.std-hdr{padding:14px 22px;border-bottom:1px solid var(--bd,#2a2d3e);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}',
+      '.std-hdr h2{margin:0;font-size:18px;font-weight:700;font-family:var(--fh,system-ui)}',
+      '.std-btn{background:var(--p,#6C5CE7);border:none;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}',
+      '.std-btn:hover{filter:brightness(1.1)}',
+      '.std-btn-ghost{background:transparent;border:1px solid var(--bd,#2a2d3e);color:var(--t1)}',
+      '.std-btn-danger{color:#F87171;background:transparent;border:1px solid var(--bd)}',
+      '.std-body{flex:1;overflow:auto;padding:20px}',
+      '.std-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}',
+      '.std-card{background:var(--s2,#1e2030);border:1px solid var(--bd);border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}',
+      '.std-card:hover{transform:translateY(-2px);border-color:var(--p,#6C5CE7)}',
+      '.std-card-thumb{width:100%;aspect-ratio:1/1;background:#0f1117 center/cover}',
+      '.std-card-thumb.f-portrait{aspect-ratio:4/5}',
+      '.std-card-thumb.f-story{aspect-ratio:9/16}',
+      '.std-card-thumb.f-landscape{aspect-ratio:1200/628}',
+      '.std-card-thumb.f-pinterest{aspect-ratio:2/3}',
+      '.std-card-meta{padding:10px 12px}',
+      '.std-card-name{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.std-card-cat{font-size:11px;color:var(--t3,#777);text-transform:uppercase;letter-spacing:.08em}',
+      '.std-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}',
+      '.std-pill{padding:6px 12px;background:var(--s2,#1e2030);border:1px solid var(--bd);color:var(--t2,#aaa);border-radius:999px;cursor:pointer;font-size:12px;font-weight:500}',
+      '.std-pill.active{background:var(--p,#6C5CE7);border-color:var(--p);color:#fff}',
+      // Editor
+      '.std-edit{display:flex;height:100%;min-height:0}',
+      '.std-canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:30px;background:#0a0c12;overflow:auto}',
+      '.std-canvas{position:relative;background:#000;box-shadow:0 30px 80px rgba(0,0,0,0.6);overflow:hidden;transform-origin:top left}',
+      '.std-tools{width:320px;flex-shrink:0;border-left:1px solid var(--bd);background:var(--s1,#14171f);display:flex;flex-direction:column}',
+      '.std-tabs{display:flex;border-bottom:1px solid var(--bd);background:var(--s2,#1e2030)}',
+      '.std-tab{flex:1;padding:11px 8px;text-align:center;font-size:11px;font-weight:600;color:var(--t3,#777);cursor:pointer;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid transparent}',
+      '.std-tab.active{color:var(--p,#6C5CE7);border-bottom-color:var(--p)}',
+      '.std-tab-body{flex:1;overflow:auto;padding:16px}',
+      '.std-row{margin-bottom:14px}',
+      '.std-label{display:block;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}',
+      '.std-input{width:100%;background:var(--s2,#1e2030);border:1px solid var(--bd);color:var(--t1);padding:8px 10px;border-radius:6px;font-size:13px;font-family:inherit}',
+      '.std-pal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}',
+      '.std-pal-card{padding:8px;border:1px solid var(--bd);border-radius:8px;cursor:pointer;background:var(--s2,#1e2030);transition:border-color .15s}',
+      '.std-pal-card:hover{border-color:var(--p)}',
+      '.std-pal-swatches{display:flex;gap:4px;height:18px;margin-bottom:6px;border-radius:4px;overflow:hidden}',
+      '.std-pal-swatches span{flex:1}',
+      '.std-pal-name{font-size:11px;color:var(--t2)}',
+      // Editable hover
+      '.std-canvas [data-studio-field]{cursor:text;outline-offset:3px;border-radius:2px}',
+      '.std-canvas [data-studio-field]:hover{outline:2px dashed rgba(108,92,231,0.5)}',
+      '.std-canvas [data-studio-field][contenteditable="true"]:focus{outline:2px solid #6C5CE7;background:rgba(108,92,231,0.08)}',
+      '.std-canvas [data-studio-bg]{cursor:pointer;outline-offset:-2px}',
+      '.std-canvas [data-studio-bg]:hover{outline:2px dashed rgba(108,92,231,0.5)}',
+      '.std-saving{font-size:11px;color:var(--t3);margin-right:8px}',
+      '.std-saving.saved{color:#10B981}',
+    ].join('\n');
+    document.head.appendChild(s);
+  }
+
+  // ── Helper: load html2canvas from CDN once ────────────────────────
+  function _ensureHtml2Canvas(cb) {
+    if (window.html2canvas) return cb(null, window.html2canvas);
+    if (window._h2cLoading) return setTimeout(function () { _ensureHtml2Canvas(cb); }, 200);
+    window._h2cLoading = true;
+    var sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    sc.onload  = function () { window._h2cLoading = false; cb(null, window.html2canvas); };
+    sc.onerror = function () { window._h2cLoading = false; cb(new Error('html2canvas load failed')); };
+    document.head.appendChild(sc);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // SCREEN 1 — Design Gallery
+  // ─────────────────────────────────────────────────────────────────
+  function _renderGallery() {
+    _ensureCss();
+    STD.root.innerHTML =
+      '<div class="std-wrap">' +
+        '<div class="std-hdr">' +
+          '<h2>\uD83C\uDFA8 Studio</h2>' +
+          '<button class="std-btn" onclick="_studioOpenPicker()">+ New Design</button>' +
+        '</div>' +
+        '<div class="std-body" id="std-gallery-body">' +
+          '<div style="color:var(--t3);font-size:13px">Loading your designs\u2026</div>' +
+        '</div>' +
+      '</div>';
+
+    fetch('/api/studio/designs', { headers: TOKEN_HDR() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        STD.designs = (d && d.designs) || [];
+        var body = document.getElementById('std-gallery-body');
+        if (!body) return;
+        if (!STD.designs.length) {
+          body.innerHTML =
+            '<div style="text-align:center;padding:60px 20px;color:var(--t3)">' +
+              '<div style="font-size:48px;margin-bottom:12px">\uD83C\uDFA8</div>' +
+              '<h3 style="color:var(--t1);margin:0 0 8px;font-family:var(--fh,inherit)">No designs yet</h3>' +
+              '<p style="margin:0 0 20px">Pick a template to get started — text and colors are fully editable.</p>' +
+              '<button class="std-btn" onclick="_studioOpenPicker()">+ New Design</button>' +
+            '</div>';
+          return;
+        }
+        body.innerHTML = '<div class="std-grid">' + STD.designs.map(function (d) {
+          var thumb = d.exported_url || d.thumbnail_url || '';
+          var thumbStyle = thumb ? 'background-image:url(' + thumb + ')' : '';
+          return '<div class="std-card" onclick="_studioOpenDesign(' + d.id + ')">' +
+            '<div class="std-card-thumb f-' + d.format + '" style="' + thumbStyle + '"></div>' +
+            '<div class="std-card-meta">' +
+              '<div class="std-card-name">' + _esc(d.name) + '</div>' +
+              '<div class="std-card-cat">' + d.format + ' \u00B7 ' + d.status + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>';
+      })
+      .catch(function () {
+        var body = document.getElementById('std-gallery-body');
+        if (body) body.innerHTML = '<div style="color:#F87171">Failed to load designs.</div>';
+      });
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Template picker
+  // ─────────────────────────────────────────────────────────────────
+  window._studioOpenPicker = function () {
+    _ensureCss();
+    STD.root.innerHTML =
+      '<div class="std-wrap">' +
+        '<div class="std-hdr">' +
+          '<h2>Choose a Template</h2>' +
+          '<button class="std-btn-ghost std-btn" onclick="_studioBackToGallery()">\u2190 Back</button>' +
+        '</div>' +
+        '<div class="std-body">' +
+          '<div class="std-pills" id="std-format-pills">' +
+            FORMATS.map(function (f) {
+              return '<div class="std-pill ' + (STD.pickFormat === f.id ? 'active' : '') + '" onclick="_studioSetPickFormat(\'' + f.id + '\')">' + f.label + ' \u00B7 ' + f.w + '\u00d7' + f.h + '</div>';
+            }).join('') +
+          '</div>' +
+          '<div class="std-pills" id="std-cat-pills">' +
+            ['all','promotional','quote','product','event','educational','brand','story','carousel','seasonal'].map(function (c) {
+              return '<div class="std-pill ' + (STD.pickCategory === c ? 'active' : '') + '" onclick="_studioSetPickCategory(\'' + c + '\')">' + (c.charAt(0).toUpperCase() + c.slice(1)) + '</div>';
+            }).join('') +
+          '</div>' +
+          '<div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">' +
+            '<div id="std-tpl-count" style="color:var(--t3);font-size:12px"></div>' +
+            '<button class="std-btn-ghost std-btn" onclick="_studioBlankCanvas()">\u270E Blank Canvas</button>' +
+          '</div>' +
+          '<div id="std-tpl-grid"><div style="color:var(--t3);font-size:13px">Loading templates\u2026</div></div>' +
+        '</div>' +
+      '</div>';
+    _loadTemplates();
+  };
+
+  window._studioSetPickFormat   = function (f) { STD.pickFormat = f; _studioOpenPicker(); };
+  window._studioSetPickCategory = function (c) { STD.pickCategory = c; _studioOpenPicker(); };
+  window._studioBackToGallery   = function () { STD.view = 'gallery'; _renderGallery(); };
+
+  function _loadTemplates() {
+    var url = '/api/studio/templates?per_page=48&format=' + encodeURIComponent(STD.pickFormat);
+    if (STD.pickCategory && STD.pickCategory !== 'all') url += '&category=' + encodeURIComponent(STD.pickCategory);
+    fetch(url, { headers: TOKEN_HDR() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        STD.templates = (d && d.templates) || [];
+        var grid = document.getElementById('std-tpl-grid');
+        var count = document.getElementById('std-tpl-count');
+        if (count) count.textContent = STD.templates.length + ' templates';
+        if (!grid) return;
+        if (!STD.templates.length) {
+          grid.innerHTML = '<div style="color:var(--t3);padding:40px 0;text-align:center">No templates match. Try a different format or category.</div>';
+          return;
+        }
+        // BUG 2a fix (2026-04-20): render inline previews using the same layer engine
+        // as the editor, scaled down. No DB thumbnail_url needed.
+        grid.innerHTML = '<div class="std-grid">' + STD.templates.map(function (t, idx) {
+          return '<div class="std-card" onclick="_studioUseTemplate(' + t.id + ',\'' + _esc(t.name).replace(/\'/g, "\\'") + '\')">' +
+            '<div class="std-card-thumb f-' + t.format + '" id="std-thumb-' + t.id + '" style="position:relative;overflow:hidden"></div>' +
+            '<div class="std-card-meta">' +
+              '<div class="std-card-name">' + _esc(t.name) + '</div>' +
+              '<div class="std-card-cat">' + _esc(t.category) + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>';
+        // Render inline thumbnails (one frame later so the thumb containers have layout dims).
+        requestAnimationFrame(function () {
+          STD.templates.forEach(function (t) {
+            try { _renderInlineThumb(t); } catch (e) { /* per-template failure shouldn't break grid */ }
+          });
+        });
+      })
+      .catch(function () {
+        var grid = document.getElementById('std-tpl-grid');
+        if (grid) grid.innerHTML = '<div style="color:#F87171">Failed to load templates.</div>';
+      });
+  }
+
+  // BUG 2b fix (2026-04-20): hand the editor the layers DIRECTLY from the template
+  // listing payload (no extra round-trip needed since /api/studio/templates now
+  // includes layers_json). Eliminates the localStorage round-trip + empty-canvas bug.
+  window._studioUseTemplate = function (templateId, name) {
+    var tpl = STD.templates.find(function (t) { return t.id === templateId; });
+    if (!tpl) { alert('Template not found in current listing.'); return; }
+    var layers = tpl.layers_json;
+    if (typeof layers === 'string') { try { layers = JSON.parse(layers); } catch (e) { layers = null; } }
+    if (!layers || !layers.layers) { alert('Template has no layers.'); return; }
+    fetch('/api/studio/designs', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, TOKEN_HDR()),
+      body: JSON.stringify({ template_id: templateId, name: name + ' (copy)', format: tpl.format }),
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || !d.success) { alert('Could not create design.'); return; }
+      _renderEditor(d.design_id, { id: d.design_id, name: name + ' (copy)', format: tpl.format }, layers);
+    });
+  };
+  window._studioBlankCanvas = function () {
+    fetch('/api/studio/designs', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, TOKEN_HDR()),
+      body: JSON.stringify({ name: 'Untitled Design', format: STD.pickFormat }),
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.success) _studioOpenDesign(d.design_id);
+    });
+  };
+
+  // ── BUG 2a (2026-04-20): inline thumbnail render using the same engine.
+  function _renderInlineThumb(tpl) {
+    var host = document.getElementById('std-thumb-' + tpl.id);
+    if (!host) return;
+    var layers = tpl.layers_json;
+    if (typeof layers === 'string') { try { layers = JSON.parse(layers); } catch (e) { return; } }
+    if (!layers || !layers.layers) return;
+    var cw = layers.canvas_width || 1080;
+    var ch = layers.canvas_height || 1080;
+    var hostW = host.clientWidth  || 220;
+    var hostH = host.clientHeight || 220;
+    if (hostW < 20) hostW = 220;
+    if (hostH < 20) hostH = 220;
+    var scale = Math.min(hostW / cw, hostH / ch);
+    if (!isFinite(scale) || scale <= 0) scale = 0.2;
+    var inner = '';
+    layers.layers.forEach(function (layer) { inner += _renderLayer(layer, cw, ch); });
+    var filterCss = _filterCssFromLayers(layers.layers);
+    // Wrap at native dims, then scale. transform-origin:top left so scaled box anchors to host's top-left.
+    host.innerHTML =
+      '<div style="width:' + cw + 'px;height:' + ch + 'px;transform:scale(' + scale + ');transform-origin:top left;position:absolute;top:0;left:0;' + filterCss + '">' +
+        inner +
+      '</div>';
+  }
+
+  // CSS filter string from the effects layer (vignette + filter preset).
+  function _filterCssFromLayers(layers) {
+    var fx = layers && layers.find ? layers.find(function (l) { return l && l.type === 'effects'; }) : null;
+    if (!fx || !fx.visible) return '';
+    var d = fx.data || {};
+    var filters = [];
+    var preset = d.filter || 'none';
+    var intensity = (typeof d.filter_intensity === 'number' ? d.filter_intensity : 50) / 100;
+    if (preset === 'warm')      filters.push('sepia(' + (intensity * 0.4) + ') saturate(' + (1 + intensity * 0.4) + ')');
+    else if (preset === 'cool') filters.push('hue-rotate(' + (intensity * 30) + 'deg) saturate(' + (1 - intensity * 0.2) + ')');
+    else if (preset === 'bw')   filters.push('grayscale(' + intensity + ')');
+    else if (preset === 'fade') filters.push('contrast(' + (1 - intensity * 0.3) + ') brightness(' + (1 + intensity * 0.1) + ')');
+    else if (preset === 'vivid')filters.push('saturate(' + (1 + intensity * 0.6) + ') contrast(' + (1 + intensity * 0.15) + ')');
+    else if (preset === 'matte')filters.push('contrast(' + (1 - intensity * 0.2) + ') saturate(' + (1 - intensity * 0.15) + ')');
+    else if (preset === 'film') filters.push('sepia(' + (intensity * 0.2) + ') contrast(' + (1 + intensity * 0.1) + ')');
+    return filters.length ? 'filter:' + filters.join(' ') + ';' : '';
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // SCREEN 2 — Canvas Editor
+  // ─────────────────────────────────────────────────────────────────
+  // BUG 2b fix (2026-04-20): authoritative layers come from GET /api/studio/designs/{id}.
+  // No more localStorage round-trip, no more stale-cache failure mode.
+  window._studioOpenDesign = function (designId) {
+    fetch('/api/studio/designs/' + designId, { headers: TOKEN_HDR() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.success || !d.design) {
+          alert('Could not load design.');
+          STD.view = 'gallery'; _renderGallery();
+          return;
+        }
+        var design = d.design;
+        var layers = design.layers_json;
+        if (typeof layers === 'string') { try { layers = JSON.parse(layers); } catch (e) { layers = null; } }
+        if (!layers || !layers.layers) layers = _blankLayers(design.format || 'square');
+        _renderEditor(designId, {
+          id: designId,
+          name: design.name || 'Untitled Design',
+          format: design.format || 'square',
+        }, layers);
+      })
+      .catch(function () {
+        alert('Network error loading design.');
+        STD.view = 'gallery'; _renderGallery();
+      });
+  };
+
+  function _blankLayers(fmt) {
+    var sizes = { square:[1080,1080], portrait:[1080,1350], story:[1080,1920], landscape:[1200,628], pinterest:[1000,1500] };
+    var s = sizes[fmt] || [1080, 1080];
+    return {
+      format: fmt, canvas_width: s[0], canvas_height: s[1],
+      layers: [
+        { id:'background', type:'background', locked:true, visible:true, data:{ mode:'color', color:'#1A1A1A', overlay_color:'rgba(0,0,0,0)', overlay_opacity:0 } },
+        { id:'overlay',    type:'overlay',    locked:false, visible:false, data:{ mode:'color', color:'#000000', opacity:0, pattern:'none' } },
+        { id:'media',      type:'media',      locked:false, visible:false, data:{ image_url:null } },
+        { id:'shapes',     type:'shapes',     locked:false, visible:false, data:{ items:[] } },
+        { id:'text',       type:'text',       locked:false, visible:true,  data:{ items:[
+          { id:'headline', role:'headline', content:'Your Headline', x:50, y:50, font_family:'Inter', font_size:48, font_weight:'600', color:'#FFFFFF', alignment:'center', editable:true },
+        ] } },
+        { id:'effects',    type:'effects',    locked:false, visible:false, data:{ vignette:{ enabled:false, intensity:30 }, filter:'none', filter_intensity:50 } },
+      ],
+    };
+  }
+
+  function _renderEditor(designId, meta, layers) {
+    _ensureCss();
+    STD.view = 'editor';
+    STD.design = { id: designId, meta: meta, layers: layers };
+    STD.activeTab = 'background';
+    STD.isDirty = false;
+    STD.root.innerHTML =
+      '<div class="std-wrap">' +
+        '<div class="std-hdr">' +
+          '<div style="display:flex;align-items:center;gap:14px">' +
+            '<button class="std-btn-ghost std-btn" onclick="_studioBackToGallery()">\u2190</button>' +
+            '<input id="std-name" class="std-input" style="width:240px" value="' + _esc(meta.name) + '" oninput="_studioMarkDirty()">' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span id="std-saving" class="std-saving">All changes saved</span>' +
+            '<button class="std-btn-ghost std-btn" onclick="_studioExport()">\u2B07 Export PNG</button>' +
+            '<button class="std-btn" onclick="_studioSave(true)">\uD83D\uDCBE Save</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="std-edit">' +
+          '<div class="std-canvas-wrap" id="std-canvas-wrap"></div>' +
+          '<div class="std-tools">' +
+            '<div class="std-tabs">' +
+              ['background','text','colors'].map(function (t) {
+                return '<div class="std-tab ' + (STD.activeTab === t ? 'active' : '') + '" data-tab="' + t + '" onclick="_studioSetTab(\'' + t + '\')">' + t.toUpperCase() + '</div>';
+              }).join('') +
+            '</div>' +
+            '<div class="std-tab-body" id="std-tab-body"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    _renderCanvas();
+    _renderTab();
+  }
+
+  window._studioSetTab = function (t) {
+    STD.activeTab = t;
+    document.querySelectorAll('.std-tab').forEach(function (el) { el.classList.toggle('active', el.dataset.tab === t); });
+    _renderTab();
+  };
+
+  // ── Canvas render ─────────────────────────────────────────────────
+  function _renderCanvas() {
+    var wrap = document.getElementById('std-canvas-wrap');
+    if (!wrap) return;
+    var L = STD.design.layers;
+    var cw = L.canvas_width, ch = L.canvas_height;
+    // Compute scale so canvas fits inside viewport.
+    var maxW = wrap.clientWidth - 60, maxH = wrap.clientHeight - 60;
+    var scale = Math.min(maxW / cw, maxH / ch, 1);
+    if (!isFinite(scale) || scale <= 0) scale = 0.5;
+
+    var filterCss = _filterCssFromLayers(L.layers);
+    var html = '<div class="std-canvas" id="std-canvas" data-design-id="' + STD.design.id + '" style="width:' + cw + 'px;height:' + ch + 'px;transform:scale(' + scale + ');' + filterCss + '">';
+    L.layers.forEach(function (layer) {
+      html += _renderLayer(layer, cw, ch);
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+
+    // Make text editable on click
+    wrap.querySelectorAll('[data-studio-field]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (el.getAttribute('contenteditable') === 'true') return;
+        el.setAttribute('contenteditable', 'true');
+        el.focus();
+      });
+      el.addEventListener('blur', function () {
+        if (el.getAttribute('contenteditable') !== 'true') return;
+        el.removeAttribute('contenteditable');
+        var fid = el.getAttribute('data-studio-field');
+        _updateText(fid, el.textContent);
+      });
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); }
+      });
+    });
+    // Background click → media picker
+    wrap.querySelectorAll('[data-studio-bg]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        _studioPickBackground();
+      });
+    });
+  }
+
+  // ── Render engine v2 (2026-04-20 rebuild) ────────────────────────
+  // All positioning is in percentage units — works in both editor (full-size
+  // canvas) and inline thumbnails (scaled wrapper). No px conversion.
+  // Effects layer applies as a CSS filter on the canvas wrapper, not as a DOM node.
+  function _renderLayer(layer, cw, ch) {
+    if (!layer) return '';
+    var d = layer.data || {};
+    if (layer.type === 'background') return _renderBg(d);
+    if (layer.type === 'overlay'  && layer.visible) return _renderOverlay(d);
+    if (layer.type === 'media'    && layer.visible) return _renderMedia(d);
+    if (layer.type === 'shapes'   && layer.visible) return _renderShapes(d.items || []);
+    if (layer.type === 'text'     && layer.visible) return _renderText(d.items || []);
+    if (layer.type === 'effects')   return ''; // applied as canvas filter, not as element
+    return '';
+  }
+
+  function _renderBg(d) {
+    var style;
+    if (d.mode === 'image' && d.image_url) {
+      style = "background-color:#000;background-image:url('" + d.image_url + "');background-size:cover;background-position:center;background-repeat:no-repeat";
+    } else if (d.mode === 'gradient' && d.gradient) {
+      var dir  = d.gradient.direction || '135deg';
+      var from = d.gradient.from || '#000';
+      var to   = d.gradient.to   || '#333';
+      style = "background:linear-gradient(" + dir + ',' + from + ',' + to + ')';
+    } else {
+      style = 'background-color:' + (d.color || '#1A1A1A');
+    }
+    var html = '<div data-studio-bg="1" style="position:absolute;inset:0;z-index:1;' + style + '"></div>';
+    var op = parseInt(d.overlay_opacity, 10) || 0;
+    if (op > 0 && d.overlay_color) {
+      html += '<div style="position:absolute;inset:0;background:' + d.overlay_color + ';z-index:2;pointer-events:none"></div>';
+    }
+    return html;
+  }
+
+  function _renderOverlay(d) {
+    var op = parseInt(d.opacity, 10) || 0;
+    if (op <= 0 || !d.color) return '';
+    return '<div style="position:absolute;inset:0;background:' + d.color + ';opacity:' + (op / 100) + ';z-index:3;pointer-events:none"></div>';
+  }
+
+  function _renderMedia(d) {
+    if (!d.image_url) return '';
+    var pos = d.position || { x: 50, y: 50 };
+    var sz  = d.size     || { width: 60, height: 60 };
+    var op  = (typeof d.opacity === 'number' ? d.opacity : 100) / 100;
+    return '<img src="' + d.image_url + '" style="position:absolute;'
+      + 'left:' + pos.x + '%;top:' + pos.y + '%;'
+      + 'width:' + sz.width + '%;height:' + sz.height + '%;'
+      + 'object-fit:cover;opacity:' + op + ';z-index:4;pointer-events:none" alt="">';
+  }
+
+  function _renderShapes(items) {
+    return items.map(function (s) {
+      var radius = s.type === 'circle' ? '50%' : ((s.border_radius || 0) + 'px');
+      var border = (s.border_width && s.border_color)
+        ? 'border:' + s.border_width + 'px solid ' + s.border_color + ';'
+        : '';
+      var bg = (s.color === 'transparent') ? 'transparent' : (s.color || '#FFFFFF');
+      var op = (typeof s.opacity === 'number' ? s.opacity : 100) / 100;
+      return '<div style="position:absolute;'
+        + 'left:' + s.x + '%;top:' + s.y + '%;'
+        + 'width:' + s.width + '%;height:' + s.height + '%;'
+        + 'background:' + bg + ';opacity:' + op + ';'
+        + 'border-radius:' + radius + ';' + border
+        + 'z-index:5;pointer-events:none;box-sizing:border-box"></div>';
+    }).join('');
+  }
+
+  function _renderText(items) {
+    return items.map(function (t) {
+      var align = t.alignment || 'left';
+      // Translate origin so (x, y) corresponds visually:
+      //   left   → x = left edge of text
+      //   center → x = horizontal center
+      //   right  → x = right edge
+      // y is always vertical center of text.
+      var translate;
+      if (align === 'center')      translate = 'translate(-50%,-50%)';
+      else if (align === 'right')  translate = 'translate(-100%,-50%)';
+      else                         translate = 'translate(0,-50%)';
+      var styles = [
+        'position:absolute',
+        'left:' + (t.x != null ? t.x : 5) + '%',
+        'top:'  + (t.y != null ? t.y : 50) + '%',
+        'transform:' + translate,
+        'font-family:"' + (t.font_family || 'Inter') + '",-apple-system,system-ui,sans-serif',
+        'font-size:' + (t.font_size || 16) + 'px',
+        'font-weight:' + (t.font_weight || '400'),
+        'color:' + (t.color || '#FFFFFF'),
+        'text-align:' + align,
+        'line-height:1.2',
+        'max-width:90%',
+        'z-index:10',
+        'white-space:pre-wrap',
+        'word-wrap:break-word',
+        'overflow-wrap:break-word',
+        'margin:0',
+        'padding:0',
+      ];
+      if (t.text_transform) styles.push('text-transform:' + t.text_transform);
+      if (t.letter_spacing) styles.push('letter-spacing:' + t.letter_spacing + 'px');
+      var attr = t.editable ? (' data-studio-field="' + (t.id || '') + '"') : '';
+      return '<div' + attr + ' data-role="' + (t.role || '') + '" style="' + styles.join(';') + '">' + _esc(t.content || '') + '</div>';
+    }).join('');
+  }
+
+  // ── Tools panel render ────────────────────────────────────────────
+  function _renderTab() {
+    var body = document.getElementById('std-tab-body');
+    if (!body) return;
+    if (STD.activeTab === 'background') body.innerHTML = _bgTabHtml();
+    else if (STD.activeTab === 'text')   body.innerHTML = _textTabHtml();
+    else if (STD.activeTab === 'colors') body.innerHTML = _colorsTabHtml();
+  }
+
+  function _bgTabHtml() {
+    var bg = STD.design.layers.layers.find(function (l) { return l.type === 'background'; });
+    var d = bg.data;
+    return '' +
+      '<div class="std-row"><label class="std-label">Background mode</label>' +
+        '<select class="std-input" onchange="_studioSetBgMode(this.value)">' +
+          '<option value="color"' + (d.mode === 'color' ? ' selected' : '') + '>Solid color</option>' +
+          '<option value="gradient"' + (d.mode === 'gradient' ? ' selected' : '') + '>Gradient</option>' +
+          '<option value="image"' + (d.mode === 'image' ? ' selected' : '') + '>Image</option>' +
+        '</select></div>' +
+      (d.mode === 'color' ? '<div class="std-row"><label class="std-label">Color</label><input type="color" class="std-input" value="' + (d.color || '#1A1A1A') + '" oninput="_studioSetBg({color:this.value})"></div>' : '') +
+      (d.mode === 'gradient' ? '<div class="std-row"><label class="std-label">From</label><input type="color" class="std-input" value="' + (d.gradient && d.gradient.from || '#1A1A2E') + '" oninput="_studioSetGradient({from:this.value})"></div><div class="std-row"><label class="std-label">To</label><input type="color" class="std-input" value="' + (d.gradient && d.gradient.to || '#0F3460') + '" oninput="_studioSetGradient({to:this.value})"></div>' : '') +
+      (d.mode === 'image' ? '<div class="std-row"><button class="std-btn" style="width:100%" onclick="_studioPickBackground()">\uD83D\uDDBC Choose from Library</button></div>' : '') +
+      '<div class="std-row"><label class="std-label">Overlay opacity</label><input type="range" min="0" max="100" value="' + (d.overlay_opacity || 0) + '" oninput="_studioSetOverlay({opacity:this.value})" style="width:100%"></div>';
+  }
+
+  function _textTabHtml() {
+    var text = STD.design.layers.layers.find(function (l) { return l.type === 'text'; });
+    var items = (text && text.data.items) || [];
+    var html = '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">Click any text on the canvas to edit it inline. Style controls apply to selected.</div>';
+    items.forEach(function (t) {
+      html += '<div style="padding:10px;background:var(--s2);border-radius:6px;margin-bottom:8px;border:1px solid ' + (STD.selectedTextId === t.id ? 'var(--p)' : 'var(--bd)') + ';cursor:pointer" onclick="_studioSelectText(\'' + t.id + '\')">' +
+        '<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">' + (t.role || 'text') + '</div>' +
+        '<div style="font-size:12px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _esc(t.content) + '</div>' +
+      '</div>';
+    });
+    if (STD.selectedTextId) {
+      var sel = items.find(function (i) { return i.id === STD.selectedTextId; });
+      if (sel) {
+        html += '<hr style="border:none;border-top:1px solid var(--bd);margin:14px 0">' +
+          '<div class="std-row"><label class="std-label">Font</label><select class="std-input" onchange="_studioSetTextProp(\'font_family\',this.value)">' + FONTS.map(function (f) { return '<option value="' + f + '"' + (sel.font_family === f ? ' selected' : '') + '>' + f + '</option>'; }).join('') + '</select></div>' +
+          '<div class="std-row"><label class="std-label">Size: <span id="std-fs-val">' + sel.font_size + 'px</span></label><input type="range" min="10" max="240" value="' + sel.font_size + '" oninput="_studioSetTextProp(\'font_size\',+this.value);document.getElementById(\'std-fs-val\').textContent=this.value+\'px\'" style="width:100%"></div>' +
+          '<div class="std-row"><label class="std-label">Color</label><input type="color" class="std-input" value="' + (sel.color || '#FFFFFF') + '" oninput="_studioSetTextProp(\'color\',this.value)"></div>' +
+          '<div class="std-row"><label class="std-label">Alignment</label><div style="display:flex;gap:6px">' +
+            ['left','center','right'].map(function (a) {
+              return '<button class="std-btn-ghost std-btn" style="flex:1' + (sel.alignment === a ? ';border-color:var(--p);color:var(--p)' : '') + '" onclick="_studioSetTextProp(\'alignment\',\'' + a + '\')">' + a + '</button>';
+            }).join('') +
+          '</div></div>';
+      }
+    }
+    return html;
+  }
+
+  function _colorsTabHtml() {
+    return '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">Click a palette to swap accent + text colors across the design.</div>' +
+      '<div class="std-pal-grid">' +
+      PALETTES.map(function (p) {
+        return '<div class="std-pal-card" onclick="_studioApplyPalette(\'' + p.id + '\')">' +
+          '<div class="std-pal-swatches"><span style="background:' + p.bg + '"></span><span style="background:' + p.accent + '"></span><span style="background:' + p.text + '"></span></div>' +
+          '<div class="std-pal-name">' + p.name + '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+  }
+
+  // ── Tool actions ──────────────────────────────────────────────────
+  window._studioMarkDirty = function () {
+    STD.isDirty = true;
+    var s = document.getElementById('std-saving');
+    if (s) { s.textContent = 'Saving\u2026'; s.classList.remove('saved'); }
+    clearTimeout(STD.saveTimer);
+    STD.saveTimer = setTimeout(function () { _studioSave(false); }, 1200);
+  };
+
+  function _updateText(fid, content) {
+    var text = STD.design.layers.layers.find(function (l) { return l.type === 'text'; });
+    if (!text) return;
+    var item = text.data.items.find(function (i) { return i.id === fid; });
+    if (item) { item.content = content; _studioMarkDirty(); }
+  }
+
+  window._studioSelectText = function (id) {
+    STD.selectedTextId = id;
+    _renderTab();
+  };
+
+  window._studioSetTextProp = function (prop, value) {
+    if (!STD.selectedTextId) return;
+    var text = STD.design.layers.layers.find(function (l) { return l.type === 'text'; });
+    var item = text.data.items.find(function (i) { return i.id === STD.selectedTextId; });
+    if (!item) return;
+    item[prop] = value;
+    _studioMarkDirty();
+    _renderCanvas();
+  };
+
+  window._studioSetBgMode = function (mode) {
+    var bg = STD.design.layers.layers.find(function (l) { return l.type === 'background'; });
+    bg.data.mode = mode;
+    _studioMarkDirty(); _renderCanvas(); _renderTab();
+  };
+  window._studioSetBg = function (patch) {
+    var bg = STD.design.layers.layers.find(function (l) { return l.type === 'background'; });
+    Object.assign(bg.data, patch);
+    _studioMarkDirty(); _renderCanvas();
+  };
+  window._studioSetGradient = function (patch) {
+    var bg = STD.design.layers.layers.find(function (l) { return l.type === 'background'; });
+    bg.data.gradient = Object.assign({ from:'#1A1A2E', to:'#0F3460', direction:'135deg' }, bg.data.gradient || {}, patch);
+    _studioMarkDirty(); _renderCanvas();
+  };
+  window._studioSetOverlay = function (patch) {
+    var bg = STD.design.layers.layers.find(function (l) { return l.type === 'background'; });
+    if (patch.opacity !== undefined) {
+      bg.data.overlay_opacity = parseInt(patch.opacity, 10);
+      bg.data.overlay_color = bg.data.overlay_color || 'rgba(0,0,0,0.5)';
+    }
+    _studioMarkDirty(); _renderCanvas();
+  };
+
+  window._studioPickBackground = function () {
+    if (typeof window.openMediaPicker !== 'function') { alert('Media picker unavailable.'); return; }
+    window.openMediaPicker({ type:'image', context:'studio', multiple:false }, function (file) {
+      if (!file) return;
+      var url = file.file_url || file.url || file.src || '';
+      if (!url) return;
+      var bg = STD.design.layers.layers.find(function (l) { return l.type === 'background'; });
+      bg.data.mode = 'image';
+      bg.data.image_url = url;
+      _studioMarkDirty(); _renderCanvas(); _renderTab();
+    });
+  };
+
+  // Apply palette: swap accent + text colors across all editable text + accent shapes.
+  window._studioApplyPalette = function (paletteId) {
+    var p = PALETTES.find(function (x) { return x.id === paletteId; });
+    if (!p) return;
+    var bg   = STD.design.layers.layers.find(function (l) { return l.type === 'background'; });
+    var text = STD.design.layers.layers.find(function (l) { return l.type === 'text'; });
+    var shapes = STD.design.layers.layers.find(function (l) { return l.type === 'shapes'; });
+
+    if (bg.data.mode === 'color') bg.data.color = p.bg;
+    text.data.items.forEach(function (t) {
+      // Heuristic: badge/cta/brand → accent; muted-grey → muted; everything else → text.
+      var current = (t.color || '').toLowerCase();
+      var isAccent = (t.role === 'badge' || t.role === 'cta' || (current.indexOf('rgba(') === -1 && t.font_size && t.font_size <= 14 && (t.role === 'subheading')));
+      if (t.role === 'badge' || t.role === 'cta') t.color = p.accent;
+      else if (t.role === 'brand' || /rgba/.test(current)) t.color = p.muted;
+      else t.color = p.text;
+    });
+    if (shapes && shapes.data.items) {
+      shapes.data.items.forEach(function (s) {
+        if (!s.color || s.color === 'transparent') return;
+        // If shape was originally a "highlight bar" color, swap to palette accent.
+        s.color = p.accent;
+      });
+    }
+    _studioMarkDirty(); _renderCanvas();
+  };
+
+  // ── Save / Export ────────────────────────────────────────────────
+  window._studioSave = function (showToastFlag) {
+    if (!STD.design) return;
+    var name = (document.getElementById('std-name') || {}).value || STD.design.meta.name;
+    var payload = { name: name, layers_json: STD.design.layers };
+    fetch('/api/studio/designs/' + STD.design.id, {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, TOKEN_HDR()),
+      body: JSON.stringify(payload),
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      var s = document.getElementById('std-saving');
+      if (s) { s.textContent = 'All changes saved'; s.classList.add('saved'); }
+      STD.isDirty = false;
+      // Cache layers locally so re-opening this design renders correctly (MVP — proper GET endpoint to come).
+      try { localStorage.setItem('lu_studio_design_' + STD.design.id, JSON.stringify({ meta: STD.design.meta, layers: STD.design.layers })); } catch (e) {}
+      if (showToastFlag && typeof window.showToast === 'function') window.showToast('Design saved', 'success');
+    }).catch(function () {
+      var s = document.getElementById('std-saving');
+      if (s) { s.textContent = 'Save failed'; s.style.color = '#F87171'; }
+    });
+  };
+
+  window._studioExport = function () {
+    _ensureHtml2Canvas(function (err, h2c) {
+      if (err) { alert('Could not load export library.'); return; }
+      var canvas = document.getElementById('std-canvas');
+      if (!canvas) return;
+      // Render at native canvas size by overriding scale temporarily.
+      var prevTransform = canvas.style.transform;
+      canvas.style.transform = 'scale(1)';
+      h2c(canvas, { backgroundColor: null, useCORS: true, scale: 1 }).then(function (out) {
+        canvas.style.transform = prevTransform;
+        var dataUrl = out.toDataURL('image/png');
+        // Send to server to persist + add to media library
+        fetch('/api/studio/designs/' + STD.design.id + '/export', {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, TOKEN_HDR()),
+          body: JSON.stringify({ format: 'png', image_data: dataUrl }),
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          if (d && d.success) {
+            // Trigger browser download.
+            var a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = ((document.getElementById('std-name') || {}).value || 'design') + '.png';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            if (typeof window.showToast === 'function') window.showToast('Exported and saved to Library', 'success');
+          } else {
+            alert('Export saved locally; server save failed.');
+            var a2 = document.createElement('a'); a2.href = dataUrl; a2.download = 'design.png';
+            document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
+          }
+        });
+      });
+    });
+  };
+
+  console.log('[LevelUp] Studio engine v0.1 loaded');
+})();

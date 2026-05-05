@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How It Works — LevelUpGrowth</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/marketing/css/site.css">
+<link rel="stylesheet" href="/marketing/css/orb.css">
+<style>
+.how-steps{display:flex;flex-direction:column;gap:0;max-width:780px;margin:0 auto}
+.how-step{display:grid;grid-template-columns:80px 1fr;gap:28px;padding:32px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.how-step:last-child{border-bottom:none}
+.how-step-num{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-family:var(--ff-h);font-weight:800;font-size:20px;color:#fff;flex-shrink:0;box-shadow:0 0 20px rgba(124,58,237,.3)}
+.how-step-title{font-family:var(--ff-h);font-weight:800;font-size:20px;margin-bottom:10px}
+.how-step-desc{color:var(--muted);font-size:14.5px;line-height:1.72;margin-bottom:14px}
+.how-step-detail{display:flex;flex-direction:column;gap:7px}
+.how-step-item{display:flex;align-items:center;gap:9px;font-size:13.5px;color:#D1D5DB}
+.how-step-item::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0}
+.agent-action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.agent-action{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.agent-action-name{font-family:var(--ff-h);font-weight:700;font-size:14px;margin-top:4px}
+.agent-action-task{color:var(--muted);font-size:13px;line-height:1.55}
+@media(max-width:768px){.how-step{grid-template-columns:1fr;gap:14px}.agent-action-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page-hero"><div class="page-hero-glow"></div>
+  <div class="tag" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);color:var(--blue)">How It Works</div>
+  <h1>From Sign Up to<br/><span class="g-text">Growing Business</span> in One Day</h1>
+  <p>LevelUpGrowth is designed to get you live and growing as fast as possible — your AI team handles everything once you share your business details.</p>
+  <div class="hero-ctas">
+    <a href="/app/#signup" class="btn btn-primary btn-lg">Start Free →</a>
+    <a href="/pages/use-cases/" class="btn btn-ghost btn-lg">See Industry Examples</a>
+  </div>
+</div>
+
+<section style="padding:80px 28px">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>The Complete <span class="g-text">5-Step Process</span></h2></div>
+    <div class="how-steps">
+      <div class="how-step reveal">
+        <div><div class="how-step-num">01</div></div>
+        <div>
+          <div class="how-step-title">Create Your Free Account</div>
+          <div class="how-step-desc">Sign up in 60 seconds. No credit card required. The free plan includes the website builder, CRM, and calendar — no AI features. AI access starts from the AI Lite plan.</div>
+          <div class="how-step-detail">
+            <div class="how-step-item">Email signup — takes 60 seconds</div>
+            <div class="how-step-item">Free plan activated immediately</div>
+            <div class="how-step-item">3-day AI trial (50 credits) activates after your first website is created</div>
+          </div>
+        </div>
+      </div>
+      <div class="how-step reveal">
+        <div><div class="how-step-num">02</div></div>
+        <div>
+          <div class="how-step-title">Tell Your AI Team About Your Business</div>
+          <div class="how-step-desc">A 2-minute onboarding flow. Tell us your business name, industry, services, and primary goal. Your AI team uses this to build everything specifically for you.</div>
+          <div class="how-step-detail">
+            <div class="how-step-item">Business name, industry, and location</div>
+            <div class="how-step-item">Core services or products</div>
+            <div class="how-step-item">Primary goal — leads, sales, bookings, or brand</div>
+          </div>
+        </div>
+      </div>
+      <div class="how-step reveal">
+        <div><div class="how-step-num">03</div></div>
+        <div>
+          <div class="how-step-title">AI Builds Your Website</div>
+          <div class="how-step-desc">In under 5 minutes, your AI team generates a complete, professional website with SEO-optimized copy, lead capture forms, and your branding — automatically.</div>
+          <div class="how-step-detail">
+            <div class="how-step-item">Complete website with 4+ pages generated</div>
+            <div class="how-step-item">SEO-optimized copy written by Priya</div>
+            <div class="how-step-item">Hosting included — live immediately</div>
+            <div class="how-step-item">Mobile-optimized and fast-loading</div>
+          </div>
+        </div>
+      </div>
+      <div class="how-step reveal">
+        <div><div class="how-step-num">04</div></div>
+        <div>
+          <div class="how-step-title">Your AI Team Launches Your Marketing</div>
+          <div class="how-step-desc">Once your website is live, Growth plan users and above get their full AI agent team activated immediately — running SEO, content, social, and CRM tasks simultaneously, around the clock.</div>
+          <div class="agent-action-grid" id="how-agents" style="margin-top:16px"></div>
+        </div>
+      </div>
+      <div class="how-step reveal">
+        <div><div class="how-step-num">05</div></div>
+        <div>
+          <div class="how-step-title">Monitor, Grow, and Scale</div>
+          <div class="how-step-desc">Your Command Center dashboard gives you full visibility — see every task your AI team completes, track leads, monitor SEO rankings, and measure growth in real time.</div>
+          <div class="how-step-detail">
+            <div class="how-step-item">Live dashboard showing all AI activity</div>
+            <div class="how-step-item">Lead tracking and CRM pipeline updates</div>
+            <div class="how-step-item">SEO keyword rankings and traffic growth</div>
+            <div class="how-step-item">Credit usage and performance analytics</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:72px 28px;background:rgba(18,24,38,.45)">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>What Happens in <span class="g-text">Your First 24 Hours</span></h2></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px" class="reveal">
+      <div class="card" style="text-align:center"><div style="font-family:var(--ff-h);font-weight:800;font-size:38px;color:#7C3AED;margin-bottom:8px">5 min</div><div style="color:var(--muted);font-size:13.5px">Website generated and live</div></div>
+      <div class="card" style="text-align:center"><div style="font-family:var(--ff-h);font-weight:800;font-size:38px;color:#3B82F6;margin-bottom:8px">12+</div><div style="color:var(--muted);font-size:13.5px">Keywords targeted by James</div></div>
+      <div class="card" style="text-align:center"><div style="font-family:var(--ff-h);font-weight:800;font-size:38px;color:#EC4899;margin-bottom:8px">7</div><div style="color:var(--muted);font-size:13.5px">Social posts scheduled by Marcus</div></div>
+      <div class="card" style="text-align:center"><div style="font-family:var(--ff-h);font-weight:800;font-size:38px;color:#00E5A8;margin-bottom:8px">24/7</div><div style="color:var(--muted);font-size:13.5px">AI agents working for you</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-section"><div class="cta-glow"></div><div class="cta-inner reveal">
+  <h2>Start Your AI Marketing<br/><span class="g-text2">Journey Today</span></h2>
+  <p style="color:var(--muted);font-size:17px;max-width:440px;margin:16px auto 36px;line-height:1.7">Free plan available. Website live in 5 minutes.</p>
+  <a href="/app/#signup" class="btn btn-primary btn-lg">Start Free — Live in 5 Minutes →</a>
+</div></div>
+
+<div id="site-footer-placeholder"></div>
+<script src="/marketing/js/site.js"></script>
+<script src="/marketing/js/orb.js"></script>
+<script>
+const HAGENTS=[
+  {t:'seo',n:'James',task:'Researching keywords and competitor gaps for your industry.'},
+  {t:'content',n:'Priya',task:'Writing your first blog article with full SEO optimization.'},
+  {t:'social',n:'Marcus',task:'Creating 7 social media posts for the next 2 weeks.'},
+  {t:'dmm',n:'Sarah',task:'Planning your 90-day growth strategy and roadmap.'},
+  {t:'crm',n:'Elena',task:'Setting up your lead capture and CRM pipeline.'},
+  {t:'technical',n:'Alex',task:'Auditing site structure and fixing technical SEO issues.'},
+];
+document.getElementById('how-agents').innerHTML=HAGENTS.map(a=>{
+  const cfg=OrbAvatar.ORB_CONFIG[a.t]||{color:'#6C5CE7'};
+  return `<div class="agent-action"><div>${OrbAvatar.buildOrb(a.t,'md','executing')}</div><div class="agent-action-name" style="color:${cfg.color}">${a.n}</div><div class="agent-action-task">${a.task}</div></div>`;
+}).join('');
+setTimeout(()=>{if(typeof observeReveal==='function')observeReveal();},100);
+</script>
+</body>
+</html>

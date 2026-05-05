@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agents — Your Marketing Team — LevelUpGrowth</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/marketing/css/site.css">
+<link rel="stylesheet" href="/marketing/css/orb.css">
+<style>
+.agents-big-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.agent-big-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px 22px;transition:all .28s}
+.agent-big-card:hover{transform:translateY(-4px)}
+.agent-big-name{font-family:var(--ff-h);font-weight:800;font-size:20px;margin-bottom:4px;margin-top:14px}
+.agent-big-role{font-size:12.5px;font-weight:600;margin-bottom:12px}
+.agent-big-desc{color:var(--muted);font-size:13.5px;line-height:1.65;margin-bottom:14px}
+.agent-skills{display:flex;flex-wrap:wrap;gap:6px}
+.agent-skill{background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:6px;padding:3px 10px;font-size:11.5px;color:var(--violet);font-family:var(--ff-h);font-weight:600}
+.sr-goal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:640px;margin:0 auto}
+.sr-goal-btn{background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:16px 20px;color:#D1D5DB;font-family:var(--ff-h);font-weight:700;font-size:15px;cursor:pointer;transition:all .25s;text-align:left}
+.sr-goal-btn:hover{background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.45);color:#fff;transform:translateY(-2px)}
+.sr-presence{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.sr-agent-chip{display:flex;align-items:center;gap:8px;flex:1;min-width:140px}
+.sr-terminal{background:var(--card2);border:1px solid var(--border2);border-radius:16px;overflow:hidden;margin-bottom:20px;box-shadow:0 20px 48px rgba(0,0,0,.3)}
+.sr-terminal-bar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.sr-live-dot{width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 1.2s infinite;display:inline-block}
+.sr-feed{padding:18px;display:flex;flex-direction:column;gap:14px;min-height:220px;max-height:420px;overflow-y:auto}
+.sr-msg{display:flex;align-items:flex-start;gap:10px}
+.sr-msg-body{flex:1;min-width:0}
+.sr-msg-name{font-family:var(--ff-h);font-weight:700;font-size:12.5px;margin-bottom:4px}
+.sr-msg-role{font-weight:400;color:#4B5563;font-size:11px;margin-left:5px}
+.sr-msg-text{background:var(--card);border:1px solid var(--border);border-radius:0 10px 10px 10px;padding:10px 14px;font-size:13.5px;color:#D1D5DB;line-height:1.58}
+.sr-typing{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.sr-typing span{width:7px;height:7px;background:var(--faint);border-radius:50%;animation:srBounce 1.2s ease infinite}
+.sr-typing span:nth-child(2){animation-delay:.15s}.sr-typing span:nth-child(3){animation-delay:.3s}
+@keyframes srBounce{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-5px);opacity:1}}
+.sr-plan{background:var(--card);border:1px solid rgba(124,58,237,.35);border-radius:16px;overflow:hidden;box-shadow:0 0 40px rgba(124,58,237,.12)}
+.sr-plan-header{padding:20px 24px;border-bottom:1px solid var(--border);background:rgba(124,58,237,.06)}
+.sr-task-row{display:flex;align-items:flex-start;gap:14px;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,.04)}
+.sr-task-row:last-child{border-bottom:none}
+.sr-task-icon{font-size:22px;flex-shrink:0;margin-top:2px}
+.sr-task-body{flex:1;min-width:0}
+.sr-task-title{font-family:var(--ff-h);font-weight:700;font-size:14.5px;color:#E5E7EB;margin-bottom:4px}
+.sr-task-desc{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:8px}
+.sr-task-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sr-plan-footer{padding:18px 24px;border-top:1px solid var(--border);background:var(--card2);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.sr-btn-approve{background:linear-gradient(135deg,var(--green),#00B386);color:#0B0F19;border:none;border-radius:10px;padding:13px 30px;font-family:var(--ff-h);font-weight:800;font-size:15px;cursor:pointer;transition:all .2s}
+.sr-btn-approve:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,229,168,.3)}
+.sr-btn-restart{background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--muted);border-radius:10px;padding:13px 20px;font-family:var(--ff-h);font-weight:600;font-size:13.5px;cursor:pointer;transition:all .2s}
+.sr-approved{background:rgba(0,229,168,.05);border:1px solid rgba(0,229,168,.25);border-radius:16px;padding:48px 32px;text-align:center}
+@media(max-width:768px){.agents-big-grid{grid-template-columns:1fr}.sr-goal-grid{grid-template-columns:1fr}.sr-agent-chip{min-width:120px}.sr-plan-footer{flex-direction:column}.sr-btn-approve,.sr-btn-restart{width:100%;text-align:center}}
+</style>
+</head>
+<body>
+
+<div class="page-hero"><div class="page-hero-glow"></div>
+  <div class="tag" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);color:var(--violet)">AI Agents</div>
+  <h1>Meet Your AI<br/><span class="g-text2">Agent Team</span></h1>
+  <p>Six specialized AI agents with distinct roles — each an expert in their domain, working together as one coordinated team on your business.</p>
+  <div class="hero-ctas">
+    <a href="/app/#signup" class="btn btn-primary btn-lg">Activate Your Team &rarr;</a>
+    <a href="#strategy-sim" class="btn btn-ghost btn-lg">Watch Them Work &#9654;</a>
+  </div>
+</div>
+
+<section style="padding:80px 28px">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>Your Core <span class="g-text">AI Agent Team</span></h2><p>Six specialized agents that work together as one coordinated team on your business.</p></div>
+    <div class="agents-big-grid" id="agents-grid">
+      <div style="color:var(--faint);padding:20px;font-size:13px">Loading...</div>
+    </div>
+    <div style="text-align:center;margin-top:36px" class="reveal">
+      <p style="color:var(--muted);font-size:14.5px;margin-bottom:16px">These 6 are your core team. Your plan also unlocks <strong style="color:#D1D5DB">20 additional specialists</strong> across SEO, Content, Social, and CRM.</p>
+      <a href="/pages/specialists/" class="btn btn-primary btn-lg">Browse All 20 Specialists →</a>
+    </div>
+  </div>
+</section>
+
+<section style="padding:80px 28px">
+  <div class="wrap">
+    <div class="sec-head reveal"><h2>What They <span class="g-text">Execute</span></h2></div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+      <div class="card reveal a1"><h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:8px">&#127919; Strategy Planning</h4><p style="color:var(--muted);font-size:13.5px">Sarah analyses your market, defines your target audience, and creates a full marketing roadmap.</p></div>
+      <div class="card reveal a2"><h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:8px">&#128269; SEO Research</h4><p style="color:var(--muted);font-size:13.5px">James finds high-value keywords, analyzes competitors, and creates a keyword strategy that ranks.</p></div>
+      <div class="card reveal a1"><h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:8px">&#9997; Content Creation</h4><p style="color:var(--muted);font-size:13.5px">Priya writes blog articles, social posts, email campaigns, and website copy — all SEO-optimized.</p></div>
+      <div class="card reveal a2"><h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:8px">&#128241; Social Management</h4><p style="color:var(--muted);font-size:13.5px">Marcus creates and schedules content across Instagram, LinkedIn, Facebook, and TikTok.</p></div>
+      <div class="card reveal a1"><h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:8px">&#129309; Lead Management</h4><p style="color:var(--muted);font-size:13.5px">Elena captures, scores, and nurtures leads — triggering follow-ups at exactly the right moment.</p></div>
+      <div class="card reveal a2"><h4 style="font-family:var(--ff-h);font-size:15px;margin-bottom:8px">&#9881; Technical Optimisation</h4><p style="color:var(--muted);font-size:13.5px">Alex ensures your website loads fast, scores high on Core Web Vitals, and indexes correctly.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="strategy-sim" style="padding:80px 28px;background:rgba(18,24,38,.45)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="tag" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);color:var(--violet)">Strategy Room</div>
+      <h2>Watch Your Team <span class="g-text">Collaborate Live</span></h2>
+      <p>Pick a goal. Your AI agents hold a real strategy meeting — analysing, planning, and presenting an actionable plan for your approval.</p>
+    </div>
+    <div id="sr-goal-selector" class="reveal">
+      <div style="text-align:center;margin-bottom:20px;font-family:var(--ff-h);font-size:14px;font-weight:600;color:var(--muted)">Choose a business goal to get started:</div>
+      <div class="sr-goal-grid">
+        <button class="sr-goal-btn" onclick="SRSim.start('growth')">&#128200; Grow my online presence</button>
+        <button class="sr-goal-btn" onclick="SRSim.start('leads')">&#127919; Generate more leads</button>
+        <button class="sr-goal-btn" onclick="SRSim.start('content')">&#9997; Build a content strategy</button>
+        <button class="sr-goal-btn" onclick="SRSim.start('launch')">&#128640; Launch a new product</button>
+      </div>
+    </div>
+    <div id="sr-room" style="display:none">
+      <div class="sr-presence" id="sr-presence"></div>
+      <div class="sr-terminal">
+        <div class="sr-terminal-bar">
+          <div style="display:flex;align-items:center;gap:8px"><span class="sr-live-dot"></span><span style="font-family:var(--ff-h);font-weight:700;font-size:13px;color:#D1D5DB">Strategy Room</span></div>
+          <span id="sr-phase-label" style="font-size:12px;color:var(--faint)">Starting...</span>
+        </div>
+        <div class="sr-feed" id="sr-feed"></div>
+      </div>
+      <div class="sr-plan" id="sr-plan" style="display:none">
+        <div class="sr-plan-header">
+          <div style="font-family:var(--ff-h);font-weight:800;font-size:18px;color:#E5E7EB">&#128203; Your Marketing Plan</div>
+          <div style="font-size:13px;color:var(--faint);margin-top:4px">Prepared by your AI team — ready for your approval</div>
+        </div>
+        <div id="sr-tasks"></div>
+        <div class="sr-plan-footer">
+          <div style="font-size:13.5px;color:var(--muted);flex:1" id="sr-summary"></div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="sr-btn-approve" onclick="SRSim.approve()">&#10003; Approve Plan</button>
+            <button class="sr-btn-restart" onclick="SRSim.restart()">&#8635; Try Another Goal</button>
+          </div>
+        </div>
+      </div>
+      <div class="sr-approved" id="sr-approved" style="display:none">
+        <div style="font-size:40px;margin-bottom:14px">&#127881;</div>
+        <div style="font-family:var(--ff-h);font-weight:800;font-size:22px;color:var(--green);margin-bottom:8px">Plan Approved &mdash; Your Team Is On It</div>
+        <div style="color:var(--muted);font-size:14.5px;margin-bottom:24px">Your agents have their tasks and are starting work. In a real account you would see live progress in your Command Center.</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a href="/app/#signup" class="btn btn-primary btn-lg">Start Your Real Account &rarr;</a>
+          <button class="sr-btn-restart" onclick="SRSim.restart()" style="padding:12px 24px">&#8635; Run Another Simulation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-section"><div class="cta-glow"></div><div class="cta-inner reveal">
+  <h2>Your AI Team is <span class="g-text2">Ready</span></h2>
+  <p style="color:var(--muted);font-size:17px;max-width:440px;margin:16px auto 36px;line-height:1.7">Start free. Your agents begin working immediately after signup.</p>
+  <a href="/app/#signup" class="btn btn-primary btn-lg">Meet Your Team Free &rarr;</a>
+</div></div>
+
+<div id="site-footer-placeholder"></div>
+<script src="/marketing/js/site.js"></script>
+<script src="/marketing/js/orb.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+// Agent data
+var AGENTS = [
+  {t:'dmm',lv:'senior',n:'Sarah',r:'Digital Marketing Manager',c:'#F59E0B',d:'Plans your overall strategy and coordinates the entire AI team. Sarah is your CMO — always on, always optimizing.',sk:['Strategy','Campaign Planning','Team Coordination','Performance Analysis']},
+  {t:'seo',lv:'junior',n:'James',r:'SEO Strategist',c:'#3B82F6',d:'Finds high-value keywords, analyzes SERPs, and ensures your content ranks on Google for terms your customers search.',sk:['Keyword Research','SERP Analysis','Link Building','Competitor Research']},
+  {t:'content',lv:'specialist',n:'Priya',r:'Content Manager',c:'#7C3AED',d:'Creates blog articles, landing pages, social posts, and email copy. Every piece is SEO-optimized and conversion-focused.',sk:['Blog Writing','Email Copy','Landing Pages','Social Content']},
+  {t:'social',lv:'specialist',n:'Marcus',r:'Social Media Manager',c:'#EC4899',d:'Generates engaging social content and schedules it across Instagram, LinkedIn, Facebook, and TikTok.',sk:['Content Creation','Scheduling','Engagement','Analytics']},
+  {t:'crm',lv:'junior',n:'Elena',r:'Lead & CRM Manager',c:'#00E5A8',d:'Captures leads from your website, scores them, and triggers the right follow-up at the right time to maximize conversions.',sk:['Lead Capture','Pipeline Management','Follow-Up Sequences','CRM Automation']},
+  {t:'technical',lv:'senior',n:'Alex',r:'Technical SEO Engineer',c:'#06B6D4',d:'Audits your website structure, fixes technical issues, and ensures perfect indexing — so your content actually gets found.',sk:['Site Audits','Core Web Vitals','Schema Markup','Indexing']},
+];
+var LVL_L = {specialist:'Specialist',junior:'Junior Specialist',senior:'Senior Specialist'};
+var LVL_C = {specialist:'#6B7280',junior:'#3B82F6',senior:'#F59E0B'};
+var grid = document.getElementById('agents-grid');
+if (grid) {
+  grid.innerHTML = AGENTS.map(function(a) {
+    var orb = (typeof OrbAvatar!=='undefined') ? OrbAvatar.buildOrb(a.t,'lg','idle','',a.lv) : '';
+    var skHtml = a.sk.map(function(s){ return '<span class="agent-skill" style="background:'+a.c+'12;border-color:'+a.c+'28;color:'+a.c+'">'+s+'</span>'; }).join('');
+    var lvBadge = '<div style="display:inline-flex;align-items:center;border:1px solid '+LVL_C[a.lv]+'28;border-radius:100px;padding:2px 9px;font-size:10.5px;font-weight:700;color:'+LVL_C[a.lv]+';background:'+LVL_C[a.lv]+'10;font-family:var(--ff-h);margin-bottom:10px">'+LVL_L[a.lv]+'</div>';
+    return '<div class="agent-big-card card-glow reveal" style="border-color:'+a.c+'18" onmouseover="this.style.borderColor=\''+a.c+'45\';if(typeof setOrbState!==\'undefined\')setOrbState(\''+a.t+'\',\'executing\')" onmouseout="this.style.borderColor=\''+a.c+'18\';if(typeof setOrbState!==\'undefined\')setOrbState(\''+a.t+'\',\'idle\')">'+orb+'<div class="agent-big-name">'+a.n+'</div><div class="agent-big-role" style="color:'+a.c+'">'+a.r+'</div>'+lvBadge+'<div class="agent-big-desc">'+a.d+'</div><div class="agent-skills">'+skHtml+'</div></div>';
+  }).join('');
+  if (typeof observeReveal==='function') setTimeout(observeReveal,100);
+}
+// Strategy Room agents
+var SR = {
+  sarah:{t:'dmm',n:'Sarah',c:'#F59E0B',lv:'senior',role:'Digital Marketing Manager'},
+  james:{t:'seo',n:'James',c:'#3B82F6',lv:'junior',role:'SEO Strategist'},
+  priya:{t:'content',n:'Priya',c:'#7C3AED',lv:'specialist',role:'Content Manager'},
+  marcus:{t:'social',n:'Marcus',c:'#EC4899',lv:'specialist',role:'Social Media Manager'},
+  elena:{t:'crm',n:'Elena',c:'#00E5A8',lv:'junior',role:'Lead & CRM Manager'},
+  alex:{t:'technical',n:'Alex',c:'#06B6D4',lv:'senior',role:'Technical SEO Engineer'},
+};
+var SCENARIOS = {
+  growth:{goal:'Grow my online presence',
+    phases:[
+      {label:'Market Analysis',msgs:[
+        {who:'sarah',delay:400,text:"Team, new growth mandate. James — start with a full keyword and competitor gap analysis immediately."},
+        {who:'james',delay:2000,text:"Running now... Found 18 high-value keyword clusters with low competition. Traffic potential: +2,800 visits/month from content alone."},
+        {who:'sarah',delay:3800,text:"Perfect. Priya, assigning you the top 6 clusters — SEO-first cornerstone articles. Alex — full site audit."},
+        {who:'alex',delay:5200,text:"Audit complete. 3 crawl depth issues. Core Web Vitals: 71 — below threshold. Fixing in parallel with content rollout. Expect +18% organic CTR improvement."},
+      ]},
+      {label:'Building Your Plan',msgs:[
+        {who:'priya',delay:600,text:"Content calendar drafted. 12 articles across 6 weeks. Each targets a specific keyword cluster. Estimated traffic uplift: +340% by week 8."},
+        {who:'marcus',delay:2200,text:"Social amplification ready. Every article gets 3 post variations across LinkedIn, Instagram, and X — carousels and video briefs included. All pre-scheduled."},
+        {who:'elena',delay:3600,text:"Lead capture configured. Content upgrade offers on top 3 pages. CRM pipeline: visitor to lead to nurture to call. Estimated 3.2% conversion rate."},
+        {who:'sarah',delay:5000,text:"Everything connected. 6-week growth engine complete. Tasks assigned, timelines locked, KPIs defined. Presenting your plan now."},
+      ]},
+    ],
+    summary:'6-week growth plan &middot; 12 SEO articles &middot; social amplification &middot; lead capture',
+    tasks:[
+      {who:'james',icon:'&#128269;',title:'Keyword &amp; Competitor Analysis',desc:'18 priority keywords identified. Competitor gap analysis complete. Search volumes mapped to content calendar.',credits:8,time:'Today'},
+      {who:'priya',icon:'&#9997;',title:'12-Article Content Calendar',desc:'SEO-optimised articles, 2 per week for 6 weeks. Meta, headers, and CTAs included for every piece.',credits:72,time:'6 weeks'},
+      {who:'marcus',icon:'&#128241;',title:'Social Amplification Strategy',desc:'3 post variations per article across LinkedIn, Instagram, and X. Carousels and video briefs. Pre-scheduled.',credits:36,time:'Ongoing'},
+      {who:'alex',icon:'&#9881;',title:'Technical SEO + Speed Fix',desc:'Fix 3 indexing issues. Improve Core Web Vitals from 71 to 90+. Schema markup on all key pages.',credits:12,time:'Week 1'},
+      {who:'elena',icon:'&#127919;',title:'Lead Capture + CRM Pipeline',desc:'Content upgrade offers. Automated nurture sequence. Full pipeline from first visit to booked call.',credits:10,time:'Week 1'},
+    ],
+  },
+  leads:{goal:'Generate more leads',
+    phases:[
+      {label:'Intent Analysis',msgs:[
+        {who:'sarah',delay:400,text:"Lead generation focus. Elena, you're leading this. James — highest commercial-intent keywords now. People ready to buy."},
+        {who:'james',delay:2000,text:"Intent sweep complete. 24 commercial-intent phrases with high conversion potential. Comparison terms and 'best' modifiers show strong buyer signals."},
+        {who:'elena',delay:3500,text:"Ideal lead profile built. Lead scoring criteria set. CRM pipeline configured with 5-stage flow from capture to closed deal."},
+        {who:'sarah',delay:5000,text:"Good. Priya — conversion landing pages for the top 3 intent clusters. Alex — site speed under 2 seconds. Every second costs us leads."},
+      ]},
+      {label:'Conversion System Build',msgs:[
+        {who:'priya',delay:600,text:"Three landing pages drafted. Single CTA each. Lead magnet on each page. Mobile-first. 6 headline variants tested — best performer selected."},
+        {who:'alex',delay:2200,text:"Speed optimised to 1.8 seconds. Form load time reduced 40%. Structured data added — increases click-through rate by an average of 28%."},
+        {who:'marcus',delay:3600,text:"Retargeting sequence ready. Non-converting visitors see a 3-part ad sequence: awareness, value, urgency. Designed to bring them back within 72 hours."},
+        {who:'elena',delay:5000,text:"Full pipeline live. Every lead scored, tagged by source, and entered into nurture sequence. Hot leads trigger immediate notification."},
+        {who:'sarah',delay:6400,text:"Lead generation engine complete — from first click to qualified call. Presenting your plan."},
+      ]},
+    ],
+    summary:'Full lead system &middot; landing pages &middot; CRM pipeline &middot; retargeting',
+    tasks:[
+      {who:'james',icon:'&#128269;',title:'High-Intent Keyword Targeting',desc:'24 commercial-intent keywords mapped to landing pages by buyer stage. Comparison and "best" modifier terms included.',credits:8,time:'Today'},
+      {who:'priya',icon:'&#9997;',title:'3 Conversion Landing Pages',desc:'Single-CTA pages per intent cluster. 6-variant headline testing. Lead magnet copy and mobile layout.',credits:24,time:'Week 1'},
+      {who:'elena',icon:'&#129309;',title:'CRM + Lead Scoring System',desc:'Lead scoring model (0-100). 5-email nurture sequence. Hot lead alerts at 70+. Pipeline from capture to booked call.',credits:15,time:'Week 1'},
+      {who:'marcus',icon:'&#128241;',title:'Social Retargeting Sequence',desc:'3-ad sequence for non-converting visitors. Awareness to Value to Urgency flow within 72 hours.',credits:18,time:'Week 1'},
+      {who:'alex',icon:'&#9881;',title:'Speed + Conversion Optimisation',desc:'Page load under 2s. Form optimisation. Structured data for rich snippets. 40% reduction in form load time.',credits:10,time:'Today'},
+    ],
+  },
+  content:{goal:'Build a content strategy',
+    phases:[
+      {label:'Topic Research',msgs:[
+        {who:'sarah',delay:400,text:"Content strategy meeting. Priya, you're in the chair. James — full topic map: keywords, volumes, gaps versus competitors."},
+        {who:'james',delay:2000,text:"Topic map complete. 8 content pillars, strong demand, low competition. Each supports 6-10 articles. Total opportunity: 68 rankable pieces."},
+        {who:'priya',delay:3500,text:"Editorial framework ready. 8 pillar pages + 40 supporting articles prioritised by traffic potential. Each has a keyword, angle, and conversion goal."},
+        {who:'marcus',delay:5000,text:"Distribution analysis done. Your audience over-indexes on LinkedIn. Short-form content has 3x organic reach in your niche. Adapting content formats."},
+      ]},
+      {label:'Calendar and Distribution',msgs:[
+        {who:'priya',delay:600,text:"90-day content calendar built. 3 articles per week. Published in clusters to maximise topical authority signals on Google."},
+        {who:'marcus',delay:2200,text:"Every article gets a social pack: LinkedIn post, X threads, Instagram carousel, short-form video brief. Pre-scheduled — zero manual work."},
+        {who:'elena',delay:3600,text:"3 lead magnets tied to highest-traffic pillars. Each gated behind an email form. Projected: 200+ leads in the first 90 days."},
+        {who:'alex',delay:5000,text:"Content architecture optimised. Internal linking map created. Every new article links to 3 existing pages — building authority throughout the site."},
+        {who:'sarah',delay:6400,text:"This is a compounding content engine. Authority grows with every piece published. Your plan is ready."},
+      ]},
+    ],
+    summary:'90-day content engine &middot; 8 pillars &middot; 40 articles &middot; full distribution',
+    tasks:[
+      {who:'james',icon:'&#128269;',title:'Content Topic Map and Keywords',desc:'8 content pillars. 40 articles prioritised by traffic potential. Keyword-to-article mapping with search volumes.',credits:10,time:'Today'},
+      {who:'priya',icon:'&#9997;',title:'90-Day Content Calendar',desc:'3 articles per week. Pillar and cluster structure. Keyword, angle, word count, and conversion goal for each.',credits:120,time:'90 days'},
+      {who:'marcus',icon:'&#128241;',title:'Social Distribution System',desc:'Full social pack per article: LinkedIn, X threads, Instagram carousel, video brief. Pre-scheduled.',credits:45,time:'Ongoing'},
+      {who:'elena',icon:'&#127919;',title:'3 Lead Magnet Content Offers',desc:'Downloadable guides gated behind email forms. Auto-feed to CRM. Projected 200+ leads in 90 days.',credits:18,time:'Week 2'},
+      {who:'alex',icon:'&#9881;',title:'Content Architecture and Links',desc:'Internal linking map. Authority flow optimisation. Every article connects to 3 existing pages.',credits:8,time:'Week 1'},
+    ],
+  },
+  launch:{goal:'Launch a new product',
+    phases:[
+      {label:'Launch Intelligence',msgs:[
+        {who:'sarah',delay:400,text:"New product launch — all hands. Coordinated campaign across every channel. James, launch keyword research. Elena, pre-launch lead strategy."},
+        {who:'james',delay:2000,text:"Research done. Primary targets: '[product] + best/review/buy'. 12 early-adopter communities identified with high organic engagement."},
+        {who:'elena',delay:3500,text:"Pre-launch strategy ready. Waitlist landing page, 7-email sequence, launch day offer. Target: 500 subscribers before launch."},
+        {who:'priya',delay:5000,text:"Launch content stack planned: announcement blog, 3 case studies, comparison page, and launch email series. All SEO-optimised."},
+      ]},
+      {label:'Campaign Build',msgs:[
+        {who:'marcus',delay:600,text:"Social launch campaign ready. 2-week pre-launch teaser, launch day blitz, post-launch momentum content. 22 posts total."},
+        {who:'alex',delay:2200,text:"Product page technical setup complete. Schema markup for reviews. Speed optimised. Tracking pixels and conversion events configured."},
+        {who:'elena',delay:3600,text:"Post-launch CRM flows built. New customers get onboarding. Trial users get conversion nudges. Churned leads get win-back at 30 and 60 days."},
+        {who:'sarah',delay:5000,text:"Launch is fully engineered — from first awareness to repeat purchase. 6-week campaign, clear milestones. Approve and we go."},
+      ]},
+    ],
+    summary:'6-week launch campaign &middot; pre-launch waitlist &middot; launch blitz &middot; retention',
+    tasks:[
+      {who:'sarah',icon:'&#127919;',title:'Launch Strategy and Coordination',desc:'6-week campaign roadmap. Milestone tracking. Cross-agent coordination. KPIs for awareness, acquisition, and activation.',credits:12,time:'Today'},
+      {who:'priya',icon:'&#9997;',title:'Launch Content Stack',desc:'Announcement article, 3 case studies, comparison page, 7-email launch series. SEO-optimised with launch-day schedule.',credits:60,time:'3 weeks'},
+      {who:'marcus',icon:'&#128241;',title:'22-Post Social Campaign',desc:'2-week teaser, launch day blitz, momentum content. Countdown assets. All platforms, zero gaps.',credits:35,time:'5 weeks'},
+      {who:'elena',icon:'&#127919;',title:'Waitlist and Post-Launch CRM',desc:'Waitlist page, 7-email pre-launch sequence. Post-launch: onboarding, conversion nudges, win-back flows.',credits:22,time:'Ongoing'},
+      {who:'alex',icon:'&#9881;',title:'Product Page Technical Setup',desc:'Product schema markup. Speed optimisation. Tracking pixels and conversion events for all launch sources.',credits:10,time:'Week 1'},
+    ],
+  },
+};
+// Helpers
+function srSleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+function srSetStatus(key,label,color) {
+  var ag=SR[key]; if(!ag)return;
+  var el=document.getElementById('sr-status-'+ag.t);
+  if(el){ el.textContent=label; el.style.color=color; }
+  if(typeof setOrbState!=='undefined'){
+    if(label==='Speaking') setOrbState(ag.t,'executing');
+    else if(label==='Done') setOrbState(ag.t,'success');
+    else setOrbState(ag.t,'idle');
+  }
+}
+function srAddMsg(key,text,delay) {
+  return new Promise(function(resolve) {
+    setTimeout(function() {
+      var ag=SR[key]; var feed=document.getElementById('sr-feed');
+      if(!ag||!feed){ resolve(); return; }
+      srSetStatus(key,'Speaking',ag.c);
+      var typEl=document.createElement('div'); typEl.className='sr-msg';
+      var tOrb=(typeof OrbAvatar!=='undefined')?OrbAvatar.buildOrb(ag.t,'sm','thinking','',ag.lv):'';
+      typEl.innerHTML=tOrb+'<div class="sr-typing"><span></span><span></span><span></span></div>';
+      feed.appendChild(typEl); feed.scrollTop=feed.scrollHeight;
+      var wait=900+Math.min(text.length*6,1400);
+      setTimeout(function() {
+        typEl.remove();
+        var msgEl=document.createElement('div'); msgEl.className='sr-msg';
+        msgEl.style.cssText='opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s';
+        var iOrb=(typeof OrbAvatar!=='undefined')?OrbAvatar.buildOrb(ag.t,'sm','idle','',ag.lv):'';
+        msgEl.innerHTML=iOrb+'<div class="sr-msg-body"><div class="sr-msg-name" style="color:'+ag.c+'">'+ag.n+'<span class="sr-msg-role">'+ag.role+'</span></div><div class="sr-msg-text">'+text+'</div></div>';
+        feed.appendChild(msgEl); feed.scrollTop=feed.scrollHeight;
+        setTimeout(function(){ msgEl.style.opacity='1'; msgEl.style.transform='translateY(0)'; },20);
+        srSetStatus(key,'Done','#4B5563');
+        resolve();
+      }, wait);
+    }, delay);
+  });
+}
+function srBuildPresence() {
+  var bar=document.getElementById('sr-presence'); if(!bar)return;
+  bar.innerHTML=Object.keys(SR).map(function(key) {
+    var ag=SR[key];
+    var o=(typeof OrbAvatar!=='undefined')?OrbAvatar.buildOrb(ag.t,'sm','idle','',ag.lv):'';
+    return '<div class="sr-agent-chip">'+o+'<div><div style="font-family:var(--ff-h);font-weight:700;font-size:12px;color:'+ag.c+'">'+ag.n+'</div><div style="font-size:10px;color:var(--faint)">'+ag.role+'</div></div><div id="sr-status-'+ag.t+'" style="font-size:10px;color:#374151">Standby</div></div>';
+  }).join('');
+}
+var srRunning=false, srCurrent=null;
+async function srRunScenario(s) {
+  srRunning=true;
+  for(var pi=0;pi<s.phases.length;pi++) {
+    var ph=s.phases[pi];
+    var lbl=document.getElementById('sr-phase-label');
+    if(lbl) lbl.textContent=ph.label+'...';
+    Object.keys(SR).forEach(function(k){ srSetStatus(k,'Standby','#374151'); });
+    await Promise.all(ph.msgs.map(function(m){ return srAddMsg(m.who,m.text,m.delay); }));
+    await srSleep(900);
+  }
+  await srSleep(500);
+  srShowPlan(s);
+  srRunning=false;
+}
+function srShowPlan(s) {
+  var lbl=document.getElementById('sr-phase-label'); if(lbl) lbl.textContent='Plan ready for review';
+  var tasksEl=document.getElementById('sr-tasks');
+  if(tasksEl) {
+    tasksEl.innerHTML=s.tasks.map(function(t) {
+      var ag=SR[t.who];
+      var tOrb=(ag&&typeof OrbAvatar!=='undefined')?OrbAvatar.buildOrb(ag.t,'sm','idle','',ag.lv):'';
+      var ac=ag?ag.c:'#7C3AED'; var an=ag?ag.n:'';
+      return '<div class="sr-task-row"><div class="sr-task-icon">'+t.icon+'</div><div class="sr-task-body"><div class="sr-task-title">'+t.title+'</div><div class="sr-task-desc">'+t.desc+'</div><div class="sr-task-meta">'+tOrb+'<span style="color:'+ac+';font-family:var(--ff-h);font-weight:600;font-size:12px">'+an+'</span><span style="color:#374151;font-size:10px">&middot;</span><span style="color:var(--faint);font-size:12px">'+t.credits+' credits</span><span style="color:#374151;font-size:10px">&middot;</span><span style="color:var(--faint);font-size:12px">'+t.time+'</span></div></div></div>';
+    }).join('');
+  }
+  var total=s.tasks.reduce(function(sum,t){ return sum+t.credits; },0);
+  var sumEl=document.getElementById('sr-summary');
+  if(sumEl) sumEl.innerHTML='<strong style="color:#D1D5DB">'+s.tasks.length+' tasks</strong> &middot; <strong style="color:var(--violet)">'+total+' credits</strong> &middot; <span style="color:var(--green)">'+s.goal+'</span>';
+  var planEl=document.getElementById('sr-plan');
+  if(planEl){ planEl.style.display='block'; setTimeout(function(){ planEl.scrollIntoView({behavior:'smooth',block:'nearest'}); },100); }
+  Object.keys(SR).forEach(function(k){ srSetStatus(k,'Ready','#00E5A8'); });
+  if(typeof setOrbState!=='undefined'){
+    Object.values(SR).forEach(function(ag){ setOrbState(ag.t,'success'); });
+    setTimeout(function(){ Object.values(SR).forEach(function(ag){ setOrbState(ag.t,'idle'); }); },1500);
+  }
+}
+window.SRSim = {
+  start:function(key) {
+    srCurrent=SCENARIOS[key]; if(!srCurrent)return;
+    document.getElementById('sr-goal-selector').style.display='none';
+    document.getElementById('sr-room').style.display='block';
+    document.getElementById('sr-plan').style.display='none';
+    document.getElementById('sr-approved').style.display='none';
+    document.getElementById('sr-feed').innerHTML='';
+    document.getElementById('sr-tasks').innerHTML='';
+    srBuildPresence(); srRunScenario(srCurrent);
+  },
+  approve:function() {
+    document.getElementById('sr-plan').style.display='none';
+    document.getElementById('sr-approved').style.display='block';
+    var lbl=document.getElementById('sr-phase-label'); if(lbl) lbl.textContent='Plan approved';
+    if(typeof setOrbState!=='undefined'){
+      Object.keys(SR).forEach(function(k,i){
+        var ag=SR[k];
+        setTimeout(function(){ setOrbState(ag.t,'executing'); setTimeout(function(){ setOrbState(ag.t,'idle'); },900); },i*180);
+      });
+    }
+    var apEl=document.getElementById('sr-approved');
+    if(apEl) setTimeout(function(){ apEl.scrollIntoView({behavior:'smooth',block:'nearest'}); },100);
+  },
+  restart:function() {
+    document.getElementById('sr-plan').style.display='none';
+    document.getElementById('sr-approved').style.display='none';
+    document.getElementById('sr-room').style.display='none';
+    document.getElementById('sr-goal-selector').style.display='block';
+    if(typeof setOrbState!=='undefined') Object.values(SR).forEach(function(ag){ setOrbState(ag.t,'idle'); });
+  },
+};
+}); // end DOMContentLoaded
+</script>
+</body>
+</html>

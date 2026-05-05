@@ -1,0 +1,1603 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// BUILDER WIZARD — Arthur AI Chatbot + Template Picker
+// Ported from WP builder-spa.js to Laravel staging
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── luPrompt is now defined in core.js — no polyfill needed ──────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEMPLATE PICKER MODAL
+// ═══════════════════════════════════════════════════════════════════════════
+function _bldShowTemplatePicker() {
+  var existing = document.getElementById('bld-tpl-picker');
+  if (existing) { existing.remove(); return; }
+
+  var overlay = document.createElement('div');
+  overlay.id = 'bld-tpl-picker';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center';
+
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--s1);border:1px solid var(--bd);border-radius:16px;width:90%;max-width:900px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column';
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:20px 24px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between';
+  hdr.innerHTML = '<div><div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1)">Create New Website</div><div style="font-size:12px;color:var(--t3)">Choose an industry template or start blank</div></div>';
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '\u2715';
+  closeBtn.style.cssText = 'background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:4px';
+  closeBtn.addEventListener('click', function() { overlay.remove(); });
+  hdr.appendChild(closeBtn);
+  modal.appendChild(hdr);
+
+  // Body
+  var body = document.createElement('div');
+  body.style.cssText = 'flex:1;overflow-y:auto;padding:20px 24px';
+
+  // ═══ AI INTERVIEW — "Build with AI" path ═══
+  var aiWrap = document.createElement('div');
+  aiWrap.style.cssText = 'margin-bottom:24px';
+  aiWrap.innerHTML = '<p style="font-size:11px;color:var(--pu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600">Build with AI</p>';
+  var aiCard = document.createElement('div');
+  aiCard.style.cssText = 'display:flex;align-items:center;gap:14px;padding:16px 18px;background:linear-gradient(135deg,rgba(108,92,231,.08),rgba(168,85,247,.08));border:1px solid rgba(108,92,231,.3);border-radius:12px;cursor:pointer;transition:all .2s';
+  aiCard.innerHTML = '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#6C5CE7,#A855F7);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">&#x2728;</div><div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--t1)">Build with Arthur</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Chat with AI and get your website built in seconds</div></div><div style="font-size:20px;color:var(--pu)">&rarr;</div>';
+  aiCard.addEventListener('mouseenter', function() { this.style.borderColor = 'var(--pu)'; this.style.boxShadow = '0 4px 16px rgba(108,92,231,.2)'; });
+  aiCard.addEventListener('mouseleave', function() { this.style.borderColor = 'rgba(108,92,231,.3)'; this.style.boxShadow = 'none'; });
+  aiCard.addEventListener('click', function() { overlay.remove(); _bldShowAIInterview(); });
+  aiWrap.appendChild(aiCard);
+  body.appendChild(aiWrap);
+
+  // Blank option
+  var blankWrap = document.createElement('div');
+  blankWrap.style.cssText = 'margin-bottom:20px';
+  blankWrap.innerHTML = '<p style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Start Fresh</p>';
+  var blankCard = document.createElement('div');
+  blankCard.style.cssText = 'display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;cursor:pointer;transition:border-color .2s';
+  blankCard.innerHTML = '<div style="width:48px;height:48px;border-radius:10px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:24px">\u2795</div><div><div style="font-size:14px;font-weight:600;color:var(--t1)">Blank Website</div><div style="font-size:11px;color:var(--t3)">Empty canvas \u2014 build from scratch</div></div>';
+  blankCard.addEventListener('mouseenter', function() { this.style.borderColor = 'var(--pu)'; });
+  blankCard.addEventListener('mouseleave', function() { this.style.borderColor = 'var(--bd)'; });
+  blankCard.addEventListener('click', function() { _bldCreateBlank(); });
+  blankWrap.appendChild(blankCard);
+  body.appendChild(blankWrap);
+
+  // ═══ CLONE WEBSITE — import from URL ═══
+  var cloneWrap = document.createElement('div');
+  cloneWrap.style.cssText = 'margin-bottom:20px';
+  cloneWrap.innerHTML = '<p style="font-size:11px;color:var(--ac);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600">Use Existing Website</p>';
+  var cloneCard = document.createElement('div');
+  cloneCard.style.cssText = 'display:flex;align-items:center;gap:14px;padding:16px 18px;background:linear-gradient(135deg,rgba(0,229,168,.06),rgba(16,185,129,.06));border:1px solid rgba(0,229,168,.25);border-radius:12px;cursor:pointer;transition:all .2s';
+  cloneCard.innerHTML = '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#00E5A8,#10B981);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">\uD83D\uDD17</div><div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--t1)">Use Existing Website</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Connect your WordPress or HTML website — manage it from here</div></div><div style="font-size:20px;color:var(--ac)">\u2192</div>';
+  cloneCard.addEventListener('mouseenter', function() { this.style.borderColor = 'var(--ac)'; this.style.boxShadow = '0 4px 16px rgba(0,229,168,.15)'; });
+  cloneCard.addEventListener('mouseleave', function() { this.style.borderColor = 'rgba(0,229,168,.25)'; this.style.boxShadow = 'none'; });
+  cloneCard.addEventListener('click', function() { overlay.remove(); if (typeof wsShowConnectModal === 'function') wsShowConnectModal(); else showToast('Clone feature coming soon', 'info'); });
+  cloneWrap.appendChild(cloneCard);
+  body.appendChild(cloneWrap);
+
+  // Templates label
+  var tplLabel = document.createElement('p');
+  // REMOVED: tplLabel.style.cssText = 'font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px';
+  // REMOVED: tplLabel.textContent = 'Industry Templates';
+  // REMOVED: body.appendChild(tplLabel);
+  // REMOVED:   // Templates grid
+  // REMOVED: var grid = document.createElement('div');
+  // REMOVED: grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px';
+  // REMOVED:   // REMOVED: for (var i = 0; i < WEBSITE_TEMPLATES.length; i++) {
+  // REMOVED: (function(tpl) {
+  // REMOVED: var card = document.createElement('div');
+  // REMOVED: card.style.cssText = 'padding:16px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;cursor:pointer;transition:all .2s';
+  // REMOVED: card.addEventListener('mouseenter', function() { this.style.borderColor = 'var(--pu)'; this.style.background = 'rgba(108,92,231,.05)'; });
+  // REMOVED: card.addEventListener('mouseleave', function() { this.style.borderColor = 'var(--bd)'; this.style.background = 'var(--s2)'; });
+  // REMOVED: card.addEventListener('click', function() { _bldCreateFromTemplate(tpl.industry); });
+  // REMOVED:   // REMOVED: var top = document.createElement('div');
+  // REMOVED: top.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:10px';
+  // REMOVED: top.innerHTML = '<div style="width:44px;height:44px;border-radius:10px;background:' + tpl.color + ';display:flex;align-items:center;justify-content:center;font-size:22px">' + tpl.icon + '</div><div><div style="font-size:14px;font-weight:600;color:var(--t1)">' + escH(tpl.name) + '</div><div style="font-size:11px;color:var(--t3)">' + tpl.pages.length + ' pages</div></div>';
+  // REMOVED: card.appendChild(top);
+  // REMOVED:   // REMOVED: var desc = document.createElement('div');
+  // REMOVED: desc.style.cssText = 'font-size:11px;color:var(--t2);line-height:1.4';
+  // REMOVED: desc.textContent = tpl.desc;
+  // REMOVED: card.appendChild(desc);
+  // REMOVED:   // REMOVED: var tags = document.createElement('div');
+  // REMOVED: tags.style.cssText = 'display:flex;gap:4px;margin-top:8px;flex-wrap:wrap';
+  // REMOVED: for (var p = 0; p < tpl.pages.length; p++) {
+  // REMOVED: var tag = document.createElement('span');
+  // REMOVED: tag.style.cssText = 'font-size:9px;padding:2px 6px;background:var(--s3);border-radius:4px;color:var(--t3)';
+  // REMOVED: tag.textContent = tpl.pages[p];
+  // REMOVED: tags.appendChild(tag);
+  // REMOVED: }
+  // REMOVED: card.appendChild(tags);
+  // REMOVED: grid.appendChild(card);
+  // REMOVED: })(WEBSITE_TEMPLATES[i]);
+  // REMOVED: }
+  // REMOVED:   // REMOVED: body.appendChild(grid);
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+
+  // Click overlay to close
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+  document.body.appendChild(overlay);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARTHUR — Business Information Extraction Engine
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── PART 3: Strict state engine ──────────────────────────────────────
+window._arthurState = {
+  business_name: null, industry: null, core_service: null,
+  location: null, tone: null, audience: null,
+  custom_pages: null, page_count: null, design_style: null,
+  style: { primary_color: null, secondary_color: null, design_style: null },
+  ready: false,
+  _confidence: {},
+};
+var _arthurConvo = [];
+
+// ── PART 6: Loop guard counters ───────────────────────────────────────
+var _arthurTurnsWithoutProgress = 0;
+var _arthurMaxStallTurns = 3;
+var _arthurWizRetryCount = 0;
+var _arthurMaxRetries = 2;
+
+// ── PART 1: WIZARD INTERPRETER — deterministic extraction before AI ───
+function _arthurWizInterpretInput(text) {
+  var detected = {};
+  var filled   = [];
+  var lc       = text.toLowerCase().trim();
+
+  var BANNED_STARTS = [
+    /^i\s+need/i, /^i\s+want/i, /^we\s+are/i, /^we\s+do/i,
+    /^we\s+offer/i, /^we\s+provide/i, /^my\s+name\s+is/i,
+    /^our\s+company/i, /^based\s+in/i, /^located\s+in/i,
+    /^i'?m\s+build/i, /^create\s+a\s+web/i, /^build\s+a\s+web/i,
+    /^i\s+have\s+a/i, /^i\s+run\s+a/i, /^hi\b/i, /^hello\b/i,
+    /^can\s+you/i, /^please/i, /^just/i,
+  ];
+  var startsWithBanned = BANNED_STARTS.some(function(p) { return p.test(lc); });
+
+  var ENTITY_RE = /\b(?:LLC|Ltd|Inc|Co\.|Company|Agency|Studio|Clinic|Bakery|Properties|Interiors|Contracting|Marketing|Media|Technologies|Solutions|Services|Group|Holdings|Ventures|Consulting|Design|Creative|Digital|Fitness|Dental|Legal|Finance|Academy|Institute)\b/i;
+  var m = null;
+
+  var emDashM = text.match(/^([A-Z][A-Za-z0-9 &'.\-]{2,40}?)\s*[\u2014\u2013]\s/);
+  if (!emDashM) emDashM = text.match(/^([A-Z][A-Za-z0-9 &'.\-]{2,40}?)\s*:\s+(?:a\s+|an\s+|the\s+)?[a-z]/);
+  if (emDashM && emDashM[1]) {
+    var emCand = emDashM[1].trim().replace(/[,.\s]+$/, '');
+    if (_arthurIsValidBusinessName && _arthurIsValidBusinessName(emCand)) m = emDashM;
+  }
+
+  if (!m) m = text.match(/\bfor\s+([A-Z][A-Za-z0-9 &'.\-]{1,40}?)(?:\s*[,.]|\s+(?:a\s+|an\s+|the\s+|is\s+|are\s+|based|located|in\b|we\b|they\b)|$)/);
+
+  if (!m && !startsWithBanned) {
+    m = text.match(/\bcalled\s+([A-Z][A-Za-z0-9 &'.\-]{2,40}?)(?:[,.\s]|$)/i);
+  }
+  if (!m && !startsWithBanned) {
+    m = text.match(/\bnamed\s+([A-Z][A-Za-z0-9 &'.\-]{2,40}?)(?:[,.\s]|$)/i);
+  }
+  if (!m) {
+    m = text.match(/(?:business|company|brand)\s+name\s+is\s+([A-Z][A-Za-z0-9 &'.\-]{2,40}?)(?:[,.\s]|$)/i);
+  }
+  if (!m) {
+    m = text.match(/[\u201c\u201d"'\u2018\u2019]([A-Z][A-Za-z0-9 &'.\-]{2,40})[\u201c\u201d"'\u2018\u2019]/);
+    if (!m) m = text.match(/\"([A-Z][A-Za-z0-9 &'.\-]{2,40})\"/);
+  }
+  if (!m && !startsWithBanned) {
+    var commaNameM = text.match(/^([A-Z][A-Za-z0-9 &'.\-]{2,40}),\s/);
+    if (commaNameM && ENTITY_RE.test(commaNameM[1])) m = commaNameM;
+  }
+  if (!m && !startsWithBanned) {
+    var entityM = text.match(/\b([A-Z][A-Za-z0-9]{2,20}(?:\s+[A-Z][A-Za-z0-9 &]{1,30})+)\b/);
+    if (entityM && ENTITY_RE.test(entityM[1])) m = entityM;
+    if (!m) {
+      var camelM = text.match(/^([A-Z][a-z]+[A-Z][a-z]+(?:[A-Z][a-z]+)*)\s*$/);
+      if (camelM && ENTITY_RE.test(camelM[1])) m = camelM;
+    }
+  }
+
+  if (m && m[1]) {
+    var candidate = m[1].trim().replace(/[,.\s]+$/, '');
+    if (_arthurIsValidBusinessName(candidate)) {
+      detected.business_name = candidate;
+      filled.push('business_name');
+    }
+  }
+
+  // ── Industry patterns ─────────────────────────────────────────────────
+  var industries = {
+    'real estate':    ['real estate','property','properties','realty','realtor'],
+    'construction':   ['construction','building contractor','renovation','fitout','fit-out'],
+    'dental':         ['dental','dentist','orthodon'],
+    'medical':        ['medical','clinic','doctor','healthcare','physician'],
+    'restaurant':     ['restaurant','cafe','catering','bakery','bistro'],
+    'hotel':          ['hotel','hospitality','resort','accommodation','lodging'],
+    'fitness':        ['fitness','gym','personal trainer','yoga','pilates','workout'],
+    'legal':          ['law firm','legal','lawyer','attorney','solicitor'],
+    'technology':     ['software','saas','it company','developer','tech startup','app development','web development','ai company'],
+    'marketing':      ['marketing agency','advertising','branding','pr firm','digital marketing','seo','seo company','seo agency','social media agency','growth agency','ppc','media agency'],
+    'education':      ['school','university','tutoring','training academy','coaching'],
+    'retail':         ['retail store','e-commerce','ecommerce','clothing store','fashion'],
+    'finance':        ['finance','accounting firm','insurance','investment','wealth management'],
+    'cleaning':       ['cleaning','janitorial','housekeeping'],
+    'salon':          ['salon','beauty salon','hair salon','spa','barber'],
+  };
+  for (var ind in industries) {
+    var kws = industries[ind];
+    for (var j = 0; j < kws.length; j++) {
+      if (lc.includes(kws[j])) {
+        detected.industry = ind;
+        filled.push('industry');
+        break;
+      }
+    }
+    if (detected.industry) break;
+  }
+
+  // ── Service / core_service patterns ──────────────────────────────────
+  var svcM = text.match(/(?:(?:we\s+)?(?:offer|provide|sell|specialize\s+in|focus\s+on|our\s+specialty\s+is|our\s+speciality\s+is)\s+)([a-zA-Z][a-zA-Z ,&\/\-]{3,80}?)(?=\s+(?:target|for\s+|across\s+|serving|aimed|to\s+[a-z]+\s+client)|[.,]|$)/i);
+  if (!svcM) svcM = text.match(/(?:our\s+(?:main\s+)?(?:service|product|specialty|speciality)\s+is\s+)([a-zA-Z][a-zA-Z ,&\/\-]{3,80}?)(?=\s+(?:target|for\s+|across\s+)|[.,]|$)/i);
+  if (svcM && svcM[1]) {
+    var svc = svcM[1].trim().replace(/[.,]+$/, '').replace(/\s+and\s*$/, '');
+    var genericWords = /^(?:everything|stuff|various|services|things|many|much|more|a\s+lot)$/i;
+    if (svc.split(' ').length <= 10 && !genericWords.test(svc.trim())) {
+      detected.core_service = svc;
+      filled.push('core_service');
+    }
+  }
+
+  // ── Location patterns ─────────────────────────────────────────────────
+  var locM = text.match(/(?:(?:based|located|operating)\s+(?:in|at)\s+)([A-Z][A-Za-z]+(?: [A-Za-z]+)?)/i);
+  if (!locM) locM = text.match(/(?:location\s*[:=]\s*)([A-Z][A-Za-z ,\-]{2,40})/i);
+  if (!locM) {
+    var cityM = text.match(/\bin\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
+    if (cityM) {
+      var notLoc = ['The','Our','We','It','This','That','Your','For','And','But','My','A','An'];
+      if (!notLoc.includes(cityM[1].split(' ')[0])) locM = cityM;
+    }
+  }
+  if (locM && locM[1]) {
+    var notLoc2 = ['My','The','Our','We','It','This','That','Your','For','And','But'];
+    if (!notLoc2.includes(locM[1].split(' ')[0])) {
+      detected.location = locM[1].trim();
+      filled.push('location');
+    }
+  }
+
+  // ── Color patterns ────────────────────────────────────────────────────
+  var colorKws = {
+    blue:'#3b82f6',red:'#ef4444',green:'#22c55e',purple:'#a855f7',
+    gold:'#f59e0b',orange:'#f97316',black:'#000000',white:'#ffffff',
+    teal:'#14b8a6',navy:'#1e3a5f',pink:'#ec4899',indigo:'#6366f1',
+  };
+  var colM = text.match(/(?:color[s]?\s*(?:is|are|should be|:)?\s*|primary\s+color\s*[:=]?\s*)([a-z]+)/i);
+  if (colM && colorKws[colM[1].toLowerCase()]) {
+    detected.primary_color = colorKws[colM[1].toLowerCase()];
+    filled.push('primary_color');
+  }
+  var hexM = text.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
+  if (hexM && !detected.primary_color) {
+    detected.primary_color = hexM[0];
+    filled.push('primary_color');
+  }
+
+  // ── Tone extraction ─────────────────────────────────────────────────────
+  var toneKws = {
+    luxury:       ['luxury','luxurious','premium','high-end','high end','exclusive','sophisticated','elegant','upscale'],
+    playful:      ['playful','fun','friendly','casual','lighthearted','cheerful','energetic'],
+    professional: ['professional','corporate','formal','business-like','authoritative'],
+    minimal:      ['minimal','minimalist','clean','simple','sleek'],
+    bold:         ['bold','powerful','striking','dynamic','impactful'],
+    warm:         ['warm','welcoming','approachable','caring','inviting'],
+  };
+  for (var tk in toneKws) {
+    for (var ti = 0; ti < toneKws[tk].length; ti++) {
+      if (lc.indexOf(toneKws[tk][ti]) !== -1) {
+        detected.tone = tk;
+        filled.push('tone');
+        break;
+      }
+    }
+    if (detected.tone) break;
+  }
+
+  // ── Audience extraction ──────────────────────────────────────────────────
+  var audM = text.match(/(?:target(?:ing|ed)?|audience(?:\s+is)?|aimed?\s+at|serving|catering\s+to)\s+([a-zA-Z][a-zA-Z0-9,\s\-&']+?)(?:\s+(?:across|from|in|based|who\s+are|with\s+budgets?)\b|\.\s|\s*$)/i);
+  if (audM && audM[1]) {
+    var aud = audM[1].trim().replace(/\s+/g,' ').replace(/,\s*$/, '').replace(/\s+and\s*$/, '');
+    var audSingle = /^(a|an|the|our|my|your)$/i;
+    if (aud.length > 3 && aud.length <= 120 && !audSingle.test(aud)) {
+      detected.audience = aud.slice(0, 80);
+      filled.push('audience');
+    }
+  }
+
+  // ── Custom pages extraction ──────────────────────────────────────────────
+  var pageCountM = text.match(/\b(\d+)\s+pages?\b/i);
+  if (pageCountM) {
+    detected.page_count = Math.min(parseInt(pageCountM[1]), 10);
+    filled.push('page_count');
+  }
+
+  var explicitListM = text.match(/(?:i want|i need|pages?:|including:?|pages? (?:are|include|:))\s*\d*\s*pages?[:\s]+([a-zA-Z][a-zA-Z0-9,\s\-]+?)(?:\.|$)/i);
+  if (!explicitListM) {
+    explicitListM = text.match(/pages?:\s*([a-zA-Z][a-zA-Z0-9,\s\-]+?)(?:\.|$)/i);
+  }
+  if (explicitListM && explicitListM[1]) {
+    var rawList = explicitListM[1];
+    var parsedPages = rawList.split(/[\s,]+/)
+      .map(function(p){ return p.toLowerCase().replace(/[^a-z0-9\-]/g,'').replace(/page$/,'').replace(/-+$/,''); })
+      .filter(function(p){ return p.length >= 2 && p.length <= 30; });
+    var seen = {};
+    parsedPages = parsedPages.filter(function(p){ if(seen[p]) return false; seen[p]=true; return true; });
+    if (parsedPages.length >= 2) {
+      detected.custom_pages = parsedPages;
+      filled.push('custom_pages');
+    }
+  } else {
+    var knownPageNames = ['home','about','services','contact','pricing','portfolio','gallery','blog','faq','team','booking','careers','testimonials','case-studies','press'];
+    var detectedPages = knownPageNames.filter(function(pg) {
+      return new RegExp('\\b' + pg.replace(/-/g,'[\\s\\-]') + '\\b', 'i').test(lc);
+    });
+    if (detectedPages.length >= 2) {
+      detected.custom_pages = detectedPages;
+      filled.push('custom_pages');
+    }
+  }
+
+  // ── Design style extraction ──────────────────────────────────────────────
+  var styleKws = {
+    dark:    ['dark mode','dark theme','dark design','dark website'],
+    light:   ['light mode','light theme','clean white','bright design'],
+    modern:  ['modern design','contemporary','fresh look'],
+    classic: ['classic','traditional','timeless'],
+  };
+  for (var sk in styleKws) {
+    for (var si2 = 0; si2 < styleKws[sk].length; si2++) {
+      if (lc.indexOf(styleKws[sk][si2]) !== -1) {
+        detected.design_style = sk;
+        filled.push('design_style');
+        break;
+      }
+    }
+    if (detected.design_style) break;
+  }
+
+  var validFilled = filled.filter(function(f) {
+    if (f === 'business_name') return !!(detected.business_name && _arthurIsValidBusinessName(detected.business_name));
+    return true;
+  });
+
+  var confidence = validFilled.length >= 2 ? 'high' : validFilled.length === 1 ? 'medium' : 'low';
+  return { detected: detected, confidence: confidence, filled: filled, validFilled: validFilled };
+}
+
+// ── PART 4: Business name validator ─────────────────────────────────
+var _arthurBannedNames = [
+  /^i\s+(need|want|have|run|own)/i,
+  /^we\s+(are|do|offer|provide|sell|need|want)/i,
+  /^(my|our)\s+(name|company|business|brand)/i,
+  /^(create|build|make|design|get|have)\s+(a|an|the)?\s*web/i,
+  /^(based|located|operating)\s+in/i,
+  /^(hello|hi|hey)/i,
+  /^(yes|no|ok|okay|sure|great)/i,
+  /^(the|a|an)\s+/i,
+  /^(dental|medical|legal|fitness|cleaning|marketing|technology|restaurant|hotel|salon|retail|finance)\s*$/i,
+];
+var _arthurBannedWords = ['website','site','page','help','build','create','want','need','looking'];
+
+function _arthurIsValidBusinessName(val) {
+  if (!val || typeof val !== 'string') return false;
+  var v = val.trim();
+  if (v.length < 2 || v.length > 60) return false;
+  if (!/^[A-Z]/.test(v)) return false;
+  for (var i = 0; i < _arthurBannedNames.length; i++) {
+    if (_arthurBannedNames[i].test(v)) return false;
+  }
+  var lv = v.toLowerCase();
+  for (var j = 0; j < _arthurBannedWords.length; j++) {
+    if (lv.split(/\s+/).indexOf(_arthurBannedWords[j]) > -1) return false;
+  }
+  var firstWord = v.split(/\s+/)[0].toLowerCase();
+  var pronouns = ['i','we','my','our','the','a','an','it','this','that','for','in','at','on'];
+  if (pronouns.indexOf(firstWord) > -1) return false;
+  if (!/[a-zA-Z]{2}/.test(v)) return false;
+  return true;
+}
+
+// ── PART 4: Readiness check ─────────────────────────────────────────────
+function _arthurCheckReady() {
+  var S = window._arthurState;
+  return !!(
+    S.business_name && _arthurIsValidBusinessName(S.business_name) &&
+    S.industry &&
+    S.core_service
+  );
+}
+
+function _arthurMergeDetected(detected, confidence, source) {
+  var S = window._arthurState;
+  var updated = [];
+  var confOrder = {none:0, low:1, medium:2, high:3};
+
+  var simpleFields = ['business_name','industry','core_service','location','tone','audience','design_style'];
+  simpleFields.forEach(function(key) {
+    var val = detected[key];
+    if (!val) return;
+    var prev = S[key];
+    var prevConf = S._confidence[key] || 'none';
+    if (!prev || confOrder[confidence] >= confOrder[prevConf]) {
+      S[key] = val;
+      S._confidence[key] = confidence;
+      updated.push(key);
+    }
+  });
+
+  if (detected.primary_color) {
+    var prev = S.style.primary_color;
+    var prevConf = S._confidence['primary_color'] || 'none';
+    if (!prev || confOrder[confidence] >= confOrder[prevConf]) {
+      S.style.primary_color = detected.primary_color;
+      S._confidence['primary_color'] = confidence;
+      updated.push('primary_color');
+    }
+  }
+
+  if (detected.design_style && !S.style.design_style) {
+    S.style.design_style = detected.design_style;
+    S.design_style = detected.design_style;
+    updated.push('design_style');
+  }
+
+  if (Array.isArray(detected.custom_pages) && detected.custom_pages.length >= 2) {
+    S.custom_pages = detected.custom_pages;
+    updated.push('custom_pages');
+  }
+
+  if (detected.page_count && !S.custom_pages) {
+    S.page_count = detected.page_count;
+    updated.push('page_count');
+  }
+
+  return updated;
+}
+
+// ── PART 6: Direct-question fallback ──────────────────────────────────
+function _arthurGetDirectQuestion() {
+  var S = window._arthurState;
+  if (!S.business_name) return 'What is your business name?';
+  if (!S.industry)      return 'What industry or sector are you in?';
+  if (!S.core_service)  return 'What is your main product or service?';
+  return null;
+}
+
+function _arthurSmartFallback(userText) {
+  var lc = (userText || '').toLowerCase().trim();
+  var ack = '';
+  if (/price|cost|how much|fee|paid/.test(lc))           ack = 'Pricing depends on your project. ';
+  else if (/how long|time|quick|fast|how soon/.test(lc)) ack = 'It takes under a minute once I have your details. ';
+  else if (/example|sample|demo|show me/.test(lc))       ack = 'I build custom sites tailored to your business. ';
+  else if (/help|support|contact/.test(lc))              ack = 'Happy to help! ';
+  var dq = _arthurGetDirectQuestion();
+  return ack + (dq || "Tell me about your business and I'll get building.");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARTHUR AI CHATBOT INTERVIEW
+// ═══════════════════════════════════════════════════════════════════════════
+function _bldShowAIInterview() {
+  // Fresh state for each new website (agencies may have different businesses per site)
+  window._arthurState = {
+    business_name: null, industry: null, core_service: null,
+    location: null, tone: null, audience: null,
+    custom_pages: null, page_count: null, design_style: null,
+    style: { primary_color: null, secondary_color: null, design_style: null },
+    ready: false, _confidence: {},
+  };
+  _arthurConvo = [];
+  _arthurTurnsWithoutProgress = 0;
+  _arthurWizRetryCount = 0;
+  window._arthurGenerating = false;
+
+  // Inject keyframe animations once
+  if (!document.getElementById('arthur-wiz-styles')) {
+    var s = document.createElement('style');
+    s.id = 'arthur-wiz-styles';
+    s.textContent = [
+      '@keyframes awGlow{0%,100%{opacity:.5}50%{opacity:1}}',
+      '@keyframes awIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}',
+      '@keyframes awBubIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}',
+      '@keyframes awPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}',
+      '#arthur-wizard *{box-sizing:border-box}',
+      '#arthur-wiz-msgs::-webkit-scrollbar{width:4px}',
+      '#arthur-wiz-msgs::-webkit-scrollbar-track{background:transparent}',
+      '#arthur-wiz-msgs::-webkit-scrollbar-thumb{background:rgba(108,92,231,.3);border-radius:4px}',
+      '#arthur-wiz-input:focus{border-color:rgba(108,92,231,.7)!important;box-shadow:0 0 0 3px rgba(108,92,231,.15)!important}',
+      '#arthur-wiz-send:hover{transform:scale(1.06);box-shadow:0 0 20px rgba(108,92,231,.5)!important}',
+      '#arthur-wiz-send:active{transform:scale(.97)}',
+      '.aw-bubble-enter{animation:awBubIn .3s cubic-bezier(.34,1.56,.64,1) forwards}',
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  // ── OVERLAY (full-screen backdrop) ───────────────────────────────────
+  var overlay = document.createElement('div');
+  overlay.id = 'arthur-wizard';
+  overlay.style.cssText = [
+    'position:fixed;inset:0;z-index:9999',
+    'display:flex;align-items:center;justify-content:center',
+    'background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(108,92,231,.18) 0%, rgba(10,10,20,.96) 60%)',
+    'backdrop-filter:blur(20px)',
+  ].join(';');
+
+  // ── AMBIENT GLOW ORBS ─────────────────────────────────────────────────
+  var orb1 = document.createElement('div');
+  orb1.style.cssText = 'position:absolute;top:-80px;left:calc(50% - 300px);width:560px;height:400px;background:radial-gradient(circle,rgba(108,92,231,.22) 0%,transparent 70%);pointer-events:none;animation:awGlow 4s ease-in-out infinite';
+  var orb2 = document.createElement('div');
+  orb2.style.cssText = 'position:absolute;bottom:60px;right:calc(50% - 280px);width:400px;height:300px;background:radial-gradient(circle,rgba(0,229,168,.1) 0%,transparent 70%);pointer-events:none;animation:awGlow 5s ease-in-out infinite .8s';
+  overlay.appendChild(orb1);
+  overlay.appendChild(orb2);
+
+  // ── CHAT CONTAINER ────────────────────────────────────────────────────
+  var panel = document.createElement('div');
+  panel.style.cssText = [
+    'position:relative;z-index:1',
+    'width:90%;max-width:600px',
+    'display:flex;flex-direction:column',
+    'height:72vh;max-height:640px;min-height:440px',
+    'background:linear-gradient(160deg,rgba(30,26,50,.95) 0%,rgba(15,13,28,.98) 100%)',
+    'border:1px solid rgba(108,92,231,.25)',
+    'border-radius:24px',
+    'box-shadow:0 0 0 1px rgba(255,255,255,.04) inset, 0 32px 80px rgba(0,0,0,.5), 0 0 60px rgba(108,92,231,.1)',
+    'overflow:hidden',
+    'animation:awIn .4s cubic-bezier(.34,1.2,.64,1) forwards',
+  ].join(';');
+
+  // ── HEADER BAR ────────────────────────────────────────────────────────
+  var header = document.createElement('div');
+  header.style.cssText = [
+    'display:flex;align-items:center;gap:12px',
+    'padding:18px 20px 16px',
+    'border-bottom:1px solid rgba(255,255,255,.06)',
+    'background:linear-gradient(90deg,rgba(108,92,231,.08) 0%,transparent 100%)',
+    'flex-shrink:0',
+  ].join(';');
+  header.innerHTML = [
+    '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6C5CE7,#A855F7);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(108,92,231,.4)">\u26A1</div>',
+    '<div style="flex:1;min-width:0">',
+      '<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#fff;letter-spacing:.01em">Arthur</div>',
+      '<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:1px">AI Website Builder \u00B7 LevelUp</div>',
+    '</div>',
+    '<div style="display:flex;align-items:center;gap:6px;background:rgba(0,229,168,.08);border:1px solid rgba(0,229,168,.2);border-radius:20px;padding:4px 10px">',
+      '<div style="width:6px;height:6px;border-radius:50%;background:#00E5A8;box-shadow:0 0 6px #00E5A8;animation:awPulse 2s ease-in-out infinite"></div>',
+      '<span style="font-size:11px;color:#00E5A8;font-weight:600">Online</span>',
+    '</div>',
+  ].join('');
+
+  // Close button
+  var closeBtn2 = document.createElement('button');
+  closeBtn2.innerHTML = '&times;';
+  closeBtn2.style.cssText = 'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:rgba(255,255,255,.4);width:32px;height:32px;cursor:pointer;font-size:16px;flex-shrink:0;transition:all .2s;line-height:1';
+  closeBtn2.onmouseover = function(){ this.style.background='rgba(255,255,255,.1)'; this.style.color='#fff'; };
+  closeBtn2.onmouseout  = function(){ this.style.background='rgba(255,255,255,.05)'; this.style.color='rgba(255,255,255,.4)'; };
+  closeBtn2.addEventListener('click', function() { overlay.remove(); });
+  header.appendChild(closeBtn2);
+
+  // ── MESSAGES AREA ─────────────────────────────────────────────────────
+  var msgs = document.createElement('div');
+  msgs.id = 'arthur-wiz-msgs';
+  msgs.style.cssText = [
+    'flex:1;overflow-y:auto',
+    'display:flex;flex-direction:column;gap:14px',
+    'padding:20px 24px',
+  ].join(';');
+
+  // ── STEP INDICATOR ────────────────────────────────────────────────────
+  var steps = document.createElement('div');
+  steps.id = 'arthur-wiz-steps';
+  steps.style.cssText = 'padding:10px 24px 0;display:flex;gap:6px;align-items:center;flex-shrink:0';
+  steps.innerHTML = [
+    ['Business', false], ['Industry', false], ['Services', false], ['Preferences', false]
+  ].map(function(s, i) {
+    return '<div style="display:flex;align-items:center;gap:6px">'
+      + (i > 0 ? '<div style="width:20px;height:1px;background:rgba(255,255,255,.1)"></div>' : '')
+      + '<div id="aw-step-' + i + '" style="display:flex;align-items:center;gap:5px;opacity:.3;transition:opacity .3s">'
+        + '<div style="width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,.4);font-weight:700">' + (i+1) + '</div>'
+        + '<span style="font-size:11px;color:rgba(255,255,255,.35);font-weight:500">' + s[0] + '</span>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+
+  // ── INPUT ROW ─────────────────────────────────────────────────────────
+  var inputArea = document.createElement('div');
+  inputArea.style.cssText = 'padding:14px 16px 16px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.05)';
+  inputArea.innerHTML = [
+    '<div style="display:flex;gap:10px;align-items:flex-end;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:8px 8px 8px 16px;transition:border-color .2s">',
+      '<input id="arthur-wiz-input" type="text" placeholder="Tell me about your business..." autocomplete="off" style="flex:1;background:none;border:none;outline:none;color:#fff;font-size:14px;font-family:DM Sans,sans-serif;padding:6px 0;line-height:1.4;min-height:36px">',
+      '<button id="arthur-wiz-send" onclick="_arthurWizSend()" style="background:linear-gradient(135deg,#6C5CE7,#A855F7);border:none;border-radius:10px;color:#fff;width:40px;height:40px;cursor:pointer;font-size:16px;flex-shrink:0;transition:all .2s;box-shadow:0 4px 12px rgba(108,92,231,.3)">&#8594;</button>',
+    '</div>',
+    '<div style="text-align:center;margin-top:8px;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:.03em">Powered by LevelUp AI \u00B7 Your data is private</div>',
+  ].join('');
+
+  // ── ASSEMBLE ──────────────────────────────────────────────────────────
+  panel.appendChild(header);
+  panel.appendChild(steps);
+  panel.appendChild(msgs);
+  panel.appendChild(inputArea);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // First message
+  _arthurBub("Hi, I'm Arthur \u26A1 Tell me about your business and I'll build your website in under a minute.");
+
+  setTimeout(function() {
+    var inp = document.getElementById('arthur-wiz-input');
+    if (inp) {
+      inp.focus();
+      var wrapper = inp.parentElement;
+      inp.addEventListener('focus', function(){ wrapper.style.borderColor='rgba(108,92,231,.5)'; wrapper.style.boxShadow='0 0 0 3px rgba(108,92,231,.12)'; });
+      inp.addEventListener('blur',  function(){ wrapper.style.borderColor='rgba(255,255,255,.1)'; wrapper.style.boxShadow='none'; });
+      inp.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey) _arthurWizSend(); });
+    }
+  }, 100);
+}
+
+function _arthurBub(text, isUser) {
+  var msgs = document.getElementById('arthur-wiz-msgs');
+  if (!msgs) return;
+  var div = document.createElement('div');
+  div.className = 'aw-bubble-enter';
+  if (isUser) {
+    div.style.cssText = 'display:flex;justify-content:flex-end';
+    div.innerHTML = '<div style="background:linear-gradient(135deg,#6C5CE7,#A855F7);border-radius:18px 18px 4px 18px;padding:12px 18px;font-size:14px;color:#fff;max-width:80%;line-height:1.5;box-shadow:0 4px 16px rgba(108,92,231,.3)">'
+      + escH(text) + '</div>';
+  } else {
+    div.style.cssText = 'display:flex;gap:10px;align-items:flex-start';
+    div.innerHTML = '<div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6C5CE7,#A855F7);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 4px 10px rgba(108,92,231,.35)">\u26A1</div>'
+      + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);border-radius:4px 18px 18px 18px;padding:13px 18px;font-size:14px;color:rgba(255,255,255,.88);line-height:1.6;max-width:80%">'
+      + text + '</div>';
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  _arthurWizUpdateSteps();
+}
+
+function _arthurWizUpdateSteps() {
+  var S = window._arthurState || {};
+  var filled = [
+    !!(S.business_name && _arthurIsValidBusinessName && _arthurIsValidBusinessName(S.business_name)),
+    !!S.industry,
+    !!S.core_service,
+    !!(S.style && (S.style.primary_color || S.tone || S.audience)),
+  ];
+  filled.forEach(function(done, i) {
+    var el = document.getElementById('aw-step-' + i);
+    if (!el) return;
+    el.style.opacity = done ? '1' : (i === filled.indexOf(false) ? '0.7' : '0.3');
+    var dot = el.querySelector('div');
+    if (dot && done) {
+      dot.style.background = 'rgba(0,229,168,.2)';
+      dot.style.borderColor = '#00E5A8';
+      dot.style.color = '#00E5A8';
+      dot.textContent = '\u2713';
+    }
+  });
+}
+
+// Arthur sends EVERY message to the AI
+async function _arthurWizSend() {
+  var inp = document.getElementById('arthur-wiz-input');
+  if (!inp || inp.disabled) return;
+  var text = inp.value.trim();
+  if (!text) return;
+
+  if (window._arthurResponding === true) return;
+  window._arthurResponding = true;
+
+  var requestId = Date.now();
+  window._arthurLastRequestId = requestId;
+
+  inp.value = '';
+  _arthurBub(text, true);
+  _arthurConvo.push({role: 'user', content: text});
+
+  // ── Correction handler ────────────────────────────────────────────────
+  var correctionPatterns = [
+    /(?:actually[,\s]+(?:the\s+)?(?:business|company|name|brand)\s+(?:is|called)\s+)([A-Z][A-Za-z0-9 &'.\-]{2,40})/i,
+    /(?:actually[,\s]+it'?s?\s+)([A-Z][A-Za-z0-9 &'.\-]{2,40})/i,
+    /(?:no[,\s]+it'?s?\s+)([A-Z][A-Za-z0-9 &'.\-]{2,40})/i,
+    /(?:correction[:\s]+)([A-Z][A-Za-z0-9 &'.\-]{2,40})/i,
+    /(?:not\s+\w+[,\s]+it'?s?\s+)([A-Z][A-Za-z0-9 &'.\-]{2,40})/i,
+    /(?:not\s+\w+[,\s]+(?:it'?s?\s+called?\s+|the\s+name\s+is\s+))([A-Z][A-Za-z0-9 &'.\-]{2,40})/i,
+    /(?:the\s+(?:company|business)\s+name\s+is\s+)([A-Z][A-Za-z0-9 &'.\-]{2,40})/i,
+  ];
+  var correctionApplied = false;
+  for (var ci = 0; ci < correctionPatterns.length; ci++) {
+    var cm = text.match(correctionPatterns[ci]);
+    if (cm && cm[1]) {
+      var corrVal = cm[1].trim().replace(/[,.\s]+$/, '');
+      if (_arthurIsValidBusinessName(corrVal)) {
+        window._arthurState.business_name = corrVal;
+        window._arthurState._confidence['business_name'] = 'high';
+        correctionApplied = true;
+        _arthurTurnsWithoutProgress = 0;
+        break;
+      }
+    }
+  }
+
+  // ── Run local interpreter BEFORE AI ─────────────────────────────────
+  var interp = _arthurWizInterpretInput(text);
+  var validFilled = interp.validFilled || interp.filled;
+  var localFilled = _arthurMergeDetected(interp.detected, interp.confidence, 'interpreter');
+
+  // ── Check readiness immediately ───────────────────────────────────────
+  if (_arthurCheckReady()) {
+    window._arthurState.ready = true;
+    inp.disabled = true;
+    inp.placeholder = 'Generating your website...';
+    _arthurBub('Great, I have everything I need! Building your website now...');
+    window._arthurResponding = false;
+    setTimeout(_arthurWizGenerate, 800);
+    return;
+  }
+
+  // ── Stall counter ─────────────────────────────────────────────────────
+  if (validFilled.length > 0 || correctionApplied) {
+    _arthurTurnsWithoutProgress = 0;
+  } else {
+    _arthurTurnsWithoutProgress++;
+  }
+
+  // ── Stall tracking (no hard stop — LLM handles all responses) ────────
+  // Previously this would fire direct questions before AI got a chance.
+  // Now the LLM always responds — it's instructed to infer and never re-ask.
+
+  // ── Local greeting handler (only for very first message with no context) ──
+  var isSimpleGreeting = /^(hi|hello|hey|hiya|howdy|greetings|start|begin|go|lets go|let'?s go)\s*[!.]*$/i.test(text.trim());
+  if (isSimpleGreeting && !window._arthurState.business_name && !window._arthurState.industry && _arthurConvo.length <= 1) {
+    var greetReply = "Hey! \uD83D\uDC4B Tell me about your business \u2014 what\u2019s it called and what do you do? I\u2019ll have your website ready in under a minute.";
+    _arthurConvo.push({role: 'assistant', content: greetReply});
+    _arthurBub(greetReply);
+    inp.focus();
+    window._arthurResponding = false;
+    return;
+  }
+
+  // ── Local meta-question handler ───────────────────────────────────────
+  var isMetaQuestion = /^(are you|who are you|what are you|who made you|what can you do|how do you work|what is this|what'?s this|tell me about yourself|introduce yourself|are you (a )?bot|are you real|are you human|what'?s your name|what do you do)\b/i.test(text.trim());
+  if (isMetaQuestion) {
+    var metaReply = "Yes, I'm Arthur \u26A1 \u2014 an AI website builder created by LevelUp. I specialise in one thing: building you a professional website fast. Just tell me your business name and what you do, and I'll have a site ready in under a minute.";
+    _arthurConvo.push({role: 'assistant', content: metaReply});
+    _arthurBub(metaReply);
+    inp.focus();
+    window._arthurResponding = false;
+    return;
+  }
+
+  // Show typing indicator
+  if (!document.getElementById('aw-dot-style')) {
+    var ds = document.createElement('style');
+    ds.id = 'aw-dot-style';
+    ds.textContent = '@keyframes awDot{0%,80%,100%{transform:scale(.6);opacity:.3}40%{transform:scale(1);opacity:1}}'
+      + '#arthur-typing .aw-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(108,92,231,.7);animation:awDot 1.3s ease-in-out infinite}'
+      + '#arthur-typing .aw-dot:nth-child(2){animation-delay:.16s}'
+      + '#arthur-typing .aw-dot:nth-child(3){animation-delay:.32s}';
+    document.head.appendChild(ds);
+  }
+  var typing = document.createElement('div');
+  typing.id = 'arthur-typing';
+  typing.className = 'aw-bubble-enter';
+  typing.style.cssText = 'display:flex;gap:10px;align-items:flex-start';
+  typing.innerHTML = '<div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6C5CE7,#A855F7);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 4px 10px rgba(108,92,231,.35)">\u26A1</div>'
+    + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);border-radius:4px 18px 18px 18px;padding:14px 18px;display:flex;align-items:center;gap:5px">'
+    + '<span class="aw-dot"></span><span class="aw-dot"></span><span class="aw-dot"></span>'
+    + '</div>';
+  var msgsEl = document.getElementById('arthur-wiz-msgs');
+  if (msgsEl) { msgsEl.appendChild(typing); msgsEl.scrollTop = 99999; }
+  inp.disabled = true;
+
+  // ── AI call with retry ────────────────────────────────────────────────
+  var aiReply = null;
+  _arthurWizRetryCount = 0;
+
+  try {
+
+  while (_arthurWizRetryCount <= _arthurMaxRetries) {
+    try {
+      // LARAVEL ADAPTATION: POST /api/agent/dispatch with agent context
+      var arthurCtx = {};
+      arthurCtx.source       = 'arthur_wizard';
+      arthurCtx.arthur_state = window._arthurState;
+      arthurCtx.wizard_mode  = true;
+
+      var r = await fetch(API + 'builder/arthur', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type': 'application/json'}, authHeader()),
+        body: JSON.stringify({
+          mode: 'wizard',
+          message: text,
+          arthur_state: window._arthurState,
+          history: _arthurConvo.slice(-8),
+        })
+      });
+
+      if (r.status === 429) {
+        _arthurWizRetryCount++;
+        if (_arthurWizRetryCount <= _arthurMaxRetries) {
+          if (requestId !== window._arthurLastRequestId) break;
+          await new Promise(function(res){ setTimeout(res, _arthurWizRetryCount * 1000); });
+          continue;
+        }
+        if (requestId === window._arthurLastRequestId) {
+          aiReply = _arthurSmartFallback(text);
+        }
+        break;
+      }
+      if (!r.ok) {
+        _arthurWizRetryCount++;
+        if (_arthurWizRetryCount <= _arthurMaxRetries) {
+          if (requestId !== window._arthurLastRequestId) break;
+          await new Promise(function(res){ setTimeout(res, _arthurWizRetryCount * 1000); });
+          continue;
+        }
+        if (requestId === window._arthurLastRequestId) {
+          aiReply = _arthurSmartFallback(text);
+        }
+        break;
+      }
+
+      var d = await r.json();
+
+      if (requestId !== window._arthurLastRequestId) { break; }
+
+      if (!d.response && !d.reply) {
+        aiReply = _arthurSmartFallback(text);
+        break;
+      }
+
+      aiReply = d.response || d.reply || '';
+
+      if (d.extracted && typeof d.extracted === 'object') {
+        var aiFilled = _arthurMergeDetected(d.extracted, 'medium', 'ai');
+        if (aiFilled.length > 0) _arthurTurnsWithoutProgress = 0;
+      }
+
+      if (d.ready === true) {
+        if (requestId === window._arthurLastRequestId) {
+          var typingEl = document.getElementById('arthur-typing');
+          if (typingEl) typingEl.remove();
+          window._arthurResponding = false;
+          window._arthurState.ready = true;
+          var wizInp = document.getElementById('arthur-wiz-input');
+          if (wizInp) { wizInp.disabled = true; wizInp.placeholder = 'Generating your website...'; }
+          if (aiReply) { _arthurConvo.push({role:'assistant', content: aiReply}); _arthurBub(aiReply); }
+          setTimeout(_arthurWizGenerate, 800);
+        }
+        return;
+      }
+
+      break; // success
+
+    } catch(e) {
+      _arthurWizRetryCount++;
+      if (_arthurWizRetryCount <= _arthurMaxRetries) {
+        if (requestId !== window._arthurLastRequestId) break;
+        await new Promise(function(res){ setTimeout(res, _arthurWizRetryCount * 1000); });
+        continue;
+      }
+      if (requestId === window._arthurLastRequestId) {
+        aiReply = _arthurSmartFallback(text);
+      }
+      break;
+    }
+  } // end while
+
+  } finally {
+    window._arthurResponding = false;
+  }
+
+  var typingEl2 = document.getElementById('arthur-typing');
+  if (typingEl2) typingEl2.remove();
+  inp.disabled = false;
+
+  if (requestId !== window._arthurLastRequestId) {
+    console.warn('[Arthur Wiz] Stale response dropped (requestId mismatch)');
+    inp.focus();
+    return;
+  }
+
+  if (aiReply && !window._arthurState.ready) {
+    _arthurConvo.push({role: 'assistant', content: aiReply});
+    _arthurBub(aiReply);
+  }
+
+  if (_arthurCheckReady()) {
+    window._arthurState.ready = true;
+    inp.disabled = true;
+    inp.placeholder = 'Generating your website...';
+    _arthurBub('Great, I have everything I need! Building your website now...');
+    setTimeout(_arthurWizGenerate, 800);
+    return;
+  }
+
+  if (!aiReply) {
+    var dq = _arthurGetDirectQuestion();
+    if (dq) _arthurBub(dq);
+  }
+
+  inp.focus();
+}
+
+function _arthurClassifyError(errMsg) {
+  var msg = (errMsg || '').toLowerCase();
+  if (/business_name.*required|name.*required/i.test(msg)) return 'MISSING_PARAM';
+  if (/invalid|format|type|must be/i.test(msg))           return 'VALIDATION_ERROR';
+  if (/timeout|connect|network|502|503|runtime/i.test(msg)) return 'API_ERROR';
+  if (/permission|not allowed|unauthorized|403/i.test(msg)) return 'PERMISSION';
+  return 'UNKNOWN';
+}
+
+function _arthurUserFriendlyError(errType, rawMsg) {
+  switch (errType) {
+    case 'MISSING_PARAM':    return 'I\'m missing a required detail. Please tell me your business name.';
+    case 'VALIDATION_ERROR': return 'There was a format issue: ' + rawMsg + '. Please check your details.';
+    case 'API_ERROR':        return 'The AI service is temporarily slow. I\'ll retry automatically...';
+    case 'PERMISSION':       return 'Permission issue. Please refresh the page and try again.';
+    default:                 return 'Something went wrong: ' + rawMsg + '. Please try again.';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WEBSITE GENERATION — Blueprint-based
+// ═══════════════════════════════════════════════════════════════════════════
+async function _arthurWizGenerate() {
+  if (window._arthurGenerating === true) return;
+  window._arthurGenerating = true;
+  var S = window._arthurState;
+
+  var preValidErrors = [];
+  if (!S.business_name) preValidErrors.push('business name');
+  if (!S.industry)      preValidErrors.push('industry');
+  if (!S.core_service)  preValidErrors.push('main service or product');
+  if (preValidErrors.length) {
+    _arthurBub('I still need: ' + preValidErrors.join(' and ') + '. Can you share those?');
+    var inp = document.getElementById('arthur-wiz-input');
+    if (inp) { inp.disabled = false; inp.placeholder = 'Tell me about your business...'; inp.focus(); }
+    window._arthurGenerating = false;
+    return;
+  }
+
+  var websiteId   = null;
+  var buildDone   = false;
+  var buildResult = null;
+  var MIN_DURATION = 9000;
+  var buildStart   = Date.now();
+
+  // ── Resolve page list ────────────────────────────────────────────────────
+  var defaultPages = ['home', 'services', 'about', 'contact'];
+  var resolvedPages = defaultPages;
+  if (Array.isArray(S.custom_pages) && S.custom_pages.length >= 2) {
+    var cp = S.custom_pages.slice();
+    if (cp.indexOf('home') === -1) cp.unshift('home');
+    if (cp.indexOf('contact') !== -1) { cp = cp.filter(function(p){ return p !== 'contact'; }); cp.push('contact'); }
+    resolvedPages = cp.slice(0, 8);
+  } else if (S.page_count && S.page_count > 4) {
+    var extraPages = ['pricing','portfolio','gallery','faq','team','blog'];
+    var needed = S.page_count - defaultPages.length;
+    resolvedPages = defaultPages.concat(extraPages.slice(0, needed));
+  }
+
+  var createPayload = {
+    business_name:   S.business_name,
+    industry:        S.industry      || '',
+    location:        S.location      || '',
+    primary_goal:    'lead_generation',
+    style:           (S.style && S.style.design_style) ? S.style.design_style : (S.design_style || 'light'),
+    primary_color:   (S.style && S.style.primary_color)    || '',
+    secondary_color: (S.style && S.style.secondary_color)  || '',
+    pages:           resolvedPages,
+    arthur_context: {
+      core_service:  S.core_service  || '',
+      tone:          S.tone          || '',
+      audience:      S.audience      || '',
+      location:      S.location      || '',
+      primary_color: (S.style && S.style.primary_color)    || '',
+      secondary_color:(S.style && S.style.secondary_color) || '',
+      design_style:  (S.style && S.style.design_style)     || S.design_style || '',
+    },
+  };
+
+  var brandColor = (S.style && S.style.primary_color) ? S.style.primary_color : '#6C5CE7';
+  if (brandColor && brandColor.indexOf('#') === -1) brandColor = '#6C5CE7';
+
+  // ── Inject cinematic overlay ────────────────────────────────────────────
+  var wizardEl = document.getElementById('arthur-wizard');
+
+  var overlay = document.createElement('div');
+  overlay.id = 'arthur-cinematic';
+  overlay.style.cssText = [
+    'position:fixed;inset:0;z-index:99999',
+    'background:#0a0a14',
+    'display:flex;align-items:stretch',
+    'opacity:0;transition:opacity .5s ease',
+    'font-family:DM Sans,sans-serif',
+  ].join(';');
+
+  overlay.innerHTML = [
+    '<div id="ac-left" style="width:420px;flex-shrink:0;display:flex;flex-direction:column;justify-content:center;padding:60px 48px;border-right:1px solid rgba(255,255,255,.06);position:relative;overflow:hidden">',
+      '<div style="position:absolute;top:-120px;left:-80px;width:360px;height:360px;background:radial-gradient(circle,' + brandColor + '22 0%,transparent 70%);pointer-events:none"></div>',
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:48px">',
+        '<div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#6C5CE7,#A855F7);display:flex;align-items:center;justify-content:center;font-size:16px">\u26A1</div>',
+        '<span style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.03em">Arthur</span>',
+      '</div>',
+      '<div id="ac-headline" style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:10px">Building<br><span style="color:' + brandColor + '">' + escH(S.business_name) + '</span></div>',
+      '<div id="ac-sub" style="font-size:14px;color:rgba(255,255,255,.35);margin-bottom:40px">' + escH(S.industry || 'Professional website') + (S.location ? ' \u00B7 ' + escH(S.location) : '') + '</div>',
+      '<div style="background:rgba(255,255,255,.06);border-radius:100px;height:3px;overflow:hidden;margin-bottom:32px">',
+        '<div id="ac-bar" style="height:100%;width:0%;background:linear-gradient(90deg,' + brandColor + ',#A855F7);border-radius:100px;transition:width 1.2s cubic-bezier(.4,0,.2,1)"></div>',
+      '</div>',
+      '<div id="ac-steps" style="display:flex;flex-direction:column;gap:10px"></div>',
+      '<div id="ac-status" style="margin-top:40px;font-size:12px;color:rgba(255,255,255,.2);letter-spacing:.04em"></div>',
+    '</div>',
+    '<div id="ac-right" style="flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px">',
+      '<div style="width:100%;max-width:760px;height:100%;max-height:520px;border-radius:16px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.6);display:flex;flex-direction:column;background:#fff;position:relative">',
+        '<div style="height:36px;background:#f1f1f1;display:flex;align-items:center;padding:0 14px;gap:7px;flex-shrink:0;border-bottom:1px solid #e0e0e0">',
+          '<div style="width:11px;height:11px;border-radius:50%;background:#ff5f57"></div>',
+          '<div style="width:11px;height:11px;border-radius:50%;background:#febc2e"></div>',
+          '<div style="width:11px;height:11px;border-radius:50%;background:#28c840"></div>',
+          '<div style="flex:1;margin:0 12px;background:#e8e8e8;border-radius:6px;height:20px;display:flex;align-items:center;padding:0 10px">',
+            '<span style="font-size:10px;color:#999;font-family:monospace" id="ac-url">levelupgrowth.io/' + S.business_name.toLowerCase().replace(/\s+/g,'-') + '</span>',
+          '</div>',
+        '</div>',
+        '<div id="ac-canvas" style="flex:1;overflow:hidden;position:relative">',
+          '<div id="ac-skeleton" style="height:100%;overflow:hidden;background:#fff;transition:opacity .8s ease">',
+            _arthurBuildSkeleton(brandColor),
+          '</div>',
+          '<div id="ac-preview-frame" style="position:absolute;inset:0;opacity:0;transition:opacity 1.2s ease;overflow:hidden"></div>',
+        '</div>',
+      '</div>',
+      '<div id="ac-frame-caption" style="margin-top:16px;font-size:12px;color:rgba(255,255,255,.2);letter-spacing:.04em">Designing your website\u2026</div>',
+    '</div>',
+  ].join('');
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      overlay.style.opacity = '1';
+      setTimeout(function() {
+        if (wizardEl && wizardEl.parentNode) wizardEl.remove();
+      }, 520);
+    });
+  });
+
+  // ── CSS animations ────────────────────────────────────────────────────
+  if (!document.getElementById('arthur-cin-styles')) {
+    var styleEl = document.createElement('style');
+    styleEl.id = 'arthur-cin-styles';
+    styleEl.textContent = [
+      '@keyframes acSkel{0%,100%{opacity:.35}50%{opacity:.75}}',
+      '@keyframes acShimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}',
+      '@keyframes acStepIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}',
+      '@keyframes acFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}',
+      '@keyframes acReveal{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}',
+      '@keyframes acBlurIn{from{opacity:0;filter:blur(8px)}to{opacity:1;filter:blur(0)}}',
+      '@keyframes acPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}',
+      '.ac-shimmer{background:linear-gradient(90deg,#ececec 25%,#f8f8f8 50%,#ececec 75%);background-size:800px 100%;animation:acShimmer 1.6s ease-in-out infinite}',
+      '.ac-shimmer-dark{background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.14) 50%,rgba(255,255,255,.06) 75%);background-size:800px 100%;animation:acShimmer 1.6s ease-in-out infinite}',
+    ].join('');
+    document.head.appendChild(styleEl);
+  }
+
+  // ── Step definitions ──────────────────────────────────────────────────
+  var buildSteps = [
+    { label: 'Building your website foundation...',                          icon: '\uD83C\uDFD7\uFE0F', pct: 8   },
+    { label: 'Applying structure, layout, and essential pages...',           icon: '\uD83D\uDCD0', pct: 22  },
+    { label: 'Generating content based on your business...',                 icon: '\u270D\uFE0F',  pct: 42  },
+    { label: 'This is your starting point \u2014 designed to get you online fast.', icon: '\uD83D\uDE80', pct: 60  },
+    { label: 'You\'ll be able to fully customise everything inside the builder.', icon: '\uD83C\uDFA8', pct: 76  },
+    { label: 'Use Arthur AI anytime to refine text, layout, and design.',    icon: '\uD83E\uDD16', pct: 90  },
+    { label: 'Your website is being prepared for editing and growth.',       icon: '\u2728', pct: 97  },
+  ];
+
+  function _acSetBar(pct) {
+    var b = document.getElementById('ac-bar');
+    if (b) b.style.width = pct + '%';
+  }
+  function _acSetStatus(txt) {
+    var s = document.getElementById('ac-status');
+    if (s) s.textContent = txt.toUpperCase();
+  }
+  function _acSetCaption(txt) {
+    var c = document.getElementById('ac-frame-caption');
+    if (c) c.textContent = txt;
+  }
+
+  function _acAddStep(idx) {
+    var stepsEl = document.getElementById('ac-steps');
+    if (!stepsEl || !buildSteps[idx]) return;
+    var s   = buildSteps[idx];
+    var row = document.createElement('div');
+    row.id  = 'ac-step-' + idx;
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);animation:acStepIn .35s ease forwards;opacity:0';
+    row.innerHTML = '<span id="ac-step-ic-' + idx + '" style="font-size:16px;width:22px;text-align:center;flex-shrink:0">' + s.icon + '</span>'
+      + '<span style="flex:1;font-size:13px;color:rgba(255,255,255,.75)">' + s.label + '</span>'
+      + '<span id="ac-step-st-' + idx + '" style="font-size:11px;color:' + brandColor + ';font-weight:600;opacity:.8">\u2022\u2022\u2022</span>';
+    stepsEl.appendChild(row);
+  }
+
+  function _acStepDone(idx) {
+    var row   = document.getElementById('ac-step-' + idx);
+    var stEl  = document.getElementById('ac-step-st-' + idx);
+    var icEl  = document.getElementById('ac-step-ic-' + idx);
+    if (!row) return;
+    row.style.background = 'rgba(0,229,168,.05)';
+    row.style.borderColor = 'rgba(0,229,168,.18)';
+    if (stEl)  { stEl.textContent = '\u2713'; stEl.style.color = '#00E5A8'; }
+    if (icEl)  icEl.textContent = '\u2705';
+  }
+
+  // ── Step sequencer ────────────────────────────────────────────────────
+  var stepIdx = 0;
+  var stepTimer = setInterval(function() {
+    if (stepIdx > 0) _acStepDone(stepIdx - 1);
+    if (stepIdx < buildSteps.length) {
+      _acSetBar(buildSteps[stepIdx].pct);
+      _acSetStatus(buildSteps[stepIdx].label);
+      _acAddStep(stepIdx);
+      stepIdx++;
+    } else {
+      clearInterval(stepTimer);
+    }
+  }, 1000);
+
+  // ── Fire the build API ────────────────────────────────────────────────
+  // LARAVEL ADAPTATION: POST /api/builder/wizard
+  var _genAbortCtrl = new AbortController();
+  var _genTimeout = setTimeout(function() {
+    _genAbortCtrl.abort();
+  }, 90000);
+
+  var buildPromise = fetch(API + 'builder/wizard', {
+    method: 'POST',
+    headers: Object.assign({'Content-Type':'application/json'}, authHeader()),
+    body: JSON.stringify(createPayload),
+    signal: _genAbortCtrl.signal,
+  }).then(function(r){ clearTimeout(_genTimeout); return r.json(); });
+
+  // ── Skeleton section animation ────────────────────────────────────────
+  var skelSections = document.querySelectorAll('#ac-skeleton .ac-skel-section');
+  var skelRevealTimer = null;
+  var skelIdx = 0;
+  var skelStaggerMs = 220;
+  Array.prototype.forEach.call(skelSections, function(el, i) {
+    setTimeout(function() {
+      el.style.opacity    = '1';
+      el.style.transform  = 'translateY(0)';
+    }, i * skelStaggerMs);
+  });
+  skelRevealTimer = setTimeout(function() {
+    skelIdx = skelSections.length;
+  }, skelSections.length * skelStaggerMs + 400);
+
+  // ── Wait for build response + minimum cinematic duration ──────────────
+  var buildResponse = null;
+  var buildError    = null;
+  try {
+    buildResponse = await buildPromise;
+    console.log('[Arthur] Build response:', JSON.stringify(buildResponse).slice(0, 300));
+    // Unwrap Laravel execution pipeline response
+    if (buildResponse && buildResponse.data && typeof buildResponse.data === 'object') { buildResponse = Object.assign(buildResponse, buildResponse.data); }
+  } catch(e) {
+    clearTimeout(_genTimeout);
+    if (e.name === 'AbortError') {
+      buildError = 'Generation timed out \u2014 your website foundation is taking longer than expected. Please try again.';
+    } else {
+      buildError = e.message;
+    }
+    console.error('[Arthur] Build exception:', e.name, e.message);
+  }
+
+  var elapsed = Date.now() - buildStart;
+  if (elapsed < MIN_DURATION) {
+    await new Promise(function(res){ setTimeout(res, MIN_DURATION - elapsed); });
+  }
+
+  clearInterval(stepTimer);
+  clearInterval(skelRevealTimer);
+
+  // ── Handle hard error ─────────────────────────────────────────────────
+  if (buildError || !buildResponse || buildResponse.error) {
+    var errMsg = buildError || (buildResponse && buildResponse.error) || 'Unknown error';
+    if (buildResponse && buildResponse.error && _arthurClassifyError(buildResponse.error) === 'MISSING_PARAM') {
+      overlay.style.opacity = '0';
+      setTimeout(function() { overlay.remove(); }, 500);
+      _bldShowAIInterview();
+      setTimeout(function() {
+        S.ready = false;
+        _arthurBub(_arthurUserFriendlyError('MISSING_PARAM', buildResponse.error));
+      }, 600);
+      return;
+    }
+    _acSetBar(0);
+    _acSetStatus('');
+    var headline = document.getElementById('ac-headline');
+    if (headline) headline.innerHTML = 'Something went wrong';
+    var sub = document.getElementById('ac-sub');
+    if (sub) sub.textContent = 'We could not connect to the server. Please try again.';
+    var stepsEl = document.getElementById('ac-steps');
+    if (stepsEl) stepsEl.innerHTML = '';
+    var acLeft = document.getElementById('ac-left');
+    if (acLeft) {
+      var errDiv = document.createElement('div');
+      errDiv.style.cssText = 'margin-top:16px;display:flex;flex-direction:column;gap:10px';
+      errDiv.innerHTML = '<button id="ac-retry" style="background:linear-gradient(135deg,#6C5CE7,#A855F7);border:none;border-radius:10px;color:#fff;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer">Try Again</button>'
+        + '<button id="ac-cancel" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:rgba(255,255,255,.5);padding:12px 24px;font-size:13px;cursor:pointer">Cancel</button>';
+      acLeft.appendChild(errDiv);
+      document.getElementById('ac-retry').onclick = function() {
+        overlay.remove();
+        _bldShowAIInterview();
+      };
+      document.getElementById('ac-cancel').onclick = function() {
+        overlay.style.opacity = '0';
+        setTimeout(function() { overlay.remove(); }, 400);
+      };
+    }
+    window._arthurGenerating = false;
+    return;
+  }
+
+  websiteId = buildResponse.id || buildResponse.website_id;
+  var pagesCreated  = buildResponse.pages_created || (buildResponse.pages && buildResponse.pages.length) || 1;
+  var usedFallback  = !!buildResponse.used_fallback;
+  var firstPageId   = buildResponse.pages && buildResponse.pages[0] && buildResponse.pages[0].id;
+
+  // ── All steps done ────────────────────────────────────────────────────
+  for (var si2 = 0; si2 < buildSteps.length; si2++) { _acStepDone(si2); }
+  _acSetBar(100);
+  _acSetStatus(usedFallback ? 'Layout optimized automatically' : 'Ready');
+
+  var headline2 = document.getElementById('ac-headline');
+  if (headline2) headline2.innerHTML = '<span style="color:' + brandColor + '">' + escH(S.business_name) + '</span><br>is live!';
+  _acSetCaption(pagesCreated + ' pages built \u00B7 Preview loading\u2026');
+
+  // ── Navigate to builder (background) ──────────────────────────────────
+  if (typeof nav === 'function') nav('websites');
+  await new Promise(function(res){ setTimeout(res, 300); });
+  if (typeof wsOpenSite === 'function') wsOpenSite(websiteId);
+  await new Promise(function(res){ setTimeout(res, 900); });
+
+  var loadedPageId = null;
+  var gridEl = document.getElementById('ws-pages-grid');
+  if (gridEl) {
+    var firstPageDiv = gridEl.querySelector('[onclick*="wsEditSitePage"]');
+    if (firstPageDiv) {
+      var onclickVal = firstPageDiv.getAttribute('onclick') || '';
+      var match      = onclickVal.match(/wsEditSitePage\((\d+)\)/);
+      loadedPageId   = match ? parseInt(match[1]) : null;
+    }
+  }
+  if (loadedPageId && typeof wsEditSitePage === 'function') {
+    wsEditSitePage(loadedPageId);
+  }
+
+  // ── Wait for page to load ─────────────────────────────────────────────
+  var maxWait = 40;
+  await new Promise(function(res) {
+    var attempts = 0;
+    var check = setInterval(function() {
+      attempts++;
+      if ((typeof bldCurrentPage !== 'undefined' && bldCurrentPage && bldCurrentPage.sections && bldCurrentPage.sections.length) || attempts > maxWait) {
+        clearInterval(check); res();
+      }
+    }, 200);
+  });
+
+  // ── Render preview HTML ───────────────────────────────────────────────
+  if (typeof bldCurrentPage !== 'undefined' && bldCurrentPage && typeof _bldBuildPreviewHtml === 'function') {
+    var previewHtml  = _bldBuildPreviewHtml();
+    var previewFrame = document.getElementById('ac-preview-frame');
+    if (previewFrame) {
+      var ifr = document.createElement('iframe');
+      ifr.style.cssText = 'width:100%;height:100%;border:none';
+      ifr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+      previewFrame.appendChild(ifr);
+      var staggerCSS = '<style id="ac-stagger-in">'
+        + '.sec{opacity:0;transform:translateY(18px);filter:blur(3px);transition:opacity .55s ease,transform .55s ease,filter .55s ease}'
+        + '</style>';
+      var previewHtmlStaggered = previewHtml.replace('</head>', staggerCSS + '</head>');
+
+      ifr.contentDocument.open();
+      ifr.contentDocument.write(previewHtmlStaggered);
+      ifr.contentDocument.close();
+
+      await new Promise(function(res){ setTimeout(res, 600); });
+
+      var skelEl = document.getElementById('ac-skeleton');
+      if (skelEl) { skelEl.style.transition = 'opacity .7s ease'; skelEl.style.opacity = '0'; }
+      previewFrame.style.opacity = '1';
+      _acSetCaption('Your website \u00B7 Preview');
+
+      await new Promise(function(res){ setTimeout(res, 300); });
+      try {
+        var ifrSecs = ifr.contentDocument ? ifr.contentDocument.querySelectorAll('.sec') : [];
+        var staggerDelay = 0;
+        Array.prototype.forEach.call(ifrSecs, function(sec) {
+          setTimeout(function() {
+            sec.style.opacity    = '1';
+            sec.style.transform  = 'translateY(0)';
+            sec.style.filter     = 'blur(0)';
+          }, staggerDelay);
+          staggerDelay += 180;
+        });
+        setTimeout(function() {
+          try {
+            var staggerStyle = ifr.contentDocument.getElementById('ac-stagger-in');
+            if (staggerStyle) staggerStyle.remove();
+          } catch(e) {}
+        }, staggerDelay + 800);
+      } catch(e) { console.warn('[Arthur] Stagger inject failed:', e.message); }
+    }
+  }
+
+  // ── Brief success pause ───────────────────────────────────────────────
+  await new Promise(function(res){ setTimeout(res, 1800); });
+
+  // ── Add "Edit Instead" button ─────────────────────────────────────────
+  var acLeft2 = document.getElementById('ac-left');
+  if (acLeft2) {
+    var editDiv = document.createElement('div');
+    editDiv.style.cssText = 'margin-top:24px;animation:acFadeUp .4s ease forwards';
+    editDiv.innerHTML = '<button id="ac-edit-btn" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:rgba(255,255,255,.6);padding:10px 20px;font-size:13px;cursor:pointer;transition:all .2s">\u270F\uFE0F Edit in Builder</button>';
+    acLeft2.appendChild(editDiv);
+    document.getElementById('ac-edit-btn').onclick = function() {
+      overlay.style.opacity = '0';
+      setTimeout(function() { overlay.remove(); }, 400);
+    };
+  }
+
+  // ── Auto-open full preview ────────────────────────────────────────────
+  await new Promise(function(res){ setTimeout(res, 1800); });
+
+  if (typeof bldCurrentPage !== 'undefined' && bldCurrentPage && typeof bldPreview === 'function') {
+    await bldPreview();
+  }
+  await new Promise(function(res){ setTimeout(res, 60); });
+
+  // Cinematic exit
+  overlay.style.transition  = 'opacity .7s ease, transform .7s cubic-bezier(.4,0,.2,1)';
+  overlay.style.transformOrigin = 'center center';
+  overlay.style.transform   = 'scale(1.025)';
+  overlay.style.opacity     = '0';
+
+  await new Promise(function(res){ setTimeout(res, 720); });
+  overlay.remove();
+  window._arthurGenerating = false;
+  window._arthurWizardComplete = true;
+}
+
+// ── Arthur skeleton builder ─────────────────────────────────────────────
+function _arthurBuildSkeleton(brandColor) {
+  var c = brandColor || '#6C5CE7';
+  function sh(extra) { return 'class="ac-shimmer" style="border-radius:6px;' + (extra||'') + '"'; }
+  function shd(extra) { return 'class="ac-shimmer-dark" style="border-radius:6px;' + (extra||'') + '"'; }
+  return [
+    '<div class="ac-skel-section" data-skel-idx="0" style="opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease;',
+    'padding:12px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #f0f0f0;flex-shrink:0">',
+      '<div ' + sh('width:88px;height:11px;') + '></div>',
+      '<div style="flex:1"></div>',
+      '<div ' + sh('width:44px;height:9px;margin-right:14px;') + '></div>',
+      '<div ' + sh('width:44px;height:9px;margin-right:14px;') + '></div>',
+      '<div ' + sh('width:68px;height:26px;border-radius:8px;background:' + c + '55!important;') + '></div>',
+    '</div>',
+    '<div class="ac-skel-section" data-skel-idx="1" style="opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;',
+    'padding:42px 28px 38px;background:linear-gradient(135deg,' + c + '14,#f8f8f8 80%);flex-shrink:0">',
+      '<div ' + sh('width:55%;height:20px;margin-bottom:14px;background:' + c + '40!important;') + '></div>',
+      '<div ' + sh('width:72%;height:10px;margin-bottom:8px;') + '></div>',
+      '<div ' + sh('width:58%;height:10px;margin-bottom:26px;') + '></div>',
+      '<div style="display:flex;gap:10px">',
+        '<div ' + sh('width:112px;height:38px;border-radius:10px;background:' + c + '!important;') + '></div>',
+        '<div ' + sh('width:88px;height:38px;border-radius:10px;border:1.5px solid ' + c + '44!important;') + '></div>',
+      '</div>',
+    '</div>',
+    '<div class="ac-skel-section" data-skel-idx="2" style="opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;',
+    'padding:18px 22px;background:#0a0a1408;display:flex;gap:11px;flex-shrink:0">',
+      '<div style="flex:1;border-radius:10px;overflow:hidden;height:62px"><div ' + sh('width:100%;height:100%;border-radius:10px;') + '></div></div>',
+      '<div style="flex:1;border-radius:10px;overflow:hidden;height:62px"><div ' + sh('width:100%;height:100%;border-radius:10px;') + '></div></div>',
+      '<div style="flex:1;border-radius:10px;overflow:hidden;height:62px"><div ' + sh('width:100%;height:100%;border-radius:10px;') + '></div></div>',
+      '<div style="flex:1;border-radius:10px;overflow:hidden;height:62px"><div ' + sh('width:100%;height:100%;border-radius:10px;') + '></div></div>',
+    '</div>',
+    '<div class="ac-skel-section" data-skel-idx="3" style="opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;',
+    'padding:22px 24px;flex-shrink:0">',
+      '<div ' + sh('width:38%;height:15px;margin-bottom:16px;') + '></div>',
+      '<div style="display:flex;gap:10px">',
+        '<div style="flex:1;border-radius:11px;border:1px solid #eee;overflow:hidden;height:82px"><div ' + sh('width:100%;height:100%;') + '></div></div>',
+        '<div style="flex:1;border-radius:11px;border:1px solid #eee;overflow:hidden;height:82px"><div ' + sh('width:100%;height:100%;') + '></div></div>',
+        '<div style="flex:1;border-radius:11px;border:1px solid #eee;overflow:hidden;height:82px"><div ' + sh('width:100%;height:100%;') + '></div></div>',
+      '</div>',
+    '</div>',
+    '<div class="ac-skel-section" data-skel-idx="4" style="opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;',
+    'padding:28px 24px;background:' + c + '0c;text-align:center;flex-shrink:0">',
+      '<div ' + sh('width:44%;height:16px;border-radius:8px;background:' + c + '30!important;margin:0 auto 14px;') + '></div>',
+      '<div ' + sh('width:28%;height:38px;border-radius:10px;background:' + c + '!important;margin:0 auto;') + '></div>',
+    '</div>',
+  ].join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BLANK + TEMPLATE CREATION (adapted for Laravel API)
+// ═══════════════════════════════════════════════════════════════════════════
+async function _bldCreateBlank() {
+  var picker = document.getElementById('bld-tpl-picker');
+  if (picker) picker.remove();
+  var title = await luPrompt('Enter a name for your website:', '', 'New Website');
+  if (!title) return;
+  try {
+    var wr = await fetch(API + 'builder/websites', {
+      method: 'POST',
+      headers: Object.assign({'Content-Type': 'application/json'}, authHeader()),
+      body: JSON.stringify({title: title, description: '', site_config: {created_from: 'blank'}})
+    });
+    var wd = await wr.json();
+    var websiteId = wd.id || wd.website_id || 0;
+
+    var r = await fetch(API + 'builder/websites/' + websiteId + '/pages', {
+      method: 'POST',
+      headers: Object.assign({'Content-Type': 'application/json'}, authHeader()),
+      body: JSON.stringify({title: 'Home', type: 'home', website_id: websiteId})
+    });
+    var d = await r.json();
+    showToast('Website "' + title + '" created', 'success');
+    if (typeof wsLoadSites === 'function') await wsLoadSites();
+    if (websiteId && typeof wsOpenSite === 'function') wsOpenSite(websiteId);
+  } catch(e) { showToast('Failed: ' + e.message, 'error'); }
+}
+
+async function _bldCreateFromTemplate(industry) {
+  var picker = document.getElementById('bld-tpl-picker');
+  if (picker) picker.remove();
+  var tpl = null;
+  for (var i = 0; i < WEBSITE_TEMPLATES.length; i++) { if (WEBSITE_TEMPLATES[i].industry === industry) { tpl = WEBSITE_TEMPLATES[i]; break; } }
+  if (!tpl) return;
+
+  var bizName = await luPrompt('Enter your business name:', tpl.name, tpl.name + ' Website');
+  if (!bizName) return;
+
+  showToast('Building ' + tpl.pages.length + ' pages...', 'info');
+
+  var websiteId = 0;
+  try {
+    var wr = await fetch(API + 'builder/websites', {
+      method: 'POST',
+      headers: Object.assign({'Content-Type': 'application/json'}, authHeader()),
+      body: JSON.stringify({title: bizName, description: tpl.desc, site_config: {created_from: 'template', industry: industry}})
+    });
+    var wd = await wr.json();
+    websiteId = wd.id || wd.website_id || 0;
+  } catch(e) { console.error('Website entry creation failed:', e); }
+
+  var createdCount = 0;
+  for (var p = 0; p < tpl.pages.length; p++) {
+    var pageName = tpl.pages[p];
+    var pageData = tpl.page_data[pageName];
+    if (!pageData) continue;
+
+    var pgTitle = (p === 0) ? bizName : pageName.charAt(0).toUpperCase() + pageName.slice(1);
+    var sections = [];
+
+    var hdr = JSON.parse(JSON.stringify(tpl.header));
+    _tplReplace(hdr, bizName);
+    sections.push(hdr);
+
+    for (var s = 0; s < pageData.length; s++) {
+      var sec = JSON.parse(JSON.stringify(pageData[s]));
+      _tplReplace(sec, bizName);
+      sections.push(sec);
+    }
+
+    var ftr = JSON.parse(JSON.stringify(tpl.footer));
+    _tplReplace(ftr, bizName);
+    sections.push(ftr);
+
+    try {
+      var r = await fetch(API + 'builder/websites/' + websiteId + '/pages', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type': 'application/json'}, authHeader()),
+        body: JSON.stringify({title: pgTitle, type: pageName, website_id: websiteId, sections: sections, theme: tpl.theme || {}})
+      });
+      var d = await r.json();
+      if (d.success || d.id || d.page_id) {
+        createdCount++;
+      }
+    } catch(e) { console.error('Template page creation failed:', pageName, e); }
+  }
+
+  showToast(bizName + ' website created with ' + createdCount + ' pages!', 'success');
+
+  if (typeof wsLoadSites === 'function') await wsLoadSites();
+  if (websiteId && typeof wsOpenSite === 'function') wsOpenSite(websiteId);
+}
+
+function _tplReplace(obj, bizName) {
+  if (!obj) return;
+  if (typeof obj === 'object') {
+    for (var k in obj) {
+      if (typeof obj[k] === 'string') obj[k] = obj[k].replace(/\{\{business\}\}/g, bizName);
+      else if (typeof obj[k] === 'object') _tplReplace(obj[k], bizName);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WEBSITE TEMPLATES — 10 Industry-Specific Multi-Page Templates
+// ═══════════════════════════════════════════════════════════════════════════
+var WEBSITE_TEMPLATES = [
+{name:'Dental Clinic',industry:'dental',icon:'\uD83E\uDDB7',color:'rgba(59,130,246,.15)',desc:'Modern dental practice with appointment booking, services, and patient testimonials.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#0B1120',text:'#F1F5F9',primary:'#3B82F6',font:'DM Sans',radius:'12px'},
+  header:{type:'header',style:{bg:'rgba(11,17,32,.95)',paddingTop:'16px',paddingBottom:'16px'},components:[{type:'heading',tag:'h3',text:'\uD83E\uDDB7 {{business}}'},{type:'text',text:'Home  \u00B7  About  \u00B7  Services  \u00B7  Contact'},{type:'button',text:'Book Appointment \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#080D1A',paddingTop:'40px',paddingBottom:'24px'},components:[{type:'cards',items:[{icon:'\uD83D\uDCCD',heading:'Location',text:'Dubai Healthcare City, Building 47'},{icon:'\uD83D\uDCDE',heading:'Call Us',text:'+971 4 000 0000'},{icon:'\uD83D\uDD50',heading:'Hours',text:'Sun-Thu 9AM-8PM \u00B7 Sat 10AM-4PM'}]},{type:'text',text:'\u00A9 2025 {{business}}. All rights reserved. Licensed by DHA.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(135deg,#0B1120 0%,#1E3A5F 100%)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Your Trusted Family Dentist in Dubai'},{type:'text',text:'Providing gentle, pain-free dental care with the latest technology.'},{type:'button',text:'Book Your Appointment',variant:'primary',href:'#contact'}]},{type:'features',style:{bg:'rgba(59,130,246,.05)'},components:[{type:'heading',tag:'h2',text:'Our Dental Services'},{type:'cards',items:[{icon:'\u2728',heading:'Teeth Whitening',text:'Professional whitening for a brighter smile.'},{icon:'\uD83D\uDD27',heading:'Dental Implants',text:'Permanent tooth replacement with titanium implants.'},{icon:'\uD83D\uDE01',heading:'Invisible Braces',text:'Straighten teeth discreetly with clear aligners.'},{icon:'\uD83D\uDEE1\uFE0F',heading:'Preventive Care',text:'Regular cleanings and checkups.'}]}]}],about:[],services:[],contact:[]}
+},
+{name:'Real Estate Agency',industry:'realestate',icon:'\uD83C\uDFE0',color:'rgba(16,185,129,.15)',desc:'Property listings, agent profiles, and virtual tour booking.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#0A0F1C',text:'#F8FAFC',primary:'#10B981',font:'DM Sans',radius:'12px'},
+  header:{type:'header',style:{bg:'rgba(10,15,28,.95)'},components:[{type:'heading',tag:'h3',text:'\uD83C\uDFE0 {{business}}'},{type:'text',text:'Home  \u00B7  Properties  \u00B7  About  \u00B7  Contact'},{type:'button',text:'List Your Property \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#060A14'},components:[{type:'text',text:'\u00A9 2025 {{business}}. RERA Licensed.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#0A0F1C 0%,#1A3B34 100%)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Find Your Dream Property'},{type:'text',text:'Luxury apartments, villas, and commercial spaces.'},{type:'button',text:'Browse Properties',variant:'primary',href:'#services'}]}],about:[],services:[],contact:[]}
+},
+{name:'Restaurant & Caf\u00E9',industry:'restaurant',icon:'\uD83C\uDF7D\uFE0F',color:'rgba(245,158,11,.15)',desc:'Menu showcase, reservations, and ambiance gallery.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#1A0F0A',text:'#FEF3C7',primary:'#F59E0B',font:'DM Sans',radius:'12px'},
+  header:{type:'header',style:{bg:'rgba(26,15,10,.95)'},components:[{type:'heading',tag:'h3',text:'\uD83C\uDF7D\uFE0F {{business}}'},{type:'text',text:'Home  \u00B7  Menu  \u00B7  About  \u00B7  Reservations'},{type:'button',text:'Order Online \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#120A06'},components:[{type:'text',text:'\u00A9 2025 {{business}}. All rights reserved.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#1A0F0A,#3D2516)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'A Culinary Experience Like No Other'},{type:'text',text:'Farm-to-table ingredients. Award-winning chefs.'},{type:'button',text:'Reserve a Table',variant:'primary',href:'#contact'}]}],about:[],services:[],contact:[]}
+},
+{name:'Interior Design',industry:'interior',icon:'\uD83C\uDFA8',color:'rgba(168,85,247,.15)',desc:'Portfolio showcase, design process, and consultation booking.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#0F0A1A',text:'#F5F3FF',primary:'#A855F7',font:'DM Sans',radius:'12px'},
+  header:{type:'header',style:{bg:'rgba(15,10,26,.95)'},components:[{type:'heading',tag:'h3',text:'\uD83C\uDFA8 {{business}}'},{type:'text',text:'Home  \u00B7  Portfolio  \u00B7  Services  \u00B7  Contact'},{type:'button',text:'Free Consultation \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#080510'},components:[{type:'text',text:'\u00A9 2025 {{business}}. Interior Design & Architecture.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#0F0A1A,#2D1B4E)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Spaces That Inspire Living'},{type:'text',text:'Award-winning interior design for luxury residences and commercial spaces.'},{type:'button',text:'View Our Work',variant:'primary',href:'#services'}]}],about:[],services:[],contact:[]}
+},
+{name:'Construction Company',industry:'construction',icon:'\uD83C\uDFD7\uFE0F',color:'rgba(234,179,8,.15)',desc:'Project portfolio, capabilities, and quote request.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#111111',text:'#F5F5F5',primary:'#EAB308',font:'DM Sans',radius:'10px'},
+  header:{type:'header',style:{bg:'rgba(17,17,17,.95)'},components:[{type:'heading',tag:'h3',text:'\uD83C\uDFD7\uFE0F {{business}}'},{type:'text',text:'Home  \u00B7  Projects  \u00B7  Services  \u00B7  Contact'},{type:'button',text:'Get a Quote \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#0A0A0A'},components:[{type:'text',text:'\u00A9 2025 {{business}} Construction LLC. Licensed & Insured.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#111,#2A2206)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Building the Future'},{type:'text',text:'300+ projects delivered across residential, commercial, and infrastructure.'},{type:'button',text:'Request a Quote',variant:'primary',href:'#contact'}]}],about:[],services:[],contact:[]}
+},
+{name:'Beauty Salon & Spa',industry:'beauty',icon:'\uD83D\uDC85',color:'rgba(236,72,153,.15)',desc:'Treatment menu, online booking, and gallery.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#1A0A14',text:'#FDF2F8',primary:'#EC4899',font:'DM Sans',radius:'14px'},
+  header:{type:'header',style:{bg:'rgba(26,10,20,.95)'},components:[{type:'heading',tag:'h3',text:'\uD83D\uDC85 {{business}}'},{type:'text',text:'Home  \u00B7  Treatments  \u00B7  About  \u00B7  Book Now'},{type:'button',text:'Book Online \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#10060C'},components:[{type:'text',text:'\u00A9 2025 {{business}}. Licensed by Dubai Municipality.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#1A0A14,#3D1A2E)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Where Beauty Meets Wellness'},{type:'text',text:'Premium beauty treatments, luxury spa rituals.'},{type:'button',text:'Book Your Treatment',variant:'primary',href:'#contact'}]}],about:[],services:[],contact:[]}
+},
+{name:'Medical Clinic',industry:'medical',icon:'\uD83C\uDFE5',color:'rgba(6,182,212,.15)',desc:'Departments, doctor profiles, and appointment system.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#0A1628',text:'#E0F2FE',primary:'#06B6D4',font:'DM Sans',radius:'12px'},
+  header:{type:'header',style:{bg:'rgba(10,22,40,.95)'},components:[{type:'heading',tag:'h3',text:'\uD83C\uDFE5 {{business}}'},{type:'text',text:'Home  \u00B7  Departments  \u00B7  Doctors  \u00B7  Appointments'},{type:'button',text:'Book Appointment',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#060E1C'},components:[{type:'text',text:'\u00A9 2025 {{business}}. Licensed by DHA.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#0A1628,#0C2D4A)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Compassionate Care, Advanced Medicine'},{type:'text',text:'Multi-specialty medical center with 50+ doctors.'},{type:'button',text:'Book Appointment',variant:'primary',href:'#contact'}]}],about:[],services:[],contact:[]}
+},
+{name:'Law Firm',industry:'legal',icon:'\u2696\uFE0F',color:'rgba(148,163,184,.15)',desc:'Practice areas, attorney bios, and case consultation.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#0F172A',text:'#E2E8F0',primary:'#94A3B8',font:'DM Sans',radius:'8px'},
+  header:{type:'header',style:{bg:'rgba(15,23,42,.95)'},components:[{type:'heading',tag:'h3',text:'\u2696\uFE0F {{business}}'},{type:'text',text:'Home  \u00B7  Practice Areas  \u00B7  Attorneys  \u00B7  Contact'},{type:'button',text:'Free Consultation \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#080C1A'},components:[{type:'text',text:'\u00A9 2025 {{business}} Legal Consultants.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#0F172A,#1E293B)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Protecting Your Rights'},{type:'text',text:'Full-service law firm specializing in corporate and commercial law.'},{type:'button',text:'Free Case Evaluation',variant:'primary',href:'#contact'}]}],about:[],services:[],contact:[]}
+},
+{name:'Gym & Fitness',industry:'fitness',icon:'\uD83D\uDCAA',color:'rgba(239,68,68,.15)',desc:'Class schedules, membership plans, and trainer profiles.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#1A0A0A',text:'#FEF2F2',primary:'#EF4444',font:'DM Sans',radius:'12px'},
+  header:{type:'header',style:{bg:'rgba(26,10,10,.95)'},components:[{type:'heading',tag:'h3',text:'\uD83D\uDCAA {{business}}'},{type:'text',text:'Home  \u00B7  Classes  \u00B7  Trainers  \u00B7  Join Now'},{type:'button',text:'Free Trial \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#100606'},components:[{type:'text',text:'\u00A9 2025 {{business}}. Train Hard. Live Strong.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#1A0A0A,#3D1A1A)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Unlock Your Strongest Self'},{type:'text',text:'State-of-the-art equipment, expert trainers, 50+ weekly classes.'},{type:'button',text:'Start Free Trial',variant:'primary',href:'#contact'}]}],about:[],services:[],contact:[]}
+},
+{name:'Cleaning Services',industry:'cleaning',icon:'\uD83E\uDDF9',color:'rgba(34,197,94,.15)',desc:'Service packages, booking, and trust signals.',
+  pages:['home','about','services','contact'],
+  theme:{bg:'#0A1A10',text:'#F0FDF4',primary:'#22C55E',font:'DM Sans',radius:'12px'},
+  header:{type:'header',style:{bg:'rgba(10,26,16,.95)'},components:[{type:'heading',tag:'h3',text:'\uD83E\uDDF9 {{business}}'},{type:'text',text:'Home  \u00B7  Services  \u00B7  About  \u00B7  Book Now'},{type:'button',text:'Instant Quote \u2192',variant:'primary',href:'#contact'}]},
+  footer:{type:'footer',style:{bg:'#06100A'},components:[{type:'text',text:'\u00A9 2025 {{business}}. Licensed. Insured. Background-checked staff.'}]},
+  page_data:{home:[{type:'hero',style:{gradient:'linear-gradient(160deg,#0A1A10,#1A3D20)',paddingTop:'80px',paddingBottom:'80px'},components:[{type:'heading',tag:'h1',text:'Spotless Spaces, Happy Places'},{type:'text',text:'Professional cleaning for homes, offices, and move-in/move-out.'},{type:'button',text:'Get Instant Quote',variant:'primary',href:'#contact'}]}],about:[],services:[],contact:[]}
+}
+];
+
+console.log('[Builder Wizard] Loaded — _bldShowTemplatePicker and _bldShowAIInterview available');

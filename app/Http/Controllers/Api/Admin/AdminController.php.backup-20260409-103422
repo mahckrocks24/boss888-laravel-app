@@ -1,0 +1,420 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use App\Models\User;
+use App\Models\Workspace;
+use App\Models\Plan;
+use App\Models\Subscription;
+use App\Models\Credit;
+use App\Models\AuditLog;
+use App\Models\Agent;
+use App\Models\Task;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+
+class AdminController
+{
+    // ═══════════════════════════════════════════════════════
+    // USER MANAGEMENT
+    // ═══════════════════════════════════════════════════════
+
+    public function listUsers(Request $r): JsonResponse
+    {
+        $q = User::query();
+        if ($r->input('search')) {
+            $s = $r->input('search');
+            $q->where(fn($q2) => $q2->where('name', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%"));
+        }
+        if ($r->input('status')) $q->where('status', $r->input('status'));
+
+        $users = $q->orderByDesc('created_at')->paginate($r->input('per_page', 25));
+        return response()->json($users);
+    }
+
+    public function getUser(int $id): JsonResponse
+    {
+        $user = User::with('workspaces')->findOrFail($id);
+        $taskCount = Task::whereIn('workspace_id', $user->workspaces->pluck('id'))->count();
+        return response()->json(['user' => $user, 'task_count' => $taskCount]);
+    }
+
+    public function updateUser(Request $r, int $id): JsonResponse
+    {
+        $user = User::findOrFail($id);
+        $data = $r->only(['name', 'email', 'status', 'is_admin']);
+        if ($r->filled('password')) $data['password'] = Hash::make($r->input('password'));
+        $user->update($data);
+        return response()->json(['user' => $user->fresh()]);
+    }
+
+    public function suspendUser(int $id): JsonResponse
+    {
+        User::findOrFail($id)->update(['status' => 'suspended']);
+        return response()->json(['success' => true]);
+    }
+
+    public function deleteUser(int $id): JsonResponse
+    {
+        User::findOrFail($id)->update(['status' => 'deleted']);
+        return response()->json(['success' => true]);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // WORKSPACE MANAGEMENT
+    // ═══════════════════════════════════════════════════════
+
+    public function listWorkspaces(Request $r): JsonResponse
+    {
+        $q = Workspace::withCount('users');
+        if ($r->input('search')) $q->where('name', 'like', '%' . $r->input('search') . '%');
+
+        $workspaces = $q->orderByDesc('created_at')->paginate($r->input('per_page', 25));
+        return response()->json($workspaces);
+    }
+
+    public function getWorkspace(int $id): JsonResponse
+    {
+        $ws = Workspace::with(['users', 'agents'])->findOrFail($id);
+        $credit = Credit::where('workspace_id', $id)->first();
+        $sub = Subscription::where('workspace_id', $id)->where('status', 'active')->with('plan')->first();
+        $taskCount = Task::where('workspace_id', $id)->count();
+        $taskCompleted = Task::where('workspace_id', $id)->where('status', 'completed')->count();
+
+        return response()->json([
+            'workspace' => $ws, 'credit' => $credit, 'subscription' => $sub,
+            'task_count' => $taskCount, 'task_completed' => $taskCompleted,
+        ]);
+    }
+
+    public function updateWorkspace(Request $r, int $id): JsonResponse
+    {
+        $ws = Workspace::findOrFail($id);
+        $ws->update($r->only(['name', 'business_name', 'industry', 'settings_json']));
+        return response()->json(['workspace' => $ws->fresh()]);
+    }
+
+    public function adjustCredits(Request $r, int $id): JsonResponse
+    {
+        $r->validate(['amount' => 'required|integer', 'reason' => 'required|string']);
+        $credit = Credit::firstOrCreate(['workspace_id' => $id], ['balance' => 0, 'reserved_balance' => 0]);
+        $credit->increment('balance', $r->input('amount'));
+
+        DB::table('credit_transactions')->insert([
+            'workspace_id' => $id, 'type' => 'admin_adjustment', 'amount' => $r->input('amount'),
+            'reference_type' => 'admin', 'reference_id' => $r->user()->id,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return response()->json(['balance' => $credit->fresh()->balance]);
+    }
+
+    public function assignPlan(Request $r, int $id): JsonResponse
+    {
+        $r->validate(['plan_id' => 'required|exists:plans,id']);
+        Subscription::updateOrCreate(
+            ['workspace_id' => $id, 'status' => 'active'],
+            ['plan_id' => $r->input('plan_id'), 'started_at' => now()]
+        );
+        return response()->json(['success' => true]);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // PLAN MANAGEMENT
+    // ═══════════════════════════════════════════════════════
+
+    public function listPlans(): JsonResponse
+    {
+        return response()->json(['plans' => Plan::orderBy('price')->get()]);
+    }
+
+    public function updatePlan(Request $r, int $id): JsonResponse
+    {
+        $plan = Plan::findOrFail($id);
+        $plan->update($r->only([
+            'name', 'price', 'credit_limit', 'ai_access', 'includes_dmm',
+            'agent_count', 'agent_level', 'agent_addon_price',
+            'max_websites', 'max_team_members', 'companion_app', 'white_label',
+            'priority_processing', 'features_json',
+        ]));
+        return response()->json(['plan' => $plan->fresh()]);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // API KEY / SYSTEM CONFIG
+    // ═══════════════════════════════════════════════════════
+
+    public function getConfig(): JsonResponse
+    {
+        $settings = app(\App\Core\Admin\SettingsService::class)->all();
+        return response()->json([
+            'settings' => $settings,
+            'env' => [
+                'queue_driver' => config('queue.default'),
+                'cache_driver' => config('cache.default'),
+                'db_driver'    => config('database.default'),
+                'app_env'      => config('app.env'),
+            ],
+        ]);
+    }
+
+    public function updateConfig(Request $r): JsonResponse
+    {
+        $settings = app(\App\Core\Admin\SettingsService::class);
+        $updated  = 0;
+
+        $sensitiveKeys = [
+            'openai_key'   => ['provider' => 'openai',   'group' => 'llm'],
+            'deepseek_key' => ['provider' => 'deepseek', 'group' => 'llm'],
+            'minimax_key'  => ['provider' => 'minimax',  'group' => 'creative'],
+            'runway_key'   => ['provider' => 'runway',   'group' => 'creative'],
+            'postmark_key' => ['provider' => 'postmark', 'group' => 'email'],
+            'stripe_key'   => ['provider' => 'stripe',   'group' => 'payment'],
+            'stripe_secret'=> ['provider' => 'stripe_secret', 'group' => 'payment'],
+            'stability_key'=> ['provider' => 'stability', 'group' => 'creative'],
+        ];
+
+        foreach ($sensitiveKeys as $inputKey => $meta) {
+            if ($r->filled($inputKey)) {
+                $settings->setApiKey($meta['provider'], $r->input($inputKey), $meta['group']);
+                $updated++;
+            }
+        }
+
+        // Non-sensitive settings
+        foreach (['app_name', 'support_email', 'maintenance_mode'] as $key) {
+            if ($r->has($key)) {
+                $settings->set($key, $r->input($key), false, 'general');
+                $updated++;
+            }
+        }
+
+        return response()->json(['success' => true, 'updated' => $updated]);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // AGENT MANAGEMENT
+    // ═══════════════════════════════════════════════════════
+
+    public function listAgents(): JsonResponse
+    {
+        return response()->json(['agents' => Agent::orderBy('category')->orderBy('name')->get()]);
+    }
+
+    public function updateAgent(Request $r, int $id): JsonResponse
+    {
+        $agent = Agent::findOrFail($id);
+        $agent->update($r->only(['name', 'title', 'description', 'status', 'capabilities_json', 'skills_json']));
+        return response()->json(['agent' => $agent->fresh()]);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // AUDIT LOGS
+    // ═══════════════════════════════════════════════════════
+
+    public function auditLogs(Request $r): JsonResponse
+    {
+        $q = AuditLog::query();
+        if ($r->input('workspace_id')) $q->where('workspace_id', $r->input('workspace_id'));
+        if ($r->input('action')) $q->where('action', 'like', '%' . $r->input('action') . '%');
+        if ($r->input('user_id')) $q->where('user_id', $r->input('user_id'));
+
+        return response()->json($q->orderByDesc('created_at')->paginate($r->input('per_page', 50)));
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // TASK MONITOR
+    // ═══════════════════════════════════════════════════════
+
+    public function taskMonitor(Request $r): JsonResponse
+    {
+        $q = Task::query();
+        if ($r->input('status')) $q->where('status', $r->input('status'));
+        if ($r->input('workspace_id')) $q->where('workspace_id', $r->input('workspace_id'));
+        if ($r->input('engine')) $q->where('engine', $r->input('engine'));
+
+        return response()->json($q->orderByDesc('created_at')->paginate($r->input('per_page', 50)));
+    }
+
+    public function taskDetail(int $id): JsonResponse
+    {
+        $task = Task::findOrFail($id);
+        $events = DB::table('task_events')->where('task_id', $id)->orderBy('created_at')->get();
+        return response()->json(['task' => $task, 'events' => $events]);
+    }
+
+    public function retryTask(int $id): JsonResponse
+    {
+        $task = Task::findOrFail($id);
+        $task->update(['status' => 'queued', 'retry_count' => 0]);
+        return response()->json(['success' => true]);
+    }
+
+    public function cancelTask(int $id): JsonResponse
+    {
+        Task::findOrFail($id)->update(['status' => 'cancelled']);
+        return response()->json(['success' => true]);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SYSTEM HEALTH + QUEUE
+    // ═══════════════════════════════════════════════════════
+
+    public function systemHealth(): JsonResponse
+    {
+        $health = app(\App\Core\SystemHealth\SystemHealthService::class)->health();
+        return response()->json($health);
+    }
+
+    public function queueHealth(): JsonResponse
+    {
+        $stale = Task::where('status', 'running')->where('started_at', '<', now()->subMinutes(10))->count();
+        $pending = Task::where('status', 'queued')->count();
+        $running = Task::where('status', 'running')->count();
+        $failedToday = Task::where('status', 'failed')->where('updated_at', '>=', now()->startOfDay())->count();
+
+        return response()->json([
+            'pending' => $pending, 'running' => $running,
+            'stale' => $stale, 'failed_today' => $failedToday,
+            'queue_driver' => config('queue.default'),
+        ]);
+    }
+
+    public function recoverStale(): JsonResponse
+    {
+        \Artisan::call('boss888:recover-stale', ['--timeout' => 600]);
+        return response()->json(['success' => true, 'output' => \Artisan::output()]);
+    }
+
+    public function validationReport(): JsonResponse
+    {
+        $report = app(\App\Services\ValidationReportService::class)->generate();
+        return response()->json($report);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // DASHBOARD STATS
+    // ═══════════════════════════════════════════════════════
+
+    public function dashboardStats(): JsonResponse
+    {
+        return response()->json([
+            'total_users' => User::where('status', 'active')->count(),
+            'total_workspaces' => Workspace::count(),
+            'total_tasks' => Task::count(),
+            'tasks_today' => Task::where('created_at', '>=', now()->startOfDay())->count(),
+            'tasks_completed_today' => Task::where('status', 'completed')->where('completed_at', '>=', now()->startOfDay())->count(),
+            'tasks_failed_today' => Task::where('status', 'failed')->where('updated_at', '>=', now()->startOfDay())->count(),
+            'active_subscriptions' => Subscription::where('status', 'active')->count(),
+            'total_revenue' => Subscription::where('status', 'active')->join('plans', 'subscriptions.plan_id', '=', 'plans.id')->sum('plans.price'),
+        ]);
+    }
+
+    // ── Private ──────────────────────────────────────────
+
+
+    // ═══════════════════════════════════════════════════════
+    // MEMBERSHIP MANAGEMENT
+    // ═══════════════════════════════════════════════════════
+
+    public function listMemberships(Request $r): JsonResponse
+    {
+        $memberships = DB::table('workspace_users as wu')
+            ->join('users as u', 'u.id', '=', 'wu.user_id')
+            ->join('workspaces as w', 'w.id', '=', 'wu.workspace_id')
+            ->select('wu.*', 'u.name as user_name', 'u.email as user_email', 'w.name as workspace_name')
+            ->orderByDesc('wu.created_at')
+            ->paginate($r->input('per_page', 50));
+
+        return response()->json($memberships);
+    }
+
+    public function updateMembership(Request $r, int $id): JsonResponse
+    {
+        $r->validate(['role' => 'required|in:owner,admin,member,viewer']);
+
+        DB::table('workspace_users')->where('id', $id)->update([
+            'role' => $r->input('role'),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SUBSCRIPTION MANAGEMENT (read-only list)
+    // ═══════════════════════════════════════════════════════
+
+    public function listSubscriptions(Request $r): JsonResponse
+    {
+        $subscriptions = DB::table('subscriptions as s')
+            ->join('workspaces as w', 'w.id', '=', 's.workspace_id')
+            ->leftJoin('plans as p', 'p.id', '=', 's.plan_id')
+            ->select(
+                's.*',
+                'w.name as workspace_name',
+                'p.name as plan_name'
+            )
+            ->orderByDesc('s.created_at')
+            ->paginate($r->input('per_page', 50));
+
+        return response()->json($subscriptions);
+    }
+    private function maskKey(?string $key): string
+    {
+        if (! $key || strlen($key) < 8) return '(not set)';
+        return substr($key, 0, 4) . '****' . substr($key, -4);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ADMIN USER CREATION
+    // ═══════════════════════════════════════════════════════
+
+    public function createUser(Request $r): JsonResponse
+    {
+        $r->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8',
+            'is_platform_admin' => 'sometimes|boolean',
+        ]);
+
+        $user = User::create([
+            'name' => $r->input('name'),
+            'email' => $r->input('email'),
+            'password' => Hash::make($r->input('password')),
+            'is_platform_admin' => $r->boolean('is_platform_admin', false),
+        ]);
+
+        // Create a default workspace for the new user
+        $workspace = Workspace::create([
+            'name' => $r->input('name') . "'s Workspace",
+            'slug' => \Illuminate\Support\Str::slug($r->input('name') . '-' . \Illuminate\Support\Str::random(4)),
+            'created_by' => $user->id,
+        ]);
+
+        $workspace->users()->attach($user->id, ['role' => 'owner']);
+
+        Credit::firstOrCreate(
+            ['workspace_id' => $workspace->id],
+            ['balance' => 0, 'reserved_balance' => 0]
+        );
+
+        $freePlan = Plan::where('slug', 'free')->first();
+        if ($freePlan) {
+            Subscription::create([
+                'workspace_id' => $workspace->id,
+                'plan_id' => $freePlan->id,
+                'status' => 'active',
+                'starts_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'user' => $user->fresh(),
+            'workspace' => $workspace,
+        ], 201);
+    }
+}

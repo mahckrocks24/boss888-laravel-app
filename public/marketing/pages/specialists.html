@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Specialist Marketplace — LevelUpGrowth</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/marketing/css/site.css">
+<link rel="stylesheet" href="/marketing/css/orb.css">
+<style>
+.mkt-filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+.mkt-filter{background:var(--card);border:1px solid var(--border2);border-radius:100px;padding:8px 20px;font-size:13.5px;color:var(--muted);cursor:pointer;transition:all .2s;font-family:var(--ff-b)}
+.mkt-filter:hover{border-color:rgba(124,58,237,.4);color:var(--violet)}
+.mkt-filter.active{background:rgba(124,58,237,.14);border-color:rgba(124,58,237,.5);color:var(--violet);font-weight:600}
+.mkt-level-filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:28px}
+.mkt-lf{background:var(--card);border:1px solid var(--border2);border-radius:100px;padding:5px 14px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:all .2s;font-family:var(--ff-h);font-weight:600}
+.mkt-lf.active-specialist{background:rgba(107,114,128,.12);border-color:rgba(107,114,128,.4);color:#9CA3AF}
+.mkt-lf.active-junior{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.4);color:#3B82F6}
+.mkt-lf.active-senior{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.4);color:#F59E0B}
+/* Gallery */
+.gallery-wrap{position:relative;margin:0 -4px}
+.gallery-track{display:flex;gap:16px;overflow-x:auto;padding:8px 4px 28px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:rgba(124,58,237,.3) transparent}
+.gallery-track::-webkit-scrollbar{height:4px}
+.gallery-track::-webkit-scrollbar-track{background:transparent}
+.gallery-track::-webkit-scrollbar-thumb{background:rgba(124,58,237,.3);border-radius:4px}
+.gallery-wrap::before,.gallery-wrap::after{content:'';position:absolute;top:0;bottom:28px;width:48px;pointer-events:none;z-index:2}
+.gallery-wrap::before{left:4px;background:linear-gradient(to right,var(--bg),transparent)}
+.gallery-wrap::after{right:4px;background:linear-gradient(to left,var(--bg),transparent)}
+.gallery-nav{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:4px}
+.gallery-btn{background:var(--card);border:1px solid var(--border2);border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:var(--muted);transition:all .2s}
+.gallery-btn:hover{border-color:rgba(124,58,237,.5);color:var(--violet);background:rgba(124,58,237,.08)}
+.gallery-scroll-hint{font-size:12px;color:var(--faint);font-family:var(--ff-h);padding:0 12px}
+/* Card */
+.mkt-card{flex:0 0 210px;scroll-snap-align:start;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px 16px 18px;transition:border-color .25s,transform .25s;display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;position:relative;cursor:default}
+.mkt-card:hover{transform:translateY(-4px)}
+.mkt-plan-tag{position:absolute;top:11px;right:11px;font-size:10px;font-weight:700;font-family:var(--ff-h);border-radius:100px;padding:2px 8px;border:1px solid}
+.mkt-card-name{font-family:var(--ff-h);font-weight:800;font-size:15px;margin-top:2px}
+.mkt-card-role{font-size:11px;color:#6B7280;line-height:1.4;min-height:28px}
+.mkt-level-badge{display:inline-flex;align-items:center;border:1px solid;border-radius:100px;padding:2px 10px;font-size:10px;font-weight:700;font-family:var(--ff-h)}
+.mkt-divider{width:100%;height:1px;background:rgba(255,255,255,.05);margin:2px 0}
+.mkt-card-desc{font-size:12px;color:var(--muted);line-height:1.6}
+.mkt-skills{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.mkt-skill{border-radius:5px;padding:2px 7px;font-size:10.5px;font-weight:600;font-family:var(--ff-h);border:1px solid transparent}
+/* Stats */
+.mkt-stat-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:36px}
+.mkt-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.mkt-stat-num{font-family:var(--ff-h);font-weight:800;font-size:28px}
+.mkt-stat-label{font-size:12px;color:var(--faint);margin-top:4px}
+.plan-legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:28px;font-size:13px;color:var(--muted)}
+.plan-legend span{display:flex;align-items:center;gap:6px}
+#mkt-count{font-size:13px;color:var(--faint);font-family:var(--ff-h);font-weight:600;text-align:center;margin-bottom:14px}
+.mkt-empty{padding:60px 20px;text-align:center;color:var(--faint);font-size:15px;flex:0 0 100%}
+@media(max-width:768px){
+  .mkt-stat-bar{grid-template-columns:repeat(2,1fr)}
+  .mkt-card{flex:0 0 175px}
+  .gallery-wrap::before,.gallery-wrap::after{width:24px}
+}
+</style>
+</head>
+<body>
+
+<div class="page-hero" style="padding-bottom:48px"><div class="page-hero-glow"></div>
+  <div class="tag" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);color:var(--violet)">Specialist Marketplace</div>
+  <h1>Your AI Marketing<br/><span class="g-text2">Specialist Roster</span></h1>
+  <p>20 specialists across SEO, Content, Social, and CRM. Your plan determines which levels you unlock.</p>
+  <div class="hero-ctas">
+    <a href="/app/#signup" class="btn btn-primary btn-lg">Build Your Team →</a>
+    <a href="/pages/pricing/" class="btn btn-ghost btn-lg">See Plans</a>
+  </div>
+</div>
+
+<section style="padding:48px 28px 80px">
+  <div class="wrap">
+
+    <div class="mkt-stat-bar reveal">
+      <div class="mkt-stat"><div class="mkt-stat-num" style="color:var(--violet)">20</div><div class="mkt-stat-label">Total Specialists</div></div>
+      <div class="mkt-stat"><div class="mkt-stat-num" style="color:#9CA3AF">5</div><div class="mkt-stat-label">Specialist · Growth</div></div>
+      <div class="mkt-stat"><div class="mkt-stat-num" style="color:#3B82F6">10</div><div class="mkt-stat-label">Junior Specialist · Pro</div></div>
+      <div class="mkt-stat"><div class="mkt-stat-num" style="color:#F59E0B">5</div><div class="mkt-stat-label">Senior Specialist · Agency</div></div>
+    </div>
+
+    <div class="plan-legend reveal">
+      <span><span style="background:rgba(107,114,128,.12);border:1px solid rgba(107,114,128,.35);border-radius:100px;padding:2px 10px;font-size:11px;font-weight:700;color:#9CA3AF;font-family:var(--ff-h)">Specialist</span>Growth ($99/mo)</span>
+      <span><span style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.35);border-radius:100px;padding:2px 10px;font-size:11px;font-weight:700;color:#3B82F6;font-family:var(--ff-h)">Junior Specialist</span>Pro ($199/mo)</span>
+      <span><span style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:100px;padding:2px 10px;font-size:11px;font-weight:700;color:#F59E0B;font-family:var(--ff-h)">Senior Specialist</span>Agency ($399/mo)</span>
+    </div>
+
+    <div class="mkt-filters reveal">
+      <button class="mkt-filter active" onclick="MktFilter.setCategory(this,'all')">All</button>
+      <button class="mkt-filter" onclick="MktFilter.setCategory(this,'seo')">🔍 SEO</button>
+      <button class="mkt-filter" onclick="MktFilter.setCategory(this,'content')">✍️ Content</button>
+      <button class="mkt-filter" onclick="MktFilter.setCategory(this,'social')">📱 Social</button>
+      <button class="mkt-filter" onclick="MktFilter.setCategory(this,'crm')">🤝 CRM</button>
+    </div>
+
+    <div class="mkt-level-filters reveal">
+      <button class="mkt-lf active-specialist" onclick="MktFilter.toggleLevel(this,'specialist')">Specialist</button>
+      <button class="mkt-lf active-junior"     onclick="MktFilter.toggleLevel(this,'junior')">Junior Specialist</button>
+      <button class="mkt-lf active-senior"     onclick="MktFilter.toggleLevel(this,'senior')">Senior Specialist</button>
+    </div>
+
+    <div id="mkt-count">Showing 20 specialists</div>
+
+    <div class="gallery-wrap reveal">
+      <div class="gallery-track" id="mkt-gallery"></div>
+    </div>
+
+    <div class="gallery-nav">
+      <button class="gallery-btn" onclick="MktGallery.scroll(-1)">←</button>
+      <span class="gallery-scroll-hint">Scroll or use arrows to browse</span>
+      <button class="gallery-btn" onclick="MktGallery.scroll(1)">→</button>
+    </div>
+
+    <div style="text-align:center;margin-top:56px;padding:40px 28px;background:var(--card);border:1px solid var(--border);border-radius:20px" class="reveal">
+      <h2 style="font-family:var(--ff-h);font-size:22px;font-weight:800;margin-bottom:10px">Ready to Build Your Team?</h2>
+      <p style="color:var(--muted);font-size:14.5px;margin-bottom:24px;max-width:480px;margin-left:auto;margin-right:auto">Start with the Growth plan and choose 2 Specialist agents. Upgrade to unlock Junior and Senior Specialists.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a href="/app/#signup" class="btn btn-primary btn-lg">Start Building — From $99/mo →</a>
+        <a href="/pages/pricing/" class="btn btn-ghost">Compare Plans</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div id="site-footer-placeholder"></div>
+<script src="/marketing/js/site.js"></script>
+<script src="/marketing/js/orb.js"></script>
+<script>
+var SPECIALISTS=[
+  {id:'james', name:'James', orbType:'seo',       color:'#3B82F6',level:'specialist',plan:'Growth', category:'seo',    role:'SEO Strategist',             desc:'Keyword research, SERP analysis, and organic growth strategy.',            skills:['Keyword Research','SERP Analysis','Competitor Research','Rank Tracking']},
+  {id:'alex',  name:'Alex',  orbType:'technical', color:'#06B6D4',level:'senior',    plan:'Agency', category:'seo',    role:'Technical SEO Engineer',     desc:'Site audits, Core Web Vitals, schema markup, and indexing.',               skills:['Site Audits','Core Web Vitals','Schema Markup','Indexing Fix']},
+  {id:'diana', name:'Diana', orbType:'seo',       color:'#3B82F6',level:'junior',    plan:'Pro',    category:'seo',    role:'Local SEO Specialist',       desc:'Google Business, local citations, and map pack rankings.',                 skills:['Google Business','Local Citations','Map Pack','Review Strategy']},
+  {id:'ryan',  name:'Ryan',  orbType:'technical', color:'#06B6D4',level:'junior',    plan:'Pro',    category:'seo',    role:'Link Building Specialist',   desc:'Backlink acquisition, digital PR, and authority building.',                skills:['Link Outreach','Digital PR','Authority Building','Competitor Backlinks']},
+  {id:'sofia', name:'Sofia', orbType:'seo',       color:'#3B82F6',level:'senior',    plan:'Agency', category:'seo',    role:'International SEO Director', desc:'Multi-market SEO, hreflang, and international search presence.',           skills:['Multi-market SEO','Hreflang','International Strategy','Market Expansion']},
+  {id:'priya', name:'Priya', orbType:'content',   color:'#7C3AED',level:'specialist',plan:'Growth', category:'content',role:'Content Manager',            desc:'Blog articles, website copy, and marketing content — all SEO-optimised.',  skills:['Blog Writing','SEO Copy','Landing Pages','Social Content']},
+  {id:'leo',   name:'Leo',   orbType:'content',   color:'#7C3AED',level:'specialist',plan:'Growth', category:'content',role:'Brand Copywriter',           desc:'Conversion-focused copy, brand messaging, and ad headlines.',              skills:['Ad Copy','Brand Voice','Conversion Copy','Email Copy']},
+  {id:'maya',  name:'Maya',  orbType:'content',   color:'#7C3AED',level:'junior',    plan:'Pro',    category:'content',role:'Social Content Writer',      desc:'Captions, hashtag strategies, and platform-specific content.',            skills:['Captions','Hashtag Research','Platform Formats','Trend Writing']},
+  {id:'chris', name:'Chris', orbType:'ads',       color:'#F97316',level:'junior',    plan:'Pro',    category:'content',role:'Video Script Writer',        desc:'Short-form video scripts, reel hooks, and ad video copy.',                skills:['Video Scripts','Reel Hooks','Ad Video Copy','UGC Scripts']},
+  {id:'nora',  name:'Nora',  orbType:'content',   color:'#7C3AED',level:'senior',    plan:'Agency', category:'content',role:'Content Strategy Director',  desc:'Full content calendars, thought leadership, and editorial strategy.',      skills:['Editorial Strategy','Content Calendars','Thought Leadership','Content Ops']},
+  {id:'marcus',name:'Marcus',orbType:'social',    color:'#EC4899',level:'specialist',plan:'Growth', category:'social', role:'Social Media Manager',       desc:'Multi-platform content creation and posting schedule management.',         skills:['Content Creation','Scheduling','Engagement','Social Analytics']},
+  {id:'zara',  name:'Zara',  orbType:'social',    color:'#EC4899',level:'junior',    plan:'Pro',    category:'social', role:'Instagram Growth Specialist', desc:'Instagram Reels, Stories, and follower growth strategies.',               skills:['Reels Strategy','Stories','Follower Growth','Instagram SEO']},
+  {id:'tyler', name:'Tyler', orbType:'social',    color:'#EC4899',level:'junior',    plan:'Pro',    category:'social', role:'LinkedIn Marketing Expert',   desc:'B2B LinkedIn strategy, thought leadership, and lead generation.',          skills:['LinkedIn Posts','B2B Strategy','Lead Gen Content','Profile Optimisation']},
+  {id:'aria',  name:'Aria',  orbType:'ads',       color:'#F97316',level:'junior',    plan:'Pro',    category:'social', role:'TikTok & Reels Creator',     desc:'Short-form video strategy, trending formats, and viral hooks.',           skills:['TikTok Strategy','Trending Formats','Viral Hooks','Short-form Video']},
+  {id:'jordan',name:'Jordan',orbType:'social',    color:'#EC4899',level:'senior',    plan:'Agency', category:'social', role:'Social Analytics Director',   desc:'Cross-platform analytics, ROI reporting, and audience insights.',          skills:['Analytics','ROI Reporting','Audience Insights','A/B Testing']},
+  {id:'elena', name:'Elena', orbType:'crm',       color:'#00E5A8',level:'specialist',plan:'Growth', category:'crm',    role:'Lead & CRM Manager',         desc:'Lead capture, pipeline management, and automated follow-ups.',             skills:['Lead Capture','Pipeline','Follow-up Sequences','CRM Automation']},
+  {id:'sam',   name:'Sam',   orbType:'crm',       color:'#00E5A8',level:'specialist',plan:'Growth', category:'crm',    role:'Email Marketing Specialist', desc:'Campaign creation, segmentation, and email automation flows.',             skills:['Email Campaigns','Automation','Segmentation','A/B Subject Lines']},
+  {id:'kai',   name:'Kai',   orbType:'crm',       color:'#00E5A8',level:'junior',    plan:'Pro',    category:'crm',    role:'Lead Nurturing Specialist',  desc:'Drip sequences, lead scoring, and conversion optimisation.',               skills:['Drip Sequences','Lead Scoring','Nurture Flows','Re-engagement']},
+  {id:'vera',  name:'Vera',  orbType:'ads',       color:'#F97316',level:'junior',    plan:'Pro',    category:'crm',    role:'Marketing Automation Expert', desc:'Workflow automation, trigger logic, and multi-channel sequences.',        skills:['Workflow Builder','Trigger Logic','Multi-channel Sequences','CRM Ops']},
+  {id:'max',   name:'Max',   orbType:'crm',       color:'#00E5A8',level:'senior',    plan:'Agency', category:'crm',    role:'Growth & CRO Director',      desc:'Conversion rate optimisation, funnel analysis, and A/B testing.',          skills:['CRO','Funnel Analysis','A/B Testing','Revenue Optimisation']},
+];
+
+var LEVEL_LABEL  = {specialist:'Specialist', junior:'Junior Specialist', senior:'Senior Specialist'};
+var LEVEL_COLOR  = {specialist:'#9CA3AF',    junior:'#3B82F6',           senior:'#F59E0B'};
+var LEVEL_BG     = {specialist:'rgba(107,114,128,.1)', junior:'rgba(59,130,246,.08)',  senior:'rgba(245,158,11,.08)'};
+var LEVEL_BORDER = {specialist:'rgba(107,114,128,.28)',junior:'rgba(59,130,246,.28)',  senior:'rgba(245,158,11,.28)'};
+var CAT_COLOR    = {seo:'#3B82F6',content:'#7C3AED',social:'#EC4899',crm:'#00E5A8'};
+var CAT_LABEL    = {seo:'SEO',content:'Content',social:'Social',crm:'CRM'};
+
+var MktGallery = {
+  scroll: function(dir) {
+    var track = document.getElementById('mkt-gallery');
+    if (track) track.scrollBy({left: dir * (210+16) * 3, behavior:'smooth'});
+  }
+};
+
+var MktFilter = {
+  category:'all',
+  levels:{specialist:true,junior:true,senior:true},
+  setCategory:function(btn,cat){
+    document.querySelectorAll('.mkt-filter').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    this.category=cat;
+    this.render();
+  },
+  toggleLevel:function(btn,lv){
+    this.levels[lv]=!this.levels[lv];
+    if(this.levels[lv])btn.classList.add('active-'+lv);
+    else btn.classList.remove('active-'+lv);
+    this.render();
+  },
+  filtered:function(){
+    var self=this;
+    return SPECIALISTS.filter(function(s){
+      return(self.category==='all'||s.category===self.category)&&self.levels[s.level];
+    });
+  },
+  render:function(){
+    var list=this.filtered();
+    var gallery=document.getElementById('mkt-gallery');
+    var count=document.getElementById('mkt-count');
+    if(!gallery)return;
+    if(count)count.textContent='Showing '+list.length+' of 20 specialists';
+    if(list.length===0){gallery.innerHTML='<div class="mkt-empty">No specialists match the selected filters.</div>';return;}
+    gallery.innerHTML=list.map(function(s){
+      var lc=LEVEL_COLOR[s.level];
+      var ll=LEVEL_LABEL[s.level];
+      var lb=LEVEL_BG[s.level];
+      var lbr=LEVEL_BORDER[s.level];
+      var orb=(typeof OrbAvatar!=='undefined')?OrbAvatar.buildOrb(s.orbType,'md','idle','',s.level):'';
+      var skillHtml=s.skills.map(function(sk){
+        return '<span class="mkt-skill" style="background:'+s.color+'10;border-color:'+s.color+'25;color:'+s.color+'">'+sk+'</span>';
+      }).join('');
+      return '<div class="mkt-card" data-col="'+s.color+'" data-typ="'+s.orbType+'" style="border-color:'+s.color+'22">'
+        +'<div class="mkt-plan-tag" style="background:'+lb+';border-color:'+lbr+';color:'+lc+'">'+s.plan+'</div>'
+        +orb
+        +'<div class="mkt-card-name" style="color:'+s.color+'">'+s.name+'</div>'
+        +'<div class="mkt-card-role">'+s.role+'</div>'
+        +'<div class="mkt-level-badge" style="background:'+lb+';border-color:'+lbr+';color:'+lc+'">'+ll+'</div>'
+        +'<div class="mkt-divider"></div>'
+        +'<div class="mkt-card-desc">'+s.desc+'</div>'
+        +'<div class="mkt-skills">'+skillHtml+'</div>'
+        +'<span style="font-size:10.5px;font-weight:700;font-family:var(--ff-h);border-radius:5px;padding:2px 8px;border:1px solid '+CAT_COLOR[s.category]+'25;background:'+CAT_COLOR[s.category]+'10;color:'+CAT_COLOR[s.category]+'">'+CAT_LABEL[s.category]+'</span>'
+        +'</div>';
+    }).join('');
+    gallery.querySelectorAll('.mkt-card').forEach(function(card){
+      var col=card.dataset.col;
+      var typ=card.dataset.typ;
+      card.addEventListener('mouseover',function(){
+        card.style.borderColor=col+'55';
+        if(typeof setOrbState!=='undefined')setOrbState(typ,'executing');
+      });
+      card.addEventListener('mouseout',function(){
+        card.style.borderColor=col+'22';
+        if(typeof setOrbState!=='undefined')setOrbState(typ,'idle');
+      });
+    });
+    gallery.scrollLeft=0;
+  }
+};
+
+document.addEventListener('DOMContentLoaded',function(){MktFilter.render();});
+</script>
+</body>
+</html>
