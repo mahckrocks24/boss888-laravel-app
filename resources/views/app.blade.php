@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LevelUp Growth Platform</title>
   <meta name="description" content="AI marketing OS for SMBs — your dedicated AI marketing team.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><radialGradient id='g' cx='25' cy='25' r='30'><stop offset='0' stop-color='%23A78BFA'/><stop offset='1' stop-color='%233B0764'/></radialGradient></defs><circle cx='32' cy='32' r='28' fill='url(%23g)'/></svg>">
   @php
     // MEDIUM-07 FIX: glob() finds the hashed bundle dynamically so rebuilds
     // need no manual edits. If the build is missing, $reactBundle = null and
