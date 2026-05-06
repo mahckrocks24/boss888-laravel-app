@@ -72,7 +72,7 @@ class ChatbotGuardrails
         $confident = (bool) ($parsed['confident'] ?? false);
         $needsContact = (bool) ($parsed['needs_contact'] ?? false);
         $smartFallbackApplied = false;
-        if ($kbHits === 0 && in_array($intent, ['faq', 'business_inquiry'], true)) {
+        if ($kbHits === 0 && in_array($intent, ['faq', 'business_inquiry'], true) && (int) ($context['turn_count'] ?? 0) >= 2) {
             if ($confident) {
                 $confident = false;
                 $answer = "I want to make sure you get the right info — can I have someone from the team reach out? What's the best email or number to use?";
