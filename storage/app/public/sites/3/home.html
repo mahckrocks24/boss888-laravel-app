@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chef Red Raymundo — Private Chef · Performance Nutrition</title>
+<meta name="description" content="Chef Red Raymundo — Personal Chef and Certified Nutrition Coach serving professional athletes, celebrities, and elite clientele across the United States.">
+<link rel="canonical" href="https://chef-red.levelupgrowth.io/">
+<meta name="robots" content="index, follow">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://chef-red.levelupgrowth.io/">
+<meta property="og:title" content="Chef Red Raymundo — Private Chef &amp; Performance Nutrition Dubai">
+<meta property="og:description" content="Dubai&#039;s premier private chef offering exclusive catering, private dining, and performance nutrition for athletes and VIP clientele.">
+<meta property="og:image" content="https://chef-red.levelupgrowth.io/images/hero-chef.jpg">
+<meta property="og:site_name" content="Chef Red Raymundo">
+<meta property="og:locale" content="en_AE">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Chef Red Raymundo — Private Chef &amp; Performance Nutrition Dubai">
+<meta name="twitter:description" content="Dubai&#039;s premier private chef offering exclusive catering, private dining, and performance nutrition for athletes and VIP clientele.">
+<meta name="twitter:image" content="https://chef-red.levelupgrowth.io/images/hero-chef.jpg">
+<script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@type": "FoodEstablishment",
+    "name": "Chef Red Raymundo",
+    "description": "Private Chef and Performance Nutrition Services in Dubai",
+    "url": "https://chef-red.levelupgrowth.io",
+    "priceRange": "$$$$",
+    "servesCuisine": [
+        "Filipino",
+        "International",
+        "Fusion",
+        "Performance Nutrition"
+    ],
+    "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Dubai",
+        "addressCountry": "AE"
+    }
+}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Marcellus&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════
+   CHEF RED RAYMUNDO — Design System
+   Direction: Dark luxury editorial, high-contrast,
+   cinematic negative space, jewel-toned accents
+═══════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:    #0A0806;
+  --ink2:   #131009;
+  --ink3:   #1C1812;
+  --gold:   #C9943A;
+  --gold-l: #DFB96A;
+  --cream:  #F2EBDF;
+  --warm:   #E8DDD0;
+  --stone:  #8C7E6E;
+  --smoke:  #4A4238;
+  --fd:     'Playfair Display', Georgia, serif;
+  --fm:     'Marcellus', Georgia, serif;
+  --fb:     'DM Sans', system-ui, sans-serif;
+  --ease:   cubic-bezier(.22,.68,0,1.2);
+  --ease2:  cubic-bezier(.4,0,.2,1);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--fb);
+  font-weight: 300;
+  line-height: 1.6;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ── Custom Cursor ── */
+.cursor {
+  position: fixed;
+  width: 10px; height: 10px;
+  background: var(--gold);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform .15s var(--ease2), opacity .2s;
+  transform: translate(-50%,-50%);
+}
+.cursor-ring {
+  position: fixed;
+  width: 36px; height: 36px;
+  border: 1px solid rgba(201,148,58,.4);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transition: transform .35s var(--ease2), width .3s, height .3s, opacity .3s;
+  transform: translate(-50%,-50%);
+}
+body.hovering .cursor { transform: translate(-50%,-50%) scale(1.8); }
+body.hovering .cursor-ring { width: 56px; height: 56px; border-color: rgba(201,148,58,.6); }
+
+/* ── Navigation ── */
+nav {
+  min-height: 80px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 1.5rem 3rem;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: background .4s, padding .4s;
+}
+nav.scrolled {
+  background: rgba(10,8,6,.92);
+  backdrop-filter: blur(20px);
+  padding: 1rem 3rem;
+  border-bottom: 1px solid rgba(201,148,58,.12);
+}
+.nav-logo {
+  font-family: var(--fm);
+  font-size: .7rem;
+  letter-spacing: .35em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+}
+.nav-links {
+  flex-wrap: nowrap; white-space: nowrap;
+  display: flex; align-items: center; gap: 2.5rem;
+  list-style: none;
+}
+.nav-links a {
+  font-size: .62rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(242,235,223,.6);
+  text-decoration: none;
+  transition: color .25s;
+  position: relative;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute; bottom: -3px; left: 0; right: 0;
+  height: 1px; background: var(--gold);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .3s var(--ease2);
+}
+.nav-links a:hover { color: var(--cream); }
+.nav-links a:hover::after { transform: scaleX(1); }
+.nav-cta {
+  font-size: .6rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--gold);
+  padding: .6rem 1.5rem;
+  text-decoration: none;
+  transition: background .25s, transform .2s;
+}
+.nav-cta:hover { background: var(--gold-l); transform: translateY(-1px); }
+.nav-burger {
+  display: none;
+  flex-direction: column; gap: 5px;
+  background: none; border: none; cursor: pointer; padding: .4rem;
+}
+.nav-burger span {
+  display: block; width: 22px; height: 1px;
+  background: var(--cream); transition: all .3s;
+}
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+}
+.hero-left {
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding: 8rem 4rem 6rem 6rem;
+  position: relative; z-index: 2;
+}
+.hero-eyebrow {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 2rem;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: block; width: 3rem; height: 1px;
+  background: var(--gold);
+}
+.hero-eyebrow span {
+  font-size: .58rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.hero-h1 {
+  font-family: var(--fd);
+  font-size: clamp(3.5rem, 6vw, 6rem);
+  font-weight: 400;
+  line-height: .95;
+  color: var(--cream);
+  margin-bottom: 1.5rem;
+}
+.hero-h1 em {
+  font-style: italic;
+  color: var(--gold-l);
+  display: block;
+}
+.hero-sub {
+  font-size: .85rem;
+  color: var(--stone);
+  max-width: 400px;
+  line-height: 1.8;
+  margin-bottom: 3rem;
+  letter-spacing: .02em;
+}
+.hero-actions {
+  display: flex; align-items: center; gap: 2rem;
+}
+.btn-primary {
+  font-size: .6rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--gold);
+  padding: 1rem 2.5rem;
+  text-decoration: none;
+  display: inline-block;
+  transition: background .25s, transform .2s;
+}
+.btn-primary:hover { background: var(--gold-l); transform: translateY(-2px); }
+.btn-ghost {
+  font-size: .6rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--cream);
+  text-decoration: none;
+  display: flex; align-items: center; gap: .6rem;
+  transition: gap .25s;
+}
+.btn-ghost::after {
+  content: '→';
+  transition: transform .25s;
+}
+.btn-ghost:hover { gap: .9rem; }
+.btn-ghost:hover::after { transform: translateX(4px); }
+
+.hero-right {
+  position: relative;
+  overflow: hidden;
+}
+.hero-right img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: brightness(.85) contrast(1.05);
+  transition: transform 8s ease;
+}
+.hero-right:hover img { transform: scale(1.04); }
+.hero-right-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to right, var(--ink) 0%, transparent 30%),
+              linear-gradient(to top, rgba(10,8,6,.5) 0%, transparent 50%);
+}
+
+/* Hero grain */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 3;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: 200px;
+  opacity: .4;
+  mix-blend-mode: overlay;
+}
+
+.hero-scroll-hint {
+  position: absolute; bottom: 2.5rem; left: 6rem; z-index: 4;
+  display: flex; align-items: center; gap: .75rem;
+  font-size: .55rem; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--smoke);
+}
+.hero-scroll-hint::before {
+  content: '';
+  display: block; width: 1px; height: 3rem;
+  background: linear-gradient(to bottom, var(--gold), transparent);
+  animation: scroll-line 2s ease-in-out infinite;
+}
+@keyframes scroll-line {
+  0%, 100% { opacity: .3; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.2); }
+}
+
+/* ── Stats strip ── */
+.stats-strip {
+  background: var(--ink3);
+  border-top: 1px solid rgba(201,148,58,.12);
+  border-bottom: 1px solid rgba(201,148,58,.12);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.stat-item {
+  padding: 2.5rem 2rem;
+  text-align: center;
+  border-right: 1px solid rgba(201,148,58,.08);
+  position: relative;
+  overflow: hidden;
+}
+.stat-item:last-child { border-right: none; }
+.stat-item::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
+  opacity: 0; transition: opacity .4s;
+}
+.stat-item:hover::before { opacity: 1; }
+.stat-num {
+  font-family: var(--fd);
+  font-size: 2.8rem;
+  font-weight: 400;
+  color: var(--gold);
+  line-height: 1;
+  margin-bottom: .4rem;
+  display: block;
+}
+.stat-label {
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+
+/* ── Section utility ── */
+.section { padding: 7rem 6rem; }
+.section-sm { padding: 5rem 6rem; }
+
+.eyebrow {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.eyebrow::before {
+  content: '';
+  display: block; width: 2rem; height: 1px;
+  background: var(--gold);
+}
+.eyebrow span {
+  font-size: .58rem; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--gold);
+}
+.section-h2 {
+  font-family: var(--fd);
+  font-size: clamp(2.2rem, 4vw, 3.5rem);
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--cream);
+  margin-bottom: 1.5rem;
+}
+.section-h2 em {
+  font-style: italic;
+  color: var(--gold-l);
+}
+
+/* ── About ── */
+.about {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  background: var(--ink2);
+}
+.about-left {
+  padding: 7rem 4rem 7rem 6rem;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.about-text {
+  font-size: .9rem; color: var(--stone);
+  line-height: 1.9; margin-bottom: 1.5rem;
+}
+.about-text strong { color: var(--cream); font-weight: 500; }
+.about-signature {
+  font-family: var(--fd);
+  font-size: 2.2rem;
+  font-style: italic;
+  color: var(--gold);
+  margin-top: 2rem;
+}
+
+.about-right {
+  position: relative;
+  overflow: hidden;
+  min-height: 700px;
+}
+.about-right img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(.8) saturate(1.1);
+  transition: transform 6s ease;
+}
+.about-right:hover img { transform: scale(1.05); }
+.about-img-caption {
+  position: absolute; bottom: 2rem; right: 2rem;
+  font-size: .55rem; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(242,235,223,.4);
+  writing-mode: vertical-rl;
+}
+
+/* ── Expertise / Services ── */
+.expertise { background: var(--ink); }
+.expertise-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(201,148,58,.12);
+  margin-top: 4rem;
+  border: 1px solid rgba(201,148,58,.12);
+}
+.expertise-card {
+  background: var(--ink);
+  padding: 3rem 2.5rem;
+  transition: background .35s;
+  position: relative;
+  overflow: hidden;
+}
+.expertise-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 0; height: 2px;
+  background: var(--gold);
+  transition: width .4s var(--ease2);
+}
+.expertise-card:hover { background: var(--ink3); }
+.expertise-card:hover::before { width: 100%; }
+.expertise-num {
+  font-family: var(--fd);
+  font-size: 3.5rem; font-weight: 400;
+  color: rgba(201,148,58,.12);
+  line-height: 1;
+  margin-bottom: 1.25rem;
+  transition: color .35s;
+}
+.expertise-card:hover .expertise-num { color: rgba(201,148,58,.25); }
+.expertise-title {
+  font-family: var(--fm);
+  font-size: 1.1rem;
+  color: var(--cream);
+  margin-bottom: .75rem;
+  letter-spacing: .04em;
+}
+.expertise-desc {
+  font-size: .78rem;
+  color: var(--stone);
+  line-height: 1.8;
+}
+.expertise-tags {
+  display: flex; flex-wrap: wrap; gap: .4rem;
+  margin-top: 1.5rem;
+}
+.expertise-tag {
+  font-size: .52rem; letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid rgba(201,148,58,.25);
+  padding: .25rem .7rem;
+}
+
+/* ── Gallery — Masonry feel ── */
+.gallery { background: var(--ink2); padding: 7rem 0; }
+.gallery-header { padding: 0 6rem 4rem; }
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 280px;
+  gap: 3px;
+}
+.gallery-item {
+  overflow: hidden;
+  position: relative;
+  cursor: none;
+}
+.gallery-item.tall { grid-row: span 2; }
+.gallery-item.wide { grid-column: span 2; }
+.gallery-item img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .7s var(--ease2), filter .4s;
+  filter: brightness(.85) saturate(1.05);
+}
+.gallery-item:hover img {
+  transform: scale(1.08);
+  filter: brightness(.95) saturate(1.15);
+}
+.gallery-item-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(10,8,6,.7) 0%, transparent 60%);
+  opacity: 0; transition: opacity .4s;
+}
+.gallery-item:hover .gallery-item-overlay { opacity: 1; }
+
+/* Lightbox */
+.lightbox {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(10,8,6,.97);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s;
+}
+.lightbox.open { opacity: 1; pointer-events: all; }
+.lightbox img {
+  max-width: 88vw; max-height: 88vh;
+  object-fit: contain;
+  transform: scale(.9);
+  transition: transform .4s var(--ease);
+}
+.lightbox.open img { transform: scale(1); }
+.lightbox-close {
+  position: absolute; top: 2rem; right: 2.5rem;
+  font-size: 1.5rem; color: var(--stone);
+  background: none; border: none; cursor: pointer;
+  transition: color .2s;
+}
+.lightbox-close:hover { color: var(--gold); }
+.lightbox-nav {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  background: none; border: 1px solid rgba(201,148,58,.2);
+  color: var(--cream); font-size: 1.2rem;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: border-color .2s, background .2s;
+}
+.lightbox-nav:hover { border-color: var(--gold); background: rgba(201,148,58,.08); }
+.lightbox-prev { left: 2rem; }
+.lightbox-next { right: 2rem; }
+
+/* ── Cuisine repertoire ── */
+.cuisines { background: var(--ink); }
+.cuisines-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6rem;
+  align-items: center;
+}
+.cuisine-list {
+  list-style: none;
+  margin-top: 2.5rem;
+  display: flex; flex-direction: column; gap: .75rem;
+}
+.cuisine-list li {
+  display: flex; align-items: center; gap: 1.25rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(201,148,58,.08);
+  cursor: default;
+  transition: padding-left .3s var(--ease2);
+}
+.cuisine-list li:hover { padding-left: .5rem; }
+.cuisine-list li::before {
+  content: '';
+  display: block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+  transition: transform .3s;
+}
+.cuisine-list li:hover::before { transform: scale(1.5); }
+.cuisine-name {
+  font-family: var(--fm);
+  font-size: 1.05rem;
+  color: var(--cream);
+  letter-spacing: .04em;
+  flex: 1;
+}
+.cuisine-note {
+  font-size: .62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+
+.cuisines-img {
+  position: relative;
+  overflow: hidden;
+}
+.cuisines-img img {
+  width: 100%; aspect-ratio: 4/5;
+  object-fit: cover;
+  filter: brightness(.8) saturate(1.1);
+  transition: transform 6s ease;
+}
+.cuisines-img:hover img { transform: scale(1.06); }
+.cuisines-img-accent {
+  position: absolute;
+  bottom: -1px; left: -1px;
+  width: 40%; height: 40%;
+  border: 2px solid var(--gold);
+  pointer-events: none;
+}
+
+/* ── Testimonials ── */
+.testimonials {
+  background: var(--ink3);
+  border-top: 1px solid rgba(201,148,58,.08);
+  border-bottom: 1px solid rgba(201,148,58,.08);
+}
+.testimonials-inner {
+  max-width: 800px; margin: 0 auto;
+  text-align: center;
+}
+.testimonials-inner .eyebrow { justify-content: center; }
+.testimonials-inner .eyebrow::before { display: none; }
+.testimonial-track {
+  position: relative;
+  min-height: 280px;
+  margin-top: 3rem;
+}
+.testimonial-slide {
+  position: absolute; inset: 0;
+  opacity: 0; transition: opacity .6s;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.testimonial-slide.active { opacity: 1; }
+.testimonial-quote {
+  font-family: var(--fd);
+  font-size: 1.4rem;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--cream);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  position: relative;
+}
+.testimonial-quote::before {
+  content: '"';
+  font-size: 6rem;
+  color: rgba(201,148,58,.12);
+  position: absolute; top: -2.5rem; left: -2rem;
+  font-family: var(--fd);
+  line-height: 1;
+}
+.testimonial-author {
+  font-size: .6rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.testimonial-dots {
+  display: flex; gap: .5rem; justify-content: center;
+  margin-top: 3rem;
+}
+.testimonial-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--smoke);
+  cursor: pointer; transition: background .3s, transform .3s;
+  border: none;
+}
+.testimonial-dot.active {
+  background: var(--gold);
+  transform: scale(1.4);
+}
+
+/* ── Process ── */
+.process { background: var(--ink2); }
+.process-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin-top: 4rem;
+  background: rgba(201,148,58,.08);
+}
+.process-step {
+  background: var(--ink2);
+  padding: 3rem 2rem;
+  position: relative;
+}
+.process-step::after {
+  content: attr(data-num);
+  position: absolute; top: 2.5rem; right: 2rem;
+  font-family: var(--fd);
+  font-size: 5rem; font-weight: 400;
+  color: rgba(201,148,58,.05);
+  line-height: 1;
+  pointer-events: none;
+}
+.process-icon { font-size: 1.5rem; margin-bottom: 1.25rem; }
+.process-title {
+  font-family: var(--fm);
+  font-size: .95rem; color: var(--cream);
+  margin-bottom: .75rem; letter-spacing: .04em;
+}
+.process-desc {
+  font-size: .75rem; color: var(--stone); line-height: 1.8;
+}
+
+/* ── Full-width dish feature ── */
+.feature-dish {
+  position: relative;
+  height: 70vh; overflow: hidden;
+}
+.feature-dish img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: brightness(.6) saturate(1.1);
+  transition: transform 10s ease;
+}
+.feature-dish:hover img { transform: scale(1.05); }
+.feature-dish-content {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding: 0 6rem;
+  background: linear-gradient(to right, rgba(10,8,6,.75) 0%, transparent 70%);
+}
+.feature-dish-label {
+  font-size: .58rem; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 1rem;
+}
+.feature-dish-h {
+  font-family: var(--fd);
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  font-weight: 400;
+  color: var(--cream);
+  line-height: 1.1;
+  max-width: 600px;
+  margin-bottom: 2rem;
+}
+.feature-dish-h em { font-style: italic; color: var(--gold-l); }
+
+/* ── Contact / CTA ── */
+.contact {
+  background: var(--ink);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.contact-left {
+  padding: 7rem 4rem 7rem 6rem;
+  background: var(--ink3);
+  border-right: 1px solid rgba(201,148,58,.12);
+}
+.contact-info {
+  margin-top: 3rem;
+  display: flex; flex-direction: column; gap: 2rem;
+}
+.contact-item { display: flex; flex-direction: column; gap: .35rem; }
+.contact-item-label {
+  font-size: .52rem; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--gold);
+}
+.contact-item-value {
+  font-family: var(--fm);
+  font-size: 1rem; color: var(--cream);
+  text-decoration: none; letter-spacing: .04em;
+  transition: color .2s;
+}
+a.contact-item-value:hover { color: var(--gold); }
+.contact-availability {
+  margin-top: 3rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(201,148,58,.2);
+  display: flex; align-items: flex-start; gap: 1rem;
+}
+.contact-avail-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #4CAF50; flex-shrink: 0; margin-top: .35rem;
+  box-shadow: 0 0 8px rgba(76,175,80,.5);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(76,175,80,.3); }
+  50% { box-shadow: 0 0 16px rgba(76,175,80,.7); }
+}
+.contact-avail-text { font-size: .75rem; color: var(--stone); line-height: 1.7; }
+.contact-avail-text strong { color: var(--cream); font-weight: 500; }
+
+.contact-right {
+  padding: 7rem 6rem 7rem 4rem;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.contact-form { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 2.5rem; }
+.form-field { display: flex; flex-direction: column; gap: .4rem; }
+.form-field label {
+  font-size: .55rem; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--gold);
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(201,148,58,.2);
+  color: var(--cream);
+  padding: .85rem 1rem;
+  font-family: var(--fb); font-size: .82rem; font-weight: 300;
+  outline: none;
+  transition: border-color .25s, background .25s;
+  appearance: none;
+}
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--gold);
+  background: rgba(201,148,58,.04);
+}
+.form-field select option { background: var(--ink2); }
+.form-field textarea { resize: vertical; min-height: 120px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-submit {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  padding: 1rem 2.5rem;
+  font-family: var(--fb);
+  font-size: .6rem; font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase;
+  cursor: pointer; align-self: flex-start;
+  transition: background .25s, transform .2s;
+}
+.form-submit:hover { background: var(--gold-l); transform: translateY(-2px); }
+
+/* ── Footer ── */
+footer {
+  background: var(--ink2);
+  border-top: 1px solid rgba(201,148,58,.12);
+  padding: 3rem 6rem;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 1.5rem;
+}
+.footer-logo {
+  font-family: var(--fm);
+  font-size: .75rem; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--gold);
+}
+.footer-copy {
+  font-size: .6rem; letter-spacing: .08em;
+  color: var(--smoke);
+}
+.footer-links {
+  display: flex; gap: 2rem; list-style: none;
+}
+.footer-links a {
+  font-size: .58rem; letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--stone); text-decoration: none;
+  transition: color .2s;
+}
+.footer-links a:hover { color: var(--gold); }
+
+/* ── Reveal animations ── */
+.reveal {
+  opacity: 0; transform: translateY(28px);
+  transition: opacity .8s var(--ease2), transform .8s var(--ease2);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: .1s; }
+.reveal-delay-2 { transition-delay: .2s; }
+.reveal-delay-3 { transition-delay: .3s; }
+.reveal-delay-4 { transition-delay: .4s; }
+
+/* ── Mobile nav overlay ── */
+.mob-nav {
+  position: fixed; inset: 0; z-index: 90;
+  background: var(--ink2);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2rem;
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s;
+}
+.mob-nav.open { opacity: 1; pointer-events: all; }
+.mob-nav a {
+  font-family: var(--fd);
+  font-size: 2rem; font-weight: 400;
+  color: var(--cream); text-decoration: none;
+  letter-spacing: .05em;
+  transition: color .2s;
+}
+.mob-nav a:hover { color: var(--gold); }
+.mob-nav .btn-primary { font-size: .65rem; margin-top: 1rem; }
+
+/* ══════════════════════════════
+   RESPONSIVE
+══════════════════════════════ */
+@media (max-width: 1100px) {
+  nav { padding: 1.25rem 2rem; }
+  nav.scrolled { padding: .85rem 2rem; }
+  .hero-left { padding: 7rem 3rem 5rem 4rem; }
+  .section, .section-sm { padding: 5rem 3rem; }
+  .gallery-header { padding: 0 3rem 3rem; }
+  .feature-dish-content { padding: 0 3rem; }
+  footer { padding: 2.5rem 3rem; }
+}
+
+@media (max-width: 900px) {
+  .nav-links, .nav-cta { display: none; }
+  .nav-burger { display: flex; }
+  nav { padding: 1.25rem 1.5rem; }
+  nav.scrolled { padding: .85rem 1.5rem; }
+
+  .hero { grid-template-columns: 1fr; }
+  .hero-right { height: 55vw; grid-row: 1; }
+  .hero-right-overlay {
+    background: linear-gradient(to bottom, rgba(10,8,6,.4) 0%, var(--ink) 100%);
+  }
+  .hero-left { padding: 2.5rem 1.5rem 5rem; order: 2; }
+  .hero-scroll-hint { left: 1.5rem; }
+
+  .stats-strip { grid-template-columns: 1fr 1fr; }
+  .stat-item:nth-child(2) { border-right: none; }
+  .stat-item:nth-child(3) { border-top: 1px solid rgba(201,148,58,.08); }
+  .stat-item:nth-child(4) { border-top: 1px solid rgba(201,148,58,.08); border-right: none; }
+
+  .about { grid-template-columns: 1fr; }
+  .about-right { min-height: 60vw; order: -1; }
+  .about-left { padding: 4rem 1.5rem; }
+
+  .section, .section-sm { padding: 4rem 1.5rem; }
+
+  .expertise-grid { grid-template-columns: 1fr; }
+
+  .gallery-grid { grid-template-columns: 1fr 1fr; grid-auto-rows: 220px; }
+  .gallery-item.wide { grid-column: span 1; }
+  .gallery-header { padding: 0 1.5rem 2.5rem; }
+
+  .cuisines-inner { grid-template-columns: 1fr; gap: 3rem; }
+
+  .process-steps { grid-template-columns: 1fr 1fr; }
+
+  .contact { grid-template-columns: 1fr; }
+  .contact-left { padding: 4rem 1.5rem; border-right: none; border-bottom: 1px solid rgba(201,148,58,.12); }
+  .contact-right { padding: 4rem 1.5rem; }
+
+  .form-row { grid-template-columns: 1fr; }
+
+  footer { flex-direction: column; align-items: flex-start; padding: 2rem 1.5rem; }
+  .footer-links { flex-wrap: wrap; gap: 1.25rem; }
+
+  .feature-dish-content { padding: 0 1.5rem; }
+  .feature-dish-h { font-size: clamp(1.8rem, 6vw, 3rem); }
+}
+
+@media (max-width: 600px) {
+  .stats-strip { grid-template-columns: 1fr; }
+  .stat-item { border-right: none; border-bottom: 1px solid rgba(201,148,58,.08); }
+  .gallery-grid { grid-template-columns: 1fr; }
+  .gallery-item.tall { grid-row: span 1; }
+  .process-steps { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+
+<!-- Mobile nav -->
+<div class="mob-nav" id="mob-nav">
+  <a href="#about" onclick="closeMob()">About</a>
+  <a href="#expertise" onclick="closeMob()">Services</a>
+  <a href="#gallery" onclick="closeMob()">Gallery</a>
+  <a href="#cuisines" onclick="closeMob()">Cuisine</a>
+  <a href="/blog/" onclick="closeMob()">Blog</a>
+  <a href="#contact" onclick="closeMob()">Contact</a>
+  <a href="#contact" class="btn-primary" onclick="closeMob()">Book a Consultation</a>
+</div>
+
+<!-- Navigation -->
+<nav id="main-nav">
+  <a href="#" class="nav-logo">Chef Red Raymundo</a>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#expertise">Services</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#cuisines">Cuisine</a></li>
+    <li><a href="/blog/">Blog</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a href="#contact" class="nav-cta">Book a Consultation</a>
+  <button class="nav-burger" id="burger" aria-label="Menu" onclick="toggleMob()">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">
+      <span>Personal Chef &amp; Nutrition Coach</span>
+    </div>
+    <h1 class="hero-h1">
+      Culinary<br>Excellence<br><em>Redefined</em>
+    </h1>
+    <p class="hero-sub">
+      Serving professional athletes, celebrities, and elite clientele across the United States with 20+ years of culinary mastery and performance nutrition expertise.
+    </p>
+    <div class="hero-actions">
+      <a href="#contact" class="btn-primary">Book a Consultation</a>
+      <a href="#gallery" class="btn-ghost">View the Work</a>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <img src="/storage/sites/3/images/portrait-01.jpg?v=202605061520" alt="Chef Red Raymundo" loading="eager">
+    <div class="hero-right-overlay"></div>
+  </div>
+
+  <div class="hero-scroll-hint">Scroll to explore</div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<div class="stats-strip">
+  <div class="stat-item reveal">
+    <span class="stat-num">20<sup style="font-size:1.5rem">+</sup></span>
+    <span class="stat-label">Years of Experience</span>
+  </div>
+  <div class="stat-item reveal reveal-delay-1">
+    <span class="stat-num">6</span>
+    <span class="stat-label">Cuisine Traditions</span>
+  </div>
+  <div class="stat-item reveal reveal-delay-2">
+    <span class="stat-num">100<sup style="font-size:1.5rem">%</sup></span>
+    <span class="stat-label">Private Clientele</span>
+  </div>
+  <div class="stat-item reveal reveal-delay-3">
+    <span class="stat-num">US</span>
+    <span class="stat-label">Nationwide Service</span>
+  </div>
+</div>
+
+<!-- ═══ ABOUT ═══ -->
+<section class="about" id="about">
+  <div class="about-left">
+    <div class="eyebrow reveal"><span>The Chef</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1">
+      More Than a Chef.<br><em>A Standard.</em>
+    </h2>
+    <p class="about-text reveal reveal-delay-2">
+      There's a certain kind of chef you come across once in a while—the kind who doesn't just cook, but <strong>understands people, performance, and precision</strong> at a level that goes far beyond the kitchen. That's exactly what you get with Chef Red.
+    </p>
+    <p class="about-text reveal reveal-delay-3">
+      With over 20 years in the culinary industry, Chef Red's journey began through the intensity and discipline of professional kitchens, training under highly skilled and respected chefs. Today, he operates at the <strong>intersection of culinary excellence and performance nutrition</strong> as a Personal Chef and Certified Nutrition Coach.
+    </p>
+    <p class="about-text reveal reveal-delay-4">
+      He brings a calm, professional presence into every home, operating with <strong>discretion, consistency, and an intuitive understanding of high-level expectations</strong>. He adapts seamlessly to each client's lifestyle, preferences, and nutritional needs.
+    </p>
+    <div class="about-signature reveal">Chef Red</div>
+  </div>
+  <div class="about-right">
+    <img src="/storage/sites/3/images/hero-chef.jpg?v=202605061520" alt="Chef Red" loading="lazy">
+    <div class="about-img-caption">Culinary Artistry</div>
+  </div>
+</section>
+
+<!-- ═══ EXPERTISE ═══ -->
+<section class="expertise section" id="expertise">
+  <div class="eyebrow reveal"><span>What I Do</span></div>
+  <h2 class="section-h2 reveal reveal-delay-1">
+    Services Built for<br><em>Elite Living</em>
+  </h2>
+  <div class="expertise-grid">
+    <div class="expertise-card reveal">
+      <div class="expertise-num">01</div>
+      <div class="expertise-title">Private Chef Services</div>
+      <p class="expertise-desc">Daily or weekly meal preparation tailored precisely to your lifestyle, schedule, and preferences. Every meal is crafted with the same precision and artistry expected at the finest restaurants.</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag">Daily Service</span>
+        <span class="expertise-tag">Event Dining</span>
+        <span class="expertise-tag">Meal Prep</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-1">
+      <div class="expertise-num">02</div>
+      <div class="expertise-title">Performance Nutrition</div>
+      <p class="expertise-desc">As a Certified Nutrition Coach, Chef Red designs menus that fuel peak athletic performance, support recovery, and optimize body composition—without compromising on taste or enjoyment.</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag">Athlete Nutrition</span>
+        <span class="expertise-tag">Recovery Meals</span>
+        <span class="expertise-tag">Body Composition</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-2">
+      <div class="expertise-num">03</div>
+      <div class="expertise-title">Wellness Cuisine</div>
+      <p class="expertise-desc">Clean, intentional eating that supports your health goals without sacrifice. Anti-inflammatory, gut-health, and longevity-focused menus built around your body's specific needs.</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag">Anti-Inflammatory</span>
+        <span class="expertise-tag">Gut Health</span>
+        <span class="expertise-tag">Longevity</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-3">
+      <div class="expertise-num">04</div>
+      <div class="expertise-title">Private Events &amp; Dinners</div>
+      <p class="expertise-desc">Intimate dinner parties to large-scale private events. Chef Red orchestrates every detail—menu design, execution, and presentation—delivering a restaurant-grade experience in your home.</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag">Dinner Parties</span>
+        <span class="expertise-tag">Corporate Events</span>
+        <span class="expertise-tag">Celebrations</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-4">
+      <div class="expertise-num">05</div>
+      <div class="expertise-title">Travel Chef</div>
+      <p class="expertise-desc">Available to travel with clients wherever life takes you—international residences, private jets, yachts, and extended travel. Consistent quality, no matter the location.</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag">International</span>
+        <span class="expertise-tag">Private Jet</span>
+        <span class="expertise-tag">Yacht</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-1">
+      <div class="expertise-num">06</div>
+      <div class="expertise-title">Nutrition Consultation</div>
+      <p class="expertise-desc">One-on-one nutrition coaching that bridges the gap between food and performance. Macro planning, dietary analysis, and ongoing guidance to help you reach your goals.</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag">Macro Planning</span>
+        <span class="expertise-tag">Dietary Analysis</span>
+        <span class="expertise-tag">Coaching</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ GALLERY ═══ -->
+<section class="gallery" id="gallery">
+  <div class="gallery-header">
+    <div class="eyebrow reveal"><span>The Work</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1">
+      Every Plate, a<br><em>Statement</em>
+    </h2>
+  </div>
+  <div class="gallery-grid" id="gallery-grid">
+    <div class="gallery-item tall" data-src="/storage/sites/3/images/dish-01.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-01.jpg?v=202605061520" alt="Signature dish" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item" data-src="/storage/sites/3/images/dish-02.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-02.jpg?v=202605061520" alt="Culinary creation" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item" data-src="/storage/sites/3/images/dish-03.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-03.jpg?v=202605061520" alt="Plated elegance" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item" data-src="/storage/sites/3/images/dish-04.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-04.jpg?v=202605061520" alt="Fine dining" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item" data-src="/storage/sites/3/images/dish-08.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-08.jpg?v=202605061520" alt="Premium cuisine" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item tall" data-src="/storage/sites/3/images/dish-09.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-09.jpg?v=202605061520" alt="Chef's selection" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item" data-src="/storage/sites/3/images/dish-10.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-10.jpg?v=202605061520" alt="Elegant cuisine" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item" data-src="/storage/sites/3/images/dish-11.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-11.jpg?v=202605061520" alt="Private dining" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item" data-src="/storage/sites/3/images/dish-05.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-05.jpg?v=202605061520" alt="Signature dish" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item tall" data-src="/storage/sites/3/images/dish-06.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-06.jpg?v=202605061520" alt="Signature dish" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item" data-src="/storage/sites/3/images/dish-07.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-07.jpg?v=202605061520" alt="Signature dish" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item wide" data-src="/storage/sites/3/images/dish-14.jpg?v=202605061520">
+      <img src="/storage/sites/3/images/dish-14.jpg?v=202605061520" alt="Signature dish" loading="lazy">
+      <div class="gallery-item-overlay"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-nav lightbox-prev" onclick="lightboxNav(-1)">‹</button>
+  <img src="" alt="" id="lightbox-img">
+  <button class="lightbox-nav lightbox-next" onclick="lightboxNav(1)">›</button>
+</div>
+
+<!-- ═══ FEATURE DISH ═══ -->
+<div class="feature-dish">
+  <img src="/storage/sites/3/images/dish-07.jpg?v=202605061520" alt="Signature creation" loading="lazy">
+  <div class="feature-dish-content">
+    <div class="feature-dish-label">The Philosophy</div>
+    <h3 class="feature-dish-h">
+      Every Ingredient<br>Has a<br><em>Purpose</em>
+    </h3>
+    <a href="#contact" class="btn-primary">Experience It</a>
+  </div>
+</div>
+
+<!-- ═══ CUISINES ═══ -->
+<section class="cuisines section" id="cuisines">
+  <div class="cuisines-inner">
+    <div>
+      <div class="eyebrow reveal"><span>Repertoire</span></div>
+      <h2 class="section-h2 reveal reveal-delay-1">
+        A World of<br><em>Flavor</em>
+      </h2>
+      <p class="about-text reveal reveal-delay-2" style="margin-bottom:0;">
+        Chef Red's mastery spans classical traditions and global techniques, allowing him to craft menus that are both globally inspired and deeply personal.
+      </p>
+      <ul class="cuisine-list">
+        <li class="reveal"><span class="cuisine-name">Italian</span><span class="cuisine-note">Northern &amp; Southern</span></li>
+        <li class="reveal reveal-delay-1"><span class="cuisine-name">French</span><span class="cuisine-note">Classical &amp; Modern</span></li>
+        <li class="reveal reveal-delay-2"><span class="cuisine-name">Mediterranean</span><span class="cuisine-note">Levantine &amp; Greek</span></li>
+        <li class="reveal reveal-delay-3"><span class="cuisine-name">American</span><span class="cuisine-note">New &amp; Traditional</span></li>
+        <li class="reveal reveal-delay-4"><span class="cuisine-name">Spanish</span><span class="cuisine-note">Contemporary</span></li>
+        <li class="reveal"><span class="cuisine-name">Southeast Asian</span><span class="cuisine-note">Filipino, Thai, Vietnamese</span></li>
+      </ul>
+    </div>
+    <div class="cuisines-img reveal reveal-delay-2">
+      <img src="/storage/sites/3/images/dish-06.jpg?v=202605061520" alt="Culinary mastery" loading="lazy">
+      <div class="cuisines-img-accent"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section class="testimonials section-sm">
+  <div class="testimonials-inner">
+    <div class="eyebrow"><span>Testimonials</span></div>
+    <h2 class="section-h2" style="margin-bottom:0">
+      Trusted by Those Who<br><em>Demand Excellence</em>
+    </h2>
+    <div class="testimonial-track">
+      <div class="testimonial-slide active">
+        <p class="testimonial-quote">Chef Red doesn't just cook for you—he studies you. He understood my training schedule, my macros, my preferences, and delivered every single day without fail. I've never performed better.</p>
+        <div class="testimonial-author">Professional NFL Athlete — Los Angeles</div>
+      </div>
+      <div class="testimonial-slide">
+        <p class="testimonial-quote">Having Chef Red in my home is like having a Michelin-star restaurant on call. The quality, the consistency, the discretion—everything is at the highest possible level.</p>
+        <div class="testimonial-author">Entertainment Executive — Beverly Hills</div>
+      </div>
+      <div class="testimonial-slide">
+        <p class="testimonial-quote">He's not just a chef, he's a partner in our wellness journey. The food is extraordinary, but what sets him apart is how deeply he understands the connection between food and performance.</p>
+        <div class="testimonial-author">Professional Tennis Player — Miami</div>
+      </div>
+    </div>
+    <div class="testimonial-dots">
+      <button class="testimonial-dot active" onclick="goToSlide(0)"></button>
+      <button class="testimonial-dot" onclick="goToSlide(1)"></button>
+      <button class="testimonial-dot" onclick="goToSlide(2)"></button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PROCESS ═══ -->
+<section class="process section" id="process">
+  <div class="eyebrow reveal"><span>How It Works</span></div>
+  <h2 class="section-h2 reveal reveal-delay-1">
+    A Seamless<br><em>Experience</em>
+  </h2>
+  <div class="process-steps">
+    <div class="process-step reveal" data-num="01">
+      <div class="process-icon">◇</div>
+      <div class="process-title">Discovery Consultation</div>
+      <p class="process-desc">A private conversation to understand your lifestyle, dietary goals, preferences, and any health or performance objectives.</p>
+    </div>
+    <div class="process-step reveal reveal-delay-1" data-num="02">
+      <div class="process-icon">◇</div>
+      <div class="process-title">Custom Menu Design</div>
+      <p class="process-desc">A bespoke menu curated specifically for you—nutritionally optimized, seasonally informed, and tailored to your palate.</p>
+    </div>
+    <div class="process-step reveal reveal-delay-2" data-num="03">
+      <div class="process-icon">◇</div>
+      <div class="process-title">White-Glove Preparation</div>
+      <p class="process-desc">Chef Red arrives at your home, sources the finest ingredients, and prepares everything with precision and complete discretion.</p>
+    </div>
+    <div class="process-step reveal reveal-delay-3" data-num="04">
+      <div class="process-icon">◇</div>
+      <div class="process-title">Ongoing Partnership</div>
+      <p class="process-desc">Continuous refinement based on feedback, evolving needs, and performance data to ensure every meal exceeds expectations.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section class="contact" id="contact">
+  <div class="contact-left">
+    <div class="eyebrow reveal"><span>Begin Here</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1">
+      Reserve Your<br><em>Consultation</em>
+    </h2>
+    <div class="contact-info">
+      <div class="contact-item reveal reveal-delay-2">
+        <span class="contact-item-label">Email</span>
+        <a href="mailto:chef@chefredraymundo.com" class="contact-item-value">chef@chefredraymundo.com</a>
+      </div>
+      <div class="contact-item reveal reveal-delay-3">
+        <span class="contact-item-label">Website</span>
+        <span class="contact-item-value">chefredraymundo.com</span>
+      </div>
+      <div class="contact-item reveal reveal-delay-4">
+        <span class="contact-item-label">Service Area</span>
+        <span class="contact-item-value">Nationwide · Travel Available</span>
+      </div>
+    </div>
+    <div class="contact-availability reveal">
+      <div class="contact-avail-dot"></div>
+      <div class="contact-avail-text">
+        <strong>Currently accepting new clients.</strong><br>
+        Chef Red works with a limited number of clients to ensure every engagement receives his full attention and commitment.
+      </div>
+    </div>
+  </div>
+  <div class="contact-right">
+    <div class="eyebrow reveal"><span>Inquiry Form</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" style="font-size:1.8rem;">
+      Let's Start a<br><em>Conversation</em>
+    </h2>
+    <form class="contact-form" id="contact-form" onsubmit="handleSubmit(event)">
+      <div class="form-row">
+        <div class="form-field reveal">
+          <label>First Name</label>
+          <input type="text" placeholder="Your first name" required>
+        </div>
+        <div class="form-field reveal reveal-delay-1">
+          <label>Last Name</label>
+          <input type="text" placeholder="Your last name" required>
+        </div>
+      </div>
+      <div class="form-field reveal reveal-delay-2">
+        <label>Email Address</label>
+        <input type="email" placeholder="your@email.com" required>
+      </div>
+      <div class="form-field reveal reveal-delay-3">
+        <label>Phone Number</label>
+        <input type="tel" placeholder="+1 (000) 000-0000">
+      </div>
+      <div class="form-field reveal reveal-delay-4">
+        <label>Service of Interest</label>
+        <select>
+          <option value="" disabled selected>Select a service…</option>
+          <option>Private Chef (Daily / Weekly)</option>
+          <option>Performance Nutrition</option>
+          <option>Wellness Cuisine</option>
+          <option>Private Event or Dinner</option>
+          <option>Travel Chef</option>
+          <option>Nutrition Consultation</option>
+          <option>Other / Multiple Services</option>
+        </select>
+      </div>
+      <div class="form-field reveal">
+        <label>Tell Me About Your Goals</label>
+        <textarea placeholder="Share your lifestyle, preferences, health goals, or any details that help Chef Red understand what you're looking for…"></textarea>
+      </div>
+      <button type="submit" class="form-submit reveal reveal-delay-1">Send Inquiry →</button>
+      <div id="form-success" style="display:none;font-size:.8rem;color:var(--gold);letter-spacing:.06em;">
+        ✓ Thank you. Chef Red will be in touch within 24 hours.
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div class="footer-logo">Chef Red Raymundo</div>
+  <ul class="footer-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#expertise">Services</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#cuisines">Cuisine</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <div class="footer-copy">© 2025 Chef Red Raymundo. All rights reserved.</div>
+</footer>
+
+<script>
+/* ── Cursor ── */
+const cursor = document.getElementById('cursor');
+const ring   = document.getElementById('cursor-ring');
+let mx = 0, my = 0;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx + 'px';
+  cursor.style.top  = my + 'px';
+  ring.style.left   = mx + 'px';
+  ring.style.top    = my + 'px';
+});
+document.querySelectorAll('a,button,.gallery-item,.cuisine-list li').forEach(el => {
+  el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+  el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+});
+
+/* ── Nav scroll ── */
+const nav = document.getElementById('main-nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+}, { passive: true });
+
+/* ── Mobile nav ── */
+const mobNav = document.getElementById('mob-nav');
+const burger = document.getElementById('burger');
+function toggleMob() {
+  const open = mobNav.classList.toggle('open');
+  document.body.style.overflow = open ? 'hidden' : '';
+  const s = burger.querySelectorAll('span');
+  s[0].style.transform = open ? 'rotate(45deg) translate(5px,5px)' : '';
+  s[1].style.opacity   = open ? '0' : '1';
+  s[2].style.transform = open ? 'rotate(-45deg) translate(5px,-5px)' : '';
+}
+function closeMob() {
+  mobNav.classList.remove('open');
+  document.body.style.overflow = '';
+  burger.querySelectorAll('span').forEach(s => { s.style.transform = ''; s.style.opacity = '1'; });
+}
+
+/* ── Reveal on scroll ── */
+const revealEls = document.querySelectorAll('.reveal');
+const revObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); revObs.unobserve(e.target); } });
+}, { threshold: 0.1 });
+revealEls.forEach(el => revObs.observe(el));
+
+/* ── Lightbox ── */
+const galleryItems = [...document.querySelectorAll('.gallery-item')];
+const lightbox = document.getElementById('lightbox');
+const lbImg    = document.getElementById('lightbox-img');
+let lbCurrent  = 0;
+galleryItems.forEach((item, i) => {
+  item.addEventListener('click', () => {
+    lbCurrent = i;
+    lbImg.src = item.dataset.src;
+    lbImg.alt = item.querySelector('img').alt;
+    lightbox.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  });
+});
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function lightboxNav(dir) {
+  lbCurrent = (lbCurrent + dir + galleryItems.length) % galleryItems.length;
+  lbImg.src = galleryItems[lbCurrent].dataset.src;
+}
+lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+document.addEventListener('keydown', e => {
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft')  lightboxNav(-1);
+  if (e.key === 'ArrowRight') lightboxNav(1);
+});
+
+/* ── Testimonials ── */
+const slides = document.querySelectorAll('.testimonial-slide');
+const dots   = document.querySelectorAll('.testimonial-dot');
+let currentSlide = 0;
+function goToSlide(n) {
+  slides[currentSlide].classList.remove('active');
+  dots[currentSlide].classList.remove('active');
+  currentSlide = n;
+  slides[currentSlide].classList.add('active');
+  dots[currentSlide].classList.add('active');
+}
+setInterval(() => goToSlide((currentSlide + 1) % slides.length), 5000);
+
+/* ── Form ── */
+function handleSubmit(e) {
+  e.preventDefault();
+  e.target.style.display = 'none';
+  document.getElementById('form-success').style.display = 'block';
+}
+</script>
+</body>
+</html>
