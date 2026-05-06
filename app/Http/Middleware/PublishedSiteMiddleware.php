@@ -75,7 +75,35 @@ class PublishedSiteMiddleware
             return $next($request);
         }
 
-        // Validate slug format
+        // Static template serve — bypass BuilderRenderer when a pre-rendered HTML
+        // file exists for this site. Runs BEFORE the single-segment slug regex
+        // so nested paths like /blog/{post}/ can be served from disk.
+        // Path-traversal-safe: input restricted to alphanumerics + / - . _ and
+        // explicitly rejects ".." segments.
+        $website = $website ?? DB::table('websites')
+            ->where('subdomain', $subdomain . '.levelupgrowth.io')
+            ->where('status', 'published')
+            ->first();
+
+        if ($website && preg_match('#^[a-z0-9/_\-.]*$#i', $path) && !str_contains($path, '..')) {
+            $siteRoot = storage_path('app/public/sites/' . $website->id);
+            $staticCandidates = array_unique([
+                $siteRoot . '/' . $slug . '.html',
+                $siteRoot . '/' . $slug . '/index.html',
+                $siteRoot . '/' . $path . '/index.html',
+                $siteRoot . '/' . $path . '.html',
+            ]);
+            foreach ($staticCandidates as $staticPath) {
+                if (is_file($staticPath)) {
+                    return response(file_get_contents($staticPath), 200)
+                        ->header('Content-Type', 'text/html; charset=utf-8')
+                        ->header('Cache-Control', 'public, max-age=300, s-maxage=300')
+                        ->header('X-Served-By', 'static-template');
+                }
+            }
+        }
+
+        // Validate slug format (only single-segment slugs reach BuilderRenderer)
         if (!preg_match('/^[a-z0-9\-]+$/', $slug)) {
             return $next($request);
         }
