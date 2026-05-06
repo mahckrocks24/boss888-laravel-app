@@ -18,6 +18,12 @@ class PublishedSiteMiddleware
     {
         $host = $request->getHost();
 
+        // Platform house domains are NEVER builder-rendered — pass to Laravel/SPA.
+        // Tenant builder render is for *.levelupgrowth.io subdomains and verified customer custom domains only.
+        if (in_array($host, ['levelupgrowth.io', 'www.levelupgrowth.io'], true)) {
+            return $next($request);
+        }
+
         // Try subdomain match first
         $subdomain = null;
         $isCustomDomain = false;

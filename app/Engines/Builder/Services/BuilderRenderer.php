@@ -101,6 +101,7 @@ class BuilderRenderer
             'features'     => $this->renderFeatures($sec, $brand),
             'cta'          => $this->renderCta($sec, $brand),
             'contact_form' => $this->renderContact($sec, $brand),
+            'blog_list'    => $this->renderBlogList($website, $brand),
             'footer'       => $this->renderFooter($sec, $brand),
             default        => $this->renderGeneric($sec, $brand),
         };
@@ -366,6 +367,49 @@ HTML;
         $p = $body ? "<p style=\"color:{$textColor};line-height:1.75\">" . e($body) . "</p>" : '';
 
         return "<section style=\"background:{$bg};padding:80px 24px\"><div style=\"max-width:1100px;margin:0 auto\">{$h}{$p}</div></section>";
+    }
+
+    private function renderBlogList(array $website, array $brand): string
+    {
+        $workspaceId = $website['workspace_id'] ?? 0;
+        $articles = DB::table('articles')
+            ->where('workspace_id', $workspaceId)
+            ->where('is_marketing_blog', 1)
+            ->where('status', 'published')
+            ->whereNull('deleted_at')
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->get(['id','title','slug','blog_category','featured_image_url','word_count','published_at']);
+
+        $primary     = $brand['primary']      ?? '#6C5CE7';
+        $fontHeading = $brand['font_heading'] ?? 'Syne';
+
+        if ($articles->isEmpty()) {
+            return "<section style=\"padding:80px 24px;background:#f8f9fc\"><div style=\"max-width:1100px;margin:0 auto;text-align:center;color:#5a5f72;font-family:'{$brand['font_body']}',sans-serif\">No articles yet — check back soon.</div></section>";
+        }
+
+        $cards = '';
+        foreach ($articles as $a) {
+            $img     = $a->featured_image_url ?? '';
+            $title   = e($a->title);
+            $cat     = e($a->blog_category ?? 'Article');
+            $slug    = e($a->slug);
+            $readMin = max(1, (int) round(((int) ($a->word_count ?? 0)) / 200));
+
+            $imgHtml = $img
+                ? "<img src=\"" . e($img) . "\" alt=\"{$title}\" style=\"width:100%;height:200px;object-fit:cover;display:block\">"
+                : "<div style=\"width:100%;height:200px;background:linear-gradient(135deg,{$primary}33,{$primary}66)\"></div>";
+
+            $cards .= "<a href=\"/blog/{$slug}\" style=\"text-decoration:none;color:inherit;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.06);display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s\" onmouseover=\"this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.12)'\" onmouseout=\"this.style.transform='';this.style.boxShadow='0 4px 12px rgba(0,0,0,.06)'\">"
+                    . $imgHtml
+                    . "<div style=\"padding:24px;flex:1;display:flex;flex-direction:column\">"
+                    . "<span style=\"font-size:12px;text-transform:uppercase;letter-spacing:1px;color:{$primary};font-weight:600;margin-bottom:8px\">{$cat}</span>"
+                    . "<h3 style=\"font-family:'{$fontHeading}',sans-serif;font-size:22px;line-height:1.3;color:#1a1a2e;margin-bottom:12px\">{$title}</h3>"
+                    . "<span style=\"margin-top:auto;font-size:13px;color:#8a8f9a\">{$readMin} min read</span>"
+                    . "</div></a>";
+        }
+
+        return "<section style=\"padding:80px 24px;background:#f8f9fc\"><div style=\"max-width:1200px;margin:0 auto\"><div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:32px\">{$cards}</div></div></section>";
     }
 
         public function getFullHtml(string $content, array $brand, string $siteName, string $pageTitle, array $seo = []): string

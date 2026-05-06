@@ -387,6 +387,11 @@ class WriteService
             ? $result['content']
             : "<p>Article generation pending. Topic: {$topic}</p>";
 
+        if ($content && !str_contains($content, '<h') && !str_contains($content, '<p>')) {
+            $converter = new \League\CommonMark\CommonMarkConverter(['html_input' => 'strip']);
+            $content = $converter->convert($content)->getContent();
+        }
+
         // Create the article (now persists correctly thanks to Phase 0.16 schema fix)
         $article = $this->createArticle($wsId, [
             'title'          => $params['title'] ?? ucfirst($topic),
