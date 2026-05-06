@@ -373,5 +373,17 @@ function closeMob() {
   burger.querySelectorAll('span').forEach(s => { s.style.transform=''; s.style.opacity='1'; });
 }
 </script>
+<script>
+(function(){
+  var s=document.createElement('script');
+  s.src='https://staging.levelupgrowth.io/chatbot-widget.js';
+  s.setAttribute('data-token','cwt_b581ecc06e88c21f3e23c2e7cf83cf5061db4ba51b45043b');
+  s.setAttribute('data-position','bottom-right');
+  s.setAttribute('data-color','#C9A84C');
+  s.setAttribute('data-theme','dark');
+  s.defer=true;
+  document.head.appendChild(s);
+})();
+</script>
 </body>
 </html>
