@@ -610,12 +610,6 @@ class StripeService
             $sub->update(['status' => 'past_due']);
             Log::warning("Payment failed for workspace {$sub->workspace_id}");
 
-            // LB-Engine17-D
-            $this->notifications->send($sub->workspace_id, 'billing', 'subscription.payment_failed', [
-                'subscription_id'        => $sub->id,
-                'stripe_subscription_id' => $sub->stripe_subscription_id,
-            ]);
-
             // T_NOTIF — payment failed (user-facing, email-required)
             $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')
                 ->where('workspace_id', $sub->workspace_id)
@@ -664,13 +658,6 @@ class StripeService
 
             // P0 hardening 2026-05-01: suspend WP site connections (reversible).
             $this->suspendBillingForWorkspace($sub->workspace_id, 'subscription_cancelled');
-
-            // LB-Engine17-D
-            $this->notifications->send($sub->workspace_id, 'billing', 'subscription.cancelled', [
-                'subscription_id'        => $sub->id,
-                'stripe_subscription_id' => $sub->stripe_subscription_id,
-                'downgraded_to'          => 'free',
-            ]);
 
             // T_NOTIF — subscription cancelled (user-facing, email-required)
             $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')
@@ -836,19 +823,19 @@ class StripeService
             );
         }
 
-        // T_NOTIF — dev-mode subscription activation (user-facing notification)
+        // T_NOTIF — dev-mode plan activation (no billing event, info severity)
         try {
             $this->notifications->dispatch(
-                type: \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_CREATED,
+                type: \App\Core\Notifications\NotificationTypes::SYSTEM_DEV_PLAN_ACTIVATED,
                 userId: $userId,
-                title: 'Subscription activated',
+                title: 'Plan activated (dev mode)',
                 workspaceId: $wsId,
-                body: $plan ? "Your {$plan->name} plan is now active." : 'Your plan is now active.',
-                severity: 'success',
+                body: $plan ? "Your {$plan->name} plan is now active (dev mode — no payment processed)." : 'Your plan is now active (dev mode).',
+                severity: 'info',
                 actionUrl: '/billing'
             );
         } catch (\Throwable $e) {
-            Log::warning('BILLING_SUBSCRIPTION_CREATED notification failed (devActivate)', ['error' => $e->getMessage()]);
+            Log::warning('SYSTEM_DEV_PLAN_ACTIVATED notification failed (devActivate)', ['error' => $e->getMessage()]);
         }
 
         return ['checkout_url' => null, 'dev_mode' => true, 'activated' => true, 'plan' => $plan?->name];

@@ -41,15 +41,16 @@ class NotificationTypes
     public const BILLING_TRIAL_EXPIRED          = 'billing.trial_expired';
 
     // System
-    public const SYSTEM_WORKSPACE_CREATED = 'system.workspace_created';
-    public const SYSTEM_USER_SIGNUP       = 'system.user_signup';
-    public const SYSTEM_USER_LOGIN        = 'system.user_login';
-    public const SYSTEM_PASSWORD_CHANGED  = 'system.password_changed';
-    public const SYSTEM_API_ERROR         = 'system.api_error';
-    public const SYSTEM_RUNTIME_DOWN      = 'system.runtime_down';
-    public const SYSTEM_STORAGE_WARNING   = 'system.storage_warning';
-    public const SYSTEM_BACKUP_FAILED     = 'system.backup_failed';
-    public const SYSTEM_ADMIN_BROADCAST   = 'system.admin_broadcast';
+    public const SYSTEM_WORKSPACE_CREATED   = 'system.workspace_created';
+    public const SYSTEM_USER_SIGNUP         = 'system.user_signup';
+    public const SYSTEM_USER_LOGIN          = 'system.user_login';
+    public const SYSTEM_PASSWORD_CHANGED    = 'system.password_changed';
+    public const SYSTEM_API_ERROR           = 'system.api_error';
+    public const SYSTEM_RUNTIME_DOWN        = 'system.runtime_down';
+    public const SYSTEM_STORAGE_WARNING     = 'system.storage_warning';
+    public const SYSTEM_BACKUP_FAILED       = 'system.backup_failed';
+    public const SYSTEM_ADMIN_BROADCAST     = 'system.admin_broadcast';
+    public const SYSTEM_DEV_PLAN_ACTIVATED  = 'system.dev_plan_activated';
 
     // Errors
     public const ERROR_ENGINE_FAILURE   = 'error.engine_failure';
