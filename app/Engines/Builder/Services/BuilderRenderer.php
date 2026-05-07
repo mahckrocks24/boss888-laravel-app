@@ -100,7 +100,7 @@ class BuilderRenderer
             'hero'         => $this->renderHero($sec, $brand),
             'features'     => $this->renderFeatures($sec, $brand),
             'cta'          => $this->renderCta($sec, $brand),
-            'contact_form' => $this->renderContact($sec, $brand),
+            'contact_form' => $this->renderContact($sec, $brand, $website),
             'blog_list'    => $this->renderBlogList($website, $brand),
             'footer'       => $this->renderFooter($sec, $brand),
             default        => $this->renderGeneric($sec, $brand),
@@ -258,7 +258,7 @@ HTML;
 HTML;
     }
 
-    private function renderContact(array $sec, array $brand): string
+    private function renderContact(array $sec, array $brand, array $website = []): string
     {
         $bg = $sec['style']['bg'] ?? '#ffffff';
         $isLight = $this->isLight($bg);
@@ -267,44 +267,91 @@ HTML;
 
         $heading = '';
         $text = '';
-        $fields = [];
         $submitLabel = 'Send Message';
         foreach ($sec['components'] ?? [] as $c) {
             if ($c['type'] === 'heading') $heading = $c['text'] ?? '';
-            if ($c['type'] === 'text') $text = $c['text'] ?? '';
-            if ($c['type'] === 'form') {
-                $fields = $c['fields'] ?? [];
-                $submitLabel = $c['content']['submit_label'] ?? 'Send Message';
-            }
+            if ($c['type'] === 'text')    $text    = $c['text'] ?? '';
+            if ($c['type'] === 'form')    $submitLabel = $c['content']['submit_label'] ?? 'Send Message';
         }
         if (!$heading) $heading = $sec['heading'] ?? '';
-        if (!$fields) $fields = $sec['fields'] ?? [['label'=>'Name','placeholder'=>'Your name'],['label'=>'Email','placeholder'=>'you@email.com'],['label'=>'Message','placeholder'=>'Your message']];
 
-        $fieldsHtml = '';
-        foreach ($fields as $f) {
-            $label = e(is_string($f) ? ucfirst($f) : ($f['label'] ?? ''));
-            $ph = e(is_string($f) ? '' : ($f['placeholder'] ?? ''));
-            $tag = (strtolower($label) === 'message') ? 'textarea' : 'input';
-            $fieldsHtml .= "<div style=\"margin-bottom:16px\"><label style=\"display:block;font-size:13px;font-weight:600;color:{$headColor};margin-bottom:6px\">{$label}</label>";
-            if ($tag === 'textarea') {
-                $fieldsHtml .= "<textarea placeholder=\"{$ph}\" rows=\"4\" style=\"width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical\"></textarea>";
-            } else {
-                $fieldsHtml .= "<input type=\"text\" placeholder=\"{$ph}\" style=\"width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit\">";
-            }
-            $fieldsHtml .= '</div>';
-        }
+        // Resolve subdomain prefix (websites.subdomain stores full hostname).
+        $fullSubdomain  = (string) ($website['subdomain'] ?? '');
+        $subdomain      = str_replace('.levelupgrowth.io', '', $fullSubdomain);
+        $subdomainAttr  = e($subdomain);
+        $websiteId      = (int) ($website['id'] ?? 0);
+        $primaryColor   = $brand['primary'] ?? '#6C5CE7';
+        $headingSafe    = e($heading);
+        $textSafe       = e($text);
+        $submitLabelSafe = e($submitLabel);
+        $fontHeading    = $brand['font_heading'] ?? 'Syne';
 
         return <<<HTML
 <section style="background:{$bg};padding:80px 24px">
   <div style="max-width:600px;margin:0 auto">
-    <h2 style="font-family:'{$brand['font_heading']}',sans-serif;color:{$headColor};text-align:center;margin-bottom:8px">{$heading}</h2>
-    <p style="color:{$textColor};text-align:center;margin-bottom:32px">{$text}</p>
-    <form onsubmit="event.preventDefault();alert('Thank you! We will get back to you soon.')">
-      {$fieldsHtml}
-      <button type="submit" style="background:{$brand['primary']};color:#fff;border:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;width:100%">{$submitLabel}</button>
+    <h2 style="font-family:'{$fontHeading}',sans-serif;color:{$headColor};text-align:center;margin-bottom:8px">{$headingSafe}</h2>
+    <p style="color:{$textColor};text-align:center;margin-bottom:32px">{$textSafe}</p>
+    <form class="contact-form" id="contact-form-{$websiteId}" data-subdomain="{$subdomainAttr}" onsubmit="luSubmitContact(event, this)">
+      <div style="margin-bottom:16px">
+        <input type="text"  name="firstname" placeholder="Your name"  required maxlength="100" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
+      </div>
+      <div style="margin-bottom:16px">
+        <input type="email" name="email"     placeholder="you@email.com" required maxlength="255" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
+      </div>
+      <div style="margin-bottom:16px">
+        <input type="tel"   name="phone"     placeholder="Your phone (optional)" maxlength="50" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
+      </div>
+      <div style="margin-bottom:16px">
+        <textarea name="message" placeholder="Your message" rows="4" required maxlength="2000" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+      </div>
+      <button type="submit" style="background:{$primaryColor};color:#fff;border:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;width:100%">{$submitLabelSafe}</button>
+      <div class="lu-contact-success" style="display:none;margin-top:16px;padding:12px;background:#d4edda;color:#155724;border-radius:8px;text-align:center">&#10003; Thank you! We will get back to you soon.</div>
+      <div class="lu-contact-error" style="display:none;margin-top:16px;padding:12px;background:#f8d7da;color:#721c24;border-radius:8px;text-align:center">Something went wrong. Please try again.</div>
     </form>
   </div>
 </section>
+<script>
+if (typeof window.luSubmitContact === 'undefined') {
+  window.luSubmitContact = function(e, form) {
+    e.preventDefault();
+    var btn = form.querySelector('button[type=submit]');
+    var origLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    var subdomain = form.dataset.subdomain;
+    var successEl = form.querySelector('.lu-contact-success');
+    var errorEl   = form.querySelector('.lu-contact-error');
+    if (successEl) successEl.style.display = 'none';
+    if (errorEl)   errorEl.style.display   = 'none';
+    fetch('/api/public/contact/' + encodeURIComponent(subdomain), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: JSON.stringify({
+        firstname: form.firstname.value,
+        email:     form.email.value,
+        phone:     form.phone ? form.phone.value : '',
+        message:   form.message.value
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.success) {
+        if (successEl) successEl.style.display = 'block';
+        form.reset();
+      } else {
+        if (errorEl) errorEl.style.display = 'block';
+      }
+      btn.disabled = false;
+      btn.textContent = origLabel;
+    })
+    .catch(function() {
+      if (errorEl) errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = origLabel;
+    });
+  };
+}
+</script>
 HTML;
     }
 

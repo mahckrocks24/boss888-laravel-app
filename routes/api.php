@@ -5138,6 +5138,14 @@ Route::prefix("blog")->group(function () {
     Route::get("/categories", [$c, "categories"]);
 });
 
+// ── T3.2 Public contact form submission (no auth, rate-limited) ─────
+Route::middleware(['throttle:10,1'])->group(function () {
+    Route::post(
+        '/public/contact/{subdomain}',
+        [\App\Http\Controllers\Api\PublicContactController::class, 'submit']
+    )->where('subdomain', '[a-z0-9\-]+');
+});
+
 
 // ── T3 Template Editor Routes ──────────────────────────────────
 Route::get('/builder/websites/{id}/preview', function ($id) {

@@ -450,6 +450,7 @@ class ChatbotResponseService
             ]);
             DB::table('chatbot_sessions')->where('id', $sessionId)
                 ->update(['lead_id' => $existing->id, 'visitor_name' => $name, 'visitor_email' => $email, 'visitor_phone' => $phone]);
+            $this->notifyChatbotLeadCapture($workspaceId, (int) $existing->id, $name, $email, $phone, $sessionId, true);
             return ['success' => true, 'data' => ['lead_id' => $existing->id, 'created' => false, 'updated' => true]];
         }
 
@@ -478,7 +479,50 @@ class ChatbotResponseService
         DB::table('chatbot_sessions')->where('id', $sessionId)
             ->update(['lead_id' => $lead->id, 'visitor_name' => $name, 'visitor_email' => $email, 'visitor_phone' => $phone]);
 
+        $this->notifyChatbotLeadCapture($workspaceId, (int) $lead->id, $name, $email, $phone, $sessionId, false);
+
         return ['success' => true, 'data' => ['lead_id' => $lead->id, 'created' => true, 'updated' => false]];
+    }
+
+    /**
+     * T3.2 Phase 5 — fire LEAD_CHATBOT_CAPTURE notification.
+     * Wrapped in try/catch so a notification failure never breaks the lead
+     * capture flow (the lead row + note are already persisted by callers).
+     */
+    private function notifyChatbotLeadCapture(int $workspaceId, int $leadId, string $name, ?string $email, ?string $phone, int $sessionId, bool $isExisting): void
+    {
+        try {
+            $ownerId = DB::table('workspace_users')
+                ->where('workspace_id', $workspaceId)
+                ->where('role', 'owner')
+                ->value('user_id');
+            if (! $ownerId) return;
+
+            app(\App\Core\Notifications\NotificationService::class)->dispatch(
+                type: \App\Core\Notifications\NotificationTypes::LEAD_CHATBOT_CAPTURE,
+                userId: (int) $ownerId,
+                title: 'New chatbot lead captured',
+                workspaceId: $workspaceId,
+                body: "{$name} (" . ($email ?: ($phone ?: 'no contact')) . ') was captured via chatbot' . ($isExisting ? ' — existing lead updated' : ''),
+                data: [
+                    'lead_id'      => $leadId,
+                    'name'         => $name,
+                    'email'        => $email,
+                    'phone'        => $phone,
+                    'session_id'   => $sessionId,
+                    'source'       => 'chatbot888',
+                    'is_duplicate' => $isExisting,
+                ],
+                actionUrl: '/crm/leads/' . $leadId,
+                severity: $isExisting ? 'warning' : 'success'
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Chatbot lead notification failed', [
+                'workspace_id' => $workspaceId,
+                'lead_id'      => $leadId,
+                'error'        => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

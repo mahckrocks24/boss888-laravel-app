@@ -85,6 +85,34 @@ class PublishedSiteMiddleware
             ->where('status', 'published')
             ->first();
 
+        // T3.2 Phase 4 — Blog gating: Growth+ plans only.
+        // Workspace 1 (platform's own LevelUp Growth content) is exempt.
+        // Triggers on /blog or /blog/<anything>; if the workspace plan does
+        // not include content_writing, render404 (don't expose tenant's
+        // blog content publicly when their plan doesn't pay for it).
+        if ($website
+            && (int) $website->workspace_id !== 1
+            && (str_starts_with($slug, 'blog') || str_starts_with($path, 'blog/'))) {
+            $sub = DB::table('subscriptions')
+                ->where('workspace_id', $website->workspace_id)
+                ->whereIn('status', ['active', 'trialing'])
+                ->latest()
+                ->first();
+            $allowsBlog = false;
+            if ($sub) {
+                $plan = DB::table('plans')->where('id', $sub->plan_id)->first();
+                if ($plan && $plan->features_json) {
+                    $features = is_string($plan->features_json)
+                        ? json_decode($plan->features_json, true)
+                        : (array) $plan->features_json;
+                    $allowsBlog = ! empty($features['content_writing']);
+                }
+            }
+            if (! $allowsBlog) {
+                return $this->render404();
+            }
+        }
+
         if ($website && preg_match('#^[a-z0-9/_\-.]*$#i', $path) && !str_contains($path, '..')) {
             $siteRoot = storage_path('app/public/sites/' . $website->id);
             $staticCandidates = array_unique([
