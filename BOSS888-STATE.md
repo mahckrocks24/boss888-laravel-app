@@ -25,11 +25,11 @@
 ## Last Commit
 
 ```
+722ace8 chore: add BOSS888-STATE.md — canonical living state doc
+3ea4934 feat: CHATBOT888 completion — Block 2 (T2.1-T2.6)
 d9d82e0 CHATBOT888: fix guardrails to respect business_context_text as grounding source
 8d5a767 CHATBOT888: add chatbot-widget.js to version control
 87eb11c CHATBOT888: Chef Red industry pack, guardrails turn_count gate, business context, widget cache-bust
-6f94e55 CHATBOT888: 8 tables migrated, Chef Red enabled, widget token minted, script injected
-5750178 Chef Red blog: fix breadcrumb z-index and background to prevent title overlap
 ```
 
 ---
@@ -53,9 +53,11 @@ Plan slugs: `free`, `starter`, `ai-lite`, `growth`, `pro`, `agency`.
 - `/var/www/chef-red/` — full site: `index.html`, `blog/`, `images/`, `sitemap.xml`, `404.html`, `_slug-map.json`. Chef Red is the first live client. CHATBOT888 widget injected (per recent commits).
 - `/var/www/clutter-angels/` — `index.html` only (placeholder, full site deploy pending).
 
-**Nginx sites-enabled:**
-- `levelup-staging` → `134.209.93.41`, `staging.levelupgrowth.io`, `app.levelupgrowth.io`, `levelupgrowth.io`, `chef-red.levelupgrowth.io`, `chefredraymundo.com`, `www.chefredraymundo.com`
-- `clutter-angels` → `clutter-angels.levelupgrowth.io`
+**Nginx sites-enabled (wildcard 2026-05-07):**
+- `levelup-staging` → `134.209.93.41`, `levelupgrowth.io`, `*.levelupgrowth.io`, `chefredraymundo.com`, `www.chefredraymundo.com`
+- `clutter-angels` → `clutter-angels.levelupgrowth.io` (likely shadowed by the wildcard now; can be retired later)
+- Pre-wildcard backup: `/etc/nginx/sites-available/levelup-staging.bak-wildcard-20260507-1514`
+- Effect: any new `*.levelupgrowth.io` subdomain auto-routes to Laravel; no manual nginx edits needed for new tenants.
 
 **Nginx sites-available (NOT enabled):**
 - `chef-red` (file exists but no symlink — chef-red.levelupgrowth.io and chefredraymundo.com are served via the levelup-staging vhost's multi server_name list)
@@ -113,13 +115,23 @@ Daily backup is purely manual (no cron yet — open infra task).
 
 ---
 
-## Known Code Gaps (orientation 2026-05-07)
+## Known Code Gaps (refreshed end-of-day 2026-05-07)
 
-1. **`BuilderRenderer::injectChatbotWidget` does NOT exist** — file is 576 lines, 18 methods, zero references to `chatbot` or `widget`. The 2026-05-02 progress entry's claim that this method was added is not in the recovered code. Builder-published sites currently emit no chatbot widget. (Static client sites like Chef Red have the widget injected directly into their HTML, bypassing the renderer.)
-2. **PlanSeeder is missing 4 chatbot keys** (`chatbot_included`, `chatbot_addon_eligible`, `chatbot_kb_max_docs`, `chatbot_messages_per_month`). `FeatureGateService::canAccessChatbot` Path 1 is dead; Path 2 (price ≥ $199) is the only working gate.
-3. **Blog completely ungated** — `routes/web.php:128-129` (static HTML) and the `blog` API prefix at `routes/api.php:5125` have no auth, no middleware, no plan check. Free-tier reads everything. Open-by-design or open-by-omission — owner decision pending.
-4. **No `STRIPE_MODE` env var** — `STRIPE_SECRET_KEY` is set but mode is implicit. Should be made explicit before production gate.
-5. **No `daily-progress/` or `storage/audits/` directories on the server** — both are local-only on Windows. Server-side log discipline not yet established.
+**Resolved during Block 2** (commit 3ea4934):
+- ~~`BuilderRenderer::injectChatbotWidget` missing~~ → added in T2.2; exercised end-to-end through nginx (with T2.5 `enabled=false` suppression)
+- ~~PlanSeeder missing 4 chatbot keys~~ → added in T2.1; all 6 plans now have full entitlement matrix
+- ~~No `STRIPE_MODE` env var~~ → set to `test` in T2.4 stage 1 (.env additions tracked via .env.example placeholders, not committed)
+- ~~CHATBOT888 settings change doesn't bust render cache~~ → cache invalidation added in T2.3 (`updateSettings` / `mintWidgetToken` / `revokeWidgetToken`)
+- ~~`Subscription` model fillable missing chatbot_addon fields~~ → fixed in T2.6 (latent pre-existing bug surfaced during verify)
+
+**Still open**:
+1. **Blog completely ungated** — `routes/web.php:128-129` + `routes/api.php:5125` have no auth, no plan check. Owner decision pending (T5.1).
+2. **No `daily-progress/` or `storage/audits/` directories on the server** — both are local-only on Windows. Server-side log discipline not yet established.
+3. **`subscriptions.chatbot_addon_active=1` for ws=2 with NULL `chatbot_addon_item_id`** — data drift from Chef Red May-6 setup. Functionally fine (Path 1 entitlement masks it). Cleanup deferred to T6.2.
+4. **CHATBOT_ADDON_PRICE_ID not in `config/billing.php`** — only env-resolved. Works fine via `config(...) ?? env(...)` fallback in StripeService, but for symmetry with other Stripe keys should be added to the config file. Minor.
+5. **Stripe live add-on flow only PARTIALLY verified** (T2.4) — synchronous `subscriptionItems->create` requires a real `stripe_subscription_id` on the workspace, which requires real checkout flow + webhook reachability. Deferred to T6.2.
+6. **`storage/templates/` + `storage/creative-templates/` untracked in git** — 17 industry packs are on disk but not version-controlled. Should be tracked or explicitly gitignored.
+7. **No `default_server` directive in nginx port 80 vhosts** — Host-header fallthrough relies on alphabetical sites-enabled load order. Surfaced during T2.2 when `levelupgrowth.levelupgrowth.io` was missing from server_name. Adding explicit `default_server` would harden against future drift.
 
 ---
 
@@ -127,16 +139,20 @@ Daily backup is purely manual (no cron yet — open infra task).
 
 | ID | Task | Status |
 |---|---|---|
-| T1.1 | STATE.md created | ✅ |
-| T1.2 | Backfill daily-progress May 3-7 | ⬜ |
-| T1.3 | Update PLAN.md | ⬜ |
-| T2.1 | PlanSeeder chatbot keys | ⬜ |
-| T2.2 | BuilderRenderer injectChatbotWidget | ⬜ |
-| T2.3 | Cache invalidation on chatbot toggle | ⬜ |
-| T2.4 | Stripe TEST add-on verification | ⬜ |
+| T1.1 | STATE.md created | ✅ 2026-05-07 |
+| T1.2 | Backfill daily-progress May 3-7 | ✅ 2026-05-07 |
+| T1.3 | Update PLAN.md | ✅ 2026-05-07 |
+| T2.1 | PlanSeeder chatbot keys | ✅ 2026-05-07 |
+| T2.2 | BuilderRenderer injectChatbotWidget | ✅ 2026-05-07 |
+| T2.3 | Cache invalidation on chatbot toggle | ✅ 2026-05-07 |
+| T2.4 | Stripe TEST add-on verification | ⚠️ PARTIAL 2026-05-07 (live sub create → T6.2) |
+| T2.5 | injectChatbotWidget: suppress when enabled=false | ✅ 2026-05-07 |
+| T2.6 | StripeService chatbot_addon_active + Subscription fillable fix | ✅ 2026-05-07 |
 | T3.1 | Template hero zoom/crop fix | ⬜ |
-| T3.2 | Contact form audit | ⬜ |
-| T3.3 | Clutter Angels workspace setup | ⬜ |
+| T3.2 | Contact form audit | ⬜ (audit done 2026-05-07, fix pending) |
+| T3.3 | Clutter Angels workspace setup | ⏸ ON HOLD 2026-05-07 |
+| T3.4 | Chef Red: migrate static HTML → BuilderRenderer | ⬜ NEW 2026-05-07 (multi-session) |
+| T3.5 | Platform rule: no static-only sites; DB sections_json required | ⬜ NEW 2026-05-07 |
 | T4.1 | KB retrieval OR logic fix | ⬜ |
 | T4.2 | LevelUpGrowth homepage content | ⬜ |
 | T5.1 | Blog gating — awaiting owner decision | ⏳ |
