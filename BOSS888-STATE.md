@@ -27,12 +27,12 @@
 ## Last Commit
 
 ```
+17e4752 feat: Notification System v2 — full platform coverage
 9939f6c chore: Postmark wired — transactional email live
 f8d98e9 chore: nginx wildcard + platform fixes state
 722ace8 chore: add BOSS888-STATE.md — canonical living state doc
 3ea4934 feat: CHATBOT888 completion — Block 2 (T2.1-T2.6)
 d9d82e0 CHATBOT888: fix guardrails to respect business_context_text as grounding source
-87eb11c CHATBOT888: Chef Red industry pack, guardrails turn_count gate, business context, widget cache-bust
 ```
 
 ---
