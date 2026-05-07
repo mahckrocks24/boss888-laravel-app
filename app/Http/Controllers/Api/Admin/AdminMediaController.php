@@ -40,7 +40,6 @@ class AdminMediaController
             if ($search !== '') {
                 $q->where(function ($inner) use ($search) {
                     $inner->where('media.filename', 'like', "%{$search}%")
-                        ->orWhere('media.description', 'like', "%{$search}%")
                         ->orWhereJsonContains('media.tags', $search);
                 });
             }
@@ -50,10 +49,8 @@ class AdminMediaController
                 $q->where('media.category', $category);
             }
 
-            $industry = trim((string) $request->input('industry', ''));
-            if ($industry !== '' && $industry !== 'all') {
-                $q->where('media.industry', $industry);
-            }
+            // T3.1B — `industry` column does not exist in schema. Filter is
+            // accepted in the request for forward-compat but silently no-op'd.
 
             $type = strtolower(trim((string) $request->input('type', '')));
             if ($type === 'image') {
@@ -105,15 +102,12 @@ class AdminMediaController
                     'media.duration_seconds',
                     'media.source',
                     'media.category',
-                    'media.industry',
-                    'media.mood',
-                    'media.orientation',
                     'media.is_platform_asset',
                     'media.is_public',
-                    'media.use_count',
-                    'media.description',
                     'media.tags',
                     'media.used_in',
+                    'media.prompt',
+                    'media.model',
                     'media.created_at',
                     'workspaces.name as workspace_name'
                 )
@@ -123,8 +117,8 @@ class AdminMediaController
             // second round-trip.
             $categories = DB::table('media')->whereNotNull('category')
                 ->distinct()->pluck('category')->filter()->values();
-            $industries = DB::table('media')->whereNotNull('industry')
-                ->distinct()->pluck('industry')->filter()->values();
+            // T3.1B — `industry` column missing in schema; return empty for forward-compat
+            $industries = collect();
             $sources    = DB::table('media')->whereNotNull('source')
                 ->distinct()->pluck('source')->filter()->values();
 
@@ -276,6 +270,17 @@ class AdminMediaController
                 }
             }
 
+            // T3.1B — `industry`, `description`, `orientation`, `use_count`
+            // columns don't exist in schema. Fold orientation/industry/description
+            // into metadata_json so the data isn't lost.
+            $metadata = [
+                'uploaded_by_admin' => true,
+                'original_name'     => $file->getClientOriginalName(),
+                'orientation'       => $orientation,
+            ];
+            if ($industry)    $metadata['industry']    = $industry;
+            if ($description) $metadata['description'] = $description;
+
             $id = DB::table('media')->insertGetId([
                 'workspace_id'      => null,
                 'filename'          => $file->getClientOriginalName() ?: $name,
@@ -291,17 +296,10 @@ class AdminMediaController
                 'duration_seconds'  => $duration,
                 'source'            => 'platform',
                 'category'          => $category ?: null,
-                'industry'          => $industry ?: null,
-                'orientation'       => $orientation,
                 'is_platform_asset' => 1,
                 'is_public'         => 1,
-                'use_count'         => 0,
-                'description'       => $description ?: null,
                 'tags'              => !empty($tags) ? json_encode($tags) : null,
-                'metadata_json'     => json_encode([
-                    'uploaded_by_admin' => true,
-                    'original_name'     => $file->getClientOriginalName(),
-                ]),
+                'metadata_json'     => json_encode($metadata),
                 'created_at'        => now(),
                 'updated_at'        => now(),
             ]);
@@ -466,22 +464,17 @@ class AdminMediaController
             $tags = is_array($tags) ? array_values(array_filter(array_map('strval', $tags))) : [];
             $patch['tags'] = !empty($tags) ? json_encode($tags) : null;
         }
-        if ($request->has('description')) {
-            $patch['description'] = trim((string) $request->input('description')) ?: null;
-        }
+        // T3.1B — description and industry columns don't exist in schema;
+        // accept inputs in the request for forward-compat but ignore them.
         if ($request->has('category')) {
             $c = $this->sanitize((string) $request->input('category'), 'hero,gallery,website,blog,logo,team,other');
             if ($c !== '') $patch['category'] = $c;
-        }
-        if ($request->has('industry')) {
-            $i = $this->sanitizeFree((string) $request->input('industry'), 50);
-            if ($i !== '') $patch['industry'] = $i;
         }
         if (empty($patch)) return response()->json(['success' => false, 'error' => 'Nothing to update'], 400);
         $patch['updated_at'] = now();
         DB::table('media')->where('id', $id)->update($patch);
 
-        $updated = DB::table('media')->where('id', $id)->first(['id','tags','description','category','industry']);
+        $updated = DB::table('media')->where('id', $id)->first(['id','tags','category']);
         return response()->json(['success' => true, 'media' => $updated]);
     }
 
