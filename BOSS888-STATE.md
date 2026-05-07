@@ -22,18 +22,32 @@
 - Mail: Postmark PENDING APPROVAL (Test mode) ⏳ — infrastructure FULLY WIRED 2026-05-07: `symfony/postmark-mailer` v7.4.9 + `symfony/http-client` v7.4.9 installed, `POSTMARK_TOKEN` set, DKIM ✅ + Return-Path ✅ verified for `levelupgrowth.io`. Account is in Test mode pending Postmark manual approval (expected within hours). In Test mode, sends only deliver to addresses within verified domains (e.g. `admin@levelupgrowth.io` worked); external recipients will be rejected until approval. Once approval lands, no code change needed — mail starts flowing automatically.
 - Notifications v2: LIVE 2026-05-07 — extended `notifications` table (+9 cols, backward-compat with existing send()), new `notification_preferences` table, NotificationService extended with dispatch/broadcast/unreadCount/markAllRead, queued SendNotificationEmail job + Blade template, NotificationController +4 endpoints, AdminNotificationController + admin broadcast, `lu:notifications:purge` command (daily 90-day retention), trigger wiring shipped at: StripeService (5 events, 9 sites incl. dev paths), AuthController (signup → admin), EngineExecutionService (agent task complete/fail/approval, gated by source==agent).
 - Contact form pipeline (T3.2): LIVE 2026-05-08 — `POST /api/public/contact/{subdomain}` (rate-limited 10/min/IP), CRM write to `contacts` with email-based dedup + polymorphic `activities` touchpoint logging, LEAD_CONTACT_FORM + LEAD_DUPLICATE_FLAGGED notifications, BuilderRenderer::renderContact() rewritten with proper `name=` attrs + `fetch()` handler + success/error UI, blog gating (Growth+ plans only via `content_writing=true`; workspace 1 exempt), LEAD_CHATBOT_CAPTURE notification added to ChatbotResponseService::captureLead.
+- Media Library (T3.1): UNBLOCKED 2026-05-08 — MediaController SQL bug fixed (removed `industry`, `description`, `use_count` references — columns no migration ever added; library() now returns 200). 17 platform hero images backfilled into `media` table (category=hero, is_platform_asset=1, source=platform). 6 mis-flagged Chef Red ws=2 rows corrected. All 17 hero JPGs regenerated via DALL-E 3 (1792x1024 hd) replacing earlier mockup screenshots — photorealistic stock photography, ~2-3MB per image, prompts + provenance recorded in media.prompt + metadata_json.
+
+## Image generation policy (LOCKED — T3.6 implementation pending)
+
+| Tier | Hero image source | Cost per site |
+|---|---|---|
+| Free | Fixed `/storage/builder-heroes/{industry}.jpg` (same stock per industry) | $0 |
+| Trial (3-day) | Random pick from the existing 17 hero pool | $0 |
+| Starter+ (paid) | Fresh DALL-E 3 hd 1792×1024 generated at site-creation time, stored at `/storage/workspace-heroes/{workspace_id}/{website_id}.jpg` | $0.12 |
+| Growth+ — blog featured images | DALL-E 3 standard 1024×1024 | $0.04 each |
+
+**Implementation gate:** T3.6 in PLAN.md. Depends on T5.2 (pricing) and BLOCKS production launch. Files to patch when T3.6 runs: PlanSeeder (`hero_image_generation` boolean per plan), FeatureGateService (`canGenerateHeroImage(wsId)`), the site-creation flow, BuilderRenderer (workspace-specific hero with industry-stock fallback).
+
+**Today's T3.1 hero regeneration was a one-off platform-asset replacement** (the 17 industry stock photos themselves) — not a tenant-on-creation generation. Tenants are NOT generating heroes today; they get the industry stock by default until T3.6 ships.
 
 ---
 
 ## Last Commit
 
 ```
+67a4704 fix: MediaController SQL — remove non-existent columns
+0e6e5bd feat: T3.2 contact form pipeline — platform-wide
+f6029d1 fix: notification dedup — remove legacy send() duplicates in StripeService; add SYSTEM_DEV_PLAN_ACTIVATED type
+5bfa531 chore: STATE.md — Notification System v2 documented
 17e4752 feat: Notification System v2 — full platform coverage
 9939f6c chore: Postmark wired — transactional email live
-f8d98e9 chore: nginx wildcard + platform fixes state
-722ace8 chore: add BOSS888-STATE.md — canonical living state doc
-3ea4934 feat: CHATBOT888 completion — Block 2 (T2.1-T2.6)
-d9d82e0 CHATBOT888: fix guardrails to respect business_context_text as grounding source
 ```
 
 ---

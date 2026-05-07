@@ -1,0 +1,1083 @@
+{
+    "id": "technology",
+    "name": "Technology / SaaS",
+    "industry": "technology",
+    "description": "Modern B2B SaaS template — dark gradient hero, feature cards, how-it-works, integrations strip, three-tier pricing, engineering blog, and demo booking. Built for developer-tool and AI-infrastructure companies.",
+    "thumbnail": "/storage/builder-heroes/technology.jpg",
+    "category": "saas",
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_1": "nav .nav-links a:nth-child(1)",
+                "nav_2": "nav .nav-links a:nth-child(2)",
+                "nav_3": "nav .nav-links a:nth-child(3)",
+                "nav_4": "nav .nav-links a:nth-child(4)",
+                "nav_login": "nav .nav-login",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "announcement",
+            "name": "Announcement Bar",
+            "elements": {
+                "announcement_text": ".announcement-text",
+                "announcement_link": ".announcement-link"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero",
+            "elements": {
+                "hero_image": "section.hero",
+                "hero_eyebrow": ".hero-eyebrow",
+                "hero_title": ".hero-title",
+                "hero_subtitle": ".hero-subtitle",
+                "hero_cta": ".hero-cta",
+                "hero_cta_secondary": ".hero-cta-secondary",
+                "hero_code_title": ".hero-code-title",
+                "hero_code_body": ".hero-code-body"
+            }
+        },
+        {
+            "id": "stats",
+            "name": "Metrics Bar",
+            "elements": {
+                "stat_1_value": ".stat-1-value",
+                "stat_1_label": ".stat-1-label",
+                "stat_2_value": ".stat-2-value",
+                "stat_2_label": ".stat-2-label",
+                "stat_3_value": ".stat-3-value",
+                "stat_3_label": ".stat-3-label",
+                "stat_4_value": ".stat-4-value",
+                "stat_4_label": ".stat-4-label"
+            }
+        },
+        {
+            "id": "features",
+            "name": "Feature Grid",
+            "elements": {
+                "features_eyebrow": ".features-eyebrow",
+                "features_title": ".features-title",
+                "features_intro": ".features-intro",
+                "feature_1_title": ".feature-1-title",
+                "feature_1_text": ".feature-1-text",
+                "feature_2_title": ".feature-2-title",
+                "feature_2_text": ".feature-2-text",
+                "feature_3_title": ".feature-3-title",
+                "feature_3_text": ".feature-3-text",
+                "feature_4_title": ".feature-4-title",
+                "feature_4_text": ".feature-4-text",
+                "feature_5_title": ".feature-5-title",
+                "feature_5_text": ".feature-5-text",
+                "feature_6_title": ".feature-6-title",
+                "feature_6_text": ".feature-6-text"
+            }
+        },
+        {
+            "id": "how_it_works",
+            "name": "How It Works",
+            "elements": {
+                "how_eyebrow": ".how-eyebrow",
+                "how_title": ".how-title",
+                "how_intro": ".how-intro",
+                "step_1_title": ".step-1-title",
+                "step_1_text": ".step-1-text",
+                "step_2_title": ".step-2-title",
+                "step_2_text": ".step-2-text",
+                "step_3_title": ".step-3-title",
+                "step_3_text": ".step-3-text",
+                "step_4_title": ".step-4-title",
+                "step_4_text": ".step-4-text"
+            }
+        },
+        {
+            "id": "integrations",
+            "name": "Integrations",
+            "elements": {
+                "integrations_eyebrow": ".integrations-eyebrow",
+                "integrations_title": ".integrations-title",
+                "integration_1": ".integration-1",
+                "integration_2": ".integration-2",
+                "integration_3": ".integration-3",
+                "integration_4": ".integration-4",
+                "integration_5": ".integration-5",
+                "integration_6": ".integration-6",
+                "integration_7": ".integration-7",
+                "integration_8": ".integration-8"
+            }
+        },
+        {
+            "id": "use_cases",
+            "name": "Use Cases",
+            "elements": {
+                "usecases_eyebrow": ".usecases-eyebrow",
+                "usecases_title": ".usecases-title",
+                "usecase_1_title": ".usecase-1-title",
+                "usecase_1_text": ".usecase-1-text",
+                "usecase_1_metric": ".usecase-1-metric",
+                "usecase_2_title": ".usecase-2-title",
+                "usecase_2_text": ".usecase-2-text",
+                "usecase_2_metric": ".usecase-2-metric",
+                "usecase_3_title": ".usecase-3-title",
+                "usecase_3_text": ".usecase-3-text",
+                "usecase_3_metric": ".usecase-3-metric"
+            }
+        },
+        {
+            "id": "testimonials",
+            "name": "Engineer Testimonials",
+            "elements": {
+                "testimonials_eyebrow": ".testimonials-eyebrow",
+                "testimonials_title": ".testimonials-title",
+                "testimonial_1_quote": ".testimonial-1-quote",
+                "testimonial_1_author": ".testimonial-1-author",
+                "testimonial_1_role": ".testimonial-1-role",
+                "testimonial_2_quote": ".testimonial-2-quote",
+                "testimonial_2_author": ".testimonial-2-author",
+                "testimonial_2_role": ".testimonial-2-role",
+                "testimonial_3_quote": ".testimonial-3-quote",
+                "testimonial_3_author": ".testimonial-3-author",
+                "testimonial_3_role": ".testimonial-3-role"
+            }
+        },
+        {
+            "id": "pricing",
+            "name": "Pricing",
+            "elements": {
+                "pricing_eyebrow": ".pricing-eyebrow",
+                "pricing_title": ".pricing-title",
+                "pricing_intro": ".pricing-intro",
+                "plan_1_name": ".plan-1-name",
+                "plan_1_price": ".plan-1-price",
+                "plan_1_period": ".plan-1-period",
+                "plan_1_desc": ".plan-1-desc",
+                "plan_1_feat_1": ".plan-1-feat-1",
+                "plan_1_feat_2": ".plan-1-feat-2",
+                "plan_1_feat_3": ".plan-1-feat-3",
+                "plan_1_feat_4": ".plan-1-feat-4",
+                "plan_1_cta": ".plan-1-cta",
+                "plan_2_name": ".plan-2-name",
+                "plan_2_price": ".plan-2-price",
+                "plan_2_period": ".plan-2-period",
+                "plan_2_desc": ".plan-2-desc",
+                "plan_2_feat_1": ".plan-2-feat-1",
+                "plan_2_feat_2": ".plan-2-feat-2",
+                "plan_2_feat_3": ".plan-2-feat-3",
+                "plan_2_feat_4": ".plan-2-feat-4",
+                "plan_2_feat_5": ".plan-2-feat-5",
+                "plan_2_cta": ".plan-2-cta",
+                "plan_3_name": ".plan-3-name",
+                "plan_3_price": ".plan-3-price",
+                "plan_3_period": ".plan-3-period",
+                "plan_3_desc": ".plan-3-desc",
+                "plan_3_feat_1": ".plan-3-feat-1",
+                "plan_3_feat_2": ".plan-3-feat-2",
+                "plan_3_feat_3": ".plan-3-feat-3",
+                "plan_3_feat_4": ".plan-3-feat-4",
+                "plan_3_feat_5": ".plan-3-feat-5",
+                "plan_3_cta": ".plan-3-cta"
+            }
+        },
+        {
+            "id": "blog",
+            "name": "Engineering Blog",
+            "elements": {
+                "blog_eyebrow": ".blog-eyebrow",
+                "blog_title": ".blog-title",
+                "blog_intro": ".blog-intro",
+                "blog_1_category": ".blog-1-category",
+                "blog_1_read_time": ".blog-1-read-time",
+                "blog_1_title": ".blog-1-title",
+                "blog_1_excerpt": ".blog-1-excerpt",
+                "blog_1_image": ".blog-1-image",
+                "blog_2_category": ".blog-2-category",
+                "blog_2_read_time": ".blog-2-read-time",
+                "blog_2_title": ".blog-2-title",
+                "blog_2_excerpt": ".blog-2-excerpt",
+                "blog_2_image": ".blog-2-image",
+                "blog_3_category": ".blog-3-category",
+                "blog_3_read_time": ".blog-3-read-time",
+                "blog_3_title": ".blog-3-title",
+                "blog_3_excerpt": ".blog-3-excerpt",
+                "blog_3_image": ".blog-3-image",
+                "blog_cta": ".blog-cta"
+            }
+        },
+        {
+            "id": "booking",
+            "name": "Book a Demo",
+            "elements": {
+                "booking_title": ".booking-title",
+                "booking_intro": ".booking-intro",
+                "booking_cta": ".booking-cta",
+                "booking_display": ".booking-display"
+            }
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": {
+                "contact_eyebrow": ".contact-eyebrow",
+                "contact_title": ".contact-title",
+                "contact_intro": ".contact-intro",
+                "contact_email": ".contact-email",
+                "contact_support": ".contact-support",
+                "contact_address": ".contact-address",
+                "contact_hours": ".contact-hours",
+                "form_submit_text": ".form-submit-text",
+                "form_success_message": ".form-success-message"
+            }
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": {
+                "footer_tagline": ".footer-tagline",
+                "footer_text": ".footer-text",
+                "social_github": ".social-github",
+                "social_x": ".social-x",
+                "social_linkedin": ".social-linkedin"
+            }
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Product Name",
+            "default": "Nexora"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "AI Observability Platform"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Nexora — end-to-end observability for AI-powered applications. Trace prompts, monitor latency, catch hallucinations, and ship reliable LLM products."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://nexora.dev"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/technology.jpg"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Background",
+            "default": "/storage/builder-heroes/technology.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_US"
+        },
+        "announcement_text": {
+            "type": "text",
+            "label": "Announcement",
+            "default": "New: Nexora Trace 3.0 — stream-level spans for every LLM call."
+        },
+        "announcement_link": {
+            "type": "text",
+            "label": "Announcement Link",
+            "default": "Read the changelog →"
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav 1",
+            "default": "Product"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav 2",
+            "default": "Pricing"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav 3",
+            "default": "Docs"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav 4",
+            "default": "Blog"
+        },
+        "nav_login": {
+            "type": "text",
+            "label": "Nav Login",
+            "default": "Sign in"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav CTA",
+            "default": "Book Demo"
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Observability for AI applications"
+        },
+        "hero_title": {
+            "type": "html",
+            "label": "Hero Title",
+            "default": "Ship reliable<br>LLM products<br><span class=\"accent\">without guessing.</span>"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subtitle",
+            "default": "Nexora traces every prompt, response, and tool call across your AI stack — so you know exactly why a user saw a slow, wrong, or hallucinated answer. Integrate in one line. Get answers in minutes."
+        },
+        "hero_cta": {
+            "type": "text",
+            "label": "Primary CTA",
+            "default": "Book a Demo"
+        },
+        "hero_cta_secondary": {
+            "type": "text",
+            "label": "Secondary CTA",
+            "default": "Read the Docs"
+        },
+        "hero_code_title": {
+            "type": "text",
+            "label": "Code Panel Title",
+            "default": "trace.py"
+        },
+        "hero_code_body": {
+            "type": "text",
+            "label": "Code Body",
+            "default": "from nexora import trace\n\n@trace(\"chat.completion\")\ndef answer(user_q: str) -> str:\n    context = vector_store.search(user_q, k=6)\n    return llm.chat(\n        system=SYSTEM_PROMPT,\n        messages=[{\"role\": \"user\", \"content\": user_q}],\n        context=context,\n    )\n\n# Every span, latency, and token count — automatic."
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "99.99%"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Platform Uptime"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "2.4B"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Spans Ingested / day"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "< 40ms"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Ingest p95 Latency"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "SOC 2"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Type II · GDPR"
+        },
+        "features_eyebrow": {
+            "type": "text",
+            "label": "Features Eyebrow",
+            "default": "The Platform"
+        },
+        "features_title": {
+            "type": "html",
+            "label": "Features Title",
+            "default": "Built for teams shipping<br><span class=\"accent\">AI in production.</span>"
+        },
+        "features_intro": {
+            "type": "text",
+            "label": "Features Intro",
+            "default": "Six primitives that cover the whole LLM application lifecycle — from development and evals, through to production monitoring and incident response."
+        },
+        "feature_1_title": {
+            "type": "text",
+            "label": "F1 Title",
+            "default": "Distributed Tracing"
+        },
+        "feature_1_text": {
+            "type": "text",
+            "label": "F1 Text",
+            "default": "Every prompt, tool call, and retrieval recorded as a span — with nested timing down to the token. Works with OpenAI, Anthropic, Cohere, and any custom endpoint."
+        },
+        "feature_2_title": {
+            "type": "text",
+            "label": "F2 Title",
+            "default": "Eval Framework"
+        },
+        "feature_2_text": {
+            "type": "text",
+            "label": "F2 Text",
+            "default": "Run LLM-as-a-judge, regex, or code-based evals on every request — score quality, faithfulness, and format drift in CI or continuously in production."
+        },
+        "feature_3_title": {
+            "type": "text",
+            "label": "F3 Title",
+            "default": "Cost & Token Tracking"
+        },
+        "feature_3_text": {
+            "type": "text",
+            "label": "F3 Text",
+            "default": "Attribute every cent — by user, feature, model, or tenant. Get alerted the moment a prompt regression doubles your monthly burn rate."
+        },
+        "feature_4_title": {
+            "type": "text",
+            "label": "F4 Title",
+            "default": "Prompt Playground"
+        },
+        "feature_4_text": {
+            "type": "text",
+            "label": "F4 Text",
+            "default": "Replay any production trace with a new prompt, model, or temperature — and see the diff in output, latency, and cost side by side before you ship."
+        },
+        "feature_5_title": {
+            "type": "text",
+            "label": "F5 Title",
+            "default": "Alerting & Incidents"
+        },
+        "feature_5_text": {
+            "type": "text",
+            "label": "F5 Text",
+            "default": "Define SLOs on latency, error rate, or eval scores. Route pages to PagerDuty, Slack, or OpsGenie — with a full trace attached, not a useless metric snapshot."
+        },
+        "feature_6_title": {
+            "type": "text",
+            "label": "F6 Title",
+            "default": "Self-Hosted Option"
+        },
+        "feature_6_text": {
+            "type": "text",
+            "label": "F6 Text",
+            "default": "Run the entire Nexora control plane inside your own VPC. Ship the same SDK. Keep every trace, prompt, and user record on your infrastructure."
+        },
+        "how_eyebrow": {
+            "type": "text",
+            "label": "How Eyebrow",
+            "default": "How It Works"
+        },
+        "how_title": {
+            "type": "html",
+            "label": "How Title",
+            "default": "From install to<br><span class=\"accent\">first insight in four steps.</span>"
+        },
+        "how_intro": {
+            "type": "text",
+            "label": "How Intro",
+            "default": "Built to be instrumented in an afternoon and useful by the following morning."
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Install the SDK"
+        },
+        "step_1_text": {
+            "type": "text",
+            "label": "Step 1 Text",
+            "default": "One line — pip install nexora or npm i @nexora/trace. Drop in a project key and every LLM call is automatically captured."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Deploy to Production"
+        },
+        "step_2_text": {
+            "type": "text",
+            "label": "Step 2 Text",
+            "default": "Traces flow to your Nexora workspace in under 40ms of ingest overhead — no proxy, no sidecar, no config soup."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Build Dashboards"
+        },
+        "step_3_text": {
+            "type": "text",
+            "label": "Step 3 Text",
+            "default": "Pin any query as a widget. Filter by user, model, feature flag, or prompt version. Share views with the rest of the team."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Catch Regressions"
+        },
+        "step_4_text": {
+            "type": "text",
+            "label": "Step 4 Text",
+            "default": "Set SLOs. Wire up evals. Get paged when latency, quality, or cost drift — before a user opens a support ticket."
+        },
+        "integrations_eyebrow": {
+            "type": "text",
+            "label": "Integrations Eyebrow",
+            "default": "Works With"
+        },
+        "integrations_title": {
+            "type": "html",
+            "label": "Integrations Title",
+            "default": "Drop-in integrations<br>for the stack<br><span class=\"accent\">you already run.</span>"
+        },
+        "integration_1": {
+            "type": "text",
+            "label": "Int 1",
+            "default": "OpenAI"
+        },
+        "integration_2": {
+            "type": "text",
+            "label": "Int 2",
+            "default": "Anthropic"
+        },
+        "integration_3": {
+            "type": "text",
+            "label": "Int 3",
+            "default": "LangChain"
+        },
+        "integration_4": {
+            "type": "text",
+            "label": "Int 4",
+            "default": "LlamaIndex"
+        },
+        "integration_5": {
+            "type": "text",
+            "label": "Int 5",
+            "default": "Pinecone"
+        },
+        "integration_6": {
+            "type": "text",
+            "label": "Int 6",
+            "default": "Datadog"
+        },
+        "integration_7": {
+            "type": "text",
+            "label": "Int 7",
+            "default": "PagerDuty"
+        },
+        "integration_8": {
+            "type": "text",
+            "label": "Int 8",
+            "default": "Slack"
+        },
+        "usecases_eyebrow": {
+            "type": "text",
+            "label": "Use Cases Eyebrow",
+            "default": "Use Cases"
+        },
+        "usecases_title": {
+            "type": "html",
+            "label": "Use Cases Title",
+            "default": "Three problems<br><span class=\"accent\">Nexora was built to solve.</span>"
+        },
+        "usecase_1_title": {
+            "type": "text",
+            "label": "UC1 Title",
+            "default": "LLM Latency Debugging"
+        },
+        "usecase_1_text": {
+            "type": "text",
+            "label": "UC1 Text",
+            "default": "When chatbots get slow, it is rarely one thing. Nexora waterfalls retrieval, prompting, and tool calls so you know exactly which span blew the p95 — in the one trace that matters."
+        },
+        "usecase_1_metric": {
+            "type": "text",
+            "label": "UC1 Metric",
+            "default": "73% faster root-cause"
+        },
+        "usecase_2_title": {
+            "type": "text",
+            "label": "UC2 Title",
+            "default": "Hallucination Detection"
+        },
+        "usecase_2_text": {
+            "type": "text",
+            "label": "UC2 Text",
+            "default": "Run faithfulness and groundedness evals on every response in production — flag drift before a user does, and route bad outputs to a human-review queue."
+        },
+        "usecase_2_metric": {
+            "type": "text",
+            "label": "UC2 Metric",
+            "default": "92% catch rate"
+        },
+        "usecase_3_title": {
+            "type": "text",
+            "label": "UC3 Title",
+            "default": "Cost Governance"
+        },
+        "usecase_3_text": {
+            "type": "text",
+            "label": "UC3 Text",
+            "default": "Attribute spend to the feature, team, or customer that actually drove it. Alert on anomalies before finance does — and know which prompt version doubled your bill."
+        },
+        "usecase_3_metric": {
+            "type": "text",
+            "label": "UC3 Metric",
+            "default": "31% avg saving"
+        },
+        "testimonials_eyebrow": {
+            "type": "text",
+            "label": "Testimonials Eyebrow",
+            "default": "Engineers on Nexora"
+        },
+        "testimonials_title": {
+            "type": "html",
+            "label": "Testimonials Title",
+            "default": "Loved by the teams<br><span class=\"accent\">shipping AI to scale.</span>"
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "T1 Quote",
+            "default": "We replaced three internal tools and a spreadsheet with Nexora. Every LLM incident we have had since has been triaged in minutes instead of hours — the trace view is the single biggest unlock our AI team has had in two years."
+        },
+        "testimonial_1_author": {
+            "type": "text",
+            "label": "T1 Author",
+            "default": "Amira Youssef"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "T1 Role",
+            "default": "Staff AI Engineer · Cortix"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "T2 Quote",
+            "default": "Nexora's evals-in-production setup is the only reason we caught a silent regression after a model swap. Without it, thousands of customers would have seen broken answers for a week before anyone noticed."
+        },
+        "testimonial_2_author": {
+            "type": "text",
+            "label": "T2 Author",
+            "default": "Daniel Park"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "T2 Role",
+            "default": "Head of AI Platform · Helix"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "T3 Quote",
+            "default": "The cost attribution view pays for the platform on its own. We knew we were burning too much on one badly-tuned agent — Nexora told us exactly which one, and by how much, inside 24 hours of rollout."
+        },
+        "testimonial_3_author": {
+            "type": "text",
+            "label": "T3 Author",
+            "default": "Leena Thomas"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "T3 Role",
+            "default": "CTO · Ayun Labs"
+        },
+        "pricing_eyebrow": {
+            "type": "text",
+            "label": "Pricing Eyebrow",
+            "default": "Pricing"
+        },
+        "pricing_title": {
+            "type": "html",
+            "label": "Pricing Title",
+            "default": "Simple pricing.<br><span class=\"accent\">No seats. No surprises.</span>"
+        },
+        "pricing_intro": {
+            "type": "text",
+            "label": "Pricing Intro",
+            "default": "Pay per million spans ingested — unlimited seats, unlimited projects, and the full feature set on every plan."
+        },
+        "plan_1_name": {
+            "type": "text",
+            "label": "Plan 1 Name",
+            "default": "Starter"
+        },
+        "plan_1_price": {
+            "type": "text",
+            "label": "Plan 1 Price",
+            "default": "Free"
+        },
+        "plan_1_period": {
+            "type": "text",
+            "label": "Plan 1 Period",
+            "default": "forever"
+        },
+        "plan_1_desc": {
+            "type": "text",
+            "label": "Plan 1 Desc",
+            "default": "For solo builders and side projects getting to first traction."
+        },
+        "plan_1_feat_1": {
+            "type": "text",
+            "label": "P1 F1",
+            "default": "50K spans / month"
+        },
+        "plan_1_feat_2": {
+            "type": "text",
+            "label": "P1 F2",
+            "default": "7-day retention"
+        },
+        "plan_1_feat_3": {
+            "type": "text",
+            "label": "P1 F3",
+            "default": "Unlimited seats"
+        },
+        "plan_1_feat_4": {
+            "type": "text",
+            "label": "P1 F4",
+            "default": "Community support"
+        },
+        "plan_1_cta": {
+            "type": "text",
+            "label": "P1 CTA",
+            "default": "Start Free"
+        },
+        "plan_2_name": {
+            "type": "text",
+            "label": "Plan 2 Name",
+            "default": "Scale"
+        },
+        "plan_2_price": {
+            "type": "text",
+            "label": "Plan 2 Price",
+            "default": "$299"
+        },
+        "plan_2_period": {
+            "type": "text",
+            "label": "Plan 2 Period",
+            "default": "/ month"
+        },
+        "plan_2_desc": {
+            "type": "text",
+            "label": "Plan 2 Desc",
+            "default": "For growing product teams shipping AI to thousands of users."
+        },
+        "plan_2_feat_1": {
+            "type": "text",
+            "label": "P2 F1",
+            "default": "10M spans / month"
+        },
+        "plan_2_feat_2": {
+            "type": "text",
+            "label": "P2 F2",
+            "default": "30-day retention"
+        },
+        "plan_2_feat_3": {
+            "type": "text",
+            "label": "P2 F3",
+            "default": "Eval framework"
+        },
+        "plan_2_feat_4": {
+            "type": "text",
+            "label": "P2 F4",
+            "default": "SLO alerting + PagerDuty"
+        },
+        "plan_2_feat_5": {
+            "type": "text",
+            "label": "P2 F5",
+            "default": "Email + Slack support"
+        },
+        "plan_2_cta": {
+            "type": "text",
+            "label": "P2 CTA",
+            "default": "Start 14-Day Trial"
+        },
+        "plan_3_name": {
+            "type": "text",
+            "label": "Plan 3 Name",
+            "default": "Enterprise"
+        },
+        "plan_3_price": {
+            "type": "text",
+            "label": "Plan 3 Price",
+            "default": "Custom"
+        },
+        "plan_3_period": {
+            "type": "text",
+            "label": "Plan 3 Period",
+            "default": "annual"
+        },
+        "plan_3_desc": {
+            "type": "text",
+            "label": "Plan 3 Desc",
+            "default": "For AI platforms and regulated teams running LLMs at scale."
+        },
+        "plan_3_feat_1": {
+            "type": "text",
+            "label": "P3 F1",
+            "default": "Unlimited spans"
+        },
+        "plan_3_feat_2": {
+            "type": "text",
+            "label": "P3 F2",
+            "default": "Custom retention + audit logs"
+        },
+        "plan_3_feat_3": {
+            "type": "text",
+            "label": "P3 F3",
+            "default": "Self-hosted control plane"
+        },
+        "plan_3_feat_4": {
+            "type": "text",
+            "label": "P3 F4",
+            "default": "SSO / SCIM / private VPC"
+        },
+        "plan_3_feat_5": {
+            "type": "text",
+            "label": "P3 F5",
+            "default": "Dedicated solutions engineer"
+        },
+        "plan_3_cta": {
+            "type": "text",
+            "label": "P3 CTA",
+            "default": "Talk to Sales"
+        },
+        "blog_eyebrow": {
+            "type": "text",
+            "label": "Blog Eyebrow",
+            "default": "Engineering Blog"
+        },
+        "blog_title": {
+            "type": "html",
+            "label": "Blog Title",
+            "default": "Notes from<br><span class=\"accent\">the Nexora team.</span>"
+        },
+        "blog_intro": {
+            "type": "text",
+            "label": "Blog Intro",
+            "default": "Deep dives on LLM observability, evals, cost, and the infrastructure we build to run Nexora at scale. Published monthly."
+        },
+        "blog_1_category": {
+            "type": "text",
+            "label": "B1 Category",
+            "default": "Evals"
+        },
+        "blog_1_read_time": {
+            "type": "text",
+            "label": "B1 Read Time",
+            "default": "12 min read"
+        },
+        "blog_1_title": {
+            "type": "text",
+            "label": "B1 Title",
+            "default": "Why LLM-as-a-Judge Gets Faithfulness Wrong (and How We Fixed It)"
+        },
+        "blog_1_excerpt": {
+            "type": "text",
+            "label": "B1 Excerpt",
+            "default": "We audited 2.4M production eval verdicts and found 18% of 'passes' were false negatives. This is what we changed — and why a dual-judge setup now outperforms a single strong model at a fraction of the cost."
+        },
+        "blog_1_image": {
+            "type": "image",
+            "label": "B1 Image",
+            "default": "/storage/template-images/technology/blog_1_image.jpg"
+        },
+        "blog_2_category": {
+            "type": "text",
+            "label": "B2 Category",
+            "default": "Infrastructure"
+        },
+        "blog_2_read_time": {
+            "type": "text",
+            "label": "B2 Read Time",
+            "default": "18 min read"
+        },
+        "blog_2_title": {
+            "type": "text",
+            "label": "B2 Title",
+            "default": "Ingesting 2.4B Spans a Day Without Kafka"
+        },
+        "blog_2_excerpt": {
+            "type": "text",
+            "label": "B2 Excerpt",
+            "default": "How we rebuilt the ingest pipeline on ClickHouse + a custom buffered writer — cut p95 ingest latency from 340ms to 38ms, and deleted half the infra bill."
+        },
+        "blog_2_image": {
+            "type": "image",
+            "label": "B2 Image",
+            "default": "/storage/template-images/technology/blog_2_image.jpg"
+        },
+        "blog_3_category": {
+            "type": "text",
+            "label": "B3 Category",
+            "default": "Product"
+        },
+        "blog_3_read_time": {
+            "type": "text",
+            "label": "B3 Read Time",
+            "default": "9 min read"
+        },
+        "blog_3_title": {
+            "type": "text",
+            "label": "B3 Title",
+            "default": "Trace 3.0 — What Changed and Why"
+        },
+        "blog_3_excerpt": {
+            "type": "text",
+            "label": "B3 Excerpt",
+            "default": "A full rewrite of the span model. Stream-level timings, tool-call nesting, and a new SDK that is 4× smaller. Release notes and migration guide in one post."
+        },
+        "blog_3_image": {
+            "type": "image",
+            "label": "B3 Image",
+            "default": "/storage/template-images/technology/blog_3_image.jpg"
+        },
+        "blog_cta": {
+            "type": "text",
+            "label": "Blog CTA",
+            "default": "Read the Blog"
+        },
+        "booking_title": {
+            "type": "html",
+            "label": "Booking Title",
+            "default": "See Nexora<br><span class=\"accent\">on your stack.</span>"
+        },
+        "booking_intro": {
+            "type": "text",
+            "label": "Booking Intro",
+            "default": "Book a 30-minute walkthrough with a solutions engineer. We'll show you real production traces, discuss your stack, and spin up a trial workspace live in the call."
+        },
+        "booking_cta": {
+            "type": "text",
+            "label": "Booking CTA",
+            "default": "Book a Demo"
+        },
+        "booking_display": {
+            "type": "text",
+            "label": "Booking Display",
+            "default": ""
+        },
+        "contact_eyebrow": {
+            "type": "text",
+            "label": "Contact Eyebrow",
+            "default": "Contact"
+        },
+        "contact_title": {
+            "type": "html",
+            "label": "Contact Title",
+            "default": "Need something<br><span class=\"accent\">more specific?</span>"
+        },
+        "contact_intro": {
+            "type": "text",
+            "label": "Contact Intro",
+            "default": "Whether it is a sales question, a private security review, or a gnarly integration — the Nexora team answers every inbound within one working day."
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Sales Email",
+            "default": "hello@nexora.dev"
+        },
+        "contact_support": {
+            "type": "text",
+            "label": "Support Email",
+            "default": "support@nexora.dev"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "DIFC Innovation Hub, Gate Avenue, Dubai"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Hours",
+            "default": "Support 24×7 · Sales Mon–Fri · 9am–6pm GST"
+        },
+        "form_submit_text": {
+            "type": "text",
+            "label": "Submit",
+            "default": "Send Message"
+        },
+        "form_success_message": {
+            "type": "text",
+            "label": "Success",
+            "default": "Thanks. One of the team will be in touch within one working day."
+        },
+        "footer_tagline": {
+            "type": "text",
+            "label": "Footer Tagline",
+            "default": "Nexora — observability for AI that actually ships."
+        },
+        "footer_text": {
+            "type": "text",
+            "label": "Footer Copyright",
+            "default": "© 2026 Nexora Labs FZ-LLC. All rights reserved."
+        },
+        "social_github": {
+            "type": "url",
+            "label": "GitHub",
+            "default": "#"
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X / Twitter",
+            "default": "#"
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "LinkedIn",
+            "default": "#"
+        },
+        "void": {
+            "type": "color",
+            "label": "Void (Background)",
+            "default": "#0A0E1A"
+        },
+        "void_soft": {
+            "type": "color",
+            "label": "Void Soft",
+            "default": "#0F1424"
+        },
+        "panel": {
+            "type": "color",
+            "label": "Panel Surface",
+            "default": "#131827"
+        },
+        "panel_border": {
+            "type": "color",
+            "label": "Panel Border",
+            "default": "#1F2940"
+        },
+        "ink": {
+            "type": "color",
+            "label": "Ink (Text)",
+            "default": "#E8ECF4"
+        },
+        "muted": {
+            "type": "color",
+            "label": "Muted Text",
+            "default": "#7A8599"
+        },
+        "cyan": {
+            "type": "color",
+            "label": "Cyan (Accent)",
+            "default": "#00E5FF"
+        },
+        "violet": {
+            "type": "color",
+            "label": "Violet (Accent 2)",
+            "default": "#7B5CFF"
+        },
+        "danger": {
+            "type": "color",
+            "label": "Danger",
+            "default": "#FF5C7A"
+        },
+        "success": {
+            "type": "color",
+            "label": "Success",
+            "default": "#2EE59D"
+        }
+    }
+}

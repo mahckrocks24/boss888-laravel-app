@@ -1,0 +1,1979 @@
+{
+    "id": "real_estate_broker",
+    "name": "Broker Profile",
+    "industry": "real_estate_broker",
+    "description": "Personal brand page for an individual real estate broker. Magazine-editorial meets luxury — a full-bleed hero portrait, prominent RERA credentials, live listings grid with filter tabs, area-by-area expertise, awards and press mentions, long-form testimonials with property details, and a private-consultation booking form. Mobile-first so brokers can share their link on WhatsApp.",
+    "thumbnail": "/storage/builder-heroes/real_estate_broker.jpg",
+    "category": "personal_brand",
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "broker_name": "nav .logo",
+                "nav_1": "nav .nav-link-1",
+                "nav_2": "nav .nav-link-2",
+                "nav_3": "nav .nav-link-3",
+                "nav_4": "nav .nav-link-4",
+                "nav_5": "nav .nav-link-5",
+                "nav_whatsapp": "nav .nav-whatsapp",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero — Signature Portrait",
+            "elements": {
+                "broker_photo": ".hero-photo-img",
+                "hero_eyebrow": ".hero-eyebrow",
+                "broker_name": ".hero-name",
+                "broker_title": ".hero-title",
+                "broker_company_line": ".hero-company",
+                "hero_stat_1_value": ".hero-stats .hero-stat:nth-child(1) .hero-stat-value",
+                "hero_stat_1_label": ".hero-stats .hero-stat:nth-child(1) .hero-stat-label",
+                "hero_stat_2_value": ".hero-stats .hero-stat:nth-child(2) .hero-stat-value",
+                "hero_stat_2_label": ".hero-stats .hero-stat:nth-child(2) .hero-stat-label",
+                "hero_stat_3_value": ".hero-stats .hero-stat:nth-child(3) .hero-stat-value",
+                "hero_stat_3_label": ".hero-stats .hero-stat:nth-child(3) .hero-stat-label",
+                "hero_stat_4_value": ".hero-stats .hero-stat:nth-child(4) .hero-stat-value",
+                "hero_stat_4_label": ".hero-stats .hero-stat:nth-child(4) .hero-stat-label",
+                "hero_cta_primary": ".hero-ctas .btn-gold",
+                "hero_cta_secondary": ".hero-ctas .btn-ghost",
+                "lang_1_flag": ".hero-languages .hero-language:nth-child(1) .hero-language-flag",
+                "lang_1_name": ".hero-languages .hero-language:nth-child(1) span:last-child",
+                "lang_2_flag": ".hero-languages .hero-language:nth-child(2) .hero-language-flag",
+                "lang_2_name": ".hero-languages .hero-language:nth-child(2) span:last-child",
+                "lang_3_flag": ".hero-languages .hero-language:nth-child(3) .hero-language-flag",
+                "lang_3_name": ".hero-languages .hero-language:nth-child(3) span:last-child"
+            }
+        },
+        {
+            "id": "stats_strip",
+            "name": "Stats Strip",
+            "elements": {
+                "strip_stat_1_value": ".stats-strip-grid .stats-strip-item:nth-child(1) .stats-strip-value",
+                "strip_stat_1_label": ".stats-strip-grid .stats-strip-item:nth-child(1) .stats-strip-label",
+                "strip_stat_2_value": ".stats-strip-grid .stats-strip-item:nth-child(2) .stats-strip-value",
+                "strip_stat_2_label": ".stats-strip-grid .stats-strip-item:nth-child(2) .stats-strip-label",
+                "strip_stat_3_value": ".stats-strip-grid .stats-strip-item:nth-child(3) .stats-strip-value",
+                "strip_stat_3_label": ".stats-strip-grid .stats-strip-item:nth-child(3) .stats-strip-label",
+                "strip_stat_4_value": ".stats-strip-grid .stats-strip-item:nth-child(4) .stats-strip-value",
+                "strip_stat_4_label": ".stats-strip-grid .stats-strip-item:nth-child(4) .stats-strip-label",
+                "strip_stat_5_value": ".stats-strip-grid .stats-strip-item:nth-child(5) .stats-strip-value",
+                "strip_stat_5_label": ".stats-strip-grid .stats-strip-item:nth-child(5) .stats-strip-label"
+            }
+        },
+        {
+            "id": "about",
+            "name": "About — Personal Story",
+            "elements": {
+                "about_eyebrow": "#about .eyebrow",
+                "about_quote": ".about-quote",
+                "about_quote_author": ".about-quote-author",
+                "about_photo": ".about-photo",
+                "about_text_1": ".about-text-1",
+                "about_text_2": ".about-text-2",
+                "about_text_3": ".about-text-3",
+                "about_signature": ".about-signature",
+                "about_meta": ".about-meta"
+            }
+        },
+        {
+            "id": "specialties",
+            "name": "Specialties Grid",
+            "elements": {
+                "specialties_eyebrow": ".specialties .eyebrow",
+                "specialties_title": ".specialties .h-section",
+                "specialties_intro": ".specialties .section-intro",
+                "specialty_1_icon": ".specialties-grid .specialty:nth-child(1) .specialty-icon",
+                "specialty_1_name": ".specialties-grid .specialty:nth-child(1) .specialty-name",
+                "specialty_1_range": ".specialties-grid .specialty:nth-child(1) .specialty-range",
+                "specialty_1_count": ".specialties-grid .specialty:nth-child(1) .specialty-count",
+                "specialty_2_icon": ".specialties-grid .specialty:nth-child(2) .specialty-icon",
+                "specialty_2_name": ".specialties-grid .specialty:nth-child(2) .specialty-name",
+                "specialty_2_range": ".specialties-grid .specialty:nth-child(2) .specialty-range",
+                "specialty_2_count": ".specialties-grid .specialty:nth-child(2) .specialty-count",
+                "specialty_3_icon": ".specialties-grid .specialty:nth-child(3) .specialty-icon",
+                "specialty_3_name": ".specialties-grid .specialty:nth-child(3) .specialty-name",
+                "specialty_3_range": ".specialties-grid .specialty:nth-child(3) .specialty-range",
+                "specialty_3_count": ".specialties-grid .specialty:nth-child(3) .specialty-count",
+                "specialty_4_icon": ".specialties-grid .specialty:nth-child(4) .specialty-icon",
+                "specialty_4_name": ".specialties-grid .specialty:nth-child(4) .specialty-name",
+                "specialty_4_range": ".specialties-grid .specialty:nth-child(4) .specialty-range",
+                "specialty_4_count": ".specialties-grid .specialty:nth-child(4) .specialty-count",
+                "specialty_5_icon": ".specialties-grid .specialty:nth-child(5) .specialty-icon",
+                "specialty_5_name": ".specialties-grid .specialty:nth-child(5) .specialty-name",
+                "specialty_5_range": ".specialties-grid .specialty:nth-child(5) .specialty-range",
+                "specialty_5_count": ".specialties-grid .specialty:nth-child(5) .specialty-count",
+                "specialty_6_icon": ".specialties-grid .specialty:nth-child(6) .specialty-icon",
+                "specialty_6_name": ".specialties-grid .specialty:nth-child(6) .specialty-name",
+                "specialty_6_range": ".specialties-grid .specialty:nth-child(6) .specialty-range",
+                "specialty_6_count": ".specialties-grid .specialty:nth-child(6) .specialty-count"
+            }
+        },
+        {
+            "id": "listings",
+            "name": "Listings Portfolio",
+            "elements": {
+                "listings_eyebrow": "#listings .eyebrow",
+                "listings_title": "#listings .h-section",
+                "listings_intro": "#listings .section-intro",
+                "tab_all": ".listings-tabs .listing-tab:nth-child(1)",
+                "tab_sale": ".listings-tabs .listing-tab:nth-child(2)",
+                "tab_rent": ".listings-tabs .listing-tab:nth-child(3)",
+                "tab_offplan": ".listings-tabs .listing-tab:nth-child(4)",
+                "listing_1_image": ".listings-grid .listing:nth-child(1) .listing-img",
+                "listing_1_badge": ".listings-grid .listing:nth-child(1) .listing-badge",
+                "listing_1_price": ".listings-grid .listing:nth-child(1) .listing-price > span:nth-child(1)",
+                "listing_1_currency": ".listings-grid .listing:nth-child(1) .listing-price-currency",
+                "listing_1_area": ".listings-grid .listing:nth-child(1) .listing-area",
+                "listing_1_beds": ".listings-grid .listing:nth-child(1) .listing-spec:nth-child(1) .listing-spec-value",
+                "listing_1_baths": ".listings-grid .listing:nth-child(1) .listing-spec:nth-child(2) .listing-spec-value",
+                "listing_1_sqft": ".listings-grid .listing:nth-child(1) .listing-spec:nth-child(3) .listing-spec-value",
+                "listing_1_cta": ".listings-grid .listing:nth-child(1) .listing-cta",
+                "listing_2_image": ".listings-grid .listing:nth-child(2) .listing-img",
+                "listing_2_badge": ".listings-grid .listing:nth-child(2) .listing-badge",
+                "listing_2_price": ".listings-grid .listing:nth-child(2) .listing-price > span:nth-child(1)",
+                "listing_2_currency": ".listings-grid .listing:nth-child(2) .listing-price-currency",
+                "listing_2_area": ".listings-grid .listing:nth-child(2) .listing-area",
+                "listing_2_beds": ".listings-grid .listing:nth-child(2) .listing-spec:nth-child(1) .listing-spec-value",
+                "listing_2_baths": ".listings-grid .listing:nth-child(2) .listing-spec:nth-child(2) .listing-spec-value",
+                "listing_2_sqft": ".listings-grid .listing:nth-child(2) .listing-spec:nth-child(3) .listing-spec-value",
+                "listing_2_cta": ".listings-grid .listing:nth-child(2) .listing-cta",
+                "listing_3_image": ".listings-grid .listing:nth-child(3) .listing-img",
+                "listing_3_badge": ".listings-grid .listing:nth-child(3) .listing-badge",
+                "listing_3_price": ".listings-grid .listing:nth-child(3) .listing-price > span:nth-child(1)",
+                "listing_3_currency": ".listings-grid .listing:nth-child(3) .listing-price-currency",
+                "listing_3_area": ".listings-grid .listing:nth-child(3) .listing-area",
+                "listing_3_beds": ".listings-grid .listing:nth-child(3) .listing-spec:nth-child(1) .listing-spec-value",
+                "listing_3_baths": ".listings-grid .listing:nth-child(3) .listing-spec:nth-child(2) .listing-spec-value",
+                "listing_3_sqft": ".listings-grid .listing:nth-child(3) .listing-spec:nth-child(3) .listing-spec-value",
+                "listing_3_cta": ".listings-grid .listing:nth-child(3) .listing-cta",
+                "listing_4_image": ".listings-grid .listing:nth-child(4) .listing-img",
+                "listing_4_badge": ".listings-grid .listing:nth-child(4) .listing-badge",
+                "listing_4_price": ".listings-grid .listing:nth-child(4) .listing-price > span:nth-child(1)",
+                "listing_4_currency": ".listings-grid .listing:nth-child(4) .listing-price-currency",
+                "listing_4_area": ".listings-grid .listing:nth-child(4) .listing-area",
+                "listing_4_beds": ".listings-grid .listing:nth-child(4) .listing-spec:nth-child(1) .listing-spec-value",
+                "listing_4_baths": ".listings-grid .listing:nth-child(4) .listing-spec:nth-child(2) .listing-spec-value",
+                "listing_4_sqft": ".listings-grid .listing:nth-child(4) .listing-spec:nth-child(3) .listing-spec-value",
+                "listing_4_cta": ".listings-grid .listing:nth-child(4) .listing-cta",
+                "listing_5_image": ".listings-grid .listing:nth-child(5) .listing-img",
+                "listing_5_badge": ".listings-grid .listing:nth-child(5) .listing-badge",
+                "listing_5_price": ".listings-grid .listing:nth-child(5) .listing-price > span:nth-child(1)",
+                "listing_5_currency": ".listings-grid .listing:nth-child(5) .listing-price-currency",
+                "listing_5_area": ".listings-grid .listing:nth-child(5) .listing-area",
+                "listing_5_beds": ".listings-grid .listing:nth-child(5) .listing-spec:nth-child(1) .listing-spec-value",
+                "listing_5_baths": ".listings-grid .listing:nth-child(5) .listing-spec:nth-child(2) .listing-spec-value",
+                "listing_5_sqft": ".listings-grid .listing:nth-child(5) .listing-spec:nth-child(3) .listing-spec-value",
+                "listing_5_cta": ".listings-grid .listing:nth-child(5) .listing-cta",
+                "listing_6_image": ".listings-grid .listing:nth-child(6) .listing-img",
+                "listing_6_badge": ".listings-grid .listing:nth-child(6) .listing-badge",
+                "listing_6_price": ".listings-grid .listing:nth-child(6) .listing-price > span:nth-child(1)",
+                "listing_6_currency": ".listings-grid .listing:nth-child(6) .listing-price-currency",
+                "listing_6_area": ".listings-grid .listing:nth-child(6) .listing-area",
+                "listing_6_beds": ".listings-grid .listing:nth-child(6) .listing-spec:nth-child(1) .listing-spec-value",
+                "listing_6_baths": ".listings-grid .listing:nth-child(6) .listing-spec:nth-child(2) .listing-spec-value",
+                "listing_6_sqft": ".listings-grid .listing:nth-child(6) .listing-spec:nth-child(3) .listing-spec-value",
+                "listing_6_cta": ".listings-grid .listing:nth-child(6) .listing-cta"
+            }
+        },
+        {
+            "id": "areas",
+            "name": "Areas of Expertise",
+            "elements": {
+                "areas_eyebrow": ".areas .eyebrow",
+                "areas_title": ".areas .h-section",
+                "areas_intro": ".areas .section-intro",
+                "area_1_image": ".areas-grid .area:nth-child(1) .area-img",
+                "area_1_name": ".areas-grid .area:nth-child(1) .area-name",
+                "area_1_price": ".areas-grid .area:nth-child(1) .area-price",
+                "area_1_deals": ".areas-grid .area:nth-child(1) .area-deals",
+                "area_1_link": ".areas-grid .area:nth-child(1) .area-link",
+                "area_2_image": ".areas-grid .area:nth-child(2) .area-img",
+                "area_2_name": ".areas-grid .area:nth-child(2) .area-name",
+                "area_2_price": ".areas-grid .area:nth-child(2) .area-price",
+                "area_2_deals": ".areas-grid .area:nth-child(2) .area-deals",
+                "area_2_link": ".areas-grid .area:nth-child(2) .area-link",
+                "area_3_image": ".areas-grid .area:nth-child(3) .area-img",
+                "area_3_name": ".areas-grid .area:nth-child(3) .area-name",
+                "area_3_price": ".areas-grid .area:nth-child(3) .area-price",
+                "area_3_deals": ".areas-grid .area:nth-child(3) .area-deals",
+                "area_3_link": ".areas-grid .area:nth-child(3) .area-link",
+                "area_4_image": ".areas-grid .area:nth-child(4) .area-img",
+                "area_4_name": ".areas-grid .area:nth-child(4) .area-name",
+                "area_4_price": ".areas-grid .area:nth-child(4) .area-price",
+                "area_4_deals": ".areas-grid .area:nth-child(4) .area-deals",
+                "area_4_link": ".areas-grid .area:nth-child(4) .area-link",
+                "area_5_image": ".areas-grid .area:nth-child(5) .area-img",
+                "area_5_name": ".areas-grid .area:nth-child(5) .area-name",
+                "area_5_price": ".areas-grid .area:nth-child(5) .area-price",
+                "area_5_deals": ".areas-grid .area:nth-child(5) .area-deals",
+                "area_5_link": ".areas-grid .area:nth-child(5) .area-link",
+                "area_6_image": ".areas-grid .area:nth-child(6) .area-img",
+                "area_6_name": ".areas-grid .area:nth-child(6) .area-name",
+                "area_6_price": ".areas-grid .area:nth-child(6) .area-price",
+                "area_6_deals": ".areas-grid .area:nth-child(6) .area-deals",
+                "area_6_link": ".areas-grid .area:nth-child(6) .area-link"
+            }
+        },
+        {
+            "id": "awards",
+            "name": "Awards & Certifications",
+            "elements": {
+                "awards_eyebrow": "#awards .eyebrow",
+                "awards_title": "#awards .h-section",
+                "awards_intro": "#awards .section-intro",
+                "award_1_icon": ".awards-grid .award:nth-child(1) .award-icon",
+                "award_1_name": ".awards-grid .award:nth-child(1) .award-name",
+                "award_1_year": ".awards-grid .award:nth-child(1) .award-year",
+                "award_1_issuer": ".awards-grid .award:nth-child(1) .award-issuer",
+                "award_2_icon": ".awards-grid .award:nth-child(2) .award-icon",
+                "award_2_name": ".awards-grid .award:nth-child(2) .award-name",
+                "award_2_year": ".awards-grid .award:nth-child(2) .award-year",
+                "award_2_issuer": ".awards-grid .award:nth-child(2) .award-issuer",
+                "award_3_icon": ".awards-grid .award:nth-child(3) .award-icon",
+                "award_3_name": ".awards-grid .award:nth-child(3) .award-name",
+                "award_3_year": ".awards-grid .award:nth-child(3) .award-year",
+                "award_3_issuer": ".awards-grid .award:nth-child(3) .award-issuer",
+                "award_4_icon": ".awards-grid .award:nth-child(4) .award-icon",
+                "award_4_name": ".awards-grid .award:nth-child(4) .award-name",
+                "award_4_year": ".awards-grid .award:nth-child(4) .award-year",
+                "award_4_issuer": ".awards-grid .award:nth-child(4) .award-issuer",
+                "award_5_icon": ".awards-grid .award:nth-child(5) .award-icon",
+                "award_5_name": ".awards-grid .award:nth-child(5) .award-name",
+                "award_5_year": ".awards-grid .award:nth-child(5) .award-year",
+                "award_5_issuer": ".awards-grid .award:nth-child(5) .award-issuer",
+                "award_6_icon": ".awards-grid .award:nth-child(6) .award-icon",
+                "award_6_name": ".awards-grid .award:nth-child(6) .award-name",
+                "award_6_year": ".awards-grid .award:nth-child(6) .award-year",
+                "award_6_issuer": ".awards-grid .award:nth-child(6) .award-issuer"
+            }
+        },
+        {
+            "id": "press",
+            "name": "Press Mentions",
+            "elements": {
+                "press_eyebrow": ".press .eyebrow",
+                "press_title": ".press .h-section",
+                "press_1_publication": ".press-grid .press-card:nth-child(1) .press-publication",
+                "press_1_headline": ".press-grid .press-card:nth-child(1) .press-headline",
+                "press_1_date": ".press-grid .press-card:nth-child(1) .press-date",
+                "press_1_link": ".press-grid .press-card:nth-child(1) .press-link",
+                "press_2_publication": ".press-grid .press-card:nth-child(2) .press-publication",
+                "press_2_headline": ".press-grid .press-card:nth-child(2) .press-headline",
+                "press_2_date": ".press-grid .press-card:nth-child(2) .press-date",
+                "press_2_link": ".press-grid .press-card:nth-child(2) .press-link",
+                "press_3_publication": ".press-grid .press-card:nth-child(3) .press-publication",
+                "press_3_headline": ".press-grid .press-card:nth-child(3) .press-headline",
+                "press_3_date": ".press-grid .press-card:nth-child(3) .press-date",
+                "press_3_link": ".press-grid .press-card:nth-child(3) .press-link"
+            }
+        },
+        {
+            "id": "testimonials",
+            "name": "Client Testimonials",
+            "elements": {
+                "testimonials_eyebrow": "#testimonials .eyebrow",
+                "testimonials_title": "#testimonials .h-section",
+                "testimonial_1_rating": ".testimonials-grid .testimonial:nth-child(1) .testimonial-rating",
+                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+                "testimonial_1_property": ".testimonials-grid .testimonial:nth-child(1) .testimonial-property-tag",
+                "testimonial_1_avatar": ".testimonials-grid .testimonial:nth-child(1) .testimonial-avatar",
+                "testimonial_1_name": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+                "testimonial_1_nationality": ".testimonials-grid .testimonial:nth-child(1) .testimonial-nationality",
+                "testimonial_2_rating": ".testimonials-grid .testimonial:nth-child(2) .testimonial-rating",
+                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+                "testimonial_2_property": ".testimonials-grid .testimonial:nth-child(2) .testimonial-property-tag",
+                "testimonial_2_avatar": ".testimonials-grid .testimonial:nth-child(2) .testimonial-avatar",
+                "testimonial_2_name": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+                "testimonial_2_nationality": ".testimonials-grid .testimonial:nth-child(2) .testimonial-nationality",
+                "testimonial_3_rating": ".testimonials-grid .testimonial:nth-child(3) .testimonial-rating",
+                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+                "testimonial_3_property": ".testimonials-grid .testimonial:nth-child(3) .testimonial-property-tag",
+                "testimonial_3_avatar": ".testimonials-grid .testimonial:nth-child(3) .testimonial-avatar",
+                "testimonial_3_name": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+                "testimonial_3_nationality": ".testimonials-grid .testimonial:nth-child(3) .testimonial-nationality"
+            }
+        },
+        {
+            "id": "process",
+            "name": "How I Work",
+            "elements": {
+                "process_eyebrow": ".process .eyebrow",
+                "process_title": ".process .h-section",
+                "process_intro": ".process .section-intro",
+                "step_1_title": ".process-steps .process-step:nth-child(1) h3",
+                "step_1_text": ".process-steps .process-step:nth-child(1) p",
+                "step_2_title": ".process-steps .process-step:nth-child(2) h3",
+                "step_2_text": ".process-steps .process-step:nth-child(2) p",
+                "step_3_title": ".process-steps .process-step:nth-child(3) h3",
+                "step_3_text": ".process-steps .process-step:nth-child(3) p",
+                "step_4_title": ".process-steps .process-step:nth-child(4) h3",
+                "step_4_text": ".process-steps .process-step:nth-child(4) p"
+            }
+        },
+        {
+            "id": "booking",
+            "name": "Private Consultation",
+            "elements": {
+                "booking_eyebrow": "#booking .eyebrow",
+                "booking_title": "#booking .h-section",
+                "booking_intro": ".booking-intro",
+                "booking_property_type_label": ".booking-form label[data-field=booking_property_type_label]",
+                "booking_budget_label": ".booking-form label[data-field=booking_budget_label]",
+                "booking_intent_label": ".booking-form label[data-field=booking_intent_label]",
+                "booking_timeline_label": ".booking-form label[data-field=booking_timeline_label]",
+                "booking_date_label": ".booking-form label[data-field=booking_date_label]",
+                "booking_time_label": ".booking-form label[data-field=booking_time_label]",
+                "booking_name_label": ".booking-form label[data-field=booking_name_label]",
+                "booking_email_label": ".booking-form label[data-field=booking_email_label]",
+                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+                "booking_message_label": ".booking-form label[data-field=booking_message_label]",
+                "booking_submit": ".booking-submit",
+                "booking_direct_whatsapp_label": ".booking-direct-item:nth-child(1) span:first-child",
+                "booking_direct_whatsapp": ".booking-direct-item:nth-child(1) a",
+                "booking_direct_phone_label": ".booking-direct-item:nth-child(2) span:first-child",
+                "booking_direct_phone": ".booking-direct-item:nth-child(2) a"
+            }
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": {
+                "contact_eyebrow": "#contact .eyebrow",
+                "contact_title": "#contact .h-section",
+                "contact_intro": "#contact .section-intro",
+                "contact_photo": ".contact-photo",
+                "contact_trust_badge": ".contact-trust",
+                "contact_phone_label": ".contact-list .contact-item:nth-child(1) .contact-label",
+                "contact_phone": ".contact-list .contact-item:nth-child(1) .contact-value",
+                "contact_whatsapp_label": ".contact-list .contact-item:nth-child(2) .contact-label",
+                "contact_whatsapp": ".contact-list .contact-item:nth-child(2) .contact-value",
+                "contact_email_label": ".contact-list .contact-item:nth-child(3) .contact-label",
+                "contact_email": ".contact-list .contact-item:nth-child(3) .contact-value",
+                "contact_instagram_label": ".contact-list .contact-item:nth-child(4) .contact-label",
+                "contact_instagram": ".contact-list .contact-item:nth-child(4) .contact-value",
+                "contact_linkedin_label": ".contact-list .contact-item:nth-child(5) .contact-label",
+                "contact_linkedin": ".contact-list .contact-item:nth-child(5) .contact-value",
+                "contact_office_label": ".contact-list .contact-item:nth-child(6) .contact-label",
+                "contact_office": ".contact-list .contact-item:nth-child(6) .contact-value",
+                "contact_map_placeholder": ".contact-map"
+            }
+        },
+        {
+            "id": "social_proof",
+            "name": "Social Proof Ticker",
+            "elements": {
+                "ticker_1": ".ticker-track .ticker-item:nth-child(1)",
+                "ticker_2": ".ticker-track .ticker-item:nth-child(2)",
+                "ticker_3": ".ticker-track .ticker-item:nth-child(3)",
+                "ticker_4": ".ticker-track .ticker-item:nth-child(4)",
+                "ticker_5": ".ticker-track .ticker-item:nth-child(5)"
+            }
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": {
+                "footer_logo": ".footer-logo",
+                "footer_tagline": ".footer-tagline",
+                "social_1": ".footer-socials a:nth-child(1)",
+                "social_2": ".footer-socials a:nth-child(2)",
+                "social_3": ".footer-socials a:nth-child(3)",
+                "social_4": ".footer-socials a:nth-child(4)",
+                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+                "footer_rera_disclaimer": ".footer-rera",
+                "footer_copyright": ".footer-bottom > div:nth-child(1)",
+                "footer_legal": ".footer-bottom > div:nth-child(2)"
+            }
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "James Whitfield"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "James Whitfield — Senior Property Consultant at Luxe Properties Dubai. RERA-certified. 127 deals closed. AED 380M+ transacted. Specializing in luxury villas and off-plan investment in Dubai Marina, Palm Jumeirah, and Downtown."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://jameswhitfield.ae"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/real_estate_broker.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_AE"
+        },
+        "charcoal": {
+            "type": "color",
+            "label": "Charcoal",
+            "default": "#1C1C1E"
+        },
+        "charcoal_soft": {
+            "type": "color",
+            "label": "Charcoal Soft",
+            "default": "#28282A"
+        },
+        "gold": {
+            "type": "color",
+            "label": "Gold",
+            "default": "#C9943A"
+        },
+        "gold_deep": {
+            "type": "color",
+            "label": "Gold Deep",
+            "default": "#A67B2B"
+        },
+        "white": {
+            "type": "color",
+            "label": "White",
+            "default": "#FFFFFF"
+        },
+        "warm_grey": {
+            "type": "color",
+            "label": "Warm Grey",
+            "default": "#F5F5F0"
+        },
+        "cream": {
+            "type": "color",
+            "label": "Cream",
+            "default": "#FAF8F0"
+        },
+        "divider": {
+            "type": "color",
+            "label": "Divider",
+            "default": "#33332E"
+        },
+        "whatsapp_green": {
+            "type": "color",
+            "label": "WhatsApp Green",
+            "default": "#25D366"
+        },
+        "broker_name": {
+            "type": "text",
+            "label": "Broker Name",
+            "default": "James Whitfield"
+        },
+        "broker_title": {
+            "type": "text",
+            "label": "Broker Title",
+            "default": "Senior Property Consultant"
+        },
+        "broker_photo": {
+            "type": "image",
+            "label": "Broker Portrait",
+            "default": "/storage/builder-heroes/real_estate_broker.jpg"
+        },
+        "broker_company_line": {
+            "type": "text",
+            "label": "Company + RERA",
+            "default": "Luxe Properties Dubai · RERA 12345678"
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav About",
+            "default": "About"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Listings",
+            "default": "Listings"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Awards",
+            "default": "Awards"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Testimonials",
+            "default": "Testimonials"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Contact",
+            "default": "Contact"
+        },
+        "nav_whatsapp": {
+            "type": "text",
+            "label": "Nav WhatsApp",
+            "default": "WhatsApp"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav CTA",
+            "default": "Book a Call"
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Real Estate Broker · Dubai"
+        },
+        "hero_cta_primary": {
+            "type": "text",
+            "label": "Hero CTA Primary",
+            "default": "View My Listings"
+        },
+        "hero_cta_secondary": {
+            "type": "text",
+            "label": "Hero CTA Secondary",
+            "default": "Book a Call"
+        },
+        "hero_stat_1_value": {
+            "type": "text",
+            "label": "Hero Stat 1 Value",
+            "default": "127"
+        },
+        "hero_stat_1_label": {
+            "type": "text",
+            "label": "Hero Stat 1 Label",
+            "default": "Deals Closed"
+        },
+        "hero_stat_2_value": {
+            "type": "text",
+            "label": "Hero Stat 2 Value",
+            "default": "AED 380M"
+        },
+        "hero_stat_2_label": {
+            "type": "text",
+            "label": "Hero Stat 2 Label",
+            "default": "Volume"
+        },
+        "hero_stat_3_value": {
+            "type": "text",
+            "label": "Hero Stat 3 Value",
+            "default": "8"
+        },
+        "hero_stat_3_label": {
+            "type": "text",
+            "label": "Hero Stat 3 Label",
+            "default": "Years"
+        },
+        "hero_stat_4_value": {
+            "type": "text",
+            "label": "Hero Stat 4 Value",
+            "default": "6"
+        },
+        "hero_stat_4_label": {
+            "type": "text",
+            "label": "Hero Stat 4 Label",
+            "default": "Areas Covered"
+        },
+        "lang_1_flag": {
+            "type": "text",
+            "label": "Language 1 Flag",
+            "default": "🇬🇧"
+        },
+        "lang_1_name": {
+            "type": "text",
+            "label": "Language 1 Name",
+            "default": "English"
+        },
+        "lang_2_flag": {
+            "type": "text",
+            "label": "Language 2 Flag",
+            "default": "🇦🇪"
+        },
+        "lang_2_name": {
+            "type": "text",
+            "label": "Language 2 Name",
+            "default": "Arabic"
+        },
+        "lang_3_flag": {
+            "type": "text",
+            "label": "Language 3 Flag",
+            "default": "🇷🇺"
+        },
+        "lang_3_name": {
+            "type": "text",
+            "label": "Language 3 Name",
+            "default": "Russian"
+        },
+        "strip_stat_1_value": {
+            "type": "text",
+            "label": "Strip Stat 1 Value",
+            "default": "127"
+        },
+        "strip_stat_1_label": {
+            "type": "text",
+            "label": "Strip Stat 1 Label",
+            "default": "Total Deals"
+        },
+        "strip_stat_2_value": {
+            "type": "text",
+            "label": "Strip Stat 2 Value",
+            "default": "AED 380M"
+        },
+        "strip_stat_2_label": {
+            "type": "text",
+            "label": "Strip Stat 2 Label",
+            "default": "Transacted"
+        },
+        "strip_stat_3_value": {
+            "type": "text",
+            "label": "Strip Stat 3 Value",
+            "default": "AED 3.0M"
+        },
+        "strip_stat_3_label": {
+            "type": "text",
+            "label": "Strip Stat 3 Label",
+            "default": "Avg Deal Size"
+        },
+        "strip_stat_4_value": {
+            "type": "text",
+            "label": "Strip Stat 4 Value",
+            "default": "98%"
+        },
+        "strip_stat_4_label": {
+            "type": "text",
+            "label": "Strip Stat 4 Label",
+            "default": "Client Satisfaction"
+        },
+        "strip_stat_5_value": {
+            "type": "text",
+            "label": "Strip Stat 5 Value",
+            "default": "8"
+        },
+        "strip_stat_5_label": {
+            "type": "text",
+            "label": "Strip Stat 5 Label",
+            "default": "Years in Dubai"
+        },
+        "about_eyebrow": {
+            "type": "text",
+            "label": "About Eyebrow",
+            "default": "About James"
+        },
+        "about_quote": {
+            "type": "text",
+            "label": "About Quote",
+            "default": "I don't sell properties. I help people find the home — or the investment — that changes the course of the next decade of their life."
+        },
+        "about_quote_author": {
+            "type": "text",
+            "label": "About Quote Author",
+            "default": "— James Whitfield, Senior Property Consultant"
+        },
+        "about_photo": {
+            "type": "image",
+            "label": "About Photo",
+            "default": "/storage/template-images/real_estate_broker/about_photo.jpg"
+        },
+        "about_text_1": {
+            "type": "text",
+            "label": "About Paragraph 1",
+            "default": "Born in London and raised between Dubai and the UK, I came to the GCC property market in 2018 after a decade in private wealth advisory. What drew me in was the pace — and what kept me was the people. Real estate in this city is personal. Every family I work with is writing the next chapter of their life on the line."
+        },
+        "about_text_2": {
+            "type": "text",
+            "label": "About Paragraph 2",
+            "default": "Today I specialize in luxury villas across Palm Jumeirah and Emirates Hills, off-plan investments in Creek Harbour and Dubai South, and discreet commercial mandates for family offices. I lead all my own deals end-to-end — no junior handoffs — and I speak to each of my clients weekly, even three years after close."
+        },
+        "about_text_3": {
+            "type": "text",
+            "label": "About Paragraph 3",
+            "default": "My philosophy is simple: do right by one client and you earn the next ten for free. After 127 transactions, I've never paid for a lead. Every client arrives through a referral from someone I helped before. That's the standard I hold myself to — and it's the standard you can expect from me."
+        },
+        "about_signature": {
+            "type": "text",
+            "label": "About Signature",
+            "default": "James Whitfield"
+        },
+        "about_meta": {
+            "type": "text",
+            "label": "About Meta",
+            "default": "Based in Dubai Marina · Speaks English, Arabic, Russian"
+        },
+        "specialties_eyebrow": {
+            "type": "text",
+            "label": "Specialties Eyebrow",
+            "default": "What I Specialize In"
+        },
+        "specialties_title": {
+            "type": "text",
+            "label": "Specialties Title",
+            "default": "Six Property Types. Deep Expertise in Each."
+        },
+        "specialties_intro": {
+            "type": "text",
+            "label": "Specialties Intro",
+            "default": "Most brokers dabble in everything. I focus on six property types — the ones I know best, the ones where I can consistently get my clients better outcomes than the market average."
+        },
+        "specialty_1_icon": {
+            "type": "text",
+            "label": "Specialty 1 Icon",
+            "default": "V"
+        },
+        "specialty_1_name": {
+            "type": "text",
+            "label": "Specialty 1 Name",
+            "default": "Luxury Villas"
+        },
+        "specialty_1_range": {
+            "type": "text",
+            "label": "Specialty 1 Range",
+            "default": "AED 8M – 85M"
+        },
+        "specialty_1_count": {
+            "type": "text",
+            "label": "Specialty 1 Count",
+            "default": "34 transactions closed"
+        },
+        "specialty_2_icon": {
+            "type": "text",
+            "label": "Specialty 2 Icon",
+            "default": "O"
+        },
+        "specialty_2_name": {
+            "type": "text",
+            "label": "Specialty 2 Name",
+            "default": "Off-Plan Investment"
+        },
+        "specialty_2_range": {
+            "type": "text",
+            "label": "Specialty 2 Range",
+            "default": "AED 1.5M – 12M"
+        },
+        "specialty_2_count": {
+            "type": "text",
+            "label": "Specialty 2 Count",
+            "default": "41 transactions closed"
+        },
+        "specialty_3_icon": {
+            "type": "text",
+            "label": "Specialty 3 Icon",
+            "default": "R"
+        },
+        "specialty_3_name": {
+            "type": "text",
+            "label": "Specialty 3 Name",
+            "default": "Ready Apartments"
+        },
+        "specialty_3_range": {
+            "type": "text",
+            "label": "Specialty 3 Range",
+            "default": "AED 1.2M – 18M"
+        },
+        "specialty_3_count": {
+            "type": "text",
+            "label": "Specialty 3 Count",
+            "default": "28 transactions closed"
+        },
+        "specialty_4_icon": {
+            "type": "text",
+            "label": "Specialty 4 Icon",
+            "default": "C"
+        },
+        "specialty_4_name": {
+            "type": "text",
+            "label": "Specialty 4 Name",
+            "default": "Commercial Assets"
+        },
+        "specialty_4_range": {
+            "type": "text",
+            "label": "Specialty 4 Range",
+            "default": "AED 10M – 120M"
+        },
+        "specialty_4_count": {
+            "type": "text",
+            "label": "Specialty 4 Count",
+            "default": "11 transactions closed"
+        },
+        "specialty_5_icon": {
+            "type": "text",
+            "label": "Specialty 5 Icon",
+            "default": "I"
+        },
+        "specialty_5_name": {
+            "type": "text",
+            "label": "Specialty 5 Name",
+            "default": "Investment Portfolios"
+        },
+        "specialty_5_range": {
+            "type": "text",
+            "label": "Specialty 5 Range",
+            "default": "AED 5M – 50M"
+        },
+        "specialty_5_count": {
+            "type": "text",
+            "label": "Specialty 5 Count",
+            "default": "9 mandates managed"
+        },
+        "specialty_6_icon": {
+            "type": "text",
+            "label": "Specialty 6 Icon",
+            "default": "W"
+        },
+        "specialty_6_name": {
+            "type": "text",
+            "label": "Specialty 6 Name",
+            "default": "Waterfront Properties"
+        },
+        "specialty_6_range": {
+            "type": "text",
+            "label": "Specialty 6 Range",
+            "default": "AED 4M – 45M"
+        },
+        "specialty_6_count": {
+            "type": "text",
+            "label": "Specialty 6 Count",
+            "default": "22 transactions closed"
+        },
+        "listings_eyebrow": {
+            "type": "text",
+            "label": "Listings Eyebrow",
+            "default": "Current Portfolio"
+        },
+        "listings_title": {
+            "type": "text",
+            "label": "Listings Title",
+            "default": "Hand-Picked Listings"
+        },
+        "listings_intro": {
+            "type": "text",
+            "label": "Listings Intro",
+            "default": "Every listing here is one I'd recommend to a family member. Prices reflect current market and include full disclosure on service fees, community fees, and any upcoming assessments."
+        },
+        "tab_all": {
+            "type": "text",
+            "label": "Tab All",
+            "default": "All"
+        },
+        "tab_sale": {
+            "type": "text",
+            "label": "Tab Sale",
+            "default": "For Sale"
+        },
+        "tab_rent": {
+            "type": "text",
+            "label": "Tab Rent",
+            "default": "For Rent"
+        },
+        "tab_offplan": {
+            "type": "text",
+            "label": "Tab Off-Plan",
+            "default": "Off-Plan"
+        },
+        "listing_1_image": {
+            "type": "image",
+            "label": "Listing 1 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_1_image.jpg"
+        },
+        "listing_1_badge": {
+            "type": "text",
+            "label": "Listing 1 Badge",
+            "default": "For Sale"
+        },
+        "listing_1_price": {
+            "type": "text",
+            "label": "Listing 1 Price",
+            "default": "12,500,000"
+        },
+        "listing_1_currency": {
+            "type": "text",
+            "label": "Listing 1 Currency",
+            "default": "AED"
+        },
+        "listing_1_area": {
+            "type": "text",
+            "label": "Listing 1 Area",
+            "default": "Palm Jumeirah · Signature Villa"
+        },
+        "listing_1_beds": {
+            "type": "text",
+            "label": "Listing 1 Beds",
+            "default": "5"
+        },
+        "listing_1_baths": {
+            "type": "text",
+            "label": "Listing 1 Baths",
+            "default": "6"
+        },
+        "listing_1_sqft": {
+            "type": "text",
+            "label": "Listing 1 Sqft",
+            "default": "6,800"
+        },
+        "listing_1_cta": {
+            "type": "text",
+            "label": "Listing 1 CTA",
+            "default": "Inquire"
+        },
+        "listing_2_image": {
+            "type": "image",
+            "label": "Listing 2 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_2_image.jpg"
+        },
+        "listing_2_badge": {
+            "type": "text",
+            "label": "Listing 2 Badge",
+            "default": "For Sale"
+        },
+        "listing_2_price": {
+            "type": "text",
+            "label": "Listing 2 Price",
+            "default": "4,200,000"
+        },
+        "listing_2_currency": {
+            "type": "text",
+            "label": "Listing 2 Currency",
+            "default": "AED"
+        },
+        "listing_2_area": {
+            "type": "text",
+            "label": "Listing 2 Area",
+            "default": "Dubai Marina · Marina Gate"
+        },
+        "listing_2_beds": {
+            "type": "text",
+            "label": "Listing 2 Beds",
+            "default": "3"
+        },
+        "listing_2_baths": {
+            "type": "text",
+            "label": "Listing 2 Baths",
+            "default": "4"
+        },
+        "listing_2_sqft": {
+            "type": "text",
+            "label": "Listing 2 Sqft",
+            "default": "2,450"
+        },
+        "listing_2_cta": {
+            "type": "text",
+            "label": "Listing 2 CTA",
+            "default": "Inquire"
+        },
+        "listing_3_image": {
+            "type": "image",
+            "label": "Listing 3 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_3_image.jpg"
+        },
+        "listing_3_badge": {
+            "type": "text",
+            "label": "Listing 3 Badge",
+            "default": "Off-Plan"
+        },
+        "listing_3_price": {
+            "type": "text",
+            "label": "Listing 3 Price",
+            "default": "2,850,000"
+        },
+        "listing_3_currency": {
+            "type": "text",
+            "label": "Listing 3 Currency",
+            "default": "AED"
+        },
+        "listing_3_area": {
+            "type": "text",
+            "label": "Listing 3 Area",
+            "default": "Creek Harbour · Tower Unit"
+        },
+        "listing_3_beds": {
+            "type": "text",
+            "label": "Listing 3 Beds",
+            "default": "2"
+        },
+        "listing_3_baths": {
+            "type": "text",
+            "label": "Listing 3 Baths",
+            "default": "3"
+        },
+        "listing_3_sqft": {
+            "type": "text",
+            "label": "Listing 3 Sqft",
+            "default": "1,460"
+        },
+        "listing_3_cta": {
+            "type": "text",
+            "label": "Listing 3 CTA",
+            "default": "Inquire"
+        },
+        "listing_4_image": {
+            "type": "image",
+            "label": "Listing 4 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_4_image.jpg"
+        },
+        "listing_4_badge": {
+            "type": "text",
+            "label": "Listing 4 Badge",
+            "default": "For Sale"
+        },
+        "listing_4_price": {
+            "type": "text",
+            "label": "Listing 4 Price",
+            "default": "28,500,000"
+        },
+        "listing_4_currency": {
+            "type": "text",
+            "label": "Listing 4 Currency",
+            "default": "AED"
+        },
+        "listing_4_area": {
+            "type": "text",
+            "label": "Listing 4 Area",
+            "default": "Emirates Hills · Sector E Mansion"
+        },
+        "listing_4_beds": {
+            "type": "text",
+            "label": "Listing 4 Beds",
+            "default": "7"
+        },
+        "listing_4_baths": {
+            "type": "text",
+            "label": "Listing 4 Baths",
+            "default": "9"
+        },
+        "listing_4_sqft": {
+            "type": "text",
+            "label": "Listing 4 Sqft",
+            "default": "12,500"
+        },
+        "listing_4_cta": {
+            "type": "text",
+            "label": "Listing 4 CTA",
+            "default": "Inquire"
+        },
+        "listing_5_image": {
+            "type": "image",
+            "label": "Listing 5 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_5_image.jpg"
+        },
+        "listing_5_badge": {
+            "type": "text",
+            "label": "Listing 5 Badge",
+            "default": "For Rent"
+        },
+        "listing_5_price": {
+            "type": "text",
+            "label": "Listing 5 Price",
+            "default": "180,000"
+        },
+        "listing_5_currency": {
+            "type": "text",
+            "label": "Listing 5 Currency",
+            "default": "AED/yr"
+        },
+        "listing_5_area": {
+            "type": "text",
+            "label": "Listing 5 Area",
+            "default": "Downtown · Burj Vista"
+        },
+        "listing_5_beds": {
+            "type": "text",
+            "label": "Listing 5 Beds",
+            "default": "2"
+        },
+        "listing_5_baths": {
+            "type": "text",
+            "label": "Listing 5 Baths",
+            "default": "3"
+        },
+        "listing_5_sqft": {
+            "type": "text",
+            "label": "Listing 5 Sqft",
+            "default": "1,280"
+        },
+        "listing_5_cta": {
+            "type": "text",
+            "label": "Listing 5 CTA",
+            "default": "Inquire"
+        },
+        "listing_6_image": {
+            "type": "image",
+            "label": "Listing 6 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_6_image.jpg"
+        },
+        "listing_6_badge": {
+            "type": "text",
+            "label": "Listing 6 Badge",
+            "default": "Off-Plan"
+        },
+        "listing_6_price": {
+            "type": "text",
+            "label": "Listing 6 Price",
+            "default": "1,950,000"
+        },
+        "listing_6_currency": {
+            "type": "text",
+            "label": "Listing 6 Currency",
+            "default": "AED"
+        },
+        "listing_6_area": {
+            "type": "text",
+            "label": "Listing 6 Area",
+            "default": "JVC · Garden Residence"
+        },
+        "listing_6_beds": {
+            "type": "text",
+            "label": "Listing 6 Beds",
+            "default": "1"
+        },
+        "listing_6_baths": {
+            "type": "text",
+            "label": "Listing 6 Baths",
+            "default": "2"
+        },
+        "listing_6_sqft": {
+            "type": "text",
+            "label": "Listing 6 Sqft",
+            "default": "890"
+        },
+        "listing_6_cta": {
+            "type": "text",
+            "label": "Listing 6 CTA",
+            "default": "Inquire"
+        },
+        "areas_eyebrow": {
+            "type": "text",
+            "label": "Areas Eyebrow",
+            "default": "Where I Work"
+        },
+        "areas_title": {
+            "type": "text",
+            "label": "Areas Title",
+            "default": "Deep Expertise. Six Dubai Communities."
+        },
+        "areas_intro": {
+            "type": "text",
+            "label": "Areas Intro",
+            "default": "I know these six communities street-by-street — the schools, the service fees, the market cycle, and every seller and buyer active in the area right now."
+        },
+        "area_1_image": {
+            "type": "image",
+            "label": "Area 1 Image",
+            "default": "/storage/template-images/real_estate_broker/area_1_image.jpg"
+        },
+        "area_1_name": {
+            "type": "text",
+            "label": "Area 1 Name",
+            "default": "Dubai Marina"
+        },
+        "area_1_price": {
+            "type": "text",
+            "label": "Area 1 Price",
+            "default": "Avg AED 1,680 / sqft"
+        },
+        "area_1_deals": {
+            "type": "text",
+            "label": "Area 1 Deals",
+            "default": "38 deals closed here"
+        },
+        "area_1_link": {
+            "type": "text",
+            "label": "Area 1 Link",
+            "default": "View Listings"
+        },
+        "area_2_image": {
+            "type": "image",
+            "label": "Area 2 Image",
+            "default": "/storage/template-images/real_estate_broker/area_2_image.jpg"
+        },
+        "area_2_name": {
+            "type": "text",
+            "label": "Area 2 Name",
+            "default": "Downtown Dubai"
+        },
+        "area_2_price": {
+            "type": "text",
+            "label": "Area 2 Price",
+            "default": "Avg AED 2,120 / sqft"
+        },
+        "area_2_deals": {
+            "type": "text",
+            "label": "Area 2 Deals",
+            "default": "24 deals closed here"
+        },
+        "area_2_link": {
+            "type": "text",
+            "label": "Area 2 Link",
+            "default": "View Listings"
+        },
+        "area_3_image": {
+            "type": "image",
+            "label": "Area 3 Image",
+            "default": "/storage/template-images/real_estate_broker/area_3_image.jpg"
+        },
+        "area_3_name": {
+            "type": "text",
+            "label": "Area 3 Name",
+            "default": "Palm Jumeirah"
+        },
+        "area_3_price": {
+            "type": "text",
+            "label": "Area 3 Price",
+            "default": "Avg AED 3,450 / sqft"
+        },
+        "area_3_deals": {
+            "type": "text",
+            "label": "Area 3 Deals",
+            "default": "19 deals closed here"
+        },
+        "area_3_link": {
+            "type": "text",
+            "label": "Area 3 Link",
+            "default": "View Listings"
+        },
+        "area_4_image": {
+            "type": "image",
+            "label": "Area 4 Image",
+            "default": "/storage/template-images/real_estate_broker/area_4_image.jpg"
+        },
+        "area_4_name": {
+            "type": "text",
+            "label": "Area 4 Name",
+            "default": "JVC"
+        },
+        "area_4_price": {
+            "type": "text",
+            "label": "Area 4 Price",
+            "default": "Avg AED 1,050 / sqft"
+        },
+        "area_4_deals": {
+            "type": "text",
+            "label": "Area 4 Deals",
+            "default": "16 deals closed here"
+        },
+        "area_4_link": {
+            "type": "text",
+            "label": "Area 4 Link",
+            "default": "View Listings"
+        },
+        "area_5_image": {
+            "type": "image",
+            "label": "Area 5 Image",
+            "default": "/storage/template-images/real_estate_broker/area_5_image.jpg"
+        },
+        "area_5_name": {
+            "type": "text",
+            "label": "Area 5 Name",
+            "default": "Business Bay"
+        },
+        "area_5_price": {
+            "type": "text",
+            "label": "Area 5 Price",
+            "default": "Avg AED 1,540 / sqft"
+        },
+        "area_5_deals": {
+            "type": "text",
+            "label": "Area 5 Deals",
+            "default": "18 deals closed here"
+        },
+        "area_5_link": {
+            "type": "text",
+            "label": "Area 5 Link",
+            "default": "View Listings"
+        },
+        "area_6_image": {
+            "type": "image",
+            "label": "Area 6 Image",
+            "default": "/storage/template-images/real_estate_broker/area_6_image.jpg"
+        },
+        "area_6_name": {
+            "type": "text",
+            "label": "Area 6 Name",
+            "default": "Creek Harbour"
+        },
+        "area_6_price": {
+            "type": "text",
+            "label": "Area 6 Price",
+            "default": "Avg AED 1,880 / sqft"
+        },
+        "area_6_deals": {
+            "type": "text",
+            "label": "Area 6 Deals",
+            "default": "12 deals closed here"
+        },
+        "area_6_link": {
+            "type": "text",
+            "label": "Area 6 Link",
+            "default": "View Listings"
+        },
+        "awards_eyebrow": {
+            "type": "text",
+            "label": "Awards Eyebrow",
+            "default": "Recognition & Achievements"
+        },
+        "awards_title": {
+            "type": "text",
+            "label": "Awards Title",
+            "default": "Proof of the Work — Not Just the Talk"
+        },
+        "awards_intro": {
+            "type": "text",
+            "label": "Awards Intro",
+            "default": "Recognition that matters — issued by independent bodies, earned from client outcomes, and renewed each year through continuous deals and satisfaction scores."
+        },
+        "award_1_icon": {
+            "type": "text",
+            "label": "Award 1 Icon",
+            "default": "R"
+        },
+        "award_1_name": {
+            "type": "text",
+            "label": "Award 1 Name",
+            "default": "RERA Certified Broker"
+        },
+        "award_1_year": {
+            "type": "text",
+            "label": "Award 1 Year",
+            "default": "2018 – Present"
+        },
+        "award_1_issuer": {
+            "type": "text",
+            "label": "Award 1 Issuer",
+            "default": "Real Estate Regulatory Agency · Dubai Land Department"
+        },
+        "award_2_icon": {
+            "type": "text",
+            "label": "Award 2 Icon",
+            "default": "★"
+        },
+        "award_2_name": {
+            "type": "text",
+            "label": "Award 2 Name",
+            "default": "Top 1% Agent"
+        },
+        "award_2_year": {
+            "type": "text",
+            "label": "Award 2 Year",
+            "default": "2024"
+        },
+        "award_2_issuer": {
+            "type": "text",
+            "label": "Award 2 Issuer",
+            "default": "Property Finder · Annual Agent Rankings"
+        },
+        "award_3_icon": {
+            "type": "text",
+            "label": "Award 3 Icon",
+            "default": "G"
+        },
+        "award_3_name": {
+            "type": "text",
+            "label": "Award 3 Name",
+            "default": "Gold Performer"
+        },
+        "award_3_year": {
+            "type": "text",
+            "label": "Award 3 Year",
+            "default": "2023"
+        },
+        "award_3_issuer": {
+            "type": "text",
+            "label": "Award 3 Issuer",
+            "default": "Luxe Properties Dubai · Annual Awards"
+        },
+        "award_4_icon": {
+            "type": "text",
+            "label": "Award 4 Icon",
+            "default": "5"
+        },
+        "award_4_name": {
+            "type": "text",
+            "label": "Award 4 Name",
+            "default": "5-Star Agency Rating"
+        },
+        "award_4_year": {
+            "type": "text",
+            "label": "Award 4 Year",
+            "default": "Verified 2025"
+        },
+        "award_4_issuer": {
+            "type": "text",
+            "label": "Award 4 Issuer",
+            "default": "Bayut · Verified Broker Reviews"
+        },
+        "award_5_icon": {
+            "type": "text",
+            "label": "Award 5 Icon",
+            "default": "100"
+        },
+        "award_5_name": {
+            "type": "text",
+            "label": "Award 5 Name",
+            "default": "100+ Deals Milestone"
+        },
+        "award_5_year": {
+            "type": "text",
+            "label": "Award 5 Year",
+            "default": "2023"
+        },
+        "award_5_issuer": {
+            "type": "text",
+            "label": "Award 5 Issuer",
+            "default": "Dubai Land Department · Transaction Records"
+        },
+        "award_6_icon": {
+            "type": "text",
+            "label": "Award 6 Icon",
+            "default": "L"
+        },
+        "award_6_name": {
+            "type": "text",
+            "label": "Award 6 Name",
+            "default": "Luxury Specialist"
+        },
+        "award_6_year": {
+            "type": "text",
+            "label": "Award 6 Year",
+            "default": "2022 – Present"
+        },
+        "award_6_issuer": {
+            "type": "text",
+            "label": "Award 6 Issuer",
+            "default": "Luxury Portfolio International · Certified Member"
+        },
+        "press_eyebrow": {
+            "type": "text",
+            "label": "Press Eyebrow",
+            "default": "As Seen In"
+        },
+        "press_title": {
+            "type": "text",
+            "label": "Press Title",
+            "default": "Featured in Dubai's Property Press"
+        },
+        "press_1_publication": {
+            "type": "text",
+            "label": "Press 1 Publication",
+            "default": "Gulf Business"
+        },
+        "press_1_headline": {
+            "type": "text",
+            "label": "Press 1 Headline",
+            "default": "\"The new generation of Dubai brokers putting clients over commission\""
+        },
+        "press_1_date": {
+            "type": "text",
+            "label": "Press 1 Date",
+            "default": "November 2025"
+        },
+        "press_1_link": {
+            "type": "text",
+            "label": "Press 1 Link",
+            "default": "Read Article"
+        },
+        "press_2_publication": {
+            "type": "text",
+            "label": "Press 2 Publication",
+            "default": "Arabian Business"
+        },
+        "press_2_headline": {
+            "type": "text",
+            "label": "Press 2 Headline",
+            "default": "\"How James Whitfield is rewriting the rules of Palm Jumeirah luxury sales\""
+        },
+        "press_2_date": {
+            "type": "text",
+            "label": "Press 2 Date",
+            "default": "July 2025"
+        },
+        "press_2_link": {
+            "type": "text",
+            "label": "Press 2 Link",
+            "default": "Read Article"
+        },
+        "press_3_publication": {
+            "type": "text",
+            "label": "Press 3 Publication",
+            "default": "The National"
+        },
+        "press_3_headline": {
+            "type": "text",
+            "label": "Press 3 Headline",
+            "default": "\"Inside a record-breaking AED 85M Palm villa deal\""
+        },
+        "press_3_date": {
+            "type": "text",
+            "label": "Press 3 Date",
+            "default": "March 2025"
+        },
+        "press_3_link": {
+            "type": "text",
+            "label": "Press 3 Link",
+            "default": "Read Article"
+        },
+        "testimonials_eyebrow": {
+            "type": "text",
+            "label": "Testimonials Eyebrow",
+            "default": "Client Stories"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Title",
+            "default": "Real Clients. Real Outcomes."
+        },
+        "testimonial_1_rating": {
+            "type": "text",
+            "label": "Testimonial 1 Rating",
+            "default": "★★★★★"
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1 Quote",
+            "default": "We interviewed five brokers before we picked James. He was the only one who told us honestly that the building we wanted had a service-fee problem coming — and he walked us to a better option. Closed in six weeks, AED 400K under asking."
+        },
+        "testimonial_1_property": {
+            "type": "text",
+            "label": "Testimonial 1 Property",
+            "default": "Purchased 3BR · Dubai Marina"
+        },
+        "testimonial_1_avatar": {
+            "type": "text",
+            "label": "Testimonial 1 Avatar",
+            "default": "AH"
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Ahmed & Haya K."
+        },
+        "testimonial_1_nationality": {
+            "type": "text",
+            "label": "Testimonial 1 Nationality",
+            "default": "🇦🇪 UAE Nationals"
+        },
+        "testimonial_2_rating": {
+            "type": "text",
+            "label": "Testimonial 2 Rating",
+            "default": "★★★★★"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2 Quote",
+            "default": "As an overseas investor, I needed a broker I could trust with a remote deal. James sent weekly voice notes, organised all the compliance, and even supervised the handover while I was in Geneva. Yield is already 7.4% after 11 months."
+        },
+        "testimonial_2_property": {
+            "type": "text",
+            "label": "Testimonial 2 Property",
+            "default": "Purchased 2BR · Downtown Dubai"
+        },
+        "testimonial_2_avatar": {
+            "type": "text",
+            "label": "Testimonial 2 Avatar",
+            "default": "SV"
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Sergei V."
+        },
+        "testimonial_2_nationality": {
+            "type": "text",
+            "label": "Testimonial 2 Nationality",
+            "default": "🇷🇺 Investor · Geneva"
+        },
+        "testimonial_3_rating": {
+            "type": "text",
+            "label": "Testimonial 3 Rating",
+            "default": "★★★★★"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3 Quote",
+            "default": "We sold our Palm villa through James after a prior agent sat on it for 11 months. He priced it right, produced a proper campaign in 48 hours, and brought us three qualified offers in the first week. Exchanged at AED 28.5M — on budget, on schedule."
+        },
+        "testimonial_3_property": {
+            "type": "text",
+            "label": "Testimonial 3 Property",
+            "default": "Sold 5BR Villa · Palm Jumeirah"
+        },
+        "testimonial_3_avatar": {
+            "type": "text",
+            "label": "Testimonial 3 Avatar",
+            "default": "PM"
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Priya M."
+        },
+        "testimonial_3_nationality": {
+            "type": "text",
+            "label": "Testimonial 3 Nationality",
+            "default": "🇮🇳 Family Office · Mumbai"
+        },
+        "process_eyebrow": {
+            "type": "text",
+            "label": "Process Eyebrow",
+            "default": "How I Work"
+        },
+        "process_title": {
+            "type": "text",
+            "label": "Process Title",
+            "default": "A Four-Step Process. Every Client. Every Deal."
+        },
+        "process_intro": {
+            "type": "text",
+            "label": "Process Intro",
+            "default": "Some things don't scale. This process is one of them. I personally handle every step — from the first conversation to the handover of keys."
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Understand"
+        },
+        "step_1_text": {
+            "type": "text",
+            "label": "Step 1 Text",
+            "default": "We start with a private 45-minute conversation. I take time to understand what you actually want, what you can comfortably afford, and where compromise is okay — or not."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Search"
+        },
+        "step_2_text": {
+            "type": "text",
+            "label": "Step 2 Text",
+            "default": "I curate 4 – 6 shortlisted options — including off-market listings you won't find anywhere else. Every property comes with a full data pack: comps, service fees, rental yields, and risks."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Negotiate"
+        },
+        "step_3_text": {
+            "type": "text",
+            "label": "Step 3 Text",
+            "default": "Once you've picked the property, I negotiate hard — with full transparency on my commission. My clients average 4 – 8% below first-ask, and I document every concession in writing."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Close"
+        },
+        "step_4_text": {
+            "type": "text",
+            "label": "Step 4 Text",
+            "default": "I personally supervise the DLD transfer, key handover, and snag inspection. After close, I stay in touch — weekly for the first month, then quarterly for as long as you own the property."
+        },
+        "booking_eyebrow": {
+            "type": "text",
+            "label": "Booking Eyebrow",
+            "default": "Private Consultation"
+        },
+        "booking_title": {
+            "type": "text",
+            "label": "Booking Title",
+            "default": "Let's Find Your Perfect Property"
+        },
+        "booking_intro": {
+            "type": "text",
+            "label": "Booking Intro",
+            "default": "Book a private consultation — no obligation, no pressure. Tell me what you're looking for and I'll come to our first call with three shortlisted options."
+        },
+        "booking_property_type_label": {
+            "type": "text",
+            "label": "Property Type Label",
+            "default": "Property Type"
+        },
+        "booking_budget_label": {
+            "type": "text",
+            "label": "Budget Label",
+            "default": "Budget Range"
+        },
+        "booking_intent_label": {
+            "type": "text",
+            "label": "Intent Label",
+            "default": "Intent"
+        },
+        "booking_timeline_label": {
+            "type": "text",
+            "label": "Timeline Label",
+            "default": "Timeline"
+        },
+        "booking_date_label": {
+            "type": "text",
+            "label": "Date Label",
+            "default": "Preferred Date"
+        },
+        "booking_time_label": {
+            "type": "text",
+            "label": "Time Label",
+            "default": "Preferred Time"
+        },
+        "booking_name_label": {
+            "type": "text",
+            "label": "Name Label",
+            "default": "Your Name"
+        },
+        "booking_email_label": {
+            "type": "text",
+            "label": "Email Label",
+            "default": "Email"
+        },
+        "booking_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Phone / WhatsApp"
+        },
+        "booking_message_label": {
+            "type": "text",
+            "label": "Message Label",
+            "default": "Anything else I should know?"
+        },
+        "booking_submit": {
+            "type": "text",
+            "label": "Submit Button",
+            "default": "Request Private Consultation"
+        },
+        "booking_direct_whatsapp_label": {
+            "type": "text",
+            "label": "Direct WhatsApp Label",
+            "default": "Prefer WhatsApp?"
+        },
+        "booking_direct_whatsapp": {
+            "type": "text",
+            "label": "Direct WhatsApp",
+            "default": "+971 50 555 0100"
+        },
+        "booking_direct_phone_label": {
+            "type": "text",
+            "label": "Direct Phone Label",
+            "default": "Call directly"
+        },
+        "booking_direct_phone": {
+            "type": "text",
+            "label": "Direct Phone",
+            "default": "+971 4 555 0100"
+        },
+        "contact_eyebrow": {
+            "type": "text",
+            "label": "Contact Eyebrow",
+            "default": "Get In Touch"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Title",
+            "default": "Personal. Direct. Responsive."
+        },
+        "contact_intro": {
+            "type": "text",
+            "label": "Contact Intro",
+            "default": "You reach me — not a junior, not a call center. Every message gets a personal response from me within two hours during business hours."
+        },
+        "contact_photo": {
+            "type": "image",
+            "label": "Contact Photo",
+            "default": "/storage/builder-heroes/real_estate_broker.jpg"
+        },
+        "contact_trust_badge": {
+            "type": "text",
+            "label": "Contact Trust Badge",
+            "default": "Response within 2 hours"
+        },
+        "contact_phone_label": {
+            "type": "text",
+            "label": "Contact Phone Label",
+            "default": "Phone"
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Contact Phone",
+            "default": "+971 4 555 0100"
+        },
+        "contact_whatsapp_label": {
+            "type": "text",
+            "label": "Contact WhatsApp Label",
+            "default": "WhatsApp"
+        },
+        "contact_whatsapp": {
+            "type": "text",
+            "label": "Contact WhatsApp",
+            "default": "+971 50 555 0100"
+        },
+        "contact_email_label": {
+            "type": "text",
+            "label": "Contact Email Label",
+            "default": "Email"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Contact Email",
+            "default": "james@luxeproperties.ae"
+        },
+        "contact_instagram_label": {
+            "type": "text",
+            "label": "Contact Instagram Label",
+            "default": "Instagram"
+        },
+        "contact_instagram": {
+            "type": "text",
+            "label": "Contact Instagram",
+            "default": "@jameswhitfield.dubai"
+        },
+        "contact_linkedin_label": {
+            "type": "text",
+            "label": "Contact LinkedIn Label",
+            "default": "LinkedIn"
+        },
+        "contact_linkedin": {
+            "type": "text",
+            "label": "Contact LinkedIn",
+            "default": "/in/jameswhitfielddubai"
+        },
+        "contact_office_label": {
+            "type": "text",
+            "label": "Contact Office Label",
+            "default": "Office · RERA 12345678"
+        },
+        "contact_office": {
+            "type": "text",
+            "label": "Contact Office",
+            "default": "Luxe Properties Dubai, Building 7, DIFC, Dubai, UAE"
+        },
+        "contact_map_placeholder": {
+            "type": "text",
+            "label": "Contact Map Placeholder",
+            "default": "Google Maps — Luxe Properties Dubai · DIFC"
+        },
+        "ticker_1": {
+            "type": "text",
+            "label": "Ticker 1",
+            "default": "★ 4.9 Client Rating"
+        },
+        "ticker_2": {
+            "type": "text",
+            "label": "Ticker 2",
+            "default": "127 Deals Closed"
+        },
+        "ticker_3": {
+            "type": "text",
+            "label": "Ticker 3",
+            "default": "AED 380M+ Transacted"
+        },
+        "ticker_4": {
+            "type": "text",
+            "label": "Ticker 4",
+            "default": "8 Years in Dubai"
+        },
+        "ticker_5": {
+            "type": "text",
+            "label": "Ticker 5",
+            "default": "98% Client Satisfaction"
+        },
+        "footer_logo": {
+            "type": "text",
+            "label": "Footer Logo",
+            "default": "James Whitfield"
+        },
+        "footer_tagline": {
+            "type": "text",
+            "label": "Footer Tagline",
+            "default": "Senior Property Consultant at Luxe Properties Dubai. Helping families, investors, and family offices buy, sell, and hold premium real estate across the Emirates since 2018."
+        },
+        "social_1": {
+            "type": "text",
+            "label": "Social 1",
+            "default": "IG"
+        },
+        "social_2": {
+            "type": "text",
+            "label": "Social 2",
+            "default": "IN"
+        },
+        "social_3": {
+            "type": "text",
+            "label": "Social 3",
+            "default": "W"
+        },
+        "social_4": {
+            "type": "text",
+            "label": "Social 4",
+            "default": "X"
+        },
+        "footer_col_1_title": {
+            "type": "text",
+            "label": "Footer Col 1 Title",
+            "default": "Navigate"
+        },
+        "footer_col_2_title": {
+            "type": "text",
+            "label": "Footer Col 2 Title",
+            "default": "Work With Me"
+        },
+        "footer_col_3_title": {
+            "type": "text",
+            "label": "Footer Col 3 Title",
+            "default": "Resources"
+        },
+        "footer_link_1": {
+            "type": "text",
+            "label": "Footer Link 1",
+            "default": "About"
+        },
+        "footer_link_2": {
+            "type": "text",
+            "label": "Footer Link 2",
+            "default": "Listings"
+        },
+        "footer_link_3": {
+            "type": "text",
+            "label": "Footer Link 3",
+            "default": "Awards"
+        },
+        "footer_link_4": {
+            "type": "text",
+            "label": "Footer Link 4",
+            "default": "Testimonials"
+        },
+        "footer_link_5": {
+            "type": "text",
+            "label": "Footer Link 5",
+            "default": "Contact"
+        },
+        "footer_link_6": {
+            "type": "text",
+            "label": "Footer Link 6",
+            "default": "Book a Call"
+        },
+        "footer_link_7": {
+            "type": "text",
+            "label": "Footer Link 7",
+            "default": "Privacy Policy"
+        },
+        "footer_link_8": {
+            "type": "text",
+            "label": "Footer Link 8",
+            "default": "RERA Verify"
+        },
+        "footer_rera_disclaimer": {
+            "type": "text",
+            "label": "RERA Disclaimer",
+            "default": "RERA Disclaimer — This website is operated by James Whitfield, licensed broker with the Dubai Real Estate Regulatory Agency (RERA License 12345678) under Luxe Properties Dubai. All properties listed are subject to availability and verification. Listing prices and availability are accurate at the time of publication and may change without notice. No offer or contract is formed by the use of this website. All transactions are subject to Dubai Land Department regulations."
+        },
+        "footer_copyright": {
+            "type": "text",
+            "label": "Footer Copyright",
+            "default": "© 2026 James Whitfield · Luxe Properties Dubai. All rights reserved."
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "Privacy · Terms · Cookie Policy · RERA 12345678"
+        }
+    }
+}

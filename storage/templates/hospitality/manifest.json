@@ -1,0 +1,1439 @@
+{
+    "id": "hospitality",
+    "name": "Hospitality / Resort",
+    "industry": "hospitality",
+    "description": "Boutique 5-star resort / hotel template — editorial hero with availability form on ivory background, stats, 6 room types with amenities and rates, 8-amenity grid, 3 dining venues, 4 signature experiences, 8-photo gallery, testimonials, reserve-your-stay booking form, contact, and footer. Built for boutique hotels and premium resorts.",
+    "thumbnail": "/storage/builder-heroes/hospitality.jpg",
+    "category": "hospitality",
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_1": "nav .nav-link-1",
+                "nav_2": "nav .nav-link-2",
+                "nav_3": "nav .nav-link-3",
+                "nav_4": "nav .nav-link-4",
+                "nav_5": "nav .nav-link-5",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero with Availability Form",
+            "elements": {
+                "hero_image": "section.hero",
+                "hero_eyebrow": ".hero-eyebrow",
+                "hero_title": ".hero-title",
+                "hero_subtitle": ".hero-subtitle",
+                "hero_trust_1": ".hero-trust-1",
+                "hero_trust_2": ".hero-trust-2",
+                "hero_trust_3": ".hero-trust-3",
+                "hero_trust_4": ".hero-trust-4",
+                "hero_form_eyebrow": ".hero-form-eyebrow",
+                "hero_form_title": ".hero-form-title",
+                "hero_form_sub": ".hero-form-sub",
+                "hero_form_checkin_label": ".hero-form label[data-field=hero_form_checkin_label]",
+                "hero_form_checkout_label": ".hero-form label[data-field=hero_form_checkout_label]",
+                "hero_form_guests_label": ".hero-form label[data-field=hero_form_guests_label]",
+                "hero_form_submit": ".hero-form button",
+                "hero_form_note": ".hero-form-note"
+            }
+        },
+        {
+            "id": "stats",
+            "name": "Stats",
+            "elements": {
+                "stat_1_value": ".stats-grid .stat:nth-child(1) .stat-value",
+                "stat_1_label": ".stats-grid .stat:nth-child(1) .stat-label",
+                "stat_2_value": ".stats-grid .stat:nth-child(2) .stat-value",
+                "stat_2_label": ".stats-grid .stat:nth-child(2) .stat-label",
+                "stat_3_value": ".stats-grid .stat:nth-child(3) .stat-value",
+                "stat_3_label": ".stats-grid .stat:nth-child(3) .stat-label",
+                "stat_4_value": ".stats-grid .stat:nth-child(4) .stat-value",
+                "stat_4_label": ".stats-grid .stat:nth-child(4) .stat-label"
+            }
+        },
+        {
+            "id": "room_types",
+            "name": "Room Types",
+            "elements": {
+                "rooms_eyebrow": "#rooms .eyebrow",
+                "rooms_title": "#rooms .h-section",
+                "rooms_intro": "#rooms .section-intro",
+                "room_1_image": ".rooms-grid .room:nth-child(1) .room-image",
+                "room_1_name": ".rooms-grid .room:nth-child(1) .room-name",
+                "room_1_size": ".rooms-grid .room:nth-child(1) .room-size",
+                "room_1_desc": ".rooms-grid .room:nth-child(1) .room-desc",
+                "room_1_amenity_1": ".rooms-grid .room:nth-child(1) .room-amenity:nth-child(1)",
+                "room_1_amenity_2": ".rooms-grid .room:nth-child(1) .room-amenity:nth-child(2)",
+                "room_1_amenity_3": ".rooms-grid .room:nth-child(1) .room-amenity:nth-child(3)",
+                "room_1_price": ".rooms-grid .room:nth-child(1) .room-price",
+                "room_1_cta": ".rooms-grid .room:nth-child(1) .room-cta",
+                "room_2_image": ".rooms-grid .room:nth-child(2) .room-image",
+                "room_2_name": ".rooms-grid .room:nth-child(2) .room-name",
+                "room_2_size": ".rooms-grid .room:nth-child(2) .room-size",
+                "room_2_desc": ".rooms-grid .room:nth-child(2) .room-desc",
+                "room_2_amenity_1": ".rooms-grid .room:nth-child(2) .room-amenity:nth-child(1)",
+                "room_2_amenity_2": ".rooms-grid .room:nth-child(2) .room-amenity:nth-child(2)",
+                "room_2_amenity_3": ".rooms-grid .room:nth-child(2) .room-amenity:nth-child(3)",
+                "room_2_price": ".rooms-grid .room:nth-child(2) .room-price",
+                "room_2_cta": ".rooms-grid .room:nth-child(2) .room-cta",
+                "room_3_image": ".rooms-grid .room:nth-child(3) .room-image",
+                "room_3_name": ".rooms-grid .room:nth-child(3) .room-name",
+                "room_3_size": ".rooms-grid .room:nth-child(3) .room-size",
+                "room_3_desc": ".rooms-grid .room:nth-child(3) .room-desc",
+                "room_3_amenity_1": ".rooms-grid .room:nth-child(3) .room-amenity:nth-child(1)",
+                "room_3_amenity_2": ".rooms-grid .room:nth-child(3) .room-amenity:nth-child(2)",
+                "room_3_amenity_3": ".rooms-grid .room:nth-child(3) .room-amenity:nth-child(3)",
+                "room_3_price": ".rooms-grid .room:nth-child(3) .room-price",
+                "room_3_cta": ".rooms-grid .room:nth-child(3) .room-cta",
+                "room_4_image": ".rooms-grid .room:nth-child(4) .room-image",
+                "room_4_name": ".rooms-grid .room:nth-child(4) .room-name",
+                "room_4_size": ".rooms-grid .room:nth-child(4) .room-size",
+                "room_4_desc": ".rooms-grid .room:nth-child(4) .room-desc",
+                "room_4_amenity_1": ".rooms-grid .room:nth-child(4) .room-amenity:nth-child(1)",
+                "room_4_amenity_2": ".rooms-grid .room:nth-child(4) .room-amenity:nth-child(2)",
+                "room_4_amenity_3": ".rooms-grid .room:nth-child(4) .room-amenity:nth-child(3)",
+                "room_4_price": ".rooms-grid .room:nth-child(4) .room-price",
+                "room_4_cta": ".rooms-grid .room:nth-child(4) .room-cta",
+                "room_5_image": ".rooms-grid .room:nth-child(5) .room-image",
+                "room_5_name": ".rooms-grid .room:nth-child(5) .room-name",
+                "room_5_size": ".rooms-grid .room:nth-child(5) .room-size",
+                "room_5_desc": ".rooms-grid .room:nth-child(5) .room-desc",
+                "room_5_amenity_1": ".rooms-grid .room:nth-child(5) .room-amenity:nth-child(1)",
+                "room_5_amenity_2": ".rooms-grid .room:nth-child(5) .room-amenity:nth-child(2)",
+                "room_5_amenity_3": ".rooms-grid .room:nth-child(5) .room-amenity:nth-child(3)",
+                "room_5_price": ".rooms-grid .room:nth-child(5) .room-price",
+                "room_5_cta": ".rooms-grid .room:nth-child(5) .room-cta",
+                "room_6_image": ".rooms-grid .room:nth-child(6) .room-image",
+                "room_6_name": ".rooms-grid .room:nth-child(6) .room-name",
+                "room_6_size": ".rooms-grid .room:nth-child(6) .room-size",
+                "room_6_desc": ".rooms-grid .room:nth-child(6) .room-desc",
+                "room_6_amenity_1": ".rooms-grid .room:nth-child(6) .room-amenity:nth-child(1)",
+                "room_6_amenity_2": ".rooms-grid .room:nth-child(6) .room-amenity:nth-child(2)",
+                "room_6_amenity_3": ".rooms-grid .room:nth-child(6) .room-amenity:nth-child(3)",
+                "room_6_price": ".rooms-grid .room:nth-child(6) .room-price",
+                "room_6_cta": ".rooms-grid .room:nth-child(6) .room-cta"
+            }
+        },
+        {
+            "id": "amenities",
+            "name": "Amenities",
+            "elements": {
+                "amenities_eyebrow": "#amenities .eyebrow",
+                "amenities_title": "#amenities .h-section",
+                "amenities_intro": "#amenities .section-intro",
+                "amenity_1_icon": ".amenities-grid .amenity:nth-child(1) .amenity-icon",
+                "amenity_1_title": ".amenities-grid .amenity:nth-child(1) h3",
+                "amenity_1_text": ".amenities-grid .amenity:nth-child(1) p",
+                "amenity_2_icon": ".amenities-grid .amenity:nth-child(2) .amenity-icon",
+                "amenity_2_title": ".amenities-grid .amenity:nth-child(2) h3",
+                "amenity_2_text": ".amenities-grid .amenity:nth-child(2) p",
+                "amenity_3_icon": ".amenities-grid .amenity:nth-child(3) .amenity-icon",
+                "amenity_3_title": ".amenities-grid .amenity:nth-child(3) h3",
+                "amenity_3_text": ".amenities-grid .amenity:nth-child(3) p",
+                "amenity_4_icon": ".amenities-grid .amenity:nth-child(4) .amenity-icon",
+                "amenity_4_title": ".amenities-grid .amenity:nth-child(4) h3",
+                "amenity_4_text": ".amenities-grid .amenity:nth-child(4) p",
+                "amenity_5_icon": ".amenities-grid .amenity:nth-child(5) .amenity-icon",
+                "amenity_5_title": ".amenities-grid .amenity:nth-child(5) h3",
+                "amenity_5_text": ".amenities-grid .amenity:nth-child(5) p",
+                "amenity_6_icon": ".amenities-grid .amenity:nth-child(6) .amenity-icon",
+                "amenity_6_title": ".amenities-grid .amenity:nth-child(6) h3",
+                "amenity_6_text": ".amenities-grid .amenity:nth-child(6) p",
+                "amenity_7_icon": ".amenities-grid .amenity:nth-child(7) .amenity-icon",
+                "amenity_7_title": ".amenities-grid .amenity:nth-child(7) h3",
+                "amenity_7_text": ".amenities-grid .amenity:nth-child(7) p",
+                "amenity_8_icon": ".amenities-grid .amenity:nth-child(8) .amenity-icon",
+                "amenity_8_title": ".amenities-grid .amenity:nth-child(8) h3",
+                "amenity_8_text": ".amenities-grid .amenity:nth-child(8) p"
+            }
+        },
+        {
+            "id": "dining",
+            "name": "Dining",
+            "elements": {
+                "dining_eyebrow": "#dining .eyebrow",
+                "dining_title": "#dining .h-section",
+                "dining_intro": "#dining .section-intro",
+                "dining_1_tag": ".dining-grid .dining:nth-child(1) .dining-tag",
+                "dining_1_name": ".dining-grid .dining:nth-child(1) h3",
+                "dining_1_hours": ".dining-grid .dining:nth-child(1) .dining-hours",
+                "dining_1_text": ".dining-grid .dining:nth-child(1) p",
+                "dining_2_tag": ".dining-grid .dining:nth-child(2) .dining-tag",
+                "dining_2_name": ".dining-grid .dining:nth-child(2) h3",
+                "dining_2_hours": ".dining-grid .dining:nth-child(2) .dining-hours",
+                "dining_2_text": ".dining-grid .dining:nth-child(2) p",
+                "dining_3_tag": ".dining-grid .dining:nth-child(3) .dining-tag",
+                "dining_3_name": ".dining-grid .dining:nth-child(3) h3",
+                "dining_3_hours": ".dining-grid .dining:nth-child(3) .dining-hours",
+                "dining_3_text": ".dining-grid .dining:nth-child(3) p"
+            }
+        },
+        {
+            "id": "experiences",
+            "name": "Experiences",
+            "elements": {
+                "exp_eyebrow": "#experiences .eyebrow",
+                "exp_title": "#experiences .h-section",
+                "exp_intro": "#experiences .section-intro",
+                "exp_1_num": ".exp-grid .exp:nth-child(1) .exp-num",
+                "exp_1_title": ".exp-grid .exp:nth-child(1) h3",
+                "exp_1_text": ".exp-grid .exp:nth-child(1) p",
+                "exp_2_num": ".exp-grid .exp:nth-child(2) .exp-num",
+                "exp_2_title": ".exp-grid .exp:nth-child(2) h3",
+                "exp_2_text": ".exp-grid .exp:nth-child(2) p",
+                "exp_3_num": ".exp-grid .exp:nth-child(3) .exp-num",
+                "exp_3_title": ".exp-grid .exp:nth-child(3) h3",
+                "exp_3_text": ".exp-grid .exp:nth-child(3) p",
+                "exp_4_num": ".exp-grid .exp:nth-child(4) .exp-num",
+                "exp_4_title": ".exp-grid .exp:nth-child(4) h3",
+                "exp_4_text": ".exp-grid .exp:nth-child(4) p"
+            }
+        },
+        {
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": {
+                "gallery_eyebrow": "#gallery .eyebrow",
+                "gallery_title": "#gallery .h-section",
+                "gallery_intro": "#gallery .section-intro",
+                "gallery_1": ".gallery-grid .gallery-item:nth-child(1)",
+                "gallery_2": ".gallery-grid .gallery-item:nth-child(2)",
+                "gallery_3": ".gallery-grid .gallery-item:nth-child(3)",
+                "gallery_4": ".gallery-grid .gallery-item:nth-child(4)",
+                "gallery_5": ".gallery-grid .gallery-item:nth-child(5)",
+                "gallery_6": ".gallery-grid .gallery-item:nth-child(6)",
+                "gallery_7": ".gallery-grid .gallery-item:nth-child(7)",
+                "gallery_8": ".gallery-grid .gallery-item:nth-child(8)"
+            }
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": {
+                "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
+                "testimonials_title": "[data-block=testimonials] .h-section",
+                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+                "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+                "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
+                "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
+                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+                "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+                "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
+                "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
+                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+                "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+                "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
+                "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
+            }
+        },
+        {
+            "id": "booking",
+            "name": "Reserve Your Stay",
+            "elements": {
+                "booking_eyebrow": "#booking .eyebrow",
+                "booking_title": "#booking .h-section",
+                "booking_intro": ".booking-intro",
+                "booking_room_label": ".booking-form label[data-field=booking_room_label]",
+                "booking_guests_label": ".booking-form label[data-field=booking_guests_label]",
+                "booking_checkin_label": ".booking-form label[data-field=booking_checkin_label]",
+                "booking_checkout_label": ".booking-form label[data-field=booking_checkout_label]",
+                "booking_name_label": ".booking-form label[data-field=booking_name_label]",
+                "booking_email_label": ".booking-form label[data-field=booking_email_label]",
+                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+                "booking_requests_label": ".booking-form label[data-field=booking_requests_label]",
+                "booking_submit": ".booking-submit"
+            }
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": {
+                "contact_eyebrow": "#contact .eyebrow",
+                "contact_title": "#contact .h-section",
+                "contact_intro": "#contact .section-intro",
+                "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
+                "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
+                "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
+                "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
+                "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
+                "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
+                "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
+                "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
+                "contact_cta_title": "#contact .hero-form-title",
+                "contact_cta_text": "#contact .hero-form-sub",
+                "contact_cta_button": "#contact .btn-primary"
+            }
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": {
+                "footer_logo": ".footer-logo",
+                "footer_tagline": ".footer-tagline",
+                "social_1": ".footer-socials a:nth-child(1)",
+                "social_2": ".footer-socials a:nth-child(2)",
+                "social_3": ".footer-socials a:nth-child(3)",
+                "social_4": ".footer-socials a:nth-child(4)",
+                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+                "footer_text": ".footer-bottom > div:nth-child(1)",
+                "footer_legal": ".footer-bottom > div:nth-child(2)"
+            }
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "The Coral Resort"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "A Boutique Five-Star Retreat by the Arabian Sea"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "The Coral Resort — an intimate boutique 5-star retreat on Dubai's Jumeirah coastline. 48 seaview suites, three signature restaurants, and a private beach."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://coralresort.ae"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/hospitality.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_US"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Background",
+            "default": "/storage/builder-heroes/hospitality.jpg"
+        },
+        "ivory": {
+            "type": "color",
+            "label": "Ivory",
+            "default": "#FAF6F0"
+        },
+        "ivory_soft": {
+            "type": "color",
+            "label": "Ivory Soft",
+            "default": "#F2EDE3"
+        },
+        "teal": {
+            "type": "color",
+            "label": "Teal",
+            "default": "#1B4A4A"
+        },
+        "teal_deep": {
+            "type": "color",
+            "label": "Teal Deep",
+            "default": "#133737"
+        },
+        "gold": {
+            "type": "color",
+            "label": "Gold",
+            "default": "#C9943A"
+        },
+        "warm_grey": {
+            "type": "color",
+            "label": "Warm Grey",
+            "default": "#8A8578"
+        },
+        "divider": {
+            "type": "color",
+            "label": "Divider",
+            "default": "#E6DFCF"
+        },
+        "logo": {
+            "type": "text",
+            "label": "Logo Text",
+            "default": "Coral"
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav: Rooms",
+            "default": "Rooms"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav: Amenities",
+            "default": "Amenities"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav: Dining",
+            "default": "Dining"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav: Experiences",
+            "default": "Experiences"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav: Contact",
+            "default": "Contact"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav CTA",
+            "default": "Book Now"
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Boutique Five-Star · Jumeirah, Dubai"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Title",
+            "default": "Quiet Luxury, <span>by the Sea</span>"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subtitle",
+            "default": "An intimate 48-suite retreat on one of Dubai's last stretches of private coastline. No chain-hotel energy, no endless lobbies — just exceptional service, curated cuisine, and the sea at your doorstep."
+        },
+        "hero_trust_1": {
+            "type": "text",
+            "label": "Trust 1",
+            "default": "Forbes 5-Star"
+        },
+        "hero_trust_2": {
+            "type": "text",
+            "label": "Trust 2",
+            "default": "Private Beach"
+        },
+        "hero_trust_3": {
+            "type": "text",
+            "label": "Trust 3",
+            "default": "Only 48 Suites"
+        },
+        "hero_trust_4": {
+            "type": "text",
+            "label": "Trust 4",
+            "default": "Awarded Spa"
+        },
+        "hero_form_eyebrow": {
+            "type": "text",
+            "label": "Form Eyebrow",
+            "default": "CHECK AVAILABILITY"
+        },
+        "hero_form_title": {
+            "type": "text",
+            "label": "Form Title",
+            "default": "Find Your Sanctuary"
+        },
+        "hero_form_sub": {
+            "type": "text",
+            "label": "Form Sub",
+            "default": "Live availability across our suites. Confirmation within the hour from our reservations team."
+        },
+        "hero_form_checkin_label": {
+            "type": "text",
+            "label": "Check-in Label",
+            "default": "Check In"
+        },
+        "hero_form_checkout_label": {
+            "type": "text",
+            "label": "Check-out Label",
+            "default": "Check Out"
+        },
+        "hero_form_guests_label": {
+            "type": "text",
+            "label": "Guests Label",
+            "default": "Guests"
+        },
+        "hero_form_submit": {
+            "type": "text",
+            "label": "Submit Button",
+            "default": "Check Availability →"
+        },
+        "hero_form_note": {
+            "type": "text",
+            "label": "Form Note",
+            "default": "Best rate guaranteed when booked direct."
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "48"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Seaview Suites"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "4.9★"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Guest Rating"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "3"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Signature Restaurants"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "180m"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Private Beach"
+        },
+        "rooms_eyebrow": {
+            "type": "text",
+            "label": "Rooms Eyebrow",
+            "default": "SUITES & VILLAS"
+        },
+        "rooms_title": {
+            "type": "text",
+            "label": "Rooms Title",
+            "default": "Rooms That Open to the Sea"
+        },
+        "rooms_intro": {
+            "type": "text",
+            "label": "Rooms Intro",
+            "default": "Every suite faces the water. Every villa has a private garden. No two are identical — they were designed individually, with local craftsmanship and slow-travel in mind."
+        },
+        "room_1_image": {
+            "type": "image",
+            "label": "Room 1 Image",
+            "default": "/storage/template-images/hospitality/room_1_image.jpg"
+        },
+        "room_1_name": {
+            "type": "text",
+            "label": "Room 1 Name",
+            "default": "Seaview Deluxe"
+        },
+        "room_1_size": {
+            "type": "text",
+            "label": "Room 1 Size",
+            "default": "55 sqm · Sleeps 2"
+        },
+        "room_1_desc": {
+            "type": "text",
+            "label": "Room 1 Desc",
+            "default": "Floor-to-ceiling windows opening to a private balcony over the Arabian Gulf. Our entry-level suite — quietly luxurious, never excessive."
+        },
+        "room_1_amenity_1": {
+            "type": "text",
+            "label": "R1 Amenity 1",
+            "default": "King Bed"
+        },
+        "room_1_amenity_2": {
+            "type": "text",
+            "label": "R1 Amenity 2",
+            "default": "Sea Balcony"
+        },
+        "room_1_amenity_3": {
+            "type": "text",
+            "label": "R1 Amenity 3",
+            "default": "Rain Shower"
+        },
+        "room_1_price": {
+            "type": "text",
+            "label": "R1 Price",
+            "default": "AED 1,200"
+        },
+        "room_1_cta": {
+            "type": "text",
+            "label": "R1 CTA",
+            "default": "Reserve"
+        },
+        "room_2_image": {
+            "type": "image",
+            "label": "Room 2 Image",
+            "default": "/storage/template-images/hospitality/room_2_image.jpg"
+        },
+        "room_2_name": {
+            "type": "text",
+            "label": "Room 2 Name",
+            "default": "Coral Suite"
+        },
+        "room_2_size": {
+            "type": "text",
+            "label": "Room 2 Size",
+            "default": "85 sqm · Sleeps 2"
+        },
+        "room_2_desc": {
+            "type": "text",
+            "label": "Room 2 Desc",
+            "default": "Our signature suite. Separate living room, a statement freestanding bath, and a wraparound terrace with sunrise and sunset exposure."
+        },
+        "room_2_amenity_1": {
+            "type": "text",
+            "label": "R2 Amenity 1",
+            "default": "King Bed"
+        },
+        "room_2_amenity_2": {
+            "type": "text",
+            "label": "R2 Amenity 2",
+            "default": "Living Room"
+        },
+        "room_2_amenity_3": {
+            "type": "text",
+            "label": "R2 Amenity 3",
+            "default": "Freestanding Bath"
+        },
+        "room_2_price": {
+            "type": "text",
+            "label": "R2 Price",
+            "default": "AED 1,950"
+        },
+        "room_2_cta": {
+            "type": "text",
+            "label": "R2 CTA",
+            "default": "Reserve"
+        },
+        "room_3_image": {
+            "type": "image",
+            "label": "Room 3 Image",
+            "default": "/storage/template-images/hospitality/room_3_image.jpg"
+        },
+        "room_3_name": {
+            "type": "text",
+            "label": "Room 3 Name",
+            "default": "Garden Villa"
+        },
+        "room_3_size": {
+            "type": "text",
+            "label": "Room 3 Size",
+            "default": "140 sqm · Sleeps 3"
+        },
+        "room_3_desc": {
+            "type": "text",
+            "label": "Room 3 Desc",
+            "default": "Single-storey villa with a private palm-fringed garden, outdoor shower, and a daybed pavilion — perfect for long, slow weekends."
+        },
+        "room_3_amenity_1": {
+            "type": "text",
+            "label": "R3 Amenity 1",
+            "default": "Private Garden"
+        },
+        "room_3_amenity_2": {
+            "type": "text",
+            "label": "R3 Amenity 2",
+            "default": "Outdoor Shower"
+        },
+        "room_3_amenity_3": {
+            "type": "text",
+            "label": "R3 Amenity 3",
+            "default": "Daybed Pavilion"
+        },
+        "room_3_price": {
+            "type": "text",
+            "label": "R3 Price",
+            "default": "AED 2,800"
+        },
+        "room_3_cta": {
+            "type": "text",
+            "label": "R3 CTA",
+            "default": "Reserve"
+        },
+        "room_4_image": {
+            "type": "image",
+            "label": "Room 4 Image",
+            "default": "/storage/template-images/hospitality/room_4_image.jpg"
+        },
+        "room_4_name": {
+            "type": "text",
+            "label": "Room 4 Name",
+            "default": "Beach Pool Villa"
+        },
+        "room_4_size": {
+            "type": "text",
+            "label": "Room 4 Size",
+            "default": "175 sqm · Sleeps 3"
+        },
+        "room_4_desc": {
+            "type": "text",
+            "label": "Room 4 Desc",
+            "default": "Direct beach access with its own 9-metre lap pool and sun deck. Teak interiors, Moroccan lantern lighting, and an outdoor kitchen."
+        },
+        "room_4_amenity_1": {
+            "type": "text",
+            "label": "R4 Amenity 1",
+            "default": "Private Pool"
+        },
+        "room_4_amenity_2": {
+            "type": "text",
+            "label": "R4 Amenity 2",
+            "default": "Beach Access"
+        },
+        "room_4_amenity_3": {
+            "type": "text",
+            "label": "R4 Amenity 3",
+            "default": "Outdoor Kitchen"
+        },
+        "room_4_price": {
+            "type": "text",
+            "label": "R4 Price",
+            "default": "AED 4,200"
+        },
+        "room_4_cta": {
+            "type": "text",
+            "label": "R4 CTA",
+            "default": "Reserve"
+        },
+        "room_5_image": {
+            "type": "image",
+            "label": "Room 5 Image",
+            "default": "/storage/template-images/hospitality/room_5_image.jpg"
+        },
+        "room_5_name": {
+            "type": "text",
+            "label": "Room 5 Name",
+            "default": "Family Retreat"
+        },
+        "room_5_size": {
+            "type": "text",
+            "label": "Room 5 Size",
+            "default": "210 sqm · Sleeps 4"
+        },
+        "room_5_desc": {
+            "type": "text",
+            "label": "Room 5 Desc",
+            "default": "A two-bedroom villa designed for families — with a secondary room for children, a full kitchen, and a shaded play terrace."
+        },
+        "room_5_amenity_1": {
+            "type": "text",
+            "label": "R5 Amenity 1",
+            "default": "2 Bedrooms"
+        },
+        "room_5_amenity_2": {
+            "type": "text",
+            "label": "R5 Amenity 2",
+            "default": "Full Kitchen"
+        },
+        "room_5_amenity_3": {
+            "type": "text",
+            "label": "R5 Amenity 3",
+            "default": "Play Terrace"
+        },
+        "room_5_price": {
+            "type": "text",
+            "label": "R5 Price",
+            "default": "AED 4,900"
+        },
+        "room_5_cta": {
+            "type": "text",
+            "label": "R5 CTA",
+            "default": "Reserve"
+        },
+        "room_6_image": {
+            "type": "image",
+            "label": "Room 6 Image",
+            "default": "/storage/template-images/hospitality/room_6_image.jpg"
+        },
+        "room_6_name": {
+            "type": "text",
+            "label": "Room 6 Name",
+            "default": "Presidential Suite"
+        },
+        "room_6_size": {
+            "type": "text",
+            "label": "Room 6 Size",
+            "default": "320 sqm · Sleeps 4"
+        },
+        "room_6_desc": {
+            "type": "text",
+            "label": "Room 6 Desc",
+            "default": "The highest expression of the Coral experience. Two bedrooms, a personal butler, a 25-metre infinity pool, and a dedicated chef on request."
+        },
+        "room_6_amenity_1": {
+            "type": "text",
+            "label": "R6 Amenity 1",
+            "default": "Butler Service"
+        },
+        "room_6_amenity_2": {
+            "type": "text",
+            "label": "R6 Amenity 2",
+            "default": "Infinity Pool"
+        },
+        "room_6_amenity_3": {
+            "type": "text",
+            "label": "R6 Amenity 3",
+            "default": "Private Chef"
+        },
+        "room_6_price": {
+            "type": "text",
+            "label": "R6 Price",
+            "default": "AED 12,500"
+        },
+        "room_6_cta": {
+            "type": "text",
+            "label": "R6 CTA",
+            "default": "Reserve"
+        },
+        "amenities_eyebrow": {
+            "type": "text",
+            "label": "Amenities Eyebrow",
+            "default": "FACILITIES"
+        },
+        "amenities_title": {
+            "type": "text",
+            "label": "Amenities Title",
+            "default": "Everything You Need. Nothing You Don't."
+        },
+        "amenities_intro": {
+            "type": "text",
+            "label": "Amenities Intro",
+            "default": "Eight thoughtfully considered amenities — chosen for quality, not quantity. From the spa to the cellar, every space has purpose."
+        },
+        "amenity_1_icon": {
+            "type": "text",
+            "label": "A1 Icon",
+            "default": "S"
+        },
+        "amenity_1_title": {
+            "type": "text",
+            "label": "A1 Title",
+            "default": "Wellness Spa"
+        },
+        "amenity_1_text": {
+            "type": "text",
+            "label": "A1 Text",
+            "default": "A 1,100-sqm award-winning spa — including hammam, float room, and six treatment suites."
+        },
+        "amenity_2_icon": {
+            "type": "text",
+            "label": "A2 Icon",
+            "default": "B"
+        },
+        "amenity_2_title": {
+            "type": "text",
+            "label": "A2 Title",
+            "default": "Private Beach"
+        },
+        "amenity_2_text": {
+            "type": "text",
+            "label": "A2 Text",
+            "default": "180 metres of soft-sand coastline, exclusive to guests. Cabanas, butler service, and water-sports on demand."
+        },
+        "amenity_3_icon": {
+            "type": "text",
+            "label": "A3 Icon",
+            "default": "P"
+        },
+        "amenity_3_title": {
+            "type": "text",
+            "label": "A3 Title",
+            "default": "Infinity Pool"
+        },
+        "amenity_3_text": {
+            "type": "text",
+            "label": "A3 Text",
+            "default": "A heated 30-metre infinity pool with a shallow lounge at one end. Adults-only after 6pm."
+        },
+        "amenity_4_icon": {
+            "type": "text",
+            "label": "A4 Icon",
+            "default": "F"
+        },
+        "amenity_4_title": {
+            "type": "text",
+            "label": "A4 Title",
+            "default": "Fitness Studio"
+        },
+        "amenity_4_text": {
+            "type": "text",
+            "label": "A4 Text",
+            "default": "Technogym-equipped 24/7 studio plus daily yoga, Pilates, and private training sessions on request."
+        },
+        "amenity_5_icon": {
+            "type": "text",
+            "label": "A5 Icon",
+            "default": "K"
+        },
+        "amenity_5_title": {
+            "type": "text",
+            "label": "A5 Title",
+            "default": "Kids Club"
+        },
+        "amenity_5_text": {
+            "type": "text",
+            "label": "A5 Text",
+            "default": "Supervised activities for ages 4–12 daily, designed by a certified early-years specialist."
+        },
+        "amenity_6_icon": {
+            "type": "text",
+            "label": "A6 Icon",
+            "default": "M"
+        },
+        "amenity_6_title": {
+            "type": "text",
+            "label": "A6 Title",
+            "default": "Meeting Loft"
+        },
+        "amenity_6_text": {
+            "type": "text",
+            "label": "A6 Text",
+            "default": "A 12-seat meeting loft with natural light, private catering, and full A/V. Perfect for quiet working days."
+        },
+        "amenity_7_icon": {
+            "type": "text",
+            "label": "A7 Icon",
+            "default": "C"
+        },
+        "amenity_7_title": {
+            "type": "text",
+            "label": "A7 Title",
+            "default": "Concierge Desk"
+        },
+        "amenity_7_text": {
+            "type": "text",
+            "label": "A7 Text",
+            "default": "24-hour concierge with direct connections at every restaurant, club, and gallery across Dubai."
+        },
+        "amenity_8_icon": {
+            "type": "text",
+            "label": "A8 Icon",
+            "default": "L"
+        },
+        "amenity_8_title": {
+            "type": "text",
+            "label": "A8 Title",
+            "default": "Library Lounge"
+        },
+        "amenity_8_text": {
+            "type": "text",
+            "label": "A8 Text",
+            "default": "A low-light lounge with a curated library, working fireplace in winter, and afternoon tea service."
+        },
+        "dining_eyebrow": {
+            "type": "text",
+            "label": "Dining Eyebrow",
+            "default": "THE RESTAURANTS"
+        },
+        "dining_title": {
+            "type": "text",
+            "label": "Dining Title",
+            "default": "Three Dining Stories"
+        },
+        "dining_intro": {
+            "type": "text",
+            "label": "Dining Intro",
+            "default": "Each restaurant stands on its own. Non-guests travel from across the city to dine with us — reservations essential."
+        },
+        "dining_1_tag": {
+            "type": "text",
+            "label": "D1 Tag",
+            "default": "SIGNATURE"
+        },
+        "dining_1_name": {
+            "type": "text",
+            "label": "D1 Name",
+            "default": "Sumac & Shore"
+        },
+        "dining_1_hours": {
+            "type": "text",
+            "label": "D1 Hours",
+            "default": "Dinner · 7pm–11pm · Closed Mondays"
+        },
+        "dining_1_text": {
+            "type": "text",
+            "label": "D1 Text",
+            "default": "Modern Levantine tasting menu by Chef Rania Khoury, recently awarded in the MENA 50 list. Sea-facing terrace, 42 covers only."
+        },
+        "dining_2_tag": {
+            "type": "text",
+            "label": "D2 Tag",
+            "default": "ALL-DAY"
+        },
+        "dining_2_name": {
+            "type": "text",
+            "label": "D2 Name",
+            "default": "The Atrium"
+        },
+        "dining_2_hours": {
+            "type": "text",
+            "label": "D2 Hours",
+            "default": "All day · 6:30am–11pm"
+        },
+        "dining_2_text": {
+            "type": "text",
+            "label": "D2 Text",
+            "default": "Mediterranean and Asian all-day dining. Famous breakfast buffet, lunch à la carte, and a weekly Friday brunch served under the dome."
+        },
+        "dining_3_tag": {
+            "type": "text",
+            "label": "D3 Tag",
+            "default": "COCKTAIL"
+        },
+        "dining_3_name": {
+            "type": "text",
+            "label": "D3 Name",
+            "default": "Salt Room"
+        },
+        "dining_3_hours": {
+            "type": "text",
+            "label": "D3 Hours",
+            "default": "Bar · 5pm–1am · 21+"
+        },
+        "dining_3_text": {
+            "type": "text",
+            "label": "D3 Text",
+            "default": "A dimly-lit, 28-seat cocktail lounge — with a menu built around salt, smoke, and sea. Live jazz on Thursday and Saturday nights."
+        },
+        "exp_eyebrow": {
+            "type": "text",
+            "label": "Exp Eyebrow",
+            "default": "SIGNATURE EXPERIENCES"
+        },
+        "exp_title": {
+            "type": "text",
+            "label": "Exp Title",
+            "default": "Hand-Curated Moments"
+        },
+        "exp_intro": {
+            "type": "text",
+            "label": "Exp Intro",
+            "default": "Four signature experiences built around the Coral — each bookable via the concierge, and designed to stay with you long after you leave."
+        },
+        "exp_1_num": {
+            "type": "text",
+            "label": "E1 Num",
+            "default": "01"
+        },
+        "exp_1_title": {
+            "type": "text",
+            "label": "E1 Title",
+            "default": "Dawn Dhow Breakfast"
+        },
+        "exp_1_text": {
+            "type": "text",
+            "label": "E1 Text",
+            "default": "Watch sunrise from a traditional Emirati dhow, with coffee, fresh pastries, and dates from Al-Ain's heritage farms."
+        },
+        "exp_2_num": {
+            "type": "text",
+            "label": "E2 Num",
+            "default": "02"
+        },
+        "exp_2_title": {
+            "type": "text",
+            "label": "E2 Title",
+            "default": "Private Chef's Table"
+        },
+        "exp_2_text": {
+            "type": "text",
+            "label": "E2 Text",
+            "default": "A five-course tasting menu prepared in front of you by Chef Rania — 8 seats, one evening a week."
+        },
+        "exp_3_num": {
+            "type": "text",
+            "label": "E3 Num",
+            "default": "03"
+        },
+        "exp_3_title": {
+            "type": "text",
+            "label": "E3 Title",
+            "default": "Desert Overnight"
+        },
+        "exp_3_text": {
+            "type": "text",
+            "label": "E3 Text",
+            "default": "An overnight stay in a luxury Bedouin-style camp in the Al Maha reserve — stargazing, saffron tea, falcons at dawn."
+        },
+        "exp_4_num": {
+            "type": "text",
+            "label": "E4 Num",
+            "default": "04"
+        },
+        "exp_4_title": {
+            "type": "text",
+            "label": "E4 Title",
+            "default": "Sunset Hammam Ritual"
+        },
+        "exp_4_text": {
+            "type": "text",
+            "label": "E4 Text",
+            "default": "A 120-minute traditional hammam experience, including black-soap scrub, rose massage, and a silver-pot mint tea on the rooftop."
+        },
+        "gallery_eyebrow": {
+            "type": "text",
+            "label": "Gallery Eyebrow",
+            "default": "GALLERY"
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Title",
+            "default": "A Glimpse of the Coral"
+        },
+        "gallery_intro": {
+            "type": "text",
+            "label": "Gallery Intro",
+            "default": "A few still moments from the resort — though nothing truly captures a place like walking through it yourself."
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery 1",
+            "default": "/storage/template-images/hospitality/gallery_1.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery 2",
+            "default": "/storage/template-images/hospitality/gallery_2.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery 3",
+            "default": "/storage/template-images/hospitality/gallery_3.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery 4",
+            "default": "/storage/template-images/hospitality/gallery_4.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery 5",
+            "default": "/storage/template-images/hospitality/gallery_5.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery 6",
+            "default": "/storage/template-images/hospitality/gallery_6.jpg"
+        },
+        "gallery_7": {
+            "type": "image",
+            "label": "Gallery 7",
+            "default": "/storage/template-images/hospitality/gallery_7.jpg"
+        },
+        "gallery_8": {
+            "type": "image",
+            "label": "Gallery 8",
+            "default": "/storage/template-images/hospitality/gallery_8.jpg"
+        },
+        "testimonials_eyebrow": {
+            "type": "text",
+            "label": "Testimonials Eyebrow",
+            "default": "GUEST VOICES"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Title",
+            "default": "What Guests Remember"
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1 Quote",
+            "default": "The quietest five-star I've ever stayed at. No buffet crowds, no loud lobby music, just the sound of the sea and genuinely warm people."
+        },
+        "testimonial_1_author": {
+            "type": "text",
+            "label": "Testimonial 1 Author",
+            "default": "Elena Rossi"
+        },
+        "testimonial_1_company": {
+            "type": "text",
+            "label": "Testimonial 1 Company",
+            "default": "Garden Villa · Feb 2026"
+        },
+        "testimonial_1_result": {
+            "type": "text",
+            "label": "Testimonial 1 Result",
+            "default": "5-Star Stay"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2 Quote",
+            "default": "Chef's Table at Sumac was the best dinner I've had in three years of travel across MENA. Booked it before we even unpacked."
+        },
+        "testimonial_2_author": {
+            "type": "text",
+            "label": "Testimonial 2 Author",
+            "default": "David Chen"
+        },
+        "testimonial_2_company": {
+            "type": "text",
+            "label": "Testimonial 2 Company",
+            "default": "Coral Suite · Jan 2026"
+        },
+        "testimonial_2_result": {
+            "type": "text",
+            "label": "Testimonial 2 Result",
+            "default": "Chef's Table"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3 Quote",
+            "default": "Our anniversary. They remembered my wife's favourite flowers from a note I'd made 10 months earlier when I enquired. Service is a different dimension here."
+        },
+        "testimonial_3_author": {
+            "type": "text",
+            "label": "Testimonial 3 Author",
+            "default": "Thomas Weber"
+        },
+        "testimonial_3_company": {
+            "type": "text",
+            "label": "Testimonial 3 Company",
+            "default": "Beach Pool Villa · Mar 2026"
+        },
+        "testimonial_3_result": {
+            "type": "text",
+            "label": "Testimonial 3 Result",
+            "default": "Anniversary"
+        },
+        "booking_eyebrow": {
+            "type": "text",
+            "label": "Booking Eyebrow",
+            "default": "RESERVATIONS"
+        },
+        "booking_title": {
+            "type": "text",
+            "label": "Booking Title",
+            "default": "Reserve Your Stay"
+        },
+        "booking_intro": {
+            "type": "text",
+            "label": "Booking Intro",
+            "default": "Direct bookings get best-rate pricing, complimentary upgrade when available, and a welcome amenity on arrival. Our reservations team replies within the hour."
+        },
+        "booking_room_label": {
+            "type": "text",
+            "label": "Room Label",
+            "default": "Room / Villa"
+        },
+        "booking_guests_label": {
+            "type": "text",
+            "label": "Guests Label",
+            "default": "Guests"
+        },
+        "booking_checkin_label": {
+            "type": "text",
+            "label": "Check-in Label",
+            "default": "Check In"
+        },
+        "booking_checkout_label": {
+            "type": "text",
+            "label": "Check-out Label",
+            "default": "Check Out"
+        },
+        "booking_name_label": {
+            "type": "text",
+            "label": "Name Label",
+            "default": "Full Name"
+        },
+        "booking_email_label": {
+            "type": "text",
+            "label": "Email Label",
+            "default": "Email"
+        },
+        "booking_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Phone"
+        },
+        "booking_requests_label": {
+            "type": "text",
+            "label": "Requests Label",
+            "default": "Special Requests"
+        },
+        "booking_submit": {
+            "type": "text",
+            "label": "Submit Button",
+            "default": "Reserve Your Stay →"
+        },
+        "contact_eyebrow": {
+            "type": "text",
+            "label": "Contact Eyebrow",
+            "default": "GET IN TOUCH"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Title",
+            "default": "Concierge & Reservations"
+        },
+        "contact_intro": {
+            "type": "text",
+            "label": "Contact Intro",
+            "default": "Whether you're booking a first visit, planning a celebration, or just curious about what's in season — our concierge is always on the line."
+        },
+        "contact_email_label": {
+            "type": "text",
+            "label": "Email Label",
+            "default": "Email"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "stay@coralresort.ae"
+        },
+        "contact_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Reservations"
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+971 4 555 0400"
+        },
+        "contact_address_label": {
+            "type": "text",
+            "label": "Address Label",
+            "default": "Resort"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "Jumeirah Beach Road, Jumeirah 3, Dubai, UAE"
+        },
+        "contact_hours_label": {
+            "type": "text",
+            "label": "Hours Label",
+            "default": "Desk Hours"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Hours",
+            "default": "24 hours · Seven days a week"
+        },
+        "contact_cta_title": {
+            "type": "text",
+            "label": "Contact CTA Title",
+            "default": "Ready to escape?"
+        },
+        "contact_cta_text": {
+            "type": "text",
+            "label": "Contact CTA Text",
+            "default": "Check suite availability, see live rates, and receive personal confirmation from our reservations team."
+        },
+        "contact_cta_button": {
+            "type": "text",
+            "label": "Contact CTA Button",
+            "default": "Reserve Your Stay"
+        },
+        "footer_logo": {
+            "type": "text",
+            "label": "Footer Logo",
+            "default": "Coral"
+        },
+        "footer_tagline": {
+            "type": "text",
+            "label": "Footer Tagline",
+            "default": "A boutique five-star retreat on Dubai's Jumeirah coastline. 48 seaview suites. Three restaurants. One private beach."
+        },
+        "social_1": {
+            "type": "text",
+            "label": "Social 1",
+            "default": "IG"
+        },
+        "social_2": {
+            "type": "text",
+            "label": "Social 2",
+            "default": "FB"
+        },
+        "social_3": {
+            "type": "text",
+            "label": "Social 3",
+            "default": "PN"
+        },
+        "social_4": {
+            "type": "text",
+            "label": "Social 4",
+            "default": "YT"
+        },
+        "footer_col_1_title": {
+            "type": "text",
+            "label": "Footer Col 1 Title",
+            "default": "The Resort"
+        },
+        "footer_col_2_title": {
+            "type": "text",
+            "label": "Footer Col 2 Title",
+            "default": "Stay"
+        },
+        "footer_col_3_title": {
+            "type": "text",
+            "label": "Footer Col 3 Title",
+            "default": "Visit"
+        },
+        "footer_link_1": {
+            "type": "text",
+            "label": "Footer Link 1",
+            "default": "Suites"
+        },
+        "footer_link_2": {
+            "type": "text",
+            "label": "Footer Link 2",
+            "default": "Villas"
+        },
+        "footer_link_3": {
+            "type": "text",
+            "label": "Footer Link 3",
+            "default": "Presidential"
+        },
+        "footer_link_4": {
+            "type": "text",
+            "label": "Footer Link 4",
+            "default": "Amenities"
+        },
+        "footer_link_5": {
+            "type": "text",
+            "label": "Footer Link 5",
+            "default": "Dining"
+        },
+        "footer_link_6": {
+            "type": "text",
+            "label": "Footer Link 6",
+            "default": "Experiences"
+        },
+        "footer_link_7": {
+            "type": "text",
+            "label": "Footer Link 7",
+            "default": "Contact"
+        },
+        "footer_link_8": {
+            "type": "text",
+            "label": "Footer Link 8",
+            "default": "Reserve"
+        },
+        "footer_text": {
+            "type": "text",
+            "label": "Footer Text",
+            "default": "© 2026 The Coral Resort. All rights reserved."
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "Privacy · Terms · Cookie Policy"
+        }
+    }
+}

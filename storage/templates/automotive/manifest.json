@@ -1,0 +1,1499 @@
+{
+    "id": "automotive",
+    "name": "Automotive Dealership",
+    "industry": "automotive",
+    "description": "Premium pre-owned / luxury dealership template — cinematic hero with test-drive form, stats, 6-card inventory grid with make/model/year/mileage/engine/price, authorized-brands strip, 4-step buy process, 3 featured vehicles, 3-tier financing plans, testimonials, test-drive booking form, contact, and footer. Tuned for luxury and performance dealerships.",
+    "thumbnail": "/storage/builder-heroes/automotive.jpg",
+    "category": "automotive",
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_1": "nav .nav-link-1",
+                "nav_2": "nav .nav-link-2",
+                "nav_3": "nav .nav-link-3",
+                "nav_4": "nav .nav-link-4",
+                "nav_5": "nav .nav-link-5",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero with Test Drive Form",
+            "elements": {
+                "hero_image": "section.hero",
+                "hero_eyebrow": ".hero-eyebrow",
+                "hero_title": ".hero-title",
+                "hero_subtitle": ".hero-subtitle",
+                "hero_trust_1": ".hero-trust-1",
+                "hero_trust_2": ".hero-trust-2",
+                "hero_trust_3": ".hero-trust-3",
+                "hero_trust_4": ".hero-trust-4",
+                "hero_form_eyebrow": ".hero-form-eyebrow",
+                "hero_form_title": ".hero-form-title",
+                "hero_form_sub": ".hero-form-sub",
+                "hero_form_name_label": ".hero-form label[data-field=hero_form_name_label]",
+                "hero_form_phone_label": ".hero-form label[data-field=hero_form_phone_label]",
+                "hero_form_interest_label": ".hero-form label[data-field=hero_form_interest_label]",
+                "hero_form_submit": ".hero-form button",
+                "hero_form_note": ".hero-form-note"
+            }
+        },
+        {
+            "id": "stats",
+            "name": "Stats",
+            "elements": {
+                "stat_1_value": ".stats-grid .stat:nth-child(1) .stat-value",
+                "stat_1_label": ".stats-grid .stat:nth-child(1) .stat-label",
+                "stat_2_value": ".stats-grid .stat:nth-child(2) .stat-value",
+                "stat_2_label": ".stats-grid .stat:nth-child(2) .stat-label",
+                "stat_3_value": ".stats-grid .stat:nth-child(3) .stat-value",
+                "stat_3_label": ".stats-grid .stat:nth-child(3) .stat-label",
+                "stat_4_value": ".stats-grid .stat:nth-child(4) .stat-value",
+                "stat_4_label": ".stats-grid .stat:nth-child(4) .stat-label"
+            }
+        },
+        {
+            "id": "inventory",
+            "name": "Inventory",
+            "elements": {
+                "inventory_eyebrow": "#inventory .eyebrow",
+                "inventory_title": "#inventory .h-section",
+                "inventory_intro": "#inventory .section-intro",
+                "vehicle_1_image": ".inventory-grid .vehicle:nth-child(1) .vehicle-image",
+                "vehicle_1_make": ".inventory-grid .vehicle:nth-child(1) .vehicle-make",
+                "vehicle_1_model": ".inventory-grid .vehicle:nth-child(1) .vehicle-model",
+                "vehicle_1_year_label": ".inventory-grid .vehicle:nth-child(1) .vehicle-specs > div:nth-child(1) .spec-label",
+                "vehicle_1_year": ".inventory-grid .vehicle:nth-child(1) .vehicle-specs > div:nth-child(1) .spec-value",
+                "vehicle_1_mileage_label": ".inventory-grid .vehicle:nth-child(1) .vehicle-specs > div:nth-child(2) .spec-label",
+                "vehicle_1_mileage": ".inventory-grid .vehicle:nth-child(1) .vehicle-specs > div:nth-child(2) .spec-value",
+                "vehicle_1_engine_label": ".inventory-grid .vehicle:nth-child(1) .vehicle-specs > div:nth-child(3) .spec-label",
+                "vehicle_1_engine": ".inventory-grid .vehicle:nth-child(1) .vehicle-specs > div:nth-child(3) .spec-value",
+                "vehicle_1_price": ".inventory-grid .vehicle:nth-child(1) .vehicle-price",
+                "vehicle_1_cta": ".inventory-grid .vehicle:nth-child(1) .vehicle-cta",
+                "vehicle_2_image": ".inventory-grid .vehicle:nth-child(2) .vehicle-image",
+                "vehicle_2_make": ".inventory-grid .vehicle:nth-child(2) .vehicle-make",
+                "vehicle_2_model": ".inventory-grid .vehicle:nth-child(2) .vehicle-model",
+                "vehicle_2_year_label": ".inventory-grid .vehicle:nth-child(2) .vehicle-specs > div:nth-child(1) .spec-label",
+                "vehicle_2_year": ".inventory-grid .vehicle:nth-child(2) .vehicle-specs > div:nth-child(1) .spec-value",
+                "vehicle_2_mileage_label": ".inventory-grid .vehicle:nth-child(2) .vehicle-specs > div:nth-child(2) .spec-label",
+                "vehicle_2_mileage": ".inventory-grid .vehicle:nth-child(2) .vehicle-specs > div:nth-child(2) .spec-value",
+                "vehicle_2_engine_label": ".inventory-grid .vehicle:nth-child(2) .vehicle-specs > div:nth-child(3) .spec-label",
+                "vehicle_2_engine": ".inventory-grid .vehicle:nth-child(2) .vehicle-specs > div:nth-child(3) .spec-value",
+                "vehicle_2_price": ".inventory-grid .vehicle:nth-child(2) .vehicle-price",
+                "vehicle_2_cta": ".inventory-grid .vehicle:nth-child(2) .vehicle-cta",
+                "vehicle_3_image": ".inventory-grid .vehicle:nth-child(3) .vehicle-image",
+                "vehicle_3_make": ".inventory-grid .vehicle:nth-child(3) .vehicle-make",
+                "vehicle_3_model": ".inventory-grid .vehicle:nth-child(3) .vehicle-model",
+                "vehicle_3_year_label": ".inventory-grid .vehicle:nth-child(3) .vehicle-specs > div:nth-child(1) .spec-label",
+                "vehicle_3_year": ".inventory-grid .vehicle:nth-child(3) .vehicle-specs > div:nth-child(1) .spec-value",
+                "vehicle_3_mileage_label": ".inventory-grid .vehicle:nth-child(3) .vehicle-specs > div:nth-child(2) .spec-label",
+                "vehicle_3_mileage": ".inventory-grid .vehicle:nth-child(3) .vehicle-specs > div:nth-child(2) .spec-value",
+                "vehicle_3_engine_label": ".inventory-grid .vehicle:nth-child(3) .vehicle-specs > div:nth-child(3) .spec-label",
+                "vehicle_3_engine": ".inventory-grid .vehicle:nth-child(3) .vehicle-specs > div:nth-child(3) .spec-value",
+                "vehicle_3_price": ".inventory-grid .vehicle:nth-child(3) .vehicle-price",
+                "vehicle_3_cta": ".inventory-grid .vehicle:nth-child(3) .vehicle-cta",
+                "vehicle_4_image": ".inventory-grid .vehicle:nth-child(4) .vehicle-image",
+                "vehicle_4_make": ".inventory-grid .vehicle:nth-child(4) .vehicle-make",
+                "vehicle_4_model": ".inventory-grid .vehicle:nth-child(4) .vehicle-model",
+                "vehicle_4_year_label": ".inventory-grid .vehicle:nth-child(4) .vehicle-specs > div:nth-child(1) .spec-label",
+                "vehicle_4_year": ".inventory-grid .vehicle:nth-child(4) .vehicle-specs > div:nth-child(1) .spec-value",
+                "vehicle_4_mileage_label": ".inventory-grid .vehicle:nth-child(4) .vehicle-specs > div:nth-child(2) .spec-label",
+                "vehicle_4_mileage": ".inventory-grid .vehicle:nth-child(4) .vehicle-specs > div:nth-child(2) .spec-value",
+                "vehicle_4_engine_label": ".inventory-grid .vehicle:nth-child(4) .vehicle-specs > div:nth-child(3) .spec-label",
+                "vehicle_4_engine": ".inventory-grid .vehicle:nth-child(4) .vehicle-specs > div:nth-child(3) .spec-value",
+                "vehicle_4_price": ".inventory-grid .vehicle:nth-child(4) .vehicle-price",
+                "vehicle_4_cta": ".inventory-grid .vehicle:nth-child(4) .vehicle-cta",
+                "vehicle_5_image": ".inventory-grid .vehicle:nth-child(5) .vehicle-image",
+                "vehicle_5_make": ".inventory-grid .vehicle:nth-child(5) .vehicle-make",
+                "vehicle_5_model": ".inventory-grid .vehicle:nth-child(5) .vehicle-model",
+                "vehicle_5_year_label": ".inventory-grid .vehicle:nth-child(5) .vehicle-specs > div:nth-child(1) .spec-label",
+                "vehicle_5_year": ".inventory-grid .vehicle:nth-child(5) .vehicle-specs > div:nth-child(1) .spec-value",
+                "vehicle_5_mileage_label": ".inventory-grid .vehicle:nth-child(5) .vehicle-specs > div:nth-child(2) .spec-label",
+                "vehicle_5_mileage": ".inventory-grid .vehicle:nth-child(5) .vehicle-specs > div:nth-child(2) .spec-value",
+                "vehicle_5_engine_label": ".inventory-grid .vehicle:nth-child(5) .vehicle-specs > div:nth-child(3) .spec-label",
+                "vehicle_5_engine": ".inventory-grid .vehicle:nth-child(5) .vehicle-specs > div:nth-child(3) .spec-value",
+                "vehicle_5_price": ".inventory-grid .vehicle:nth-child(5) .vehicle-price",
+                "vehicle_5_cta": ".inventory-grid .vehicle:nth-child(5) .vehicle-cta",
+                "vehicle_6_image": ".inventory-grid .vehicle:nth-child(6) .vehicle-image",
+                "vehicle_6_make": ".inventory-grid .vehicle:nth-child(6) .vehicle-make",
+                "vehicle_6_model": ".inventory-grid .vehicle:nth-child(6) .vehicle-model",
+                "vehicle_6_year_label": ".inventory-grid .vehicle:nth-child(6) .vehicle-specs > div:nth-child(1) .spec-label",
+                "vehicle_6_year": ".inventory-grid .vehicle:nth-child(6) .vehicle-specs > div:nth-child(1) .spec-value",
+                "vehicle_6_mileage_label": ".inventory-grid .vehicle:nth-child(6) .vehicle-specs > div:nth-child(2) .spec-label",
+                "vehicle_6_mileage": ".inventory-grid .vehicle:nth-child(6) .vehicle-specs > div:nth-child(2) .spec-value",
+                "vehicle_6_engine_label": ".inventory-grid .vehicle:nth-child(6) .vehicle-specs > div:nth-child(3) .spec-label",
+                "vehicle_6_engine": ".inventory-grid .vehicle:nth-child(6) .vehicle-specs > div:nth-child(3) .spec-value",
+                "vehicle_6_price": ".inventory-grid .vehicle:nth-child(6) .vehicle-price",
+                "vehicle_6_cta": ".inventory-grid .vehicle:nth-child(6) .vehicle-cta"
+            }
+        },
+        {
+            "id": "brands",
+            "name": "Authorized Brands",
+            "elements": {
+                "brands_title": ".brands-title",
+                "brand_1": ".brands-grid .brand-logo:nth-child(1)",
+                "brand_2": ".brands-grid .brand-logo:nth-child(2)",
+                "brand_3": ".brands-grid .brand-logo:nth-child(3)",
+                "brand_4": ".brands-grid .brand-logo:nth-child(4)",
+                "brand_5": ".brands-grid .brand-logo:nth-child(5)",
+                "brand_6": ".brands-grid .brand-logo:nth-child(6)",
+                "brand_7": ".brands-grid .brand-logo:nth-child(7)",
+                "brand_8": ".brands-grid .brand-logo:nth-child(8)"
+            }
+        },
+        {
+            "id": "process",
+            "name": "Buy Process",
+            "elements": {
+                "process_eyebrow": "#process .eyebrow",
+                "process_title": "#process .h-section",
+                "process_intro": "#process .section-intro",
+                "step_1_title": ".process-steps .process-step:nth-child(1) h3",
+                "step_1_text": ".process-steps .process-step:nth-child(1) p",
+                "step_2_title": ".process-steps .process-step:nth-child(2) h3",
+                "step_2_text": ".process-steps .process-step:nth-child(2) p",
+                "step_3_title": ".process-steps .process-step:nth-child(3) h3",
+                "step_3_text": ".process-steps .process-step:nth-child(3) p",
+                "step_4_title": ".process-steps .process-step:nth-child(4) h3",
+                "step_4_text": ".process-steps .process-step:nth-child(4) p"
+            }
+        },
+        {
+            "id": "featured_vehicles",
+            "name": "Featured Vehicles",
+            "elements": {
+                "featured_eyebrow": "#featured .eyebrow",
+                "featured_title": "#featured .h-section",
+                "featured_intro": "#featured .section-intro",
+                "featured_1_badge": ".featured-grid .featured:nth-child(1) .featured-badge",
+                "featured_1_title": ".featured-grid .featured:nth-child(1) h3",
+                "featured_1_desc": ".featured-grid .featured:nth-child(1) .featured-desc",
+                "featured_1_price": ".featured-grid .featured:nth-child(1) .featured-price",
+                "featured_2_badge": ".featured-grid .featured:nth-child(2) .featured-badge",
+                "featured_2_title": ".featured-grid .featured:nth-child(2) h3",
+                "featured_2_desc": ".featured-grid .featured:nth-child(2) .featured-desc",
+                "featured_2_price": ".featured-grid .featured:nth-child(2) .featured-price",
+                "featured_3_badge": ".featured-grid .featured:nth-child(3) .featured-badge",
+                "featured_3_title": ".featured-grid .featured:nth-child(3) h3",
+                "featured_3_desc": ".featured-grid .featured:nth-child(3) .featured-desc",
+                "featured_3_price": ".featured-grid .featured:nth-child(3) .featured-price"
+            }
+        },
+        {
+            "id": "financing",
+            "name": "Financing Plans",
+            "elements": {
+                "financing_eyebrow": "#financing .eyebrow",
+                "financing_title": "#financing .h-section",
+                "financing_intro": "#financing .section-intro",
+                "plan_1_name": ".plans-grid .plan:nth-child(1) .plan-name",
+                "plan_1_desc": ".plans-grid .plan:nth-child(1) .plan-desc",
+                "plan_1_apr": ".plans-grid .plan:nth-child(1) .plan-apr",
+                "plan_1_term": ".plans-grid .plan:nth-child(1) .plan-term",
+                "plan_1_feature_1": ".plans-grid .plan:nth-child(1) .plan-features li:nth-child(1)",
+                "plan_1_feature_2": ".plans-grid .plan:nth-child(1) .plan-features li:nth-child(2)",
+                "plan_1_feature_3": ".plans-grid .plan:nth-child(1) .plan-features li:nth-child(3)",
+                "plan_1_feature_4": ".plans-grid .plan:nth-child(1) .plan-features li:nth-child(4)",
+                "plan_1_cta": ".plans-grid .plan:nth-child(1) .plan-cta",
+                "plan_2_name": ".plans-grid .plan:nth-child(2) .plan-name",
+                "plan_2_desc": ".plans-grid .plan:nth-child(2) .plan-desc",
+                "plan_2_apr": ".plans-grid .plan:nth-child(2) .plan-apr",
+                "plan_2_term": ".plans-grid .plan:nth-child(2) .plan-term",
+                "plan_2_feature_1": ".plans-grid .plan:nth-child(2) .plan-features li:nth-child(1)",
+                "plan_2_feature_2": ".plans-grid .plan:nth-child(2) .plan-features li:nth-child(2)",
+                "plan_2_feature_3": ".plans-grid .plan:nth-child(2) .plan-features li:nth-child(3)",
+                "plan_2_feature_4": ".plans-grid .plan:nth-child(2) .plan-features li:nth-child(4)",
+                "plan_2_feature_5": ".plans-grid .plan:nth-child(2) .plan-features li:nth-child(5)",
+                "plan_2_cta": ".plans-grid .plan:nth-child(2) .plan-cta",
+                "plan_3_name": ".plans-grid .plan:nth-child(3) .plan-name",
+                "plan_3_desc": ".plans-grid .plan:nth-child(3) .plan-desc",
+                "plan_3_apr": ".plans-grid .plan:nth-child(3) .plan-apr",
+                "plan_3_term": ".plans-grid .plan:nth-child(3) .plan-term",
+                "plan_3_feature_1": ".plans-grid .plan:nth-child(3) .plan-features li:nth-child(1)",
+                "plan_3_feature_2": ".plans-grid .plan:nth-child(3) .plan-features li:nth-child(2)",
+                "plan_3_feature_3": ".plans-grid .plan:nth-child(3) .plan-features li:nth-child(3)",
+                "plan_3_feature_4": ".plans-grid .plan:nth-child(3) .plan-features li:nth-child(4)",
+                "plan_3_feature_5": ".plans-grid .plan:nth-child(3) .plan-features li:nth-child(5)",
+                "plan_3_cta": ".plans-grid .plan:nth-child(3) .plan-cta"
+            }
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": {
+                "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
+                "testimonials_title": "[data-block=testimonials] .h-section",
+                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+                "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+                "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
+                "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
+                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+                "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+                "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
+                "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
+                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+                "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+                "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
+                "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
+            }
+        },
+        {
+            "id": "booking",
+            "name": "Book a Test Drive",
+            "elements": {
+                "booking_eyebrow": "#booking .eyebrow",
+                "booking_title": "#booking .h-section",
+                "booking_intro": ".booking-intro",
+                "booking_vehicle_label": ".booking-form label[data-field=booking_vehicle_label]",
+                "booking_service_label": ".booking-form label[data-field=booking_service_label]",
+                "booking_date_label": ".booking-form label[data-field=booking_date_label]",
+                "booking_time_label": ".booking-form label[data-field=booking_time_label]",
+                "booking_name_label": ".booking-form label[data-field=booking_name_label]",
+                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+                "booking_email_label": ".booking-form label[data-field=booking_email_label]",
+                "booking_submit": ".booking-submit"
+            }
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": {
+                "contact_eyebrow": "#contact .eyebrow",
+                "contact_title": "#contact .h-section",
+                "contact_intro": "#contact .section-intro",
+                "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
+                "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
+                "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
+                "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
+                "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
+                "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
+                "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
+                "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
+                "contact_cta_title": "#contact .hero-form-title",
+                "contact_cta_text": "#contact .hero-form-sub",
+                "contact_cta_button": "#contact .btn-primary"
+            }
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": {
+                "footer_logo": ".footer-logo",
+                "footer_tagline": ".footer-tagline",
+                "social_1": ".footer-socials a:nth-child(1)",
+                "social_2": ".footer-socials a:nth-child(2)",
+                "social_3": ".footer-socials a:nth-child(3)",
+                "social_4": ".footer-socials a:nth-child(4)",
+                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+                "footer_text": ".footer-bottom > div:nth-child(1)",
+                "footer_legal": ".footer-bottom > div:nth-child(2)"
+            }
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "Apex Motors"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "Luxury Pre-Owned European Performance"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Apex Motors — Dubai's premier destination for certified pre-owned luxury and performance vehicles. BMW, Mercedes, Porsche, and more."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://apexmotors.ae"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/automotive.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_US"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Background",
+            "default": "/storage/builder-heroes/automotive.jpg"
+        },
+        "carbon": {
+            "type": "color",
+            "label": "Carbon",
+            "default": "#1A1A1A"
+        },
+        "carbon_soft": {
+            "type": "color",
+            "label": "Carbon Soft",
+            "default": "#222222"
+        },
+        "red": {
+            "type": "color",
+            "label": "Red",
+            "default": "#C41E3A"
+        },
+        "red_deep": {
+            "type": "color",
+            "label": "Red Deep",
+            "default": "#9A1730"
+        },
+        "chalk": {
+            "type": "color",
+            "label": "Chalk",
+            "default": "#FFFFFF"
+        },
+        "silver": {
+            "type": "color",
+            "label": "Silver",
+            "default": "#A8A8A8"
+        },
+        "divider": {
+            "type": "color",
+            "label": "Divider",
+            "default": "#333333"
+        },
+        "logo": {
+            "type": "text",
+            "label": "Logo Text",
+            "default": "APEX"
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav: Inventory",
+            "default": "Inventory"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav: Brands",
+            "default": "Brands"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav: Finance",
+            "default": "Finance"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav: Process",
+            "default": "Process"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav: Contact",
+            "default": "Contact"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav CTA",
+            "default": "Test Drive"
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Certified Pre-Owned · Dubai"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Title",
+            "default": "Drive Something Extraordinary."
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subtitle",
+            "default": "Hand-selected European luxury and performance vehicles. Every car is fully inspected, certified, and backed by a two-year warranty. Delivered anywhere in the UAE."
+        },
+        "hero_trust_1": {
+            "type": "text",
+            "label": "Trust 1",
+            "default": "142-Point Inspection"
+        },
+        "hero_trust_2": {
+            "type": "text",
+            "label": "Trust 2",
+            "default": "2-Year Warranty"
+        },
+        "hero_trust_3": {
+            "type": "text",
+            "label": "Trust 3",
+            "default": "Finance from 2.99%"
+        },
+        "hero_trust_4": {
+            "type": "text",
+            "label": "Trust 4",
+            "default": "Free UAE Delivery"
+        },
+        "hero_form_eyebrow": {
+            "type": "text",
+            "label": "Form Eyebrow",
+            "default": "QUICK ENQUIRY"
+        },
+        "hero_form_title": {
+            "type": "text",
+            "label": "Form Title",
+            "default": "Speak to a Specialist"
+        },
+        "hero_form_sub": {
+            "type": "text",
+            "label": "Form Sub",
+            "default": "Leave your details and one of our vehicle specialists will call you back within 30 minutes during showroom hours."
+        },
+        "hero_form_name_label": {
+            "type": "text",
+            "label": "Name Label",
+            "default": "Full Name"
+        },
+        "hero_form_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Mobile Number"
+        },
+        "hero_form_interest_label": {
+            "type": "text",
+            "label": "Interest Label",
+            "default": "I'm Interested In"
+        },
+        "hero_form_submit": {
+            "type": "text",
+            "label": "Submit Button",
+            "default": "Request Callback →"
+        },
+        "hero_form_note": {
+            "type": "text",
+            "label": "Form Note",
+            "default": "We'll never share your details. No sales pressure — guaranteed."
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "4,200+"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Vehicles Sold"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "142"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Inspection Points"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "4.9★"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Google Rating"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "16"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Years Established"
+        },
+        "inventory_eyebrow": {
+            "type": "text",
+            "label": "Inventory Eyebrow",
+            "default": "CURRENT INVENTORY"
+        },
+        "inventory_title": {
+            "type": "text",
+            "label": "Inventory Title",
+            "default": "Latest Arrivals in the Showroom"
+        },
+        "inventory_intro": {
+            "type": "text",
+            "label": "Inventory Intro",
+            "default": "Hand-picked, independently inspected, and ready to drive. Every vehicle below is available for a test drive today — no appointment needed until 6pm."
+        },
+        "vehicle_1_image": {
+            "type": "image",
+            "label": "Vehicle 1 Image",
+            "default": "/storage/template-images/automotive/vehicle_1_image.jpg"
+        },
+        "vehicle_1_make": {
+            "type": "text",
+            "label": "Vehicle 1 Make",
+            "default": "BMW"
+        },
+        "vehicle_1_model": {
+            "type": "text",
+            "label": "Vehicle 1 Model",
+            "default": "M4 Competition"
+        },
+        "vehicle_1_year_label": {
+            "type": "text",
+            "label": "V1 Year Label",
+            "default": "Year"
+        },
+        "vehicle_1_year": {
+            "type": "text",
+            "label": "V1 Year",
+            "default": "2023"
+        },
+        "vehicle_1_mileage_label": {
+            "type": "text",
+            "label": "V1 Mileage Label",
+            "default": "Mileage"
+        },
+        "vehicle_1_mileage": {
+            "type": "text",
+            "label": "V1 Mileage",
+            "default": "12,400 km"
+        },
+        "vehicle_1_engine_label": {
+            "type": "text",
+            "label": "V1 Engine Label",
+            "default": "Engine"
+        },
+        "vehicle_1_engine": {
+            "type": "text",
+            "label": "V1 Engine",
+            "default": "3.0L Twin-Turbo"
+        },
+        "vehicle_1_price": {
+            "type": "text",
+            "label": "V1 Price",
+            "default": "AED 395,000"
+        },
+        "vehicle_1_cta": {
+            "type": "text",
+            "label": "V1 CTA",
+            "default": "Book Test Drive"
+        },
+        "vehicle_2_image": {
+            "type": "image",
+            "label": "Vehicle 2 Image",
+            "default": "/storage/template-images/automotive/vehicle_2_image.jpg"
+        },
+        "vehicle_2_make": {
+            "type": "text",
+            "label": "Vehicle 2 Make",
+            "default": "MERCEDES-BENZ"
+        },
+        "vehicle_2_model": {
+            "type": "text",
+            "label": "Vehicle 2 Model",
+            "default": "AMG GT 63 S"
+        },
+        "vehicle_2_year_label": {
+            "type": "text",
+            "label": "V2 Year Label",
+            "default": "Year"
+        },
+        "vehicle_2_year": {
+            "type": "text",
+            "label": "V2 Year",
+            "default": "2022"
+        },
+        "vehicle_2_mileage_label": {
+            "type": "text",
+            "label": "V2 Mileage Label",
+            "default": "Mileage"
+        },
+        "vehicle_2_mileage": {
+            "type": "text",
+            "label": "V2 Mileage",
+            "default": "18,900 km"
+        },
+        "vehicle_2_engine_label": {
+            "type": "text",
+            "label": "V2 Engine Label",
+            "default": "Engine"
+        },
+        "vehicle_2_engine": {
+            "type": "text",
+            "label": "V2 Engine",
+            "default": "4.0L V8 BiTurbo"
+        },
+        "vehicle_2_price": {
+            "type": "text",
+            "label": "V2 Price",
+            "default": "AED 620,000"
+        },
+        "vehicle_2_cta": {
+            "type": "text",
+            "label": "V2 CTA",
+            "default": "Book Test Drive"
+        },
+        "vehicle_3_image": {
+            "type": "image",
+            "label": "Vehicle 3 Image",
+            "default": "/storage/template-images/automotive/vehicle_3_image.jpg"
+        },
+        "vehicle_3_make": {
+            "type": "text",
+            "label": "Vehicle 3 Make",
+            "default": "PORSCHE"
+        },
+        "vehicle_3_model": {
+            "type": "text",
+            "label": "Vehicle 3 Model",
+            "default": "911 Carrera S"
+        },
+        "vehicle_3_year_label": {
+            "type": "text",
+            "label": "V3 Year Label",
+            "default": "Year"
+        },
+        "vehicle_3_year": {
+            "type": "text",
+            "label": "V3 Year",
+            "default": "2023"
+        },
+        "vehicle_3_mileage_label": {
+            "type": "text",
+            "label": "V3 Mileage Label",
+            "default": "Mileage"
+        },
+        "vehicle_3_mileage": {
+            "type": "text",
+            "label": "V3 Mileage",
+            "default": "8,200 km"
+        },
+        "vehicle_3_engine_label": {
+            "type": "text",
+            "label": "V3 Engine Label",
+            "default": "Engine"
+        },
+        "vehicle_3_engine": {
+            "type": "text",
+            "label": "V3 Engine",
+            "default": "3.0L Flat-Six"
+        },
+        "vehicle_3_price": {
+            "type": "text",
+            "label": "V3 Price",
+            "default": "AED 580,000"
+        },
+        "vehicle_3_cta": {
+            "type": "text",
+            "label": "V3 CTA",
+            "default": "Book Test Drive"
+        },
+        "vehicle_4_image": {
+            "type": "image",
+            "label": "Vehicle 4 Image",
+            "default": "/storage/template-images/automotive/vehicle_4_image.jpg"
+        },
+        "vehicle_4_make": {
+            "type": "text",
+            "label": "Vehicle 4 Make",
+            "default": "AUDI"
+        },
+        "vehicle_4_model": {
+            "type": "text",
+            "label": "Vehicle 4 Model",
+            "default": "RS6 Avant"
+        },
+        "vehicle_4_year_label": {
+            "type": "text",
+            "label": "V4 Year Label",
+            "default": "Year"
+        },
+        "vehicle_4_year": {
+            "type": "text",
+            "label": "V4 Year",
+            "default": "2022"
+        },
+        "vehicle_4_mileage_label": {
+            "type": "text",
+            "label": "V4 Mileage Label",
+            "default": "Mileage"
+        },
+        "vehicle_4_mileage": {
+            "type": "text",
+            "label": "V4 Mileage",
+            "default": "22,500 km"
+        },
+        "vehicle_4_engine_label": {
+            "type": "text",
+            "label": "V4 Engine Label",
+            "default": "Engine"
+        },
+        "vehicle_4_engine": {
+            "type": "text",
+            "label": "V4 Engine",
+            "default": "4.0L V8 TFSI"
+        },
+        "vehicle_4_price": {
+            "type": "text",
+            "label": "V4 Price",
+            "default": "AED 485,000"
+        },
+        "vehicle_4_cta": {
+            "type": "text",
+            "label": "V4 CTA",
+            "default": "Book Test Drive"
+        },
+        "vehicle_5_image": {
+            "type": "image",
+            "label": "Vehicle 5 Image",
+            "default": "/storage/template-images/automotive/vehicle_5_image.jpg"
+        },
+        "vehicle_5_make": {
+            "type": "text",
+            "label": "Vehicle 5 Make",
+            "default": "RANGE ROVER"
+        },
+        "vehicle_5_model": {
+            "type": "text",
+            "label": "Vehicle 5 Model",
+            "default": "Sport SVR"
+        },
+        "vehicle_5_year_label": {
+            "type": "text",
+            "label": "V5 Year Label",
+            "default": "Year"
+        },
+        "vehicle_5_year": {
+            "type": "text",
+            "label": "V5 Year",
+            "default": "2022"
+        },
+        "vehicle_5_mileage_label": {
+            "type": "text",
+            "label": "V5 Mileage Label",
+            "default": "Mileage"
+        },
+        "vehicle_5_mileage": {
+            "type": "text",
+            "label": "V5 Mileage",
+            "default": "29,000 km"
+        },
+        "vehicle_5_engine_label": {
+            "type": "text",
+            "label": "V5 Engine Label",
+            "default": "Engine"
+        },
+        "vehicle_5_engine": {
+            "type": "text",
+            "label": "V5 Engine",
+            "default": "5.0L V8 Supercharged"
+        },
+        "vehicle_5_price": {
+            "type": "text",
+            "label": "V5 Price",
+            "default": "AED 445,000"
+        },
+        "vehicle_5_cta": {
+            "type": "text",
+            "label": "V5 CTA",
+            "default": "Book Test Drive"
+        },
+        "vehicle_6_image": {
+            "type": "image",
+            "label": "Vehicle 6 Image",
+            "default": "/storage/template-images/automotive/vehicle_6_image.jpg"
+        },
+        "vehicle_6_make": {
+            "type": "text",
+            "label": "Vehicle 6 Make",
+            "default": "LAMBORGHINI"
+        },
+        "vehicle_6_model": {
+            "type": "text",
+            "label": "Vehicle 6 Model",
+            "default": "Huracan EVO"
+        },
+        "vehicle_6_year_label": {
+            "type": "text",
+            "label": "V6 Year Label",
+            "default": "Year"
+        },
+        "vehicle_6_year": {
+            "type": "text",
+            "label": "V6 Year",
+            "default": "2021"
+        },
+        "vehicle_6_mileage_label": {
+            "type": "text",
+            "label": "V6 Mileage Label",
+            "default": "Mileage"
+        },
+        "vehicle_6_mileage": {
+            "type": "text",
+            "label": "V6 Mileage",
+            "default": "11,800 km"
+        },
+        "vehicle_6_engine_label": {
+            "type": "text",
+            "label": "V6 Engine Label",
+            "default": "Engine"
+        },
+        "vehicle_6_engine": {
+            "type": "text",
+            "label": "V6 Engine",
+            "default": "5.2L V10"
+        },
+        "vehicle_6_price": {
+            "type": "text",
+            "label": "V6 Price",
+            "default": "AED 890,000"
+        },
+        "vehicle_6_cta": {
+            "type": "text",
+            "label": "V6 CTA",
+            "default": "Book Test Drive"
+        },
+        "brands_title": {
+            "type": "text",
+            "label": "Brands Title",
+            "default": "WE SPECIALIZE IN EUROPEAN PERFORMANCE"
+        },
+        "brand_1": {
+            "type": "text",
+            "label": "Brand 1",
+            "default": "BMW"
+        },
+        "brand_2": {
+            "type": "text",
+            "label": "Brand 2",
+            "default": "Mercedes"
+        },
+        "brand_3": {
+            "type": "text",
+            "label": "Brand 3",
+            "default": "Porsche"
+        },
+        "brand_4": {
+            "type": "text",
+            "label": "Brand 4",
+            "default": "Audi"
+        },
+        "brand_5": {
+            "type": "text",
+            "label": "Brand 5",
+            "default": "Range Rover"
+        },
+        "brand_6": {
+            "type": "text",
+            "label": "Brand 6",
+            "default": "Ferrari"
+        },
+        "brand_7": {
+            "type": "text",
+            "label": "Brand 7",
+            "default": "Lamborghini"
+        },
+        "brand_8": {
+            "type": "text",
+            "label": "Brand 8",
+            "default": "Bentley"
+        },
+        "process_eyebrow": {
+            "type": "text",
+            "label": "Process Eyebrow",
+            "default": "HOW IT WORKS"
+        },
+        "process_title": {
+            "type": "text",
+            "label": "Process Title",
+            "default": "A Transparent Four-Step Purchase"
+        },
+        "process_intro": {
+            "type": "text",
+            "label": "Process Intro",
+            "default": "No games, no pushy sales. Here's exactly what happens from the moment you walk in to the moment you drive out."
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Browse & Choose"
+        },
+        "step_1_text": {
+            "type": "text",
+            "label": "Step 1 Text",
+            "default": "View our full inventory online or at the showroom. Every car comes with a complete history report and inspection file."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Test Drive"
+        },
+        "step_2_text": {
+            "type": "text",
+            "label": "Step 2 Text",
+            "default": "Book a 30-minute test drive — any car, any time during showroom hours. A specialist will walk you through every feature."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Finance & Paper"
+        },
+        "step_3_text": {
+            "type": "text",
+            "label": "Step 3 Text",
+            "default": "We arrange finance with seven major UAE banks in-house. Pre-approval in 60 minutes, paperwork done same day."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Drive Away"
+        },
+        "step_4_text": {
+            "type": "text",
+            "label": "Step 4 Text",
+            "default": "Full valet, documented RTA registration, and keys handed over. Free home delivery anywhere in the UAE."
+        },
+        "featured_eyebrow": {
+            "type": "text",
+            "label": "Featured Eyebrow",
+            "default": "THIS WEEK'S HIGHLIGHTS"
+        },
+        "featured_title": {
+            "type": "text",
+            "label": "Featured Title",
+            "default": "Specialist's Pick of the Week"
+        },
+        "featured_intro": {
+            "type": "text",
+            "label": "Featured Intro",
+            "default": "Three vehicles hand-selected by our lead specialist this week for their rarity, condition, and value."
+        },
+        "featured_1_badge": {
+            "type": "text",
+            "label": "Featured 1 Badge",
+            "default": "LOW MILEAGE"
+        },
+        "featured_1_title": {
+            "type": "text",
+            "label": "Featured 1 Title",
+            "default": "Porsche Taycan Turbo S"
+        },
+        "featured_1_desc": {
+            "type": "text",
+            "label": "Featured 1 Desc",
+            "default": "2022 model, only 6,400 km. Full Porsche service history. Panoramic glass roof, 21-inch Mission E Design wheels, and full factory warranty remaining."
+        },
+        "featured_1_price": {
+            "type": "text",
+            "label": "Featured 1 Price",
+            "default": "AED 680,000"
+        },
+        "featured_2_badge": {
+            "type": "text",
+            "label": "Featured 2 Badge",
+            "default": "JUST ARRIVED"
+        },
+        "featured_2_title": {
+            "type": "text",
+            "label": "Featured 2 Title",
+            "default": "Ferrari Roma"
+        },
+        "featured_2_desc": {
+            "type": "text",
+            "label": "Featured 2 Desc",
+            "default": "2023, 4,800 km. Rosso Corsa over tan leather. Matrix LED, carbon interior trim, and Scuderia shields. Ferrari Approved warranty included."
+        },
+        "featured_2_price": {
+            "type": "text",
+            "label": "Featured 2 Price",
+            "default": "AED 1,180,000"
+        },
+        "featured_3_badge": {
+            "type": "text",
+            "label": "Featured 3 Badge",
+            "default": "RARE SPEC"
+        },
+        "featured_3_title": {
+            "type": "text",
+            "label": "Featured 3 Title",
+            "default": "Bentley Continental GT"
+        },
+        "featured_3_desc": {
+            "type": "text",
+            "label": "Featured 3 Desc",
+            "default": "2022 W12 First Edition. Mulliner Driving Spec, night vision, rotating display. One of only 12 in the region. Full Bentley service."
+        },
+        "featured_3_price": {
+            "type": "text",
+            "label": "Featured 3 Price",
+            "default": "AED 920,000"
+        },
+        "financing_eyebrow": {
+            "type": "text",
+            "label": "Financing Eyebrow",
+            "default": "FINANCE OPTIONS"
+        },
+        "financing_title": {
+            "type": "text",
+            "label": "Financing Title",
+            "default": "Three Ways to Drive Home"
+        },
+        "financing_intro": {
+            "type": "text",
+            "label": "Financing Intro",
+            "default": "Partnered with seven UAE banks for competitive rates. Pre-approval in under an hour. Flexible terms from 12 to 60 months."
+        },
+        "plan_1_name": {
+            "type": "text",
+            "label": "Plan 1 Name",
+            "default": "Standard Finance"
+        },
+        "plan_1_desc": {
+            "type": "text",
+            "label": "Plan 1 Desc",
+            "default": "Our most popular plan. Competitive rates with 20% down payment."
+        },
+        "plan_1_apr": {
+            "type": "text",
+            "label": "Plan 1 APR",
+            "default": "3.99%"
+        },
+        "plan_1_term": {
+            "type": "text",
+            "label": "Plan 1 Term",
+            "default": "APR from · 12 to 60 months"
+        },
+        "plan_1_feature_1": {
+            "type": "text",
+            "label": "Plan 1 F1",
+            "default": "20% minimum down payment"
+        },
+        "plan_1_feature_2": {
+            "type": "text",
+            "label": "Plan 1 F2",
+            "default": "Same-day pre-approval"
+        },
+        "plan_1_feature_3": {
+            "type": "text",
+            "label": "Plan 1 F3",
+            "default": "No balloon payment required"
+        },
+        "plan_1_feature_4": {
+            "type": "text",
+            "label": "Plan 1 F4",
+            "default": "Free RTA registration"
+        },
+        "plan_1_cta": {
+            "type": "text",
+            "label": "Plan 1 CTA",
+            "default": "Get Quote"
+        },
+        "plan_2_name": {
+            "type": "text",
+            "label": "Plan 2 Name",
+            "default": "Premium Finance"
+        },
+        "plan_2_desc": {
+            "type": "text",
+            "label": "Plan 2 Desc",
+            "default": "Lower monthly payments via balloon-payment structure. Most flexible."
+        },
+        "plan_2_apr": {
+            "type": "text",
+            "label": "Plan 2 APR",
+            "default": "2.99%"
+        },
+        "plan_2_term": {
+            "type": "text",
+            "label": "Plan 2 Term",
+            "default": "APR from · 24 to 48 months"
+        },
+        "plan_2_feature_1": {
+            "type": "text",
+            "label": "Plan 2 F1",
+            "default": "10% down payment"
+        },
+        "plan_2_feature_2": {
+            "type": "text",
+            "label": "Plan 2 F2",
+            "default": "Up to 50% balloon payment"
+        },
+        "plan_2_feature_3": {
+            "type": "text",
+            "label": "Plan 2 F3",
+            "default": "Trade-in / return / refinance at end"
+        },
+        "plan_2_feature_4": {
+            "type": "text",
+            "label": "Plan 2 F4",
+            "default": "Full insurance package included"
+        },
+        "plan_2_feature_5": {
+            "type": "text",
+            "label": "Plan 2 F5",
+            "default": "Free 2 services per year"
+        },
+        "plan_2_cta": {
+            "type": "text",
+            "label": "Plan 2 CTA",
+            "default": "Get Quote"
+        },
+        "plan_3_name": {
+            "type": "text",
+            "label": "Plan 3 Name",
+            "default": "Lease-to-Own"
+        },
+        "plan_3_desc": {
+            "type": "text",
+            "label": "Plan 3 Desc",
+            "default": "For UAE residents who want flexibility without long-term commitment."
+        },
+        "plan_3_apr": {
+            "type": "text",
+            "label": "Plan 3 APR",
+            "default": "4.49%"
+        },
+        "plan_3_term": {
+            "type": "text",
+            "label": "Plan 3 Term",
+            "default": "Effective APR · 36 months standard"
+        },
+        "plan_3_feature_1": {
+            "type": "text",
+            "label": "Plan 3 F1",
+            "default": "Zero down payment options"
+        },
+        "plan_3_feature_2": {
+            "type": "text",
+            "label": "Plan 3 F2",
+            "default": "Upgrade vehicle every 2 years"
+        },
+        "plan_3_feature_3": {
+            "type": "text",
+            "label": "Plan 3 F3",
+            "default": "All maintenance & insurance included"
+        },
+        "plan_3_feature_4": {
+            "type": "text",
+            "label": "Plan 3 F4",
+            "default": "Purchase option at end of lease"
+        },
+        "plan_3_feature_5": {
+            "type": "text",
+            "label": "Plan 3 F5",
+            "default": "Deductible VAT for businesses"
+        },
+        "plan_3_cta": {
+            "type": "text",
+            "label": "Plan 3 CTA",
+            "default": "Get Quote"
+        },
+        "testimonials_eyebrow": {
+            "type": "text",
+            "label": "Testimonials Eyebrow",
+            "default": "WHAT CLIENTS SAY"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Title",
+            "default": "4,200 Happy Drivers. Counting."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1 Quote",
+            "default": "Picked up my M4 from Apex last month. Full transparency on the service history, no pressure, and the finance team got me pre-approved in 45 minutes. First time I've actually enjoyed car buying."
+        },
+        "testimonial_1_author": {
+            "type": "text",
+            "label": "Testimonial 1 Author",
+            "default": "Faisal Al-Marri"
+        },
+        "testimonial_1_company": {
+            "type": "text",
+            "label": "Testimonial 1 Company",
+            "default": "BMW M4 Competition · Feb 2026"
+        },
+        "testimonial_1_result": {
+            "type": "text",
+            "label": "Testimonial 1 Result",
+            "default": "In & out in 2 hours"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2 Quote",
+            "default": "Third car I've bought from Apex. The inspection standards are legitimately different from the rest of the market. I tell everyone who asks."
+        },
+        "testimonial_2_author": {
+            "type": "text",
+            "label": "Testimonial 2 Author",
+            "default": "Hanan Shahid"
+        },
+        "testimonial_2_company": {
+            "type": "text",
+            "label": "Testimonial 2 Company",
+            "default": "Range Rover · Repeat Customer"
+        },
+        "testimonial_2_result": {
+            "type": "text",
+            "label": "Testimonial 2 Result",
+            "default": "3rd purchase"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3 Quote",
+            "default": "Delivered the Porsche straight to my compound in Abu Dhabi, fully registered, detailed, with the paperwork sorted. Zero hassle. That's the Apex experience."
+        },
+        "testimonial_3_author": {
+            "type": "text",
+            "label": "Testimonial 3 Author",
+            "default": "Peter Sinclair"
+        },
+        "testimonial_3_company": {
+            "type": "text",
+            "label": "Testimonial 3 Company",
+            "default": "Porsche 911 · Jan 2026"
+        },
+        "testimonial_3_result": {
+            "type": "text",
+            "label": "Testimonial 3 Result",
+            "default": "Free delivery"
+        },
+        "booking_eyebrow": {
+            "type": "text",
+            "label": "Booking Eyebrow",
+            "default": "RESERVE YOUR TIME"
+        },
+        "booking_title": {
+            "type": "text",
+            "label": "Booking Title",
+            "default": "Book a Test Drive"
+        },
+        "booking_intro": {
+            "type": "text",
+            "label": "Booking Intro",
+            "default": "Drive any vehicle in our inventory. Sessions run 30 minutes and include a walkthrough of the car's features and history with a specialist. No commitment, no pressure."
+        },
+        "booking_vehicle_label": {
+            "type": "text",
+            "label": "Vehicle Label",
+            "default": "Vehicle of Interest"
+        },
+        "booking_service_label": {
+            "type": "text",
+            "label": "Service Label",
+            "default": "What Do You Need?"
+        },
+        "booking_date_label": {
+            "type": "text",
+            "label": "Date Label",
+            "default": "Preferred Date"
+        },
+        "booking_time_label": {
+            "type": "text",
+            "label": "Time Label",
+            "default": "Preferred Time"
+        },
+        "booking_name_label": {
+            "type": "text",
+            "label": "Name Label",
+            "default": "Full Name"
+        },
+        "booking_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Mobile Number"
+        },
+        "booking_email_label": {
+            "type": "text",
+            "label": "Email Label",
+            "default": "Email Address"
+        },
+        "booking_submit": {
+            "type": "text",
+            "label": "Submit Button",
+            "default": "Book Test Drive →"
+        },
+        "contact_eyebrow": {
+            "type": "text",
+            "label": "Contact Eyebrow",
+            "default": "VISIT US"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Title",
+            "default": "The Showroom"
+        },
+        "contact_intro": {
+            "type": "text",
+            "label": "Contact Intro",
+            "default": "Our Sheikh Zayed Road showroom houses 45+ vehicles on permanent display. Walk in anytime during opening hours — coffee's on us."
+        },
+        "contact_email_label": {
+            "type": "text",
+            "label": "Email Label",
+            "default": "Email"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "sales@apexmotors.ae"
+        },
+        "contact_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Showroom"
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+971 4 555 0300"
+        },
+        "contact_address_label": {
+            "type": "text",
+            "label": "Address Label",
+            "default": "Showroom"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "Sheikh Zayed Road, Al Quoz, Dubai, UAE"
+        },
+        "contact_hours_label": {
+            "type": "text",
+            "label": "Hours Label",
+            "default": "Hours"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Hours",
+            "default": "Sat–Thu, 09:00–21:00 · Fri 15:00–21:00"
+        },
+        "contact_cta_title": {
+            "type": "text",
+            "label": "Contact CTA Title",
+            "default": "Can't wait to see it?"
+        },
+        "contact_cta_text": {
+            "type": "text",
+            "label": "Contact CTA Text",
+            "default": "Book a test drive slot and get behind the wheel of any vehicle in our showroom. Zero obligation."
+        },
+        "contact_cta_button": {
+            "type": "text",
+            "label": "Contact CTA Button",
+            "default": "Book Test Drive"
+        },
+        "footer_logo": {
+            "type": "text",
+            "label": "Footer Logo",
+            "default": "APEX MOTORS"
+        },
+        "footer_tagline": {
+            "type": "text",
+            "label": "Footer Tagline",
+            "default": "Dubai's premier destination for certified pre-owned luxury and performance vehicles. Hand-selected. Fully inspected. Warranty backed."
+        },
+        "social_1": {
+            "type": "text",
+            "label": "Social 1",
+            "default": "IG"
+        },
+        "social_2": {
+            "type": "text",
+            "label": "Social 2",
+            "default": "FB"
+        },
+        "social_3": {
+            "type": "text",
+            "label": "Social 3",
+            "default": "YT"
+        },
+        "social_4": {
+            "type": "text",
+            "label": "Social 4",
+            "default": "TT"
+        },
+        "footer_col_1_title": {
+            "type": "text",
+            "label": "Footer Col 1 Title",
+            "default": "Inventory"
+        },
+        "footer_col_2_title": {
+            "type": "text",
+            "label": "Footer Col 2 Title",
+            "default": "Services"
+        },
+        "footer_col_3_title": {
+            "type": "text",
+            "label": "Footer Col 3 Title",
+            "default": "Visit"
+        },
+        "footer_link_1": {
+            "type": "text",
+            "label": "Footer Link 1",
+            "default": "SUV"
+        },
+        "footer_link_2": {
+            "type": "text",
+            "label": "Footer Link 2",
+            "default": "Sports"
+        },
+        "footer_link_3": {
+            "type": "text",
+            "label": "Footer Link 3",
+            "default": "Sedan"
+        },
+        "footer_link_4": {
+            "type": "text",
+            "label": "Footer Link 4",
+            "default": "Financing"
+        },
+        "footer_link_5": {
+            "type": "text",
+            "label": "Footer Link 5",
+            "default": "How It Works"
+        },
+        "footer_link_6": {
+            "type": "text",
+            "label": "Footer Link 6",
+            "default": "Brands"
+        },
+        "footer_link_7": {
+            "type": "text",
+            "label": "Footer Link 7",
+            "default": "Contact"
+        },
+        "footer_link_8": {
+            "type": "text",
+            "label": "Footer Link 8",
+            "default": "Test Drive"
+        },
+        "footer_text": {
+            "type": "text",
+            "label": "Footer Text",
+            "default": "© 2026 Apex Motors. All rights reserved."
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "Privacy · Terms · Dealer License"
+        }
+    }
+}

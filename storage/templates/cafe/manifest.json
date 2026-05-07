@@ -1,0 +1,1174 @@
+{
+    "id": "cafe",
+    "name": "Cafe / Coffee Shop",
+    "industry": "cafe",
+    "description": "Artisan cafe / specialty coffee template — warm editorial hero with reservation form on cream background, stats, 6 menu highlights with origin and price, founder story split, 3 featured specials on espresso cards, 8-image food/ambiance gallery, 4-step how-we-brew process, testimonials, reserve-a-table form, contact, and footer. Built for boutique cafes and coffee shops.",
+    "thumbnail": "/storage/builder-heroes/cafe.jpg",
+    "category": "cafe",
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_1": "nav .nav-link-1",
+                "nav_2": "nav .nav-link-2",
+                "nav_3": "nav .nav-link-3",
+                "nav_4": "nav .nav-link-4",
+                "nav_5": "nav .nav-link-5",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero with Reservation Form",
+            "elements": {
+                "hero_image": "section.hero",
+                "hero_eyebrow": ".hero-eyebrow",
+                "hero_title": ".hero-title",
+                "hero_subtitle": ".hero-subtitle",
+                "hero_trust_1": ".hero-trust-1",
+                "hero_trust_2": ".hero-trust-2",
+                "hero_trust_3": ".hero-trust-3",
+                "hero_trust_4": ".hero-trust-4",
+                "hero_form_eyebrow": ".hero-form-eyebrow",
+                "hero_form_title": ".hero-form-title",
+                "hero_form_sub": ".hero-form-sub",
+                "hero_form_date_label": ".hero-form label[data-field=hero_form_date_label]",
+                "hero_form_time_label": ".hero-form label[data-field=hero_form_time_label]",
+                "hero_form_party_label": ".hero-form label[data-field=hero_form_party_label]",
+                "hero_form_submit": ".hero-form button",
+                "hero_form_note": ".hero-form-note"
+            }
+        },
+        {
+            "id": "stats",
+            "name": "Stats",
+            "elements": {
+                "stat_1_value": ".stats-grid .stat:nth-child(1) .stat-value",
+                "stat_1_label": ".stats-grid .stat:nth-child(1) .stat-label",
+                "stat_2_value": ".stats-grid .stat:nth-child(2) .stat-value",
+                "stat_2_label": ".stats-grid .stat:nth-child(2) .stat-label",
+                "stat_3_value": ".stats-grid .stat:nth-child(3) .stat-value",
+                "stat_3_label": ".stats-grid .stat:nth-child(3) .stat-label",
+                "stat_4_value": ".stats-grid .stat:nth-child(4) .stat-value",
+                "stat_4_label": ".stats-grid .stat:nth-child(4) .stat-label"
+            }
+        },
+        {
+            "id": "menu_highlights",
+            "name": "Menu Highlights",
+            "elements": {
+                "menu_eyebrow": "#menu .eyebrow",
+                "menu_title": "#menu .h-section",
+                "menu_intro": "#menu .section-intro",
+                "menu_1_tag": ".menu-grid .menu-item:nth-child(1) .menu-tag",
+                "menu_1_title": ".menu-grid .menu-item:nth-child(1) h3",
+                "menu_1_desc": ".menu-grid .menu-item:nth-child(1) p",
+                "menu_1_price": ".menu-grid .menu-item:nth-child(1) .menu-price",
+                "menu_1_origin": ".menu-grid .menu-item:nth-child(1) .menu-origin",
+                "menu_2_tag": ".menu-grid .menu-item:nth-child(2) .menu-tag",
+                "menu_2_title": ".menu-grid .menu-item:nth-child(2) h3",
+                "menu_2_desc": ".menu-grid .menu-item:nth-child(2) p",
+                "menu_2_price": ".menu-grid .menu-item:nth-child(2) .menu-price",
+                "menu_2_origin": ".menu-grid .menu-item:nth-child(2) .menu-origin",
+                "menu_3_tag": ".menu-grid .menu-item:nth-child(3) .menu-tag",
+                "menu_3_title": ".menu-grid .menu-item:nth-child(3) h3",
+                "menu_3_desc": ".menu-grid .menu-item:nth-child(3) p",
+                "menu_3_price": ".menu-grid .menu-item:nth-child(3) .menu-price",
+                "menu_3_origin": ".menu-grid .menu-item:nth-child(3) .menu-origin",
+                "menu_4_tag": ".menu-grid .menu-item:nth-child(4) .menu-tag",
+                "menu_4_title": ".menu-grid .menu-item:nth-child(4) h3",
+                "menu_4_desc": ".menu-grid .menu-item:nth-child(4) p",
+                "menu_4_price": ".menu-grid .menu-item:nth-child(4) .menu-price",
+                "menu_4_origin": ".menu-grid .menu-item:nth-child(4) .menu-origin",
+                "menu_5_tag": ".menu-grid .menu-item:nth-child(5) .menu-tag",
+                "menu_5_title": ".menu-grid .menu-item:nth-child(5) h3",
+                "menu_5_desc": ".menu-grid .menu-item:nth-child(5) p",
+                "menu_5_price": ".menu-grid .menu-item:nth-child(5) .menu-price",
+                "menu_5_origin": ".menu-grid .menu-item:nth-child(5) .menu-origin",
+                "menu_6_tag": ".menu-grid .menu-item:nth-child(6) .menu-tag",
+                "menu_6_title": ".menu-grid .menu-item:nth-child(6) h3",
+                "menu_6_desc": ".menu-grid .menu-item:nth-child(6) p",
+                "menu_6_price": ".menu-grid .menu-item:nth-child(6) .menu-price",
+                "menu_6_origin": ".menu-grid .menu-item:nth-child(6) .menu-origin"
+            }
+        },
+        {
+            "id": "story",
+            "name": "Our Story",
+            "elements": {
+                "story_image": "#story .story-image",
+                "story_eyebrow": "#story .eyebrow",
+                "story_title": "#story .story-text h2",
+                "story_p1": "#story .story-text p:nth-of-type(1)",
+                "story_p2": "#story .story-text p:nth-of-type(2)",
+                "story_p3": "#story .story-text p:nth-of-type(3)",
+                "story_signature": "#story .story-signature",
+                "story_role": "#story .story-role"
+            }
+        },
+        {
+            "id": "specials",
+            "name": "Specials",
+            "elements": {
+                "specials_eyebrow": "#specials .eyebrow",
+                "specials_title": "#specials .h-section",
+                "specials_intro": "#specials .section-intro",
+                "special_1_badge": ".specials-grid .special:nth-child(1) .special-badge",
+                "special_1_title": ".specials-grid .special:nth-child(1) h3",
+                "special_1_desc": ".specials-grid .special:nth-child(1) p",
+                "special_1_price": ".specials-grid .special:nth-child(1) .special-price",
+                "special_2_badge": ".specials-grid .special:nth-child(2) .special-badge",
+                "special_2_title": ".specials-grid .special:nth-child(2) h3",
+                "special_2_desc": ".specials-grid .special:nth-child(2) p",
+                "special_2_price": ".specials-grid .special:nth-child(2) .special-price",
+                "special_3_badge": ".specials-grid .special:nth-child(3) .special-badge",
+                "special_3_title": ".specials-grid .special:nth-child(3) h3",
+                "special_3_desc": ".specials-grid .special:nth-child(3) p",
+                "special_3_price": ".specials-grid .special:nth-child(3) .special-price"
+            }
+        },
+        {
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": {
+                "gallery_eyebrow": "#gallery .eyebrow",
+                "gallery_title": "#gallery .h-section",
+                "gallery_intro": "#gallery .section-intro",
+                "gallery_1": ".gallery-grid .gallery-item:nth-child(1)",
+                "gallery_2": ".gallery-grid .gallery-item:nth-child(2)",
+                "gallery_3": ".gallery-grid .gallery-item:nth-child(3)",
+                "gallery_4": ".gallery-grid .gallery-item:nth-child(4)",
+                "gallery_5": ".gallery-grid .gallery-item:nth-child(5)",
+                "gallery_6": ".gallery-grid .gallery-item:nth-child(6)",
+                "gallery_7": ".gallery-grid .gallery-item:nth-child(7)",
+                "gallery_8": ".gallery-grid .gallery-item:nth-child(8)"
+            }
+        },
+        {
+            "id": "process",
+            "name": "How We Brew",
+            "elements": {
+                "process_eyebrow": "#process .eyebrow",
+                "process_title": "#process .h-section",
+                "process_intro": "#process .section-intro",
+                "step_1_title": ".process-steps .process-step:nth-child(1) h3",
+                "step_1_text": ".process-steps .process-step:nth-child(1) p",
+                "step_2_title": ".process-steps .process-step:nth-child(2) h3",
+                "step_2_text": ".process-steps .process-step:nth-child(2) p",
+                "step_3_title": ".process-steps .process-step:nth-child(3) h3",
+                "step_3_text": ".process-steps .process-step:nth-child(3) p",
+                "step_4_title": ".process-steps .process-step:nth-child(4) h3",
+                "step_4_text": ".process-steps .process-step:nth-child(4) p"
+            }
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": {
+                "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
+                "testimonials_title": "[data-block=testimonials] .h-section",
+                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+                "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+                "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
+                "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
+                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+                "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+                "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
+                "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
+                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+                "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+                "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
+                "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
+            }
+        },
+        {
+            "id": "booking",
+            "name": "Reserve a Table",
+            "elements": {
+                "booking_eyebrow": "#booking .eyebrow",
+                "booking_title": "#booking .h-section",
+                "booking_intro": ".booking-intro",
+                "booking_date_label": ".booking-form label[data-field=booking_date_label]",
+                "booking_time_label": ".booking-form label[data-field=booking_time_label]",
+                "booking_party_label": ".booking-form label[data-field=booking_party_label]",
+                "booking_occasion_label": ".booking-form label[data-field=booking_occasion_label]",
+                "booking_name_label": ".booking-form label[data-field=booking_name_label]",
+                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+                "booking_submit": ".booking-submit"
+            }
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": {
+                "contact_eyebrow": "#contact .eyebrow",
+                "contact_title": "#contact .h-section",
+                "contact_intro": "#contact .section-intro",
+                "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
+                "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
+                "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
+                "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
+                "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
+                "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
+                "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
+                "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
+                "contact_cta_title": "#contact .hero-form-title",
+                "contact_cta_text": "#contact .hero-form-sub",
+                "contact_cta_button": "#contact .btn-primary"
+            }
+        },
+        {
+            "id": "blog",
+            "name": "Journal",
+            "elements": {
+                "blog_eyebrow": "#blog .eyebrow",
+                "blog_title": "#blog .h-section",
+                "blog_intro": "#blog .section-intro",
+                "blog_1_image": ".blog-grid .blog-card:nth-child(1) .blog-image",
+                "blog_1_cat": ".blog-grid .blog-card:nth-child(1) .blog-cat",
+                "blog_1_title": ".blog-grid .blog-card:nth-child(1) h3",
+                "blog_1_excerpt": ".blog-grid .blog-card:nth-child(1) p",
+                "blog_1_link": ".blog-grid .blog-card:nth-child(1) .blog-link",
+                "blog_2_image": ".blog-grid .blog-card:nth-child(2) .blog-image",
+                "blog_2_cat": ".blog-grid .blog-card:nth-child(2) .blog-cat",
+                "blog_2_title": ".blog-grid .blog-card:nth-child(2) h3",
+                "blog_2_excerpt": ".blog-grid .blog-card:nth-child(2) p",
+                "blog_2_link": ".blog-grid .blog-card:nth-child(2) .blog-link",
+                "blog_3_image": ".blog-grid .blog-card:nth-child(3) .blog-image",
+                "blog_3_cat": ".blog-grid .blog-card:nth-child(3) .blog-cat",
+                "blog_3_title": ".blog-grid .blog-card:nth-child(3) h3",
+                "blog_3_excerpt": ".blog-grid .blog-card:nth-child(3) p",
+                "blog_3_link": ".blog-grid .blog-card:nth-child(3) .blog-link"
+            }
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": {
+                "footer_logo": ".footer-logo",
+                "footer_tagline": ".footer-tagline",
+                "social_1": ".footer-socials a:nth-child(1)",
+                "social_2": ".footer-socials a:nth-child(2)",
+                "social_3": ".footer-socials a:nth-child(3)",
+                "social_4": ".footer-socials a:nth-child(4)",
+                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+                "footer_text": ".footer-bottom > div:nth-child(1)",
+                "footer_legal": ".footer-bottom > div:nth-child(2)"
+            }
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "Ember & Bean"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "Specialty Coffee & Slow-Baked Pastries"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Ember & Bean — Dubai Marina's neighbourhood coffee house. Third-wave beans roasted weekly, croissants laminated in-house, and a warm, plant-filled room to work, read, or linger."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://emberandbean.ae"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/cafe.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_US"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Background",
+            "default": "/storage/builder-heroes/cafe.jpg"
+        },
+        "cream": {
+            "type": "color",
+            "label": "Cream",
+            "default": "#FDF6EC"
+        },
+        "cream_soft": {
+            "type": "color",
+            "label": "Cream Soft",
+            "default": "#F5EEDF"
+        },
+        "espresso": {
+            "type": "color",
+            "label": "Espresso",
+            "default": "#2C1810"
+        },
+        "espresso_soft": {
+            "type": "color",
+            "label": "Espresso Soft",
+            "default": "#5B3F32"
+        },
+        "terra": {
+            "type": "color",
+            "label": "Terracotta",
+            "default": "#D4622A"
+        },
+        "terra_deep": {
+            "type": "color",
+            "label": "Terracotta Deep",
+            "default": "#A84A1F"
+        },
+        "warm_grey": {
+            "type": "color",
+            "label": "Warm Grey",
+            "default": "#8F7F73"
+        },
+        "divider": {
+            "type": "color",
+            "label": "Divider",
+            "default": "#E6DCC9"
+        },
+        "logo": {
+            "type": "text",
+            "label": "Logo Text",
+            "default": "Ember & Bean"
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav: Menu",
+            "default": "Menu"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav: Story",
+            "default": "Our Story"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav: Specials",
+            "default": "Specials"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav: Gallery",
+            "default": "Gallery"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav: Contact",
+            "default": "Visit"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav CTA",
+            "default": "Reserve Table"
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Neighbourhood Coffee House · Dubai Marina"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Title",
+            "default": "Slow Coffee, <span>Warm Room</span>, Good People."
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subtitle",
+            "default": "A tiny, plant-filled coffee bar tucked between the Marina and JBR. We roast small-batch beans every Tuesday, laminate our own croissants at dawn, and keep the music turned down so conversation can be turned up."
+        },
+        "hero_trust_1": {
+            "type": "text",
+            "label": "Trust 1",
+            "default": "Roasted On-Site"
+        },
+        "hero_trust_2": {
+            "type": "text",
+            "label": "Trust 2",
+            "default": "Single-Origin"
+        },
+        "hero_trust_3": {
+            "type": "text",
+            "label": "Trust 3",
+            "default": "In-House Baker"
+        },
+        "hero_trust_4": {
+            "type": "text",
+            "label": "Trust 4",
+            "default": "Open Since 2019"
+        },
+        "hero_form_eyebrow": {
+            "type": "text",
+            "label": "Form Eyebrow",
+            "default": "BOOK A SEAT"
+        },
+        "hero_form_title": {
+            "type": "text",
+            "label": "Form Title",
+            "default": "Save Your Table"
+        },
+        "hero_form_sub": {
+            "type": "text",
+            "label": "Form Sub",
+            "default": "We hold a handful of tables for reservations each day. Book the window seat in advance and we'll have your favourite cup ready."
+        },
+        "hero_form_date_label": {
+            "type": "text",
+            "label": "Date Label",
+            "default": "Date"
+        },
+        "hero_form_time_label": {
+            "type": "text",
+            "label": "Time Label",
+            "default": "Time"
+        },
+        "hero_form_party_label": {
+            "type": "text",
+            "label": "Party Label",
+            "default": "Party Size"
+        },
+        "hero_form_submit": {
+            "type": "text",
+            "label": "Submit Button",
+            "default": "Reserve My Table →"
+        },
+        "hero_form_note": {
+            "type": "text",
+            "label": "Form Note",
+            "default": "Walk-ins always welcome. Reservations just guarantee the good seat."
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "7+"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Years Brewing"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "12"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Origins Sourced"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "4.8★"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Google Rating"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "320"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Cups Per Day"
+        },
+        "menu_eyebrow": {
+            "type": "text",
+            "label": "Menu Eyebrow",
+            "default": "THE MENU"
+        },
+        "menu_title": {
+            "type": "text",
+            "label": "Menu Title",
+            "default": "What's on the Counter Today"
+        },
+        "menu_intro": {
+            "type": "text",
+            "label": "Menu Intro",
+            "default": "Six menu favourites, available most of the week. Rotating specials change daily — ask the barista, or follow us on Instagram for the morning lineup."
+        },
+        "menu_1_tag": {
+            "type": "text",
+            "label": "Menu 1 Tag",
+            "default": "HOUSE SIGNATURE"
+        },
+        "menu_1_title": {
+            "type": "text",
+            "label": "Menu 1 Title",
+            "default": "Ember Flat White"
+        },
+        "menu_1_desc": {
+            "type": "text",
+            "label": "Menu 1 Desc",
+            "default": "Double shot of our house espresso — a warm, chocolatey Brazil-Ethiopia blend — layered over velvety milk. Our most ordered drink, by a wide margin."
+        },
+        "menu_1_price": {
+            "type": "text",
+            "label": "Menu 1 Price",
+            "default": "AED 22"
+        },
+        "menu_1_origin": {
+            "type": "text",
+            "label": "Menu 1 Origin",
+            "default": "Brazil · Ethiopia blend"
+        },
+        "menu_2_tag": {
+            "type": "text",
+            "label": "Menu 2 Tag",
+            "default": "SINGLE ORIGIN"
+        },
+        "menu_2_title": {
+            "type": "text",
+            "label": "Menu 2 Title",
+            "default": "Filter of the Week"
+        },
+        "menu_2_desc": {
+            "type": "text",
+            "label": "Menu 2 Desc",
+            "default": "A rotating pour-over featuring a single-estate bean. This week: a washed Gesha from the Chelbesa washing station in Yirgacheffe. Bright, floral, unmistakable."
+        },
+        "menu_2_price": {
+            "type": "text",
+            "label": "Menu 2 Price",
+            "default": "AED 34"
+        },
+        "menu_2_origin": {
+            "type": "text",
+            "label": "Menu 2 Origin",
+            "default": "Chelbesa · Ethiopia"
+        },
+        "menu_3_tag": {
+            "type": "text",
+            "label": "Menu 3 Tag",
+            "default": "PASTRY"
+        },
+        "menu_3_title": {
+            "type": "text",
+            "label": "Menu 3 Title",
+            "default": "Almond Croissant"
+        },
+        "menu_3_desc": {
+            "type": "text",
+            "label": "Menu 3 Desc",
+            "default": "Laminated at 5am with French AOP butter, filled with frangipane and topped with flaked almonds. Best with an espresso and zero distractions."
+        },
+        "menu_3_price": {
+            "type": "text",
+            "label": "Menu 3 Price",
+            "default": "AED 24"
+        },
+        "menu_3_origin": {
+            "type": "text",
+            "label": "Menu 3 Origin",
+            "default": "Baked in-house"
+        },
+        "menu_4_tag": {
+            "type": "text",
+            "label": "Menu 4 Tag",
+            "default": "BREAKFAST"
+        },
+        "menu_4_title": {
+            "type": "text",
+            "label": "Menu 4 Title",
+            "default": "Avo & Sumac Toast"
+        },
+        "menu_4_desc": {
+            "type": "text",
+            "label": "Menu 4 Desc",
+            "default": "Smashed avocado, a drift of sumac, poached egg, and salted chilli oil — on our house-baked sourdough. Served all day."
+        },
+        "menu_4_price": {
+            "type": "text",
+            "label": "Menu 4 Price",
+            "default": "AED 48"
+        },
+        "menu_4_origin": {
+            "type": "text",
+            "label": "Menu 4 Origin",
+            "default": "All-day breakfast"
+        },
+        "menu_5_tag": {
+            "type": "text",
+            "label": "Menu 5 Tag",
+            "default": "COLD DRINK"
+        },
+        "menu_5_title": {
+            "type": "text",
+            "label": "Menu 5 Title",
+            "default": "Iced Honey Latte"
+        },
+        "menu_5_desc": {
+            "type": "text",
+            "label": "Menu 5 Desc",
+            "default": "A signature summer drink. Double espresso, Al-Ain wildflower honey, cold milk, and a hint of cardamom. Ridiculous on a hot day."
+        },
+        "menu_5_price": {
+            "type": "text",
+            "label": "Menu 5 Price",
+            "default": "AED 28"
+        },
+        "menu_5_origin": {
+            "type": "text",
+            "label": "Menu 5 Origin",
+            "default": "House special"
+        },
+        "menu_6_tag": {
+            "type": "text",
+            "label": "Menu 6 Tag",
+            "default": "SWEET"
+        },
+        "menu_6_title": {
+            "type": "text",
+            "label": "Menu 6 Title",
+            "default": "Pistachio Basque Cake"
+        },
+        "menu_6_desc": {
+            "type": "text",
+            "label": "Menu 6 Desc",
+            "default": "A burnt-top Basque cheesecake folded with roasted Aleppo pistachios. Creamy inside, caramelised outside. Usually gone by noon."
+        },
+        "menu_6_price": {
+            "type": "text",
+            "label": "Menu 6 Price",
+            "default": "AED 32"
+        },
+        "menu_6_origin": {
+            "type": "text",
+            "label": "Menu 6 Origin",
+            "default": "Baker's daily"
+        },
+        "story_image": {
+            "type": "image",
+            "label": "Story Image",
+            "default": "/storage/template-images/cafe/story_image.jpg"
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "Story Eyebrow",
+            "default": "OUR STORY"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "Story Title",
+            "default": "A Small Room, Built on Good Coffee and Slower Mornings"
+        },
+        "story_p1": {
+            "type": "text",
+            "label": "Story P1",
+            "default": "Ember & Bean started in 2019 with a second-hand espresso machine, one roasted bag of Ethiopian beans, and a very small corner in Marina. We were three friends who'd met while working on the London specialty-coffee scene and had moved home — homesick not for a city, but for a room where people knew your drink."
+        },
+        "story_p2": {
+            "type": "text",
+            "label": "Story P2",
+            "default": "Seven years later, we roast our own beans every Tuesday, bake our pastries from scratch every morning at 5am, and still hand-write the specials board by sunrise. The machine has been upgraded. The coffee is better. Everything else is exactly as we intended."
+        },
+        "story_p3": {
+            "type": "text",
+            "label": "Story P3",
+            "default": "We're a small team of eight. We know most regulars' drinks by name — and many by face. That's not a policy. It's the only way we know how to make a good coffee shop."
+        },
+        "story_signature": {
+            "type": "text",
+            "label": "Story Signature",
+            "default": "— Mira, Samir & Jules"
+        },
+        "story_role": {
+            "type": "text",
+            "label": "Story Role",
+            "default": "Founders, Ember & Bean"
+        },
+        "specials_eyebrow": {
+            "type": "text",
+            "label": "Specials Eyebrow",
+            "default": "THIS WEEK"
+        },
+        "specials_title": {
+            "type": "text",
+            "label": "Specials Title",
+            "default": "Three Specials, Running Until Sunday"
+        },
+        "specials_intro": {
+            "type": "text",
+            "label": "Specials Intro",
+            "default": "Each week we test three seasonal ideas. The ones that make us happy stay on the menu. The ones that don't, quietly disappear."
+        },
+        "special_1_badge": {
+            "type": "text",
+            "label": "Special 1 Badge",
+            "default": "SEASONAL"
+        },
+        "special_1_title": {
+            "type": "text",
+            "label": "Special 1 Title",
+            "default": "Saffron Cortado"
+        },
+        "special_1_desc": {
+            "type": "text",
+            "label": "Special 1 Desc",
+            "default": "A cortado with a whisper of saffron-steamed milk, topped with Persian rose petals. A drink for a long conversation."
+        },
+        "special_1_price": {
+            "type": "text",
+            "label": "Special 1 Price",
+            "default": "AED 32"
+        },
+        "special_2_badge": {
+            "type": "text",
+            "label": "Special 2 Badge",
+            "default": "BAKER'S PICK"
+        },
+        "special_2_title": {
+            "type": "text",
+            "label": "Special 2 Title",
+            "default": "Date & Cardamom Bun"
+        },
+        "special_2_desc": {
+            "type": "text",
+            "label": "Special 2 Desc",
+            "default": "Soft enriched dough layered with dates from Al-Ain, toasted cardamom, and a touch of orange-blossom glaze. Comes out at 10am sharp."
+        },
+        "special_2_price": {
+            "type": "text",
+            "label": "Special 2 Price",
+            "default": "AED 22"
+        },
+        "special_3_badge": {
+            "type": "text",
+            "label": "Special 3 Badge",
+            "default": "BRUNCH"
+        },
+        "special_3_title": {
+            "type": "text",
+            "label": "Special 3 Title",
+            "default": "Shakshuka Skillet"
+        },
+        "special_3_desc": {
+            "type": "text",
+            "label": "Special 3 Desc",
+            "default": "Two eggs baked in a spiced tomato-and-pepper stew with feta, parsley, and warm focaccia on the side. Available Fri & Sat only."
+        },
+        "special_3_price": {
+            "type": "text",
+            "label": "Special 3 Price",
+            "default": "AED 54"
+        },
+        "gallery_eyebrow": {
+            "type": "text",
+            "label": "Gallery Eyebrow",
+            "default": "THE ROOM"
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Title",
+            "default": "A Peek Inside"
+        },
+        "gallery_intro": {
+            "type": "text",
+            "label": "Gallery Intro",
+            "default": "Terracotta tiles, a lot of plants, warm low-wattage lamps, and — yes — that famous window seat. Here are a few corners we love."
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery 1",
+            "default": "/storage/template-images/cafe/gallery_1.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery 2",
+            "default": "/storage/template-images/cafe/gallery_2.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery 3",
+            "default": "/storage/template-images/cafe/gallery_3.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery 4",
+            "default": "/storage/template-images/cafe/gallery_4.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery 5",
+            "default": "/storage/template-images/cafe/gallery_5.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery 6",
+            "default": "/storage/template-images/cafe/gallery_6.jpg"
+        },
+        "gallery_7": {
+            "type": "image",
+            "label": "Gallery 7",
+            "default": "/storage/template-images/cafe/gallery_7.jpg"
+        },
+        "gallery_8": {
+            "type": "image",
+            "label": "Gallery 8",
+            "default": "/storage/template-images/cafe/gallery_8.jpg"
+        },
+        "process_eyebrow": {
+            "type": "text",
+            "label": "Process Eyebrow",
+            "default": "HOW WE BREW"
+        },
+        "process_title": {
+            "type": "text",
+            "label": "Process Title",
+            "default": "From the Farm to Your Cup"
+        },
+        "process_intro": {
+            "type": "text",
+            "label": "Process Intro",
+            "default": "Four careful steps between the harvest and the hand-off at our counter. Each takes time — and it shows in the final taste."
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Source"
+        },
+        "step_1_text": {
+            "type": "text",
+            "label": "Step 1 Text",
+            "default": "We buy direct from producers in Ethiopia, Colombia, and Yemen — paying well above fair-trade minimums. Relationships before transactions."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Roast"
+        },
+        "step_2_text": {
+            "type": "text",
+            "label": "Step 2 Text",
+            "default": "Beans are roasted every Tuesday on our in-house Giesen W6A. Light to medium profile — the way the farmers wanted them tasted."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Rest"
+        },
+        "step_3_text": {
+            "type": "text",
+            "label": "Step 3 Text",
+            "default": "Roasted beans rest for 5–10 days in vacuum before being ground. It sounds fussy — but the cup is dramatically cleaner with proper resting."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Brew"
+        },
+        "step_4_text": {
+            "type": "text",
+            "label": "Step 4 Text",
+            "default": "Every cup is hand-pulled on calibrated grinders and a La Marzocco Linea PB. We dial in the espresso three times a day. Always."
+        },
+        "testimonials_eyebrow": {
+            "type": "text",
+            "label": "Testimonials Eyebrow",
+            "default": "REGULARS SAY"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Title",
+            "default": "The Nicest Thing People Say About Us"
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1 Quote",
+            "default": "The only coffee shop in Dubai where the barista remembers not just my order, but the book I was reading the last time I came in. I've been a regular for four years. I'll be a regular for forty."
+        },
+        "testimonial_1_author": {
+            "type": "text",
+            "label": "Testimonial 1 Author",
+            "default": "Lila Martin"
+        },
+        "testimonial_1_company": {
+            "type": "text",
+            "label": "Testimonial 1 Company",
+            "default": "Regular since 2022"
+        },
+        "testimonial_1_result": {
+            "type": "text",
+            "label": "Testimonial 1 Result",
+            "default": "4 years in"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2 Quote",
+            "default": "That Chelbesa filter they had last November ruined every other coffee for me. I drove 40 minutes in traffic just to come back the next week. Worth it. Every time."
+        },
+        "testimonial_2_author": {
+            "type": "text",
+            "label": "Testimonial 2 Author",
+            "default": "Karim El-Sayed"
+        },
+        "testimonial_2_company": {
+            "type": "text",
+            "label": "Testimonial 2 Company",
+            "default": "Weekly visitor"
+        },
+        "testimonial_2_result": {
+            "type": "text",
+            "label": "Testimonial 2 Result",
+            "default": "Worth the drive"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3 Quote",
+            "default": "My home office is technically this window table. I've written two novels here on their flat whites. The staff never rush you. That's rare in this city."
+        },
+        "testimonial_3_author": {
+            "type": "text",
+            "label": "Testimonial 3 Author",
+            "default": "Aisha Rahman"
+        },
+        "testimonial_3_company": {
+            "type": "text",
+            "label": "Testimonial 3 Company",
+            "default": "Author & regular"
+        },
+        "testimonial_3_result": {
+            "type": "text",
+            "label": "Testimonial 3 Result",
+            "default": "2 novels written"
+        },
+        "booking_eyebrow": {
+            "type": "text",
+            "label": "Booking Eyebrow",
+            "default": "SAVE YOUR SEAT"
+        },
+        "booking_title": {
+            "type": "text",
+            "label": "Booking Title",
+            "default": "Reserve a Table"
+        },
+        "booking_intro": {
+            "type": "text",
+            "label": "Booking Intro",
+            "default": "We hold a handful of tables each day for reservations — especially on weekend mornings. Book ahead to guarantee a spot. Walk-ins are always welcome, too."
+        },
+        "booking_date_label": {
+            "type": "text",
+            "label": "Date Label",
+            "default": "Preferred Date"
+        },
+        "booking_time_label": {
+            "type": "text",
+            "label": "Time Label",
+            "default": "Preferred Time"
+        },
+        "booking_party_label": {
+            "type": "text",
+            "label": "Party Label",
+            "default": "Party Size"
+        },
+        "booking_occasion_label": {
+            "type": "text",
+            "label": "Occasion Label",
+            "default": "Special Occasion"
+        },
+        "booking_name_label": {
+            "type": "text",
+            "label": "Name Label",
+            "default": "Your Name"
+        },
+        "booking_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Phone Number"
+        },
+        "booking_submit": {
+            "type": "text",
+            "label": "Submit Button",
+            "default": "Reserve My Table →"
+        },
+        "contact_eyebrow": {
+            "type": "text",
+            "label": "Contact Eyebrow",
+            "default": "FIND US"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Title",
+            "default": "Come In & Say Hello"
+        },
+        "contact_intro": {
+            "type": "text",
+            "label": "Contact Intro",
+            "default": "We're open seven days a week. Street parking is free after 7pm. If you can't find us, call — the team will walk you in."
+        },
+        "contact_email_label": {
+            "type": "text",
+            "label": "Email Label",
+            "default": "Email"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@emberandbean.ae"
+        },
+        "contact_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Phone"
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+971 4 555 0500"
+        },
+        "contact_address_label": {
+            "type": "text",
+            "label": "Address Label",
+            "default": "Cafe"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "Marina Promenade, Shop 4, Dubai Marina, UAE"
+        },
+        "contact_hours_label": {
+            "type": "text",
+            "label": "Hours Label",
+            "default": "Hours"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Hours",
+            "default": "Daily · 07:00–22:00"
+        },
+        "contact_cta_title": {
+            "type": "text",
+            "label": "Contact CTA Title",
+            "default": "Want the window seat?"
+        },
+        "contact_cta_text": {
+            "type": "text",
+            "label": "Contact CTA Text",
+            "default": "Reserve a table ahead of time and we'll keep one of our good seats waiting — plus have your go-to drink in mind."
+        },
+        "contact_cta_button": {
+            "type": "text",
+            "label": "Contact CTA Button",
+            "default": "Reserve a Table"
+        },
+        "footer_logo": {
+            "type": "text",
+            "label": "Footer Logo",
+            "default": "Ember & Bean"
+        },
+        "footer_tagline": {
+            "type": "text",
+            "label": "Footer Tagline",
+            "default": "A neighbourhood coffee house in Dubai Marina. Slow-roasted beans, hand-laminated croissants, and the kind of room where good mornings happen."
+        },
+        "social_1": {
+            "type": "text",
+            "label": "Social 1",
+            "default": "IG"
+        },
+        "social_2": {
+            "type": "text",
+            "label": "Social 2",
+            "default": "FB"
+        },
+        "social_3": {
+            "type": "text",
+            "label": "Social 3",
+            "default": "TT"
+        },
+        "social_4": {
+            "type": "text",
+            "label": "Social 4",
+            "default": "GL"
+        },
+        "footer_col_1_title": {
+            "type": "text",
+            "label": "Footer Col 1 Title",
+            "default": "Menu"
+        },
+        "footer_col_2_title": {
+            "type": "text",
+            "label": "Footer Col 2 Title",
+            "default": "The Cafe"
+        },
+        "footer_col_3_title": {
+            "type": "text",
+            "label": "Footer Col 3 Title",
+            "default": "Visit"
+        },
+        "footer_link_1": {
+            "type": "text",
+            "label": "Footer Link 1",
+            "default": "Coffee"
+        },
+        "footer_link_2": {
+            "type": "text",
+            "label": "Footer Link 2",
+            "default": "Pastries"
+        },
+        "footer_link_3": {
+            "type": "text",
+            "label": "Footer Link 3",
+            "default": "Breakfast"
+        },
+        "footer_link_4": {
+            "type": "text",
+            "label": "Footer Link 4",
+            "default": "Our Story"
+        },
+        "footer_link_5": {
+            "type": "text",
+            "label": "Footer Link 5",
+            "default": "Specials"
+        },
+        "footer_link_6": {
+            "type": "text",
+            "label": "Footer Link 6",
+            "default": "Gallery"
+        },
+        "footer_link_7": {
+            "type": "text",
+            "label": "Footer Link 7",
+            "default": "Contact"
+        },
+        "footer_link_8": {
+            "type": "text",
+            "label": "Footer Link 8",
+            "default": "Reserve"
+        },
+        "footer_text": {
+            "type": "text",
+            "label": "Footer Text",
+            "default": "© 2026 Ember & Bean. All rights reserved."
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "Privacy · Terms"
+        }
+    }
+}

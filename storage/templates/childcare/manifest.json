@@ -1,0 +1,1241 @@
+{
+    "id": "childcare",
+    "name": "Childcare & Nursery",
+    "industry": "childcare",
+    "description": "Friendly, warm childcare and nursery template — soft yellow + sky + coral palette with rounded Nunito typography, hero with warm photo, six age-graded programs, four safety/learning trust pillars, four-educator staff grid, six-image facilities gallery, four curriculum pillars, parent testimonials, and a full schedule-a-visit booking form. Built for premium bilingual early-years centers.",
+    "thumbnail": "/storage/builder-heroes/childcare.jpg",
+    "category": "education",
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_1": "nav .nav-link-1",
+                "nav_2": "nav .nav-link-2",
+                "nav_3": "nav .nav-link-3",
+                "nav_4": "nav .nav-link-4",
+                "nav_5": "nav .nav-link-5",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero with Image",
+            "elements": {
+                "hero_image": ".hero-image-wrap",
+                "hero_eyebrow": ".hero-eyebrow",
+                "hero_title": ".hero-title",
+                "hero_subtitle": ".hero-subtitle",
+                "hero_cta_primary": ".hero-ctas .btn-primary",
+                "hero_cta_secondary": ".hero-ctas .btn-ghost",
+                "hero_trust_1": ".hero-trust-1",
+                "hero_trust_2": ".hero-trust-2",
+                "hero_trust_3": ".hero-trust-3",
+                "hero_trust_4": ".hero-trust-4"
+            }
+        },
+        {
+            "id": "results",
+            "name": "Stats Metrics",
+            "elements": {
+                "stat_1_value": ".results-grid .result-item:nth-child(1) .result-value",
+                "stat_1_label": ".results-grid .result-item:nth-child(1) .result-label",
+                "stat_2_value": ".results-grid .result-item:nth-child(2) .result-value",
+                "stat_2_label": ".results-grid .result-item:nth-child(2) .result-label",
+                "stat_3_value": ".results-grid .result-item:nth-child(3) .result-value",
+                "stat_3_label": ".results-grid .result-item:nth-child(3) .result-label",
+                "stat_4_value": ".results-grid .result-item:nth-child(4) .result-value",
+                "stat_4_label": ".results-grid .result-item:nth-child(4) .result-label"
+            }
+        },
+        {
+            "id": "programs",
+            "name": "Programs",
+            "elements": {
+                "programs_eyebrow": "#programs .eyebrow",
+                "programs_title": "#programs .h-section",
+                "programs_intro": "#programs .section-intro",
+                "program_1_icon": ".programs-grid .program:nth-child(1) .program-icon",
+                "program_1_age": ".programs-grid .program:nth-child(1) .program-age",
+                "program_1_title": ".programs-grid .program:nth-child(1) h3",
+                "program_1_text": ".programs-grid .program:nth-child(1) p",
+                "program_1_link": ".programs-grid .program:nth-child(1) .program-link",
+                "program_2_icon": ".programs-grid .program:nth-child(2) .program-icon",
+                "program_2_age": ".programs-grid .program:nth-child(2) .program-age",
+                "program_2_title": ".programs-grid .program:nth-child(2) h3",
+                "program_2_text": ".programs-grid .program:nth-child(2) p",
+                "program_2_link": ".programs-grid .program:nth-child(2) .program-link",
+                "program_3_icon": ".programs-grid .program:nth-child(3) .program-icon",
+                "program_3_age": ".programs-grid .program:nth-child(3) .program-age",
+                "program_3_title": ".programs-grid .program:nth-child(3) h3",
+                "program_3_text": ".programs-grid .program:nth-child(3) p",
+                "program_3_link": ".programs-grid .program:nth-child(3) .program-link",
+                "program_4_icon": ".programs-grid .program:nth-child(4) .program-icon",
+                "program_4_age": ".programs-grid .program:nth-child(4) .program-age",
+                "program_4_title": ".programs-grid .program:nth-child(4) h3",
+                "program_4_text": ".programs-grid .program:nth-child(4) p",
+                "program_4_link": ".programs-grid .program:nth-child(4) .program-link",
+                "program_5_icon": ".programs-grid .program:nth-child(5) .program-icon",
+                "program_5_age": ".programs-grid .program:nth-child(5) .program-age",
+                "program_5_title": ".programs-grid .program:nth-child(5) h3",
+                "program_5_text": ".programs-grid .program:nth-child(5) p",
+                "program_5_link": ".programs-grid .program:nth-child(5) .program-link",
+                "program_6_icon": ".programs-grid .program:nth-child(6) .program-icon",
+                "program_6_age": ".programs-grid .program:nth-child(6) .program-age",
+                "program_6_title": ".programs-grid .program:nth-child(6) h3",
+                "program_6_text": ".programs-grid .program:nth-child(6) p",
+                "program_6_link": ".programs-grid .program:nth-child(6) .program-link"
+            }
+        },
+        {
+            "id": "why_us",
+            "name": "Why Us",
+            "elements": {
+                "why_eyebrow": "#why_us .eyebrow",
+                "why_title": "#why_us .h-section",
+                "why_intro": "#why_us .section-intro",
+                "why_1_icon": ".why-grid .why-card:nth-child(1) .why-icon",
+                "why_1_title": ".why-grid .why-card:nth-child(1) h3",
+                "why_1_text": ".why-grid .why-card:nth-child(1) p",
+                "why_2_icon": ".why-grid .why-card:nth-child(2) .why-icon",
+                "why_2_title": ".why-grid .why-card:nth-child(2) h3",
+                "why_2_text": ".why-grid .why-card:nth-child(2) p",
+                "why_3_icon": ".why-grid .why-card:nth-child(3) .why-icon",
+                "why_3_title": ".why-grid .why-card:nth-child(3) h3",
+                "why_3_text": ".why-grid .why-card:nth-child(3) p",
+                "why_4_icon": ".why-grid .why-card:nth-child(4) .why-icon",
+                "why_4_title": ".why-grid .why-card:nth-child(4) h3",
+                "why_4_text": ".why-grid .why-card:nth-child(4) p"
+            }
+        },
+        {
+            "id": "staff",
+            "name": "Educators",
+            "elements": {
+                "staff_eyebrow": "#staff .eyebrow",
+                "staff_title": "#staff .h-section",
+                "staff_intro": "#staff .section-intro",
+                "staff_1_image": ".staff-grid .staff-card:nth-child(1) .staff-photo",
+                "staff_1_name": ".staff-grid .staff-card:nth-child(1) h3",
+                "staff_1_role": ".staff-grid .staff-card:nth-child(1) .staff-role",
+                "staff_1_bio": ".staff-grid .staff-card:nth-child(1) .staff-bio",
+                "staff_2_image": ".staff-grid .staff-card:nth-child(2) .staff-photo",
+                "staff_2_name": ".staff-grid .staff-card:nth-child(2) h3",
+                "staff_2_role": ".staff-grid .staff-card:nth-child(2) .staff-role",
+                "staff_2_bio": ".staff-grid .staff-card:nth-child(2) .staff-bio",
+                "staff_3_image": ".staff-grid .staff-card:nth-child(3) .staff-photo",
+                "staff_3_name": ".staff-grid .staff-card:nth-child(3) h3",
+                "staff_3_role": ".staff-grid .staff-card:nth-child(3) .staff-role",
+                "staff_3_bio": ".staff-grid .staff-card:nth-child(3) .staff-bio",
+                "staff_4_image": ".staff-grid .staff-card:nth-child(4) .staff-photo",
+                "staff_4_name": ".staff-grid .staff-card:nth-child(4) h3",
+                "staff_4_role": ".staff-grid .staff-card:nth-child(4) .staff-role",
+                "staff_4_bio": ".staff-grid .staff-card:nth-child(4) .staff-bio"
+            }
+        },
+        {
+            "id": "facilities",
+            "name": "Facilities Gallery",
+            "elements": {
+                "facilities_eyebrow": "#facilities .eyebrow",
+                "facilities_title": "#facilities .h-section",
+                "facilities_intro": "#facilities .section-intro",
+                "facility_1_image": ".facilities-grid .facility:nth-child(1)",
+                "facility_1_caption": ".facilities-grid .facility:nth-child(1) .facility-caption",
+                "facility_2_image": ".facilities-grid .facility:nth-child(2)",
+                "facility_2_caption": ".facilities-grid .facility:nth-child(2) .facility-caption",
+                "facility_3_image": ".facilities-grid .facility:nth-child(3)",
+                "facility_3_caption": ".facilities-grid .facility:nth-child(3) .facility-caption",
+                "facility_4_image": ".facilities-grid .facility:nth-child(4)",
+                "facility_4_caption": ".facilities-grid .facility:nth-child(4) .facility-caption",
+                "facility_5_image": ".facilities-grid .facility:nth-child(5)",
+                "facility_5_caption": ".facilities-grid .facility:nth-child(5) .facility-caption",
+                "facility_6_image": ".facilities-grid .facility:nth-child(6)",
+                "facility_6_caption": ".facilities-grid .facility:nth-child(6) .facility-caption"
+            }
+        },
+        {
+            "id": "curriculum",
+            "name": "Curriculum Pillars",
+            "elements": {
+                "curriculum_eyebrow": "#curriculum .eyebrow",
+                "curriculum_title": "#curriculum .h-section",
+                "curriculum_intro": "#curriculum .section-intro",
+                "pillar_1_num": ".curriculum-grid .pillar:nth-child(1) .pillar-num",
+                "pillar_1_title": ".curriculum-grid .pillar:nth-child(1) h3",
+                "pillar_1_text": ".curriculum-grid .pillar:nth-child(1) p",
+                "pillar_2_num": ".curriculum-grid .pillar:nth-child(2) .pillar-num",
+                "pillar_2_title": ".curriculum-grid .pillar:nth-child(2) h3",
+                "pillar_2_text": ".curriculum-grid .pillar:nth-child(2) p",
+                "pillar_3_num": ".curriculum-grid .pillar:nth-child(3) .pillar-num",
+                "pillar_3_title": ".curriculum-grid .pillar:nth-child(3) h3",
+                "pillar_3_text": ".curriculum-grid .pillar:nth-child(3) p",
+                "pillar_4_num": ".curriculum-grid .pillar:nth-child(4) .pillar-num",
+                "pillar_4_title": ".curriculum-grid .pillar:nth-child(4) h3",
+                "pillar_4_text": ".curriculum-grid .pillar:nth-child(4) p"
+            }
+        },
+        {
+            "id": "testimonials",
+            "name": "Parent Testimonials",
+            "elements": {
+                "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
+                "testimonials_title": "[data-block=testimonials] .h-section",
+                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+                "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+                "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
+                "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
+                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+                "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+                "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
+                "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
+                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+                "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+                "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
+                "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
+            }
+        },
+        {
+            "id": "booking",
+            "name": "Schedule a Visit",
+            "elements": {
+                "booking_eyebrow": "#booking .eyebrow",
+                "booking_title": "#booking .h-section",
+                "booking_intro": ".booking-intro",
+                "booking_child_age_label": ".booking-form label[data-field=booking_child_age_label]",
+                "booking_program_label": ".booking-form label[data-field=booking_program_label]",
+                "booking_start_date_label": ".booking-form label[data-field=booking_start_date_label]",
+                "booking_visit_date_label": ".booking-form label[data-field=booking_visit_date_label]",
+                "booking_visit_time_label": ".booking-form label[data-field=booking_visit_time_label]",
+                "booking_parent_name_label": ".booking-form label[data-field=booking_parent_name_label]",
+                "booking_email_label": ".booking-form label[data-field=booking_email_label]",
+                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+                "booking_child_name_label": ".booking-form label[data-field=booking_child_name_label]",
+                "booking_submit": ".booking-submit"
+            }
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": {
+                "contact_eyebrow": "#contact .eyebrow",
+                "contact_title": "#contact .h-section",
+                "contact_intro": "#contact .section-intro",
+                "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
+                "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
+                "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
+                "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
+                "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
+                "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
+                "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
+                "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
+                "contact_cta_title": "#contact .testimonial-author",
+                "contact_cta_text": "#contact [data-field=contact_cta_text]",
+                "contact_cta_button": "#contact .btn-primary"
+            }
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": {
+                "footer_logo": ".footer-logo",
+                "footer_tagline": ".footer-tagline",
+                "social_1": ".footer-socials a:nth-child(1)",
+                "social_2": ".footer-socials a:nth-child(2)",
+                "social_3": ".footer-socials a:nth-child(3)",
+                "social_4": ".footer-socials a:nth-child(4)",
+                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+                "footer_text": ".footer-bottom > div:nth-child(1)",
+                "footer_legal": ".footer-bottom > div:nth-child(2)"
+            }
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "Little Lanterns Nursery"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "A Bright Beginning for Every Child"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Little Lanterns is a premium bilingual Arabic-English nursery in Jumeirah. Safe, warm, play-based early-years learning for children aged 3 months to 5 years."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://littlelanterns.ae"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/childcare.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_AE"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Image",
+            "default": "/storage/builder-heroes/childcare.jpg"
+        },
+        "yellow": {
+            "type": "color",
+            "label": "Soft Yellow",
+            "default": "#FEF9C3"
+        },
+        "yellow_soft": {
+            "type": "color",
+            "label": "Yellow Soft",
+            "default": "#FEFCE8"
+        },
+        "sky": {
+            "type": "color",
+            "label": "Sky Blue",
+            "default": "#0EA5E9"
+        },
+        "sky_deep": {
+            "type": "color",
+            "label": "Sky Deep",
+            "default": "#0284C7"
+        },
+        "coral": {
+            "type": "color",
+            "label": "Coral",
+            "default": "#F97316"
+        },
+        "white": {
+            "type": "color",
+            "label": "White",
+            "default": "#FFFFFF"
+        },
+        "divider": {
+            "type": "color",
+            "label": "Divider",
+            "default": "#E5E7EB"
+        },
+        "logo": {
+            "type": "text",
+            "label": "Logo Text",
+            "default": "Little Lanterns"
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav: Programs",
+            "default": "Programs"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav: Why Us",
+            "default": "Why Us"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav: Our Team",
+            "default": "Our Team"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav: Facilities",
+            "default": "Facilities"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav: Contact",
+            "default": "Contact"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav CTA",
+            "default": "Schedule a Visit"
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "KHDA-Approved · Bilingual EN / AR · Jumeirah"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Title",
+            "default": "Where Little Hearts Learn to Shine"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subtitle",
+            "default": "A warm, play-based early-years nursery in the heart of Jumeirah. Infant care through KG — taught in English and Arabic by degree-qualified educators your family will come to love."
+        },
+        "hero_cta_primary": {
+            "type": "text",
+            "label": "Hero CTA Primary",
+            "default": "Schedule a Visit"
+        },
+        "hero_cta_secondary": {
+            "type": "text",
+            "label": "Hero CTA Secondary",
+            "default": "View Programs"
+        },
+        "hero_trust_1": {
+            "type": "text",
+            "label": "Trust 1",
+            "default": "KHDA Approved"
+        },
+        "hero_trust_2": {
+            "type": "text",
+            "label": "Trust 2",
+            "default": "1:4 Staff Ratio"
+        },
+        "hero_trust_3": {
+            "type": "text",
+            "label": "Trust 3",
+            "default": "Bilingual EN / AR"
+        },
+        "hero_trust_4": {
+            "type": "text",
+            "label": "Trust 4",
+            "default": "Org Nutrition Menu"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "180+"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Happy Families"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "1:4"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Educator-to-Child Ratio"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "22"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Degree-Qualified Staff"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "12"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Years Nurturing Children"
+        },
+        "programs_eyebrow": {
+            "type": "text",
+            "label": "Programs Eyebrow",
+            "default": "OUR PROGRAMS"
+        },
+        "programs_title": {
+            "type": "text",
+            "label": "Programs Title",
+            "default": "Age-Graded Programs Built on Play"
+        },
+        "programs_intro": {
+            "type": "text",
+            "label": "Programs Intro",
+            "default": "From tiny-toes infant care to a confident KG graduate ready for Year 1 — every program balances play, discovery, language, and lots of cuddles."
+        },
+        "program_1_icon": {
+            "type": "text",
+            "label": "Program 1 Icon",
+            "default": "B"
+        },
+        "program_1_age": {
+            "type": "text",
+            "label": "Program 1 Age",
+            "default": "3–18 MONTHS"
+        },
+        "program_1_title": {
+            "type": "text",
+            "label": "Program 1 Title",
+            "default": "Infant Care"
+        },
+        "program_1_text": {
+            "type": "text",
+            "label": "Program 1 Text",
+            "default": "Gentle, low-ratio care for our smallest lanterns. Sensory play, tummy-time, music, and sleep-on-demand in a calm, sunlit infant room."
+        },
+        "program_1_link": {
+            "type": "text",
+            "label": "Program 1 Link",
+            "default": "See infant day"
+        },
+        "program_2_icon": {
+            "type": "text",
+            "label": "Program 2 Icon",
+            "default": "T"
+        },
+        "program_2_age": {
+            "type": "text",
+            "label": "Program 2 Age",
+            "default": "18M–2.5Y"
+        },
+        "program_2_title": {
+            "type": "text",
+            "label": "Program 2 Title",
+            "default": "Toddlers"
+        },
+        "program_2_text": {
+            "type": "text",
+            "label": "Program 2 Text",
+            "default": "Big feelings, bigger curiosity. Our toddler room blends messy sensory play, first words in two languages, and gentle toilet-training support."
+        },
+        "program_2_link": {
+            "type": "text",
+            "label": "Program 2 Link",
+            "default": "See toddler day"
+        },
+        "program_3_icon": {
+            "type": "text",
+            "label": "Program 3 Icon",
+            "default": "P"
+        },
+        "program_3_age": {
+            "type": "text",
+            "label": "Program 3 Age",
+            "default": "2.5–3.5Y"
+        },
+        "program_3_title": {
+            "type": "text",
+            "label": "Program 3 Title",
+            "default": "Pre-KG"
+        },
+        "program_3_text": {
+            "type": "text",
+            "label": "Program 3 Text",
+            "default": "The year children fall in love with learning. Phonics, early numeracy, storytelling, and art — all delivered through beautifully-structured play."
+        },
+        "program_3_link": {
+            "type": "text",
+            "label": "Program 3 Link",
+            "default": "See Pre-KG day"
+        },
+        "program_4_icon": {
+            "type": "text",
+            "label": "Program 4 Icon",
+            "default": "K"
+        },
+        "program_4_age": {
+            "type": "text",
+            "label": "Program 4 Age",
+            "default": "3.5–5Y"
+        },
+        "program_4_title": {
+            "type": "text",
+            "label": "Program 4 Title",
+            "default": "KG"
+        },
+        "program_4_text": {
+            "type": "text",
+            "label": "Program 4 Text",
+            "default": "Ready for big school. Structured literacy, mathematical thinking, science, and Arabic literacy — on a learning path aligned with the EYFS and MoE frameworks."
+        },
+        "program_4_link": {
+            "type": "text",
+            "label": "Program 4 Link",
+            "default": "See KG day"
+        },
+        "program_5_icon": {
+            "type": "text",
+            "label": "Program 5 Icon",
+            "default": "A"
+        },
+        "program_5_age": {
+            "type": "text",
+            "label": "Program 5 Age",
+            "default": "AGES 5–8"
+        },
+        "program_5_title": {
+            "type": "text",
+            "label": "Program 5 Title",
+            "default": "After School"
+        },
+        "program_5_text": {
+            "type": "text",
+            "label": "Program 5 Text",
+            "default": "Homework support, creative clubs, and unwind time — 14:30 to 18:00 pickup. Includes a healthy afternoon snack and outdoor play every day."
+        },
+        "program_5_link": {
+            "type": "text",
+            "label": "Program 5 Link",
+            "default": "See after-school"
+        },
+        "program_6_icon": {
+            "type": "text",
+            "label": "Program 6 Icon",
+            "default": "H"
+        },
+        "program_6_age": {
+            "type": "text",
+            "label": "Program 6 Age",
+            "default": "AGES 3–8"
+        },
+        "program_6_title": {
+            "type": "text",
+            "label": "Program 6 Title",
+            "default": "Holiday Camp"
+        },
+        "program_6_text": {
+            "type": "text",
+            "label": "Program 6 Text",
+            "default": "Week-long themed camps during all school breaks. Swimming, cooking, dance, field trips — so you can work (or rest) with peace of mind."
+        },
+        "program_6_link": {
+            "type": "text",
+            "label": "Program 6 Link",
+            "default": "See camp themes"
+        },
+        "why_eyebrow": {
+            "type": "text",
+            "label": "Why Eyebrow",
+            "default": "WHY FAMILIES CHOOSE US"
+        },
+        "why_title": {
+            "type": "text",
+            "label": "Why Title",
+            "default": "Four Promises We Make to Every Family"
+        },
+        "why_intro": {
+            "type": "text",
+            "label": "Why Intro",
+            "default": "We're a small nursery on purpose. It lets us know every child by name, keep ratios low, and build the kind of trust you only get when the same familiar faces greet you every morning."
+        },
+        "why_1_icon": {
+            "type": "text",
+            "label": "Why 1 Icon",
+            "default": "S"
+        },
+        "why_1_title": {
+            "type": "text",
+            "label": "Why 1 Title",
+            "default": "Safety First"
+        },
+        "why_1_text": {
+            "type": "text",
+            "label": "Why 1 Text",
+            "default": "Biometric entry, CCTV throughout, paediatric-trained staff, allergen-free kitchen, and monthly safety drills. Your child is always accounted for."
+        },
+        "why_2_icon": {
+            "type": "text",
+            "label": "Why 2 Icon",
+            "default": "L"
+        },
+        "why_2_title": {
+            "type": "text",
+            "label": "Why 2 Title",
+            "default": "Learning That Sticks"
+        },
+        "why_2_text": {
+            "type": "text",
+            "label": "Why 2 Text",
+            "default": "EYFS + MoE-aligned curriculum. Play-based, research-backed, and delivered by degree-qualified educators — not minders."
+        },
+        "why_3_icon": {
+            "type": "text",
+            "label": "Why 3 Icon",
+            "default": "N"
+        },
+        "why_3_title": {
+            "type": "text",
+            "label": "Why 3 Title",
+            "default": "Real Nutrition"
+        },
+        "why_3_text": {
+            "type": "text",
+            "label": "Why 3 Text",
+            "default": "Fresh, organic meals cooked on-site by our own chef. Seasonal menu approved by a paediatric nutritionist. Nut-free, halal, and clearly labelled for allergens."
+        },
+        "why_4_icon": {
+            "type": "text",
+            "label": "Why 4 Icon",
+            "default": "D"
+        },
+        "why_4_title": {
+            "type": "text",
+            "label": "Why 4 Title",
+            "default": "Whole-Child Development"
+        },
+        "why_4_text": {
+            "type": "text",
+            "label": "Why 4 Text",
+            "default": "Language, emotional, physical, social, and creative — we develop all five. Weekly updates and termly portfolios so you see every milestone."
+        },
+        "staff_eyebrow": {
+            "type": "text",
+            "label": "Staff Eyebrow",
+            "default": "MEET OUR EDUCATORS"
+        },
+        "staff_title": {
+            "type": "text",
+            "label": "Staff Title",
+            "default": "The People Your Child Will Come to Love"
+        },
+        "staff_intro": {
+            "type": "text",
+            "label": "Staff Intro",
+            "default": "Every lead teacher has a degree in early-years education and an average of 11 years in the classroom. Low staff turnover means the same familiar faces — year after year."
+        },
+        "staff_1_image": {
+            "type": "image",
+            "label": "Staff 1 Image",
+            "default": "/storage/builder-heroes/childcare.jpg"
+        },
+        "staff_1_name": {
+            "type": "text",
+            "label": "Staff 1 Name",
+            "default": "Ms. Amira Haddad"
+        },
+        "staff_1_role": {
+            "type": "text",
+            "label": "Staff 1 Role",
+            "default": "Head of Nursery"
+        },
+        "staff_1_bio": {
+            "type": "text",
+            "label": "Staff 1 Bio",
+            "default": "MA Early Childhood Education. 18 years in Dubai nurseries. Believes play is the most serious work of childhood."
+        },
+        "staff_2_image": {
+            "type": "image",
+            "label": "Staff 2 Image",
+            "default": "/storage/builder-heroes/childcare.jpg"
+        },
+        "staff_2_name": {
+            "type": "text",
+            "label": "Staff 2 Name",
+            "default": "Ms. Sophie Martin"
+        },
+        "staff_2_role": {
+            "type": "text",
+            "label": "Staff 2 Role",
+            "default": "Lead Teacher · KG"
+        },
+        "staff_2_bio": {
+            "type": "text",
+            "label": "Staff 2 Bio",
+            "default": "BEd (Hons) from University of Edinburgh. EYFS specialist. 12 years guiding little ones into their first year of primary school."
+        },
+        "staff_3_image": {
+            "type": "image",
+            "label": "Staff 3 Image",
+            "default": "/storage/builder-heroes/childcare.jpg"
+        },
+        "staff_3_name": {
+            "type": "text",
+            "label": "Staff 3 Name",
+            "default": "Ms. Nour Al-Farsi"
+        },
+        "staff_3_role": {
+            "type": "text",
+            "label": "Staff 3 Role",
+            "default": "Arabic Program Lead"
+        },
+        "staff_3_bio": {
+            "type": "text",
+            "label": "Staff 3 Bio",
+            "default": "Certified MoE Arabic-literacy teacher. Brings storytelling, song, and poetry to our daily bilingual routine."
+        },
+        "staff_4_image": {
+            "type": "image",
+            "label": "Staff 4 Image",
+            "default": "/storage/builder-heroes/childcare.jpg"
+        },
+        "staff_4_name": {
+            "type": "text",
+            "label": "Staff 4 Name",
+            "default": "Ms. Grace Okonkwo"
+        },
+        "staff_4_role": {
+            "type": "text",
+            "label": "Staff 4 Role",
+            "default": "Infant Room Lead"
+        },
+        "staff_4_bio": {
+            "type": "text",
+            "label": "Staff 4 Bio",
+            "default": "Paediatric first-aid trained. Montessori-certified. The warmest hands in our youngest room — and the patience of a saint."
+        },
+        "facilities_eyebrow": {
+            "type": "text",
+            "label": "Facilities Eyebrow",
+            "default": "INSIDE THE NURSERY"
+        },
+        "facilities_title": {
+            "type": "text",
+            "label": "Facilities Title",
+            "default": "A Home Away From Home"
+        },
+        "facilities_intro": {
+            "type": "text",
+            "label": "Facilities Intro",
+            "default": "Purpose-built for under-fives. Every corner designed to encourage curiosity, movement, calm, and creativity."
+        },
+        "facility_1_image": {
+            "type": "image",
+            "label": "Facility 1 Image",
+            "default": "/storage/template-images/childcare/facility_1_image.jpg"
+        },
+        "facility_1_caption": {
+            "type": "text",
+            "label": "Facility 1 Caption",
+            "default": "Sunlit Infant Room"
+        },
+        "facility_2_image": {
+            "type": "image",
+            "label": "Facility 2 Image",
+            "default": "/storage/template-images/childcare/facility_2_image.jpg"
+        },
+        "facility_2_caption": {
+            "type": "text",
+            "label": "Facility 2 Caption",
+            "default": "Outdoor Garden & Shaded Play"
+        },
+        "facility_3_image": {
+            "type": "image",
+            "label": "Facility 3 Image",
+            "default": "/storage/template-images/childcare/facility_3_image.jpg"
+        },
+        "facility_3_caption": {
+            "type": "text",
+            "label": "Facility 3 Caption",
+            "default": "Library & Story Corner"
+        },
+        "facility_4_image": {
+            "type": "image",
+            "label": "Facility 4 Image",
+            "default": "/storage/template-images/childcare/facility_4_image.jpg"
+        },
+        "facility_4_caption": {
+            "type": "text",
+            "label": "Facility 4 Caption",
+            "default": "Art & Creative Studio"
+        },
+        "facility_5_image": {
+            "type": "image",
+            "label": "Facility 5 Image",
+            "default": "/storage/template-images/childcare/facility_5_image.jpg"
+        },
+        "facility_5_caption": {
+            "type": "text",
+            "label": "Facility 5 Caption",
+            "default": "Fresh-Meal Kitchen"
+        },
+        "facility_6_image": {
+            "type": "image",
+            "label": "Facility 6 Image",
+            "default": "/storage/template-images/childcare/facility_6_image.jpg"
+        },
+        "facility_6_caption": {
+            "type": "text",
+            "label": "Facility 6 Caption",
+            "default": "Music & Movement Hall"
+        },
+        "curriculum_eyebrow": {
+            "type": "text",
+            "label": "Curriculum Eyebrow",
+            "default": "OUR CURRICULUM"
+        },
+        "curriculum_title": {
+            "type": "text",
+            "label": "Curriculum Title",
+            "default": "Four Pillars of Early-Years Learning"
+        },
+        "curriculum_intro": {
+            "type": "text",
+            "label": "Curriculum Intro",
+            "default": "We follow the British EYFS framework alongside the UAE Ministry of Education standards for Arabic — the best of both worlds in one daily routine."
+        },
+        "pillar_1_num": {
+            "type": "text",
+            "label": "Pillar 1 Num",
+            "default": "01"
+        },
+        "pillar_1_title": {
+            "type": "text",
+            "label": "Pillar 1 Title",
+            "default": "Language & Literacy"
+        },
+        "pillar_1_text": {
+            "type": "text",
+            "label": "Pillar 1 Text",
+            "default": "Daily bilingual storytime, phonics, song, and conversation. Children graduate confident to speak, listen, and love books in English and Arabic."
+        },
+        "pillar_2_num": {
+            "type": "text",
+            "label": "Pillar 2 Num",
+            "default": "02"
+        },
+        "pillar_2_title": {
+            "type": "text",
+            "label": "Pillar 2 Title",
+            "default": "Social & Emotional"
+        },
+        "pillar_2_text": {
+            "type": "text",
+            "label": "Pillar 2 Text",
+            "default": "Naming feelings, sharing, kindness, and resilience. We build little humans who know themselves and know how to be a good friend."
+        },
+        "pillar_3_num": {
+            "type": "text",
+            "label": "Pillar 3 Num",
+            "default": "03"
+        },
+        "pillar_3_title": {
+            "type": "text",
+            "label": "Pillar 3 Title",
+            "default": "Discovery & STEM"
+        },
+        "pillar_3_text": {
+            "type": "text",
+            "label": "Pillar 3 Text",
+            "default": "Numbers, shapes, patterns, nature walks, and weekly science experiments. Curiosity first — formal learning follows naturally."
+        },
+        "pillar_4_num": {
+            "type": "text",
+            "label": "Pillar 4 Num",
+            "default": "04"
+        },
+        "pillar_4_title": {
+            "type": "text",
+            "label": "Pillar 4 Title",
+            "default": "Creativity & Movement"
+        },
+        "pillar_4_text": {
+            "type": "text",
+            "label": "Pillar 4 Text",
+            "default": "Dance, music, art, drama, and daily outdoor play. Bodies move, hands create, imaginations fly — every single day."
+        },
+        "testimonials_eyebrow": {
+            "type": "text",
+            "label": "Testimonials Eyebrow",
+            "default": "WHAT PARENTS SAY"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Title",
+            "default": "From the Families Who Trust Us"
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1 Quote",
+            "default": "My daughter has been at Little Lanterns since she was 6 months old. Three years later she walks in giving hugs to every teacher by name. That tells you everything you need to know."
+        },
+        "testimonial_1_author": {
+            "type": "text",
+            "label": "Testimonial 1 Author",
+            "default": "Aisha & Omar Al-Mansouri"
+        },
+        "testimonial_1_company": {
+            "type": "text",
+            "label": "Testimonial 1 Company",
+            "default": "Parents of Layan, 3.5 yrs"
+        },
+        "testimonial_1_result": {
+            "type": "text",
+            "label": "Testimonial 1 Result",
+            "default": "3 years with us"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2 Quote",
+            "default": "The bilingual program is exactly what we wanted. Our son speaks Arabic with his grandparents now — and started Year 1 confident, curious, and ahead in phonics. Worth every dirham."
+        },
+        "testimonial_2_author": {
+            "type": "text",
+            "label": "Testimonial 2 Author",
+            "default": "Priya & Daniel Chen"
+        },
+        "testimonial_2_company": {
+            "type": "text",
+            "label": "Testimonial 2 Company",
+            "default": "Parents of Ethan, now in Year 1"
+        },
+        "testimonial_2_result": {
+            "type": "text",
+            "label": "Testimonial 2 Result",
+            "default": "Bilingual fluency"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3 Quote",
+            "default": "We moved to Dubai and were terrified about nursery. Ms. Amira spent 45 minutes with us on a tour — no pressure, no sales. We signed up the same day. Best decision of our move."
+        },
+        "testimonial_3_author": {
+            "type": "text",
+            "label": "Testimonial 3 Author",
+            "default": "Reem Al-Hashimi"
+        },
+        "testimonial_3_company": {
+            "type": "text",
+            "label": "Testimonial 3 Company",
+            "default": "Parent of Khalil, 2 yrs"
+        },
+        "testimonial_3_result": {
+            "type": "text",
+            "label": "Testimonial 3 Result",
+            "default": "Same-day enrolment"
+        },
+        "booking_eyebrow": {
+            "type": "text",
+            "label": "Booking Eyebrow",
+            "default": "COME VISIT US"
+        },
+        "booking_title": {
+            "type": "text",
+            "label": "Booking Title",
+            "default": "Schedule a Personal Tour"
+        },
+        "booking_intro": {
+            "type": "text",
+            "label": "Booking Intro",
+            "default": "Come see our space, meet our team, and watch the children play. Tours take 45 minutes, no pressure, and finish with coffee and a genuinely honest conversation about what's right for your family."
+        },
+        "booking_child_age_label": {
+            "type": "text",
+            "label": "Child Age Label",
+            "default": "Child's Age"
+        },
+        "booking_program_label": {
+            "type": "text",
+            "label": "Program Label",
+            "default": "Program Interest"
+        },
+        "booking_start_date_label": {
+            "type": "text",
+            "label": "Start Date Label",
+            "default": "Desired Start Date"
+        },
+        "booking_visit_date_label": {
+            "type": "text",
+            "label": "Visit Date Label",
+            "default": "Preferred Visit Date"
+        },
+        "booking_visit_time_label": {
+            "type": "text",
+            "label": "Visit Time Label",
+            "default": "Preferred Visit Time"
+        },
+        "booking_parent_name_label": {
+            "type": "text",
+            "label": "Parent Name Label",
+            "default": "Parent / Guardian Name"
+        },
+        "booking_email_label": {
+            "type": "text",
+            "label": "Email Label",
+            "default": "Email"
+        },
+        "booking_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Mobile"
+        },
+        "booking_child_name_label": {
+            "type": "text",
+            "label": "Child Name Label",
+            "default": "Child's First Name"
+        },
+        "booking_submit": {
+            "type": "text",
+            "label": "Submit Button",
+            "default": "Schedule My Visit →"
+        },
+        "contact_eyebrow": {
+            "type": "text",
+            "label": "Contact Eyebrow",
+            "default": "WE'RE HERE TO HELP"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Title",
+            "default": "Have Questions? Let's Chat."
+        },
+        "contact_intro": {
+            "type": "text",
+            "label": "Contact Intro",
+            "default": "Our admissions team replies to every enquiry within 1 business day. You can also WhatsApp us directly — we love a chat about the small humans in your life."
+        },
+        "contact_email_label": {
+            "type": "text",
+            "label": "Email Label",
+            "default": "Email"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@littlelanterns.ae"
+        },
+        "contact_phone_label": {
+            "type": "text",
+            "label": "Phone Label",
+            "default": "Phone / WhatsApp"
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+971 4 344 7788"
+        },
+        "contact_address_label": {
+            "type": "text",
+            "label": "Address Label",
+            "default": "Nursery"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "Villa 22, Jumeirah Beach Road, Jumeirah 1, Dubai, UAE"
+        },
+        "contact_hours_label": {
+            "type": "text",
+            "label": "Hours Label",
+            "default": "Hours"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Hours",
+            "default": "Sun–Thu, 07:30–18:00 GST"
+        },
+        "contact_cta_title": {
+            "type": "text",
+            "label": "Contact CTA Title",
+            "default": "Ready to see our little world?"
+        },
+        "contact_cta_text": {
+            "type": "text",
+            "label": "Contact CTA Text",
+            "default": "Book a 45-minute personal tour. No pressure, no sales pitch — just a real look at how your child could spend their days."
+        },
+        "contact_cta_button": {
+            "type": "text",
+            "label": "Contact CTA Button",
+            "default": "Schedule a Visit"
+        },
+        "footer_logo": {
+            "type": "text",
+            "label": "Footer Logo",
+            "default": "Little Lanterns"
+        },
+        "footer_tagline": {
+            "type": "text",
+            "label": "Footer Tagline",
+            "default": "A premium bilingual Arabic-English nursery in Jumeirah. Nurturing little hearts and bright minds since 2014. KHDA approved."
+        },
+        "social_1": {
+            "type": "text",
+            "label": "Social 1",
+            "default": "IG"
+        },
+        "social_2": {
+            "type": "text",
+            "label": "Social 2",
+            "default": "FB"
+        },
+        "social_3": {
+            "type": "text",
+            "label": "Social 3",
+            "default": "WA"
+        },
+        "social_4": {
+            "type": "text",
+            "label": "Social 4",
+            "default": "YT"
+        },
+        "footer_col_1_title": {
+            "type": "text",
+            "label": "Footer Col 1 Title",
+            "default": "Programs"
+        },
+        "footer_col_2_title": {
+            "type": "text",
+            "label": "Footer Col 2 Title",
+            "default": "Our Nursery"
+        },
+        "footer_col_3_title": {
+            "type": "text",
+            "label": "Footer Col 3 Title",
+            "default": "Visit Us"
+        },
+        "footer_link_1": {
+            "type": "text",
+            "label": "Footer Link 1",
+            "default": "Infant Care"
+        },
+        "footer_link_2": {
+            "type": "text",
+            "label": "Footer Link 2",
+            "default": "Pre-KG & KG"
+        },
+        "footer_link_3": {
+            "type": "text",
+            "label": "Footer Link 3",
+            "default": "Holiday Camp"
+        },
+        "footer_link_4": {
+            "type": "text",
+            "label": "Footer Link 4",
+            "default": "Why Us"
+        },
+        "footer_link_5": {
+            "type": "text",
+            "label": "Footer Link 5",
+            "default": "Our Team"
+        },
+        "footer_link_6": {
+            "type": "text",
+            "label": "Footer Link 6",
+            "default": "Facilities"
+        },
+        "footer_link_7": {
+            "type": "text",
+            "label": "Footer Link 7",
+            "default": "Contact"
+        },
+        "footer_link_8": {
+            "type": "text",
+            "label": "Footer Link 8",
+            "default": "Schedule a Visit"
+        },
+        "footer_text": {
+            "type": "text",
+            "label": "Footer Text",
+            "default": "© 2026 Little Lanterns Nursery. All rights reserved. KHDA License 20145."
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "Privacy · Terms · Safeguarding Policy"
+        }
+    }
+}
