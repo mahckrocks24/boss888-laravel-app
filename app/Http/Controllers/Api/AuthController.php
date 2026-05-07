@@ -33,7 +33,23 @@ class AuthController
             'password.confirmed' => 'Passwords do not match.',
         ]);
 
-        return response()->json($this->authService->register($data), 201);
+        $result = $this->authService->register($data);
+
+        // T_NOTIF — notify platform admin (user_id=1) of new signup. Wrapped in try/catch
+        // so a notification failure never blocks user registration.
+        try {
+            app(\App\Core\Notifications\NotificationService::class)->dispatch(
+                type: \App\Core\Notifications\NotificationTypes::SYSTEM_USER_SIGNUP,
+                userId: 1,
+                title: 'New user registered',
+                body: "{$data['email']} just signed up.",
+                severity: 'info'
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('User signup notification failed', ['error' => $e->getMessage()]);
+        }
+
+        return response()->json($result, 201);
     }
 
     public function login(Request $request): JsonResponse

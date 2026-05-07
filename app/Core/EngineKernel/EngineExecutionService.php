@@ -121,6 +121,15 @@ class EngineExecutionService
             if ($approval && $approval['status'] === 'pending') {
                 // Release reserved credits — will re-reserve on approval
                 if (isset($reservationId)) $this->creditService->release($wsId, $reservationId);
+
+                // T_NOTIF — flag approval-required to workspace owner (agent-driven only)
+                if ($source === 'agent') {
+                    $this->notifyTaskEvent($wsId, \App\Core\Notifications\NotificationTypes::AGENT_TASK_REQUIRES_APPROVAL,
+                        'Approval required',
+                        "An agent task ({$engine}/{$action}) requires your approval before it can run.",
+                        'warning', '/approvals');
+                }
+
                 return ['success' => true, 'pending_approval' => true, 'approval_id' => $approval['id'],
                         'message' => 'Action requires approval', 'code' => 'AWAITING_APPROVAL'];
             }
@@ -133,6 +142,15 @@ class EngineExecutionService
             // Release credits on failure
             if (isset($reservationId)) $this->creditService->release($wsId, $reservationId);
             Log::error("EngineExecution failed: {$engine}/{$action}", ['error' => $e->getMessage(), 'ws' => $wsId]);
+
+            // T_NOTIF — flag task failure to workspace owner (agent-driven only)
+            if ($source === 'agent') {
+                $this->notifyTaskEvent($wsId, \App\Core\Notifications\NotificationTypes::AGENT_TASK_FAILED,
+                    'Agent task failed',
+                    "Agent task {$engine}/{$action} failed: " . $e->getMessage(),
+                    'error', '/agents');
+            }
+
             return ['success' => false, 'error' => $e->getMessage(), 'code' => 'EXECUTION_FAILED'];
         }
 
@@ -151,6 +169,14 @@ class EngineExecutionService
         $this->auditLog->log($wsId, $userId, "{$engine}.{$action}", ucfirst($engine), $result['entity_id'] ?? null, [
             'source' => $source, 'agent' => $agentId, 'credits' => $creditCost, 'params' => array_keys($params),
         ]);
+
+        // T_NOTIF — flag task completion to workspace owner (agent-driven only)
+        if ($source === 'agent') {
+            $this->notifyTaskEvent($wsId, \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED,
+                'Agent task completed',
+                "{$engine}/{$action} completed successfully.",
+                'success', null);
+        }
 
         // ─── Step 10: Record intelligence (learning loop) ────
         try {
@@ -612,5 +638,39 @@ class EngineExecutionService
         Log::info("handleRuntimeCallback: task {$taskId} → {$status}", [
             'engine' => $task->engine, 'action' => $task->action, 'ws' => $task->workspace_id,
         ]);
+    }
+
+    /**
+     * T_NOTIF helper — look up workspace owner and dispatch a task-related
+     * notification. Wrapped in try/catch so any notification failure never
+     * breaks the engine execution flow.
+     */
+    private function notifyTaskEvent(
+        int $wsId,
+        string $type,
+        string $title,
+        string $body,
+        string $severity,
+        ?string $actionUrl
+    ): void {
+        try {
+            $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')
+                ->where('workspace_id', $wsId)
+                ->where('role', 'owner')
+                ->value('user_id');
+            if (! $ownerId) return;
+
+            $this->notifications->dispatch(
+                type: $type,
+                userId: (int) $ownerId,
+                title: $title,
+                workspaceId: $wsId,
+                body: $body,
+                severity: $severity,
+                actionUrl: $actionUrl
+            );
+        } catch (\Throwable $e) {
+            Log::warning("notifyTaskEvent failed: {$type}", ['error' => $e->getMessage()]);
+        }
     }
 }

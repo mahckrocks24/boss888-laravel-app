@@ -19,16 +19,19 @@
 - Redis: 6 (PECL-built ext, see project_redis_apt_untracked_files.md)
 - Droplet: 134.209.93.41 AMS3 (`Level-Up-Growth`, Ubuntu 22.04)
 - SSH key: `~/.ssh/do_levelup`
+- Mail: Postmark PENDING APPROVAL (Test mode) ⏳ — infrastructure FULLY WIRED 2026-05-07: `symfony/postmark-mailer` v7.4.9 + `symfony/http-client` v7.4.9 installed, `POSTMARK_TOKEN` set, DKIM ✅ + Return-Path ✅ verified for `levelupgrowth.io`. Account is in Test mode pending Postmark manual approval (expected within hours). In Test mode, sends only deliver to addresses within verified domains (e.g. `admin@levelupgrowth.io` worked); external recipients will be rejected until approval. Once approval lands, no code change needed — mail starts flowing automatically.
+- Notifications v2: LIVE 2026-05-07 — extended `notifications` table (+9 cols, backward-compat with existing send()), new `notification_preferences` table, NotificationService extended with dispatch/broadcast/unreadCount/markAllRead, queued SendNotificationEmail job + Blade template, NotificationController +4 endpoints, AdminNotificationController + admin broadcast, `lu:notifications:purge` command (daily 90-day retention), trigger wiring shipped at: StripeService (5 events, 9 sites incl. dev paths), AuthController (signup → admin), EngineExecutionService (agent task complete/fail/approval, gated by source==agent).
 
 ---
 
 ## Last Commit
 
 ```
+9939f6c chore: Postmark wired — transactional email live
+f8d98e9 chore: nginx wildcard + platform fixes state
 722ace8 chore: add BOSS888-STATE.md — canonical living state doc
 3ea4934 feat: CHATBOT888 completion — Block 2 (T2.1-T2.6)
 d9d82e0 CHATBOT888: fix guardrails to respect business_context_text as grounding source
-8d5a767 CHATBOT888: add chatbot-widget.js to version control
 87eb11c CHATBOT888: Chef Red industry pack, guardrails turn_count gate, business context, widget cache-bust
 ```
 
@@ -123,6 +126,10 @@ Daily backup is purely manual (no cron yet — open infra task).
 - ~~No `STRIPE_MODE` env var~~ → set to `test` in T2.4 stage 1 (.env additions tracked via .env.example placeholders, not committed)
 - ~~CHATBOT888 settings change doesn't bust render cache~~ → cache invalidation added in T2.3 (`updateSettings` / `mintWidgetToken` / `revokeWidgetToken`)
 - ~~`Subscription` model fillable missing chatbot_addon fields~~ → fixed in T2.6 (latent pre-existing bug surfaced during verify)
+
+**Resolved post-Block 2** (commits f8d98e9, 9939f6c):
+- ~~`POSTMARK_TOKEN` empty + Postmark transport not installed~~ → infrastructure fully wired 2026-05-07. Token set, `symfony/postmark-mailer` + `symfony/http-client` v7.4.9 installed (commit 9939f6c), DKIM + Return-Path verified for `levelupgrowth.io`, live `Mail::raw()` test dispatched cleanly to admin@levelupgrowth.io. **Account in Test mode pending Postmark manual approval** — external recipients gated until approval lands. Code path is complete; no further dev work needed for mail to start flowing.
+- ~~nginx server_name brittle (per-subdomain entries needed)~~ → wildcard `*.levelupgrowth.io` in place 2026-05-07 (commit f8d98e9 documents); new tenants auto-route to Laravel
 
 **Still open**:
 1. **Blog completely ungated** — `routes/web.php:128-129` + `routes/api.php:5125` have no auth, no plan check. Owner decision pending (T5.1).

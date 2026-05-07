@@ -84,6 +84,15 @@ return Application::configure(basePath: dirname(__DIR__))
             ->onFailure(function () {
                 \Illuminate\Support\Facades\Log::error('Sarah monthly strategy check failed');
             });
+
+        // Notification system retention — purge notifications older than 90 days
+        $schedule->command('lu:notifications:purge')
+            ->name('lu:notifications:purge')
+            ->daily()
+            ->withoutOverlapping()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('Notifications purge cron failed');
+            });
     })
     ->withMiddleware(function (Middleware $middleware) {
 

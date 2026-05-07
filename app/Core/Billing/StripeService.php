@@ -316,6 +316,27 @@ class StripeService
             ]);
         }
 
+        // T_NOTIF — manual cancel (user-facing, email-required)
+        $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')
+            ->where('workspace_id', $workspaceId)
+            ->where('role', 'owner')
+            ->value('user_id');
+        if ($ownerId) {
+            try {
+                $this->notifications->dispatch(
+                    type: \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_CANCELLED,
+                    userId: (int) $ownerId,
+                    title: 'Subscription cancelled',
+                    workspaceId: $workspaceId,
+                    body: 'Your subscription has been cancelled. Your workspace has been downgraded to the Free plan.',
+                    severity: 'warning',
+                    actionUrl: '/billing'
+                );
+            } catch (\Throwable $e) {
+                Log::warning('BILLING_SUBSCRIPTION_CANCELLED notification failed (manual cancel)', ['error' => $e->getMessage()]);
+            }
+        }
+
         return ['success' => true];
     }
 
@@ -376,6 +397,7 @@ class StripeService
             // Dev / non-Stripe path — synthesize a local item id for entitlement.
             $localItem = 'local_addon_' . uniqid();
             $sub->update(['chatbot_addon_item_id' => $localItem, 'chatbot_addon_active' => true]);
+            $this->notifyAddonAdded($workspaceId, $userId);
             return ['success' => true, 'item_id' => $localItem, 'dev_mode' => true];
         }
 
@@ -403,6 +425,8 @@ class StripeService
                 'stripe_subscription_id' => $sub->stripe_subscription_id,
                 'item_id'                => $newItem->id,
             ]);
+
+            $this->notifyAddonAdded($workspaceId, $userId);
 
             return ['success' => true, 'item_id' => $newItem->id];
         } catch (\Throwable $e) {
@@ -433,6 +457,7 @@ class StripeService
         // Local-only dev item — just clear the column.
         if (str_starts_with($itemId, 'local_addon_') || ! $this->enabled) {
             $sub->update(['chatbot_addon_item_id' => null, 'chatbot_addon_active' => false]);
+            $this->notifyAddonRemoved($workspaceId, $userId);
             return ['success' => true, 'dev_mode' => true];
         }
 
@@ -447,6 +472,8 @@ class StripeService
                 'stripe_subscription_id' => $sub->stripe_subscription_id,
                 'item_id'                => $itemId,
             ]);
+
+            $this->notifyAddonRemoved($workspaceId, $userId);
 
             return ['success' => true];
         } catch (\Throwable $e) {
@@ -540,6 +567,23 @@ class StripeService
         // would leave the WP plugin permanently locked out.
         $this->reactivateBillingForWorkspace((int) $wsId, 'subscription_created_via_checkout');
 
+        // T_NOTIF — subscription created (user-facing notification)
+        if ($userId) {
+            try {
+                $this->notifications->dispatch(
+                    type: \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_CREATED,
+                    userId: (int) $userId,
+                    title: 'Subscription activated',
+                    workspaceId: (int) $wsId,
+                    body: $plan ? "Your {$plan->name} plan is now active." : 'Your plan is now active.',
+                    severity: 'success',
+                    actionUrl: '/billing'
+                );
+            } catch (\Throwable $e) {
+                Log::warning('BILLING_SUBSCRIPTION_CREATED notification failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         return ['handled' => true, 'action' => 'subscription_created', 'plan' => $plan?->slug];
     }
 
@@ -571,6 +615,27 @@ class StripeService
                 'subscription_id'        => $sub->id,
                 'stripe_subscription_id' => $sub->stripe_subscription_id,
             ]);
+
+            // T_NOTIF — payment failed (user-facing, email-required)
+            $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')
+                ->where('workspace_id', $sub->workspace_id)
+                ->where('role', 'owner')
+                ->value('user_id');
+            if ($ownerId) {
+                try {
+                    $this->notifications->dispatch(
+                        type: \App\Core\Notifications\NotificationTypes::BILLING_PAYMENT_FAILED,
+                        userId: (int) $ownerId,
+                        title: 'Payment failed',
+                        workspaceId: (int) $sub->workspace_id,
+                        body: 'A payment for your subscription failed. Please update your payment method to avoid service interruption.',
+                        severity: 'error',
+                        actionUrl: '/billing'
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('BILLING_PAYMENT_FAILED notification failed', ['error' => $e->getMessage()]);
+                }
+            }
         }
         return ['handled' => true, 'action' => 'subscription_past_due'];
     }
@@ -606,6 +671,27 @@ class StripeService
                 'stripe_subscription_id' => $sub->stripe_subscription_id,
                 'downgraded_to'          => 'free',
             ]);
+
+            // T_NOTIF — subscription cancelled (user-facing, email-required)
+            $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')
+                ->where('workspace_id', $sub->workspace_id)
+                ->where('role', 'owner')
+                ->value('user_id');
+            if ($ownerId) {
+                try {
+                    $this->notifications->dispatch(
+                        type: \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_CANCELLED,
+                        userId: (int) $ownerId,
+                        title: 'Subscription cancelled',
+                        workspaceId: (int) $sub->workspace_id,
+                        body: 'Your subscription has been cancelled. Your workspace has been downgraded to the Free plan.',
+                        severity: 'warning',
+                        actionUrl: '/billing'
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('BILLING_SUBSCRIPTION_CANCELLED notification failed', ['error' => $e->getMessage()]);
+                }
+            }
         }
 
         return ['handled' => true, 'action' => 'subscription_cancelled'];
@@ -750,6 +836,61 @@ class StripeService
             );
         }
 
+        // T_NOTIF — dev-mode subscription activation (user-facing notification)
+        try {
+            $this->notifications->dispatch(
+                type: \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_CREATED,
+                userId: $userId,
+                title: 'Subscription activated',
+                workspaceId: $wsId,
+                body: $plan ? "Your {$plan->name} plan is now active." : 'Your plan is now active.',
+                severity: 'success',
+                actionUrl: '/billing'
+            );
+        } catch (\Throwable $e) {
+            Log::warning('BILLING_SUBSCRIPTION_CREATED notification failed (devActivate)', ['error' => $e->getMessage()]);
+        }
+
         return ['checkout_url' => null, 'dev_mode' => true, 'activated' => true, 'plan' => $plan?->name];
+    }
+
+    /**
+     * Helper — fire BILLING_CHATBOT_ADDON_ADDED. Idempotent in failure (try/catch).
+     */
+    private function notifyAddonAdded(int $workspaceId, int $userId): void
+    {
+        try {
+            $this->notifications->dispatch(
+                type: \App\Core\Notifications\NotificationTypes::BILLING_CHATBOT_ADDON_ADDED,
+                userId: $userId,
+                title: 'Chatbot add-on activated',
+                workspaceId: $workspaceId,
+                body: 'Your chatbot add-on is now active. The widget can be enabled on your published sites.',
+                severity: 'success',
+                actionUrl: '/admin/chatbot'
+            );
+        } catch (\Throwable $e) {
+            Log::warning('BILLING_CHATBOT_ADDON_ADDED notification failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Helper — fire BILLING_CHATBOT_ADDON_REMOVED.
+     */
+    private function notifyAddonRemoved(int $workspaceId, int $userId): void
+    {
+        try {
+            $this->notifications->dispatch(
+                type: \App\Core\Notifications\NotificationTypes::BILLING_CHATBOT_ADDON_REMOVED,
+                userId: $userId,
+                title: 'Chatbot add-on removed',
+                workspaceId: $workspaceId,
+                body: 'Your chatbot add-on has been cancelled. The widget will stop appearing on your sites.',
+                severity: 'info',
+                actionUrl: '/admin/chatbot'
+            );
+        } catch (\Throwable $e) {
+            Log::warning('BILLING_CHATBOT_ADDON_REMOVED notification failed', ['error' => $e->getMessage()]);
+        }
     }
 }

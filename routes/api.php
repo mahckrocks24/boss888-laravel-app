@@ -947,6 +947,11 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
     // Notifications
     Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
     Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markRead']);
+    // Notification System v2 (2026-05-07) — user-scoped + preferences
+    Route::get ('/notifications/unread-count', [\App\Http\Controllers\Api\NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/read-all',     [\App\Http\Controllers\Api\NotificationController::class, 'markAllRead']);
+    Route::get ('/notifications/preferences',  [\App\Http\Controllers\Api\NotificationController::class, 'preferences']);
+    Route::put ('/notifications/preferences',  [\App\Http\Controllers\Api\NotificationController::class, 'updatePreferences']);
 
     // Media Upload + unified media picker (added 2026-04-19, Phase 3)
     // Workspace-scoped. Picker uses /library + /access + /use.
@@ -4392,6 +4397,10 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])
 
         // Dashboard
         Route::get('/stats', [$c, 'dashboardStats']);
+
+        // Notification System v2 (2026-05-07) — admin scope
+        Route::get ('/notifications',           [\App\Http\Controllers\Api\Admin\AdminNotificationController::class, 'index']);
+        Route::post('/notifications/broadcast', [\App\Http\Controllers\Api\Admin\AdminNotificationController::class, 'broadcast']);
 
         // ── Connector / API-key admin (Recovery 2026-05-05 / §1 SEO_ONLY) ────
         Route::get ('/connector-sites',      [$c, 'listConnectorSites']);
