@@ -68,7 +68,6 @@ class MediaController
                 'source'            => 'upload',
                 'is_platform_asset' => 0,
                 'is_public'         => 0,
-                'use_count'         => 0,
                 'created_at'        => now(),
                 'updated_at'        => now(),
             ]);
@@ -143,7 +142,6 @@ class MediaController
         if ($search !== '') {
             $q->where(function ($inner) use ($search) {
                 $inner->where('filename', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%")
                     ->orWhereJsonContains('tags', $search);
             });
         }
@@ -153,10 +151,10 @@ class MediaController
             ->offset(($page - 1) * $perPage)
             ->limit($perPage)
             ->select(
-                'id', 'filename', 'url', 'file_url', 'thumbnail_url',
+                'id', 'workspace_id', 'filename', 'url', 'file_url', 'thumbnail_url',
                 'mime_type', 'asset_type', 'size_bytes', 'width', 'height',
-                'duration_seconds', 'category', 'industry', 'description',
-                'tags', 'use_count', 'is_platform_asset', 'created_at'
+                'source', 'is_platform_asset', 'is_public',
+                'category', 'tags', 'prompt', 'model', 'created_at'
             )
             ->get();
 
@@ -205,7 +203,10 @@ class MediaController
         $context = trim((string) $request->input('context', ''));
         if (!$mediaId) return response()->json(['success' => false, 'error' => 'media_id required'], 400);
 
-        $row = DB::table('media')->where('id', $mediaId)->first(['id', 'used_in', 'use_count']);
+        // T3.1 — `use_count` column does not exist in schema; tracking via
+        // used_in JSON only. If a use_count column is later added,
+        // re-introduce the increment here.
+        $row = DB::table('media')->where('id', $mediaId)->first(['id', 'used_in']);
         if (!$row) return response()->json(['success' => false, 'error' => 'Not found'], 404);
 
         $used = [];
@@ -219,14 +220,12 @@ class MediaController
 
         DB::table('media')->where('id', $mediaId)->update([
             'used_in'    => !empty($used) ? json_encode($used) : null,
-            'use_count'  => ($row->use_count ?? 0) + 1,
             'updated_at' => now(),
         ]);
 
         return response()->json([
-            'success'   => true,
-            'used_in'   => $used,
-            'use_count' => ($row->use_count ?? 0) + 1,
+            'success' => true,
+            'used_in' => $used,
         ]);
     }
 
