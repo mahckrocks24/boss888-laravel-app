@@ -375,7 +375,7 @@ class StripeService
         if (! $this->enabled || ! $sub->stripe_subscription_id) {
             // Dev / non-Stripe path — synthesize a local item id for entitlement.
             $localItem = 'local_addon_' . uniqid();
-            $sub->update(['chatbot_addon_item_id' => $localItem]);
+            $sub->update(['chatbot_addon_item_id' => $localItem, 'chatbot_addon_active' => true]);
             return ['success' => true, 'item_id' => $localItem, 'dev_mode' => true];
         }
 
@@ -397,7 +397,7 @@ class StripeService
                 ],
             ]);
 
-            $sub->update(['chatbot_addon_item_id' => $newItem->id]);
+            $sub->update(['chatbot_addon_item_id' => $newItem->id, 'chatbot_addon_active' => true]);
 
             $this->auditLog->log($workspaceId, $userId, 'billing.chatbot_addon_added', 'Subscription', $sub->id, [
                 'stripe_subscription_id' => $sub->stripe_subscription_id,
@@ -432,7 +432,7 @@ class StripeService
 
         // Local-only dev item — just clear the column.
         if (str_starts_with($itemId, 'local_addon_') || ! $this->enabled) {
-            $sub->update(['chatbot_addon_item_id' => null]);
+            $sub->update(['chatbot_addon_item_id' => null, 'chatbot_addon_active' => false]);
             return ['success' => true, 'dev_mode' => true];
         }
 
@@ -441,7 +441,7 @@ class StripeService
             $stripe->subscriptionItems->delete($itemId, [
                 'proration_behavior' => 'create_prorations',
             ]);
-            $sub->update(['chatbot_addon_item_id' => null]);
+            $sub->update(['chatbot_addon_item_id' => null, 'chatbot_addon_active' => false]);
 
             $this->auditLog->log($workspaceId, $userId, 'billing.chatbot_addon_removed', 'Subscription', $sub->id, [
                 'stripe_subscription_id' => $sub->stripe_subscription_id,
@@ -640,7 +640,7 @@ class StripeService
                 }
             }
             if ($sub->chatbot_addon_item_id !== $foundAddonItemId) {
-                $sub->update(['chatbot_addon_item_id' => $foundAddonItemId]);
+                $sub->update(['chatbot_addon_item_id' => $foundAddonItemId, 'chatbot_addon_active' => (bool) $foundAddonItemId]);
                 Log::info('[chatbot] addon entitlement sync via webhook', [
                     'workspace_id'  => $sub->workspace_id,
                     'subscription'  => $sub->stripe_subscription_id,

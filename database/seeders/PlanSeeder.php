@@ -24,6 +24,8 @@ class PlanSeeder extends Seeder
                     'marketing' => false, 'social' => false, 'automation' => false,
                     'ai_assistant' => false, 'ai_agents' => false,
                     'content_writing' => false, 'image_generation' => false, 'video_generation' => false,
+                    'chatbot_included' => false, 'chatbot_addon_eligible' => false,
+                    'chatbot_kb_max_docs' => 0, 'chatbot_messages_per_month' => 0,
                 ],
             ],
             [
@@ -40,6 +42,8 @@ class PlanSeeder extends Seeder
                     'marketing' => true, 'social' => true, 'automation' => true,
                     'ai_assistant' => false, 'ai_agents' => false,
                     'content_writing' => false, 'image_generation' => false, 'video_generation' => false,
+                    'chatbot_included' => false, 'chatbot_addon_eligible' => true,
+                    'chatbot_kb_max_docs' => 0, 'chatbot_messages_per_month' => 0,
                 ],
             ],
             [
@@ -56,6 +60,8 @@ class PlanSeeder extends Seeder
                     'marketing' => true, 'social' => true, 'automation' => true,
                     'ai_assistant' => true, 'ai_agents' => false,
                     'content_writing' => false, 'image_generation' => false, 'video_generation' => false,
+                    'chatbot_included' => false, 'chatbot_addon_eligible' => true,
+                    'chatbot_kb_max_docs' => 25, 'chatbot_messages_per_month' => 500,
                 ],
             ],
             [
@@ -72,6 +78,8 @@ class PlanSeeder extends Seeder
                     'marketing' => true, 'social' => true, 'automation' => true,
                     'ai_assistant' => true, 'ai_agents' => true,
                     'content_writing' => true, 'image_generation' => true, 'video_generation' => false,
+                    'chatbot_included' => false, 'chatbot_addon_eligible' => true,
+                    'chatbot_kb_max_docs' => 50, 'chatbot_messages_per_month' => 1000,
                 ],
             ],
             [
@@ -88,6 +96,8 @@ class PlanSeeder extends Seeder
                     'marketing' => true, 'social' => true, 'automation' => true,
                     'ai_assistant' => true, 'ai_agents' => true,
                     'content_writing' => true, 'image_generation' => true, 'video_generation' => true,
+                    'chatbot_included' => true, 'chatbot_addon_eligible' => false,
+                    'chatbot_kb_max_docs' => 100, 'chatbot_messages_per_month' => 5000,
                 ],
             ],
             [
@@ -104,6 +114,8 @@ class PlanSeeder extends Seeder
                     'marketing' => true, 'social' => true, 'automation' => true,
                     'ai_assistant' => true, 'ai_agents' => true,
                     'content_writing' => true, 'image_generation' => true, 'video_generation' => true,
+                    'chatbot_included' => true, 'chatbot_addon_eligible' => false,
+                    'chatbot_kb_max_docs' => 999999, 'chatbot_messages_per_month' => 999999,
                 ],
             ],
         ];

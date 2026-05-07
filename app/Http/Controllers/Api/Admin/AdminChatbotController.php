@@ -7,6 +7,7 @@ use App\Engines\Chatbot\Services\ChatbotKnowledgeService;
 use App\Engines\Chatbot\Services\ChatbotWidgetTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -83,6 +84,10 @@ class AdminChatbotController
             $update['created_at']   = now();
             DB::table('chatbot_settings')->insert($update);
         }
+
+        // T2.3 — settings change affects every published page in the workspace
+        $this->bustPublishedSiteCache($wsId);
+
         return response()->json([
             'success' => true,
             'data'    => DB::table('chatbot_settings')->where('workspace_id', $wsId)->first(),
@@ -265,6 +270,10 @@ class AdminChatbotController
             $data['allowed_domains'],
             $data['label'] ?? null
         );
+
+        // T2.3 — mint just wrote settings_json.chatbot_widget_token; bust render cache
+        $this->bustPublishedSiteCache($wsId, $data['website_id'] ?? null);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -284,6 +293,10 @@ class AdminChatbotController
             ->where('id', $id)->where('workspace_id', $wsId)->first();
         if (! $row) return response()->json(['success' => false, 'error' => 'NOT_FOUND'], 404);
         $this->tokens->revoke($id);
+
+        // T2.3 — revoked token's website should re-render without the widget script
+        $this->bustPublishedSiteCache($wsId, $row->website_id ?? null);
+
         return response()->json(['success' => true]);
     }
 
@@ -309,5 +322,39 @@ class AdminChatbotController
             ], 403);
         }
         return null;
+    }
+
+    /**
+     * Bust published_site:* render cache for a workspace's websites. Mirrors
+     * the existing cache-bust pattern in BuilderService::publishWebsite() —
+     * iterates published pages and Cache::forget()s each {subdomain}:{slug},
+     * plus a belt-and-suspenders forget on {subdomain}:home.
+     *
+     * If $websiteId is null, busts every published website in the workspace
+     * (used when workspace-scoped settings change). If provided, only that
+     * site (used for token mint/revoke).
+     */
+    private function bustPublishedSiteCache(int $wsId, ?int $websiteId = null): void
+    {
+        $sites = DB::table('websites')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'published')
+            ->when($websiteId, fn($q) => $q->where('id', $websiteId))
+            ->get(['id', 'subdomain']);
+
+        foreach ($sites as $site) {
+            $subdomain = str_replace('.levelupgrowth.io', '', $site->subdomain ?? '');
+            if ($subdomain === '') continue;
+
+            $slugs = DB::table('pages')
+                ->where('website_id', $site->id)
+                ->where('status', 'published')
+                ->pluck('slug');
+
+            foreach ($slugs as $slug) {
+                Cache::forget("published_site:{$subdomain}:{$slug}");
+            }
+            Cache::forget("published_site:{$subdomain}:home");
+        }
     }
 }

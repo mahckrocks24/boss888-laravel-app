@@ -86,7 +86,7 @@ class BuilderRenderer
             'gtm_id'           => $settings['gtm_id'] ?? null,
         ];
 
-        return $this->getFullHtml($content, $tokens, $website['name'] ?? 'Website', $page['title'] ?? 'Home', $seoContext);
+        return $this->getFullHtml($content, $tokens, $website['name'] ?? 'Website', $page['title'] ?? 'Home', $seoContext, $website);
     }
 
     public function renderSection(array $sec, array $brand, array $website = [], array $allPages = [], string $currentSlug = 'home'): string
@@ -412,7 +412,7 @@ HTML;
         return "<section style=\"padding:80px 24px;background:#f8f9fc\"><div style=\"max-width:1200px;margin:0 auto\"><div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:32px\">{$cards}</div></div></section>";
     }
 
-        public function getFullHtml(string $content, array $brand, string $siteName, string $pageTitle, array $seo = []): string
+        public function getFullHtml(string $content, array $brand, string $siteName, string $pageTitle, array $seo = [], array $website = []): string
     {
         $fh = $brand['font_heading'] ?? 'Syne';
         $fb = $brand['font_body'] ?? 'DM Sans';
@@ -481,6 +481,9 @@ HTML;
             $analyticsHtml .= "<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{$gtm}');</script>\n";
         }
 
+        // CHATBOT888 widget injection — empty string if workspace not entitled or no token minted
+        $chatbotScript = $this->injectChatbotWidget($website);
+
         return <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -506,8 +509,52 @@ input,textarea,select{font-family:inherit}
 </head>
 <body>
 {$content}
+{$chatbotScript}
 </body>
 </html>
+HTML;
+    }
+
+    /**
+     * CHATBOT888 widget injector. Reads the plaintext widget token from
+     * websites.settings_json (populated by ChatbotWidgetTokenService::mint
+     * for Laravel-built sites) and emits a script tag if the workspace is
+     * entitled and a token has been minted. Returns '' otherwise.
+     */
+    private function injectChatbotWidget(array $website): string
+    {
+        $wsId = (int) ($website['workspace_id'] ?? 0);
+        if ($wsId <= 0) return '';
+
+        $gate = app(\App\Core\Billing\FeatureGateService::class);
+        if (!$gate->canAccessChatbot($wsId)) {
+            return '';
+        }
+
+        // T2.5 — respect the per-workspace enabled toggle from chatbot_settings
+        $chatbotSettings = DB::table('chatbot_settings')
+            ->where('workspace_id', $wsId)
+            ->first();
+        if (!$chatbotSettings || !$chatbotSettings->enabled) {
+            return '';
+        }
+
+        $settings = $website['settings_json'] ?? '{}';
+        if (is_string($settings)) $settings = json_decode($settings, true) ?: [];
+        $token = is_array($settings) ? ($settings['chatbot_widget_token'] ?? null) : null;
+        if (!$token) return '';
+
+        $tokenSafe = htmlspecialchars((string) $token, ENT_QUOTES, 'UTF-8');
+        $apiBase   = rtrim(config('app.url'), '/');
+
+        return <<<HTML
+
+    <!-- CHATBOT888 Widget -->
+    <script>
+      window.LU_CHATBOT_TOKEN = "{$tokenSafe}";
+      window.LU_CHATBOT_API   = "{$apiBase}";
+    </script>
+    <script src="{$apiBase}/chatbot-widget.js" defer></script>
 HTML;
     }
 

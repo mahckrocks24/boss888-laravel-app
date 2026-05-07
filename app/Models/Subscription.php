@@ -11,6 +11,7 @@ class Subscription extends Model
         'workspace_id', 'plan_id', 'provider', 'provider_subscription_id',
         'stripe_subscription_id', 'stripe_customer_id',
         'status', 'starts_at', 'ends_at', 'cancelled_at',
+        'chatbot_addon_item_id', 'chatbot_addon_active',
     ];
 
     protected function casts(): array
