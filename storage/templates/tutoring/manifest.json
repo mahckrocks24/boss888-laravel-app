@@ -1,0 +1,1283 @@
+{
+  "id": "tutoring",
+  "name": "Tutoring & Coaching",
+  "version": "1.0.0",
+  "industry": "tutoring",
+  "description": "Tutoring & coaching template \u2014 purple academic, friendly approachable. Built around subjects, how it works, tutor team, pricing, free trial.",
+  "variation": "luxury",
+  "preview_image": "preview.jpg",
+  "created_at": "2026-04-18",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "fields": [
+        "business_name",
+        "nav_cta"
+      ],
+      "elements": {
+        "logo": ".nav-logo",
+        "links": ".nav-links",
+        "link": ".nav-links li a",
+        "primary_button": "a.nav-cta",
+        "burger": ".nav-burger"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero Section",
+      "fields": [
+        "hero_eyebrow",
+        "hero_title",
+        "hero_subtitle",
+        "hero_cta",
+        "hero_cta_secondary",
+        "hero_image",
+        "hero_trust_badge"
+      ],
+      "elements": {
+        "eyebrow": ".hero-eyebrow",
+        "heading": "h1.hero-h1",
+        "subheading": "p.hero-sub",
+        "primary_button": "a.btn-primary",
+        "secondary_button": "a.btn-ghost",
+        "image": ".hero-media img",
+        "overlay": ".hero-overlay",
+        "trust_badge": ".hero-trust"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats Strip",
+      "fields": [
+        "stat_1_value",
+        "stat_1_label",
+        "stat_2_value",
+        "stat_2_label",
+        "stat_3_value",
+        "stat_3_label",
+        "stat_4_value",
+        "stat_4_label"
+      ],
+      "elements": {
+        "item": ".stat-item",
+        "number": ".stat-num",
+        "label": ".stat-label"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Specialties",
+      "fields": [
+        "services_eyebrow",
+        "services_title",
+        "services_intro",
+        "service_1_title",
+        "service_1_text",
+        "service_1_tag_1",
+        "service_1_tag_2",
+        "service_1_tag_3",
+        "service_2_title",
+        "service_2_text",
+        "service_2_tag_1",
+        "service_2_tag_2",
+        "service_2_tag_3",
+        "service_3_title",
+        "service_3_text",
+        "service_3_tag_1",
+        "service_3_tag_2",
+        "service_3_tag_3",
+        "service_4_title",
+        "service_4_text",
+        "service_4_tag_1",
+        "service_4_tag_2",
+        "service_4_tag_3",
+        "service_5_title",
+        "service_5_text",
+        "service_5_tag_1",
+        "service_5_tag_2",
+        "service_5_tag_3",
+        "service_6_title",
+        "service_6_text",
+        "service_6_tag_1",
+        "service_6_tag_2",
+        "service_6_tag_3"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".services-intro",
+        "grid": ".service-grid",
+        "card": ".service-card",
+        "icon": ".service-icon",
+        "card_title": ".service-title",
+        "card_description": ".service-desc",
+        "tag": ".service-tag"
+      }
+    },
+    {
+      "id": "doctors",
+      "name": "Doctors & Team",
+      "fields": [
+        "doctors_eyebrow",
+        "doctors_title",
+        "doctors_intro",
+        "doctor_1_name",
+        "doctor_1_title",
+        "doctor_1_specialty",
+        "doctor_1_bio",
+        "doctor_1_image",
+        "doctor_2_name",
+        "doctor_2_title",
+        "doctor_2_specialty",
+        "doctor_2_bio",
+        "doctor_2_image",
+        "doctor_3_name",
+        "doctor_3_title",
+        "doctor_3_specialty",
+        "doctor_3_bio",
+        "doctor_3_image",
+        "doctor_4_name",
+        "doctor_4_title",
+        "doctor_4_specialty",
+        "doctor_4_bio",
+        "doctor_4_image"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".doctors-intro",
+        "grid": ".doctor-grid",
+        "card": ".doctor-card",
+        "image": ".doctor-card img",
+        "doctor_name": ".doctor-name",
+        "doctor_title": ".doctor-role",
+        "doctor_specialty": ".doctor-specialty",
+        "doctor_bio": ".doctor-bio"
+      }
+    },
+    {
+      "id": "process",
+      "name": "How It Works",
+      "fields": [
+        "process_eyebrow",
+        "process_title",
+        "process_1_title",
+        "process_1_text",
+        "process_2_title",
+        "process_2_text",
+        "process_3_title",
+        "process_3_text",
+        "process_4_title",
+        "process_4_text"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "step": ".process-step",
+        "number": ".process-num",
+        "step_title": ".process-title",
+        "step_description": ".process-desc"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Patient Stories",
+      "fields": [
+        "testimonials_eyebrow",
+        "testimonials_title",
+        "testimonial_1_quote",
+        "testimonial_1_author",
+        "testimonial_1_condition",
+        "testimonial_2_quote",
+        "testimonial_2_author",
+        "testimonial_2_condition",
+        "testimonial_3_quote",
+        "testimonial_3_author",
+        "testimonial_3_condition"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "track": ".testimonial-track",
+        "slide": ".testimonial-slide",
+        "quote": ".testimonial-quote",
+        "author": ".testimonial-author",
+        "condition": ".testimonial-condition",
+        "dot": ".testimonial-dot"
+      }
+    },
+    {
+      "id": "certifications",
+      "name": "Accreditations & Trust",
+      "fields": [
+        "cert_eyebrow",
+        "cert_title",
+        "cert_intro",
+        "cert_1_name",
+        "cert_1_desc",
+        "cert_2_name",
+        "cert_2_desc",
+        "cert_3_name",
+        "cert_3_desc",
+        "cert_4_name",
+        "cert_4_desc",
+        "cert_5_name",
+        "cert_5_desc",
+        "cert_6_name",
+        "cert_6_desc"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.cert-heading",
+        "intro": ".cert-intro",
+        "grid": ".cert-grid",
+        "item": ".cert-item",
+        "cert_name": ".cert-name",
+        "cert_description": ".cert-desc"
+      }
+    },
+    {
+      "id": "cta_banner",
+      "name": "CTA Banner",
+      "fields": [
+        "cta_banner_eyebrow",
+        "cta_banner_title",
+        "cta_banner_subtitle",
+        "cta_banner_cta"
+      ],
+      "elements": {
+        "eyebrow": ".cta-eyebrow",
+        "heading": "h2.cta-title",
+        "subheading": "p.cta-subtitle",
+        "primary_button": "a.cta-button"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact & Location",
+      "fields": [
+        "contact_eyebrow",
+        "contact_title",
+        "contact_intro",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "contact_hours",
+        "contact_emergency",
+        "contact_form_title",
+        "form_submit_text",
+        "form_success_message"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".contact-intro",
+        "info_label": ".contact-item-label",
+        "info_value": ".contact-item-value",
+        "emergency": ".contact-emergency",
+        "form": ".contact-form",
+        "form_field": ".form-field",
+        "form_label": ".form-field label",
+        "form_input": ".form-field input, .form-field textarea, .form-field select",
+        "primary_button": "button.form-submit",
+        "success_message": "#form-success"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book a Consultation",
+      "fields": [
+        "booking_title",
+        "booking_intro",
+        "booking_cta"
+      ],
+      "elements": {
+        "heading": "h2.booking-h2",
+        "intro": ".booking-intro",
+        "form": ".booking-form",
+        "submit_button": "button.booking-submit",
+        "date_input": "input[name=\"preferred_date\"]",
+        "time_slot": ".booking-slot"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".blog-intro",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card-title",
+        "post_excerpt": ".blog-card-excerpt",
+        "cta": ".blog-cta"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "fields": [
+        "gallery_eyebrow",
+        "gallery_title",
+        "gallery_intro",
+        "gallery_1",
+        "gallery_2",
+        "gallery_3",
+        "gallery_4",
+        "gallery_5"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".gallery-intro",
+        "grid": ".gallery-grid",
+        "item": ".gallery-item"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "fields": [
+        "business_name",
+        "footer_tagline",
+        "footer_text",
+        "social_facebook",
+        "social_instagram",
+        "social_linkedin"
+      ],
+      "elements": {
+        "logo": ".footer-logo",
+        "tagline": ".footer-tagline",
+        "links": ".footer-links",
+        "link": ".footer-links li a",
+        "social": ".footer-social",
+        "social_link": ".footer-social a",
+        "copy": ".footer-copy"
+      }
+    }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Clinic Name",
+      "default": "Beacon Tutoring"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Private Tutoring & Coaching \u00b7 Dubai"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Beacon Tutoring \u2014 private one-to-one tutoring and small-group coaching in Dubai for primary, secondary, and IB students. Maths, sciences, English, university prep."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://tutoring.example.com"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/tutoring.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Book a Free Trial"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Private Tutoring & Coaching \u00b7 Dubai"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Title",
+      "default": "Tutoring<br><em>that actually works.</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "Private one-to-one tutoring and small-group coaching for primary, secondary, and IB students \u2014 diagnostic-first, mastery-based, with weekly parent updates."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Primary CTA",
+      "default": "Book a Free Trial"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Secondary CTA",
+      "default": "View Subjects"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/builder-heroes/tutoring.jpg"
+    },
+    "hero_trust_badge": {
+      "type": "text",
+      "label": "Hero Trust Badge",
+      "default": "KHDA Approved \u00b7 IB Specialists \u00b7 95% Grade Improvement"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "12yr"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Trading"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "450+"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Students"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "28"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Tutors"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "95%"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Grade \u2191"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "Subjects"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Services Title",
+      "default": "Six subjects,<br><em>covered properly.</em>"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "What we teach \u2014 primary through to IB and university prep, with senior tutors specialised in each subject."
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Mathematics"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Text",
+      "default": "Primary maths, GCSE, IGCSE, A-Level, IB Maths AA/AI HL, and university-level \u2014 pure, applied, statistics, and STEP/MAT prep."
+    },
+    "service_1_tag_1": {
+      "type": "text",
+      "label": "Service 1 Tag 1",
+      "default": "GCSE"
+    },
+    "service_1_tag_2": {
+      "type": "text",
+      "label": "Service 1 Tag 2",
+      "default": "A-Level"
+    },
+    "service_1_tag_3": {
+      "type": "text",
+      "label": "Service 1 Tag 3",
+      "default": "IB"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "Sciences"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Text",
+      "default": "Physics, chemistry, biology \u2014 KS3 through A-Level and IB HL \u2014 including practical preparation and exam technique."
+    },
+    "service_2_tag_1": {
+      "type": "text",
+      "label": "Service 2 Tag 1",
+      "default": "Physics"
+    },
+    "service_2_tag_2": {
+      "type": "text",
+      "label": "Service 2 Tag 2",
+      "default": "Chemistry"
+    },
+    "service_2_tag_3": {
+      "type": "text",
+      "label": "Service 2 Tag 3",
+      "default": "Biology"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "English"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Text",
+      "default": "Primary literacy, GCSE/IGCSE English Language and Literature, A-Level, IB English A and B, plus EAL coaching for international students."
+    },
+    "service_3_tag_1": {
+      "type": "text",
+      "label": "Service 3 Tag 1",
+      "default": "Literature"
+    },
+    "service_3_tag_2": {
+      "type": "text",
+      "label": "Service 3 Tag 2",
+      "default": "Language"
+    },
+    "service_3_tag_3": {
+      "type": "text",
+      "label": "Service 3 Tag 3",
+      "default": "EAL"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Languages"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Text",
+      "default": "French, Spanish, Arabic \u2014 IGCSE, A-Level, IB ab initio through HL. Native and near-native tutors only."
+    },
+    "service_4_tag_1": {
+      "type": "text",
+      "label": "Service 4 Tag 1",
+      "default": "French"
+    },
+    "service_4_tag_2": {
+      "type": "text",
+      "label": "Service 4 Tag 2",
+      "default": "Spanish"
+    },
+    "service_4_tag_3": {
+      "type": "text",
+      "label": "Service 4 Tag 3",
+      "default": "Arabic"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "University Prep"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Text",
+      "default": "SAT, ACT, UCAT, BMAT, IELTS, TOEFL, plus US and UK university applications, personal statements, interview prep."
+    },
+    "service_5_tag_1": {
+      "type": "text",
+      "label": "Service 5 Tag 1",
+      "default": "SAT"
+    },
+    "service_5_tag_2": {
+      "type": "text",
+      "label": "Service 5 Tag 2",
+      "default": "UCAT"
+    },
+    "service_5_tag_3": {
+      "type": "text",
+      "label": "Service 5 Tag 3",
+      "default": "Apps"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "11+ & Selective Entry"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Text",
+      "default": "Entrance exam preparation for selective UK independent schools \u2014 verbal, non-verbal, English, maths, interview practice."
+    },
+    "service_6_tag_1": {
+      "type": "text",
+      "label": "Service 6 Tag 1",
+      "default": "11+"
+    },
+    "service_6_tag_2": {
+      "type": "text",
+      "label": "Service 6 Tag 2",
+      "default": "Schools"
+    },
+    "service_6_tag_3": {
+      "type": "text",
+      "label": "Service 6 Tag 3",
+      "default": "Interview"
+    },
+    "doctors_eyebrow": {
+      "type": "text",
+      "label": "Doctors Eyebrow",
+      "default": "Our Tutors"
+    },
+    "doctors_title": {
+      "type": "html",
+      "label": "Doctors Title",
+      "default": "Senior tutors,<br><em>not students.</em>"
+    },
+    "doctors_intro": {
+      "type": "text",
+      "label": "Doctors Intro",
+      "default": "Twenty-eight tutors, all degree-holding subject specialists, each with a minimum of three years of teaching or tutoring experience."
+    },
+    "doctor_1_name": {
+      "type": "text",
+      "label": "Doctor 1 Name",
+      "default": "Dr. Sarah Whitfield"
+    },
+    "doctor_1_title": {
+      "type": "text",
+      "label": "Doctor 1 Title",
+      "default": "Director & Maths Lead"
+    },
+    "doctor_1_specialty": {
+      "type": "text",
+      "label": "Doctor 1 Specialty",
+      "default": "Maths \u00b7 IB & A-Level"
+    },
+    "doctor_1_bio": {
+      "type": "text",
+      "label": "Doctor 1 Bio",
+      "default": "Cambridge Maths PhD \u2014 twenty years tutoring, founded Beacon in 2013."
+    },
+    "doctor_1_image": {
+      "type": "image",
+      "label": "Doctor 1 Image",
+      "default": "/storage/builder-heroes/tutoring.jpg"
+    },
+    "doctor_2_name": {
+      "type": "text",
+      "label": "Doctor 2 Name",
+      "default": "Adam Rashid"
+    },
+    "doctor_2_title": {
+      "type": "text",
+      "label": "Doctor 2 Title",
+      "default": "Sciences Lead"
+    },
+    "doctor_2_specialty": {
+      "type": "text",
+      "label": "Doctor 2 Specialty",
+      "default": "Physics \u00b7 Chemistry"
+    },
+    "doctor_2_bio": {
+      "type": "text",
+      "label": "Doctor 2 Bio",
+      "default": "Imperial College Physics \u2014 six years teaching, IB and A-Level specialist."
+    },
+    "doctor_2_image": {
+      "type": "image",
+      "label": "Doctor 2 Image",
+      "default": "/storage/builder-heroes/tutoring.jpg"
+    },
+    "doctor_3_name": {
+      "type": "text",
+      "label": "Doctor 3 Name",
+      "default": "Helen Marquez"
+    },
+    "doctor_3_title": {
+      "type": "text",
+      "label": "Doctor 3 Title",
+      "default": "English Lead"
+    },
+    "doctor_3_specialty": {
+      "type": "text",
+      "label": "Doctor 3 Specialty",
+      "default": "Literature \u00b7 Language"
+    },
+    "doctor_3_bio": {
+      "type": "text",
+      "label": "Doctor 3 Bio",
+      "default": "Oxford English DPhil \u2014 eight years across IB and Cambridge curricula."
+    },
+    "doctor_3_image": {
+      "type": "image",
+      "label": "Doctor 3 Image",
+      "default": "/storage/builder-heroes/tutoring.jpg"
+    },
+    "doctor_4_name": {
+      "type": "text",
+      "label": "Doctor 4 Name",
+      "default": "Pierre Lambert"
+    },
+    "doctor_4_title": {
+      "type": "text",
+      "label": "Doctor 4 Title",
+      "default": "University Prep Lead"
+    },
+    "doctor_4_specialty": {
+      "type": "text",
+      "label": "Doctor 4 Specialty",
+      "default": "SAT \u00b7 UK & US Apps"
+    },
+    "doctor_4_bio": {
+      "type": "text",
+      "label": "Doctor 4 Bio",
+      "default": "Yale alum \u2014 runs the university applications programme, personal statement reviews."
+    },
+    "doctor_4_image": {
+      "type": "image",
+      "label": "Doctor 4 Image",
+      "default": "/storage/builder-heroes/tutoring.jpg"
+    },
+    "process_eyebrow": {
+      "type": "text",
+      "label": "Process Eyebrow",
+      "default": "How It Works"
+    },
+    "process_title": {
+      "type": "html",
+      "label": "Process Title",
+      "default": "From trial<br><em>to top grades.</em>"
+    },
+    "process_1_title": {
+      "type": "text",
+      "label": "Step 1 Title",
+      "default": "Diagnose"
+    },
+    "process_1_text": {
+      "type": "text",
+      "label": "Step 1 Text",
+      "default": "A free 60-minute trial with a senior tutor \u2014 diagnostic assessment, gap analysis, recommended programme."
+    },
+    "process_2_title": {
+      "type": "text",
+      "label": "Step 2 Title",
+      "default": "Programme"
+    },
+    "process_2_text": {
+      "type": "text",
+      "label": "Step 2 Text",
+      "default": "A tailored weekly programme \u2014 number of sessions, subject focus, parent communication cadence, target grades."
+    },
+    "process_3_title": {
+      "type": "text",
+      "label": "Step 3 Title",
+      "default": "Tutor"
+    },
+    "process_3_text": {
+      "type": "text",
+      "label": "Step 3 Text",
+      "default": "One-to-one or small-group sessions, in-person at our centre or online \u2014 with the same tutor week-on-week for continuity."
+    },
+    "process_4_title": {
+      "type": "text",
+      "label": "Step 4 Title",
+      "default": "Track"
+    },
+    "process_4_text": {
+      "type": "text",
+      "label": "Step 4 Text",
+      "default": "Weekly written progress note to parents, monthly mock assessments, half-termly progress reviews with the tutor lead."
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Patient Stories"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Title",
+      "default": "Patients,<br><em>in their words.</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Dr. Rahman took the time to actually listen \u2014 the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Hana Y. \u2014 Dubai Marina"
+    },
+    "testimonial_1_condition": {
+      "type": "text",
+      "label": "Testimonial 1 Condition",
+      "default": "Family Medicine"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Dr. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Ahmed & Laila K."
+    },
+    "testimonial_2_condition": {
+      "type": "text",
+      "label": "Testimonial 2 Condition",
+      "default": "Paediatrics"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Heart palpitations had three previous doctors shrug and send me home. Dr. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Roberto P. \u2014 JLT"
+    },
+    "testimonial_3_condition": {
+      "type": "text",
+      "label": "Testimonial 3 Condition",
+      "default": "Cardiology"
+    },
+    "cert_eyebrow": {
+      "type": "text",
+      "label": "Cert Eyebrow",
+      "default": "Trust"
+    },
+    "cert_title": {
+      "type": "text",
+      "label": "Cert Title",
+      "default": "Properly accredited"
+    },
+    "cert_intro": {
+      "type": "text",
+      "label": "Cert Intro",
+      "default": "Tutoring run to UK and KHDA standards \u2014 your child is in safe hands."
+    },
+    "cert_1_name": {
+      "type": "text",
+      "label": "Cert 1 Name",
+      "default": "KHDA Approved"
+    },
+    "cert_1_desc": {
+      "type": "text",
+      "label": "Cert 1 Desc",
+      "default": "Dubai Knowledge & Human Development Authority approved education provider"
+    },
+    "cert_2_name": {
+      "type": "text",
+      "label": "Cert 2 Name",
+      "default": "DBS Checked"
+    },
+    "cert_2_desc": {
+      "type": "text",
+      "label": "Cert 2 Desc",
+      "default": "All UK tutors hold enhanced DBS background checks"
+    },
+    "cert_3_name": {
+      "type": "text",
+      "label": "Cert 3 Name",
+      "default": "Tutors' Association"
+    },
+    "cert_3_desc": {
+      "type": "text",
+      "label": "Cert 3 Desc",
+      "default": "Member of The Tutors' Association \u2014 UK professional body for private tuition"
+    },
+    "cert_4_name": {
+      "type": "text",
+      "label": "Cert 4 Name",
+      "default": "Safeguarding"
+    },
+    "cert_4_desc": {
+      "type": "text",
+      "label": "Cert 4 Desc",
+      "default": "Designated Safeguarding Lead in every centre \u2014 annual training for all staff"
+    },
+    "cert_5_name": {
+      "type": "text",
+      "label": "Cert 5 Name",
+      "default": "ISO 9001"
+    },
+    "cert_5_desc": {
+      "type": "text",
+      "label": "Cert 5 Desc",
+      "default": "Quality management system certified annually"
+    },
+    "cert_6_name": {
+      "type": "text",
+      "label": "Cert 6 Name",
+      "default": "95% Grade Lift"
+    },
+    "cert_6_desc": {
+      "type": "text",
+      "label": "Cert 6 Desc",
+      "default": "Average two-grade improvement on target grades across our 2024 cohort"
+    },
+    "cta_banner_eyebrow": {
+      "type": "text",
+      "label": "CTA Banner Eyebrow",
+      "default": "Same-day appointments"
+    },
+    "cta_banner_title": {
+      "type": "html",
+      "label": "CTA Banner Title",
+      "default": "Ready when you are."
+    },
+    "cta_banner_subtitle": {
+      "type": "text",
+      "label": "CTA Banner Subtitle",
+      "default": "Get in touch \u2014 we'll respond within an hour during business hours."
+    },
+    "cta_banner_cta": {
+      "type": "text",
+      "label": "CTA Banner CTA",
+      "default": "Book a Free Trial"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "Contact"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Title",
+      "default": "Visit or<br><em>call us.</em>"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "We reply to all enquiries within thirty minutes during opening hours."
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Contact Email",
+      "default": "reception@atrium-clinic.ae"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Contact Phone",
+      "default": "+971 4 000 0000"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Contact Address",
+      "default": "Dubai Healthcare City, Block F, Floor 3"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Opening Hours",
+      "default": "Mon\u2013Sat \u00b7 8am\u20138pm  \u00b7  Sun \u00b7 10am\u20134pm"
+    },
+    "contact_emergency": {
+      "type": "text",
+      "label": "Emergency Line",
+      "default": "For medical emergencies dial 998 (Dubai Police / Ambulance)."
+    },
+    "contact_form_title": {
+      "type": "html",
+      "label": "Form Title",
+      "default": "Request a<br><em>callback.</em>"
+    },
+    "form_submit_text": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Request Callback \u2192"
+    },
+    "form_success_message": {
+      "type": "text",
+      "label": "Success Message",
+      "default": "\u2713 Thank you. Reception will call you back within thirty minutes."
+    },
+    "booking_title": {
+      "type": "html",
+      "label": "Booking Title",
+      "default": "Book a<br><em>consultation.</em>"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Choose a specialty, a doctor if you have a preference, and a time that suits you. We'll confirm within thirty minutes."
+    },
+    "booking_cta": {
+      "type": "text",
+      "label": "Booking CTA",
+      "default": "Book Consultation"
+    },
+    "booking_display": {
+      "type": "text",
+      "label": "Booking Display",
+      "default": ""
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Tutoring & Coaching \u2014 Private Tutoring & Coaching \u00b7 Dubai."
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Copyright",
+      "default": "\u00a9 2026 Beacon Tutoring. All rights reserved."
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Chalk (Background)",
+      "default": "#FFFFFF"
+    },
+    "chalk_soft": {
+      "type": "color",
+      "label": "Soft Background",
+      "default": "#F7FAFC"
+    },
+    "carbon": {
+      "type": "color",
+      "label": "Ink (Primary Text)",
+      "default": "#0F1A2A"
+    },
+    "carbon_soft": {
+      "type": "color",
+      "label": "Soft Ink",
+      "default": "#344458"
+    },
+    "medical_blue": {
+      "type": "color",
+      "label": "Medical Blue",
+      "default": "#7C3AED"
+    },
+    "medical_deep": {
+      "type": "color",
+      "label": "Medical Deep",
+      "default": "#5B21B6"
+    },
+    "sage": {
+      "type": "color",
+      "label": "Sage Accent",
+      "default": "#DDD6FE"
+    },
+    "sage_soft": {
+      "type": "color",
+      "label": "Sage Soft",
+      "default": "#D6E4DD"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#6B7A8F"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#E2E8F0"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "From the<br><em>journal.</em>"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Practical guides, expert opinion, and behind-the-scenes notes \u2014 written by our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first appointment"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through of the first visit \u2014 from arrival to follow-up \u2014 so you know exactly what to expect."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-appointment"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking your provider"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard \u2014 but rarely are. Use this as a checklist before any consultation."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for unhurried appointments"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why a thirty-minute consultation isn't a luxury \u2014 it's the bare minimum for thoughtful care."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/unhurried"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "Read More \u2192"
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "Gallery"
+    },
+    "gallery_title": {
+      "type": "html",
+      "label": "Gallery Title",
+      "default": "From the<br><em>archive.</em>"
+    },
+    "gallery_intro": {
+      "type": "text",
+      "label": "Gallery Intro",
+      "default": "Recent moments \u2014 captured for posterity."
+    },
+    "gallery_1": {
+      "type": "image",
+      "label": "Gallery Image 1",
+      "default": "/storage/template-images/tutoring/gallery_1.jpg"
+    },
+    "gallery_2": {
+      "type": "image",
+      "label": "Gallery Image 2",
+      "default": "/storage/template-images/tutoring/gallery_2.jpg"
+    },
+    "gallery_3": {
+      "type": "image",
+      "label": "Gallery Image 3",
+      "default": "/storage/template-images/tutoring/gallery_3.jpg"
+    },
+    "gallery_4": {
+      "type": "image",
+      "label": "Gallery Image 4",
+      "default": "/storage/template-images/tutoring/gallery_4.jpg"
+    },
+    "gallery_5": {
+      "type": "image",
+      "label": "Gallery Image 5",
+      "default": "/storage/template-images/tutoring/gallery_5.jpg"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ]
+}

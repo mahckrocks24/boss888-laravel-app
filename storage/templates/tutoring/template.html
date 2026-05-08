@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>{{business_name}} — Private Medical Care</title>
+<meta name="title" content="{{business_name}} — Private Medical Care">
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{canonical_url}}">
+<meta property="og:title" content="{{business_name}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:site_name" content="{{business_name}}">
+<meta property="og:locale" content="{{og_locale}}">
+<meta property="og:image" content="{{og_image}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{business_name}}">
+<meta name="twitter:description" content="{{meta_description}}">
+<meta name="twitter:image" content="{{og_image}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --chalk: {{chalk}};
+  --chalk-soft: {{chalk_soft}};
+  --carbon: {{carbon}};
+  --carbon-soft: {{carbon_soft}};
+  --medical: {{medical_blue}};
+  --medical-deep: {{medical_deep}};
+  --sage: {{sage}};
+  --sage-soft: {{sage_soft}};
+  --warm-grey: {{warm_grey}};
+  --divider: {{divider}};
+  --fh: 'Source Serif Pro', Georgia, serif;
+  --fb: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--fb); background: var(--chalk); color: var(--carbon); line-height: 1.55; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; color: var(--carbon); }
+
+.section { padding: 6.5rem 2rem; max-width: 1240px; margin: 0 auto; }
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 1rem; }
+.section-h2 { font-size: clamp(2rem, 3.2vw, 2.8rem); line-height: 1.18; font-weight: 500; color: var(--carbon); margin-bottom: 1.2rem; letter-spacing: -0.01em; }
+.section-h2 em { font-style: italic; color: var(--medical); font-weight: 500; }
+
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.8s cubic-bezier(.2,.8,.2,1), transform 0.8s cubic-bezier(.2,.8,.2,1); }
+.reveal.visible { opacity: 1; transform: none; }
+.reveal-delay-1 { transition-delay: 0.08s; }
+.reveal-delay-2 { transition-delay: 0.16s; }
+.reveal-delay-3 { transition-delay: 0.24s; }
+.reveal-delay-4 { transition-delay: 0.32s; }
+
+/* ── NAV ──────────────────────────────────────────────────── */
+#main-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem 2.5rem;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: border-bottom .3s, padding .3s, background .3s;
+}
+#main-nav.scrolled { border-bottom-color: var(--divider); padding: 0.75rem 2.5rem; }
+.nav-logo { font-family: var(--fh); font-size: 1.3rem; font-weight: 600; color: var(--carbon); letter-spacing: -0.005em; }
+.nav-links { display: flex; gap: 2.25rem; list-style: none; }
+.nav-links a { font-size: 0.85rem; color: var(--carbon-soft); font-weight: 500; transition: color .2s; }
+.nav-links a:hover { color: var(--medical); }
+.nav-cta {
+  display: inline-block; padding: 0.75rem 1.4rem;
+  background: var(--medical); color: #fff;
+  font-size: 0.82rem; font-weight: 600; letter-spacing: -0.005em;
+  border-radius: 8px; transition: background .2s, transform .2s;
+}
+.nav-cta:hover { background: var(--medical-deep); transform: translateY(-1px); }
+.nav-burger { display: none; background: none; border: none; padding: 0; cursor: pointer; }
+.nav-burger span { display: block; width: 24px; height: 2px; background: var(--carbon); margin: 5px 0; border-radius: 1px; }
+
+/* ── HERO ─────────────────────────────────────────────────── */
+.hero { position: relative; min-height: 92vh; display: flex; align-items: center; overflow: hidden; background: var(--chalk-soft); }
+.hero-media { position: absolute; inset: 0; z-index: 0; }
+.hero-media img { width: 100%; height: 100%; object-fit: cover; opacity: 0.28; }
+.hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, rgba(255,255,255,.92) 0%, rgba(255,255,255,.75) 55%, rgba(255,255,255,.45) 100%); z-index: 1; pointer-events: none; }
+.hero-inner { position: relative; z-index: 2; max-width: 1240px; margin: 0 auto; padding: 0 2.5rem; width: 100%; }
+.hero-eyebrow { font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 1.3rem; }
+.hero-h1 { font-family: var(--fh); font-size: clamp(2.6rem, 5vw, 4.4rem); line-height: 1.08; font-weight: 500; color: var(--carbon); letter-spacing: -0.02em; margin-bottom: 1.6rem; max-width: 17ch; }
+.hero-h1 em { font-style: italic; color: var(--medical); font-weight: 500; }
+.hero-sub { font-size: 1.1rem; color: var(--carbon-soft); max-width: 52ch; margin-bottom: 2.2rem; line-height: 1.6; }
+.hero-actions { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.btn-primary {
+  display: inline-block; padding: 1rem 1.8rem;
+  background: var(--medical); color: #fff;
+  font-size: 0.9rem; font-weight: 600; border-radius: 10px;
+  transition: background .2s, transform .2s;
+}
+.btn-primary:hover { background: var(--medical-deep); transform: translateY(-1px); }
+.btn-ghost {
+  display: inline-block; padding: 1rem 1.8rem;
+  border: 1px solid var(--divider); color: var(--carbon);
+  font-size: 0.9rem; font-weight: 600; border-radius: 10px;
+  transition: border-color .2s, color .2s;
+}
+.btn-ghost:hover { border-color: var(--medical); color: var(--medical); }
+.hero-trust { font-size: 0.78rem; color: var(--warm-grey); letter-spacing: 0.02em; }
+
+/* ── STATS ────────────────────────────────────────────────── */
+.stats-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+  padding: 3.5rem 2.5rem;
+  background: var(--chalk-soft);
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+}
+.stat-item { padding: 1rem 2rem; border-right: 1px solid var(--divider); text-align: left; }
+.stat-item:last-child { border-right: none; }
+.stat-num { display: block; font-family: var(--fh); font-size: clamp(2rem, 3.2vw, 2.8rem); font-weight: 500; color: var(--medical); line-height: 1; margin-bottom: 0.4rem; }
+.stat-label { display: block; font-size: 0.78rem; color: var(--warm-grey); font-weight: 500; }
+
+/* ── SERVICES ─────────────────────────────────────────────── */
+.services { padding: 7rem 2.5rem; max-width: 1240px; margin: 0 auto; }
+.services-hdr { margin-bottom: 3.5rem; max-width: 640px; }
+.services-intro { font-size: 1rem; color: var(--carbon-soft); line-height: 1.65; margin-top: 0.5rem; }
+.service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+.service-card { background: var(--chalk); border: 1px solid var(--divider); border-radius: 12px; padding: 2rem 1.8rem; transition: border-color .2s, box-shadow .25s, transform .25s; }
+.service-card:hover { border-color: var(--medical); box-shadow: 0 12px 32px rgba(30,111,191,0.08); transform: translateY(-2px); }
+.service-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--sage-soft); display: flex; align-items: center; justify-content: center; color: var(--medical-deep); font-size: 22px; margin-bottom: 1.2rem; font-weight: 600; }
+.service-title { font-family: var(--fh); font-size: 1.35rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.7rem; }
+.service-desc { font-size: 0.92rem; color: var(--carbon-soft); line-height: 1.6; margin-bottom: 1.2rem; }
+.service-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.service-tag { font-size: 0.7rem; color: var(--medical); padding: 0.25rem 0.65rem; background: var(--sage-soft); border-radius: 20px; font-weight: 500; }
+
+/* ── DOCTORS ──────────────────────────────────────────────── */
+.doctors { background: var(--chalk-soft); padding: 7rem 2.5rem; border-top: 1px solid var(--divider); }
+.doctors-inner { max-width: 1240px; margin: 0 auto; }
+.doctors-hdr { margin-bottom: 3.5rem; max-width: 640px; }
+.doctors-intro { font-size: 1rem; color: var(--carbon-soft); line-height: 1.65; margin-top: 0.5rem; }
+.doctor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+.doctor-card { background: var(--chalk); border-radius: 14px; overflow: hidden; border: 1px solid var(--divider); transition: transform .25s, box-shadow .25s; }
+.doctor-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(15,26,42,0.1); }
+.doctor-photo { aspect-ratio: 1/1; overflow: hidden; background: var(--sage-soft); }
+.doctor-photo img { width: 100%; height: 100%; object-fit: cover; }
+.doctor-info { padding: 1.25rem 1.25rem 1.5rem; }
+.doctor-specialty { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 0.5rem; }
+.doctor-name { font-family: var(--fh); font-size: 1.15rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.15rem; }
+.doctor-role { font-size: 0.82rem; color: var(--warm-grey); margin-bottom: 0.8rem; font-weight: 500; }
+.doctor-bio { font-size: 0.85rem; color: var(--carbon-soft); line-height: 1.55; }
+
+/* ── PROCESS ──────────────────────────────────────────────── */
+.process { padding: 7rem 2.5rem; max-width: 1240px; margin: 0 auto; }
+.process-hdr { margin-bottom: 3.5rem; max-width: 640px; }
+.process-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; position: relative; }
+.process-step { position: relative; padding: 2rem 1.5rem 1.5rem; background: var(--chalk); border: 1px solid var(--divider); border-radius: 12px; }
+.process-num { font-family: var(--fh); font-style: italic; font-size: 2.2rem; font-weight: 500; color: var(--medical); line-height: 1; margin-bottom: 0.8rem; }
+.process-title { font-family: var(--fh); font-size: 1.2rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.6rem; }
+.process-desc { font-size: 0.9rem; color: var(--carbon-soft); line-height: 1.6; }
+
+/* ── TESTIMONIALS ─────────────────────────────────────────── */
+.testimonials { background: var(--chalk-soft); padding: 7rem 2.5rem; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider); }
+.testimonials-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+.testimonial-track { position: relative; min-height: 240px; margin-top: 2rem; }
+.testimonial-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .55s; display: flex; flex-direction: column; justify-content: center; }
+.testimonial-slide.active { opacity: 1; position: relative; }
+.testimonial-quote { font-family: var(--fh); font-style: italic; font-size: clamp(1.25rem, 1.9vw, 1.55rem); line-height: 1.5; color: var(--carbon); margin-bottom: 1.8rem; max-width: 44ch; margin-left: auto; margin-right: auto; }
+.testimonial-author { font-size: 0.88rem; color: var(--carbon); font-weight: 600; }
+.testimonial-condition { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-top: 0.25rem; }
+.testimonial-dots { display: flex; gap: 0.4rem; justify-content: center; margin-top: 1.5rem; }
+.testimonial-dot { width: 24px; height: 3px; background: var(--divider); border: none; padding: 0; cursor: pointer; border-radius: 2px; transition: background .3s; }
+.testimonial-dot.active { background: var(--medical); }
+
+/* ── CERTIFICATIONS ───────────────────────────────────────── */
+.certifications { padding: 6rem 2.5rem; max-width: 1240px; margin: 0 auto; }
+.cert-hdr { text-align: center; margin-bottom: 3rem; }
+.cert-hdr .eyebrow { justify-content: center; }
+.cert-heading { font-family: var(--fh); font-size: 1.8rem; font-weight: 500; color: var(--carbon); margin-bottom: 0.7rem; }
+.cert-intro { font-size: 0.95rem; color: var(--carbon-soft); max-width: 50ch; margin: 0 auto; }
+.cert-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.cert-item { background: var(--chalk); border: 1px solid var(--divider); border-radius: 10px; padding: 1.4rem 1.3rem; display: flex; gap: 1rem; align-items: flex-start; transition: border-color .2s; }
+.cert-item:hover { border-color: var(--sage); }
+.cert-check { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--sage-soft); color: var(--medical-deep); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
+.cert-body { flex: 1; }
+.cert-name { font-size: 0.98rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.25rem; }
+.cert-desc { font-size: 0.82rem; color: var(--carbon-soft); line-height: 1.5; }
+
+/* ── CTA BANNER ───────────────────────────────────────────── */
+.cta-banner { background: var(--medical); color: #fff; padding: 5rem 2.5rem; text-align: center; }
+.cta-banner-inner { max-width: 720px; margin: 0 auto; }
+.cta-eyebrow { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sage-soft); font-weight: 600; margin-bottom: 1rem; }
+.cta-title { font-family: var(--fh); font-size: clamp(1.9rem, 3.2vw, 2.6rem); font-weight: 500; color: #fff; line-height: 1.15; margin-bottom: 1rem; }
+.cta-subtitle { font-size: 1rem; color: rgba(255,255,255,.92); max-width: 48ch; margin: 0 auto 1.8rem; line-height: 1.6; }
+.cta-button {
+  display: inline-block; padding: 1rem 2rem;
+  background: #fff; color: var(--medical-deep);
+  font-size: 0.9rem; font-weight: 600; border-radius: 10px;
+  transition: transform .2s, background .2s;
+}
+.cta-button:hover { background: var(--chalk-soft); transform: translateY(-1px); }
+
+/* ── CONTACT ──────────────────────────────────────────────── */
+.contact { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; padding: 7rem 2.5rem; max-width: 1240px; margin: 0 auto; }
+.contact-intro { font-size: 1rem; color: var(--carbon-soft); line-height: 1.65; margin-bottom: 2rem; max-width: 40ch; }
+.contact-info { display: flex; flex-direction: column; gap: 1.3rem; margin-bottom: 1.5rem; }
+.contact-item { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 1rem; border-bottom: 1px solid var(--divider); }
+.contact-item-label { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--warm-grey); font-weight: 600; }
+.contact-item-value { font-size: 1rem; color: var(--carbon); }
+.contact-emergency { background: var(--sage-soft); color: var(--medical-deep); padding: 0.9rem 1.2rem; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; border-left: 3px solid var(--medical); }
+
+.contact-right { background: var(--chalk-soft); padding: 2.5rem 2.2rem; border-radius: 14px; border: 1px solid var(--divider); }
+.contact-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+.form-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.form-field.full { grid-column: 1 / -1; }
+.form-field label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--warm-grey); font-weight: 600; }
+.form-field input, .form-field select, .form-field textarea {
+  padding: 0.8rem 1rem;
+  background: var(--chalk);
+  border: 1px solid var(--divider);
+  color: var(--carbon);
+  font-family: inherit;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  transition: border-color .2s;
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus { outline: none; border-color: var(--medical); }
+.form-field textarea { min-height: 110px; resize: vertical; }
+.form-submit {
+  grid-column: 1 / -1;
+  padding: 1rem 2rem;
+  background: var(--medical); color: #fff;
+  border: none; border-radius: 10px;
+  font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; transition: background .2s, transform .2s;
+  font-family: inherit;
+}
+.form-submit:hover { background: var(--medical-deep); transform: translateY(-1px); }
+#form-success { grid-column: 1 / -1; color: var(--medical); font-size: 0.9rem; margin-top: 1rem; font-weight: 500; }
+
+/* ── BOOKING ──────────────────────────────────────────────── */
+.booking-section { padding: 6rem 2.5rem; max-width: 780px; margin: 0 auto; }
+.booking-h2 { margin-bottom: 1.2rem; }
+.booking-intro { font-size: 1rem; color: var(--carbon-soft); margin-bottom: 2rem; max-width: 46ch; line-height: 1.65; }
+.booking-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; background: var(--chalk-soft); padding: 2rem; border-radius: 14px; border: 1px solid var(--divider); }
+.booking-form .form-field.full { grid-column: 1 / -1; }
+.booking-time-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.booking-slot { padding: 0.85rem 0.6rem; background: var(--chalk); border: 1px solid var(--divider); border-radius: 8px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+.booking-slot input { display: none; }
+.booking-slot:has(input:checked) { border-color: var(--medical); background: var(--sage-soft); }
+.booking-slot-label { font-size: 0.88rem; color: var(--carbon); font-weight: 600; }
+.booking-slot-time { font-size: 0.7rem; color: var(--warm-grey); margin-top: 0.2rem; }
+.booking-submit {
+  grid-column: 1 / -1;
+  padding: 1rem 2rem;
+  background: var(--medical); color: #fff;
+  border: none; border-radius: 10px;
+  font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; transition: background .2s;
+  font-family: inherit;
+}
+.booking-submit:hover { background: var(--medical-deep); }
+
+/* ── FOOTER ───────────────────────────────────────────────── */
+footer { background: var(--carbon); color: #fff; padding: 4.5rem 2.5rem 2.5rem; }
+.footer-inner { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 3rem; padding-bottom: 2.5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.footer-brand { max-width: 32ch; }
+.footer-logo { font-family: var(--fh); font-size: 1.4rem; font-weight: 600; color: #fff; margin-bottom: 0.8rem; }
+.footer-tagline { font-size: 0.9rem; color: rgba(255,255,255,.55); line-height: 1.6; }
+.footer-col h4 { font-family: var(--fb); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sage); font-weight: 600; margin-bottom: 0.9rem; }
+.footer-links { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }
+.footer-links a { font-size: 0.9rem; color: rgba(255,255,255,.55); transition: color .2s; }
+.footer-links a:hover { color: #fff; }
+.footer-social { display: flex; gap: 1rem; margin-top: 0.4rem; }
+.footer-social a { font-size: 0.82rem; color: rgba(255,255,255,.55); transition: color .2s; }
+.footer-social a:hover { color: var(--sage); }
+.footer-copy { text-align: center; padding-top: 2rem; font-size: 0.8rem; color: rgba(255,255,255,.45); }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 900px) {
+  #main-nav { padding: 0.9rem 1.3rem; }
+  .nav-links, .nav-cta { display: none; }
+  .nav-burger { display: block; }
+  .hero-inner { padding: 0 1.3rem; }
+  .section, .services, .doctors-inner, .process, .certifications { padding: 4.5rem 1.3rem; }
+  .stats-strip { grid-template-columns: 1fr 1fr; padding: 2.5rem 1.3rem; }
+  .stat-item:nth-child(2n) { border-right: none; }
+  .stat-item:nth-child(-n+2) { border-bottom: 1px solid var(--divider); }
+  .service-grid, .doctor-grid, .cert-grid { grid-template-columns: 1fr; }
+  .process-steps { grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .contact, .booking-form, .contact-form { grid-template-columns: 1fr; gap: 2rem; padding-left: 1.3rem; padding-right: 1.3rem; }
+  .contact-right { padding: 2rem 1.5rem; }
+  .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav id="main-nav" data-block="nav">
+  <a href="#" class="nav-logo" data-field="business_name">{{business_name}}</a>
+  <ul class="nav-links">
+    <li><a href="#services">Subjects</a></li>
+    <li><a href="#doctors">How It Works</a></li>
+    <li><a href="#process">Our Tutors</a></li>
+    <li><a href="#gallery">Pricing</a></li>
+    <li><a href="#contact">Free Trial</a></li>
+  </ul>
+  <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
+  <button class="nav-burger" id="burger" aria-label="Menu" onclick="toggleMob()"><span></span><span></span><span></span></button>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" data-block="hero">
+  <div class="hero-media"><img src="{{hero_image}}" alt="{{business_name}}" loading="eager"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</div>
+    <h1 class="hero-h1" data-field="hero_title">{{hero_title}}</h1>
+    <p class="hero-sub" data-field="hero_subtitle">{{hero_subtitle}}</p>
+    <div class="hero-actions">
+      <a href="#booking" class="btn-primary" data-field="hero_cta">{{hero_cta}}</a>
+      <a href="#doctors" class="btn-ghost" data-field="hero_cta_secondary">{{hero_cta_secondary}}</a>
+    </div>
+    <div class="hero-trust" data-field="hero_trust_badge">✓ {{hero_trust_badge}}</div>
+  </div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<div class="stats-strip" data-block="stats">
+  <div class="stat-item reveal"><span class="stat-num" data-field="stat_1_value">{{stat_1_value}}</span><span class="stat-label" data-field="stat_1_label">{{stat_1_label}}</span></div>
+  <div class="stat-item reveal reveal-delay-1"><span class="stat-num" data-field="stat_2_value">{{stat_2_value}}</span><span class="stat-label" data-field="stat_2_label">{{stat_2_label}}</span></div>
+  <div class="stat-item reveal reveal-delay-2"><span class="stat-num" data-field="stat_3_value">{{stat_3_value}}</span><span class="stat-label" data-field="stat_3_label">{{stat_3_label}}</span></div>
+  <div class="stat-item reveal reveal-delay-3"><span class="stat-num" data-field="stat_4_value">{{stat_4_value}}</span><span class="stat-label" data-field="stat_4_label">{{stat_4_label}}</span></div>
+</div>
+
+<!-- ═══ SERVICES / SPECIALTIES ═══ -->
+<section class="services" id="services" data-block="services">
+  <div class="services-hdr">
+    <div class="eyebrow reveal"><span data-field="services_eyebrow">{{services_eyebrow}}</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="services_title">{{services_title}}</h2>
+    <p class="services-intro reveal reveal-delay-2" data-field="services_intro">{{services_intro}}</p>
+  </div>
+  <div class="service-grid">
+    <div class="service-card reveal">
+      <div class="service-icon">+</div>
+      <div class="service-title" data-field="service_1_title">{{service_1_title}}</div>
+      <p class="service-desc" data-field="service_1_text">{{service_1_text}}</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_1_tag_1">{{service_1_tag_1}}</span>
+        <span class="service-tag" data-field="service_1_tag_2">{{service_1_tag_2}}</span>
+        <span class="service-tag" data-field="service_1_tag_3">{{service_1_tag_3}}</span>
+      </div>
+    </div>
+    <div class="service-card reveal reveal-delay-1">
+      <div class="service-icon">♥</div>
+      <div class="service-title" data-field="service_2_title">{{service_2_title}}</div>
+      <p class="service-desc" data-field="service_2_text">{{service_2_text}}</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_2_tag_1">{{service_2_tag_1}}</span>
+        <span class="service-tag" data-field="service_2_tag_2">{{service_2_tag_2}}</span>
+        <span class="service-tag" data-field="service_2_tag_3">{{service_2_tag_3}}</span>
+      </div>
+    </div>
+    <div class="service-card reveal reveal-delay-2">
+      <div class="service-icon">◎</div>
+      <div class="service-title" data-field="service_3_title">{{service_3_title}}</div>
+      <p class="service-desc" data-field="service_3_text">{{service_3_text}}</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_3_tag_1">{{service_3_tag_1}}</span>
+        <span class="service-tag" data-field="service_3_tag_2">{{service_3_tag_2}}</span>
+        <span class="service-tag" data-field="service_3_tag_3">{{service_3_tag_3}}</span>
+      </div>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-icon">☼</div>
+      <div class="service-title" data-field="service_4_title">{{service_4_title}}</div>
+      <p class="service-desc" data-field="service_4_text">{{service_4_text}}</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_4_tag_1">{{service_4_tag_1}}</span>
+        <span class="service-tag" data-field="service_4_tag_2">{{service_4_tag_2}}</span>
+        <span class="service-tag" data-field="service_4_tag_3">{{service_4_tag_3}}</span>
+      </div>
+    </div>
+    <div class="service-card reveal reveal-delay-1">
+      <div class="service-icon">◈</div>
+      <div class="service-title" data-field="service_5_title">{{service_5_title}}</div>
+      <p class="service-desc" data-field="service_5_text">{{service_5_text}}</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_5_tag_1">{{service_5_tag_1}}</span>
+        <span class="service-tag" data-field="service_5_tag_2">{{service_5_tag_2}}</span>
+        <span class="service-tag" data-field="service_5_tag_3">{{service_5_tag_3}}</span>
+      </div>
+    </div>
+    <div class="service-card reveal reveal-delay-2">
+      <div class="service-icon">◉</div>
+      <div class="service-title" data-field="service_6_title">{{service_6_title}}</div>
+      <p class="service-desc" data-field="service_6_text">{{service_6_text}}</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_6_tag_1">{{service_6_tag_1}}</span>
+        <span class="service-tag" data-field="service_6_tag_2">{{service_6_tag_2}}</span>
+        <span class="service-tag" data-field="service_6_tag_3">{{service_6_tag_3}}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DOCTORS ═══ -->
+<section class="doctors" id="doctors" data-block="doctors">
+  <div class="doctors-inner">
+    <div class="doctors-hdr">
+      <div class="eyebrow reveal"><span data-field="doctors_eyebrow">{{doctors_eyebrow}}</span></div>
+      <h2 class="section-h2 reveal reveal-delay-1" data-field="doctors_title">{{doctors_title}}</h2>
+      <p class="doctors-intro reveal reveal-delay-2" data-field="doctors_intro">{{doctors_intro}}</p>
+    </div>
+    <div class="doctor-grid">
+      <div class="doctor-card reveal">
+        <div class="doctor-photo"><img src="{{doctor_1_image}}" alt="{{doctor_1_name}}" loading="lazy"></div>
+        <div class="doctor-info">
+          <div class="doctor-specialty" data-field="doctor_1_specialty">{{doctor_1_specialty}}</div>
+          <div class="doctor-name" data-field="doctor_1_name">{{doctor_1_name}}</div>
+          <div class="doctor-role" data-field="doctor_1_title">{{doctor_1_title}}</div>
+          <p class="doctor-bio" data-field="doctor_1_bio">{{doctor_1_bio}}</p>
+        </div>
+      </div>
+      <div class="doctor-card reveal reveal-delay-1">
+        <div class="doctor-photo"><img src="{{doctor_2_image}}" alt="{{doctor_2_name}}" loading="lazy"></div>
+        <div class="doctor-info">
+          <div class="doctor-specialty" data-field="doctor_2_specialty">{{doctor_2_specialty}}</div>
+          <div class="doctor-name" data-field="doctor_2_name">{{doctor_2_name}}</div>
+          <div class="doctor-role" data-field="doctor_2_title">{{doctor_2_title}}</div>
+          <p class="doctor-bio" data-field="doctor_2_bio">{{doctor_2_bio}}</p>
+        </div>
+      </div>
+      <div class="doctor-card reveal reveal-delay-2">
+        <div class="doctor-photo"><img src="{{doctor_3_image}}" alt="{{doctor_3_name}}" loading="lazy"></div>
+        <div class="doctor-info">
+          <div class="doctor-specialty" data-field="doctor_3_specialty">{{doctor_3_specialty}}</div>
+          <div class="doctor-name" data-field="doctor_3_name">{{doctor_3_name}}</div>
+          <div class="doctor-role" data-field="doctor_3_title">{{doctor_3_title}}</div>
+          <p class="doctor-bio" data-field="doctor_3_bio">{{doctor_3_bio}}</p>
+        </div>
+      </div>
+      <div class="doctor-card reveal reveal-delay-3">
+        <div class="doctor-photo"><img src="{{doctor_4_image}}" alt="{{doctor_4_name}}" loading="lazy"></div>
+        <div class="doctor-info">
+          <div class="doctor-specialty" data-field="doctor_4_specialty">{{doctor_4_specialty}}</div>
+          <div class="doctor-name" data-field="doctor_4_name">{{doctor_4_name}}</div>
+          <div class="doctor-role" data-field="doctor_4_title">{{doctor_4_title}}</div>
+          <p class="doctor-bio" data-field="doctor_4_bio">{{doctor_4_bio}}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PROCESS ═══ -->
+<section class="process" id="process" data-block="process">
+  <div class="process-hdr">
+    <div class="eyebrow reveal"><span data-field="process_eyebrow">{{process_eyebrow}}</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="process_title">{{process_title}}</h2>
+  </div>
+  <div class="process-steps">
+    <div class="process-step reveal">
+      <div class="process-num">01</div>
+      <div class="process-title" data-field="process_1_title">{{process_1_title}}</div>
+      <p class="process-desc" data-field="process_1_text">{{process_1_text}}</p>
+    </div>
+    <div class="process-step reveal reveal-delay-1">
+      <div class="process-num">02</div>
+      <div class="process-title" data-field="process_2_title">{{process_2_title}}</div>
+      <p class="process-desc" data-field="process_2_text">{{process_2_text}}</p>
+    </div>
+    <div class="process-step reveal reveal-delay-2">
+      <div class="process-num">03</div>
+      <div class="process-title" data-field="process_3_title">{{process_3_title}}</div>
+      <p class="process-desc" data-field="process_3_text">{{process_3_text}}</p>
+    </div>
+    <div class="process-step reveal reveal-delay-3">
+      <div class="process-num">04</div>
+      <div class="process-title" data-field="process_4_title">{{process_4_title}}</div>
+      <p class="process-desc" data-field="process_4_text">{{process_4_text}}</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section class="testimonials" data-block="testimonials">
+  <div class="testimonials-inner">
+    <div class="eyebrow"><span data-field="testimonials_eyebrow">{{testimonials_eyebrow}}</span></div>
+    <h2 class="section-h2" data-field="testimonials_title">{{testimonials_title}}</h2>
+    <div class="testimonial-track">
+      <div class="testimonial-slide active">
+        <p class="testimonial-quote" data-field="testimonial_1_quote">{{testimonial_1_quote}}</p>
+        <div class="testimonial-author" data-field="testimonial_1_author">{{testimonial_1_author}}</div>
+        <div class="testimonial-condition" data-field="testimonial_1_condition">{{testimonial_1_condition}}</div>
+      </div>
+      <div class="testimonial-slide">
+        <p class="testimonial-quote" data-field="testimonial_2_quote">{{testimonial_2_quote}}</p>
+        <div class="testimonial-author" data-field="testimonial_2_author">{{testimonial_2_author}}</div>
+        <div class="testimonial-condition" data-field="testimonial_2_condition">{{testimonial_2_condition}}</div>
+      </div>
+      <div class="testimonial-slide">
+        <p class="testimonial-quote" data-field="testimonial_3_quote">{{testimonial_3_quote}}</p>
+        <div class="testimonial-author" data-field="testimonial_3_author">{{testimonial_3_author}}</div>
+        <div class="testimonial-condition" data-field="testimonial_3_condition">{{testimonial_3_condition}}</div>
+      </div>
+    </div>
+    <div class="testimonial-dots">
+      <button class="testimonial-dot active" onclick="goToSlide(0)"></button>
+      <button class="testimonial-dot" onclick="goToSlide(1)"></button>
+      <button class="testimonial-dot" onclick="goToSlide(2)"></button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CERTIFICATIONS ═══ -->
+<section class="certifications" id="certifications" data-block="certifications">
+  <div class="cert-hdr">
+    <div class="eyebrow reveal"><span data-field="cert_eyebrow">{{cert_eyebrow}}</span></div>
+    <h2 class="cert-heading reveal reveal-delay-1" data-field="cert_title">{{cert_title}}</h2>
+    <p class="cert-intro reveal reveal-delay-2" data-field="cert_intro">{{cert_intro}}</p>
+  </div>
+  <div class="cert-grid">
+    <div class="cert-item reveal"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_1_name">{{cert_1_name}}</div><div class="cert-desc" data-field="cert_1_desc">{{cert_1_desc}}</div></div></div>
+    <div class="cert-item reveal reveal-delay-1"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_2_name">{{cert_2_name}}</div><div class="cert-desc" data-field="cert_2_desc">{{cert_2_desc}}</div></div></div>
+    <div class="cert-item reveal reveal-delay-2"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_3_name">{{cert_3_name}}</div><div class="cert-desc" data-field="cert_3_desc">{{cert_3_desc}}</div></div></div>
+    <div class="cert-item reveal"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_4_name">{{cert_4_name}}</div><div class="cert-desc" data-field="cert_4_desc">{{cert_4_desc}}</div></div></div>
+    <div class="cert-item reveal reveal-delay-1"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_5_name">{{cert_5_name}}</div><div class="cert-desc" data-field="cert_5_desc">{{cert_5_desc}}</div></div></div>
+    <div class="cert-item reveal reveal-delay-2"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_6_name">{{cert_6_name}}</div><div class="cert-desc" data-field="cert_6_desc">{{cert_6_desc}}</div></div></div>
+  </div>
+</section>
+
+<!-- ═══ CTA BANNER ═══ -->
+<section class="cta-banner" data-block="cta_banner">
+  <div class="cta-banner-inner">
+    <div class="cta-eyebrow" data-field="cta_banner_eyebrow">{{cta_banner_eyebrow}}</div>
+    <h2 class="cta-title" data-field="cta_banner_title">{{cta_banner_title}}</h2>
+    <p class="cta-subtitle" data-field="cta_banner_subtitle">{{cta_banner_subtitle}}</p>
+    <a href="#booking" class="cta-button" data-field="cta_banner_cta">{{cta_banner_cta}}</a>
+  </div>
+</section>
+
+<!-- ═══ GALLERY ═══ -->
+<section class="section gallery-section" id="gallery" data-block="gallery">
+  <div class="eyebrow reveal" data-field="gallery_eyebrow">{{gallery_eyebrow}}</div>
+  <h2 class="section-h2 reveal reveal-delay-1" data-field="gallery_title">{{gallery_title}}</h2>
+  <p class="gallery-intro reveal reveal-delay-2" data-field="gallery_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">{{gallery_intro}}</p>
+  <div class="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+    <div class="gallery-item reveal" data-field="gallery_1" style="aspect-ratio:1/1;background-image:url('{{gallery_1}}');background-size:cover;background-position:center;border-radius:14px;"></div>
+    <div class="gallery-item reveal reveal-delay-1" data-field="gallery_2" style="aspect-ratio:1/1;background-image:url('{{gallery_2}}');background-size:cover;background-position:center;border-radius:14px;"></div>
+    <div class="gallery-item reveal reveal-delay-2" data-field="gallery_3" style="aspect-ratio:1/1;background-image:url('{{gallery_3}}');background-size:cover;background-position:center;border-radius:14px;"></div>
+    <div class="gallery-item reveal reveal-delay-3" data-field="gallery_4" style="aspect-ratio:1/1;background-image:url('{{gallery_4}}');background-size:cover;background-position:center;border-radius:14px;"></div>
+    <div class="gallery-item reveal reveal-delay-4" data-field="gallery_5" style="aspect-ratio:1/1;background-image:url('{{gallery_5}}');background-size:cover;background-position:center;border-radius:14px;"></div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section class="contact" id="contact" data-block="contact">
+  <div class="contact-left">
+    <div class="eyebrow reveal"><span data-field="contact_eyebrow">{{contact_eyebrow}}</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="contact_title">{{contact_title}}</h2>
+    <p class="contact-intro reveal reveal-delay-2" data-field="contact_intro">{{contact_intro}}</p>
+    <div class="contact-info">
+      <div class="contact-item reveal"><span class="contact-item-label">Email</span><span class="contact-item-value" data-field="contact_email">{{contact_email}}</span></div>
+      <div class="contact-item reveal reveal-delay-1"><span class="contact-item-label">Phone</span><span class="contact-item-value" data-field="contact_phone">{{contact_phone}}</span></div>
+      <div class="contact-item reveal reveal-delay-2"><span class="contact-item-label">Address</span><span class="contact-item-value" data-field="contact_address">{{contact_address}}</span></div>
+      <div class="contact-item reveal reveal-delay-3"><span class="contact-item-label">Hours</span><span class="contact-item-value" data-field="contact_hours">{{contact_hours}}</span></div>
+    </div>
+    <div class="contact-emergency reveal" data-field="contact_emergency">{{contact_emergency}}</div>
+  </div>
+  <div class="contact-right">
+    <div class="eyebrow">Callback</div>
+    <h3 class="section-h2" style="font-size:1.6rem;margin-bottom:1.3rem" data-field="contact_form_title">{{contact_form_title}}</h3>
+    <form class="contact-form" onsubmit="handleSubmit(event)">
+      <div class="form-field"><label>First Name</label><input type="text" name="first_name" required></div>
+      <div class="form-field"><label>Last Name</label><input type="text" name="last_name" required></div>
+      <div class="form-field full"><label>Email</label><input type="email" name="email" required></div>
+      <div class="form-field"><label>Phone</label><input type="tel" name="phone"></div>
+      <div class="form-field"><label>Specialty</label><select name="specialty"><option value="">Select…</option><option>Family Medicine</option><option>Cardiology</option><option>Paediatrics</option><option>Dermatology</option><option>Dental</option><option>Physiotherapy</option><option>Other</option></select></div>
+      <div class="form-field full"><label>How can we help?</label><textarea name="message" placeholder="Briefly describe your symptoms or the reason for the visit."></textarea></div>
+      <button type="submit" class="form-submit" data-field="form_submit_text">{{form_submit_text}}</button>
+      <div id="form-success" style="display:none" data-field="form_success_message">{{form_success_message}}</div>
+    </form>
+  </div>
+</section>
+
+<!-- ═══ BOOKING ═══ -->
+<section class="booking-section" id="booking" data-block="booking" style="{{booking_display}}">
+  <div class="eyebrow reveal"><span>Consultation</span></div>
+  <h2 class="section-h2 booking-h2 reveal reveal-delay-1" data-field="booking_title">{{booking_title}}</h2>
+  <p class="booking-intro reveal reveal-delay-2" data-field="booking_intro">{{booking_intro}}</p>
+  <form class="booking-form" onsubmit="handleBookingSubmit(event)">
+    <div class="form-field full"><label>Service</label><select name="service"><option>Family Medicine</option><option>Cardiology</option><option>Paediatrics</option><option>Dermatology</option><option>Dental</option><option>Physiotherapy</option></select></div>
+    <div class="form-field full"><label>Preferred Doctor</label><select name="doctor"><option value="">Any available</option><option>Dr. Aisha Rahman</option><option>Dr. Omar Al-Sayed</option><option>Dr. Sarah Nakamura</option><option>Dr. James Whitfield</option></select></div>
+    <div class="form-field"><label>Preferred Date</label><input type="date" name="preferred_date" required></div>
+    <div class="form-field"><label>Insurance Provider</label><input type="text" name="insurance" placeholder="e.g. AXA, Bupa, Cigna"></div>
+    <div class="form-field full"><label>Preferred Time</label>
+      <div class="booking-time-slots">
+        <label class="booking-slot"><input type="radio" name="preferred_time" value="morning" required><div class="booking-slot-label">Morning</div><div class="booking-slot-time">8am – 12pm</div></label>
+        <label class="booking-slot"><input type="radio" name="preferred_time" value="afternoon"><div class="booking-slot-label">Afternoon</div><div class="booking-slot-time">12pm – 5pm</div></label>
+        <label class="booking-slot"><input type="radio" name="preferred_time" value="evening"><div class="booking-slot-label">Evening</div><div class="booking-slot-time">5pm – 8pm</div></label>
+      </div>
+    </div>
+    <div class="form-field"><label>Name</label><input type="text" name="name" required></div>
+    <div class="form-field"><label>Phone</label><input type="tel" name="phone" required></div>
+    <button type="submit" class="booking-submit" data-field="booking_cta">{{booking_cta}}</button>
+  </form>
+  <div id="booking-success" style="display:none;margin-top:1.5rem;padding:1rem 1.25rem;background:var(--sage-soft);border-left:3px solid var(--medical);color:var(--carbon);border-radius:6px">Thank you. Reception will confirm your appointment within thirty minutes during opening hours.</div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<!-- ═══ BLOG ═══ -->
+<section class="section blog-section" id="blog" data-block="blog">
+  <div class="eyebrow reveal" data-field="blog_eyebrow">{{blog_eyebrow}}</div>
+  <h2 class="section-h2 reveal reveal-delay-1" data-field="blog_title">{{blog_title}}</h2>
+  <p class="blog-intro reveal reveal-delay-2" data-field="blog_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">{{blog_intro}}</p>
+  <div class="blog-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;">
+    <a href="{{blog_post_1_url}}" class="blog-card reveal" style="display:block;padding:1.75rem;background:var(--chalk-soft,#F7FAFC);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;transition:transform .2s,border-color .2s;">
+      <h3 class="blog-card-title" data-field="blog_post_1_title" style="font-family:var(--fh,Georgia,serif);font-size:1.25rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_1_title}}</h3>
+      <p class="blog-card-excerpt" data-field="blog_post_1_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_1_excerpt}}</p>
+    </a>
+    <a href="{{blog_post_2_url}}" class="blog-card reveal reveal-delay-1" style="display:block;padding:1.75rem;background:var(--chalk-soft,#F7FAFC);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;transition:transform .2s,border-color .2s;">
+      <h3 class="blog-card-title" data-field="blog_post_2_title" style="font-family:var(--fh,Georgia,serif);font-size:1.25rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_2_title}}</h3>
+      <p class="blog-card-excerpt" data-field="blog_post_2_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_2_excerpt}}</p>
+    </a>
+    <a href="{{blog_post_3_url}}" class="blog-card reveal reveal-delay-2" style="display:block;padding:1.75rem;background:var(--chalk-soft,#F7FAFC);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;transition:transform .2s,border-color .2s;">
+      <h3 class="blog-card-title" data-field="blog_post_3_title" style="font-family:var(--fh,Georgia,serif);font-size:1.25rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_3_title}}</h3>
+      <p class="blog-card-excerpt" data-field="blog_post_3_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_3_excerpt}}</p>
+    </a>
+  </div>
+  <div style="margin-top:2rem;text-align:center;">
+    <a href="/blog" class="blog-cta" data-field="blog_cta" style="display:inline-block;padding:0.9rem 1.6rem;border:1px solid var(--medical,#0F172A);color:var(--medical,#0F172A);font-size:0.92rem;font-weight:600;border-radius:10px;transition:background .2s,color .2s;">{{blog_cta}}</a>
+  </div>
+</section>
+
+<footer data-block="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo" data-field="business_name">{{business_name}}</div>
+      <div class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</div>
+    </div>
+    <div class="footer-col">
+      <h4>The Centre</h4>
+      <ul class="footer-links">
+        <li><a href="#services">Specialties</a></li>
+        <li><a href="#doctors">Doctors</a></li>
+        <li><a href="#process">How It Works</a></li>
+        <li><a href="#certifications">Accreditations</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Get Started</h4>
+      <ul class="footer-links">
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="#booking">Book Consultation</a></li>
+      </ul>
+      <div class="footer-social">
+        <a href="{{social_facebook}}" data-field="social_facebook" target="_blank" rel="noopener">Facebook</a>
+        <a href="{{social_instagram}}" data-field="social_instagram" target="_blank" rel="noopener">Instagram</a>
+        <a href="{{social_linkedin}}" data-field="social_linkedin" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="{{social_twitter}}" data-field="social_twitter" target="_blank" rel="noopener">X / Twitter</a>
+        <a href="{{social_youtube}}" data-field="social_youtube" target="_blank" rel="noopener">YouTube</a>
+        <a href="{{social_tiktok}}" data-field="social_tiktok" target="_blank" rel="noopener">TikTok</a>
+        <a href="{{social_whatsapp}}" data-field="social_whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-copy" data-field="footer_text">{{footer_text}}</div>
+</footer>
+
+<script>
+var nav = document.getElementById('main-nav');
+window.addEventListener('scroll', function(){ nav.classList.toggle('scrolled', window.scrollY > 40); }, { passive: true });
+
+function toggleMob(){
+  var s = document.getElementById('burger').querySelectorAll('span');
+  s[0].style.transform = s[0].style.transform ? '' : 'rotate(45deg) translate(5px,5px)';
+  s[1].style.opacity = s[1].style.opacity === '0' ? '1' : '0';
+  s[2].style.transform = s[2].style.transform ? '' : 'rotate(-45deg) translate(5px,-5px)';
+}
+
+var revEls = document.querySelectorAll('.reveal');
+var revObs = new IntersectionObserver(function(entries){
+  entries.forEach(function(e){ if (e.isIntersecting) { e.target.classList.add('visible'); revObs.unobserve(e.target); } });
+}, { threshold: 0.1 });
+revEls.forEach(function(el){ revObs.observe(el); });
+
+var slides = document.querySelectorAll('.testimonial-slide');
+var dots = document.querySelectorAll('.testimonial-dot');
+var currentSlide = 0;
+function goToSlide(n){
+  if (!slides.length) return;
+  slides[currentSlide].classList.remove('active');
+  dots[currentSlide].classList.remove('active');
+  currentSlide = n;
+  slides[currentSlide].classList.add('active');
+  dots[currentSlide].classList.add('active');
+}
+setInterval(function(){ goToSlide((currentSlide + 1) % slides.length); }, 6500);
+
+function handleSubmit(e){
+  e.preventDefault();
+  e.target.style.display = 'none';
+  document.getElementById('form-success').style.display = 'block';
+}
+
+function handleBookingSubmit(e){
+  e.preventDefault();
+  var f = e.target, fd = new FormData(f), d = {};
+  fd.forEach(function(v,k){ d[k] = v; });
+  fetch('/book', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(d) })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res && res.ok) { f.style.display = 'none'; document.getElementById('booking-success').style.display = 'block'; }
+      else { alert('Submission failed: ' + ((res && res.error) || 'please try again.')); }
+    })
+    .catch(function(){ alert('Network error — please try again.'); });
+}
+</script>
+</body>
+</html>
