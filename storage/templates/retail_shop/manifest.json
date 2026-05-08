@@ -1,0 +1,1283 @@
+{
+  "id": "retail_shop",
+  "name": "Retail Shop",
+  "version": "1.0.0",
+  "industry": "retail_shop",
+  "description": "Boutique retail shop template \u2014 rose pink, minimalist luxury, in-store focused. Built around featured products, categories, store visit, newsletter.",
+  "variation": "luxury",
+  "preview_image": "preview.jpg",
+  "created_at": "2026-04-18",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "fields": [
+        "business_name",
+        "nav_cta"
+      ],
+      "elements": {
+        "logo": ".nav-logo",
+        "links": ".nav-links",
+        "link": ".nav-links li a",
+        "primary_button": "a.nav-cta",
+        "burger": ".nav-burger"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero Section",
+      "fields": [
+        "hero_eyebrow",
+        "hero_title",
+        "hero_subtitle",
+        "hero_cta",
+        "hero_cta_secondary",
+        "hero_image",
+        "hero_trust_badge"
+      ],
+      "elements": {
+        "eyebrow": ".hero-eyebrow",
+        "heading": "h1.hero-h1",
+        "subheading": "p.hero-sub",
+        "primary_button": "a.btn-primary",
+        "secondary_button": "a.btn-ghost",
+        "image": ".hero-media img",
+        "overlay": ".hero-overlay",
+        "trust_badge": ".hero-trust"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats Strip",
+      "fields": [
+        "stat_1_value",
+        "stat_1_label",
+        "stat_2_value",
+        "stat_2_label",
+        "stat_3_value",
+        "stat_3_label",
+        "stat_4_value",
+        "stat_4_label"
+      ],
+      "elements": {
+        "item": ".stat-item",
+        "number": ".stat-num",
+        "label": ".stat-label"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Specialties",
+      "fields": [
+        "services_eyebrow",
+        "services_title",
+        "services_intro",
+        "service_1_title",
+        "service_1_text",
+        "service_1_tag_1",
+        "service_1_tag_2",
+        "service_1_tag_3",
+        "service_2_title",
+        "service_2_text",
+        "service_2_tag_1",
+        "service_2_tag_2",
+        "service_2_tag_3",
+        "service_3_title",
+        "service_3_text",
+        "service_3_tag_1",
+        "service_3_tag_2",
+        "service_3_tag_3",
+        "service_4_title",
+        "service_4_text",
+        "service_4_tag_1",
+        "service_4_tag_2",
+        "service_4_tag_3",
+        "service_5_title",
+        "service_5_text",
+        "service_5_tag_1",
+        "service_5_tag_2",
+        "service_5_tag_3",
+        "service_6_title",
+        "service_6_text",
+        "service_6_tag_1",
+        "service_6_tag_2",
+        "service_6_tag_3"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".services-intro",
+        "grid": ".service-grid",
+        "card": ".service-card",
+        "icon": ".service-icon",
+        "card_title": ".service-title",
+        "card_description": ".service-desc",
+        "tag": ".service-tag"
+      }
+    },
+    {
+      "id": "doctors",
+      "name": "Doctors & Team",
+      "fields": [
+        "doctors_eyebrow",
+        "doctors_title",
+        "doctors_intro",
+        "doctor_1_name",
+        "doctor_1_title",
+        "doctor_1_specialty",
+        "doctor_1_bio",
+        "doctor_1_image",
+        "doctor_2_name",
+        "doctor_2_title",
+        "doctor_2_specialty",
+        "doctor_2_bio",
+        "doctor_2_image",
+        "doctor_3_name",
+        "doctor_3_title",
+        "doctor_3_specialty",
+        "doctor_3_bio",
+        "doctor_3_image",
+        "doctor_4_name",
+        "doctor_4_title",
+        "doctor_4_specialty",
+        "doctor_4_bio",
+        "doctor_4_image"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".doctors-intro",
+        "grid": ".doctor-grid",
+        "card": ".doctor-card",
+        "image": ".doctor-card img",
+        "doctor_name": ".doctor-name",
+        "doctor_title": ".doctor-role",
+        "doctor_specialty": ".doctor-specialty",
+        "doctor_bio": ".doctor-bio"
+      }
+    },
+    {
+      "id": "process",
+      "name": "How It Works",
+      "fields": [
+        "process_eyebrow",
+        "process_title",
+        "process_1_title",
+        "process_1_text",
+        "process_2_title",
+        "process_2_text",
+        "process_3_title",
+        "process_3_text",
+        "process_4_title",
+        "process_4_text"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "step": ".process-step",
+        "number": ".process-num",
+        "step_title": ".process-title",
+        "step_description": ".process-desc"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Patient Stories",
+      "fields": [
+        "testimonials_eyebrow",
+        "testimonials_title",
+        "testimonial_1_quote",
+        "testimonial_1_author",
+        "testimonial_1_condition",
+        "testimonial_2_quote",
+        "testimonial_2_author",
+        "testimonial_2_condition",
+        "testimonial_3_quote",
+        "testimonial_3_author",
+        "testimonial_3_condition"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "track": ".testimonial-track",
+        "slide": ".testimonial-slide",
+        "quote": ".testimonial-quote",
+        "author": ".testimonial-author",
+        "condition": ".testimonial-condition",
+        "dot": ".testimonial-dot"
+      }
+    },
+    {
+      "id": "certifications",
+      "name": "Accreditations & Trust",
+      "fields": [
+        "cert_eyebrow",
+        "cert_title",
+        "cert_intro",
+        "cert_1_name",
+        "cert_1_desc",
+        "cert_2_name",
+        "cert_2_desc",
+        "cert_3_name",
+        "cert_3_desc",
+        "cert_4_name",
+        "cert_4_desc",
+        "cert_5_name",
+        "cert_5_desc",
+        "cert_6_name",
+        "cert_6_desc"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.cert-heading",
+        "intro": ".cert-intro",
+        "grid": ".cert-grid",
+        "item": ".cert-item",
+        "cert_name": ".cert-name",
+        "cert_description": ".cert-desc"
+      }
+    },
+    {
+      "id": "cta_banner",
+      "name": "CTA Banner",
+      "fields": [
+        "cta_banner_eyebrow",
+        "cta_banner_title",
+        "cta_banner_subtitle",
+        "cta_banner_cta"
+      ],
+      "elements": {
+        "eyebrow": ".cta-eyebrow",
+        "heading": "h2.cta-title",
+        "subheading": "p.cta-subtitle",
+        "primary_button": "a.cta-button"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact & Location",
+      "fields": [
+        "contact_eyebrow",
+        "contact_title",
+        "contact_intro",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "contact_hours",
+        "contact_emergency",
+        "contact_form_title",
+        "form_submit_text",
+        "form_success_message"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".contact-intro",
+        "info_label": ".contact-item-label",
+        "info_value": ".contact-item-value",
+        "emergency": ".contact-emergency",
+        "form": ".contact-form",
+        "form_field": ".form-field",
+        "form_label": ".form-field label",
+        "form_input": ".form-field input, .form-field textarea, .form-field select",
+        "primary_button": "button.form-submit",
+        "success_message": "#form-success"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book a Consultation",
+      "fields": [
+        "booking_title",
+        "booking_intro",
+        "booking_cta"
+      ],
+      "elements": {
+        "heading": "h2.booking-h2",
+        "intro": ".booking-intro",
+        "form": ".booking-form",
+        "submit_button": "button.booking-submit",
+        "date_input": "input[name=\"preferred_date\"]",
+        "time_slot": ".booking-slot"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".blog-intro",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card-title",
+        "post_excerpt": ".blog-card-excerpt",
+        "cta": ".blog-cta"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "fields": [
+        "gallery_eyebrow",
+        "gallery_title",
+        "gallery_intro",
+        "gallery_1",
+        "gallery_2",
+        "gallery_3",
+        "gallery_4",
+        "gallery_5"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".gallery-intro",
+        "grid": ".gallery-grid",
+        "item": ".gallery-item"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "fields": [
+        "business_name",
+        "footer_tagline",
+        "footer_text",
+        "social_facebook",
+        "social_instagram",
+        "social_linkedin"
+      ],
+      "elements": {
+        "logo": ".footer-logo",
+        "tagline": ".footer-tagline",
+        "links": ".footer-links",
+        "link": ".footer-links li a",
+        "social": ".footer-social",
+        "social_link": ".footer-social a",
+        "copy": ".footer-copy"
+      }
+    }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Clinic Name",
+      "default": "Atelier Rose"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Boutique Lifestyle Store \u00b7 Dubai"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Atelier Rose \u2014 a boutique lifestyle store in Dubai stocking independent designers across home, accessories, beauty, and gifts. Curated, considered, in-store and online."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://retail-shop.example.com"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/retail_shop.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Visit the Shop"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Boutique Lifestyle Store \u00b7 Dubai"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Title",
+      "default": "Independent designers,<br><em>under one roof.</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "A small boutique stocking independent designers from Europe, Japan, and the Middle East \u2014 across home, accessories, beauty, and gifts. Hand-picked, in person."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Primary CTA",
+      "default": "Visit the Shop"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Secondary CTA",
+      "default": "Browse Online"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/builder-heroes/retail_shop.jpg"
+    },
+    "hero_trust_badge": {
+      "type": "text",
+      "label": "Hero Trust Badge",
+      "default": "100% Independent \u00b7 Hand-Picked \u00b7 In-Store + Online"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "80+"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Designers"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "4"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Categories"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "1,200"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "SKUs"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "4.95\u2605"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Reviews"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "Categories"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Services Title",
+      "default": "What you'll<br><em>find here.</em>"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "Six product categories \u2014 every piece chosen by the buyer, in person, from independent makers we trust."
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Home & Living"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Text",
+      "default": "Ceramics, textiles, lighting, and small furniture from independent studios \u2014 Hasami, Kinto, &Tradition, hand-block from Jaipur."
+    },
+    "service_1_tag_1": {
+      "type": "text",
+      "label": "Service 1 Tag 1",
+      "default": "Ceramics"
+    },
+    "service_1_tag_2": {
+      "type": "text",
+      "label": "Service 1 Tag 2",
+      "default": "Textiles"
+    },
+    "service_1_tag_3": {
+      "type": "text",
+      "label": "Service 1 Tag 3",
+      "default": "Lighting"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "Accessories"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Text",
+      "default": "Bags, jewellery, scarves, and small leather goods from emerging European and Japanese makers \u2014 Cawley, KIN, COS Stories."
+    },
+    "service_2_tag_1": {
+      "type": "text",
+      "label": "Service 2 Tag 1",
+      "default": "Bags"
+    },
+    "service_2_tag_2": {
+      "type": "text",
+      "label": "Service 2 Tag 2",
+      "default": "Jewellery"
+    },
+    "service_2_tag_3": {
+      "type": "text",
+      "label": "Service 2 Tag 3",
+      "default": "Leather"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "Beauty & Apothecary"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Text",
+      "default": "Niche fragrances, skincare, candles, and apothecary from Le Labo, Aesop, Dr. Barbara Sturm, and Fr\u00e9d\u00e9ric Malle."
+    },
+    "service_3_tag_1": {
+      "type": "text",
+      "label": "Service 3 Tag 1",
+      "default": "Fragrance"
+    },
+    "service_3_tag_2": {
+      "type": "text",
+      "label": "Service 3 Tag 2",
+      "default": "Skincare"
+    },
+    "service_3_tag_3": {
+      "type": "text",
+      "label": "Service 3 Tag 3",
+      "default": "Candles"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Gifts"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Text",
+      "default": "Hand-curated gifting \u2014 under 100, 250, 500 dirhams \u2014 wrapped in our signature paper, ready to take or ship."
+    },
+    "service_4_tag_1": {
+      "type": "text",
+      "label": "Service 4 Tag 1",
+      "default": "Under 100"
+    },
+    "service_4_tag_2": {
+      "type": "text",
+      "label": "Service 4 Tag 2",
+      "default": "Wrapped"
+    },
+    "service_4_tag_3": {
+      "type": "text",
+      "label": "Service 4 Tag 3",
+      "default": "Ship"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "Stationery"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Text",
+      "default": "Paper goods from Postalco, Midori, Hightide, plus our own line of in-house cards, notebooks, and prints."
+    },
+    "service_5_tag_1": {
+      "type": "text",
+      "label": "Service 5 Tag 1",
+      "default": "Notebooks"
+    },
+    "service_5_tag_2": {
+      "type": "text",
+      "label": "Service 5 Tag 2",
+      "default": "Cards"
+    },
+    "service_5_tag_3": {
+      "type": "text",
+      "label": "Service 5 Tag 3",
+      "default": "Prints"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "Limited Drops"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Text",
+      "default": "Quarterly limited drops with featured designers \u2014 usually 30-50 pieces, often sell out the first week."
+    },
+    "service_6_tag_1": {
+      "type": "text",
+      "label": "Service 6 Tag 1",
+      "default": "Quarterly"
+    },
+    "service_6_tag_2": {
+      "type": "text",
+      "label": "Service 6 Tag 2",
+      "default": "Limited"
+    },
+    "service_6_tag_3": {
+      "type": "text",
+      "label": "Service 6 Tag 3",
+      "default": "Drops"
+    },
+    "doctors_eyebrow": {
+      "type": "text",
+      "label": "Doctors Eyebrow",
+      "default": "The Team"
+    },
+    "doctors_title": {
+      "type": "html",
+      "label": "Doctors Title",
+      "default": "The team<br><em>behind the shop.</em>"
+    },
+    "doctors_intro": {
+      "type": "text",
+      "label": "Doctors Intro",
+      "default": "A small team of three \u2014 buyer, store manager, and online lead \u2014 all of whom you'll likely meet if you visit."
+    },
+    "doctor_1_name": {
+      "type": "text",
+      "label": "Doctor 1 Name",
+      "default": "Nadia Aboud"
+    },
+    "doctor_1_title": {
+      "type": "text",
+      "label": "Doctor 1 Title",
+      "default": "Founder & Buyer"
+    },
+    "doctor_1_specialty": {
+      "type": "text",
+      "label": "Doctor 1 Specialty",
+      "default": "Buying & Curation"
+    },
+    "doctor_1_bio": {
+      "type": "text",
+      "label": "Doctor 1 Bio",
+      "default": "Twelve years in fashion buying \u2014 opened Atelier Rose in 2021 to stock the brands she couldn't find in Dubai."
+    },
+    "doctor_1_image": {
+      "type": "image",
+      "label": "Doctor 1 Image",
+      "default": "/storage/builder-heroes/retail_shop.jpg"
+    },
+    "doctor_2_name": {
+      "type": "text",
+      "label": "Doctor 2 Name",
+      "default": "Hana Sato"
+    },
+    "doctor_2_title": {
+      "type": "text",
+      "label": "Doctor 2 Title",
+      "default": "Store Manager"
+    },
+    "doctor_2_specialty": {
+      "type": "text",
+      "label": "Doctor 2 Specialty",
+      "default": "In-Store Experience"
+    },
+    "doctor_2_bio": {
+      "type": "text",
+      "label": "Doctor 2 Bio",
+      "default": "Five years at MUJI Dubai \u2014 runs the shop floor, the gifting service, and our weekly events."
+    },
+    "doctor_2_image": {
+      "type": "image",
+      "label": "Doctor 2 Image",
+      "default": "/storage/builder-heroes/retail_shop.jpg"
+    },
+    "doctor_3_name": {
+      "type": "text",
+      "label": "Doctor 3 Name",
+      "default": "Layla Benhamou"
+    },
+    "doctor_3_title": {
+      "type": "text",
+      "label": "Doctor 3 Title",
+      "default": "E-Commerce Lead"
+    },
+    "doctor_3_specialty": {
+      "type": "text",
+      "label": "Doctor 3 Specialty",
+      "default": "Online & Shipping"
+    },
+    "doctor_3_bio": {
+      "type": "text",
+      "label": "Doctor 3 Bio",
+      "default": "Six years in e-commerce \u2014 runs everything online, from photography to packaging."
+    },
+    "doctor_3_image": {
+      "type": "image",
+      "label": "Doctor 3 Image",
+      "default": "/storage/builder-heroes/retail_shop.jpg"
+    },
+    "doctor_4_name": {
+      "type": "text",
+      "label": "Doctor 4 Name",
+      "default": "Workshop Team"
+    },
+    "doctor_4_title": {
+      "type": "text",
+      "label": "Doctor 4 Title",
+      "default": "Visiting Makers"
+    },
+    "doctor_4_specialty": {
+      "type": "text",
+      "label": "Doctor 4 Specialty",
+      "default": "Workshops"
+    },
+    "doctor_4_bio": {
+      "type": "text",
+      "label": "Doctor 4 Bio",
+      "default": "Quarterly visiting maker programme \u2014 recent guests include a ceramicist, a perfumer, a bookbinder."
+    },
+    "doctor_4_image": {
+      "type": "image",
+      "label": "Doctor 4 Image",
+      "default": "/storage/builder-heroes/retail_shop.jpg"
+    },
+    "process_eyebrow": {
+      "type": "text",
+      "label": "Process Eyebrow",
+      "default": "How to Buy"
+    },
+    "process_title": {
+      "type": "html",
+      "label": "Process Title",
+      "default": "In-store<br><em>or online.</em>"
+    },
+    "process_1_title": {
+      "type": "text",
+      "label": "Step 1 Title",
+      "default": "Browse"
+    },
+    "process_1_text": {
+      "type": "text",
+      "label": "Step 1 Text",
+      "default": "Drop in to the shop or browse online. New arrivals every Wednesday, restocks every Friday."
+    },
+    "process_2_title": {
+      "type": "text",
+      "label": "Step 2 Title",
+      "default": "Buy"
+    },
+    "process_2_text": {
+      "type": "text",
+      "label": "Step 2 Text",
+      "default": "In-store: tap-to-pay, Apple Pay, all major cards. Online: secure checkout, delivery across the UAE in 1-2 days."
+    },
+    "process_3_title": {
+      "type": "text",
+      "label": "Step 3 Title",
+      "default": "Wrap"
+    },
+    "process_3_text": {
+      "type": "text",
+      "label": "Step 3 Text",
+      "default": "Free signature gift wrap on every purchase. Personalised note included if you ask."
+    },
+    "process_4_title": {
+      "type": "text",
+      "label": "Step 4 Title",
+      "default": "Return"
+    },
+    "process_4_text": {
+      "type": "text",
+      "label": "Step 4 Text",
+      "default": "30-day returns, no questions asked. In-store credit or refund \u2014 your choice."
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Patient Stories"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Title",
+      "default": "Patients,<br><em>in their words.</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Dr. Rahman took the time to actually listen \u2014 the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Hana Y. \u2014 Dubai Marina"
+    },
+    "testimonial_1_condition": {
+      "type": "text",
+      "label": "Testimonial 1 Condition",
+      "default": "Family Medicine"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Dr. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Ahmed & Laila K."
+    },
+    "testimonial_2_condition": {
+      "type": "text",
+      "label": "Testimonial 2 Condition",
+      "default": "Paediatrics"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Heart palpitations had three previous doctors shrug and send me home. Dr. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Roberto P. \u2014 JLT"
+    },
+    "testimonial_3_condition": {
+      "type": "text",
+      "label": "Testimonial 3 Condition",
+      "default": "Cardiology"
+    },
+    "cert_eyebrow": {
+      "type": "text",
+      "label": "Cert Eyebrow",
+      "default": "What People Say"
+    },
+    "cert_title": {
+      "type": "text",
+      "label": "Cert Title",
+      "default": "Why customers come back"
+    },
+    "cert_intro": {
+      "type": "text",
+      "label": "Cert Intro",
+      "default": "A small shop with a loyal following \u2014 built on careful buying and proper service."
+    },
+    "cert_1_name": {
+      "type": "text",
+      "label": "Cert 1 Name",
+      "default": "4.95\u2605 Google"
+    },
+    "cert_1_desc": {
+      "type": "text",
+      "label": "Cert 1 Desc",
+      "default": "Google Reviews \u2014 4.95 average across 380+ verified reviews"
+    },
+    "cert_2_name": {
+      "type": "text",
+      "label": "Cert 2 Name",
+      "default": "Time Out Editor's Pick"
+    },
+    "cert_2_desc": {
+      "type": "text",
+      "label": "Cert 2 Desc",
+      "default": "Time Out Dubai \u2014 Best Boutique 2024"
+    },
+    "cert_3_name": {
+      "type": "text",
+      "label": "Cert 3 Name",
+      "default": "Vogue Arabia"
+    },
+    "cert_3_desc": {
+      "type": "text",
+      "label": "Cert 3 Desc",
+      "default": "Featured in Vogue Arabia's Insider Guide to Dubai, 2024"
+    },
+    "cert_4_name": {
+      "type": "text",
+      "label": "Cert 4 Name",
+      "default": "Independent"
+    },
+    "cert_4_desc": {
+      "type": "text",
+      "label": "Cert 4 Desc",
+      "default": "100% independent \u2014 no group, no investors, no big-brand stock"
+    },
+    "cert_5_name": {
+      "type": "text",
+      "label": "Cert 5 Name",
+      "default": "UAE-Wide Shipping"
+    },
+    "cert_5_desc": {
+      "type": "text",
+      "label": "Cert 5 Desc",
+      "default": "Free shipping over AED 500 \u2014 1-2 day delivery across the UAE"
+    },
+    "cert_6_name": {
+      "type": "text",
+      "label": "Cert 6 Name",
+      "default": "Loyalty Programme"
+    },
+    "cert_6_desc": {
+      "type": "text",
+      "label": "Cert 6 Desc",
+      "default": "10% back as in-store credit on every purchase, automatically"
+    },
+    "cta_banner_eyebrow": {
+      "type": "text",
+      "label": "CTA Banner Eyebrow",
+      "default": "Same-day appointments"
+    },
+    "cta_banner_title": {
+      "type": "html",
+      "label": "CTA Banner Title",
+      "default": "Ready when you are."
+    },
+    "cta_banner_subtitle": {
+      "type": "text",
+      "label": "CTA Banner Subtitle",
+      "default": "Get in touch \u2014 we'll respond within an hour during business hours."
+    },
+    "cta_banner_cta": {
+      "type": "text",
+      "label": "CTA Banner CTA",
+      "default": "Visit the Shop"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "Contact"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Title",
+      "default": "Visit or<br><em>call us.</em>"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "We reply to all enquiries within thirty minutes during opening hours."
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Contact Email",
+      "default": "reception@atrium-clinic.ae"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Contact Phone",
+      "default": "+971 4 000 0000"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Contact Address",
+      "default": "Dubai Healthcare City, Block F, Floor 3"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Opening Hours",
+      "default": "Mon\u2013Sat \u00b7 8am\u20138pm  \u00b7  Sun \u00b7 10am\u20134pm"
+    },
+    "contact_emergency": {
+      "type": "text",
+      "label": "Emergency Line",
+      "default": "For medical emergencies dial 998 (Dubai Police / Ambulance)."
+    },
+    "contact_form_title": {
+      "type": "html",
+      "label": "Form Title",
+      "default": "Request a<br><em>callback.</em>"
+    },
+    "form_submit_text": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Request Callback \u2192"
+    },
+    "form_success_message": {
+      "type": "text",
+      "label": "Success Message",
+      "default": "\u2713 Thank you. Reception will call you back within thirty minutes."
+    },
+    "booking_title": {
+      "type": "html",
+      "label": "Booking Title",
+      "default": "Book a<br><em>consultation.</em>"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Choose a specialty, a doctor if you have a preference, and a time that suits you. We'll confirm within thirty minutes."
+    },
+    "booking_cta": {
+      "type": "text",
+      "label": "Booking CTA",
+      "default": "Book Consultation"
+    },
+    "booking_display": {
+      "type": "text",
+      "label": "Booking Display",
+      "default": ""
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Retail Shop \u2014 Boutique Lifestyle Store \u00b7 Dubai."
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Copyright",
+      "default": "\u00a9 2026 Atelier Rose. All rights reserved."
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Chalk (Background)",
+      "default": "#FFFFFF"
+    },
+    "chalk_soft": {
+      "type": "color",
+      "label": "Soft Background",
+      "default": "#F7FAFC"
+    },
+    "carbon": {
+      "type": "color",
+      "label": "Ink (Primary Text)",
+      "default": "#0F1A2A"
+    },
+    "carbon_soft": {
+      "type": "color",
+      "label": "Soft Ink",
+      "default": "#344458"
+    },
+    "medical_blue": {
+      "type": "color",
+      "label": "Medical Blue",
+      "default": "#BE185D"
+    },
+    "medical_deep": {
+      "type": "color",
+      "label": "Medical Deep",
+      "default": "#831843"
+    },
+    "sage": {
+      "type": "color",
+      "label": "Sage Accent",
+      "default": "#FBCFE8"
+    },
+    "sage_soft": {
+      "type": "color",
+      "label": "Sage Soft",
+      "default": "#D6E4DD"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#6B7A8F"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#E2E8F0"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "From the<br><em>journal.</em>"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Practical guides, expert opinion, and behind-the-scenes notes \u2014 written by our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first appointment"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through of the first visit \u2014 from arrival to follow-up \u2014 so you know exactly what to expect."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-appointment"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking your provider"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard \u2014 but rarely are. Use this as a checklist before any consultation."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for unhurried appointments"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why a thirty-minute consultation isn't a luxury \u2014 it's the bare minimum for thoughtful care."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/unhurried"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "Read More \u2192"
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "Gallery"
+    },
+    "gallery_title": {
+      "type": "html",
+      "label": "Gallery Title",
+      "default": "From the<br><em>archive.</em>"
+    },
+    "gallery_intro": {
+      "type": "text",
+      "label": "Gallery Intro",
+      "default": "Recent moments \u2014 captured for posterity."
+    },
+    "gallery_1": {
+      "type": "image",
+      "label": "Gallery Image 1",
+      "default": "/storage/template-images/retail_shop/gallery_1.jpg"
+    },
+    "gallery_2": {
+      "type": "image",
+      "label": "Gallery Image 2",
+      "default": "/storage/template-images/retail_shop/gallery_2.jpg"
+    },
+    "gallery_3": {
+      "type": "image",
+      "label": "Gallery Image 3",
+      "default": "/storage/template-images/retail_shop/gallery_3.jpg"
+    },
+    "gallery_4": {
+      "type": "image",
+      "label": "Gallery Image 4",
+      "default": "/storage/template-images/retail_shop/gallery_4.jpg"
+    },
+    "gallery_5": {
+      "type": "image",
+      "label": "Gallery Image 5",
+      "default": "/storage/template-images/retail_shop/gallery_5.jpg"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ]
+}
