@@ -1,0 +1,1283 @@
+{
+  "id": "resort",
+  "name": "Resort & Spa",
+  "version": "1.0.0",
+  "industry": "resort",
+  "description": "Luxury tropical resort template \u2014 ocean blues, spa serenity, infinity pool romance. Built around suites, amenities, dining, and bookings.",
+  "variation": "luxury",
+  "preview_image": "preview.jpg",
+  "created_at": "2026-04-18",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "fields": [
+        "business_name",
+        "nav_cta"
+      ],
+      "elements": {
+        "logo": ".nav-logo",
+        "links": ".nav-links",
+        "link": ".nav-links li a",
+        "primary_button": "a.nav-cta",
+        "burger": ".nav-burger"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero Section",
+      "fields": [
+        "hero_eyebrow",
+        "hero_title",
+        "hero_subtitle",
+        "hero_cta",
+        "hero_cta_secondary",
+        "hero_image",
+        "hero_trust_badge"
+      ],
+      "elements": {
+        "eyebrow": ".hero-eyebrow",
+        "heading": "h1.hero-h1",
+        "subheading": "p.hero-sub",
+        "primary_button": "a.btn-primary",
+        "secondary_button": "a.btn-ghost",
+        "image": ".hero-media img",
+        "overlay": ".hero-overlay",
+        "trust_badge": ".hero-trust"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats Strip",
+      "fields": [
+        "stat_1_value",
+        "stat_1_label",
+        "stat_2_value",
+        "stat_2_label",
+        "stat_3_value",
+        "stat_3_label",
+        "stat_4_value",
+        "stat_4_label"
+      ],
+      "elements": {
+        "item": ".stat-item",
+        "number": ".stat-num",
+        "label": ".stat-label"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Specialties",
+      "fields": [
+        "services_eyebrow",
+        "services_title",
+        "services_intro",
+        "service_1_title",
+        "service_1_text",
+        "service_1_tag_1",
+        "service_1_tag_2",
+        "service_1_tag_3",
+        "service_2_title",
+        "service_2_text",
+        "service_2_tag_1",
+        "service_2_tag_2",
+        "service_2_tag_3",
+        "service_3_title",
+        "service_3_text",
+        "service_3_tag_1",
+        "service_3_tag_2",
+        "service_3_tag_3",
+        "service_4_title",
+        "service_4_text",
+        "service_4_tag_1",
+        "service_4_tag_2",
+        "service_4_tag_3",
+        "service_5_title",
+        "service_5_text",
+        "service_5_tag_1",
+        "service_5_tag_2",
+        "service_5_tag_3",
+        "service_6_title",
+        "service_6_text",
+        "service_6_tag_1",
+        "service_6_tag_2",
+        "service_6_tag_3"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".services-intro",
+        "grid": ".service-grid",
+        "card": ".service-card",
+        "icon": ".service-icon",
+        "card_title": ".service-title",
+        "card_description": ".service-desc",
+        "tag": ".service-tag"
+      }
+    },
+    {
+      "id": "doctors",
+      "name": "Doctors & Team",
+      "fields": [
+        "doctors_eyebrow",
+        "doctors_title",
+        "doctors_intro",
+        "doctor_1_name",
+        "doctor_1_title",
+        "doctor_1_specialty",
+        "doctor_1_bio",
+        "doctor_1_image",
+        "doctor_2_name",
+        "doctor_2_title",
+        "doctor_2_specialty",
+        "doctor_2_bio",
+        "doctor_2_image",
+        "doctor_3_name",
+        "doctor_3_title",
+        "doctor_3_specialty",
+        "doctor_3_bio",
+        "doctor_3_image",
+        "doctor_4_name",
+        "doctor_4_title",
+        "doctor_4_specialty",
+        "doctor_4_bio",
+        "doctor_4_image"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".doctors-intro",
+        "grid": ".doctor-grid",
+        "card": ".doctor-card",
+        "image": ".doctor-card img",
+        "doctor_name": ".doctor-name",
+        "doctor_title": ".doctor-role",
+        "doctor_specialty": ".doctor-specialty",
+        "doctor_bio": ".doctor-bio"
+      }
+    },
+    {
+      "id": "process",
+      "name": "How It Works",
+      "fields": [
+        "process_eyebrow",
+        "process_title",
+        "process_1_title",
+        "process_1_text",
+        "process_2_title",
+        "process_2_text",
+        "process_3_title",
+        "process_3_text",
+        "process_4_title",
+        "process_4_text"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "step": ".process-step",
+        "number": ".process-num",
+        "step_title": ".process-title",
+        "step_description": ".process-desc"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Patient Stories",
+      "fields": [
+        "testimonials_eyebrow",
+        "testimonials_title",
+        "testimonial_1_quote",
+        "testimonial_1_author",
+        "testimonial_1_condition",
+        "testimonial_2_quote",
+        "testimonial_2_author",
+        "testimonial_2_condition",
+        "testimonial_3_quote",
+        "testimonial_3_author",
+        "testimonial_3_condition"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "track": ".testimonial-track",
+        "slide": ".testimonial-slide",
+        "quote": ".testimonial-quote",
+        "author": ".testimonial-author",
+        "condition": ".testimonial-condition",
+        "dot": ".testimonial-dot"
+      }
+    },
+    {
+      "id": "certifications",
+      "name": "Accreditations & Trust",
+      "fields": [
+        "cert_eyebrow",
+        "cert_title",
+        "cert_intro",
+        "cert_1_name",
+        "cert_1_desc",
+        "cert_2_name",
+        "cert_2_desc",
+        "cert_3_name",
+        "cert_3_desc",
+        "cert_4_name",
+        "cert_4_desc",
+        "cert_5_name",
+        "cert_5_desc",
+        "cert_6_name",
+        "cert_6_desc"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.cert-heading",
+        "intro": ".cert-intro",
+        "grid": ".cert-grid",
+        "item": ".cert-item",
+        "cert_name": ".cert-name",
+        "cert_description": ".cert-desc"
+      }
+    },
+    {
+      "id": "cta_banner",
+      "name": "CTA Banner",
+      "fields": [
+        "cta_banner_eyebrow",
+        "cta_banner_title",
+        "cta_banner_subtitle",
+        "cta_banner_cta"
+      ],
+      "elements": {
+        "eyebrow": ".cta-eyebrow",
+        "heading": "h2.cta-title",
+        "subheading": "p.cta-subtitle",
+        "primary_button": "a.cta-button"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact & Location",
+      "fields": [
+        "contact_eyebrow",
+        "contact_title",
+        "contact_intro",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "contact_hours",
+        "contact_emergency",
+        "contact_form_title",
+        "form_submit_text",
+        "form_success_message"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".contact-intro",
+        "info_label": ".contact-item-label",
+        "info_value": ".contact-item-value",
+        "emergency": ".contact-emergency",
+        "form": ".contact-form",
+        "form_field": ".form-field",
+        "form_label": ".form-field label",
+        "form_input": ".form-field input, .form-field textarea, .form-field select",
+        "primary_button": "button.form-submit",
+        "success_message": "#form-success"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book a Consultation",
+      "fields": [
+        "booking_title",
+        "booking_intro",
+        "booking_cta"
+      ],
+      "elements": {
+        "heading": "h2.booking-h2",
+        "intro": ".booking-intro",
+        "form": ".booking-form",
+        "submit_button": "button.booking-submit",
+        "date_input": "input[name=\"preferred_date\"]",
+        "time_slot": ".booking-slot"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".blog-intro",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card-title",
+        "post_excerpt": ".blog-card-excerpt",
+        "cta": ".blog-cta"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "fields": [
+        "gallery_eyebrow",
+        "gallery_title",
+        "gallery_intro",
+        "gallery_1",
+        "gallery_2",
+        "gallery_3",
+        "gallery_4",
+        "gallery_5"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".gallery-intro",
+        "grid": ".gallery-grid",
+        "item": ".gallery-item"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "fields": [
+        "business_name",
+        "footer_tagline",
+        "footer_text",
+        "social_facebook",
+        "social_instagram",
+        "social_linkedin"
+      ],
+      "elements": {
+        "logo": ".footer-logo",
+        "tagline": ".footer-tagline",
+        "links": ".footer-links",
+        "link": ".footer-links li a",
+        "social": ".footer-social",
+        "social_link": ".footer-social a",
+        "copy": ".footer-copy"
+      }
+    }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Clinic Name",
+      "default": "Coral Reef Resort & Spa"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Five-Star Beach Resort \u00b7 Maldives"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Coral Reef Resort & Spa \u2014 a five-star beachfront resort and spa in the Maldives. Eighty private villas, three restaurants, a dedicated dive centre, and an over-water spa."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://resort.example.com"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/resort.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Check Availability"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Five-Star Beach Resort \u00b7 Maldives"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Title",
+      "default": "Quiet luxury,<br><em>at the water's edge.</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "Eighty private beachfront and over-water villas on a private island in the Baa Atoll. Three restaurants, a PADI dive centre, a tennis academy, and an over-water spa pavilion."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Primary CTA",
+      "default": "Check Availability"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Secondary CTA",
+      "default": "Explore Suites"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/builder-heroes/resort.jpg"
+    },
+    "hero_trust_badge": {
+      "type": "text",
+      "label": "Hero Trust Badge",
+      "default": "Five-Star \u00b7 Forbes Travel \u00b7 UNESCO Biosphere Reserve"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "80"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Villas"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "3"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Restaurants"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "18"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Spa Treatments"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "5\u2605"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Forbes"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "Suites & Villas"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Services Title",
+      "default": "Eighty villas,<br><em>each with its own pool.</em>"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "Three villa categories \u2014 beach, lagoon, over-water \u2014 each with private pool, outdoor deck, butler service, and direct ocean access."
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Beach Villas"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Text",
+      "default": "Forty beachfront villas with private plunge pool, outdoor rain shower, and direct sand access \u2014 perfect for families and couples."
+    },
+    "service_1_tag_1": {
+      "type": "text",
+      "label": "Service 1 Tag 1",
+      "default": "Pool"
+    },
+    "service_1_tag_2": {
+      "type": "text",
+      "label": "Service 1 Tag 2",
+      "default": "Beach"
+    },
+    "service_1_tag_3": {
+      "type": "text",
+      "label": "Service 1 Tag 3",
+      "default": "Family"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "Lagoon Villas"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Text",
+      "default": "Twenty lagoon-side villas set on stilts, with overwater hammocks, glass-floor lounges, and steps directly into the lagoon."
+    },
+    "service_2_tag_1": {
+      "type": "text",
+      "label": "Service 2 Tag 1",
+      "default": "Stilts"
+    },
+    "service_2_tag_2": {
+      "type": "text",
+      "label": "Service 2 Tag 2",
+      "default": "Hammock"
+    },
+    "service_2_tag_3": {
+      "type": "text",
+      "label": "Service 2 Tag 3",
+      "default": "Lagoon"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "Over-Water Suites"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Text",
+      "default": "Twenty over-water suites with infinity pool, sun deck, glass-floor bedroom, and private champagne bar \u2014 adults only."
+    },
+    "service_3_tag_1": {
+      "type": "text",
+      "label": "Service 3 Tag 1",
+      "default": "Adults"
+    },
+    "service_3_tag_2": {
+      "type": "text",
+      "label": "Service 3 Tag 2",
+      "default": "Pool"
+    },
+    "service_3_tag_3": {
+      "type": "text",
+      "label": "Service 3 Tag 3",
+      "default": "Champagne"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Spa & Wellness"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Text",
+      "default": "An over-water spa pavilion with eighteen treatments, a steam room, hammam, and sunset yoga deck overlooking the reef."
+    },
+    "service_4_tag_1": {
+      "type": "text",
+      "label": "Service 4 Tag 1",
+      "default": "Massage"
+    },
+    "service_4_tag_2": {
+      "type": "text",
+      "label": "Service 4 Tag 2",
+      "default": "Hammam"
+    },
+    "service_4_tag_3": {
+      "type": "text",
+      "label": "Service 4 Tag 3",
+      "default": "Yoga"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "Dining"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Text",
+      "default": "Three restaurants \u2014 modern Maldivian, Italian wood-fired pizzas on the beach, and an over-water teppanyaki counter for ten."
+    },
+    "service_5_tag_1": {
+      "type": "text",
+      "label": "Service 5 Tag 1",
+      "default": "Maldivian"
+    },
+    "service_5_tag_2": {
+      "type": "text",
+      "label": "Service 5 Tag 2",
+      "default": "Italian"
+    },
+    "service_5_tag_3": {
+      "type": "text",
+      "label": "Service 5 Tag 3",
+      "default": "Teppanyaki"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "Activities"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Text",
+      "default": "PADI five-star dive centre, sunset dolphin cruises, sandbank picnics, kite-surfing, and a tennis academy with two courts."
+    },
+    "service_6_tag_1": {
+      "type": "text",
+      "label": "Service 6 Tag 1",
+      "default": "Diving"
+    },
+    "service_6_tag_2": {
+      "type": "text",
+      "label": "Service 6 Tag 2",
+      "default": "Sailing"
+    },
+    "service_6_tag_3": {
+      "type": "text",
+      "label": "Service 6 Tag 3",
+      "default": "Tennis"
+    },
+    "doctors_eyebrow": {
+      "type": "text",
+      "label": "Doctors Eyebrow",
+      "default": "Hosts"
+    },
+    "doctors_title": {
+      "type": "html",
+      "label": "Doctors Title",
+      "default": "Your hosts,<br><em>by name.</em>"
+    },
+    "doctors_intro": {
+      "type": "text",
+      "label": "Doctors Intro",
+      "default": "A host assigned to your stay before you arrive \u2014 they meet you at the seaplane, plan your week, and are on call throughout your visit."
+    },
+    "doctor_1_name": {
+      "type": "text",
+      "label": "Doctor 1 Name",
+      "default": "Mariam Latheef"
+    },
+    "doctor_1_title": {
+      "type": "text",
+      "label": "Doctor 1 Title",
+      "default": "General Manager"
+    },
+    "doctor_1_specialty": {
+      "type": "text",
+      "label": "Doctor 1 Specialty",
+      "default": "Hospitality"
+    },
+    "doctor_1_bio": {
+      "type": "text",
+      "label": "Doctor 1 Bio",
+      "default": "Eighteen years across Maldives and Mauritius \u2014 opened the resort in 2019, lives on the island."
+    },
+    "doctor_1_image": {
+      "type": "image",
+      "label": "Doctor 1 Image",
+      "default": "/storage/builder-heroes/resort.jpg"
+    },
+    "doctor_2_name": {
+      "type": "text",
+      "label": "Doctor 2 Name",
+      "default": "Andre Coetzee"
+    },
+    "doctor_2_title": {
+      "type": "text",
+      "label": "Doctor 2 Title",
+      "default": "Executive Chef"
+    },
+    "doctor_2_specialty": {
+      "type": "text",
+      "label": "Doctor 2 Specialty",
+      "default": "Modern Maldivian"
+    },
+    "doctor_2_bio": {
+      "type": "text",
+      "label": "Doctor 2 Bio",
+      "default": "Previously Six Senses Laamu \u2014 Champion of the local-fishermen sourcing programme."
+    },
+    "doctor_2_image": {
+      "type": "image",
+      "label": "Doctor 2 Image",
+      "default": "/storage/builder-heroes/resort.jpg"
+    },
+    "doctor_3_name": {
+      "type": "text",
+      "label": "Doctor 3 Name",
+      "default": "Yui Nakamura"
+    },
+    "doctor_3_title": {
+      "type": "text",
+      "label": "Doctor 3 Title",
+      "default": "Head of Spa"
+    },
+    "doctor_3_specialty": {
+      "type": "text",
+      "label": "Doctor 3 Specialty",
+      "default": "Wellness"
+    },
+    "doctor_3_bio": {
+      "type": "text",
+      "label": "Doctor 3 Bio",
+      "default": "Trained in Bali and Kyoto \u2014 brought hammam and Japanese onsen rituals to the over-water pavilion."
+    },
+    "doctor_3_image": {
+      "type": "image",
+      "label": "Doctor 3 Image",
+      "default": "/storage/builder-heroes/resort.jpg"
+    },
+    "doctor_4_name": {
+      "type": "text",
+      "label": "Doctor 4 Name",
+      "default": "Ali Adam"
+    },
+    "doctor_4_title": {
+      "type": "text",
+      "label": "Doctor 4 Title",
+      "default": "Dive Centre Manager"
+    },
+    "doctor_4_specialty": {
+      "type": "text",
+      "label": "Doctor 4 Specialty",
+      "default": "PADI Course Director"
+    },
+    "doctor_4_bio": {
+      "type": "text",
+      "label": "Doctor 4 Bio",
+      "default": "Local dive master, fifteen years on the reef \u2014 knows every cleaning station within an hour's boat ride."
+    },
+    "doctor_4_image": {
+      "type": "image",
+      "label": "Doctor 4 Image",
+      "default": "/storage/builder-heroes/resort.jpg"
+    },
+    "process_eyebrow": {
+      "type": "text",
+      "label": "Process Eyebrow",
+      "default": "Your Stay"
+    },
+    "process_title": {
+      "type": "html",
+      "label": "Process Title",
+      "default": "From arrival<br><em>to farewell.</em>"
+    },
+    "process_1_title": {
+      "type": "text",
+      "label": "Step 1 Title",
+      "default": "Arrive"
+    },
+    "process_1_text": {
+      "type": "text",
+      "label": "Step 1 Text",
+      "default": "Met at Mal\u00e9 airport by your host. Forty-minute seaplane transfer to the island. Welcome ritual, fresh coconut water, your villa pre-cooled."
+    },
+    "process_2_title": {
+      "type": "text",
+      "label": "Step 2 Title",
+      "default": "Settle"
+    },
+    "process_2_text": {
+      "type": "text",
+      "label": "Step 2 Text",
+      "default": "Unpack while your host walks you through the resort. Schedule a planning chat for the next morning over breakfast."
+    },
+    "process_3_title": {
+      "type": "text",
+      "label": "Step 3 Title",
+      "default": "Explore"
+    },
+    "process_3_text": {
+      "type": "text",
+      "label": "Step 3 Text",
+      "default": "Diving, snorkelling, spa, dining, beach time \u2014 your host coordinates everything based on the rhythm you set."
+    },
+    "process_4_title": {
+      "type": "text",
+      "label": "Step 4 Title",
+      "default": "Depart"
+    },
+    "process_4_text": {
+      "type": "text",
+      "label": "Step 4 Text",
+      "default": "Late check-out as a default. Seaplane back to Mal\u00e9 arranged. Farewell gift in your villa \u2014 usually something the chefs made."
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Patient Stories"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Title",
+      "default": "Patients,<br><em>in their words.</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Dr. Rahman took the time to actually listen \u2014 the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Hana Y. \u2014 Dubai Marina"
+    },
+    "testimonial_1_condition": {
+      "type": "text",
+      "label": "Testimonial 1 Condition",
+      "default": "Family Medicine"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Dr. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Ahmed & Laila K."
+    },
+    "testimonial_2_condition": {
+      "type": "text",
+      "label": "Testimonial 2 Condition",
+      "default": "Paediatrics"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Heart palpitations had three previous doctors shrug and send me home. Dr. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Roberto P. \u2014 JLT"
+    },
+    "testimonial_3_condition": {
+      "type": "text",
+      "label": "Testimonial 3 Condition",
+      "default": "Cardiology"
+    },
+    "cert_eyebrow": {
+      "type": "text",
+      "label": "Cert Eyebrow",
+      "default": "Recognition"
+    },
+    "cert_title": {
+      "type": "text",
+      "label": "Cert Title",
+      "default": "Awards & sustainability"
+    },
+    "cert_intro": {
+      "type": "text",
+      "label": "Cert Intro",
+      "default": "Five-star awards and a serious environmental programme."
+    },
+    "cert_1_name": {
+      "type": "text",
+      "label": "Cert 1 Name",
+      "default": "Forbes Travel 5\u2605"
+    },
+    "cert_1_desc": {
+      "type": "text",
+      "label": "Cert 1 Desc",
+      "default": "Forbes Travel Guide Five-Star rating, 2023, 2024, 2025"
+    },
+    "cert_2_name": {
+      "type": "text",
+      "label": "Cert 2 Name",
+      "default": "Cond\u00e9 Nast Top 100"
+    },
+    "cert_2_desc": {
+      "type": "text",
+      "label": "Cert 2 Desc",
+      "default": "Cond\u00e9 Nast Traveler Top 100 Hotels Worldwide, 2024"
+    },
+    "cert_3_name": {
+      "type": "text",
+      "label": "Cert 3 Name",
+      "default": "Travel + Leisure"
+    },
+    "cert_3_desc": {
+      "type": "text",
+      "label": "Cert 3 Desc",
+      "default": "World's Best Awards \u2014 #14 Resort, Indian Ocean"
+    },
+    "cert_4_name": {
+      "type": "text",
+      "label": "Cert 4 Name",
+      "default": "Reef Programme"
+    },
+    "cert_4_desc": {
+      "type": "text",
+      "label": "Cert 4 Desc",
+      "default": "Coral restoration partner \u2014 UNESCO Biosphere Reserve programme"
+    },
+    "cert_5_name": {
+      "type": "text",
+      "label": "Cert 5 Name",
+      "default": "Carbon Neutral"
+    },
+    "cert_5_desc": {
+      "type": "text",
+      "label": "Cert 5 Desc",
+      "default": "Carbon-neutral operations since 2022 \u2014 solar + ocean-current desalination"
+    },
+    "cert_6_name": {
+      "type": "text",
+      "label": "Cert 6 Name",
+      "default": "Plastic-Free"
+    },
+    "cert_6_desc": {
+      "type": "text",
+      "label": "Cert 6 Desc",
+      "default": "Single-use plastic free since 2020 \u2014 glass water filtration on site"
+    },
+    "cta_banner_eyebrow": {
+      "type": "text",
+      "label": "CTA Banner Eyebrow",
+      "default": "Same-day appointments"
+    },
+    "cta_banner_title": {
+      "type": "html",
+      "label": "CTA Banner Title",
+      "default": "Ready when you are."
+    },
+    "cta_banner_subtitle": {
+      "type": "text",
+      "label": "CTA Banner Subtitle",
+      "default": "Get in touch \u2014 we'll respond within an hour during business hours."
+    },
+    "cta_banner_cta": {
+      "type": "text",
+      "label": "CTA Banner CTA",
+      "default": "Check Availability"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "Contact"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Title",
+      "default": "Visit or<br><em>call us.</em>"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "We reply to all enquiries within thirty minutes during opening hours."
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Contact Email",
+      "default": "reception@atrium-clinic.ae"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Contact Phone",
+      "default": "+971 4 000 0000"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Contact Address",
+      "default": "Dubai Healthcare City, Block F, Floor 3"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Opening Hours",
+      "default": "Mon\u2013Sat \u00b7 8am\u20138pm  \u00b7  Sun \u00b7 10am\u20134pm"
+    },
+    "contact_emergency": {
+      "type": "text",
+      "label": "Emergency Line",
+      "default": "For medical emergencies dial 998 (Dubai Police / Ambulance)."
+    },
+    "contact_form_title": {
+      "type": "html",
+      "label": "Form Title",
+      "default": "Request a<br><em>callback.</em>"
+    },
+    "form_submit_text": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Request Callback \u2192"
+    },
+    "form_success_message": {
+      "type": "text",
+      "label": "Success Message",
+      "default": "\u2713 Thank you. Reception will call you back within thirty minutes."
+    },
+    "booking_title": {
+      "type": "html",
+      "label": "Booking Title",
+      "default": "Book a<br><em>consultation.</em>"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Choose a specialty, a doctor if you have a preference, and a time that suits you. We'll confirm within thirty minutes."
+    },
+    "booking_cta": {
+      "type": "text",
+      "label": "Booking CTA",
+      "default": "Book Consultation"
+    },
+    "booking_display": {
+      "type": "text",
+      "label": "Booking Display",
+      "default": ""
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Resort & Spa \u2014 Five-Star Beach Resort \u00b7 Maldives."
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Copyright",
+      "default": "\u00a9 2026 Coral Reef Resort & Spa. All rights reserved."
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Chalk (Background)",
+      "default": "#FFFFFF"
+    },
+    "chalk_soft": {
+      "type": "color",
+      "label": "Soft Background",
+      "default": "#F7FAFC"
+    },
+    "carbon": {
+      "type": "color",
+      "label": "Ink (Primary Text)",
+      "default": "#0F1A2A"
+    },
+    "carbon_soft": {
+      "type": "color",
+      "label": "Soft Ink",
+      "default": "#344458"
+    },
+    "medical_blue": {
+      "type": "color",
+      "label": "Medical Blue",
+      "default": "#0891B2"
+    },
+    "medical_deep": {
+      "type": "color",
+      "label": "Medical Deep",
+      "default": "#0E7490"
+    },
+    "sage": {
+      "type": "color",
+      "label": "Sage Accent",
+      "default": "#A5F3FC"
+    },
+    "sage_soft": {
+      "type": "color",
+      "label": "Sage Soft",
+      "default": "#D6E4DD"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#6B7A8F"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#E2E8F0"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "From the<br><em>journal.</em>"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Practical guides, expert opinion, and behind-the-scenes notes \u2014 written by our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first appointment"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through of the first visit \u2014 from arrival to follow-up \u2014 so you know exactly what to expect."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-appointment"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking your provider"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard \u2014 but rarely are. Use this as a checklist before any consultation."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for unhurried appointments"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why a thirty-minute consultation isn't a luxury \u2014 it's the bare minimum for thoughtful care."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/unhurried"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "Read More \u2192"
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "Gallery"
+    },
+    "gallery_title": {
+      "type": "html",
+      "label": "Gallery Title",
+      "default": "From the<br><em>archive.</em>"
+    },
+    "gallery_intro": {
+      "type": "text",
+      "label": "Gallery Intro",
+      "default": "Recent moments \u2014 captured for posterity."
+    },
+    "gallery_1": {
+      "type": "image",
+      "label": "Gallery Image 1",
+      "default": "/storage/template-images/resort/gallery_1.jpg"
+    },
+    "gallery_2": {
+      "type": "image",
+      "label": "Gallery Image 2",
+      "default": "/storage/template-images/resort/gallery_2.jpg"
+    },
+    "gallery_3": {
+      "type": "image",
+      "label": "Gallery Image 3",
+      "default": "/storage/template-images/resort/gallery_3.jpg"
+    },
+    "gallery_4": {
+      "type": "image",
+      "label": "Gallery Image 4",
+      "default": "/storage/template-images/resort/gallery_4.jpg"
+    },
+    "gallery_5": {
+      "type": "image",
+      "label": "Gallery Image 5",
+      "default": "/storage/template-images/resort/gallery_5.jpg"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ]
+}

@@ -1,0 +1,1283 @@
+{
+  "id": "restaurant",
+  "name": "Restaurant",
+  "version": "1.0.0",
+  "industry": "restaurant",
+  "description": "Upscale restaurant template \u2014 deep red, candlelight, open-kitchen energy. Built around reservations, menu showcase, chef story, and gallery.",
+  "variation": "luxury",
+  "preview_image": "preview.jpg",
+  "created_at": "2026-04-18",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "fields": [
+        "business_name",
+        "nav_cta"
+      ],
+      "elements": {
+        "logo": ".nav-logo",
+        "links": ".nav-links",
+        "link": ".nav-links li a",
+        "primary_button": "a.nav-cta",
+        "burger": ".nav-burger"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero Section",
+      "fields": [
+        "hero_eyebrow",
+        "hero_title",
+        "hero_subtitle",
+        "hero_cta",
+        "hero_cta_secondary",
+        "hero_image",
+        "hero_trust_badge"
+      ],
+      "elements": {
+        "eyebrow": ".hero-eyebrow",
+        "heading": "h1.hero-h1",
+        "subheading": "p.hero-sub",
+        "primary_button": "a.btn-primary",
+        "secondary_button": "a.btn-ghost",
+        "image": ".hero-media img",
+        "overlay": ".hero-overlay",
+        "trust_badge": ".hero-trust"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats Strip",
+      "fields": [
+        "stat_1_value",
+        "stat_1_label",
+        "stat_2_value",
+        "stat_2_label",
+        "stat_3_value",
+        "stat_3_label",
+        "stat_4_value",
+        "stat_4_label"
+      ],
+      "elements": {
+        "item": ".stat-item",
+        "number": ".stat-num",
+        "label": ".stat-label"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Specialties",
+      "fields": [
+        "services_eyebrow",
+        "services_title",
+        "services_intro",
+        "service_1_title",
+        "service_1_text",
+        "service_1_tag_1",
+        "service_1_tag_2",
+        "service_1_tag_3",
+        "service_2_title",
+        "service_2_text",
+        "service_2_tag_1",
+        "service_2_tag_2",
+        "service_2_tag_3",
+        "service_3_title",
+        "service_3_text",
+        "service_3_tag_1",
+        "service_3_tag_2",
+        "service_3_tag_3",
+        "service_4_title",
+        "service_4_text",
+        "service_4_tag_1",
+        "service_4_tag_2",
+        "service_4_tag_3",
+        "service_5_title",
+        "service_5_text",
+        "service_5_tag_1",
+        "service_5_tag_2",
+        "service_5_tag_3",
+        "service_6_title",
+        "service_6_text",
+        "service_6_tag_1",
+        "service_6_tag_2",
+        "service_6_tag_3"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".services-intro",
+        "grid": ".service-grid",
+        "card": ".service-card",
+        "icon": ".service-icon",
+        "card_title": ".service-title",
+        "card_description": ".service-desc",
+        "tag": ".service-tag"
+      }
+    },
+    {
+      "id": "doctors",
+      "name": "Doctors & Team",
+      "fields": [
+        "doctors_eyebrow",
+        "doctors_title",
+        "doctors_intro",
+        "doctor_1_name",
+        "doctor_1_title",
+        "doctor_1_specialty",
+        "doctor_1_bio",
+        "doctor_1_image",
+        "doctor_2_name",
+        "doctor_2_title",
+        "doctor_2_specialty",
+        "doctor_2_bio",
+        "doctor_2_image",
+        "doctor_3_name",
+        "doctor_3_title",
+        "doctor_3_specialty",
+        "doctor_3_bio",
+        "doctor_3_image",
+        "doctor_4_name",
+        "doctor_4_title",
+        "doctor_4_specialty",
+        "doctor_4_bio",
+        "doctor_4_image"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".doctors-intro",
+        "grid": ".doctor-grid",
+        "card": ".doctor-card",
+        "image": ".doctor-card img",
+        "doctor_name": ".doctor-name",
+        "doctor_title": ".doctor-role",
+        "doctor_specialty": ".doctor-specialty",
+        "doctor_bio": ".doctor-bio"
+      }
+    },
+    {
+      "id": "process",
+      "name": "How It Works",
+      "fields": [
+        "process_eyebrow",
+        "process_title",
+        "process_1_title",
+        "process_1_text",
+        "process_2_title",
+        "process_2_text",
+        "process_3_title",
+        "process_3_text",
+        "process_4_title",
+        "process_4_text"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "step": ".process-step",
+        "number": ".process-num",
+        "step_title": ".process-title",
+        "step_description": ".process-desc"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Patient Stories",
+      "fields": [
+        "testimonials_eyebrow",
+        "testimonials_title",
+        "testimonial_1_quote",
+        "testimonial_1_author",
+        "testimonial_1_condition",
+        "testimonial_2_quote",
+        "testimonial_2_author",
+        "testimonial_2_condition",
+        "testimonial_3_quote",
+        "testimonial_3_author",
+        "testimonial_3_condition"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "track": ".testimonial-track",
+        "slide": ".testimonial-slide",
+        "quote": ".testimonial-quote",
+        "author": ".testimonial-author",
+        "condition": ".testimonial-condition",
+        "dot": ".testimonial-dot"
+      }
+    },
+    {
+      "id": "certifications",
+      "name": "Accreditations & Trust",
+      "fields": [
+        "cert_eyebrow",
+        "cert_title",
+        "cert_intro",
+        "cert_1_name",
+        "cert_1_desc",
+        "cert_2_name",
+        "cert_2_desc",
+        "cert_3_name",
+        "cert_3_desc",
+        "cert_4_name",
+        "cert_4_desc",
+        "cert_5_name",
+        "cert_5_desc",
+        "cert_6_name",
+        "cert_6_desc"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.cert-heading",
+        "intro": ".cert-intro",
+        "grid": ".cert-grid",
+        "item": ".cert-item",
+        "cert_name": ".cert-name",
+        "cert_description": ".cert-desc"
+      }
+    },
+    {
+      "id": "cta_banner",
+      "name": "CTA Banner",
+      "fields": [
+        "cta_banner_eyebrow",
+        "cta_banner_title",
+        "cta_banner_subtitle",
+        "cta_banner_cta"
+      ],
+      "elements": {
+        "eyebrow": ".cta-eyebrow",
+        "heading": "h2.cta-title",
+        "subheading": "p.cta-subtitle",
+        "primary_button": "a.cta-button"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact & Location",
+      "fields": [
+        "contact_eyebrow",
+        "contact_title",
+        "contact_intro",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "contact_hours",
+        "contact_emergency",
+        "contact_form_title",
+        "form_submit_text",
+        "form_success_message"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".contact-intro",
+        "info_label": ".contact-item-label",
+        "info_value": ".contact-item-value",
+        "emergency": ".contact-emergency",
+        "form": ".contact-form",
+        "form_field": ".form-field",
+        "form_label": ".form-field label",
+        "form_input": ".form-field input, .form-field textarea, .form-field select",
+        "primary_button": "button.form-submit",
+        "success_message": "#form-success"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book a Consultation",
+      "fields": [
+        "booking_title",
+        "booking_intro",
+        "booking_cta"
+      ],
+      "elements": {
+        "heading": "h2.booking-h2",
+        "intro": ".booking-intro",
+        "form": ".booking-form",
+        "submit_button": "button.booking-submit",
+        "date_input": "input[name=\"preferred_date\"]",
+        "time_slot": ".booking-slot"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".blog-intro",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card-title",
+        "post_excerpt": ".blog-card-excerpt",
+        "cta": ".blog-cta"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "fields": [
+        "gallery_eyebrow",
+        "gallery_title",
+        "gallery_intro",
+        "gallery_1",
+        "gallery_2",
+        "gallery_3",
+        "gallery_4",
+        "gallery_5"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".gallery-intro",
+        "grid": ".gallery-grid",
+        "item": ".gallery-item"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "fields": [
+        "business_name",
+        "footer_tagline",
+        "footer_text",
+        "social_facebook",
+        "social_instagram",
+        "social_linkedin"
+      ],
+      "elements": {
+        "logo": ".footer-logo",
+        "tagline": ".footer-tagline",
+        "links": ".footer-links",
+        "link": ".footer-links li a",
+        "social": ".footer-social",
+        "social_link": ".footer-social a",
+        "copy": ".footer-copy"
+      }
+    }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Clinic Name",
+      "default": "Maison Rouge"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Modern French Bistro \u00b7 Dubai"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Maison Rouge \u2014 a modern French bistro in Dubai serving seasonal small plates, natural wines, and an intimate eight-seat chef's counter."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://restaurant.example.com"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/restaurant.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Reserve a Table"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Modern French Bistro \u00b7 Dubai"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Title",
+      "default": "Honest food,<br><em>generous hospitality.</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "An intimate forty-seat bistro built around a daily-changing menu, a curated natural wine list, and an open kitchen where you can watch every plate leave the pass."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Primary CTA",
+      "default": "Reserve a Table"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Secondary CTA",
+      "default": "View the Menu"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/builder-heroes/restaurant.jpg"
+    },
+    "hero_trust_badge": {
+      "type": "text",
+      "label": "Hero Trust Badge",
+      "default": "Reservations \u00b7 Open 7 Days \u00b7 Walk-Ins After 9pm"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "18"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Seats"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "4"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Courses Daily"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "96%"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Repeat Guests"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "4.8\u2605"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Diner Rating"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "The Menu"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Services Title",
+      "default": "Honest food,<br><em>seasonally driven.</em>"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "A short, daily-changing menu \u2014 six small plates, four mains, two desserts. Built around what arrived from the market that morning."
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Small Plates"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Text",
+      "default": "Six rotating small plates designed for the table to share \u2014 from confit duck rillette to Andalusian gambas al ajillo."
+    },
+    "service_1_tag_1": {
+      "type": "text",
+      "label": "Service 1 Tag 1",
+      "default": "Snacks"
+    },
+    "service_1_tag_2": {
+      "type": "text",
+      "label": "Service 1 Tag 2",
+      "default": "Share"
+    },
+    "service_1_tag_3": {
+      "type": "text",
+      "label": "Service 1 Tag 3",
+      "default": "Daily"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "Seasonal Mains"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Text",
+      "default": "Four mains anchored by an open-fire grill \u2014 line-caught fish, dry-aged ribeye, slow-roasted lamb shoulder, plus a daily vegetarian."
+    },
+    "service_2_tag_1": {
+      "type": "text",
+      "label": "Service 2 Tag 1",
+      "default": "Fish"
+    },
+    "service_2_tag_2": {
+      "type": "text",
+      "label": "Service 2 Tag 2",
+      "default": "Beef"
+    },
+    "service_2_tag_3": {
+      "type": "text",
+      "label": "Service 2 Tag 3",
+      "default": "Veggie"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "Open-Kitchen Tasting"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Text",
+      "default": "An eight-course chef's counter tasting for two \u2014 six seats, two seatings nightly, no menu given in advance."
+    },
+    "service_3_tag_1": {
+      "type": "text",
+      "label": "Service 3 Tag 1",
+      "default": "Tasting"
+    },
+    "service_3_tag_2": {
+      "type": "text",
+      "label": "Service 3 Tag 2",
+      "default": "Counter"
+    },
+    "service_3_tag_3": {
+      "type": "text",
+      "label": "Service 3 Tag 3",
+      "default": "Surprise"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Natural Wine List"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Text",
+      "default": "A 90-bottle natural wine list weighted toward small French and Lebanese producers, with a rotating by-the-glass programme."
+    },
+    "service_4_tag_1": {
+      "type": "text",
+      "label": "Service 4 Tag 1",
+      "default": "Natural"
+    },
+    "service_4_tag_2": {
+      "type": "text",
+      "label": "Service 4 Tag 2",
+      "default": "French"
+    },
+    "service_4_tag_3": {
+      "type": "text",
+      "label": "Service 4 Tag 3",
+      "default": "By-Glass"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "P\u00e2tisserie"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Text",
+      "default": "Two house-made desserts changing weekly, plus a serious cheese trolley featuring three Frenchies and one local Beqaa Valley."
+    },
+    "service_5_tag_1": {
+      "type": "text",
+      "label": "Service 5 Tag 1",
+      "default": "Dessert"
+    },
+    "service_5_tag_2": {
+      "type": "text",
+      "label": "Service 5 Tag 2",
+      "default": "Cheese"
+    },
+    "service_5_tag_3": {
+      "type": "text",
+      "label": "Service 5 Tag 3",
+      "default": "Weekly"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "Brunch Service"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Text",
+      "default": "Saturday and Sunday brunch \u2014 eggs, pastries, and a boozy brunch menu with bottomless ros\u00e9 until 3pm."
+    },
+    "service_6_tag_1": {
+      "type": "text",
+      "label": "Service 6 Tag 1",
+      "default": "Eggs"
+    },
+    "service_6_tag_2": {
+      "type": "text",
+      "label": "Service 6 Tag 2",
+      "default": "Pastries"
+    },
+    "service_6_tag_3": {
+      "type": "text",
+      "label": "Service 6 Tag 3",
+      "default": "Bottomless"
+    },
+    "doctors_eyebrow": {
+      "type": "text",
+      "label": "Doctors Eyebrow",
+      "default": "The Team"
+    },
+    "doctors_title": {
+      "type": "html",
+      "label": "Doctors Title",
+      "default": "The chefs<br><em>behind the pass.</em>"
+    },
+    "doctors_intro": {
+      "type": "text",
+      "label": "Doctors Intro",
+      "default": "A small kitchen brigade of five \u2014 every dish is plated by the chef who cooked it, and every guest is greeted by the same ma\u00eetre d' on the door."
+    },
+    "doctor_1_name": {
+      "type": "text",
+      "label": "Doctor 1 Name",
+      "default": "Marc Belanger"
+    },
+    "doctor_1_title": {
+      "type": "text",
+      "label": "Doctor 1 Title",
+      "default": "Head Chef"
+    },
+    "doctor_1_specialty": {
+      "type": "text",
+      "label": "Doctor 1 Specialty",
+      "default": "French Cuisine"
+    },
+    "doctor_1_bio": {
+      "type": "text",
+      "label": "Doctor 1 Bio",
+      "default": "Twelve years across Paris and Lyon \u2014 Septime, Frenchie, and Le Comptoir du Relais."
+    },
+    "doctor_1_image": {
+      "type": "image",
+      "label": "Doctor 1 Image",
+      "default": "/storage/builder-heroes/restaurant.jpg"
+    },
+    "doctor_2_name": {
+      "type": "text",
+      "label": "Doctor 2 Name",
+      "default": "Layla Khouri"
+    },
+    "doctor_2_title": {
+      "type": "text",
+      "label": "Doctor 2 Title",
+      "default": "Sous Chef"
+    },
+    "doctor_2_specialty": {
+      "type": "text",
+      "label": "Doctor 2 Specialty",
+      "default": "Open Fire"
+    },
+    "doctor_2_bio": {
+      "type": "text",
+      "label": "Doctor 2 Bio",
+      "default": "Trained at Mourad in San Francisco \u2014 runs the grill section, makes most of the bread."
+    },
+    "doctor_2_image": {
+      "type": "image",
+      "label": "Doctor 2 Image",
+      "default": "/storage/builder-heroes/restaurant.jpg"
+    },
+    "doctor_3_name": {
+      "type": "text",
+      "label": "Doctor 3 Name",
+      "default": "R\u00e9mi Dufour"
+    },
+    "doctor_3_title": {
+      "type": "text",
+      "label": "Doctor 3 Title",
+      "default": "Pastry Chef"
+    },
+    "doctor_3_specialty": {
+      "type": "text",
+      "label": "Doctor 3 Specialty",
+      "default": "P\u00e2tisserie"
+    },
+    "doctor_3_bio": {
+      "type": "text",
+      "label": "Doctor 3 Bio",
+      "default": "Pierre Herm\u00e9 alumnus \u2014 quietly responsible for the now-famous chocolate fondant."
+    },
+    "doctor_3_image": {
+      "type": "image",
+      "label": "Doctor 3 Image",
+      "default": "/storage/builder-heroes/restaurant.jpg"
+    },
+    "doctor_4_name": {
+      "type": "text",
+      "label": "Doctor 4 Name",
+      "default": "Sophie Allaire"
+    },
+    "doctor_4_title": {
+      "type": "text",
+      "label": "Doctor 4 Title",
+      "default": "Sommelier"
+    },
+    "doctor_4_specialty": {
+      "type": "text",
+      "label": "Doctor 4 Specialty",
+      "default": "Natural Wine"
+    },
+    "doctor_4_bio": {
+      "type": "text",
+      "label": "Doctor 4 Bio",
+      "default": "Ten years across Paris bistros \u2014 runs the natural wine programme and the cheese trolley."
+    },
+    "doctor_4_image": {
+      "type": "image",
+      "label": "Doctor 4 Image",
+      "default": "/storage/builder-heroes/restaurant.jpg"
+    },
+    "process_eyebrow": {
+      "type": "text",
+      "label": "Process Eyebrow",
+      "default": "Your Visit"
+    },
+    "process_title": {
+      "type": "html",
+      "label": "Process Title",
+      "default": "From booking<br><em>to bill.</em>"
+    },
+    "process_1_title": {
+      "type": "text",
+      "label": "Step 1 Title",
+      "default": "Reserve"
+    },
+    "process_1_text": {
+      "type": "text",
+      "label": "Step 1 Text",
+      "default": "Book online or call \u2014 we keep the last twelve seats for walk-ins after 9pm every night."
+    },
+    "process_2_title": {
+      "type": "text",
+      "label": "Step 2 Title",
+      "default": "Arrive"
+    },
+    "process_2_text": {
+      "type": "text",
+      "label": "Step 2 Text",
+      "default": "Brought to your table by name. The aperitif arrives before the menu \u2014 a glass of house cocktail is on us."
+    },
+    "process_3_title": {
+      "type": "text",
+      "label": "Step 3 Title",
+      "default": "Eat"
+    },
+    "process_3_text": {
+      "type": "text",
+      "label": "Step 3 Text",
+      "default": "The kitchen sends what's running well that night. Speak to your server about allergies, preferences, or anything you'd rather skip."
+    },
+    "process_4_title": {
+      "type": "text",
+      "label": "Step 4 Title",
+      "default": "Linger"
+    },
+    "process_4_text": {
+      "type": "text",
+      "label": "Step 4 Text",
+      "default": "We don't turn tables \u2014 your reservation is yours for the evening. Coffee, digestifs, the cheese trolley."
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Patient Stories"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Title",
+      "default": "Patients,<br><em>in their words.</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Dr. Rahman took the time to actually listen \u2014 the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Hana Y. \u2014 Dubai Marina"
+    },
+    "testimonial_1_condition": {
+      "type": "text",
+      "label": "Testimonial 1 Condition",
+      "default": "Family Medicine"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Dr. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Ahmed & Laila K."
+    },
+    "testimonial_2_condition": {
+      "type": "text",
+      "label": "Testimonial 2 Condition",
+      "default": "Paediatrics"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Heart palpitations had three previous doctors shrug and send me home. Dr. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Roberto P. \u2014 JLT"
+    },
+    "testimonial_3_condition": {
+      "type": "text",
+      "label": "Testimonial 3 Condition",
+      "default": "Cardiology"
+    },
+    "cert_eyebrow": {
+      "type": "text",
+      "label": "Cert Eyebrow",
+      "default": "Recognition"
+    },
+    "cert_title": {
+      "type": "text",
+      "label": "Cert Title",
+      "default": "What people are saying"
+    },
+    "cert_intro": {
+      "type": "text",
+      "label": "Cert Intro",
+      "default": "Press, awards, and the occasional surprise."
+    },
+    "cert_1_name": {
+      "type": "text",
+      "label": "Cert 1 Name",
+      "default": "Time Out 100"
+    },
+    "cert_1_desc": {
+      "type": "text",
+      "label": "Cert 1 Desc",
+      "default": "One of Time Out Dubai's 100 best restaurants, 2025"
+    },
+    "cert_2_name": {
+      "type": "text",
+      "label": "Cert 2 Name",
+      "default": "La Liste"
+    },
+    "cert_2_desc": {
+      "type": "text",
+      "label": "Cert 2 Desc",
+      "default": "Listed in La Liste's Top 1000 restaurants worldwide"
+    },
+    "cert_3_name": {
+      "type": "text",
+      "label": "Cert 3 Name",
+      "default": "Gault & Millau"
+    },
+    "cert_3_desc": {
+      "type": "text",
+      "label": "Cert 3 Desc",
+      "default": "12/20 in the 2025 Gault & Millau guide"
+    },
+    "cert_4_name": {
+      "type": "text",
+      "label": "Cert 4 Name",
+      "default": "Wine Spectator"
+    },
+    "cert_4_desc": {
+      "type": "text",
+      "label": "Cert 4 Desc",
+      "default": "Award of Excellence \u2014 natural wine programme"
+    },
+    "cert_5_name": {
+      "type": "text",
+      "label": "Cert 5 Name",
+      "default": "Time Out Editor's Pick"
+    },
+    "cert_5_desc": {
+      "type": "text",
+      "label": "Cert 5 Desc",
+      "default": "Best Open Kitchen, 2025"
+    },
+    "cert_6_name": {
+      "type": "text",
+      "label": "Cert 6 Name",
+      "default": "Tatler Dining"
+    },
+    "cert_6_desc": {
+      "type": "text",
+      "label": "Cert 6 Desc",
+      "default": "Featured in Tatler Dining Notes, March 2025"
+    },
+    "cta_banner_eyebrow": {
+      "type": "text",
+      "label": "CTA Banner Eyebrow",
+      "default": "Same-day appointments"
+    },
+    "cta_banner_title": {
+      "type": "html",
+      "label": "CTA Banner Title",
+      "default": "Ready when you are."
+    },
+    "cta_banner_subtitle": {
+      "type": "text",
+      "label": "CTA Banner Subtitle",
+      "default": "Get in touch \u2014 we'll respond within an hour during business hours."
+    },
+    "cta_banner_cta": {
+      "type": "text",
+      "label": "CTA Banner CTA",
+      "default": "Reserve a Table"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "Contact"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Title",
+      "default": "Visit or<br><em>call us.</em>"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "We reply to all enquiries within thirty minutes during opening hours."
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Contact Email",
+      "default": "reception@atrium-clinic.ae"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Contact Phone",
+      "default": "+971 4 000 0000"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Contact Address",
+      "default": "Dubai Healthcare City, Block F, Floor 3"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Opening Hours",
+      "default": "Mon\u2013Sat \u00b7 8am\u20138pm  \u00b7  Sun \u00b7 10am\u20134pm"
+    },
+    "contact_emergency": {
+      "type": "text",
+      "label": "Emergency Line",
+      "default": "For medical emergencies dial 998 (Dubai Police / Ambulance)."
+    },
+    "contact_form_title": {
+      "type": "html",
+      "label": "Form Title",
+      "default": "Request a<br><em>callback.</em>"
+    },
+    "form_submit_text": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Request Callback \u2192"
+    },
+    "form_success_message": {
+      "type": "text",
+      "label": "Success Message",
+      "default": "\u2713 Thank you. Reception will call you back within thirty minutes."
+    },
+    "booking_title": {
+      "type": "html",
+      "label": "Booking Title",
+      "default": "Book a<br><em>consultation.</em>"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Choose a specialty, a doctor if you have a preference, and a time that suits you. We'll confirm within thirty minutes."
+    },
+    "booking_cta": {
+      "type": "text",
+      "label": "Booking CTA",
+      "default": "Book Consultation"
+    },
+    "booking_display": {
+      "type": "text",
+      "label": "Booking Display",
+      "default": ""
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Restaurant \u2014 Modern French Bistro \u00b7 Dubai."
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Copyright",
+      "default": "\u00a9 2026 Maison Rouge. All rights reserved."
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Chalk (Background)",
+      "default": "#FFFFFF"
+    },
+    "chalk_soft": {
+      "type": "color",
+      "label": "Soft Background",
+      "default": "#F7FAFC"
+    },
+    "carbon": {
+      "type": "color",
+      "label": "Ink (Primary Text)",
+      "default": "#0F1A2A"
+    },
+    "carbon_soft": {
+      "type": "color",
+      "label": "Soft Ink",
+      "default": "#344458"
+    },
+    "medical_blue": {
+      "type": "color",
+      "label": "Medical Blue",
+      "default": "#C0392B"
+    },
+    "medical_deep": {
+      "type": "color",
+      "label": "Medical Deep",
+      "default": "#8E2A20"
+    },
+    "sage": {
+      "type": "color",
+      "label": "Sage Accent",
+      "default": "#E8B89C"
+    },
+    "sage_soft": {
+      "type": "color",
+      "label": "Sage Soft",
+      "default": "#D6E4DD"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#6B7A8F"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#E2E8F0"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "From the<br><em>journal.</em>"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Practical guides, expert opinion, and behind-the-scenes notes \u2014 written by our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first appointment"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through of the first visit \u2014 from arrival to follow-up \u2014 so you know exactly what to expect."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-appointment"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking your provider"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard \u2014 but rarely are. Use this as a checklist before any consultation."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for unhurried appointments"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why a thirty-minute consultation isn't a luxury \u2014 it's the bare minimum for thoughtful care."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/unhurried"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "Read More \u2192"
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "Gallery"
+    },
+    "gallery_title": {
+      "type": "html",
+      "label": "Gallery Title",
+      "default": "From the<br><em>archive.</em>"
+    },
+    "gallery_intro": {
+      "type": "text",
+      "label": "Gallery Intro",
+      "default": "Recent moments \u2014 captured for posterity."
+    },
+    "gallery_1": {
+      "type": "image",
+      "label": "Gallery Image 1",
+      "default": "/storage/template-images/restaurant/gallery_1.jpg"
+    },
+    "gallery_2": {
+      "type": "image",
+      "label": "Gallery Image 2",
+      "default": "/storage/template-images/restaurant/gallery_2.jpg"
+    },
+    "gallery_3": {
+      "type": "image",
+      "label": "Gallery Image 3",
+      "default": "/storage/template-images/restaurant/gallery_3.jpg"
+    },
+    "gallery_4": {
+      "type": "image",
+      "label": "Gallery Image 4",
+      "default": "/storage/template-images/restaurant/gallery_4.jpg"
+    },
+    "gallery_5": {
+      "type": "image",
+      "label": "Gallery Image 5",
+      "default": "/storage/template-images/restaurant/gallery_5.jpg"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ]
+}
