@@ -246,205 +246,22 @@ class BuilderService
 
     public function wizardGenerate(int $wsId, array $params): array
     {
-        $businessName = $params['business_name'] ?? 'My Business';
-        $industry     = $params['industry'] ?? 'general';
-        $goal         = $params['goal'] ?? 'leads';
-        $services     = $params['services'] ?? [];
-        if (is_string($services)) $services = array_map('trim', explode(',', $services));
-
-        // Extra wizard context fields (ported from WP arthur_context)
-        $location     = $params['location']     ?? '';
-        $tone         = $params['tone']         ?? '';
-        $audience     = $params['audience']     ?? '';
-        $coreService  = $params['core_service'] ?? ($services[0] ?? '');
-
-        // ── Creative blueprint ──────────────────────────────────────────────
-        $bp = $this->blueprint($wsId, 'page', [
-            'goal'      => "Build a website for {$businessName}",
-            'audience'  => "potential customers of a {$industry} business",
-            'page_type' => 'website wizard',
-        ]);
-        $heroHeadline  = $bp['headline_angle'] ?? $businessName;
-        $subheadline   = $bp['subheadline_hint'] ?? "Your trusted {$industry} partner";
-        $ctaPrimary    = $bp['cta_primary'] ?? null;
-        $trustSignals  = $bp['trust_signals'] ?? [];
-        // ───────────────────────────────────────────────────────────────────
-
-        $primaryColor   = $params['primary_color'] ?? '#6C5CE7';
-        $secondaryColor = $params['secondary_color'] ?? '#00E5A8';
-        $accentColor    = $params['accent_color'] ?? '#F4F7FB';
-        $fontHeading    = $params['font_heading'] ?? 'Syne';
-        $fontBody       = $params['font_body'] ?? 'DM Sans';
-
-        $site = $this->createWebsite($wsId, [
-            'name'     => $businessName,
-            'template' => 'ai_generated',
-            'user_id'  => $params['user_id'] ?? null,
-            'settings' => [
-                'theme'           => 'modern',
-                'primary_color'   => $primaryColor,
-                'secondary_color' => $secondaryColor,
-                'accent_color'    => $accentColor,
-                'font_heading'    => $fontHeading,
-                'font_body'       => $fontBody,
-            ],
-        ]);
-
-        // Seed brand identity for the workspace
-        DB::table('creative_brand_identities')->updateOrInsert(
-            ['workspace_id' => $wsId],
-            [
-                'primary_color'   => $primaryColor,
-                'secondary_color' => $secondaryColor,
-                'accent_color'    => $accentColor,
-                'colors_json'     => json_encode([$primaryColor, $secondaryColor, $accentColor]),
-                'fonts_json'      => json_encode(['heading' => $fontHeading, 'body' => $fontBody]),
-                'visual_style'    => 'modern',
-                'industry'        => $industry,
-                'updated_at'      => now(),
-                'created_at'      => now(),
-            ]
-        );
-
-        $websiteId = $site['website_id'];
-
-        $pageTemplates = $this->getWizardPages($goal, $industry, $services);
-
-        // ── STAGE 1: Build all page layouts (template-based, fast) ──────────
-        $pageLayouts = [];
-        foreach ($pageTemplates as $i => $template) {
-            $sections = $this->generatePageSections($template, $businessName, $industry, $goal, [
-                'hero_headline'  => $i === 0 ? $heroHeadline : null,
-                'hero_sub'       => $i === 0 ? $subheadline : null,
-                'cta_primary'    => $ctaPrimary,
-                'trust_signals'  => $trustSignals,
-            ]);
-            $pageLayouts[] = [
-                'template' => $template,
-                'sections' => $sections,
-                'index'    => $i,
-            ];
-        }
-
-        // ── STAGE 2: AI copy generation per page (DeepSeek) ─────────────────
-        $aiCopyMap   = [];
-        $aiEnhanced  = false;
-        $failedSlugs = [];
-
-        $copyConfig = [
-            'business_name' => $businessName,
-            'industry'      => $industry,
-            'location'      => $location,
-            'tone'          => $tone,
-            'audience'      => $audience,
-            'core_service'  => $coreService,
-        ];
-
-        // MIGRATED 2026-04-13 (Phase 0.17b): switched from aiRun('builder_generate', ...)
-        // fold-pattern (which was returning narrative text and producing 0 structured
-        // pages in the e2e verify run) to chatJson with the per-page copy prompt as
-        // system + a minimal user trigger. The runtime forces JSON mode + parses
-        // server-side, and we read sections directly out of the parsed object.
-        if ($this->runtime->isConfigured()) {
-            foreach ($pageLayouts as $pl) {
-                $slug          = $pl['template']['slug'];
-                $pageSections  = $pl['sections']['sections'] ?? [];
-
-                try {
-                    $copyInstructions = $this->buildCopyPrompt($slug, $pageSections, $copyConfig);
-                    if (!$copyInstructions) {
-                        $failedSlugs[] = $slug;
-                        continue;
-                    }
-
-                    // chat_json requires a JSON OBJECT (not a bare array), so we
-                    // ask for {"sections":[...]} and read .sections back out.
-                    $systemPrompt = $copyInstructions
-                                  . "\n\nIMPORTANT: Return ONLY a valid JSON object of the form "
-                                  . '{"sections":[...]} where the sections array follows the schema above. '
-                                  . 'No markdown, no commentary outside the JSON.';
-
-                    $result = $this->runtime->chatJson(
-                        $systemPrompt,
-                        'Generate the page sections now for the ' . $slug . ' page.',
-                        [
-                            'page_slug'     => $slug,
-                            'business_name' => $businessName,
-                            'industry'      => $industry,
-                            'location'      => $location,
-                            'tone'          => $tone,
-                            'core_service'  => $coreService,
-                        ],
-                        3000
-                    );
-
-                    if (!($result['success'] ?? false) || !is_array($result['parsed'] ?? null)) {
-                        $failedSlugs[] = $slug;
-                        continue;
-                    }
-
-                    $aiSections = $result['parsed']['sections'] ?? null;
-                    if (is_array($aiSections) && !empty($aiSections)) {
-                        $aiCopyMap[$slug] = $aiSections;
-                    } else {
-                        $failedSlugs[] = $slug;
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('Builder AI copy failed for page (runtime)', [
-                        'slug'  => $slug,
-                        'error' => $e->getMessage(),
-                    ]);
-                    $failedSlugs[] = $slug;
-                }
-            }
-
-            if (!empty($aiCopyMap)) {
-                $aiEnhanced = true;
-            }
-        } else {
-            // DeepSeek not configured — all pages use template fallback
-            foreach ($pageLayouts as $pl) {
-                $failedSlugs[] = $pl['template']['slug'];
-            }
-        }
-
-        // ── STAGE 3: Merge AI copy into templates and save ──────────────────
-        $pagesCreated = 0;
-        foreach ($pageLayouts as $pl) {
-            $slug     = $pl['template']['slug'];
-            $template = $pl['template'];
-            $sections = $pl['sections'];
-
-            // Merge AI content if available for this page
-            if (!empty($aiCopyMap[$slug]) && !empty($sections['sections'])) {
-                $sections['sections'] = $this->mergeAiCopy(
-                    $sections['sections'],
-                    $aiCopyMap[$slug]
-                );
-            }
-
-            $this->createPage($websiteId, [
-                'title'       => $template['title'],
-                'slug'        => $template['slug'],
-                'type'        => $template['type'],
-                'is_homepage' => $pl['index'] === 0,
-                'sections'    => $sections,
-                'seo'         => [
-                    'title'       => "{$template['title']} | {$businessName}",
-                    'description' => "{$businessName} - {$template['title']}",
-                ],
-            ]);
-            $pagesCreated++;
-        }
-
-        $this->engineIntel->recordToolUsage('builder', 'wizard_generate', 0.85);
+        // PATCH 3 (2026-05-08) — Disabled. The structured wizard relied on
+        // 4 helpers (getWizardPages / generatePageSections / buildCopyPrompt /
+        // mergeAiCopy) that were removed 2026-04-19. The fatal Error this
+        // produced was the cause of HTTP 500s on /api/builder/wizard and
+        // /api/websites/create. Website creation is owned by Arthur now —
+        // ArthurService::handleMessage() drives the conversational create
+        // flow. Method body kept as a clean 501-style return so any
+        // agent-triggered EngineExecutionService dispatch on
+        // 'builder/wizard_generate' degrades gracefully instead of crashing.
+        $this->engineIntel->recordToolUsage('builder', 'wizard_generate', 0.0);
 
         return [
-            'website_id'    => $websiteId,
-            'pages_created' => $pagesCreated,
-            'status'        => 'draft',
-            'ai_enhanced'   => $aiEnhanced,
-            'failed_slugs'  => $failedSlugs,
+            'success'     => false,
+            'status'      => 'gone',
+            'error'       => 'wizardGenerate is no longer supported. Website creation is handled by Arthur (ArthurService::handleMessage / POST /api/builder/arthur/message).',
+            'replacement' => '/api/builder/arthur/message',
         ];
     }
 

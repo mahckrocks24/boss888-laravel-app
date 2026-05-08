@@ -1718,7 +1718,17 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::post('/websites/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'publish_website', ['website_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/websites/{wid}/pages', fn(\Illuminate\Http\Request $r, $wid) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'generate_page', array_merge($r->all(), ['website_id' => $wid]), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         Route::put('/pages/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updatePage($id, $r->all()));
-        Route::post('/wizard', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'wizard_generate', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        // PATCH 3 (2026-05-08): the legacy structured wizard relied on
+        // BuilderService::wizardGenerate() which calls 4 helpers that were
+        // removed in 2026-04-19. Returning a clean 501 instead of letting
+        // the request fatal. Website creation is owned by Arthur now —
+        // POST /api/builder/arthur/message handles intent extraction and
+        // multi-page generation conversationally.
+        Route::post('/wizard', fn(\Illuminate\Http\Request $r) => response()->json([
+            'error' => 'Website creation has moved to Arthur. Use POST /api/builder/arthur/message instead.',
+            'replacement' => '/api/builder/arthur/message',
+            'status' => 'gone',
+        ], 501));
 
 
         // Builder page operations (from WP class-lubld-rest.php)
@@ -4061,7 +4071,14 @@ HTMLSCRIPT;
     });
     Route::get("/creative/assets", fn() => response()->json(["assets" => []]));
     Route::get("/websites", function(\Illuminate\Http\Request $r) { return response()->json(app(\App\Engines\Builder\Services\BuilderService::class)->listWebsites($r->attributes->get("workspace_id"))); });
-    Route::post("/websites/create", fn(\Illuminate\Http\Request $r) => response()->json(app(\App\Core\EngineKernel\EngineExecutionService::class)->execute($r->attributes->get("workspace_id"), "builder", "wizard_generate", $r->all(), ["user_id" => $r->user()?->id, "source" => "manual"]), 201));
+    // PATCH 3 (2026-05-08): same as /api/builder/wizard above —
+    // wizardGenerate() helpers were removed 2026-04-19 and this
+    // closure was fataling. Use Arthur conversational create flow.
+    Route::post("/websites/create", fn(\Illuminate\Http\Request $r) => response()->json([
+        'error' => 'Website creation has moved to Arthur. Use POST /api/builder/arthur/message instead.',
+        'replacement' => '/api/builder/arthur/message',
+        'status' => 'gone',
+    ], 501));
     // Website delete — matches JS wsDelete() which POSTs to /api/websites/{id}/delete
     Route::post("/websites/{id}/delete", function (\Illuminate\Http\Request $r, $id) {
         $bs = app(\App\Engines\Builder\Services\BuilderService::class);
@@ -5019,8 +5036,14 @@ Route::post('/builder/websites/{id}/publish', function (\Illuminate\Http\Request
     if (!$website) return response()->json(['error' => 'Website not found'], 404);
 
     $user = $request->user();
-    $ws = \Illuminate\Support\Facades\DB::table('workspaces')
-        ->where('id', $website->workspace_id)->where('user_id', $user->id)->first();
+    // PATCH 3 (2026-05-08): was querying `workspaces.user_id` which
+    // doesn't exist — workspace ownership lives in `workspace_users`
+    // pivot. The bad column reference made this throw 500 on every
+    // publish/unpublish attempt with a valid auth token.
+    $ws = \Illuminate\Support\Facades\DB::table('workspace_users')
+        ->where('workspace_id', $website->workspace_id)
+        ->where('user_id', $user->id)
+        ->first();
     if (!$ws) return response()->json(['error' => 'Unauthorized'], 403);
 
     $subdomain = $website->subdomain;
@@ -5047,8 +5070,14 @@ Route::post('/builder/websites/{id}/unpublish', function (\Illuminate\Http\Reque
     if (!$website) return response()->json(['error' => 'Website not found'], 404);
 
     $user = $request->user();
-    $ws = \Illuminate\Support\Facades\DB::table('workspaces')
-        ->where('id', $website->workspace_id)->where('user_id', $user->id)->first();
+    // PATCH 3 (2026-05-08): was querying `workspaces.user_id` which
+    // doesn't exist — workspace ownership lives in `workspace_users`
+    // pivot. The bad column reference made this throw 500 on every
+    // publish/unpublish attempt with a valid auth token.
+    $ws = \Illuminate\Support\Facades\DB::table('workspace_users')
+        ->where('workspace_id', $website->workspace_id)
+        ->where('user_id', $user->id)
+        ->first();
     if (!$ws) return response()->json(['error' => 'Unauthorized'], 403);
 
     \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->update([
