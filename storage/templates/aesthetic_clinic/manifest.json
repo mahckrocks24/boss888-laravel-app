@@ -1,0 +1,1222 @@
+{
+  "id": "aesthetic_clinic",
+  "name": "Aesthetic Clinic",
+  "version": "1.0.0",
+  "industry": "aesthetic_clinic",
+  "description": "Luxury aesthetic medical clinic template \u2014 premium violet palette, spa-like atmosphere, before/after focus. Built for injectables, laser, body contouring, and skin clinics.",
+  "variation": "luxury",
+  "preview_image": "preview.jpg",
+  "created_at": "2026-04-18",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "fields": [
+        "business_name",
+        "nav_cta"
+      ],
+      "elements": {
+        "logo": ".nav-logo",
+        "links": ".nav-links",
+        "link": ".nav-links li a",
+        "primary_button": "a.nav-cta",
+        "burger": ".nav-burger"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero Section",
+      "fields": [
+        "hero_eyebrow",
+        "hero_title",
+        "hero_subtitle",
+        "hero_cta",
+        "hero_cta_secondary",
+        "hero_image",
+        "hero_trust_badge"
+      ],
+      "elements": {
+        "eyebrow": ".hero-eyebrow",
+        "heading": "h1.hero-h1",
+        "subheading": "p.hero-sub",
+        "primary_button": "a.btn-primary",
+        "secondary_button": "a.btn-ghost",
+        "image": ".hero-media img",
+        "overlay": ".hero-overlay",
+        "trust_badge": ".hero-trust"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats Strip",
+      "fields": [
+        "stat_1_value",
+        "stat_1_label",
+        "stat_2_value",
+        "stat_2_label",
+        "stat_3_value",
+        "stat_3_label",
+        "stat_4_value",
+        "stat_4_label"
+      ],
+      "elements": {
+        "item": ".stat-item",
+        "number": ".stat-num",
+        "label": ".stat-label"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Specialties",
+      "fields": [
+        "services_eyebrow",
+        "services_title",
+        "services_intro",
+        "service_1_title",
+        "service_1_text",
+        "service_1_tag_1",
+        "service_1_tag_2",
+        "service_1_tag_3",
+        "service_2_title",
+        "service_2_text",
+        "service_2_tag_1",
+        "service_2_tag_2",
+        "service_2_tag_3",
+        "service_3_title",
+        "service_3_text",
+        "service_3_tag_1",
+        "service_3_tag_2",
+        "service_3_tag_3",
+        "service_4_title",
+        "service_4_text",
+        "service_4_tag_1",
+        "service_4_tag_2",
+        "service_4_tag_3",
+        "service_5_title",
+        "service_5_text",
+        "service_5_tag_1",
+        "service_5_tag_2",
+        "service_5_tag_3",
+        "service_6_title",
+        "service_6_text",
+        "service_6_tag_1",
+        "service_6_tag_2",
+        "service_6_tag_3"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".services-intro",
+        "grid": ".service-grid",
+        "card": ".service-card",
+        "icon": ".service-icon",
+        "card_title": ".service-title",
+        "card_description": ".service-desc",
+        "tag": ".service-tag"
+      }
+    },
+    {
+      "id": "doctors",
+      "name": "Doctors & Team",
+      "fields": [
+        "doctors_eyebrow",
+        "doctors_title",
+        "doctors_intro",
+        "doctor_1_name",
+        "doctor_1_title",
+        "doctor_1_specialty",
+        "doctor_1_bio",
+        "doctor_1_image",
+        "doctor_2_name",
+        "doctor_2_title",
+        "doctor_2_specialty",
+        "doctor_2_bio",
+        "doctor_2_image",
+        "doctor_3_name",
+        "doctor_3_title",
+        "doctor_3_specialty",
+        "doctor_3_bio",
+        "doctor_3_image",
+        "doctor_4_name",
+        "doctor_4_title",
+        "doctor_4_specialty",
+        "doctor_4_bio",
+        "doctor_4_image"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".doctors-intro",
+        "grid": ".doctor-grid",
+        "card": ".doctor-card",
+        "image": ".doctor-card img",
+        "doctor_name": ".doctor-name",
+        "doctor_title": ".doctor-role",
+        "doctor_specialty": ".doctor-specialty",
+        "doctor_bio": ".doctor-bio"
+      }
+    },
+    {
+      "id": "process",
+      "name": "How It Works",
+      "fields": [
+        "process_eyebrow",
+        "process_title",
+        "process_1_title",
+        "process_1_text",
+        "process_2_title",
+        "process_2_text",
+        "process_3_title",
+        "process_3_text",
+        "process_4_title",
+        "process_4_text"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "step": ".process-step",
+        "number": ".process-num",
+        "step_title": ".process-title",
+        "step_description": ".process-desc"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Patient Stories",
+      "fields": [
+        "testimonials_eyebrow",
+        "testimonials_title",
+        "testimonial_1_quote",
+        "testimonial_1_author",
+        "testimonial_1_condition",
+        "testimonial_2_quote",
+        "testimonial_2_author",
+        "testimonial_2_condition",
+        "testimonial_3_quote",
+        "testimonial_3_author",
+        "testimonial_3_condition"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "track": ".testimonial-track",
+        "slide": ".testimonial-slide",
+        "quote": ".testimonial-quote",
+        "author": ".testimonial-author",
+        "condition": ".testimonial-condition",
+        "dot": ".testimonial-dot"
+      }
+    },
+    {
+      "id": "certifications",
+      "name": "Accreditations & Trust",
+      "fields": [
+        "cert_eyebrow",
+        "cert_title",
+        "cert_intro",
+        "cert_1_name",
+        "cert_1_desc",
+        "cert_2_name",
+        "cert_2_desc",
+        "cert_3_name",
+        "cert_3_desc",
+        "cert_4_name",
+        "cert_4_desc",
+        "cert_5_name",
+        "cert_5_desc",
+        "cert_6_name",
+        "cert_6_desc"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.cert-heading",
+        "intro": ".cert-intro",
+        "grid": ".cert-grid",
+        "item": ".cert-item",
+        "cert_name": ".cert-name",
+        "cert_description": ".cert-desc"
+      }
+    },
+    {
+      "id": "cta_banner",
+      "name": "CTA Banner",
+      "fields": [
+        "cta_banner_eyebrow",
+        "cta_banner_title",
+        "cta_banner_subtitle",
+        "cta_banner_cta"
+      ],
+      "elements": {
+        "eyebrow": ".cta-eyebrow",
+        "heading": "h2.cta-title",
+        "subheading": "p.cta-subtitle",
+        "primary_button": "a.cta-button"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact & Location",
+      "fields": [
+        "contact_eyebrow",
+        "contact_title",
+        "contact_intro",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "contact_hours",
+        "contact_emergency",
+        "contact_form_title",
+        "form_submit_text",
+        "form_success_message"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".contact-intro",
+        "info_label": ".contact-item-label",
+        "info_value": ".contact-item-value",
+        "emergency": ".contact-emergency",
+        "form": ".contact-form",
+        "form_field": ".form-field",
+        "form_label": ".form-field label",
+        "form_input": ".form-field input, .form-field textarea, .form-field select",
+        "primary_button": "button.form-submit",
+        "success_message": "#form-success"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book a Consultation",
+      "fields": [
+        "booking_title",
+        "booking_intro",
+        "booking_cta"
+      ],
+      "elements": {
+        "heading": "h2.booking-h2",
+        "intro": ".booking-intro",
+        "form": ".booking-form",
+        "submit_button": "button.booking-submit",
+        "date_input": "input[name=\"preferred_date\"]",
+        "time_slot": ".booking-slot"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".blog-intro",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card-title",
+        "post_excerpt": ".blog-card-excerpt",
+        "cta": ".blog-cta"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "fields": [
+        "business_name",
+        "footer_tagline",
+        "footer_text",
+        "social_facebook",
+        "social_instagram",
+        "social_linkedin"
+      ],
+      "elements": {
+        "logo": ".footer-logo",
+        "tagline": ".footer-tagline",
+        "links": ".footer-links",
+        "link": ".footer-links li a",
+        "social": ".footer-social",
+        "social_link": ".footer-social a",
+        "copy": ".footer-copy"
+      }
+    }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Clinic Name",
+      "default": "Maison Aesthetic"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Luxury Aesthetic Medicine \u00b7 Dubai"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Maison Aesthetic \u2014 a luxury aesthetic medical clinic in Dubai offering Botox, fillers, laser, skin treatments, and body contouring delivered by board-certified physicians."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://aesthetic-clinic.example.com"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Book Consultation"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Luxury Aesthetic Medicine \u00b7 Dubai"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Title",
+      "default": "Refined, restored,<br><em>radiant.</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "A doctor-led aesthetic clinic where every treatment is planned, performed, and reviewed by a board-certified physician \u2014 never a technician. Injectables, energy-based devices, surgical referrals, and bespoke skin programmes in one private suite."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Primary CTA",
+      "default": "Book Consultation"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Secondary CTA",
+      "default": "View Treatments"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+    },
+    "hero_trust_badge": {
+      "type": "text",
+      "label": "Hero Trust Badge",
+      "default": "Doctor-Led \u00b7 DHA Licensed \u00b7 Authentic Brands \u00b7 Discreet Suites"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "12"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Consultants"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "9"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Specialties"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "18,000+"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Patients Seen"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "4.9\u2605"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Patient Rating"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "Treatments"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Services Title",
+      "default": "Doctor-led aesthetic<br><em>medicine.</em>"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "Every treatment in our menu is delivered or supervised by a physician with formal aesthetic medicine training \u2014 no nurses, no technicians, no compromise."
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Botox & Anti-Wrinkle"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Text",
+      "default": "Botulinum toxin micro-dosing for a refreshed, expressive look \u2014 placement mapped to your facial anatomy, never frozen."
+    },
+    "service_1_tag_1": {
+      "type": "text",
+      "label": "Service 1 Tag 1",
+      "default": "Forehead"
+    },
+    "service_1_tag_2": {
+      "type": "text",
+      "label": "Service 1 Tag 2",
+      "default": "Brow"
+    },
+    "service_1_tag_3": {
+      "type": "text",
+      "label": "Service 1 Tag 3",
+      "default": "Crow's Feet"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "Dermal Fillers"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Text",
+      "default": "Hyaluronic acid filler for cheeks, lips, jawline, and tear troughs \u2014 only Allergan, Galderma, and Teoxane brands used."
+    },
+    "service_2_tag_1": {
+      "type": "text",
+      "label": "Service 2 Tag 1",
+      "default": "Cheeks"
+    },
+    "service_2_tag_2": {
+      "type": "text",
+      "label": "Service 2 Tag 2",
+      "default": "Lips"
+    },
+    "service_2_tag_3": {
+      "type": "text",
+      "label": "Service 2 Tag 3",
+      "default": "Jawline"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "Laser Treatments"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Text",
+      "default": "Picosure, Fraxel, IPL, and laser hair removal \u2014 full pigment correction, resurfacing, and vascular work in one suite."
+    },
+    "service_3_tag_1": {
+      "type": "text",
+      "label": "Service 3 Tag 1",
+      "default": "Picosure"
+    },
+    "service_3_tag_2": {
+      "type": "text",
+      "label": "Service 3 Tag 2",
+      "default": "Fraxel"
+    },
+    "service_3_tag_3": {
+      "type": "text",
+      "label": "Service 3 Tag 3",
+      "default": "IPL"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Skin & Peels"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Text",
+      "default": "Medical-grade chemical peels, hydrafacials, microneedling, and prescription skincare regimens designed by a dermatologist."
+    },
+    "service_4_tag_1": {
+      "type": "text",
+      "label": "Service 4 Tag 1",
+      "default": "Peels"
+    },
+    "service_4_tag_2": {
+      "type": "text",
+      "label": "Service 4 Tag 2",
+      "default": "Hydrafacial"
+    },
+    "service_4_tag_3": {
+      "type": "text",
+      "label": "Service 4 Tag 3",
+      "default": "Microneedling"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "Body Contouring"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Text",
+      "default": "CoolSculpting, EmSculpt Neo, and radio-frequency body sculpting \u2014 clinically proven, non-surgical fat reduction and muscle toning."
+    },
+    "service_5_tag_1": {
+      "type": "text",
+      "label": "Service 5 Tag 1",
+      "default": "CoolSculpt"
+    },
+    "service_5_tag_2": {
+      "type": "text",
+      "label": "Service 5 Tag 2",
+      "default": "EmSculpt"
+    },
+    "service_5_tag_3": {
+      "type": "text",
+      "label": "Service 5 Tag 3",
+      "default": "RF"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "Hair Restoration"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Text",
+      "default": "PRP, exosome therapy, and surgical FUE consultations for hair thinning and pattern hair loss \u2014 discreet, evidence-based pathways."
+    },
+    "service_6_tag_1": {
+      "type": "text",
+      "label": "Service 6 Tag 1",
+      "default": "PRP"
+    },
+    "service_6_tag_2": {
+      "type": "text",
+      "label": "Service 6 Tag 2",
+      "default": "Exosomes"
+    },
+    "service_6_tag_3": {
+      "type": "text",
+      "label": "Service 6 Tag 3",
+      "default": "FUE"
+    },
+    "doctors_eyebrow": {
+      "type": "text",
+      "label": "Doctors Eyebrow",
+      "default": "Our Physicians"
+    },
+    "doctors_title": {
+      "type": "html",
+      "label": "Doctors Title",
+      "default": "Doctors,<br><em>not technicians.</em>"
+    },
+    "doctors_intro": {
+      "type": "text",
+      "label": "Doctors Intro",
+      "default": "Every injection, every laser pulse, every skin programme is signed off by a board-certified physician with a minimum of a decade of aesthetic medicine experience."
+    },
+    "doctor_1_name": {
+      "type": "text",
+      "label": "Doctor 1 Name",
+      "default": "Dr. Aisha Rahman"
+    },
+    "doctor_1_title": {
+      "type": "text",
+      "label": "Doctor 1 Title",
+      "default": "Medical Director"
+    },
+    "doctor_1_specialty": {
+      "type": "text",
+      "label": "Doctor 1 Specialty",
+      "default": "Family Medicine"
+    },
+    "doctor_1_bio": {
+      "type": "text",
+      "label": "Doctor 1 Bio",
+      "default": "MBBS Imperial College London, MRCGP. Sixteen years in private and NHS practice."
+    },
+    "doctor_1_image": {
+      "type": "image",
+      "label": "Doctor 1 Image",
+      "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+    },
+    "doctor_2_name": {
+      "type": "text",
+      "label": "Doctor 2 Name",
+      "default": "Dr. Omar Al-Sayed"
+    },
+    "doctor_2_title": {
+      "type": "text",
+      "label": "Doctor 2 Title",
+      "default": "Consultant Cardiologist"
+    },
+    "doctor_2_specialty": {
+      "type": "text",
+      "label": "Doctor 2 Specialty",
+      "default": "Cardiology"
+    },
+    "doctor_2_bio": {
+      "type": "text",
+      "label": "Doctor 2 Bio",
+      "default": "MB BCh, MD Cardiology. Previously Consultant at Royal Brompton Hospital, London."
+    },
+    "doctor_2_image": {
+      "type": "image",
+      "label": "Doctor 2 Image",
+      "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+    },
+    "doctor_3_name": {
+      "type": "text",
+      "label": "Doctor 3 Name",
+      "default": "Dr. Sarah Nakamura"
+    },
+    "doctor_3_title": {
+      "type": "text",
+      "label": "Doctor 3 Title",
+      "default": "Consultant Paediatrician"
+    },
+    "doctor_3_specialty": {
+      "type": "text",
+      "label": "Doctor 3 Specialty",
+      "default": "Paediatrics"
+    },
+    "doctor_3_bio": {
+      "type": "text",
+      "label": "Doctor 3 Bio",
+      "default": "MBBS, MRCPCH. Fellowship in paediatric allergy, Great Ormond Street Hospital."
+    },
+    "doctor_3_image": {
+      "type": "image",
+      "label": "Doctor 3 Image",
+      "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+    },
+    "doctor_4_name": {
+      "type": "text",
+      "label": "Doctor 4 Name",
+      "default": "Dr. James Whitfield"
+    },
+    "doctor_4_title": {
+      "type": "text",
+      "label": "Doctor 4 Title",
+      "default": "Consultant Dermatologist"
+    },
+    "doctor_4_specialty": {
+      "type": "text",
+      "label": "Doctor 4 Specialty",
+      "default": "Dermatology"
+    },
+    "doctor_4_bio": {
+      "type": "text",
+      "label": "Doctor 4 Bio",
+      "default": "MBBS, FRCP. Previously Consultant Dermatologist at Chelsea & Westminster."
+    },
+    "doctor_4_image": {
+      "type": "image",
+      "label": "Doctor 4 Image",
+      "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+    },
+    "process_eyebrow": {
+      "type": "text",
+      "label": "Process Eyebrow",
+      "default": "What to Expect"
+    },
+    "process_title": {
+      "type": "html",
+      "label": "Process Title",
+      "default": "Your visit,<br><em>from booking to follow-up.</em>"
+    },
+    "process_1_title": {
+      "type": "text",
+      "label": "Step 1 Title",
+      "default": "Book"
+    },
+    "process_1_text": {
+      "type": "text",
+      "label": "Step 1 Text",
+      "default": "Call, message, or use the online booking form. Same-day slots are available daily; weekends open for urgent appointments."
+    },
+    "process_2_title": {
+      "type": "text",
+      "label": "Step 2 Title",
+      "default": "Consult"
+    },
+    "process_2_text": {
+      "type": "text",
+      "label": "Step 2 Text",
+      "default": "A thirty-minute appointment as standard \u2014 long enough to listen, examine properly, and discuss options without rushing."
+    },
+    "process_3_title": {
+      "type": "text",
+      "label": "Step 3 Title",
+      "default": "Diagnose"
+    },
+    "process_3_text": {
+      "type": "text",
+      "label": "Step 3 Text",
+      "default": "Tests and imaging on site where possible, with written explanations you can take home and results routed to your GP."
+    },
+    "process_4_title": {
+      "type": "text",
+      "label": "Step 4 Title",
+      "default": "Follow-Up"
+    },
+    "process_4_text": {
+      "type": "text",
+      "label": "Step 4 Text",
+      "default": "A short call or secure message after the appointment to check in, review results, and answer any further questions."
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Patient Stories"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Title",
+      "default": "Patients,<br><em>in their words.</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Dr. Rahman took the time to actually listen \u2014 the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Hana Y. \u2014 Dubai Marina"
+    },
+    "testimonial_1_condition": {
+      "type": "text",
+      "label": "Testimonial 1 Condition",
+      "default": "Family Medicine"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Dr. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Ahmed & Laila K."
+    },
+    "testimonial_2_condition": {
+      "type": "text",
+      "label": "Testimonial 2 Condition",
+      "default": "Paediatrics"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Heart palpitations had three previous doctors shrug and send me home. Dr. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Roberto P. \u2014 JLT"
+    },
+    "testimonial_3_condition": {
+      "type": "text",
+      "label": "Testimonial 3 Condition",
+      "default": "Cardiology"
+    },
+    "cert_eyebrow": {
+      "type": "text",
+      "label": "Cert Eyebrow",
+      "default": "Accreditations"
+    },
+    "cert_title": {
+      "type": "text",
+      "label": "Cert Title",
+      "default": "Held to international standards"
+    },
+    "cert_intro": {
+      "type": "text",
+      "label": "Cert Intro",
+      "default": "Our clinical and governance standards are audited annually by three independent bodies."
+    },
+    "cert_1_name": {
+      "type": "text",
+      "label": "Cert 1 Name",
+      "default": "JCI Accredited"
+    },
+    "cert_1_desc": {
+      "type": "text",
+      "label": "Cert 1 Desc",
+      "default": "Joint Commission International clinical standards"
+    },
+    "cert_2_name": {
+      "type": "text",
+      "label": "Cert 2 Name",
+      "default": "DHA Licensed"
+    },
+    "cert_2_desc": {
+      "type": "text",
+      "label": "Cert 2 Desc",
+      "default": "Dubai Health Authority registered facility"
+    },
+    "cert_3_name": {
+      "type": "text",
+      "label": "Cert 3 Name",
+      "default": "ISO 9001:2015"
+    },
+    "cert_3_desc": {
+      "type": "text",
+      "label": "Cert 3 Desc",
+      "default": "Quality management system certified"
+    },
+    "cert_4_name": {
+      "type": "text",
+      "label": "Cert 4 Name",
+      "default": "Board Certified"
+    },
+    "cert_4_desc": {
+      "type": "text",
+      "label": "Cert 4 Desc",
+      "default": "All consultants UK/EU board-certified"
+    },
+    "cert_5_name": {
+      "type": "text",
+      "label": "Cert 5 Name",
+      "default": "GDPR Aligned"
+    },
+    "cert_5_desc": {
+      "type": "text",
+      "label": "Cert 5 Desc",
+      "default": "Patient data protected to EU standards"
+    },
+    "cert_6_name": {
+      "type": "text",
+      "label": "Cert 6 Name",
+      "default": "Direct Billing"
+    },
+    "cert_6_desc": {
+      "type": "text",
+      "label": "Cert 6 Desc",
+      "default": "Partnered with major UAE and international insurers"
+    },
+    "cta_banner_eyebrow": {
+      "type": "text",
+      "label": "CTA Banner Eyebrow",
+      "default": "Same-day appointments"
+    },
+    "cta_banner_title": {
+      "type": "html",
+      "label": "CTA Banner Title",
+      "default": "Speak with a doctor today."
+    },
+    "cta_banner_subtitle": {
+      "type": "text",
+      "label": "CTA Banner Subtitle",
+      "default": "Book online in two minutes \u2014 morning, afternoon, or evening slots available every day of the week."
+    },
+    "cta_banner_cta": {
+      "type": "text",
+      "label": "CTA Banner CTA",
+      "default": "Book Consultation"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "Contact"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Title",
+      "default": "Visit or<br><em>call us.</em>"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "We reply to all enquiries within thirty minutes during opening hours."
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Contact Email",
+      "default": "reception@atrium-clinic.ae"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Contact Phone",
+      "default": "+971 4 000 0000"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Contact Address",
+      "default": "Dubai Healthcare City, Block F, Floor 3"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Opening Hours",
+      "default": "Mon\u2013Sat \u00b7 8am\u20138pm  \u00b7  Sun \u00b7 10am\u20134pm"
+    },
+    "contact_emergency": {
+      "type": "text",
+      "label": "Emergency Line",
+      "default": "For medical emergencies dial 998 (Dubai Police / Ambulance)."
+    },
+    "contact_form_title": {
+      "type": "html",
+      "label": "Form Title",
+      "default": "Request a<br><em>callback.</em>"
+    },
+    "form_submit_text": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Request Callback \u2192"
+    },
+    "form_success_message": {
+      "type": "text",
+      "label": "Success Message",
+      "default": "\u2713 Thank you. Reception will call you back within thirty minutes."
+    },
+    "booking_title": {
+      "type": "html",
+      "label": "Booking Title",
+      "default": "Book a<br><em>consultation.</em>"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Choose a specialty, a doctor if you have a preference, and a time that suits you. We'll confirm within thirty minutes."
+    },
+    "booking_cta": {
+      "type": "text",
+      "label": "Booking CTA",
+      "default": "Book Consultation"
+    },
+    "booking_display": {
+      "type": "text",
+      "label": "Booking Display",
+      "default": ""
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Aesthetic Clinic \u2014 Luxury Aesthetic Medicine \u00b7 Dubai."
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Copyright",
+      "default": "\u00a9 2026 Maison Aesthetic. All rights reserved."
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Chalk (Background)",
+      "default": "#FFFFFF"
+    },
+    "chalk_soft": {
+      "type": "color",
+      "label": "Soft Background",
+      "default": "#F7FAFC"
+    },
+    "carbon": {
+      "type": "color",
+      "label": "Ink (Primary Text)",
+      "default": "#0F1A2A"
+    },
+    "carbon_soft": {
+      "type": "color",
+      "label": "Soft Ink",
+      "default": "#344458"
+    },
+    "medical_blue": {
+      "type": "color",
+      "label": "Medical Blue",
+      "default": "#8B5CF6"
+    },
+    "medical_deep": {
+      "type": "color",
+      "label": "Medical Deep",
+      "default": "#6D28D9"
+    },
+    "sage": {
+      "type": "color",
+      "label": "Sage Accent",
+      "default": "#DDD6FE"
+    },
+    "sage_soft": {
+      "type": "color",
+      "label": "Sage Soft",
+      "default": "#D6E4DD"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#6B7A8F"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#E2E8F0"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "From the<br><em>journal.</em>"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Practical guides, expert opinion, and behind-the-scenes notes \u2014 written by our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first appointment"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through of the first visit \u2014 from arrival to follow-up \u2014 so you know exactly what to expect."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-appointment"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking your provider"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard \u2014 but rarely are. Use this as a checklist before any consultation."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for unhurried appointments"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why a thirty-minute consultation isn't a luxury \u2014 it's the bare minimum for thoughtful care."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/unhurried"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "Read More \u2192"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ]
+}
