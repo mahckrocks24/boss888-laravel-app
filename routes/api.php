@@ -61,9 +61,9 @@ use App\Http\Controllers\Api\ManualExecutionController;
 // ── Public Auth ──────────────────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::middleware('throttle:10,5')->post('/login', [AuthController::class, 'login']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::middleware('throttle:5,15')->post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 });
 
@@ -5040,7 +5040,7 @@ Route::post('/builder/websites/{id}/publish', function (\Illuminate\Http\Request
 
     $url = 'https://' . str_replace('.levelupgrowth.io', '', $subdomain) . '.levelupgrowth.io';
     return response()->json(['success' => true, 'url' => $url, 'subdomain' => $subdomain]);
-})->middleware('auth:sanctum');
+})->middleware('auth.jwt');
 
 Route::post('/builder/websites/{id}/unpublish', function (\Illuminate\Http\Request $request, $id) {
     $website = \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->first();
@@ -5056,24 +5056,24 @@ Route::post('/builder/websites/{id}/unpublish', function (\Illuminate\Http\Reque
     ]);
     \App\Http\Controllers\PublishedSiteController::invalidateCache($id);
     return response()->json(['success' => true, 'message' => 'Website unpublished']);
-})->middleware('auth:sanctum');
+})->middleware('auth.jwt');
 
 // ═══ Custom Domain Management ═══
 Route::post('/builder/websites/{id}/custom-domain', function (\Illuminate\Http\Request $request, $id) {
     $request->validate(['domain' => 'required|string|max:255']);
     $service = new \App\Services\CustomDomainService();
     return response()->json($service->connect((int) $id, $request->input('domain')));
-})->middleware('auth:sanctum');
+})->middleware('auth.jwt');
 
 Route::get('/builder/websites/{id}/custom-domain/verify', function (\Illuminate\Http\Request $request, $id) {
     $service = new \App\Services\CustomDomainService();
     return response()->json($service->verify((int) $id));
-})->middleware('auth:sanctum');
+})->middleware('auth.jwt');
 
 Route::delete('/builder/websites/{id}/custom-domain', function (\Illuminate\Http\Request $request, $id) {
     $service = new \App\Services\CustomDomainService();
     return response()->json($service->disconnect((int) $id));
-})->middleware('auth:sanctum');
+})->middleware('auth.jwt');
 // ═══ Subdomain Availability Check ═══
 Route::get('/builder/check-subdomain', function (\Illuminate\Http\Request $request) {
     $slug = strtolower(trim($request->query('slug', '')));
@@ -5133,7 +5133,7 @@ Route::get('/builder/check-subdomain', function (\Illuminate\Http\Request $reque
     }
 
     return response()->json(['available' => true, 'slug' => $slug]);
-})->middleware('auth:sanctum');
+})->middleware('auth.jwt');
 
 // ── Public Blog API (no auth required) ───────────────────────
 Route::prefix("blog")->group(function () {

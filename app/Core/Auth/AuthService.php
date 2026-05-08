@@ -10,6 +10,8 @@ use App\Models\Plan;
 use App\Models\Agent;
 use App\Core\Audit\AuditLogService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class AuthService
@@ -147,23 +149,21 @@ class AuthService
     {
         $user = User::where('email', $email)->first();
 
-        // Always return success message to prevent email enumeration
+        $genericResponse = [
+            'success' => true,
+            'message' => 'If that email exists, a reset link has been sent.',
+        ];
+
         if (! $user) {
-            return [
-                'message' => 'If that email exists, a reset link has been generated',
-                'reset_token' => null,
-            ];
+            return $genericResponse;
         }
 
-        // Delete any existing tokens for this email
         \Illuminate\Support\Facades\DB::table('password_reset_tokens')
             ->where('email', $email)
             ->delete();
 
-        // Generate a plain token
         $plainToken = Str::random(64);
 
-        // Store the hashed version
         \Illuminate\Support\Facades\DB::table('password_reset_tokens')->insert([
             'email' => $email,
             'token' => Hash::make($plainToken),
@@ -172,11 +172,35 @@ class AuthService
 
         $this->auditLogService->log(null, $user->id, 'user.password_reset_requested');
 
-        // Return the plain token directly (no email configured yet)
-        return [
-            'message' => 'If that email exists, a reset link has been generated',
-            'reset_token' => $plainToken,
-        ];
+        $resetUrl = rtrim((string) config('app.url', env('APP_URL', '')), '/')
+            . '/reset-password?token=' . urlencode($plainToken)
+            . '&email=' . urlencode($email);
+
+        try {
+            Mail::send(
+                'emails.password-reset',
+                [
+                    'user'      => $user,
+                    'resetUrl'  => $resetUrl,
+                    'expireMin' => 60,
+                ],
+                function ($m) use ($user) {
+                    $m->to($user->email, $user->name)
+                      ->subject('Reset your LevelUp Growth password')
+                      ->from(
+                          config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@levelupgrowth.io')),
+                          config('mail.from.name', env('MAIL_FROM_NAME', 'LevelUp Growth'))
+                      );
+                }
+            );
+        } catch (\Throwable $e) {
+            Log::error('forgotPassword mail send failed', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+
+        return $genericResponse;
     }
 
     public function resetPassword(string $token, string $password): array
