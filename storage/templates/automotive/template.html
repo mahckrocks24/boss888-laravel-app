@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{business_name}} — {{business_tagline}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{business_name}} — {{business_tagline}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:url" content="{{canonical_url}}">
+<meta property="og:locale" content="{{og_locale}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --carbon:{{carbon}};
+  --carbon-soft:{{carbon_soft}};
+  --red:{{red}};
+  --red-deep:{{red_deep}};
+  --chalk:{{chalk}};
+  --silver:{{silver}};
+  --divider:{{divider}};
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--carbon);color:var(--chalk);line-height:1.6;font-weight:400;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:1320px;margin:0 auto;padding:0 40px}
+.wrap-narrow{max-width:1080px;margin:0 auto;padding:0 40px}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+
+h1,h2,h3,h4{font-family:'Barlow Condensed',sans-serif;font-weight:800;color:var(--chalk);line-height:1.0;letter-spacing:0.01em;text-transform:uppercase}
+.h-section{font-size:clamp(36px,5vw,72px)}
+.eyebrow{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.22em;color:var(--red);margin-bottom:20px;display:inline-block;text-transform:uppercase}
+
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;padding:15px 32px;border-radius:2px;transition:all .2s ease;cursor:pointer;border:2px solid transparent;letter-spacing:0.06em;text-transform:uppercase}
+.btn-primary{background:var(--red);color:#fff;border-color:var(--red)}
+.btn-primary:hover{background:var(--red-deep);border-color:var(--red-deep);transform:translateY(-2px);box-shadow:0 10px 28px rgba(196,30,58,0.45)}
+.btn::after{content:'→';transition:transform .2s ease}
+.btn:hover::after{transform:translateX(4px)}
+
+nav{background:rgba(10,10,10,0.96);backdrop-filter:blur(12px);padding:18px 0;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--red)}
+nav .inner{display:flex;justify-content:space-between;align-items:center}
+nav .logo{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--chalk);letter-spacing:0.04em;text-transform:uppercase;display:flex;align-items:center;gap:12px}
+nav .logo::before{content:'';width:14px;height:14px;background:var(--red);transform:rotate(45deg)}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{font-family:'Barlow Condensed',sans-serif;font-size:15px;color:var(--silver);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;transition:color .2s ease}
+.nav-links a:hover{color:var(--chalk)}
+.nav-cta{background:var(--red);color:#fff!important;padding:11px 22px;border-radius:2px;font-weight:700;font-size:14px}
+.nav-cta:hover{background:var(--red-deep);transform:translateY(-1px)}
+
+.hero{padding:120px 0 130px;position:relative;overflow:hidden;background-image:linear-gradient(rgba(10,10,10,0.9) 0%,rgba(10,10,10,0.75) 60%,rgba(10,10,10,0.95) 100%),url('{{hero_image}}');background-size:cover;background-position:center}
+.hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr 1fr;gap:64px;align-items:center}
+.hero-title{font-family:'Barlow Condensed',sans-serif;font-size:clamp(50px,7vw,100px);color:var(--chalk);line-height:0.95;margin-bottom:26px;font-weight:900;text-transform:uppercase;letter-spacing:0.01em}
+.hero-title span{color:var(--red)}
+.hero-subtitle{font-size:18px;line-height:1.65;color:var(--silver);margin-bottom:36px;max-width:540px}
+.hero-trust{display:flex;gap:28px;flex-wrap:wrap;margin-top:34px;padding-top:30px;border-top:1px solid var(--divider)}
+.hero-trust-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--silver);font-weight:500;text-transform:uppercase;letter-spacing:0.06em}
+.hero-trust-item::before{content:'■';color:var(--red);font-weight:700;font-size:10px}
+
+.hero-form{background:var(--carbon-soft);border:1px solid var(--divider);border-radius:4px;padding:36px;box-shadow:0 32px 80px rgba(0,0,0,0.55)}
+.hero-form-eyebrow{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.16em;color:var(--red);margin-bottom:10px;text-transform:uppercase}
+.hero-form-title{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;color:var(--chalk);margin-bottom:8px;text-transform:uppercase}
+.hero-form-sub{font-size:14px;color:var(--silver);margin-bottom:24px;line-height:1.55}
+.hero-form form{display:flex;flex-direction:column;gap:14px}
+.hero-form label{display:block;font-size:11px;font-weight:700;color:var(--silver);margin-bottom:6px;letter-spacing:0.08em;text-transform:uppercase}
+.hero-form input,.hero-form select{width:100%;padding:14px 16px;background:var(--carbon);border:1px solid var(--divider);border-radius:2px;font-size:14px;color:var(--chalk);font-family:'Inter',sans-serif;transition:all .2s ease}
+.hero-form input:focus,.hero-form select:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(196,30,58,0.2)}
+.hero-form button{width:100%;background:var(--red);color:#fff;border:none;padding:16px;border-radius:2px;font-size:16px;font-weight:800;cursor:pointer;transition:all .2s ease;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px}
+.hero-form button:hover{background:var(--red-deep);box-shadow:0 8px 24px rgba(196,30,58,0.4);transform:translateY(-1px)}
+.hero-form-note{font-size:12px;color:var(--silver);text-align:center;margin-top:14px}
+
+.stats{padding:64px 0;background:var(--carbon-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px}
+.stat{text-align:center}
+.stat-value{font-family:'Barlow Condensed',sans-serif;font-size:64px;line-height:1;color:var(--red);margin-bottom:8px;font-weight:900}
+.stat-label{font-size:12px;color:var(--silver);font-weight:600;letter-spacing:0.14em;text-transform:uppercase}
+
+.section{padding:120px 0}
+.section-head{max-width:820px;margin-bottom:64px}
+.section-head.center{margin-left:auto;margin-right:auto;text-align:center}
+.section-intro{font-size:18px;color:var(--silver);line-height:1.75;max-width:720px;margin-top:22px}
+
+.inventory-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.vehicle{background:var(--carbon-soft);border:1px solid var(--divider);border-radius:4px;overflow:hidden;transition:all .3s ease;display:flex;flex-direction:column}
+.vehicle:hover{border-color:var(--red);transform:translateY(-4px);box-shadow:0 24px 60px rgba(196,30,58,0.15)}
+.vehicle-image{aspect-ratio:16/10;background:var(--carbon);background-size:cover;background-position:center}
+.vehicle-body{padding:26px 28px}
+.vehicle-make{font-family:'Inter',sans-serif;font-size:11px;color:var(--red);letter-spacing:0.16em;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+.vehicle-model{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--chalk);margin-bottom:18px;line-height:1.1;text-transform:uppercase;letter-spacing:0.02em}
+.vehicle-specs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--divider);border-bottom:1px solid var(--divider);margin-bottom:20px}
+.spec-label{font-size:10px;color:var(--silver);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;font-weight:600}
+.spec-value{font-family:'Barlow Condensed',sans-serif;font-size:16px;color:var(--chalk);font-weight:700}
+.vehicle-price-row{display:flex;justify-content:space-between;align-items:center}
+.vehicle-price{font-family:'Barlow Condensed',sans-serif;font-size:26px;color:var(--red);font-weight:900;letter-spacing:0.02em}
+.vehicle-cta{font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--chalk);font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
+.vehicle-cta::after{content:' →'}
+
+.brands{padding:64px 0;background:var(--carbon);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.brands-title{font-size:13px;color:var(--silver);text-align:center;margin-bottom:36px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase}
+.brands-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;align-items:center}
+.brand-logo{text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:22px;color:var(--silver);font-weight:800;opacity:0.65;transition:all .25s ease;padding:22px 12px;border:1px solid var(--divider);border-radius:2px;background:var(--carbon-soft);text-transform:uppercase;letter-spacing:0.08em}
+.brand-logo:hover{opacity:1;color:var(--chalk);border-color:var(--red)}
+@media(min-width:900px){.brands-grid{grid-template-columns:repeat(8,1fr)}}
+
+.process{background:var(--carbon-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.process-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;counter-reset:pstep}
+.process-step{counter-increment:pstep;padding:32px 0;position:relative}
+.process-step::before{content:counter(pstep,decimal-leading-zero);font-family:'Barlow Condensed',sans-serif;font-size:64px;color:var(--red);font-weight:900;margin-bottom:18px;display:block;line-height:1}
+.process-step h3{font-family:'Barlow Condensed',sans-serif;font-size:22px;margin-bottom:12px;color:var(--chalk);text-transform:uppercase;letter-spacing:0.02em}
+.process-step p{font-size:15px;color:var(--silver);line-height:1.7}
+
+.featured-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.featured{background:var(--carbon-soft);border:1px solid var(--divider);border-radius:4px;padding:36px;transition:all .3s ease}
+.featured:hover{border-color:var(--red);transform:translateY(-3px)}
+.featured-badge{display:inline-block;font-size:11px;color:#fff;background:var(--red);padding:5px 10px;border-radius:2px;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:16px;font-weight:700}
+.featured h3{font-family:'Barlow Condensed',sans-serif;font-size:26px;margin-bottom:10px;color:var(--chalk);text-transform:uppercase;letter-spacing:0.02em}
+.featured-desc{font-size:14.5px;color:var(--silver);line-height:1.7;margin-bottom:20px}
+.featured-price{font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--red);font-weight:900}
+
+.financing{background:var(--carbon-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1160px;margin:0 auto}
+.plan{background:var(--carbon);border:1px solid var(--divider);border-radius:4px;padding:44px 36px;position:relative;transition:all .3s ease;display:flex;flex-direction:column}
+.plan.featured-plan{border-color:var(--red);box-shadow:0 0 0 1px var(--red),0 24px 60px rgba(196,30,58,0.15);transform:scale(1.02)}
+.plan.featured-plan::before{content:'MOST CHOSEN';position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:6px 16px;border-radius:2px;letter-spacing:0.14em}
+.plan-name{font-family:'Barlow Condensed',sans-serif;font-size:26px;color:var(--chalk);margin-bottom:8px;font-weight:800;letter-spacing:0.02em;text-transform:uppercase}
+.plan-desc{font-size:13px;color:var(--silver);margin-bottom:24px;line-height:1.55}
+.plan-apr{font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;color:var(--red);letter-spacing:0.01em;line-height:1;margin-bottom:4px}
+.plan-term{font-size:13px;color:var(--silver);margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--divider)}
+.plan-features{list-style:none;margin-bottom:32px;flex:1}
+.plan-features li{font-size:14px;color:var(--chalk);padding:9px 0;display:flex;align-items:center;gap:10px;line-height:1.4}
+.plan-features li::before{content:'✓';color:var(--red);font-weight:700;font-size:15px;flex-shrink:0}
+.plan-cta{display:block;text-align:center;width:100%;padding:14px 22px;border-radius:2px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;transition:all .2s ease;border:2px solid var(--divider);background:transparent;color:var(--chalk);cursor:pointer;letter-spacing:0.08em;text-transform:uppercase}
+.plan-cta:hover{border-color:var(--chalk)}
+.plan.featured-plan .plan-cta{background:var(--red);color:#fff;border-color:var(--red)}
+.plan.featured-plan .plan-cta:hover{background:var(--red-deep);border-color:var(--red-deep)}
+
+.testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.testimonial{background:var(--carbon-soft);border:1px solid var(--divider);border-radius:4px;padding:40px;display:flex;flex-direction:column}
+.testimonial-quote::before{content:'"';font-family:'Barlow Condensed',sans-serif;font-size:64px;color:var(--red);line-height:0;display:block;margin-bottom:20px;font-weight:900}
+.testimonial-quote{font-size:17px;color:var(--chalk);line-height:1.55;margin-bottom:28px;flex:1}
+.testimonial-author{font-family:'Barlow Condensed',sans-serif;font-size:18px;color:var(--chalk);font-weight:800;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.02em}
+.testimonial-company{font-size:13px;color:var(--silver);margin-bottom:14px}
+.testimonial-result{display:inline-block;font-size:11px;color:var(--red);background:rgba(196,30,58,0.12);border:1px solid rgba(196,30,58,0.3);padding:6px 12px;border-radius:2px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase}
+
+.booking{position:relative;overflow:hidden;padding:120px 0}
+.booking-inner{max-width:740px;margin:0 auto;text-align:center;position:relative;z-index:2}
+.booking-intro{font-size:18px;color:var(--silver);line-height:1.75;margin-top:22px;margin-bottom:48px}
+.booking-form{display:grid;grid-template-columns:1fr 1fr;gap:18px;text-align:left;background:var(--carbon-soft);border:1px solid var(--divider);border-radius:4px;padding:44px}
+.booking-form .full{grid-column:span 2}
+.booking-form label{display:block;font-size:11px;color:var(--silver);margin-bottom:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+.booking-form input,.booking-form select{width:100%;padding:14px 16px;background:var(--carbon);border:1px solid var(--divider);border-radius:2px;font-size:14px;color:var(--chalk);font-family:'Inter',sans-serif;transition:all .2s ease}
+.booking-form input:focus,.booking-form select:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(196,30,58,0.2)}
+.booking-submit{width:100%;background:var(--red);color:#fff;border:none;padding:16px;border-radius:2px;font-size:17px;font-weight:800;cursor:pointer;transition:all .2s ease;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.08em;text-transform:uppercase;margin-top:8px}
+.booking-submit:hover{background:var(--red-deep);transform:translateY(-1px);box-shadow:0 10px 28px rgba(196,30,58,0.4)}
+
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+.contact-info-item{display:flex;gap:18px;align-items:flex-start;margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid var(--divider)}
+.contact-info-item:last-child{border-bottom:none}
+.contact-info-icon{width:44px;height:44px;border-radius:4px;background:rgba(196,30,58,0.12);border:1px solid rgba(196,30,58,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--red);flex-shrink:0;font-weight:700}
+.contact-info-label{font-size:11px;color:var(--silver);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;font-weight:700}
+.contact-info-value{font-size:16px;color:var(--chalk);font-weight:500;line-height:1.5}
+
+footer{background:var(--carbon-soft);border-top:2px solid var(--red);padding:60px 0 32px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px}
+.footer-logo{font-family:'Barlow Condensed',sans-serif;font-size:26px;color:var(--chalk);font-weight:900;margin-bottom:16px;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.04em}
+.footer-logo::before{content:'';width:12px;height:12px;background:var(--red);transform:rotate(45deg)}
+.footer-tagline{font-size:14px;color:var(--silver);line-height:1.7;margin-bottom:20px;max-width:320px}
+.footer-socials{display:flex;gap:10px}
+.footer-social{width:36px;height:36px;border-radius:2px;background:var(--carbon);border:1px solid var(--divider);display:flex;align-items:center;justify-content:center;color:var(--silver);font-size:12px;font-weight:700}
+.footer-social:hover{border-color:var(--red);color:var(--red)}
+.footer-col-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;color:var(--chalk);font-weight:800;margin-bottom:18px;text-transform:uppercase;letter-spacing:0.06em}
+.footer-col ul{list-style:none}
+.footer-col li{margin-bottom:10px}
+.footer-col a{font-size:13.5px;color:var(--silver)}
+.footer-col a:hover{color:var(--red)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid var(--divider);font-size:13px;color:var(--silver)}
+
+@media(max-width:980px){
+  .hero-grid{grid-template-columns:1fr;gap:48px}
+  .stats-grid,.inventory-grid,.process-steps,.featured-grid,.plans-grid,.testimonials-grid,.brands-grid,.contact-grid,.footer-grid{grid-template-columns:1fr;gap:24px}
+  .booking-form{grid-template-columns:1fr}
+  .booking-form .full{grid-column:span 1}
+  .section{padding:80px 0}
+  .hero{padding:72px 0 80px}
+}
+</style>
+</head>
+<body data-template="automotive">
+
+<nav data-block="nav">
+  <div class="wrap">
+    <div class="inner">
+      <div class="logo" data-field="logo">{{logo}}</div>
+      <div class="nav-links">
+        <a href="#inventory" class="nav-link-1" data-field="nav_1">{{nav_1}}</a>
+        <a href="#brands" class="nav-link-2" data-field="nav_2">{{nav_2}}</a>
+        <a href="#financing" class="nav-link-3" data-field="nav_3">{{nav_3}}</a>
+        <a href="#process" class="nav-link-4" data-field="nav_4">{{nav_4}}</a>
+        <a href="#contact" class="nav-link-5" data-field="nav_5">{{nav_5}}</a>
+        <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<section class="hero" data-block="hero" data-field="hero_image">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow hero-eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+        <h1 class="hero-title" data-field="hero_title">{{hero_title}}</h1>
+        <p class="hero-subtitle" data-field="hero_subtitle">{{hero_subtitle}}</p>
+        <div class="hero-trust">
+          <div class="hero-trust-item hero-trust-1" data-field="hero_trust_1">{{hero_trust_1}}</div>
+          <div class="hero-trust-item hero-trust-2" data-field="hero_trust_2">{{hero_trust_2}}</div>
+          <div class="hero-trust-item hero-trust-3" data-field="hero_trust_3">{{hero_trust_3}}</div>
+          <div class="hero-trust-item hero-trust-4" data-field="hero_trust_4">{{hero_trust_4}}</div>
+        </div>
+      </div>
+      <div class="hero-form">
+        <div class="hero-form-eyebrow" data-field="hero_form_eyebrow">{{hero_form_eyebrow}}</div>
+        <div class="hero-form-title" data-field="hero_form_title">{{hero_form_title}}</div>
+        <div class="hero-form-sub" data-field="hero_form_sub">{{hero_form_sub}}</div>
+        <form onsubmit="event.preventDefault();alert('Thanks! Our team will call you within 30 minutes.');">
+          <div>
+            <label data-field="hero_form_name_label">{{hero_form_name_label}}</label>
+            <input type="text" required placeholder="Ahmed Hassan">
+          </div>
+          <div>
+            <label data-field="hero_form_phone_label">{{hero_form_phone_label}}</label>
+            <input type="tel" required placeholder="+971 50 000 0000">
+          </div>
+          <div>
+            <label data-field="hero_form_interest_label">{{hero_form_interest_label}}</label>
+            <select required>
+              <option value="" disabled selected>Select interest</option>
+              <option value="test_drive">Book a Test Drive</option>
+              <option value="trade_in">Trade-in Valuation</option>
+              <option value="finance">Finance Quote</option>
+            </select>
+          </div>
+          <button type="submit" data-field="hero_form_submit">{{hero_form_submit}}</button>
+          <div class="hero-form-note" data-field="hero_form_note">{{hero_form_note}}</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="stats" data-block="stats">
+  <div class="wrap">
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-value" data-field="stat_1_value">{{stat_1_value}}</div><div class="stat-label" data-field="stat_1_label">{{stat_1_label}}</div></div>
+      <div class="stat"><div class="stat-value" data-field="stat_2_value">{{stat_2_value}}</div><div class="stat-label" data-field="stat_2_label">{{stat_2_label}}</div></div>
+      <div class="stat"><div class="stat-value" data-field="stat_3_value">{{stat_3_value}}</div><div class="stat-label" data-field="stat_3_label">{{stat_3_label}}</div></div>
+      <div class="stat"><div class="stat-value" data-field="stat_4_value">{{stat_4_value}}</div><div class="stat-label" data-field="stat_4_label">{{stat_4_label}}</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="inventory" data-block="inventory">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="inventory_eyebrow">{{inventory_eyebrow}}</span>
+      <h2 class="h-section" data-field="inventory_title">{{inventory_title}}</h2>
+      <p class="section-intro" data-field="inventory_intro">{{inventory_intro}}</p>
+    </div>
+    <div class="inventory-grid">
+      <div class="vehicle">
+        <div class="vehicle-image" data-field="vehicle_1_image" style="background-image:url('{{vehicle_1_image}}')"></div>
+        <div class="vehicle-body">
+          <div class="vehicle-make" data-field="vehicle_1_make">{{vehicle_1_make}}</div>
+          <div class="vehicle-model" data-field="vehicle_1_model">{{vehicle_1_model}}</div>
+          <div class="vehicle-specs">
+            <div><div class="spec-label" data-field="vehicle_1_year_label">{{vehicle_1_year_label}}</div><div class="spec-value" data-field="vehicle_1_year">{{vehicle_1_year}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_1_mileage_label">{{vehicle_1_mileage_label}}</div><div class="spec-value" data-field="vehicle_1_mileage">{{vehicle_1_mileage}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_1_engine_label">{{vehicle_1_engine_label}}</div><div class="spec-value" data-field="vehicle_1_engine">{{vehicle_1_engine}}</div></div>
+          </div>
+          <div class="vehicle-price-row">
+            <span class="vehicle-price" data-field="vehicle_1_price">{{vehicle_1_price}}</span>
+            <a href="#booking" class="vehicle-cta" data-field="vehicle_1_cta">{{vehicle_1_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="vehicle">
+        <div class="vehicle-image" data-field="vehicle_2_image" style="background-image:url('{{vehicle_2_image}}')"></div>
+        <div class="vehicle-body">
+          <div class="vehicle-make" data-field="vehicle_2_make">{{vehicle_2_make}}</div>
+          <div class="vehicle-model" data-field="vehicle_2_model">{{vehicle_2_model}}</div>
+          <div class="vehicle-specs">
+            <div><div class="spec-label" data-field="vehicle_2_year_label">{{vehicle_2_year_label}}</div><div class="spec-value" data-field="vehicle_2_year">{{vehicle_2_year}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_2_mileage_label">{{vehicle_2_mileage_label}}</div><div class="spec-value" data-field="vehicle_2_mileage">{{vehicle_2_mileage}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_2_engine_label">{{vehicle_2_engine_label}}</div><div class="spec-value" data-field="vehicle_2_engine">{{vehicle_2_engine}}</div></div>
+          </div>
+          <div class="vehicle-price-row">
+            <span class="vehicle-price" data-field="vehicle_2_price">{{vehicle_2_price}}</span>
+            <a href="#booking" class="vehicle-cta" data-field="vehicle_2_cta">{{vehicle_2_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="vehicle">
+        <div class="vehicle-image" data-field="vehicle_3_image" style="background-image:url('{{vehicle_3_image}}')"></div>
+        <div class="vehicle-body">
+          <div class="vehicle-make" data-field="vehicle_3_make">{{vehicle_3_make}}</div>
+          <div class="vehicle-model" data-field="vehicle_3_model">{{vehicle_3_model}}</div>
+          <div class="vehicle-specs">
+            <div><div class="spec-label" data-field="vehicle_3_year_label">{{vehicle_3_year_label}}</div><div class="spec-value" data-field="vehicle_3_year">{{vehicle_3_year}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_3_mileage_label">{{vehicle_3_mileage_label}}</div><div class="spec-value" data-field="vehicle_3_mileage">{{vehicle_3_mileage}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_3_engine_label">{{vehicle_3_engine_label}}</div><div class="spec-value" data-field="vehicle_3_engine">{{vehicle_3_engine}}</div></div>
+          </div>
+          <div class="vehicle-price-row">
+            <span class="vehicle-price" data-field="vehicle_3_price">{{vehicle_3_price}}</span>
+            <a href="#booking" class="vehicle-cta" data-field="vehicle_3_cta">{{vehicle_3_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="vehicle">
+        <div class="vehicle-image" data-field="vehicle_4_image" style="background-image:url('{{vehicle_4_image}}')"></div>
+        <div class="vehicle-body">
+          <div class="vehicle-make" data-field="vehicle_4_make">{{vehicle_4_make}}</div>
+          <div class="vehicle-model" data-field="vehicle_4_model">{{vehicle_4_model}}</div>
+          <div class="vehicle-specs">
+            <div><div class="spec-label" data-field="vehicle_4_year_label">{{vehicle_4_year_label}}</div><div class="spec-value" data-field="vehicle_4_year">{{vehicle_4_year}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_4_mileage_label">{{vehicle_4_mileage_label}}</div><div class="spec-value" data-field="vehicle_4_mileage">{{vehicle_4_mileage}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_4_engine_label">{{vehicle_4_engine_label}}</div><div class="spec-value" data-field="vehicle_4_engine">{{vehicle_4_engine}}</div></div>
+          </div>
+          <div class="vehicle-price-row">
+            <span class="vehicle-price" data-field="vehicle_4_price">{{vehicle_4_price}}</span>
+            <a href="#booking" class="vehicle-cta" data-field="vehicle_4_cta">{{vehicle_4_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="vehicle">
+        <div class="vehicle-image" data-field="vehicle_5_image" style="background-image:url('{{vehicle_5_image}}')"></div>
+        <div class="vehicle-body">
+          <div class="vehicle-make" data-field="vehicle_5_make">{{vehicle_5_make}}</div>
+          <div class="vehicle-model" data-field="vehicle_5_model">{{vehicle_5_model}}</div>
+          <div class="vehicle-specs">
+            <div><div class="spec-label" data-field="vehicle_5_year_label">{{vehicle_5_year_label}}</div><div class="spec-value" data-field="vehicle_5_year">{{vehicle_5_year}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_5_mileage_label">{{vehicle_5_mileage_label}}</div><div class="spec-value" data-field="vehicle_5_mileage">{{vehicle_5_mileage}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_5_engine_label">{{vehicle_5_engine_label}}</div><div class="spec-value" data-field="vehicle_5_engine">{{vehicle_5_engine}}</div></div>
+          </div>
+          <div class="vehicle-price-row">
+            <span class="vehicle-price" data-field="vehicle_5_price">{{vehicle_5_price}}</span>
+            <a href="#booking" class="vehicle-cta" data-field="vehicle_5_cta">{{vehicle_5_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="vehicle">
+        <div class="vehicle-image" data-field="vehicle_6_image" style="background-image:url('{{vehicle_6_image}}')"></div>
+        <div class="vehicle-body">
+          <div class="vehicle-make" data-field="vehicle_6_make">{{vehicle_6_make}}</div>
+          <div class="vehicle-model" data-field="vehicle_6_model">{{vehicle_6_model}}</div>
+          <div class="vehicle-specs">
+            <div><div class="spec-label" data-field="vehicle_6_year_label">{{vehicle_6_year_label}}</div><div class="spec-value" data-field="vehicle_6_year">{{vehicle_6_year}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_6_mileage_label">{{vehicle_6_mileage_label}}</div><div class="spec-value" data-field="vehicle_6_mileage">{{vehicle_6_mileage}}</div></div>
+            <div><div class="spec-label" data-field="vehicle_6_engine_label">{{vehicle_6_engine_label}}</div><div class="spec-value" data-field="vehicle_6_engine">{{vehicle_6_engine}}</div></div>
+          </div>
+          <div class="vehicle-price-row">
+            <span class="vehicle-price" data-field="vehicle_6_price">{{vehicle_6_price}}</span>
+            <a href="#booking" class="vehicle-cta" data-field="vehicle_6_cta">{{vehicle_6_cta}}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="brands" id="brands" data-block="brands">
+  <div class="wrap">
+    <div class="brands-title" data-field="brands_title">{{brands_title}}</div>
+    <div class="brands-grid">
+      <div class="brand-logo" data-field="brand_1">{{brand_1}}</div>
+      <div class="brand-logo" data-field="brand_2">{{brand_2}}</div>
+      <div class="brand-logo" data-field="brand_3">{{brand_3}}</div>
+      <div class="brand-logo" data-field="brand_4">{{brand_4}}</div>
+      <div class="brand-logo" data-field="brand_5">{{brand_5}}</div>
+      <div class="brand-logo" data-field="brand_6">{{brand_6}}</div>
+      <div class="brand-logo" data-field="brand_7">{{brand_7}}</div>
+      <div class="brand-logo" data-field="brand_8">{{brand_8}}</div>
+    </div>
+  </div>
+</section>
+
+<section class="section process" id="process" data-block="process">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="process_eyebrow">{{process_eyebrow}}</span>
+      <h2 class="h-section" data-field="process_title">{{process_title}}</h2>
+      <p class="section-intro" data-field="process_intro">{{process_intro}}</p>
+    </div>
+    <div class="process-steps">
+      <div class="process-step">
+        <h3 data-field="step_1_title">{{step_1_title}}</h3>
+        <p data-field="step_1_text">{{step_1_text}}</p>
+      </div>
+      <div class="process-step">
+        <h3 data-field="step_2_title">{{step_2_title}}</h3>
+        <p data-field="step_2_text">{{step_2_text}}</p>
+      </div>
+      <div class="process-step">
+        <h3 data-field="step_3_title">{{step_3_title}}</h3>
+        <p data-field="step_3_text">{{step_3_text}}</p>
+      </div>
+      <div class="process-step">
+        <h3 data-field="step_4_title">{{step_4_title}}</h3>
+        <p data-field="step_4_text">{{step_4_text}}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="featured" data-block="featured_vehicles">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="featured_eyebrow">{{featured_eyebrow}}</span>
+      <h2 class="h-section" data-field="featured_title">{{featured_title}}</h2>
+      <p class="section-intro" data-field="featured_intro">{{featured_intro}}</p>
+    </div>
+    <div class="featured-grid">
+      <div class="featured">
+        <div class="featured-badge" data-field="featured_1_badge">{{featured_1_badge}}</div>
+        <h3 data-field="featured_1_title">{{featured_1_title}}</h3>
+        <p class="featured-desc" data-field="featured_1_desc">{{featured_1_desc}}</p>
+        <div class="featured-price" data-field="featured_1_price">{{featured_1_price}}</div>
+      </div>
+      <div class="featured">
+        <div class="featured-badge" data-field="featured_2_badge">{{featured_2_badge}}</div>
+        <h3 data-field="featured_2_title">{{featured_2_title}}</h3>
+        <p class="featured-desc" data-field="featured_2_desc">{{featured_2_desc}}</p>
+        <div class="featured-price" data-field="featured_2_price">{{featured_2_price}}</div>
+      </div>
+      <div class="featured">
+        <div class="featured-badge" data-field="featured_3_badge">{{featured_3_badge}}</div>
+        <h3 data-field="featured_3_title">{{featured_3_title}}</h3>
+        <p class="featured-desc" data-field="featured_3_desc">{{featured_3_desc}}</p>
+        <div class="featured-price" data-field="featured_3_price">{{featured_3_price}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section financing" id="financing" data-block="financing">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="financing_eyebrow">{{financing_eyebrow}}</span>
+      <h2 class="h-section" data-field="financing_title">{{financing_title}}</h2>
+      <p class="section-intro" data-field="financing_intro">{{financing_intro}}</p>
+    </div>
+    <div class="plans-grid">
+      <div class="plan">
+        <div class="plan-name" data-field="plan_1_name">{{plan_1_name}}</div>
+        <div class="plan-desc" data-field="plan_1_desc">{{plan_1_desc}}</div>
+        <div class="plan-apr" data-field="plan_1_apr">{{plan_1_apr}}</div>
+        <div class="plan-term" data-field="plan_1_term">{{plan_1_term}}</div>
+        <ul class="plan-features">
+          <li data-field="plan_1_feature_1">{{plan_1_feature_1}}</li>
+          <li data-field="plan_1_feature_2">{{plan_1_feature_2}}</li>
+          <li data-field="plan_1_feature_3">{{plan_1_feature_3}}</li>
+          <li data-field="plan_1_feature_4">{{plan_1_feature_4}}</li>
+        </ul>
+        <a href="#booking" class="plan-cta" data-field="plan_1_cta">{{plan_1_cta}}</a>
+      </div>
+      <div class="plan featured-plan">
+        <div class="plan-name" data-field="plan_2_name">{{plan_2_name}}</div>
+        <div class="plan-desc" data-field="plan_2_desc">{{plan_2_desc}}</div>
+        <div class="plan-apr" data-field="plan_2_apr">{{plan_2_apr}}</div>
+        <div class="plan-term" data-field="plan_2_term">{{plan_2_term}}</div>
+        <ul class="plan-features">
+          <li data-field="plan_2_feature_1">{{plan_2_feature_1}}</li>
+          <li data-field="plan_2_feature_2">{{plan_2_feature_2}}</li>
+          <li data-field="plan_2_feature_3">{{plan_2_feature_3}}</li>
+          <li data-field="plan_2_feature_4">{{plan_2_feature_4}}</li>
+          <li data-field="plan_2_feature_5">{{plan_2_feature_5}}</li>
+        </ul>
+        <a href="#booking" class="plan-cta" data-field="plan_2_cta">{{plan_2_cta}}</a>
+      </div>
+      <div class="plan">
+        <div class="plan-name" data-field="plan_3_name">{{plan_3_name}}</div>
+        <div class="plan-desc" data-field="plan_3_desc">{{plan_3_desc}}</div>
+        <div class="plan-apr" data-field="plan_3_apr">{{plan_3_apr}}</div>
+        <div class="plan-term" data-field="plan_3_term">{{plan_3_term}}</div>
+        <ul class="plan-features">
+          <li data-field="plan_3_feature_1">{{plan_3_feature_1}}</li>
+          <li data-field="plan_3_feature_2">{{plan_3_feature_2}}</li>
+          <li data-field="plan_3_feature_3">{{plan_3_feature_3}}</li>
+          <li data-field="plan_3_feature_4">{{plan_3_feature_4}}</li>
+          <li data-field="plan_3_feature_5">{{plan_3_feature_5}}</li>
+        </ul>
+        <a href="#booking" class="plan-cta" data-field="plan_3_cta">{{plan_3_cta}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" data-block="testimonials">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="testimonials_eyebrow">{{testimonials_eyebrow}}</span>
+      <h2 class="h-section" data-field="testimonials_title">{{testimonials_title}}</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_1_quote">{{testimonial_1_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_1_author">{{testimonial_1_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_1_company">{{testimonial_1_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_1_result">{{testimonial_1_result}}</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_2_quote">{{testimonial_2_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_2_author">{{testimonial_2_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_2_company">{{testimonial_2_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_2_result">{{testimonial_2_result}}</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_3_quote">{{testimonial_3_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_3_author">{{testimonial_3_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_3_company">{{testimonial_3_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_3_result">{{testimonial_3_result}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section booking" id="booking" data-block="booking">
+  <div class="booking-inner">
+    <span class="eyebrow" data-field="booking_eyebrow">{{booking_eyebrow}}</span>
+    <h2 class="h-section" data-field="booking_title">{{booking_title}}</h2>
+    <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
+  </div>
+  <div class="wrap-narrow" style="position:relative;z-index:2">
+    <form class="booking-form" onsubmit="event.preventDefault();alert('Thanks! Test drive confirmed. We\u2019ll call you shortly.');">
+      <div>
+        <label data-field="booking_vehicle_label">{{booking_vehicle_label}}</label>
+        <input type="text" name="vehicle_interest" required placeholder="2023 BMW M4 Competition">
+      </div>
+      <div>
+        <label data-field="booking_service_label">{{booking_service_label}}</label>
+        <select name="service_type" required>
+          <option value="" disabled selected>Select type</option>
+          <option value="test_drive">Test Drive</option>
+          <option value="service">Service / Maintenance</option>
+          <option value="finance">Finance Quote</option>
+        </select>
+      </div>
+      <div>
+        <label data-field="booking_date_label">{{booking_date_label}}</label>
+        <input type="date" name="preferred_date" required>
+      </div>
+      <div>
+        <label data-field="booking_time_label">{{booking_time_label}}</label>
+        <select name="preferred_time" required>
+          <option value="" disabled selected>Select time</option>
+          <option value="10:00">10:00</option>
+          <option value="12:00">12:00</option>
+          <option value="14:00">14:00</option>
+          <option value="16:00">16:00</option>
+          <option value="18:00">18:00</option>
+        </select>
+      </div>
+      <div>
+        <label data-field="booking_name_label">{{booking_name_label}}</label>
+        <input type="text" name="name" required placeholder="Ahmed Hassan">
+      </div>
+      <div>
+        <label data-field="booking_phone_label">{{booking_phone_label}}</label>
+        <input type="tel" name="phone" required placeholder="+971 50 000 0000">
+      </div>
+      <div class="full">
+        <label data-field="booking_email_label">{{booking_email_label}}</label>
+        <input type="email" name="email" required placeholder="you@example.com">
+      </div>
+      <div class="full">
+        <button type="submit" class="booking-submit" data-field="booking_submit">{{booking_submit}}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="section" id="contact" data-block="contact">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-field="contact_eyebrow">{{contact_eyebrow}}</span>
+      <h2 class="h-section" data-field="contact_title">{{contact_title}}</h2>
+    </div>
+    <div class="contact-grid">
+      <div>
+        <p class="section-intro" data-field="contact_intro" style="margin-top:0;margin-bottom:32px">{{contact_intro}}</p>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">@</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_email_label">{{contact_email_label}}</div>
+            <div class="contact-info-value" data-field="contact_email">{{contact_email}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">☎</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_phone_label">{{contact_phone_label}}</div>
+            <div class="contact-info-value" data-field="contact_phone">{{contact_phone}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">◉</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_address_label">{{contact_address_label}}</div>
+            <div class="contact-info-value" data-field="contact_address">{{contact_address}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">⏱</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_hours_label">{{contact_hours_label}}</div>
+            <div class="contact-info-value" data-field="contact_hours">{{contact_hours}}</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--carbon-soft);border:1px solid var(--divider);border-radius:4px;padding:40px">
+        <div class="hero-form-title" data-field="contact_cta_title" style="margin-bottom:14px">{{contact_cta_title}}</div>
+        <div class="hero-form-sub" data-field="contact_cta_text" style="margin-bottom:26px">{{contact_cta_text}}</div>
+        <a href="#booking" class="btn btn-primary" style="width:100%;justify-content:center" data-field="contact_cta_button">{{contact_cta_button}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer data-block="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo" data-field="footer_logo">{{footer_logo}}</div>
+        <div class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</div>
+        <div class="footer-socials">
+          <a href="#" class="footer-social" data-field="social_1">{{social_1}}</a>
+          <a href="#" class="footer-social" data-field="social_2">{{social_2}}</a>
+          <a href="#" class="footer-social" data-field="social_3">{{social_3}}</a>
+          <a href="#" class="footer-social" data-field="social_4">{{social_4}}</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_1_title">{{footer_col_1_title}}</div>
+        <ul>
+          <li><a href="#inventory" data-field="footer_link_1">{{footer_link_1}}</a></li>
+          <li><a href="#inventory" data-field="footer_link_2">{{footer_link_2}}</a></li>
+          <li><a href="#inventory" data-field="footer_link_3">{{footer_link_3}}</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_2_title">{{footer_col_2_title}}</div>
+        <ul>
+          <li><a href="#financing" data-field="footer_link_4">{{footer_link_4}}</a></li>
+          <li><a href="#process" data-field="footer_link_5">{{footer_link_5}}</a></li>
+          <li><a href="#brands" data-field="footer_link_6">{{footer_link_6}}</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_3_title">{{footer_col_3_title}}</div>
+        <ul>
+          <li><a href="#contact" data-field="footer_link_7">{{footer_link_7}}</a></li>
+          <li><a href="#booking" data-field="footer_link_8">{{footer_link_8}}</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div data-field="footer_text">{{footer_text}}</div>
+      <div data-field="footer_legal">{{footer_legal}}</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

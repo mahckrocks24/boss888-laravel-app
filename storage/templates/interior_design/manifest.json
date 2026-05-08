@@ -1,0 +1,393 @@
+{
+  "id": "interior_design",
+  "name": "Interior Design & Fit-Out",
+  "version": "1.0.0",
+  "industry": "interior_design",
+  "description": "Luxury editorial template for interior design studios, fit-out contractors, and architectural design practices. Warm minimal palette, full-bleed imagery, refined typography.",
+  "preview_image": "preview.jpg",
+  "created_at": "2026-04-18",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "fields": ["business_name", "nav_cta"],
+      "elements": {
+        "logo": ".nav-logo",
+        "links": ".nav-links",
+        "link": ".nav-links li a",
+        "primary_button": "a.nav-cta",
+        "burger": ".nav-burger"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero Section",
+      "fields": ["business_tagline", "hero_eyebrow", "hero_title", "hero_subtitle", "hero_cta", "hero_cta_secondary", "hero_image"],
+      "elements": {
+        "eyebrow": ".hero-eyebrow",
+        "heading": "h1.hero-h1",
+        "subheading": "p.hero-sub",
+        "primary_button": "a.btn-primary",
+        "secondary_button": "a.btn-ghost",
+        "image": ".hero-media img",
+        "overlay": ".hero-overlay",
+        "scroll_hint": ".hero-scroll"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats Strip",
+      "fields": [
+        "stat_1_value", "stat_1_label",
+        "stat_2_value", "stat_2_label",
+        "stat_3_value", "stat_3_label",
+        "stat_4_value", "stat_4_label"
+      ],
+      "elements": {
+        "item": ".stat-item",
+        "number": ".stat-num",
+        "label": ".stat-label"
+      }
+    },
+    {
+      "id": "about",
+      "name": "About Studio",
+      "fields": ["about_eyebrow", "about_title", "about_text_1", "about_text_2", "about_text_3", "about_signature", "about_image"],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "paragraph": ".about-text",
+        "signature": ".about-signature",
+        "image": ".about-media img",
+        "image_caption": ".about-caption"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Services Grid",
+      "fields": [
+        "services_eyebrow", "services_title",
+        "service_1_title", "service_1_text", "service_1_tag_1", "service_1_tag_2", "service_1_tag_3",
+        "service_2_title", "service_2_text", "service_2_tag_1", "service_2_tag_2", "service_2_tag_3",
+        "service_3_title", "service_3_text", "service_3_tag_1", "service_3_tag_2", "service_3_tag_3",
+        "service_4_title", "service_4_text", "service_4_tag_1", "service_4_tag_2", "service_4_tag_3",
+        "service_5_title", "service_5_text", "service_5_tag_1", "service_5_tag_2", "service_5_tag_3",
+        "service_6_title", "service_6_text", "service_6_tag_1", "service_6_tag_2", "service_6_tag_3"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "grid": ".service-grid",
+        "card": ".service-card",
+        "number": ".service-num",
+        "card_title": ".service-title",
+        "card_description": ".service-desc",
+        "tag": ".service-tag"
+      }
+    },
+    {
+      "id": "portfolio",
+      "name": "Portfolio Gallery",
+      "fields": [
+        "portfolio_eyebrow", "portfolio_title", "portfolio_intro",
+        "project_1_title", "project_1_category", "project_1_image",
+        "project_2_title", "project_2_category", "project_2_image",
+        "project_3_title", "project_3_category", "project_3_image",
+        "project_4_title", "project_4_category", "project_4_image",
+        "project_5_title", "project_5_category", "project_5_image",
+        "project_6_title", "project_6_category", "project_6_image"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".portfolio-intro",
+        "grid": ".portfolio-grid",
+        "item": ".portfolio-item",
+        "image": ".portfolio-item img",
+        "caption": ".portfolio-caption",
+        "caption_title": ".portfolio-caption-title",
+        "caption_category": ".portfolio-caption-cat",
+        "overlay": ".portfolio-overlay"
+      }
+    },
+    {
+      "id": "process",
+      "name": "Process Steps",
+      "fields": [
+        "process_eyebrow", "process_title",
+        "process_1_title", "process_1_text",
+        "process_2_title", "process_2_text",
+        "process_3_title", "process_3_text",
+        "process_4_title", "process_4_text"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "step": ".process-step",
+        "number": ".process-num",
+        "step_title": ".process-title",
+        "step_description": ".process-desc",
+        "divider": ".process-divider"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Testimonials",
+      "fields": [
+        "testimonials_eyebrow", "testimonials_title",
+        "testimonial_1_quote", "testimonial_1_author", "testimonial_1_project",
+        "testimonial_2_quote", "testimonial_2_author", "testimonial_2_project",
+        "testimonial_3_quote", "testimonial_3_author", "testimonial_3_project"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "track": ".testimonial-track",
+        "slide": ".testimonial-slide",
+        "quote": ".testimonial-quote",
+        "author": ".testimonial-author",
+        "project": ".testimonial-project",
+        "dot": ".testimonial-dot"
+      }
+    },
+    {
+      "id": "brands",
+      "name": "Trusted Brands",
+      "fields": [
+        "brands_eyebrow", "brands_title",
+        "brand_1_name", "brand_2_name", "brand_3_name", "brand_4_name",
+        "brand_5_name", "brand_6_name", "brand_7_name", "brand_8_name"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.brands-heading",
+        "strip": ".brands-strip",
+        "brand": ".brand-item"
+      }
+    },
+    {
+      "id": "cta_banner",
+      "name": "CTA Banner",
+      "fields": ["cta_banner_eyebrow", "cta_banner_title", "cta_banner_subtitle", "cta_banner_cta"],
+      "elements": {
+        "eyebrow": ".cta-eyebrow",
+        "heading": "h2.cta-title",
+        "subheading": "p.cta-subtitle",
+        "primary_button": "a.cta-button"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact Section",
+      "fields": [
+        "contact_eyebrow", "contact_title", "contact_intro",
+        "contact_email", "contact_phone", "contact_address", "contact_hours",
+        "contact_form_title", "form_submit_text", "form_success_message"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".contact-intro",
+        "info_label": ".contact-item-label",
+        "info_value": ".contact-item-value",
+        "form": ".contact-form",
+        "form_field": ".form-field",
+        "form_label": ".form-field label",
+        "form_input": ".form-field input, .form-field textarea, .form-field select",
+        "primary_button": "button.form-submit",
+        "success_message": "#form-success"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Booking Form",
+      "fields": ["booking_title", "booking_intro", "booking_cta"],
+      "elements": {
+        "heading": "h2.booking-h2",
+        "intro": ".booking-intro",
+        "form": ".booking-form",
+        "submit_button": "button.booking-submit",
+        "date_input": "input[name=\"preferred_date\"]",
+        "time_slot": ".booking-slot"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "fields": [
+        "business_name", "footer_tagline", "footer_text",
+        "social_instagram", "social_linkedin", "social_pinterest"
+      ],
+      "elements": {
+        "logo": ".footer-logo",
+        "tagline": ".footer-tagline",
+        "links": ".footer-links",
+        "link": ".footer-links li a",
+        "social": ".footer-social",
+        "social_link": ".footer-social a",
+        "copy": ".footer-copy"
+      }
+    }
+  ],
+  "variables": {
+    "business_name":      {"type": "text",  "label": "Business Name",   "default": "Your Studio Name"},
+    "business_tagline":   {"type": "text",  "label": "Business Tagline","default": "Interior Design · Dubai"},
+    "meta_description":   {"type": "text",  "label": "Meta Description","default": "Interior design studio crafting timeless residential and commercial spaces."},
+    "canonical_url":      {"type": "url",   "label": "Canonical URL",   "default": ""},
+    "og_image":           {"type": "image", "label": "OG Image",        "default": ""},
+    "og_locale":          {"type": "text",  "label": "OG Locale",       "default": "en_US"},
+
+    "nav_cta":            {"type": "text",  "label": "Nav CTA",         "default": "Get a Quote"},
+
+    "hero_eyebrow":       {"type": "text",  "label": "Hero Eyebrow",    "default": "Interior Design · Fit-Out · Joinery"},
+    "hero_title":         {"type": "html",  "label": "Hero Title",      "default": "Spaces that live<br><em>beautifully</em>"},
+    "hero_subtitle":      {"type": "text",  "label": "Hero Subtitle",   "default": "A design studio creating considered, liveable interiors across residential and commercial projects."},
+    "hero_cta":           {"type": "text",  "label": "Primary CTA",     "default": "Book a Consultation"},
+    "hero_cta_secondary": {"type": "text",  "label": "Secondary CTA",   "default": "View Portfolio"},
+    "hero_image":         {"type": "image", "label": "Hero Image",      "default": "images/hero-interior.jpg"},
+
+    "stat_1_value": {"type": "text", "label": "Stat 1 Value", "default": "120+"},
+    "stat_1_label": {"type": "text", "label": "Stat 1 Label", "default": "Projects Completed"},
+    "stat_2_value": {"type": "text", "label": "Stat 2 Value", "default": "15"},
+    "stat_2_label": {"type": "text", "label": "Stat 2 Label", "default": "Years of Craft"},
+    "stat_3_value": {"type": "text", "label": "Stat 3 Value", "default": "9"},
+    "stat_3_label": {"type": "text", "label": "Stat 3 Label", "default": "Design Awards"},
+    "stat_4_value": {"type": "text", "label": "Stat 4 Value", "default": "98%"},
+    "stat_4_label": {"type": "text", "label": "Stat 4 Label", "default": "Client Satisfaction"},
+
+    "about_eyebrow":   {"type": "text",  "label": "About Eyebrow",   "default": "About the Studio"},
+    "about_title":     {"type": "html",  "label": "About Title",     "default": "Design as a<br><em>quiet discipline.</em>"},
+    "about_text_1":    {"type": "text",  "label": "About Paragraph 1","default": "We are a studio of architects, interior designers, and craftspeople, focused on the small decisions that make a space feel considered."},
+    "about_text_2":    {"type": "text",  "label": "About Paragraph 2","default": "Our work moves across private residences, restaurants, and retail — held together by a belief that good design is calm, durable, and honest to its materials."},
+    "about_text_3":    {"type": "text",  "label": "About Paragraph 3","default": "Every project begins with a long conversation and ends with a space that makes daily life a little easier, and a little more beautiful."},
+    "about_signature": {"type": "text",  "label": "Signature",       "default": "The Studio"},
+    "about_image":     {"type": "image", "label": "About Image",     "default": ""},
+
+    "services_eyebrow": {"type": "text", "label": "Services Eyebrow", "default": "What We Do"},
+    "services_title":   {"type": "html", "label": "Services Title",   "default": "Services,<br><em>end to end.</em>"},
+    "service_1_title":  {"type": "text", "label": "Service 1 Title", "default": "Interior Design"},
+    "service_1_text":   {"type": "text", "label": "Service 1 Text",  "default": "Concept, spatial planning, material selection, and styling for residential and commercial interiors."},
+    "service_1_tag_1":  {"type": "text", "label": "Service 1 Tag 1", "default": "Residential"},
+    "service_1_tag_2":  {"type": "text", "label": "Service 1 Tag 2", "default": "Commercial"},
+    "service_1_tag_3":  {"type": "text", "label": "Service 1 Tag 3", "default": "Hospitality"},
+    "service_2_title":  {"type": "text", "label": "Service 2 Title", "default": "Fit-Out"},
+    "service_2_text":   {"type": "text", "label": "Service 2 Text",  "default": "Full turnkey fit-out from demolition to final styling, managed in-house with accountable trade partners."},
+    "service_2_tag_1":  {"type": "text", "label": "Service 2 Tag 1", "default": "Turnkey"},
+    "service_2_tag_2":  {"type": "text", "label": "Service 2 Tag 2", "default": "Project Management"},
+    "service_2_tag_3":  {"type": "text", "label": "Service 2 Tag 3", "default": "Site Supervision"},
+    "service_3_title":  {"type": "text", "label": "Service 3 Title", "default": "Bespoke Joinery"},
+    "service_3_text":   {"type": "text", "label": "Service 3 Text",  "default": "Kitchens, wardrobes, millwork, and built-ins fabricated in our workshop to your exact dimensions."},
+    "service_3_tag_1":  {"type": "text", "label": "Service 3 Tag 1", "default": "Kitchens"},
+    "service_3_tag_2":  {"type": "text", "label": "Service 3 Tag 2", "default": "Wardrobes"},
+    "service_3_tag_3":  {"type": "text", "label": "Service 3 Tag 3", "default": "Millwork"},
+    "service_4_title":  {"type": "text", "label": "Service 4 Title", "default": "Smart Home"},
+    "service_4_text":   {"type": "text", "label": "Service 4 Text",  "default": "Lighting, audio, climate, and shades designed into the architecture so technology stays invisible."},
+    "service_4_tag_1":  {"type": "text", "label": "Service 4 Tag 1", "default": "Lighting"},
+    "service_4_tag_2":  {"type": "text", "label": "Service 4 Tag 2", "default": "Audio"},
+    "service_4_tag_3":  {"type": "text", "label": "Service 4 Tag 3", "default": "Climate"},
+    "service_5_title":  {"type": "text", "label": "Service 5 Title", "default": "FF&E Procurement"},
+    "service_5_text":   {"type": "text", "label": "Service 5 Text",  "default": "Furniture, fixtures, and equipment specified and sourced from European and Italian makers we trust."},
+    "service_5_tag_1":  {"type": "text", "label": "Service 5 Tag 1", "default": "Sourcing"},
+    "service_5_tag_2":  {"type": "text", "label": "Service 5 Tag 2", "default": "Specification"},
+    "service_5_tag_3":  {"type": "text", "label": "Service 5 Tag 3", "default": "Logistics"},
+    "service_6_title":  {"type": "text", "label": "Service 6 Title", "default": "Project Management"},
+    "service_6_text":   {"type": "text", "label": "Service 6 Text",  "default": "One point of contact and one fixed price — from brief through to handover, programme, cost, and quality managed for you."},
+    "service_6_tag_1":  {"type": "text", "label": "Service 6 Tag 1", "default": "Programme"},
+    "service_6_tag_2":  {"type": "text", "label": "Service 6 Tag 2", "default": "Cost Control"},
+    "service_6_tag_3":  {"type": "text", "label": "Service 6 Tag 3", "default": "Quality"},
+
+    "portfolio_eyebrow": {"type": "text",  "label": "Portfolio Eyebrow", "default": "Selected Work"},
+    "portfolio_title":   {"type": "html",  "label": "Portfolio Title",   "default": "Recent<br><em>projects.</em>"},
+    "portfolio_intro":   {"type": "text",  "label": "Portfolio Intro",   "default": "A small selection of residences, restaurants, and retail spaces delivered over the past twelve months."},
+    "project_1_title":   {"type": "text",  "label": "Project 1 Title",   "default": "Palm Villa Renovation"},
+    "project_1_category":{"type": "text",  "label": "Project 1 Category","default": "Residential"},
+    "project_1_image":   {"type": "image", "label": "Project 1 Image",   "default": ""},
+    "project_2_title":   {"type": "text",  "label": "Project 2 Title",   "default": "Marina Penthouse"},
+    "project_2_category":{"type": "text",  "label": "Project 2 Category","default": "Residential"},
+    "project_2_image":   {"type": "image", "label": "Project 2 Image",   "default": ""},
+    "project_3_title":   {"type": "text",  "label": "Project 3 Title",   "default": "DIFC Office Fit-Out"},
+    "project_3_category":{"type": "text",  "label": "Project 3 Category","default": "Commercial"},
+    "project_3_image":   {"type": "image", "label": "Project 3 Image",   "default": ""},
+    "project_4_title":   {"type": "text",  "label": "Project 4 Title",   "default": "Downtown Townhouse"},
+    "project_4_category":{"type": "text",  "label": "Project 4 Category","default": "Residential"},
+    "project_4_image":   {"type": "image", "label": "Project 4 Image",   "default": ""},
+    "project_5_title":   {"type": "text",  "label": "Project 5 Title",   "default": "Riviera Restaurant"},
+    "project_5_category":{"type": "text",  "label": "Project 5 Category","default": "Hospitality"},
+    "project_5_image":   {"type": "image", "label": "Project 5 Image",   "default": ""},
+    "project_6_title":   {"type": "text",  "label": "Project 6 Title",   "default": "Mall of Emirates Flagship"},
+    "project_6_category":{"type": "text",  "label": "Project 6 Category","default": "Retail"},
+    "project_6_image":   {"type": "image", "label": "Project 6 Image",   "default": ""},
+
+    "process_eyebrow": {"type": "text", "label": "Process Eyebrow", "default": "How We Work"},
+    "process_title":   {"type": "html", "label": "Process Title",   "default": "A considered<br><em>four-stage process.</em>"},
+    "process_1_title": {"type": "text", "label": "Step 1 Title",    "default": "Discovery"},
+    "process_1_text":  {"type": "text", "label": "Step 1 Text",     "default": "We visit the space, listen to how you live or work, and agree the brief, programme, and budget."},
+    "process_2_title": {"type": "text", "label": "Step 2 Title",    "default": "Concept Design"},
+    "process_2_text":  {"type": "text", "label": "Step 2 Text",     "default": "Layouts, moodboards, 3D views, and material samples — presented until every decision feels right."},
+    "process_3_title": {"type": "text", "label": "Step 3 Title",    "default": "Execution"},
+    "process_3_text":  {"type": "text", "label": "Step 3 Text",     "default": "Construction, joinery, and installation, managed in-house with weekly updates and site walks."},
+    "process_4_title": {"type": "text", "label": "Step 4 Title",    "default": "Handover"},
+    "process_4_text":  {"type": "text", "label": "Step 4 Text",     "default": "Styling, snagging, and an aftercare pack — so the space feels complete the moment you move in."},
+
+    "testimonials_eyebrow":   {"type": "text", "label": "Testimonials Eyebrow", "default": "Clients"},
+    "testimonials_title":     {"type": "html", "label": "Testimonials Title",   "default": "What our clients<br><em>say.</em>"},
+    "testimonial_1_quote":    {"type": "text", "label": "Testimonial 1 Quote",   "default": "They read the brief precisely and delivered something more refined than we had imagined — quietly, on time, on budget."},
+    "testimonial_1_author":   {"type": "text", "label": "Testimonial 1 Author",  "default": "Sara H."},
+    "testimonial_1_project":  {"type": "text", "label": "Testimonial 1 Project", "default": "Palm Villa, Dubai"},
+    "testimonial_2_quote":    {"type": "text", "label": "Testimonial 2 Quote",   "default": "The joinery in our kitchen is the best we have seen in the city. Detailing is obsessive, in the best possible way."},
+    "testimonial_2_author":   {"type": "text", "label": "Testimonial 2 Author",  "default": "Omar & Layla N."},
+    "testimonial_2_project":  {"type": "text", "label": "Testimonial 2 Project", "default": "Marina Penthouse"},
+    "testimonial_3_quote":    {"type": "text", "label": "Testimonial 3 Quote",   "default": "A true partnership. They think like owners — every pound spent justifies itself in how the space performs day to day."},
+    "testimonial_3_author":   {"type": "text", "label": "Testimonial 3 Author",  "default": "Charlotte P."},
+    "testimonial_3_project":  {"type": "text", "label": "Testimonial 3 Project", "default": "DIFC Office"},
+
+    "brands_eyebrow": {"type": "text", "label": "Brands Eyebrow", "default": "Specified and supplied"},
+    "brands_title":   {"type": "text", "label": "Brands Title",   "default": "Brands we work with"},
+    "brand_1_name":   {"type": "text", "label": "Brand 1",        "default": "Minotti"},
+    "brand_2_name":   {"type": "text", "label": "Brand 2",        "default": "Poliform"},
+    "brand_3_name":   {"type": "text", "label": "Brand 3",        "default": "B&B Italia"},
+    "brand_4_name":   {"type": "text", "label": "Brand 4",        "default": "Flos"},
+    "brand_5_name":   {"type": "text", "label": "Brand 5",        "default": "Boffi"},
+    "brand_6_name":   {"type": "text", "label": "Brand 6",        "default": "Gaggenau"},
+    "brand_7_name":   {"type": "text", "label": "Brand 7",        "default": "Vitra"},
+    "brand_8_name":   {"type": "text", "label": "Brand 8",        "default": "Cassina"},
+
+    "cta_banner_eyebrow":  {"type": "text", "label": "CTA Banner Eyebrow",  "default": "Ready to start?"},
+    "cta_banner_title":    {"type": "html", "label": "CTA Banner Title",    "default": "Transform<br>your space."},
+    "cta_banner_subtitle": {"type": "text", "label": "CTA Banner Subtitle", "default": "A free 45-minute consultation — we visit the site, talk through the brief, and share first thoughts."},
+    "cta_banner_cta":      {"type": "text", "label": "CTA Banner CTA",      "default": "Book Free Consultation"},
+
+    "contact_eyebrow":      {"type": "text", "label": "Contact Eyebrow",     "default": "Contact"},
+    "contact_title":        {"type": "html", "label": "Contact Title",       "default": "Let us visit<br><em>your space.</em>"},
+    "contact_intro":        {"type": "text", "label": "Contact Intro",       "default": "Drop us a line with a few details about the project. We reply within one working day."},
+    "contact_email":        {"type": "text", "label": "Contact Email",       "default": "hello@yourstudio.com"},
+    "contact_phone":        {"type": "text", "label": "Contact Phone",       "default": "+971 4 000 0000"},
+    "contact_address":      {"type": "text", "label": "Contact Address",     "default": "Dubai Design District, Dubai, UAE"},
+    "contact_hours":        {"type": "text", "label": "Office Hours",        "default": "Sun–Thu · 9am–6pm"},
+    "contact_form_title":   {"type": "html", "label": "Form Title",          "default": "Start a<br><em>conversation.</em>"},
+    "form_submit_text":     {"type": "text", "label": "Submit Button",       "default": "Send Enquiry →"},
+    "form_success_message": {"type": "text", "label": "Success Message",     "default": "✓ Thank you. We'll be in touch within one working day."},
+
+    "booking_title":   {"type": "html", "label": "Booking Title", "default": "Book a<br><em>consultation.</em>"},
+    "booking_intro":   {"type": "text", "label": "Booking Intro", "default": "A free 45-minute visit to the site — we discuss the brief, timeline, and indicative budget."},
+    "booking_cta":     {"type": "text", "label": "Booking CTA",   "default": "Book a Consultation"},
+    "booking_display": {"type": "text", "label": "Booking Display", "default": "display:none"},
+
+    "footer_tagline":    {"type": "text", "label": "Footer Tagline",   "default": "Considered interiors, end to end."},
+    "footer_text":       {"type": "text", "label": "Footer Copyright", "default": "© 2026 — All rights reserved."},
+    "social_instagram":  {"type": "url",  "label": "Instagram URL",    "default": "#"},
+    "social_linkedin":   {"type": "url",  "label": "LinkedIn URL",     "default": "#"},
+    "social_pinterest":  {"type": "url",  "label": "Pinterest URL",    "default": "#"},
+
+    "chalk":           {"type": "color", "label": "Chalk (Background)",    "default": "#FAF7F2"},
+    "chalk_soft":      {"type": "color", "label": "Chalk Soft",            "default": "#F3EEE5"},
+    "carbon":          {"type": "color", "label": "Carbon (Primary Text)", "default": "#1B1B1B"},
+    "carbon_soft":     {"type": "color", "label": "Carbon Soft",           "default": "#2D2A26"},
+    "bronze":          {"type": "color", "label": "Bronze (Accent)",       "default": "#8B6F3E"},
+    "bronze_deep":     {"type": "color", "label": "Bronze Deep",           "default": "#6A522A"},
+    "warm_grey":       {"type": "color", "label": "Warm Grey",             "default": "#7A7068"},
+    "warm_grey_deep":  {"type": "color", "label": "Warm Grey Deep",        "default": "#504842"},
+    "divider":         {"type": "color", "label": "Divider",               "default": "#E3DCCF"},
+    "accent_muted":    {"type": "color", "label": "Accent Muted",          "default": "#D4C4A8"}
+  }
+}

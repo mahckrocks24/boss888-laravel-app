@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{business_name}} — {{business_tagline}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{business_name}} — {{business_tagline}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:url" content="{{canonical_url}}">
+<meta property="og:locale" content="{{og_locale}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:{{void}};
+  --void-soft:{{void_soft}};
+  --panel:{{panel}};
+  --panel-border:{{panel_border}};
+  --ink:{{ink}};
+  --muted:{{muted}};
+  --cyan:{{cyan}};
+  --violet:{{violet}};
+  --danger:{{danger}};
+  --success:{{success}};
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--void);color:var(--ink);line-height:1.6;font-weight:400;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.display{font-family:'Space Grotesk',sans-serif;letter-spacing:-0.03em;font-weight:500}
+.mono{font-family:'JetBrains Mono',monospace;letter-spacing:-0.01em}
+.wrap{max-width:1280px;margin:0 auto;padding:0 40px}
+.wrap-narrow{max-width:1120px;margin:0 auto;padding:0 40px}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+
+/* Accent */
+.accent{background:linear-gradient(135deg, var(--cyan) 0%, var(--violet) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* Typography */
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;font-weight:500;color:var(--ink);line-height:1.05;letter-spacing:-0.03em}
+.h-display{font-size:clamp(48px,6vw,88px)}
+.h-section{font-size:clamp(36px,4.4vw,64px)}
+.h-sub{font-size:clamp(22px,2.4vw,32px)}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;letter-spacing:0.08em;color:var(--cyan);margin-bottom:20px;display:inline-block;text-transform:lowercase}
+.eyebrow::before{content:'// ';opacity:0.5}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;padding:14px 24px;border-radius:8px;transition:all .2s ease;cursor:pointer;border:1px solid transparent}
+.btn-primary{background:var(--ink);color:var(--void);border-color:var(--ink)}
+.btn-primary:hover{background:var(--cyan);border-color:var(--cyan);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,229,255,0.2)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--panel-border)}
+.btn-ghost:hover{border-color:var(--ink);background:var(--panel)}
+
+/* Announcement */
+.announcement{background:var(--panel);border-bottom:1px solid var(--panel-border);padding:10px 0;text-align:center;font-size:13px;color:var(--muted)}
+.announcement-text{color:var(--ink);font-weight:500}
+.announcement-link{color:var(--cyan);margin-left:12px;font-weight:500;transition:opacity .2s ease}
+.announcement-link:hover{opacity:0.8}
+
+/* Navigation */
+nav{background:rgba(10,14,26,0.85);backdrop-filter:blur(14px);padding:16px 0;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--panel-border)}
+nav .inner{display:flex;justify-content:space-between;align-items:center}
+nav .logo{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-0.02em;display:flex;align-items:center;gap:10px}
+nav .logo::before{content:'';width:10px;height:10px;background:linear-gradient(135deg,var(--cyan),var(--violet));border-radius:2px;box-shadow:0 0 12px rgba(0,229,255,0.5)}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{font-size:14px;color:var(--muted);font-weight:500;transition:color .2s ease}
+.nav-links a:hover{color:var(--ink)}
+.nav-login{color:var(--ink)!important}
+.nav-cta{background:var(--ink);color:var(--void)!important;padding:10px 18px;border-radius:8px;font-weight:500;transition:all .2s ease}
+.nav-cta:hover{background:var(--cyan);color:var(--void)!important;box-shadow:0 4px 16px rgba(0,229,255,0.3)}
+
+/* Hero */
+.hero{padding:120px 0 80px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:1200px;height:800px;background:radial-gradient(ellipse at center,rgba(0,229,255,0.12) 0%,rgba(123,92,255,0.08) 35%,transparent 70%);pointer-events:none;z-index:0}
+.hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr 1fr;gap:72px;align-items:center}
+.hero-title{font-size:clamp(48px,6vw,80px);color:var(--ink);line-height:1.02;letter-spacing:-0.035em;margin-bottom:28px;font-family:'Space Grotesk',sans-serif;font-weight:500}
+.hero-subtitle{font-size:18px;line-height:1.65;color:var(--muted);margin-bottom:40px;max-width:540px}
+.hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
+.hero-cta{background:var(--ink);color:var(--void);padding:15px 26px;border-radius:10px;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px;transition:all .2s ease}
+.hero-cta:hover{background:var(--cyan);box-shadow:0 8px 32px rgba(0,229,255,0.25);transform:translateY(-1px)}
+.hero-cta::after{content:'→';transition:transform .2s ease}
+.hero-cta:hover::after{transform:translateX(3px)}
+.hero-cta-secondary{background:transparent;color:var(--ink);padding:15px 26px;border-radius:10px;font-size:14px;font-weight:500;display:inline-flex;align-items:center;border:1px solid var(--panel-border);transition:all .2s ease}
+.hero-cta-secondary:hover{border-color:var(--ink);background:var(--panel)}
+.hero-code{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,0.5),0 0 0 1px rgba(0,229,255,0.06)}
+.hero-code-head{padding:12px 16px;border-bottom:1px solid var(--panel-border);display:flex;align-items:center;gap:10px;background:var(--void-soft)}
+.hero-code-head-dots{display:flex;gap:6px}
+.hero-code-head-dots span{width:12px;height:12px;border-radius:50%;background:var(--panel-border)}
+.hero-code-title{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);flex:1;text-align:center}
+.hero-code-body{padding:20px 22px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+
+/* Stats */
+.stats{padding:64px 0;border-top:1px solid var(--panel-border);border-bottom:1px solid var(--panel-border);background:var(--void-soft)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px}
+.stat{text-align:center}
+.stat-value{font-family:'Space Grotesk',sans-serif;font-size:48px;line-height:1;color:var(--ink);margin-bottom:10px;letter-spacing:-0.03em;font-weight:600}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:0.02em}
+
+/* Section common */
+.section{padding:120px 0}
+.section-head{max-width:820px;margin-bottom:72px}
+.section-head.center{margin-left:auto;margin-right:auto;text-align:center}
+.section-intro{font-size:17px;color:var(--muted);line-height:1.7;max-width:680px;margin-top:24px}
+
+/* Features */
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.feature{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:32px;transition:all .3s ease;position:relative;overflow:hidden}
+.feature::before{content:'';position:absolute;top:0;left:0;width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--cyan) 50%,transparent);opacity:0;transition:opacity .3s ease}
+.feature:hover{border-color:var(--cyan);transform:translateY(-2px);box-shadow:0 16px 48px rgba(0,0,0,0.3)}
+.feature:hover::before{opacity:1}
+.feature-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(123,92,255,0.15));border:1px solid var(--panel-border);display:flex;align-items:center;justify-content:center;margin-bottom:24px;color:var(--cyan);font-size:22px}
+.feature h3{font-size:19px;margin-bottom:12px;color:var(--ink);letter-spacing:-0.02em}
+.feature p{font-size:14.5px;color:var(--muted);line-height:1.65}
+
+/* How It Works */
+.how{background:var(--void-soft);border-top:1px solid var(--panel-border);border-bottom:1px solid var(--panel-border)}
+.how-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;counter-reset:step}
+.step{counter-increment:step;padding:32px 0;position:relative}
+.step::before{content:counter(step,decimal-leading-zero);font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--cyan);font-weight:500;margin-bottom:20px;display:block;letter-spacing:0.1em}
+.step h3{font-size:20px;margin-bottom:12px;color:var(--ink)}
+.step p{font-size:14.5px;color:var(--muted);line-height:1.65}
+
+/* Integrations */
+.integrations-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--panel-border);border-radius:14px;overflow:hidden;background:var(--panel)}
+.integration{padding:32px 24px;text-align:center;border-right:1px solid var(--panel-border);border-bottom:1px solid var(--panel-border);font-family:'Space Grotesk',sans-serif;font-size:18px;color:var(--ink);font-weight:500;transition:background .2s ease;letter-spacing:-0.01em}
+.integration:hover{background:var(--void-soft);color:var(--cyan)}
+.integration:nth-child(4n){border-right:none}
+.integration:nth-last-child(-n+4){border-bottom:none}
+
+/* Use Cases */
+.usecases-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.usecase{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:40px;transition:all .3s ease}
+.usecase:hover{border-color:var(--violet);transform:translateY(-2px)}
+.usecase-metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--success);background:rgba(46,229,157,0.08);border:1px solid rgba(46,229,157,0.2);padding:6px 12px;border-radius:6px;margin-bottom:24px;letter-spacing:0.02em;font-weight:500}
+.usecase h3{font-size:22px;margin-bottom:14px;color:var(--ink)}
+.usecase p{font-size:15px;color:var(--muted);line-height:1.65}
+
+/* Testimonials */
+.testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.testimonial{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:36px}
+.testimonial-quote{font-size:16px;color:var(--ink);line-height:1.65;margin-bottom:28px;font-weight:400}
+.testimonial-quote::before{content:'"';font-family:'Space Grotesk',sans-serif;font-size:48px;color:var(--cyan);line-height:0;display:block;margin-bottom:12px;font-weight:600}
+.testimonial-author{font-size:14px;color:var(--ink);font-weight:500;margin-bottom:4px}
+.testimonial-role{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:0.02em}
+
+/* Pricing */
+.pricing{background:var(--void-soft);border-top:1px solid var(--panel-border);border-bottom:1px solid var(--panel-border)}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.plan{background:var(--panel);border:1px solid var(--panel-border);border-radius:16px;padding:40px;position:relative;transition:all .3s ease}
+.plan.featured{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 24px 64px rgba(0,229,255,0.08)}
+.plan.featured::before{content:'Most Popular';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--void);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:5px 14px;border-radius:20px;letter-spacing:0.04em}
+.plan-name{font-family:'Space Grotesk',sans-serif;font-size:18px;color:var(--muted);margin-bottom:16px;font-weight:500;letter-spacing:-0.01em}
+.plan-price-row{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+.plan-price{font-family:'Space Grotesk',sans-serif;font-size:48px;font-weight:600;color:var(--ink);letter-spacing:-0.03em;line-height:1}
+.plan-period{font-size:14px;color:var(--muted)}
+.plan-desc{font-size:14px;color:var(--muted);line-height:1.55;margin-bottom:28px;min-height:44px}
+.plan-features{list-style:none;margin-bottom:28px}
+.plan-features li{font-size:14px;color:var(--ink);padding:10px 0;border-top:1px solid var(--panel-border);display:flex;align-items:center;gap:10px}
+.plan-features li::before{content:'✓';color:var(--cyan);font-weight:600;font-family:'JetBrains Mono',monospace}
+.plan-features li:first-child{border-top:none}
+.plan-cta{display:block;text-align:center;width:100%;padding:13px 20px;border-radius:10px;font-size:14px;font-weight:500;transition:all .2s ease;border:1px solid var(--panel-border);background:transparent;color:var(--ink)}
+.plan-cta:hover{border-color:var(--ink);background:var(--panel)}
+.plan.featured .plan-cta{background:var(--ink);color:var(--void);border-color:var(--ink)}
+.plan.featured .plan-cta:hover{background:var(--cyan);border-color:var(--cyan);box-shadow:0 8px 24px rgba(0,229,255,0.2)}
+
+/* Blog */
+.blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.blog-card{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .3s ease;display:flex;flex-direction:column}
+.blog-card:hover{border-color:var(--cyan);transform:translateY(-2px)}
+.blog-card-img{aspect-ratio:16/10;background:var(--void-soft);overflow:hidden}
+.blog-card-img img{width:100%;height:100%;object-fit:cover;opacity:0.75;transition:opacity .3s ease}
+.blog-card:hover .blog-card-img img{opacity:1}
+.blog-card-body{padding:28px;flex:1;display:flex;flex-direction:column}
+.blog-meta{display:flex;gap:12px;align-items:center;margin-bottom:16px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.04em;color:var(--muted)}
+.blog-category{color:var(--cyan);font-weight:500}
+.blog-card-title{font-size:20px;color:var(--ink);line-height:1.25;margin-bottom:14px;font-family:'Space Grotesk',sans-serif;font-weight:500}
+.blog-excerpt{font-size:14.5px;color:var(--muted);line-height:1.65;flex:1}
+.blog-cta-row{text-align:center;margin-top:56px}
+.link-accent{color:var(--cyan);font-weight:500;font-size:14px;transition:opacity .2s ease;display:inline-flex;align-items:center;gap:6px}
+.link-accent:hover{opacity:0.8}
+.link-accent::after{content:'→';transition:transform .2s ease}
+.link-accent:hover::after{transform:translateX(3px)}
+
+/* Booking */
+.booking{position:relative;overflow:hidden}
+.booking::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:800px;height:800px;background:radial-gradient(circle at center,rgba(123,92,255,0.12) 0%,transparent 60%);pointer-events:none}
+.booking-inner{position:relative;z-index:2;max-width:720px;margin:0 auto;text-align:center}
+.booking-intro{font-size:17px;color:var(--muted);line-height:1.7;margin-top:24px;margin-bottom:48px}
+.booking-form{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left;background:var(--panel);border:1px solid var(--panel-border);border-radius:16px;padding:40px}
+.booking-form .full{grid-column:span 2}
+.booking-form label{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;letter-spacing:0.04em;text-transform:lowercase}
+.booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:13px 16px;background:var(--void);border:1px solid var(--panel-border);border-radius:8px;font-size:14px;color:var(--ink);font-family:'Inter',sans-serif;transition:border-color .2s ease}
+.booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,229,255,0.1)}
+.time-slots{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.time-slots label{display:inline-flex;align-items:center;cursor:pointer;border:1px solid var(--panel-border);padding:9px 14px;border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;color:var(--muted);transition:all .2s ease;margin:0;text-transform:none;letter-spacing:0}
+.time-slots label:hover{border-color:var(--ink);color:var(--ink)}
+.time-slots input{display:none}
+.time-slots label:has(input:checked){background:var(--cyan);color:var(--void);border-color:var(--cyan)}
+.booking-form button{margin-top:12px;grid-column:span 2;justify-self:center;background:var(--ink);color:var(--void);padding:14px 32px;border-radius:10px;border:none;font-weight:500;font-size:14px;cursor:pointer;transition:all .2s ease}
+.booking-form button:hover{background:var(--cyan);box-shadow:0 8px 32px rgba(0,229,255,0.25)}
+.booking-success{display:none;padding:18px;background:rgba(46,229,157,0.06);border:1px solid rgba(46,229,157,0.2);border-radius:10px;text-align:left;font-size:14px;color:var(--ink);grid-column:span 2}
+.booking-form.submitted .booking-success{display:block}
+.booking-display{display:none}
+
+/* Contact */
+.contact{background:var(--void-soft);border-top:1px solid var(--panel-border);border-bottom:1px solid var(--panel-border)}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:start}
+.contact-details{display:grid;gap:28px;margin-top:32px}
+.contact-detail{padding:24px;background:var(--panel);border:1px solid var(--panel-border);border-radius:12px}
+.contact-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:0.06em;margin-bottom:8px;text-transform:lowercase}
+.contact-value{font-size:16px;color:var(--ink);font-weight:500}
+.contact-form{display:grid;gap:14px}
+.contact-form input,.contact-form textarea{width:100%;padding:14px 16px;background:var(--panel);border:1px solid var(--panel-border);border-radius:8px;font-size:14px;color:var(--ink);font-family:'Inter',sans-serif;transition:border-color .2s ease}
+.contact-form input:focus,.contact-form textarea:focus{outline:none;border-color:var(--cyan)}
+.contact-form textarea{resize:vertical;min-height:140px}
+.form-submit{background:var(--ink);color:var(--void);padding:14px 24px;border-radius:10px;border:none;font-weight:500;font-size:14px;cursor:pointer;transition:all .2s ease;justify-self:start}
+.form-submit:hover{background:var(--cyan);box-shadow:0 8px 24px rgba(0,229,255,0.2)}
+.form-success{display:none;padding:18px;background:rgba(46,229,157,0.06);border:1px solid rgba(46,229,157,0.2);border-radius:10px;font-size:14px;color:var(--ink)}
+.contact-form.submitted .form-success{display:block}
+
+/* Footer */
+footer{background:var(--void);padding:80px 0 32px;border-top:1px solid var(--panel-border)}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:80px;margin-bottom:56px}
+.footer-brand{font-family:'Space Grotesk',sans-serif;font-size:28px;color:var(--ink);margin-bottom:18px;font-weight:600;letter-spacing:-0.02em;display:flex;align-items:center;gap:10px}
+.footer-brand::before{content:'';width:12px;height:12px;background:linear-gradient(135deg,var(--cyan),var(--violet));border-radius:3px}
+.footer-tagline{font-size:14px;color:var(--muted);line-height:1.65;max-width:340px}
+.footer-col h4{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);margin-bottom:20px;letter-spacing:0.06em;font-weight:500;text-transform:lowercase}
+.footer-col ul{list-style:none}
+.footer-col li{margin-bottom:10px}
+.footer-col a{font-size:14px;color:var(--muted);transition:color .2s ease}
+.footer-col a:hover{color:var(--ink)}
+.footer-bottom{border-top:1px solid var(--panel-border);padding-top:28px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.footer-text{font-size:13px;color:var(--muted)}
+.footer-socials{display:flex;gap:20px}
+.footer-socials a{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);transition:color .2s ease}
+.footer-socials a:hover{color:var(--cyan)}
+
+/* Reveal */
+.reveal{opacity:0;transform:translateY(20px);transition:all .7s cubic-bezier(.2,.7,.3,1)}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* Responsive */
+@media(max-width:1024px){
+  .wrap,.wrap-narrow{padding:0 24px}
+  .hero-grid{grid-template-columns:1fr;gap:48px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:48px}
+  .features-grid,.how-steps,.integrations-grid,.usecases-grid,.testimonials-grid,.pricing-grid,.blog-grid{grid-template-columns:repeat(2,1fr)}
+  .integration:nth-child(4n){border-right:1px solid var(--panel-border)}
+  .integration:nth-child(2n){border-right:none}
+  .contact-grid{grid-template-columns:1fr;gap:48px}
+  .footer-grid{grid-template-columns:1fr;gap:48px}
+}
+@media(max-width:640px){
+  .wrap,.wrap-narrow{padding:0 18px}
+  .nav-links a:not(.nav-cta):not(.nav-login){display:none}
+  .stats-grid,.features-grid,.how-steps,.usecases-grid,.testimonials-grid,.pricing-grid,.blog-grid{grid-template-columns:1fr}
+  .integrations-grid{grid-template-columns:repeat(2,1fr)}
+  .booking-form{grid-template-columns:1fr;padding:28px}
+  .booking-form .full,.booking-form button{grid-column:span 1}
+  .section{padding:72px 0}
+  .hero{padding:72px 0 48px}
+}
+</style>
+</head>
+<body>
+
+<!-- Announcement -->
+<div class="announcement" data-block="announcement">
+  <div class="wrap">
+    <span class="announcement-text" data-field="announcement_text">{{announcement_text}}</span>
+    <a href="#blog" class="announcement-link" data-field="announcement_link">{{announcement_link}}</a>
+  </div>
+</div>
+
+<!-- Navigation -->
+<nav data-block="nav">
+  <div class="wrap inner">
+    <a href="#" class="logo" data-field="logo">{{business_name}}</a>
+    <div class="nav-links">
+      <a href="#features" data-field="nav_1">{{nav_1}}</a>
+      <a href="#pricing" data-field="nav_2">{{nav_2}}</a>
+      <a href="#" data-field="nav_3">{{nav_3}}</a>
+      <a href="#blog" data-field="nav_4">{{nav_4}}</a>
+      <a href="#" class="nav-login" data-field="nav_login">{{nav_login}}</a>
+      <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero" data-block="hero" data-field="hero_image" style="background-image:linear-gradient(rgba(10,14,26,0.92) 0%,rgba(10,14,26,0.78) 60%,rgba(10,14,26,0.88) 100%), url('{{hero_image}}');background-size:cover;background-position:center;background-repeat:no-repeat">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow hero-eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+        <h1 class="hero-title" data-field="hero_title">{{hero_title}}</h1>
+        <p class="hero-subtitle" data-field="hero_subtitle">{{hero_subtitle}}</p>
+        <div class="hero-ctas">
+          <a href="#booking" class="hero-cta" data-field="hero_cta">{{hero_cta}}</a>
+          <a href="#" class="hero-cta-secondary" data-field="hero_cta_secondary">{{hero_cta_secondary}}</a>
+        </div>
+      </div>
+      <div class="hero-code reveal">
+        <div class="hero-code-head">
+          <div class="hero-code-head-dots"><span></span><span></span><span></span></div>
+          <span class="hero-code-title" data-field="hero_code_title">{{hero_code_title}}</span>
+        </div>
+        <div class="hero-code-body" data-field="hero_code_body">{{hero_code_body}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="stats" data-block="stats">
+  <div class="wrap">
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-value stat-1-value" data-field="stat_1_value">{{stat_1_value}}</div><div class="stat-label stat-1-label" data-field="stat_1_label">{{stat_1_label}}</div></div>
+      <div class="stat"><div class="stat-value stat-2-value" data-field="stat_2_value">{{stat_2_value}}</div><div class="stat-label stat-2-label" data-field="stat_2_label">{{stat_2_label}}</div></div>
+      <div class="stat"><div class="stat-value stat-3-value" data-field="stat_3_value">{{stat_3_value}}</div><div class="stat-label stat-3-label" data-field="stat_3_label">{{stat_3_label}}</div></div>
+      <div class="stat"><div class="stat-value stat-4-value" data-field="stat_4_value">{{stat_4_value}}</div><div class="stat-label stat-4-label" data-field="stat_4_label">{{stat_4_label}}</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="section" id="features" data-block="features">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow features-eyebrow" data-field="features_eyebrow">{{features_eyebrow}}</span>
+      <h2 class="h-section features-title" data-field="features_title">{{features_title}}</h2>
+      <p class="section-intro features-intro" data-field="features_intro">{{features_intro}}</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature reveal"><div class="feature-icon">◈</div><h3 class="feature-1-title" data-field="feature_1_title">{{feature_1_title}}</h3><p class="feature-1-text" data-field="feature_1_text">{{feature_1_text}}</p></div>
+      <div class="feature reveal"><div class="feature-icon">⎔</div><h3 class="feature-2-title" data-field="feature_2_title">{{feature_2_title}}</h3><p class="feature-2-text" data-field="feature_2_text">{{feature_2_text}}</p></div>
+      <div class="feature reveal"><div class="feature-icon">$</div><h3 class="feature-3-title" data-field="feature_3_title">{{feature_3_title}}</h3><p class="feature-3-text" data-field="feature_3_text">{{feature_3_text}}</p></div>
+      <div class="feature reveal"><div class="feature-icon">⏵</div><h3 class="feature-4-title" data-field="feature_4_title">{{feature_4_title}}</h3><p class="feature-4-text" data-field="feature_4_text">{{feature_4_text}}</p></div>
+      <div class="feature reveal"><div class="feature-icon">⚠</div><h3 class="feature-5-title" data-field="feature_5_title">{{feature_5_title}}</h3><p class="feature-5-text" data-field="feature_5_text">{{feature_5_text}}</p></div>
+      <div class="feature reveal"><div class="feature-icon">⊞</div><h3 class="feature-6-title" data-field="feature_6_title">{{feature_6_title}}</h3><p class="feature-6-text" data-field="feature_6_text">{{feature_6_text}}</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="section how" data-block="how_it_works">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow how-eyebrow" data-field="how_eyebrow">{{how_eyebrow}}</span>
+      <h2 class="h-section how-title" data-field="how_title">{{how_title}}</h2>
+      <p class="section-intro how-intro" data-field="how_intro">{{how_intro}}</p>
+    </div>
+    <div class="how-steps">
+      <div class="step reveal"><h3 class="step-1-title" data-field="step_1_title">{{step_1_title}}</h3><p class="step-1-text" data-field="step_1_text">{{step_1_text}}</p></div>
+      <div class="step reveal"><h3 class="step-2-title" data-field="step_2_title">{{step_2_title}}</h3><p class="step-2-text" data-field="step_2_text">{{step_2_text}}</p></div>
+      <div class="step reveal"><h3 class="step-3-title" data-field="step_3_title">{{step_3_title}}</h3><p class="step-3-text" data-field="step_3_text">{{step_3_text}}</p></div>
+      <div class="step reveal"><h3 class="step-4-title" data-field="step_4_title">{{step_4_title}}</h3><p class="step-4-text" data-field="step_4_text">{{step_4_text}}</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Integrations -->
+<section class="section" data-block="integrations">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow integrations-eyebrow" data-field="integrations_eyebrow">{{integrations_eyebrow}}</span>
+      <h2 class="h-section integrations-title" data-field="integrations_title">{{integrations_title}}</h2>
+    </div>
+    <div class="integrations-grid">
+      <div class="integration integration-1" data-field="integration_1">{{integration_1}}</div>
+      <div class="integration integration-2" data-field="integration_2">{{integration_2}}</div>
+      <div class="integration integration-3" data-field="integration_3">{{integration_3}}</div>
+      <div class="integration integration-4" data-field="integration_4">{{integration_4}}</div>
+      <div class="integration integration-5" data-field="integration_5">{{integration_5}}</div>
+      <div class="integration integration-6" data-field="integration_6">{{integration_6}}</div>
+      <div class="integration integration-7" data-field="integration_7">{{integration_7}}</div>
+      <div class="integration integration-8" data-field="integration_8">{{integration_8}}</div>
+    </div>
+  </div>
+</section>
+
+<!-- Use Cases -->
+<section class="section" data-block="use_cases">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow usecases-eyebrow" data-field="usecases_eyebrow">{{usecases_eyebrow}}</span>
+      <h2 class="h-section usecases-title" data-field="usecases_title">{{usecases_title}}</h2>
+    </div>
+    <div class="usecases-grid">
+      <div class="usecase reveal"><span class="usecase-metric usecase-1-metric" data-field="usecase_1_metric">{{usecase_1_metric}}</span><h3 class="usecase-1-title" data-field="usecase_1_title">{{usecase_1_title}}</h3><p class="usecase-1-text" data-field="usecase_1_text">{{usecase_1_text}}</p></div>
+      <div class="usecase reveal"><span class="usecase-metric usecase-2-metric" data-field="usecase_2_metric">{{usecase_2_metric}}</span><h3 class="usecase-2-title" data-field="usecase_2_title">{{usecase_2_title}}</h3><p class="usecase-2-text" data-field="usecase_2_text">{{usecase_2_text}}</p></div>
+      <div class="usecase reveal"><span class="usecase-metric usecase-3-metric" data-field="usecase_3_metric">{{usecase_3_metric}}</span><h3 class="usecase-3-title" data-field="usecase_3_title">{{usecase_3_title}}</h3><p class="usecase-3-text" data-field="usecase_3_text">{{usecase_3_text}}</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section class="section" data-block="testimonials">
+  <div class="wrap">
+    <div class="section-head reveal center">
+      <span class="eyebrow testimonials-eyebrow" data-field="testimonials_eyebrow">{{testimonials_eyebrow}}</span>
+      <h2 class="h-section testimonials-title" data-field="testimonials_title">{{testimonials_title}}</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial reveal"><p class="testimonial-quote testimonial-1-quote" data-field="testimonial_1_quote">{{testimonial_1_quote}}</p><div class="testimonial-author testimonial-1-author" data-field="testimonial_1_author">{{testimonial_1_author}}</div><div class="testimonial-role testimonial-1-role" data-field="testimonial_1_role">{{testimonial_1_role}}</div></div>
+      <div class="testimonial reveal"><p class="testimonial-quote testimonial-2-quote" data-field="testimonial_2_quote">{{testimonial_2_quote}}</p><div class="testimonial-author testimonial-2-author" data-field="testimonial_2_author">{{testimonial_2_author}}</div><div class="testimonial-role testimonial-2-role" data-field="testimonial_2_role">{{testimonial_2_role}}</div></div>
+      <div class="testimonial reveal"><p class="testimonial-quote testimonial-3-quote" data-field="testimonial_3_quote">{{testimonial_3_quote}}</p><div class="testimonial-author testimonial-3-author" data-field="testimonial_3_author">{{testimonial_3_author}}</div><div class="testimonial-role testimonial-3-role" data-field="testimonial_3_role">{{testimonial_3_role}}</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="section pricing" id="pricing" data-block="pricing">
+  <div class="wrap">
+    <div class="section-head reveal center">
+      <span class="eyebrow pricing-eyebrow" data-field="pricing_eyebrow">{{pricing_eyebrow}}</span>
+      <h2 class="h-section pricing-title" data-field="pricing_title">{{pricing_title}}</h2>
+      <p class="section-intro pricing-intro" data-field="pricing_intro" style="margin-left:auto;margin-right:auto">{{pricing_intro}}</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="plan reveal">
+        <div class="plan-name plan-1-name" data-field="plan_1_name">{{plan_1_name}}</div>
+        <div class="plan-price-row"><span class="plan-price plan-1-price" data-field="plan_1_price">{{plan_1_price}}</span><span class="plan-period plan-1-period" data-field="plan_1_period">{{plan_1_period}}</span></div>
+        <p class="plan-desc plan-1-desc" data-field="plan_1_desc">{{plan_1_desc}}</p>
+        <ul class="plan-features">
+          <li class="plan-1-feat-1" data-field="plan_1_feat_1">{{plan_1_feat_1}}</li>
+          <li class="plan-1-feat-2" data-field="plan_1_feat_2">{{plan_1_feat_2}}</li>
+          <li class="plan-1-feat-3" data-field="plan_1_feat_3">{{plan_1_feat_3}}</li>
+          <li class="plan-1-feat-4" data-field="plan_1_feat_4">{{plan_1_feat_4}}</li>
+        </ul>
+        <a href="#booking" class="plan-cta plan-1-cta" data-field="plan_1_cta">{{plan_1_cta}}</a>
+      </div>
+      <div class="plan featured reveal">
+        <div class="plan-name plan-2-name" data-field="plan_2_name">{{plan_2_name}}</div>
+        <div class="plan-price-row"><span class="plan-price plan-2-price" data-field="plan_2_price">{{plan_2_price}}</span><span class="plan-period plan-2-period" data-field="plan_2_period">{{plan_2_period}}</span></div>
+        <p class="plan-desc plan-2-desc" data-field="plan_2_desc">{{plan_2_desc}}</p>
+        <ul class="plan-features">
+          <li class="plan-2-feat-1" data-field="plan_2_feat_1">{{plan_2_feat_1}}</li>
+          <li class="plan-2-feat-2" data-field="plan_2_feat_2">{{plan_2_feat_2}}</li>
+          <li class="plan-2-feat-3" data-field="plan_2_feat_3">{{plan_2_feat_3}}</li>
+          <li class="plan-2-feat-4" data-field="plan_2_feat_4">{{plan_2_feat_4}}</li>
+          <li class="plan-2-feat-5" data-field="plan_2_feat_5">{{plan_2_feat_5}}</li>
+        </ul>
+        <a href="#booking" class="plan-cta plan-2-cta" data-field="plan_2_cta">{{plan_2_cta}}</a>
+      </div>
+      <div class="plan reveal">
+        <div class="plan-name plan-3-name" data-field="plan_3_name">{{plan_3_name}}</div>
+        <div class="plan-price-row"><span class="plan-price plan-3-price" data-field="plan_3_price">{{plan_3_price}}</span><span class="plan-period plan-3-period" data-field="plan_3_period">{{plan_3_period}}</span></div>
+        <p class="plan-desc plan-3-desc" data-field="plan_3_desc">{{plan_3_desc}}</p>
+        <ul class="plan-features">
+          <li class="plan-3-feat-1" data-field="plan_3_feat_1">{{plan_3_feat_1}}</li>
+          <li class="plan-3-feat-2" data-field="plan_3_feat_2">{{plan_3_feat_2}}</li>
+          <li class="plan-3-feat-3" data-field="plan_3_feat_3">{{plan_3_feat_3}}</li>
+          <li class="plan-3-feat-4" data-field="plan_3_feat_4">{{plan_3_feat_4}}</li>
+          <li class="plan-3-feat-5" data-field="plan_3_feat_5">{{plan_3_feat_5}}</li>
+        </ul>
+        <a href="#booking" class="plan-cta plan-3-cta" data-field="plan_3_cta">{{plan_3_cta}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Blog -->
+<section class="section" id="blog" data-block="blog">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow blog-eyebrow" data-field="blog_eyebrow">{{blog_eyebrow}}</span>
+      <h2 class="h-section blog-title" data-field="blog_title">{{blog_title}}</h2>
+      <p class="section-intro blog-intro" data-field="blog_intro">{{blog_intro}}</p>
+    </div>
+    <div class="blog-grid">
+      <article class="blog-card reveal">
+        <div class="blog-card-img"><img src="{{blog_1_image}}" alt="{{blog_1_title}}" class="blog-1-image" data-field="blog_1_image"></div>
+        <div class="blog-card-body">
+          <div class="blog-meta"><span class="blog-category blog-1-category" data-field="blog_1_category">{{blog_1_category}}</span><span>·</span><span class="blog-1-read-time" data-field="blog_1_read_time">{{blog_1_read_time}}</span></div>
+          <h3 class="blog-card-title blog-1-title" data-field="blog_1_title">{{blog_1_title}}</h3>
+          <p class="blog-excerpt blog-1-excerpt" data-field="blog_1_excerpt">{{blog_1_excerpt}}</p>
+        </div>
+      </article>
+      <article class="blog-card reveal">
+        <div class="blog-card-img"><img src="{{blog_2_image}}" alt="{{blog_2_title}}" class="blog-2-image" data-field="blog_2_image"></div>
+        <div class="blog-card-body">
+          <div class="blog-meta"><span class="blog-category blog-2-category" data-field="blog_2_category">{{blog_2_category}}</span><span>·</span><span class="blog-2-read-time" data-field="blog_2_read_time">{{blog_2_read_time}}</span></div>
+          <h3 class="blog-card-title blog-2-title" data-field="blog_2_title">{{blog_2_title}}</h3>
+          <p class="blog-excerpt blog-2-excerpt" data-field="blog_2_excerpt">{{blog_2_excerpt}}</p>
+        </div>
+      </article>
+      <article class="blog-card reveal">
+        <div class="blog-card-img"><img src="{{blog_3_image}}" alt="{{blog_3_title}}" class="blog-3-image" data-field="blog_3_image"></div>
+        <div class="blog-card-body">
+          <div class="blog-meta"><span class="blog-category blog-3-category" data-field="blog_3_category">{{blog_3_category}}</span><span>·</span><span class="blog-3-read-time" data-field="blog_3_read_time">{{blog_3_read_time}}</span></div>
+          <h3 class="blog-card-title blog-3-title" data-field="blog_3_title">{{blog_3_title}}</h3>
+          <p class="blog-excerpt blog-3-excerpt" data-field="blog_3_excerpt">{{blog_3_excerpt}}</p>
+        </div>
+      </article>
+    </div>
+    <div class="blog-cta-row reveal"><a href="#" class="link-accent blog-cta" data-field="blog_cta">{{blog_cta}}</a></div>
+  </div>
+</section>
+
+<!-- Booking -->
+<section class="section booking" id="booking" data-block="booking">
+  <div class="wrap">
+    <div class="booking-inner">
+      <h2 class="h-section booking-title" data-field="booking_title">{{booking_title}}</h2>
+      <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
+      <form class="booking-form" method="POST" action="/book" onsubmit="return handleBookingSubmit(this,event)">
+        <input type="hidden" name="site_id" value="">
+        <div><label>Work Email</label><input type="email" name="email" required placeholder="engineer@company.com"></div>
+        <div><label>Company</label><input type="text" name="company" required></div>
+        <div><label>Role</label><select name="role"><option>Engineer</option><option>Staff / Principal</option><option>Eng Manager</option><option>CTO / VP</option><option>Other</option></select></div>
+        <div><label>Team Size</label><select name="team_size"><option>1–10</option><option>11–50</option><option>51–200</option><option>200+</option></select></div>
+        <div class="full">
+          <label>Preferred Slot</label>
+          <div class="time-slots">
+            <label><input type="radio" name="preferred_time" value="mon_am" required>Mon 10:00 GST</label>
+            <label><input type="radio" name="preferred_time" value="tue_pm">Tue 15:00 GST</label>
+            <label><input type="radio" name="preferred_time" value="wed_am">Wed 11:00 GST</label>
+            <label><input type="radio" name="preferred_time" value="thu_pm">Thu 16:00 GST</label>
+            <label><input type="radio" name="preferred_time" value="fri_am">Fri 10:00 GST</label>
+          </div>
+        </div>
+        <div class="full"><label>Stack &amp; use case (optional)</label><textarea name="notes" rows="3" placeholder="What are you building? Which models + frameworks?"></textarea></div>
+        <button type="submit" class="booking-cta" data-field="booking_cta">{{booking_cta}}</button>
+        <div class="booking-success">Thanks — a solutions engineer will reach out within one working day to confirm your slot.</div>
+      </form>
+      <span class="booking-display" data-field="booking_display">{{booking_display}}</span>
+    </div>
+  </div>
+</section>
+
+<!-- Contact -->
+<section class="section contact" data-block="contact">
+  <div class="wrap">
+    <div class="contact-grid">
+      <div class="reveal">
+        <span class="eyebrow contact-eyebrow" data-field="contact_eyebrow">{{contact_eyebrow}}</span>
+        <h2 class="h-section contact-title" data-field="contact_title">{{contact_title}}</h2>
+        <p class="section-intro contact-intro" data-field="contact_intro">{{contact_intro}}</p>
+        <div class="contact-details">
+          <div class="contact-detail"><div class="contact-label">sales</div><div class="contact-value contact-email" data-field="contact_email">{{contact_email}}</div></div>
+          <div class="contact-detail"><div class="contact-label">support</div><div class="contact-value contact-support" data-field="contact_support">{{contact_support}}</div></div>
+          <div class="contact-detail"><div class="contact-label">hq</div><div class="contact-value contact-address" data-field="contact_address">{{contact_address}}</div></div>
+          <div class="contact-detail"><div class="contact-label">hours</div><div class="contact-value contact-hours" data-field="contact_hours">{{contact_hours}}</div></div>
+        </div>
+      </div>
+      <div class="reveal">
+        <form class="contact-form" onsubmit="return handleContactSubmit(this,event)">
+          <input type="text" name="name" placeholder="Your name" required>
+          <input type="email" name="email" placeholder="Work email" required>
+          <input type="text" name="company" placeholder="Company">
+          <textarea name="message" placeholder="How can we help?" required></textarea>
+          <button type="submit" class="form-submit form-submit-text" data-field="form_submit_text">{{form_submit_text}}</button>
+          <div class="form-success form-success-message" data-field="form_success_message">{{form_success_message}}</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer data-block="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">{{business_name}}</div>
+        <p class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</p>
+      </div>
+      <div class="footer-col">
+        <h4>product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#">Docs</a></li>
+          <li><a href="#blog">Blog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>company</h4>
+        <ul>
+          <li><a href="#booking">Book Demo</a></li>
+          <li><a href="mailto:{{contact_email}}">{{contact_email}}</a></li>
+          <li><a href="mailto:{{contact_support}}">Support</a></li>
+          <li><a href="#">Security</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-text" data-field="footer_text">{{footer_text}}</span>
+      <div class="footer-socials">
+        <a href="{{social_github}}" class="social-github" data-field="social_github">GitHub</a>
+        <a href="{{social_x}}" class="social-x" data-field="social_x">X</a>
+        <a href="{{social_linkedin}}" class="social-linkedin" data-field="social_linkedin">LinkedIn</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting&&e.target.classList.add('in')),{threshold:0.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+function handleBookingSubmit(form,e){
+  e.preventDefault();
+  const data=new FormData(form);
+  fetch('/book',{method:'POST',body:data,headers:{'Accept':'application/json'}})
+    .then(r=>r.json()).then(()=>{form.classList.add('submitted');setTimeout(()=>form.reset(),300)})
+    .catch(()=>{form.classList.add('submitted')});
+  return false;
+}
+function handleContactSubmit(form,e){
+  e.preventDefault();
+  form.classList.add('submitted');
+  setTimeout(()=>{form.reset();form.classList.remove('submitted')},4000);
+  return false;
+}
+</script>
+
+</body>
+</html>

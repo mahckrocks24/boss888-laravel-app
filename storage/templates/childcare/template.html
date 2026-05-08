@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{business_name}} — {{business_tagline}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{business_name}} — {{business_tagline}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:url" content="{{canonical_url}}">
+<meta property="og:locale" content="{{og_locale}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --yellow:{{yellow}};
+  --yellow-soft:{{yellow_soft}};
+  --sky:{{sky}};
+  --sky-deep:{{sky_deep}};
+  --coral:{{coral}};
+  --white:{{white}};
+  --divider:{{divider}};
+  --ink:#1E293B;
+  --muted:#64748B;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--white);color:var(--ink);line-height:1.65;font-weight:400;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.display{font-family:'Nunito',sans-serif;letter-spacing:-0.015em;font-weight:800}
+.wrap{max-width:1280px;margin:0 auto;padding:0 40px}
+.wrap-narrow{max-width:1080px;margin:0 auto;padding:0 40px}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+
+h1,h2,h3,h4{font-family:'Nunito',sans-serif;font-weight:800;color:var(--ink);line-height:1.15;letter-spacing:-0.015em}
+.h-display{font-size:clamp(44px,5.8vw,80px);line-height:1.06}
+.h-section{font-size:clamp(34px,4.4vw,58px)}
+.h-sub{font-size:clamp(22px,2.4vw,30px)}
+.eyebrow{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.12em;color:var(--coral);margin-bottom:16px;display:inline-block;text-transform:uppercase}
+
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;padding:15px 28px;border-radius:28px;transition:all .2s ease;cursor:pointer;border:2px solid transparent;letter-spacing:-0.005em}
+.btn-primary{background:var(--coral);color:#fff;border-color:var(--coral);box-shadow:0 4px 16px rgba(249,115,22,0.25)}
+.btn-primary:hover{background:#EA580C;border-color:#EA580C;transform:translateY(-2px);box-shadow:0 10px 28px rgba(249,115,22,0.35)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--divider)}
+.btn-ghost:hover{border-color:var(--ink)}
+.btn::after{content:'→';transition:transform .2s ease}
+.btn:hover::after{transform:translateX(4px)}
+
+nav{background:rgba(255,255,255,0.94);backdrop-filter:blur(12px);padding:18px 0;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--divider)}
+nav .inner{display:flex;justify-content:space-between;align-items:center}
+nav .logo{font-family:'Nunito',sans-serif;font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-0.015em;display:flex;align-items:center;gap:12px}
+nav .logo::before{content:'';width:24px;height:24px;background:var(--yellow);border-radius:50%;box-shadow:0 0 12px rgba(254,249,195,0.8),inset 0 0 0 3px var(--coral)}
+.nav-links{display:flex;gap:30px;align-items:center}
+.nav-links a{font-size:14px;color:var(--muted);font-weight:600;transition:color .2s ease}
+.nav-links a:hover{color:var(--ink)}
+.nav-cta{background:var(--coral);color:#fff!important;padding:11px 22px;border-radius:28px;font-weight:700;font-size:14px;transition:all .2s ease;box-shadow:0 4px 12px rgba(249,115,22,0.3)}
+.nav-cta:hover{background:#EA580C;transform:translateY(-1px);box-shadow:0 6px 20px rgba(249,115,22,0.4)}
+
+.hero{padding:96px 0 110px;position:relative;overflow:hidden;background:linear-gradient(135deg,var(--yellow-soft) 0%,#FEF3C7 50%,#FEF9C3 100%)}
+.hero::before{content:'';position:absolute;top:-140px;right:-120px;width:520px;height:520px;background:radial-gradient(circle at center,rgba(14,165,233,0.2) 0%,transparent 60%);pointer-events:none;z-index:0}
+.hero::after{content:'';position:absolute;bottom:-100px;left:-100px;width:420px;height:420px;background:radial-gradient(circle at center,rgba(249,115,22,0.15) 0%,transparent 60%);pointer-events:none;z-index:0}
+.hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr 1fr;gap:60px;align-items:center}
+.hero-image-wrap{aspect-ratio:4/5;border-radius:40px;background-size:cover;background-position:center;background-color:var(--white);box-shadow:0 32px 80px rgba(30,41,59,0.18);overflow:hidden;border:6px solid var(--white)}
+.hero-title{font-family:'Nunito',sans-serif;font-size:clamp(44px,5.8vw,76px);color:var(--ink);line-height:1.06;letter-spacing:-0.02em;margin-bottom:22px;font-weight:800}
+.hero-title span{color:var(--coral)}
+.hero-subtitle{font-size:18px;line-height:1.7;color:var(--muted);margin-bottom:36px;max-width:560px}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:38px}
+.hero-trust{display:flex;gap:22px;flex-wrap:wrap;margin-top:30px;padding-top:28px;border-top:1px solid var(--divider)}
+.hero-trust-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-weight:700}
+.hero-trust-item::before{content:'✓';color:var(--sky);font-weight:800;font-size:15px;background:rgba(14,165,233,0.1);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+
+.results{padding:64px 0;background:var(--white);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.results-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px}
+.result-item{text-align:center}
+.result-value{font-family:'Nunito',sans-serif;font-size:56px;line-height:1;color:var(--sky);margin-bottom:10px;letter-spacing:-0.03em;font-weight:800}
+.result-label{font-size:14px;color:var(--muted);font-weight:600}
+
+.section{padding:110px 0}
+.section-head{max-width:820px;margin-bottom:64px}
+.section-head.center{margin-left:auto;margin-right:auto;text-align:center}
+.section-intro{font-size:18px;color:var(--muted);line-height:1.8;max-width:720px;margin-top:20px}
+
+/* Programs */
+.programs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.program{background:#fff;border:1px solid var(--divider);border-radius:24px;padding:34px;transition:all .3s ease;position:relative;overflow:hidden}
+.program:hover{border-color:var(--coral);transform:translateY(-4px);box-shadow:0 20px 50px rgba(249,115,22,0.12)}
+.program-icon{width:60px;height:60px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;margin-bottom:22px;color:var(--coral);font-family:'Nunito',sans-serif;font-size:24px;font-weight:800}
+.program-age{display:inline-block;font-size:11px;color:var(--sky);background:rgba(14,165,233,0.1);padding:5px 12px;border-radius:20px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px;text-transform:uppercase}
+.program h3{font-size:22px;margin-bottom:12px;color:var(--ink);font-weight:800;letter-spacing:-0.015em}
+.program p{font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:18px}
+.program-link{font-size:13px;color:var(--coral);font-weight:700;letter-spacing:0.02em;display:inline-flex;align-items:center;gap:6px;transition:gap .2s ease}
+.program:hover .program-link{gap:10px}
+.program-link::after{content:'→'}
+
+/* Why Us */
+.why-us{background:var(--yellow-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+.why-card{background:#fff;border-radius:24px;padding:32px;transition:all .3s ease;border:1px solid var(--divider)}
+.why-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(30,41,59,0.1)}
+.why-icon{width:56px;height:56px;border-radius:50%;background:var(--sky);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Nunito',sans-serif;font-size:22px;font-weight:800;margin-bottom:18px}
+.why-card:nth-child(2) .why-icon{background:var(--coral)}
+.why-card:nth-child(3) .why-icon{background:#16A34A}
+.why-card:nth-child(4) .why-icon{background:#9333EA}
+.why-card h3{font-size:19px;margin-bottom:10px;color:var(--ink);font-weight:800;letter-spacing:-0.01em}
+.why-card p{font-size:14.5px;color:var(--muted);line-height:1.7}
+
+/* Staff */
+.staff-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.staff-card{background:#fff;border:1px solid var(--divider);border-radius:24px;padding:32px 24px;text-align:center;transition:all .3s ease}
+.staff-card:hover{border-color:var(--coral);transform:translateY(-3px);box-shadow:0 14px 40px rgba(249,115,22,0.1)}
+.staff-photo{width:120px;height:120px;border-radius:50%;margin:0 auto 20px;background:var(--yellow-soft);border:4px solid var(--white);background-size:cover;background-position:center;box-shadow:0 4px 12px rgba(30,41,59,0.1)}
+.staff-card h3{font-size:18px;margin-bottom:4px;color:var(--ink);font-weight:800;letter-spacing:-0.01em}
+.staff-role{font-size:13px;color:var(--coral);font-weight:700;margin-bottom:14px;letter-spacing:0.02em}
+.staff-bio{font-size:13.5px;color:var(--muted);line-height:1.65}
+
+/* Facilities */
+.facilities{background:var(--yellow-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.facilities-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.facility{aspect-ratio:4/3;border-radius:20px;background-size:cover;background-position:center;background-color:#fff;border:1px solid var(--divider);position:relative;overflow:hidden;transition:transform .3s ease}
+.facility:hover{transform:scale(1.02)}
+.facility::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(30,41,59,0.7))}
+.facility-caption{position:absolute;bottom:20px;left:20px;z-index:2;color:#fff;font-family:'Nunito',sans-serif;font-size:17px;font-weight:700;letter-spacing:-0.01em}
+
+/* Curriculum */
+.curriculum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.pillar{background:#fff;border:1px solid var(--divider);border-radius:24px;padding:34px;text-align:center;transition:all .3s ease}
+.pillar:hover{border-color:var(--sky);transform:translateY(-3px);box-shadow:0 14px 36px rgba(14,165,233,0.1)}
+.pillar-num{font-family:'Nunito',sans-serif;font-size:42px;color:var(--sky);font-weight:800;margin-bottom:14px;line-height:1}
+.pillar h3{font-size:19px;margin-bottom:10px;color:var(--ink);font-weight:800;letter-spacing:-0.01em}
+.pillar p{font-size:14px;color:var(--muted);line-height:1.7}
+
+/* Testimonials */
+.testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.testimonial{background:#fff;border:1px solid var(--divider);border-radius:24px;padding:38px;display:flex;flex-direction:column;position:relative}
+.testimonial-quote::before{content:'"';font-family:'Nunito',sans-serif;font-size:72px;color:var(--coral);line-height:0;display:block;margin-bottom:22px;font-weight:800}
+.testimonial-quote{font-size:16px;color:var(--ink);line-height:1.7;margin-bottom:26px;font-weight:500;flex:1}
+.testimonial-author{font-family:'Nunito',sans-serif;font-size:16px;color:var(--ink);font-weight:800;margin-bottom:4px;letter-spacing:-0.01em}
+.testimonial-company{font-size:13px;color:var(--muted);margin-bottom:14px;font-weight:500}
+.testimonial-result{display:inline-block;font-size:12px;color:var(--coral);background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.25);padding:6px 14px;border-radius:20px;font-weight:700;letter-spacing:0.02em}
+
+/* Booking */
+.booking{position:relative;overflow:hidden;padding:110px 0;background:linear-gradient(135deg,var(--yellow-soft) 0%,#FEF9C3 100%)}
+.booking::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:900px;height:900px;background:radial-gradient(circle at center,rgba(14,165,233,0.08) 0%,transparent 60%);pointer-events:none}
+.booking-inner{position:relative;z-index:2;max-width:740px;margin:0 auto;text-align:center}
+.booking-intro{font-size:18px;color:var(--muted);line-height:1.8;margin-top:20px;margin-bottom:48px}
+.booking-form{display:grid;grid-template-columns:1fr 1fr;gap:18px;text-align:left;background:#fff;border:1px solid var(--divider);border-radius:28px;padding:44px;box-shadow:0 24px 60px rgba(30,41,59,0.1)}
+.booking-form .full{grid-column:span 2}
+.booking-form label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+.booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:14px 16px;background:var(--yellow-soft);border:1px solid var(--divider);border-radius:14px;font-size:14px;color:var(--ink);font-family:'Inter',sans-serif;transition:all .2s ease;font-weight:500}
+.booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--sky);background:#fff;box-shadow:0 0 0 3px rgba(14,165,233,0.15)}
+.booking-submit{width:100%;background:var(--coral);color:#fff;border:none;padding:17px;border-radius:28px;font-size:15px;font-weight:800;cursor:pointer;transition:all .2s ease;font-family:'Nunito',sans-serif;margin-top:8px;letter-spacing:-0.005em}
+.booking-submit:hover{background:#EA580C;transform:translateY(-1px);box-shadow:0 10px 28px rgba(249,115,22,0.35)}
+
+/* Contact */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+.contact-info-item{display:flex;gap:18px;align-items:flex-start;margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid var(--divider)}
+.contact-info-item:last-child{border-bottom:none}
+.contact-info-icon{width:48px;height:48px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--coral);flex-shrink:0;font-weight:800;font-family:'Nunito',sans-serif}
+.contact-info-label{font-size:12px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;font-weight:700}
+.contact-info-value{font-size:16px;color:var(--ink);font-weight:600;line-height:1.55}
+
+/* Footer */
+footer{background:var(--ink);color:#CBD5E1;padding:60px 0 32px;border-top:6px solid var(--yellow)}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px}
+.footer-logo{font-family:'Nunito',sans-serif;font-size:24px;color:#fff;font-weight:800;letter-spacing:-0.015em;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.footer-logo::before{content:'';width:20px;height:20px;background:var(--yellow);border-radius:50%;box-shadow:inset 0 0 0 3px var(--coral)}
+.footer-tagline{font-size:14px;color:#94A3B8;line-height:1.7;margin-bottom:20px;max-width:320px}
+.footer-socials{display:flex;gap:10px}
+.footer-social{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;font-weight:700;transition:all .2s ease}
+.footer-social:hover{background:var(--coral);color:#fff}
+.footer-col-title{font-family:'Nunito',sans-serif;font-size:15px;color:#fff;font-weight:800;margin-bottom:18px;letter-spacing:-0.01em}
+.footer-col ul{list-style:none}
+.footer-col li{margin-bottom:10px}
+.footer-col a{font-size:14px;color:#94A3B8;transition:color .2s ease}
+.footer-col a:hover{color:var(--yellow)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid rgba(255,255,255,0.1);font-size:13px;color:#94A3B8}
+
+@media(max-width:980px){
+  .hero-grid{grid-template-columns:1fr;gap:40px}
+  .results-grid,.programs-grid,.why-grid,.staff-grid,.facilities-grid,.curriculum-grid,.testimonials-grid,.contact-grid,.footer-grid{grid-template-columns:1fr;gap:24px}
+  .booking-form{grid-template-columns:1fr}
+  .booking-form .full{grid-column:span 1}
+  .section{padding:76px 0}
+  .hero{padding:70px 0 80px}
+}
+</style>
+</head>
+<body data-template="childcare">
+
+<!-- Navigation -->
+<nav data-block="nav">
+  <div class="wrap">
+    <div class="inner">
+      <div class="logo" data-field="logo">{{logo}}</div>
+      <div class="nav-links">
+        <a href="#programs" class="nav-link-1" data-field="nav_1">{{nav_1}}</a>
+        <a href="#why_us" class="nav-link-2" data-field="nav_2">{{nav_2}}</a>
+        <a href="#staff" class="nav-link-3" data-field="nav_3">{{nav_3}}</a>
+        <a href="#facilities" class="nav-link-4" data-field="nav_4">{{nav_4}}</a>
+        <a href="#contact" class="nav-link-5" data-field="nav_5">{{nav_5}}</a>
+        <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero" data-block="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow hero-eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+        <h1 class="hero-title" data-field="hero_title">{{hero_title}}</h1>
+        <p class="hero-subtitle" data-field="hero_subtitle">{{hero_subtitle}}</p>
+        <div class="hero-ctas">
+          <a href="#booking" class="btn btn-primary" data-field="hero_cta_primary">{{hero_cta_primary}}</a>
+          <a href="#programs" class="btn btn-ghost" data-field="hero_cta_secondary">{{hero_cta_secondary}}</a>
+        </div>
+        <div class="hero-trust">
+          <div class="hero-trust-item hero-trust-1" data-field="hero_trust_1">{{hero_trust_1}}</div>
+          <div class="hero-trust-item hero-trust-2" data-field="hero_trust_2">{{hero_trust_2}}</div>
+          <div class="hero-trust-item hero-trust-3" data-field="hero_trust_3">{{hero_trust_3}}</div>
+          <div class="hero-trust-item hero-trust-4" data-field="hero_trust_4">{{hero_trust_4}}</div>
+        </div>
+      </div>
+      <div class="hero-image-wrap" data-field="hero_image" style="background-image:url('{{hero_image}}')"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="results" data-block="results">
+  <div class="wrap">
+    <div class="results-grid">
+      <div class="result-item">
+        <div class="result-value" data-field="stat_1_value">{{stat_1_value}}</div>
+        <div class="result-label" data-field="stat_1_label">{{stat_1_label}}</div>
+      </div>
+      <div class="result-item">
+        <div class="result-value" data-field="stat_2_value">{{stat_2_value}}</div>
+        <div class="result-label" data-field="stat_2_label">{{stat_2_label}}</div>
+      </div>
+      <div class="result-item">
+        <div class="result-value" data-field="stat_3_value">{{stat_3_value}}</div>
+        <div class="result-label" data-field="stat_3_label">{{stat_3_label}}</div>
+      </div>
+      <div class="result-item">
+        <div class="result-value" data-field="stat_4_value">{{stat_4_value}}</div>
+        <div class="result-label" data-field="stat_4_label">{{stat_4_label}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Programs -->
+<section class="section" id="programs" data-block="programs">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="programs_eyebrow">{{programs_eyebrow}}</span>
+      <h2 class="h-section" data-field="programs_title">{{programs_title}}</h2>
+      <p class="section-intro" data-field="programs_intro">{{programs_intro}}</p>
+    </div>
+    <div class="programs-grid">
+      <div class="program">
+        <div class="program-icon" data-field="program_1_icon">{{program_1_icon}}</div>
+        <div class="program-age" data-field="program_1_age">{{program_1_age}}</div>
+        <h3 data-field="program_1_title">{{program_1_title}}</h3>
+        <p data-field="program_1_text">{{program_1_text}}</p>
+        <a href="#booking" class="program-link" data-field="program_1_link">{{program_1_link}}</a>
+      </div>
+      <div class="program">
+        <div class="program-icon" data-field="program_2_icon">{{program_2_icon}}</div>
+        <div class="program-age" data-field="program_2_age">{{program_2_age}}</div>
+        <h3 data-field="program_2_title">{{program_2_title}}</h3>
+        <p data-field="program_2_text">{{program_2_text}}</p>
+        <a href="#booking" class="program-link" data-field="program_2_link">{{program_2_link}}</a>
+      </div>
+      <div class="program">
+        <div class="program-icon" data-field="program_3_icon">{{program_3_icon}}</div>
+        <div class="program-age" data-field="program_3_age">{{program_3_age}}</div>
+        <h3 data-field="program_3_title">{{program_3_title}}</h3>
+        <p data-field="program_3_text">{{program_3_text}}</p>
+        <a href="#booking" class="program-link" data-field="program_3_link">{{program_3_link}}</a>
+      </div>
+      <div class="program">
+        <div class="program-icon" data-field="program_4_icon">{{program_4_icon}}</div>
+        <div class="program-age" data-field="program_4_age">{{program_4_age}}</div>
+        <h3 data-field="program_4_title">{{program_4_title}}</h3>
+        <p data-field="program_4_text">{{program_4_text}}</p>
+        <a href="#booking" class="program-link" data-field="program_4_link">{{program_4_link}}</a>
+      </div>
+      <div class="program">
+        <div class="program-icon" data-field="program_5_icon">{{program_5_icon}}</div>
+        <div class="program-age" data-field="program_5_age">{{program_5_age}}</div>
+        <h3 data-field="program_5_title">{{program_5_title}}</h3>
+        <p data-field="program_5_text">{{program_5_text}}</p>
+        <a href="#booking" class="program-link" data-field="program_5_link">{{program_5_link}}</a>
+      </div>
+      <div class="program">
+        <div class="program-icon" data-field="program_6_icon">{{program_6_icon}}</div>
+        <div class="program-age" data-field="program_6_age">{{program_6_age}}</div>
+        <h3 data-field="program_6_title">{{program_6_title}}</h3>
+        <p data-field="program_6_text">{{program_6_text}}</p>
+        <a href="#booking" class="program-link" data-field="program_6_link">{{program_6_link}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Why Us -->
+<section class="section why-us" id="why_us" data-block="why_us">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="why_eyebrow">{{why_eyebrow}}</span>
+      <h2 class="h-section" data-field="why_title">{{why_title}}</h2>
+      <p class="section-intro" data-field="why_intro">{{why_intro}}</p>
+    </div>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-icon" data-field="why_1_icon">{{why_1_icon}}</div>
+        <h3 data-field="why_1_title">{{why_1_title}}</h3>
+        <p data-field="why_1_text">{{why_1_text}}</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon" data-field="why_2_icon">{{why_2_icon}}</div>
+        <h3 data-field="why_2_title">{{why_2_title}}</h3>
+        <p data-field="why_2_text">{{why_2_text}}</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon" data-field="why_3_icon">{{why_3_icon}}</div>
+        <h3 data-field="why_3_title">{{why_3_title}}</h3>
+        <p data-field="why_3_text">{{why_3_text}}</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon" data-field="why_4_icon">{{why_4_icon}}</div>
+        <h3 data-field="why_4_title">{{why_4_title}}</h3>
+        <p data-field="why_4_text">{{why_4_text}}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Staff -->
+<section class="section" id="staff" data-block="staff">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="staff_eyebrow">{{staff_eyebrow}}</span>
+      <h2 class="h-section" data-field="staff_title">{{staff_title}}</h2>
+      <p class="section-intro" data-field="staff_intro">{{staff_intro}}</p>
+    </div>
+    <div class="staff-grid">
+      <div class="staff-card">
+        <div class="staff-photo" data-field="staff_1_image" style="background-image:url('{{staff_1_image}}')"></div>
+        <h3 data-field="staff_1_name">{{staff_1_name}}</h3>
+        <div class="staff-role" data-field="staff_1_role">{{staff_1_role}}</div>
+        <div class="staff-bio" data-field="staff_1_bio">{{staff_1_bio}}</div>
+      </div>
+      <div class="staff-card">
+        <div class="staff-photo" data-field="staff_2_image" style="background-image:url('{{staff_2_image}}')"></div>
+        <h3 data-field="staff_2_name">{{staff_2_name}}</h3>
+        <div class="staff-role" data-field="staff_2_role">{{staff_2_role}}</div>
+        <div class="staff-bio" data-field="staff_2_bio">{{staff_2_bio}}</div>
+      </div>
+      <div class="staff-card">
+        <div class="staff-photo" data-field="staff_3_image" style="background-image:url('{{staff_3_image}}')"></div>
+        <h3 data-field="staff_3_name">{{staff_3_name}}</h3>
+        <div class="staff-role" data-field="staff_3_role">{{staff_3_role}}</div>
+        <div class="staff-bio" data-field="staff_3_bio">{{staff_3_bio}}</div>
+      </div>
+      <div class="staff-card">
+        <div class="staff-photo" data-field="staff_4_image" style="background-image:url('{{staff_4_image}}')"></div>
+        <h3 data-field="staff_4_name">{{staff_4_name}}</h3>
+        <div class="staff-role" data-field="staff_4_role">{{staff_4_role}}</div>
+        <div class="staff-bio" data-field="staff_4_bio">{{staff_4_bio}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Facilities -->
+<section class="section facilities" id="facilities" data-block="facilities">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="facilities_eyebrow">{{facilities_eyebrow}}</span>
+      <h2 class="h-section" data-field="facilities_title">{{facilities_title}}</h2>
+      <p class="section-intro" data-field="facilities_intro">{{facilities_intro}}</p>
+    </div>
+    <div class="facilities-grid">
+      <div class="facility" data-field="facility_1_image" style="background-image:url('{{facility_1_image}}')">
+        <div class="facility-caption" data-field="facility_1_caption">{{facility_1_caption}}</div>
+      </div>
+      <div class="facility" data-field="facility_2_image" style="background-image:url('{{facility_2_image}}')">
+        <div class="facility-caption" data-field="facility_2_caption">{{facility_2_caption}}</div>
+      </div>
+      <div class="facility" data-field="facility_3_image" style="background-image:url('{{facility_3_image}}')">
+        <div class="facility-caption" data-field="facility_3_caption">{{facility_3_caption}}</div>
+      </div>
+      <div class="facility" data-field="facility_4_image" style="background-image:url('{{facility_4_image}}')">
+        <div class="facility-caption" data-field="facility_4_caption">{{facility_4_caption}}</div>
+      </div>
+      <div class="facility" data-field="facility_5_image" style="background-image:url('{{facility_5_image}}')">
+        <div class="facility-caption" data-field="facility_5_caption">{{facility_5_caption}}</div>
+      </div>
+      <div class="facility" data-field="facility_6_image" style="background-image:url('{{facility_6_image}}')">
+        <div class="facility-caption" data-field="facility_6_caption">{{facility_6_caption}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Curriculum -->
+<section class="section" id="curriculum" data-block="curriculum">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="curriculum_eyebrow">{{curriculum_eyebrow}}</span>
+      <h2 class="h-section" data-field="curriculum_title">{{curriculum_title}}</h2>
+      <p class="section-intro" data-field="curriculum_intro">{{curriculum_intro}}</p>
+    </div>
+    <div class="curriculum-grid">
+      <div class="pillar">
+        <div class="pillar-num" data-field="pillar_1_num">{{pillar_1_num}}</div>
+        <h3 data-field="pillar_1_title">{{pillar_1_title}}</h3>
+        <p data-field="pillar_1_text">{{pillar_1_text}}</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num" data-field="pillar_2_num">{{pillar_2_num}}</div>
+        <h3 data-field="pillar_2_title">{{pillar_2_title}}</h3>
+        <p data-field="pillar_2_text">{{pillar_2_text}}</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num" data-field="pillar_3_num">{{pillar_3_num}}</div>
+        <h3 data-field="pillar_3_title">{{pillar_3_title}}</h3>
+        <p data-field="pillar_3_text">{{pillar_3_text}}</p>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num" data-field="pillar_4_num">{{pillar_4_num}}</div>
+        <h3 data-field="pillar_4_title">{{pillar_4_title}}</h3>
+        <p data-field="pillar_4_text">{{pillar_4_text}}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section class="section" data-block="testimonials">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="testimonials_eyebrow">{{testimonials_eyebrow}}</span>
+      <h2 class="h-section" data-field="testimonials_title">{{testimonials_title}}</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_1_quote">{{testimonial_1_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_1_author">{{testimonial_1_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_1_company">{{testimonial_1_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_1_result">{{testimonial_1_result}}</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_2_quote">{{testimonial_2_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_2_author">{{testimonial_2_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_2_company">{{testimonial_2_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_2_result">{{testimonial_2_result}}</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_3_quote">{{testimonial_3_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_3_author">{{testimonial_3_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_3_company">{{testimonial_3_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_3_result">{{testimonial_3_result}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Booking -->
+<section class="section booking" id="booking" data-block="booking">
+  <div class="booking-inner">
+    <span class="eyebrow" data-field="booking_eyebrow">{{booking_eyebrow}}</span>
+    <h2 class="h-section" data-field="booking_title">{{booking_title}}</h2>
+    <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
+  </div>
+  <div class="wrap-narrow" style="position:relative;z-index:2">
+    <form class="booking-form" onsubmit="event.preventDefault();alert('Thank you! Our admissions team will call within 1 business day to confirm your tour.');">
+      <div>
+        <label data-field="booking_child_age_label">{{booking_child_age_label}}</label>
+        <select name="child_age" required>
+          <option value="" disabled selected>Select age group</option>
+          <option value="0-1">0–1 years</option>
+          <option value="1-2">1–2 years</option>
+          <option value="2-3">2–3 years</option>
+          <option value="3-4">3–4 years</option>
+          <option value="4-5">4–5 years</option>
+          <option value="5-plus">5+ years</option>
+        </select>
+      </div>
+      <div>
+        <label data-field="booking_program_label">{{booking_program_label}}</label>
+        <select name="program_interest" required>
+          <option value="" disabled selected>Select a program</option>
+          <option value="infant">Infant Care</option>
+          <option value="toddlers">Toddlers</option>
+          <option value="pre-kg">Pre-KG</option>
+          <option value="kg">KG</option>
+          <option value="after-school">After School</option>
+          <option value="holiday">Holiday Camp</option>
+        </select>
+      </div>
+      <div>
+        <label data-field="booking_start_date_label">{{booking_start_date_label}}</label>
+        <input type="date" name="start_date" required>
+      </div>
+      <div>
+        <label data-field="booking_visit_date_label">{{booking_visit_date_label}}</label>
+        <input type="date" name="preferred_date" required>
+      </div>
+      <div>
+        <label data-field="booking_visit_time_label">{{booking_visit_time_label}}</label>
+        <select name="preferred_time" required>
+          <option value="" disabled selected>Select visit time</option>
+          <option value="09:30">09:30</option>
+          <option value="11:00">11:00</option>
+          <option value="14:00">14:00</option>
+          <option value="15:30">15:30</option>
+        </select>
+      </div>
+      <div>
+        <label data-field="booking_parent_name_label">{{booking_parent_name_label}}</label>
+        <input type="text" name="parent_name" required placeholder="Parent / guardian name">
+      </div>
+      <div>
+        <label data-field="booking_email_label">{{booking_email_label}}</label>
+        <input type="email" name="email" required placeholder="you@email.com">
+      </div>
+      <div>
+        <label data-field="booking_phone_label">{{booking_phone_label}}</label>
+        <input type="tel" name="phone" required placeholder="+971 50 000 0000">
+      </div>
+      <div class="full">
+        <label data-field="booking_child_name_label">{{booking_child_name_label}}</label>
+        <input type="text" name="child_name" required placeholder="Your child's first name">
+      </div>
+      <div class="full">
+        <button type="submit" class="booking-submit" data-field="booking_submit">{{booking_submit}}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- Contact -->
+<section class="section" id="contact" data-block="contact">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-field="contact_eyebrow">{{contact_eyebrow}}</span>
+      <h2 class="h-section" data-field="contact_title">{{contact_title}}</h2>
+    </div>
+    <div class="contact-grid">
+      <div>
+        <p class="section-intro" data-field="contact_intro" style="margin-top:0;margin-bottom:32px">{{contact_intro}}</p>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">@</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_email_label">{{contact_email_label}}</div>
+            <div class="contact-info-value" data-field="contact_email">{{contact_email}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">☎</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_phone_label">{{contact_phone_label}}</div>
+            <div class="contact-info-value" data-field="contact_phone">{{contact_phone}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">◉</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_address_label">{{contact_address_label}}</div>
+            <div class="contact-info-value" data-field="contact_address">{{contact_address}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">⏱</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_hours_label">{{contact_hours_label}}</div>
+            <div class="contact-info-value" data-field="contact_hours">{{contact_hours}}</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--yellow-soft);border:1px solid var(--divider);border-radius:24px;padding:40px">
+        <div class="testimonial-author" data-field="contact_cta_title" style="margin-bottom:14px;font-size:24px">{{contact_cta_title}}</div>
+        <div style="font-size:15px;color:var(--muted);margin-bottom:26px;line-height:1.7" data-field="contact_cta_text">{{contact_cta_text}}</div>
+        <a href="#booking" class="btn btn-primary" style="width:100%;justify-content:center" data-field="contact_cta_button">{{contact_cta_button}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer data-block="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo" data-field="footer_logo">{{footer_logo}}</div>
+        <div class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</div>
+        <div class="footer-socials">
+          <a href="#" class="footer-social" data-field="social_1">{{social_1}}</a>
+          <a href="#" class="footer-social" data-field="social_2">{{social_2}}</a>
+          <a href="#" class="footer-social" data-field="social_3">{{social_3}}</a>
+          <a href="#" class="footer-social" data-field="social_4">{{social_4}}</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_1_title">{{footer_col_1_title}}</div>
+        <ul>
+          <li><a href="#programs" data-field="footer_link_1">{{footer_link_1}}</a></li>
+          <li><a href="#programs" data-field="footer_link_2">{{footer_link_2}}</a></li>
+          <li><a href="#programs" data-field="footer_link_3">{{footer_link_3}}</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_2_title">{{footer_col_2_title}}</div>
+        <ul>
+          <li><a href="#why_us" data-field="footer_link_4">{{footer_link_4}}</a></li>
+          <li><a href="#staff" data-field="footer_link_5">{{footer_link_5}}</a></li>
+          <li><a href="#facilities" data-field="footer_link_6">{{footer_link_6}}</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_3_title">{{footer_col_3_title}}</div>
+        <ul>
+          <li><a href="#contact" data-field="footer_link_7">{{footer_link_7}}</a></li>
+          <li><a href="#booking" data-field="footer_link_8">{{footer_link_8}}</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div data-field="footer_text">{{footer_text}}</div>
+      <div data-field="footer_legal">{{footer_legal}}</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

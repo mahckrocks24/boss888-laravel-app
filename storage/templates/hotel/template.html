@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{business_name}} — {{business_tagline}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{business_name}} — {{business_tagline}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:url" content="{{canonical_url}}">
+<meta property="og:locale" content="{{og_locale}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ivory:{{ivory}};
+  --ivory-soft:{{ivory_soft}};
+  --teal:{{teal}};
+  --teal-deep:{{teal_deep}};
+  --gold:{{gold}};
+  --warm-grey:{{warm_grey}};
+  --divider:{{divider}};
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--ivory);color:var(--teal-deep);line-height:1.7;font-weight:400;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:1280px;margin:0 auto;padding:0 40px}
+.wrap-narrow{max-width:1080px;margin:0 auto;padding:0 40px}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+
+h1,h2,h3,h4{font-family:'Cormorant Garamond',serif;font-weight:500;color:var(--teal-deep);line-height:1.15;letter-spacing:-0.01em}
+.h-section{font-size:clamp(40px,5.4vw,76px);font-weight:500}
+.eyebrow{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.28em;color:var(--gold);margin-bottom:20px;display:inline-block;text-transform:uppercase}
+
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:16px 34px;border-radius:0;transition:all .25s ease;cursor:pointer;border:1px solid transparent;letter-spacing:0.12em;text-transform:uppercase}
+.btn-primary{background:var(--teal);color:var(--ivory);border-color:var(--teal)}
+.btn-primary:hover{background:var(--teal-deep);border-color:var(--teal-deep);transform:translateY(-2px)}
+.btn::after{content:'→';transition:transform .25s ease}
+.btn:hover::after{transform:translateX(4px)}
+
+nav{background:rgba(250,246,240,0.96);backdrop-filter:blur(12px);padding:22px 0;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--divider)}
+nav .inner{display:flex;justify-content:space-between;align-items:center}
+nav .logo{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--teal-deep);letter-spacing:0.02em;display:flex;align-items:center;gap:14px}
+nav .logo::before{content:'';width:10px;height:10px;background:var(--gold);transform:rotate(45deg)}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{font-size:13px;color:var(--warm-grey);font-weight:500;letter-spacing:0.1em;text-transform:uppercase;transition:color .2s ease}
+.nav-links a:hover{color:var(--teal-deep)}
+.nav-cta{background:var(--teal);color:var(--ivory)!important;padding:12px 24px;border-radius:0;font-weight:600;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;transition:all .2s ease}
+.nav-cta:hover{background:var(--teal-deep)}
+
+.hero{padding:140px 0 150px;position:relative;overflow:hidden;background-image:linear-gradient(rgba(27,74,74,0.4) 0%,rgba(27,74,74,0.35) 60%,rgba(27,74,74,0.55) 100%),url('{{hero_image}}');background-size:cover;background-position:center;color:var(--ivory)}
+.hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.2fr 1fr;gap:64px;align-items:center}
+.hero-title{font-family:'Cormorant Garamond',serif;font-size:clamp(52px,7vw,104px);color:var(--ivory);line-height:1.02;margin-bottom:28px;font-weight:500;letter-spacing:-0.015em}
+.hero-title span{color:var(--gold);font-style:italic}
+.hero-subtitle{font-size:19px;line-height:1.7;color:var(--ivory);opacity:0.92;margin-bottom:36px;max-width:560px}
+.hero-trust{display:flex;gap:28px;flex-wrap:wrap;margin-top:40px;padding-top:32px;border-top:1px solid rgba(255,255,255,0.2)}
+.hero-trust-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ivory);opacity:0.9;font-weight:500;letter-spacing:0.06em;text-transform:uppercase}
+.hero-trust-item::before{content:'★';color:var(--gold);font-weight:700;font-size:14px}
+
+.hero-form{background:var(--ivory);border:1px solid var(--divider);border-radius:0;padding:40px;box-shadow:0 32px 80px rgba(27,74,74,0.25);color:var(--teal-deep)}
+.hero-form-eyebrow{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.22em;color:var(--gold);margin-bottom:10px;text-transform:uppercase}
+.hero-form-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:500;color:var(--teal-deep);margin-bottom:10px;letter-spacing:-0.01em}
+.hero-form-sub{font-size:14px;color:var(--warm-grey);margin-bottom:24px;line-height:1.65}
+.hero-form form{display:flex;flex-direction:column;gap:14px}
+.hero-form label{display:block;font-size:11px;font-weight:600;color:var(--warm-grey);margin-bottom:6px;letter-spacing:0.14em;text-transform:uppercase}
+.hero-form input,.hero-form select{width:100%;padding:14px 16px;background:var(--ivory-soft);border:1px solid var(--divider);border-radius:0;font-size:14px;color:var(--teal-deep);font-family:'DM Sans',sans-serif;transition:all .2s ease}
+.hero-form input:focus,.hero-form select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,148,58,0.15)}
+.hero-form button{width:100%;background:var(--teal);color:var(--ivory);border:none;padding:16px;border-radius:0;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s ease;margin-top:6px;letter-spacing:0.14em;text-transform:uppercase}
+.hero-form button:hover{background:var(--teal-deep);transform:translateY(-1px)}
+.hero-form-note{font-size:12px;color:var(--warm-grey);text-align:center;margin-top:14px;font-style:italic}
+
+.stats{padding:70px 0;background:var(--ivory-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px}
+.stat{text-align:center}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:64px;line-height:1;color:var(--teal);margin-bottom:8px;font-weight:500;letter-spacing:-0.02em}
+.stat-label{font-size:12px;color:var(--warm-grey);font-weight:500;letter-spacing:0.16em;text-transform:uppercase}
+
+.section{padding:130px 0}
+.section-head{max-width:820px;margin-bottom:72px}
+.section-head.center{margin-left:auto;margin-right:auto;text-align:center}
+.section-intro{font-size:18px;color:var(--warm-grey);line-height:1.85;max-width:720px;margin-top:22px;font-weight:400}
+
+.rooms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.room{background:var(--ivory);border:1px solid var(--divider);border-radius:0;overflow:hidden;transition:all .35s ease;display:flex;flex-direction:column}
+.room:hover{transform:translateY(-4px);box-shadow:0 24px 60px rgba(27,74,74,0.18);border-color:var(--gold)}
+.room-image{aspect-ratio:4/3;background:var(--ivory-soft);background-size:cover;background-position:center}
+.room-body{padding:32px}
+.room-name{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500;color:var(--teal-deep);margin-bottom:8px;letter-spacing:-0.01em}
+.room-size{font-size:13px;color:var(--gold);letter-spacing:0.16em;text-transform:uppercase;margin-bottom:18px;font-weight:600}
+.room-desc{font-size:15px;color:var(--warm-grey);line-height:1.75;margin-bottom:22px}
+.room-amenities{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;padding:16px 0;border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.room-amenity{font-size:12px;color:var(--teal-deep);font-weight:500;letter-spacing:0.02em}
+.room-price-row{display:flex;justify-content:space-between;align-items:baseline}
+.room-price{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--teal);font-weight:500;letter-spacing:-0.01em}
+.room-price small{font-size:13px;color:var(--warm-grey);font-family:'DM Sans',sans-serif;font-weight:500;margin-left:4px}
+.room-cta{font-size:12px;color:var(--gold);font-weight:600;letter-spacing:0.14em;text-transform:uppercase}
+.room-cta::after{content:' →'}
+
+.amenities{background:var(--ivory-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.amenities-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:36px}
+.amenity{text-align:center;padding:24px 12px}
+.amenity-icon{width:64px;height:64px;border-radius:50%;border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:24px;color:var(--gold);font-family:'Cormorant Garamond',serif;font-weight:600}
+.amenity h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:10px;color:var(--teal-deep);font-weight:500}
+.amenity p{font-size:14px;color:var(--warm-grey);line-height:1.65}
+
+.dining-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.dining{background:var(--ivory);border:1px solid var(--divider);border-radius:0;padding:40px 36px;text-align:center;transition:all .3s ease}
+.dining:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:0 16px 40px rgba(27,74,74,0.12)}
+.dining-tag{font-size:11px;color:var(--gold);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:14px;font-weight:700}
+.dining h3{font-family:'Cormorant Garamond',serif;font-size:30px;margin-bottom:14px;color:var(--teal-deep);font-weight:500}
+.dining-hours{font-size:13px;color:var(--warm-grey);margin-bottom:18px;font-style:italic}
+.dining p{font-size:15px;color:var(--warm-grey);line-height:1.75}
+
+.experiences{background:var(--ivory)}
+.exp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
+.exp{padding:32px 24px;border:1px solid var(--divider);background:var(--ivory-soft);transition:all .3s ease}
+.exp:hover{border-color:var(--gold);transform:translateY(-3px)}
+.exp-num{font-family:'Cormorant Garamond',serif;font-size:48px;color:var(--gold);font-weight:500;line-height:1;margin-bottom:16px;display:block;letter-spacing:-0.03em}
+.exp h3{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:10px;color:var(--teal-deep);font-weight:500}
+.exp p{font-size:14.5px;color:var(--warm-grey);line-height:1.7}
+
+.gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.gallery-item{aspect-ratio:4/5;background:var(--ivory-soft);border:1px solid var(--divider);background-size:cover;background-position:center;transition:transform .3s ease}
+.gallery-item:hover{transform:scale(1.02)}
+
+.testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.testimonial{background:var(--ivory);border:1px solid var(--divider);border-radius:0;padding:44px;display:flex;flex-direction:column}
+.testimonial-quote::before{content:'"';font-family:'Cormorant Garamond',serif;font-size:80px;color:var(--gold);line-height:0;display:block;margin-bottom:26px;font-weight:500}
+.testimonial-quote{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--teal-deep);line-height:1.4;margin-bottom:28px;flex:1;font-weight:400;font-style:italic}
+.testimonial-author{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--teal-deep);font-weight:600;margin-bottom:4px}
+.testimonial-company{font-size:13px;color:var(--warm-grey);margin-bottom:16px;letter-spacing:0.06em}
+.testimonial-result{display:inline-block;font-size:11px;color:var(--gold);border:1px solid var(--gold);padding:7px 14px;border-radius:0;font-weight:600;letter-spacing:0.16em;text-transform:uppercase}
+
+.booking{position:relative;overflow:hidden;padding:130px 0;background:var(--ivory-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.booking-inner{max-width:740px;margin:0 auto;text-align:center;position:relative;z-index:2}
+.booking-intro{font-size:18px;color:var(--warm-grey);line-height:1.8;margin-top:22px;margin-bottom:56px}
+.booking-form{display:grid;grid-template-columns:1fr 1fr;gap:18px;text-align:left;background:var(--ivory);border:1px solid var(--divider);border-radius:0;padding:48px}
+.booking-form .full{grid-column:span 2}
+.booking-form label{display:block;font-size:11px;color:var(--warm-grey);margin-bottom:8px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase}
+.booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:14px 16px;background:var(--ivory-soft);border:1px solid var(--divider);border-radius:0;font-size:14px;color:var(--teal-deep);font-family:'DM Sans',sans-serif;transition:all .2s ease}
+.booking-form textarea{min-height:110px;resize:vertical}
+.booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,148,58,0.15)}
+.booking-submit{width:100%;background:var(--teal);color:var(--ivory);border:none;padding:18px;border-radius:0;font-size:14px;font-weight:600;cursor:pointer;transition:all .25s ease;margin-top:8px;letter-spacing:0.16em;text-transform:uppercase}
+.booking-submit:hover{background:var(--teal-deep);transform:translateY(-1px)}
+
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+.contact-info-item{display:flex;gap:18px;align-items:flex-start;margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid var(--divider)}
+.contact-info-item:last-child{border-bottom:none}
+.contact-info-icon{width:48px;height:48px;border-radius:50%;background:var(--ivory-soft);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--gold);flex-shrink:0;font-weight:600;font-family:'Cormorant Garamond',serif}
+.contact-info-label{font-size:11px;color:var(--warm-grey);letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;font-weight:600}
+.contact-info-value{font-size:16px;color:var(--teal-deep);font-weight:500;line-height:1.55}
+
+footer{background:var(--teal-deep);color:var(--ivory);padding:80px 0 36px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:56px}
+.footer-logo{font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--ivory);font-weight:600;margin-bottom:18px;display:flex;align-items:center;gap:12px;letter-spacing:0.02em}
+.footer-logo::before{content:'';width:10px;height:10px;background:var(--gold);transform:rotate(45deg)}
+.footer-tagline{font-size:14px;color:var(--ivory);opacity:0.75;line-height:1.8;margin-bottom:24px;max-width:320px}
+.footer-socials{display:flex;gap:12px}
+.footer-social{width:40px;height:40px;border-radius:50%;background:transparent;border:1px solid rgba(250,246,240,0.3);display:flex;align-items:center;justify-content:center;color:var(--ivory);font-size:13px;font-weight:600;opacity:0.75;transition:all .2s ease}
+.footer-social:hover{border-color:var(--gold);color:var(--gold);opacity:1}
+.footer-col-title{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--ivory);font-weight:500;margin-bottom:20px;letter-spacing:0.02em}
+.footer-col ul{list-style:none}
+.footer-col li{margin-bottom:10px}
+.footer-col a{font-size:13.5px;color:var(--ivory);opacity:0.7}
+.footer-col a:hover{color:var(--gold);opacity:1}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:32px;border-top:1px solid rgba(250,246,240,0.15);font-size:12.5px;color:var(--ivory);opacity:0.7;letter-spacing:0.04em}
+
+@media(max-width:980px){
+  .hero-grid{grid-template-columns:1fr;gap:48px}
+  .stats-grid,.rooms-grid,.amenities-grid,.dining-grid,.exp-grid,.gallery-grid,.testimonials-grid,.contact-grid,.footer-grid{grid-template-columns:1fr;gap:24px}
+  .booking-form{grid-template-columns:1fr}
+  .booking-form .full{grid-column:span 1}
+  .section{padding:80px 0}
+  .hero{padding:72px 0 80px}
+}
+</style>
+</head>
+<body data-template="hospitality">
+
+<nav data-block="nav">
+  <div class="wrap">
+    <div class="inner">
+      <div class="logo" data-field="logo">{{logo}}</div>
+      <div class="nav-links">
+        <a href="#rooms" class="nav-link-1" data-field="nav_1">{{nav_1}}</a>
+        <a href="#amenities" class="nav-link-2" data-field="nav_2">{{nav_2}}</a>
+        <a href="#dining" class="nav-link-3" data-field="nav_3">{{nav_3}}</a>
+        <a href="#experiences" class="nav-link-4" data-field="nav_4">{{nav_4}}</a>
+        <a href="#contact" class="nav-link-5" data-field="nav_5">{{nav_5}}</a>
+        <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<section class="hero" data-block="hero" data-field="hero_image">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow hero-eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+        <h1 class="hero-title" data-field="hero_title">{{hero_title}}</h1>
+        <p class="hero-subtitle" data-field="hero_subtitle">{{hero_subtitle}}</p>
+        <div class="hero-trust">
+          <div class="hero-trust-item hero-trust-1" data-field="hero_trust_1">{{hero_trust_1}}</div>
+          <div class="hero-trust-item hero-trust-2" data-field="hero_trust_2">{{hero_trust_2}}</div>
+          <div class="hero-trust-item hero-trust-3" data-field="hero_trust_3">{{hero_trust_3}}</div>
+          <div class="hero-trust-item hero-trust-4" data-field="hero_trust_4">{{hero_trust_4}}</div>
+        </div>
+      </div>
+      <div class="hero-form">
+        <div class="hero-form-eyebrow" data-field="hero_form_eyebrow">{{hero_form_eyebrow}}</div>
+        <div class="hero-form-title" data-field="hero_form_title">{{hero_form_title}}</div>
+        <div class="hero-form-sub" data-field="hero_form_sub">{{hero_form_sub}}</div>
+        <form onsubmit="event.preventDefault();alert('Thank you! Our reservations desk will confirm availability within the hour.');">
+          <div>
+            <label data-field="hero_form_checkin_label">{{hero_form_checkin_label}}</label>
+            <input type="date" required>
+          </div>
+          <div>
+            <label data-field="hero_form_checkout_label">{{hero_form_checkout_label}}</label>
+            <input type="date" required>
+          </div>
+          <div>
+            <label data-field="hero_form_guests_label">{{hero_form_guests_label}}</label>
+            <select required>
+              <option value="" disabled selected>Select guests</option>
+              <option value="1">1 Guest</option>
+              <option value="2">2 Guests</option>
+              <option value="3">3 Guests</option>
+              <option value="4">4 Guests</option>
+            </select>
+          </div>
+          <button type="submit" data-field="hero_form_submit">{{hero_form_submit}}</button>
+          <div class="hero-form-note" data-field="hero_form_note">{{hero_form_note}}</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="stats" data-block="stats">
+  <div class="wrap">
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-value" data-field="stat_1_value">{{stat_1_value}}</div><div class="stat-label" data-field="stat_1_label">{{stat_1_label}}</div></div>
+      <div class="stat"><div class="stat-value" data-field="stat_2_value">{{stat_2_value}}</div><div class="stat-label" data-field="stat_2_label">{{stat_2_label}}</div></div>
+      <div class="stat"><div class="stat-value" data-field="stat_3_value">{{stat_3_value}}</div><div class="stat-label" data-field="stat_3_label">{{stat_3_label}}</div></div>
+      <div class="stat"><div class="stat-value" data-field="stat_4_value">{{stat_4_value}}</div><div class="stat-label" data-field="stat_4_label">{{stat_4_label}}</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="rooms" data-block="room_types">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="rooms_eyebrow">{{rooms_eyebrow}}</span>
+      <h2 class="h-section" data-field="rooms_title">{{rooms_title}}</h2>
+      <p class="section-intro" data-field="rooms_intro">{{rooms_intro}}</p>
+    </div>
+    <div class="rooms-grid">
+      <div class="room">
+        <div class="room-image" data-field="room_1_image" style="background-image:url('{{room_1_image}}')"></div>
+        <div class="room-body">
+          <div class="room-name" data-field="room_1_name">{{room_1_name}}</div>
+          <div class="room-size" data-field="room_1_size">{{room_1_size}}</div>
+          <p class="room-desc" data-field="room_1_desc">{{room_1_desc}}</p>
+          <div class="room-amenities">
+            <span class="room-amenity" data-field="room_1_amenity_1">{{room_1_amenity_1}}</span>
+            <span class="room-amenity" data-field="room_1_amenity_2">{{room_1_amenity_2}}</span>
+            <span class="room-amenity" data-field="room_1_amenity_3">{{room_1_amenity_3}}</span>
+          </div>
+          <div class="room-price-row">
+            <span class="room-price" data-field="room_1_price">{{room_1_price}}</span>
+            <a href="#booking" class="room-cta" data-field="room_1_cta">{{room_1_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="room">
+        <div class="room-image" data-field="room_2_image" style="background-image:url('{{room_2_image}}')"></div>
+        <div class="room-body">
+          <div class="room-name" data-field="room_2_name">{{room_2_name}}</div>
+          <div class="room-size" data-field="room_2_size">{{room_2_size}}</div>
+          <p class="room-desc" data-field="room_2_desc">{{room_2_desc}}</p>
+          <div class="room-amenities">
+            <span class="room-amenity" data-field="room_2_amenity_1">{{room_2_amenity_1}}</span>
+            <span class="room-amenity" data-field="room_2_amenity_2">{{room_2_amenity_2}}</span>
+            <span class="room-amenity" data-field="room_2_amenity_3">{{room_2_amenity_3}}</span>
+          </div>
+          <div class="room-price-row">
+            <span class="room-price" data-field="room_2_price">{{room_2_price}}</span>
+            <a href="#booking" class="room-cta" data-field="room_2_cta">{{room_2_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="room">
+        <div class="room-image" data-field="room_3_image" style="background-image:url('{{room_3_image}}')"></div>
+        <div class="room-body">
+          <div class="room-name" data-field="room_3_name">{{room_3_name}}</div>
+          <div class="room-size" data-field="room_3_size">{{room_3_size}}</div>
+          <p class="room-desc" data-field="room_3_desc">{{room_3_desc}}</p>
+          <div class="room-amenities">
+            <span class="room-amenity" data-field="room_3_amenity_1">{{room_3_amenity_1}}</span>
+            <span class="room-amenity" data-field="room_3_amenity_2">{{room_3_amenity_2}}</span>
+            <span class="room-amenity" data-field="room_3_amenity_3">{{room_3_amenity_3}}</span>
+          </div>
+          <div class="room-price-row">
+            <span class="room-price" data-field="room_3_price">{{room_3_price}}</span>
+            <a href="#booking" class="room-cta" data-field="room_3_cta">{{room_3_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="room">
+        <div class="room-image" data-field="room_4_image" style="background-image:url('{{room_4_image}}')"></div>
+        <div class="room-body">
+          <div class="room-name" data-field="room_4_name">{{room_4_name}}</div>
+          <div class="room-size" data-field="room_4_size">{{room_4_size}}</div>
+          <p class="room-desc" data-field="room_4_desc">{{room_4_desc}}</p>
+          <div class="room-amenities">
+            <span class="room-amenity" data-field="room_4_amenity_1">{{room_4_amenity_1}}</span>
+            <span class="room-amenity" data-field="room_4_amenity_2">{{room_4_amenity_2}}</span>
+            <span class="room-amenity" data-field="room_4_amenity_3">{{room_4_amenity_3}}</span>
+          </div>
+          <div class="room-price-row">
+            <span class="room-price" data-field="room_4_price">{{room_4_price}}</span>
+            <a href="#booking" class="room-cta" data-field="room_4_cta">{{room_4_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="room">
+        <div class="room-image" data-field="room_5_image" style="background-image:url('{{room_5_image}}')"></div>
+        <div class="room-body">
+          <div class="room-name" data-field="room_5_name">{{room_5_name}}</div>
+          <div class="room-size" data-field="room_5_size">{{room_5_size}}</div>
+          <p class="room-desc" data-field="room_5_desc">{{room_5_desc}}</p>
+          <div class="room-amenities">
+            <span class="room-amenity" data-field="room_5_amenity_1">{{room_5_amenity_1}}</span>
+            <span class="room-amenity" data-field="room_5_amenity_2">{{room_5_amenity_2}}</span>
+            <span class="room-amenity" data-field="room_5_amenity_3">{{room_5_amenity_3}}</span>
+          </div>
+          <div class="room-price-row">
+            <span class="room-price" data-field="room_5_price">{{room_5_price}}</span>
+            <a href="#booking" class="room-cta" data-field="room_5_cta">{{room_5_cta}}</a>
+          </div>
+        </div>
+      </div>
+      <div class="room">
+        <div class="room-image" data-field="room_6_image" style="background-image:url('{{room_6_image}}')"></div>
+        <div class="room-body">
+          <div class="room-name" data-field="room_6_name">{{room_6_name}}</div>
+          <div class="room-size" data-field="room_6_size">{{room_6_size}}</div>
+          <p class="room-desc" data-field="room_6_desc">{{room_6_desc}}</p>
+          <div class="room-amenities">
+            <span class="room-amenity" data-field="room_6_amenity_1">{{room_6_amenity_1}}</span>
+            <span class="room-amenity" data-field="room_6_amenity_2">{{room_6_amenity_2}}</span>
+            <span class="room-amenity" data-field="room_6_amenity_3">{{room_6_amenity_3}}</span>
+          </div>
+          <div class="room-price-row">
+            <span class="room-price" data-field="room_6_price">{{room_6_price}}</span>
+            <a href="#booking" class="room-cta" data-field="room_6_cta">{{room_6_cta}}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section amenities" id="amenities" data-block="amenities">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="amenities_eyebrow">{{amenities_eyebrow}}</span>
+      <h2 class="h-section" data-field="amenities_title">{{amenities_title}}</h2>
+      <p class="section-intro" data-field="amenities_intro">{{amenities_intro}}</p>
+    </div>
+    <div class="amenities-grid">
+      <div class="amenity"><div class="amenity-icon" data-field="amenity_1_icon">{{amenity_1_icon}}</div><h3 data-field="amenity_1_title">{{amenity_1_title}}</h3><p data-field="amenity_1_text">{{amenity_1_text}}</p></div>
+      <div class="amenity"><div class="amenity-icon" data-field="amenity_2_icon">{{amenity_2_icon}}</div><h3 data-field="amenity_2_title">{{amenity_2_title}}</h3><p data-field="amenity_2_text">{{amenity_2_text}}</p></div>
+      <div class="amenity"><div class="amenity-icon" data-field="amenity_3_icon">{{amenity_3_icon}}</div><h3 data-field="amenity_3_title">{{amenity_3_title}}</h3><p data-field="amenity_3_text">{{amenity_3_text}}</p></div>
+      <div class="amenity"><div class="amenity-icon" data-field="amenity_4_icon">{{amenity_4_icon}}</div><h3 data-field="amenity_4_title">{{amenity_4_title}}</h3><p data-field="amenity_4_text">{{amenity_4_text}}</p></div>
+      <div class="amenity"><div class="amenity-icon" data-field="amenity_5_icon">{{amenity_5_icon}}</div><h3 data-field="amenity_5_title">{{amenity_5_title}}</h3><p data-field="amenity_5_text">{{amenity_5_text}}</p></div>
+      <div class="amenity"><div class="amenity-icon" data-field="amenity_6_icon">{{amenity_6_icon}}</div><h3 data-field="amenity_6_title">{{amenity_6_title}}</h3><p data-field="amenity_6_text">{{amenity_6_text}}</p></div>
+      <div class="amenity"><div class="amenity-icon" data-field="amenity_7_icon">{{amenity_7_icon}}</div><h3 data-field="amenity_7_title">{{amenity_7_title}}</h3><p data-field="amenity_7_text">{{amenity_7_text}}</p></div>
+      <div class="amenity"><div class="amenity-icon" data-field="amenity_8_icon">{{amenity_8_icon}}</div><h3 data-field="amenity_8_title">{{amenity_8_title}}</h3><p data-field="amenity_8_text">{{amenity_8_text}}</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="dining" data-block="dining">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="dining_eyebrow">{{dining_eyebrow}}</span>
+      <h2 class="h-section" data-field="dining_title">{{dining_title}}</h2>
+      <p class="section-intro" data-field="dining_intro">{{dining_intro}}</p>
+    </div>
+    <div class="dining-grid">
+      <div class="dining">
+        <div class="dining-tag" data-field="dining_1_tag">{{dining_1_tag}}</div>
+        <h3 data-field="dining_1_name">{{dining_1_name}}</h3>
+        <div class="dining-hours" data-field="dining_1_hours">{{dining_1_hours}}</div>
+        <p data-field="dining_1_text">{{dining_1_text}}</p>
+      </div>
+      <div class="dining">
+        <div class="dining-tag" data-field="dining_2_tag">{{dining_2_tag}}</div>
+        <h3 data-field="dining_2_name">{{dining_2_name}}</h3>
+        <div class="dining-hours" data-field="dining_2_hours">{{dining_2_hours}}</div>
+        <p data-field="dining_2_text">{{dining_2_text}}</p>
+      </div>
+      <div class="dining">
+        <div class="dining-tag" data-field="dining_3_tag">{{dining_3_tag}}</div>
+        <h3 data-field="dining_3_name">{{dining_3_name}}</h3>
+        <div class="dining-hours" data-field="dining_3_hours">{{dining_3_hours}}</div>
+        <p data-field="dining_3_text">{{dining_3_text}}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section experiences" id="experiences" data-block="experiences">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="exp_eyebrow">{{exp_eyebrow}}</span>
+      <h2 class="h-section" data-field="exp_title">{{exp_title}}</h2>
+      <p class="section-intro" data-field="exp_intro">{{exp_intro}}</p>
+    </div>
+    <div class="exp-grid">
+      <div class="exp"><span class="exp-num" data-field="exp_1_num">{{exp_1_num}}</span><h3 data-field="exp_1_title">{{exp_1_title}}</h3><p data-field="exp_1_text">{{exp_1_text}}</p></div>
+      <div class="exp"><span class="exp-num" data-field="exp_2_num">{{exp_2_num}}</span><h3 data-field="exp_2_title">{{exp_2_title}}</h3><p data-field="exp_2_text">{{exp_2_text}}</p></div>
+      <div class="exp"><span class="exp-num" data-field="exp_3_num">{{exp_3_num}}</span><h3 data-field="exp_3_title">{{exp_3_title}}</h3><p data-field="exp_3_text">{{exp_3_text}}</p></div>
+      <div class="exp"><span class="exp-num" data-field="exp_4_num">{{exp_4_num}}</span><h3 data-field="exp_4_title">{{exp_4_title}}</h3><p data-field="exp_4_text">{{exp_4_text}}</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="gallery" data-block="gallery">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="gallery_eyebrow">{{gallery_eyebrow}}</span>
+      <h2 class="h-section" data-field="gallery_title">{{gallery_title}}</h2>
+      <p class="section-intro" data-field="gallery_intro">{{gallery_intro}}</p>
+    </div>
+    <div class="gallery-grid">
+      <div class="gallery-item" data-field="gallery_1" style="background-image:url('{{gallery_1}}')"></div>
+      <div class="gallery-item" data-field="gallery_2" style="background-image:url('{{gallery_2}}')"></div>
+      <div class="gallery-item" data-field="gallery_3" style="background-image:url('{{gallery_3}}')"></div>
+      <div class="gallery-item" data-field="gallery_4" style="background-image:url('{{gallery_4}}')"></div>
+      <div class="gallery-item" data-field="gallery_5" style="background-image:url('{{gallery_5}}')"></div>
+      <div class="gallery-item" data-field="gallery_6" style="background-image:url('{{gallery_6}}')"></div>
+      <div class="gallery-item" data-field="gallery_7" style="background-image:url('{{gallery_7}}')"></div>
+      <div class="gallery-item" data-field="gallery_8" style="background-image:url('{{gallery_8}}')"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" data-block="testimonials">
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-field="testimonials_eyebrow">{{testimonials_eyebrow}}</span>
+      <h2 class="h-section" data-field="testimonials_title">{{testimonials_title}}</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_1_quote">{{testimonial_1_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_1_author">{{testimonial_1_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_1_company">{{testimonial_1_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_1_result">{{testimonial_1_result}}</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_2_quote">{{testimonial_2_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_2_author">{{testimonial_2_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_2_company">{{testimonial_2_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_2_result">{{testimonial_2_result}}</div>
+      </div>
+      <div class="testimonial">
+        <div class="testimonial-quote" data-field="testimonial_3_quote">{{testimonial_3_quote}}</div>
+        <div class="testimonial-author" data-field="testimonial_3_author">{{testimonial_3_author}}</div>
+        <div class="testimonial-company" data-field="testimonial_3_company">{{testimonial_3_company}}</div>
+        <div class="testimonial-result" data-field="testimonial_3_result">{{testimonial_3_result}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section booking" id="booking" data-block="booking">
+  <div class="booking-inner">
+    <span class="eyebrow" data-field="booking_eyebrow">{{booking_eyebrow}}</span>
+    <h2 class="h-section" data-field="booking_title">{{booking_title}}</h2>
+    <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
+  </div>
+  <div class="wrap-narrow" style="position:relative;z-index:2">
+    <form class="booking-form" onsubmit="event.preventDefault();alert('Thank you! Your reservation request has been received. Our concierge will confirm shortly.');">
+      <div>
+        <label data-field="booking_room_label">{{booking_room_label}}</label>
+        <select name="room_type" required>
+          <option value="" disabled selected>Select room</option>
+          <option value="seaview_deluxe">Seaview Deluxe</option>
+          <option value="coral_suite">Coral Suite</option>
+          <option value="garden_villa">Garden Villa</option>
+          <option value="presidential">Presidential Suite</option>
+        </select>
+      </div>
+      <div>
+        <label data-field="booking_guests_label">{{booking_guests_label}}</label>
+        <select name="guests" required>
+          <option value="" disabled selected>Guests</option>
+          <option value="1">1 Guest</option>
+          <option value="2">2 Guests</option>
+          <option value="3">3 Guests</option>
+          <option value="4">4 Guests</option>
+        </select>
+      </div>
+      <div>
+        <label data-field="booking_checkin_label">{{booking_checkin_label}}</label>
+        <input type="date" name="check_in" required>
+      </div>
+      <div>
+        <label data-field="booking_checkout_label">{{booking_checkout_label}}</label>
+        <input type="date" name="check_out" required>
+      </div>
+      <div>
+        <label data-field="booking_name_label">{{booking_name_label}}</label>
+        <input type="text" name="name" required placeholder="Jane Smith">
+      </div>
+      <div>
+        <label data-field="booking_email_label">{{booking_email_label}}</label>
+        <input type="email" name="email" required placeholder="you@example.com">
+      </div>
+      <div class="full">
+        <label data-field="booking_phone_label">{{booking_phone_label}}</label>
+        <input type="tel" name="phone" required placeholder="+971 50 000 0000">
+      </div>
+      <div class="full">
+        <label data-field="booking_requests_label">{{booking_requests_label}}</label>
+        <textarea name="special_requests" placeholder="Anniversary arrangements, dietary requirements, or anything else we should know"></textarea>
+      </div>
+      <div class="full">
+        <button type="submit" class="booking-submit" data-field="booking_submit">{{booking_submit}}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="section" id="contact" data-block="contact">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-field="contact_eyebrow">{{contact_eyebrow}}</span>
+      <h2 class="h-section" data-field="contact_title">{{contact_title}}</h2>
+    </div>
+    <div class="contact-grid">
+      <div>
+        <p class="section-intro" data-field="contact_intro" style="margin-top:0;margin-bottom:32px">{{contact_intro}}</p>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">@</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_email_label">{{contact_email_label}}</div>
+            <div class="contact-info-value" data-field="contact_email">{{contact_email}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">☎</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_phone_label">{{contact_phone_label}}</div>
+            <div class="contact-info-value" data-field="contact_phone">{{contact_phone}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">◉</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_address_label">{{contact_address_label}}</div>
+            <div class="contact-info-value" data-field="contact_address">{{contact_address}}</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">⏱</div>
+          <div>
+            <div class="contact-info-label" data-field="contact_hours_label">{{contact_hours_label}}</div>
+            <div class="contact-info-value" data-field="contact_hours">{{contact_hours}}</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--ivory-soft);border:1px solid var(--divider);border-radius:0;padding:44px">
+        <div class="hero-form-title" data-field="contact_cta_title" style="margin-bottom:14px">{{contact_cta_title}}</div>
+        <div class="hero-form-sub" data-field="contact_cta_text" style="margin-bottom:28px">{{contact_cta_text}}</div>
+        <a href="#booking" class="btn btn-primary" style="width:100%;justify-content:center" data-field="contact_cta_button">{{contact_cta_button}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer data-block="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo" data-field="footer_logo">{{footer_logo}}</div>
+        <div class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</div>
+        <div class="footer-socials">
+          <a href="#" class="footer-social" data-field="social_1">{{social_1}}</a>
+          <a href="#" class="footer-social" data-field="social_2">{{social_2}}</a>
+          <a href="#" class="footer-social" data-field="social_3">{{social_3}}</a>
+          <a href="#" class="footer-social" data-field="social_4">{{social_4}}</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_1_title">{{footer_col_1_title}}</div>
+        <ul>
+          <li><a href="#rooms" data-field="footer_link_1">{{footer_link_1}}</a></li>
+          <li><a href="#rooms" data-field="footer_link_2">{{footer_link_2}}</a></li>
+          <li><a href="#rooms" data-field="footer_link_3">{{footer_link_3}}</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_2_title">{{footer_col_2_title}}</div>
+        <ul>
+          <li><a href="#amenities" data-field="footer_link_4">{{footer_link_4}}</a></li>
+          <li><a href="#dining" data-field="footer_link_5">{{footer_link_5}}</a></li>
+          <li><a href="#experiences" data-field="footer_link_6">{{footer_link_6}}</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title" data-field="footer_col_3_title">{{footer_col_3_title}}</div>
+        <ul>
+          <li><a href="#contact" data-field="footer_link_7">{{footer_link_7}}</a></li>
+          <li><a href="#booking" data-field="footer_link_8">{{footer_link_8}}</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div data-field="footer_text">{{footer_text}}</div>
+      <div data-field="footer_legal">{{footer_legal}}</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

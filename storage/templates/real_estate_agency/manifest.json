@@ -1,7 +1,7 @@
 {
-    "id": "real_estate_broker",
+    "id": "real_estate_agency",
     "name": "Broker Profile",
-    "industry": "real_estate_broker",
+    "industry": "real_estate_agency",
     "description": "Personal brand page for an individual real estate broker. Magazine-editorial meets luxury — a full-bleed hero portrait, prominent RERA credentials, live listings grid with filter tabs, area-by-area expertise, awards and press mentions, long-form testimonials with property details, and a private-consultation booking form. Mobile-first so brokers can share their link on WhatsApp.",
     "thumbnail": "/storage/builder-heroes/real_estate_broker.jpg",
     "category": "personal_brand",

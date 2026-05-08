@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{business_name}} — {{business_tagline}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{business_name}} — {{business_tagline}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:url" content="{{canonical_url}}">
+<meta property="og:locale" content="{{og_locale}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --midnight:{{midnight}};
+  --midnight-soft:{{midnight_soft}};
+  --cream:{{cream}};
+  --cream-soft:{{cream_soft}};
+  --gold:{{gold}};
+  --gold-deep:{{gold_deep}};
+  --pearl:{{pearl}};
+  --muted:{{muted}};
+  --divider:{{divider}};
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--midnight);color:var(--cream);line-height:1.6;font-weight:300;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.serif{font-family:'Fraunces',serif}
+.wrap{max-width:1320px;margin:0 auto;padding:0 48px}
+.wrap-narrow{max-width:1120px;margin:0 auto;padding:0 48px}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+
+/* Typography */
+h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:300;color:var(--cream);line-height:1.02;letter-spacing:-0.015em}
+h1 em,h2 em,h3 em{font-style:italic;font-weight:400;color:var(--gold)}
+.h-display{font-size:clamp(56px,7.5vw,118px)}
+.h-section{font-size:clamp(44px,5.6vw,86px)}
+.h-sub{font-size:clamp(28px,3.4vw,46px)}
+.eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.28em;color:var(--gold);margin-bottom:24px;display:inline-block}
+.eyebrow::before{content:'— ';opacity:0.8}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.22em;padding:18px 36px;transition:all .25s ease;cursor:pointer;border:1px solid transparent}
+.btn-primary{background:var(--gold);color:var(--midnight);border-color:var(--gold)}
+.btn-primary:hover{background:var(--gold-deep);border-color:var(--gold-deep)}
+.btn-ghost{background:transparent;color:var(--cream);border-color:var(--cream)}
+.btn-ghost:hover{background:var(--cream);color:var(--midnight)}
+
+/* Navigation */
+nav{background:rgba(30,21,51,0.85);backdrop-filter:blur(18px);padding:26px 0;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--divider)}
+nav .inner{display:flex;justify-content:space-between;align-items:center}
+nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(--cream);letter-spacing:-0.005em;font-style:italic}
+.nav-links{display:flex;gap:40px;align-items:center}
+.nav-links a{font-size:12px;text-transform:uppercase;letter-spacing:0.22em;color:var(--cream);opacity:0.75;font-weight:500;transition:all .2s ease}
+.nav-links a:hover{opacity:1;color:var(--gold)}
+.nav-cta{background:var(--gold);color:var(--midnight)!important;padding:14px 26px;font-size:11px;letter-spacing:0.22em;opacity:1!important;transition:background .25s ease}
+.nav-cta:hover{background:var(--gold-deep);color:var(--midnight)!important}
+
+/* Hero — full bleed with cream title over deep image */
+.hero{position:relative;min-height:94vh;display:flex;align-items:flex-end;overflow:hidden;background:var(--midnight)}
+.hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.58)}
+.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,21,51,0.2) 0%,rgba(30,21,51,0.1) 40%,rgba(30,21,51,0.85) 100%);z-index:1}
+.hero-inner{position:relative;z-index:2;width:100%;padding:0 64px 112px;max-width:1320px;margin:0 auto}
+.hero-eyebrow{font-size:11px;letter-spacing:0.32em;text-transform:uppercase;font-weight:500;color:var(--gold);margin-bottom:40px;display:block}
+.hero-title{font-family:'Fraunces',serif;font-size:clamp(64px,9.5vw,152px);color:var(--cream);font-weight:300;line-height:0.95;letter-spacing:-0.025em;margin-bottom:36px;max-width:960px}
+.hero-title em{color:var(--gold);font-style:italic;font-weight:400}
+.hero-subtitle{font-size:18px;line-height:1.65;color:var(--cream);opacity:0.88;max-width:600px;margin-bottom:52px;font-weight:300}
+.hero-ctas{display:flex;gap:16px;flex-wrap:wrap}
+.hero-cta{background:var(--gold);color:var(--midnight);padding:20px 40px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;display:inline-block;transition:all .25s ease;border:1px solid var(--gold)}
+.hero-cta:hover{background:var(--gold-deep);border-color:var(--gold-deep)}
+.hero-cta-secondary{background:transparent;color:var(--cream);padding:20px 40px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;display:inline-block;border:1px solid var(--cream);transition:all .25s ease}
+.hero-cta-secondary:hover{background:var(--cream);color:var(--midnight)}
+
+/* Stats */
+.stats{padding:88px 0;background:var(--midnight);border-bottom:1px solid var(--divider)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.stat{text-align:center;padding:24px;border-right:1px solid var(--divider)}
+.stat:last-child{border-right:none}
+.stat-value{font-family:'Fraunces',serif;font-size:64px;font-weight:300;line-height:1;color:var(--gold);margin-bottom:12px;letter-spacing:-0.02em;font-style:italic}
+.stat-label{font-size:11px;text-transform:uppercase;letter-spacing:0.26em;color:var(--muted);font-weight:500}
+
+/* Section */
+.section{padding:160px 0}
+.section-head{max-width:900px;margin-bottom:88px}
+.section-head.center{margin-left:auto;margin-right:auto;text-align:center}
+.section-intro{font-size:18px;color:var(--cream);opacity:0.78;line-height:1.7;max-width:720px;margin-top:24px;font-weight:300}
+
+/* Services (event types) */
+.services{background:var(--midnight-soft)}
+.services-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:56px}
+.service{display:grid;grid-template-columns:1fr 1.1fr;gap:32px;align-items:center}
+.service-img{aspect-ratio:4/5;overflow:hidden;background:var(--midnight)}
+.service-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.service:hover .service-img img{transform:scale(1.04)}
+.service h3{font-size:36px;margin-bottom:20px;font-family:'Fraunces',serif;font-weight:300;color:var(--cream);letter-spacing:-0.015em}
+.service p{font-size:15.5px;color:var(--cream);opacity:0.78;line-height:1.7;font-weight:300}
+
+/* Portfolio */
+.portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px 28px}
+.event{cursor:pointer;transition:transform .3s ease}
+.event:hover{transform:translateY(-6px)}
+.event-img{aspect-ratio:3/4;overflow:hidden;background:var(--midnight-soft);margin-bottom:20px;position:relative}
+.event-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease,filter .5s ease}
+.event:hover .event-img img{transform:scale(1.04);filter:brightness(1.05)}
+.event-type{font-size:10.5px;text-transform:uppercase;letter-spacing:0.28em;color:var(--gold);margin-bottom:8px;display:inline-block;font-weight:500}
+.event-name{font-family:'Fraunces',serif;font-size:22px;color:var(--cream);font-weight:400;margin-bottom:6px;letter-spacing:-0.01em}
+.event-venue{font-size:13px;color:var(--muted);font-weight:300}
+
+/* Signature Experiences */
+.signature{background:var(--midnight-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.exp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--divider);border-radius:4px;overflow:hidden}
+.exp{padding:56px 48px;border-right:1px solid var(--divider);background:var(--midnight)}
+.exp:last-child{border-right:none}
+.exp h3{font-size:28px;margin-bottom:20px;font-family:'Fraunces',serif;font-weight:300;color:var(--cream);letter-spacing:-0.01em}
+.exp p{font-size:15px;color:var(--cream);opacity:0.78;line-height:1.7;margin-bottom:28px;font-weight:300}
+.exp-detail{font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--gold);padding-top:20px;border-top:1px solid var(--divider);letter-spacing:0.01em}
+
+/* Team */
+.team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:48px}
+.member-img{aspect-ratio:3/4;overflow:hidden;background:var(--midnight-soft);margin-bottom:24px}
+.member-img img{width:100%;height:100%;object-fit:cover;filter:grayscale(0.15)}
+.member-name{font-family:'Fraunces',serif;font-size:28px;color:var(--cream);margin-bottom:6px;font-weight:400;letter-spacing:-0.01em}
+.member-title{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--gold);font-weight:500;margin-bottom:14px}
+.member-bio{font-size:14.5px;color:var(--cream);opacity:0.78;line-height:1.65;font-weight:300}
+
+/* Venues */
+.venues{background:var(--midnight-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.venues-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--divider);border-radius:2px;overflow:hidden;margin-top:48px}
+.venue{padding:36px 20px;text-align:center;border-right:1px solid var(--divider);border-bottom:1px solid var(--divider);font-family:'Fraunces',serif;font-style:italic;font-size:20px;color:var(--cream);font-weight:400;transition:all .2s ease;letter-spacing:-0.005em;background:var(--midnight)}
+.venue:hover{background:var(--midnight-soft);color:var(--gold)}
+.venue:nth-child(4n){border-right:none}
+.venue:nth-last-child(-n+4){border-bottom:none}
+
+/* Gallery */
+.gallery-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;grid-auto-rows:180px}
+.gallery-item{overflow:hidden;background:var(--midnight-soft);position:relative}
+.gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
+.gallery-item:hover img{transform:scale(1.06)}
+.gallery-item:nth-child(1){grid-column:span 3;grid-row:span 2}
+.gallery-item:nth-child(2){grid-column:span 3;grid-row:span 1}
+.gallery-item:nth-child(3){grid-column:span 2;grid-row:span 1}
+.gallery-item:nth-child(4){grid-column:span 2;grid-row:span 2}
+.gallery-item:nth-child(5){grid-column:span 2;grid-row:span 1}
+.gallery-item:nth-child(6){grid-column:span 4;grid-row:span 1}
+
+/* Testimonials */
+.testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:56px}
+.testimonial{border-top:1px solid var(--divider);padding-top:40px}
+.testimonial::before{content:'"';font-family:'Fraunces',serif;font-size:56px;color:var(--gold);line-height:0;display:block;margin-bottom:24px;font-style:italic;font-weight:400}
+.testimonial-quote{font-family:'Fraunces',serif;font-size:20px;line-height:1.55;color:var(--cream);margin-bottom:28px;font-weight:300;letter-spacing:-0.005em}
+.testimonial-author{font-size:14px;color:var(--cream);font-weight:500;margin-bottom:4px}
+.testimonial-event{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--gold);font-weight:500}
+
+/* Blog */
+.blog{background:var(--midnight-soft)}
+.blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
+.blog-card{background:var(--midnight);border:1px solid var(--divider);transition:all .3s ease;cursor:pointer;display:flex;flex-direction:column}
+.blog-card:hover{border-color:var(--gold);transform:translateY(-4px)}
+.blog-card-img{aspect-ratio:4/3;overflow:hidden;background:var(--midnight-soft)}
+.blog-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.blog-card:hover .blog-card-img img{transform:scale(1.04)}
+.blog-card-body{padding:32px;flex:1;display:flex;flex-direction:column}
+.blog-category{font-size:11px;text-transform:uppercase;letter-spacing:0.26em;color:var(--gold);font-weight:500;margin-bottom:16px;display:inline-block}
+.blog-card-title{font-family:'Fraunces',serif;font-size:24px;color:var(--cream);line-height:1.2;margin-bottom:16px;font-weight:400;letter-spacing:-0.01em}
+.blog-excerpt{font-size:14.5px;color:var(--cream);opacity:0.75;line-height:1.65;flex:1;font-weight:300}
+.blog-cta-row{text-align:center;margin-top:72px}
+.link-accent{color:var(--gold);border-bottom:1px solid var(--gold);padding-bottom:4px;font-size:12px;text-transform:uppercase;letter-spacing:0.22em;font-weight:500;transition:all .2s ease}
+.link-accent:hover{color:var(--cream);border-color:var(--cream)}
+
+/* Booking */
+.booking{background:var(--midnight);position:relative;overflow:hidden}
+.booking::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:900px;height:900px;background:radial-gradient(circle at center,rgba(217,166,77,0.08) 0%,transparent 60%);pointer-events:none}
+.booking-inner{position:relative;z-index:2;max-width:780px;margin:0 auto;text-align:center}
+.booking-intro{font-size:17px;color:var(--cream);opacity:0.78;line-height:1.75;margin-top:24px;margin-bottom:56px;font-weight:300}
+.booking-form{display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:left;background:var(--midnight-soft);border:1px solid var(--divider);padding:48px}
+.booking-form .full{grid-column:span 2}
+.booking-form label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.24em;color:var(--gold);font-weight:500;margin-bottom:10px}
+.booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:16px 20px;background:var(--midnight);border:1px solid var(--divider);font-size:14px;color:var(--cream);font-family:'Inter',sans-serif;transition:border-color .2s ease}
+.booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--gold)}
+.time-slots{display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+.time-slots label{display:inline-flex;align-items:center;cursor:pointer;border:1px solid var(--divider);padding:11px 18px;font-size:12px;color:var(--cream);opacity:0.75;margin:0;transition:all .2s ease;background:var(--midnight);text-transform:none;letter-spacing:0.04em;font-weight:400}
+.time-slots label:hover{border-color:var(--gold);color:var(--gold);opacity:1}
+.time-slots input{display:none}
+.time-slots label:has(input:checked){background:var(--gold);color:var(--midnight);border-color:var(--gold);opacity:1;font-weight:500}
+.booking-form button{margin-top:16px;grid-column:span 2;justify-self:center;background:var(--gold);color:var(--midnight);border:none;padding:20px 44px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:all .25s ease}
+.booking-form button:hover{background:var(--gold-deep)}
+.booking-success{display:none;padding:24px;background:rgba(217,166,77,0.08);border:1px solid rgba(217,166,77,0.3);text-align:left;font-size:14px;color:var(--cream);grid-column:span 2}
+.booking-form.submitted .booking-success{display:block}
+.booking-display{display:none}
+
+/* Contact */
+.contact{background:var(--midnight-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:96px;align-items:start}
+.contact-details-list{margin-top:8px}
+.contact-detail{padding:22px 0;border-bottom:1px solid var(--divider)}
+.contact-detail:last-child{border-bottom:none}
+.contact-label{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--gold);font-weight:500;margin-bottom:6px}
+.contact-value{font-size:17px;color:var(--cream);font-weight:400}
+.contact-form-title{margin-bottom:32px}
+.contact-form{display:grid;gap:20px}
+.contact-form input,.contact-form textarea{width:100%;padding:16px 20px;background:var(--midnight);border:1px solid var(--divider);font-size:14px;color:var(--cream);font-family:'Inter',sans-serif;transition:border-color .2s ease}
+.contact-form input:focus,.contact-form textarea:focus{outline:none;border-color:var(--gold)}
+.contact-form textarea{resize:vertical;min-height:140px}
+.form-submit{background:var(--gold);color:var(--midnight);padding:18px 40px;border:none;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:background .25s ease;justify-self:start}
+.form-submit:hover{background:var(--gold-deep)}
+.form-success{display:none;padding:20px;background:rgba(217,166,77,0.08);border:1px solid rgba(217,166,77,0.3);font-size:14px;color:var(--cream)}
+.contact-form.submitted .form-success{display:block}
+
+/* Footer */
+footer{background:var(--midnight);color:var(--cream);padding:96px 0 40px;border-top:1px solid var(--divider)}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:80px;margin-bottom:64px}
+.footer-brand{font-family:'Fraunces',serif;font-size:36px;margin-bottom:20px;color:var(--cream);font-weight:400;font-style:italic;letter-spacing:-0.005em}
+.footer-tagline{font-size:15px;color:var(--cream);opacity:0.7;line-height:1.7;max-width:360px;font-weight:300}
+.footer-col h4{font-size:11px;text-transform:uppercase;letter-spacing:0.26em;color:var(--gold);margin-bottom:24px;font-family:'Inter',sans-serif;font-weight:500}
+.footer-col ul{list-style:none}
+.footer-col li{margin-bottom:12px}
+.footer-col a{font-size:14px;color:var(--cream);opacity:0.7;transition:all .2s ease;font-weight:300}
+.footer-col a:hover{opacity:1;color:var(--gold)}
+.footer-bottom{border-top:1px solid var(--divider);padding-top:32px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.footer-text{font-size:13px;color:var(--cream);opacity:0.6;font-weight:300}
+.footer-socials{display:flex;gap:28px}
+.footer-socials a{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--cream);opacity:0.7;transition:all .2s ease;font-weight:500}
+.footer-socials a:hover{opacity:1;color:var(--gold)}
+
+/* Reveal */
+.reveal{opacity:0;transform:translateY(24px);transition:all .8s cubic-bezier(.2,.7,.3,1)}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* Responsive */
+@media(max-width:1024px){
+  .wrap,.wrap-narrow{padding:0 32px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .stat:nth-child(2){border-right:none}
+  .stat:nth-child(1),.stat:nth-child(2){border-bottom:1px solid var(--divider);padding-bottom:40px;margin-bottom:24px}
+  .services-grid{grid-template-columns:1fr}
+  .portfolio-grid,.team-grid,.blog-grid,.testimonials-grid{grid-template-columns:repeat(2,1fr)}
+  .exp-grid{grid-template-columns:1fr}
+  .exp{border-right:none;border-bottom:1px solid var(--divider)}
+  .exp:last-child{border-bottom:none}
+  .venues-row{grid-template-columns:repeat(2,1fr)}
+  .venue:nth-child(4n){border-right:1px solid var(--divider)}
+  .venue:nth-child(2n){border-right:none}
+  .gallery-grid{grid-template-columns:repeat(4,1fr)}
+  .gallery-item:nth-child(1),.gallery-item:nth-child(2){grid-column:span 4;grid-row:span 1}
+  .gallery-item:nth-child(3),.gallery-item:nth-child(4),.gallery-item:nth-child(5),.gallery-item:nth-child(6){grid-column:span 2;grid-row:span 1}
+  .contact-grid,.footer-grid{grid-template-columns:1fr;gap:48px}
+  .hero-inner{padding:0 32px 72px}
+}
+@media(max-width:640px){
+  .wrap,.wrap-narrow{padding:0 20px}
+  .nav-links a:not(.nav-cta){display:none}
+  .stats-grid{grid-template-columns:1fr}
+  .stat{border-right:none;border-bottom:1px solid var(--divider);padding:24px 0}
+  .stat:last-child{border-bottom:none}
+  .portfolio-grid,.team-grid,.blog-grid,.testimonials-grid,.venues-row{grid-template-columns:1fr}
+  .service{grid-template-columns:1fr;gap:20px}
+  .gallery-grid{grid-template-columns:repeat(2,1fr)}
+  .gallery-item{grid-column:span 1!important}
+  .booking-form{grid-template-columns:1fr;padding:28px}
+  .booking-form .full,.booking-form button{grid-column:span 1}
+  .section{padding:88px 0}
+  .hero{min-height:72vh}
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav data-block="nav">
+  <div class="wrap inner">
+    <a href="#" class="logo" data-field="logo">{{business_name}}</a>
+    <div class="nav-links">
+      <a href="#services" data-field="nav_1">{{nav_1}}</a>
+      <a href="#portfolio" data-field="nav_2">{{nav_2}}</a>
+      <a href="#team" data-field="nav_3">{{nav_3}}</a>
+      <a href="#blog" data-field="nav_4">{{nav_4}}</a>
+      <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero" data-block="hero">
+  <img src="{{hero_image}}" alt="{{business_name}}" class="hero-image" data-field="hero_image">
+  <div class="hero-inner">
+    <span class="hero-eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+    <h1 class="hero-title" data-field="hero_title">{{hero_title}}</h1>
+    <p class="hero-subtitle" data-field="hero_subtitle">{{hero_subtitle}}</p>
+    <div class="hero-ctas">
+      <a href="#booking" class="hero-cta" data-field="hero_cta">{{hero_cta}}</a>
+      <a href="#portfolio" class="hero-cta-secondary" data-field="hero_cta_secondary">{{hero_cta_secondary}}</a>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="stats" data-block="stats">
+  <div class="wrap">
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-value stat-1-value" data-field="stat_1_value">{{stat_1_value}}</div><div class="stat-label stat-1-label" data-field="stat_1_label">{{stat_1_label}}</div></div>
+      <div class="stat"><div class="stat-value stat-2-value" data-field="stat_2_value">{{stat_2_value}}</div><div class="stat-label stat-2-label" data-field="stat_2_label">{{stat_2_label}}</div></div>
+      <div class="stat"><div class="stat-value stat-3-value" data-field="stat_3_value">{{stat_3_value}}</div><div class="stat-label stat-3-label" data-field="stat_3_label">{{stat_3_label}}</div></div>
+      <div class="stat"><div class="stat-value stat-4-value" data-field="stat_4_value">{{stat_4_value}}</div><div class="stat-label stat-4-label" data-field="stat_4_label">{{stat_4_label}}</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Services (event types) -->
+<section class="section services" id="services" data-block="service_types">
+  <div class="wrap-narrow">
+    <div class="section-head reveal">
+      <span class="eyebrow services-eyebrow" data-field="services_eyebrow">{{services_eyebrow}}</span>
+      <h2 class="h-section services-title" data-field="services_title">{{services_title}}</h2>
+      <p class="section-intro services-intro" data-field="services_intro">{{services_intro}}</p>
+    </div>
+    <div class="services-grid">
+      <div class="service reveal">
+        <div class="service-img"><img src="{{service_1_image}}" alt="{{service_1_title}}" class="service-1-image" data-field="service_1_image"></div>
+        <div><h3 class="service-1-title" data-field="service_1_title">{{service_1_title}}</h3><p class="service-1-text" data-field="service_1_text">{{service_1_text}}</p></div>
+      </div>
+      <div class="service reveal">
+        <div class="service-img"><img src="{{service_2_image}}" alt="{{service_2_title}}" class="service-2-image" data-field="service_2_image"></div>
+        <div><h3 class="service-2-title" data-field="service_2_title">{{service_2_title}}</h3><p class="service-2-text" data-field="service_2_text">{{service_2_text}}</p></div>
+      </div>
+      <div class="service reveal">
+        <div class="service-img"><img src="{{service_3_image}}" alt="{{service_3_title}}" class="service-3-image" data-field="service_3_image"></div>
+        <div><h3 class="service-3-title" data-field="service_3_title">{{service_3_title}}</h3><p class="service-3-text" data-field="service_3_text">{{service_3_text}}</p></div>
+      </div>
+      <div class="service reveal">
+        <div class="service-img"><img src="{{service_4_image}}" alt="{{service_4_title}}" class="service-4-image" data-field="service_4_image"></div>
+        <div><h3 class="service-4-title" data-field="service_4_title">{{service_4_title}}</h3><p class="service-4-text" data-field="service_4_text">{{service_4_text}}</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Portfolio -->
+<section class="section" id="portfolio" data-block="portfolio">
+  <div class="wrap-narrow">
+    <div class="section-head reveal">
+      <span class="eyebrow portfolio-eyebrow" data-field="portfolio_eyebrow">{{portfolio_eyebrow}}</span>
+      <h2 class="h-section portfolio-title" data-field="portfolio_title">{{portfolio_title}}</h2>
+      <p class="section-intro portfolio-intro" data-field="portfolio_intro">{{portfolio_intro}}</p>
+    </div>
+    <div class="portfolio-grid">
+      <div class="event reveal">
+        <div class="event-img"><img src="{{event_1_image}}" alt="{{event_1_name}}" class="event-1-image" data-field="event_1_image"></div>
+        <div class="event-type event-1-type" data-field="event_1_type">{{event_1_type}}</div>
+        <h3 class="event-name event-1-name" data-field="event_1_name">{{event_1_name}}</h3>
+        <div class="event-venue event-1-venue" data-field="event_1_venue">{{event_1_venue}}</div>
+      </div>
+      <div class="event reveal">
+        <div class="event-img"><img src="{{event_2_image}}" alt="{{event_2_name}}" class="event-2-image" data-field="event_2_image"></div>
+        <div class="event-type event-2-type" data-field="event_2_type">{{event_2_type}}</div>
+        <h3 class="event-name event-2-name" data-field="event_2_name">{{event_2_name}}</h3>
+        <div class="event-venue event-2-venue" data-field="event_2_venue">{{event_2_venue}}</div>
+      </div>
+      <div class="event reveal">
+        <div class="event-img"><img src="{{event_3_image}}" alt="{{event_3_name}}" class="event-3-image" data-field="event_3_image"></div>
+        <div class="event-type event-3-type" data-field="event_3_type">{{event_3_type}}</div>
+        <h3 class="event-name event-3-name" data-field="event_3_name">{{event_3_name}}</h3>
+        <div class="event-venue event-3-venue" data-field="event_3_venue">{{event_3_venue}}</div>
+      </div>
+      <div class="event reveal">
+        <div class="event-img"><img src="{{event_4_image}}" alt="{{event_4_name}}" class="event-4-image" data-field="event_4_image"></div>
+        <div class="event-type event-4-type" data-field="event_4_type">{{event_4_type}}</div>
+        <h3 class="event-name event-4-name" data-field="event_4_name">{{event_4_name}}</h3>
+        <div class="event-venue event-4-venue" data-field="event_4_venue">{{event_4_venue}}</div>
+      </div>
+      <div class="event reveal">
+        <div class="event-img"><img src="{{event_5_image}}" alt="{{event_5_name}}" class="event-5-image" data-field="event_5_image"></div>
+        <div class="event-type event-5-type" data-field="event_5_type">{{event_5_type}}</div>
+        <h3 class="event-name event-5-name" data-field="event_5_name">{{event_5_name}}</h3>
+        <div class="event-venue event-5-venue" data-field="event_5_venue">{{event_5_venue}}</div>
+      </div>
+      <div class="event reveal">
+        <div class="event-img"><img src="{{event_6_image}}" alt="{{event_6_name}}" class="event-6-image" data-field="event_6_image"></div>
+        <div class="event-type event-6-type" data-field="event_6_type">{{event_6_type}}</div>
+        <h3 class="event-name event-6-name" data-field="event_6_name">{{event_6_name}}</h3>
+        <div class="event-venue event-6-venue" data-field="event_6_venue">{{event_6_venue}}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Signature Experiences -->
+<section class="section signature" data-block="signature">
+  <div class="wrap-narrow">
+    <div class="section-head reveal">
+      <span class="eyebrow signature-eyebrow" data-field="signature_eyebrow">{{signature_eyebrow}}</span>
+      <h2 class="h-section signature-title" data-field="signature_title">{{signature_title}}</h2>
+      <p class="section-intro signature-intro" data-field="signature_intro">{{signature_intro}}</p>
+    </div>
+    <div class="exp-grid">
+      <div class="exp reveal"><h3 class="exp-1-title" data-field="exp_1_title">{{exp_1_title}}</h3><p class="exp-1-text" data-field="exp_1_text">{{exp_1_text}}</p><div class="exp-detail exp-1-detail" data-field="exp_1_detail">{{exp_1_detail}}</div></div>
+      <div class="exp reveal"><h3 class="exp-2-title" data-field="exp_2_title">{{exp_2_title}}</h3><p class="exp-2-text" data-field="exp_2_text">{{exp_2_text}}</p><div class="exp-detail exp-2-detail" data-field="exp_2_detail">{{exp_2_detail}}</div></div>
+      <div class="exp reveal"><h3 class="exp-3-title" data-field="exp_3_title">{{exp_3_title}}</h3><p class="exp-3-text" data-field="exp_3_text">{{exp_3_text}}</p><div class="exp-detail exp-3-detail" data-field="exp_3_detail">{{exp_3_detail}}</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Team -->
+<section class="section" id="team" data-block="team">
+  <div class="wrap-narrow">
+    <div class="section-head reveal">
+      <span class="eyebrow team-eyebrow" data-field="team_eyebrow">{{team_eyebrow}}</span>
+      <h2 class="h-section team-title" data-field="team_title">{{team_title}}</h2>
+      <p class="section-intro team-intro" data-field="team_intro">{{team_intro}}</p>
+    </div>
+    <div class="team-grid">
+      <div class="member reveal">
+        <div class="member-img"><img src="{{team_1_image}}" alt="{{team_1_name}}" class="team-1-image" data-field="team_1_image"></div>
+        <h3 class="member-name team-1-name" data-field="team_1_name">{{team_1_name}}</h3>
+        <div class="member-title team-1-title" data-field="team_1_title">{{team_1_title}}</div>
+        <p class="member-bio team-1-bio" data-field="team_1_bio">{{team_1_bio}}</p>
+      </div>
+      <div class="member reveal">
+        <div class="member-img"><img src="{{team_2_image}}" alt="{{team_2_name}}" class="team-2-image" data-field="team_2_image"></div>
+        <h3 class="member-name team-2-name" data-field="team_2_name">{{team_2_name}}</h3>
+        <div class="member-title team-2-title" data-field="team_2_title">{{team_2_title}}</div>
+        <p class="member-bio team-2-bio" data-field="team_2_bio">{{team_2_bio}}</p>
+      </div>
+      <div class="member reveal">
+        <div class="member-img"><img src="{{team_3_image}}" alt="{{team_3_name}}" class="team-3-image" data-field="team_3_image"></div>
+        <h3 class="member-name team-3-name" data-field="team_3_name">{{team_3_name}}</h3>
+        <div class="member-title team-3-title" data-field="team_3_title">{{team_3_title}}</div>
+        <p class="member-bio team-3-bio" data-field="team_3_bio">{{team_3_bio}}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Venues -->
+<section class="section venues" data-block="venues">
+  <div class="wrap-narrow">
+    <div class="section-head reveal">
+      <span class="eyebrow venues-eyebrow" data-field="venues_eyebrow">{{venues_eyebrow}}</span>
+      <h2 class="h-section venues-title" data-field="venues_title">{{venues_title}}</h2>
+    </div>
+    <div class="venues-row">
+      <div class="venue venue-1" data-field="venue_1">{{venue_1}}</div>
+      <div class="venue venue-2" data-field="venue_2">{{venue_2}}</div>
+      <div class="venue venue-3" data-field="venue_3">{{venue_3}}</div>
+      <div class="venue venue-4" data-field="venue_4">{{venue_4}}</div>
+      <div class="venue venue-5" data-field="venue_5">{{venue_5}}</div>
+      <div class="venue venue-6" data-field="venue_6">{{venue_6}}</div>
+      <div class="venue venue-7" data-field="venue_7">{{venue_7}}</div>
+      <div class="venue venue-8" data-field="venue_8">{{venue_8}}</div>
+    </div>
+  </div>
+</section>
+
+<!-- Gallery -->
+<section class="section" data-block="gallery">
+  <div class="wrap-narrow">
+    <div class="section-head reveal">
+      <span class="eyebrow gallery-eyebrow" data-field="gallery_eyebrow">{{gallery_eyebrow}}</span>
+      <h2 class="h-section gallery-title" data-field="gallery_title">{{gallery_title}}</h2>
+    </div>
+    <div class="gallery-grid">
+      <div class="gallery-item reveal"><img src="{{gallery_1_image}}" alt="Gallery 1" class="gallery-1-image" data-field="gallery_1_image"></div>
+      <div class="gallery-item reveal"><img src="{{gallery_2_image}}" alt="Gallery 2" class="gallery-2-image" data-field="gallery_2_image"></div>
+      <div class="gallery-item reveal"><img src="{{gallery_3_image}}" alt="Gallery 3" class="gallery-3-image" data-field="gallery_3_image"></div>
+      <div class="gallery-item reveal"><img src="{{gallery_4_image}}" alt="Gallery 4" class="gallery-4-image" data-field="gallery_4_image"></div>
+      <div class="gallery-item reveal"><img src="{{gallery_5_image}}" alt="Gallery 5" class="gallery-5-image" data-field="gallery_5_image"></div>
+      <div class="gallery-item reveal"><img src="{{gallery_6_image}}" alt="Gallery 6" class="gallery-6-image" data-field="gallery_6_image"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section class="section" data-block="testimonials">
+  <div class="wrap-narrow">
+    <div class="section-head reveal">
+      <span class="eyebrow testimonials-eyebrow" data-field="testimonials_eyebrow">{{testimonials_eyebrow}}</span>
+      <h2 class="h-section testimonials-title" data-field="testimonials_title">{{testimonials_title}}</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial reveal"><p class="testimonial-quote testimonial-1-quote" data-field="testimonial_1_quote">{{testimonial_1_quote}}</p><div class="testimonial-author testimonial-1-author" data-field="testimonial_1_author">{{testimonial_1_author}}</div><div class="testimonial-event testimonial-1-event" data-field="testimonial_1_event">{{testimonial_1_event}}</div></div>
+      <div class="testimonial reveal"><p class="testimonial-quote testimonial-2-quote" data-field="testimonial_2_quote">{{testimonial_2_quote}}</p><div class="testimonial-author testimonial-2-author" data-field="testimonial_2_author">{{testimonial_2_author}}</div><div class="testimonial-event testimonial-2-event" data-field="testimonial_2_event">{{testimonial_2_event}}</div></div>
+      <div class="testimonial reveal"><p class="testimonial-quote testimonial-3-quote" data-field="testimonial_3_quote">{{testimonial_3_quote}}</p><div class="testimonial-author testimonial-3-author" data-field="testimonial_3_author">{{testimonial_3_author}}</div><div class="testimonial-event testimonial-3-event" data-field="testimonial_3_event">{{testimonial_3_event}}</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Blog -->
+<section class="section blog" id="blog" data-block="blog">
+  <div class="wrap-narrow">
+    <div class="section-head reveal">
+      <span class="eyebrow blog-eyebrow" data-field="blog_eyebrow">{{blog_eyebrow}}</span>
+      <h2 class="h-section blog-title" data-field="blog_title">{{blog_title}}</h2>
+      <p class="section-intro blog-intro" data-field="blog_intro">{{blog_intro}}</p>
+    </div>
+    <div class="blog-grid">
+      <article class="blog-card reveal">
+        <div class="blog-card-img"><img src="{{blog_1_image}}" alt="{{blog_1_title}}" class="blog-1-image" data-field="blog_1_image"></div>
+        <div class="blog-card-body">
+          <span class="blog-category blog-1-category" data-field="blog_1_category">{{blog_1_category}}</span>
+          <h3 class="blog-card-title blog-1-title" data-field="blog_1_title">{{blog_1_title}}</h3>
+          <p class="blog-excerpt blog-1-excerpt" data-field="blog_1_excerpt">{{blog_1_excerpt}}</p>
+        </div>
+      </article>
+      <article class="blog-card reveal">
+        <div class="blog-card-img"><img src="{{blog_2_image}}" alt="{{blog_2_title}}" class="blog-2-image" data-field="blog_2_image"></div>
+        <div class="blog-card-body">
+          <span class="blog-category blog-2-category" data-field="blog_2_category">{{blog_2_category}}</span>
+          <h3 class="blog-card-title blog-2-title" data-field="blog_2_title">{{blog_2_title}}</h3>
+          <p class="blog-excerpt blog-2-excerpt" data-field="blog_2_excerpt">{{blog_2_excerpt}}</p>
+        </div>
+      </article>
+      <article class="blog-card reveal">
+        <div class="blog-card-img"><img src="{{blog_3_image}}" alt="{{blog_3_title}}" class="blog-3-image" data-field="blog_3_image"></div>
+        <div class="blog-card-body">
+          <span class="blog-category blog-3-category" data-field="blog_3_category">{{blog_3_category}}</span>
+          <h3 class="blog-card-title blog-3-title" data-field="blog_3_title">{{blog_3_title}}</h3>
+          <p class="blog-excerpt blog-3-excerpt" data-field="blog_3_excerpt">{{blog_3_excerpt}}</p>
+        </div>
+      </article>
+    </div>
+    <div class="blog-cta-row reveal"><a href="#" class="link-accent blog-cta" data-field="blog_cta">{{blog_cta}}</a></div>
+  </div>
+</section>
+
+<!-- Booking -->
+<section class="section booking" id="booking" data-block="booking">
+  <div class="wrap-narrow">
+    <div class="booking-inner">
+      <h2 class="h-section booking-title" data-field="booking_title">{{booking_title}}</h2>
+      <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
+      <form class="booking-form" method="POST" action="/book" onsubmit="return handleBookingSubmit(this,event)">
+        <input type="hidden" name="site_id" value="">
+        <div>
+          <label>Event Type</label>
+          <select name="event_type" required>
+            <option>Wedding</option>
+            <option>Corporate Gala</option>
+            <option>Product Launch</option>
+            <option>Private Celebration</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label>Guest Count</label>
+          <select name="guest_count">
+            <option>Under 50</option>
+            <option>50–150</option>
+            <option>150–400</option>
+            <option>400–800</option>
+            <option>800+</option>
+          </select>
+        </div>
+        <div>
+          <label>Preferred Date</label>
+          <input type="date" name="preferred_date" required>
+        </div>
+        <div>
+          <label>Planner Preference</label>
+          <select name="stylist">
+            <option>Any Available</option>
+            <option>Layla Nader</option>
+            <option>Marcus Chen</option>
+            <option>Rania Al Sabah</option>
+          </select>
+        </div>
+        <div class="full">
+          <label>Consultation Slot</label>
+          <div class="time-slots">
+            <label><input type="radio" name="preferred_time" value="10:00" required>Tue 10:00 AM</label>
+            <label><input type="radio" name="preferred_time" value="14:00">Wed 2:00 PM</label>
+            <label><input type="radio" name="preferred_time" value="11:00">Thu 11:00 AM</label>
+            <label><input type="radio" name="preferred_time" value="16:00">Fri 4:00 PM</label>
+            <label><input type="radio" name="preferred_time" value="12:00">Sat 12:00 PM</label>
+          </div>
+        </div>
+        <div><label>Your Name</label><input type="text" name="name" required></div>
+        <div><label>Phone</label><input type="tel" name="phone" required></div>
+        <div class="full"><label>Tell us about the event (optional)</label><textarea name="notes" rows="3" placeholder="Vision, budget, venue preferences..."></textarea></div>
+        <button type="submit" class="booking-cta" data-field="booking_cta">{{booking_cta}}</button>
+        <div class="booking-success">Thank you. Our studio will confirm your consultation slot by phone within one working day.</div>
+      </form>
+      <span class="booking-display" data-field="booking_display">{{booking_display}}</span>
+    </div>
+  </div>
+</section>
+
+<!-- Contact -->
+<section class="section contact" data-block="contact">
+  <div class="wrap-narrow">
+    <div class="contact-grid">
+      <div class="reveal">
+        <span class="eyebrow contact-eyebrow" data-field="contact_eyebrow">{{contact_eyebrow}}</span>
+        <h2 class="h-section contact-title" data-field="contact_title">{{contact_title}}</h2>
+        <p class="section-intro contact-intro" data-field="contact_intro">{{contact_intro}}</p>
+        <div class="contact-details-list">
+          <div class="contact-detail"><div class="contact-label">Email</div><div class="contact-value contact-email" data-field="contact_email">{{contact_email}}</div></div>
+          <div class="contact-detail"><div class="contact-label">Phone</div><div class="contact-value contact-phone" data-field="contact_phone">{{contact_phone}}</div></div>
+          <div class="contact-detail"><div class="contact-label">Studio</div><div class="contact-value contact-address" data-field="contact_address">{{contact_address}}</div></div>
+          <div class="contact-detail"><div class="contact-label">Hours</div><div class="contact-value contact-hours" data-field="contact_hours">{{contact_hours}}</div></div>
+        </div>
+      </div>
+      <div class="reveal">
+        <h3 class="h-sub contact-form-title" data-field="contact_form_title">{{contact_form_title}}</h3>
+        <form class="contact-form" onsubmit="return handleContactSubmit(this,event)">
+          <input type="text" name="name" placeholder="Name" required>
+          <input type="email" name="email" placeholder="Email" required>
+          <input type="text" name="subject" placeholder="Subject">
+          <textarea name="message" placeholder="Message" required></textarea>
+          <button type="submit" class="form-submit form-submit-text" data-field="form_submit_text">{{form_submit_text}}</button>
+          <div class="form-success form-success-message" data-field="form_success_message">{{form_success_message}}</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer data-block="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">{{business_name}}</div>
+        <p class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="#services">Services</a></li>
+          <li><a href="#portfolio">Portfolio</a></li>
+          <li><a href="#team">Team</a></li>
+          <li><a href="#blog">Journal</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Studio</h4>
+        <ul>
+          <li><a href="#booking">Book Consultation</a></li>
+          <li><a href="#contact">Visit the Studio</a></li>
+          <li><a href="mailto:{{contact_email}}">{{contact_email}}</a></li>
+          <li><a href="tel:{{contact_phone}}">{{contact_phone}}</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-text" data-field="footer_text">{{footer_text}}</span>
+      <div class="footer-socials">
+        <a href="{{social_instagram}}" class="social-instagram" data-field="social_instagram">Instagram</a>
+        <a href="{{social_pinterest}}" class="social-pinterest" data-field="social_pinterest">Pinterest</a>
+        <a href="{{social_tiktok}}" class="social-tiktok" data-field="social_tiktok">TikTok</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting&&e.target.classList.add('in')),{threshold:0.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+function handleBookingSubmit(form,e){
+  e.preventDefault();
+  const data=new FormData(form);
+  fetch('/book',{method:'POST',body:data,headers:{'Accept':'application/json'}})
+    .then(r=>r.json()).then(()=>{form.classList.add('submitted');setTimeout(()=>form.reset(),300)})
+    .catch(()=>{form.classList.add('submitted')});
+  return false;
+}
+function handleContactSubmit(form,e){
+  e.preventDefault();
+  form.classList.add('submitted');
+  setTimeout(()=>{form.reset();form.classList.remove('submitted')},4000);
+  return false;
+}
+</script>
+
+</body>
+</html>
