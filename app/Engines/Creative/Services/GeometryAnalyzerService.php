@@ -45,11 +45,12 @@ class GeometryAnalyzerService
             return $cached;
         }
 
-        // Get API key from platform_settings
-        $apiKey = $this->getOpenAiKey();
-        if (empty($apiKey)) {
-            Log::info('[CREATIVE888 Geometry] No API key — skipping vision analysis.');
-            return ['room_type' => 'unknown', '_source' => 'no_api_key'];
+        // PATCH 4 (2026-05-08): vision analysis routes through RuntimeClient
+        // (was a direct Http::post to api.openai.com — hands-vs-brain bypass).
+        $runtime = app(\App\Connectors\RuntimeClient::class);
+        if (!$runtime->isConfigured()) {
+            Log::info('[CREATIVE888 Geometry] Runtime not configured — skipping vision analysis.');
+            return ['room_type' => 'unknown', '_source' => 'runtime_unavailable'];
         }
 
         // Vision prompt
@@ -70,41 +71,15 @@ Rules:
 - ONLY geometry and structure';
 
         try {
-            $response = Http::timeout(6)
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $apiKey,
-                    'Content-Type'  => 'application/json',
-                ])
-                ->post('https://api.openai.com/v1/chat/completions', [
-                    'model'      => 'gpt-4o',
-                    'max_tokens' => 500,
-                    'messages'   => [
-                        [
-                            'role'    => 'user',
-                            'content' => [
-                                [
-                                    'type'      => 'image_url',
-                                    'image_url' => [
-                                        'url'    => $imageUrl,
-                                        'detail' => 'low',
-                                    ],
-                                ],
-                                [
-                                    'type' => 'text',
-                                    'text' => $visionPrompt,
-                                ],
-                            ],
-                        ],
-                    ],
-                ]);
+            $resp = $runtime->visionAnalyze($visionPrompt, '', $imageUrl);
 
-            if (!$response->successful()) {
-                $err = $response->json('error.message', 'HTTP ' . $response->status());
+            if (empty($resp['success'])) {
+                $err = $resp['error'] ?? 'unknown';
                 Log::warning('[CREATIVE888 Geometry] Vision API error: ' . $err);
                 return ['room_type' => 'unknown', '_source' => 'api_error', '_error' => $err];
             }
 
-            $content = $response->json('choices.0.message.content', '');
+            $content = (string) ($resp['analysis'] ?? '');
 
             // Strip markdown fences if model added them
             $content = preg_replace('/^```(?:json)?\s*/i', '', trim($content));
@@ -240,19 +215,5 @@ Rules:
         return $prompt;
     }
 
-    /**
-     * Get OpenAI API key from platform_settings table.
-     */
-    private function getOpenAiKey(): string
-    {
-        try {
-            $row = DB::table('platform_settings')
-                ->where('key', 'openai_api_key')
-                ->first();
-
-            return $row->value ?? '';
-        } catch (\Throwable $e) {
-            return '';
-        }
-    }
+    // getOpenAiKey() removed PATCH 4 (2026-05-08) — auth handled by runtime.
 }

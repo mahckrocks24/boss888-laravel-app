@@ -2540,27 +2540,19 @@ HTMLSCRIPT;
             $reply = '';
             $actions = [];
             $ok = false;
-            // Call DeepSeek directly — same pattern as BellaController and the
-            // other engine services. RuntimeClient was failing so the keyword
-            // fallback was kicking in every time.
+            // PATCH 4 (2026-05-08): route through RuntimeClient (was direct
+            // DeepSeekConnector::chatJson — hands-vs-brain bypass).
             try {
-                if (class_exists(\App\Connectors\DeepSeekConnector::class)) {
-                    $llm = app(\App\Connectors\DeepSeekConnector::class);
-                    $messages = [
-                        ['role' => 'system', 'content' =>
-                            'You are a design AI for the Studio image editor. Return ONLY a single JSON object: '
-                          . '{"reply":"one friendly sentence","actions":[...]}. '
-                          . 'Valid action types: '
-                          . '{"type":"update_field","name":"<existing field>","value":"<new text>"}, '
-                          . '{"type":"apply_palette","vars":{"--primary":"#...","--bg":"#...","--text":"#...","--accent":"#..."}}, '
-                          . '{"type":"update_image","name":"<existing field>","url":"<absolute url>"}. '
-                          . 'Only reference fields that exist in the provided context. No markdown fences, no prose outside the JSON.'],
-                        ['role' => 'user',   'content' => $instructions],
-                    ];
-                    $resp = $llm->chatJson($messages, [
-                        'temperature' => 0.6,
-                        'max_tokens'  => 600,
-                    ]);
+                $runtime = app(\App\Connectors\RuntimeClient::class);
+                if ($runtime->isConfigured()) {
+                    $systemPrompt = 'You are a design AI for the Studio image editor. Return ONLY a single JSON object: '
+                                  . '{"reply":"one friendly sentence","actions":[...]}. '
+                                  . 'Valid action types: '
+                                  . '{"type":"update_field","name":"<existing field>","value":"<new text>"}, '
+                                  . '{"type":"apply_palette","vars":{"--primary":"#...","--bg":"#...","--text":"#...","--accent":"#..."}}, '
+                                  . '{"type":"update_image","name":"<existing field>","url":"<absolute url>"}. '
+                                  . 'Only reference fields that exist in the provided context. No markdown fences, no prose outside the JSON.';
+                    $resp = $runtime->chatJson($systemPrompt, $instructions, [], 600);
                     if (!empty($resp['success'])) {
                         $parsed = $resp['parsed'] ?? null;
                         if (is_array($parsed)) {
@@ -2568,16 +2560,15 @@ HTMLSCRIPT;
                             $actions = is_array($parsed['actions'] ?? null) ? $parsed['actions'] : [];
                             $ok = ($reply !== '' || !empty($actions));
                         } else {
-                            // json_object mode didn't parse — surface raw content as a plain reply.
                             $content = (string)($resp['content'] ?? '');
                             if ($content !== '') { $reply = $content; $ok = true; }
                         }
                     } else {
-                        \Illuminate\Support\Facades\Log::warning('studio.chat DeepSeek call failed', ['error' => $resp['error'] ?? null]);
+                        \Illuminate\Support\Facades\Log::warning('studio.chat runtime call failed', ['error' => $resp['error'] ?? null]);
                     }
                 }
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('studio.chat DeepSeek exception: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::warning('studio.chat runtime exception: ' . $e->getMessage());
             }
 
             // Fallback: lightweight keyword handler for when runtime is down.
@@ -3111,11 +3102,45 @@ HTMLSCRIPT;
         // studio-phase4-routes
         $studioAi = \App\Engines\Studio\Services\StudioAiService::class;
 
-        // Arthur AI (Phase 4)
-        Route::post('/ai/generate-design', fn(\Illuminate\Http\Request $r) => response()->json(app($studioAi)->generateDesign((int) $r->attributes->get('workspace_id'), $r->all())));
-        Route::post('/ai/generate-image',  fn(\Illuminate\Http\Request $r) => response()->json(app($studioAi)->generateImage((int)  $r->attributes->get('workspace_id'), $r->all())));
-        Route::post('/ai/suggest-copy',    fn(\Illuminate\Http\Request $r) => response()->json(app($studioAi)->suggestCopy((int)    $r->attributes->get('workspace_id'), $r->all())));
-        Route::post('/ai/chat',            fn(\Illuminate\Http\Request $r) => response()->json(app($studioAi)->chat((int)           $r->attributes->get('workspace_id'), $r->all())));
+        // Arthur AI (Phase 4) — PATCH 4 (2026-05-08): plan-gated + credit-reserved.
+        // Was direct service calls with no plan check or credit reservation,
+        // letting free-plan users drain provider keys at zero cost.
+        $studioAiGate = function (\Illuminate\Http\Request $r, string $method, int $cost, string $reason) use ($studioAi) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            if ($wsId <= 0) return response()->json(['error' => 'workspace_required'], 400);
+
+            $gate = app(\App\Core\Billing\FeatureGateService::class);
+            if (!$gate->canUseAI($wsId)) {
+                return response()->json([
+                    'error'            => 'Your plan does not include AI generation.',
+                    'upgrade_required' => true,
+                ], 403);
+            }
+
+            $credits = app(\App\Core\Billing\CreditService::class);
+            try {
+                $reservationRef = $credits->reserve($wsId, $cost, $reason);
+            } catch (\Throwable $e) {
+                return response()->json(['error' => 'Insufficient credits.', 'message' => $e->getMessage()], 402);
+            }
+
+            try {
+                $result = app($studioAi)->{$method}($wsId, $r->all());
+                if (!empty($result['success'])) {
+                    $credits->commit($wsId, $reservationRef, $cost);
+                } else {
+                    $credits->release($wsId, $reservationRef);
+                }
+                return response()->json($result);
+            } catch (\Throwable $e) {
+                $credits->release($wsId, $reservationRef);
+                throw $e;
+            }
+        };
+        Route::post('/ai/generate-design', fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'generateDesign', 5, 'studio_ai_generate_design'));
+        Route::post('/ai/generate-image',  fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'generateImage',  8, 'studio_ai_generate_image'));
+        Route::post('/ai/suggest-copy',    fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'suggestCopy',    1, 'studio_ai_suggest_copy'));
+        Route::post('/ai/chat',            fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'chat',           1, 'studio_ai_chat'));
 
         // Phase 5 — publish + thumbnail + resize
         Route::post('/designs/{id}/publish-social', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($studio)->publishToSocial((int) $id, (int) $r->attributes->get('workspace_id'), $r->all())));
@@ -3690,31 +3715,34 @@ HTMLSCRIPT;
                 }
             }
 
-            // Fallback to DeepSeek
-            $ds = app(\App\Connectors\DeepSeekConnector::class);
-            if ($ds->isConfigured()) {
+            // PATCH 4 (2026-05-08): runtime-only path. Was a DeepSeekConnector
+            // direct fallback that bypassed RuntimeClient.
+            $runtime = app(\App\Connectors\RuntimeClient::class);
+            if ($runtime->isConfigured()) {
                 $systemPrompt = "You are the LevelUp Growth AI Assistant."
                     . "\nYou help users navigate the platform, answer questions about their workspace data, and direct them to the right tools."
-                    . "\nBe helpful, concise, and professional."
+                    . "\nBe helpful, concise, and professional. Return ONLY a JSON object: {\"reply\":\"<your concise answer>\"}."
                     . $workspace_intelligence;
 
-                $messages = [['role' => 'system', 'content' => $systemPrompt]];
+                $historyText = '';
                 foreach (array_slice($history, -8) as $h) {
                     if (!empty($h['role']) && isset($h['content'])) {
-                        $messages[] = ['role' => $h['role'] === 'assistant' ? 'assistant' : 'user', 'content' => (string)$h['content']];
+                        $role = $h['role'] === 'assistant' ? 'Assistant' : 'User';
+                        $historyText .= "\n{$role}: " . (string) $h['content'];
                     }
                 }
-                $messages[] = ['role' => 'user', 'content' => $message];
-                $result = $ds->chat($messages, ['temperature' => 0.7, 'max_tokens' => 1000]);
+                $userPrompt = trim($historyText . "\nUser: " . $message);
+                $result = $runtime->chatJson($systemPrompt, $userPrompt, [], 1000);
+                $replyText = trim((string) ($result['parsed']['reply'] ?? $result['content'] ?? ''));
 
                 return response()->json([
-                    'response' => $result['content'] ?? 'I could not process that request.',
+                    'response' => $replyText !== '' ? $replyText : 'I could not process that request.',
                     'agent_response' => false,
                     'is_action' => $isAction,
                 ]);
             }
 
-            return response()->json(['response' => 'AI is not configured. Please set up DeepSeek or Runtime API keys in Admin Settings.']);
+            return response()->json(['response' => 'AI is not configured. Please set up RUNTIME_URL / RUNTIME_SECRET in .env.']);
         } catch (\Throwable $e) {
             return response()->json([
                 'response' => 'Sorry, I encountered an error: ' . $e->getMessage(),
@@ -7090,33 +7118,10 @@ Route::post('/builder/websites/{id}/arthur-edit', function (\Illuminate\Http\Req
             \Illuminate\Support\Facades\Log::warning('[Arthur Chat] ' . $e->getMessage());
         }
 
-        // Runtime chatJson failed or returned empty — DeepSeekConnector direct fallback
-        // (mirrors /assistant pattern at line ~2241)
-        try {
-            $ds = app(\App\Connectors\DeepSeekConnector::class);
-            if ($ds->isConfigured()) {
-                $messages = [
-                    ['role' => 'system', 'content' => $arthurSystem],
-                    ['role' => 'user', 'content' => $arthurUser],
-                ];
-                $dsResult = $ds->chat($messages, ['temperature' => 0.7, 'max_tokens' => 600]);
-                $dsReply = $dsResult['content'] ?? null;
-                if ($dsReply) {
-                    \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->decrement('balance', 1);
-                    return response()->json([
-                        'success' => true,
-                        'message' => $dsReply,
-                        'method' => 'chat',
-                        'credits_used' => 1,
-                        'credits_remaining' => ($credits->balance ?? 0) - 1,
-                        'reload_preview' => false,
-                    ]);
-                }
-            }
-        } catch (\Throwable $e2) {
-            \Illuminate\Support\Facades\Log::warning('[Arthur Chat DS Fallback] ' . $e2->getMessage());
-        }
-        // Chat DeepSeek returned nothing — surface a chat-shaped error.
+        // PATCH 4 (2026-05-08): DeepSeek direct fallback removed.
+        // Runtime is the only LLM path now (hands-vs-brain enforcement).
+        // If the primary $runtime->chatJson above already returned empty,
+        // we surface a chat-shaped graceful error.
         return response()->json([
             'success' => false,
             'message' => "I couldn't reach the AI just now. Try again in a moment.",

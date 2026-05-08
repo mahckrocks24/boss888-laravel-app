@@ -31,28 +31,20 @@ class SceneValidatorService
      *
      * @param  string $generatedUrl  Public URL of the generated image.
      * @param  array  $blueprint     Scene blueprint from geometry analysis.
-     * @param  string $apiKey        OpenAI API key. If empty, auto-resolved from platform_settings.
      * @return array  { pass: bool, score: float, issues: array, skipped: bool }
      */
-    public function validate(string $generatedUrl, array $blueprint, string $apiKey = ''): array
+    public function validate(string $generatedUrl, array $blueprint): array
     {
-        // Skip if blueprint confidence is too low
         if (($blueprint['confidence'] ?? 0) < 0.2) {
             return ['pass' => true, 'score' => 1.0, 'issues' => [], 'skipped' => true, 'reason' => 'Blueprint confidence too low to validate.'];
         }
 
-        // Resolve API key if not provided
-        if (empty($apiKey)) {
-            $apiKey = $this->getOpenAiKey();
-        }
-
-        // Skip if no API key or URL
-        if (empty($apiKey) || empty($generatedUrl)) {
-            return ['pass' => true, 'score' => 1.0, 'issues' => [], 'skipped' => true, 'reason' => 'API key or URL missing — validation skipped.'];
+        if (empty($generatedUrl)) {
+            return ['pass' => true, 'score' => 1.0, 'issues' => [], 'skipped' => true, 'reason' => 'No URL — validation skipped.'];
         }
 
         try {
-            return $this->validateWithVision($generatedUrl, $blueprint, $apiKey);
+            return $this->validateWithVision($generatedUrl, $blueprint);
         } catch (\Throwable $e) {
             Log::warning('[CREATIVE888 SceneValidator] Validation failed: ' . $e->getMessage());
             return ['pass' => true, 'score' => 0.5, 'issues' => [], 'skipped' => true, 'reason' => $e->getMessage()];
@@ -63,8 +55,15 @@ class SceneValidatorService
     // PRIVATE
     // =========================================================================
 
-    private function validateWithVision(string $generatedUrl, array $blueprint, string $apiKey): array
+    private function validateWithVision(string $generatedUrl, array $blueprint): array
     {
+        // PATCH 4 (2026-05-08): vision now via RuntimeClient (was direct
+        // Http::post to api.openai.com — hands-vs-brain bypass).
+        $runtime = app(\App\Connectors\RuntimeClient::class);
+        if (!$runtime->isConfigured()) {
+            return ['pass' => true, 'score' => 1.0, 'issues' => [], 'skipped' => true, 'reason' => 'Runtime not configured — validation skipped.'];
+        }
+
         $expected = $this->blueprintToExpectationText($blueprint);
 
         $prompt = "You are a geometry consistency checker for AI-generated interior images.
@@ -93,33 +92,13 @@ Return ONLY valid JSON (no markdown) in this exact format:
 overall_score: 0.0 (complete mismatch) to 1.0 (perfect match).
 Be strict. If the camera moved significantly or windows shifted, mark as false.";
 
-        $response = Http::timeout(25)
-            ->withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type'  => 'application/json',
-            ])
-            ->post('https://api.openai.com/v1/chat/completions', [
-                'model'      => 'gpt-4o',
-                'max_tokens' => 400,
-                'messages'   => [
-                    [
-                        'role'    => 'user',
-                        'content' => [
-                            ['type' => 'text', 'text' => $prompt],
-                            [
-                                'type'      => 'image_url',
-                                'image_url' => ['url' => $generatedUrl, 'detail' => 'low'],
-                            ],
-                        ],
-                    ],
-                ],
-            ]);
+        $resp = $runtime->visionAnalyze($prompt, '', $generatedUrl);
 
-        if (!$response->successful()) {
-            throw new \RuntimeException('Validation API HTTP ' . $response->status());
+        if (empty($resp['success'])) {
+            throw new \RuntimeException('Validation runtime error: ' . ($resp['error'] ?? 'unknown'));
         }
 
-        $content = $response->json('choices.0.message.content', '');
+        $content = (string) ($resp['analysis'] ?? '');
         $content = preg_replace('/^```(?:json)?\s*/i', '', trim($content));
         $content = preg_replace('/\s*```$/', '', $content);
         $result  = json_decode($content, true);
@@ -169,19 +148,5 @@ Be strict. If the camera moved significantly or windows shifted, mark as false."
         return implode("\n", $lines);
     }
 
-    /**
-     * Get OpenAI API key from platform_settings table.
-     */
-    private function getOpenAiKey(): string
-    {
-        try {
-            $row = DB::table('platform_settings')
-                ->where('key', 'openai_api_key')
-                ->first();
-
-            return $row->value ?? '';
-        } catch (\Throwable $e) {
-            return '';
-        }
-    }
+    // getOpenAiKey() removed PATCH 4 (2026-05-08) — auth handled by runtime.
 }

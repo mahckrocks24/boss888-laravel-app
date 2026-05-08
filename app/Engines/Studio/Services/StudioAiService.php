@@ -2,7 +2,7 @@
 
 namespace App\Engines\Studio\Services;
 
-use App\Connectors\DeepSeekConnector;
+use App\Connectors\RuntimeClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -17,15 +17,15 @@ use Illuminate\Support\Str;
  *   POST /api/studio/ai/suggest-copy        → suggestCopy()
  *   POST /api/studio/ai/chat                → chat()
  *
- * All LLM calls use DeepSeekConnector::chatJson() directly. All image calls
- * go direct to OpenAI DALL-E 3. Every method checks for the required API key
- * and returns a structured "api_key_missing" error instead of throwing.
+ * Hands-vs-brain (PATCH 4, 2026-05-08): all LLM and image-generation calls
+ * route through RuntimeClient. The earlier direct DeepSeek + direct DALL-E
+ * usage was a 4-site bypass of the architecture law.
  */
 class StudioAiService
 {
     public function __construct(
-        private DeepSeekConnector $llm,
-        private StudioService     $studio,
+        private RuntimeClient $runtime,
+        private StudioService $studio,
     ) {}
 
     // ═══════════════════════════════════════════════════════════════════
@@ -34,8 +34,8 @@ class StudioAiService
 
     public function generateDesign(int $wsId, array $params): array
     {
-        if (!$this->llm->isConfigured()) {
-            return ['success' => false, 'error' => 'api_key_missing', 'message' => 'DEEPSEEK_API_KEY not set in .env'];
+        if (!$this->runtime->isConfigured()) {
+            return ['success' => false, 'error' => 'runtime_unavailable', 'message' => 'RUNTIME_URL / RUNTIME_SECRET not configured'];
         }
 
         $prompt    = (string) ($params['prompt']    ?? 'Modern social media post');
@@ -80,10 +80,7 @@ class StudioAiService
               . '  "suggested_copy": { "headline": "...", "subheadline": "...", "cta": "..." }' . "\n"
               . "}";
 
-        $result = $this->llm->chatJson([
-            ['role' => 'system', 'content' => $system],
-            ['role' => 'user',   'content' => $user],
-        ], ['temperature' => 0.8, 'max_tokens' => 2000]);
+        $result = $this->runtime->chatJson($system, $user, [], 2000);
 
         if (empty($result['success']) || empty($result['parsed'])) {
             return ['success' => false, 'error' => 'ai_failed', 'message' => $result['error'] ?? ($result['parse_error'] ?? 'parse failed'), 'raw' => $result['content'] ?? null];
@@ -142,9 +139,8 @@ class StudioAiService
 
     public function generateImage(int $wsId, array $params): array
     {
-        $key = (string) env('OPENAI_API_KEY', '');
-        if ($key === '') {
-            return ['success' => false, 'error' => 'api_key_missing', 'message' => 'OPENAI_API_KEY not set in .env'];
+        if (!$this->runtime->isConfigured()) {
+            return ['success' => false, 'error' => 'runtime_unavailable', 'message' => 'RUNTIME_URL / RUNTIME_SECRET not configured'];
         }
 
         $userPrompt = (string) ($params['prompt'] ?? '');
@@ -163,22 +159,20 @@ class StudioAiService
                     . "No text, no logos, no watermarks, social media ready.";
 
         try {
-            $resp = Http::withToken($key)->timeout(90)->post('https://api.openai.com/v1/images/generations', [
-                'model'   => 'dall-e-3',
-                'prompt'  => $fullPrompt,
+            // PATCH 4 (2026-05-08): route through RuntimeClient instead of
+            // calling DALL-E directly. Runtime handles provider auth, key
+            // rotation, retry/backoff, and provider-name redaction.
+            $imgResult = $this->runtime->imageGenerate($fullPrompt, [
+                'style'   => $style,
                 'size'    => '1024x1024',
                 'quality' => 'standard',
-                'n'       => 1,
             ]);
-            if (!$resp->successful()) {
-                Log::warning('dall-e call failed', ['status' => $resp->status(), 'body' => $resp->body()]);
-                return ['success' => false, 'error' => 'dalle_failed', 'message' => 'DALL-E returned ' . $resp->status()];
+            if (empty($imgResult['success']) || empty($imgResult['url'])) {
+                Log::warning('runtime imageGenerate failed', ['result' => $imgResult]);
+                return ['success' => false, 'error' => 'image_generation_failed', 'message' => $imgResult['error'] ?? 'unknown'];
             }
-            $body = $resp->json();
-            $url  = $body['data'][0]['url'] ?? null;
-            if (!$url) return ['success' => false, 'error' => 'no_image_url'];
+            $url = $imgResult['url'];
 
-            // Download + save locally
             $dir = storage_path('app/public/ai-generated/' . $wsId);
             if (!is_dir($dir)) @mkdir($dir, 0775, true);
             $hash = substr(md5($fullPrompt . microtime(true)), 0, 12);
@@ -220,8 +214,8 @@ class StudioAiService
 
     public function suggestCopy(int $wsId, array $params): array
     {
-        if (!$this->llm->isConfigured()) {
-            return ['success' => false, 'error' => 'api_key_missing', 'message' => 'DEEPSEEK_API_KEY not set'];
+        if (!$this->runtime->isConfigured()) {
+            return ['success' => false, 'error' => 'runtime_unavailable', 'message' => 'RUNTIME_URL / RUNTIME_SECRET not configured'];
         }
         $context    = (string) ($params['context']    ?? '');
         $fieldType  = (string) ($params['field_type'] ?? 'headline');
@@ -236,10 +230,7 @@ class StudioAiService
                 . "Context: {$context}\n\n"
                 . "Return: " . '{"suggestions":["...","...","...","...","..."]}';
 
-        $result = $this->llm->chatJson([
-            ['role' => 'system', 'content' => $system],
-            ['role' => 'user',   'content' => $user],
-        ], ['temperature' => 0.85, 'max_tokens' => 500]);
+        $result = $this->runtime->chatJson($system, $user, [], 500);
 
         if (empty($result['success']) || empty($result['parsed']['suggestions'])) {
             return ['success' => false, 'error' => 'ai_failed', 'message' => $result['error'] ?? 'parse failed'];
@@ -253,8 +244,8 @@ class StudioAiService
 
     public function chat(int $wsId, array $params): array
     {
-        if (!$this->llm->isConfigured()) {
-            return ['success' => false, 'error' => 'api_key_missing', 'message' => 'DEEPSEEK_API_KEY not set'];
+        if (!$this->runtime->isConfigured()) {
+            return ['success' => false, 'error' => 'runtime_unavailable', 'message' => 'RUNTIME_URL / RUNTIME_SECRET not configured'];
         }
         $message    = (string) ($params['message'] ?? '');
         $designId   = (int)    ($params['design_id'] ?? 0);
@@ -276,10 +267,7 @@ class StudioAiService
               . "USER MESSAGE: {$message}\n\n"
               . 'Return JSON: {"actions":[...],"reply":"..."}';
 
-        $result = $this->llm->chatJson([
-            ['role' => 'system', 'content' => $system],
-            ['role' => 'user',   'content' => $user],
-        ], ['temperature' => 0.6, 'max_tokens' => 1000]);
+        $result = $this->runtime->chatJson($system, $user, [], 1000);
 
         if (empty($result['success']) || empty($result['parsed'])) {
             return ['success' => false, 'error' => 'ai_failed', 'message' => $result['error'] ?? 'parse failed', 'raw' => $result['content'] ?? null];

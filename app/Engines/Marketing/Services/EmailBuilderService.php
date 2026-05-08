@@ -4,7 +4,6 @@ namespace App\Engines\Marketing\Services;
 
 use App\Engines\Marketing\EmailBlockLibrary;
 use App\Connectors\EmailConnector;
-use App\Connectors\DeepSeekConnector;
 use App\Connectors\RuntimeClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,9 +30,8 @@ use Illuminate\Support\Str;
 class EmailBuilderService
 {
     public function __construct(
-        private EmailConnector     $email,
-        private RuntimeClient      $runtime,
-        private DeepSeekConnector  $llm,
+        private EmailConnector $email,
+        private RuntimeClient  $runtime,
     ) {}
 
     // ═══════════════════════════════════════════════════════════════════
@@ -678,10 +676,7 @@ JS;
               . "Write copy that sounds human, not AI. Make the headline punchy (max 8 words). CTA must be action-verb first. Body text max 3 short paragraphs.\n\n"
               . "Allowed block_types: " . implode(',', EmailBlockLibrary::TYPES) . ".";
 
-        $result = $this->llm->chatJson([
-            ['role' => 'system', 'content' => $system],
-            ['role' => 'user',   'content' => $user],
-        ], ['temperature' => 0.7, 'max_tokens' => 2200]);
+        $result = $this->runtime->chatJson($system, $user, [], 2200);
 
         if (empty($result['success']) || empty($result['parsed'])) {
             return ['success' => false, 'error' => $result['error'] ?? ($result['parse_error'] ?? 'ai_failed'), 'raw' => $result['content'] ?? null];
@@ -734,10 +729,7 @@ JS;
                 . "Current content: " . json_encode($current) . "\n\n"
                 . "Return the updated content JSON only.";
 
-        $result = $this->llm->chatJson([
-            ['role' => 'system', 'content' => $system],
-            ['role' => 'user',   'content' => $user],
-        ], ['temperature' => 0.7, 'max_tokens' => 900]);
+        $result = $this->runtime->chatJson($system, $user, [], 900);
 
         if (empty($result['success']) || empty($result['parsed'])) {
             return ['error' => $result['error'] ?? ($result['parse_error'] ?? 'ai_failed'), 'raw' => $result['content'] ?? null];
@@ -763,10 +755,7 @@ JS;
                 . "Return:\n"
                 . '{"subjects":[{"text":string,"angle":string,"score":1-10,"reason":string}]}';
 
-        $result = $this->llm->chatJson([
-            ['role' => 'system', 'content' => $system],
-            ['role' => 'user',   'content' => $user],
-        ], ['temperature' => 0.8, 'max_tokens' => 800]);
+        $result = $this->runtime->chatJson($system, $user, [], 800);
 
         if (empty($result['success']) || empty($result['parsed'])) {
             return ['subjects' => [], 'error' => $result['error'] ?? ($result['parse_error'] ?? 'ai_failed')];
@@ -1417,13 +1406,13 @@ JS;
         );
 
         try {
-            $prompt = "Write one short email-marketing insight (2-3 sentences) based on these stats: open_rate={$openRate}% click_rate={$clickRate}% peak_hour={$peakLabel} industry_average_open_rate={$ind}%. Be specific and actionable. Plain text only, no JSON.";
-            $result = $this->llm->chat([
-                ['role' => 'system', 'content' => 'You are a senior email marketing analyst. Give concise, specific insights.'],
-                ['role' => 'user',   'content' => $prompt],
-            ], ['temperature' => 0.5, 'max_tokens' => 200]);
-            $text = trim((string) ($result['content'] ?? ''));
-            $out  = $text !== '' ? $text : $fallback;
+            // PATCH 4 (2026-05-08): runtime->chatJson with JSON-wrap so we
+            // get parseable output. Was direct DeepSeek $this->llm->chat().
+            $system = 'You are a senior email marketing analyst. Give concise, specific insights. Return ONLY a JSON object: {"insight":"<2-3 sentence insight, plain text>"}.';
+            $user   = "Write one short email-marketing insight (2-3 sentences) based on these stats: open_rate={$openRate}% click_rate={$clickRate}% peak_hour={$peakLabel} industry_average_open_rate={$ind}%. Be specific and actionable.";
+            $result = $this->runtime->chatJson($system, $user, [], 200);
+            $text   = trim((string) ($result['parsed']['insight'] ?? ''));
+            $out    = $text !== '' ? $text : $fallback;
         } catch (\Throwable $e) {
             $out = $fallback;
         }

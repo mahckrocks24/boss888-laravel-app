@@ -597,48 +597,26 @@ class AdminMediaController
         $quality  = $validated['quality']  ?? 'standard';
         $category = $validated['category'] ?? 'generated';
 
-        $apiKey = config('services.openai.api_key', env('OPENAI_API_KEY', ''));
-        if (! $apiKey) {
-            return response()->json(['error' => 'OPENAI_API_KEY not configured'], 500);
+        // PATCH 4 (2026-05-08): route through RuntimeClient (was direct curl
+        // to api.openai.com — hands-vs-brain bypass introduced in T3.8).
+        $runtime = app(\App\Connectors\RuntimeClient::class);
+        if (!$runtime->isConfigured()) {
+            return response()->json(['error' => 'Runtime (RUNTIME_URL / RUNTIME_SECRET) not configured'], 500);
         }
 
-        // Call DALL-E 3.
-        $ch = curl_init('https://api.openai.com/v1/images/generations');
-        curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 120,
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', "Authorization: Bearer {$apiKey}"],
-            CURLOPT_POSTFIELDS     => json_encode([
-                'model'           => 'dall-e-3',
-                'prompt'          => $validated['prompt'],
-                'n'               => 1,
-                'size'            => $size,
-                'quality'         => $quality,
-                'response_format' => 'url',
-            ]),
+        $imgResult = $runtime->imageGenerate($validated['prompt'], [
+            'size'    => $size,
+            'quality' => $quality,
         ]);
-        $resp = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err  = curl_error($ch);
-        curl_close($ch);
 
-        if ($code !== 200) {
-            $errorMsg = $err ?: ('HTTP ' . $code);
-            if ($resp) {
-                $body = json_decode($resp, true);
-                $errorMsg = $body['error']['message'] ?? $errorMsg;
-            }
-            Log::warning('[AdminMedia] generate OpenAI failed', ['code' => $code, 'err' => $errorMsg]);
-            return response()->json(['error' => 'OpenAI generation failed: ' . $errorMsg], 500);
+        if (empty($imgResult['success']) || empty($imgResult['url'])) {
+            $errorMsg = $imgResult['error'] ?? 'unknown';
+            Log::warning('[AdminMedia] generate runtime failed', ['result' => $imgResult]);
+            return response()->json(['error' => 'Image generation failed: ' . $errorMsg], 500);
         }
 
-        $data = json_decode($resp, true);
-        $imageUrl = $data['data'][0]['url'] ?? null;
-        $revisedPrompt = $data['data'][0]['revised_prompt'] ?? $validated['prompt'];
-        if (! $imageUrl) {
-            return response()->json(['error' => 'No URL in OpenAI response'], 500);
-        }
+        $imageUrl      = $imgResult['url'];
+        $revisedPrompt = $imgResult['revised_prompt'] ?? $validated['prompt'];
 
         // Download.
         $imageData = @file_get_contents($imageUrl);

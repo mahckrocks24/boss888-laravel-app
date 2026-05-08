@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Connectors\DeepSeekConnector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -13,15 +12,11 @@ use Illuminate\Support\Str;
 class BellaController
 {
     /**
-     * FIX 2026-04-12 (Phase 2L.5 / doc 08): the original code used
-     * `new DeepSeekConnector()` directly inside chat() — bypassing Laravel's
-     * DI container. Worst DI pattern in the codebase. Now properly injected.
-     * This is the prerequisite for the Phase 2L.5 connector swap that will
-     * eventually replace DeepSeekConnector with RuntimeClient (gated on
-     * Phase 0.17 — chat_json runtime task type).
+     * Hands-vs-brain (PATCH 4, 2026-05-08): DeepSeekConnector injection
+     * removed — `$this->llm` was never actually called in this class.
+     * `$this->runtime` has been the active LLM path since Phase 2L.5.
      */
     public function __construct(
-        private DeepSeekConnector $llm,
         private \App\Connectors\RuntimeClient $runtime,
     ) {}
 
