@@ -592,11 +592,7 @@ footer{background:var(--void);padding:80px 0 32px;border-top:1px solid var(--pan
     </div>
     <div class="footer-bottom">
       <span class="footer-text" data-field="footer_text">{{footer_text}}</span>
-      <div class="footer-socials">
-        <a href="{{social_github}}" class="social-github" data-field="social_github">GitHub</a>
-        <a href="{{social_x}}" class="social-x" data-field="social_x">X</a>
-        <a href="{{social_linkedin}}" class="social-linkedin" data-field="social_linkedin">LinkedIn</a>
-      </div>
+      <div class="footer-socials"><a href="{{social_facebook}}" class="footer-social" data-field="social_facebook" target="_blank" rel="noopener" aria-label="Facebook">Facebook</a><a href="{{social_instagram}}" class="footer-social" data-field="social_instagram" target="_blank" rel="noopener" aria-label="Instagram">Instagram</a><a href="{{social_linkedin}}" class="footer-social" data-field="social_linkedin" target="_blank" rel="noopener" aria-label="LinkedIn">LinkedIn</a><a href="{{social_twitter}}" class="footer-social" data-field="social_twitter" target="_blank" rel="noopener" aria-label="X / Twitter">X</a><a href="{{social_youtube}}" class="footer-social" data-field="social_youtube" target="_blank" rel="noopener" aria-label="YouTube">YouTube</a><a href="{{social_tiktok}}" class="footer-social" data-field="social_tiktok" target="_blank" rel="noopener" aria-label="TikTok">TikTok</a><a href="{{social_whatsapp}}" class="footer-social" data-field="social_whatsapp" target="_blank" rel="noopener" aria-label="WhatsApp">WhatsApp</a></div>
     </div>
   </div>
 </footer>
@@ -615,8 +611,28 @@ function handleBookingSubmit(form,e){
 }
 function handleContactSubmit(form,e){
   e.preventDefault();
-  form.classList.add('submitted');
-  setTimeout(()=>{form.reset();form.classList.remove('submitted')},4000);
+  var subdomain = (window.location.hostname || '').split('.')[0];
+  var fd = new FormData(form);
+  var data = {
+    firstname: fd.get('name') || '',
+    email:     fd.get('email') || '',
+    phone:     fd.get('phone') || '',
+    message:   fd.get('message') || ''
+  };
+  if (fd.get('company')) data.message = '[Company: ' + fd.get('company') + ']
+' + data.message;
+  fetch('/api/public/contact/' + subdomain, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(function(r){
+    if (r.ok) { form.classList.add('submitted'); setTimeout(function(){form.reset(); form.classList.remove('submitted');}, 4000); }
+    else      { alert('Submission failed — please try again or email us directly.'); }
+  }).catch(function(){
+    alert('Network error — please try again.');
+  });
+  return false;
+},4000);
   return false;
 }
 </script>

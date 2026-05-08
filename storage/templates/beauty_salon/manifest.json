@@ -3,219 +3,1276 @@
   "name": "Beauty & Wellness Studio",
   "version": "1.0.0",
   "industry": "beauty_salon",
-  "description": "Soft-luxe template for beauty salons, spas, and wellness studios. Blush tones, rose-gold accents, serif headings — built to present a considered service menu and convert appointment intent.",
+  "description": "Soft-luxe template for beauty salons, spas, and wellness studios. Blush tones, rose-gold accents, serif headings \u2014 built to present a considered service menu and convert appointment intent.",
   "variation": "luxury",
   "preview_image": "preview.jpg",
   "created_at": "2026-04-18",
   "blocks": [
-    {"id":"nav","name":"Navigation","fields":["business_name","nav_cta"],
-     "elements":{"logo":".nav-logo","links":".nav-links","link":".nav-links li a","primary_button":"a.nav-cta","burger":".nav-burger"}},
-    {"id":"hero","name":"Hero","fields":["hero_eyebrow","hero_title","hero_subtitle","hero_cta","hero_cta_secondary","hero_image","hero_trust_badge"],
-     "elements":{"eyebrow":".hero-eyebrow","heading":"h1.hero-h1","subheading":"p.hero-sub","primary_button":"a.btn-primary","secondary_button":"a.btn-ghost","image":".hero-media img","overlay":".hero-overlay","trust_badge":".hero-trust"}},
-    {"id":"stats","name":"Stats","fields":["stat_1_value","stat_1_label","stat_2_value","stat_2_label","stat_3_value","stat_3_label","stat_4_value","stat_4_label"],
-     "elements":{"item":".stat-item","number":".stat-num","label":".stat-label"}},
-    {"id":"services_menu","name":"Services Menu",
-     "fields":["services_eyebrow","services_title","services_intro",
-       "service_1_title","service_1_text","service_1_price","service_1_duration","service_1_tag_1","service_1_tag_2",
-       "service_2_title","service_2_text","service_2_price","service_2_duration","service_2_tag_1","service_2_tag_2",
-       "service_3_title","service_3_text","service_3_price","service_3_duration","service_3_tag_1","service_3_tag_2",
-       "service_4_title","service_4_text","service_4_price","service_4_duration","service_4_tag_1","service_4_tag_2",
-       "service_5_title","service_5_text","service_5_price","service_5_duration","service_5_tag_1","service_5_tag_2",
-       "service_6_title","service_6_text","service_6_price","service_6_duration","service_6_tag_1","service_6_tag_2"],
-     "elements":{"eyebrow":".eyebrow","heading":"h2.section-h2","intro":".services-intro","grid":".service-grid","card":".service-card","card_title":".service-title","card_description":".service-desc","price":".service-price","duration":".service-duration","tag":".service-tag"}},
-    {"id":"team","name":"Team",
-     "fields":["team_eyebrow","team_title","team_intro",
-       "team_1_name","team_1_title","team_1_specialty","team_1_bio","team_1_image",
-       "team_2_name","team_2_title","team_2_specialty","team_2_bio","team_2_image",
-       "team_3_name","team_3_title","team_3_specialty","team_3_bio","team_3_image",
-       "team_4_name","team_4_title","team_4_specialty","team_4_bio","team_4_image"],
-     "elements":{"eyebrow":".eyebrow","heading":"h2.section-h2","intro":".team-intro","grid":".team-grid","card":".team-card","image":".team-card img","team_name":".team-name","team_title":".team-role","team_specialty":".team-specialty","team_bio":".team-bio"}},
-    {"id":"gallery","name":"Gallery",
-     "fields":["gallery_eyebrow","gallery_title","gallery_intro",
-       "gallery_1_title","gallery_1_category","gallery_1_image",
-       "gallery_2_title","gallery_2_category","gallery_2_image",
-       "gallery_3_title","gallery_3_category","gallery_3_image",
-       "gallery_4_title","gallery_4_category","gallery_4_image",
-       "gallery_5_title","gallery_5_category","gallery_5_image",
-       "gallery_6_title","gallery_6_category","gallery_6_image"],
-     "elements":{"eyebrow":".eyebrow","heading":"h2.section-h2","intro":".gallery-intro","grid":".gallery-grid","item":".gallery-item","image":".gallery-item img","caption":".gallery-caption","caption_title":".gallery-title","caption_category":".gallery-category","overlay":".gallery-overlay"}},
-    {"id":"brands","name":"Brands",
-     "fields":["brands_eyebrow","brands_title","brand_1_name","brand_2_name","brand_3_name","brand_4_name","brand_5_name","brand_6_name","brand_7_name","brand_8_name"],
-     "elements":{"eyebrow":".eyebrow","heading":"h2.brands-heading","strip":".brands-strip","brand":".brand-item"}},
-    {"id":"testimonials","name":"Testimonials",
-     "fields":["testimonials_eyebrow","testimonials_title",
-       "testimonial_1_quote","testimonial_1_author","testimonial_1_service",
-       "testimonial_2_quote","testimonial_2_author","testimonial_2_service",
-       "testimonial_3_quote","testimonial_3_author","testimonial_3_service"],
-     "elements":{"eyebrow":".eyebrow","heading":"h2.section-h2","track":".testimonial-track","slide":".testimonial-slide","quote":".testimonial-quote","author":".testimonial-author","service":".testimonial-service","dot":".testimonial-dot"}},
-    {"id":"blog","name":"Blog / Journal",
-     "fields":["blog_eyebrow","blog_title","blog_intro",
-       "blog_1_category","blog_1_title","blog_1_excerpt","blog_1_image",
-       "blog_2_category","blog_2_title","blog_2_excerpt","blog_2_image",
-       "blog_3_category","blog_3_title","blog_3_excerpt","blog_3_image",
-       "blog_cta"],
-     "elements":{"eyebrow":".eyebrow","heading":"h2.section-h2","intro":".blog-intro","grid":".blog-grid","article":".blog-card","image":".blog-image img","article_category":".blog-category","article_title":".blog-title","article_excerpt":".blog-excerpt","article_link":".blog-link","primary_button":".blog-cta-btn"}},
-    {"id":"booking","name":"Book Appointment","fields":["booking_title","booking_intro","booking_cta"],
-     "elements":{"heading":"h2.booking-h2","intro":".booking-intro","form":".booking-form","submit_button":"button.booking-submit","date_input":"input[name=\"preferred_date\"]","time_slot":".booking-slot"}},
-    {"id":"contact","name":"Contact","fields":["contact_eyebrow","contact_title","contact_intro","contact_email","contact_phone","contact_address","contact_hours","contact_form_title","form_submit_text","form_success_message"],
-     "elements":{"eyebrow":".eyebrow","heading":"h2.section-h2","intro":".contact-intro","info_label":".contact-item-label","info_value":".contact-item-value","form":".contact-form","form_field":".form-field","form_label":".form-field label","form_input":".form-field input, .form-field textarea, .form-field select","primary_button":"button.form-submit","success_message":"#form-success"}},
-    {"id":"footer","name":"Footer","fields":["business_name","footer_tagline","footer_text","social_instagram","social_tiktok","social_pinterest"],
-     "elements":{"logo":".footer-logo","tagline":".footer-tagline","links":".footer-links","link":".footer-links li a","social":".footer-social","social_link":".footer-social a","copy":".footer-copy"}}
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "fields": [
+        "business_name",
+        "nav_cta"
+      ],
+      "elements": {
+        "logo": ".nav-logo",
+        "links": ".nav-links",
+        "link": ".nav-links li a",
+        "primary_button": "a.nav-cta",
+        "burger": ".nav-burger"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero",
+      "fields": [
+        "hero_eyebrow",
+        "hero_title",
+        "hero_subtitle",
+        "hero_cta",
+        "hero_cta_secondary",
+        "hero_image",
+        "hero_trust_badge"
+      ],
+      "elements": {
+        "eyebrow": ".hero-eyebrow",
+        "heading": "h1.hero-h1",
+        "subheading": "p.hero-sub",
+        "primary_button": "a.btn-primary",
+        "secondary_button": "a.btn-ghost",
+        "image": ".hero-media img",
+        "overlay": ".hero-overlay",
+        "trust_badge": ".hero-trust"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats",
+      "fields": [
+        "stat_1_value",
+        "stat_1_label",
+        "stat_2_value",
+        "stat_2_label",
+        "stat_3_value",
+        "stat_3_label",
+        "stat_4_value",
+        "stat_4_label"
+      ],
+      "elements": {
+        "item": ".stat-item",
+        "number": ".stat-num",
+        "label": ".stat-label"
+      }
+    },
+    {
+      "id": "services_menu",
+      "name": "Services Menu",
+      "fields": [
+        "services_eyebrow",
+        "services_title",
+        "services_intro",
+        "service_1_title",
+        "service_1_text",
+        "service_1_price",
+        "service_1_duration",
+        "service_1_tag_1",
+        "service_1_tag_2",
+        "service_2_title",
+        "service_2_text",
+        "service_2_price",
+        "service_2_duration",
+        "service_2_tag_1",
+        "service_2_tag_2",
+        "service_3_title",
+        "service_3_text",
+        "service_3_price",
+        "service_3_duration",
+        "service_3_tag_1",
+        "service_3_tag_2",
+        "service_4_title",
+        "service_4_text",
+        "service_4_price",
+        "service_4_duration",
+        "service_4_tag_1",
+        "service_4_tag_2",
+        "service_5_title",
+        "service_5_text",
+        "service_5_price",
+        "service_5_duration",
+        "service_5_tag_1",
+        "service_5_tag_2",
+        "service_6_title",
+        "service_6_text",
+        "service_6_price",
+        "service_6_duration",
+        "service_6_tag_1",
+        "service_6_tag_2"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".services-intro",
+        "grid": ".service-grid",
+        "card": ".service-card",
+        "card_title": ".service-title",
+        "card_description": ".service-desc",
+        "price": ".service-price",
+        "duration": ".service-duration",
+        "tag": ".service-tag"
+      }
+    },
+    {
+      "id": "team",
+      "name": "Team",
+      "fields": [
+        "team_eyebrow",
+        "team_title",
+        "team_intro",
+        "team_1_name",
+        "team_1_title",
+        "team_1_specialty",
+        "team_1_bio",
+        "team_1_image",
+        "team_2_name",
+        "team_2_title",
+        "team_2_specialty",
+        "team_2_bio",
+        "team_2_image",
+        "team_3_name",
+        "team_3_title",
+        "team_3_specialty",
+        "team_3_bio",
+        "team_3_image",
+        "team_4_name",
+        "team_4_title",
+        "team_4_specialty",
+        "team_4_bio",
+        "team_4_image"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".team-intro",
+        "grid": ".team-grid",
+        "card": ".team-card",
+        "image": ".team-card img",
+        "team_name": ".team-name",
+        "team_title": ".team-role",
+        "team_specialty": ".team-specialty",
+        "team_bio": ".team-bio"
+      }
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "fields": [
+        "gallery_eyebrow",
+        "gallery_title",
+        "gallery_intro",
+        "gallery_1_title",
+        "gallery_1_category",
+        "gallery_1_image",
+        "gallery_2_title",
+        "gallery_2_category",
+        "gallery_2_image",
+        "gallery_3_title",
+        "gallery_3_category",
+        "gallery_3_image",
+        "gallery_4_title",
+        "gallery_4_category",
+        "gallery_4_image",
+        "gallery_5_title",
+        "gallery_5_category",
+        "gallery_5_image",
+        "gallery_6_title",
+        "gallery_6_category",
+        "gallery_6_image"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".gallery-intro",
+        "grid": ".gallery-grid",
+        "item": ".gallery-item",
+        "image": ".gallery-item img",
+        "caption": ".gallery-caption",
+        "caption_title": ".gallery-title",
+        "caption_category": ".gallery-category",
+        "overlay": ".gallery-overlay"
+      }
+    },
+    {
+      "id": "brands",
+      "name": "Brands",
+      "fields": [
+        "brands_eyebrow",
+        "brands_title",
+        "brand_1_name",
+        "brand_2_name",
+        "brand_3_name",
+        "brand_4_name",
+        "brand_5_name",
+        "brand_6_name",
+        "brand_7_name",
+        "brand_8_name"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.brands-heading",
+        "strip": ".brands-strip",
+        "brand": ".brand-item"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Testimonials",
+      "fields": [
+        "testimonials_eyebrow",
+        "testimonials_title",
+        "testimonial_1_quote",
+        "testimonial_1_author",
+        "testimonial_1_service",
+        "testimonial_2_quote",
+        "testimonial_2_author",
+        "testimonial_2_service",
+        "testimonial_3_quote",
+        "testimonial_3_author",
+        "testimonial_3_service"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "track": ".testimonial-track",
+        "slide": ".testimonial-slide",
+        "quote": ".testimonial-quote",
+        "author": ".testimonial-author",
+        "service": ".testimonial-service",
+        "dot": ".testimonial-dot"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog / Journal",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_1_category",
+        "blog_1_title",
+        "blog_1_excerpt",
+        "blog_1_image",
+        "blog_2_category",
+        "blog_2_title",
+        "blog_2_excerpt",
+        "blog_2_image",
+        "blog_3_category",
+        "blog_3_title",
+        "blog_3_excerpt",
+        "blog_3_image",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".blog-intro",
+        "grid": ".blog-grid",
+        "article": ".blog-card",
+        "image": ".blog-image img",
+        "article_category": ".blog-category",
+        "article_title": ".blog-title",
+        "article_excerpt": ".blog-excerpt",
+        "article_link": ".blog-link",
+        "primary_button": ".blog-cta-btn"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book Appointment",
+      "fields": [
+        "booking_title",
+        "booking_intro",
+        "booking_cta"
+      ],
+      "elements": {
+        "heading": "h2.booking-h2",
+        "intro": ".booking-intro",
+        "form": ".booking-form",
+        "submit_button": "button.booking-submit",
+        "date_input": "input[name=\"preferred_date\"]",
+        "time_slot": ".booking-slot"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact",
+      "fields": [
+        "contact_eyebrow",
+        "contact_title",
+        "contact_intro",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "contact_hours",
+        "contact_form_title",
+        "form_submit_text",
+        "form_success_message"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2.section-h2",
+        "intro": ".contact-intro",
+        "info_label": ".contact-item-label",
+        "info_value": ".contact-item-value",
+        "form": ".contact-form",
+        "form_field": ".form-field",
+        "form_label": ".form-field label",
+        "form_input": ".form-field input, .form-field textarea, .form-field select",
+        "primary_button": "button.form-submit",
+        "success_message": "#form-success"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "fields": [
+        "business_name",
+        "footer_tagline",
+        "footer_text",
+        "social_instagram",
+        "social_tiktok",
+        "social_pinterest"
+      ],
+      "elements": {
+        "logo": ".footer-logo",
+        "tagline": ".footer-tagline",
+        "links": ".footer-links",
+        "link": ".footer-links li a",
+        "social": ".footer-social",
+        "social_link": ".footer-social a",
+        "copy": ".footer-copy"
+      }
+    }
   ],
   "variables": {
-    "business_name":      {"type":"text","label":"Studio Name","default":"Atelier Soirée"},
-    "business_tagline":   {"type":"text","label":"Tagline","default":"Beauty Studio · Dubai"},
-    "meta_description":   {"type":"text","label":"Meta Description","default":"Atelier Soirée — a private beauty studio in Dubai specialising in couture hair colour, bespoke facials, and hand-finished manicures, by appointment only."},
-    "canonical_url":      {"type":"url","label":"Canonical URL","default":"https://ateliersoiree.ae"},
-    "og_image":           {"type":"image","label":"OG Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "og_locale":          {"type":"text","label":"OG Locale","default":"en_US"},
-    "nav_cta":            {"type":"text","label":"Nav CTA","default":"Book Appointment"},
-
-    "hero_eyebrow":       {"type":"text","label":"Hero Eyebrow","default":"By Appointment · Dubai Marina"},
-    "hero_title":         {"type":"html","label":"Hero Title","default":"Beauty,<br><em>quietly done.</em>"},
-    "hero_subtitle":      {"type":"text","label":"Hero Subtitle","default":"A six-chair studio in Dubai Marina — couture hair, bespoke facials, and hand-finished manicures, taught and delivered by a close team we have trained ourselves."},
-    "hero_cta":           {"type":"text","label":"Primary CTA","default":"Book Appointment"},
-    "hero_cta_secondary": {"type":"text","label":"Secondary CTA","default":"See the Menu"},
-    "hero_image":         {"type":"image","label":"Hero Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "hero_trust_badge":   {"type":"text","label":"Trust Badge","default":"By Appointment · Organic Product · Six Seats"},
-
-    "stat_1_value": {"type":"text","label":"Stat 1","default":"9"}, "stat_1_label": {"type":"text","label":"Stat 1 Label","default":"Years Open"},
-    "stat_2_value": {"type":"text","label":"Stat 2","default":"6"}, "stat_2_label": {"type":"text","label":"Stat 2 Label","default":"Stylists"},
-    "stat_3_value": {"type":"text","label":"Stat 3","default":"4,200+"}, "stat_3_label": {"type":"text","label":"Stat 3 Label","default":"Clients Served"},
-    "stat_4_value": {"type":"text","label":"Stat 4","default":"4.9★"}, "stat_4_label": {"type":"text","label":"Stat 4 Label","default":"Client Rating"},
-
-    "services_eyebrow": {"type":"text","label":"Menu Eyebrow","default":"The Menu"},
-    "services_title":   {"type":"html","label":"Menu Title","default":"A considered<br><em>service menu.</em>"},
-    "services_intro":   {"type":"text","label":"Menu Intro","default":"A short, curated list. Every service is individually timed and begins with a fifteen-minute consultation — we would rather do six things beautifully than forty things adequately."},
-    "service_1_title": {"type":"text","label":"S1 Title","default":"Couture Hair Colour"},
-    "service_1_text":  {"type":"text","label":"S1 Text","default":"Hand-painted balayage and single-process colour using ammonia-free formulations. Consultation, toner, and post-colour treatment included."},
-    "service_1_price": {"type":"text","label":"S1 Price","default":"from AED 950"}, "service_1_duration": {"type":"text","label":"S1 Duration","default":"2.5 hrs"},
-    "service_1_tag_1": {"type":"text","label":"S1 Tag 1","default":"Balayage"}, "service_1_tag_2": {"type":"text","label":"S1 Tag 2","default":"Ammonia-Free"},
-    "service_2_title": {"type":"text","label":"S2 Title","default":"Signature Cut & Finish"},
-    "service_2_text":  {"type":"text","label":"S2 Text","default":"Dry-cut consultation, shape, and finish — tailored to how you style at home, not to a trend. Scalp massage on arrival, always."},
-    "service_2_price": {"type":"text","label":"S2 Price","default":"from AED 550"}, "service_2_duration": {"type":"text","label":"S2 Duration","default":"90 min"},
-    "service_2_tag_1": {"type":"text","label":"S2 Tag 1","default":"Dry Cut"}, "service_2_tag_2": {"type":"text","label":"S2 Tag 2","default":"Scalp Massage"},
-    "service_3_title": {"type":"text","label":"S3 Title","default":"Bespoke Facial"},
-    "service_3_text":  {"type":"text","label":"S3 Text","default":"Ninety minutes, individually formulated to your skin on the day. Manual lymphatic drainage, serums and masks mixed in-room, no device upsells."},
-    "service_3_price": {"type":"text","label":"S3 Price","default":"from AED 700"}, "service_3_duration": {"type":"text","label":"S3 Duration","default":"90 min"},
-    "service_3_tag_1": {"type":"text","label":"S3 Tag 1","default":"Lymphatic"}, "service_3_tag_2": {"type":"text","label":"S3 Tag 2","default":"Hand-Mixed"},
-    "service_4_title": {"type":"text","label":"S4 Title","default":"Hand-Finished Manicure"},
-    "service_4_text":  {"type":"text","label":"S4 Text","default":"Natural nail care — no acrylics, no gels, no drills. Cuticle work, strengthening base, and hand massage with cold-pressed oil."},
-    "service_4_price": {"type":"text","label":"S4 Price","default":"AED 280"}, "service_4_duration": {"type":"text","label":"S4 Duration","default":"60 min"},
-    "service_4_tag_1": {"type":"text","label":"S4 Tag 1","default":"Natural Nail"}, "service_4_tag_2": {"type":"text","label":"S4 Tag 2","default":"No Gel"},
-    "service_5_title": {"type":"text","label":"S5 Title","default":"Editorial Makeup"},
-    "service_5_text":  {"type":"text","label":"S5 Text","default":"Event, bridal, and photography makeup. Skin-first approach — long-wear formulations that still read natural in daylight and on camera."},
-    "service_5_price": {"type":"text","label":"S5 Price","default":"from AED 650"}, "service_5_duration": {"type":"text","label":"S5 Duration","default":"75 min"},
-    "service_5_tag_1": {"type":"text","label":"S5 Tag 1","default":"Bridal"}, "service_5_tag_2": {"type":"text","label":"S5 Tag 2","default":"Editorial"},
-    "service_6_title": {"type":"text","label":"S6 Title","default":"Scalp & Hair Treatment"},
-    "service_6_text":  {"type":"text","label":"S6 Text","default":"Diagnostic scalp scan, steam treatment, and a course of in-room formulations — recommended quarterly and ahead of any colour service."},
-    "service_6_price": {"type":"text","label":"S6 Price","default":"AED 420"}, "service_6_duration": {"type":"text","label":"S6 Duration","default":"60 min"},
-    "service_6_tag_1": {"type":"text","label":"S6 Tag 1","default":"Scalp Scan"}, "service_6_tag_2": {"type":"text","label":"S6 Tag 2","default":"Quarterly"},
-
-    "team_eyebrow":  {"type":"text","label":"Team Eyebrow","default":"The Studio"},
-    "team_title":    {"type":"html","label":"Team Title","default":"The people<br><em>at the chair.</em>"},
-    "team_intro":    {"type":"text","label":"Team Intro","default":"Six senior stylists, each with a decade or more of client work behind them — and every treatment on our menu is delivered personally, not handed to an assistant."},
-    "team_1_name":      {"type":"text","label":"Team 1 Name","default":"Lila Hadid"},
-    "team_1_title":     {"type":"text","label":"Team 1 Title","default":"Creative Director"},
-    "team_1_specialty": {"type":"text","label":"Team 1 Specialty","default":"Hair Colour"},
-    "team_1_bio":       {"type":"text","label":"Team 1 Bio","default":"Trained at Vidal Sassoon, London. Sixteen years colouring editorial and private client hair."},
-    "team_1_image":     {"type":"image","label":"Team 1 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "team_2_name":      {"type":"text","label":"Team 2 Name","default":"Priya Desai"},
-    "team_2_title":     {"type":"text","label":"Team 2 Title","default":"Senior Stylist"},
-    "team_2_specialty": {"type":"text","label":"Team 2 Specialty","default":"Cut & Styling"},
-    "team_2_bio":       {"type":"text","label":"Team 2 Bio","default":"Eleven years — specialist in curl cutting and dry-cut technique for mixed-texture hair."},
-    "team_2_image":     {"type":"image","label":"Team 2 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "team_3_name":      {"type":"text","label":"Team 3 Name","default":"Sofia Moreau"},
-    "team_3_title":     {"type":"text","label":"Team 3 Title","default":"Lead Facialist"},
-    "team_3_specialty": {"type":"text","label":"Team 3 Specialty","default":"Skin & Face"},
-    "team_3_bio":       {"type":"text","label":"Team 3 Bio","default":"CIDESCO qualified. Trained under Dr. Haut in Paris — focus on skin barrier repair and manual lymphatic drainage."},
-    "team_3_image":     {"type":"image","label":"Team 3 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "team_4_name":      {"type":"text","label":"Team 4 Name","default":"Nadia Chen"},
-    "team_4_title":     {"type":"text","label":"Team 4 Title","default":"Nail Specialist"},
-    "team_4_specialty": {"type":"text","label":"Team 4 Specialty","default":"Natural Nails"},
-    "team_4_bio":       {"type":"text","label":"Team 4 Bio","default":"Thirteen years — known for restorative manicures and a no-gel, no-drill philosophy."},
-    "team_4_image":     {"type":"image","label":"Team 4 Image","default":"/storage/builder-heroes/beauty.jpg"},
-
-    "gallery_eyebrow": {"type":"text","label":"Gallery Eyebrow","default":"Recent Work"},
-    "gallery_title":   {"type":"html","label":"Gallery Title","default":"Looks from<br><em>the studio.</em>"},
-    "gallery_intro":   {"type":"text","label":"Gallery Intro","default":"A small selection of client work, shared with permission. Full portfolio available in-studio on request."},
-    "gallery_1_title":{"type":"text","label":"G1 Title","default":"Bronde Balayage"},"gallery_1_category":{"type":"text","label":"G1 Category","default":"Colour"},"gallery_1_image":{"type":"image","label":"G1 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "gallery_2_title":{"type":"text","label":"G2 Title","default":"Soft Bridal Glow"},"gallery_2_category":{"type":"text","label":"G2 Category","default":"Makeup"},"gallery_2_image":{"type":"image","label":"G2 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "gallery_3_title":{"type":"text","label":"G3 Title","default":"Curl-Cut Restore"},"gallery_3_category":{"type":"text","label":"G3 Category","default":"Cutting"},"gallery_3_image":{"type":"image","label":"G3 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "gallery_4_title":{"type":"text","label":"G4 Title","default":"Almond Nude Nail"},"gallery_4_category":{"type":"text","label":"G4 Category","default":"Nails"},"gallery_4_image":{"type":"image","label":"G4 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "gallery_5_title":{"type":"text","label":"G5 Title","default":"Lift & Glow Facial"},"gallery_5_category":{"type":"text","label":"G5 Category","default":"Skin"},"gallery_5_image":{"type":"image","label":"G5 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "gallery_6_title":{"type":"text","label":"G6 Title","default":"Editorial Updo"},"gallery_6_category":{"type":"text","label":"G6 Category","default":"Styling"},"gallery_6_image":{"type":"image","label":"G6 Image","default":"/storage/builder-heroes/beauty.jpg"},
-
-    "brands_eyebrow":{"type":"text","label":"Brands Eyebrow","default":"What we use"},
-    "brands_title":{"type":"text","label":"Brands Title","default":"Products we trust"},
-    "brand_1_name":{"type":"text","label":"Brand 1","default":"Oribe"},
-    "brand_2_name":{"type":"text","label":"Brand 2","default":"Kérastase"},
-    "brand_3_name":{"type":"text","label":"Brand 3","default":"Davines"},
-    "brand_4_name":{"type":"text","label":"Brand 4","default":"Biologique Recherche"},
-    "brand_5_name":{"type":"text","label":"Brand 5","default":"Augustinus Bader"},
-    "brand_6_name":{"type":"text","label":"Brand 6","default":"Charlotte Tilbury"},
-    "brand_7_name":{"type":"text","label":"Brand 7","default":"Hourglass"},
-    "brand_8_name":{"type":"text","label":"Brand 8","default":"Zoya"},
-
-    "testimonials_eyebrow":{"type":"text","label":"Testimonials Eyebrow","default":"Clients"},
-    "testimonials_title":{"type":"html","label":"Testimonials Title","default":"Clients,<br><em>in their words.</em>"},
-    "testimonial_1_quote":{"type":"text","label":"T1 Quote","default":"Lila is the first colourist in Dubai who has genuinely listened to what I wanted — and my colour has finally stopped getting more orange every season. I would not go anywhere else."},
-    "testimonial_1_author":{"type":"text","label":"T1 Author","default":"Maria L. — Dubai Marina"},
-    "testimonial_1_service":{"type":"text","label":"T1 Service","default":"Couture Colour"},
-    "testimonial_2_quote":{"type":"text","label":"T2 Quote","default":"Sofia's facials are the best I have had anywhere in the world, and I live between Dubai and Paris. The results are skin that feels different, not just looks different for an evening."},
-    "testimonial_2_author":{"type":"text","label":"T2 Author","default":"Clémence R. — Paris & Dubai"},
-    "testimonial_2_service":{"type":"text","label":"T2 Service","default":"Bespoke Facial"},
-    "testimonial_3_quote":{"type":"text","label":"T3 Quote","default":"I stopped getting gels a year ago and my nails have never been stronger. Nadia reshaped them after years of damage and now they grow properly for the first time."},
-    "testimonial_3_author":{"type":"text","label":"T3 Author","default":"Amira K. — JLT"},
-    "testimonial_3_service":{"type":"text","label":"T3 Service","default":"Natural Manicure"},
-
-    "blog_eyebrow":{"type":"text","label":"Blog Eyebrow","default":"Journal"},
-    "blog_title":{"type":"html","label":"Blog Title","default":"The<br><em>journal.</em>"},
-    "blog_intro":{"type":"text","label":"Blog Intro","default":"Skin, hair, and nail notes from the team — evidence-first, no trend-chasing, updated monthly."},
-    "blog_1_category":{"type":"text","label":"B1 Cat","default":"Skin"},
-    "blog_1_title":{"type":"text","label":"B1 Title","default":"Why Your Skin Barrier Matters More Than Your Serum"},
-    "blog_1_excerpt":{"type":"text","label":"B1 Excerpt","default":"Sofia on the twelve-week protocol she runs with clients whose skin has been over-exfoliated into sensitivity."},
-    "blog_1_image":{"type":"image","label":"B1 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "blog_2_category":{"type":"text","label":"B2 Cat","default":"Hair Colour"},
-    "blog_2_title":{"type":"text","label":"B2 Title","default":"The Real Difference Between Ammonia and Ammonia-Free Colour"},
-    "blog_2_excerpt":{"type":"text","label":"B2 Excerpt","default":"Lila on what actually changes in the hair cortex — and why the trade-offs aren't what most people think."},
-    "blog_2_image":{"type":"image","label":"B2 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "blog_3_category":{"type":"text","label":"B3 Cat","default":"Nails"},
-    "blog_3_title":{"type":"text","label":"B3 Title","default":"Restoring a Natural Nail After Years of Gel"},
-    "blog_3_excerpt":{"type":"text","label":"B3 Excerpt","default":"Nadia walks through the twelve-week recovery plan that has worked for more than 300 clients."},
-    "blog_3_image":{"type":"image","label":"B3 Image","default":"/storage/builder-heroes/beauty.jpg"},
-    "blog_cta":{"type":"text","label":"Blog CTA","default":"Read the Journal"},
-
-    "booking_title":{"type":"html","label":"Booking Title","default":"Book an<br><em>appointment.</em>"},
-    "booking_intro":{"type":"text","label":"Booking Intro","default":"Choose a service, a stylist if you have a preference, and a date. We'll confirm your appointment within the hour during opening times."},
-    "booking_cta":{"type":"text","label":"Booking CTA","default":"Book Appointment"},
-    "booking_display":{"type":"text","label":"Booking Display","default":""},
-
-    "contact_eyebrow":{"type":"text","label":"Contact Eyebrow","default":"Contact"},
-    "contact_title":{"type":"html","label":"Contact Title","default":"Find the<br><em>studio.</em>"},
-    "contact_intro":{"type":"text","label":"Contact Intro","default":"We're tucked quietly above a boutique on Marina Walk — please call ahead rather than walking in."},
-    "contact_email":{"type":"text","label":"Contact Email","default":"hello@ateliersoiree.ae"},
-    "contact_phone":{"type":"text","label":"Contact Phone","default":"+971 4 000 0000"},
-    "contact_address":{"type":"text","label":"Contact Address","default":"Marina Walk, Floor 2, Dubai Marina"},
-    "contact_hours":{"type":"text","label":"Hours","default":"Tue–Sun · 10am–8pm  ·  Mon closed"},
-    "contact_form_title":{"type":"html","label":"Form Title","default":"Say<br><em>hello.</em>"},
-    "form_submit_text":{"type":"text","label":"Submit","default":"Send Message →"},
-    "form_success_message":{"type":"text","label":"Success","default":"✓ Thank you. We'll be in touch within the hour during opening times."},
-
-    "footer_tagline":{"type":"text","label":"Footer Tagline","default":"Beauty, quietly done. By appointment only."},
-    "footer_text":{"type":"text","label":"Footer Copyright","default":"© 2026 Atelier Soirée. All rights reserved."},
-    "social_instagram":{"type":"url","label":"Instagram","default":"#"},
-    "social_tiktok":{"type":"url","label":"TikTok","default":"#"},
-    "social_pinterest":{"type":"url","label":"Pinterest","default":"#"},
-
-    "chalk":         {"type":"color","label":"Blush (Background)","default":"#F5E6E0"},
-    "chalk_soft":    {"type":"color","label":"Blush Soft","default":"#EDD7CE"},
-    "carbon":        {"type":"color","label":"Ink","default":"#2A1E22"},
-    "carbon_soft":   {"type":"color","label":"Ink Soft","default":"#4D3B3F"},
-    "rose":          {"type":"color","label":"Rose Gold","default":"#B76E79"},
-    "rose_deep":     {"type":"color","label":"Rose Deep","default":"#8D4E58"},
-    "warm_grey":     {"type":"color","label":"Warm Grey","default":"#8A7A7D"},
-    "divider":       {"type":"color","label":"Divider","default":"#E3CFC5"},
-    "accent_muted":  {"type":"color","label":"Accent Muted","default":"#D8B3B9"}
+    "business_name": {
+      "type": "text",
+      "label": "Studio Name",
+      "default": "Atelier Soir\u00e9e"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Beauty Studio \u00b7 Dubai"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Atelier Soir\u00e9e \u2014 a private beauty studio in Dubai specialising in couture hair colour, bespoke facials, and hand-finished manicures, by appointment only."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://ateliersoiree.ae"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Book Appointment"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "By Appointment \u00b7 Dubai Marina"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Title",
+      "default": "Beauty,<br><em>quietly done.</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "A six-chair studio in Dubai Marina \u2014 couture hair, bespoke facials, and hand-finished manicures, taught and delivered by a close team we have trained ourselves."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Primary CTA",
+      "default": "Book Appointment"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Secondary CTA",
+      "default": "See the Menu"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "hero_trust_badge": {
+      "type": "text",
+      "label": "Trust Badge",
+      "default": "By Appointment \u00b7 Organic Product \u00b7 Six Seats"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1",
+      "default": "9"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Years Open"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2",
+      "default": "6"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Stylists"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3",
+      "default": "4,200+"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Clients Served"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4",
+      "default": "4.9\u2605"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Client Rating"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Menu Eyebrow",
+      "default": "The Menu"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Menu Title",
+      "default": "A considered<br><em>service menu.</em>"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Menu Intro",
+      "default": "A short, curated list. Every service is individually timed and begins with a fifteen-minute consultation \u2014 we would rather do six things beautifully than forty things adequately."
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "S1 Title",
+      "default": "Couture Hair Colour"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "S1 Text",
+      "default": "Hand-painted balayage and single-process colour using ammonia-free formulations. Consultation, toner, and post-colour treatment included."
+    },
+    "service_1_price": {
+      "type": "text",
+      "label": "S1 Price",
+      "default": "from AED 950"
+    },
+    "service_1_duration": {
+      "type": "text",
+      "label": "S1 Duration",
+      "default": "2.5 hrs"
+    },
+    "service_1_tag_1": {
+      "type": "text",
+      "label": "S1 Tag 1",
+      "default": "Balayage"
+    },
+    "service_1_tag_2": {
+      "type": "text",
+      "label": "S1 Tag 2",
+      "default": "Ammonia-Free"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "S2 Title",
+      "default": "Signature Cut & Finish"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "S2 Text",
+      "default": "Dry-cut consultation, shape, and finish \u2014 tailored to how you style at home, not to a trend. Scalp massage on arrival, always."
+    },
+    "service_2_price": {
+      "type": "text",
+      "label": "S2 Price",
+      "default": "from AED 550"
+    },
+    "service_2_duration": {
+      "type": "text",
+      "label": "S2 Duration",
+      "default": "90 min"
+    },
+    "service_2_tag_1": {
+      "type": "text",
+      "label": "S2 Tag 1",
+      "default": "Dry Cut"
+    },
+    "service_2_tag_2": {
+      "type": "text",
+      "label": "S2 Tag 2",
+      "default": "Scalp Massage"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "S3 Title",
+      "default": "Bespoke Facial"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "S3 Text",
+      "default": "Ninety minutes, individually formulated to your skin on the day. Manual lymphatic drainage, serums and masks mixed in-room, no device upsells."
+    },
+    "service_3_price": {
+      "type": "text",
+      "label": "S3 Price",
+      "default": "from AED 700"
+    },
+    "service_3_duration": {
+      "type": "text",
+      "label": "S3 Duration",
+      "default": "90 min"
+    },
+    "service_3_tag_1": {
+      "type": "text",
+      "label": "S3 Tag 1",
+      "default": "Lymphatic"
+    },
+    "service_3_tag_2": {
+      "type": "text",
+      "label": "S3 Tag 2",
+      "default": "Hand-Mixed"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "S4 Title",
+      "default": "Hand-Finished Manicure"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "S4 Text",
+      "default": "Natural nail care \u2014 no acrylics, no gels, no drills. Cuticle work, strengthening base, and hand massage with cold-pressed oil."
+    },
+    "service_4_price": {
+      "type": "text",
+      "label": "S4 Price",
+      "default": "AED 280"
+    },
+    "service_4_duration": {
+      "type": "text",
+      "label": "S4 Duration",
+      "default": "60 min"
+    },
+    "service_4_tag_1": {
+      "type": "text",
+      "label": "S4 Tag 1",
+      "default": "Natural Nail"
+    },
+    "service_4_tag_2": {
+      "type": "text",
+      "label": "S4 Tag 2",
+      "default": "No Gel"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "S5 Title",
+      "default": "Editorial Makeup"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "S5 Text",
+      "default": "Event, bridal, and photography makeup. Skin-first approach \u2014 long-wear formulations that still read natural in daylight and on camera."
+    },
+    "service_5_price": {
+      "type": "text",
+      "label": "S5 Price",
+      "default": "from AED 650"
+    },
+    "service_5_duration": {
+      "type": "text",
+      "label": "S5 Duration",
+      "default": "75 min"
+    },
+    "service_5_tag_1": {
+      "type": "text",
+      "label": "S5 Tag 1",
+      "default": "Bridal"
+    },
+    "service_5_tag_2": {
+      "type": "text",
+      "label": "S5 Tag 2",
+      "default": "Editorial"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "S6 Title",
+      "default": "Scalp & Hair Treatment"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "S6 Text",
+      "default": "Diagnostic scalp scan, steam treatment, and a course of in-room formulations \u2014 recommended quarterly and ahead of any colour service."
+    },
+    "service_6_price": {
+      "type": "text",
+      "label": "S6 Price",
+      "default": "AED 420"
+    },
+    "service_6_duration": {
+      "type": "text",
+      "label": "S6 Duration",
+      "default": "60 min"
+    },
+    "service_6_tag_1": {
+      "type": "text",
+      "label": "S6 Tag 1",
+      "default": "Scalp Scan"
+    },
+    "service_6_tag_2": {
+      "type": "text",
+      "label": "S6 Tag 2",
+      "default": "Quarterly"
+    },
+    "team_eyebrow": {
+      "type": "text",
+      "label": "Team Eyebrow",
+      "default": "The Studio"
+    },
+    "team_title": {
+      "type": "html",
+      "label": "Team Title",
+      "default": "The people<br><em>at the chair.</em>"
+    },
+    "team_intro": {
+      "type": "text",
+      "label": "Team Intro",
+      "default": "Six senior stylists, each with a decade or more of client work behind them \u2014 and every treatment on our menu is delivered personally, not handed to an assistant."
+    },
+    "team_1_name": {
+      "type": "text",
+      "label": "Team 1 Name",
+      "default": "Lila Hadid"
+    },
+    "team_1_title": {
+      "type": "text",
+      "label": "Team 1 Title",
+      "default": "Creative Director"
+    },
+    "team_1_specialty": {
+      "type": "text",
+      "label": "Team 1 Specialty",
+      "default": "Hair Colour"
+    },
+    "team_1_bio": {
+      "type": "text",
+      "label": "Team 1 Bio",
+      "default": "Trained at Vidal Sassoon, London. Sixteen years colouring editorial and private client hair."
+    },
+    "team_1_image": {
+      "type": "image",
+      "label": "Team 1 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "team_2_name": {
+      "type": "text",
+      "label": "Team 2 Name",
+      "default": "Priya Desai"
+    },
+    "team_2_title": {
+      "type": "text",
+      "label": "Team 2 Title",
+      "default": "Senior Stylist"
+    },
+    "team_2_specialty": {
+      "type": "text",
+      "label": "Team 2 Specialty",
+      "default": "Cut & Styling"
+    },
+    "team_2_bio": {
+      "type": "text",
+      "label": "Team 2 Bio",
+      "default": "Eleven years \u2014 specialist in curl cutting and dry-cut technique for mixed-texture hair."
+    },
+    "team_2_image": {
+      "type": "image",
+      "label": "Team 2 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "team_3_name": {
+      "type": "text",
+      "label": "Team 3 Name",
+      "default": "Sofia Moreau"
+    },
+    "team_3_title": {
+      "type": "text",
+      "label": "Team 3 Title",
+      "default": "Lead Facialist"
+    },
+    "team_3_specialty": {
+      "type": "text",
+      "label": "Team 3 Specialty",
+      "default": "Skin & Face"
+    },
+    "team_3_bio": {
+      "type": "text",
+      "label": "Team 3 Bio",
+      "default": "CIDESCO qualified. Trained under Dr. Haut in Paris \u2014 focus on skin barrier repair and manual lymphatic drainage."
+    },
+    "team_3_image": {
+      "type": "image",
+      "label": "Team 3 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "team_4_name": {
+      "type": "text",
+      "label": "Team 4 Name",
+      "default": "Nadia Chen"
+    },
+    "team_4_title": {
+      "type": "text",
+      "label": "Team 4 Title",
+      "default": "Nail Specialist"
+    },
+    "team_4_specialty": {
+      "type": "text",
+      "label": "Team 4 Specialty",
+      "default": "Natural Nails"
+    },
+    "team_4_bio": {
+      "type": "text",
+      "label": "Team 4 Bio",
+      "default": "Thirteen years \u2014 known for restorative manicures and a no-gel, no-drill philosophy."
+    },
+    "team_4_image": {
+      "type": "image",
+      "label": "Team 4 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "Recent Work"
+    },
+    "gallery_title": {
+      "type": "html",
+      "label": "Gallery Title",
+      "default": "Looks from<br><em>the studio.</em>"
+    },
+    "gallery_intro": {
+      "type": "text",
+      "label": "Gallery Intro",
+      "default": "A small selection of client work, shared with permission. Full portfolio available in-studio on request."
+    },
+    "gallery_1_title": {
+      "type": "text",
+      "label": "G1 Title",
+      "default": "Bronde Balayage"
+    },
+    "gallery_1_category": {
+      "type": "text",
+      "label": "G1 Category",
+      "default": "Colour"
+    },
+    "gallery_1_image": {
+      "type": "image",
+      "label": "G1 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "gallery_2_title": {
+      "type": "text",
+      "label": "G2 Title",
+      "default": "Soft Bridal Glow"
+    },
+    "gallery_2_category": {
+      "type": "text",
+      "label": "G2 Category",
+      "default": "Makeup"
+    },
+    "gallery_2_image": {
+      "type": "image",
+      "label": "G2 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "gallery_3_title": {
+      "type": "text",
+      "label": "G3 Title",
+      "default": "Curl-Cut Restore"
+    },
+    "gallery_3_category": {
+      "type": "text",
+      "label": "G3 Category",
+      "default": "Cutting"
+    },
+    "gallery_3_image": {
+      "type": "image",
+      "label": "G3 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "gallery_4_title": {
+      "type": "text",
+      "label": "G4 Title",
+      "default": "Almond Nude Nail"
+    },
+    "gallery_4_category": {
+      "type": "text",
+      "label": "G4 Category",
+      "default": "Nails"
+    },
+    "gallery_4_image": {
+      "type": "image",
+      "label": "G4 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "gallery_5_title": {
+      "type": "text",
+      "label": "G5 Title",
+      "default": "Lift & Glow Facial"
+    },
+    "gallery_5_category": {
+      "type": "text",
+      "label": "G5 Category",
+      "default": "Skin"
+    },
+    "gallery_5_image": {
+      "type": "image",
+      "label": "G5 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "gallery_6_title": {
+      "type": "text",
+      "label": "G6 Title",
+      "default": "Editorial Updo"
+    },
+    "gallery_6_category": {
+      "type": "text",
+      "label": "G6 Category",
+      "default": "Styling"
+    },
+    "gallery_6_image": {
+      "type": "image",
+      "label": "G6 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "brands_eyebrow": {
+      "type": "text",
+      "label": "Brands Eyebrow",
+      "default": "What we use"
+    },
+    "brands_title": {
+      "type": "text",
+      "label": "Brands Title",
+      "default": "Products we trust"
+    },
+    "brand_1_name": {
+      "type": "text",
+      "label": "Brand 1",
+      "default": "Oribe"
+    },
+    "brand_2_name": {
+      "type": "text",
+      "label": "Brand 2",
+      "default": "K\u00e9rastase"
+    },
+    "brand_3_name": {
+      "type": "text",
+      "label": "Brand 3",
+      "default": "Davines"
+    },
+    "brand_4_name": {
+      "type": "text",
+      "label": "Brand 4",
+      "default": "Biologique Recherche"
+    },
+    "brand_5_name": {
+      "type": "text",
+      "label": "Brand 5",
+      "default": "Augustinus Bader"
+    },
+    "brand_6_name": {
+      "type": "text",
+      "label": "Brand 6",
+      "default": "Charlotte Tilbury"
+    },
+    "brand_7_name": {
+      "type": "text",
+      "label": "Brand 7",
+      "default": "Hourglass"
+    },
+    "brand_8_name": {
+      "type": "text",
+      "label": "Brand 8",
+      "default": "Zoya"
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Clients"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Title",
+      "default": "Clients,<br><em>in their words.</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "T1 Quote",
+      "default": "Lila is the first colourist in Dubai who has genuinely listened to what I wanted \u2014 and my colour has finally stopped getting more orange every season. I would not go anywhere else."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "T1 Author",
+      "default": "Maria L. \u2014 Dubai Marina"
+    },
+    "testimonial_1_service": {
+      "type": "text",
+      "label": "T1 Service",
+      "default": "Couture Colour"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "T2 Quote",
+      "default": "Sofia's facials are the best I have had anywhere in the world, and I live between Dubai and Paris. The results are skin that feels different, not just looks different for an evening."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "T2 Author",
+      "default": "Cl\u00e9mence R. \u2014 Paris & Dubai"
+    },
+    "testimonial_2_service": {
+      "type": "text",
+      "label": "T2 Service",
+      "default": "Bespoke Facial"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "T3 Quote",
+      "default": "I stopped getting gels a year ago and my nails have never been stronger. Nadia reshaped them after years of damage and now they grow properly for the first time."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "T3 Author",
+      "default": "Amira K. \u2014 JLT"
+    },
+    "testimonial_3_service": {
+      "type": "text",
+      "label": "T3 Service",
+      "default": "Natural Manicure"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Journal"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "The<br><em>journal.</em>"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Skin, hair, and nail notes from the team \u2014 evidence-first, no trend-chasing, updated monthly."
+    },
+    "blog_1_category": {
+      "type": "text",
+      "label": "B1 Cat",
+      "default": "Skin"
+    },
+    "blog_1_title": {
+      "type": "text",
+      "label": "B1 Title",
+      "default": "Why Your Skin Barrier Matters More Than Your Serum"
+    },
+    "blog_1_excerpt": {
+      "type": "text",
+      "label": "B1 Excerpt",
+      "default": "Sofia on the twelve-week protocol she runs with clients whose skin has been over-exfoliated into sensitivity."
+    },
+    "blog_1_image": {
+      "type": "image",
+      "label": "B1 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "blog_2_category": {
+      "type": "text",
+      "label": "B2 Cat",
+      "default": "Hair Colour"
+    },
+    "blog_2_title": {
+      "type": "text",
+      "label": "B2 Title",
+      "default": "The Real Difference Between Ammonia and Ammonia-Free Colour"
+    },
+    "blog_2_excerpt": {
+      "type": "text",
+      "label": "B2 Excerpt",
+      "default": "Lila on what actually changes in the hair cortex \u2014 and why the trade-offs aren't what most people think."
+    },
+    "blog_2_image": {
+      "type": "image",
+      "label": "B2 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "blog_3_category": {
+      "type": "text",
+      "label": "B3 Cat",
+      "default": "Nails"
+    },
+    "blog_3_title": {
+      "type": "text",
+      "label": "B3 Title",
+      "default": "Restoring a Natural Nail After Years of Gel"
+    },
+    "blog_3_excerpt": {
+      "type": "text",
+      "label": "B3 Excerpt",
+      "default": "Nadia walks through the twelve-week recovery plan that has worked for more than 300 clients."
+    },
+    "blog_3_image": {
+      "type": "image",
+      "label": "B3 Image",
+      "default": "/storage/builder-heroes/beauty.jpg"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "Read the Journal"
+    },
+    "booking_title": {
+      "type": "html",
+      "label": "Booking Title",
+      "default": "Book an<br><em>appointment.</em>"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Choose a service, a stylist if you have a preference, and a date. We'll confirm your appointment within the hour during opening times."
+    },
+    "booking_cta": {
+      "type": "text",
+      "label": "Booking CTA",
+      "default": "Book Appointment"
+    },
+    "booking_display": {
+      "type": "text",
+      "label": "Booking Display",
+      "default": ""
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "Contact"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Title",
+      "default": "Find the<br><em>studio.</em>"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "We're tucked quietly above a boutique on Marina Walk \u2014 please call ahead rather than walking in."
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Contact Email",
+      "default": "hello@ateliersoiree.ae"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Contact Phone",
+      "default": "+971 4 000 0000"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Contact Address",
+      "default": "Marina Walk, Floor 2, Dubai Marina"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Hours",
+      "default": "Tue\u2013Sun \u00b7 10am\u20138pm  \u00b7  Mon closed"
+    },
+    "contact_form_title": {
+      "type": "html",
+      "label": "Form Title",
+      "default": "Say<br><em>hello.</em>"
+    },
+    "form_submit_text": {
+      "type": "text",
+      "label": "Submit",
+      "default": "Send Message \u2192"
+    },
+    "form_success_message": {
+      "type": "text",
+      "label": "Success",
+      "default": "\u2713 Thank you. We'll be in touch within the hour during opening times."
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Beauty, quietly done. By appointment only."
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Copyright",
+      "default": "\u00a9 2026 Atelier Soir\u00e9e. All rights reserved."
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok",
+      "default": "#"
+    },
+    "social_pinterest": {
+      "type": "url",
+      "label": "Pinterest",
+      "default": "#"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Blush (Background)",
+      "default": "#F5E6E0"
+    },
+    "chalk_soft": {
+      "type": "color",
+      "label": "Blush Soft",
+      "default": "#EDD7CE"
+    },
+    "carbon": {
+      "type": "color",
+      "label": "Ink",
+      "default": "#2A1E22"
+    },
+    "carbon_soft": {
+      "type": "color",
+      "label": "Ink Soft",
+      "default": "#4D3B3F"
+    },
+    "rose": {
+      "type": "color",
+      "label": "Rose Gold",
+      "default": "#B76E79"
+    },
+    "rose_deep": {
+      "type": "color",
+      "label": "Rose Deep",
+      "default": "#8D4E58"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#8A7A7D"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#E3CFC5"
+    },
+    "accent_muted": {
+      "type": "color",
+      "label": "Accent Muted",
+      "default": "#D8B3B9"
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ],
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 6
   }
 }

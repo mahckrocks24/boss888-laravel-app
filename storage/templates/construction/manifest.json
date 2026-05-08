@@ -1,1295 +1,1468 @@
 {
-    "id": "construction",
-    "name": "Construction Company",
-    "industry": "construction",
-    "description": "Industrial-grade construction contractor template — steel-and-orange heavy hero with quote form, six core service disciplines (Civil, MEP, Fit-Out, Renovation, PM, Maintenance), six-project portfolio grid with values, five-step project process, certification strip, four-person leadership team, client testimonials, and a full quote-request booking form. Built for mid-market GCs in MENA.",
-    "thumbnail": "/storage/builder-heroes/construction.jpg",
-    "category": "trades",
-    "blocks": [
-        {
-            "id": "nav",
-            "name": "Navigation",
-            "elements": {
-                "logo": "nav .logo",
-                "nav_1": "nav .nav-link-1",
-                "nav_2": "nav .nav-link-2",
-                "nav_3": "nav .nav-link-3",
-                "nav_4": "nav .nav-link-4",
-                "nav_5": "nav .nav-link-5",
-                "nav_cta": "nav .nav-cta"
-            }
-        },
-        {
-            "id": "hero",
-            "name": "Hero with Quote Form",
-            "elements": {
-                "hero_image": "section.hero",
-                "hero_eyebrow": ".hero-eyebrow",
-                "hero_title": ".hero-title",
-                "hero_subtitle": ".hero-subtitle",
-                "hero_trust_1": ".hero-trust-1",
-                "hero_trust_2": ".hero-trust-2",
-                "hero_trust_3": ".hero-trust-3",
-                "hero_trust_4": ".hero-trust-4",
-                "hero_form_eyebrow": ".hero-form-eyebrow",
-                "hero_form_title": ".hero-form-title",
-                "hero_form_sub": ".hero-form-sub",
-                "hero_form_name_label": ".hero-form label[data-field=hero_form_name_label]",
-                "hero_form_phone_label": ".hero-form label[data-field=hero_form_phone_label]",
-                "hero_form_type_label": ".hero-form label[data-field=hero_form_type_label]",
-                "hero_form_submit": ".hero-form button",
-                "hero_form_note": ".hero-form-note"
-            }
-        },
-        {
-            "id": "results",
-            "name": "Stats Metrics",
-            "elements": {
-                "stat_1_value": ".results-grid .result-item:nth-child(1) .result-value",
-                "stat_1_label": ".results-grid .result-item:nth-child(1) .result-label",
-                "stat_2_value": ".results-grid .result-item:nth-child(2) .result-value",
-                "stat_2_label": ".results-grid .result-item:nth-child(2) .result-label",
-                "stat_3_value": ".results-grid .result-item:nth-child(3) .result-value",
-                "stat_3_label": ".results-grid .result-item:nth-child(3) .result-label",
-                "stat_4_value": ".results-grid .result-item:nth-child(4) .result-value",
-                "stat_4_label": ".results-grid .result-item:nth-child(4) .result-label"
-            }
-        },
-        {
-            "id": "services",
-            "name": "Services Grid",
-            "elements": {
-                "services_eyebrow": "#services .eyebrow",
-                "services_title": "#services .h-section",
-                "services_intro": "#services .section-intro",
-                "service_1_icon": "#services .service:nth-child(1) .service-icon",
-                "service_1_title": "#services .service:nth-child(1) h3",
-                "service_1_text": "#services .service:nth-child(1) p",
-                "service_1_link": "#services .service:nth-child(1) .service-link",
-                "service_2_icon": "#services .service:nth-child(2) .service-icon",
-                "service_2_title": "#services .service:nth-child(2) h3",
-                "service_2_text": "#services .service:nth-child(2) p",
-                "service_2_link": "#services .service:nth-child(2) .service-link",
-                "service_3_icon": "#services .service:nth-child(3) .service-icon",
-                "service_3_title": "#services .service:nth-child(3) h3",
-                "service_3_text": "#services .service:nth-child(3) p",
-                "service_3_link": "#services .service:nth-child(3) .service-link",
-                "service_4_icon": "#services .service:nth-child(4) .service-icon",
-                "service_4_title": "#services .service:nth-child(4) h3",
-                "service_4_text": "#services .service:nth-child(4) p",
-                "service_4_link": "#services .service:nth-child(4) .service-link",
-                "service_5_icon": "#services .service:nth-child(5) .service-icon",
-                "service_5_title": "#services .service:nth-child(5) h3",
-                "service_5_text": "#services .service:nth-child(5) p",
-                "service_5_link": "#services .service:nth-child(5) .service-link",
-                "service_6_icon": "#services .service:nth-child(6) .service-icon",
-                "service_6_title": "#services .service:nth-child(6) h3",
-                "service_6_text": "#services .service:nth-child(6) p",
-                "service_6_link": "#services .service:nth-child(6) .service-link"
-            }
-        },
-        {
-            "id": "projects",
-            "name": "Project Portfolio",
-            "elements": {
-                "projects_eyebrow": "#projects .eyebrow",
-                "projects_title": "#projects .h-section",
-                "projects_intro": "#projects .section-intro",
-                "project_1_image": ".projects-grid .project:nth-child(1) .project-image",
-                "project_1_cat": ".projects-grid .project:nth-child(1) .project-cat",
-                "project_1_title": ".projects-grid .project:nth-child(1) h3",
-                "project_1_desc": ".projects-grid .project:nth-child(1) p",
-                "project_1_value": ".projects-grid .project:nth-child(1) .project-value",
-                "project_2_image": ".projects-grid .project:nth-child(2) .project-image",
-                "project_2_cat": ".projects-grid .project:nth-child(2) .project-cat",
-                "project_2_title": ".projects-grid .project:nth-child(2) h3",
-                "project_2_desc": ".projects-grid .project:nth-child(2) p",
-                "project_2_value": ".projects-grid .project:nth-child(2) .project-value",
-                "project_3_image": ".projects-grid .project:nth-child(3) .project-image",
-                "project_3_cat": ".projects-grid .project:nth-child(3) .project-cat",
-                "project_3_title": ".projects-grid .project:nth-child(3) h3",
-                "project_3_desc": ".projects-grid .project:nth-child(3) p",
-                "project_3_value": ".projects-grid .project:nth-child(3) .project-value",
-                "project_4_image": ".projects-grid .project:nth-child(4) .project-image",
-                "project_4_cat": ".projects-grid .project:nth-child(4) .project-cat",
-                "project_4_title": ".projects-grid .project:nth-child(4) h3",
-                "project_4_desc": ".projects-grid .project:nth-child(4) p",
-                "project_4_value": ".projects-grid .project:nth-child(4) .project-value",
-                "project_5_image": ".projects-grid .project:nth-child(5) .project-image",
-                "project_5_cat": ".projects-grid .project:nth-child(5) .project-cat",
-                "project_5_title": ".projects-grid .project:nth-child(5) h3",
-                "project_5_desc": ".projects-grid .project:nth-child(5) p",
-                "project_5_value": ".projects-grid .project:nth-child(5) .project-value",
-                "project_6_image": ".projects-grid .project:nth-child(6) .project-image",
-                "project_6_cat": ".projects-grid .project:nth-child(6) .project-cat",
-                "project_6_title": ".projects-grid .project:nth-child(6) h3",
-                "project_6_desc": ".projects-grid .project:nth-child(6) p",
-                "project_6_value": ".projects-grid .project:nth-child(6) .project-value"
-            }
-        },
-        {
-            "id": "process",
-            "name": "Process Steps",
-            "elements": {
-                "process_eyebrow": "#process .eyebrow",
-                "process_title": "#process .h-section",
-                "process_intro": "#process .section-intro",
-                "step_1_title": ".process-steps .process-step:nth-child(1) h3",
-                "step_1_text": ".process-steps .process-step:nth-child(1) p",
-                "step_2_title": ".process-steps .process-step:nth-child(2) h3",
-                "step_2_text": ".process-steps .process-step:nth-child(2) p",
-                "step_3_title": ".process-steps .process-step:nth-child(3) h3",
-                "step_3_text": ".process-steps .process-step:nth-child(3) p",
-                "step_4_title": ".process-steps .process-step:nth-child(4) h3",
-                "step_4_text": ".process-steps .process-step:nth-child(4) p",
-                "step_5_title": ".process-steps .process-step:nth-child(5) h3",
-                "step_5_text": ".process-steps .process-step:nth-child(5) p"
-            }
-        },
-        {
-            "id": "certifications",
-            "name": "Certifications",
-            "elements": {
-                "certs_eyebrow": "#certs .eyebrow",
-                "certs_title": "#certs .h-section",
-                "certs_intro": "#certs .section-intro",
-                "cert_1": ".certs-grid .cert-logo:nth-child(1)",
-                "cert_2": ".certs-grid .cert-logo:nth-child(2)",
-                "cert_3": ".certs-grid .cert-logo:nth-child(3)",
-                "cert_4": ".certs-grid .cert-logo:nth-child(4)",
-                "cert_5": ".certs-grid .cert-logo:nth-child(5)",
-                "cert_6": ".certs-grid .cert-logo:nth-child(6)"
-            }
-        },
-        {
-            "id": "team",
-            "name": "Leadership",
-            "elements": {
-                "team_eyebrow": "#team .eyebrow",
-                "team_title": "#team .h-section",
-                "team_intro": "#team .section-intro",
-                "member_1_image": ".team-grid .member:nth-child(1) .member-photo",
-                "member_1_name": ".team-grid .member:nth-child(1) h3",
-                "member_1_role": ".team-grid .member:nth-child(1) .member-role",
-                "member_1_bio": ".team-grid .member:nth-child(1) .member-bio",
-                "member_2_image": ".team-grid .member:nth-child(2) .member-photo",
-                "member_2_name": ".team-grid .member:nth-child(2) h3",
-                "member_2_role": ".team-grid .member:nth-child(2) .member-role",
-                "member_2_bio": ".team-grid .member:nth-child(2) .member-bio",
-                "member_3_image": ".team-grid .member:nth-child(3) .member-photo",
-                "member_3_name": ".team-grid .member:nth-child(3) h3",
-                "member_3_role": ".team-grid .member:nth-child(3) .member-role",
-                "member_3_bio": ".team-grid .member:nth-child(3) .member-bio",
-                "member_4_image": ".team-grid .member:nth-child(4) .member-photo",
-                "member_4_name": ".team-grid .member:nth-child(4) h3",
-                "member_4_role": ".team-grid .member:nth-child(4) .member-role",
-                "member_4_bio": ".team-grid .member:nth-child(4) .member-bio"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Testimonials",
-            "elements": {
-                "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
-                "testimonials_title": "[data-block=testimonials] .h-section",
-                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
-                "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
-                "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
-                "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
-                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
-                "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
-                "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
-                "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
-                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
-                "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
-                "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
-                "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Request a Quote",
-            "elements": {
-                "booking_eyebrow": "#booking .eyebrow",
-                "booking_title": "#booking .h-section",
-                "booking_intro": ".booking-intro",
-                "booking_project_type_label": ".booking-form label[data-field=booking_project_type_label]",
-                "booking_project_size_label": ".booking-form label[data-field=booking_project_size_label]",
-                "booking_timeline_label": ".booking-form label[data-field=booking_timeline_label]",
-                "booking_budget_label": ".booking-form label[data-field=booking_budget_label]",
-                "booking_name_label": ".booking-form label[data-field=booking_name_label]",
-                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
-                "booking_email_label": ".booking-form label[data-field=booking_email_label]",
-                "booking_location_label": ".booking-form label[data-field=booking_location_label]",
-                "booking_submit": ".booking-submit"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact",
-            "elements": {
-                "contact_eyebrow": "#contact .eyebrow",
-                "contact_title": "#contact .h-section",
-                "contact_intro": "#contact .section-intro",
-                "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
-                "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
-                "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
-                "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
-                "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
-                "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
-                "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
-                "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
-                "contact_cta_title": "#contact .hero-form-title",
-                "contact_cta_text": "#contact .hero-form-sub",
-                "contact_cta_button": "#contact .btn-primary"
-            }
-        },
-        {
-            "id": "footer",
-            "name": "Footer",
-            "elements": {
-                "footer_logo": ".footer-logo",
-                "footer_tagline": ".footer-tagline",
-                "social_1": ".footer-socials a:nth-child(1)",
-                "social_2": ".footer-socials a:nth-child(2)",
-                "social_3": ".footer-socials a:nth-child(3)",
-                "social_4": ".footer-socials a:nth-child(4)",
-                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
-                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
-                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
-                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
-                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
-                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
-                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
-                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
-                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
-                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
-                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
-                "footer_text": ".footer-bottom > div:nth-child(1)",
-                "footer_legal": ".footer-bottom > div:nth-child(2)"
-            }
-        }
-    ],
-    "variables": {
-        "business_name": {
-            "type": "text",
-            "label": "Business Name",
-            "default": "Vertex Construction"
-        },
-        "business_tagline": {
-            "type": "text",
-            "label": "Tagline",
-            "default": "Built on Time. Built to Last."
-        },
-        "meta_description": {
-            "type": "text",
-            "label": "Meta Description",
-            "default": "Vertex Construction is a Dubai-based mid-market general contractor delivering residential villas, commercial fit-outs, MEP, and renovations across the UAE since 2009."
-        },
-        "canonical_url": {
-            "type": "url",
-            "label": "Canonical URL",
-            "default": "https://vertexconstruction.ae"
-        },
-        "og_image": {
-            "type": "image",
-            "label": "OG Image",
-            "default": "/storage/builder-heroes/construction.jpg"
-        },
-        "og_locale": {
-            "type": "text",
-            "label": "OG Locale",
-            "default": "en_AE"
-        },
-        "hero_image": {
-            "type": "image",
-            "label": "Hero Background",
-            "default": "/storage/builder-heroes/construction.jpg"
-        },
-        "steel": {
-            "type": "color",
-            "label": "Steel Grey",
-            "default": "#2D3748"
-        },
-        "steel_soft": {
-            "type": "color",
-            "label": "Steel Soft",
-            "default": "#374151"
-        },
-        "orange": {
-            "type": "color",
-            "label": "Construction Orange",
-            "default": "#F6820C"
-        },
-        "orange_deep": {
-            "type": "color",
-            "label": "Orange Deep",
-            "default": "#C76908"
-        },
-        "chalk": {
-            "type": "color",
-            "label": "Chalk",
-            "default": "#F7FAFC"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#A0AEC0"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#4A5568"
-        },
-        "logo": {
-            "type": "text",
-            "label": "Logo Text",
-            "default": "Vertex"
-        },
-        "nav_1": {
-            "type": "text",
-            "label": "Nav: Services",
-            "default": "Services"
-        },
-        "nav_2": {
-            "type": "text",
-            "label": "Nav: Projects",
-            "default": "Projects"
-        },
-        "nav_3": {
-            "type": "text",
-            "label": "Nav: Process",
-            "default": "Process"
-        },
-        "nav_4": {
-            "type": "text",
-            "label": "Nav: Team",
-            "default": "Team"
-        },
-        "nav_5": {
-            "type": "text",
-            "label": "Nav: Contact",
-            "default": "Contact"
-        },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Request a Quote"
-        },
-        "hero_eyebrow": {
-            "type": "text",
-            "label": "Hero Eyebrow",
-            "default": "Licensed UAE General Contractor · Since 2009"
-        },
-        "hero_title": {
-            "type": "text",
-            "label": "Hero Title",
-            "default": "Builders Who Show Up. Projects That Close On Time."
-        },
-        "hero_subtitle": {
-            "type": "text",
-            "label": "Hero Subtitle",
-            "default": "Residential villas, commercial fit-outs, MEP, and turnkey construction across the UAE. 140+ projects delivered. 97% on schedule. One team from ground-break to handover."
-        },
-        "hero_trust_1": {
-            "type": "text",
-            "label": "Trust 1",
-            "default": "DED Licensed"
-        },
-        "hero_trust_2": {
-            "type": "text",
-            "label": "Trust 2",
-            "default": "Dubai Municipality Approved"
-        },
-        "hero_trust_3": {
-            "type": "text",
-            "label": "Trust 3",
-            "default": "ISO 9001 / 45001"
-        },
-        "hero_trust_4": {
-            "type": "text",
-            "label": "Trust 4",
-            "default": "AED 50M Insured"
-        },
-        "hero_form_eyebrow": {
-            "type": "text",
-            "label": "Form Eyebrow",
-            "default": "FREE CONSULTATION"
-        },
-        "hero_form_title": {
-            "type": "text",
-            "label": "Form Title",
-            "default": "Talk to Our Estimator"
-        },
-        "hero_form_sub": {
-            "type": "text",
-            "label": "Form Sub",
-            "default": "Send us the basics and our senior estimator will call within 1 business day with a site visit and ballpark number."
-        },
-        "hero_form_name_label": {
-            "type": "text",
-            "label": "Name Label",
-            "default": "Full Name"
-        },
-        "hero_form_phone_label": {
-            "type": "text",
-            "label": "Phone Label",
-            "default": "Mobile"
-        },
-        "hero_form_type_label": {
-            "type": "text",
-            "label": "Project Type Label",
-            "default": "Project Type"
-        },
-        "hero_form_submit": {
-            "type": "text",
-            "label": "Submit Button",
-            "default": "Request Site Visit →"
-        },
-        "hero_form_note": {
-            "type": "text",
-            "label": "Form Note",
-            "default": "Confidential. No obligation. Initial consultation is always free."
-        },
-        "stat_1_value": {
-            "type": "text",
-            "label": "Stat 1 Value",
-            "default": "140+"
-        },
-        "stat_1_label": {
-            "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Projects Delivered"
-        },
-        "stat_2_value": {
-            "type": "text",
-            "label": "Stat 2 Value",
-            "default": "97%"
-        },
-        "stat_2_label": {
-            "type": "text",
-            "label": "Stat 2 Label",
-            "default": "On-Schedule Rate"
-        },
-        "stat_3_value": {
-            "type": "text",
-            "label": "Stat 3 Value",
-            "default": "AED 1.8B"
-        },
-        "stat_3_label": {
-            "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Work In Place"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "17"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Years in Operation"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Services Eyebrow",
-            "default": "WHAT WE BUILD"
-        },
-        "services_title": {
-            "type": "text",
-            "label": "Services Title",
-            "default": "A Full-Service General Contractor"
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Services Intro",
-            "default": "Six disciplines under one roof. Civil works to MEP, fit-outs to long-term maintenance — managed by senior engineers with decades in UAE construction."
-        },
-        "service_1_icon": {
-            "type": "text",
-            "label": "Service 1 Icon",
-            "default": "CV"
-        },
-        "service_1_title": {
-            "type": "text",
-            "label": "Service 1 Title",
-            "default": "Civil Works"
-        },
-        "service_1_text": {
-            "type": "text",
-            "label": "Service 1 Text",
-            "default": "Foundation, structural concrete, blockwork, and finishing for villas and low-rise commercial buildings. DM-approved from permit to handover."
-        },
-        "service_1_link": {
-            "type": "text",
-            "label": "Service 1 Link",
-            "default": "See civil scope"
-        },
-        "service_2_icon": {
-            "type": "text",
-            "label": "Service 2 Icon",
-            "default": "MP"
-        },
-        "service_2_title": {
-            "type": "text",
-            "label": "Service 2 Title",
-            "default": "MEP"
-        },
-        "service_2_text": {
-            "type": "text",
-            "label": "Service 2 Text",
-            "default": "Mechanical, electrical, plumbing — designed and installed in-house. Fully coordinated BIM models so nothing clashes on site. Trakhees and DEWA approvals managed."
-        },
-        "service_2_link": {
-            "type": "text",
-            "label": "Service 2 Link",
-            "default": "See MEP capabilities"
-        },
-        "service_3_icon": {
-            "type": "text",
-            "label": "Service 3 Icon",
-            "default": "FT"
-        },
-        "service_3_title": {
-            "type": "text",
-            "label": "Service 3 Title",
-            "default": "Fit-Out"
-        },
-        "service_3_text": {
-            "type": "text",
-            "label": "Service 3 Text",
-            "default": "High-end office, retail, F&B, and clinic fit-outs. Joinery, partition, flooring, ceiling, finishes — delivered against approved shop drawings and tight handover dates."
-        },
-        "service_3_link": {
-            "type": "text",
-            "label": "Service 3 Link",
-            "default": "See fit-out work"
-        },
-        "service_4_icon": {
-            "type": "text",
-            "label": "Service 4 Icon",
-            "default": "RN"
-        },
-        "service_4_title": {
-            "type": "text",
-            "label": "Service 4 Title",
-            "default": "Renovation"
-        },
-        "service_4_text": {
-            "type": "text",
-            "label": "Service 4 Text",
-            "default": "Villa extensions, façade refresh, kitchen/bath remodels, and full turnkey renovations. Minimal disruption scheduling for occupied homes."
-        },
-        "service_4_link": {
-            "type": "text",
-            "label": "Service 4 Link",
-            "default": "See renovations"
-        },
-        "service_5_icon": {
-            "type": "text",
-            "label": "Service 5 Icon",
-            "default": "PM"
-        },
-        "service_5_title": {
-            "type": "text",
-            "label": "Service 5 Title",
-            "default": "Project Management"
-        },
-        "service_5_text": {
-            "type": "text",
-            "label": "Service 5 Text",
-            "default": "Owner's rep and PM-as-a-service. Cost control, schedule oversight, contractor coordination, and weekly executive reports — for clients running their own projects."
-        },
-        "service_5_link": {
-            "type": "text",
-            "label": "Service 5 Link",
-            "default": "Discuss PM services"
-        },
-        "service_6_icon": {
-            "type": "text",
-            "label": "Service 6 Icon",
-            "default": "MT"
-        },
-        "service_6_title": {
-            "type": "text",
-            "label": "Service 6 Title",
-            "default": "Maintenance"
-        },
-        "service_6_text": {
-            "type": "text",
-            "label": "Service 6 Text",
-            "default": "Post-handover AMC for MEP, civil, and finishes. 24/7 emergency response. Annual contracts covering villas, offices, and retail outlets across Dubai."
-        },
-        "service_6_link": {
-            "type": "text",
-            "label": "Service 6 Link",
-            "default": "Request AMC"
-        },
-        "projects_eyebrow": {
-            "type": "text",
-            "label": "Projects Eyebrow",
-            "default": "SELECTED PROJECTS"
-        },
-        "projects_title": {
-            "type": "text",
-            "label": "Projects Title",
-            "default": "The Work Speaks First"
-        },
-        "projects_intro": {
-            "type": "text",
-            "label": "Projects Intro",
-            "default": "A small cross-section of recent deliveries across residential, commercial, and renovation. References available on request."
-        },
-        "project_1_image": {
-            "type": "image",
-            "label": "Project 1 Image",
-            "default": "/storage/template-images/construction/project_1_image.jpg"
-        },
-        "project_1_cat": {
-            "type": "text",
-            "label": "Project 1 Category",
-            "default": "RESIDENTIAL · VILLA"
-        },
-        "project_1_title": {
-            "type": "text",
-            "label": "Project 1 Title",
-            "default": "Emirates Hills Private Villa"
-        },
-        "project_1_desc": {
-            "type": "text",
-            "label": "Project 1 Desc",
-            "default": "G+1 18,000 sqft contemporary villa. Turnkey delivery including landscaping, pool, and smart-home integration."
-        },
-        "project_1_value": {
-            "type": "text",
-            "label": "Project 1 Value",
-            "default": "AED 24M · 14 months"
-        },
-        "project_2_image": {
-            "type": "image",
-            "label": "Project 2 Image",
-            "default": "/storage/template-images/construction/project_2_image.jpg"
-        },
-        "project_2_cat": {
-            "type": "text",
-            "label": "Project 2 Category",
-            "default": "COMMERCIAL · FIT-OUT"
-        },
-        "project_2_title": {
-            "type": "text",
-            "label": "Project 2 Title",
-            "default": "DIFC Gate Village Law Firm HQ"
-        },
-        "project_2_desc": {
-            "type": "text",
-            "label": "Project 2 Desc",
-            "default": "22,000 sqft premium office fit-out. Executive suites, partner boardroom, open-plan associate floors — delivered in 9 weeks."
-        },
-        "project_2_value": {
-            "type": "text",
-            "label": "Project 2 Value",
-            "default": "AED 6.2M · 9 weeks"
-        },
-        "project_3_image": {
-            "type": "image",
-            "label": "Project 3 Image",
-            "default": "/storage/template-images/construction/project_3_image.jpg"
-        },
-        "project_3_cat": {
-            "type": "text",
-            "label": "Project 3 Category",
-            "default": "INDUSTRIAL · WAREHOUSE"
-        },
-        "project_3_title": {
-            "type": "text",
-            "label": "Project 3 Title",
-            "default": "JAFZA Logistics Facility"
-        },
-        "project_3_desc": {
-            "type": "text",
-            "label": "Project 3 Desc",
-            "default": "54,000 sqft logistics warehouse with mezzanine, loading bays, and full MEP. Free-zone compliant handover."
-        },
-        "project_3_value": {
-            "type": "text",
-            "label": "Project 3 Value",
-            "default": "AED 38M · 18 months"
-        },
-        "project_4_image": {
-            "type": "image",
-            "label": "Project 4 Image",
-            "default": "/storage/template-images/construction/project_4_image.jpg"
-        },
-        "project_4_cat": {
-            "type": "text",
-            "label": "Project 4 Category",
-            "default": "HOSPITALITY · FIT-OUT"
-        },
-        "project_4_title": {
-            "type": "text",
-            "label": "Project 4 Title",
-            "default": "City Walk Signature Restaurant"
-        },
-        "project_4_desc": {
-            "type": "text",
-            "label": "Project 4 Desc",
-            "default": "120-cover premium F&B fit-out. Full kitchen, cold rooms, bar, façade — delivered overnight shifts to preserve mall trading hours."
-        },
-        "project_4_value": {
-            "type": "text",
-            "label": "Project 4 Value",
-            "default": "AED 4.1M · 11 weeks"
-        },
-        "project_5_image": {
-            "type": "image",
-            "label": "Project 5 Image",
-            "default": "/storage/template-images/construction/project_5_image.jpg"
-        },
-        "project_5_cat": {
-            "type": "text",
-            "label": "Project 5 Category",
-            "default": "RENOVATION · VILLA"
-        },
-        "project_5_title": {
-            "type": "text",
-            "label": "Project 5 Title",
-            "default": "Jumeirah 2 Heritage Renovation"
-        },
-        "project_5_desc": {
-            "type": "text",
-            "label": "Project 5 Desc",
-            "default": "1980s villa fully restored. New MEP, façade, interior, pool, landscaping — occupied-home scheduling with family in residence."
-        },
-        "project_5_value": {
-            "type": "text",
-            "label": "Project 5 Value",
-            "default": "AED 5.8M · 8 months"
-        },
-        "project_6_image": {
-            "type": "image",
-            "label": "Project 6 Image",
-            "default": "/storage/template-images/construction/project_6_image.jpg"
-        },
-        "project_6_cat": {
-            "type": "text",
-            "label": "Project 6 Category",
-            "default": "HEALTHCARE · FIT-OUT"
-        },
-        "project_6_title": {
-            "type": "text",
-            "label": "Project 6 Title",
-            "default": "Al Barsha Specialty Dental Clinic"
-        },
-        "project_6_desc": {
-            "type": "text",
-            "label": "Project 6 Desc",
-            "default": "8,500 sqft DHA-compliant dental clinic with 6 treatment rooms, lab, X-ray, and recovery — full MEP + specialized medical gases."
-        },
-        "project_6_value": {
-            "type": "text",
-            "label": "Project 6 Value",
-            "default": "AED 3.4M · 14 weeks"
-        },
-        "process_eyebrow": {
-            "type": "text",
-            "label": "Process Eyebrow",
-            "default": "HOW WE DELIVER"
-        },
-        "process_title": {
-            "type": "text",
-            "label": "Process Title",
-            "default": "Five Steps. Zero Surprises."
-        },
-        "process_intro": {
-            "type": "text",
-            "label": "Process Intro",
-            "default": "We run every project the same way — from AED 500K renovation to AED 40M build. Predictable process, transparent reporting, on-schedule handover."
-        },
-        "step_1_title": {
-            "type": "text",
-            "label": "Step 1 Title",
-            "default": "Consult"
-        },
-        "step_1_text": {
-            "type": "text",
-            "label": "Step 1 Text",
-            "default": "Site visit + brief capture. We listen first, then scope a rough budget and timeline within 5 working days."
-        },
-        "step_2_title": {
-            "type": "text",
-            "label": "Step 2 Title",
-            "default": "Design"
-        },
-        "step_2_text": {
-            "type": "text",
-            "label": "Step 2 Text",
-            "default": "Architectural + MEP drawings, finishes, 3D visualization, and fully-costed BOQ. You sign-off before a single tool hits the ground."
-        },
-        "step_3_title": {
-            "type": "text",
-            "label": "Step 3 Title",
-            "default": "Permit"
-        },
-        "step_3_text": {
-            "type": "text",
-            "label": "Step 3 Text",
-            "default": "We handle Dubai Municipality, Trakhees, DEWA, Civil Defense. You stay informed — never stuck in authority back-and-forth."
-        },
-        "step_4_title": {
-            "type": "text",
-            "label": "Step 4 Title",
-            "default": "Build"
-        },
-        "step_4_text": {
-            "type": "text",
-            "label": "Step 4 Text",
-            "default": "Senior PM on site daily. Weekly progress photos, biweekly financial reports. One point of contact from break-ground to snag-free finish."
-        },
-        "step_5_title": {
-            "type": "text",
-            "label": "Step 5 Title",
-            "default": "Handover"
-        },
-        "step_5_text": {
-            "type": "text",
-            "label": "Step 5 Text",
-            "default": "Commissioning, authority sign-offs, 1-year snag warranty, AMC option. We don't disappear after the final invoice — we follow up."
-        },
-        "certs_eyebrow": {
-            "type": "text",
-            "label": "Certs Eyebrow",
-            "default": "LICENSED & CERTIFIED"
-        },
-        "certs_title": {
-            "type": "text",
-            "label": "Certs Title",
-            "default": "Every Authority. Every Approval."
-        },
-        "certs_intro": {
-            "type": "text",
-            "label": "Certs Intro",
-            "default": "We hold every license a UAE contractor needs, plus international quality and safety standards — audited annually."
-        },
-        "cert_1": {
-            "type": "text",
-            "label": "Cert 1",
-            "default": "DED Licensed"
-        },
-        "cert_2": {
-            "type": "text",
-            "label": "Cert 2",
-            "default": "Dubai Municipality"
-        },
-        "cert_3": {
-            "type": "text",
-            "label": "Cert 3",
-            "default": "ISO 9001"
-        },
-        "cert_4": {
-            "type": "text",
-            "label": "Cert 4",
-            "default": "ISO 45001"
-        },
-        "cert_5": {
-            "type": "text",
-            "label": "Cert 5",
-            "default": "Civil Defense"
-        },
-        "cert_6": {
-            "type": "text",
-            "label": "Cert 6",
-            "default": "Trakhees Approved"
-        },
-        "team_eyebrow": {
-            "type": "text",
-            "label": "Team Eyebrow",
-            "default": "LEADERSHIP"
-        },
-        "team_title": {
-            "type": "text",
-            "label": "Team Title",
-            "default": "Senior Engineers. Hands-On Owners."
-        },
-        "team_intro": {
-            "type": "text",
-            "label": "Team Intro",
-            "default": "Our leadership team has run over AED 1.8 billion in UAE projects combined. Every major decision passes through a named owner — never a faceless committee."
-        },
-        "member_1_image": {
-            "type": "image",
-            "label": "Member 1 Image",
-            "default": "/storage/builder-heroes/construction.jpg"
-        },
-        "member_1_name": {
-            "type": "text",
-            "label": "Member 1 Name",
-            "default": "Hassan Al-Mansoori"
-        },
-        "member_1_role": {
-            "type": "text",
-            "label": "Member 1 Role",
-            "default": "Managing Director"
-        },
-        "member_1_bio": {
-            "type": "text",
-            "label": "Member 1 Bio",
-            "default": "26 years in UAE construction. Previously Projects Director at two tier-1 contractors. PMP, MSc Civil Engineering."
-        },
-        "member_2_image": {
-            "type": "image",
-            "label": "Member 2 Image",
-            "default": "/storage/builder-heroes/construction.jpg"
-        },
-        "member_2_name": {
-            "type": "text",
-            "label": "Member 2 Name",
-            "default": "Raghav Menon"
-        },
-        "member_2_role": {
-            "type": "text",
-            "label": "Member 2 Role",
-            "default": "Head of MEP"
-        },
-        "member_2_bio": {
-            "type": "text",
-            "label": "Member 2 Bio",
-            "default": "BEng (Mech), 19 years UAE MEP. Led hospital + hotel mechanical design for projects totaling AED 2.4B."
-        },
-        "member_3_image": {
-            "type": "image",
-            "label": "Member 3 Image",
-            "default": "/storage/builder-heroes/construction.jpg"
-        },
-        "member_3_name": {
-            "type": "text",
-            "label": "Member 3 Name",
-            "default": "Sarah Karam"
-        },
-        "member_3_role": {
-            "type": "text",
-            "label": "Member 3 Role",
-            "default": "Director of Projects"
-        },
-        "member_3_bio": {
-            "type": "text",
-            "label": "Member 3 Bio",
-            "default": "15 years in PM. RICS chartered. Has personally delivered 40+ villa + fit-out handovers on-schedule, on-budget."
-        },
-        "member_4_image": {
-            "type": "image",
-            "label": "Member 4 Image",
-            "default": "/storage/builder-heroes/construction.jpg"
-        },
-        "member_4_name": {
-            "type": "text",
-            "label": "Member 4 Name",
-            "default": "Kareem Badawi"
-        },
-        "member_4_role": {
-            "type": "text",
-            "label": "Member 4 Role",
-            "default": "Commercial Manager"
-        },
-        "member_4_bio": {
-            "type": "text",
-            "label": "Member 4 Bio",
-            "default": "QS + commercial lead. MRICS. Known for tight BOQ discipline — no nasty variation-order surprises mid-project."
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "CLIENTS SAY"
-        },
-        "testimonials_title": {
-            "type": "text",
-            "label": "Testimonials Title",
-            "default": "Repeat Clients Do the Talking"
-        },
-        "testimonial_1_quote": {
-            "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "Vertex delivered our Emirates Hills villa three weeks ahead of schedule. Zero variations on our side of the contract. I've since hired them for two more family projects."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Yousef Al-Hashimi"
-        },
-        "testimonial_1_company": {
-            "type": "text",
-            "label": "Testimonial 1 Company",
-            "default": "Private Client, Emirates Hills"
-        },
-        "testimonial_1_result": {
-            "type": "text",
-            "label": "Testimonial 1 Result",
-            "default": "3 weeks early"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "We had a hard opening date for our DIFC office. Vertex was the only contractor whose estimator walked us through why their 9-week timeline was realistic. They hit it exactly."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Amelia Richardson"
-        },
-        "testimonial_2_company": {
-            "type": "text",
-            "label": "Testimonial 2 Company",
-            "default": "Managing Partner, DIFC Law Firm"
-        },
-        "testimonial_2_result": {
-            "type": "text",
-            "label": "Testimonial 2 Result",
-            "default": "On-date handover"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Honest pricing, honest timelines, and a PM who actually answered her phone at 9pm when we had an issue. That's rare in UAE construction. Highly recommended."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Fahad Al-Qassim"
-        },
-        "testimonial_3_company": {
-            "type": "text",
-            "label": "Testimonial 3 Company",
-            "default": "Operations Director, JAFZA Tenant"
-        },
-        "testimonial_3_result": {
-            "type": "text",
-            "label": "Testimonial 3 Result",
-            "default": "Snag-free handover"
-        },
-        "booking_eyebrow": {
-            "type": "text",
-            "label": "Booking Eyebrow",
-            "default": "REQUEST A QUOTE"
-        },
-        "booking_title": {
-            "type": "text",
-            "label": "Booking Title",
-            "default": "Let's Scope Your Project"
-        },
-        "booking_intro": {
-            "type": "text",
-            "label": "Booking Intro",
-            "default": "Share the basics and our senior estimator will follow up within 1 business day to schedule a site visit and issue a written quote. No obligation, and every conversation is confidential."
-        },
-        "booking_project_type_label": {
-            "type": "text",
-            "label": "Project Type Label",
-            "default": "Project Type"
-        },
-        "booking_project_size_label": {
-            "type": "text",
-            "label": "Project Size Label",
-            "default": "Approximate Size"
-        },
-        "booking_timeline_label": {
-            "type": "text",
-            "label": "Timeline Label",
-            "default": "Desired Timeline"
-        },
-        "booking_budget_label": {
-            "type": "text",
-            "label": "Budget Label",
-            "default": "Budget Range"
-        },
-        "booking_name_label": {
-            "type": "text",
-            "label": "Name Label",
-            "default": "Full Name"
-        },
-        "booking_phone_label": {
-            "type": "text",
-            "label": "Phone Label",
-            "default": "Mobile"
-        },
-        "booking_email_label": {
-            "type": "text",
-            "label": "Email Label",
-            "default": "Work Email"
-        },
-        "booking_location_label": {
-            "type": "text",
-            "label": "Location Label",
-            "default": "Site Location"
-        },
-        "booking_submit": {
-            "type": "text",
-            "label": "Submit Button",
-            "default": "Request a Quote →"
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "CONTACT"
-        },
-        "contact_title": {
-            "type": "text",
-            "label": "Contact Title",
-            "default": "Talk to Our Team"
-        },
-        "contact_intro": {
-            "type": "text",
-            "label": "Contact Intro",
-            "default": "Head office in Business Bay. Site visits anywhere across Dubai, Abu Dhabi, Sharjah, and the Northern Emirates. Reply within 1 business day, guaranteed."
-        },
-        "contact_email_label": {
-            "type": "text",
-            "label": "Email Label",
-            "default": "Email"
-        },
-        "contact_email": {
-            "type": "text",
-            "label": "Email",
-            "default": "projects@vertexconstruction.ae"
-        },
-        "contact_phone_label": {
-            "type": "text",
-            "label": "Phone Label",
-            "default": "Phone"
-        },
-        "contact_phone": {
-            "type": "text",
-            "label": "Phone",
-            "default": "+971 4 450 7700"
-        },
-        "contact_address_label": {
-            "type": "text",
-            "label": "Address Label",
-            "default": "Head Office"
-        },
-        "contact_address": {
-            "type": "text",
-            "label": "Address",
-            "default": "Bay Square Building 8, Business Bay, Dubai, UAE"
-        },
-        "contact_hours_label": {
-            "type": "text",
-            "label": "Hours Label",
-            "default": "Hours"
-        },
-        "contact_hours": {
-            "type": "text",
-            "label": "Hours",
-            "default": "Sun–Thu, 08:00–18:00 GST"
-        },
-        "contact_cta_title": {
-            "type": "text",
-            "label": "Contact CTA Title",
-            "default": "Ready to break ground?"
-        },
-        "contact_cta_text": {
-            "type": "text",
-            "label": "Contact CTA Text",
-            "default": "Request a free site visit and written quote. Our estimator will call within one business day."
-        },
-        "contact_cta_button": {
-            "type": "text",
-            "label": "Contact CTA Button",
-            "default": "Request a Quote"
-        },
-        "footer_logo": {
-            "type": "text",
-            "label": "Footer Logo",
-            "default": "Vertex"
-        },
-        "footer_tagline": {
-            "type": "text",
-            "label": "Footer Tagline",
-            "default": "UAE general contractor since 2009. Residential, commercial, MEP, and renovation — delivered on time, to specification, with senior engineers in charge."
-        },
-        "social_1": {
-            "type": "text",
-            "label": "Social 1",
-            "default": "IN"
-        },
-        "social_2": {
-            "type": "text",
-            "label": "Social 2",
-            "default": "IG"
-        },
-        "social_3": {
-            "type": "text",
-            "label": "Social 3",
-            "default": "YT"
-        },
-        "social_4": {
-            "type": "text",
-            "label": "Social 4",
-            "default": "X"
-        },
-        "footer_col_1_title": {
-            "type": "text",
-            "label": "Footer Col 1 Title",
-            "default": "Services"
-        },
-        "footer_col_2_title": {
-            "type": "text",
-            "label": "Footer Col 2 Title",
-            "default": "Company"
-        },
-        "footer_col_3_title": {
-            "type": "text",
-            "label": "Footer Col 3 Title",
-            "default": "Get in Touch"
-        },
-        "footer_link_1": {
-            "type": "text",
-            "label": "Footer Link 1",
-            "default": "Civil Works"
-        },
-        "footer_link_2": {
-            "type": "text",
-            "label": "Footer Link 2",
-            "default": "MEP"
-        },
-        "footer_link_3": {
-            "type": "text",
-            "label": "Footer Link 3",
-            "default": "Fit-Out"
-        },
-        "footer_link_4": {
-            "type": "text",
-            "label": "Footer Link 4",
-            "default": "Projects"
-        },
-        "footer_link_5": {
-            "type": "text",
-            "label": "Footer Link 5",
-            "default": "Team"
-        },
-        "footer_link_6": {
-            "type": "text",
-            "label": "Footer Link 6",
-            "default": "Certifications"
-        },
-        "footer_link_7": {
-            "type": "text",
-            "label": "Footer Link 7",
-            "default": "Contact"
-        },
-        "footer_link_8": {
-            "type": "text",
-            "label": "Footer Link 8",
-            "default": "Request a Quote"
-        },
-        "footer_text": {
-            "type": "text",
-            "label": "Footer Text",
-            "default": "© 2026 Vertex Construction LLC. All rights reserved."
-        },
-        "footer_legal": {
-            "type": "text",
-            "label": "Footer Legal",
-            "default": "Privacy · Terms · Trade License"
-        }
+  "id": "construction",
+  "name": "Construction Company",
+  "industry": "construction",
+  "description": "Industrial-grade construction contractor template \u2014 steel-and-orange heavy hero with quote form, six core service disciplines (Civil, MEP, Fit-Out, Renovation, PM, Maintenance), six-project portfolio grid with values, five-step project process, certification strip, four-person leadership team, client testimonials, and a full quote-request booking form. Built for mid-market GCs in MENA.",
+  "thumbnail": "/storage/builder-heroes/construction.jpg",
+  "category": "trades",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "elements": {
+        "logo": "nav .logo",
+        "nav_1": "nav .nav-link-1",
+        "nav_2": "nav .nav-link-2",
+        "nav_3": "nav .nav-link-3",
+        "nav_4": "nav .nav-link-4",
+        "nav_5": "nav .nav-link-5",
+        "nav_cta": "nav .nav-cta"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero with Quote Form",
+      "elements": {
+        "hero_image": "section.hero",
+        "hero_eyebrow": ".hero-eyebrow",
+        "hero_title": ".hero-title",
+        "hero_subtitle": ".hero-subtitle",
+        "hero_trust_1": ".hero-trust-1",
+        "hero_trust_2": ".hero-trust-2",
+        "hero_trust_3": ".hero-trust-3",
+        "hero_trust_4": ".hero-trust-4",
+        "hero_form_eyebrow": ".hero-form-eyebrow",
+        "hero_form_title": ".hero-form-title",
+        "hero_form_sub": ".hero-form-sub",
+        "hero_form_name_label": ".hero-form label[data-field=hero_form_name_label]",
+        "hero_form_phone_label": ".hero-form label[data-field=hero_form_phone_label]",
+        "hero_form_type_label": ".hero-form label[data-field=hero_form_type_label]",
+        "hero_form_submit": ".hero-form button",
+        "hero_form_note": ".hero-form-note"
+      }
+    },
+    {
+      "id": "results",
+      "name": "Stats Metrics",
+      "elements": {
+        "stat_1_value": ".results-grid .result-item:nth-child(1) .result-value",
+        "stat_1_label": ".results-grid .result-item:nth-child(1) .result-label",
+        "stat_2_value": ".results-grid .result-item:nth-child(2) .result-value",
+        "stat_2_label": ".results-grid .result-item:nth-child(2) .result-label",
+        "stat_3_value": ".results-grid .result-item:nth-child(3) .result-value",
+        "stat_3_label": ".results-grid .result-item:nth-child(3) .result-label",
+        "stat_4_value": ".results-grid .result-item:nth-child(4) .result-value",
+        "stat_4_label": ".results-grid .result-item:nth-child(4) .result-label"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Services Grid",
+      "elements": {
+        "services_eyebrow": "#services .eyebrow",
+        "services_title": "#services .h-section",
+        "services_intro": "#services .section-intro",
+        "service_1_icon": "#services .service:nth-child(1) .service-icon",
+        "service_1_title": "#services .service:nth-child(1) h3",
+        "service_1_text": "#services .service:nth-child(1) p",
+        "service_1_link": "#services .service:nth-child(1) .service-link",
+        "service_2_icon": "#services .service:nth-child(2) .service-icon",
+        "service_2_title": "#services .service:nth-child(2) h3",
+        "service_2_text": "#services .service:nth-child(2) p",
+        "service_2_link": "#services .service:nth-child(2) .service-link",
+        "service_3_icon": "#services .service:nth-child(3) .service-icon",
+        "service_3_title": "#services .service:nth-child(3) h3",
+        "service_3_text": "#services .service:nth-child(3) p",
+        "service_3_link": "#services .service:nth-child(3) .service-link",
+        "service_4_icon": "#services .service:nth-child(4) .service-icon",
+        "service_4_title": "#services .service:nth-child(4) h3",
+        "service_4_text": "#services .service:nth-child(4) p",
+        "service_4_link": "#services .service:nth-child(4) .service-link",
+        "service_5_icon": "#services .service:nth-child(5) .service-icon",
+        "service_5_title": "#services .service:nth-child(5) h3",
+        "service_5_text": "#services .service:nth-child(5) p",
+        "service_5_link": "#services .service:nth-child(5) .service-link",
+        "service_6_icon": "#services .service:nth-child(6) .service-icon",
+        "service_6_title": "#services .service:nth-child(6) h3",
+        "service_6_text": "#services .service:nth-child(6) p",
+        "service_6_link": "#services .service:nth-child(6) .service-link"
+      }
+    },
+    {
+      "id": "projects",
+      "name": "Project Portfolio",
+      "elements": {
+        "projects_eyebrow": "#projects .eyebrow",
+        "projects_title": "#projects .h-section",
+        "projects_intro": "#projects .section-intro",
+        "project_1_image": ".projects-grid .project:nth-child(1) .project-image",
+        "project_1_cat": ".projects-grid .project:nth-child(1) .project-cat",
+        "project_1_title": ".projects-grid .project:nth-child(1) h3",
+        "project_1_desc": ".projects-grid .project:nth-child(1) p",
+        "project_1_value": ".projects-grid .project:nth-child(1) .project-value",
+        "project_2_image": ".projects-grid .project:nth-child(2) .project-image",
+        "project_2_cat": ".projects-grid .project:nth-child(2) .project-cat",
+        "project_2_title": ".projects-grid .project:nth-child(2) h3",
+        "project_2_desc": ".projects-grid .project:nth-child(2) p",
+        "project_2_value": ".projects-grid .project:nth-child(2) .project-value",
+        "project_3_image": ".projects-grid .project:nth-child(3) .project-image",
+        "project_3_cat": ".projects-grid .project:nth-child(3) .project-cat",
+        "project_3_title": ".projects-grid .project:nth-child(3) h3",
+        "project_3_desc": ".projects-grid .project:nth-child(3) p",
+        "project_3_value": ".projects-grid .project:nth-child(3) .project-value",
+        "project_4_image": ".projects-grid .project:nth-child(4) .project-image",
+        "project_4_cat": ".projects-grid .project:nth-child(4) .project-cat",
+        "project_4_title": ".projects-grid .project:nth-child(4) h3",
+        "project_4_desc": ".projects-grid .project:nth-child(4) p",
+        "project_4_value": ".projects-grid .project:nth-child(4) .project-value",
+        "project_5_image": ".projects-grid .project:nth-child(5) .project-image",
+        "project_5_cat": ".projects-grid .project:nth-child(5) .project-cat",
+        "project_5_title": ".projects-grid .project:nth-child(5) h3",
+        "project_5_desc": ".projects-grid .project:nth-child(5) p",
+        "project_5_value": ".projects-grid .project:nth-child(5) .project-value",
+        "project_6_image": ".projects-grid .project:nth-child(6) .project-image",
+        "project_6_cat": ".projects-grid .project:nth-child(6) .project-cat",
+        "project_6_title": ".projects-grid .project:nth-child(6) h3",
+        "project_6_desc": ".projects-grid .project:nth-child(6) p",
+        "project_6_value": ".projects-grid .project:nth-child(6) .project-value"
+      }
+    },
+    {
+      "id": "process",
+      "name": "Process Steps",
+      "elements": {
+        "process_eyebrow": "#process .eyebrow",
+        "process_title": "#process .h-section",
+        "process_intro": "#process .section-intro",
+        "step_1_title": ".process-steps .process-step:nth-child(1) h3",
+        "step_1_text": ".process-steps .process-step:nth-child(1) p",
+        "step_2_title": ".process-steps .process-step:nth-child(2) h3",
+        "step_2_text": ".process-steps .process-step:nth-child(2) p",
+        "step_3_title": ".process-steps .process-step:nth-child(3) h3",
+        "step_3_text": ".process-steps .process-step:nth-child(3) p",
+        "step_4_title": ".process-steps .process-step:nth-child(4) h3",
+        "step_4_text": ".process-steps .process-step:nth-child(4) p",
+        "step_5_title": ".process-steps .process-step:nth-child(5) h3",
+        "step_5_text": ".process-steps .process-step:nth-child(5) p"
+      }
+    },
+    {
+      "id": "certifications",
+      "name": "Certifications",
+      "elements": {
+        "certs_eyebrow": "#certs .eyebrow",
+        "certs_title": "#certs .h-section",
+        "certs_intro": "#certs .section-intro",
+        "cert_1": ".certs-grid .cert-logo:nth-child(1)",
+        "cert_2": ".certs-grid .cert-logo:nth-child(2)",
+        "cert_3": ".certs-grid .cert-logo:nth-child(3)",
+        "cert_4": ".certs-grid .cert-logo:nth-child(4)",
+        "cert_5": ".certs-grid .cert-logo:nth-child(5)",
+        "cert_6": ".certs-grid .cert-logo:nth-child(6)"
+      }
+    },
+    {
+      "id": "team",
+      "name": "Leadership",
+      "elements": {
+        "team_eyebrow": "#team .eyebrow",
+        "team_title": "#team .h-section",
+        "team_intro": "#team .section-intro",
+        "member_1_image": ".team-grid .member:nth-child(1) .member-photo",
+        "member_1_name": ".team-grid .member:nth-child(1) h3",
+        "member_1_role": ".team-grid .member:nth-child(1) .member-role",
+        "member_1_bio": ".team-grid .member:nth-child(1) .member-bio",
+        "member_2_image": ".team-grid .member:nth-child(2) .member-photo",
+        "member_2_name": ".team-grid .member:nth-child(2) h3",
+        "member_2_role": ".team-grid .member:nth-child(2) .member-role",
+        "member_2_bio": ".team-grid .member:nth-child(2) .member-bio",
+        "member_3_image": ".team-grid .member:nth-child(3) .member-photo",
+        "member_3_name": ".team-grid .member:nth-child(3) h3",
+        "member_3_role": ".team-grid .member:nth-child(3) .member-role",
+        "member_3_bio": ".team-grid .member:nth-child(3) .member-bio",
+        "member_4_image": ".team-grid .member:nth-child(4) .member-photo",
+        "member_4_name": ".team-grid .member:nth-child(4) h3",
+        "member_4_role": ".team-grid .member:nth-child(4) .member-role",
+        "member_4_bio": ".team-grid .member:nth-child(4) .member-bio"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Testimonials",
+      "elements": {
+        "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
+        "testimonials_title": "[data-block=testimonials] .h-section",
+        "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+        "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+        "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
+        "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
+        "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+        "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+        "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
+        "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
+        "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+        "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+        "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
+        "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Request a Quote",
+      "elements": {
+        "booking_eyebrow": "#booking .eyebrow",
+        "booking_title": "#booking .h-section",
+        "booking_intro": ".booking-intro",
+        "booking_project_type_label": ".booking-form label[data-field=booking_project_type_label]",
+        "booking_project_size_label": ".booking-form label[data-field=booking_project_size_label]",
+        "booking_timeline_label": ".booking-form label[data-field=booking_timeline_label]",
+        "booking_budget_label": ".booking-form label[data-field=booking_budget_label]",
+        "booking_name_label": ".booking-form label[data-field=booking_name_label]",
+        "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+        "booking_email_label": ".booking-form label[data-field=booking_email_label]",
+        "booking_location_label": ".booking-form label[data-field=booking_location_label]",
+        "booking_submit": ".booking-submit"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact",
+      "elements": {
+        "contact_eyebrow": "#contact .eyebrow",
+        "contact_title": "#contact .h-section",
+        "contact_intro": "#contact .section-intro",
+        "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
+        "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
+        "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
+        "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
+        "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
+        "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
+        "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
+        "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
+        "contact_cta_title": "#contact .hero-form-title",
+        "contact_cta_text": "#contact .hero-form-sub",
+        "contact_cta_button": "#contact .btn-primary"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2",
+        "intro": ".section-subtitle",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card h3",
+        "post_excerpt": ".blog-card p",
+        "cta": ".blog-cta a"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "elements": {
+        "footer_logo": ".footer-logo",
+        "footer_tagline": ".footer-tagline",
+        "social_1": ".footer-socials a:nth-child(1)",
+        "social_2": ".footer-socials a:nth-child(2)",
+        "social_3": ".footer-socials a:nth-child(3)",
+        "social_4": ".footer-socials a:nth-child(4)",
+        "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+        "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+        "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+        "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+        "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+        "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+        "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+        "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+        "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+        "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+        "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+        "footer_text": ".footer-bottom > div:nth-child(1)",
+        "footer_legal": ".footer-bottom > div:nth-child(2)"
+      }
     }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Business Name",
+      "default": "Vertex Construction"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Built on Time. Built to Last."
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Vertex Construction is a Dubai-based mid-market general contractor delivering residential villas, commercial fit-outs, MEP, and renovations across the UAE since 2009."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://vertexconstruction.ae"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/construction.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_AE"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Background",
+      "default": "/storage/builder-heroes/construction.jpg"
+    },
+    "steel": {
+      "type": "color",
+      "label": "Steel Grey",
+      "default": "#2D3748"
+    },
+    "steel_soft": {
+      "type": "color",
+      "label": "Steel Soft",
+      "default": "#374151"
+    },
+    "orange": {
+      "type": "color",
+      "label": "Construction Orange",
+      "default": "#F6820C"
+    },
+    "orange_deep": {
+      "type": "color",
+      "label": "Orange Deep",
+      "default": "#C76908"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Chalk",
+      "default": "#F7FAFC"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#A0AEC0"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#4A5568"
+    },
+    "logo": {
+      "type": "text",
+      "label": "Logo Text",
+      "default": "Vertex"
+    },
+    "nav_1": {
+      "type": "text",
+      "label": "Nav: Services",
+      "default": "Services"
+    },
+    "nav_2": {
+      "type": "text",
+      "label": "Nav: Projects",
+      "default": "Projects"
+    },
+    "nav_3": {
+      "type": "text",
+      "label": "Nav: Process",
+      "default": "Process"
+    },
+    "nav_4": {
+      "type": "text",
+      "label": "Nav: Team",
+      "default": "Team"
+    },
+    "nav_5": {
+      "type": "text",
+      "label": "Nav: Contact",
+      "default": "Contact"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Request a Quote"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Licensed UAE General Contractor \u00b7 Since 2009"
+    },
+    "hero_title": {
+      "type": "text",
+      "label": "Hero Title",
+      "default": "Builders Who Show Up. Projects That Close On Time."
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "Residential villas, commercial fit-outs, MEP, and turnkey construction across the UAE. 140+ projects delivered. 97% on schedule. One team from ground-break to handover."
+    },
+    "hero_trust_1": {
+      "type": "text",
+      "label": "Trust 1",
+      "default": "DED Licensed"
+    },
+    "hero_trust_2": {
+      "type": "text",
+      "label": "Trust 2",
+      "default": "Dubai Municipality Approved"
+    },
+    "hero_trust_3": {
+      "type": "text",
+      "label": "Trust 3",
+      "default": "ISO 9001 / 45001"
+    },
+    "hero_trust_4": {
+      "type": "text",
+      "label": "Trust 4",
+      "default": "AED 50M Insured"
+    },
+    "hero_form_eyebrow": {
+      "type": "text",
+      "label": "Form Eyebrow",
+      "default": "FREE CONSULTATION"
+    },
+    "hero_form_title": {
+      "type": "text",
+      "label": "Form Title",
+      "default": "Talk to Our Estimator"
+    },
+    "hero_form_sub": {
+      "type": "text",
+      "label": "Form Sub",
+      "default": "Send us the basics and our senior estimator will call within 1 business day with a site visit and ballpark number."
+    },
+    "hero_form_name_label": {
+      "type": "text",
+      "label": "Name Label",
+      "default": "Full Name"
+    },
+    "hero_form_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Mobile"
+    },
+    "hero_form_type_label": {
+      "type": "text",
+      "label": "Project Type Label",
+      "default": "Project Type"
+    },
+    "hero_form_submit": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Request Site Visit \u2192"
+    },
+    "hero_form_note": {
+      "type": "text",
+      "label": "Form Note",
+      "default": "Confidential. No obligation. Initial consultation is always free."
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "140+"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Projects Delivered"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "97%"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "On-Schedule Rate"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "AED 1.8B"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Work In Place"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "17"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Years in Operation"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "WHAT WE BUILD"
+    },
+    "services_title": {
+      "type": "text",
+      "label": "Services Title",
+      "default": "A Full-Service General Contractor"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "Six disciplines under one roof. Civil works to MEP, fit-outs to long-term maintenance \u2014 managed by senior engineers with decades in UAE construction."
+    },
+    "service_1_icon": {
+      "type": "text",
+      "label": "Service 1 Icon",
+      "default": "CV"
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Civil Works"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Text",
+      "default": "Foundation, structural concrete, blockwork, and finishing for villas and low-rise commercial buildings. DM-approved from permit to handover."
+    },
+    "service_1_link": {
+      "type": "text",
+      "label": "Service 1 Link",
+      "default": "See civil scope"
+    },
+    "service_2_icon": {
+      "type": "text",
+      "label": "Service 2 Icon",
+      "default": "MP"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "MEP"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Text",
+      "default": "Mechanical, electrical, plumbing \u2014 designed and installed in-house. Fully coordinated BIM models so nothing clashes on site. Trakhees and DEWA approvals managed."
+    },
+    "service_2_link": {
+      "type": "text",
+      "label": "Service 2 Link",
+      "default": "See MEP capabilities"
+    },
+    "service_3_icon": {
+      "type": "text",
+      "label": "Service 3 Icon",
+      "default": "FT"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "Fit-Out"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Text",
+      "default": "High-end office, retail, F&B, and clinic fit-outs. Joinery, partition, flooring, ceiling, finishes \u2014 delivered against approved shop drawings and tight handover dates."
+    },
+    "service_3_link": {
+      "type": "text",
+      "label": "Service 3 Link",
+      "default": "See fit-out work"
+    },
+    "service_4_icon": {
+      "type": "text",
+      "label": "Service 4 Icon",
+      "default": "RN"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Renovation"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Text",
+      "default": "Villa extensions, fa\u00e7ade refresh, kitchen/bath remodels, and full turnkey renovations. Minimal disruption scheduling for occupied homes."
+    },
+    "service_4_link": {
+      "type": "text",
+      "label": "Service 4 Link",
+      "default": "See renovations"
+    },
+    "service_5_icon": {
+      "type": "text",
+      "label": "Service 5 Icon",
+      "default": "PM"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "Project Management"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Text",
+      "default": "Owner's rep and PM-as-a-service. Cost control, schedule oversight, contractor coordination, and weekly executive reports \u2014 for clients running their own projects."
+    },
+    "service_5_link": {
+      "type": "text",
+      "label": "Service 5 Link",
+      "default": "Discuss PM services"
+    },
+    "service_6_icon": {
+      "type": "text",
+      "label": "Service 6 Icon",
+      "default": "MT"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "Maintenance"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Text",
+      "default": "Post-handover AMC for MEP, civil, and finishes. 24/7 emergency response. Annual contracts covering villas, offices, and retail outlets across Dubai."
+    },
+    "service_6_link": {
+      "type": "text",
+      "label": "Service 6 Link",
+      "default": "Request AMC"
+    },
+    "projects_eyebrow": {
+      "type": "text",
+      "label": "Projects Eyebrow",
+      "default": "SELECTED PROJECTS"
+    },
+    "projects_title": {
+      "type": "text",
+      "label": "Projects Title",
+      "default": "The Work Speaks First"
+    },
+    "projects_intro": {
+      "type": "text",
+      "label": "Projects Intro",
+      "default": "A small cross-section of recent deliveries across residential, commercial, and renovation. References available on request."
+    },
+    "project_1_image": {
+      "type": "image",
+      "label": "Project 1 Image",
+      "default": "/storage/template-images/construction/project_1_image.jpg"
+    },
+    "project_1_cat": {
+      "type": "text",
+      "label": "Project 1 Category",
+      "default": "RESIDENTIAL \u00b7 VILLA"
+    },
+    "project_1_title": {
+      "type": "text",
+      "label": "Project 1 Title",
+      "default": "Emirates Hills Private Villa"
+    },
+    "project_1_desc": {
+      "type": "text",
+      "label": "Project 1 Desc",
+      "default": "G+1 18,000 sqft contemporary villa. Turnkey delivery including landscaping, pool, and smart-home integration."
+    },
+    "project_1_value": {
+      "type": "text",
+      "label": "Project 1 Value",
+      "default": "AED 24M \u00b7 14 months"
+    },
+    "project_2_image": {
+      "type": "image",
+      "label": "Project 2 Image",
+      "default": "/storage/template-images/construction/project_2_image.jpg"
+    },
+    "project_2_cat": {
+      "type": "text",
+      "label": "Project 2 Category",
+      "default": "COMMERCIAL \u00b7 FIT-OUT"
+    },
+    "project_2_title": {
+      "type": "text",
+      "label": "Project 2 Title",
+      "default": "DIFC Gate Village Law Firm HQ"
+    },
+    "project_2_desc": {
+      "type": "text",
+      "label": "Project 2 Desc",
+      "default": "22,000 sqft premium office fit-out. Executive suites, partner boardroom, open-plan associate floors \u2014 delivered in 9 weeks."
+    },
+    "project_2_value": {
+      "type": "text",
+      "label": "Project 2 Value",
+      "default": "AED 6.2M \u00b7 9 weeks"
+    },
+    "project_3_image": {
+      "type": "image",
+      "label": "Project 3 Image",
+      "default": "/storage/template-images/construction/project_3_image.jpg"
+    },
+    "project_3_cat": {
+      "type": "text",
+      "label": "Project 3 Category",
+      "default": "INDUSTRIAL \u00b7 WAREHOUSE"
+    },
+    "project_3_title": {
+      "type": "text",
+      "label": "Project 3 Title",
+      "default": "JAFZA Logistics Facility"
+    },
+    "project_3_desc": {
+      "type": "text",
+      "label": "Project 3 Desc",
+      "default": "54,000 sqft logistics warehouse with mezzanine, loading bays, and full MEP. Free-zone compliant handover."
+    },
+    "project_3_value": {
+      "type": "text",
+      "label": "Project 3 Value",
+      "default": "AED 38M \u00b7 18 months"
+    },
+    "project_4_image": {
+      "type": "image",
+      "label": "Project 4 Image",
+      "default": "/storage/template-images/construction/project_4_image.jpg"
+    },
+    "project_4_cat": {
+      "type": "text",
+      "label": "Project 4 Category",
+      "default": "HOSPITALITY \u00b7 FIT-OUT"
+    },
+    "project_4_title": {
+      "type": "text",
+      "label": "Project 4 Title",
+      "default": "City Walk Signature Restaurant"
+    },
+    "project_4_desc": {
+      "type": "text",
+      "label": "Project 4 Desc",
+      "default": "120-cover premium F&B fit-out. Full kitchen, cold rooms, bar, fa\u00e7ade \u2014 delivered overnight shifts to preserve mall trading hours."
+    },
+    "project_4_value": {
+      "type": "text",
+      "label": "Project 4 Value",
+      "default": "AED 4.1M \u00b7 11 weeks"
+    },
+    "project_5_image": {
+      "type": "image",
+      "label": "Project 5 Image",
+      "default": "/storage/template-images/construction/project_5_image.jpg"
+    },
+    "project_5_cat": {
+      "type": "text",
+      "label": "Project 5 Category",
+      "default": "RENOVATION \u00b7 VILLA"
+    },
+    "project_5_title": {
+      "type": "text",
+      "label": "Project 5 Title",
+      "default": "Jumeirah 2 Heritage Renovation"
+    },
+    "project_5_desc": {
+      "type": "text",
+      "label": "Project 5 Desc",
+      "default": "1980s villa fully restored. New MEP, fa\u00e7ade, interior, pool, landscaping \u2014 occupied-home scheduling with family in residence."
+    },
+    "project_5_value": {
+      "type": "text",
+      "label": "Project 5 Value",
+      "default": "AED 5.8M \u00b7 8 months"
+    },
+    "project_6_image": {
+      "type": "image",
+      "label": "Project 6 Image",
+      "default": "/storage/template-images/construction/project_6_image.jpg"
+    },
+    "project_6_cat": {
+      "type": "text",
+      "label": "Project 6 Category",
+      "default": "HEALTHCARE \u00b7 FIT-OUT"
+    },
+    "project_6_title": {
+      "type": "text",
+      "label": "Project 6 Title",
+      "default": "Al Barsha Specialty Dental Clinic"
+    },
+    "project_6_desc": {
+      "type": "text",
+      "label": "Project 6 Desc",
+      "default": "8,500 sqft DHA-compliant dental clinic with 6 treatment rooms, lab, X-ray, and recovery \u2014 full MEP + specialized medical gases."
+    },
+    "project_6_value": {
+      "type": "text",
+      "label": "Project 6 Value",
+      "default": "AED 3.4M \u00b7 14 weeks"
+    },
+    "process_eyebrow": {
+      "type": "text",
+      "label": "Process Eyebrow",
+      "default": "HOW WE DELIVER"
+    },
+    "process_title": {
+      "type": "text",
+      "label": "Process Title",
+      "default": "Five Steps. Zero Surprises."
+    },
+    "process_intro": {
+      "type": "text",
+      "label": "Process Intro",
+      "default": "We run every project the same way \u2014 from AED 500K renovation to AED 40M build. Predictable process, transparent reporting, on-schedule handover."
+    },
+    "step_1_title": {
+      "type": "text",
+      "label": "Step 1 Title",
+      "default": "Consult"
+    },
+    "step_1_text": {
+      "type": "text",
+      "label": "Step 1 Text",
+      "default": "Site visit + brief capture. We listen first, then scope a rough budget and timeline within 5 working days."
+    },
+    "step_2_title": {
+      "type": "text",
+      "label": "Step 2 Title",
+      "default": "Design"
+    },
+    "step_2_text": {
+      "type": "text",
+      "label": "Step 2 Text",
+      "default": "Architectural + MEP drawings, finishes, 3D visualization, and fully-costed BOQ. You sign-off before a single tool hits the ground."
+    },
+    "step_3_title": {
+      "type": "text",
+      "label": "Step 3 Title",
+      "default": "Permit"
+    },
+    "step_3_text": {
+      "type": "text",
+      "label": "Step 3 Text",
+      "default": "We handle Dubai Municipality, Trakhees, DEWA, Civil Defense. You stay informed \u2014 never stuck in authority back-and-forth."
+    },
+    "step_4_title": {
+      "type": "text",
+      "label": "Step 4 Title",
+      "default": "Build"
+    },
+    "step_4_text": {
+      "type": "text",
+      "label": "Step 4 Text",
+      "default": "Senior PM on site daily. Weekly progress photos, biweekly financial reports. One point of contact from break-ground to snag-free finish."
+    },
+    "step_5_title": {
+      "type": "text",
+      "label": "Step 5 Title",
+      "default": "Handover"
+    },
+    "step_5_text": {
+      "type": "text",
+      "label": "Step 5 Text",
+      "default": "Commissioning, authority sign-offs, 1-year snag warranty, AMC option. We don't disappear after the final invoice \u2014 we follow up."
+    },
+    "certs_eyebrow": {
+      "type": "text",
+      "label": "Certs Eyebrow",
+      "default": "LICENSED & CERTIFIED"
+    },
+    "certs_title": {
+      "type": "text",
+      "label": "Certs Title",
+      "default": "Every Authority. Every Approval."
+    },
+    "certs_intro": {
+      "type": "text",
+      "label": "Certs Intro",
+      "default": "We hold every license a UAE contractor needs, plus international quality and safety standards \u2014 audited annually."
+    },
+    "cert_1": {
+      "type": "text",
+      "label": "Cert 1",
+      "default": "DED Licensed"
+    },
+    "cert_2": {
+      "type": "text",
+      "label": "Cert 2",
+      "default": "Dubai Municipality"
+    },
+    "cert_3": {
+      "type": "text",
+      "label": "Cert 3",
+      "default": "ISO 9001"
+    },
+    "cert_4": {
+      "type": "text",
+      "label": "Cert 4",
+      "default": "ISO 45001"
+    },
+    "cert_5": {
+      "type": "text",
+      "label": "Cert 5",
+      "default": "Civil Defense"
+    },
+    "cert_6": {
+      "type": "text",
+      "label": "Cert 6",
+      "default": "Trakhees Approved"
+    },
+    "team_eyebrow": {
+      "type": "text",
+      "label": "Team Eyebrow",
+      "default": "LEADERSHIP"
+    },
+    "team_title": {
+      "type": "text",
+      "label": "Team Title",
+      "default": "Senior Engineers. Hands-On Owners."
+    },
+    "team_intro": {
+      "type": "text",
+      "label": "Team Intro",
+      "default": "Our leadership team has run over AED 1.8 billion in UAE projects combined. Every major decision passes through a named owner \u2014 never a faceless committee."
+    },
+    "member_1_image": {
+      "type": "image",
+      "label": "Member 1 Image",
+      "default": "/storage/builder-heroes/construction.jpg"
+    },
+    "member_1_name": {
+      "type": "text",
+      "label": "Member 1 Name",
+      "default": "Hassan Al-Mansoori"
+    },
+    "member_1_role": {
+      "type": "text",
+      "label": "Member 1 Role",
+      "default": "Managing Director"
+    },
+    "member_1_bio": {
+      "type": "text",
+      "label": "Member 1 Bio",
+      "default": "26 years in UAE construction. Previously Projects Director at two tier-1 contractors. PMP, MSc Civil Engineering."
+    },
+    "member_2_image": {
+      "type": "image",
+      "label": "Member 2 Image",
+      "default": "/storage/builder-heroes/construction.jpg"
+    },
+    "member_2_name": {
+      "type": "text",
+      "label": "Member 2 Name",
+      "default": "Raghav Menon"
+    },
+    "member_2_role": {
+      "type": "text",
+      "label": "Member 2 Role",
+      "default": "Head of MEP"
+    },
+    "member_2_bio": {
+      "type": "text",
+      "label": "Member 2 Bio",
+      "default": "BEng (Mech), 19 years UAE MEP. Led hospital + hotel mechanical design for projects totaling AED 2.4B."
+    },
+    "member_3_image": {
+      "type": "image",
+      "label": "Member 3 Image",
+      "default": "/storage/builder-heroes/construction.jpg"
+    },
+    "member_3_name": {
+      "type": "text",
+      "label": "Member 3 Name",
+      "default": "Sarah Karam"
+    },
+    "member_3_role": {
+      "type": "text",
+      "label": "Member 3 Role",
+      "default": "Director of Projects"
+    },
+    "member_3_bio": {
+      "type": "text",
+      "label": "Member 3 Bio",
+      "default": "15 years in PM. RICS chartered. Has personally delivered 40+ villa + fit-out handovers on-schedule, on-budget."
+    },
+    "member_4_image": {
+      "type": "image",
+      "label": "Member 4 Image",
+      "default": "/storage/builder-heroes/construction.jpg"
+    },
+    "member_4_name": {
+      "type": "text",
+      "label": "Member 4 Name",
+      "default": "Kareem Badawi"
+    },
+    "member_4_role": {
+      "type": "text",
+      "label": "Member 4 Role",
+      "default": "Commercial Manager"
+    },
+    "member_4_bio": {
+      "type": "text",
+      "label": "Member 4 Bio",
+      "default": "QS + commercial lead. MRICS. Known for tight BOQ discipline \u2014 no nasty variation-order surprises mid-project."
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "CLIENTS SAY"
+    },
+    "testimonials_title": {
+      "type": "text",
+      "label": "Testimonials Title",
+      "default": "Repeat Clients Do the Talking"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Vertex delivered our Emirates Hills villa three weeks ahead of schedule. Zero variations on our side of the contract. I've since hired them for two more family projects."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Yousef Al-Hashimi"
+    },
+    "testimonial_1_company": {
+      "type": "text",
+      "label": "Testimonial 1 Company",
+      "default": "Private Client, Emirates Hills"
+    },
+    "testimonial_1_result": {
+      "type": "text",
+      "label": "Testimonial 1 Result",
+      "default": "3 weeks early"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "We had a hard opening date for our DIFC office. Vertex was the only contractor whose estimator walked us through why their 9-week timeline was realistic. They hit it exactly."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Amelia Richardson"
+    },
+    "testimonial_2_company": {
+      "type": "text",
+      "label": "Testimonial 2 Company",
+      "default": "Managing Partner, DIFC Law Firm"
+    },
+    "testimonial_2_result": {
+      "type": "text",
+      "label": "Testimonial 2 Result",
+      "default": "On-date handover"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Honest pricing, honest timelines, and a PM who actually answered her phone at 9pm when we had an issue. That's rare in UAE construction. Highly recommended."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Fahad Al-Qassim"
+    },
+    "testimonial_3_company": {
+      "type": "text",
+      "label": "Testimonial 3 Company",
+      "default": "Operations Director, JAFZA Tenant"
+    },
+    "testimonial_3_result": {
+      "type": "text",
+      "label": "Testimonial 3 Result",
+      "default": "Snag-free handover"
+    },
+    "booking_eyebrow": {
+      "type": "text",
+      "label": "Booking Eyebrow",
+      "default": "REQUEST A QUOTE"
+    },
+    "booking_title": {
+      "type": "text",
+      "label": "Booking Title",
+      "default": "Let's Scope Your Project"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Share the basics and our senior estimator will follow up within 1 business day to schedule a site visit and issue a written quote. No obligation, and every conversation is confidential."
+    },
+    "booking_project_type_label": {
+      "type": "text",
+      "label": "Project Type Label",
+      "default": "Project Type"
+    },
+    "booking_project_size_label": {
+      "type": "text",
+      "label": "Project Size Label",
+      "default": "Approximate Size"
+    },
+    "booking_timeline_label": {
+      "type": "text",
+      "label": "Timeline Label",
+      "default": "Desired Timeline"
+    },
+    "booking_budget_label": {
+      "type": "text",
+      "label": "Budget Label",
+      "default": "Budget Range"
+    },
+    "booking_name_label": {
+      "type": "text",
+      "label": "Name Label",
+      "default": "Full Name"
+    },
+    "booking_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Mobile"
+    },
+    "booking_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Work Email"
+    },
+    "booking_location_label": {
+      "type": "text",
+      "label": "Location Label",
+      "default": "Site Location"
+    },
+    "booking_submit": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Request a Quote \u2192"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "CONTACT"
+    },
+    "contact_title": {
+      "type": "text",
+      "label": "Contact Title",
+      "default": "Talk to Our Team"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "Head office in Business Bay. Site visits anywhere across Dubai, Abu Dhabi, Sharjah, and the Northern Emirates. Reply within 1 business day, guaranteed."
+    },
+    "contact_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email"
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Email",
+      "default": "projects@vertexconstruction.ae"
+    },
+    "contact_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Phone"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Phone",
+      "default": "+971 4 450 7700"
+    },
+    "contact_address_label": {
+      "type": "text",
+      "label": "Address Label",
+      "default": "Head Office"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Address",
+      "default": "Bay Square Building 8, Business Bay, Dubai, UAE"
+    },
+    "contact_hours_label": {
+      "type": "text",
+      "label": "Hours Label",
+      "default": "Hours"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Hours",
+      "default": "Sun\u2013Thu, 08:00\u201318:00 GST"
+    },
+    "contact_cta_title": {
+      "type": "text",
+      "label": "Contact CTA Title",
+      "default": "Ready to break ground?"
+    },
+    "contact_cta_text": {
+      "type": "text",
+      "label": "Contact CTA Text",
+      "default": "Request a free site visit and written quote. Our estimator will call within one business day."
+    },
+    "contact_cta_button": {
+      "type": "text",
+      "label": "Contact CTA Button",
+      "default": "Request a Quote"
+    },
+    "footer_logo": {
+      "type": "text",
+      "label": "Footer Logo",
+      "default": "Vertex"
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "UAE general contractor since 2009. Residential, commercial, MEP, and renovation \u2014 delivered on time, to specification, with senior engineers in charge."
+    },
+    "social_1": {
+      "type": "text",
+      "label": "Social 1",
+      "default": "IN"
+    },
+    "social_2": {
+      "type": "text",
+      "label": "Social 2",
+      "default": "IG"
+    },
+    "social_3": {
+      "type": "text",
+      "label": "Social 3",
+      "default": "YT"
+    },
+    "social_4": {
+      "type": "text",
+      "label": "Social 4",
+      "default": "X"
+    },
+    "footer_col_1_title": {
+      "type": "text",
+      "label": "Footer Col 1 Title",
+      "default": "Services"
+    },
+    "footer_col_2_title": {
+      "type": "text",
+      "label": "Footer Col 2 Title",
+      "default": "Company"
+    },
+    "footer_col_3_title": {
+      "type": "text",
+      "label": "Footer Col 3 Title",
+      "default": "Get in Touch"
+    },
+    "footer_link_1": {
+      "type": "text",
+      "label": "Footer Link 1",
+      "default": "Civil Works"
+    },
+    "footer_link_2": {
+      "type": "text",
+      "label": "Footer Link 2",
+      "default": "MEP"
+    },
+    "footer_link_3": {
+      "type": "text",
+      "label": "Footer Link 3",
+      "default": "Fit-Out"
+    },
+    "footer_link_4": {
+      "type": "text",
+      "label": "Footer Link 4",
+      "default": "Projects"
+    },
+    "footer_link_5": {
+      "type": "text",
+      "label": "Footer Link 5",
+      "default": "Team"
+    },
+    "footer_link_6": {
+      "type": "text",
+      "label": "Footer Link 6",
+      "default": "Certifications"
+    },
+    "footer_link_7": {
+      "type": "text",
+      "label": "Footer Link 7",
+      "default": "Contact"
+    },
+    "footer_link_8": {
+      "type": "text",
+      "label": "Footer Link 8",
+      "default": "Request a Quote"
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Text",
+      "default": "\u00a9 2026 Vertex Construction LLC. All rights reserved."
+    },
+    "footer_legal": {
+      "type": "text",
+      "label": "Footer Legal",
+      "default": "Privacy \u00b7 Terms \u00b7 Trade License"
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "Latest from Our Blog"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Tips, news and insights from our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first visit"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through of the first visit so you know exactly what to expect."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-visit"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard but rarely are."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for taking your time"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/taking-time"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "View All Posts \u2192"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ],
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 6
+  }
 }

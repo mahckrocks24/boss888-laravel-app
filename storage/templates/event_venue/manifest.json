@@ -1,445 +1,1153 @@
 {
-    "id": "event_venue",
-    "name": "Events & Weddings",
-    "industry": "event_venue",
-    "description": "Luxury event production and wedding planning template — ornate serif hero, service types, portfolio showcase, signature experiences, venue partners, gallery, blog, and consultation booking. Midnight plum + champagne gold palette.",
-    "thumbnail": "/storage/builder-heroes/event_venue.jpg",
-    "category": "hospitality",
-    "blocks": [
-        {
-            "id": "nav",
-            "name": "Navigation",
-            "elements": {
-                "logo": "nav .logo",
-                "nav_1": "nav .nav-links a:nth-child(1)",
-                "nav_2": "nav .nav-links a:nth-child(2)",
-                "nav_3": "nav .nav-links a:nth-child(3)",
-                "nav_4": "nav .nav-links a:nth-child(4)",
-                "nav_cta": "nav .nav-cta"
-            }
-        },
-        {
-            "id": "hero",
-            "name": "Hero",
-            "elements": {
-                "hero_image": ".hero-image",
-                "hero_eyebrow": ".hero-eyebrow",
-                "hero_title": ".hero-title",
-                "hero_subtitle": ".hero-subtitle",
-                "hero_cta": ".hero-cta",
-                "hero_cta_secondary": ".hero-cta-secondary"
-            }
-        },
-        {
-            "id": "stats",
-            "name": "Heritage Stats",
-            "elements": {
-                "stat_1_value": ".stat-1-value",
-                "stat_1_label": ".stat-1-label",
-                "stat_2_value": ".stat-2-value",
-                "stat_2_label": ".stat-2-label",
-                "stat_3_value": ".stat-3-value",
-                "stat_3_label": ".stat-3-label",
-                "stat_4_value": ".stat-4-value",
-                "stat_4_label": ".stat-4-label"
-            }
-        },
-        {
-            "id": "service_types",
-            "name": "Event Types",
-            "elements": {
-                "services_eyebrow": ".services-eyebrow",
-                "services_title": ".services-title",
-                "services_intro": ".services-intro",
-                "service_1_title": ".service-1-title",
-                "service_1_text": ".service-1-text",
-                "service_1_image": ".service-1-image",
-                "service_2_title": ".service-2-title",
-                "service_2_text": ".service-2-text",
-                "service_2_image": ".service-2-image",
-                "service_3_title": ".service-3-title",
-                "service_3_text": ".service-3-text",
-                "service_3_image": ".service-3-image",
-                "service_4_title": ".service-4-title",
-                "service_4_text": ".service-4-text",
-                "service_4_image": ".service-4-image"
-            }
-        },
-        {
-            "id": "portfolio",
-            "name": "Portfolio",
-            "elements": {
-                "portfolio_eyebrow": ".portfolio-eyebrow",
-                "portfolio_title": ".portfolio-title",
-                "portfolio_intro": ".portfolio-intro",
-                "event_1_name": ".event-1-name",
-                "event_1_type": ".event-1-type",
-                "event_1_venue": ".event-1-venue",
-                "event_1_image": ".event-1-image",
-                "event_2_name": ".event-2-name",
-                "event_2_type": ".event-2-type",
-                "event_2_venue": ".event-2-venue",
-                "event_2_image": ".event-2-image",
-                "event_3_name": ".event-3-name",
-                "event_3_type": ".event-3-type",
-                "event_3_venue": ".event-3-venue",
-                "event_3_image": ".event-3-image",
-                "event_4_name": ".event-4-name",
-                "event_4_type": ".event-4-type",
-                "event_4_venue": ".event-4-venue",
-                "event_4_image": ".event-4-image",
-                "event_5_name": ".event-5-name",
-                "event_5_type": ".event-5-type",
-                "event_5_venue": ".event-5-venue",
-                "event_5_image": ".event-5-image",
-                "event_6_name": ".event-6-name",
-                "event_6_type": ".event-6-type",
-                "event_6_venue": ".event-6-venue",
-                "event_6_image": ".event-6-image"
-            }
-        },
-        {
-            "id": "signature",
-            "name": "Signature Experiences",
-            "elements": {
-                "signature_eyebrow": ".signature-eyebrow",
-                "signature_title": ".signature-title",
-                "signature_intro": ".signature-intro",
-                "exp_1_title": ".exp-1-title",
-                "exp_1_text": ".exp-1-text",
-                "exp_1_detail": ".exp-1-detail",
-                "exp_2_title": ".exp-2-title",
-                "exp_2_text": ".exp-2-text",
-                "exp_2_detail": ".exp-2-detail",
-                "exp_3_title": ".exp-3-title",
-                "exp_3_text": ".exp-3-text",
-                "exp_3_detail": ".exp-3-detail"
-            }
-        },
-        {
-            "id": "team",
-            "name": "Planning Team",
-            "elements": {
-                "team_eyebrow": ".team-eyebrow",
-                "team_title": ".team-title",
-                "team_intro": ".team-intro",
-                "team_1_name": ".team-1-name",
-                "team_1_title": ".team-1-title",
-                "team_1_bio": ".team-1-bio",
-                "team_1_image": ".team-1-image",
-                "team_2_name": ".team-2-name",
-                "team_2_title": ".team-2-title",
-                "team_2_bio": ".team-2-bio",
-                "team_2_image": ".team-2-image",
-                "team_3_name": ".team-3-name",
-                "team_3_title": ".team-3-title",
-                "team_3_bio": ".team-3-bio",
-                "team_3_image": ".team-3-image"
-            }
-        },
-        {
-            "id": "venues",
-            "name": "Venue Partners",
-            "elements": {
-                "venues_eyebrow": ".venues-eyebrow",
-                "venues_title": ".venues-title",
-                "venue_1": ".venue-1",
-                "venue_2": ".venue-2",
-                "venue_3": ".venue-3",
-                "venue_4": ".venue-4",
-                "venue_5": ".venue-5",
-                "venue_6": ".venue-6",
-                "venue_7": ".venue-7",
-                "venue_8": ".venue-8"
-            }
-        },
-        {
-            "id": "gallery",
-            "name": "Gallery",
-            "elements": {
-                "gallery_eyebrow": ".gallery-eyebrow",
-                "gallery_title": ".gallery-title",
-                "gallery_1_image": ".gallery-1-image",
-                "gallery_2_image": ".gallery-2-image",
-                "gallery_3_image": ".gallery-3-image",
-                "gallery_4_image": ".gallery-4-image",
-                "gallery_5_image": ".gallery-5-image",
-                "gallery_6_image": ".gallery-6-image"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Client Testimonials",
-            "elements": {
-                "testimonials_eyebrow": ".testimonials-eyebrow",
-                "testimonials_title": ".testimonials-title",
-                "testimonial_1_quote": ".testimonial-1-quote",
-                "testimonial_1_author": ".testimonial-1-author",
-                "testimonial_1_event": ".testimonial-1-event",
-                "testimonial_2_quote": ".testimonial-2-quote",
-                "testimonial_2_author": ".testimonial-2-author",
-                "testimonial_2_event": ".testimonial-2-event",
-                "testimonial_3_quote": ".testimonial-3-quote",
-                "testimonial_3_author": ".testimonial-3-author",
-                "testimonial_3_event": ".testimonial-3-event"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Planning Journal",
-            "elements": {
-                "blog_eyebrow": ".blog-eyebrow",
-                "blog_title": ".blog-title",
-                "blog_intro": ".blog-intro",
-                "blog_1_category": ".blog-1-category",
-                "blog_1_title": ".blog-1-title",
-                "blog_1_excerpt": ".blog-1-excerpt",
-                "blog_1_image": ".blog-1-image",
-                "blog_2_category": ".blog-2-category",
-                "blog_2_title": ".blog-2-title",
-                "blog_2_excerpt": ".blog-2-excerpt",
-                "blog_2_image": ".blog-2-image",
-                "blog_3_category": ".blog-3-category",
-                "blog_3_title": ".blog-3-title",
-                "blog_3_excerpt": ".blog-3-excerpt",
-                "blog_3_image": ".blog-3-image",
-                "blog_cta": ".blog-cta"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book Consultation",
-            "elements": {
-                "booking_title": ".booking-title",
-                "booking_intro": ".booking-intro",
-                "booking_cta": ".booking-cta",
-                "booking_display": ".booking-display"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact & Studio",
-            "elements": {
-                "contact_eyebrow": ".contact-eyebrow",
-                "contact_title": ".contact-title",
-                "contact_intro": ".contact-intro",
-                "contact_email": ".contact-email",
-                "contact_phone": ".contact-phone",
-                "contact_address": ".contact-address",
-                "contact_hours": ".contact-hours",
-                "contact_form_title": ".contact-form-title",
-                "form_submit_text": ".form-submit-text",
-                "form_success_message": ".form-success-message"
-            }
-        },
-        {
-            "id": "footer",
-            "name": "Footer",
-            "elements": {
-                "footer_tagline": ".footer-tagline",
-                "footer_text": ".footer-text",
-                "social_instagram": ".social-instagram",
-                "social_pinterest": ".social-pinterest",
-                "social_tiktok": ".social-tiktok"
-            }
-        }
-    ],
-    "variables": {
-        "business_name": { "type": "text", "label": "Studio Name", "default": "Aurora Event Studio" },
-        "business_tagline": { "type": "text", "label": "Tagline", "default": "Luxury Event Production · Dubai" },
-        "meta_description": { "type": "text", "label": "Meta Description", "default": "Aurora Event Studio — a Dubai-based luxury event production and wedding planning studio. Bespoke weddings, corporate galas, and private celebrations, fully produced end-to-end." },
-        "canonical_url": { "type": "url", "label": "Canonical URL", "default": "https://auroraevents.ae" },
-        "og_image": { "type": "image", "label": "OG Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "og_locale": { "type": "text", "label": "OG Locale", "default": "en_US" },
-
-        "nav_1": { "type": "text", "label": "Nav 1", "default": "Services" },
-        "nav_2": { "type": "text", "label": "Nav 2", "default": "Portfolio" },
-        "nav_3": { "type": "text", "label": "Nav 3", "default": "Team" },
-        "nav_4": { "type": "text", "label": "Nav 4", "default": "Journal" },
-        "nav_cta": { "type": "text", "label": "Nav CTA", "default": "Book Consultation" },
-
-        "hero_eyebrow": { "type": "text", "label": "Hero Eyebrow", "default": "Event Production · Est. 2014" },
-        "hero_title": { "type": "html", "label": "Hero Title", "default": "Every evening,<br><em>unforgettable.</em>" },
-        "hero_subtitle": { "type": "text", "label": "Hero Subtitle", "default": "A ten-year-old Dubai studio producing weddings, corporate galas, and private celebrations — end-to-end, from the first moodboard to the last car home. Twenty events a year. Not more." },
-        "hero_cta": { "type": "text", "label": "Primary CTA", "default": "Book a Consultation" },
-        "hero_cta_secondary": { "type": "text", "label": "Secondary CTA", "default": "View the Portfolio" },
-        "hero_image": { "type": "image", "label": "Hero Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "stat_1_value": { "type": "text", "label": "Stat 1 Value", "default": "240+" },
-        "stat_1_label": { "type": "text", "label": "Stat 1 Label", "default": "Events Produced" },
-        "stat_2_value": { "type": "text", "label": "Stat 2 Value", "default": "12" },
-        "stat_2_label": { "type": "text", "label": "Stat 2 Label", "default": "Years in Dubai" },
-        "stat_3_value": { "type": "text", "label": "Stat 3 Value", "default": "20 / yr" },
-        "stat_3_label": { "type": "text", "label": "Stat 3 Label", "default": "By Design" },
-        "stat_4_value": { "type": "text", "label": "Stat 4 Value", "default": "140+" },
-        "stat_4_label": { "type": "text", "label": "Stat 4 Label", "default": "Vendor Partners" },
-
-        "services_eyebrow": { "type": "text", "label": "Services Eyebrow", "default": "What We Produce" },
-        "services_title": { "type": "html", "label": "Services Title", "default": "Four kinds of<br><em>event, fully produced.</em>" },
-        "services_intro": { "type": "text", "label": "Services Intro", "default": "We do twenty events a year — deliberately — so every one gets the full studio behind it, not a junior planner and a moodboard." },
-
-        "service_1_title": { "type": "text", "label": "S1 Title", "default": "Weddings" },
-        "service_1_text": { "type": "text", "label": "S1 Text", "default": "Bespoke Indian, Arab, and Western weddings across Dubai, Abu Dhabi, and RAK. From intimate villa dinners to full three-day destination celebrations." },
-        "service_1_image": { "type": "image", "label": "S1 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "service_2_title": { "type": "text", "label": "S2 Title", "default": "Corporate Galas" },
-        "service_2_text": { "type": "text", "label": "S2 Text", "default": "Awards nights, anniversaries, and year-end galas — from 80 to 1,200 guests. We handle the full brief: theme, talent, staging, catering." },
-        "service_2_image": { "type": "image", "label": "S2 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "service_3_title": { "type": "text", "label": "S3 Title", "default": "Product Launches" },
-        "service_3_text": { "type": "text", "label": "S3 Text", "default": "Press events, collection launches, and VIP unveilings. Press list, activation build, experiential design, and post-event reporting." },
-        "service_3_image": { "type": "image", "label": "S3 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "service_4_title": { "type": "text", "label": "S4 Title", "default": "Private Celebrations" },
-        "service_4_text": { "type": "text", "label": "S4 Text", "default": "Milestone birthdays, engagement dinners, and family reunions — held at a client's home, a private villa, or a venue of their choosing." },
-        "service_4_image": { "type": "image", "label": "S4 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "portfolio_eyebrow": { "type": "text", "label": "Portfolio Eyebrow", "default": "Recent Work" },
-        "portfolio_title": { "type": "html", "label": "Portfolio Title", "default": "A selection of<br><em>recent events.</em>" },
-        "portfolio_intro": { "type": "text", "label": "Portfolio Intro", "default": "Six events from the last eighteen months, published with each client's permission. Full portfolio and references available on request during your consultation." },
-
-        "event_1_name": { "type": "text", "label": "E1 Name", "default": "The Al Maktoum Wedding" },
-        "event_1_type": { "type": "text", "label": "E1 Type", "default": "Wedding · Three-Day" },
-        "event_1_venue": { "type": "text", "label": "E1 Venue", "default": "One&Only The Palm · 420 guests" },
-        "event_1_image": { "type": "image", "label": "E1 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "event_2_name": { "type": "text", "label": "E2 Name", "default": "Emirates NBD Anniversary Gala" },
-        "event_2_type": { "type": "text", "label": "E2 Type", "default": "Corporate Gala" },
-        "event_2_venue": { "type": "text", "label": "E2 Venue", "default": "Armani Ballroom · 850 guests" },
-        "event_2_image": { "type": "image", "label": "E2 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "event_3_name": { "type": "text", "label": "E3 Name", "default": "Porsche Taycan Launch" },
-        "event_3_type": { "type": "text", "label": "E3 Type", "default": "Product Launch" },
-        "event_3_venue": { "type": "text", "label": "E3 Venue", "default": "Dubai Opera · 320 guests" },
-        "event_3_image": { "type": "image", "label": "E3 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "event_4_name": { "type": "text", "label": "E4 Name", "default": "The Sharma Engagement" },
-        "event_4_type": { "type": "text", "label": "E4 Type", "default": "Private · Intimate" },
-        "event_4_venue": { "type": "text", "label": "E4 Venue", "default": "Private Villa · Jumeirah Bay" },
-        "event_4_image": { "type": "image", "label": "E4 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "event_5_name": { "type": "text", "label": "E5 Name", "default": "DIFC Awards Night" },
-        "event_5_type": { "type": "text", "label": "E5 Type", "default": "Corporate Awards" },
-        "event_5_venue": { "type": "text", "label": "E5 Venue", "default": "Madinat Arena · 1,200 guests" },
-        "event_5_image": { "type": "image", "label": "E5 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "event_6_name": { "type": "text", "label": "E6 Name", "default": "The Khouri Wedding" },
-        "event_6_type": { "type": "text", "label": "E6 Type", "default": "Wedding · Destination" },
-        "event_6_venue": { "type": "text", "label": "E6 Venue", "default": "Zaya Nurai Island · 180 guests" },
-        "event_6_image": { "type": "image", "label": "E6 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "signature_eyebrow": { "type": "text", "label": "Signature Eyebrow", "default": "Signature Experiences" },
-        "signature_title": { "type": "html", "label": "Signature Title", "default": "Three things<br><em>we do better than anyone.</em>" },
-        "signature_intro": { "type": "text", "label": "Signature Intro", "default": "Over twelve years, three formats have become our signature — the work our clients come to us specifically to do." },
-
-        "exp_1_title": { "type": "text", "label": "Exp 1 Title", "default": "Three-Day Weddings" },
-        "exp_1_text": { "type": "text", "label": "Exp 1 Text", "default": "Mehndi, nikkah, and reception — each with a distinct design language, yet a single thread holding them together. We keep the same planner across all three days, so nothing gets repeated or missed." },
-        "exp_1_detail": { "type": "text", "label": "Exp 1 Detail", "default": "From AED 480,000 · 80–600 guests" },
-        "exp_2_title": { "type": "text", "label": "Exp 2 Title", "default": "Desert Galas" },
-        "exp_2_text": { "type": "text", "label": "Exp 2 Text", "default": "Corporate events built out in the desert — fully tented, fully catered, fully powered. We have the operations team to do this properly, not the improvisation most studios rely on." },
-        "exp_2_detail": { "type": "text", "label": "Exp 2 Detail", "default": "From AED 680,000 · 200–1,500 guests" },
-        "exp_3_title": { "type": "text", "label": "Exp 3 Title", "default": "Intimate Villa Dinners" },
-        "exp_3_text": { "type": "text", "label": "Exp 3 Text", "default": "Thirty to a hundred guests, held at a private home. Every element — styling, catering, service, music — produced as though it were a 500-person gala, at a fifth of the scale." },
-        "exp_3_detail": { "type": "text", "label": "Exp 3 Detail", "default": "From AED 180,000 · 30–100 guests" },
-
-        "team_eyebrow": { "type": "text", "label": "Team Eyebrow", "default": "The Studio" },
-        "team_title": { "type": "html", "label": "Team Title", "default": "The planners<br><em>on every brief.</em>" },
-        "team_intro": { "type": "text", "label": "Team Intro", "default": "Three senior planners, each of whom leads every event they take on personally — no junior hand-offs, ever." },
-
-        "team_1_name": { "type": "text", "label": "Team 1 Name", "default": "Layla Nader" },
-        "team_1_title": { "type": "text", "label": "Team 1 Title", "default": "Founder & Creative Director" },
-        "team_1_bio": { "type": "text", "label": "Team 1 Bio", "default": "Fourteen years in luxury events — the last ten at Aurora. Specialises in multi-day destination weddings." },
-        "team_1_image": { "type": "image", "label": "Team 1 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "team_2_name": { "type": "text", "label": "Team 2 Name", "default": "Marcus Chen" },
-        "team_2_title": { "type": "text", "label": "Team 2 Title", "default": "Head of Corporate" },
-        "team_2_bio": { "type": "text", "label": "Team 2 Bio", "default": "Former operations lead at MCI Group. Runs every gala, launch, and corporate production end-to-end." },
-        "team_2_image": { "type": "image", "label": "Team 2 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "team_3_name": { "type": "text", "label": "Team 3 Name", "default": "Rania Al Sabah" },
-        "team_3_title": { "type": "text", "label": "Team 3 Title", "default": "Senior Planner" },
-        "team_3_bio": { "type": "text", "label": "Team 3 Bio", "default": "Eight years at Aurora. Leads private celebrations and intimate villa dinners. Fluent in Arabic, English, French." },
-        "team_3_image": { "type": "image", "label": "Team 3 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "venues_eyebrow": { "type": "text", "label": "Venues Eyebrow", "default": "Venue Partners" },
-        "venues_title": { "type": "html", "label": "Venues Title", "default": "Where we<br><em>most often host.</em>" },
-        "venue_1": { "type": "text", "label": "Venue 1", "default": "One&Only The Palm" },
-        "venue_2": { "type": "text", "label": "Venue 2", "default": "Armani Hotel" },
-        "venue_3": { "type": "text", "label": "Venue 3", "default": "Bulgari Resort" },
-        "venue_4": { "type": "text", "label": "Venue 4", "default": "Madinat Jumeirah" },
-        "venue_5": { "type": "text", "label": "Venue 5", "default": "Zaya Nurai Island" },
-        "venue_6": { "type": "text", "label": "Venue 6", "default": "Atlantis The Royal" },
-        "venue_7": { "type": "text", "label": "Venue 7", "default": "Dubai Opera" },
-        "venue_8": { "type": "text", "label": "Venue 8", "default": "Four Seasons DIFC" },
-
-        "gallery_eyebrow": { "type": "text", "label": "Gallery Eyebrow", "default": "In Moments" },
-        "gallery_title": { "type": "html", "label": "Gallery Title", "default": "Evenings,<br><em>held still.</em>" },
-        "gallery_1_image": { "type": "image", "label": "G1 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "gallery_2_image": { "type": "image", "label": "G2 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "gallery_3_image": { "type": "image", "label": "G3 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "gallery_4_image": { "type": "image", "label": "G4 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "gallery_5_image": { "type": "image", "label": "G5 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "gallery_6_image": { "type": "image", "label": "G6 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-
-        "testimonials_eyebrow": { "type": "text", "label": "Testimonials Eyebrow", "default": "Clients" },
-        "testimonials_title": { "type": "html", "label": "Testimonials Title", "default": "Clients,<br><em>in their own words.</em>" },
-        "testimonial_1_quote": { "type": "text", "label": "T1 Quote", "default": "Layla and her team carried our wedding — three days, three countries of family, four hundred guests — with the kind of calm I have only ever seen from people who actually know what they are doing. Every thing we asked for appeared; everything we forgot, they handled." },
-        "testimonial_1_author": { "type": "text", "label": "T1 Author", "default": "Sara & Omar Al Maktoum" },
-        "testimonial_1_event": { "type": "text", "label": "T1 Event", "default": "Three-Day Wedding · One&Only The Palm" },
-        "testimonial_2_quote": { "type": "text", "label": "T2 Quote", "default": "Aurora produced our 25th-anniversary gala for 850 people in the Armani ballroom and made it feel like a small dinner. That is the best description of their craft I can offer — they make scale feel intimate." },
-        "testimonial_2_author": { "type": "text", "label": "T2 Author", "default": "Ahmed Al Shamsi" },
-        "testimonial_2_event": { "type": "text", "label": "T2 Event", "default": "Corporate Gala · Emirates NBD" },
-        "testimonial_3_quote": { "type": "text", "label": "T3 Quote", "default": "We gave Rania three months and a very clear brief — a villa dinner for my mother's seventieth. She delivered an evening that my family has not stopped describing to other people since. We have already booked her for the next one." },
-        "testimonial_3_author": { "type": "text", "label": "T3 Author", "default": "Priya Sharma" },
-        "testimonial_3_event": { "type": "text", "label": "T3 Event", "default": "Private Villa Dinner · Jumeirah Bay" },
-
-        "blog_eyebrow": { "type": "text", "label": "Blog Eyebrow", "default": "The Journal" },
-        "blog_title": { "type": "html", "label": "Blog Title", "default": "Notes from<br><em>the studio.</em>" },
-        "blog_intro": { "type": "text", "label": "Blog Intro", "default": "Lessons from twelve years of Dubai event production — on planning, vendors, budgets, and the things clients always ask us but never write down." },
-        "blog_1_category": { "type": "text", "label": "B1 Category", "default": "Weddings" },
-        "blog_1_title": { "type": "text", "label": "B1 Title", "default": "What a Three-Day Wedding Actually Costs in Dubai" },
-        "blog_1_excerpt": { "type": "text", "label": "B1 Excerpt", "default": "A detailed breakdown of the line items — venue, catering, florals, lighting, staff, production — for two recent weddings we produced at opposite ends of the budget spectrum." },
-        "blog_1_image": { "type": "image", "label": "B1 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "blog_2_category": { "type": "text", "label": "B2 Category", "default": "Corporate" },
-        "blog_2_title": { "type": "text", "label": "B2 Title", "default": "Why We Do Desert Galas Differently" },
-        "blog_2_excerpt": { "type": "text", "label": "B2 Excerpt", "default": "The operational reality behind producing a 1,200-guest corporate event in the desert — tenting, power, catering logistics, and the fourteen things that almost always go wrong." },
-        "blog_2_image": { "type": "image", "label": "B2 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "blog_3_category": { "type": "text", "label": "B3 Category", "default": "Planning" },
-        "blog_3_title": { "type": "text", "label": "B3 Title", "default": "The Twelve-Month Wedding Timeline We Actually Use" },
-        "blog_3_excerpt": { "type": "text", "label": "B3 Excerpt", "default": "The real, month-by-month timeline we hand to every wedding client on day one — what to decide when, what vendors to lock in, and what you genuinely do not need to worry about until three weeks out." },
-        "blog_3_image": { "type": "image", "label": "B3 Image", "default": "/storage/builder-heroes/event_venue.jpg" },
-        "blog_cta": { "type": "text", "label": "Blog CTA", "default": "Read the Journal" },
-
-        "booking_title": { "type": "html", "label": "Booking Title", "default": "Book your<br><em>first consultation.</em>" },
-        "booking_intro": { "type": "text", "label": "Booking Intro", "default": "Tell us about the event, the guest count, and the rough date range. We will come back within one working day with a proposed consultation slot at the studio — complimentary, ninety minutes, no obligation." },
-        "booking_cta": { "type": "text", "label": "Booking CTA", "default": "Request Consultation" },
-        "booking_display": { "type": "text", "label": "Booking Display", "default": "" },
-
-        "contact_eyebrow": { "type": "text", "label": "Contact Eyebrow", "default": "The Studio" },
-        "contact_title": { "type": "html", "label": "Contact Title", "default": "Visit us in<br><em>Al Quoz.</em>" },
-        "contact_intro": { "type": "text", "label": "Contact Intro", "default": "The studio is in a converted warehouse on Alserkal Avenue — by appointment. We keep moodboards, fabric samples, and prior event albums on site for every consultation." },
-        "contact_email": { "type": "text", "label": "Contact Email", "default": "studio@auroraevents.ae" },
-        "contact_phone": { "type": "text", "label": "Contact Phone", "default": "+971 4 388 4120" },
-        "contact_address": { "type": "text", "label": "Contact Address", "default": "Unit 22, Alserkal Avenue, Al Quoz 1, Dubai" },
-        "contact_hours": { "type": "text", "label": "Hours", "default": "Tue–Sat · 10am–7pm  ·  By Appointment" },
-        "contact_form_title": { "type": "html", "label": "Form Title", "default": "Write<br><em>to us.</em>" },
-        "form_submit_text": { "type": "text", "label": "Submit", "default": "Send Message →" },
-        "form_success_message": { "type": "text", "label": "Success", "default": "Thank you. Our studio will be in touch within one working day." },
-
-        "footer_tagline": { "type": "text", "label": "Footer Tagline", "default": "Aurora Event Studio — luxury events, fully produced, in Dubai." },
-        "footer_text": { "type": "text", "label": "Footer Copyright", "default": "© 2026 Aurora Event Studio. All rights reserved." },
-        "social_instagram": { "type": "url", "label": "Instagram", "default": "#" },
-        "social_pinterest": { "type": "url", "label": "Pinterest", "default": "#" },
-        "social_tiktok": { "type": "url", "label": "TikTok", "default": "#" },
-
-        "midnight": { "type": "color", "label": "Midnight Plum (Background)", "default": "#1E1533" },
-        "midnight_soft": { "type": "color", "label": "Midnight Soft", "default": "#2A1F42" },
-        "cream": { "type": "color", "label": "Cream (Text)", "default": "#F5EFE6" },
-        "cream_soft": { "type": "color", "label": "Cream Soft", "default": "#E4DACC" },
-        "gold": { "type": "color", "label": "Champagne Gold", "default": "#D9A64D" },
-        "gold_deep": { "type": "color", "label": "Gold Deep", "default": "#B0813A" },
-        "pearl": { "type": "color", "label": "Pearl", "default": "#E8DDC8" },
-        "muted": { "type": "color", "label": "Muted", "default": "#A295B8" },
-        "divider": { "type": "color", "label": "Divider", "default": "#3B2E57" }
+  "id": "event_venue",
+  "name": "Events & Weddings",
+  "industry": "event_venue",
+  "description": "Luxury event production and wedding planning template \u2014 ornate serif hero, service types, portfolio showcase, signature experiences, venue partners, gallery, blog, and consultation booking. Midnight plum + champagne gold palette.",
+  "thumbnail": "/storage/builder-heroes/event_venue.jpg",
+  "category": "hospitality",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "elements": {
+        "logo": "nav .logo",
+        "nav_1": "nav .nav-links a:nth-child(1)",
+        "nav_2": "nav .nav-links a:nth-child(2)",
+        "nav_3": "nav .nav-links a:nth-child(3)",
+        "nav_4": "nav .nav-links a:nth-child(4)",
+        "nav_cta": "nav .nav-cta"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero",
+      "elements": {
+        "hero_image": ".hero-image",
+        "hero_eyebrow": ".hero-eyebrow",
+        "hero_title": ".hero-title",
+        "hero_subtitle": ".hero-subtitle",
+        "hero_cta": ".hero-cta",
+        "hero_cta_secondary": ".hero-cta-secondary"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Heritage Stats",
+      "elements": {
+        "stat_1_value": ".stat-1-value",
+        "stat_1_label": ".stat-1-label",
+        "stat_2_value": ".stat-2-value",
+        "stat_2_label": ".stat-2-label",
+        "stat_3_value": ".stat-3-value",
+        "stat_3_label": ".stat-3-label",
+        "stat_4_value": ".stat-4-value",
+        "stat_4_label": ".stat-4-label"
+      }
+    },
+    {
+      "id": "service_types",
+      "name": "Event Types",
+      "elements": {
+        "services_eyebrow": ".services-eyebrow",
+        "services_title": ".services-title",
+        "services_intro": ".services-intro",
+        "service_1_title": ".service-1-title",
+        "service_1_text": ".service-1-text",
+        "service_1_image": ".service-1-image",
+        "service_2_title": ".service-2-title",
+        "service_2_text": ".service-2-text",
+        "service_2_image": ".service-2-image",
+        "service_3_title": ".service-3-title",
+        "service_3_text": ".service-3-text",
+        "service_3_image": ".service-3-image",
+        "service_4_title": ".service-4-title",
+        "service_4_text": ".service-4-text",
+        "service_4_image": ".service-4-image"
+      }
+    },
+    {
+      "id": "portfolio",
+      "name": "Portfolio",
+      "elements": {
+        "portfolio_eyebrow": ".portfolio-eyebrow",
+        "portfolio_title": ".portfolio-title",
+        "portfolio_intro": ".portfolio-intro",
+        "event_1_name": ".event-1-name",
+        "event_1_type": ".event-1-type",
+        "event_1_venue": ".event-1-venue",
+        "event_1_image": ".event-1-image",
+        "event_2_name": ".event-2-name",
+        "event_2_type": ".event-2-type",
+        "event_2_venue": ".event-2-venue",
+        "event_2_image": ".event-2-image",
+        "event_3_name": ".event-3-name",
+        "event_3_type": ".event-3-type",
+        "event_3_venue": ".event-3-venue",
+        "event_3_image": ".event-3-image",
+        "event_4_name": ".event-4-name",
+        "event_4_type": ".event-4-type",
+        "event_4_venue": ".event-4-venue",
+        "event_4_image": ".event-4-image",
+        "event_5_name": ".event-5-name",
+        "event_5_type": ".event-5-type",
+        "event_5_venue": ".event-5-venue",
+        "event_5_image": ".event-5-image",
+        "event_6_name": ".event-6-name",
+        "event_6_type": ".event-6-type",
+        "event_6_venue": ".event-6-venue",
+        "event_6_image": ".event-6-image"
+      }
+    },
+    {
+      "id": "signature",
+      "name": "Signature Experiences",
+      "elements": {
+        "signature_eyebrow": ".signature-eyebrow",
+        "signature_title": ".signature-title",
+        "signature_intro": ".signature-intro",
+        "exp_1_title": ".exp-1-title",
+        "exp_1_text": ".exp-1-text",
+        "exp_1_detail": ".exp-1-detail",
+        "exp_2_title": ".exp-2-title",
+        "exp_2_text": ".exp-2-text",
+        "exp_2_detail": ".exp-2-detail",
+        "exp_3_title": ".exp-3-title",
+        "exp_3_text": ".exp-3-text",
+        "exp_3_detail": ".exp-3-detail"
+      }
+    },
+    {
+      "id": "team",
+      "name": "Planning Team",
+      "elements": {
+        "team_eyebrow": ".team-eyebrow",
+        "team_title": ".team-title",
+        "team_intro": ".team-intro",
+        "team_1_name": ".team-1-name",
+        "team_1_title": ".team-1-title",
+        "team_1_bio": ".team-1-bio",
+        "team_1_image": ".team-1-image",
+        "team_2_name": ".team-2-name",
+        "team_2_title": ".team-2-title",
+        "team_2_bio": ".team-2-bio",
+        "team_2_image": ".team-2-image",
+        "team_3_name": ".team-3-name",
+        "team_3_title": ".team-3-title",
+        "team_3_bio": ".team-3-bio",
+        "team_3_image": ".team-3-image"
+      }
+    },
+    {
+      "id": "venues",
+      "name": "Venue Partners",
+      "elements": {
+        "venues_eyebrow": ".venues-eyebrow",
+        "venues_title": ".venues-title",
+        "venue_1": ".venue-1",
+        "venue_2": ".venue-2",
+        "venue_3": ".venue-3",
+        "venue_4": ".venue-4",
+        "venue_5": ".venue-5",
+        "venue_6": ".venue-6",
+        "venue_7": ".venue-7",
+        "venue_8": ".venue-8"
+      }
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "elements": {
+        "gallery_eyebrow": ".gallery-eyebrow",
+        "gallery_title": ".gallery-title",
+        "gallery_1_image": ".gallery-1-image",
+        "gallery_2_image": ".gallery-2-image",
+        "gallery_3_image": ".gallery-3-image",
+        "gallery_4_image": ".gallery-4-image",
+        "gallery_5_image": ".gallery-5-image",
+        "gallery_6_image": ".gallery-6-image"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Client Testimonials",
+      "elements": {
+        "testimonials_eyebrow": ".testimonials-eyebrow",
+        "testimonials_title": ".testimonials-title",
+        "testimonial_1_quote": ".testimonial-1-quote",
+        "testimonial_1_author": ".testimonial-1-author",
+        "testimonial_1_event": ".testimonial-1-event",
+        "testimonial_2_quote": ".testimonial-2-quote",
+        "testimonial_2_author": ".testimonial-2-author",
+        "testimonial_2_event": ".testimonial-2-event",
+        "testimonial_3_quote": ".testimonial-3-quote",
+        "testimonial_3_author": ".testimonial-3-author",
+        "testimonial_3_event": ".testimonial-3-event"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Planning Journal",
+      "elements": {
+        "blog_eyebrow": ".blog-eyebrow",
+        "blog_title": ".blog-title",
+        "blog_intro": ".blog-intro",
+        "blog_1_category": ".blog-1-category",
+        "blog_1_title": ".blog-1-title",
+        "blog_1_excerpt": ".blog-1-excerpt",
+        "blog_1_image": ".blog-1-image",
+        "blog_2_category": ".blog-2-category",
+        "blog_2_title": ".blog-2-title",
+        "blog_2_excerpt": ".blog-2-excerpt",
+        "blog_2_image": ".blog-2-image",
+        "blog_3_category": ".blog-3-category",
+        "blog_3_title": ".blog-3-title",
+        "blog_3_excerpt": ".blog-3-excerpt",
+        "blog_3_image": ".blog-3-image",
+        "blog_cta": ".blog-cta"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book Consultation",
+      "elements": {
+        "booking_title": ".booking-title",
+        "booking_intro": ".booking-intro",
+        "booking_cta": ".booking-cta",
+        "booking_display": ".booking-display"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact & Studio",
+      "elements": {
+        "contact_eyebrow": ".contact-eyebrow",
+        "contact_title": ".contact-title",
+        "contact_intro": ".contact-intro",
+        "contact_email": ".contact-email",
+        "contact_phone": ".contact-phone",
+        "contact_address": ".contact-address",
+        "contact_hours": ".contact-hours",
+        "contact_form_title": ".contact-form-title",
+        "form_submit_text": ".form-submit-text",
+        "form_success_message": ".form-success-message"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "elements": {
+        "footer_tagline": ".footer-tagline",
+        "footer_text": ".footer-text",
+        "social_instagram": ".social-instagram",
+        "social_pinterest": ".social-pinterest",
+        "social_tiktok": ".social-tiktok"
+      }
     }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Studio Name",
+      "default": "Aurora Event Studio"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Luxury Event Production \u00b7 Dubai"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Aurora Event Studio \u2014 a Dubai-based luxury event production and wedding planning studio. Bespoke weddings, corporate galas, and private celebrations, fully produced end-to-end."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://auroraevents.ae"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "nav_1": {
+      "type": "text",
+      "label": "Nav 1",
+      "default": "Services"
+    },
+    "nav_2": {
+      "type": "text",
+      "label": "Nav 2",
+      "default": "Portfolio"
+    },
+    "nav_3": {
+      "type": "text",
+      "label": "Nav 3",
+      "default": "Team"
+    },
+    "nav_4": {
+      "type": "text",
+      "label": "Nav 4",
+      "default": "Journal"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Book Consultation"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Event Production \u00b7 Est. 2014"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Title",
+      "default": "Every evening,<br><em>unforgettable.</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "A ten-year-old Dubai studio producing weddings, corporate galas, and private celebrations \u2014 end-to-end, from the first moodboard to the last car home. Twenty events a year. Not more."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Primary CTA",
+      "default": "Book a Consultation"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Secondary CTA",
+      "default": "View the Portfolio"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "240+"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Events Produced"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "12"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Years in Dubai"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "20 / yr"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "By Design"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "140+"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Vendor Partners"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "What We Produce"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Services Title",
+      "default": "Four kinds of<br><em>event, fully produced.</em>"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "We do twenty events a year \u2014 deliberately \u2014 so every one gets the full studio behind it, not a junior planner and a moodboard."
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "S1 Title",
+      "default": "Weddings"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "S1 Text",
+      "default": "Bespoke Indian, Arab, and Western weddings across Dubai, Abu Dhabi, and RAK. From intimate villa dinners to full three-day destination celebrations."
+    },
+    "service_1_image": {
+      "type": "image",
+      "label": "S1 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "S2 Title",
+      "default": "Corporate Galas"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "S2 Text",
+      "default": "Awards nights, anniversaries, and year-end galas \u2014 from 80 to 1,200 guests. We handle the full brief: theme, talent, staging, catering."
+    },
+    "service_2_image": {
+      "type": "image",
+      "label": "S2 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "S3 Title",
+      "default": "Product Launches"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "S3 Text",
+      "default": "Press events, collection launches, and VIP unveilings. Press list, activation build, experiential design, and post-event reporting."
+    },
+    "service_3_image": {
+      "type": "image",
+      "label": "S3 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "S4 Title",
+      "default": "Private Celebrations"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "S4 Text",
+      "default": "Milestone birthdays, engagement dinners, and family reunions \u2014 held at a client's home, a private villa, or a venue of their choosing."
+    },
+    "service_4_image": {
+      "type": "image",
+      "label": "S4 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "portfolio_eyebrow": {
+      "type": "text",
+      "label": "Portfolio Eyebrow",
+      "default": "Recent Work"
+    },
+    "portfolio_title": {
+      "type": "html",
+      "label": "Portfolio Title",
+      "default": "A selection of<br><em>recent events.</em>"
+    },
+    "portfolio_intro": {
+      "type": "text",
+      "label": "Portfolio Intro",
+      "default": "Six events from the last eighteen months, published with each client's permission. Full portfolio and references available on request during your consultation."
+    },
+    "event_1_name": {
+      "type": "text",
+      "label": "E1 Name",
+      "default": "The Al Maktoum Wedding"
+    },
+    "event_1_type": {
+      "type": "text",
+      "label": "E1 Type",
+      "default": "Wedding \u00b7 Three-Day"
+    },
+    "event_1_venue": {
+      "type": "text",
+      "label": "E1 Venue",
+      "default": "One&Only The Palm \u00b7 420 guests"
+    },
+    "event_1_image": {
+      "type": "image",
+      "label": "E1 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "event_2_name": {
+      "type": "text",
+      "label": "E2 Name",
+      "default": "Emirates NBD Anniversary Gala"
+    },
+    "event_2_type": {
+      "type": "text",
+      "label": "E2 Type",
+      "default": "Corporate Gala"
+    },
+    "event_2_venue": {
+      "type": "text",
+      "label": "E2 Venue",
+      "default": "Armani Ballroom \u00b7 850 guests"
+    },
+    "event_2_image": {
+      "type": "image",
+      "label": "E2 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "event_3_name": {
+      "type": "text",
+      "label": "E3 Name",
+      "default": "Porsche Taycan Launch"
+    },
+    "event_3_type": {
+      "type": "text",
+      "label": "E3 Type",
+      "default": "Product Launch"
+    },
+    "event_3_venue": {
+      "type": "text",
+      "label": "E3 Venue",
+      "default": "Dubai Opera \u00b7 320 guests"
+    },
+    "event_3_image": {
+      "type": "image",
+      "label": "E3 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "event_4_name": {
+      "type": "text",
+      "label": "E4 Name",
+      "default": "The Sharma Engagement"
+    },
+    "event_4_type": {
+      "type": "text",
+      "label": "E4 Type",
+      "default": "Private \u00b7 Intimate"
+    },
+    "event_4_venue": {
+      "type": "text",
+      "label": "E4 Venue",
+      "default": "Private Villa \u00b7 Jumeirah Bay"
+    },
+    "event_4_image": {
+      "type": "image",
+      "label": "E4 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "event_5_name": {
+      "type": "text",
+      "label": "E5 Name",
+      "default": "DIFC Awards Night"
+    },
+    "event_5_type": {
+      "type": "text",
+      "label": "E5 Type",
+      "default": "Corporate Awards"
+    },
+    "event_5_venue": {
+      "type": "text",
+      "label": "E5 Venue",
+      "default": "Madinat Arena \u00b7 1,200 guests"
+    },
+    "event_5_image": {
+      "type": "image",
+      "label": "E5 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "event_6_name": {
+      "type": "text",
+      "label": "E6 Name",
+      "default": "The Khouri Wedding"
+    },
+    "event_6_type": {
+      "type": "text",
+      "label": "E6 Type",
+      "default": "Wedding \u00b7 Destination"
+    },
+    "event_6_venue": {
+      "type": "text",
+      "label": "E6 Venue",
+      "default": "Zaya Nurai Island \u00b7 180 guests"
+    },
+    "event_6_image": {
+      "type": "image",
+      "label": "E6 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "signature_eyebrow": {
+      "type": "text",
+      "label": "Signature Eyebrow",
+      "default": "Signature Experiences"
+    },
+    "signature_title": {
+      "type": "html",
+      "label": "Signature Title",
+      "default": "Three things<br><em>we do better than anyone.</em>"
+    },
+    "signature_intro": {
+      "type": "text",
+      "label": "Signature Intro",
+      "default": "Over twelve years, three formats have become our signature \u2014 the work our clients come to us specifically to do."
+    },
+    "exp_1_title": {
+      "type": "text",
+      "label": "Exp 1 Title",
+      "default": "Three-Day Weddings"
+    },
+    "exp_1_text": {
+      "type": "text",
+      "label": "Exp 1 Text",
+      "default": "Mehndi, nikkah, and reception \u2014 each with a distinct design language, yet a single thread holding them together. We keep the same planner across all three days, so nothing gets repeated or missed."
+    },
+    "exp_1_detail": {
+      "type": "text",
+      "label": "Exp 1 Detail",
+      "default": "From AED 480,000 \u00b7 80\u2013600 guests"
+    },
+    "exp_2_title": {
+      "type": "text",
+      "label": "Exp 2 Title",
+      "default": "Desert Galas"
+    },
+    "exp_2_text": {
+      "type": "text",
+      "label": "Exp 2 Text",
+      "default": "Corporate events built out in the desert \u2014 fully tented, fully catered, fully powered. We have the operations team to do this properly, not the improvisation most studios rely on."
+    },
+    "exp_2_detail": {
+      "type": "text",
+      "label": "Exp 2 Detail",
+      "default": "From AED 680,000 \u00b7 200\u20131,500 guests"
+    },
+    "exp_3_title": {
+      "type": "text",
+      "label": "Exp 3 Title",
+      "default": "Intimate Villa Dinners"
+    },
+    "exp_3_text": {
+      "type": "text",
+      "label": "Exp 3 Text",
+      "default": "Thirty to a hundred guests, held at a private home. Every element \u2014 styling, catering, service, music \u2014 produced as though it were a 500-person gala, at a fifth of the scale."
+    },
+    "exp_3_detail": {
+      "type": "text",
+      "label": "Exp 3 Detail",
+      "default": "From AED 180,000 \u00b7 30\u2013100 guests"
+    },
+    "team_eyebrow": {
+      "type": "text",
+      "label": "Team Eyebrow",
+      "default": "The Studio"
+    },
+    "team_title": {
+      "type": "html",
+      "label": "Team Title",
+      "default": "The planners<br><em>on every brief.</em>"
+    },
+    "team_intro": {
+      "type": "text",
+      "label": "Team Intro",
+      "default": "Three senior planners, each of whom leads every event they take on personally \u2014 no junior hand-offs, ever."
+    },
+    "team_1_name": {
+      "type": "text",
+      "label": "Team 1 Name",
+      "default": "Layla Nader"
+    },
+    "team_1_title": {
+      "type": "text",
+      "label": "Team 1 Title",
+      "default": "Founder & Creative Director"
+    },
+    "team_1_bio": {
+      "type": "text",
+      "label": "Team 1 Bio",
+      "default": "Fourteen years in luxury events \u2014 the last ten at Aurora. Specialises in multi-day destination weddings."
+    },
+    "team_1_image": {
+      "type": "image",
+      "label": "Team 1 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "team_2_name": {
+      "type": "text",
+      "label": "Team 2 Name",
+      "default": "Marcus Chen"
+    },
+    "team_2_title": {
+      "type": "text",
+      "label": "Team 2 Title",
+      "default": "Head of Corporate"
+    },
+    "team_2_bio": {
+      "type": "text",
+      "label": "Team 2 Bio",
+      "default": "Former operations lead at MCI Group. Runs every gala, launch, and corporate production end-to-end."
+    },
+    "team_2_image": {
+      "type": "image",
+      "label": "Team 2 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "team_3_name": {
+      "type": "text",
+      "label": "Team 3 Name",
+      "default": "Rania Al Sabah"
+    },
+    "team_3_title": {
+      "type": "text",
+      "label": "Team 3 Title",
+      "default": "Senior Planner"
+    },
+    "team_3_bio": {
+      "type": "text",
+      "label": "Team 3 Bio",
+      "default": "Eight years at Aurora. Leads private celebrations and intimate villa dinners. Fluent in Arabic, English, French."
+    },
+    "team_3_image": {
+      "type": "image",
+      "label": "Team 3 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "venues_eyebrow": {
+      "type": "text",
+      "label": "Venues Eyebrow",
+      "default": "Venue Partners"
+    },
+    "venues_title": {
+      "type": "html",
+      "label": "Venues Title",
+      "default": "Where we<br><em>most often host.</em>"
+    },
+    "venue_1": {
+      "type": "text",
+      "label": "Venue 1",
+      "default": "One&Only The Palm"
+    },
+    "venue_2": {
+      "type": "text",
+      "label": "Venue 2",
+      "default": "Armani Hotel"
+    },
+    "venue_3": {
+      "type": "text",
+      "label": "Venue 3",
+      "default": "Bulgari Resort"
+    },
+    "venue_4": {
+      "type": "text",
+      "label": "Venue 4",
+      "default": "Madinat Jumeirah"
+    },
+    "venue_5": {
+      "type": "text",
+      "label": "Venue 5",
+      "default": "Zaya Nurai Island"
+    },
+    "venue_6": {
+      "type": "text",
+      "label": "Venue 6",
+      "default": "Atlantis The Royal"
+    },
+    "venue_7": {
+      "type": "text",
+      "label": "Venue 7",
+      "default": "Dubai Opera"
+    },
+    "venue_8": {
+      "type": "text",
+      "label": "Venue 8",
+      "default": "Four Seasons DIFC"
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "In Moments"
+    },
+    "gallery_title": {
+      "type": "html",
+      "label": "Gallery Title",
+      "default": "Evenings,<br><em>held still.</em>"
+    },
+    "gallery_1_image": {
+      "type": "image",
+      "label": "G1 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "gallery_2_image": {
+      "type": "image",
+      "label": "G2 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "gallery_3_image": {
+      "type": "image",
+      "label": "G3 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "gallery_4_image": {
+      "type": "image",
+      "label": "G4 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "gallery_5_image": {
+      "type": "image",
+      "label": "G5 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "gallery_6_image": {
+      "type": "image",
+      "label": "G6 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Clients"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Title",
+      "default": "Clients,<br><em>in their own words.</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "T1 Quote",
+      "default": "Layla and her team carried our wedding \u2014 three days, three countries of family, four hundred guests \u2014 with the kind of calm I have only ever seen from people who actually know what they are doing. Every thing we asked for appeared; everything we forgot, they handled."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "T1 Author",
+      "default": "Sara & Omar Al Maktoum"
+    },
+    "testimonial_1_event": {
+      "type": "text",
+      "label": "T1 Event",
+      "default": "Three-Day Wedding \u00b7 One&Only The Palm"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "T2 Quote",
+      "default": "Aurora produced our 25th-anniversary gala for 850 people in the Armani ballroom and made it feel like a small dinner. That is the best description of their craft I can offer \u2014 they make scale feel intimate."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "T2 Author",
+      "default": "Ahmed Al Shamsi"
+    },
+    "testimonial_2_event": {
+      "type": "text",
+      "label": "T2 Event",
+      "default": "Corporate Gala \u00b7 Emirates NBD"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "T3 Quote",
+      "default": "We gave Rania three months and a very clear brief \u2014 a villa dinner for my mother's seventieth. She delivered an evening that my family has not stopped describing to other people since. We have already booked her for the next one."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "T3 Author",
+      "default": "Priya Sharma"
+    },
+    "testimonial_3_event": {
+      "type": "text",
+      "label": "T3 Event",
+      "default": "Private Villa Dinner \u00b7 Jumeirah Bay"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "The Journal"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "Notes from<br><em>the studio.</em>"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Lessons from twelve years of Dubai event production \u2014 on planning, vendors, budgets, and the things clients always ask us but never write down."
+    },
+    "blog_1_category": {
+      "type": "text",
+      "label": "B1 Category",
+      "default": "Weddings"
+    },
+    "blog_1_title": {
+      "type": "text",
+      "label": "B1 Title",
+      "default": "What a Three-Day Wedding Actually Costs in Dubai"
+    },
+    "blog_1_excerpt": {
+      "type": "text",
+      "label": "B1 Excerpt",
+      "default": "A detailed breakdown of the line items \u2014 venue, catering, florals, lighting, staff, production \u2014 for two recent weddings we produced at opposite ends of the budget spectrum."
+    },
+    "blog_1_image": {
+      "type": "image",
+      "label": "B1 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "blog_2_category": {
+      "type": "text",
+      "label": "B2 Category",
+      "default": "Corporate"
+    },
+    "blog_2_title": {
+      "type": "text",
+      "label": "B2 Title",
+      "default": "Why We Do Desert Galas Differently"
+    },
+    "blog_2_excerpt": {
+      "type": "text",
+      "label": "B2 Excerpt",
+      "default": "The operational reality behind producing a 1,200-guest corporate event in the desert \u2014 tenting, power, catering logistics, and the fourteen things that almost always go wrong."
+    },
+    "blog_2_image": {
+      "type": "image",
+      "label": "B2 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "blog_3_category": {
+      "type": "text",
+      "label": "B3 Category",
+      "default": "Planning"
+    },
+    "blog_3_title": {
+      "type": "text",
+      "label": "B3 Title",
+      "default": "The Twelve-Month Wedding Timeline We Actually Use"
+    },
+    "blog_3_excerpt": {
+      "type": "text",
+      "label": "B3 Excerpt",
+      "default": "The real, month-by-month timeline we hand to every wedding client on day one \u2014 what to decide when, what vendors to lock in, and what you genuinely do not need to worry about until three weeks out."
+    },
+    "blog_3_image": {
+      "type": "image",
+      "label": "B3 Image",
+      "default": "/storage/builder-heroes/event_venue.jpg"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "Read the Journal"
+    },
+    "booking_title": {
+      "type": "html",
+      "label": "Booking Title",
+      "default": "Book your<br><em>first consultation.</em>"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Tell us about the event, the guest count, and the rough date range. We will come back within one working day with a proposed consultation slot at the studio \u2014 complimentary, ninety minutes, no obligation."
+    },
+    "booking_cta": {
+      "type": "text",
+      "label": "Booking CTA",
+      "default": "Request Consultation"
+    },
+    "booking_display": {
+      "type": "text",
+      "label": "Booking Display",
+      "default": ""
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "The Studio"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Title",
+      "default": "Visit us in<br><em>Al Quoz.</em>"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "The studio is in a converted warehouse on Alserkal Avenue \u2014 by appointment. We keep moodboards, fabric samples, and prior event albums on site for every consultation."
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Contact Email",
+      "default": "studio@auroraevents.ae"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Contact Phone",
+      "default": "+971 4 388 4120"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Contact Address",
+      "default": "Unit 22, Alserkal Avenue, Al Quoz 1, Dubai"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Hours",
+      "default": "Tue\u2013Sat \u00b7 10am\u20137pm  \u00b7  By Appointment"
+    },
+    "contact_form_title": {
+      "type": "html",
+      "label": "Form Title",
+      "default": "Write<br><em>to us.</em>"
+    },
+    "form_submit_text": {
+      "type": "text",
+      "label": "Submit",
+      "default": "Send Message \u2192"
+    },
+    "form_success_message": {
+      "type": "text",
+      "label": "Success",
+      "default": "Thank you. Our studio will be in touch within one working day."
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Aurora Event Studio \u2014 luxury events, fully produced, in Dubai."
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Copyright",
+      "default": "\u00a9 2026 Aurora Event Studio. All rights reserved."
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram",
+      "default": "#"
+    },
+    "social_pinterest": {
+      "type": "url",
+      "label": "Pinterest",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok",
+      "default": "#"
+    },
+    "midnight": {
+      "type": "color",
+      "label": "Midnight Plum (Background)",
+      "default": "#1E1533"
+    },
+    "midnight_soft": {
+      "type": "color",
+      "label": "Midnight Soft",
+      "default": "#2A1F42"
+    },
+    "cream": {
+      "type": "color",
+      "label": "Cream (Text)",
+      "default": "#F5EFE6"
+    },
+    "cream_soft": {
+      "type": "color",
+      "label": "Cream Soft",
+      "default": "#E4DACC"
+    },
+    "gold": {
+      "type": "color",
+      "label": "Champagne Gold",
+      "default": "#D9A64D"
+    },
+    "gold_deep": {
+      "type": "color",
+      "label": "Gold Deep",
+      "default": "#B0813A"
+    },
+    "pearl": {
+      "type": "color",
+      "label": "Pearl",
+      "default": "#E8DDC8"
+    },
+    "muted": {
+      "type": "color",
+      "label": "Muted",
+      "default": "#A295B8"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#3B2E57"
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ],
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 6
+  }
 }

@@ -1,484 +1,1438 @@
 {
-    "id": "architecture",
-    "name": "Architecture Studio",
-    "industry": "architecture",
-    "description": "Editorial-grade white-and-graphite architecture template with copper accents, oversized Helvetica display type, and a generous 9-project masonry portfolio. Boutique studio feel — suited to residential villas, commercial fit-outs, hospitality, urban planning. Six-service 3×2 grid, 5-step design process, 6 award badges (AIA/RIBA/IIDA/LEED/WAF/Dezeen), 4 named partners, 3 testimonials, and a serious Start-a-Project booking form with budget, timeline and brief.",
-    "thumbnail": "/storage/builder-heroes/architecture.jpg",
-    "category": "design",
-    "blocks": [
-        {
-            "id": "nav",
-            "name": "Navigation",
-            "elements": {
-                "logo": "nav .logo",
-                "nav_1": "nav .nav-link-1",
-                "nav_2": "nav .nav-link-2",
-                "nav_3": "nav .nav-link-3",
-                "nav_4": "nav .nav-link-4",
-                "nav_5": "nav .nav-link-5",
-                "nav_cta": "nav .nav-cta"
-            }
-        },
-        {
-            "id": "hero",
-            "name": "Hero with Brief Capture",
-            "elements": {
-                "hero_image": "section.hero",
-                "hero_eyebrow": ".hero-eyebrow",
-                "hero_title": ".hero-title",
-                "hero_subtitle": ".hero-subtitle",
-                "hero_trust_1": ".hero-trust-1",
-                "hero_trust_2": ".hero-trust-2",
-                "hero_trust_3": ".hero-trust-3",
-                "hero_trust_4": ".hero-trust-4",
-                "hero_form_eyebrow": ".hero-form-eyebrow",
-                "hero_form_title": ".hero-form-title",
-                "hero_form_sub": ".hero-form-sub",
-                "hero_form_name_label": ".hero-form label[data-field=hero_form_name_label]",
-                "hero_form_email_label": ".hero-form label[data-field=hero_form_email_label]",
-                "hero_form_brief_label": ".hero-form label[data-field=hero_form_brief_label]",
-                "hero_form_submit": ".hero-form button",
-                "hero_form_note": ".hero-form-note"
-            }
-        },
-        {
-            "id": "stats",
-            "name": "Studio Stats",
-            "elements": {
-                "stat_1_value": ".results-grid .result-item:nth-child(1) .result-value",
-                "stat_1_label": ".results-grid .result-item:nth-child(1) .result-label",
-                "stat_2_value": ".results-grid .result-item:nth-child(2) .result-value",
-                "stat_2_label": ".results-grid .result-item:nth-child(2) .result-label",
-                "stat_3_value": ".results-grid .result-item:nth-child(3) .result-value",
-                "stat_3_label": ".results-grid .result-item:nth-child(3) .result-label",
-                "stat_4_value": ".results-grid .result-item:nth-child(4) .result-value",
-                "stat_4_label": ".results-grid .result-item:nth-child(4) .result-label"
-            }
-        },
-        {
-            "id": "projects",
-            "name": "Projects Portfolio",
-            "elements": {
-                "projects_eyebrow": "#projects .eyebrow",
-                "projects_title": "#projects .h-section",
-                "projects_intro": "#projects .section-intro",
-                "project_1_category": ".projects-grid .project:nth-child(1) .project-category",
-                "project_1_title": ".projects-grid .project:nth-child(1) h3",
-                "project_1_location": ".projects-grid .project:nth-child(1) .project-location",
-                "project_2_category": ".projects-grid .project:nth-child(2) .project-category",
-                "project_2_title": ".projects-grid .project:nth-child(2) h3",
-                "project_2_location": ".projects-grid .project:nth-child(2) .project-location",
-                "project_3_category": ".projects-grid .project:nth-child(3) .project-category",
-                "project_3_title": ".projects-grid .project:nth-child(3) h3",
-                "project_3_location": ".projects-grid .project:nth-child(3) .project-location",
-                "project_4_category": ".projects-grid .project:nth-child(4) .project-category",
-                "project_4_title": ".projects-grid .project:nth-child(4) h3",
-                "project_4_location": ".projects-grid .project:nth-child(4) .project-location",
-                "project_5_category": ".projects-grid .project:nth-child(5) .project-category",
-                "project_5_title": ".projects-grid .project:nth-child(5) h3",
-                "project_5_location": ".projects-grid .project:nth-child(5) .project-location",
-                "project_6_category": ".projects-grid .project:nth-child(6) .project-category",
-                "project_6_title": ".projects-grid .project:nth-child(6) h3",
-                "project_6_location": ".projects-grid .project:nth-child(6) .project-location",
-                "project_7_category": ".projects-grid .project:nth-child(7) .project-category",
-                "project_7_title": ".projects-grid .project:nth-child(7) h3",
-                "project_7_location": ".projects-grid .project:nth-child(7) .project-location",
-                "project_8_category": ".projects-grid .project:nth-child(8) .project-category",
-                "project_8_title": ".projects-grid .project:nth-child(8) h3",
-                "project_8_location": ".projects-grid .project:nth-child(8) .project-location",
-                "project_9_category": ".projects-grid .project:nth-child(9) .project-category",
-                "project_9_title": ".projects-grid .project:nth-child(9) h3",
-                "project_9_location": ".projects-grid .project:nth-child(9) .project-location"
-            }
-        },
-        {
-            "id": "services",
-            "name": "Services",
-            "elements": {
-                "services_eyebrow": "#services .eyebrow",
-                "services_title": "#services .h-section",
-                "services_intro": "#services .section-intro",
-                "service_1_icon": "#services .service:nth-child(1) .service-icon",
-                "service_1_title": "#services .service:nth-child(1) h3",
-                "service_1_text": "#services .service:nth-child(1) p",
-                "service_2_icon": "#services .service:nth-child(2) .service-icon",
-                "service_2_title": "#services .service:nth-child(2) h3",
-                "service_2_text": "#services .service:nth-child(2) p",
-                "service_3_icon": "#services .service:nth-child(3) .service-icon",
-                "service_3_title": "#services .service:nth-child(3) h3",
-                "service_3_text": "#services .service:nth-child(3) p",
-                "service_4_icon": "#services .service:nth-child(4) .service-icon",
-                "service_4_title": "#services .service:nth-child(4) h3",
-                "service_4_text": "#services .service:nth-child(4) p",
-                "service_5_icon": "#services .service:nth-child(5) .service-icon",
-                "service_5_title": "#services .service:nth-child(5) h3",
-                "service_5_text": "#services .service:nth-child(5) p",
-                "service_6_icon": "#services .service:nth-child(6) .service-icon",
-                "service_6_title": "#services .service:nth-child(6) h3",
-                "service_6_text": "#services .service:nth-child(6) p"
-            }
-        },
-        {
-            "id": "process",
-            "name": "Design Process",
-            "elements": {
-                "process_eyebrow": "#process .eyebrow",
-                "process_title": "#process .h-section",
-                "process_intro": "#process .section-intro",
-                "step_1_title": ".process-steps .process-step:nth-child(1) h3",
-                "step_1_text": ".process-steps .process-step:nth-child(1) p",
-                "step_2_title": ".process-steps .process-step:nth-child(2) h3",
-                "step_2_text": ".process-steps .process-step:nth-child(2) p",
-                "step_3_title": ".process-steps .process-step:nth-child(3) h3",
-                "step_3_text": ".process-steps .process-step:nth-child(3) p",
-                "step_4_title": ".process-steps .process-step:nth-child(4) h3",
-                "step_4_text": ".process-steps .process-step:nth-child(4) p",
-                "step_5_title": ".process-steps .process-step:nth-child(5) h3",
-                "step_5_text": ".process-steps .process-step:nth-child(5) p"
-            }
-        },
-        {
-            "id": "awards",
-            "name": "Awards & Recognition",
-            "elements": {
-                "awards_title": ".awards-title",
-                "award_1_name": ".awards-grid .award:nth-child(1) .award-name",
-                "award_1_year": ".awards-grid .award:nth-child(1) .award-year",
-                "award_2_name": ".awards-grid .award:nth-child(2) .award-name",
-                "award_2_year": ".awards-grid .award:nth-child(2) .award-year",
-                "award_3_name": ".awards-grid .award:nth-child(3) .award-name",
-                "award_3_year": ".awards-grid .award:nth-child(3) .award-year",
-                "award_4_name": ".awards-grid .award:nth-child(4) .award-name",
-                "award_4_year": ".awards-grid .award:nth-child(4) .award-year",
-                "award_5_name": ".awards-grid .award:nth-child(5) .award-name",
-                "award_5_year": ".awards-grid .award:nth-child(5) .award-year",
-                "award_6_name": ".awards-grid .award:nth-child(6) .award-name",
-                "award_6_year": ".awards-grid .award:nth-child(6) .award-year"
-            }
-        },
-        {
-            "id": "team",
-            "name": "Team",
-            "elements": {
-                "team_eyebrow": "#team .eyebrow",
-                "team_title": "#team .h-section",
-                "team_intro": "#team .section-intro",
-                "member_1_image": ".team-grid .member:nth-child(1) .member-photo",
-                "member_1_name": ".team-grid .member:nth-child(1) h3",
-                "member_1_role": ".team-grid .member:nth-child(1) .member-role",
-                "member_1_bio": ".team-grid .member:nth-child(1) .member-bio",
-                "member_2_image": ".team-grid .member:nth-child(2) .member-photo",
-                "member_2_name": ".team-grid .member:nth-child(2) h3",
-                "member_2_role": ".team-grid .member:nth-child(2) .member-role",
-                "member_2_bio": ".team-grid .member:nth-child(2) .member-bio",
-                "member_3_image": ".team-grid .member:nth-child(3) .member-photo",
-                "member_3_name": ".team-grid .member:nth-child(3) h3",
-                "member_3_role": ".team-grid .member:nth-child(3) .member-role",
-                "member_3_bio": ".team-grid .member:nth-child(3) .member-bio",
-                "member_4_image": ".team-grid .member:nth-child(4) .member-photo",
-                "member_4_name": ".team-grid .member:nth-child(4) h3",
-                "member_4_role": ".team-grid .member:nth-child(4) .member-role",
-                "member_4_bio": ".team-grid .member:nth-child(4) .member-bio"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Testimonials",
-            "elements": {
-                "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
-                "testimonials_title": "[data-block=testimonials] .h-section",
-                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
-                "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
-                "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
-                "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
-                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
-                "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
-                "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
-                "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
-                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
-                "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
-                "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
-                "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Start a Project",
-            "elements": {
-                "booking_eyebrow": "#booking .eyebrow",
-                "booking_title": "#booking .h-section",
-                "booking_intro": ".booking-intro",
-                "booking_project_label": ".booking-form label[data-field=booking_project_label]",
-                "booking_budget_label": ".booking-form label[data-field=booking_budget_label]",
-                "booking_timeline_label": ".booking-form label[data-field=booking_timeline_label]",
-                "booking_location_label": ".booking-form label[data-field=booking_location_label]",
-                "booking_name_label": ".booking-form label[data-field=booking_name_label]",
-                "booking_email_label": ".booking-form label[data-field=booking_email_label]",
-                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
-                "booking_brief_label": ".booking-form label[data-field=booking_brief_label]",
-                "booking_submit": ".booking-submit"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact",
-            "elements": {
-                "contact_eyebrow": "#contact .eyebrow",
-                "contact_title": "#contact .h-section",
-                "contact_intro": "#contact .section-intro",
-                "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
-                "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
-                "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
-                "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
-                "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
-                "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
-                "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
-                "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
-                "contact_cta_title": "#contact .hero-form-title",
-                "contact_cta_text": "#contact .hero-form-sub",
-                "contact_cta_button": "#contact .btn-primary"
-            }
-        },
-        {
-            "id": "footer",
-            "name": "Footer",
-            "elements": {
-                "footer_logo": ".footer-logo",
-                "footer_tagline": ".footer-tagline",
-                "social_1": ".footer-socials a:nth-child(1)",
-                "social_2": ".footer-socials a:nth-child(2)",
-                "social_3": ".footer-socials a:nth-child(3)",
-                "social_4": ".footer-socials a:nth-child(4)",
-                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
-                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
-                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
-                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
-                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
-                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
-                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
-                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
-                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
-                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
-                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
-                "footer_text": ".footer-bottom > div:nth-child(1)",
-                "footer_legal": ".footer-bottom > div:nth-child(2)"
-            }
-        }
-    ],
-    "variables": {
-        "business_name": { "type": "text", "label": "Business Name", "default": "Foliage Studio" },
-        "business_tagline": { "type": "text", "label": "Tagline", "default": "A Boutique Architecture Practice in Dubai" },
-        "meta_description": { "type": "text", "label": "Meta Description", "default": "Foliage Studio is a 12-year-old architecture and interior design practice based in Dubai, working on residential villas, commercial fit-outs, hospitality and urban planning across the UAE and GCC." },
-        "canonical_url": { "type": "url", "label": "Canonical URL", "default": "https://foliage.studio" },
-        "og_image": { "type": "image", "label": "OG Image", "default": "/storage/builder-heroes/architecture.jpg" },
-        "og_locale": { "type": "text", "label": "OG Locale", "default": "en_AE" },
-        "hero_image": { "type": "image", "label": "Hero Background", "default": "/storage/builder-heroes/architecture.jpg" },
-
-        "white": { "type": "color", "label": "White", "default": "#FFFFFF" },
-        "graphite": { "type": "color", "label": "Graphite", "default": "#2D2D2D" },
-        "graphite_soft": { "type": "color", "label": "Graphite Soft", "default": "#6B6B6B" },
-        "copper": { "type": "color", "label": "Copper", "default": "#B87333" },
-        "copper_deep": { "type": "color", "label": "Copper Deep", "default": "#8B5A2B" },
-        "light_grey": { "type": "color", "label": "Light Grey", "default": "#F5F3EF" },
-        "divider": { "type": "color", "label": "Divider", "default": "#E5E1DA" },
-
-        "logo": { "type": "text", "label": "Logo Text", "default": "Foliage" },
-        "nav_1": { "type": "text", "label": "Nav: Projects", "default": "Projects" },
-        "nav_2": { "type": "text", "label": "Nav: Services", "default": "Services" },
-        "nav_3": { "type": "text", "label": "Nav: Studio", "default": "Studio" },
-        "nav_4": { "type": "text", "label": "Nav: Awards", "default": "Awards" },
-        "nav_5": { "type": "text", "label": "Nav: Contact", "default": "Contact" },
-        "nav_cta": { "type": "text", "label": "Nav CTA", "default": "Start a Project" },
-
-        "hero_eyebrow": { "type": "text", "label": "Hero Eyebrow", "default": "Architecture · Interiors · Dubai" },
-        "hero_title": { "type": "text", "label": "Hero Title", "default": "Quiet buildings, considered in every <em>detail</em>." },
-        "hero_subtitle": { "type": "text", "label": "Hero Subtitle", "default": "A boutique twelve-person practice based in Alserkal Avenue, Dubai. We design residential villas, commercial fit-outs, and hospitality interiors across the UAE and wider GCC — always in close collaboration with our clients, craftsmen and the landscape." },
-        "hero_trust_1": { "type": "text", "label": "Trust 1", "default": "Est. 2014" },
-        "hero_trust_2": { "type": "text", "label": "Trust 2", "default": "RIBA Chartered" },
-        "hero_trust_3": { "type": "text", "label": "Trust 3", "default": "LEED AP" },
-        "hero_trust_4": { "type": "text", "label": "Trust 4", "default": "Dubai Municipality Registered" },
-
-        "hero_form_eyebrow": { "type": "text", "label": "Form Eyebrow", "default": "ENQUIRIES" },
-        "hero_form_title": { "type": "text", "label": "Form Title", "default": "Send us a brief" },
-        "hero_form_sub": { "type": "text", "label": "Form Sub", "default": "A partner personally reads every enquiry. We reply within two business days, and we only take on projects we believe we can do well." },
-        "hero_form_name_label": { "type": "text", "label": "Name Label", "default": "Your Name" },
-        "hero_form_email_label": { "type": "text", "label": "Email Label", "default": "Email" },
-        "hero_form_brief_label": { "type": "text", "label": "Brief Label", "default": "Project (brief description)" },
-        "hero_form_submit": { "type": "text", "label": "Submit Button", "default": "Send Brief" },
-        "hero_form_note": { "type": "text", "label": "Form Note", "default": "Personally reviewed by a partner — replies within two business days." },
-
-        "stat_1_value": { "type": "text", "label": "Stat 1 Value", "default": "12" },
-        "stat_1_label": { "type": "text", "label": "Stat 1 Label", "default": "Years of Practice" },
-        "stat_2_value": { "type": "text", "label": "Stat 2 Value", "default": "84" },
-        "stat_2_label": { "type": "text", "label": "Stat 2 Label", "default": "Completed Projects" },
-        "stat_3_value": { "type": "text", "label": "Stat 3 Value", "default": "18" },
-        "stat_3_label": { "type": "text", "label": "Stat 3 Label", "default": "Awards Received" },
-        "stat_4_value": { "type": "text", "label": "Stat 4 Value", "default": "6" },
-        "stat_4_label": { "type": "text", "label": "Stat 4 Label", "default": "Countries Built In" },
-
-        "projects_eyebrow": { "type": "text", "label": "Projects Eyebrow", "default": "SELECTED WORK" },
-        "projects_title": { "type": "text", "label": "Projects Title", "default": "A decade of quietly ambitious buildings." },
-        "projects_intro": { "type": "text", "label": "Projects Intro", "default": "Nine projects we're particularly proud of — a mix of private villas, urban interventions, commercial fit-outs and hospitality. Each is the result of long conversations with clients, contractors, landscape and light." },
-
-        "project_1_category": { "type": "text", "label": "Project 1 Category", "default": "RESIDENTIAL" },
-        "project_1_title": { "type": "text", "label": "Project 1 Title", "default": "Ghaf House" },
-        "project_1_location": { "type": "text", "label": "Project 1 Location", "default": "Emirates Hills, Dubai · 2024" },
-        "project_2_category": { "type": "text", "label": "Project 2 Category", "default": "COMMERCIAL" },
-        "project_2_title": { "type": "text", "label": "Project 2 Title", "default": "Index Tower Fit-Out" },
-        "project_2_location": { "type": "text", "label": "Project 2 Location", "default": "DIFC, Dubai · 2023" },
-        "project_3_category": { "type": "text", "label": "Project 3 Category", "default": "HOSPITALITY" },
-        "project_3_title": { "type": "text", "label": "Project 3 Title", "default": "Zariba Desert Lodge" },
-        "project_3_location": { "type": "text", "label": "Project 3 Location", "default": "Liwa, Abu Dhabi · 2024" },
-        "project_4_category": { "type": "text", "label": "Project 4 Category", "default": "RESIDENTIAL" },
-        "project_4_title": { "type": "text", "label": "Project 4 Title", "default": "Dunescape Villa" },
-        "project_4_location": { "type": "text", "label": "Project 4 Location", "default": "Al Barari, Dubai · 2023" },
-        "project_5_category": { "type": "text", "label": "Project 5 Category", "default": "URBAN PLANNING" },
-        "project_5_title": { "type": "text", "label": "Project 5 Title", "default": "Alserkal Cultural Quarter — Masterplan" },
-        "project_5_location": { "type": "text", "label": "Project 5 Location", "default": "Al Quoz, Dubai · 2022" },
-        "project_6_category": { "type": "text", "label": "Project 6 Category", "default": "HOSPITALITY" },
-        "project_6_title": { "type": "text", "label": "Project 6 Title", "default": "Mahra Boutique Hotel" },
-        "project_6_location": { "type": "text", "label": "Project 6 Location", "default": "Al Ain, UAE · 2022" },
-        "project_7_category": { "type": "text", "label": "Project 7 Category", "default": "COMMERCIAL" },
-        "project_7_title": { "type": "text", "label": "Project 7 Title", "default": "Forge Offices" },
-        "project_7_location": { "type": "text", "label": "Project 7 Location", "default": "d3 Design District, Dubai · 2023" },
-        "project_8_category": { "type": "text", "label": "Project 8 Category", "default": "RESIDENTIAL" },
-        "project_8_title": { "type": "text", "label": "Project 8 Title", "default": "Oleander House" },
-        "project_8_location": { "type": "text", "label": "Project 8 Location", "default": "Sharjah · 2024" },
-        "project_9_category": { "type": "text", "label": "Project 9 Category", "default": "MIXED USE" },
-        "project_9_title": { "type": "text", "label": "Project 9 Title", "default": "Palm Courtyard" },
-        "project_9_location": { "type": "text", "label": "Project 9 Location", "default": "Jumeirah, Dubai · 2025" },
-
-        "services_eyebrow": { "type": "text", "label": "Services Eyebrow", "default": "WHAT WE DO" },
-        "services_title": { "type": "text", "label": "Services Title", "default": "An integrated design practice." },
-        "services_intro": { "type": "text", "label": "Services Intro", "default": "Six disciplines, one studio. We draw every project through architecture, landscape, and interior — so the detail at 1:1 is consistent with the idea at 1:500." },
-        "service_1_icon": { "type": "text", "label": "Service 1 Icon", "default": "01" },
-        "service_1_title": { "type": "text", "label": "Service 1 Title", "default": "Architecture" },
-        "service_1_text": { "type": "text", "label": "Service 1 Text", "default": "Private villas, commercial buildings, hospitality and cultural work — from concept through tender and construction administration. Always led personally by one of the three partners." },
-        "service_2_icon": { "type": "text", "label": "Service 2 Icon", "default": "02" },
-        "service_2_title": { "type": "text", "label": "Service 2 Title", "default": "Urban Planning" },
-        "service_2_text": { "type": "text", "label": "Service 2 Text", "default": "Masterplans, framework strategies and public-realm design. Two of our masterplans have gone on to win WAF-shortlisted recognition for context-driven, human-scale urbanism." },
-        "service_3_icon": { "type": "text", "label": "Service 3 Icon", "default": "03" },
-        "service_3_title": { "type": "text", "label": "Service 3 Title", "default": "Landscape" },
-        "service_3_text": { "type": "text", "label": "Service 3 Text", "default": "In-house landscape architecture — courtyards, roof gardens, desert planting schemes. We design landscape from day one of every project, never as an afterthought." },
-        "service_4_icon": { "type": "text", "label": "Service 4 Icon", "default": "04" },
-        "service_4_title": { "type": "text", "label": "Service 4 Title", "default": "Interior Design" },
-        "service_4_text": { "type": "text", "label": "Service 4 Text", "default": "Residential and commercial interiors, including bespoke joinery, lighting schemes and art curation. Our interiors team works alongside the architects — not sequentially — so the building and the room are one thought." },
-        "service_5_icon": { "type": "text", "label": "Service 5 Icon", "default": "05" },
-        "service_5_title": { "type": "text", "label": "Service 5 Title", "default": "Structural Collaboration" },
-        "service_5_text": { "type": "text", "label": "Service 5 Text", "default": "Ten-year relationships with our engineering consultants in Dubai and London. Complex structures — long spans, cantilevers, exposed concrete — detailed in the office, not outsourced." },
-        "service_6_icon": { "type": "text", "label": "Service 6 Icon", "default": "06" },
-        "service_6_title": { "type": "text", "label": "Service 6 Title", "default": "Sustainability" },
-        "service_6_text": { "type": "text", "label": "Service 6 Text", "default": "LEED and Estidama accredited team members on every job. Passive strategies, local materials, embodied-carbon accounting — treated as design constraints, not add-ons." },
-
-        "process_eyebrow": { "type": "text", "label": "Process Eyebrow", "default": "HOW WE WORK" },
-        "process_title": { "type": "text", "label": "Process Title", "default": "Five stages, one conversation." },
-        "process_intro": { "type": "text", "label": "Process Intro", "default": "Every project runs through the same five-stage arc. You're in the room at every stage — our approvals are recorded, not assumed." },
-        "step_1_title": { "type": "text", "label": "Step 1 Title", "default": "Brief" },
-        "step_1_text": { "type": "text", "label": "Step 1 Text", "default": "Two to three long conversations, a site visit, a reading of the constraints. We leave with a written brief — the document we all come back to for three years." },
-        "step_2_title": { "type": "text", "label": "Step 2 Title", "default": "Concept" },
-        "step_2_text": { "type": "text", "label": "Step 2 Text", "default": "Hand-drawn studies, a physical model, two or three architectural ideas tested against the brief. We present on paper, not screens. Six to ten weeks." },
-        "step_3_title": { "type": "text", "label": "Step 3 Title", "default": "Design" },
-        "step_3_text": { "type": "text", "label": "Step 3 Text", "default": "The idea is developed in plan, section and detail. Materials are chosen, mocked up, and touched. Consultants are brought in. Authority approvals filed." },
-        "step_4_title": { "type": "text", "label": "Step 4 Title", "default": "Build" },
-        "step_4_text": { "type": "text", "label": "Step 4 Text", "default": "Weekly site presence from a partner — never an intern. We detail in the office, we supervise on site. Shop drawings are checked by the same person who drew the concept." },
-        "step_5_title": { "type": "text", "label": "Step 5 Title", "default": "Deliver" },
-        "step_5_text": { "type": "text", "label": "Step 5 Text", "default": "Handover, a 12-month snagging period, and a proper architectural photo shoot. We stay in touch — many of our clients have come back for second and third projects." },
-
-        "awards_title": { "type": "text", "label": "Awards Title", "default": "SELECTED AWARDS & RECOGNITION" },
-        "award_1_name": { "type": "text", "label": "Award 1 Name", "default": "AIA ME Honor" },
-        "award_1_year": { "type": "text", "label": "Award 1 Year", "default": "2024" },
-        "award_2_name": { "type": "text", "label": "Award 2 Name", "default": "RIBA Gulf" },
-        "award_2_year": { "type": "text", "label": "Award 2 Year", "default": "2023" },
-        "award_3_name": { "type": "text", "label": "Award 3 Name", "default": "IIDA Global" },
-        "award_3_year": { "type": "text", "label": "Award 3 Year", "default": "2023" },
-        "award_4_name": { "type": "text", "label": "Award 4 Name", "default": "LEED Platinum" },
-        "award_4_year": { "type": "text", "label": "Award 4 Year", "default": "2022" },
-        "award_5_name": { "type": "text", "label": "Award 5 Name", "default": "WAF Shortlist" },
-        "award_5_year": { "type": "text", "label": "Award 5 Year", "default": "2024" },
-        "award_6_name": { "type": "text", "label": "Award 6 Name", "default": "Dezeen Longlist" },
-        "award_6_year": { "type": "text", "label": "Award 6 Year", "default": "2025" },
-
-        "team_eyebrow": { "type": "text", "label": "Team Eyebrow", "default": "THE STUDIO" },
-        "team_title": { "type": "text", "label": "Team Title", "default": "Twelve people, three partners." },
-        "team_intro": { "type": "text", "label": "Team Intro", "default": "A deliberately small team — one that lets the partners stay close to every drawing and every site visit. Each project is led personally by one partner, with a named architect, a landscape lead, and an interiors lead." },
-        "member_1_image": { "type": "image", "label": "Member 1 Image", "default": "/storage/builder-heroes/architecture.jpg" },
-        "member_1_name": { "type": "text", "label": "Member 1 Name", "default": "Farah Al-Qassimi" },
-        "member_1_role": { "type": "text", "label": "Member 1 Role", "default": "Founding Partner · Architect" },
-        "member_1_bio": { "type": "text", "label": "Member 1 Bio", "default": "RIBA chartered, AA London-trained, 21 years in Gulf architecture. Led our residential work since 2014; sits on the Dubai Design District advisory board." },
-        "member_2_image": { "type": "image", "label": "Member 2 Image", "default": "/storage/builder-heroes/architecture.jpg" },
-        "member_2_name": { "type": "text", "label": "Member 2 Name", "default": "Rami Haddad" },
-        "member_2_role": { "type": "text", "label": "Member 2 Role", "default": "Partner · Head of Urbanism" },
-        "member_2_bio": { "type": "text", "label": "Member 2 Bio", "default": "Harvard GSD, previously at OMA Rotterdam and Foster + Partners. Leads our urban planning practice. Obsessed with how buildings meet the ground and each other." },
-        "member_3_image": { "type": "image", "label": "Member 3 Image", "default": "/storage/builder-heroes/architecture.jpg" },
-        "member_3_name": { "type": "text", "label": "Member 3 Name", "default": "Leila Mahfouz" },
-        "member_3_role": { "type": "text", "label": "Member 3 Role", "default": "Partner · Interior Design" },
-        "member_3_bio": { "type": "text", "label": "Member 3 Bio", "default": "RCA Milan, twelve years with a Milanese joinery workshop before moving to Dubai. Bespoke furniture, lighting and ceramics sit on her desk before they sit in your room." },
-        "member_4_image": { "type": "image", "label": "Member 4 Image", "default": "/storage/builder-heroes/architecture.jpg" },
-        "member_4_name": { "type": "text", "label": "Member 4 Name", "default": "Daniyal Ahmed" },
-        "member_4_role": { "type": "text", "label": "Member 4 Role", "default": "Associate · Landscape" },
-        "member_4_bio": { "type": "text", "label": "Member 4 Bio", "default": "Cambridge-trained landscape architect. Specialises in low-water native planting schemes; his Liwa courtyard at Zariba Desert Lodge halved the brief's irrigation load." },
-
-        "testimonials_eyebrow": { "type": "text", "label": "Testimonials Eyebrow", "default": "FROM THE CLIENTS" },
-        "testimonials_title": { "type": "text", "label": "Testimonials Title", "default": "A practice our clients keep coming back to." },
-        "testimonial_1_quote": { "type": "text", "label": "Testimonial 1 Quote", "default": "Foliage designed our home in Emirates Hills over three very patient years. What we ended up with is quieter and more specific than anything we could have briefed for. They drew every door handle." },
-        "testimonial_1_author": { "type": "text", "label": "Testimonial 1 Author", "default": "Sara Al-Mutawa" },
-        "testimonial_1_company": { "type": "text", "label": "Testimonial 1 Company", "default": "Private Client, Emirates Hills" },
-        "testimonial_1_result": { "type": "text", "label": "Testimonial 1 Result", "default": "Ghaf House · 2024" },
-        "testimonial_2_quote": { "type": "text", "label": "Testimonial 2 Quote", "default": "We hired them for the DIFC fit-out because they felt rigorous. They delivered something materially considered and completely on budget — which in this industry is almost unheard of." },
-        "testimonial_2_author": { "type": "text", "label": "Testimonial 2 Author", "default": "Omar Haddad" },
-        "testimonial_2_company": { "type": "text", "label": "Testimonial 2 Company", "default": "Managing Partner, Index Capital" },
-        "testimonial_2_result": { "type": "text", "label": "Testimonial 2 Result", "default": "Index Tower Fit-Out" },
-        "testimonial_3_quote": { "type": "text", "label": "Testimonial 3 Quote", "default": "Zariba is the most visited project in our portfolio. Every guest asks who designed it. Foliage brought a gentleness to the desert that none of us thought possible on the brief we started with." },
-        "testimonial_3_author": { "type": "text", "label": "Testimonial 3 Author", "default": "Priya Venkatesh" },
-        "testimonial_3_company": { "type": "text", "label": "Testimonial 3 Company", "default": "CEO, Dunescape Hospitality" },
-        "testimonial_3_result": { "type": "text", "label": "Testimonial 3 Result", "default": "Zariba Desert Lodge" },
-
-        "booking_eyebrow": { "type": "text", "label": "Booking Eyebrow", "default": "NEW COMMISSIONS" },
-        "booking_title": { "type": "text", "label": "Booking Title", "default": "Start a project with us." },
-        "booking_intro": { "type": "text", "label": "Booking Intro", "default": "We take on roughly twelve new projects a year — a mix of residential, commercial, and hospitality work across the UAE and GCC. Send us the brief. A partner personally reads every enquiry and responds within two business days." },
-        "booking_project_label": { "type": "text", "label": "Project Type Label", "default": "Project Type" },
-        "booking_budget_label": { "type": "text", "label": "Budget Label", "default": "Budget Range" },
-        "booking_timeline_label": { "type": "text", "label": "Timeline Label", "default": "Timeline" },
-        "booking_location_label": { "type": "text", "label": "Location Label", "default": "Site Location" },
-        "booking_name_label": { "type": "text", "label": "Name Label", "default": "Your Name" },
-        "booking_email_label": { "type": "text", "label": "Email Label", "default": "Email" },
-        "booking_phone_label": { "type": "text", "label": "Phone Label", "default": "Phone" },
-        "booking_brief_label": { "type": "text", "label": "Brief Label", "default": "About the Project" },
-        "booking_submit": { "type": "text", "label": "Submit Button", "default": "Send Enquiry" },
-
-        "contact_eyebrow": { "type": "text", "label": "Contact Eyebrow", "default": "THE STUDIO" },
-        "contact_title": { "type": "text", "label": "Contact Title", "default": "Come and see the studio." },
-        "contact_intro": { "type": "text", "label": "Contact Intro", "default": "We're in a converted warehouse in Alserkal Avenue. Visitors welcome by appointment — the coffee is good and the library is better." },
-        "contact_email_label": { "type": "text", "label": "Email Label", "default": "Email" },
-        "contact_email": { "type": "text", "label": "Email", "default": "studio@foliage.studio" },
-        "contact_phone_label": { "type": "text", "label": "Phone Label", "default": "Telephone" },
-        "contact_phone": { "type": "text", "label": "Phone", "default": "+971 4 555 0318" },
-        "contact_address_label": { "type": "text", "label": "Address Label", "default": "Studio" },
-        "contact_address": { "type": "text", "label": "Address", "default": "Warehouse 42, Alserkal Avenue, Al Quoz 1, Dubai" },
-        "contact_hours_label": { "type": "text", "label": "Hours Label", "default": "Visits" },
-        "contact_hours": { "type": "text", "label": "Hours", "default": "Mon–Fri, by appointment" },
-        "contact_cta_title": { "type": "text", "label": "Contact CTA Title", "default": "Ready to start a project?" },
-        "contact_cta_text": { "type": "text", "label": "Contact CTA Text", "default": "Send us the brief. A partner personally reads every enquiry and responds within two business days." },
-        "contact_cta_button": { "type": "text", "label": "Contact CTA Button", "default": "Start a Project" },
-
-        "footer_logo": { "type": "text", "label": "Footer Logo", "default": "Foliage" },
-        "footer_tagline": { "type": "text", "label": "Footer Tagline", "default": "A boutique architecture, interior and landscape studio based in Alserkal Avenue, Dubai. Residential, commercial and hospitality work across the UAE and GCC since 2014." },
-        "social_1": { "type": "text", "label": "Social 1", "default": "IG" },
-        "social_2": { "type": "text", "label": "Social 2", "default": "IN" },
-        "social_3": { "type": "text", "label": "Social 3", "default": "PN" },
-        "social_4": { "type": "text", "label": "Social 4", "default": "VM" },
-        "footer_col_1_title": { "type": "text", "label": "Footer Col 1 Title", "default": "Practice" },
-        "footer_col_2_title": { "type": "text", "label": "Footer Col 2 Title", "default": "Studio" },
-        "footer_col_3_title": { "type": "text", "label": "Footer Col 3 Title", "default": "Connect" },
-        "footer_link_1": { "type": "text", "label": "Footer Link 1", "default": "Architecture" },
-        "footer_link_2": { "type": "text", "label": "Footer Link 2", "default": "Interiors" },
-        "footer_link_3": { "type": "text", "label": "Footer Link 3", "default": "Landscape" },
-        "footer_link_4": { "type": "text", "label": "Footer Link 4", "default": "Projects" },
-        "footer_link_5": { "type": "text", "label": "Footer Link 5", "default": "Team" },
-        "footer_link_6": { "type": "text", "label": "Footer Link 6", "default": "Awards" },
-        "footer_link_7": { "type": "text", "label": "Footer Link 7", "default": "Contact" },
-        "footer_link_8": { "type": "text", "label": "Footer Link 8", "default": "Start a Project" },
-        "footer_text": { "type": "text", "label": "Footer Text", "default": "© 2026 Foliage Studio FZ-LLC. All rights reserved." },
-        "footer_legal": { "type": "text", "label": "Footer Legal", "default": "Privacy · Terms · Cookies" }
+  "id": "architecture",
+  "name": "Architecture Studio",
+  "industry": "architecture",
+  "description": "Editorial-grade white-and-graphite architecture template with copper accents, oversized Helvetica display type, and a generous 9-project masonry portfolio. Boutique studio feel \u2014 suited to residential villas, commercial fit-outs, hospitality, urban planning. Six-service 3\u00d72 grid, 5-step design process, 6 award badges (AIA/RIBA/IIDA/LEED/WAF/Dezeen), 4 named partners, 3 testimonials, and a serious Start-a-Project booking form with budget, timeline and brief.",
+  "thumbnail": "/storage/builder-heroes/architecture.jpg",
+  "category": "design",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "elements": {
+        "logo": "nav .logo",
+        "nav_1": "nav .nav-link-1",
+        "nav_2": "nav .nav-link-2",
+        "nav_3": "nav .nav-link-3",
+        "nav_4": "nav .nav-link-4",
+        "nav_5": "nav .nav-link-5",
+        "nav_cta": "nav .nav-cta"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero with Brief Capture",
+      "elements": {
+        "hero_image": "section.hero",
+        "hero_eyebrow": ".hero-eyebrow",
+        "hero_title": ".hero-title",
+        "hero_subtitle": ".hero-subtitle",
+        "hero_trust_1": ".hero-trust-1",
+        "hero_trust_2": ".hero-trust-2",
+        "hero_trust_3": ".hero-trust-3",
+        "hero_trust_4": ".hero-trust-4",
+        "hero_form_eyebrow": ".hero-form-eyebrow",
+        "hero_form_title": ".hero-form-title",
+        "hero_form_sub": ".hero-form-sub",
+        "hero_form_name_label": ".hero-form label[data-field=hero_form_name_label]",
+        "hero_form_email_label": ".hero-form label[data-field=hero_form_email_label]",
+        "hero_form_brief_label": ".hero-form label[data-field=hero_form_brief_label]",
+        "hero_form_submit": ".hero-form button",
+        "hero_form_note": ".hero-form-note"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Studio Stats",
+      "elements": {
+        "stat_1_value": ".results-grid .result-item:nth-child(1) .result-value",
+        "stat_1_label": ".results-grid .result-item:nth-child(1) .result-label",
+        "stat_2_value": ".results-grid .result-item:nth-child(2) .result-value",
+        "stat_2_label": ".results-grid .result-item:nth-child(2) .result-label",
+        "stat_3_value": ".results-grid .result-item:nth-child(3) .result-value",
+        "stat_3_label": ".results-grid .result-item:nth-child(3) .result-label",
+        "stat_4_value": ".results-grid .result-item:nth-child(4) .result-value",
+        "stat_4_label": ".results-grid .result-item:nth-child(4) .result-label"
+      }
+    },
+    {
+      "id": "projects",
+      "name": "Projects Portfolio",
+      "elements": {
+        "projects_eyebrow": "#projects .eyebrow",
+        "projects_title": "#projects .h-section",
+        "projects_intro": "#projects .section-intro",
+        "project_1_category": ".projects-grid .project:nth-child(1) .project-category",
+        "project_1_title": ".projects-grid .project:nth-child(1) h3",
+        "project_1_location": ".projects-grid .project:nth-child(1) .project-location",
+        "project_2_category": ".projects-grid .project:nth-child(2) .project-category",
+        "project_2_title": ".projects-grid .project:nth-child(2) h3",
+        "project_2_location": ".projects-grid .project:nth-child(2) .project-location",
+        "project_3_category": ".projects-grid .project:nth-child(3) .project-category",
+        "project_3_title": ".projects-grid .project:nth-child(3) h3",
+        "project_3_location": ".projects-grid .project:nth-child(3) .project-location",
+        "project_4_category": ".projects-grid .project:nth-child(4) .project-category",
+        "project_4_title": ".projects-grid .project:nth-child(4) h3",
+        "project_4_location": ".projects-grid .project:nth-child(4) .project-location",
+        "project_5_category": ".projects-grid .project:nth-child(5) .project-category",
+        "project_5_title": ".projects-grid .project:nth-child(5) h3",
+        "project_5_location": ".projects-grid .project:nth-child(5) .project-location",
+        "project_6_category": ".projects-grid .project:nth-child(6) .project-category",
+        "project_6_title": ".projects-grid .project:nth-child(6) h3",
+        "project_6_location": ".projects-grid .project:nth-child(6) .project-location",
+        "project_7_category": ".projects-grid .project:nth-child(7) .project-category",
+        "project_7_title": ".projects-grid .project:nth-child(7) h3",
+        "project_7_location": ".projects-grid .project:nth-child(7) .project-location",
+        "project_8_category": ".projects-grid .project:nth-child(8) .project-category",
+        "project_8_title": ".projects-grid .project:nth-child(8) h3",
+        "project_8_location": ".projects-grid .project:nth-child(8) .project-location",
+        "project_9_category": ".projects-grid .project:nth-child(9) .project-category",
+        "project_9_title": ".projects-grid .project:nth-child(9) h3",
+        "project_9_location": ".projects-grid .project:nth-child(9) .project-location"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Services",
+      "elements": {
+        "services_eyebrow": "#services .eyebrow",
+        "services_title": "#services .h-section",
+        "services_intro": "#services .section-intro",
+        "service_1_icon": "#services .service:nth-child(1) .service-icon",
+        "service_1_title": "#services .service:nth-child(1) h3",
+        "service_1_text": "#services .service:nth-child(1) p",
+        "service_2_icon": "#services .service:nth-child(2) .service-icon",
+        "service_2_title": "#services .service:nth-child(2) h3",
+        "service_2_text": "#services .service:nth-child(2) p",
+        "service_3_icon": "#services .service:nth-child(3) .service-icon",
+        "service_3_title": "#services .service:nth-child(3) h3",
+        "service_3_text": "#services .service:nth-child(3) p",
+        "service_4_icon": "#services .service:nth-child(4) .service-icon",
+        "service_4_title": "#services .service:nth-child(4) h3",
+        "service_4_text": "#services .service:nth-child(4) p",
+        "service_5_icon": "#services .service:nth-child(5) .service-icon",
+        "service_5_title": "#services .service:nth-child(5) h3",
+        "service_5_text": "#services .service:nth-child(5) p",
+        "service_6_icon": "#services .service:nth-child(6) .service-icon",
+        "service_6_title": "#services .service:nth-child(6) h3",
+        "service_6_text": "#services .service:nth-child(6) p"
+      }
+    },
+    {
+      "id": "process",
+      "name": "Design Process",
+      "elements": {
+        "process_eyebrow": "#process .eyebrow",
+        "process_title": "#process .h-section",
+        "process_intro": "#process .section-intro",
+        "step_1_title": ".process-steps .process-step:nth-child(1) h3",
+        "step_1_text": ".process-steps .process-step:nth-child(1) p",
+        "step_2_title": ".process-steps .process-step:nth-child(2) h3",
+        "step_2_text": ".process-steps .process-step:nth-child(2) p",
+        "step_3_title": ".process-steps .process-step:nth-child(3) h3",
+        "step_3_text": ".process-steps .process-step:nth-child(3) p",
+        "step_4_title": ".process-steps .process-step:nth-child(4) h3",
+        "step_4_text": ".process-steps .process-step:nth-child(4) p",
+        "step_5_title": ".process-steps .process-step:nth-child(5) h3",
+        "step_5_text": ".process-steps .process-step:nth-child(5) p"
+      }
+    },
+    {
+      "id": "awards",
+      "name": "Awards & Recognition",
+      "elements": {
+        "awards_title": ".awards-title",
+        "award_1_name": ".awards-grid .award:nth-child(1) .award-name",
+        "award_1_year": ".awards-grid .award:nth-child(1) .award-year",
+        "award_2_name": ".awards-grid .award:nth-child(2) .award-name",
+        "award_2_year": ".awards-grid .award:nth-child(2) .award-year",
+        "award_3_name": ".awards-grid .award:nth-child(3) .award-name",
+        "award_3_year": ".awards-grid .award:nth-child(3) .award-year",
+        "award_4_name": ".awards-grid .award:nth-child(4) .award-name",
+        "award_4_year": ".awards-grid .award:nth-child(4) .award-year",
+        "award_5_name": ".awards-grid .award:nth-child(5) .award-name",
+        "award_5_year": ".awards-grid .award:nth-child(5) .award-year",
+        "award_6_name": ".awards-grid .award:nth-child(6) .award-name",
+        "award_6_year": ".awards-grid .award:nth-child(6) .award-year"
+      }
+    },
+    {
+      "id": "team",
+      "name": "Team",
+      "elements": {
+        "team_eyebrow": "#team .eyebrow",
+        "team_title": "#team .h-section",
+        "team_intro": "#team .section-intro",
+        "member_1_image": ".team-grid .member:nth-child(1) .member-photo",
+        "member_1_name": ".team-grid .member:nth-child(1) h3",
+        "member_1_role": ".team-grid .member:nth-child(1) .member-role",
+        "member_1_bio": ".team-grid .member:nth-child(1) .member-bio",
+        "member_2_image": ".team-grid .member:nth-child(2) .member-photo",
+        "member_2_name": ".team-grid .member:nth-child(2) h3",
+        "member_2_role": ".team-grid .member:nth-child(2) .member-role",
+        "member_2_bio": ".team-grid .member:nth-child(2) .member-bio",
+        "member_3_image": ".team-grid .member:nth-child(3) .member-photo",
+        "member_3_name": ".team-grid .member:nth-child(3) h3",
+        "member_3_role": ".team-grid .member:nth-child(3) .member-role",
+        "member_3_bio": ".team-grid .member:nth-child(3) .member-bio",
+        "member_4_image": ".team-grid .member:nth-child(4) .member-photo",
+        "member_4_name": ".team-grid .member:nth-child(4) h3",
+        "member_4_role": ".team-grid .member:nth-child(4) .member-role",
+        "member_4_bio": ".team-grid .member:nth-child(4) .member-bio"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Testimonials",
+      "elements": {
+        "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
+        "testimonials_title": "[data-block=testimonials] .h-section",
+        "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+        "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+        "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
+        "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
+        "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+        "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+        "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
+        "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
+        "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+        "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+        "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
+        "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Start a Project",
+      "elements": {
+        "booking_eyebrow": "#booking .eyebrow",
+        "booking_title": "#booking .h-section",
+        "booking_intro": ".booking-intro",
+        "booking_project_label": ".booking-form label[data-field=booking_project_label]",
+        "booking_budget_label": ".booking-form label[data-field=booking_budget_label]",
+        "booking_timeline_label": ".booking-form label[data-field=booking_timeline_label]",
+        "booking_location_label": ".booking-form label[data-field=booking_location_label]",
+        "booking_name_label": ".booking-form label[data-field=booking_name_label]",
+        "booking_email_label": ".booking-form label[data-field=booking_email_label]",
+        "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+        "booking_brief_label": ".booking-form label[data-field=booking_brief_label]",
+        "booking_submit": ".booking-submit"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact",
+      "elements": {
+        "contact_eyebrow": "#contact .eyebrow",
+        "contact_title": "#contact .h-section",
+        "contact_intro": "#contact .section-intro",
+        "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
+        "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
+        "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
+        "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
+        "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
+        "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
+        "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
+        "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
+        "contact_cta_title": "#contact .hero-form-title",
+        "contact_cta_text": "#contact .hero-form-sub",
+        "contact_cta_button": "#contact .btn-primary"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2",
+        "intro": ".section-subtitle",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card h3",
+        "post_excerpt": ".blog-card p",
+        "cta": ".blog-cta a"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "elements": {
+        "footer_logo": ".footer-logo",
+        "footer_tagline": ".footer-tagline",
+        "social_1": ".footer-socials a:nth-child(1)",
+        "social_2": ".footer-socials a:nth-child(2)",
+        "social_3": ".footer-socials a:nth-child(3)",
+        "social_4": ".footer-socials a:nth-child(4)",
+        "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+        "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+        "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+        "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+        "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+        "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+        "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+        "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+        "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+        "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+        "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+        "footer_text": ".footer-bottom > div:nth-child(1)",
+        "footer_legal": ".footer-bottom > div:nth-child(2)"
+      }
     }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Business Name",
+      "default": "Foliage Studio"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "A Boutique Architecture Practice in Dubai"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Foliage Studio is a 12-year-old architecture and interior design practice based in Dubai, working on residential villas, commercial fit-outs, hospitality and urban planning across the UAE and GCC."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://foliage.studio"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/architecture.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_AE"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Background",
+      "default": "/storage/builder-heroes/architecture.jpg"
+    },
+    "white": {
+      "type": "color",
+      "label": "White",
+      "default": "#FFFFFF"
+    },
+    "graphite": {
+      "type": "color",
+      "label": "Graphite",
+      "default": "#2D2D2D"
+    },
+    "graphite_soft": {
+      "type": "color",
+      "label": "Graphite Soft",
+      "default": "#6B6B6B"
+    },
+    "copper": {
+      "type": "color",
+      "label": "Copper",
+      "default": "#B87333"
+    },
+    "copper_deep": {
+      "type": "color",
+      "label": "Copper Deep",
+      "default": "#8B5A2B"
+    },
+    "light_grey": {
+      "type": "color",
+      "label": "Light Grey",
+      "default": "#F5F3EF"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#E5E1DA"
+    },
+    "logo": {
+      "type": "text",
+      "label": "Logo Text",
+      "default": "Foliage"
+    },
+    "nav_1": {
+      "type": "text",
+      "label": "Nav: Projects",
+      "default": "Projects"
+    },
+    "nav_2": {
+      "type": "text",
+      "label": "Nav: Services",
+      "default": "Services"
+    },
+    "nav_3": {
+      "type": "text",
+      "label": "Nav: Studio",
+      "default": "Studio"
+    },
+    "nav_4": {
+      "type": "text",
+      "label": "Nav: Awards",
+      "default": "Awards"
+    },
+    "nav_5": {
+      "type": "text",
+      "label": "Nav: Contact",
+      "default": "Contact"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Start a Project"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Architecture \u00b7 Interiors \u00b7 Dubai"
+    },
+    "hero_title": {
+      "type": "text",
+      "label": "Hero Title",
+      "default": "Quiet buildings, considered in every <em>detail</em>."
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "A boutique twelve-person practice based in Alserkal Avenue, Dubai. We design residential villas, commercial fit-outs, and hospitality interiors across the UAE and wider GCC \u2014 always in close collaboration with our clients, craftsmen and the landscape."
+    },
+    "hero_trust_1": {
+      "type": "text",
+      "label": "Trust 1",
+      "default": "Est. 2014"
+    },
+    "hero_trust_2": {
+      "type": "text",
+      "label": "Trust 2",
+      "default": "RIBA Chartered"
+    },
+    "hero_trust_3": {
+      "type": "text",
+      "label": "Trust 3",
+      "default": "LEED AP"
+    },
+    "hero_trust_4": {
+      "type": "text",
+      "label": "Trust 4",
+      "default": "Dubai Municipality Registered"
+    },
+    "hero_form_eyebrow": {
+      "type": "text",
+      "label": "Form Eyebrow",
+      "default": "ENQUIRIES"
+    },
+    "hero_form_title": {
+      "type": "text",
+      "label": "Form Title",
+      "default": "Send us a brief"
+    },
+    "hero_form_sub": {
+      "type": "text",
+      "label": "Form Sub",
+      "default": "A partner personally reads every enquiry. We reply within two business days, and we only take on projects we believe we can do well."
+    },
+    "hero_form_name_label": {
+      "type": "text",
+      "label": "Name Label",
+      "default": "Your Name"
+    },
+    "hero_form_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email"
+    },
+    "hero_form_brief_label": {
+      "type": "text",
+      "label": "Brief Label",
+      "default": "Project (brief description)"
+    },
+    "hero_form_submit": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Send Brief"
+    },
+    "hero_form_note": {
+      "type": "text",
+      "label": "Form Note",
+      "default": "Personally reviewed by a partner \u2014 replies within two business days."
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "12"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Years of Practice"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "84"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Completed Projects"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "18"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Awards Received"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "6"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Countries Built In"
+    },
+    "projects_eyebrow": {
+      "type": "text",
+      "label": "Projects Eyebrow",
+      "default": "SELECTED WORK"
+    },
+    "projects_title": {
+      "type": "text",
+      "label": "Projects Title",
+      "default": "A decade of quietly ambitious buildings."
+    },
+    "projects_intro": {
+      "type": "text",
+      "label": "Projects Intro",
+      "default": "Nine projects we're particularly proud of \u2014 a mix of private villas, urban interventions, commercial fit-outs and hospitality. Each is the result of long conversations with clients, contractors, landscape and light."
+    },
+    "project_1_category": {
+      "type": "text",
+      "label": "Project 1 Category",
+      "default": "RESIDENTIAL"
+    },
+    "project_1_title": {
+      "type": "text",
+      "label": "Project 1 Title",
+      "default": "Ghaf House"
+    },
+    "project_1_location": {
+      "type": "text",
+      "label": "Project 1 Location",
+      "default": "Emirates Hills, Dubai \u00b7 2024"
+    },
+    "project_2_category": {
+      "type": "text",
+      "label": "Project 2 Category",
+      "default": "COMMERCIAL"
+    },
+    "project_2_title": {
+      "type": "text",
+      "label": "Project 2 Title",
+      "default": "Index Tower Fit-Out"
+    },
+    "project_2_location": {
+      "type": "text",
+      "label": "Project 2 Location",
+      "default": "DIFC, Dubai \u00b7 2023"
+    },
+    "project_3_category": {
+      "type": "text",
+      "label": "Project 3 Category",
+      "default": "HOSPITALITY"
+    },
+    "project_3_title": {
+      "type": "text",
+      "label": "Project 3 Title",
+      "default": "Zariba Desert Lodge"
+    },
+    "project_3_location": {
+      "type": "text",
+      "label": "Project 3 Location",
+      "default": "Liwa, Abu Dhabi \u00b7 2024"
+    },
+    "project_4_category": {
+      "type": "text",
+      "label": "Project 4 Category",
+      "default": "RESIDENTIAL"
+    },
+    "project_4_title": {
+      "type": "text",
+      "label": "Project 4 Title",
+      "default": "Dunescape Villa"
+    },
+    "project_4_location": {
+      "type": "text",
+      "label": "Project 4 Location",
+      "default": "Al Barari, Dubai \u00b7 2023"
+    },
+    "project_5_category": {
+      "type": "text",
+      "label": "Project 5 Category",
+      "default": "URBAN PLANNING"
+    },
+    "project_5_title": {
+      "type": "text",
+      "label": "Project 5 Title",
+      "default": "Alserkal Cultural Quarter \u2014 Masterplan"
+    },
+    "project_5_location": {
+      "type": "text",
+      "label": "Project 5 Location",
+      "default": "Al Quoz, Dubai \u00b7 2022"
+    },
+    "project_6_category": {
+      "type": "text",
+      "label": "Project 6 Category",
+      "default": "HOSPITALITY"
+    },
+    "project_6_title": {
+      "type": "text",
+      "label": "Project 6 Title",
+      "default": "Mahra Boutique Hotel"
+    },
+    "project_6_location": {
+      "type": "text",
+      "label": "Project 6 Location",
+      "default": "Al Ain, UAE \u00b7 2022"
+    },
+    "project_7_category": {
+      "type": "text",
+      "label": "Project 7 Category",
+      "default": "COMMERCIAL"
+    },
+    "project_7_title": {
+      "type": "text",
+      "label": "Project 7 Title",
+      "default": "Forge Offices"
+    },
+    "project_7_location": {
+      "type": "text",
+      "label": "Project 7 Location",
+      "default": "d3 Design District, Dubai \u00b7 2023"
+    },
+    "project_8_category": {
+      "type": "text",
+      "label": "Project 8 Category",
+      "default": "RESIDENTIAL"
+    },
+    "project_8_title": {
+      "type": "text",
+      "label": "Project 8 Title",
+      "default": "Oleander House"
+    },
+    "project_8_location": {
+      "type": "text",
+      "label": "Project 8 Location",
+      "default": "Sharjah \u00b7 2024"
+    },
+    "project_9_category": {
+      "type": "text",
+      "label": "Project 9 Category",
+      "default": "MIXED USE"
+    },
+    "project_9_title": {
+      "type": "text",
+      "label": "Project 9 Title",
+      "default": "Palm Courtyard"
+    },
+    "project_9_location": {
+      "type": "text",
+      "label": "Project 9 Location",
+      "default": "Jumeirah, Dubai \u00b7 2025"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "WHAT WE DO"
+    },
+    "services_title": {
+      "type": "text",
+      "label": "Services Title",
+      "default": "An integrated design practice."
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "Six disciplines, one studio. We draw every project through architecture, landscape, and interior \u2014 so the detail at 1:1 is consistent with the idea at 1:500."
+    },
+    "service_1_icon": {
+      "type": "text",
+      "label": "Service 1 Icon",
+      "default": "01"
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Architecture"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Text",
+      "default": "Private villas, commercial buildings, hospitality and cultural work \u2014 from concept through tender and construction administration. Always led personally by one of the three partners."
+    },
+    "service_2_icon": {
+      "type": "text",
+      "label": "Service 2 Icon",
+      "default": "02"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "Urban Planning"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Text",
+      "default": "Masterplans, framework strategies and public-realm design. Two of our masterplans have gone on to win WAF-shortlisted recognition for context-driven, human-scale urbanism."
+    },
+    "service_3_icon": {
+      "type": "text",
+      "label": "Service 3 Icon",
+      "default": "03"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "Landscape"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Text",
+      "default": "In-house landscape architecture \u2014 courtyards, roof gardens, desert planting schemes. We design landscape from day one of every project, never as an afterthought."
+    },
+    "service_4_icon": {
+      "type": "text",
+      "label": "Service 4 Icon",
+      "default": "04"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Interior Design"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Text",
+      "default": "Residential and commercial interiors, including bespoke joinery, lighting schemes and art curation. Our interiors team works alongside the architects \u2014 not sequentially \u2014 so the building and the room are one thought."
+    },
+    "service_5_icon": {
+      "type": "text",
+      "label": "Service 5 Icon",
+      "default": "05"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "Structural Collaboration"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Text",
+      "default": "Ten-year relationships with our engineering consultants in Dubai and London. Complex structures \u2014 long spans, cantilevers, exposed concrete \u2014 detailed in the office, not outsourced."
+    },
+    "service_6_icon": {
+      "type": "text",
+      "label": "Service 6 Icon",
+      "default": "06"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "Sustainability"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Text",
+      "default": "LEED and Estidama accredited team members on every job. Passive strategies, local materials, embodied-carbon accounting \u2014 treated as design constraints, not add-ons."
+    },
+    "process_eyebrow": {
+      "type": "text",
+      "label": "Process Eyebrow",
+      "default": "HOW WE WORK"
+    },
+    "process_title": {
+      "type": "text",
+      "label": "Process Title",
+      "default": "Five stages, one conversation."
+    },
+    "process_intro": {
+      "type": "text",
+      "label": "Process Intro",
+      "default": "Every project runs through the same five-stage arc. You're in the room at every stage \u2014 our approvals are recorded, not assumed."
+    },
+    "step_1_title": {
+      "type": "text",
+      "label": "Step 1 Title",
+      "default": "Brief"
+    },
+    "step_1_text": {
+      "type": "text",
+      "label": "Step 1 Text",
+      "default": "Two to three long conversations, a site visit, a reading of the constraints. We leave with a written brief \u2014 the document we all come back to for three years."
+    },
+    "step_2_title": {
+      "type": "text",
+      "label": "Step 2 Title",
+      "default": "Concept"
+    },
+    "step_2_text": {
+      "type": "text",
+      "label": "Step 2 Text",
+      "default": "Hand-drawn studies, a physical model, two or three architectural ideas tested against the brief. We present on paper, not screens. Six to ten weeks."
+    },
+    "step_3_title": {
+      "type": "text",
+      "label": "Step 3 Title",
+      "default": "Design"
+    },
+    "step_3_text": {
+      "type": "text",
+      "label": "Step 3 Text",
+      "default": "The idea is developed in plan, section and detail. Materials are chosen, mocked up, and touched. Consultants are brought in. Authority approvals filed."
+    },
+    "step_4_title": {
+      "type": "text",
+      "label": "Step 4 Title",
+      "default": "Build"
+    },
+    "step_4_text": {
+      "type": "text",
+      "label": "Step 4 Text",
+      "default": "Weekly site presence from a partner \u2014 never an intern. We detail in the office, we supervise on site. Shop drawings are checked by the same person who drew the concept."
+    },
+    "step_5_title": {
+      "type": "text",
+      "label": "Step 5 Title",
+      "default": "Deliver"
+    },
+    "step_5_text": {
+      "type": "text",
+      "label": "Step 5 Text",
+      "default": "Handover, a 12-month snagging period, and a proper architectural photo shoot. We stay in touch \u2014 many of our clients have come back for second and third projects."
+    },
+    "awards_title": {
+      "type": "text",
+      "label": "Awards Title",
+      "default": "SELECTED AWARDS & RECOGNITION"
+    },
+    "award_1_name": {
+      "type": "text",
+      "label": "Award 1 Name",
+      "default": "AIA ME Honor"
+    },
+    "award_1_year": {
+      "type": "text",
+      "label": "Award 1 Year",
+      "default": "2024"
+    },
+    "award_2_name": {
+      "type": "text",
+      "label": "Award 2 Name",
+      "default": "RIBA Gulf"
+    },
+    "award_2_year": {
+      "type": "text",
+      "label": "Award 2 Year",
+      "default": "2023"
+    },
+    "award_3_name": {
+      "type": "text",
+      "label": "Award 3 Name",
+      "default": "IIDA Global"
+    },
+    "award_3_year": {
+      "type": "text",
+      "label": "Award 3 Year",
+      "default": "2023"
+    },
+    "award_4_name": {
+      "type": "text",
+      "label": "Award 4 Name",
+      "default": "LEED Platinum"
+    },
+    "award_4_year": {
+      "type": "text",
+      "label": "Award 4 Year",
+      "default": "2022"
+    },
+    "award_5_name": {
+      "type": "text",
+      "label": "Award 5 Name",
+      "default": "WAF Shortlist"
+    },
+    "award_5_year": {
+      "type": "text",
+      "label": "Award 5 Year",
+      "default": "2024"
+    },
+    "award_6_name": {
+      "type": "text",
+      "label": "Award 6 Name",
+      "default": "Dezeen Longlist"
+    },
+    "award_6_year": {
+      "type": "text",
+      "label": "Award 6 Year",
+      "default": "2025"
+    },
+    "team_eyebrow": {
+      "type": "text",
+      "label": "Team Eyebrow",
+      "default": "THE STUDIO"
+    },
+    "team_title": {
+      "type": "text",
+      "label": "Team Title",
+      "default": "Twelve people, three partners."
+    },
+    "team_intro": {
+      "type": "text",
+      "label": "Team Intro",
+      "default": "A deliberately small team \u2014 one that lets the partners stay close to every drawing and every site visit. Each project is led personally by one partner, with a named architect, a landscape lead, and an interiors lead."
+    },
+    "member_1_image": {
+      "type": "image",
+      "label": "Member 1 Image",
+      "default": "/storage/builder-heroes/architecture.jpg"
+    },
+    "member_1_name": {
+      "type": "text",
+      "label": "Member 1 Name",
+      "default": "Farah Al-Qassimi"
+    },
+    "member_1_role": {
+      "type": "text",
+      "label": "Member 1 Role",
+      "default": "Founding Partner \u00b7 Architect"
+    },
+    "member_1_bio": {
+      "type": "text",
+      "label": "Member 1 Bio",
+      "default": "RIBA chartered, AA London-trained, 21 years in Gulf architecture. Led our residential work since 2014; sits on the Dubai Design District advisory board."
+    },
+    "member_2_image": {
+      "type": "image",
+      "label": "Member 2 Image",
+      "default": "/storage/builder-heroes/architecture.jpg"
+    },
+    "member_2_name": {
+      "type": "text",
+      "label": "Member 2 Name",
+      "default": "Rami Haddad"
+    },
+    "member_2_role": {
+      "type": "text",
+      "label": "Member 2 Role",
+      "default": "Partner \u00b7 Head of Urbanism"
+    },
+    "member_2_bio": {
+      "type": "text",
+      "label": "Member 2 Bio",
+      "default": "Harvard GSD, previously at OMA Rotterdam and Foster + Partners. Leads our urban planning practice. Obsessed with how buildings meet the ground and each other."
+    },
+    "member_3_image": {
+      "type": "image",
+      "label": "Member 3 Image",
+      "default": "/storage/builder-heroes/architecture.jpg"
+    },
+    "member_3_name": {
+      "type": "text",
+      "label": "Member 3 Name",
+      "default": "Leila Mahfouz"
+    },
+    "member_3_role": {
+      "type": "text",
+      "label": "Member 3 Role",
+      "default": "Partner \u00b7 Interior Design"
+    },
+    "member_3_bio": {
+      "type": "text",
+      "label": "Member 3 Bio",
+      "default": "RCA Milan, twelve years with a Milanese joinery workshop before moving to Dubai. Bespoke furniture, lighting and ceramics sit on her desk before they sit in your room."
+    },
+    "member_4_image": {
+      "type": "image",
+      "label": "Member 4 Image",
+      "default": "/storage/builder-heroes/architecture.jpg"
+    },
+    "member_4_name": {
+      "type": "text",
+      "label": "Member 4 Name",
+      "default": "Daniyal Ahmed"
+    },
+    "member_4_role": {
+      "type": "text",
+      "label": "Member 4 Role",
+      "default": "Associate \u00b7 Landscape"
+    },
+    "member_4_bio": {
+      "type": "text",
+      "label": "Member 4 Bio",
+      "default": "Cambridge-trained landscape architect. Specialises in low-water native planting schemes; his Liwa courtyard at Zariba Desert Lodge halved the brief's irrigation load."
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "FROM THE CLIENTS"
+    },
+    "testimonials_title": {
+      "type": "text",
+      "label": "Testimonials Title",
+      "default": "A practice our clients keep coming back to."
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Foliage designed our home in Emirates Hills over three very patient years. What we ended up with is quieter and more specific than anything we could have briefed for. They drew every door handle."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Sara Al-Mutawa"
+    },
+    "testimonial_1_company": {
+      "type": "text",
+      "label": "Testimonial 1 Company",
+      "default": "Private Client, Emirates Hills"
+    },
+    "testimonial_1_result": {
+      "type": "text",
+      "label": "Testimonial 1 Result",
+      "default": "Ghaf House \u00b7 2024"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "We hired them for the DIFC fit-out because they felt rigorous. They delivered something materially considered and completely on budget \u2014 which in this industry is almost unheard of."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Omar Haddad"
+    },
+    "testimonial_2_company": {
+      "type": "text",
+      "label": "Testimonial 2 Company",
+      "default": "Managing Partner, Index Capital"
+    },
+    "testimonial_2_result": {
+      "type": "text",
+      "label": "Testimonial 2 Result",
+      "default": "Index Tower Fit-Out"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Zariba is the most visited project in our portfolio. Every guest asks who designed it. Foliage brought a gentleness to the desert that none of us thought possible on the brief we started with."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Priya Venkatesh"
+    },
+    "testimonial_3_company": {
+      "type": "text",
+      "label": "Testimonial 3 Company",
+      "default": "CEO, Dunescape Hospitality"
+    },
+    "testimonial_3_result": {
+      "type": "text",
+      "label": "Testimonial 3 Result",
+      "default": "Zariba Desert Lodge"
+    },
+    "booking_eyebrow": {
+      "type": "text",
+      "label": "Booking Eyebrow",
+      "default": "NEW COMMISSIONS"
+    },
+    "booking_title": {
+      "type": "text",
+      "label": "Booking Title",
+      "default": "Start a project with us."
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "We take on roughly twelve new projects a year \u2014 a mix of residential, commercial, and hospitality work across the UAE and GCC. Send us the brief. A partner personally reads every enquiry and responds within two business days."
+    },
+    "booking_project_label": {
+      "type": "text",
+      "label": "Project Type Label",
+      "default": "Project Type"
+    },
+    "booking_budget_label": {
+      "type": "text",
+      "label": "Budget Label",
+      "default": "Budget Range"
+    },
+    "booking_timeline_label": {
+      "type": "text",
+      "label": "Timeline Label",
+      "default": "Timeline"
+    },
+    "booking_location_label": {
+      "type": "text",
+      "label": "Location Label",
+      "default": "Site Location"
+    },
+    "booking_name_label": {
+      "type": "text",
+      "label": "Name Label",
+      "default": "Your Name"
+    },
+    "booking_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email"
+    },
+    "booking_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Phone"
+    },
+    "booking_brief_label": {
+      "type": "text",
+      "label": "Brief Label",
+      "default": "About the Project"
+    },
+    "booking_submit": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Send Enquiry"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "THE STUDIO"
+    },
+    "contact_title": {
+      "type": "text",
+      "label": "Contact Title",
+      "default": "Come and see the studio."
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "We're in a converted warehouse in Alserkal Avenue. Visitors welcome by appointment \u2014 the coffee is good and the library is better."
+    },
+    "contact_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email"
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Email",
+      "default": "studio@foliage.studio"
+    },
+    "contact_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Telephone"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Phone",
+      "default": "+971 4 555 0318"
+    },
+    "contact_address_label": {
+      "type": "text",
+      "label": "Address Label",
+      "default": "Studio"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Address",
+      "default": "Warehouse 42, Alserkal Avenue, Al Quoz 1, Dubai"
+    },
+    "contact_hours_label": {
+      "type": "text",
+      "label": "Hours Label",
+      "default": "Visits"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Hours",
+      "default": "Mon\u2013Fri, by appointment"
+    },
+    "contact_cta_title": {
+      "type": "text",
+      "label": "Contact CTA Title",
+      "default": "Ready to start a project?"
+    },
+    "contact_cta_text": {
+      "type": "text",
+      "label": "Contact CTA Text",
+      "default": "Send us the brief. A partner personally reads every enquiry and responds within two business days."
+    },
+    "contact_cta_button": {
+      "type": "text",
+      "label": "Contact CTA Button",
+      "default": "Start a Project"
+    },
+    "footer_logo": {
+      "type": "text",
+      "label": "Footer Logo",
+      "default": "Foliage"
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "A boutique architecture, interior and landscape studio based in Alserkal Avenue, Dubai. Residential, commercial and hospitality work across the UAE and GCC since 2014."
+    },
+    "social_1": {
+      "type": "text",
+      "label": "Social 1",
+      "default": "IG"
+    },
+    "social_2": {
+      "type": "text",
+      "label": "Social 2",
+      "default": "IN"
+    },
+    "social_3": {
+      "type": "text",
+      "label": "Social 3",
+      "default": "PN"
+    },
+    "social_4": {
+      "type": "text",
+      "label": "Social 4",
+      "default": "VM"
+    },
+    "footer_col_1_title": {
+      "type": "text",
+      "label": "Footer Col 1 Title",
+      "default": "Practice"
+    },
+    "footer_col_2_title": {
+      "type": "text",
+      "label": "Footer Col 2 Title",
+      "default": "Studio"
+    },
+    "footer_col_3_title": {
+      "type": "text",
+      "label": "Footer Col 3 Title",
+      "default": "Connect"
+    },
+    "footer_link_1": {
+      "type": "text",
+      "label": "Footer Link 1",
+      "default": "Architecture"
+    },
+    "footer_link_2": {
+      "type": "text",
+      "label": "Footer Link 2",
+      "default": "Interiors"
+    },
+    "footer_link_3": {
+      "type": "text",
+      "label": "Footer Link 3",
+      "default": "Landscape"
+    },
+    "footer_link_4": {
+      "type": "text",
+      "label": "Footer Link 4",
+      "default": "Projects"
+    },
+    "footer_link_5": {
+      "type": "text",
+      "label": "Footer Link 5",
+      "default": "Team"
+    },
+    "footer_link_6": {
+      "type": "text",
+      "label": "Footer Link 6",
+      "default": "Awards"
+    },
+    "footer_link_7": {
+      "type": "text",
+      "label": "Footer Link 7",
+      "default": "Contact"
+    },
+    "footer_link_8": {
+      "type": "text",
+      "label": "Footer Link 8",
+      "default": "Start a Project"
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Text",
+      "default": "\u00a9 2026 Foliage Studio FZ-LLC. All rights reserved."
+    },
+    "footer_legal": {
+      "type": "text",
+      "label": "Footer Legal",
+      "default": "Privacy \u00b7 Terms \u00b7 Cookies"
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "Latest from Our Blog"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Tips, news and insights from our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first visit"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through of the first visit so you know exactly what to expect."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-visit"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard but rarely are."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for taking your time"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/taking-time"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "View All Posts \u2192"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ],
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 6
+  }
 }

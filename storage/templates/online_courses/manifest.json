@@ -1279,5 +1279,9 @@
       "label": "WhatsApp",
       "key": "social_whatsapp"
     }
-  ]
+  ],
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 6
+  }
 }

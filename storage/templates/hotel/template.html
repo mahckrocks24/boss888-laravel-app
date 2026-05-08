@@ -589,18 +589,88 @@ footer{background:var(--teal-deep);color:var(--ivory);padding:80px 0 36px}
   </div>
 </section>
 
+<!-- ═══ CONTACT (Phase 9E retrofit) ═══ -->
+<section class="section contact" id="contact" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+  <div class="container" style="max-width:720px;margin:0 auto;">
+    <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
+    <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
+    <form class="contact-form" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+      </div>
+      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
+      <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
+      <div id="contact-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
+      <div id="contact-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>
+    </form>
+  </div>
+</section>
+
+<script>
+async function handleContactSubmit(e) {
+  e.preventDefault();
+  var form = e.target;
+  var subdomain = (window.location.hostname || '').split('.')[0];
+  var data = {
+    firstname: form.firstname.value,
+    email:     form.email.value,
+    phone:     form.phone.value || '',
+    message:   form.message.value
+  };
+  try {
+    var r = await fetch('/api/public/contact/' + subdomain, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify(data)
+    });
+    if (r.ok) {
+      document.getElementById('contact-success').style.display = 'block';
+      document.getElementById('contact-error').style.display   = 'none';
+      form.reset();
+    } else {
+      document.getElementById('contact-error').style.display = 'block';
+    }
+  } catch(err) {
+    document.getElementById('contact-error').style.display = 'block';
+  }
+}
+</script>
+<!-- ═══ BLOG (Phase 9E retrofit) ═══ -->
+<section class="section blog-preview" id="blog" data-block="blog" style="padding:5rem 1.5rem;background:var(--chalk-soft,#F7FAFC);">
+  <div class="container" style="max-width:1240px;margin:0 auto;">
+    <span class="eyebrow" data-field="blog_eyebrow" style="display:block;font-size:0.75rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--medical,#0F172A);font-weight:600;margin-bottom:0.8rem;">{{blog_eyebrow}}</span>
+    <h2 data-field="blog_title" style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);">{{blog_title}}</h2>
+    <p class="section-subtitle" data-field="blog_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">{{blog_intro}}</p>
+    <div class="blog-grid" id="blog-posts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;">
+      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+        <h3 data-field="blog_post_1_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_1_title}}</h3>
+        <p data-field="blog_post_1_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_1_excerpt}}</p>
+      </a>
+      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+        <h3 data-field="blog_post_2_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_2_title}}</h3>
+        <p data-field="blog_post_2_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_2_excerpt}}</p>
+      </a>
+      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+        <h3 data-field="blog_post_3_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_3_title}}</h3>
+        <p data-field="blog_post_3_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_3_excerpt}}</p>
+      </a>
+    </div>
+    <div class="blog-cta" style="margin-top:2rem;text-align:center;">
+      <a href="/blog" class="btn-secondary" data-field="blog_cta" style="display:inline-block;padding:0.9rem 1.6rem;border:1px solid var(--medical,#0F172A);color:var(--medical,#0F172A);font-size:0.92rem;font-weight:600;border-radius:10px;text-decoration:none;transition:background .2s,color .2s;">{{blog_cta}}</a>
+    </div>
+  </div>
+</section>
+
 <footer data-block="footer">
   <div class="wrap">
     <div class="footer-grid">
       <div>
         <div class="footer-logo" data-field="footer_logo">{{footer_logo}}</div>
         <div class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</div>
-        <div class="footer-socials">
-          <a href="#" class="footer-social" data-field="social_1">{{social_1}}</a>
-          <a href="#" class="footer-social" data-field="social_2">{{social_2}}</a>
-          <a href="#" class="footer-social" data-field="social_3">{{social_3}}</a>
-          <a href="#" class="footer-social" data-field="social_4">{{social_4}}</a>
-        </div>
+        <div class="footer-socials"><a href="{{social_facebook}}" class="footer-social" data-field="social_facebook" target="_blank" rel="noopener" aria-label="Facebook">Facebook</a><a href="{{social_instagram}}" class="footer-social" data-field="social_instagram" target="_blank" rel="noopener" aria-label="Instagram">Instagram</a><a href="{{social_linkedin}}" class="footer-social" data-field="social_linkedin" target="_blank" rel="noopener" aria-label="LinkedIn">LinkedIn</a><a href="{{social_twitter}}" class="footer-social" data-field="social_twitter" target="_blank" rel="noopener" aria-label="X / Twitter">X</a><a href="{{social_youtube}}" class="footer-social" data-field="social_youtube" target="_blank" rel="noopener" aria-label="YouTube">YouTube</a><a href="{{social_tiktok}}" class="footer-social" data-field="social_tiktok" target="_blank" rel="noopener" aria-label="TikTok">TikTok</a><a href="{{social_whatsapp}}" class="footer-social" data-field="social_whatsapp" target="_blank" rel="noopener" aria-label="WhatsApp">WhatsApp</a></div>
       </div>
       <div class="footer-col">
         <div class="footer-col-title" data-field="footer_col_1_title">{{footer_col_1_title}}</div>

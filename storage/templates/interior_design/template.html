@@ -741,6 +741,58 @@ footer { background: var(--carbon); color: var(--chalk); padding: 5rem 2.5rem 3r
 </section>
 
 <!-- ═══ FOOTER ═══ -->
+<!-- ═══ CONTACT (Phase 9E retrofit — canonical form) ═══ -->
+<section class="section contact-canonical" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+  <div class="container" style="max-width:720px;margin:0 auto;">
+    <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
+    <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
+    <form class="contact-form-canonical" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+        <input type="text"  name="firstname" placeholder="Your Name"     required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="tel"   name="phone"     placeholder="Phone Number"           class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="subject"   placeholder="Subject"                class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+      </div>
+      <textarea name="message" placeholder="Your message..." rows="5" required class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
+      <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
+      <div id="contact-canonical-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
+      <div id="contact-canonical-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>
+    </form>
+  </div>
+</section>
+
+<script>
+async function handleContactSubmit(e) {
+  e.preventDefault();
+  var form = e.target;
+  var subdomain = (window.location.hostname || '').split('.')[0];
+  var data = {
+    firstname: form.firstname.value,
+    email:     form.email.value,
+    phone:     (form.phone && form.phone.value) || '',
+    message:   form.message.value
+  };
+  if (form.subject && form.subject.value) {
+    data.message = '[' + form.subject.value + ']\n' + data.message;
+  }
+  try {
+    var r = await fetch('/api/public/contact/' + subdomain, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    });
+    if (r.ok) {
+      var s = document.getElementById('contact-canonical-success'); if (s) s.style.display = 'block';
+      var er = document.getElementById('contact-canonical-error');  if (er) er.style.display = 'none';
+      form.reset();
+    } else {
+      var er2 = document.getElementById('contact-canonical-error'); if (er2) er2.style.display = 'block';
+    }
+  } catch(err) {
+    var er3 = document.getElementById('contact-canonical-error'); if (er3) er3.style.display = 'block';
+  }
+}
+</script>
 <footer data-block="footer">
   <div class="footer-inner">
     <div class="footer-brand">
@@ -762,11 +814,7 @@ footer { background: var(--carbon); color: var(--chalk); padding: 5rem 2.5rem 3r
         <li><a href="#contact">Contact</a></li>
         <li><a href="#booking">Book Consultation</a></li>
       </ul>
-      <div class="footer-social">
-        <a href="{{social_instagram}}" data-field="social_instagram" target="_blank" rel="noopener">Instagram</a>
-        <a href="{{social_linkedin}}" data-field="social_linkedin" target="_blank" rel="noopener">LinkedIn</a>
-        <a href="{{social_pinterest}}" data-field="social_pinterest" target="_blank" rel="noopener">Pinterest</a>
-      </div>
+      <div class="footer-social"><a href="{{social_facebook}}" data-field="social_facebook" target="_blank" rel="noopener">Facebook</a><a href="{{social_instagram}}" data-field="social_instagram" target="_blank" rel="noopener">Instagram</a><a href="{{social_linkedin}}" data-field="social_linkedin" target="_blank" rel="noopener">LinkedIn</a><a href="{{social_twitter}}" data-field="social_twitter" target="_blank" rel="noopener">X</a><a href="{{social_youtube}}" data-field="social_youtube" target="_blank" rel="noopener">YouTube</a><a href="{{social_tiktok}}" data-field="social_tiktok" target="_blank" rel="noopener">TikTok</a><a href="{{social_whatsapp}}" data-field="social_whatsapp" target="_blank" rel="noopener">WhatsApp</a></div>
     </div>
   </div>
   <div class="footer-copy" data-field="footer_text">{{footer_text}}</div>

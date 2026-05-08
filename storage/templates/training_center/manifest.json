@@ -1,1361 +1,1440 @@
 {
-    "id": "training_center",
-    "name": "Education",
-    "industry": "training_center",
-    "description": "Premium education / private university template — prestige hero with program inquiry form, stats strip, 6 program cards, 4 why-us pillars, faculty grid, admissions process, campus gallery, testimonials, accreditation partners, news/blog, campus-tour booking form, contact, and footer. Built for private universities, colleges, and academies.",
-    "thumbnail": "/storage/builder-heroes/education.jpg",
-    "category": "education",
-    "blocks": [
-        {
-            "id": "nav",
-            "name": "Navigation",
-            "elements": {
-                "logo": "nav .logo",
-                "nav_1": "nav .nav-link-1",
-                "nav_2": "nav .nav-link-2",
-                "nav_3": "nav .nav-link-3",
-                "nav_4": "nav .nav-link-4",
-                "nav_5": "nav .nav-link-5",
-                "nav_cta": "nav .nav-cta"
-            }
-        },
-        {
-            "id": "hero",
-            "name": "Hero with Inquiry Form",
-            "elements": {
-                "hero_image": "section.hero",
-                "hero_eyebrow": ".hero-eyebrow",
-                "hero_title": ".hero-title",
-                "hero_subtitle": ".hero-subtitle",
-                "hero_trust_1": ".hero-trust-1",
-                "hero_trust_2": ".hero-trust-2",
-                "hero_trust_3": ".hero-trust-3",
-                "hero_trust_4": ".hero-trust-4",
-                "hero_form_eyebrow": ".hero-form-eyebrow",
-                "hero_form_title": ".hero-form-title",
-                "hero_form_sub": ".hero-form-sub",
-                "hero_form_name_label": ".hero-form label[data-field=hero_form_name_label]",
-                "hero_form_email_label": ".hero-form label[data-field=hero_form_email_label]",
-                "hero_form_program_label": ".hero-form label[data-field=hero_form_program_label]",
-                "hero_form_submit": ".hero-form button",
-                "hero_form_note": ".hero-form-note"
-            }
-        },
-        {
-            "id": "stats",
-            "name": "Stats",
-            "elements": {
-                "stat_1_value": ".stats-grid .stat:nth-child(1) .stat-value",
-                "stat_1_label": ".stats-grid .stat:nth-child(1) .stat-label",
-                "stat_2_value": ".stats-grid .stat:nth-child(2) .stat-value",
-                "stat_2_label": ".stats-grid .stat:nth-child(2) .stat-label",
-                "stat_3_value": ".stats-grid .stat:nth-child(3) .stat-value",
-                "stat_3_label": ".stats-grid .stat:nth-child(3) .stat-label",
-                "stat_4_value": ".stats-grid .stat:nth-child(4) .stat-value",
-                "stat_4_label": ".stats-grid .stat:nth-child(4) .stat-label"
-            }
-        },
-        {
-            "id": "programs",
-            "name": "Programs",
-            "elements": {
-                "programs_eyebrow": "#programs .eyebrow",
-                "programs_title": "#programs .h-section",
-                "programs_intro": "#programs .section-intro",
-                "program_1_tag": ".programs-grid .program:nth-child(1) .program-tag",
-                "program_1_title": ".programs-grid .program:nth-child(1) h3",
-                "program_1_duration": ".programs-grid .program:nth-child(1) .program-dur",
-                "program_1_text": ".programs-grid .program:nth-child(1) p",
-                "program_1_link": ".programs-grid .program:nth-child(1) .program-link",
-                "program_2_tag": ".programs-grid .program:nth-child(2) .program-tag",
-                "program_2_title": ".programs-grid .program:nth-child(2) h3",
-                "program_2_duration": ".programs-grid .program:nth-child(2) .program-dur",
-                "program_2_text": ".programs-grid .program:nth-child(2) p",
-                "program_2_link": ".programs-grid .program:nth-child(2) .program-link",
-                "program_3_tag": ".programs-grid .program:nth-child(3) .program-tag",
-                "program_3_title": ".programs-grid .program:nth-child(3) h3",
-                "program_3_duration": ".programs-grid .program:nth-child(3) .program-dur",
-                "program_3_text": ".programs-grid .program:nth-child(3) p",
-                "program_3_link": ".programs-grid .program:nth-child(3) .program-link",
-                "program_4_tag": ".programs-grid .program:nth-child(4) .program-tag",
-                "program_4_title": ".programs-grid .program:nth-child(4) h3",
-                "program_4_duration": ".programs-grid .program:nth-child(4) .program-dur",
-                "program_4_text": ".programs-grid .program:nth-child(4) p",
-                "program_4_link": ".programs-grid .program:nth-child(4) .program-link",
-                "program_5_tag": ".programs-grid .program:nth-child(5) .program-tag",
-                "program_5_title": ".programs-grid .program:nth-child(5) h3",
-                "program_5_duration": ".programs-grid .program:nth-child(5) .program-dur",
-                "program_5_text": ".programs-grid .program:nth-child(5) p",
-                "program_5_link": ".programs-grid .program:nth-child(5) .program-link",
-                "program_6_tag": ".programs-grid .program:nth-child(6) .program-tag",
-                "program_6_title": ".programs-grid .program:nth-child(6) h3",
-                "program_6_duration": ".programs-grid .program:nth-child(6) .program-dur",
-                "program_6_text": ".programs-grid .program:nth-child(6) p",
-                "program_6_link": ".programs-grid .program:nth-child(6) .program-link"
-            }
-        },
-        {
-            "id": "why_us",
-            "name": "Why Us Pillars",
-            "elements": {
-                "why_us_eyebrow": "#why_us .eyebrow",
-                "why_us_title": "#why_us .h-section",
-                "why_us_intro": "#why_us .section-intro",
-                "pillar_1_num": ".pillars-grid .pillar:nth-child(1) .pillar-num",
-                "pillar_1_title": ".pillars-grid .pillar:nth-child(1) h3",
-                "pillar_1_text": ".pillars-grid .pillar:nth-child(1) p",
-                "pillar_2_num": ".pillars-grid .pillar:nth-child(2) .pillar-num",
-                "pillar_2_title": ".pillars-grid .pillar:nth-child(2) h3",
-                "pillar_2_text": ".pillars-grid .pillar:nth-child(2) p",
-                "pillar_3_num": ".pillars-grid .pillar:nth-child(3) .pillar-num",
-                "pillar_3_title": ".pillars-grid .pillar:nth-child(3) h3",
-                "pillar_3_text": ".pillars-grid .pillar:nth-child(3) p",
-                "pillar_4_num": ".pillars-grid .pillar:nth-child(4) .pillar-num",
-                "pillar_4_title": ".pillars-grid .pillar:nth-child(4) h3",
-                "pillar_4_text": ".pillars-grid .pillar:nth-child(4) p"
-            }
-        },
-        {
-            "id": "faculty",
-            "name": "Faculty",
-            "elements": {
-                "faculty_eyebrow": "#faculty .eyebrow",
-                "faculty_title": "#faculty .h-section",
-                "faculty_intro": "#faculty .section-intro",
-                "faculty_1_image": ".faculty-grid .faculty-card:nth-child(1) .faculty-photo",
-                "faculty_1_name": ".faculty-grid .faculty-card:nth-child(1) h3",
-                "faculty_1_role": ".faculty-grid .faculty-card:nth-child(1) .faculty-role",
-                "faculty_1_bio": ".faculty-grid .faculty-card:nth-child(1) .faculty-bio",
-                "faculty_2_image": ".faculty-grid .faculty-card:nth-child(2) .faculty-photo",
-                "faculty_2_name": ".faculty-grid .faculty-card:nth-child(2) h3",
-                "faculty_2_role": ".faculty-grid .faculty-card:nth-child(2) .faculty-role",
-                "faculty_2_bio": ".faculty-grid .faculty-card:nth-child(2) .faculty-bio",
-                "faculty_3_image": ".faculty-grid .faculty-card:nth-child(3) .faculty-photo",
-                "faculty_3_name": ".faculty-grid .faculty-card:nth-child(3) h3",
-                "faculty_3_role": ".faculty-grid .faculty-card:nth-child(3) .faculty-role",
-                "faculty_3_bio": ".faculty-grid .faculty-card:nth-child(3) .faculty-bio",
-                "faculty_4_image": ".faculty-grid .faculty-card:nth-child(4) .faculty-photo",
-                "faculty_4_name": ".faculty-grid .faculty-card:nth-child(4) h3",
-                "faculty_4_role": ".faculty-grid .faculty-card:nth-child(4) .faculty-role",
-                "faculty_4_bio": ".faculty-grid .faculty-card:nth-child(4) .faculty-bio"
-            }
-        },
-        {
-            "id": "admissions",
-            "name": "Admissions Process",
-            "elements": {
-                "admissions_eyebrow": "#admissions .eyebrow",
-                "admissions_title": "#admissions .h-section",
-                "admissions_intro": "#admissions .section-intro",
-                "adm_step_1_title": ".admissions-steps .admissions-step:nth-child(1) h3",
-                "adm_step_1_text": ".admissions-steps .admissions-step:nth-child(1) p",
-                "adm_step_2_title": ".admissions-steps .admissions-step:nth-child(2) h3",
-                "adm_step_2_text": ".admissions-steps .admissions-step:nth-child(2) p",
-                "adm_step_3_title": ".admissions-steps .admissions-step:nth-child(3) h3",
-                "adm_step_3_text": ".admissions-steps .admissions-step:nth-child(3) p",
-                "adm_step_4_title": ".admissions-steps .admissions-step:nth-child(4) h3",
-                "adm_step_4_text": ".admissions-steps .admissions-step:nth-child(4) p"
-            }
-        },
-        {
-            "id": "campus_gallery",
-            "name": "Campus Gallery",
-            "elements": {
-                "gallery_eyebrow": "#campus .eyebrow",
-                "gallery_title": "#campus .h-section",
-                "gallery_intro": "#campus .section-intro",
-                "gallery_image_1": ".gallery-grid .gallery-item:nth-child(1)",
-                "gallery_image_2": ".gallery-grid .gallery-item:nth-child(2)",
-                "gallery_image_3": ".gallery-grid .gallery-item:nth-child(3)",
-                "gallery_image_4": ".gallery-grid .gallery-item:nth-child(4)",
-                "gallery_image_5": ".gallery-grid .gallery-item:nth-child(5)",
-                "gallery_image_6": ".gallery-grid .gallery-item:nth-child(6)"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Testimonials",
-            "elements": {
-                "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
-                "testimonials_title": "[data-block=testimonials] .h-section",
-                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
-                "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
-                "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
-                "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
-                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
-                "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
-                "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
-                "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
-                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
-                "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
-                "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
-                "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
-            }
-        },
-        {
-            "id": "partners",
-            "name": "Accreditation Partners",
-            "elements": {
-                "partners_title": ".partners-title",
-                "partner_logo_1": ".partners-grid .partner-logo:nth-child(1)",
-                "partner_logo_2": ".partners-grid .partner-logo:nth-child(2)",
-                "partner_logo_3": ".partners-grid .partner-logo:nth-child(3)",
-                "partner_logo_4": ".partners-grid .partner-logo:nth-child(4)",
-                "partner_logo_5": ".partners-grid .partner-logo:nth-child(5)",
-                "partner_logo_6": ".partners-grid .partner-logo:nth-child(6)",
-                "partner_logo_7": ".partners-grid .partner-logo:nth-child(7)",
-                "partner_logo_8": ".partners-grid .partner-logo:nth-child(8)"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "News & Blog",
-            "elements": {
-                "blog_eyebrow": "#blog .eyebrow",
-                "blog_title": "#blog .h-section",
-                "blog_intro": "#blog .section-intro",
-                "blog_1_date": ".blog-grid .blog-card:nth-child(1) .blog-date",
-                "blog_1_title": ".blog-grid .blog-card:nth-child(1) h3",
-                "blog_1_excerpt": ".blog-grid .blog-card:nth-child(1) p",
-                "blog_1_link": ".blog-grid .blog-card:nth-child(1) .blog-link",
-                "blog_2_date": ".blog-grid .blog-card:nth-child(2) .blog-date",
-                "blog_2_title": ".blog-grid .blog-card:nth-child(2) h3",
-                "blog_2_excerpt": ".blog-grid .blog-card:nth-child(2) p",
-                "blog_2_link": ".blog-grid .blog-card:nth-child(2) .blog-link",
-                "blog_3_date": ".blog-grid .blog-card:nth-child(3) .blog-date",
-                "blog_3_title": ".blog-grid .blog-card:nth-child(3) h3",
-                "blog_3_excerpt": ".blog-grid .blog-card:nth-child(3) p",
-                "blog_3_link": ".blog-grid .blog-card:nth-child(3) .blog-link"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book Campus Tour",
-            "elements": {
-                "booking_eyebrow": "#booking .eyebrow",
-                "booking_title": "#booking .h-section",
-                "booking_intro": ".booking-intro",
-                "booking_program_label": ".booking-form label[data-field=booking_program_label]",
-                "booking_mode_label": ".booking-form label[data-field=booking_mode_label]",
-                "booking_date_label": ".booking-form label[data-field=booking_date_label]",
-                "booking_time_label": ".booking-form label[data-field=booking_time_label]",
-                "booking_name_label": ".booking-form label[data-field=booking_name_label]",
-                "booking_email_label": ".booking-form label[data-field=booking_email_label]",
-                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
-                "booking_submit": ".booking-submit"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact",
-            "elements": {
-                "contact_eyebrow": "#contact .eyebrow",
-                "contact_title": "#contact .h-section",
-                "contact_intro": "#contact .section-intro",
-                "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
-                "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
-                "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
-                "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
-                "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
-                "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
-                "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
-                "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
-                "contact_cta_title": "#contact .hero-form-title",
-                "contact_cta_text": "#contact .hero-form-sub",
-                "contact_cta_button": "#contact .btn-primary"
-            }
-        },
-        {
-            "id": "footer",
-            "name": "Footer",
-            "elements": {
-                "footer_logo": ".footer-logo",
-                "footer_tagline": ".footer-tagline",
-                "social_1": ".footer-socials a:nth-child(1)",
-                "social_2": ".footer-socials a:nth-child(2)",
-                "social_3": ".footer-socials a:nth-child(3)",
-                "social_4": ".footer-socials a:nth-child(4)",
-                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
-                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
-                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
-                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
-                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
-                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
-                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
-                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
-                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
-                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
-                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
-                "footer_text": ".footer-bottom > div:nth-child(1)",
-                "footer_legal": ".footer-bottom > div:nth-child(2)"
-            }
-        }
-    ],
-    "variables": {
-        "business_name": {
-            "type": "text",
-            "label": "Business Name",
-            "default": "Meridian Academy"
-        },
-        "business_tagline": {
-            "type": "text",
-            "label": "Tagline",
-            "default": "Shaping Tomorrow's Leaders Through Academic Excellence"
-        },
-        "meta_description": {
-            "type": "text",
-            "label": "Meta Description",
-            "default": "Meridian Academy is a top-ranked private university in Dubai offering world-class undergraduate, graduate, and executive programs in business, technology, and the arts."
-        },
-        "canonical_url": {
-            "type": "url",
-            "label": "Canonical URL",
-            "default": "https://meridianacademy.ae"
-        },
-        "og_image": {
-            "type": "image",
-            "label": "OG Image",
-            "default": "/storage/builder-heroes/education.jpg"
-        },
-        "og_locale": {
-            "type": "text",
-            "label": "OG Locale",
-            "default": "en_US"
-        },
-        "hero_image": {
-            "type": "image",
-            "label": "Hero Background",
-            "default": "/storage/builder-heroes/education.jpg"
-        },
-        "navy": {
-            "type": "color",
-            "label": "Navy",
-            "default": "#1B3A6B"
-        },
-        "navy_soft": {
-            "type": "color",
-            "label": "Navy Soft",
-            "default": "#234679"
-        },
-        "gold": {
-            "type": "color",
-            "label": "Gold",
-            "default": "#F5A623"
-        },
-        "gold_deep": {
-            "type": "color",
-            "label": "Gold Deep",
-            "default": "#D68B15"
-        },
-        "chalk": {
-            "type": "color",
-            "label": "Chalk",
-            "default": "#FFFFFF"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#B8C5D9"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#2E5089"
-        },
-        "logo": {
-            "type": "text",
-            "label": "Logo Text",
-            "default": "Meridian"
-        },
-        "nav_1": {
-            "type": "text",
-            "label": "Nav: Programs",
-            "default": "Programs"
-        },
-        "nav_2": {
-            "type": "text",
-            "label": "Nav: Admissions",
-            "default": "Admissions"
-        },
-        "nav_3": {
-            "type": "text",
-            "label": "Nav: Faculty",
-            "default": "Faculty"
-        },
-        "nav_4": {
-            "type": "text",
-            "label": "Nav: Campus",
-            "default": "Campus"
-        },
-        "nav_5": {
-            "type": "text",
-            "label": "Nav: Contact",
-            "default": "Contact"
-        },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Apply Now"
-        },
-        "hero_eyebrow": {
-            "type": "text",
-            "label": "Hero Eyebrow",
-            "default": "Accredited Private University · Dubai"
-        },
-        "hero_title": {
-            "type": "text",
-            "label": "Hero Title",
-            "default": "Where Ambition Meets Academic Rigor."
-        },
-        "hero_subtitle": {
-            "type": "text",
-            "label": "Hero Subtitle",
-            "default": "For over two decades, Meridian Academy has educated the next generation of leaders, thinkers, and builders across business, technology, and the liberal arts. 96% of graduates are placed within six months."
-        },
-        "hero_trust_1": {
-            "type": "text",
-            "label": "Trust 1",
-            "default": "KHDA Accredited"
-        },
-        "hero_trust_2": {
-            "type": "text",
-            "label": "Trust 2",
-            "default": "QS 5-Star Rated"
-        },
-        "hero_trust_3": {
-            "type": "text",
-            "label": "Trust 3",
-            "default": "96% Graduate Placement"
-        },
-        "hero_trust_4": {
-            "type": "text",
-            "label": "Trust 4",
-            "default": "22 Global Partnerships"
-        },
-        "hero_form_eyebrow": {
-            "type": "text",
-            "label": "Form Eyebrow",
-            "default": "REQUEST INFORMATION"
-        },
-        "hero_form_title": {
-            "type": "text",
-            "label": "Form Title",
-            "default": "Start Your Application Today"
-        },
-        "hero_form_sub": {
-            "type": "text",
-            "label": "Form Sub",
-            "default": "Get a personalized program brochure and connect with an admissions counselor within 24 hours."
-        },
-        "hero_form_name_label": {
-            "type": "text",
-            "label": "Name Label",
-            "default": "Full Name"
-        },
-        "hero_form_email_label": {
-            "type": "text",
-            "label": "Email Label",
-            "default": "Email Address"
-        },
-        "hero_form_program_label": {
-            "type": "text",
-            "label": "Program Label",
-            "default": "Program of Interest"
-        },
-        "hero_form_submit": {
-            "type": "text",
-            "label": "Submit Button",
-            "default": "Request Brochure →"
-        },
-        "hero_form_note": {
-            "type": "text",
-            "label": "Form Note",
-            "default": "Your information is confidential. No spam, ever."
-        },
-        "stat_1_value": {
-            "type": "text",
-            "label": "Stat 1 Value",
-            "default": "8,400+"
-        },
-        "stat_1_label": {
-            "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Active Students"
-        },
-        "stat_2_value": {
-            "type": "text",
-            "label": "Stat 2 Value",
-            "default": "96%"
-        },
-        "stat_2_label": {
-            "type": "text",
-            "label": "Stat 2 Label",
-            "default": "Graduate Placement"
-        },
-        "stat_3_value": {
-            "type": "text",
-            "label": "Stat 3 Value",
-            "default": "24"
-        },
-        "stat_3_label": {
-            "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Years Established"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "340+"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Faculty & Researchers"
-        },
-        "programs_eyebrow": {
-            "type": "text",
-            "label": "Programs Eyebrow",
-            "default": "ACADEMIC PROGRAMS"
-        },
-        "programs_title": {
-            "type": "text",
-            "label": "Programs Title",
-            "default": "Degrees That Open Doors"
-        },
-        "programs_intro": {
-            "type": "text",
-            "label": "Programs Intro",
-            "default": "Six flagship programs across undergraduate, graduate, and executive education — each built with industry advisory boards and taught by faculty with real-world experience."
-        },
-        "program_1_tag": {
-            "type": "text",
-            "label": "Program 1 Tag",
-            "default": "BSc · UNDERGRADUATE"
-        },
-        "program_1_title": {
-            "type": "text",
-            "label": "Program 1 Title",
-            "default": "BSc Computer Science"
-        },
-        "program_1_duration": {
-            "type": "text",
-            "label": "Program 1 Duration",
-            "default": "4 Years · Full-time"
-        },
-        "program_1_text": {
-            "type": "text",
-            "label": "Program 1 Text",
-            "default": "A rigorous curriculum covering algorithms, AI, systems, and software engineering. Includes a paid 6-month industry internship at one of our 40+ tech partners."
-        },
-        "program_1_link": {
-            "type": "text",
-            "label": "Program 1 Link",
-            "default": "View curriculum"
-        },
-        "program_2_tag": {
-            "type": "text",
-            "label": "Program 2 Tag",
-            "default": "MBA · GRADUATE"
-        },
-        "program_2_title": {
-            "type": "text",
-            "label": "Program 2 Title",
-            "default": "Master of Business Administration"
-        },
-        "program_2_duration": {
-            "type": "text",
-            "label": "Program 2 Duration",
-            "default": "18 Months · Full-time or Executive track"
-        },
-        "program_2_text": {
-            "type": "text",
-            "label": "Program 2 Text",
-            "default": "A top-100 globally ranked MBA with concentrations in Finance, Entrepreneurship, and Strategy. Cohorts are capped at 40 to preserve case-method rigor."
-        },
-        "program_2_link": {
-            "type": "text",
-            "label": "Program 2 Link",
-            "default": "View curriculum"
-        },
-        "program_3_tag": {
-            "type": "text",
-            "label": "Program 3 Tag",
-            "default": "BA · UNDERGRADUATE"
-        },
-        "program_3_title": {
-            "type": "text",
-            "label": "Program 3 Title",
-            "default": "BA Business Administration"
-        },
-        "program_3_duration": {
-            "type": "text",
-            "label": "Program 3 Duration",
-            "default": "3 Years · Full-time"
-        },
-        "program_3_text": {
-            "type": "text",
-            "label": "Program 3 Text",
-            "default": "Foundations of management, finance, marketing, and operations — with a capstone consulting project for a real MENA company in Year 3."
-        },
-        "program_3_link": {
-            "type": "text",
-            "label": "Program 3 Link",
-            "default": "View curriculum"
-        },
-        "program_4_tag": {
-            "type": "text",
-            "label": "Program 4 Tag",
-            "default": "MSc · GRADUATE"
-        },
-        "program_4_title": {
-            "type": "text",
-            "label": "Program 4 Title",
-            "default": "MSc Data Science & AI"
-        },
-        "program_4_duration": {
-            "type": "text",
-            "label": "Program 4 Duration",
-            "default": "12 Months · Full-time"
-        },
-        "program_4_text": {
-            "type": "text",
-            "label": "Program 4 Text",
-            "default": "An intensive technical program covering ML, deep learning, statistical modeling, and applied AI ethics — with a sponsored thesis in semester three."
-        },
-        "program_4_link": {
-            "type": "text",
-            "label": "Program 4 Link",
-            "default": "View curriculum"
-        },
-        "program_5_tag": {
-            "type": "text",
-            "label": "Program 5 Tag",
-            "default": "FOUNDATION"
-        },
-        "program_5_title": {
-            "type": "text",
-            "label": "Program 5 Title",
-            "default": "University Foundation Year"
-        },
-        "program_5_duration": {
-            "type": "text",
-            "label": "Program 5 Duration",
-            "default": "1 Year · Full-time"
-        },
-        "program_5_text": {
-            "type": "text",
-            "label": "Program 5 Text",
-            "default": "For students who need to meet degree-entry standards — intensive academic English, study skills, and pre-major electives with direct university progression."
-        },
-        "program_5_link": {
-            "type": "text",
-            "label": "Program 5 Link",
-            "default": "View curriculum"
-        },
-        "program_6_tag": {
-            "type": "text",
-            "label": "Program 6 Tag",
-            "default": "EXECUTIVE"
-        },
-        "program_6_title": {
-            "type": "text",
-            "label": "Program 6 Title",
-            "default": "Executive Leadership Certificate"
-        },
-        "program_6_duration": {
-            "type": "text",
-            "label": "Program 6 Duration",
-            "default": "12 Weeks · Part-time evenings"
-        },
-        "program_6_text": {
-            "type": "text",
-            "label": "Program 6 Text",
-            "default": "For senior managers. Strategy, organizational design, and high-stakes negotiation — taught by Fortune 100 practitioners, not theorists."
-        },
-        "program_6_link": {
-            "type": "text",
-            "label": "Program 6 Link",
-            "default": "View curriculum"
-        },
-        "why_us_eyebrow": {
-            "type": "text",
-            "label": "Why Us Eyebrow",
-            "default": "WHY MERIDIAN"
-        },
-        "why_us_title": {
-            "type": "text",
-            "label": "Why Us Title",
-            "default": "Four Pillars That Set Us Apart"
-        },
-        "why_us_intro": {
-            "type": "text",
-            "label": "Why Us Intro",
-            "default": "A private university where every decision is made with the student's outcome in mind — not rankings, not revenue."
-        },
-        "pillar_1_num": {
-            "type": "text",
-            "label": "Pillar 1 Num",
-            "default": "01"
-        },
-        "pillar_1_title": {
-            "type": "text",
-            "label": "Pillar 1 Title",
-            "default": "Small Cohorts"
-        },
-        "pillar_1_text": {
-            "type": "text",
-            "label": "Pillar 1 Text",
-            "default": "A 14:1 student-to-faculty ratio. Your professor knows your name, your work, and your goals — from week one."
-        },
-        "pillar_2_num": {
-            "type": "text",
-            "label": "Pillar 2 Num",
-            "default": "02"
-        },
-        "pillar_2_title": {
-            "type": "text",
-            "label": "Pillar 2 Title",
-            "default": "Industry Integration"
-        },
-        "pillar_2_text": {
-            "type": "text",
-            "label": "Pillar 2 Text",
-            "default": "Every program includes live industry projects, paid internships, and recruiting access to 180+ corporate partners across the GCC."
-        },
-        "pillar_3_num": {
-            "type": "text",
-            "label": "Pillar 3 Num",
-            "default": "03"
-        },
-        "pillar_3_title": {
-            "type": "text",
-            "label": "Pillar 3 Title",
-            "default": "Global Exchange"
-        },
-        "pillar_3_text": {
-            "type": "text",
-            "label": "Pillar 3 Text",
-            "default": "Semester-long exchange programs with 22 partner universities across Europe, North America, and Asia — fully credit-bearing."
-        },
-        "pillar_4_num": {
-            "type": "text",
-            "label": "Pillar 4 Num",
-            "default": "04"
-        },
-        "pillar_4_title": {
-            "type": "text",
-            "label": "Pillar 4 Title",
-            "default": "Merit Scholarships"
-        },
-        "pillar_4_text": {
-            "type": "text",
-            "label": "Pillar 4 Text",
-            "default": "Up to 60% tuition in merit scholarships awarded every year. Talent, not financial background, determines access at Meridian."
-        },
-        "faculty_eyebrow": {
-            "type": "text",
-            "label": "Faculty Eyebrow",
-            "default": "MEET THE FACULTY"
-        },
-        "faculty_title": {
-            "type": "text",
-            "label": "Faculty Title",
-            "default": "Scholars. Practitioners. Mentors."
-        },
-        "faculty_intro": {
-            "type": "text",
-            "label": "Faculty Intro",
-            "default": "Our faculty have led companies, published in top journals, and taught at the world's most respected institutions — now they teach you."
-        },
-        "faculty_1_image": {
-            "type": "image",
-            "label": "Faculty 1 Image",
-            "default": "/storage/builder-heroes/education.jpg"
-        },
-        "faculty_1_name": {
-            "type": "text",
-            "label": "Faculty 1 Name",
-            "default": "Prof. Amira Saleh, PhD"
-        },
-        "faculty_1_role": {
-            "type": "text",
-            "label": "Faculty 1 Role",
-            "default": "Dean · Computer Science"
-        },
-        "faculty_1_bio": {
-            "type": "text",
-            "label": "Faculty 1 Bio",
-            "default": "MIT PhD. 20 years at IBM Research. Leads our AI and systems faculty."
-        },
-        "faculty_2_image": {
-            "type": "image",
-            "label": "Faculty 2 Image",
-            "default": "/storage/builder-heroes/education.jpg"
-        },
-        "faculty_2_name": {
-            "type": "text",
-            "label": "Faculty 2 Name",
-            "default": "Prof. Yusuf El-Masri, PhD"
-        },
-        "faculty_2_role": {
-            "type": "text",
-            "label": "Faculty 2 Role",
-            "default": "Dean · School of Business"
-        },
-        "faculty_2_bio": {
-            "type": "text",
-            "label": "Faculty 2 Bio",
-            "default": "Harvard Business School PhD. Former McKinsey Partner. Teaches strategy to our MBA cohorts."
-        },
-        "faculty_3_image": {
-            "type": "image",
-            "label": "Faculty 3 Image",
-            "default": "/storage/builder-heroes/education.jpg"
-        },
-        "faculty_3_name": {
-            "type": "text",
-            "label": "Faculty 3 Name",
-            "default": "Prof. Leila Nabulsi"
-        },
-        "faculty_3_role": {
-            "type": "text",
-            "label": "Faculty 3 Role",
-            "default": "Chair · Liberal Arts"
-        },
-        "faculty_3_bio": {
-            "type": "text",
-            "label": "Faculty 3 Bio",
-            "default": "Oxford DPhil in Philosophy. 12 years in public policy advising across MENA."
-        },
-        "faculty_4_image": {
-            "type": "image",
-            "label": "Faculty 4 Image",
-            "default": "/storage/builder-heroes/education.jpg"
-        },
-        "faculty_4_name": {
-            "type": "text",
-            "label": "Faculty 4 Name",
-            "default": "Dr. Tariq Abdullah"
-        },
-        "faculty_4_role": {
-            "type": "text",
-            "label": "Faculty 4 Role",
-            "default": "Director · Executive Education"
-        },
-        "faculty_4_bio": {
-            "type": "text",
-            "label": "Faculty 4 Bio",
-            "default": "INSEAD MBA. Ex-CEO of a regional telecom group. Leads our C-suite programs."
-        },
-        "admissions_eyebrow": {
-            "type": "text",
-            "label": "Admissions Eyebrow",
-            "default": "HOW TO APPLY"
-        },
-        "admissions_title": {
-            "type": "text",
-            "label": "Admissions Title",
-            "default": "A Simple Four-Step Path to Meridian"
-        },
-        "admissions_intro": {
-            "type": "text",
-            "label": "Admissions Intro",
-            "default": "No mystery. No surprises. Here's exactly how admission works — from inquiry to offer letter."
-        },
-        "adm_step_1_title": {
-            "type": "text",
-            "label": "Adm Step 1 Title",
-            "default": "Inquire"
-        },
-        "adm_step_1_text": {
-            "type": "text",
-            "label": "Adm Step 1 Text",
-            "default": "Request an information pack through the form above. An admissions counselor will reach out to discuss program fit within 24 hours."
-        },
-        "adm_step_2_title": {
-            "type": "text",
-            "label": "Adm Step 2 Title",
-            "default": "Apply"
-        },
-        "adm_step_2_text": {
-            "type": "text",
-            "label": "Adm Step 2 Text",
-            "default": "Submit your online application with transcripts, personal statement, and two references. Application fee waived for early applicants."
-        },
-        "adm_step_3_title": {
-            "type": "text",
-            "label": "Adm Step 3 Title",
-            "default": "Interview"
-        },
-        "adm_step_3_text": {
-            "type": "text",
-            "label": "Adm Step 3 Text",
-            "default": "A 30-minute conversation with faculty — not a test. We want to understand your goals and see how we can help you reach them."
-        },
-        "adm_step_4_title": {
-            "type": "text",
-            "label": "Adm Step 4 Title",
-            "default": "Enroll"
-        },
-        "adm_step_4_text": {
-            "type": "text",
-            "label": "Adm Step 4 Text",
-            "default": "Decisions within two weeks. Scholarship award included with every acceptance letter. Orientation in September and January."
-        },
-        "gallery_eyebrow": {
-            "type": "text",
-            "label": "Gallery Eyebrow",
-            "default": "CAMPUS LIFE"
-        },
-        "gallery_title": {
-            "type": "text",
-            "label": "Gallery Title",
-            "default": "A Campus Built for Deep Work and Real Community"
-        },
-        "gallery_intro": {
-            "type": "text",
-            "label": "Gallery Intro",
-            "default": "17 acres in the heart of Dubai Academic City. Modern labs, a 90,000-volume library, a full athletics complex, and residential housing on-site."
-        },
-        "gallery_image_1": {
-            "type": "image",
-            "label": "Gallery 1",
-            "default": "/storage/template-images/education/gallery_image_1.jpg"
-        },
-        "gallery_image_2": {
-            "type": "image",
-            "label": "Gallery 2",
-            "default": "/storage/template-images/education/gallery_image_2.jpg"
-        },
-        "gallery_image_3": {
-            "type": "image",
-            "label": "Gallery 3",
-            "default": "/storage/template-images/education/gallery_image_3.jpg"
-        },
-        "gallery_image_4": {
-            "type": "image",
-            "label": "Gallery 4",
-            "default": "/storage/template-images/education/gallery_image_4.jpg"
-        },
-        "gallery_image_5": {
-            "type": "image",
-            "label": "Gallery 5",
-            "default": "/storage/template-images/education/gallery_image_5.jpg"
-        },
-        "gallery_image_6": {
-            "type": "image",
-            "label": "Gallery 6",
-            "default": "/storage/template-images/education/gallery_image_6.jpg"
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "STUDENT VOICES"
-        },
-        "testimonials_title": {
-            "type": "text",
-            "label": "Testimonials Title",
-            "default": "What Our Graduates Say"
-        },
-        "testimonial_1_quote": {
-            "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "Meridian rewired how I think. Four years later I'm leading a product team at an international bank — the professors here prepared me for work no textbook could have described."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Rania Khalil"
-        },
-        "testimonial_1_company": {
-            "type": "text",
-            "label": "Testimonial 1 Company",
-            "default": "BSc CS '21 · Product Lead, Emirates NBD"
-        },
-        "testimonial_1_result": {
-            "type": "text",
-            "label": "Testimonial 1 Result",
-            "default": "Placed at 22"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "The MBA cohort was 38 brilliant people from 17 countries. That alone was worth the tuition. The curriculum pushed me harder than I thought I could go."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Mohammed Al-Sayed"
-        },
-        "testimonial_2_company": {
-            "type": "text",
-            "label": "Testimonial 2 Company",
-            "default": "MBA '22 · Strategy Director, Aldar"
-        },
-        "testimonial_2_result": {
-            "type": "text",
-            "label": "Testimonial 2 Result",
-            "default": "2× salary post-MBA"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Small classes meant my questions got answered. The research project I did in Year 3 became the foundation of the startup I run today."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Sarah Hussain"
-        },
-        "testimonial_3_company": {
-            "type": "text",
-            "label": "Testimonial 3 Company",
-            "default": "BA Business '20 · Founder, Namara.io"
-        },
-        "testimonial_3_result": {
-            "type": "text",
-            "label": "Testimonial 3 Result",
-            "default": "Founded company at 23"
-        },
-        "partners_title": {
-            "type": "text",
-            "label": "Partners Title",
-            "default": "ACCREDITED BY · IN PARTNERSHIP WITH"
-        },
-        "partner_logo_1": {
-            "type": "text",
-            "label": "Partner 1",
-            "default": "KHDA"
-        },
-        "partner_logo_2": {
-            "type": "text",
-            "label": "Partner 2",
-            "default": "MoE"
-        },
-        "partner_logo_3": {
-            "type": "text",
-            "label": "Partner 3",
-            "default": "AACSB"
-        },
-        "partner_logo_4": {
-            "type": "text",
-            "label": "Partner 4",
-            "default": "Oxford"
-        },
-        "partner_logo_5": {
-            "type": "text",
-            "label": "Partner 5",
-            "default": "INSEAD"
-        },
-        "partner_logo_6": {
-            "type": "text",
-            "label": "Partner 6",
-            "default": "LSE"
-        },
-        "partner_logo_7": {
-            "type": "text",
-            "label": "Partner 7",
-            "default": "NYU"
-        },
-        "partner_logo_8": {
-            "type": "text",
-            "label": "Partner 8",
-            "default": "McGill"
-        },
-        "blog_eyebrow": {
-            "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "NEWS & INSIGHTS"
-        },
-        "blog_title": {
-            "type": "text",
-            "label": "Blog Title",
-            "default": "From the Meridian Journal"
-        },
-        "blog_intro": {
-            "type": "text",
-            "label": "Blog Intro",
-            "default": "Recent essays, research updates, and announcements from our faculty and students."
-        },
-        "blog_1_date": {
-            "type": "text",
-            "label": "Blog 1 Date",
-            "default": "MAR 12, 2026"
-        },
-        "blog_1_title": {
-            "type": "text",
-            "label": "Blog 1 Title",
-            "default": "Meridian Ranks in Top 150 Globally for Business Education"
-        },
-        "blog_1_excerpt": {
-            "type": "text",
-            "label": "Blog 1 Excerpt",
-            "default": "The latest QS rankings place our MBA program in the global top 150, reflecting five consecutive years of climb."
-        },
-        "blog_1_link": {
-            "type": "text",
-            "label": "Blog 1 Link",
-            "default": "Read article →"
-        },
-        "blog_2_date": {
-            "type": "text",
-            "label": "Blog 2 Date",
-            "default": "FEB 28, 2026"
-        },
-        "blog_2_title": {
-            "type": "text",
-            "label": "Blog 2 Title",
-            "default": "New AI Ethics Lab Opens With $4.2M Endowment"
-        },
-        "blog_2_excerpt": {
-            "type": "text",
-            "label": "Blog 2 Excerpt",
-            "default": "A new research center dedicated to AI safety and responsible deployment — joint venture with two Gulf sovereign partners."
-        },
-        "blog_2_link": {
-            "type": "text",
-            "label": "Blog 2 Link",
-            "default": "Read article →"
-        },
-        "blog_3_date": {
-            "type": "text",
-            "label": "Blog 3 Date",
-            "default": "FEB 10, 2026"
-        },
-        "blog_3_title": {
-            "type": "text",
-            "label": "Blog 3 Title",
-            "default": "Class of 2026: Scholarship Applications Open"
-        },
-        "blog_3_excerpt": {
-            "type": "text",
-            "label": "Blog 3 Excerpt",
-            "default": "Merit-based scholarships up to 60% of tuition. Applications close April 30th for September enrollment."
-        },
-        "blog_3_link": {
-            "type": "text",
-            "label": "Blog 3 Link",
-            "default": "Read article →"
-        },
-        "booking_eyebrow": {
-            "type": "text",
-            "label": "Booking Eyebrow",
-            "default": "VISIT US"
-        },
-        "booking_title": {
-            "type": "text",
-            "label": "Booking Title",
-            "default": "Book a Campus Tour"
-        },
-        "booking_intro": {
-            "type": "text",
-            "label": "Booking Intro",
-            "default": "Come experience Meridian in person. A 90-minute tour includes a walk-through of the labs and library, a chat with current students, and a one-on-one with an admissions counselor."
-        },
-        "booking_program_label": {
-            "type": "text",
-            "label": "Program Label",
-            "default": "Program of Interest"
-        },
-        "booking_mode_label": {
-            "type": "text",
-            "label": "Mode Label",
-            "default": "Study Mode"
-        },
-        "booking_date_label": {
-            "type": "text",
-            "label": "Date Label",
-            "default": "Preferred Date"
-        },
-        "booking_time_label": {
-            "type": "text",
-            "label": "Time Label",
-            "default": "Preferred Time"
-        },
-        "booking_name_label": {
-            "type": "text",
-            "label": "Name Label",
-            "default": "Full Name"
-        },
-        "booking_email_label": {
-            "type": "text",
-            "label": "Email Label",
-            "default": "Email Address"
-        },
-        "booking_phone_label": {
-            "type": "text",
-            "label": "Phone Label",
-            "default": "Phone Number"
-        },
-        "booking_submit": {
-            "type": "text",
-            "label": "Submit Button",
-            "default": "Book a Campus Tour →"
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "GET IN TOUCH"
-        },
-        "contact_title": {
-            "type": "text",
-            "label": "Contact Title",
-            "default": "Admissions Office"
-        },
-        "contact_intro": {
-            "type": "text",
-            "label": "Contact Intro",
-            "default": "Our admissions team is available six days a week to answer questions about programs, scholarships, and the application process."
-        },
-        "contact_email_label": {
-            "type": "text",
-            "label": "Email Label",
-            "default": "Email"
-        },
-        "contact_email": {
-            "type": "text",
-            "label": "Email",
-            "default": "admissions@meridianacademy.ae"
-        },
-        "contact_phone_label": {
-            "type": "text",
-            "label": "Phone Label",
-            "default": "Phone"
-        },
-        "contact_phone": {
-            "type": "text",
-            "label": "Phone",
-            "default": "+971 4 555 0200"
-        },
-        "contact_address_label": {
-            "type": "text",
-            "label": "Address Label",
-            "default": "Campus"
-        },
-        "contact_address": {
-            "type": "text",
-            "label": "Address",
-            "default": "Dubai Academic City, Emirates Road, Dubai, UAE"
-        },
-        "contact_hours_label": {
-            "type": "text",
-            "label": "Hours Label",
-            "default": "Office Hours"
-        },
-        "contact_hours": {
-            "type": "text",
-            "label": "Hours",
-            "default": "Sat–Thu, 08:30–17:30 GST"
-        },
-        "contact_cta_title": {
-            "type": "text",
-            "label": "Contact CTA Title",
-            "default": "Ready to visit?"
-        },
-        "contact_cta_text": {
-            "type": "text",
-            "label": "Contact CTA Text",
-            "default": "Book a 90-minute campus tour and see the academy in action. No commitment required."
-        },
-        "contact_cta_button": {
-            "type": "text",
-            "label": "Contact CTA Button",
-            "default": "Book Campus Tour"
-        },
-        "footer_logo": {
-            "type": "text",
-            "label": "Footer Logo",
-            "default": "Meridian"
-        },
-        "footer_tagline": {
-            "type": "text",
-            "label": "Footer Tagline",
-            "default": "A private, accredited university in Dubai educating the next generation of leaders across business, technology, and the liberal arts."
-        },
-        "social_1": {
-            "type": "text",
-            "label": "Social 1",
-            "default": "IN"
-        },
-        "social_2": {
-            "type": "text",
-            "label": "Social 2",
-            "default": "IG"
-        },
-        "social_3": {
-            "type": "text",
-            "label": "Social 3",
-            "default": "FB"
-        },
-        "social_4": {
-            "type": "text",
-            "label": "Social 4",
-            "default": "YT"
-        },
-        "footer_col_1_title": {
-            "type": "text",
-            "label": "Footer Col 1 Title",
-            "default": "Programs"
-        },
-        "footer_col_2_title": {
-            "type": "text",
-            "label": "Footer Col 2 Title",
-            "default": "Academy"
-        },
-        "footer_col_3_title": {
-            "type": "text",
-            "label": "Footer Col 3 Title",
-            "default": "Connect"
-        },
-        "footer_link_1": {
-            "type": "text",
-            "label": "Footer Link 1",
-            "default": "Undergraduate"
-        },
-        "footer_link_2": {
-            "type": "text",
-            "label": "Footer Link 2",
-            "default": "Graduate"
-        },
-        "footer_link_3": {
-            "type": "text",
-            "label": "Footer Link 3",
-            "default": "Executive"
-        },
-        "footer_link_4": {
-            "type": "text",
-            "label": "Footer Link 4",
-            "default": "Admissions"
-        },
-        "footer_link_5": {
-            "type": "text",
-            "label": "Footer Link 5",
-            "default": "Faculty"
-        },
-        "footer_link_6": {
-            "type": "text",
-            "label": "Footer Link 6",
-            "default": "Campus"
-        },
-        "footer_link_7": {
-            "type": "text",
-            "label": "Footer Link 7",
-            "default": "Contact"
-        },
-        "footer_link_8": {
-            "type": "text",
-            "label": "Footer Link 8",
-            "default": "Book a Tour"
-        },
-        "footer_text": {
-            "type": "text",
-            "label": "Footer Text",
-            "default": "© 2026 Meridian Academy. All rights reserved."
-        },
-        "footer_legal": {
-            "type": "text",
-            "label": "Footer Legal",
-            "default": "Privacy · Terms · Accreditation"
-        }
+  "id": "training_center",
+  "name": "Education",
+  "industry": "training_center",
+  "description": "Premium education / private university template \u2014 prestige hero with program inquiry form, stats strip, 6 program cards, 4 why-us pillars, faculty grid, admissions process, campus gallery, testimonials, accreditation partners, news/blog, campus-tour booking form, contact, and footer. Built for private universities, colleges, and academies.",
+  "thumbnail": "/storage/builder-heroes/education.jpg",
+  "category": "education",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "elements": {
+        "logo": "nav .logo",
+        "nav_1": "nav .nav-link-1",
+        "nav_2": "nav .nav-link-2",
+        "nav_3": "nav .nav-link-3",
+        "nav_4": "nav .nav-link-4",
+        "nav_5": "nav .nav-link-5",
+        "nav_cta": "nav .nav-cta"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero with Inquiry Form",
+      "elements": {
+        "hero_image": "section.hero",
+        "hero_eyebrow": ".hero-eyebrow",
+        "hero_title": ".hero-title",
+        "hero_subtitle": ".hero-subtitle",
+        "hero_trust_1": ".hero-trust-1",
+        "hero_trust_2": ".hero-trust-2",
+        "hero_trust_3": ".hero-trust-3",
+        "hero_trust_4": ".hero-trust-4",
+        "hero_form_eyebrow": ".hero-form-eyebrow",
+        "hero_form_title": ".hero-form-title",
+        "hero_form_sub": ".hero-form-sub",
+        "hero_form_name_label": ".hero-form label[data-field=hero_form_name_label]",
+        "hero_form_email_label": ".hero-form label[data-field=hero_form_email_label]",
+        "hero_form_program_label": ".hero-form label[data-field=hero_form_program_label]",
+        "hero_form_submit": ".hero-form button",
+        "hero_form_note": ".hero-form-note"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats",
+      "elements": {
+        "stat_1_value": ".stats-grid .stat:nth-child(1) .stat-value",
+        "stat_1_label": ".stats-grid .stat:nth-child(1) .stat-label",
+        "stat_2_value": ".stats-grid .stat:nth-child(2) .stat-value",
+        "stat_2_label": ".stats-grid .stat:nth-child(2) .stat-label",
+        "stat_3_value": ".stats-grid .stat:nth-child(3) .stat-value",
+        "stat_3_label": ".stats-grid .stat:nth-child(3) .stat-label",
+        "stat_4_value": ".stats-grid .stat:nth-child(4) .stat-value",
+        "stat_4_label": ".stats-grid .stat:nth-child(4) .stat-label"
+      }
+    },
+    {
+      "id": "programs",
+      "name": "Programs",
+      "elements": {
+        "programs_eyebrow": "#programs .eyebrow",
+        "programs_title": "#programs .h-section",
+        "programs_intro": "#programs .section-intro",
+        "program_1_tag": ".programs-grid .program:nth-child(1) .program-tag",
+        "program_1_title": ".programs-grid .program:nth-child(1) h3",
+        "program_1_duration": ".programs-grid .program:nth-child(1) .program-dur",
+        "program_1_text": ".programs-grid .program:nth-child(1) p",
+        "program_1_link": ".programs-grid .program:nth-child(1) .program-link",
+        "program_2_tag": ".programs-grid .program:nth-child(2) .program-tag",
+        "program_2_title": ".programs-grid .program:nth-child(2) h3",
+        "program_2_duration": ".programs-grid .program:nth-child(2) .program-dur",
+        "program_2_text": ".programs-grid .program:nth-child(2) p",
+        "program_2_link": ".programs-grid .program:nth-child(2) .program-link",
+        "program_3_tag": ".programs-grid .program:nth-child(3) .program-tag",
+        "program_3_title": ".programs-grid .program:nth-child(3) h3",
+        "program_3_duration": ".programs-grid .program:nth-child(3) .program-dur",
+        "program_3_text": ".programs-grid .program:nth-child(3) p",
+        "program_3_link": ".programs-grid .program:nth-child(3) .program-link",
+        "program_4_tag": ".programs-grid .program:nth-child(4) .program-tag",
+        "program_4_title": ".programs-grid .program:nth-child(4) h3",
+        "program_4_duration": ".programs-grid .program:nth-child(4) .program-dur",
+        "program_4_text": ".programs-grid .program:nth-child(4) p",
+        "program_4_link": ".programs-grid .program:nth-child(4) .program-link",
+        "program_5_tag": ".programs-grid .program:nth-child(5) .program-tag",
+        "program_5_title": ".programs-grid .program:nth-child(5) h3",
+        "program_5_duration": ".programs-grid .program:nth-child(5) .program-dur",
+        "program_5_text": ".programs-grid .program:nth-child(5) p",
+        "program_5_link": ".programs-grid .program:nth-child(5) .program-link",
+        "program_6_tag": ".programs-grid .program:nth-child(6) .program-tag",
+        "program_6_title": ".programs-grid .program:nth-child(6) h3",
+        "program_6_duration": ".programs-grid .program:nth-child(6) .program-dur",
+        "program_6_text": ".programs-grid .program:nth-child(6) p",
+        "program_6_link": ".programs-grid .program:nth-child(6) .program-link"
+      }
+    },
+    {
+      "id": "why_us",
+      "name": "Why Us Pillars",
+      "elements": {
+        "why_us_eyebrow": "#why_us .eyebrow",
+        "why_us_title": "#why_us .h-section",
+        "why_us_intro": "#why_us .section-intro",
+        "pillar_1_num": ".pillars-grid .pillar:nth-child(1) .pillar-num",
+        "pillar_1_title": ".pillars-grid .pillar:nth-child(1) h3",
+        "pillar_1_text": ".pillars-grid .pillar:nth-child(1) p",
+        "pillar_2_num": ".pillars-grid .pillar:nth-child(2) .pillar-num",
+        "pillar_2_title": ".pillars-grid .pillar:nth-child(2) h3",
+        "pillar_2_text": ".pillars-grid .pillar:nth-child(2) p",
+        "pillar_3_num": ".pillars-grid .pillar:nth-child(3) .pillar-num",
+        "pillar_3_title": ".pillars-grid .pillar:nth-child(3) h3",
+        "pillar_3_text": ".pillars-grid .pillar:nth-child(3) p",
+        "pillar_4_num": ".pillars-grid .pillar:nth-child(4) .pillar-num",
+        "pillar_4_title": ".pillars-grid .pillar:nth-child(4) h3",
+        "pillar_4_text": ".pillars-grid .pillar:nth-child(4) p"
+      }
+    },
+    {
+      "id": "faculty",
+      "name": "Faculty",
+      "elements": {
+        "faculty_eyebrow": "#faculty .eyebrow",
+        "faculty_title": "#faculty .h-section",
+        "faculty_intro": "#faculty .section-intro",
+        "faculty_1_image": ".faculty-grid .faculty-card:nth-child(1) .faculty-photo",
+        "faculty_1_name": ".faculty-grid .faculty-card:nth-child(1) h3",
+        "faculty_1_role": ".faculty-grid .faculty-card:nth-child(1) .faculty-role",
+        "faculty_1_bio": ".faculty-grid .faculty-card:nth-child(1) .faculty-bio",
+        "faculty_2_image": ".faculty-grid .faculty-card:nth-child(2) .faculty-photo",
+        "faculty_2_name": ".faculty-grid .faculty-card:nth-child(2) h3",
+        "faculty_2_role": ".faculty-grid .faculty-card:nth-child(2) .faculty-role",
+        "faculty_2_bio": ".faculty-grid .faculty-card:nth-child(2) .faculty-bio",
+        "faculty_3_image": ".faculty-grid .faculty-card:nth-child(3) .faculty-photo",
+        "faculty_3_name": ".faculty-grid .faculty-card:nth-child(3) h3",
+        "faculty_3_role": ".faculty-grid .faculty-card:nth-child(3) .faculty-role",
+        "faculty_3_bio": ".faculty-grid .faculty-card:nth-child(3) .faculty-bio",
+        "faculty_4_image": ".faculty-grid .faculty-card:nth-child(4) .faculty-photo",
+        "faculty_4_name": ".faculty-grid .faculty-card:nth-child(4) h3",
+        "faculty_4_role": ".faculty-grid .faculty-card:nth-child(4) .faculty-role",
+        "faculty_4_bio": ".faculty-grid .faculty-card:nth-child(4) .faculty-bio"
+      }
+    },
+    {
+      "id": "admissions",
+      "name": "Admissions Process",
+      "elements": {
+        "admissions_eyebrow": "#admissions .eyebrow",
+        "admissions_title": "#admissions .h-section",
+        "admissions_intro": "#admissions .section-intro",
+        "adm_step_1_title": ".admissions-steps .admissions-step:nth-child(1) h3",
+        "adm_step_1_text": ".admissions-steps .admissions-step:nth-child(1) p",
+        "adm_step_2_title": ".admissions-steps .admissions-step:nth-child(2) h3",
+        "adm_step_2_text": ".admissions-steps .admissions-step:nth-child(2) p",
+        "adm_step_3_title": ".admissions-steps .admissions-step:nth-child(3) h3",
+        "adm_step_3_text": ".admissions-steps .admissions-step:nth-child(3) p",
+        "adm_step_4_title": ".admissions-steps .admissions-step:nth-child(4) h3",
+        "adm_step_4_text": ".admissions-steps .admissions-step:nth-child(4) p"
+      }
+    },
+    {
+      "id": "campus_gallery",
+      "name": "Campus Gallery",
+      "elements": {
+        "gallery_eyebrow": "#campus .eyebrow",
+        "gallery_title": "#campus .h-section",
+        "gallery_intro": "#campus .section-intro",
+        "gallery_image_1": ".gallery-grid .gallery-item:nth-child(1)",
+        "gallery_image_2": ".gallery-grid .gallery-item:nth-child(2)",
+        "gallery_image_3": ".gallery-grid .gallery-item:nth-child(3)",
+        "gallery_image_4": ".gallery-grid .gallery-item:nth-child(4)",
+        "gallery_image_5": ".gallery-grid .gallery-item:nth-child(5)",
+        "gallery_image_6": ".gallery-grid .gallery-item:nth-child(6)"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Testimonials",
+      "elements": {
+        "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
+        "testimonials_title": "[data-block=testimonials] .h-section",
+        "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+        "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+        "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
+        "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
+        "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+        "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+        "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
+        "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
+        "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+        "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+        "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
+        "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
+      }
+    },
+    {
+      "id": "partners",
+      "name": "Accreditation Partners",
+      "elements": {
+        "partners_title": ".partners-title",
+        "partner_logo_1": ".partners-grid .partner-logo:nth-child(1)",
+        "partner_logo_2": ".partners-grid .partner-logo:nth-child(2)",
+        "partner_logo_3": ".partners-grid .partner-logo:nth-child(3)",
+        "partner_logo_4": ".partners-grid .partner-logo:nth-child(4)",
+        "partner_logo_5": ".partners-grid .partner-logo:nth-child(5)",
+        "partner_logo_6": ".partners-grid .partner-logo:nth-child(6)",
+        "partner_logo_7": ".partners-grid .partner-logo:nth-child(7)",
+        "partner_logo_8": ".partners-grid .partner-logo:nth-child(8)"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "News & Blog",
+      "elements": {
+        "blog_eyebrow": "#blog .eyebrow",
+        "blog_title": "#blog .h-section",
+        "blog_intro": "#blog .section-intro",
+        "blog_1_date": ".blog-grid .blog-card:nth-child(1) .blog-date",
+        "blog_1_title": ".blog-grid .blog-card:nth-child(1) h3",
+        "blog_1_excerpt": ".blog-grid .blog-card:nth-child(1) p",
+        "blog_1_link": ".blog-grid .blog-card:nth-child(1) .blog-link",
+        "blog_2_date": ".blog-grid .blog-card:nth-child(2) .blog-date",
+        "blog_2_title": ".blog-grid .blog-card:nth-child(2) h3",
+        "blog_2_excerpt": ".blog-grid .blog-card:nth-child(2) p",
+        "blog_2_link": ".blog-grid .blog-card:nth-child(2) .blog-link",
+        "blog_3_date": ".blog-grid .blog-card:nth-child(3) .blog-date",
+        "blog_3_title": ".blog-grid .blog-card:nth-child(3) h3",
+        "blog_3_excerpt": ".blog-grid .blog-card:nth-child(3) p",
+        "blog_3_link": ".blog-grid .blog-card:nth-child(3) .blog-link"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book Campus Tour",
+      "elements": {
+        "booking_eyebrow": "#booking .eyebrow",
+        "booking_title": "#booking .h-section",
+        "booking_intro": ".booking-intro",
+        "booking_program_label": ".booking-form label[data-field=booking_program_label]",
+        "booking_mode_label": ".booking-form label[data-field=booking_mode_label]",
+        "booking_date_label": ".booking-form label[data-field=booking_date_label]",
+        "booking_time_label": ".booking-form label[data-field=booking_time_label]",
+        "booking_name_label": ".booking-form label[data-field=booking_name_label]",
+        "booking_email_label": ".booking-form label[data-field=booking_email_label]",
+        "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+        "booking_submit": ".booking-submit"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact",
+      "elements": {
+        "contact_eyebrow": "#contact .eyebrow",
+        "contact_title": "#contact .h-section",
+        "contact_intro": "#contact .section-intro",
+        "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
+        "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
+        "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
+        "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
+        "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
+        "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
+        "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
+        "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
+        "contact_cta_title": "#contact .hero-form-title",
+        "contact_cta_text": "#contact .hero-form-sub",
+        "contact_cta_button": "#contact .btn-primary"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "elements": {
+        "footer_logo": ".footer-logo",
+        "footer_tagline": ".footer-tagline",
+        "social_1": ".footer-socials a:nth-child(1)",
+        "social_2": ".footer-socials a:nth-child(2)",
+        "social_3": ".footer-socials a:nth-child(3)",
+        "social_4": ".footer-socials a:nth-child(4)",
+        "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+        "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+        "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+        "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+        "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+        "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+        "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+        "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+        "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+        "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+        "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+        "footer_text": ".footer-bottom > div:nth-child(1)",
+        "footer_legal": ".footer-bottom > div:nth-child(2)"
+      }
     }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Business Name",
+      "default": "Meridian Academy"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Shaping Tomorrow's Leaders Through Academic Excellence"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Meridian Academy is a top-ranked private university in Dubai offering world-class undergraduate, graduate, and executive programs in business, technology, and the arts."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://meridianacademy.ae"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/education.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Background",
+      "default": "/storage/builder-heroes/education.jpg"
+    },
+    "navy": {
+      "type": "color",
+      "label": "Navy",
+      "default": "#1B3A6B"
+    },
+    "navy_soft": {
+      "type": "color",
+      "label": "Navy Soft",
+      "default": "#234679"
+    },
+    "gold": {
+      "type": "color",
+      "label": "Gold",
+      "default": "#F5A623"
+    },
+    "gold_deep": {
+      "type": "color",
+      "label": "Gold Deep",
+      "default": "#D68B15"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Chalk",
+      "default": "#FFFFFF"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#B8C5D9"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#2E5089"
+    },
+    "logo": {
+      "type": "text",
+      "label": "Logo Text",
+      "default": "Meridian"
+    },
+    "nav_1": {
+      "type": "text",
+      "label": "Nav: Programs",
+      "default": "Programs"
+    },
+    "nav_2": {
+      "type": "text",
+      "label": "Nav: Admissions",
+      "default": "Admissions"
+    },
+    "nav_3": {
+      "type": "text",
+      "label": "Nav: Faculty",
+      "default": "Faculty"
+    },
+    "nav_4": {
+      "type": "text",
+      "label": "Nav: Campus",
+      "default": "Campus"
+    },
+    "nav_5": {
+      "type": "text",
+      "label": "Nav: Contact",
+      "default": "Contact"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Apply Now"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Accredited Private University \u00b7 Dubai"
+    },
+    "hero_title": {
+      "type": "text",
+      "label": "Hero Title",
+      "default": "Where Ambition Meets Academic Rigor."
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "For over two decades, Meridian Academy has educated the next generation of leaders, thinkers, and builders across business, technology, and the liberal arts. 96% of graduates are placed within six months."
+    },
+    "hero_trust_1": {
+      "type": "text",
+      "label": "Trust 1",
+      "default": "KHDA Accredited"
+    },
+    "hero_trust_2": {
+      "type": "text",
+      "label": "Trust 2",
+      "default": "QS 5-Star Rated"
+    },
+    "hero_trust_3": {
+      "type": "text",
+      "label": "Trust 3",
+      "default": "96% Graduate Placement"
+    },
+    "hero_trust_4": {
+      "type": "text",
+      "label": "Trust 4",
+      "default": "22 Global Partnerships"
+    },
+    "hero_form_eyebrow": {
+      "type": "text",
+      "label": "Form Eyebrow",
+      "default": "REQUEST INFORMATION"
+    },
+    "hero_form_title": {
+      "type": "text",
+      "label": "Form Title",
+      "default": "Start Your Application Today"
+    },
+    "hero_form_sub": {
+      "type": "text",
+      "label": "Form Sub",
+      "default": "Get a personalized program brochure and connect with an admissions counselor within 24 hours."
+    },
+    "hero_form_name_label": {
+      "type": "text",
+      "label": "Name Label",
+      "default": "Full Name"
+    },
+    "hero_form_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email Address"
+    },
+    "hero_form_program_label": {
+      "type": "text",
+      "label": "Program Label",
+      "default": "Program of Interest"
+    },
+    "hero_form_submit": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Request Brochure \u2192"
+    },
+    "hero_form_note": {
+      "type": "text",
+      "label": "Form Note",
+      "default": "Your information is confidential. No spam, ever."
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "8,400+"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Active Students"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "96%"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Graduate Placement"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "24"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Years Established"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "340+"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Faculty & Researchers"
+    },
+    "programs_eyebrow": {
+      "type": "text",
+      "label": "Programs Eyebrow",
+      "default": "ACADEMIC PROGRAMS"
+    },
+    "programs_title": {
+      "type": "text",
+      "label": "Programs Title",
+      "default": "Degrees That Open Doors"
+    },
+    "programs_intro": {
+      "type": "text",
+      "label": "Programs Intro",
+      "default": "Six flagship programs across undergraduate, graduate, and executive education \u2014 each built with industry advisory boards and taught by faculty with real-world experience."
+    },
+    "program_1_tag": {
+      "type": "text",
+      "label": "Program 1 Tag",
+      "default": "BSc \u00b7 UNDERGRADUATE"
+    },
+    "program_1_title": {
+      "type": "text",
+      "label": "Program 1 Title",
+      "default": "BSc Computer Science"
+    },
+    "program_1_duration": {
+      "type": "text",
+      "label": "Program 1 Duration",
+      "default": "4 Years \u00b7 Full-time"
+    },
+    "program_1_text": {
+      "type": "text",
+      "label": "Program 1 Text",
+      "default": "A rigorous curriculum covering algorithms, AI, systems, and software engineering. Includes a paid 6-month industry internship at one of our 40+ tech partners."
+    },
+    "program_1_link": {
+      "type": "text",
+      "label": "Program 1 Link",
+      "default": "View curriculum"
+    },
+    "program_2_tag": {
+      "type": "text",
+      "label": "Program 2 Tag",
+      "default": "MBA \u00b7 GRADUATE"
+    },
+    "program_2_title": {
+      "type": "text",
+      "label": "Program 2 Title",
+      "default": "Master of Business Administration"
+    },
+    "program_2_duration": {
+      "type": "text",
+      "label": "Program 2 Duration",
+      "default": "18 Months \u00b7 Full-time or Executive track"
+    },
+    "program_2_text": {
+      "type": "text",
+      "label": "Program 2 Text",
+      "default": "A top-100 globally ranked MBA with concentrations in Finance, Entrepreneurship, and Strategy. Cohorts are capped at 40 to preserve case-method rigor."
+    },
+    "program_2_link": {
+      "type": "text",
+      "label": "Program 2 Link",
+      "default": "View curriculum"
+    },
+    "program_3_tag": {
+      "type": "text",
+      "label": "Program 3 Tag",
+      "default": "BA \u00b7 UNDERGRADUATE"
+    },
+    "program_3_title": {
+      "type": "text",
+      "label": "Program 3 Title",
+      "default": "BA Business Administration"
+    },
+    "program_3_duration": {
+      "type": "text",
+      "label": "Program 3 Duration",
+      "default": "3 Years \u00b7 Full-time"
+    },
+    "program_3_text": {
+      "type": "text",
+      "label": "Program 3 Text",
+      "default": "Foundations of management, finance, marketing, and operations \u2014 with a capstone consulting project for a real MENA company in Year 3."
+    },
+    "program_3_link": {
+      "type": "text",
+      "label": "Program 3 Link",
+      "default": "View curriculum"
+    },
+    "program_4_tag": {
+      "type": "text",
+      "label": "Program 4 Tag",
+      "default": "MSc \u00b7 GRADUATE"
+    },
+    "program_4_title": {
+      "type": "text",
+      "label": "Program 4 Title",
+      "default": "MSc Data Science & AI"
+    },
+    "program_4_duration": {
+      "type": "text",
+      "label": "Program 4 Duration",
+      "default": "12 Months \u00b7 Full-time"
+    },
+    "program_4_text": {
+      "type": "text",
+      "label": "Program 4 Text",
+      "default": "An intensive technical program covering ML, deep learning, statistical modeling, and applied AI ethics \u2014 with a sponsored thesis in semester three."
+    },
+    "program_4_link": {
+      "type": "text",
+      "label": "Program 4 Link",
+      "default": "View curriculum"
+    },
+    "program_5_tag": {
+      "type": "text",
+      "label": "Program 5 Tag",
+      "default": "FOUNDATION"
+    },
+    "program_5_title": {
+      "type": "text",
+      "label": "Program 5 Title",
+      "default": "University Foundation Year"
+    },
+    "program_5_duration": {
+      "type": "text",
+      "label": "Program 5 Duration",
+      "default": "1 Year \u00b7 Full-time"
+    },
+    "program_5_text": {
+      "type": "text",
+      "label": "Program 5 Text",
+      "default": "For students who need to meet degree-entry standards \u2014 intensive academic English, study skills, and pre-major electives with direct university progression."
+    },
+    "program_5_link": {
+      "type": "text",
+      "label": "Program 5 Link",
+      "default": "View curriculum"
+    },
+    "program_6_tag": {
+      "type": "text",
+      "label": "Program 6 Tag",
+      "default": "EXECUTIVE"
+    },
+    "program_6_title": {
+      "type": "text",
+      "label": "Program 6 Title",
+      "default": "Executive Leadership Certificate"
+    },
+    "program_6_duration": {
+      "type": "text",
+      "label": "Program 6 Duration",
+      "default": "12 Weeks \u00b7 Part-time evenings"
+    },
+    "program_6_text": {
+      "type": "text",
+      "label": "Program 6 Text",
+      "default": "For senior managers. Strategy, organizational design, and high-stakes negotiation \u2014 taught by Fortune 100 practitioners, not theorists."
+    },
+    "program_6_link": {
+      "type": "text",
+      "label": "Program 6 Link",
+      "default": "View curriculum"
+    },
+    "why_us_eyebrow": {
+      "type": "text",
+      "label": "Why Us Eyebrow",
+      "default": "WHY MERIDIAN"
+    },
+    "why_us_title": {
+      "type": "text",
+      "label": "Why Us Title",
+      "default": "Four Pillars That Set Us Apart"
+    },
+    "why_us_intro": {
+      "type": "text",
+      "label": "Why Us Intro",
+      "default": "A private university where every decision is made with the student's outcome in mind \u2014 not rankings, not revenue."
+    },
+    "pillar_1_num": {
+      "type": "text",
+      "label": "Pillar 1 Num",
+      "default": "01"
+    },
+    "pillar_1_title": {
+      "type": "text",
+      "label": "Pillar 1 Title",
+      "default": "Small Cohorts"
+    },
+    "pillar_1_text": {
+      "type": "text",
+      "label": "Pillar 1 Text",
+      "default": "A 14:1 student-to-faculty ratio. Your professor knows your name, your work, and your goals \u2014 from week one."
+    },
+    "pillar_2_num": {
+      "type": "text",
+      "label": "Pillar 2 Num",
+      "default": "02"
+    },
+    "pillar_2_title": {
+      "type": "text",
+      "label": "Pillar 2 Title",
+      "default": "Industry Integration"
+    },
+    "pillar_2_text": {
+      "type": "text",
+      "label": "Pillar 2 Text",
+      "default": "Every program includes live industry projects, paid internships, and recruiting access to 180+ corporate partners across the GCC."
+    },
+    "pillar_3_num": {
+      "type": "text",
+      "label": "Pillar 3 Num",
+      "default": "03"
+    },
+    "pillar_3_title": {
+      "type": "text",
+      "label": "Pillar 3 Title",
+      "default": "Global Exchange"
+    },
+    "pillar_3_text": {
+      "type": "text",
+      "label": "Pillar 3 Text",
+      "default": "Semester-long exchange programs with 22 partner universities across Europe, North America, and Asia \u2014 fully credit-bearing."
+    },
+    "pillar_4_num": {
+      "type": "text",
+      "label": "Pillar 4 Num",
+      "default": "04"
+    },
+    "pillar_4_title": {
+      "type": "text",
+      "label": "Pillar 4 Title",
+      "default": "Merit Scholarships"
+    },
+    "pillar_4_text": {
+      "type": "text",
+      "label": "Pillar 4 Text",
+      "default": "Up to 60% tuition in merit scholarships awarded every year. Talent, not financial background, determines access at Meridian."
+    },
+    "faculty_eyebrow": {
+      "type": "text",
+      "label": "Faculty Eyebrow",
+      "default": "MEET THE FACULTY"
+    },
+    "faculty_title": {
+      "type": "text",
+      "label": "Faculty Title",
+      "default": "Scholars. Practitioners. Mentors."
+    },
+    "faculty_intro": {
+      "type": "text",
+      "label": "Faculty Intro",
+      "default": "Our faculty have led companies, published in top journals, and taught at the world's most respected institutions \u2014 now they teach you."
+    },
+    "faculty_1_image": {
+      "type": "image",
+      "label": "Faculty 1 Image",
+      "default": "/storage/builder-heroes/education.jpg"
+    },
+    "faculty_1_name": {
+      "type": "text",
+      "label": "Faculty 1 Name",
+      "default": "Prof. Amira Saleh, PhD"
+    },
+    "faculty_1_role": {
+      "type": "text",
+      "label": "Faculty 1 Role",
+      "default": "Dean \u00b7 Computer Science"
+    },
+    "faculty_1_bio": {
+      "type": "text",
+      "label": "Faculty 1 Bio",
+      "default": "MIT PhD. 20 years at IBM Research. Leads our AI and systems faculty."
+    },
+    "faculty_2_image": {
+      "type": "image",
+      "label": "Faculty 2 Image",
+      "default": "/storage/builder-heroes/education.jpg"
+    },
+    "faculty_2_name": {
+      "type": "text",
+      "label": "Faculty 2 Name",
+      "default": "Prof. Yusuf El-Masri, PhD"
+    },
+    "faculty_2_role": {
+      "type": "text",
+      "label": "Faculty 2 Role",
+      "default": "Dean \u00b7 School of Business"
+    },
+    "faculty_2_bio": {
+      "type": "text",
+      "label": "Faculty 2 Bio",
+      "default": "Harvard Business School PhD. Former McKinsey Partner. Teaches strategy to our MBA cohorts."
+    },
+    "faculty_3_image": {
+      "type": "image",
+      "label": "Faculty 3 Image",
+      "default": "/storage/builder-heroes/education.jpg"
+    },
+    "faculty_3_name": {
+      "type": "text",
+      "label": "Faculty 3 Name",
+      "default": "Prof. Leila Nabulsi"
+    },
+    "faculty_3_role": {
+      "type": "text",
+      "label": "Faculty 3 Role",
+      "default": "Chair \u00b7 Liberal Arts"
+    },
+    "faculty_3_bio": {
+      "type": "text",
+      "label": "Faculty 3 Bio",
+      "default": "Oxford DPhil in Philosophy. 12 years in public policy advising across MENA."
+    },
+    "faculty_4_image": {
+      "type": "image",
+      "label": "Faculty 4 Image",
+      "default": "/storage/builder-heroes/education.jpg"
+    },
+    "faculty_4_name": {
+      "type": "text",
+      "label": "Faculty 4 Name",
+      "default": "Dr. Tariq Abdullah"
+    },
+    "faculty_4_role": {
+      "type": "text",
+      "label": "Faculty 4 Role",
+      "default": "Director \u00b7 Executive Education"
+    },
+    "faculty_4_bio": {
+      "type": "text",
+      "label": "Faculty 4 Bio",
+      "default": "INSEAD MBA. Ex-CEO of a regional telecom group. Leads our C-suite programs."
+    },
+    "admissions_eyebrow": {
+      "type": "text",
+      "label": "Admissions Eyebrow",
+      "default": "HOW TO APPLY"
+    },
+    "admissions_title": {
+      "type": "text",
+      "label": "Admissions Title",
+      "default": "A Simple Four-Step Path to Meridian"
+    },
+    "admissions_intro": {
+      "type": "text",
+      "label": "Admissions Intro",
+      "default": "No mystery. No surprises. Here's exactly how admission works \u2014 from inquiry to offer letter."
+    },
+    "adm_step_1_title": {
+      "type": "text",
+      "label": "Adm Step 1 Title",
+      "default": "Inquire"
+    },
+    "adm_step_1_text": {
+      "type": "text",
+      "label": "Adm Step 1 Text",
+      "default": "Request an information pack through the form above. An admissions counselor will reach out to discuss program fit within 24 hours."
+    },
+    "adm_step_2_title": {
+      "type": "text",
+      "label": "Adm Step 2 Title",
+      "default": "Apply"
+    },
+    "adm_step_2_text": {
+      "type": "text",
+      "label": "Adm Step 2 Text",
+      "default": "Submit your online application with transcripts, personal statement, and two references. Application fee waived for early applicants."
+    },
+    "adm_step_3_title": {
+      "type": "text",
+      "label": "Adm Step 3 Title",
+      "default": "Interview"
+    },
+    "adm_step_3_text": {
+      "type": "text",
+      "label": "Adm Step 3 Text",
+      "default": "A 30-minute conversation with faculty \u2014 not a test. We want to understand your goals and see how we can help you reach them."
+    },
+    "adm_step_4_title": {
+      "type": "text",
+      "label": "Adm Step 4 Title",
+      "default": "Enroll"
+    },
+    "adm_step_4_text": {
+      "type": "text",
+      "label": "Adm Step 4 Text",
+      "default": "Decisions within two weeks. Scholarship award included with every acceptance letter. Orientation in September and January."
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "CAMPUS LIFE"
+    },
+    "gallery_title": {
+      "type": "text",
+      "label": "Gallery Title",
+      "default": "A Campus Built for Deep Work and Real Community"
+    },
+    "gallery_intro": {
+      "type": "text",
+      "label": "Gallery Intro",
+      "default": "17 acres in the heart of Dubai Academic City. Modern labs, a 90,000-volume library, a full athletics complex, and residential housing on-site."
+    },
+    "gallery_image_1": {
+      "type": "image",
+      "label": "Gallery 1",
+      "default": "/storage/template-images/education/gallery_image_1.jpg"
+    },
+    "gallery_image_2": {
+      "type": "image",
+      "label": "Gallery 2",
+      "default": "/storage/template-images/education/gallery_image_2.jpg"
+    },
+    "gallery_image_3": {
+      "type": "image",
+      "label": "Gallery 3",
+      "default": "/storage/template-images/education/gallery_image_3.jpg"
+    },
+    "gallery_image_4": {
+      "type": "image",
+      "label": "Gallery 4",
+      "default": "/storage/template-images/education/gallery_image_4.jpg"
+    },
+    "gallery_image_5": {
+      "type": "image",
+      "label": "Gallery 5",
+      "default": "/storage/template-images/education/gallery_image_5.jpg"
+    },
+    "gallery_image_6": {
+      "type": "image",
+      "label": "Gallery 6",
+      "default": "/storage/template-images/education/gallery_image_6.jpg"
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "STUDENT VOICES"
+    },
+    "testimonials_title": {
+      "type": "text",
+      "label": "Testimonials Title",
+      "default": "What Our Graduates Say"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Meridian rewired how I think. Four years later I'm leading a product team at an international bank \u2014 the professors here prepared me for work no textbook could have described."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Rania Khalil"
+    },
+    "testimonial_1_company": {
+      "type": "text",
+      "label": "Testimonial 1 Company",
+      "default": "BSc CS '21 \u00b7 Product Lead, Emirates NBD"
+    },
+    "testimonial_1_result": {
+      "type": "text",
+      "label": "Testimonial 1 Result",
+      "default": "Placed at 22"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "The MBA cohort was 38 brilliant people from 17 countries. That alone was worth the tuition. The curriculum pushed me harder than I thought I could go."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Mohammed Al-Sayed"
+    },
+    "testimonial_2_company": {
+      "type": "text",
+      "label": "Testimonial 2 Company",
+      "default": "MBA '22 \u00b7 Strategy Director, Aldar"
+    },
+    "testimonial_2_result": {
+      "type": "text",
+      "label": "Testimonial 2 Result",
+      "default": "2\u00d7 salary post-MBA"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Small classes meant my questions got answered. The research project I did in Year 3 became the foundation of the startup I run today."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Sarah Hussain"
+    },
+    "testimonial_3_company": {
+      "type": "text",
+      "label": "Testimonial 3 Company",
+      "default": "BA Business '20 \u00b7 Founder, Namara.io"
+    },
+    "testimonial_3_result": {
+      "type": "text",
+      "label": "Testimonial 3 Result",
+      "default": "Founded company at 23"
+    },
+    "partners_title": {
+      "type": "text",
+      "label": "Partners Title",
+      "default": "ACCREDITED BY \u00b7 IN PARTNERSHIP WITH"
+    },
+    "partner_logo_1": {
+      "type": "text",
+      "label": "Partner 1",
+      "default": "KHDA"
+    },
+    "partner_logo_2": {
+      "type": "text",
+      "label": "Partner 2",
+      "default": "MoE"
+    },
+    "partner_logo_3": {
+      "type": "text",
+      "label": "Partner 3",
+      "default": "AACSB"
+    },
+    "partner_logo_4": {
+      "type": "text",
+      "label": "Partner 4",
+      "default": "Oxford"
+    },
+    "partner_logo_5": {
+      "type": "text",
+      "label": "Partner 5",
+      "default": "INSEAD"
+    },
+    "partner_logo_6": {
+      "type": "text",
+      "label": "Partner 6",
+      "default": "LSE"
+    },
+    "partner_logo_7": {
+      "type": "text",
+      "label": "Partner 7",
+      "default": "NYU"
+    },
+    "partner_logo_8": {
+      "type": "text",
+      "label": "Partner 8",
+      "default": "McGill"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "NEWS & INSIGHTS"
+    },
+    "blog_title": {
+      "type": "text",
+      "label": "Blog Title",
+      "default": "From the Meridian Journal"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Recent essays, research updates, and announcements from our faculty and students."
+    },
+    "blog_1_date": {
+      "type": "text",
+      "label": "Blog 1 Date",
+      "default": "MAR 12, 2026"
+    },
+    "blog_1_title": {
+      "type": "text",
+      "label": "Blog 1 Title",
+      "default": "Meridian Ranks in Top 150 Globally for Business Education"
+    },
+    "blog_1_excerpt": {
+      "type": "text",
+      "label": "Blog 1 Excerpt",
+      "default": "The latest QS rankings place our MBA program in the global top 150, reflecting five consecutive years of climb."
+    },
+    "blog_1_link": {
+      "type": "text",
+      "label": "Blog 1 Link",
+      "default": "Read article \u2192"
+    },
+    "blog_2_date": {
+      "type": "text",
+      "label": "Blog 2 Date",
+      "default": "FEB 28, 2026"
+    },
+    "blog_2_title": {
+      "type": "text",
+      "label": "Blog 2 Title",
+      "default": "New AI Ethics Lab Opens With $4.2M Endowment"
+    },
+    "blog_2_excerpt": {
+      "type": "text",
+      "label": "Blog 2 Excerpt",
+      "default": "A new research center dedicated to AI safety and responsible deployment \u2014 joint venture with two Gulf sovereign partners."
+    },
+    "blog_2_link": {
+      "type": "text",
+      "label": "Blog 2 Link",
+      "default": "Read article \u2192"
+    },
+    "blog_3_date": {
+      "type": "text",
+      "label": "Blog 3 Date",
+      "default": "FEB 10, 2026"
+    },
+    "blog_3_title": {
+      "type": "text",
+      "label": "Blog 3 Title",
+      "default": "Class of 2026: Scholarship Applications Open"
+    },
+    "blog_3_excerpt": {
+      "type": "text",
+      "label": "Blog 3 Excerpt",
+      "default": "Merit-based scholarships up to 60% of tuition. Applications close April 30th for September enrollment."
+    },
+    "blog_3_link": {
+      "type": "text",
+      "label": "Blog 3 Link",
+      "default": "Read article \u2192"
+    },
+    "booking_eyebrow": {
+      "type": "text",
+      "label": "Booking Eyebrow",
+      "default": "VISIT US"
+    },
+    "booking_title": {
+      "type": "text",
+      "label": "Booking Title",
+      "default": "Book a Campus Tour"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Come experience Meridian in person. A 90-minute tour includes a walk-through of the labs and library, a chat with current students, and a one-on-one with an admissions counselor."
+    },
+    "booking_program_label": {
+      "type": "text",
+      "label": "Program Label",
+      "default": "Program of Interest"
+    },
+    "booking_mode_label": {
+      "type": "text",
+      "label": "Mode Label",
+      "default": "Study Mode"
+    },
+    "booking_date_label": {
+      "type": "text",
+      "label": "Date Label",
+      "default": "Preferred Date"
+    },
+    "booking_time_label": {
+      "type": "text",
+      "label": "Time Label",
+      "default": "Preferred Time"
+    },
+    "booking_name_label": {
+      "type": "text",
+      "label": "Name Label",
+      "default": "Full Name"
+    },
+    "booking_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email Address"
+    },
+    "booking_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Phone Number"
+    },
+    "booking_submit": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Book a Campus Tour \u2192"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "GET IN TOUCH"
+    },
+    "contact_title": {
+      "type": "text",
+      "label": "Contact Title",
+      "default": "Admissions Office"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "Our admissions team is available six days a week to answer questions about programs, scholarships, and the application process."
+    },
+    "contact_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email"
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Email",
+      "default": "admissions@meridianacademy.ae"
+    },
+    "contact_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Phone"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Phone",
+      "default": "+971 4 555 0200"
+    },
+    "contact_address_label": {
+      "type": "text",
+      "label": "Address Label",
+      "default": "Campus"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Address",
+      "default": "Dubai Academic City, Emirates Road, Dubai, UAE"
+    },
+    "contact_hours_label": {
+      "type": "text",
+      "label": "Hours Label",
+      "default": "Office Hours"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Hours",
+      "default": "Sat\u2013Thu, 08:30\u201317:30 GST"
+    },
+    "contact_cta_title": {
+      "type": "text",
+      "label": "Contact CTA Title",
+      "default": "Ready to visit?"
+    },
+    "contact_cta_text": {
+      "type": "text",
+      "label": "Contact CTA Text",
+      "default": "Book a 90-minute campus tour and see the academy in action. No commitment required."
+    },
+    "contact_cta_button": {
+      "type": "text",
+      "label": "Contact CTA Button",
+      "default": "Book Campus Tour"
+    },
+    "footer_logo": {
+      "type": "text",
+      "label": "Footer Logo",
+      "default": "Meridian"
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "A private, accredited university in Dubai educating the next generation of leaders across business, technology, and the liberal arts."
+    },
+    "social_1": {
+      "type": "text",
+      "label": "Social 1",
+      "default": "IN"
+    },
+    "social_2": {
+      "type": "text",
+      "label": "Social 2",
+      "default": "IG"
+    },
+    "social_3": {
+      "type": "text",
+      "label": "Social 3",
+      "default": "FB"
+    },
+    "social_4": {
+      "type": "text",
+      "label": "Social 4",
+      "default": "YT"
+    },
+    "footer_col_1_title": {
+      "type": "text",
+      "label": "Footer Col 1 Title",
+      "default": "Programs"
+    },
+    "footer_col_2_title": {
+      "type": "text",
+      "label": "Footer Col 2 Title",
+      "default": "Academy"
+    },
+    "footer_col_3_title": {
+      "type": "text",
+      "label": "Footer Col 3 Title",
+      "default": "Connect"
+    },
+    "footer_link_1": {
+      "type": "text",
+      "label": "Footer Link 1",
+      "default": "Undergraduate"
+    },
+    "footer_link_2": {
+      "type": "text",
+      "label": "Footer Link 2",
+      "default": "Graduate"
+    },
+    "footer_link_3": {
+      "type": "text",
+      "label": "Footer Link 3",
+      "default": "Executive"
+    },
+    "footer_link_4": {
+      "type": "text",
+      "label": "Footer Link 4",
+      "default": "Admissions"
+    },
+    "footer_link_5": {
+      "type": "text",
+      "label": "Footer Link 5",
+      "default": "Faculty"
+    },
+    "footer_link_6": {
+      "type": "text",
+      "label": "Footer Link 6",
+      "default": "Campus"
+    },
+    "footer_link_7": {
+      "type": "text",
+      "label": "Footer Link 7",
+      "default": "Contact"
+    },
+    "footer_link_8": {
+      "type": "text",
+      "label": "Footer Link 8",
+      "default": "Book a Tour"
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Text",
+      "default": "\u00a9 2026 Meridian Academy. All rights reserved."
+    },
+    "footer_legal": {
+      "type": "text",
+      "label": "Footer Legal",
+      "default": "Privacy \u00b7 Terms \u00b7 Accreditation"
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ],
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 6
+  }
 }

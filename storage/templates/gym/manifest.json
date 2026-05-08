@@ -3,7 +3,7 @@
   "name": "Fitness & Athletic Club",
   "version": "1.0.0",
   "industry": "gym",
-  "description": "Bold, high-energy template for gyms, personal training studios, and athletic clubs. Dark atmosphere, electric orange accents, condensed athletic type — built to convert training intent and class sign-ups.",
+  "description": "Bold, high-energy template for gyms, personal training studios, and athletic clubs. Dark atmosphere, electric orange accents, condensed athletic type \u2014 built to convert training intent and class sign-ups.",
   "variation": "luxury",
   "preview_image": "preview.jpg",
   "created_at": "2026-04-18",
@@ -11,7 +11,10 @@
     {
       "id": "nav",
       "name": "Navigation",
-      "fields": ["business_name", "nav_cta"],
+      "fields": [
+        "business_name",
+        "nav_cta"
+      ],
       "elements": {
         "logo": ".nav-logo",
         "links": ".nav-links",
@@ -23,7 +26,15 @@
     {
       "id": "hero",
       "name": "Hero Section",
-      "fields": ["hero_eyebrow", "hero_title", "hero_subtitle", "hero_cta", "hero_cta_secondary", "hero_image", "hero_trust_badge"],
+      "fields": [
+        "hero_eyebrow",
+        "hero_title",
+        "hero_subtitle",
+        "hero_cta",
+        "hero_cta_secondary",
+        "hero_image",
+        "hero_trust_badge"
+      ],
       "elements": {
         "eyebrow": ".hero-eyebrow",
         "heading": "h1.hero-h1",
@@ -39,10 +50,14 @@
       "id": "stats",
       "name": "Stats Strip",
       "fields": [
-        "stat_1_value", "stat_1_label",
-        "stat_2_value", "stat_2_label",
-        "stat_3_value", "stat_3_label",
-        "stat_4_value", "stat_4_label"
+        "stat_1_value",
+        "stat_1_label",
+        "stat_2_value",
+        "stat_2_label",
+        "stat_3_value",
+        "stat_3_label",
+        "stat_4_value",
+        "stat_4_label"
       ],
       "elements": {
         "item": ".stat-item",
@@ -54,13 +69,39 @@
       "id": "services",
       "name": "Programs & Classes",
       "fields": [
-        "services_eyebrow", "services_title", "services_intro",
-        "service_1_title", "service_1_text", "service_1_tag_1", "service_1_tag_2", "service_1_tag_3",
-        "service_2_title", "service_2_text", "service_2_tag_1", "service_2_tag_2", "service_2_tag_3",
-        "service_3_title", "service_3_text", "service_3_tag_1", "service_3_tag_2", "service_3_tag_3",
-        "service_4_title", "service_4_text", "service_4_tag_1", "service_4_tag_2", "service_4_tag_3",
-        "service_5_title", "service_5_text", "service_5_tag_1", "service_5_tag_2", "service_5_tag_3",
-        "service_6_title", "service_6_text", "service_6_tag_1", "service_6_tag_2", "service_6_tag_3"
+        "services_eyebrow",
+        "services_title",
+        "services_intro",
+        "service_1_title",
+        "service_1_text",
+        "service_1_tag_1",
+        "service_1_tag_2",
+        "service_1_tag_3",
+        "service_2_title",
+        "service_2_text",
+        "service_2_tag_1",
+        "service_2_tag_2",
+        "service_2_tag_3",
+        "service_3_title",
+        "service_3_text",
+        "service_3_tag_1",
+        "service_3_tag_2",
+        "service_3_tag_3",
+        "service_4_title",
+        "service_4_text",
+        "service_4_tag_1",
+        "service_4_tag_2",
+        "service_4_tag_3",
+        "service_5_title",
+        "service_5_text",
+        "service_5_tag_1",
+        "service_5_tag_2",
+        "service_5_tag_3",
+        "service_6_title",
+        "service_6_text",
+        "service_6_tag_1",
+        "service_6_tag_2",
+        "service_6_tag_3"
       ],
       "elements": {
         "eyebrow": ".eyebrow",
@@ -78,11 +119,25 @@
       "id": "trainers",
       "name": "Trainers",
       "fields": [
-        "trainers_eyebrow", "trainers_title", "trainers_intro",
-        "trainer_1_name", "trainer_1_specialty", "trainer_1_bio", "trainer_1_image",
-        "trainer_2_name", "trainer_2_specialty", "trainer_2_bio", "trainer_2_image",
-        "trainer_3_name", "trainer_3_specialty", "trainer_3_bio", "trainer_3_image",
-        "trainer_4_name", "trainer_4_specialty", "trainer_4_bio", "trainer_4_image"
+        "trainers_eyebrow",
+        "trainers_title",
+        "trainers_intro",
+        "trainer_1_name",
+        "trainer_1_specialty",
+        "trainer_1_bio",
+        "trainer_1_image",
+        "trainer_2_name",
+        "trainer_2_specialty",
+        "trainer_2_bio",
+        "trainer_2_image",
+        "trainer_3_name",
+        "trainer_3_specialty",
+        "trainer_3_bio",
+        "trainer_3_image",
+        "trainer_4_name",
+        "trainer_4_specialty",
+        "trainer_4_bio",
+        "trainer_4_image"
       ],
       "elements": {
         "eyebrow": ".eyebrow",
@@ -101,13 +156,27 @@
       "id": "schedule",
       "name": "Class Schedule",
       "fields": [
-        "schedule_eyebrow", "schedule_title", "schedule_intro",
-        "session_1_time", "session_1_name", "session_1_trainer",
-        "session_2_time", "session_2_name", "session_2_trainer",
-        "session_3_time", "session_3_name", "session_3_trainer",
-        "session_4_time", "session_4_name", "session_4_trainer",
-        "session_5_time", "session_5_name", "session_5_trainer",
-        "session_6_time", "session_6_name", "session_6_trainer"
+        "schedule_eyebrow",
+        "schedule_title",
+        "schedule_intro",
+        "session_1_time",
+        "session_1_name",
+        "session_1_trainer",
+        "session_2_time",
+        "session_2_name",
+        "session_2_trainer",
+        "session_3_time",
+        "session_3_name",
+        "session_3_trainer",
+        "session_4_time",
+        "session_4_name",
+        "session_4_trainer",
+        "session_5_time",
+        "session_5_name",
+        "session_5_trainer",
+        "session_6_time",
+        "session_6_name",
+        "session_6_trainer"
       ],
       "elements": {
         "eyebrow": ".eyebrow",
@@ -124,13 +193,27 @@
       "id": "transformations",
       "name": "Transformations Gallery",
       "fields": [
-        "trans_eyebrow", "trans_title", "trans_intro",
-        "trans_1_name", "trans_1_result", "trans_1_image",
-        "trans_2_name", "trans_2_result", "trans_2_image",
-        "trans_3_name", "trans_3_result", "trans_3_image",
-        "trans_4_name", "trans_4_result", "trans_4_image",
-        "trans_5_name", "trans_5_result", "trans_5_image",
-        "trans_6_name", "trans_6_result", "trans_6_image"
+        "trans_eyebrow",
+        "trans_title",
+        "trans_intro",
+        "trans_1_name",
+        "trans_1_result",
+        "trans_1_image",
+        "trans_2_name",
+        "trans_2_result",
+        "trans_2_image",
+        "trans_3_name",
+        "trans_3_result",
+        "trans_3_image",
+        "trans_4_name",
+        "trans_4_result",
+        "trans_4_image",
+        "trans_5_name",
+        "trans_5_result",
+        "trans_5_image",
+        "trans_6_name",
+        "trans_6_result",
+        "trans_6_image"
       ],
       "elements": {
         "eyebrow": ".eyebrow",
@@ -149,13 +232,33 @@
       "id": "membership",
       "name": "Membership Pricing",
       "fields": [
-        "pricing_eyebrow", "pricing_title", "pricing_intro",
-        "plan_1_name", "plan_1_price", "plan_1_period",
-        "plan_1_feature_1", "plan_1_feature_2", "plan_1_feature_3", "plan_1_feature_4", "plan_1_cta",
-        "plan_2_name", "plan_2_price", "plan_2_period",
-        "plan_2_feature_1", "plan_2_feature_2", "plan_2_feature_3", "plan_2_feature_4", "plan_2_cta",
-        "plan_3_name", "plan_3_price", "plan_3_period",
-        "plan_3_feature_1", "plan_3_feature_2", "plan_3_feature_3", "plan_3_feature_4", "plan_3_cta"
+        "pricing_eyebrow",
+        "pricing_title",
+        "pricing_intro",
+        "plan_1_name",
+        "plan_1_price",
+        "plan_1_period",
+        "plan_1_feature_1",
+        "plan_1_feature_2",
+        "plan_1_feature_3",
+        "plan_1_feature_4",
+        "plan_1_cta",
+        "plan_2_name",
+        "plan_2_price",
+        "plan_2_period",
+        "plan_2_feature_1",
+        "plan_2_feature_2",
+        "plan_2_feature_3",
+        "plan_2_feature_4",
+        "plan_2_cta",
+        "plan_3_name",
+        "plan_3_price",
+        "plan_3_period",
+        "plan_3_feature_1",
+        "plan_3_feature_2",
+        "plan_3_feature_3",
+        "plan_3_feature_4",
+        "plan_3_cta"
       ],
       "elements": {
         "eyebrow": ".eyebrow",
@@ -174,10 +277,17 @@
       "id": "testimonials",
       "name": "Member Stories",
       "fields": [
-        "testimonials_eyebrow", "testimonials_title",
-        "testimonial_1_quote", "testimonial_1_author", "testimonial_1_achievement",
-        "testimonial_2_quote", "testimonial_2_author", "testimonial_2_achievement",
-        "testimonial_3_quote", "testimonial_3_author", "testimonial_3_achievement"
+        "testimonials_eyebrow",
+        "testimonials_title",
+        "testimonial_1_quote",
+        "testimonial_1_author",
+        "testimonial_1_achievement",
+        "testimonial_2_quote",
+        "testimonial_2_author",
+        "testimonial_2_achievement",
+        "testimonial_3_quote",
+        "testimonial_3_author",
+        "testimonial_3_achievement"
       ],
       "elements": {
         "eyebrow": ".eyebrow",
@@ -193,7 +303,11 @@
     {
       "id": "booking",
       "name": "Book a Class",
-      "fields": ["booking_title", "booking_intro", "booking_cta"],
+      "fields": [
+        "booking_title",
+        "booking_intro",
+        "booking_cta"
+      ],
       "elements": {
         "heading": "h2.booking-h2",
         "intro": ".booking-intro",
@@ -207,9 +321,16 @@
       "id": "contact",
       "name": "Contact & Location",
       "fields": [
-        "contact_eyebrow", "contact_title", "contact_intro",
-        "contact_email", "contact_phone", "contact_address", "contact_hours",
-        "contact_form_title", "form_submit_text", "form_success_message"
+        "contact_eyebrow",
+        "contact_title",
+        "contact_intro",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "contact_hours",
+        "contact_form_title",
+        "form_submit_text",
+        "form_success_message"
       ],
       "elements": {
         "eyebrow": ".eyebrow",
@@ -226,11 +347,47 @@
       }
     },
     {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2",
+        "intro": ".section-subtitle",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card h3",
+        "post_excerpt": ".blog-card p",
+        "cta": ".blog-cta a"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
       "id": "footer",
       "name": "Footer",
       "fields": [
-        "business_name", "footer_tagline", "footer_text",
-        "social_instagram", "social_tiktok", "social_youtube"
+        "business_name",
+        "footer_tagline",
+        "footer_text",
+        "social_instagram",
+        "social_tiktok",
+        "social_youtube"
       ],
       "elements": {
         "logo": ".footer-logo",
@@ -244,201 +401,1046 @@
     }
   ],
   "variables": {
-    "business_name":      {"type": "text",  "label": "Business Name",      "default": "FORGE Athletic Club"},
-    "business_tagline":   {"type": "text",  "label": "Tagline",            "default": "Strength · Conditioning · Dubai"},
-    "meta_description":   {"type": "text",  "label": "Meta Description",   "default": "FORGE — a premium athletic club in Dubai offering group classes, personal training, Olympic lifting, Hyrox programming, and a members-only recovery suite."},
-    "canonical_url":      {"type": "url",   "label": "Canonical URL",      "default": "https://forge.ae"},
-    "og_image":           {"type": "image", "label": "OG Image",           "default": "/storage/builder-heroes/fitness.jpg"},
-    "og_locale":          {"type": "text",  "label": "OG Locale",          "default": "en_US"},
-
-    "nav_cta":            {"type": "text",  "label": "Nav CTA",            "default": "Book a Class"},
-
-    "hero_eyebrow":       {"type": "text",  "label": "Hero Eyebrow",       "default": "Athletic Club · Dubai Marina · Opened 2014"},
-    "hero_title":         {"type": "html",  "label": "Hero Title",         "default": "Train<br><em>like you mean it.</em>"},
-    "hero_subtitle":      {"type": "text",  "label": "Hero Subtitle",      "default": "A members-only athletic club in Dubai Marina. Strength, conditioning, Olympic lifting, Hyrox programming — coached in small groups by athletes who actually compete."},
-    "hero_cta":           {"type": "text",  "label": "Primary CTA",        "default": "Start Training"},
-    "hero_cta_secondary": {"type": "text",  "label": "Secondary CTA",      "default": "See Schedule"},
-    "hero_image":         {"type": "image", "label": "Hero Image",         "default": "/storage/builder-heroes/fitness.jpg"},
-    "hero_trust_badge":   {"type": "text",  "label": "Hero Trust Badge",   "default": "1,200+ Members · 40+ Classes Weekly · Dubai Marina"},
-
-    "stat_1_value": {"type": "text", "label": "Stat 1 Value", "default": "1,200+"},
-    "stat_1_label": {"type": "text", "label": "Stat 1 Label", "default": "Active Members"},
-    "stat_2_value": {"type": "text", "label": "Stat 2 Value", "default": "14"},
-    "stat_2_label": {"type": "text", "label": "Stat 2 Label", "default": "Coaches"},
-    "stat_3_value": {"type": "text", "label": "Stat 3 Value", "default": "42"},
-    "stat_3_label": {"type": "text", "label": "Stat 3 Label", "default": "Classes / Week"},
-    "stat_4_value": {"type": "text", "label": "Stat 4 Value", "default": "10"},
-    "stat_4_label": {"type": "text", "label": "Stat 4 Label", "default": "Years in Dubai"},
-
-    "services_eyebrow": {"type": "text", "label": "Programs Eyebrow", "default": "Programs"},
-    "services_title":   {"type": "html", "label": "Programs Title",   "default": "The work<br><em>we put in.</em>"},
-    "services_intro":   {"type": "text", "label": "Programs Intro",   "default": "Six programmes running daily. Small classes, capped attendance, coached by an athlete who has competed at the level they are teaching."},
-    "service_1_title":  {"type": "text", "label": "Program 1 Title",  "default": "Strength & Conditioning"},
-    "service_1_text":   {"type": "text", "label": "Program 1 Text",   "default": "Capacity-based strength blocks built around barbell, dumbbell, and accessory work. For members who want to get measurably stronger, with a test week every twelve."},
-    "service_1_tag_1":  {"type": "text", "label": "Program 1 Tag 1",  "default": "Barbell"},
-    "service_1_tag_2":  {"type": "text", "label": "Program 1 Tag 2",  "default": "Strength Blocks"},
-    "service_1_tag_3":  {"type": "text", "label": "Program 1 Tag 3",  "default": "Capacity Tests"},
-    "service_2_title":  {"type": "text", "label": "Program 2 Title",  "default": "HIIT & Conditioning"},
-    "service_2_text":   {"type": "text", "label": "Program 2 Text",   "default": "Fifty-minute metabolic conditioning — rowers, assault bikes, sled work, and loaded carries. High output, low injury risk."},
-    "service_2_tag_1":  {"type": "text", "label": "Program 2 Tag 1",  "default": "Rowers"},
-    "service_2_tag_2":  {"type": "text", "label": "Program 2 Tag 2",  "default": "Metcon"},
-    "service_2_tag_3":  {"type": "text", "label": "Program 2 Tag 3",  "default": "Sleds"},
-    "service_3_title":  {"type": "text", "label": "Program 3 Title",  "default": "Hyrox Prep"},
-    "service_3_text":   {"type": "text", "label": "Program 3 Text",   "default": "Dedicated Hyrox programming — eight stations, race-specific pacing, wall-ball and farmer-carry technique, and simulation races on Saturdays."},
-    "service_3_tag_1":  {"type": "text", "label": "Program 3 Tag 1",  "default": "Race Prep"},
-    "service_3_tag_2":  {"type": "text", "label": "Program 3 Tag 2",  "default": "Pacing"},
-    "service_3_tag_3":  {"type": "text", "label": "Program 3 Tag 3",  "default": "Simulation"},
-    "service_4_title":  {"type": "text", "label": "Program 4 Title",  "default": "Olympic Lifting"},
-    "service_4_text":   {"type": "text", "label": "Program 4 Text",   "default": "Snatch and clean & jerk, taught from first principles. Twice-weekly classes with two coaches on the platform at all times."},
-    "service_4_tag_1":  {"type": "text", "label": "Program 4 Tag 1",  "default": "Snatch"},
-    "service_4_tag_2":  {"type": "text", "label": "Program 4 Tag 2",  "default": "Clean & Jerk"},
-    "service_4_tag_3":  {"type": "text", "label": "Program 4 Tag 3",  "default": "Technique"},
-    "service_5_title":  {"type": "text", "label": "Program 5 Title",  "default": "Personal Training"},
-    "service_5_text":   {"type": "text", "label": "Program 5 Text",   "default": "One-to-one coaching in sixty-minute sessions, with programming written between sessions. Body comp goals, return-to-training, pre- and post-natal."},
-    "service_5_tag_1":  {"type": "text", "label": "Program 5 Tag 1",  "default": "1-on-1"},
-    "service_5_tag_2":  {"type": "text", "label": "Program 5 Tag 2",  "default": "Programmed"},
-    "service_5_tag_3":  {"type": "text", "label": "Program 5 Tag 3",  "default": "Goal-Based"},
-    "service_6_title":  {"type": "text", "label": "Program 6 Title",  "default": "Recovery & Mobility"},
-    "service_6_text":   {"type": "text", "label": "Program 6 Text",   "default": "Forty-five minute mobility and breathwork classes, plus a members-only recovery suite — sauna, cold plunge, and NormaTec compression."},
-    "service_6_tag_1":  {"type": "text", "label": "Program 6 Tag 1",  "default": "Sauna"},
-    "service_6_tag_2":  {"type": "text", "label": "Program 6 Tag 2",  "default": "Cold Plunge"},
-    "service_6_tag_3":  {"type": "text", "label": "Program 6 Tag 3",  "default": "Mobility"},
-
-    "trainers_eyebrow":  {"type": "text",  "label": "Trainers Eyebrow", "default": "Coaches"},
-    "trainers_title":    {"type": "html",  "label": "Trainers Title",   "default": "Coached by<br><em>athletes.</em>"},
-    "trainers_intro":    {"type": "text",  "label": "Trainers Intro",   "default": "Every coach on our floor still competes — powerlifting, Hyrox, weightlifting, or endurance. You learn from people who still do the thing, not people who used to."},
-    "trainer_1_name":    {"type": "text",  "label": "Trainer 1 Name",      "default": "Marcus Idowu"},
-    "trainer_1_specialty":{"type": "text", "label": "Trainer 1 Specialty", "default": "Head of S&C"},
-    "trainer_1_bio":     {"type": "text",  "label": "Trainer 1 Bio",       "default": "10 years coaching, former international rugby player. Specialises in return-from-injury and strength progression."},
-    "trainer_1_image":   {"type": "image", "label": "Trainer 1 Image",     "default": "/storage/builder-heroes/fitness.jpg"},
-    "trainer_2_name":    {"type": "text",  "label": "Trainer 2 Name",      "default": "Nadia Petrov"},
-    "trainer_2_specialty":{"type": "text", "label": "Trainer 2 Specialty", "default": "Olympic Lifting"},
-    "trainer_2_bio":     {"type": "text",  "label": "Trainer 2 Bio",       "default": "National-team weightlifter, 2-x European masters bronze. Teaches snatch and clean & jerk from scratch."},
-    "trainer_2_image":   {"type": "image", "label": "Trainer 2 Image",     "default": "/storage/builder-heroes/fitness.jpg"},
-    "trainer_3_name":    {"type": "text",  "label": "Trainer 3 Name",      "default": "Jordan Walker"},
-    "trainer_3_specialty":{"type": "text", "label": "Trainer 3 Specialty", "default": "Hyrox & Conditioning"},
-    "trainer_3_bio":     {"type": "text",  "label": "Trainer 3 Bio",       "default": "Hyrox Pro division, sub-60 finisher. Writes all of FORGE's Hyrox programming and simulation-race days."},
-    "trainer_3_image":   {"type": "image", "label": "Trainer 3 Image",     "default": "/storage/builder-heroes/fitness.jpg"},
-    "trainer_4_name":    {"type": "text",  "label": "Trainer 4 Name",      "default": "Priya Menon"},
-    "trainer_4_specialty":{"type": "text", "label": "Trainer 4 Specialty", "default": "Mobility & Recovery"},
-    "trainer_4_bio":     {"type": "text",  "label": "Trainer 4 Bio",       "default": "Yoga and FRC instructor. Runs all mobility classes and post-training breathwork sessions."},
-    "trainer_4_image":   {"type": "image", "label": "Trainer 4 Image",     "default": "/storage/builder-heroes/fitness.jpg"},
-
-    "schedule_eyebrow": {"type": "text", "label": "Schedule Eyebrow", "default": "Today's Schedule"},
-    "schedule_title":   {"type": "html", "label": "Schedule Title",   "default": "What's on<br><em>the floor.</em>"},
-    "schedule_intro":   {"type": "text", "label": "Schedule Intro",   "default": "Typical Wednesday — full weekly schedule in the member app. Classes capped at twelve."},
-    "session_1_time":    {"type": "text", "label": "Session 1 Time",    "default": "06:00"},
-    "session_1_name":    {"type": "text", "label": "Session 1 Name",    "default": "Strength — Lower Body"},
-    "session_1_trainer": {"type": "text", "label": "Session 1 Trainer", "default": "Marcus"},
-    "session_2_time":    {"type": "text", "label": "Session 2 Time",    "default": "07:15"},
-    "session_2_name":    {"type": "text", "label": "Session 2 Name",    "default": "HIIT / Conditioning"},
-    "session_2_trainer": {"type": "text", "label": "Session 2 Trainer", "default": "Jordan"},
-    "session_3_time":    {"type": "text", "label": "Session 3 Time",    "default": "12:00"},
-    "session_3_name":    {"type": "text", "label": "Session 3 Name",    "default": "Olympic Lifting"},
-    "session_3_trainer": {"type": "text", "label": "Session 3 Trainer", "default": "Nadia"},
-    "session_4_time":    {"type": "text", "label": "Session 4 Time",    "default": "17:30"},
-    "session_4_name":    {"type": "text", "label": "Session 4 Name",    "default": "Hyrox Simulation"},
-    "session_4_trainer": {"type": "text", "label": "Session 4 Trainer", "default": "Jordan"},
-    "session_5_time":    {"type": "text", "label": "Session 5 Time",    "default": "19:00"},
-    "session_5_name":    {"type": "text", "label": "Session 5 Name",    "default": "Strength — Upper Body"},
-    "session_5_trainer": {"type": "text", "label": "Session 5 Trainer", "default": "Marcus"},
-    "session_6_time":    {"type": "text", "label": "Session 6 Time",    "default": "20:15"},
-    "session_6_name":    {"type": "text", "label": "Session 6 Name",    "default": "Mobility & Breathwork"},
-    "session_6_trainer": {"type": "text", "label": "Session 6 Trainer", "default": "Priya"},
-
-    "trans_eyebrow":  {"type": "text",  "label": "Trans Eyebrow", "default": "Transformations"},
-    "trans_title":    {"type": "html",  "label": "Trans Title",   "default": "Members,<br><em>doing the work.</em>"},
-    "trans_intro":    {"type": "text",  "label": "Trans Intro",   "default": "Six months or more. Programmed training, eating well, showing up. These are our members."},
-    "trans_1_name":   {"type": "text",  "label": "Trans 1 Name",   "default": "Khalid M."},
-    "trans_1_result": {"type": "text",  "label": "Trans 1 Result", "default": "+28kg Deadlift in 4 months"},
-    "trans_1_image":  {"type": "image", "label": "Trans 1 Image",  "default": "/storage/builder-heroes/fitness.jpg"},
-    "trans_2_name":   {"type": "text",  "label": "Trans 2 Name",   "default": "Elena T."},
-    "trans_2_result": {"type": "text",  "label": "Trans 2 Result", "default": "Sub-70 Hyrox Pro, Dubai 2025"},
-    "trans_2_image":  {"type": "image", "label": "Trans 2 Image",  "default": "/storage/builder-heroes/fitness.jpg"},
-    "trans_3_name":   {"type": "text",  "label": "Trans 3 Name",   "default": "Omar B."},
-    "trans_3_result": {"type": "text",  "label": "Trans 3 Result", "default": "−12kg body fat, +5kg muscle"},
-    "trans_3_image":  {"type": "image", "label": "Trans 3 Image",  "default": "/storage/builder-heroes/fitness.jpg"},
-    "trans_4_name":   {"type": "text",  "label": "Trans 4 Name",   "default": "Sophia A."},
-    "trans_4_result": {"type": "text",  "label": "Trans 4 Result", "default": "Return to training, post-natal"},
-    "trans_4_image":  {"type": "image", "label": "Trans 4 Image",  "default": "/storage/builder-heroes/fitness.jpg"},
-    "trans_5_name":   {"type": "text",  "label": "Trans 5 Name",   "default": "Imran K."},
-    "trans_5_result": {"type": "text",  "label": "Trans 5 Result", "default": "First 100kg clean"},
-    "trans_5_image":  {"type": "image", "label": "Trans 5 Image",  "default": "/storage/builder-heroes/fitness.jpg"},
-    "trans_6_name":   {"type": "text",  "label": "Trans 6 Name",   "default": "Yasmin H."},
-    "trans_6_result": {"type": "text",  "label": "Trans 6 Result", "default": "Pull-up from scratch, 12 weeks"},
-    "trans_6_image":  {"type": "image", "label": "Trans 6 Image",  "default": "/storage/builder-heroes/fitness.jpg"},
-
-    "pricing_eyebrow": {"type": "text", "label": "Pricing Eyebrow", "default": "Membership"},
-    "pricing_title":   {"type": "html", "label": "Pricing Title",   "default": "Simple<br><em>memberships.</em>"},
-    "pricing_intro":   {"type": "text", "label": "Pricing Intro",   "default": "Month-to-month, no fixed contracts. Freeze any time for up to thirty days."},
-    "plan_1_name":      {"type": "text", "label": "Plan 1 Name",      "default": "Classes"},
-    "plan_1_price":     {"type": "text", "label": "Plan 1 Price",     "default": "AED 850"},
-    "plan_1_period":    {"type": "text", "label": "Plan 1 Period",    "default": "/ month"},
-    "plan_1_feature_1": {"type": "text", "label": "Plan 1 Feature 1", "default": "Unlimited group classes"},
-    "plan_1_feature_2": {"type": "text", "label": "Plan 1 Feature 2", "default": "All 42 weekly sessions"},
-    "plan_1_feature_3": {"type": "text", "label": "Plan 1 Feature 3", "default": "Member app access"},
-    "plan_1_feature_4": {"type": "text", "label": "Plan 1 Feature 4", "default": "No contract — freeze any time"},
-    "plan_1_cta":       {"type": "text", "label": "Plan 1 CTA",       "default": "Start Classes"},
-    "plan_2_name":      {"type": "text", "label": "Plan 2 Name",      "default": "Full Access"},
-    "plan_2_price":     {"type": "text", "label": "Plan 2 Price",     "default": "AED 1,650"},
-    "plan_2_period":    {"type": "text", "label": "Plan 2 Period",    "default": "/ month"},
-    "plan_2_feature_1": {"type": "text", "label": "Plan 2 Feature 1", "default": "Everything in Classes"},
-    "plan_2_feature_2": {"type": "text", "label": "Plan 2 Feature 2", "default": "Recovery suite + sauna + plunge"},
-    "plan_2_feature_3": {"type": "text", "label": "Plan 2 Feature 3", "default": "InBody monthly assessment"},
-    "plan_2_feature_4": {"type": "text", "label": "Plan 2 Feature 4", "default": "Open gym 24/7"},
-    "plan_2_cta":       {"type": "text", "label": "Plan 2 CTA",       "default": "Join Full Access"},
-    "plan_3_name":      {"type": "text", "label": "Plan 3 Name",      "default": "Coached"},
-    "plan_3_price":     {"type": "text", "label": "Plan 3 Price",     "default": "AED 3,200"},
-    "plan_3_period":    {"type": "text", "label": "Plan 3 Period",    "default": "/ month"},
-    "plan_3_feature_1": {"type": "text", "label": "Plan 3 Feature 1", "default": "Everything in Full Access"},
-    "plan_3_feature_2": {"type": "text", "label": "Plan 3 Feature 2", "default": "4× personal training sessions"},
-    "plan_3_feature_3": {"type": "text", "label": "Plan 3 Feature 3", "default": "Custom programming"},
-    "plan_3_feature_4": {"type": "text", "label": "Plan 3 Feature 4", "default": "Quarterly goal review"},
-    "plan_3_cta":       {"type": "text", "label": "Plan 3 CTA",       "default": "Start Coached"},
-
-    "testimonials_eyebrow": {"type": "text", "label": "Testimonials Eyebrow", "default": "Members"},
-    "testimonials_title":   {"type": "html", "label": "Testimonials Title",   "default": "Members,<br><em>in their words.</em>"},
-    "testimonial_1_quote":    {"type": "text", "label": "Testimonial 1 Quote",     "default": "FORGE is the first gym I've walked into where the coaches actually know what they're doing — I've got stronger and stayed healthy at the same time, for the first time in my training life."},
-    "testimonial_1_author":   {"type": "text", "label": "Testimonial 1 Author",    "default": "Khalid M."},
-    "testimonial_1_achievement":{"type": "text", "label": "Testimonial 1 Achievement", "default": "+28kg Deadlift"},
-    "testimonial_2_quote":    {"type": "text", "label": "Testimonial 2 Quote",     "default": "I came in for Hyrox prep and left with a whole new way of training. Jordan's programming got me to sub-70 in my first Pro heat — and I enjoyed every session."},
-    "testimonial_2_author":   {"type": "text", "label": "Testimonial 2 Author",    "default": "Elena T."},
-    "testimonial_2_achievement":{"type": "text", "label": "Testimonial 2 Achievement", "default": "Sub-70 Hyrox Pro"},
-    "testimonial_3_quote":    {"type": "text", "label": "Testimonial 3 Quote",     "default": "Four PT sessions a month with Nadia, and my Olympic lifts now actually feel good. It's the difference between a gym and a proper athletic club."},
-    "testimonial_3_author":   {"type": "text", "label": "Testimonial 3 Author",    "default": "Omar B."},
-    "testimonial_3_achievement":{"type": "text", "label": "Testimonial 3 Achievement", "default": "First 100kg Clean"},
-
-    "booking_title":   {"type": "html", "label": "Booking Title", "default": "Book a<br><em>class.</em>"},
-    "booking_intro":   {"type": "text", "label": "Booking Intro", "default": "Non-members welcome — your first class is on us. Pick a day, a time, and a programme."},
-    "booking_cta":     {"type": "text", "label": "Booking CTA",   "default": "Book a Class"},
-    "booking_display": {"type": "text", "label": "Booking Display", "default": ""},
-
-    "contact_eyebrow":      {"type": "text", "label": "Contact Eyebrow",     "default": "Contact"},
-    "contact_title":        {"type": "html", "label": "Contact Title",       "default": "Drop in or<br><em>message us.</em>"},
-    "contact_intro":        {"type": "text", "label": "Contact Intro",       "default": "Or walk in — we're open from 5:30am and the front desk is always happy to show you around the floor."},
-    "contact_email":        {"type": "text", "label": "Contact Email",       "default": "hello@forge.ae"},
-    "contact_phone":        {"type": "text", "label": "Contact Phone",       "default": "+971 4 000 0000"},
-    "contact_address":      {"type": "text", "label": "Contact Address",     "default": "Bay Square, Business Bay, Dubai"},
-    "contact_hours":        {"type": "text", "label": "Opening Hours",       "default": "Open 5:30am – 10pm  ·  7 days"},
-    "contact_form_title":   {"type": "html", "label": "Form Title",          "default": "Send us<br><em>a message.</em>"},
-    "form_submit_text":     {"type": "text", "label": "Submit Button",       "default": "Send Message →"},
-    "form_success_message": {"type": "text", "label": "Success Message",     "default": "✓ Thanks — we'll get back to you within one working day."},
-
-    "footer_tagline":    {"type": "text", "label": "Footer Tagline",   "default": "Strength, conditioning, and mobility — coached properly."},
-    "footer_text":       {"type": "text", "label": "Footer Copyright", "default": "© 2026 FORGE Athletic Club. All rights reserved."},
-    "social_instagram":  {"type": "url",  "label": "Instagram URL",    "default": "#"},
-    "social_tiktok":     {"type": "url",  "label": "TikTok URL",       "default": "#"},
-    "social_youtube":    {"type": "url",  "label": "YouTube URL",      "default": "#"},
-
-    "chalk":          {"type": "color", "label": "Chalk (Text)",        "default": "#F5F5F5"},
-    "chalk_soft":     {"type": "color", "label": "Chalk Soft",          "default": "#C8C8C8"},
-    "carbon":         {"type": "color", "label": "Carbon (Background)", "default": "#0D0D0D"},
-    "carbon_soft":    {"type": "color", "label": "Carbon Soft",         "default": "#161616"},
-    "carbon_card":    {"type": "color", "label": "Carbon Card",         "default": "#1E1E1E"},
-    "orange":         {"type": "color", "label": "Electric Orange",     "default": "#FF4D00"},
-    "orange_deep":    {"type": "color", "label": "Orange Deep",         "default": "#CC3D00"},
-    "warm_grey":      {"type": "color", "label": "Warm Grey",           "default": "#8A8A8A"},
-    "divider":        {"type": "color", "label": "Divider",             "default": "#2A2A2A"},
-    "accent_muted":   {"type": "color", "label": "Accent Muted",        "default": "#FFB08C"}
+    "business_name": {
+      "type": "text",
+      "label": "Business Name",
+      "default": "FORGE Athletic Club"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Strength \u00b7 Conditioning \u00b7 Dubai"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "FORGE \u2014 a premium athletic club in Dubai offering group classes, personal training, Olympic lifting, Hyrox programming, and a members-only recovery suite."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://forge.ae"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Book a Class"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Athletic Club \u00b7 Dubai Marina \u00b7 Opened 2014"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Title",
+      "default": "Train<br><em>like you mean it.</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "A members-only athletic club in Dubai Marina. Strength, conditioning, Olympic lifting, Hyrox programming \u2014 coached in small groups by athletes who actually compete."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Primary CTA",
+      "default": "Start Training"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Secondary CTA",
+      "default": "See Schedule"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "hero_trust_badge": {
+      "type": "text",
+      "label": "Hero Trust Badge",
+      "default": "1,200+ Members \u00b7 40+ Classes Weekly \u00b7 Dubai Marina"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "1,200+"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Active Members"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "14"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Coaches"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "42"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Classes / Week"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "10"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Years in Dubai"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Programs Eyebrow",
+      "default": "Programs"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Programs Title",
+      "default": "The work<br><em>we put in.</em>"
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Programs Intro",
+      "default": "Six programmes running daily. Small classes, capped attendance, coached by an athlete who has competed at the level they are teaching."
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Program 1 Title",
+      "default": "Strength & Conditioning"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Program 1 Text",
+      "default": "Capacity-based strength blocks built around barbell, dumbbell, and accessory work. For members who want to get measurably stronger, with a test week every twelve."
+    },
+    "service_1_tag_1": {
+      "type": "text",
+      "label": "Program 1 Tag 1",
+      "default": "Barbell"
+    },
+    "service_1_tag_2": {
+      "type": "text",
+      "label": "Program 1 Tag 2",
+      "default": "Strength Blocks"
+    },
+    "service_1_tag_3": {
+      "type": "text",
+      "label": "Program 1 Tag 3",
+      "default": "Capacity Tests"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Program 2 Title",
+      "default": "HIIT & Conditioning"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Program 2 Text",
+      "default": "Fifty-minute metabolic conditioning \u2014 rowers, assault bikes, sled work, and loaded carries. High output, low injury risk."
+    },
+    "service_2_tag_1": {
+      "type": "text",
+      "label": "Program 2 Tag 1",
+      "default": "Rowers"
+    },
+    "service_2_tag_2": {
+      "type": "text",
+      "label": "Program 2 Tag 2",
+      "default": "Metcon"
+    },
+    "service_2_tag_3": {
+      "type": "text",
+      "label": "Program 2 Tag 3",
+      "default": "Sleds"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Program 3 Title",
+      "default": "Hyrox Prep"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Program 3 Text",
+      "default": "Dedicated Hyrox programming \u2014 eight stations, race-specific pacing, wall-ball and farmer-carry technique, and simulation races on Saturdays."
+    },
+    "service_3_tag_1": {
+      "type": "text",
+      "label": "Program 3 Tag 1",
+      "default": "Race Prep"
+    },
+    "service_3_tag_2": {
+      "type": "text",
+      "label": "Program 3 Tag 2",
+      "default": "Pacing"
+    },
+    "service_3_tag_3": {
+      "type": "text",
+      "label": "Program 3 Tag 3",
+      "default": "Simulation"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Program 4 Title",
+      "default": "Olympic Lifting"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Program 4 Text",
+      "default": "Snatch and clean & jerk, taught from first principles. Twice-weekly classes with two coaches on the platform at all times."
+    },
+    "service_4_tag_1": {
+      "type": "text",
+      "label": "Program 4 Tag 1",
+      "default": "Snatch"
+    },
+    "service_4_tag_2": {
+      "type": "text",
+      "label": "Program 4 Tag 2",
+      "default": "Clean & Jerk"
+    },
+    "service_4_tag_3": {
+      "type": "text",
+      "label": "Program 4 Tag 3",
+      "default": "Technique"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Program 5 Title",
+      "default": "Personal Training"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Program 5 Text",
+      "default": "One-to-one coaching in sixty-minute sessions, with programming written between sessions. Body comp goals, return-to-training, pre- and post-natal."
+    },
+    "service_5_tag_1": {
+      "type": "text",
+      "label": "Program 5 Tag 1",
+      "default": "1-on-1"
+    },
+    "service_5_tag_2": {
+      "type": "text",
+      "label": "Program 5 Tag 2",
+      "default": "Programmed"
+    },
+    "service_5_tag_3": {
+      "type": "text",
+      "label": "Program 5 Tag 3",
+      "default": "Goal-Based"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Program 6 Title",
+      "default": "Recovery & Mobility"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Program 6 Text",
+      "default": "Forty-five minute mobility and breathwork classes, plus a members-only recovery suite \u2014 sauna, cold plunge, and NormaTec compression."
+    },
+    "service_6_tag_1": {
+      "type": "text",
+      "label": "Program 6 Tag 1",
+      "default": "Sauna"
+    },
+    "service_6_tag_2": {
+      "type": "text",
+      "label": "Program 6 Tag 2",
+      "default": "Cold Plunge"
+    },
+    "service_6_tag_3": {
+      "type": "text",
+      "label": "Program 6 Tag 3",
+      "default": "Mobility"
+    },
+    "trainers_eyebrow": {
+      "type": "text",
+      "label": "Trainers Eyebrow",
+      "default": "Coaches"
+    },
+    "trainers_title": {
+      "type": "html",
+      "label": "Trainers Title",
+      "default": "Coached by<br><em>athletes.</em>"
+    },
+    "trainers_intro": {
+      "type": "text",
+      "label": "Trainers Intro",
+      "default": "Every coach on our floor still competes \u2014 powerlifting, Hyrox, weightlifting, or endurance. You learn from people who still do the thing, not people who used to."
+    },
+    "trainer_1_name": {
+      "type": "text",
+      "label": "Trainer 1 Name",
+      "default": "Marcus Idowu"
+    },
+    "trainer_1_specialty": {
+      "type": "text",
+      "label": "Trainer 1 Specialty",
+      "default": "Head of S&C"
+    },
+    "trainer_1_bio": {
+      "type": "text",
+      "label": "Trainer 1 Bio",
+      "default": "10 years coaching, former international rugby player. Specialises in return-from-injury and strength progression."
+    },
+    "trainer_1_image": {
+      "type": "image",
+      "label": "Trainer 1 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "trainer_2_name": {
+      "type": "text",
+      "label": "Trainer 2 Name",
+      "default": "Nadia Petrov"
+    },
+    "trainer_2_specialty": {
+      "type": "text",
+      "label": "Trainer 2 Specialty",
+      "default": "Olympic Lifting"
+    },
+    "trainer_2_bio": {
+      "type": "text",
+      "label": "Trainer 2 Bio",
+      "default": "National-team weightlifter, 2-x European masters bronze. Teaches snatch and clean & jerk from scratch."
+    },
+    "trainer_2_image": {
+      "type": "image",
+      "label": "Trainer 2 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "trainer_3_name": {
+      "type": "text",
+      "label": "Trainer 3 Name",
+      "default": "Jordan Walker"
+    },
+    "trainer_3_specialty": {
+      "type": "text",
+      "label": "Trainer 3 Specialty",
+      "default": "Hyrox & Conditioning"
+    },
+    "trainer_3_bio": {
+      "type": "text",
+      "label": "Trainer 3 Bio",
+      "default": "Hyrox Pro division, sub-60 finisher. Writes all of FORGE's Hyrox programming and simulation-race days."
+    },
+    "trainer_3_image": {
+      "type": "image",
+      "label": "Trainer 3 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "trainer_4_name": {
+      "type": "text",
+      "label": "Trainer 4 Name",
+      "default": "Priya Menon"
+    },
+    "trainer_4_specialty": {
+      "type": "text",
+      "label": "Trainer 4 Specialty",
+      "default": "Mobility & Recovery"
+    },
+    "trainer_4_bio": {
+      "type": "text",
+      "label": "Trainer 4 Bio",
+      "default": "Yoga and FRC instructor. Runs all mobility classes and post-training breathwork sessions."
+    },
+    "trainer_4_image": {
+      "type": "image",
+      "label": "Trainer 4 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "schedule_eyebrow": {
+      "type": "text",
+      "label": "Schedule Eyebrow",
+      "default": "Today's Schedule"
+    },
+    "schedule_title": {
+      "type": "html",
+      "label": "Schedule Title",
+      "default": "What's on<br><em>the floor.</em>"
+    },
+    "schedule_intro": {
+      "type": "text",
+      "label": "Schedule Intro",
+      "default": "Typical Wednesday \u2014 full weekly schedule in the member app. Classes capped at twelve."
+    },
+    "session_1_time": {
+      "type": "text",
+      "label": "Session 1 Time",
+      "default": "06:00"
+    },
+    "session_1_name": {
+      "type": "text",
+      "label": "Session 1 Name",
+      "default": "Strength \u2014 Lower Body"
+    },
+    "session_1_trainer": {
+      "type": "text",
+      "label": "Session 1 Trainer",
+      "default": "Marcus"
+    },
+    "session_2_time": {
+      "type": "text",
+      "label": "Session 2 Time",
+      "default": "07:15"
+    },
+    "session_2_name": {
+      "type": "text",
+      "label": "Session 2 Name",
+      "default": "HIIT / Conditioning"
+    },
+    "session_2_trainer": {
+      "type": "text",
+      "label": "Session 2 Trainer",
+      "default": "Jordan"
+    },
+    "session_3_time": {
+      "type": "text",
+      "label": "Session 3 Time",
+      "default": "12:00"
+    },
+    "session_3_name": {
+      "type": "text",
+      "label": "Session 3 Name",
+      "default": "Olympic Lifting"
+    },
+    "session_3_trainer": {
+      "type": "text",
+      "label": "Session 3 Trainer",
+      "default": "Nadia"
+    },
+    "session_4_time": {
+      "type": "text",
+      "label": "Session 4 Time",
+      "default": "17:30"
+    },
+    "session_4_name": {
+      "type": "text",
+      "label": "Session 4 Name",
+      "default": "Hyrox Simulation"
+    },
+    "session_4_trainer": {
+      "type": "text",
+      "label": "Session 4 Trainer",
+      "default": "Jordan"
+    },
+    "session_5_time": {
+      "type": "text",
+      "label": "Session 5 Time",
+      "default": "19:00"
+    },
+    "session_5_name": {
+      "type": "text",
+      "label": "Session 5 Name",
+      "default": "Strength \u2014 Upper Body"
+    },
+    "session_5_trainer": {
+      "type": "text",
+      "label": "Session 5 Trainer",
+      "default": "Marcus"
+    },
+    "session_6_time": {
+      "type": "text",
+      "label": "Session 6 Time",
+      "default": "20:15"
+    },
+    "session_6_name": {
+      "type": "text",
+      "label": "Session 6 Name",
+      "default": "Mobility & Breathwork"
+    },
+    "session_6_trainer": {
+      "type": "text",
+      "label": "Session 6 Trainer",
+      "default": "Priya"
+    },
+    "trans_eyebrow": {
+      "type": "text",
+      "label": "Trans Eyebrow",
+      "default": "Transformations"
+    },
+    "trans_title": {
+      "type": "html",
+      "label": "Trans Title",
+      "default": "Members,<br><em>doing the work.</em>"
+    },
+    "trans_intro": {
+      "type": "text",
+      "label": "Trans Intro",
+      "default": "Six months or more. Programmed training, eating well, showing up. These are our members."
+    },
+    "trans_1_name": {
+      "type": "text",
+      "label": "Trans 1 Name",
+      "default": "Khalid M."
+    },
+    "trans_1_result": {
+      "type": "text",
+      "label": "Trans 1 Result",
+      "default": "+28kg Deadlift in 4 months"
+    },
+    "trans_1_image": {
+      "type": "image",
+      "label": "Trans 1 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "trans_2_name": {
+      "type": "text",
+      "label": "Trans 2 Name",
+      "default": "Elena T."
+    },
+    "trans_2_result": {
+      "type": "text",
+      "label": "Trans 2 Result",
+      "default": "Sub-70 Hyrox Pro, Dubai 2025"
+    },
+    "trans_2_image": {
+      "type": "image",
+      "label": "Trans 2 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "trans_3_name": {
+      "type": "text",
+      "label": "Trans 3 Name",
+      "default": "Omar B."
+    },
+    "trans_3_result": {
+      "type": "text",
+      "label": "Trans 3 Result",
+      "default": "\u221212kg body fat, +5kg muscle"
+    },
+    "trans_3_image": {
+      "type": "image",
+      "label": "Trans 3 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "trans_4_name": {
+      "type": "text",
+      "label": "Trans 4 Name",
+      "default": "Sophia A."
+    },
+    "trans_4_result": {
+      "type": "text",
+      "label": "Trans 4 Result",
+      "default": "Return to training, post-natal"
+    },
+    "trans_4_image": {
+      "type": "image",
+      "label": "Trans 4 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "trans_5_name": {
+      "type": "text",
+      "label": "Trans 5 Name",
+      "default": "Imran K."
+    },
+    "trans_5_result": {
+      "type": "text",
+      "label": "Trans 5 Result",
+      "default": "First 100kg clean"
+    },
+    "trans_5_image": {
+      "type": "image",
+      "label": "Trans 5 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "trans_6_name": {
+      "type": "text",
+      "label": "Trans 6 Name",
+      "default": "Yasmin H."
+    },
+    "trans_6_result": {
+      "type": "text",
+      "label": "Trans 6 Result",
+      "default": "Pull-up from scratch, 12 weeks"
+    },
+    "trans_6_image": {
+      "type": "image",
+      "label": "Trans 6 Image",
+      "default": "/storage/builder-heroes/fitness.jpg"
+    },
+    "pricing_eyebrow": {
+      "type": "text",
+      "label": "Pricing Eyebrow",
+      "default": "Membership"
+    },
+    "pricing_title": {
+      "type": "html",
+      "label": "Pricing Title",
+      "default": "Simple<br><em>memberships.</em>"
+    },
+    "pricing_intro": {
+      "type": "text",
+      "label": "Pricing Intro",
+      "default": "Month-to-month, no fixed contracts. Freeze any time for up to thirty days."
+    },
+    "plan_1_name": {
+      "type": "text",
+      "label": "Plan 1 Name",
+      "default": "Classes"
+    },
+    "plan_1_price": {
+      "type": "text",
+      "label": "Plan 1 Price",
+      "default": "AED 850"
+    },
+    "plan_1_period": {
+      "type": "text",
+      "label": "Plan 1 Period",
+      "default": "/ month"
+    },
+    "plan_1_feature_1": {
+      "type": "text",
+      "label": "Plan 1 Feature 1",
+      "default": "Unlimited group classes"
+    },
+    "plan_1_feature_2": {
+      "type": "text",
+      "label": "Plan 1 Feature 2",
+      "default": "All 42 weekly sessions"
+    },
+    "plan_1_feature_3": {
+      "type": "text",
+      "label": "Plan 1 Feature 3",
+      "default": "Member app access"
+    },
+    "plan_1_feature_4": {
+      "type": "text",
+      "label": "Plan 1 Feature 4",
+      "default": "No contract \u2014 freeze any time"
+    },
+    "plan_1_cta": {
+      "type": "text",
+      "label": "Plan 1 CTA",
+      "default": "Start Classes"
+    },
+    "plan_2_name": {
+      "type": "text",
+      "label": "Plan 2 Name",
+      "default": "Full Access"
+    },
+    "plan_2_price": {
+      "type": "text",
+      "label": "Plan 2 Price",
+      "default": "AED 1,650"
+    },
+    "plan_2_period": {
+      "type": "text",
+      "label": "Plan 2 Period",
+      "default": "/ month"
+    },
+    "plan_2_feature_1": {
+      "type": "text",
+      "label": "Plan 2 Feature 1",
+      "default": "Everything in Classes"
+    },
+    "plan_2_feature_2": {
+      "type": "text",
+      "label": "Plan 2 Feature 2",
+      "default": "Recovery suite + sauna + plunge"
+    },
+    "plan_2_feature_3": {
+      "type": "text",
+      "label": "Plan 2 Feature 3",
+      "default": "InBody monthly assessment"
+    },
+    "plan_2_feature_4": {
+      "type": "text",
+      "label": "Plan 2 Feature 4",
+      "default": "Open gym 24/7"
+    },
+    "plan_2_cta": {
+      "type": "text",
+      "label": "Plan 2 CTA",
+      "default": "Join Full Access"
+    },
+    "plan_3_name": {
+      "type": "text",
+      "label": "Plan 3 Name",
+      "default": "Coached"
+    },
+    "plan_3_price": {
+      "type": "text",
+      "label": "Plan 3 Price",
+      "default": "AED 3,200"
+    },
+    "plan_3_period": {
+      "type": "text",
+      "label": "Plan 3 Period",
+      "default": "/ month"
+    },
+    "plan_3_feature_1": {
+      "type": "text",
+      "label": "Plan 3 Feature 1",
+      "default": "Everything in Full Access"
+    },
+    "plan_3_feature_2": {
+      "type": "text",
+      "label": "Plan 3 Feature 2",
+      "default": "4\u00d7 personal training sessions"
+    },
+    "plan_3_feature_3": {
+      "type": "text",
+      "label": "Plan 3 Feature 3",
+      "default": "Custom programming"
+    },
+    "plan_3_feature_4": {
+      "type": "text",
+      "label": "Plan 3 Feature 4",
+      "default": "Quarterly goal review"
+    },
+    "plan_3_cta": {
+      "type": "text",
+      "label": "Plan 3 CTA",
+      "default": "Start Coached"
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Members"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Title",
+      "default": "Members,<br><em>in their words.</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "FORGE is the first gym I've walked into where the coaches actually know what they're doing \u2014 I've got stronger and stayed healthy at the same time, for the first time in my training life."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Khalid M."
+    },
+    "testimonial_1_achievement": {
+      "type": "text",
+      "label": "Testimonial 1 Achievement",
+      "default": "+28kg Deadlift"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "I came in for Hyrox prep and left with a whole new way of training. Jordan's programming got me to sub-70 in my first Pro heat \u2014 and I enjoyed every session."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Elena T."
+    },
+    "testimonial_2_achievement": {
+      "type": "text",
+      "label": "Testimonial 2 Achievement",
+      "default": "Sub-70 Hyrox Pro"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Four PT sessions a month with Nadia, and my Olympic lifts now actually feel good. It's the difference between a gym and a proper athletic club."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Omar B."
+    },
+    "testimonial_3_achievement": {
+      "type": "text",
+      "label": "Testimonial 3 Achievement",
+      "default": "First 100kg Clean"
+    },
+    "booking_title": {
+      "type": "html",
+      "label": "Booking Title",
+      "default": "Book a<br><em>class.</em>"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Non-members welcome \u2014 your first class is on us. Pick a day, a time, and a programme."
+    },
+    "booking_cta": {
+      "type": "text",
+      "label": "Booking CTA",
+      "default": "Book a Class"
+    },
+    "booking_display": {
+      "type": "text",
+      "label": "Booking Display",
+      "default": ""
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "Contact"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Title",
+      "default": "Drop in or<br><em>message us.</em>"
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "Or walk in \u2014 we're open from 5:30am and the front desk is always happy to show you around the floor."
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Contact Email",
+      "default": "hello@forge.ae"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Contact Phone",
+      "default": "+971 4 000 0000"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Contact Address",
+      "default": "Bay Square, Business Bay, Dubai"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Opening Hours",
+      "default": "Open 5:30am \u2013 10pm  \u00b7  7 days"
+    },
+    "contact_form_title": {
+      "type": "html",
+      "label": "Form Title",
+      "default": "Send us<br><em>a message.</em>"
+    },
+    "form_submit_text": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Send Message \u2192"
+    },
+    "form_success_message": {
+      "type": "text",
+      "label": "Success Message",
+      "default": "\u2713 Thanks \u2014 we'll get back to you within one working day."
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Strength, conditioning, and mobility \u2014 coached properly."
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Copyright",
+      "default": "\u00a9 2026 FORGE Athletic Club. All rights reserved."
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "chalk": {
+      "type": "color",
+      "label": "Chalk (Text)",
+      "default": "#F5F5F5"
+    },
+    "chalk_soft": {
+      "type": "color",
+      "label": "Chalk Soft",
+      "default": "#C8C8C8"
+    },
+    "carbon": {
+      "type": "color",
+      "label": "Carbon (Background)",
+      "default": "#0D0D0D"
+    },
+    "carbon_soft": {
+      "type": "color",
+      "label": "Carbon Soft",
+      "default": "#161616"
+    },
+    "carbon_card": {
+      "type": "color",
+      "label": "Carbon Card",
+      "default": "#1E1E1E"
+    },
+    "orange": {
+      "type": "color",
+      "label": "Electric Orange",
+      "default": "#FF4D00"
+    },
+    "orange_deep": {
+      "type": "color",
+      "label": "Orange Deep",
+      "default": "#CC3D00"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#8A8A8A"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#2A2A2A"
+    },
+    "accent_muted": {
+      "type": "color",
+      "label": "Accent Muted",
+      "default": "#FFB08C"
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "Latest from Our Blog"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Tips, news and insights from our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first visit"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-visit"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for taking your time"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why patience and care matters."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/taking-time"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "View All Posts \u2192"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ],
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 6
   }
 }

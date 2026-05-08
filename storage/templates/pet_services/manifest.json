@@ -1,1175 +1,1348 @@
 {
-    "id": "pet_services",
-    "name": "Pet Services",
-    "industry": "pet_services",
-    "description": "Full-service pet care template — friendly orange/teal palette with Nunito rounded display and Inter body, welcoming hero, six services (Vet Care, Grooming, Boarding, Training, Daycare, Pet Shop), four trust pillars, team of vets and groomers, happy-pet gallery, breeds-served trust strip, pet-owner testimonials, and a warm Appointment booking form. Built for Dubai pet clinics, groomers, and boarding facilities.",
-    "thumbnail": "/storage/builder-heroes/pet_services.jpg",
-    "category": "pets",
-    "blocks": [
-        {
-            "id": "nav",
-            "name": "Navigation",
-            "elements": {
-                "logo": "nav .logo",
-                "nav_1": "nav .nav-link-1",
-                "nav_2": "nav .nav-link-2",
-                "nav_3": "nav .nav-link-3",
-                "nav_4": "nav .nav-link-4",
-                "nav_5": "nav .nav-link-5",
-                "nav_cta": "nav .nav-cta"
-            }
-        },
-        {
-            "id": "hero",
-            "name": "Hero",
-            "elements": {
-                "hero_image": "section.hero",
-                "hero_eyebrow": ".hero-eyebrow",
-                "hero_title": ".hero-title",
-                "hero_subtitle": ".hero-subtitle",
-                "hero_cta_primary": ".hero-cta-row a:nth-child(1)",
-                "hero_cta_secondary": ".hero-cta-row a:nth-child(2)",
-                "hero_trust_1": ".hero-trust-1",
-                "hero_trust_2": ".hero-trust-2",
-                "hero_trust_3": ".hero-trust-3",
-                "hero_trust_4": ".hero-trust-4"
-            }
-        },
-        {
-            "id": "stats",
-            "name": "Stats",
-            "elements": {
-                "stat_1_value": ".stats-grid .stat-item:nth-child(1) .stat-value",
-                "stat_1_label": ".stats-grid .stat-item:nth-child(1) .stat-label",
-                "stat_2_value": ".stats-grid .stat-item:nth-child(2) .stat-value",
-                "stat_2_label": ".stats-grid .stat-item:nth-child(2) .stat-label",
-                "stat_3_value": ".stats-grid .stat-item:nth-child(3) .stat-value",
-                "stat_3_label": ".stats-grid .stat-item:nth-child(3) .stat-label",
-                "stat_4_value": ".stats-grid .stat-item:nth-child(4) .stat-value",
-                "stat_4_label": ".stats-grid .stat-item:nth-child(4) .stat-label"
-            }
-        },
-        {
-            "id": "services",
-            "name": "Services Grid",
-            "elements": {
-                "services_eyebrow": "#services .eyebrow",
-                "services_title": "#services .h-section",
-                "services_intro": "#services .section-intro",
-                "service_1_icon": "#services .service:nth-child(1) .service-icon",
-                "service_1_title": "#services .service:nth-child(1) h3",
-                "service_1_text": "#services .service:nth-child(1) p",
-                "service_1_link": "#services .service:nth-child(1) .service-link",
-                "service_2_icon": "#services .service:nth-child(2) .service-icon",
-                "service_2_title": "#services .service:nth-child(2) h3",
-                "service_2_text": "#services .service:nth-child(2) p",
-                "service_2_link": "#services .service:nth-child(2) .service-link",
-                "service_3_icon": "#services .service:nth-child(3) .service-icon",
-                "service_3_title": "#services .service:nth-child(3) h3",
-                "service_3_text": "#services .service:nth-child(3) p",
-                "service_3_link": "#services .service:nth-child(3) .service-link",
-                "service_4_icon": "#services .service:nth-child(4) .service-icon",
-                "service_4_title": "#services .service:nth-child(4) h3",
-                "service_4_text": "#services .service:nth-child(4) p",
-                "service_4_link": "#services .service:nth-child(4) .service-link",
-                "service_5_icon": "#services .service:nth-child(5) .service-icon",
-                "service_5_title": "#services .service:nth-child(5) h3",
-                "service_5_text": "#services .service:nth-child(5) p",
-                "service_5_link": "#services .service:nth-child(5) .service-link",
-                "service_6_icon": "#services .service:nth-child(6) .service-icon",
-                "service_6_title": "#services .service:nth-child(6) h3",
-                "service_6_text": "#services .service:nth-child(6) p",
-                "service_6_link": "#services .service:nth-child(6) .service-link"
-            }
-        },
-        {
-            "id": "why_us",
-            "name": "Why Us",
-            "elements": {
-                "why_us_eyebrow": "#why_us .eyebrow",
-                "why_us_title": "#why_us .h-section",
-                "why_us_intro": "#why_us .section-intro",
-                "pillar_1_icon": ".pillars-grid .pillar:nth-child(1) .pillar-icon",
-                "pillar_1_title": ".pillars-grid .pillar:nth-child(1) h3",
-                "pillar_1_text": ".pillars-grid .pillar:nth-child(1) p",
-                "pillar_2_icon": ".pillars-grid .pillar:nth-child(2) .pillar-icon",
-                "pillar_2_title": ".pillars-grid .pillar:nth-child(2) h3",
-                "pillar_2_text": ".pillars-grid .pillar:nth-child(2) p",
-                "pillar_3_icon": ".pillars-grid .pillar:nth-child(3) .pillar-icon",
-                "pillar_3_title": ".pillars-grid .pillar:nth-child(3) h3",
-                "pillar_3_text": ".pillars-grid .pillar:nth-child(3) p",
-                "pillar_4_icon": ".pillars-grid .pillar:nth-child(4) .pillar-icon",
-                "pillar_4_title": ".pillars-grid .pillar:nth-child(4) h3",
-                "pillar_4_text": ".pillars-grid .pillar:nth-child(4) p"
-            }
-        },
-        {
-            "id": "team",
-            "name": "Team",
-            "elements": {
-                "team_eyebrow": "#team .eyebrow",
-                "team_title": "#team .h-section",
-                "team_intro": "#team .section-intro",
-                "member_1_image": ".team-grid .member:nth-child(1) .member-photo",
-                "member_1_name": ".team-grid .member:nth-child(1) h3",
-                "member_1_role": ".team-grid .member:nth-child(1) .member-role",
-                "member_1_bio": ".team-grid .member:nth-child(1) .member-bio",
-                "member_2_image": ".team-grid .member:nth-child(2) .member-photo",
-                "member_2_name": ".team-grid .member:nth-child(2) h3",
-                "member_2_role": ".team-grid .member:nth-child(2) .member-role",
-                "member_2_bio": ".team-grid .member:nth-child(2) .member-bio",
-                "member_3_image": ".team-grid .member:nth-child(3) .member-photo",
-                "member_3_name": ".team-grid .member:nth-child(3) h3",
-                "member_3_role": ".team-grid .member:nth-child(3) .member-role",
-                "member_3_bio": ".team-grid .member:nth-child(3) .member-bio",
-                "member_4_image": ".team-grid .member:nth-child(4) .member-photo",
-                "member_4_name": ".team-grid .member:nth-child(4) h3",
-                "member_4_role": ".team-grid .member:nth-child(4) .member-role",
-                "member_4_bio": ".team-grid .member:nth-child(4) .member-bio"
-            }
-        },
-        {
-            "id": "gallery",
-            "name": "Gallery",
-            "elements": {
-                "gallery_eyebrow": "#gallery .eyebrow",
-                "gallery_title": "#gallery .h-section",
-                "gallery_intro": "#gallery .section-intro",
-                "gallery_1_image": ".gallery-grid .gallery-item:nth-child(1)",
-                "gallery_1_caption": ".gallery-grid .gallery-item:nth-child(1)",
-                "gallery_2_image": ".gallery-grid .gallery-item:nth-child(2)",
-                "gallery_2_caption": ".gallery-grid .gallery-item:nth-child(2)",
-                "gallery_3_image": ".gallery-grid .gallery-item:nth-child(3)",
-                "gallery_3_caption": ".gallery-grid .gallery-item:nth-child(3)",
-                "gallery_4_image": ".gallery-grid .gallery-item:nth-child(4)",
-                "gallery_4_caption": ".gallery-grid .gallery-item:nth-child(4)",
-                "gallery_5_image": ".gallery-grid .gallery-item:nth-child(5)",
-                "gallery_5_caption": ".gallery-grid .gallery-item:nth-child(5)",
-                "gallery_6_image": ".gallery-grid .gallery-item:nth-child(6)",
-                "gallery_6_caption": ".gallery-grid .gallery-item:nth-child(6)"
-            }
-        },
-        {
-            "id": "breeds_served",
-            "name": "Breeds Served",
-            "elements": {
-                "breeds_title": ".breeds-title",
-                "breed_1": ".breeds-grid .breed-item:nth-child(1)",
-                "breed_2": ".breeds-grid .breed-item:nth-child(2)",
-                "breed_3": ".breeds-grid .breed-item:nth-child(3)",
-                "breed_4": ".breeds-grid .breed-item:nth-child(4)",
-                "breed_5": ".breeds-grid .breed-item:nth-child(5)",
-                "breed_6": ".breeds-grid .breed-item:nth-child(6)",
-                "breed_7": ".breeds-grid .breed-item:nth-child(7)",
-                "breed_8": ".breeds-grid .breed-item:nth-child(8)"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Testimonials",
-            "elements": {
-                "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
-                "testimonials_title": "[data-block=testimonials] .h-section",
-                "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
-                "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
-                "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
-                "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
-                "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
-                "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
-                "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
-                "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
-                "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
-                "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
-                "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
-                "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book an Appointment",
-            "elements": {
-                "booking_eyebrow": "#booking .eyebrow",
-                "booking_title": "#booking .h-section",
-                "booking_intro": ".booking-intro",
-                "booking_service_type_label": ".booking-form label[data-field=booking_service_type_label]",
-                "booking_pet_type_label": ".booking-form label[data-field=booking_pet_type_label]",
-                "booking_pet_name_label": ".booking-form label[data-field=booking_pet_name_label]",
-                "booking_pet_age_label": ".booking-form label[data-field=booking_pet_age_label]",
-                "booking_date_label": ".booking-form label[data-field=booking_date_label]",
-                "booking_time_label": ".booking-form label[data-field=booking_time_label]",
-                "booking_owner_name_label": ".booking-form label[data-field=booking_owner_name_label]",
-                "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
-                "booking_email_label": ".booking-form label[data-field=booking_email_label]",
-                "booking_special_notes_label": ".booking-form label[data-field=booking_special_notes_label]",
-                "booking_submit": ".booking-submit"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact",
-            "elements": {
-                "contact_eyebrow": "#contact .eyebrow",
-                "contact_title": "#contact .h-section",
-                "contact_intro": "#contact .section-intro",
-                "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
-                "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
-                "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
-                "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
-                "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
-                "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
-                "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
-                "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
-                "contact_cta_title": "#contact .contact-cta-title",
-                "contact_cta_text": "#contact .contact-cta-text",
-                "contact_cta_button": "#contact .btn-primary"
-            }
-        },
-        {
-            "id": "footer",
-            "name": "Footer",
-            "elements": {
-                "footer_logo": ".footer-logo",
-                "footer_tagline": ".footer-tagline",
-                "social_1": ".footer-socials a:nth-child(1)",
-                "social_2": ".footer-socials a:nth-child(2)",
-                "social_3": ".footer-socials a:nth-child(3)",
-                "social_4": ".footer-socials a:nth-child(4)",
-                "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
-                "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
-                "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
-                "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
-                "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
-                "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
-                "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
-                "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
-                "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
-                "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
-                "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
-                "footer_text": ".footer-bottom > div:nth-child(1)",
-                "footer_legal": ".footer-bottom > div:nth-child(2)"
-            }
-        }
-    ],
-    "variables": {
-        "business_name": {
-            "type": "text",
-            "label": "Business Name",
-            "default": "Pawsome Care"
-        },
-        "business_tagline": {
-            "type": "text",
-            "label": "Tagline",
-            "default": "Full-Service Pet Clinic, Groomer & Boarder in Al Quoz"
-        },
-        "meta_description": {
-            "type": "text",
-            "label": "Meta Description",
-            "default": "Pawsome Care is Dubai's favourite full-service pet clinic in Al Quoz — veterinary care, professional grooming, boarding, training, daycare, and a fully stocked pet shop all under one roof."
-        },
-        "canonical_url": {
-            "type": "url",
-            "label": "Canonical URL",
-            "default": "https://pawsomecare.ae"
-        },
-        "og_image": {
-            "type": "image",
-            "label": "OG Image",
-            "default": "/storage/builder-heroes/pet_services.jpg"
-        },
-        "og_locale": {
-            "type": "text",
-            "label": "OG Locale",
-            "default": "en_AE"
-        },
-        "hero_image": {
-            "type": "image",
-            "label": "Hero Background",
-            "default": "/storage/builder-heroes/pet_services.jpg"
-        },
-        "orange": {
-            "type": "color",
-            "label": "Orange",
-            "default": "#F97316"
-        },
-        "orange_deep": {
-            "type": "color",
-            "label": "Orange Deep",
-            "default": "#C2410C"
-        },
-        "teal": {
-            "type": "color",
-            "label": "Teal",
-            "default": "#0F766E"
-        },
-        "teal_deep": {
-            "type": "color",
-            "label": "Teal Deep",
-            "default": "#0C4A47"
-        },
-        "white": {
-            "type": "color",
-            "label": "White",
-            "default": "#FFFFFF"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#6A6A6A"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#F1E6D4"
-        },
-        "logo": {
-            "type": "text",
-            "label": "Logo Text",
-            "default": "Pawsome Care"
-        },
-        "nav_1": {
-            "type": "text",
-            "label": "Nav: Services",
-            "default": "Services"
-        },
-        "nav_2": {
-            "type": "text",
-            "label": "Nav: Why Us",
-            "default": "Why Us"
-        },
-        "nav_3": {
-            "type": "text",
-            "label": "Nav: Our Team",
-            "default": "Our Team"
-        },
-        "nav_4": {
-            "type": "text",
-            "label": "Nav: Happy Pets",
-            "default": "Happy Pets"
-        },
-        "nav_5": {
-            "type": "text",
-            "label": "Nav: Contact",
-            "default": "Contact"
-        },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Book Appointment"
-        },
-        "hero_eyebrow": {
-            "type": "text",
-            "label": "Hero Eyebrow",
-            "default": "Al Quoz · Since 2015"
-        },
-        "hero_title": {
-            "type": "text",
-            "label": "Hero Title",
-            "default": "Your pet's second-favourite place in Dubai."
-        },
-        "hero_subtitle": {
-            "type": "text",
-            "label": "Hero Subtitle",
-            "default": "Pawsome Care is a full-service pet destination in Al Quoz — veterinary clinic, professional grooming, boarding, daycare, training, and pet shop. One roof, one team, every service your furry family needs."
-        },
-        "hero_cta_primary": {
-            "type": "text",
-            "label": "Hero CTA Primary",
-            "default": "Book an Appointment"
-        },
-        "hero_cta_secondary": {
-            "type": "text",
-            "label": "Hero CTA Secondary",
-            "default": "Our Services"
-        },
-        "hero_trust_1": {
-            "type": "text",
-            "label": "Trust 1",
-            "default": "MOCCAE licensed"
-        },
-        "hero_trust_2": {
-            "type": "text",
-            "label": "Trust 2",
-            "default": "24/7 emergency line"
-        },
-        "hero_trust_3": {
-            "type": "text",
-            "label": "Trust 3",
-            "default": "Free pickup in Al Quoz"
-        },
-        "hero_trust_4": {
-            "type": "text",
-            "label": "Trust 4",
-            "default": "4.9★ on Google"
-        },
-        "stat_1_value": {
-            "type": "text",
-            "label": "Stat 1 Value",
-            "default": "11"
-        },
-        "stat_1_label": {
-            "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Years Caring for Pets"
-        },
-        "stat_2_value": {
-            "type": "text",
-            "label": "Stat 2 Value",
-            "default": "8,500+"
-        },
-        "stat_2_label": {
-            "type": "text",
-            "label": "Stat 2 Label",
-            "default": "Furry Clients"
-        },
-        "stat_3_value": {
-            "type": "text",
-            "label": "Stat 3 Value",
-            "default": "12"
-        },
-        "stat_3_label": {
-            "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Vets & Groomers"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "4.9"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Google Rating"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Services Eyebrow",
-            "default": "WHAT WE DO"
-        },
-        "services_title": {
-            "type": "text",
-            "label": "Services Title",
-            "default": "Every service your pet needs."
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Services Intro",
-            "default": "From a wiggly puppy's first vaccination to a senior cat's regular check-up — we cover every chapter of your pet's life in one friendly Al Quoz location."
-        },
-        "service_1_icon": {
-            "type": "text",
-            "label": "Service 1 Icon",
-            "default": "V"
-        },
-        "service_1_title": {
-            "type": "text",
-            "label": "Service 1 Title",
-            "default": "Vet Care"
-        },
-        "service_1_text": {
-            "type": "text",
-            "label": "Service 1 Text",
-            "default": "Routine check-ups, vaccinations, microchipping, dental care, surgery, and MOCCAE-compliant pet passports. Licensed vets from the UK, Spain, and Philippines."
-        },
-        "service_1_link": {
-            "type": "text",
-            "label": "Service 1 Link",
-            "default": "See vet services"
-        },
-        "service_2_icon": {
-            "type": "text",
-            "label": "Service 2 Icon",
-            "default": "G"
-        },
-        "service_2_title": {
-            "type": "text",
-            "label": "Service 2 Title",
-            "default": "Grooming"
-        },
-        "service_2_text": {
-            "type": "text",
-            "label": "Service 2 Text",
-            "default": "Full grooming from AED 120. De-matting, breed-specific cuts, nail trim, ear cleaning, and luxury spa packages — all in a stress-free, fear-free environment."
-        },
-        "service_2_link": {
-            "type": "text",
-            "label": "Service 2 Link",
-            "default": "See grooming"
-        },
-        "service_3_icon": {
-            "type": "text",
-            "label": "Service 3 Icon",
-            "default": "B"
-        },
-        "service_3_title": {
-            "type": "text",
-            "label": "Service 3 Title",
-            "default": "Boarding"
-        },
-        "service_3_text": {
-            "type": "text",
-            "label": "Service 3 Text",
-            "default": "Spacious, climate-controlled boarding suites with live webcam access. Daily play sessions, two walks a day, and 24/7 vet on-call. From AED 130/night."
-        },
-        "service_3_link": {
-            "type": "text",
-            "label": "Service 3 Link",
-            "default": "See boarding"
-        },
-        "service_4_icon": {
-            "type": "text",
-            "label": "Service 4 Icon",
-            "default": "T"
-        },
-        "service_4_title": {
-            "type": "text",
-            "label": "Service 4 Title",
-            "default": "Training"
-        },
-        "service_4_text": {
-            "type": "text",
-            "label": "Service 4 Text",
-            "default": "Puppy school, basic obedience, behavioural rehab, and private 1:1 sessions. All force-free, reward-based methods — certified IMDT trainers."
-        },
-        "service_4_link": {
-            "type": "text",
-            "label": "Service 4 Link",
-            "default": "See training"
-        },
-        "service_5_icon": {
-            "type": "text",
-            "label": "Service 5 Icon",
-            "default": "D"
-        },
-        "service_5_title": {
-            "type": "text",
-            "label": "Service 5 Title",
-            "default": "Daycare"
-        },
-        "service_5_text": {
-            "type": "text",
-            "label": "Service 5 Text",
-            "default": "Full-day and half-day doggie daycare with socialisation groups, splash pool in summer, and nap rooms. Free pickup and drop-off across Al Quoz and Al Barsha."
-        },
-        "service_5_link": {
-            "type": "text",
-            "label": "Service 5 Link",
-            "default": "See daycare"
-        },
-        "service_6_icon": {
-            "type": "text",
-            "label": "Service 6 Icon",
-            "default": "S"
-        },
-        "service_6_title": {
-            "type": "text",
-            "label": "Service 6 Title",
-            "default": "Pet Shop"
-        },
-        "service_6_text": {
-            "type": "text",
-            "label": "Service 6 Text",
-            "default": "Premium pet food (Royal Canin, Hill's, Orijen, Acana), treats, toys, beds, harnesses, and vet-prescribed diets. Free home delivery over AED 150."
-        },
-        "service_6_link": {
-            "type": "text",
-            "label": "Service 6 Link",
-            "default": "Visit the shop"
-        },
-        "why_us_eyebrow": {
-            "type": "text",
-            "label": "Why Us Eyebrow",
-            "default": "WHY PET PARENTS PICK US"
-        },
-        "why_us_title": {
-            "type": "text",
-            "label": "Why Us Title",
-            "default": "Four reasons Dubai pet parents keep coming back."
-        },
-        "why_us_intro": {
-            "type": "text",
-            "label": "Why Us Intro",
-            "default": "We are not the biggest clinic in Dubai — but we might be the most loved. Here is what our pet parents tell us, over and over."
-        },
-        "pillar_1_icon": {
-            "type": "text",
-            "label": "Pillar 1 Icon",
-            "default": "♥"
-        },
-        "pillar_1_title": {
-            "type": "text",
-            "label": "Pillar 1 Title",
-            "default": "Fear-Free Certified"
-        },
-        "pillar_1_text": {
-            "type": "text",
-            "label": "Pillar 1 Text",
-            "default": "Every vet and groomer is Fear-Free certified. Low-stress handling, treats on arrival, and all the time your pet needs. No rough stuff, ever."
-        },
-        "pillar_2_icon": {
-            "type": "text",
-            "label": "Pillar 2 Icon",
-            "default": "⚡"
-        },
-        "pillar_2_title": {
-            "type": "text",
-            "label": "Pillar 2 Title",
-            "default": "24/7 Emergency Line"
-        },
-        "pillar_2_text": {
-            "type": "text",
-            "label": "Pillar 2 Text",
-            "default": "Panic at 2am? Call our emergency line and speak to an on-call vet immediately. Clinic opens within 30 minutes for genuine emergencies — no exceptions."
-        },
-        "pillar_3_icon": {
-            "type": "text",
-            "label": "Pillar 3 Icon",
-            "default": "🚐"
-        },
-        "pillar_3_title": {
-            "type": "text",
-            "label": "Pillar 3 Title",
-            "default": "Free Pickup & Drop-off"
-        },
-        "pillar_3_text": {
-            "type": "text",
-            "label": "Pillar 3 Text",
-            "default": "Complimentary pet transport across Al Quoz, Al Barsha, Downtown, and JLT. Our air-conditioned pet vans come to your door on appointment day."
-        },
-        "pillar_4_icon": {
-            "type": "text",
-            "label": "Pillar 4 Icon",
-            "default": "📱"
-        },
-        "pillar_4_title": {
-            "type": "text",
-            "label": "Pillar 4 Title",
-            "default": "Pet Parent Portal"
-        },
-        "pillar_4_text": {
-            "type": "text",
-            "label": "Pillar 4 Text",
-            "default": "Full vaccination history, prescription refills, grooming photos, and boarding webcam access — all in a single app. Your pet's life, one tap away."
-        },
-        "team_eyebrow": {
-            "type": "text",
-            "label": "Team Eyebrow",
-            "default": "MEET THE PACK"
-        },
-        "team_title": {
-            "type": "text",
-            "label": "Team Title",
-            "default": "The humans your pet is about to love."
-        },
-        "team_intro": {
-            "type": "text",
-            "label": "Team Intro",
-            "default": "Twelve pet-obsessed humans from four continents. Everyone on our team was picked for one reason — a genuine, slightly-over-the-top love of animals."
-        },
-        "member_1_image": {
-            "type": "image",
-            "label": "Member 1 Image",
-            "default": "/storage/builder-heroes/pet_services.jpg"
-        },
-        "member_1_name": {
-            "type": "text",
-            "label": "Member 1 Name",
-            "default": "Dr. Sara Al-Awadhi"
-        },
-        "member_1_role": {
-            "type": "text",
-            "label": "Member 1 Role",
-            "default": "Clinic Director · DVM"
-        },
-        "member_1_bio": {
-            "type": "text",
-            "label": "Member 1 Bio",
-            "default": "14 years in small-animal medicine. DVM from the Royal Veterinary College, London. Founded Pawsome Care in 2015. Mum to three rescue cats and a very opinionated bulldog."
-        },
-        "member_2_image": {
-            "type": "image",
-            "label": "Member 2 Image",
-            "default": "/storage/builder-heroes/pet_services.jpg"
-        },
-        "member_2_name": {
-            "type": "text",
-            "label": "Member 2 Name",
-            "default": "Dr. Miguel Rodriguez"
-        },
-        "member_2_role": {
-            "type": "text",
-            "label": "Member 2 Role",
-            "default": "Senior Vet · Surgery"
-        },
-        "member_2_bio": {
-            "type": "text",
-            "label": "Member 2 Bio",
-            "default": "12 years in veterinary surgery. Specialist in orthopaedics and soft-tissue. Trained in Barcelona, practised in Madrid and Abu Dhabi before joining Pawsome in 2018."
-        },
-        "member_3_image": {
-            "type": "image",
-            "label": "Member 3 Image",
-            "default": "/storage/builder-heroes/pet_services.jpg"
-        },
-        "member_3_name": {
-            "type": "text",
-            "label": "Member 3 Name",
-            "default": "Princess Garcia"
-        },
-        "member_3_role": {
-            "type": "text",
-            "label": "Member 3 Role",
-            "default": "Head Groomer · IPG Certified"
-        },
-        "member_3_bio": {
-            "type": "text",
-            "label": "Member 3 Bio",
-            "default": "10 years in professional grooming. IPG certified and specialist in breed-standard cuts. The person your Poodle secretly loves more than you."
-        },
-        "member_4_image": {
-            "type": "image",
-            "label": "Member 4 Image",
-            "default": "/storage/builder-heroes/pet_services.jpg"
-        },
-        "member_4_name": {
-            "type": "text",
-            "label": "Member 4 Name",
-            "default": "Hamza Al-Rifai"
-        },
-        "member_4_role": {
-            "type": "text",
-            "label": "Member 4 Role",
-            "default": "Head Trainer · IMDT Cert"
-        },
-        "member_4_bio": {
-            "type": "text",
-            "label": "Member 4 Bio",
-            "default": "8 years in positive-reinforcement dog training. IMDT certified. Specialises in puppy school, recall, and rescue-dog rehab. Currently training his own three-legged greyhound."
-        },
-        "gallery_eyebrow": {
-            "type": "text",
-            "label": "Gallery Eyebrow",
-            "default": "HAPPY PETS"
-        },
-        "gallery_title": {
-            "type": "text",
-            "label": "Gallery Title",
-            "default": "Some of our favourite regulars."
-        },
-        "gallery_intro": {
-            "type": "text",
-            "label": "Gallery Intro",
-            "default": "A tiny wall of fame — just a handful of the thousands of furry friends who have trusted us with their wag, purr, and occasional zoomies."
-        },
-        "gallery_1_image": {
-            "type": "image",
-            "label": "Gallery 1 Image",
-            "default": "/storage/template-images/pet_services/gallery_1_image.jpg"
-        },
-        "gallery_1_caption": {
-            "type": "text",
-            "label": "Gallery 1 Caption",
-            "default": "Mango · Golden Retriever"
-        },
-        "gallery_2_image": {
-            "type": "image",
-            "label": "Gallery 2 Image",
-            "default": "/storage/template-images/pet_services/gallery_2_image.jpg"
-        },
-        "gallery_2_caption": {
-            "type": "text",
-            "label": "Gallery 2 Caption",
-            "default": "Luna · Maine Coon"
-        },
-        "gallery_3_image": {
-            "type": "image",
-            "label": "Gallery 3 Image",
-            "default": "/storage/template-images/pet_services/gallery_3_image.jpg"
-        },
-        "gallery_3_caption": {
-            "type": "text",
-            "label": "Gallery 3 Caption",
-            "default": "Biscuit · French Bulldog"
-        },
-        "gallery_4_image": {
-            "type": "image",
-            "label": "Gallery 4 Image",
-            "default": "/storage/template-images/pet_services/gallery_4_image.jpg"
-        },
-        "gallery_4_caption": {
-            "type": "text",
-            "label": "Gallery 4 Caption",
-            "default": "Pearl · Persian Cat"
-        },
-        "gallery_5_image": {
-            "type": "image",
-            "label": "Gallery 5 Image",
-            "default": "/storage/template-images/pet_services/gallery_5_image.jpg"
-        },
-        "gallery_5_caption": {
-            "type": "text",
-            "label": "Gallery 5 Caption",
-            "default": "Rocky · Rescue Mix"
-        },
-        "gallery_6_image": {
-            "type": "image",
-            "label": "Gallery 6 Image",
-            "default": "/storage/template-images/pet_services/gallery_6_image.jpg"
-        },
-        "gallery_6_caption": {
-            "type": "text",
-            "label": "Gallery 6 Caption",
-            "default": "Kiwi · Cockatiel"
-        },
-        "breeds_title": {
-            "type": "text",
-            "label": "Breeds Title",
-            "default": "WELCOMING EVERY BREED, EVERY SIZE"
-        },
-        "breed_1": {
-            "type": "text",
-            "label": "Breed 1",
-            "default": "Golden Retriever"
-        },
-        "breed_2": {
-            "type": "text",
-            "label": "Breed 2",
-            "default": "Labrador"
-        },
-        "breed_3": {
-            "type": "text",
-            "label": "Breed 3",
-            "default": "French Bulldog"
-        },
-        "breed_4": {
-            "type": "text",
-            "label": "Breed 4",
-            "default": "Poodle"
-        },
-        "breed_5": {
-            "type": "text",
-            "label": "Breed 5",
-            "default": "Persian Cat"
-        },
-        "breed_6": {
-            "type": "text",
-            "label": "Breed 6",
-            "default": "Maine Coon"
-        },
-        "breed_7": {
-            "type": "text",
-            "label": "Breed 7",
-            "default": "Rescue Mix"
-        },
-        "breed_8": {
-            "type": "text",
-            "label": "Breed 8",
-            "default": "Exotics"
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "PET PARENT WORDS"
-        },
-        "testimonials_title": {
-            "type": "text",
-            "label": "Testimonials Title",
-            "default": "What Dubai pet parents say about us."
-        },
-        "testimonial_1_quote": {
-            "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "Mango had never sat still for grooming until Princess took over. Now he walks in wagging. Honestly no idea what magic she uses — but it works every time."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Aisha Hassan"
-        },
-        "testimonial_1_company": {
-            "type": "text",
-            "label": "Testimonial 1 Company",
-            "default": "Mum to Mango, Golden Retriever"
-        },
-        "testimonial_1_result": {
-            "type": "text",
-            "label": "Testimonial 1 Result",
-            "default": "3 years loyal"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "Our cat had a midnight emergency and Dr. Sara picked up the phone within two rings. At the clinic in 25 minutes. I genuinely think she saved Luna's life that night."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Chris Thompson"
-        },
-        "testimonial_2_company": {
-            "type": "text",
-            "label": "Testimonial 2 Company",
-            "default": "Dad to Luna, Maine Coon"
-        },
-        "testimonial_2_result": {
-            "type": "text",
-            "label": "Testimonial 2 Result",
-            "default": "Life saved"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Boarded Biscuit for two weeks while we travelled. Webcam access meant we could see him playing every day. He came back happier than when we left him."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Fatima & Yousef Al-Mansoori"
-        },
-        "testimonial_3_company": {
-            "type": "text",
-            "label": "Testimonial 3 Company",
-            "default": "Parents to Biscuit, French Bulldog"
-        },
-        "testimonial_3_result": {
-            "type": "text",
-            "label": "Testimonial 3 Result",
-            "default": "Tail-wag approved"
-        },
-        "booking_eyebrow": {
-            "type": "text",
-            "label": "Booking Eyebrow",
-            "default": "BOOK YOUR VISIT"
-        },
-        "booking_title": {
-            "type": "text",
-            "label": "Booking Title",
-            "default": "Book an Appointment"
-        },
-        "booking_intro": {
-            "type": "text",
-            "label": "Booking Intro",
-            "default": "Tell us a bit about your pet and we will confirm the appointment within one hour during clinic hours. Free pickup available across Al Quoz, Al Barsha, and Downtown."
-        },
-        "booking_service_type_label": {
-            "type": "text",
-            "label": "Service Type Label",
-            "default": "Service Needed"
-        },
-        "booking_pet_type_label": {
-            "type": "text",
-            "label": "Pet Type Label",
-            "default": "Pet Type"
-        },
-        "booking_pet_name_label": {
-            "type": "text",
-            "label": "Pet Name Label",
-            "default": "Pet's Name"
-        },
-        "booking_pet_age_label": {
-            "type": "text",
-            "label": "Pet Age Label",
-            "default": "Pet's Age"
-        },
-        "booking_date_label": {
-            "type": "text",
-            "label": "Date Label",
-            "default": "Preferred Date"
-        },
-        "booking_time_label": {
-            "type": "text",
-            "label": "Time Label",
-            "default": "Preferred Time"
-        },
-        "booking_owner_name_label": {
-            "type": "text",
-            "label": "Owner Name Label",
-            "default": "Your Name"
-        },
-        "booking_phone_label": {
-            "type": "text",
-            "label": "Phone Label",
-            "default": "Phone / WhatsApp"
-        },
-        "booking_email_label": {
-            "type": "text",
-            "label": "Email Label",
-            "default": "Email"
-        },
-        "booking_special_notes_label": {
-            "type": "text",
-            "label": "Special Notes Label",
-            "default": "Anything We Should Know"
-        },
-        "booking_submit": {
-            "type": "text",
-            "label": "Submit Button",
-            "default": "Book Appointment"
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "GET IN TOUCH"
-        },
-        "contact_title": {
-            "type": "text",
-            "label": "Contact Title",
-            "default": "Come say hi — we love visitors."
-        },
-        "contact_intro": {
-            "type": "text",
-            "label": "Contact Intro",
-            "default": "Pop into the clinic any time during opening hours, or reach us by phone, WhatsApp, or email. We reply within one hour during business hours."
-        },
-        "contact_email_label": {
-            "type": "text",
-            "label": "Email Label",
-            "default": "Email"
-        },
-        "contact_email": {
-            "type": "text",
-            "label": "Email",
-            "default": "hello@pawsomecare.ae"
-        },
-        "contact_phone_label": {
-            "type": "text",
-            "label": "Phone Label",
-            "default": "Phone / WhatsApp"
-        },
-        "contact_phone": {
-            "type": "text",
-            "label": "Phone",
-            "default": "+971 4 388 6622"
-        },
-        "contact_address_label": {
-            "type": "text",
-            "label": "Address Label",
-            "default": "Clinic"
-        },
-        "contact_address": {
-            "type": "text",
-            "label": "Address",
-            "default": "Warehouse 14, Street 8, Al Quoz 1, Dubai, UAE"
-        },
-        "contact_hours_label": {
-            "type": "text",
-            "label": "Hours Label",
-            "default": "Hours"
-        },
-        "contact_hours": {
-            "type": "text",
-            "label": "Hours",
-            "default": "Open 7 days · 08:00–21:00 · 24/7 emergency line"
-        },
-        "contact_cta_title": {
-            "type": "text",
-            "label": "Contact CTA Title",
-            "default": "Ready to book?"
-        },
-        "contact_cta_text": {
-            "type": "text",
-            "label": "Contact CTA Text",
-            "default": "Skip the phone queue. Book online in under sixty seconds — we will confirm within the hour and send a WhatsApp reminder the morning of your visit."
-        },
-        "contact_cta_button": {
-            "type": "text",
-            "label": "Contact CTA Button",
-            "default": "Book an Appointment"
-        },
-        "footer_logo": {
-            "type": "text",
-            "label": "Footer Logo",
-            "default": "Pawsome Care"
-        },
-        "footer_tagline": {
-            "type": "text",
-            "label": "Footer Tagline",
-            "default": "Dubai's favourite full-service pet destination. Veterinary clinic, grooming salon, boarding hotel, daycare, training, and pet shop — all in one friendly Al Quoz location."
-        },
-        "social_1": {
-            "type": "text",
-            "label": "Social 1",
-            "default": "IG"
-        },
-        "social_2": {
-            "type": "text",
-            "label": "Social 2",
-            "default": "FB"
-        },
-        "social_3": {
-            "type": "text",
-            "label": "Social 3",
-            "default": "TT"
-        },
-        "social_4": {
-            "type": "text",
-            "label": "Social 4",
-            "default": "WA"
-        },
-        "footer_col_1_title": {
-            "type": "text",
-            "label": "Footer Col 1 Title",
-            "default": "Services"
-        },
-        "footer_col_2_title": {
-            "type": "text",
-            "label": "Footer Col 2 Title",
-            "default": "Pawsome"
-        },
-        "footer_col_3_title": {
-            "type": "text",
-            "label": "Footer Col 3 Title",
-            "default": "Connect"
-        },
-        "footer_link_1": {
-            "type": "text",
-            "label": "Footer Link 1",
-            "default": "Vet Care"
-        },
-        "footer_link_2": {
-            "type": "text",
-            "label": "Footer Link 2",
-            "default": "Grooming"
-        },
-        "footer_link_3": {
-            "type": "text",
-            "label": "Footer Link 3",
-            "default": "Boarding"
-        },
-        "footer_link_4": {
-            "type": "text",
-            "label": "Footer Link 4",
-            "default": "Our Team"
-        },
-        "footer_link_5": {
-            "type": "text",
-            "label": "Footer Link 5",
-            "default": "Happy Pets"
-        },
-        "footer_link_6": {
-            "type": "text",
-            "label": "Footer Link 6",
-            "default": "Why Us"
-        },
-        "footer_link_7": {
-            "type": "text",
-            "label": "Footer Link 7",
-            "default": "Contact"
-        },
-        "footer_link_8": {
-            "type": "text",
-            "label": "Footer Link 8",
-            "default": "Book Appointment"
-        },
-        "footer_text": {
-            "type": "text",
-            "label": "Footer Text",
-            "default": "© 2026 Pawsome Care Veterinary Services LLC. All rights reserved."
-        },
-        "footer_legal": {
-            "type": "text",
-            "label": "Footer Legal",
-            "default": "Privacy · Terms · MOCCAE Licence"
-        }
+  "id": "pet_services",
+  "name": "Pet Services",
+  "industry": "pet_services",
+  "description": "Full-service pet care template \u2014 friendly orange/teal palette with Nunito rounded display and Inter body, welcoming hero, six services (Vet Care, Grooming, Boarding, Training, Daycare, Pet Shop), four trust pillars, team of vets and groomers, happy-pet gallery, breeds-served trust strip, pet-owner testimonials, and a warm Appointment booking form. Built for Dubai pet clinics, groomers, and boarding facilities.",
+  "thumbnail": "/storage/builder-heroes/pet_services.jpg",
+  "category": "pets",
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "elements": {
+        "logo": "nav .logo",
+        "nav_1": "nav .nav-link-1",
+        "nav_2": "nav .nav-link-2",
+        "nav_3": "nav .nav-link-3",
+        "nav_4": "nav .nav-link-4",
+        "nav_5": "nav .nav-link-5",
+        "nav_cta": "nav .nav-cta"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero",
+      "elements": {
+        "hero_image": "section.hero",
+        "hero_eyebrow": ".hero-eyebrow",
+        "hero_title": ".hero-title",
+        "hero_subtitle": ".hero-subtitle",
+        "hero_cta_primary": ".hero-cta-row a:nth-child(1)",
+        "hero_cta_secondary": ".hero-cta-row a:nth-child(2)",
+        "hero_trust_1": ".hero-trust-1",
+        "hero_trust_2": ".hero-trust-2",
+        "hero_trust_3": ".hero-trust-3",
+        "hero_trust_4": ".hero-trust-4"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats",
+      "elements": {
+        "stat_1_value": ".stats-grid .stat-item:nth-child(1) .stat-value",
+        "stat_1_label": ".stats-grid .stat-item:nth-child(1) .stat-label",
+        "stat_2_value": ".stats-grid .stat-item:nth-child(2) .stat-value",
+        "stat_2_label": ".stats-grid .stat-item:nth-child(2) .stat-label",
+        "stat_3_value": ".stats-grid .stat-item:nth-child(3) .stat-value",
+        "stat_3_label": ".stats-grid .stat-item:nth-child(3) .stat-label",
+        "stat_4_value": ".stats-grid .stat-item:nth-child(4) .stat-value",
+        "stat_4_label": ".stats-grid .stat-item:nth-child(4) .stat-label"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Services Grid",
+      "elements": {
+        "services_eyebrow": "#services .eyebrow",
+        "services_title": "#services .h-section",
+        "services_intro": "#services .section-intro",
+        "service_1_icon": "#services .service:nth-child(1) .service-icon",
+        "service_1_title": "#services .service:nth-child(1) h3",
+        "service_1_text": "#services .service:nth-child(1) p",
+        "service_1_link": "#services .service:nth-child(1) .service-link",
+        "service_2_icon": "#services .service:nth-child(2) .service-icon",
+        "service_2_title": "#services .service:nth-child(2) h3",
+        "service_2_text": "#services .service:nth-child(2) p",
+        "service_2_link": "#services .service:nth-child(2) .service-link",
+        "service_3_icon": "#services .service:nth-child(3) .service-icon",
+        "service_3_title": "#services .service:nth-child(3) h3",
+        "service_3_text": "#services .service:nth-child(3) p",
+        "service_3_link": "#services .service:nth-child(3) .service-link",
+        "service_4_icon": "#services .service:nth-child(4) .service-icon",
+        "service_4_title": "#services .service:nth-child(4) h3",
+        "service_4_text": "#services .service:nth-child(4) p",
+        "service_4_link": "#services .service:nth-child(4) .service-link",
+        "service_5_icon": "#services .service:nth-child(5) .service-icon",
+        "service_5_title": "#services .service:nth-child(5) h3",
+        "service_5_text": "#services .service:nth-child(5) p",
+        "service_5_link": "#services .service:nth-child(5) .service-link",
+        "service_6_icon": "#services .service:nth-child(6) .service-icon",
+        "service_6_title": "#services .service:nth-child(6) h3",
+        "service_6_text": "#services .service:nth-child(6) p",
+        "service_6_link": "#services .service:nth-child(6) .service-link"
+      }
+    },
+    {
+      "id": "why_us",
+      "name": "Why Us",
+      "elements": {
+        "why_us_eyebrow": "#why_us .eyebrow",
+        "why_us_title": "#why_us .h-section",
+        "why_us_intro": "#why_us .section-intro",
+        "pillar_1_icon": ".pillars-grid .pillar:nth-child(1) .pillar-icon",
+        "pillar_1_title": ".pillars-grid .pillar:nth-child(1) h3",
+        "pillar_1_text": ".pillars-grid .pillar:nth-child(1) p",
+        "pillar_2_icon": ".pillars-grid .pillar:nth-child(2) .pillar-icon",
+        "pillar_2_title": ".pillars-grid .pillar:nth-child(2) h3",
+        "pillar_2_text": ".pillars-grid .pillar:nth-child(2) p",
+        "pillar_3_icon": ".pillars-grid .pillar:nth-child(3) .pillar-icon",
+        "pillar_3_title": ".pillars-grid .pillar:nth-child(3) h3",
+        "pillar_3_text": ".pillars-grid .pillar:nth-child(3) p",
+        "pillar_4_icon": ".pillars-grid .pillar:nth-child(4) .pillar-icon",
+        "pillar_4_title": ".pillars-grid .pillar:nth-child(4) h3",
+        "pillar_4_text": ".pillars-grid .pillar:nth-child(4) p"
+      }
+    },
+    {
+      "id": "team",
+      "name": "Team",
+      "elements": {
+        "team_eyebrow": "#team .eyebrow",
+        "team_title": "#team .h-section",
+        "team_intro": "#team .section-intro",
+        "member_1_image": ".team-grid .member:nth-child(1) .member-photo",
+        "member_1_name": ".team-grid .member:nth-child(1) h3",
+        "member_1_role": ".team-grid .member:nth-child(1) .member-role",
+        "member_1_bio": ".team-grid .member:nth-child(1) .member-bio",
+        "member_2_image": ".team-grid .member:nth-child(2) .member-photo",
+        "member_2_name": ".team-grid .member:nth-child(2) h3",
+        "member_2_role": ".team-grid .member:nth-child(2) .member-role",
+        "member_2_bio": ".team-grid .member:nth-child(2) .member-bio",
+        "member_3_image": ".team-grid .member:nth-child(3) .member-photo",
+        "member_3_name": ".team-grid .member:nth-child(3) h3",
+        "member_3_role": ".team-grid .member:nth-child(3) .member-role",
+        "member_3_bio": ".team-grid .member:nth-child(3) .member-bio",
+        "member_4_image": ".team-grid .member:nth-child(4) .member-photo",
+        "member_4_name": ".team-grid .member:nth-child(4) h3",
+        "member_4_role": ".team-grid .member:nth-child(4) .member-role",
+        "member_4_bio": ".team-grid .member:nth-child(4) .member-bio"
+      }
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "elements": {
+        "gallery_eyebrow": "#gallery .eyebrow",
+        "gallery_title": "#gallery .h-section",
+        "gallery_intro": "#gallery .section-intro",
+        "gallery_1_image": ".gallery-grid .gallery-item:nth-child(1)",
+        "gallery_1_caption": ".gallery-grid .gallery-item:nth-child(1)",
+        "gallery_2_image": ".gallery-grid .gallery-item:nth-child(2)",
+        "gallery_2_caption": ".gallery-grid .gallery-item:nth-child(2)",
+        "gallery_3_image": ".gallery-grid .gallery-item:nth-child(3)",
+        "gallery_3_caption": ".gallery-grid .gallery-item:nth-child(3)",
+        "gallery_4_image": ".gallery-grid .gallery-item:nth-child(4)",
+        "gallery_4_caption": ".gallery-grid .gallery-item:nth-child(4)",
+        "gallery_5_image": ".gallery-grid .gallery-item:nth-child(5)",
+        "gallery_5_caption": ".gallery-grid .gallery-item:nth-child(5)",
+        "gallery_6_image": ".gallery-grid .gallery-item:nth-child(6)",
+        "gallery_6_caption": ".gallery-grid .gallery-item:nth-child(6)"
+      }
+    },
+    {
+      "id": "breeds_served",
+      "name": "Breeds Served",
+      "elements": {
+        "breeds_title": ".breeds-title",
+        "breed_1": ".breeds-grid .breed-item:nth-child(1)",
+        "breed_2": ".breeds-grid .breed-item:nth-child(2)",
+        "breed_3": ".breeds-grid .breed-item:nth-child(3)",
+        "breed_4": ".breeds-grid .breed-item:nth-child(4)",
+        "breed_5": ".breeds-grid .breed-item:nth-child(5)",
+        "breed_6": ".breeds-grid .breed-item:nth-child(6)",
+        "breed_7": ".breeds-grid .breed-item:nth-child(7)",
+        "breed_8": ".breeds-grid .breed-item:nth-child(8)"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Testimonials",
+      "elements": {
+        "testimonials_eyebrow": "[data-block=testimonials] .eyebrow",
+        "testimonials_title": "[data-block=testimonials] .h-section",
+        "testimonial_1_quote": ".testimonials-grid .testimonial:nth-child(1) .testimonial-quote",
+        "testimonial_1_author": ".testimonials-grid .testimonial:nth-child(1) .testimonial-author",
+        "testimonial_1_company": ".testimonials-grid .testimonial:nth-child(1) .testimonial-company",
+        "testimonial_1_result": ".testimonials-grid .testimonial:nth-child(1) .testimonial-result",
+        "testimonial_2_quote": ".testimonials-grid .testimonial:nth-child(2) .testimonial-quote",
+        "testimonial_2_author": ".testimonials-grid .testimonial:nth-child(2) .testimonial-author",
+        "testimonial_2_company": ".testimonials-grid .testimonial:nth-child(2) .testimonial-company",
+        "testimonial_2_result": ".testimonials-grid .testimonial:nth-child(2) .testimonial-result",
+        "testimonial_3_quote": ".testimonials-grid .testimonial:nth-child(3) .testimonial-quote",
+        "testimonial_3_author": ".testimonials-grid .testimonial:nth-child(3) .testimonial-author",
+        "testimonial_3_company": ".testimonials-grid .testimonial:nth-child(3) .testimonial-company",
+        "testimonial_3_result": ".testimonials-grid .testimonial:nth-child(3) .testimonial-result"
+      }
+    },
+    {
+      "id": "booking",
+      "name": "Book an Appointment",
+      "elements": {
+        "booking_eyebrow": "#booking .eyebrow",
+        "booking_title": "#booking .h-section",
+        "booking_intro": ".booking-intro",
+        "booking_service_type_label": ".booking-form label[data-field=booking_service_type_label]",
+        "booking_pet_type_label": ".booking-form label[data-field=booking_pet_type_label]",
+        "booking_pet_name_label": ".booking-form label[data-field=booking_pet_name_label]",
+        "booking_pet_age_label": ".booking-form label[data-field=booking_pet_age_label]",
+        "booking_date_label": ".booking-form label[data-field=booking_date_label]",
+        "booking_time_label": ".booking-form label[data-field=booking_time_label]",
+        "booking_owner_name_label": ".booking-form label[data-field=booking_owner_name_label]",
+        "booking_phone_label": ".booking-form label[data-field=booking_phone_label]",
+        "booking_email_label": ".booking-form label[data-field=booking_email_label]",
+        "booking_special_notes_label": ".booking-form label[data-field=booking_special_notes_label]",
+        "booking_submit": ".booking-submit"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact",
+      "elements": {
+        "contact_eyebrow": "#contact .eyebrow",
+        "contact_title": "#contact .h-section",
+        "contact_intro": "#contact .section-intro",
+        "contact_email_label": "#contact .contact-info-item:nth-child(2) .contact-info-label",
+        "contact_email": "#contact .contact-info-item:nth-child(2) .contact-info-value",
+        "contact_phone_label": "#contact .contact-info-item:nth-child(3) .contact-info-label",
+        "contact_phone": "#contact .contact-info-item:nth-child(3) .contact-info-value",
+        "contact_address_label": "#contact .contact-info-item:nth-child(4) .contact-info-label",
+        "contact_address": "#contact .contact-info-item:nth-child(4) .contact-info-value",
+        "contact_hours_label": "#contact .contact-info-item:nth-child(5) .contact-info-label",
+        "contact_hours": "#contact .contact-info-item:nth-child(5) .contact-info-value",
+        "contact_cta_title": "#contact .contact-cta-title",
+        "contact_cta_text": "#contact .contact-cta-text",
+        "contact_cta_button": "#contact .btn-primary"
+      }
+    },
+    {
+      "id": "blog",
+      "name": "Blog Teaser",
+      "fields": [
+        "blog_eyebrow",
+        "blog_title",
+        "blog_intro",
+        "blog_post_1_title",
+        "blog_post_1_excerpt",
+        "blog_post_1_url",
+        "blog_post_2_title",
+        "blog_post_2_excerpt",
+        "blog_post_2_url",
+        "blog_post_3_title",
+        "blog_post_3_excerpt",
+        "blog_post_3_url",
+        "blog_cta"
+      ],
+      "elements": {
+        "eyebrow": ".eyebrow",
+        "heading": "h2",
+        "intro": ".section-subtitle",
+        "grid": ".blog-grid",
+        "card": ".blog-card",
+        "post_title": ".blog-card h3",
+        "post_excerpt": ".blog-card p",
+        "cta": ".blog-cta a"
+      },
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "elements": {
+        "footer_logo": ".footer-logo",
+        "footer_tagline": ".footer-tagline",
+        "social_1": ".footer-socials a:nth-child(1)",
+        "social_2": ".footer-socials a:nth-child(2)",
+        "social_3": ".footer-socials a:nth-child(3)",
+        "social_4": ".footer-socials a:nth-child(4)",
+        "footer_col_1_title": ".footer-grid .footer-col:nth-child(2) .footer-col-title",
+        "footer_col_2_title": ".footer-grid .footer-col:nth-child(3) .footer-col-title",
+        "footer_col_3_title": ".footer-grid .footer-col:nth-child(4) .footer-col-title",
+        "footer_link_1": ".footer-grid .footer-col:nth-child(2) li:nth-child(1) a",
+        "footer_link_2": ".footer-grid .footer-col:nth-child(2) li:nth-child(2) a",
+        "footer_link_3": ".footer-grid .footer-col:nth-child(2) li:nth-child(3) a",
+        "footer_link_4": ".footer-grid .footer-col:nth-child(3) li:nth-child(1) a",
+        "footer_link_5": ".footer-grid .footer-col:nth-child(3) li:nth-child(2) a",
+        "footer_link_6": ".footer-grid .footer-col:nth-child(3) li:nth-child(3) a",
+        "footer_link_7": ".footer-grid .footer-col:nth-child(4) li:nth-child(1) a",
+        "footer_link_8": ".footer-grid .footer-col:nth-child(4) li:nth-child(2) a",
+        "footer_text": ".footer-bottom > div:nth-child(1)",
+        "footer_legal": ".footer-bottom > div:nth-child(2)"
+      }
     }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Business Name",
+      "default": "Pawsome Care"
+    },
+    "business_tagline": {
+      "type": "text",
+      "label": "Tagline",
+      "default": "Full-Service Pet Clinic, Groomer & Boarder in Al Quoz"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Pawsome Care is Dubai's favourite full-service pet clinic in Al Quoz \u2014 veterinary care, professional grooming, boarding, training, daycare, and a fully stocked pet shop all under one roof."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://pawsomecare.ae"
+    },
+    "og_image": {
+      "type": "image",
+      "label": "OG Image",
+      "default": "/storage/builder-heroes/pet_services.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_AE"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Background",
+      "default": "/storage/builder-heroes/pet_services.jpg"
+    },
+    "orange": {
+      "type": "color",
+      "label": "Orange",
+      "default": "#F97316"
+    },
+    "orange_deep": {
+      "type": "color",
+      "label": "Orange Deep",
+      "default": "#C2410C"
+    },
+    "teal": {
+      "type": "color",
+      "label": "Teal",
+      "default": "#0F766E"
+    },
+    "teal_deep": {
+      "type": "color",
+      "label": "Teal Deep",
+      "default": "#0C4A47"
+    },
+    "white": {
+      "type": "color",
+      "label": "White",
+      "default": "#FFFFFF"
+    },
+    "warm_grey": {
+      "type": "color",
+      "label": "Warm Grey",
+      "default": "#6A6A6A"
+    },
+    "divider": {
+      "type": "color",
+      "label": "Divider",
+      "default": "#F1E6D4"
+    },
+    "logo": {
+      "type": "text",
+      "label": "Logo Text",
+      "default": "Pawsome Care"
+    },
+    "nav_1": {
+      "type": "text",
+      "label": "Nav: Services",
+      "default": "Services"
+    },
+    "nav_2": {
+      "type": "text",
+      "label": "Nav: Why Us",
+      "default": "Why Us"
+    },
+    "nav_3": {
+      "type": "text",
+      "label": "Nav: Our Team",
+      "default": "Our Team"
+    },
+    "nav_4": {
+      "type": "text",
+      "label": "Nav: Happy Pets",
+      "default": "Happy Pets"
+    },
+    "nav_5": {
+      "type": "text",
+      "label": "Nav: Contact",
+      "default": "Contact"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav CTA",
+      "default": "Book Appointment"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Al Quoz \u00b7 Since 2015"
+    },
+    "hero_title": {
+      "type": "text",
+      "label": "Hero Title",
+      "default": "Your pet's second-favourite place in Dubai."
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subtitle",
+      "default": "Pawsome Care is a full-service pet destination in Al Quoz \u2014 veterinary clinic, professional grooming, boarding, daycare, training, and pet shop. One roof, one team, every service your furry family needs."
+    },
+    "hero_cta_primary": {
+      "type": "text",
+      "label": "Hero CTA Primary",
+      "default": "Book an Appointment"
+    },
+    "hero_cta_secondary": {
+      "type": "text",
+      "label": "Hero CTA Secondary",
+      "default": "Our Services"
+    },
+    "hero_trust_1": {
+      "type": "text",
+      "label": "Trust 1",
+      "default": "MOCCAE licensed"
+    },
+    "hero_trust_2": {
+      "type": "text",
+      "label": "Trust 2",
+      "default": "24/7 emergency line"
+    },
+    "hero_trust_3": {
+      "type": "text",
+      "label": "Trust 3",
+      "default": "Free pickup in Al Quoz"
+    },
+    "hero_trust_4": {
+      "type": "text",
+      "label": "Trust 4",
+      "default": "4.9\u2605 on Google"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "11"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Years Caring for Pets"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "8,500+"
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Furry Clients"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "12"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Vets & Groomers"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "4.9"
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Google Rating"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "WHAT WE DO"
+    },
+    "services_title": {
+      "type": "text",
+      "label": "Services Title",
+      "default": "Every service your pet needs."
+    },
+    "services_intro": {
+      "type": "text",
+      "label": "Services Intro",
+      "default": "From a wiggly puppy's first vaccination to a senior cat's regular check-up \u2014 we cover every chapter of your pet's life in one friendly Al Quoz location."
+    },
+    "service_1_icon": {
+      "type": "text",
+      "label": "Service 1 Icon",
+      "default": "V"
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Vet Care"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Text",
+      "default": "Routine check-ups, vaccinations, microchipping, dental care, surgery, and MOCCAE-compliant pet passports. Licensed vets from the UK, Spain, and Philippines."
+    },
+    "service_1_link": {
+      "type": "text",
+      "label": "Service 1 Link",
+      "default": "See vet services"
+    },
+    "service_2_icon": {
+      "type": "text",
+      "label": "Service 2 Icon",
+      "default": "G"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "Grooming"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Text",
+      "default": "Full grooming from AED 120. De-matting, breed-specific cuts, nail trim, ear cleaning, and luxury spa packages \u2014 all in a stress-free, fear-free environment."
+    },
+    "service_2_link": {
+      "type": "text",
+      "label": "Service 2 Link",
+      "default": "See grooming"
+    },
+    "service_3_icon": {
+      "type": "text",
+      "label": "Service 3 Icon",
+      "default": "B"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "Boarding"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Text",
+      "default": "Spacious, climate-controlled boarding suites with live webcam access. Daily play sessions, two walks a day, and 24/7 vet on-call. From AED 130/night."
+    },
+    "service_3_link": {
+      "type": "text",
+      "label": "Service 3 Link",
+      "default": "See boarding"
+    },
+    "service_4_icon": {
+      "type": "text",
+      "label": "Service 4 Icon",
+      "default": "T"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Training"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Text",
+      "default": "Puppy school, basic obedience, behavioural rehab, and private 1:1 sessions. All force-free, reward-based methods \u2014 certified IMDT trainers."
+    },
+    "service_4_link": {
+      "type": "text",
+      "label": "Service 4 Link",
+      "default": "See training"
+    },
+    "service_5_icon": {
+      "type": "text",
+      "label": "Service 5 Icon",
+      "default": "D"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "Daycare"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Text",
+      "default": "Full-day and half-day doggie daycare with socialisation groups, splash pool in summer, and nap rooms. Free pickup and drop-off across Al Quoz and Al Barsha."
+    },
+    "service_5_link": {
+      "type": "text",
+      "label": "Service 5 Link",
+      "default": "See daycare"
+    },
+    "service_6_icon": {
+      "type": "text",
+      "label": "Service 6 Icon",
+      "default": "S"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "Pet Shop"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Text",
+      "default": "Premium pet food (Royal Canin, Hill's, Orijen, Acana), treats, toys, beds, harnesses, and vet-prescribed diets. Free home delivery over AED 150."
+    },
+    "service_6_link": {
+      "type": "text",
+      "label": "Service 6 Link",
+      "default": "Visit the shop"
+    },
+    "why_us_eyebrow": {
+      "type": "text",
+      "label": "Why Us Eyebrow",
+      "default": "WHY PET PARENTS PICK US"
+    },
+    "why_us_title": {
+      "type": "text",
+      "label": "Why Us Title",
+      "default": "Four reasons Dubai pet parents keep coming back."
+    },
+    "why_us_intro": {
+      "type": "text",
+      "label": "Why Us Intro",
+      "default": "We are not the biggest clinic in Dubai \u2014 but we might be the most loved. Here is what our pet parents tell us, over and over."
+    },
+    "pillar_1_icon": {
+      "type": "text",
+      "label": "Pillar 1 Icon",
+      "default": "\u2665"
+    },
+    "pillar_1_title": {
+      "type": "text",
+      "label": "Pillar 1 Title",
+      "default": "Fear-Free Certified"
+    },
+    "pillar_1_text": {
+      "type": "text",
+      "label": "Pillar 1 Text",
+      "default": "Every vet and groomer is Fear-Free certified. Low-stress handling, treats on arrival, and all the time your pet needs. No rough stuff, ever."
+    },
+    "pillar_2_icon": {
+      "type": "text",
+      "label": "Pillar 2 Icon",
+      "default": "\u26a1"
+    },
+    "pillar_2_title": {
+      "type": "text",
+      "label": "Pillar 2 Title",
+      "default": "24/7 Emergency Line"
+    },
+    "pillar_2_text": {
+      "type": "text",
+      "label": "Pillar 2 Text",
+      "default": "Panic at 2am? Call our emergency line and speak to an on-call vet immediately. Clinic opens within 30 minutes for genuine emergencies \u2014 no exceptions."
+    },
+    "pillar_3_icon": {
+      "type": "text",
+      "label": "Pillar 3 Icon",
+      "default": "\ud83d\ude90"
+    },
+    "pillar_3_title": {
+      "type": "text",
+      "label": "Pillar 3 Title",
+      "default": "Free Pickup & Drop-off"
+    },
+    "pillar_3_text": {
+      "type": "text",
+      "label": "Pillar 3 Text",
+      "default": "Complimentary pet transport across Al Quoz, Al Barsha, Downtown, and JLT. Our air-conditioned pet vans come to your door on appointment day."
+    },
+    "pillar_4_icon": {
+      "type": "text",
+      "label": "Pillar 4 Icon",
+      "default": "\ud83d\udcf1"
+    },
+    "pillar_4_title": {
+      "type": "text",
+      "label": "Pillar 4 Title",
+      "default": "Pet Parent Portal"
+    },
+    "pillar_4_text": {
+      "type": "text",
+      "label": "Pillar 4 Text",
+      "default": "Full vaccination history, prescription refills, grooming photos, and boarding webcam access \u2014 all in a single app. Your pet's life, one tap away."
+    },
+    "team_eyebrow": {
+      "type": "text",
+      "label": "Team Eyebrow",
+      "default": "MEET THE PACK"
+    },
+    "team_title": {
+      "type": "text",
+      "label": "Team Title",
+      "default": "The humans your pet is about to love."
+    },
+    "team_intro": {
+      "type": "text",
+      "label": "Team Intro",
+      "default": "Twelve pet-obsessed humans from four continents. Everyone on our team was picked for one reason \u2014 a genuine, slightly-over-the-top love of animals."
+    },
+    "member_1_image": {
+      "type": "image",
+      "label": "Member 1 Image",
+      "default": "/storage/builder-heroes/pet_services.jpg"
+    },
+    "member_1_name": {
+      "type": "text",
+      "label": "Member 1 Name",
+      "default": "Dr. Sara Al-Awadhi"
+    },
+    "member_1_role": {
+      "type": "text",
+      "label": "Member 1 Role",
+      "default": "Clinic Director \u00b7 DVM"
+    },
+    "member_1_bio": {
+      "type": "text",
+      "label": "Member 1 Bio",
+      "default": "14 years in small-animal medicine. DVM from the Royal Veterinary College, London. Founded Pawsome Care in 2015. Mum to three rescue cats and a very opinionated bulldog."
+    },
+    "member_2_image": {
+      "type": "image",
+      "label": "Member 2 Image",
+      "default": "/storage/builder-heroes/pet_services.jpg"
+    },
+    "member_2_name": {
+      "type": "text",
+      "label": "Member 2 Name",
+      "default": "Dr. Miguel Rodriguez"
+    },
+    "member_2_role": {
+      "type": "text",
+      "label": "Member 2 Role",
+      "default": "Senior Vet \u00b7 Surgery"
+    },
+    "member_2_bio": {
+      "type": "text",
+      "label": "Member 2 Bio",
+      "default": "12 years in veterinary surgery. Specialist in orthopaedics and soft-tissue. Trained in Barcelona, practised in Madrid and Abu Dhabi before joining Pawsome in 2018."
+    },
+    "member_3_image": {
+      "type": "image",
+      "label": "Member 3 Image",
+      "default": "/storage/builder-heroes/pet_services.jpg"
+    },
+    "member_3_name": {
+      "type": "text",
+      "label": "Member 3 Name",
+      "default": "Princess Garcia"
+    },
+    "member_3_role": {
+      "type": "text",
+      "label": "Member 3 Role",
+      "default": "Head Groomer \u00b7 IPG Certified"
+    },
+    "member_3_bio": {
+      "type": "text",
+      "label": "Member 3 Bio",
+      "default": "10 years in professional grooming. IPG certified and specialist in breed-standard cuts. The person your Poodle secretly loves more than you."
+    },
+    "member_4_image": {
+      "type": "image",
+      "label": "Member 4 Image",
+      "default": "/storage/builder-heroes/pet_services.jpg"
+    },
+    "member_4_name": {
+      "type": "text",
+      "label": "Member 4 Name",
+      "default": "Hamza Al-Rifai"
+    },
+    "member_4_role": {
+      "type": "text",
+      "label": "Member 4 Role",
+      "default": "Head Trainer \u00b7 IMDT Cert"
+    },
+    "member_4_bio": {
+      "type": "text",
+      "label": "Member 4 Bio",
+      "default": "8 years in positive-reinforcement dog training. IMDT certified. Specialises in puppy school, recall, and rescue-dog rehab. Currently training his own three-legged greyhound."
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "HAPPY PETS"
+    },
+    "gallery_title": {
+      "type": "text",
+      "label": "Gallery Title",
+      "default": "Some of our favourite regulars."
+    },
+    "gallery_intro": {
+      "type": "text",
+      "label": "Gallery Intro",
+      "default": "A tiny wall of fame \u2014 just a handful of the thousands of furry friends who have trusted us with their wag, purr, and occasional zoomies."
+    },
+    "gallery_1_image": {
+      "type": "image",
+      "label": "Gallery 1 Image",
+      "default": "/storage/template-images/pet_services/gallery_1_image.jpg"
+    },
+    "gallery_1_caption": {
+      "type": "text",
+      "label": "Gallery 1 Caption",
+      "default": "Mango \u00b7 Golden Retriever"
+    },
+    "gallery_2_image": {
+      "type": "image",
+      "label": "Gallery 2 Image",
+      "default": "/storage/template-images/pet_services/gallery_2_image.jpg"
+    },
+    "gallery_2_caption": {
+      "type": "text",
+      "label": "Gallery 2 Caption",
+      "default": "Luna \u00b7 Maine Coon"
+    },
+    "gallery_3_image": {
+      "type": "image",
+      "label": "Gallery 3 Image",
+      "default": "/storage/template-images/pet_services/gallery_3_image.jpg"
+    },
+    "gallery_3_caption": {
+      "type": "text",
+      "label": "Gallery 3 Caption",
+      "default": "Biscuit \u00b7 French Bulldog"
+    },
+    "gallery_4_image": {
+      "type": "image",
+      "label": "Gallery 4 Image",
+      "default": "/storage/template-images/pet_services/gallery_4_image.jpg"
+    },
+    "gallery_4_caption": {
+      "type": "text",
+      "label": "Gallery 4 Caption",
+      "default": "Pearl \u00b7 Persian Cat"
+    },
+    "gallery_5_image": {
+      "type": "image",
+      "label": "Gallery 5 Image",
+      "default": "/storage/template-images/pet_services/gallery_5_image.jpg"
+    },
+    "gallery_5_caption": {
+      "type": "text",
+      "label": "Gallery 5 Caption",
+      "default": "Rocky \u00b7 Rescue Mix"
+    },
+    "gallery_6_image": {
+      "type": "image",
+      "label": "Gallery 6 Image",
+      "default": "/storage/template-images/pet_services/gallery_6_image.jpg"
+    },
+    "gallery_6_caption": {
+      "type": "text",
+      "label": "Gallery 6 Caption",
+      "default": "Kiwi \u00b7 Cockatiel"
+    },
+    "breeds_title": {
+      "type": "text",
+      "label": "Breeds Title",
+      "default": "WELCOMING EVERY BREED, EVERY SIZE"
+    },
+    "breed_1": {
+      "type": "text",
+      "label": "Breed 1",
+      "default": "Golden Retriever"
+    },
+    "breed_2": {
+      "type": "text",
+      "label": "Breed 2",
+      "default": "Labrador"
+    },
+    "breed_3": {
+      "type": "text",
+      "label": "Breed 3",
+      "default": "French Bulldog"
+    },
+    "breed_4": {
+      "type": "text",
+      "label": "Breed 4",
+      "default": "Poodle"
+    },
+    "breed_5": {
+      "type": "text",
+      "label": "Breed 5",
+      "default": "Persian Cat"
+    },
+    "breed_6": {
+      "type": "text",
+      "label": "Breed 6",
+      "default": "Maine Coon"
+    },
+    "breed_7": {
+      "type": "text",
+      "label": "Breed 7",
+      "default": "Rescue Mix"
+    },
+    "breed_8": {
+      "type": "text",
+      "label": "Breed 8",
+      "default": "Exotics"
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "PET PARENT WORDS"
+    },
+    "testimonials_title": {
+      "type": "text",
+      "label": "Testimonials Title",
+      "default": "What Dubai pet parents say about us."
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1 Quote",
+      "default": "Mango had never sat still for grooming until Princess took over. Now he walks in wagging. Honestly no idea what magic she uses \u2014 but it works every time."
+    },
+    "testimonial_1_author": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Aisha Hassan"
+    },
+    "testimonial_1_company": {
+      "type": "text",
+      "label": "Testimonial 1 Company",
+      "default": "Mum to Mango, Golden Retriever"
+    },
+    "testimonial_1_result": {
+      "type": "text",
+      "label": "Testimonial 1 Result",
+      "default": "3 years loyal"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2 Quote",
+      "default": "Our cat had a midnight emergency and Dr. Sara picked up the phone within two rings. At the clinic in 25 minutes. I genuinely think she saved Luna's life that night."
+    },
+    "testimonial_2_author": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Chris Thompson"
+    },
+    "testimonial_2_company": {
+      "type": "text",
+      "label": "Testimonial 2 Company",
+      "default": "Dad to Luna, Maine Coon"
+    },
+    "testimonial_2_result": {
+      "type": "text",
+      "label": "Testimonial 2 Result",
+      "default": "Life saved"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3 Quote",
+      "default": "Boarded Biscuit for two weeks while we travelled. Webcam access meant we could see him playing every day. He came back happier than when we left him."
+    },
+    "testimonial_3_author": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Fatima & Yousef Al-Mansoori"
+    },
+    "testimonial_3_company": {
+      "type": "text",
+      "label": "Testimonial 3 Company",
+      "default": "Parents to Biscuit, French Bulldog"
+    },
+    "testimonial_3_result": {
+      "type": "text",
+      "label": "Testimonial 3 Result",
+      "default": "Tail-wag approved"
+    },
+    "booking_eyebrow": {
+      "type": "text",
+      "label": "Booking Eyebrow",
+      "default": "BOOK YOUR VISIT"
+    },
+    "booking_title": {
+      "type": "text",
+      "label": "Booking Title",
+      "default": "Book an Appointment"
+    },
+    "booking_intro": {
+      "type": "text",
+      "label": "Booking Intro",
+      "default": "Tell us a bit about your pet and we will confirm the appointment within one hour during clinic hours. Free pickup available across Al Quoz, Al Barsha, and Downtown."
+    },
+    "booking_service_type_label": {
+      "type": "text",
+      "label": "Service Type Label",
+      "default": "Service Needed"
+    },
+    "booking_pet_type_label": {
+      "type": "text",
+      "label": "Pet Type Label",
+      "default": "Pet Type"
+    },
+    "booking_pet_name_label": {
+      "type": "text",
+      "label": "Pet Name Label",
+      "default": "Pet's Name"
+    },
+    "booking_pet_age_label": {
+      "type": "text",
+      "label": "Pet Age Label",
+      "default": "Pet's Age"
+    },
+    "booking_date_label": {
+      "type": "text",
+      "label": "Date Label",
+      "default": "Preferred Date"
+    },
+    "booking_time_label": {
+      "type": "text",
+      "label": "Time Label",
+      "default": "Preferred Time"
+    },
+    "booking_owner_name_label": {
+      "type": "text",
+      "label": "Owner Name Label",
+      "default": "Your Name"
+    },
+    "booking_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Phone / WhatsApp"
+    },
+    "booking_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email"
+    },
+    "booking_special_notes_label": {
+      "type": "text",
+      "label": "Special Notes Label",
+      "default": "Anything We Should Know"
+    },
+    "booking_submit": {
+      "type": "text",
+      "label": "Submit Button",
+      "default": "Book Appointment"
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "GET IN TOUCH"
+    },
+    "contact_title": {
+      "type": "text",
+      "label": "Contact Title",
+      "default": "Come say hi \u2014 we love visitors."
+    },
+    "contact_intro": {
+      "type": "text",
+      "label": "Contact Intro",
+      "default": "Pop into the clinic any time during opening hours, or reach us by phone, WhatsApp, or email. We reply within one hour during business hours."
+    },
+    "contact_email_label": {
+      "type": "text",
+      "label": "Email Label",
+      "default": "Email"
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Email",
+      "default": "hello@pawsomecare.ae"
+    },
+    "contact_phone_label": {
+      "type": "text",
+      "label": "Phone Label",
+      "default": "Phone / WhatsApp"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Phone",
+      "default": "+971 4 388 6622"
+    },
+    "contact_address_label": {
+      "type": "text",
+      "label": "Address Label",
+      "default": "Clinic"
+    },
+    "contact_address": {
+      "type": "text",
+      "label": "Address",
+      "default": "Warehouse 14, Street 8, Al Quoz 1, Dubai, UAE"
+    },
+    "contact_hours_label": {
+      "type": "text",
+      "label": "Hours Label",
+      "default": "Hours"
+    },
+    "contact_hours": {
+      "type": "text",
+      "label": "Hours",
+      "default": "Open 7 days \u00b7 08:00\u201321:00 \u00b7 24/7 emergency line"
+    },
+    "contact_cta_title": {
+      "type": "text",
+      "label": "Contact CTA Title",
+      "default": "Ready to book?"
+    },
+    "contact_cta_text": {
+      "type": "text",
+      "label": "Contact CTA Text",
+      "default": "Skip the phone queue. Book online in under sixty seconds \u2014 we will confirm within the hour and send a WhatsApp reminder the morning of your visit."
+    },
+    "contact_cta_button": {
+      "type": "text",
+      "label": "Contact CTA Button",
+      "default": "Book an Appointment"
+    },
+    "footer_logo": {
+      "type": "text",
+      "label": "Footer Logo",
+      "default": "Pawsome Care"
+    },
+    "footer_tagline": {
+      "type": "text",
+      "label": "Footer Tagline",
+      "default": "Dubai's favourite full-service pet destination. Veterinary clinic, grooming salon, boarding hotel, daycare, training, and pet shop \u2014 all in one friendly Al Quoz location."
+    },
+    "social_1": {
+      "type": "text",
+      "label": "Social 1",
+      "default": "IG"
+    },
+    "social_2": {
+      "type": "text",
+      "label": "Social 2",
+      "default": "FB"
+    },
+    "social_3": {
+      "type": "text",
+      "label": "Social 3",
+      "default": "TT"
+    },
+    "social_4": {
+      "type": "text",
+      "label": "Social 4",
+      "default": "WA"
+    },
+    "footer_col_1_title": {
+      "type": "text",
+      "label": "Footer Col 1 Title",
+      "default": "Services"
+    },
+    "footer_col_2_title": {
+      "type": "text",
+      "label": "Footer Col 2 Title",
+      "default": "Pawsome"
+    },
+    "footer_col_3_title": {
+      "type": "text",
+      "label": "Footer Col 3 Title",
+      "default": "Connect"
+    },
+    "footer_link_1": {
+      "type": "text",
+      "label": "Footer Link 1",
+      "default": "Vet Care"
+    },
+    "footer_link_2": {
+      "type": "text",
+      "label": "Footer Link 2",
+      "default": "Grooming"
+    },
+    "footer_link_3": {
+      "type": "text",
+      "label": "Footer Link 3",
+      "default": "Boarding"
+    },
+    "footer_link_4": {
+      "type": "text",
+      "label": "Footer Link 4",
+      "default": "Our Team"
+    },
+    "footer_link_5": {
+      "type": "text",
+      "label": "Footer Link 5",
+      "default": "Happy Pets"
+    },
+    "footer_link_6": {
+      "type": "text",
+      "label": "Footer Link 6",
+      "default": "Why Us"
+    },
+    "footer_link_7": {
+      "type": "text",
+      "label": "Footer Link 7",
+      "default": "Contact"
+    },
+    "footer_link_8": {
+      "type": "text",
+      "label": "Footer Link 8",
+      "default": "Book Appointment"
+    },
+    "footer_text": {
+      "type": "text",
+      "label": "Footer Text",
+      "default": "\u00a9 2026 Pawsome Care Veterinary Services LLC. All rights reserved."
+    },
+    "footer_legal": {
+      "type": "text",
+      "label": "Footer Legal",
+      "default": "Privacy \u00b7 Terms \u00b7 MOCCAE Licence"
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook URL",
+      "default": "#"
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram URL",
+      "default": "#"
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn URL",
+      "default": "#"
+    },
+    "social_twitter": {
+      "type": "url",
+      "label": "X / Twitter URL",
+      "default": "#"
+    },
+    "social_youtube": {
+      "type": "url",
+      "label": "YouTube URL",
+      "default": "#"
+    },
+    "social_tiktok": {
+      "type": "url",
+      "label": "TikTok URL",
+      "default": "#"
+    },
+    "social_whatsapp": {
+      "type": "url",
+      "label": "WhatsApp URL",
+      "default": "#"
+    },
+    "blog_eyebrow": {
+      "type": "text",
+      "label": "Blog Eyebrow",
+      "default": "Insights"
+    },
+    "blog_title": {
+      "type": "html",
+      "label": "Blog Title",
+      "default": "Latest from Our Blog"
+    },
+    "blog_intro": {
+      "type": "text",
+      "label": "Blog Intro",
+      "default": "Tips, news and insights from our team."
+    },
+    "blog_post_1_title": {
+      "type": "text",
+      "label": "Post 1 Title",
+      "default": "What to expect at your first visit"
+    },
+    "blog_post_1_excerpt": {
+      "type": "text",
+      "label": "Post 1 Excerpt",
+      "default": "A short walk-through of the first visit so you know exactly what to expect."
+    },
+    "blog_post_1_url": {
+      "type": "url",
+      "label": "Post 1 URL",
+      "default": "/blog/first-visit"
+    },
+    "blog_post_2_title": {
+      "type": "text",
+      "label": "Post 2 Title",
+      "default": "Five questions worth asking"
+    },
+    "blog_post_2_excerpt": {
+      "type": "text",
+      "label": "Post 2 Excerpt",
+      "default": "The questions that should be standard but rarely are."
+    },
+    "blog_post_2_url": {
+      "type": "url",
+      "label": "Post 2 URL",
+      "default": "/blog/five-questions"
+    },
+    "blog_post_3_title": {
+      "type": "text",
+      "label": "Post 3 Title",
+      "default": "The case for taking your time"
+    },
+    "blog_post_3_excerpt": {
+      "type": "text",
+      "label": "Post 3 Excerpt",
+      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+    },
+    "blog_post_3_url": {
+      "type": "url",
+      "label": "Post 3 URL",
+      "default": "/blog/taking-time"
+    },
+    "blog_cta": {
+      "type": "text",
+      "label": "Blog CTA",
+      "default": "View All Posts \u2192"
+    }
+  },
+  "social_fields": [
+    {
+      "slug": "facebook",
+      "label": "Facebook",
+      "key": "social_facebook"
+    },
+    {
+      "slug": "instagram",
+      "label": "Instagram",
+      "key": "social_instagram"
+    },
+    {
+      "slug": "linkedin",
+      "label": "LinkedIn",
+      "key": "social_linkedin"
+    },
+    {
+      "slug": "twitter",
+      "label": "X / Twitter",
+      "key": "social_twitter"
+    },
+    {
+      "slug": "youtube",
+      "label": "YouTube",
+      "key": "social_youtube"
+    },
+    {
+      "slug": "tiktok",
+      "label": "TikTok",
+      "key": "social_tiktok"
+    },
+    {
+      "slug": "whatsapp",
+      "label": "WhatsApp",
+      "key": "social_whatsapp"
+    }
+  ],
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 6
+  }
 }
