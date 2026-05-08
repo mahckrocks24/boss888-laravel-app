@@ -959,6 +959,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
     Route::get('/media/library',  [\App\Http\Controllers\Api\MediaController::class, 'library']);
     Route::get('/media/access',   [\App\Http\Controllers\Api\MediaController::class, 'access']);
     Route::post('/media/use',     [\App\Http\Controllers\Api\MediaController::class, 'use_']);
+    Route::delete('/media/{id}',  [\App\Http\Controllers\Api\MediaController::class, 'delete'])->where('id', '[0-9]+');
 
     // Validation Report (Phase 4)
     Route::get('/system/validation-report', [\App\Http\Controllers\Api\Debug\DebugScenarioController::class, 'validationReport'])->middleware(\App\Http\Middleware\AdminMiddleware::class);
@@ -4401,6 +4402,10 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])
         // Notification System v2 (2026-05-07) — admin scope
         Route::get ('/notifications',           [\App\Http\Controllers\Api\Admin\AdminNotificationController::class, 'index']);
         Route::post('/notifications/broadcast', [\App\Http\Controllers\Api\Admin\AdminNotificationController::class, 'broadcast']);
+
+        // Media Library admin actions (T3.1D)
+        Route::post  ('/media/generate', [\App\Http\Controllers\Api\Admin\AdminMediaController::class, 'generate']);
+        Route::delete('/media/{id}',     [\App\Http\Controllers\Api\Admin\AdminMediaController::class, 'destroy'])->where('id', '[0-9]+');
 
         // ── Connector / API-key admin (Recovery 2026-05-05 / §1 SEO_ONLY) ────
         Route::get ('/connector-sites',      [$c, 'listConnectorSites']);

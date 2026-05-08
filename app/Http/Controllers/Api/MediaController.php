@@ -229,6 +229,55 @@ class MediaController
         ]);
     }
 
+    /**
+     * DELETE /api/media/{id} — workspace-scoped delete.
+     * Only allows the caller's workspace to delete its own media.
+     * Removes the original file + the thumbnail (if generated) from disk,
+     * then deletes the DB row.
+     */
+    public function delete(Request $request, int $id): JsonResponse
+    {
+        $wsId = (int) ($request->attributes->get('workspace_id') ?? 0);
+        if ($wsId <= 0) {
+            return response()->json(['success' => false, 'error' => 'Workspace context missing'], 400);
+        }
+
+        $media = DB::table('media')
+            ->where('id', $id)
+            ->where('workspace_id', $wsId)
+            ->first();
+
+        if (! $media) {
+            return response()->json(['success' => false, 'error' => 'Not found or unauthorized'], 404);
+        }
+
+        $publicRoot = storage_path('app/public');
+        $filesRemoved = 0;
+
+        // Original file
+        if (! empty($media->path)) {
+            $abs = $publicRoot . '/' . ltrim((string) $media->path, '/');
+            if (is_file($abs) && @unlink($abs)) $filesRemoved++;
+        }
+
+        // Thumbnail file (derive from URL)
+        if (! empty($media->thumbnail_url)) {
+            $thumbRel = ltrim(str_replace('/storage/', '', (string) $media->thumbnail_url), '/');
+            if ($thumbRel) {
+                $thumbAbs = $publicRoot . '/' . $thumbRel;
+                if (is_file($thumbAbs) && @unlink($thumbAbs)) $filesRemoved++;
+            }
+        }
+
+        DB::table('media')->where('id', $id)->delete();
+
+        return response()->json([
+            'success'       => true,
+            'deleted_id'    => $id,
+            'files_removed' => $filesRemoved,
+        ]);
+    }
+
     private function planName(?string $slug): ?string
     {
         $map = [

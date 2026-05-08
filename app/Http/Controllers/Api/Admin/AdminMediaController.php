@@ -529,6 +529,7 @@ class AdminMediaController
 
     /**
      * DELETE /admin/media/{id}
+     * Removes the original file + thumbnail (T3.1D) + DB row.
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
@@ -538,25 +539,180 @@ class AdminMediaController
                 return response()->json(['success' => false, 'error' => 'Not found'], 404);
             }
 
-            // Attempt to delete the file on disk — best effort.
-            $abs = null;
+            $publicRoot = storage_path('app/public');
+            $filesRemoved = 0;
+
+            // Original file.
             if (!empty($row->path)) {
-                $candidate = storage_path('app/public/' . ltrim($row->path, '/'));
-                if (is_file($candidate)) $abs = $candidate;
+                $abs = $publicRoot . '/' . ltrim($row->path, '/');
+                if (is_file($abs) && @unlink($abs)) $filesRemoved++;
+            }
+
+            // T3.1D — also remove the generated thumbnail if present.
+            if (!empty($row->thumbnail_url)) {
+                $thumbRel = ltrim(str_replace('/storage/', '', (string) $row->thumbnail_url), '/');
+                if ($thumbRel) {
+                    $thumbAbs = $publicRoot . '/' . $thumbRel;
+                    if (is_file($thumbAbs) && @unlink($thumbAbs)) $filesRemoved++;
+                }
             }
 
             $deleted = DB::table('media')->where('id', $id)->delete() > 0;
-            if ($abs) @unlink($abs);
 
             return response()->json([
-                'success'     => true,
-                'deleted'     => $deleted,
-                'file_removed'=> (bool) $abs,
+                'success'       => true,
+                'deleted'       => $deleted,
+                'files_removed' => $filesRemoved,
             ]);
         } catch (\Throwable $e) {
             Log::warning('[AdminMedia] destroy failed: ' . $e->getMessage());
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * POST /admin/media/generate — admin-only DALL-E 3 image generation.
+     * Body: {prompt, size?, quality?, category?, filename?}
+     * After save, immediately generates a thumbnail so the new image
+     * appears in the picker grid with art, not a blank card.
+     */
+    public function generate(Request $request): JsonResponse
+    {
+        // Defense-in-depth admin check (route also has AdminMiddleware).
+        $userId = (int) $request->attributes->get('user_id');
+        $user = DB::table('users')->where('id', $userId)->first();
+        if (!$user || !$user->is_platform_admin) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'prompt'   => 'required|string|max:1000',
+            'size'     => 'sometimes|in:1024x1024,1792x1024,1024x1792',
+            'quality'  => 'sometimes|in:standard,hd',
+            'category' => 'nullable|string|max:50',
+            'filename' => 'nullable|string|max:100',
+        ]);
+
+        $size     = $validated['size']     ?? '1792x1024';
+        $quality  = $validated['quality']  ?? 'standard';
+        $category = $validated['category'] ?? 'generated';
+
+        $apiKey = config('services.openai.api_key', env('OPENAI_API_KEY', ''));
+        if (! $apiKey) {
+            return response()->json(['error' => 'OPENAI_API_KEY not configured'], 500);
+        }
+
+        // Call DALL-E 3.
+        $ch = curl_init('https://api.openai.com/v1/images/generations');
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', "Authorization: Bearer {$apiKey}"],
+            CURLOPT_POSTFIELDS     => json_encode([
+                'model'           => 'dall-e-3',
+                'prompt'          => $validated['prompt'],
+                'n'               => 1,
+                'size'            => $size,
+                'quality'         => $quality,
+                'response_format' => 'url',
+            ]),
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if ($code !== 200) {
+            $errorMsg = $err ?: ('HTTP ' . $code);
+            if ($resp) {
+                $body = json_decode($resp, true);
+                $errorMsg = $body['error']['message'] ?? $errorMsg;
+            }
+            Log::warning('[AdminMedia] generate OpenAI failed', ['code' => $code, 'err' => $errorMsg]);
+            return response()->json(['error' => 'OpenAI generation failed: ' . $errorMsg], 500);
+        }
+
+        $data = json_decode($resp, true);
+        $imageUrl = $data['data'][0]['url'] ?? null;
+        $revisedPrompt = $data['data'][0]['revised_prompt'] ?? $validated['prompt'];
+        if (! $imageUrl) {
+            return response()->json(['error' => 'No URL in OpenAI response'], 500);
+        }
+
+        // Download.
+        $imageData = @file_get_contents($imageUrl);
+        if (! $imageData || strlen($imageData) < 1024) {
+            return response()->json(['error' => 'Failed to download generated image'], 500);
+        }
+
+        // Filename + path.
+        $filename = ! empty($validated['filename'])
+            ? preg_replace('/[^a-z0-9_\-]/', '', strtolower((string) $validated['filename'])) . '.jpg'
+            : 'gen_' . time() . '_' . \Illuminate\Support\Str::random(6) . '.jpg';
+        if (! $filename || $filename === '.jpg') $filename = 'gen_' . time() . '.jpg';
+
+        $subdir = 'generated/' . date('Y-m');
+        $absDir = storage_path('app/public/' . $subdir);
+        if (! is_dir($absDir)) @mkdir($absDir, 0755, true);
+        $absPath = $absDir . '/' . $filename;
+
+        if (file_put_contents($absPath, $imageData) === false) {
+            return response()->json(['error' => 'Failed to save image to disk'], 500);
+        }
+        @chmod($absPath, 0644);
+
+        [$width, $height] = @getimagesize($absPath) ?: [0, 0];
+        $sizeBytes = filesize($absPath);
+
+        // Inline thumbnail generation (T3.1D Phase 4B requirement).
+        $relPath  = $subdir . '/' . $filename;
+        $thumbAbs = storage_path('app/public/thumbnails/' . $relPath);
+        $thumbnailUrl = null;
+        if (\App\Services\ThumbnailService::generate($absPath, $thumbAbs)) {
+            $thumbnailUrl = '/storage/thumbnails/' . $relPath;
+        } else {
+            Log::warning('[AdminMedia] generate: inline thumbnail failed', ['path' => $relPath]);
+        }
+
+        $mediaId = DB::table('media')->insertGetId([
+            'workspace_id'      => null,
+            'filename'          => $filename,
+            'path'              => $relPath,
+            'url'               => '/storage/' . $relPath,
+            'file_url'          => '/storage/' . $relPath,
+            'thumbnail_url'     => $thumbnailUrl,
+            'mime_type'         => 'image/jpeg',
+            'asset_type'        => 'image',
+            'size_bytes'        => $sizeBytes,
+            'width'             => $width,
+            'height'            => $height,
+            'source'            => 'dall-e',
+            'is_platform_asset' => 1,
+            'is_public'         => 1,
+            'category'          => $category,
+            'prompt'            => $validated['prompt'],
+            'model'             => 'dall-e-3',
+            'metadata_json'     => json_encode([
+                'revised_prompt' => $revisedPrompt,
+                'size'           => $size,
+                'quality'        => $quality,
+                'generated_at'   => now()->toIso8601String(),
+                'generated_by'   => $userId,
+            ]),
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        return response()->json([
+            'success'        => true,
+            'media_id'       => $mediaId,
+            'url'            => '/storage/' . $relPath,
+            'thumbnail_url'  => $thumbnailUrl,
+            'revised_prompt' => $revisedPrompt,
+            'size_bytes'     => $sizeBytes,
+            'dimensions'     => $width . 'x' . $height,
+        ]);
     }
 
     /**

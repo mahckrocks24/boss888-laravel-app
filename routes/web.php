@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Route;
 | Marketing   — served at / and /pages/* (public static HTML from plugin)
 */
 
+// ── On-the-fly thumbnails (T3.1D) ────────────────────────────────────────────
+// Self-healing cache: nginx try_files misses on first request, falls through
+// to PHP, controller generates + saves to disk. Subsequent requests served
+// directly by nginx. NO catchall consumes /storage paths above this.
+Route::get('/storage/thumbnails/{path}', [\App\Http\Controllers\ThumbnailController::class, 'serve'])
+    ->where('path', '.*');
+
 // ── Admin Panel ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->group(function () {
     Route::get('/login', function () {
