@@ -2268,6 +2268,7 @@
             selBar +
             '<button onclick="_mediaSetView(\'grid\')" style="padding:8px 12px;background:' + (st.view==='grid'?'var(--p)':'var(--s2)') + ';color:' + (st.view==='grid'?'#fff':'var(--text)') + ';border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px">\u2B1A Grid</button>' +
             '<button onclick="_mediaSetView(\'list\')" style="padding:8px 12px;background:' + (st.view==='list'?'var(--p)':'var(--s2)') + ';color:' + (st.view==='list'?'#fff':'var(--text)') + ';border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px">\u2630 List</button>' +
+            '<button onclick="_mediaOpenGenerate()" style="padding:8px 18px;background:var(--ac);color:#0F1117;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">\u2726 Generate</button>' +
             '<button onclick="_mediaOpenUpload()" style="padding:8px 18px;background:var(--p);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">+ Upload</button>' +
           '</div>' +
         '</div>';
@@ -2623,6 +2624,198 @@
         }
       } catch (ex) {
         if (err) { err.textContent = 'Upload failed: ' + (ex && ex.message || ex); err.style.display = 'block'; }
+      }
+    };
+
+    // ── Generate modal (T3.8) — DALL-E 3 admin-side image generation ──
+    // Shape mirrors _mediaOpenUpload but submits JSON to /api/admin/media/generate.
+    // T3.1D backend already inlines thumbnail generation, so the new image
+    // appears in the grid with thumbnail on the post-success refresh.
+    var _MEDIA_COST_MATRIX = {
+      '1024x1024|standard': 0.04,
+      '1024x1024|hd':       0.08,
+      '1792x1024|standard': 0.08,
+      '1792x1024|hd':       0.12,
+      '1024x1792|standard': 0.08,
+      '1024x1792|hd':       0.12
+    };
+
+    window._mediaGenSlug = function(s) {
+      return String(s||'').toLowerCase()
+        .replace(/[^a-z0-9\s-]/g,'').trim()
+        .split(/\s+/).slice(0,5).join('-')
+        .replace(/-+/g,'-').replace(/^-|-$/g,'') || 'image';
+    };
+
+    window._mediaGenAutoFilename = function(prompt) {
+      var slug = _mediaGenSlug(prompt);
+      var ts = Math.floor(Date.now()/1000);
+      return slug + '_' + ts;
+    };
+
+    window._mediaGenUpdateCost = function() {
+      var sizeEl = document.querySelector('#mg-form [name=size]');
+      var qualEl = document.querySelector('#mg-form [name=quality]');
+      var costEl = document.getElementById('mg-cost');
+      if (!sizeEl || !qualEl || !costEl) return;
+      var key = sizeEl.value + '|' + qualEl.value;
+      var cost = _MEDIA_COST_MATRIX[key] || 0;
+      costEl.textContent = 'Estimated cost: $' + cost.toFixed(2);
+    };
+
+    window._mediaGenUpdatePromptUI = function() {
+      var ta = document.querySelector('#mg-form [name=prompt]');
+      var counter = document.getElementById('mg-counter');
+      var fnameEl = document.querySelector('#mg-form [name=filename]');
+      if (!ta || !counter) return;
+      var n = (ta.value || '').length;
+      counter.textContent = n + '/1000';
+      counter.style.color = n > 900 ? '#F87171' : 'var(--muted)';
+      if (fnameEl && !fnameEl.value) {
+        fnameEl.placeholder = ta.value ? _mediaGenAutoFilename(ta.value) : 'auto-generated from prompt';
+      }
+    };
+
+    window._mediaOpenGenerate = function() {
+      var root = document.getElementById('media-modal-root');
+      if (!root) return;
+      root.innerHTML =
+        '<div id="mg-modal" data-busy="0" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target.id===\'mg-modal\' && event.currentTarget.dataset.busy!==\'1\')_mediaCloseGenerate()">' +
+          '<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;width:520px;max-width:100%;max-height:90vh;overflow-y:auto">' +
+            '<div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
+              '<div style="font-weight:600;font-size:15px">✦ Generate Image (DALL-E 3)</div>' +
+              '<button type="button" onclick="_mediaCloseGenerate()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>' +
+            '</div>' +
+            '<form id="mg-form" onsubmit="_mediaSubmitGenerate(event)" style="padding:22px;display:flex;flex-direction:column;gap:14px">' +
+              '<label style="font-size:12px;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;align-items:center">' +
+                '<span>Prompt</span><span id="mg-counter" style="font-size:11px">0/1000</span>' +
+              '</label>' +
+              '<textarea name="prompt" required maxlength="1000" rows="4" oninput="_mediaGenUpdatePromptUI()" placeholder="Describe the image. Be specific: subject, style, lighting, no text, no people if you want stock-style." style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:90px"></textarea>' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+                '<label style="font-size:12px;color:var(--muted);font-weight:500">Size' +
+                  '<select name="size" onchange="_mediaGenUpdateCost()" style="display:block;width:100%;margin-top:6px;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">' +
+                    '<option value="1024x1024">1024×1024 (square)</option>' +
+                    '<option value="1792x1024">1792×1024 (landscape)</option>' +
+                    '<option value="1024x1792">1024×1792 (portrait)</option>' +
+                  '</select>' +
+                '</label>' +
+                '<label style="font-size:12px;color:var(--muted);font-weight:500">Quality' +
+                  '<select name="quality" onchange="_mediaGenUpdateCost()" style="display:block;width:100%;margin-top:6px;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">' +
+                    '<option value="standard">Standard</option>' +
+                    '<option value="hd">HD</option>' +
+                  '</select>' +
+                '</label>' +
+              '</div>' +
+              '<div id="mg-cost" style="font-size:13px;color:var(--ac);font-weight:600">Estimated cost: $0.04</div>' +
+              '<label style="font-size:12px;color:var(--muted);font-weight:500">Category' +
+                '<select name="category" style="display:block;width:100%;margin-top:6px;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">' +
+                  '<option value="">— Select —</option>' +
+                  '<option value="hero">Hero</option>' +
+                  '<option value="gallery">Gallery</option>' +
+                  '<option value="website">Website</option>' +
+                  '<option value="blog">Blog</option>' +
+                  '<option value="logo">Logo</option>' +
+                  '<option value="team">Team</option>' +
+                  '<option value="other">Other</option>' +
+                '</select>' +
+              '</label>' +
+              '<label style="font-size:12px;color:var(--muted);font-weight:500">Filename (optional)' +
+                '<input name="filename" type="text" placeholder="auto-generated from prompt" style="display:block;width:100%;margin-top:6px;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px">' +
+              '</label>' +
+              '<div id="mg-err" style="color:#F87171;font-size:12px;display:none"></div>' +
+              '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+                '<button type="button" id="mg-cancel-btn" onclick="_mediaCloseGenerate()" style="background:transparent;color:var(--muted);border:1px solid var(--border);padding:10px 18px;border-radius:6px;cursor:pointer;font-size:13px">Cancel</button>' +
+                '<button type="submit" id="mg-submit-btn" style="background:var(--ac);color:#0F1117;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px">Generate</button>' +
+              '</div>' +
+            '</form>' +
+          '</div>' +
+        '</div>';
+      _mediaGenUpdateCost();
+    };
+
+    window._mediaCloseGenerate = function() {
+      var modal = document.getElementById('mg-modal');
+      if (modal && modal.dataset.busy === '1') return;
+      var root = document.getElementById('media-modal-root');
+      if (root) root.innerHTML = '';
+    };
+
+    window._mediaShowToast = function(msg, ok) {
+      var toast = document.createElement('div');
+      toast.textContent = msg;
+      toast.style.cssText = 'position:fixed;top:24px;right:24px;z-index:10000;background:' +
+        (ok ? 'var(--ac)' : '#F87171') + ';color:' + (ok ? '#0F1117' : '#fff') +
+        ';padding:12px 20px;border-radius:8px;font-size:13px;font-weight:600;' +
+        'box-shadow:0 8px 24px rgba(0,0,0,.4);transition:opacity .3s';
+      document.body.appendChild(toast);
+      setTimeout(function(){ toast.style.opacity = '0'; }, 2700);
+      setTimeout(function(){ toast.remove(); }, 3000);
+    };
+
+    window._mediaSubmitGenerate = async function(e) {
+      e.preventDefault();
+      var form = e.target;
+      var modal = document.getElementById('mg-modal');
+      var err = document.getElementById('mg-err');
+      var submitBtn = document.getElementById('mg-submit-btn');
+      var cancelBtn = document.getElementById('mg-cancel-btn');
+      if (err) err.style.display = 'none';
+
+      var prompt   = (form.querySelector('[name=prompt]')   || {}).value || '';
+      var size     = (form.querySelector('[name=size]')     || {}).value || '1024x1024';
+      var quality  = (form.querySelector('[name=quality]')  || {}).value || 'standard';
+      var category = (form.querySelector('[name=category]') || {}).value || '';
+      var filename = (form.querySelector('[name=filename]') || {}).value || '';
+
+      prompt = prompt.trim();
+      if (!prompt) {
+        if (err) { err.textContent = 'Prompt is required.'; err.style.display = 'block'; }
+        return;
+      }
+      if (!filename) filename = _mediaGenAutoFilename(prompt);
+      var costKey = size + '|' + quality;
+      var cost    = _MEDIA_COST_MATRIX[costKey] || 0;
+
+      // Lock UI during generation
+      if (modal) modal.dataset.busy = '1';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⟳ Generating… (~10s)'; }
+      if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.style.opacity = '0.5'; cancelBtn.style.cursor = 'not-allowed'; }
+
+      try {
+        var token = localStorage.getItem('admin_token') || localStorage.getItem('lu_token') || '';
+        var r = await fetch('/api/admin/media/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            size: size,
+            quality: quality,
+            category: category,
+            filename: filename
+          })
+        });
+        var d = await r.json().catch(function(){ return {}; });
+        if (d && d.success) {
+          if (modal) modal.dataset.busy = '0';
+          _mediaCloseGenerate();
+          _mediaShowToast('✓ Image generated — $' + cost.toFixed(2) + ' charged', true);
+          _mediaLoadStats();
+          _mediaLoadLibrary();
+        } else {
+          if (modal) modal.dataset.busy = '0';
+          if (err) { err.textContent = (d && d.error) || ('Generation failed (HTTP ' + r.status + ')'); err.style.display = 'block'; }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Generate'; }
+          if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.style.opacity = '1'; cancelBtn.style.cursor = 'pointer'; }
+        }
+      } catch (ex) {
+        if (modal) modal.dataset.busy = '0';
+        if (err) { err.textContent = 'Generation failed: ' + (ex && ex.message || ex); err.style.display = 'block'; }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Generate'; }
+        if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.style.opacity = '1'; cancelBtn.style.cursor = 'pointer'; }
       }
     };
 
