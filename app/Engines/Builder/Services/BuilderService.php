@@ -204,6 +204,23 @@ class BuilderService
 
     public function updatePage(int $pageId, array $data): void
     {
+        // PATCH 8 (2026-05-08) — auto-snapshot before+after every mutation.
+        // sections_json is the canonical source of truth; every change is
+        // recorded in canvas_states so it can be undone via
+        // /api/builder/pages/{id}/restore/{stateId}.
+        $isSectionsEdit = isset($data['sections']) || isset($data['sections_json']);
+        if ($isSectionsEdit) {
+            try {
+                app(\App\Engines\Builder\Services\BuilderSnapshotService::class)
+                    ->snapshot($pageId, 'before_edit');
+            } catch (\Throwable $e) {
+                Log::warning('Builder pre-edit snapshot failed', [
+                    'page_id' => $pageId,
+                    'error'   => $e->getMessage(),
+                ]);
+            }
+        }
+
         $update = array_intersect_key($data, array_flip(['title', 'slug', 'type', 'status', 'is_homepage', 'position']));
         if (isset($data['sections_json']) && !isset($data['sections'])) { $data['sections'] = is_string($data['sections_json']) ? json_decode($data['sections_json'], true) : $data['sections_json']; }
         if (isset($data['sections'])) $update['sections_json'] = json_encode($data['sections']);
@@ -215,6 +232,18 @@ class BuilderService
         $page = DB::table('pages')->where('id', $pageId)->first();
         if ($page) {
             $this->invalidatePublishedCache($page->website_id);
+        }
+
+        if ($isSectionsEdit) {
+            try {
+                app(\App\Engines\Builder\Services\BuilderSnapshotService::class)
+                    ->snapshot($pageId, 'after_edit');
+            } catch (\Throwable $e) {
+                Log::warning('Builder post-edit snapshot failed', [
+                    'page_id' => $pageId,
+                    'error'   => $e->getMessage(),
+                ]);
+            }
         }
     }
 

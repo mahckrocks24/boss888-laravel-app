@@ -1271,27 +1271,38 @@ PROMPT;
         }
 
         // Deploy HTML
+        // LEGACY: T3.4 — static-HTML-only path retained for backwards
+        // compatibility (Chef Red-style sites). New sites also get a
+        // canonical sections_json below so BuilderRenderer can serve them.
+        // Remove this deploy() call once Chef Red is migrated and arthur-edit
+        // closure is rewritten on top of sections_json (Patch 8.5+).
         $this->templates->deploy($websiteId, $html);
 
         // FIX 2 (2026-04-20) — always create default pages: Home (homepage)
         // + Blog for every generated website. Any other pages the wizard
         // extracted via state.pages[] also get created. Failures are
         // non-fatal; logged but don't block the wizard response.
+        //
+        // PATCH 8 (2026-05-08) — every page row now ALSO carries a
+        // canonical sections_json built from the wizard data so
+        // BuilderRenderer can serve the site without falling back to the
+        // static index.html. New sites are pure-canonical from now on.
         try {
             $builder = app(\App\Engines\Builder\Services\BuilderService::class);
             $homePos = 0;
 
             // Home (homepage=1)
             DB::table('pages')->insert([
-                'website_id' => $websiteId,
-                'title'      => 'Home',
-                'slug'       => 'home',
-                'type'       => 'page',
-                'status'     => 'published',
-                'position'   => $homePos++,
-                'is_homepage'=> 1,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'website_id'    => $websiteId,
+                'title'         => 'Home',
+                'slug'          => 'home',
+                'type'          => 'page',
+                'status'        => 'published',
+                'position'      => $homePos++,
+                'is_homepage'   => 1,
+                'sections_json' => json_encode($this->buildDefaultSectionsForPage('home', $data)),
+                'created_at'    => now(),
+                'updated_at'    => now(),
             ]);
 
             // User-requested pages (from wizard state.pages[]), excluding Home + Blog which we handle explicitly
@@ -1305,30 +1316,32 @@ PROMPT;
                     if ($slug === '' || isset($seen[$slug])) continue;
                     $seen[$slug] = true;
                     DB::table('pages')->insert([
-                        'website_id' => $websiteId,
-                        'title'      => ucfirst($title),
-                        'slug'       => $slug,
-                        'type'       => 'page',
-                        'status'     => 'published',
-                        'position'   => $homePos++,
-                        'is_homepage'=> 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'website_id'    => $websiteId,
+                        'title'         => ucfirst($title),
+                        'slug'          => $slug,
+                        'type'          => 'page',
+                        'status'        => 'published',
+                        'position'      => $homePos++,
+                        'is_homepage'   => 0,
+                        'sections_json' => json_encode($this->buildDefaultSectionsForPage($slug, $data)),
+                        'created_at'    => now(),
+                        'updated_at'    => now(),
                     ]);
                 }
             }
 
             // Blog — always last, always created.
             DB::table('pages')->insert([
-                'website_id' => $websiteId,
-                'title'      => 'Blog',
-                'slug'       => 'blog',
-                'type'       => 'blog',
-                'status'     => 'published',
-                'position'   => $homePos++,
-                'is_homepage'=> 0,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'website_id'    => $websiteId,
+                'title'         => 'Blog',
+                'slug'          => 'blog',
+                'type'          => 'blog',
+                'status'        => 'published',
+                'position'      => $homePos++,
+                'is_homepage'   => 0,
+                'sections_json' => json_encode($this->buildDefaultSectionsForPage('blog', $data)),
+                'created_at'    => now(),
+                'updated_at'    => now(),
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Arthur] page creation failed: ' . $e->getMessage(), ['website_id' => $websiteId]);
@@ -1726,5 +1739,70 @@ PROMPT;
         ];
         $suffix = ', no text no logos no words, photorealistic';
         return array_map(fn($p) => $p . $suffix, $prompts);
+    }
+
+    /**
+     * PATCH 8 (2026-05-08) — Architecture Lock Tier 1.
+     *
+     * Build a canonical sections_json array for an Arthur-generated page so
+     * BuilderRenderer can serve the page without depending on the static
+     * index.html file. Tier 1 produces a minimal-but-valid set covering the
+     * 7 BuilderRenderer-supported types (header / hero / features / cta /
+     * contact_form / blog_list / footer). Tier 2 will derive richer content
+     * from Arthur's wizard state instead of these defaults.
+     *
+     * Section schema is what BuilderRenderer expects:
+     *   [{"type": "...", "heading": "...", "body": "...", ...}, ...]
+     */
+    private function buildDefaultSectionsForPage(string $slug, array $data): array
+    {
+        $businessName = (string) ($data['business_name'] ?? 'Your Business');
+        $industry     = (string) ($data['industry']      ?? 'business');
+        $coreService  = (string) ($data['core_service']  ?? '');
+        $services     = (array)  ($data['services']      ?? []);
+        $location     = (string) ($data['location']      ?? '');
+
+        $heroHeadline = $businessName;
+        $heroSub      = $coreService !== ''
+            ? $coreService
+            : "A trusted {$industry} business" . ($location !== '' ? " in {$location}" : '');
+
+        $featureItems = array_slice(array_filter(array_map('strval', $services)), 0, 6);
+
+        switch ($slug) {
+            case 'blog':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero', 'heading' => 'Latest from ' . $businessName, 'body' => 'News, updates, and stories.'],
+                    ['type' => 'blog_list'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'home':
+            default:
+                $sections = [
+                    ['type' => 'header'],
+                    ['type' => 'hero', 'heading' => $heroHeadline, 'body' => $heroSub],
+                ];
+
+                if (! empty($featureItems)) {
+                    $sections[] = [
+                        'type'    => 'features',
+                        'heading' => 'What we do',
+                        'body'    => 'Services we provide:',
+                        'items'   => array_map(fn($s) => ['title' => $s], $featureItems),
+                    ];
+                }
+
+                $sections[] = [
+                    'type'    => 'cta',
+                    'heading' => "Ready to work with {$businessName}?",
+                    'body'    => 'Get in touch and we\'ll be in contact shortly.',
+                ];
+                $sections[] = ['type' => 'contact_form', 'heading' => 'Contact us'];
+                $sections[] = ['type' => 'footer'];
+
+                return $sections;
+        }
     }
 }

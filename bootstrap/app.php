@@ -104,6 +104,15 @@ return Application::configure(basePath: dirname(__DIR__))
             ->onFailure(function () {
                 \Illuminate\Support\Facades\Log::error('Sequence runner failed');
             });
+
+        // PATCH 8 (2026-05-08) — prune builder snapshot history weekly
+        // (30-day retention). ManualEdit canvas states (page_id IS NULL)
+        // are NOT pruned by this — separate lifecycle.
+        $schedule->call(function () {
+            $deleted = app(\App\Engines\Builder\Services\BuilderSnapshotService::class)
+                ->pruneOldSnapshots(30);
+            \Illuminate\Support\Facades\Log::info("builder:prune-snapshots removed {$deleted} rows");
+        })->name('builder:prune-snapshots')->weekly();
     })
     ->withMiddleware(function (Middleware $middleware) {
 

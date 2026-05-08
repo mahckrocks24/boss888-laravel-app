@@ -1718,6 +1718,12 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::post('/websites/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'publish_website', ['website_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/websites/{wid}/pages', fn(\Illuminate\Http\Request $r, $wid) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'generate_page', array_merge($r->all(), ['website_id' => $wid]), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         Route::put('/pages/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updatePage($id, $r->all()));
+
+        // PATCH 8 (2026-05-08) — Architecture Lock Tier 1: snapshot/restore for sections_json edits.
+        Route::get('/pages/{pageId}/history', [\App\Http\Controllers\Api\BuilderSnapshotController::class, 'history'])
+            ->where('pageId', '[0-9]+');
+        Route::post('/pages/{pageId}/restore/{stateId}', [\App\Http\Controllers\Api\BuilderSnapshotController::class, 'restore'])
+            ->where(['pageId' => '[0-9]+', 'stateId' => '[0-9]+']);
         // PATCH 3 (2026-05-08): the legacy structured wizard relied on
         // BuilderService::wizardGenerate() which calls 4 helpers that were
         // removed in 2026-04-19. Returning a clean 501 instead of letting
@@ -6959,6 +6965,11 @@ if (!function_exists('_t4_populatePageWithAI')) {
 }
 
 
+// LEGACY: T3.4 — this 750-line static-HTML regex closure is the pre-Patch-8
+// edit path for sites that still render from /storage/app/public/sites/{id}/index.html
+// (Chef Red is the only one). Once Chef Red is migrated to sections_json
+// per T3.4 / Patch 8.5, this entire closure is retired and Arthur edits flow
+// through BuilderService::updatePage() which already snapshots + invalidates cache.
 Route::post('/builder/websites/{id}/arthur-edit', function (\Illuminate\Http\Request $r, $id) {
     $wsId = $r->attributes->get('workspace_id');
     if (!$wsId) {
