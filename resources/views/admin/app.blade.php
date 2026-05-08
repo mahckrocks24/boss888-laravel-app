@@ -406,9 +406,40 @@
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Accept': 'application/json' },
       };
       if (body) opts.body = JSON.stringify(body);
-      const res = await fetch('/api/admin' + path, opts);
+      let res;
+      try {
+        res = await fetch('/api/admin' + path, opts);
+      } catch (netErr) {
+        console.error('api() network error', path, netErr);
+        return null;
+      }
       if (res.status === 401) { logout(); return null; }
-      return res.json();
+      if (!res.ok) {
+        console.error('api() HTTP ' + res.status, path);
+        try { console.error(await res.text()); } catch (_) {}
+        return null;
+      }
+      try {
+        return await res.json();
+      } catch (parseErr) {
+        console.error('api() JSON parse error', path, parseErr);
+        return null;
+      }
+    }
+
+    // Friendly error helper used in place of silent `if (!data) return;` bails.
+    // Renders a generic failure card with a Try Again link that re-runs the current page.
+    // Pass an optional label; if omitted, derives one from the current page id.
+    function renderApiError(label) {
+      label = label || (currentPage || 'data');
+      setContent(
+        '<div class="card" style="text-align:center;padding:40px;color:var(--muted)">' +
+          '<div style="font-size:14px;margin-bottom:8px">Failed to load ' + label + '.</div>' +
+          '<div style="font-size:12px;margin-bottom:16px">Check your connection or refresh the page. ' +
+            'If this keeps happening, the API may be temporarily unavailable — see the browser console for details.</div>' +
+          '<a href="#" onclick="if(window[\'' + currentPage + '\'])window[\'' + currentPage + '\']();return false" style="color:var(--p);text-decoration:none;font-weight:500">Try again</a>' +
+        '</div>'
+      );
     }
 
     function logout() {
@@ -769,7 +800,7 @@
       async users() {
         setContent('<div class="loading">Loading users...</div>');
         const data = await api('/users?per_page=200');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const users = data.data || [];
         setContent(adminTable({
           id: 'users',
@@ -791,7 +822,7 @@
       async workspaces() {
         setContent('<div class="loading">Loading workspaces...</div>');
         const data = await api('/workspaces?per_page=200');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const workspaces = (data.data || []).map(function(w){ w._status = w.onboarded ? 'onboarded' : 'setup'; return w; });
         setContent(adminTable({
           id: 'workspaces',
@@ -813,7 +844,7 @@
       async plans() {
         setContent('<div class="loading">Loading plans...</div>');
         const data = await api('/plans');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const rows = (data.plans || []).map(p =>
           '<tr>' +
             '<td><strong>' + p.name + '</strong></td>' +
@@ -835,7 +866,7 @@
       async agents() {
         setContent('<div class="loading">Loading agents...</div>');
         const data = await api('/agents');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const agents = data.agents || [];
         setContent(adminTable({
           id: 'agents',
@@ -861,7 +892,7 @@
       async tasks() {
         setContent('<div class="loading">Loading tasks...</div>');
         const data = await api('/tasks?per_page=200');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const tasks = data.data || [];
         setContent(adminTable({
           id: 'tasks',
@@ -904,7 +935,7 @@
       async audit() {
         setContent('<div class="loading">Loading audit logs...</div>');
         const data = await api('/audit-logs?per_page=200');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const logs = data.data || [];
         setContent(adminTable({
           id: 'audit',
@@ -923,7 +954,7 @@
       async settings() {
         setContent('<div class="loading">Loading settings...</div>');
         const data = await api('/config');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const settings = data.settings || [];
         const groups = [...new Set(settings.map(s => s.group))];
         const sections = groups.map(g =>
@@ -953,7 +984,7 @@
       async memberships() {
         setContent('<div class="loading">Loading memberships...</div>');
         const data = await api('/memberships?per_page=200');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const memberships = data.data || [];
         const roles = ['owner','admin','member','viewer'];
         setContent(adminTable({
@@ -976,7 +1007,7 @@
       async subscriptions() {
         setContent('<div class="loading">Loading subscriptions...</div>');
         const data = await api('/subscriptions?per_page=200');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const subs = data.data || [];
         setContent(adminTable({
           id: 'subscriptions',
@@ -1007,7 +1038,7 @@
       async sessions() {
         setContent('<div class="loading">Loading sessions...</div>');
         const data = await api('/sessions');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const summary = data.summary || {};
         const sessions = (data.sessions?.data || []).map(function(s) {
           if (s.revoked_at) s._status = 'revoked';
@@ -1046,7 +1077,7 @@
       async credits() {
         setContent('<div class="loading">Loading credits...</div>');
         const data = await api('/credits');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const summary = data.summary || {};
         const credits = data.credits || [];
         const transactions = data.transactions || [];
@@ -1135,7 +1166,7 @@
       async engines() {
         setContent('<div class="loading">Loading engine registry...</div>');
         const data = await api('/engines/registry');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const engines = data.engines || [];
         const statsHtml = '<div class="stats-grid" style="margin-bottom:20px">' +
             '<div class="stat-card"><div class="stat-value" style="color:var(--ac)">' + engines.length + '</div><div class="stat-label">Total Engines</div></div>' +
@@ -1169,7 +1200,7 @@
       async capabilities() {
         setContent('<div class="loading">Loading capability map...</div>');
         const data = await api('/engines/capabilities');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const caps = data.capabilities || [];
         const enginesSet = [...new Set(caps.map(function(c){ return c.engine; }))];
         const autoCount = caps.filter(function(c){ return c.approval_mode === 'auto'; }).length;
@@ -1210,7 +1241,7 @@
       async analytics() {
         setContent('<div class="loading">Loading analytics...</div>');
         const data = await api('/analytics');
-        if (!data) return;
+        if (!data) { renderApiError(); return; }
         const ug = data.user_growth || {};
         const tv = data.task_volume || {};
         const cc = data.credit_consumption || {};
@@ -1610,7 +1641,7 @@
 
     async function viewWorkspace(id) {
       const data = await api('/workspaces/' + id);
-      if (!data) return;
+      if (!data) { (typeof showAdminToast === 'function') && showAdminToast('Failed to load — see console for details', 'error'); return; }
       const ws = data.workspace;
       showAdminToast(ws.name + ' \u2014 Plan: ' + (data.subscription?.plan?.name || 'Free') + ', Credits: ' + (data.credit?.balance || 0) + ', Tasks: ' + (data.task_count || 0) + ' (' + (data.task_completed || 0) + ' completed)', 'info');
     }
@@ -1726,7 +1757,7 @@
 
     async function viewAnalyticsWorkspace(id) {
       const data = await api('/analytics/workspace/' + id);
-      if (!data) return;
+      if (!data) { (typeof showAdminToast === 'function') && showAdminToast('Failed to load — see console for details', 'error'); return; }
       const ws = data.workspace || {};
       showAdminToast('Workspace: ' + (ws.name || id) + ' \u2014 Plan: ' + (ws.plan || 'N/A') + ', Tasks: ' + (ws.total_tasks || 0) + ', Credits Used: ' + (ws.credits_used || 0) + ', Members: ' + (ws.member_count || 0), 'info');
     }
