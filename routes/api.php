@@ -1724,6 +1724,13 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             ->where('pageId', '[0-9]+');
         Route::post('/pages/{pageId}/restore/{stateId}', [\App\Http\Controllers\Api\BuilderSnapshotController::class, 'restore'])
             ->where(['pageId' => '[0-9]+', 'stateId' => '[0-9]+']);
+
+        // PATCH 8.5 (2026-05-08) — Arthur structured-JSON edit endpoint.
+        // Refuses 422 on legacy static-HTML pages (Chef Red); for those the
+        // legacy /api/builder/websites/{id}/arthur-edit closure still applies
+        // until T3.4 / Patch 8.6 retires it.
+        Route::post('/pages/{pageId}/arthur-edit', [\App\Http\Controllers\Api\ArthurEditController::class, 'edit'])
+            ->where('pageId', '[0-9]+');
         // PATCH 3 (2026-05-08): the legacy structured wizard relied on
         // BuilderService::wizardGenerate() which calls 4 helpers that were
         // removed in 2026-04-19. Returning a clean 501 instead of letting

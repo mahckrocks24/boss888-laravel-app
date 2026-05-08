@@ -129,3 +129,96 @@ Both auth.jwt-gated and workspace-scoped via the `pages → websites.workspace_i
 | `routes/api.php` | history + restore routes |
 | `bootstrap/app.php` | weekly prune scheduler |
 | `docs/BUILDER-ARCHITECTURE.md` | this file |
+
+---
+
+## Arthur Edit Flow (Patch 8.5 Tier 1, 2026-05-08)
+
+**New canonical edit path** for Arthur — operates on `sections_json` only, never on static HTML.
+
+### Endpoint
+
+```
+POST /api/builder/pages/{pageId}/arthur-edit
+Body: { "message": "Make the hero heading bigger", "section_index": 0 }
+```
+
+Workspace-scoped via `pages → websites.workspace_id`. Auth: `auth.jwt`.
+
+### Flow
+
+```
+1. Load pages.sections_json
+2. Refuse with HTTP 422 + {legacy: true} if sections_json is empty
+   (Chef Red-style legacy sites use the old closure until T3.4)
+3. BuilderSnapshotService::snapshot(pageId, 'arthur_edit_before')
+4. RuntimeClient::chatJson(systemPrompt, userMessage, [], 1500)
+   → returns { actions: [...], reply: "..." }
+5. For each action: validate op + apply atomically inside DB::transaction
+   (per-action try/catch — partial failure is recorded, doesn't abort batch)
+6. Run SectionSchema::validate on every resulting section (warnings logged)
+7. UPDATE pages.sections_json
+8. BuilderSnapshotService::snapshot(pageId, 'arthur_edit_after')
+9. Cache::forget('published_site:{subdomain}:*')
+10. Return { success, sections, reply, actions_applied, errors }
+```
+
+### Section data shape — FLAT
+
+Sections store fields directly on the section object, NOT under a `data` namespace:
+
+```json
+{ "type": "hero", "heading": "...", "body": "..." }
+```
+
+NOT:
+
+```json
+{ "type": "hero", "data": { "heading": "...", "body": "..." } }
+```
+
+This matches the canonical sections_json on page id=2 and what `BuilderRenderer::renderHero/renderFeatures/...` reads. If a future schema migration moves to nested `data`, the renderer must change in lockstep.
+
+### Supported ops
+
+| Op | Required fields | Effect |
+|---|---|---|
+| `update_text` | `section_index`, `field`, `value` | Set a text field on a section |
+| `update_field` | `section_index`, `field`, `value` | Same — alias |
+| `update_image` | `section_index`, `field` (default `background_image`), `value` (URL) | Set an image field |
+| `add_section` | `type`, plus optional flat fields, optional `insert_at` index | Append or insert a new section |
+| `remove_section` | `section_index` | Remove a section |
+| `reorder_section` | `from_index`, `to_index` | Move a section |
+
+Maximum **5 actions per response** (server enforces; truncates with warning if more).
+
+### Section types (15 known + generic fallback)
+
+`header, hero, features, cta, contact_form, blog_list, footer, gallery, services, team, testimonials, faq, pricing, stats, generic`
+
+Note: BuilderRenderer currently only dispatches the original 7 (header / hero / features / cta / contact_form / blog_list / footer) — the rest fall through to `renderGeneric`. Future patch will expand the renderer's whitelist.
+
+### Field rules per type — `SectionSchema`
+
+`app/Engines/Builder/Schema/SectionSchema.php` declares required + optional fields per type. `SectionSchema::validate(section)` returns `{ok: bool, errors?: string[]}`. Validation runs after every edit; failures log warnings but do not block writes — the edit is the source of truth, the schema enforces gradually as data converges.
+
+### Patch 8.5 file map
+
+| File | Role |
+|---|---|
+| `app/Engines/Builder/Schema/SectionSchema.php` | 15-type schema + ops registry |
+| `app/Engines/Builder/Services/ArthurEditService.php` | edit pipeline |
+| `app/Http/Controllers/Api/ArthurEditController.php` | HTTP wrap + workspace check + legacy 422 gate |
+| `routes/api.php` | new POST route |
+
+---
+
+## Legacy Path (T3.4 — retire after Chef Red migration)
+
+The closure at `routes/api.php:6973` (`/api/builder/websites/{id}/arthur-edit`) operates on static HTML files via regex. It is **frozen** — do NOT extend.
+
+Migration plan:
+1. **Patch 8.6** = T3.4: Chef Red migrates from `storage/app/public/sites/3/index.html` to `pages.sections_json` (sections re-derived from existing HTML, parity verified, static file deleted).
+2. **Patch 8.6 follow-up**: delete the legacy closure entirely + delete `TemplateService::deploy()`.
+
+Until then both paths coexist: new sites use the JSON path; Chef Red stays on the regex closure.
