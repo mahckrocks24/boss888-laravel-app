@@ -67,7 +67,7 @@
     @foreach([
       ['Priya','priya','Content Strategist','#7C3AED','📋','Editorial calendars, content briefs, content-market fit analysis. Priya makes sure the right content gets made at the right time.', ['Content strategy','Editorial calendar','Briefs','Content planning']],
       ['Leo','leo','Senior Copywriter','#F97316','🖊️','Long-form articles, blog posts, web copy, brand voice consistency. Leo writes the words that rank and convert.', ['Articles','Blog posts','Web copy','Long-form']],
-      ['Maya','maya','Email Copywriter','#7C3AED','📧','Email sequences, newsletters, drip campaigns. Maya gets opens and clicks.', ['Email sequences','Newsletters','Drip campaigns','Subject lines']],
+      ['Maya','maya','Email Copywriter','#7C3AED','📧','Email campaigns, newsletters, and subject-line testing. Maya gets opens and clicks.', ['Email campaigns','Newsletters','Subject lines','A/B variants']],
       ['Chris','chris','Ad Copywriter','#F97316','📢','PPC headlines, social ad copy, CTAs. Chris makes every word earn its place.', ['PPC copy','Social ads','Headlines','CTAs']],
       ['Nora','nora','Video Script Writer','#7C3AED','🎬','VSL scripts, explainer videos, social video scripts. Nora gives your camera something to say.', ['VSL scripts','Explainer videos','Social video','Scriptwriting']],
     ] as $a)
@@ -88,9 +88,9 @@
     @foreach([
       ['Marcus','marcus','Social Media Manager','#EC4899','📲','Social strategy, posting schedules, community management. Marcus keeps your audience engaged.', ['Social strategy','Scheduling','Community','Content calendar']],
       ['Zara','zara','Instagram & Visual Lead','#EC4899','📸','Reels, stories, visual content strategy. Zara makes your brand look stunning.', ['Reels','Stories','Visual strategy','Instagram']],
-      ['Tyler','tyler','LinkedIn & B2B Lead','#3B82F6','💼','LinkedIn posts, thought leadership, B2B content. Tyler builds your professional reputation.', ['LinkedIn','Thought leadership','B2B content','Networking']],
-      ['Aria','aria','TikTok & Short Video','#EC4899','🎵','Trends, hooks, short-form video strategy. Aria speaks Gen-Z fluently.', ['TikTok','Short video','Trending hooks','Viral strategy']],
-      ['Jordan','jordan','Twitter/X & Community','#3B82F6','𝕏','Real-time engagement, trending topics, community building. Jordan keeps you in the conversation.', ['Twitter/X','Real-time','Trending','Community']],
+      ['Tyler','tyler','B2B Content Lead','#3B82F6','💼','Long-form social drafts, thought-leadership content, and professional copywriting Tyler hands off for manual posting.', ['Long-form drafts','Thought leadership','B2B copy','Manual-post ready']],
+      ['Aria','aria','Visual Content','#EC4899','🎵','Short-form visual content and creative campaign drafts. Aria speaks Gen-Z fluently and packages content you can post.', ['Visual content','Creative campaigns','Trending hooks','Manual-post ready']],
+      ['Jordan','jordan','Community & Social Listening','#3B82F6','📡','Trending topic monitoring, community pulse, and engagement-ready drafts. Jordan keeps you in the conversation.', ['Social listening','Trend monitoring','Community engagement','Reply drafts']],
     ] as $a)
     <div class="agent-card">
       <div class="agent-header">

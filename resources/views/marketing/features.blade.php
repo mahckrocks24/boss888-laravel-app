@@ -115,16 +115,16 @@
     <h2 style="font-size:clamp(24px,3vw,36px);font-weight:800;margin-bottom:14px">Campaigns out. Engagement up. Leads in.</h2>
     <p style="color:var(--muted);font-size:15px;margin-bottom:16px">Marcus, Zara, Tyler, Maya, and Kai handle your social presence and email marketing end-to-end.</p>
     <div class="feature-list">
-      <div class="feature-row"><span class="feature-row-icon">✓</span>Multi-platform social posting (Instagram, LinkedIn, TikTok, X)</div>
+      <div class="feature-row"><span class="feature-row-icon">✓</span>Native publishing to Facebook &amp; Instagram. Drafts and content for LinkedIn, TikTok, X to post manually.</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>AI post generation with platform-specific rules</div>
-      <div class="feature-row"><span class="feature-row-icon">✓</span>Email campaign builder + automation sequences</div>
+      <div class="feature-row"><span class="feature-row-icon">✓</span>Visual email campaign builder with AI-assisted copy</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>Campaign analytics + open/click tracking</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>Everything requires your approval before publish/send</div>
     </div>
   </div>
   <div class="engine-visual">
     <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Platform integrations</div>
-    @foreach(['Instagram · Reels + Stories', 'LinkedIn · B2B + Thought leadership', 'TikTok · Short-form video', 'Twitter/X · Real-time engagement', 'Facebook · Community + Ads', 'Email · Campaigns + Automations'] as $p)
+    @foreach(['Facebook · Native posting + Pages', 'Instagram · Native posting + Reels content', 'LinkedIn · Draft + script generation', 'TikTok · Draft + script generation', 'Twitter/X · Draft generation', 'Email · Campaign builder + tracking'] as $p)
     <div class="tool-item" style="margin-bottom:6px"><div class="tool-dot" style="background:#EC4899"></div>{{ $p }}</div>
     @endforeach
   </div>

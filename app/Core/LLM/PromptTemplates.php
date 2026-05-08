@@ -135,14 +135,15 @@ PROMPT;
             }
             $teamSection = "Your team:\n" . implode("\n", $lines);
         } else {
-            // DB lookup failed — fall back to the legacy 5-specialist list so Sarah
-            // always has SOME team context to reason about.
-            $teamSection = "Your team:\n"
-                . "- James (SEO): keyword research, SERP analysis, technical SEO\n"
-                . "- Priya (Content): article writing, content strategy, copywriting\n"
-                . "- Marcus (Social): social media management, scheduling, analytics\n"
-                . "- Elena (CRM): lead management, pipeline, follow-ups\n"
-                . "- Alex (Technical SEO): link building, site audits, schema markup";
+            // PATCH 5 (2026-05-08): DB lookup failed — emit empty team
+            // section so Sarah degrades gracefully. The previous code fell
+            // back to a hardcoded 5-of-20 specialist list (James / Priya /
+            // Marcus / Elena / Alex), which silently excluded 15 of 20
+            // specialists from every strategy meeting whenever
+            // `cache:clear` raced with a stuck DB connection. Emitting
+            // empty here means Sarah reasons in the abstract or fails
+            // loudly upstream — never with a stale 25%-roster strategy.
+            $teamSection = "Your team is temporarily unavailable. Reason about general capabilities only.";
         }
 
         return <<<PROMPT
