@@ -62,6 +62,7 @@
 ## Last Commit
 
 ```
+a2d1fbd fix(frontend): Patch 10 — frontend rewiring + payload contracts (8 fixes)
 f2dc952 fix(agents/ui): tone polish + memory seed + subdomain + admin error states
 03b5b61 feat(templates): Patch 9E — standards retrofit on all 27 canonical templates
 98ac5ba feat(templates): Patch 9D Group 4 — retail (retail_shop/ecommerce)
