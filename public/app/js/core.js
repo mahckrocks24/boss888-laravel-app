@@ -4069,6 +4069,25 @@ async function _appBootstrap() {
   if (localStorage.getItem('lu_onboarded') === '1') {
     _appEnterDashboard(); return;
   }
+  // PATCH (onboarding skip-existing): if workspace already has at least one
+  // website, the wizard would just re-prompt for already-collected info.
+  // Treat the existence of a website as "onboarded" and route straight to
+  // dashboard. Caches the flag so subsequent loads skip the network call.
+  try {
+    var wsRes = await fetch(_luBase + '/api/builder/websites', {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('lu_token'), 'Accept': 'application/json' },
+      cache: 'no-store',
+    });
+    if (wsRes.ok) {
+      var wsData = await wsRes.json();
+      var sites = (wsData && (wsData.websites || wsData.data)) || (Array.isArray(wsData) ? wsData : []);
+      if (Array.isArray(sites) && sites.length > 0) {
+        localStorage.setItem('lu_onboarded', '1');
+        _appEnterDashboard();
+        return;
+      }
+    }
+  } catch(_) { /* fall through to onboarding-status check */ }
   try {
     var sr = await fetch(_luBase + '/api/onboarding/status', {
       headers: { 'Authorization': 'Bearer ' + localStorage.getItem('lu_token'), 'Accept': 'application/json' },
@@ -4559,12 +4578,63 @@ function _renderOnboardingStep2(prefill) {
     </div>
   </div>
   <style>
-    #lu-ob2-page .ob2-inp:focus { outline:none; border-color:#6C5CE7 !important; box-shadow:0 0 0 3px rgba(108,92,231,.15); }
-    #lu-ob2-page button#ob2-submit:hover { background:#5948d9; }
-    #lu-ob2-page button#ob2-submit:disabled { opacity:.6; cursor:not-allowed; }
-    #lu-ob2-page .ob2-goal-card:hover { border-color:#6C5CE7 !important; }
+    /* PATCH (onboarding polish) — overrides on top of inline styles */
+    #lu-ob2-page { --ob-p:#6C5CE7; --ob-p-deep:#5948D9; --ob-bg:#0C0D15; --ob-fg:#F0F0F8; --ob-muted:rgba(240,240,248,.52); --ob-border:rgba(255,255,255,.08); }
+    #lu-ob2-page > div { max-width: 640px !important; }              /* spec: 640px max */
+    #lu-ob2-page > div > div[style*="background:#0C0D15"] { padding: 40px 48px !important; border-radius: 12px !important; }
+
+    /* Inputs / selects — 48px height, 10px radius, 1.5px border, 15px font */
+    #lu-ob2-page .ob2-inp {
+      height: 48px !important; min-height: 48px !important;
+      border: 1.5px solid var(--ob-border) !important;
+      border-radius: 8px !important;
+      padding: 0 16px !important;
+      font-size: 15px !important;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    #lu-ob2-page select.ob2-inp { padding: 0 38px 0 16px !important; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23F0F0F8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' opacity='.7'/></svg>") !important; background-position: right 14px center !important; background-repeat: no-repeat !important; }
+    #lu-ob2-page textarea.ob2-inp { height:auto !important; padding:12px 16px !important; }
+    #lu-ob2-page .ob2-inp:focus { outline:none !important; border-color:var(--ob-p) !important; box-shadow:0 0 0 3px rgba(108,92,231,.15) !important; }
+
+    /* Goal cards — equal-height grid, 100px min, 1.5px border, 10px radius, 12px gap, 28px icon */
+    #lu-ob2-page [style*="grid-template-columns:repeat(2,1fr)"] { gap: 12px !important; }
+    #lu-ob2-page .ob2-goal-card {
+      min-height: 100px !important;
+      padding: 20px !important;
+      border-width: 1.5px !important;
+      border-radius: 10px !important;
+      transition: border-color .15s ease, background-color .15s ease, transform .1s ease !important;
+    }
+    #lu-ob2-page .ob2-goal-card > div:first-child { font-size: 28px !important; }
+    #lu-ob2-page .ob2-goal-card > div:last-child  { font-size: 14px !important; font-weight: 500 !important; line-height: 1.3 !important; }
+    #lu-ob2-page .ob2-goal-card:hover {
+      border-color: var(--ob-p) !important;
+      background-color: rgba(108,92,231,.04) !important;
+    }
+
+    /* Section labels (YOUR GOAL etc.) — 11px / 0.08em — already close, normalise */
+    #lu-ob2-page div[style*="text-transform:uppercase"][style*="letter-spacing:.08em"] {
+      font-size: 11px !important; letter-spacing: 0.08em !important; color: var(--ob-muted) !important; margin-bottom: 18px !important;
+    }
+    /* Question labels — 15px / weight 500 */
+    #lu-ob2-page label[style*="display:block"][style*="font-size:13px"] { font-size: 13px !important; }
+    /* Section spacing — 32px */
+    #lu-ob2-page div[style*="margin-bottom:28px"] { margin-bottom: 32px !important; }
+
+    /* Submit button — full-width, 52px, weight 600 */
+    #lu-ob2-page button#ob2-submit {
+      height: 52px !important; padding: 0 20px !important;
+      border-radius: 10px !important;
+      font-size: 15px !important; font-weight: 600 !important;
+      transition: background-color .15s ease, transform .1s ease;
+    }
+    #lu-ob2-page button#ob2-submit:hover { background:var(--ob-p-deep) !important; transform: translateY(-1px); }
+    #lu-ob2-page button#ob2-submit:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+
+    /* Mobile — single-col goal cards under 480px, reduce padding under 640px */
     @media (max-width: 640px) {
-      #lu-ob2-page [style*="grid-template-columns:repeat(2,1fr)"] { grid-template-columns:1fr !important; }
+      #lu-ob2-page > div > div[style*="background:#0C0D15"] { padding: 24px !important; }
+      #lu-ob2-page [style*="grid-template-columns:repeat(2,1fr)"] { grid-template-columns: 1fr !important; }
       #lu-ob2-page [style*="display:flex;gap:12px"] { flex-direction:column !important; }
     }
   </style>`;
