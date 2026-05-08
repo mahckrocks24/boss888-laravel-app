@@ -581,22 +581,25 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                             $taskAction = $createTask['action'] ?? 'manual_task';
                             $taskDesc = $createTask['description'] ?? $content;
 
-                            $newTask = \App\Models\Task::create([
-                                'workspace_id' => $wsId,
-                                'engine' => $taskEngine,
-                                'action' => $taskAction,
-                                'source' => 'agent',
-                                'status' => 'pending',
-                                'priority' => 'normal',
-                                'assigned_agents_json' => [$taskAgent],  // raw array — Eloquent casts to JSON
-                                'progress_message' => $taskDesc,
-                                'payload_json' => json_encode([
-                                    'title' => $taskDesc,
-                                    'created_via' => 'sarah_chat',
+                            // PATCH (Intel Fix 2a) — was raw Task::create([... 'status'=>'pending' ...])
+                            // which bypassed TaskService and TaskDispatcher: the row landed in DB
+                            // but no queue job was ever pushed, leaving 12 stuck tasks. TaskService
+                            // is the canonical path — handles capability lookup, approval mode,
+                            // idempotency hash, audit log, and dispatch in one call.
+                            $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, [
+                                'engine'          => $taskEngine,
+                                'action'          => $taskAction,
+                                'source'          => 'agent',
+                                'priority'        => 'normal',
+                                'assigned_agents' => [$taskAgent],
+                                'payload'         => [
+                                    'title'        => $taskDesc,
+                                    'created_via'  => 'sarah_chat',
                                     'user_request' => $content,
-                                ]),
-                                'credit_cost' => 0,
+                                ],
                             ]);
+                            // progress_message isn't in the TaskService whitelist — set after.
+                            $newTask->update(['progress_message' => $taskDesc]);
 
                             // Add task creation confirmation to reply
                             $reply .= "\n\n✅ Task #{$newTask->id} created and assigned to " . ucfirst($taskAgent) . ".";

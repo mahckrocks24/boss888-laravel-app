@@ -656,26 +656,40 @@ class AgentMeetingEngine
                 // Map sarah→sarah (not dmm) for DB storage
                 if ($agentSlug === 'dmm') $agentSlug = 'sarah';
 
-                $taskId = DB::table('tasks')->insertGetId([
-                    'workspace_id' => $meeting->workspace_id,
-                    'engine' => $planTask['engine'] ?? 'marketing',
-                    'action' => $planTask['action'] ?? 'follow_up',
-                    'payload_json' => json_encode(['description' => $planTask['description'] ?? '', 'from_meeting' => $meeting->id]),
-                    'status' => 'pending',
-                    'source' => 'agent',
-                    'assigned_agents_json' => json_encode([$agentSlug]),
-                    'priority' => $planTask['priority'] ?? 'normal',
-                    'progress_message' => $planTask['description'] ?? ucfirst(str_replace('_', ' ', $planTask['action'])),
-                    'requires_approval' => $planTask['requires_approval'] ?? false,
-                    'credit_cost' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                // PATCH (Intel Fix 2b) — was raw DB::table('tasks')->insertGetId(['status'=>'pending', ...])
+                // which left tasks orphaned. Route through TaskService so they
+                // hit the canonical pipeline (capability check, approval,
+                // idempotency, audit, dispatch).
+                try {
+                    $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($meeting->workspace_id, [
+                        'engine'            => $planTask['engine'] ?? 'marketing',
+                        'action'            => $planTask['action'] ?? 'follow_up',
+                        'source'            => 'agent',
+                        'priority'          => $planTask['priority'] ?? 'normal',
+                        'assigned_agents'   => [$agentSlug],
+                        'requires_approval' => $planTask['requires_approval'] ?? false,
+                        'payload'           => [
+                            'description'  => $planTask['description'] ?? '',
+                            'from_meeting' => $meeting->id,
+                        ],
+                    ]);
+                    $taskId = $newTask->id;
+                    $newTask->update([
+                        'progress_message' => $planTask['description'] ?? ucfirst(str_replace('_', ' ', $planTask['action'])),
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning("[Meeting] TaskService::create failed", [
+                        'meeting_id' => $meeting->id,
+                        'plan_task'  => $planTask,
+                        'error'      => $e->getMessage(),
+                    ]);
+                    continue;
+                }
 
                 // Populate meeting_tasks pivot
                 DB::table('meeting_tasks')->insert([
                     'meeting_id' => $meeting->id,
-                    'task_id' => $taskId,
+                    'task_id'    => $taskId,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -877,14 +891,84 @@ class AgentMeetingEngine
         return implode("\n", $lines);
     }
 
+    /**
+     * Build a string-formatted workspace context for Sarah's opening prompt.
+     *
+     * PATCH (Intel Fix 5) — was reading only workspace row columns. Now
+     * aggregates real workspace intelligence via provider classes
+     * (SEO/CRM/Social/Billing/Content) + workspace_memory facts.
+     * Architectural rule: this method MUST NOT query intelligence tables
+     * directly — each domain owns its provider in
+     * App\Core\Intelligence\Providers\*.
+     */
     private function buildWorkspaceContext(Workspace $workspace): string
     {
+        $wsId = $workspace->id;
+
         $parts = [];
+
+        // Workspace identity (from workspaces row — owned by this method)
         if ($workspace->industry) $parts[] = "Industry: {$workspace->industry}";
         if ($workspace->location) $parts[] = "Location: {$workspace->location}";
-        if ($workspace->goal) $parts[] = "Business goal: {$workspace->goal}";
-        $services = is_string($workspace->services_json) ? json_decode($workspace->services_json, true) : ($workspace->services_json ?? []);
-        if (!empty($services)) $parts[] = "Services: " . (is_array($services) ? implode(', ', $services) : $services);
+        if ($workspace->goal)     $parts[] = "Business goal: {$workspace->goal}";
+        $services = is_string($workspace->services_json)
+            ? json_decode($workspace->services_json, true)
+            : ($workspace->services_json ?? []);
+        if (!empty($services)) {
+            $parts[] = "Services: " . (is_array($services) ? implode(', ', $services) : $services);
+        }
+
+        // Provider-aggregated intelligence (each owns its domain boundary)
+        try {
+            $seo     = app(\App\Core\Intelligence\Providers\SEOContextProvider::class)->get($wsId);
+            $crm     = app(\App\Core\Intelligence\Providers\CRMContextProvider::class)->get($wsId);
+            $social  = app(\App\Core\Intelligence\Providers\SocialContextProvider::class)->get($wsId);
+            $billing = app(\App\Core\Intelligence\Providers\BillingContextProvider::class)->get($wsId);
+            $content = app(\App\Core\Intelligence\Providers\ContentContextProvider::class)->get($wsId);
+
+            if ($seo['seo_score'] !== null) {
+                $parts[] = "Latest SEO score: {$seo['seo_score']}"
+                         . ($seo['seo_issues'] !== null ? " (critical issues: {$seo['seo_issues']})" : "");
+            } elseif ($seo['last_audit_at'] === null) {
+                $parts[] = "SEO: no audit yet";
+            }
+
+            if ($crm['leads_last_30d'] > 0 || $crm['total_contacts'] > 0) {
+                $parts[] = "CRM: {$crm['total_contacts']} total contacts, {$crm['leads_last_30d']} new in last 30 days";
+            }
+
+            if ($social['social_posts_30d'] > 0 || $social['social_published_total'] > 0) {
+                $parts[] = "Social: {$social['social_posts_30d']} posts in last 30 days, {$social['social_published_total']} published lifetime";
+            }
+
+            if ($content['published_articles'] > 0 || $content['published_websites'] > 0) {
+                $parts[] = "Content: {$content['published_articles']} published articles, {$content['published_websites']} published websites";
+            }
+
+            $parts[] = "Credits: {$billing['credits_available']} available ({$billing['credit_balance']} balance, {$billing['credits_reserved']} reserved)";
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[AgentMeetingEngine] provider aggregation failed", [
+                'workspace_id' => $wsId,
+                'error'        => $e->getMessage(),
+            ]);
+        }
+
+        // Workspace memory facts (custom key/value learnings)
+        try {
+            $memory = app(\App\Core\Memory\WorkspaceMemoryService::class)->all($wsId);
+            if ($memory->isNotEmpty()) {
+                $memLines = [];
+                foreach ($memory->take(10) as $row) {
+                    $key = $row->key ?? 'fact';
+                    $val = $row->value_json ?? null;
+                    $memLines[] = "  - {$key}: " . (is_string($val) ? $val : json_encode($val));
+                }
+                $parts[] = "Workspace memory:\n" . implode("\n", $memLines);
+            }
+        } catch (\Throwable $e) {
+            // memory access is non-fatal
+        }
+
         return implode("\n", $parts);
     }
 

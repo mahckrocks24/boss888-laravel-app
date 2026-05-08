@@ -233,6 +233,15 @@ class RuntimeClient
      */
     public function chatJson(string $system, string $userPrompt, array $context = [], int $maxTokens = 1200): array
     {
+        // PATCH (Intel Fix 7) — DeepSeek's `response_format: json_object` rejects
+        // any call where the literal word "json" doesn't appear in either
+        // system or user prompt. Some upstream callers (Sarah chat, plan
+        // extraction) didn't include it, producing 6 silent failures in
+        // laravel.log on 2026-05-08. Enforce here so all callers benefit.
+        if (stripos($system, 'json') === false && stripos($userPrompt, 'json') === false) {
+            $system = trim($system) . "\n\nRespond with valid JSON only. No prose, no markdown fences.";
+        }
+
         try {
             $resp = $this->post('/ai/run', [
                 'task'       => 'chat_json',

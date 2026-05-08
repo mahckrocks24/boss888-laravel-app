@@ -243,21 +243,32 @@ class SarahOrchestrator
             $positionToId[$i] = $insertedId;
             $taskCount++;
 
-            // UNIFICATION: also create a tasks table row so all UI surfaces can see it
-            $taskRowId = DB::table('tasks')->insertGetId([
-                'workspace_id' => $wsId,
-                'engine' => $task['engine'],
-                'action' => $task['action'],
-                'payload_json' => json_encode($task['params'] ?? []),
-                'status' => 'pending',
-                'source' => 'agent',
-                'assigned_agents_json' => json_encode([$task['agent']]),
-                'priority' => 'normal',
-                'plan_task_id' => $insertedId,
-                'progress_message' => ucfirst(str_replace('_', ' ', $task['action'])) . ' (Plan #' . $planId . ')',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // PATCH (Intel Fix 2c) — UNIFICATION via TaskService instead of raw insert.
+            // Was DB::table('tasks')->insertGetId([... 'status'=>'pending' ...])
+            // which left tasks orphaned (no dispatcher call). TaskService routes
+            // through the canonical pipeline.
+            try {
+                $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, [
+                    'engine'          => $task['engine'],
+                    'action'          => $task['action'],
+                    'source'          => 'agent',
+                    'priority'        => 'normal',
+                    'assigned_agents' => [$task['agent']],
+                    'payload'         => $task['params'] ?? [],
+                ]);
+                $taskRowId = $newTask->id;
+                $newTask->update([
+                    'plan_task_id'     => $insertedId,
+                    'progress_message' => ucfirst(str_replace('_', ' ', $task['action'])) . ' (Plan #' . $planId . ')',
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning("[SarahOrchestrator] TaskService::create failed for plan task", [
+                    'plan_id'   => $planId,
+                    'task'      => $task,
+                    'error'     => $e->getMessage(),
+                ]);
+                continue;
+            }
 
             // Link plan_task back to tasks row
             DB::table('plan_tasks')->where('id', $insertedId)->update(['task_id' => $taskRowId]);

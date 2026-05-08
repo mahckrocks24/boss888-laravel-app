@@ -117,12 +117,18 @@ class AgentReasoningService
     private function getMemoryContext(int $workspaceId): string
     {
         try {
-            $memories = $this->memory->getAll($workspaceId);
-            if (empty($memories)) return 'No workspace memory stored yet.';
+            // PATCH (Intel Fix 1) — was ->getAll() (non-existent method) which
+            // threw silently and made every agent prompt receive "Memory
+            // unavailable.". WorkspaceMemoryService::all() returns a Collection
+            // of WorkspaceMemory rows.
+            $memories = $this->memory->all($workspaceId);
+            if ($memories->isEmpty()) return 'No workspace memory stored yet.';
 
             $lines = [];
-            foreach (array_slice($memories, 0, 10) as $key => $value) {
-                $lines[] = "- {$key}: " . (is_string($value) ? $value : json_encode($value));
+            foreach ($memories->take(10) as $row) {
+                $key = $row->key ?? 'unknown';
+                $val = $row->value_json ?? null;
+                $lines[] = "- {$key}: " . (is_string($val) ? $val : json_encode($val));
             }
             return implode("\n", $lines);
         } catch (\Throwable) {

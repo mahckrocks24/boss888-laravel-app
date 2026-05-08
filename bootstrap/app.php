@@ -113,6 +113,34 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->pruneOldSnapshots(30);
             \Illuminate\Support\Facades\Log::info("builder:prune-snapshots removed {$deleted} rows");
         })->name('builder:prune-snapshots')->weekly();
+
+        // PATCH (Intel Fix 3) — credit orphan reaper.
+        // CreditService::findOrphanedReservations(30) exists but no scheduler
+        // ever called it, leaving reservations stuck "pending" indefinitely.
+        // 6 reservations from 2026-05-06 froze 60 credits for ws=1 — released
+        // by hand at patch deploy time; this scheduler entry prevents recurrence.
+        // Runs hourly; releases any reservation older than 30 minutes still
+        // in pending status.
+        $schedule->call(function () {
+            $svc = app(\App\Core\Billing\CreditService::class);
+            $orphans = $svc->findOrphanedReservations(30);
+            $released = 0;
+            foreach ($orphans as $orphan) {
+                try {
+                    $svc->release((int) $orphan->workspace_id, $orphan->reservation_reference);
+                    $released++;
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('credits:reap-orphans release failed', [
+                        'reservation_ref' => $orphan->reservation_reference ?? null,
+                        'workspace_id'    => $orphan->workspace_id ?? null,
+                        'error'           => $e->getMessage(),
+                    ]);
+                }
+            }
+            if ($released > 0) {
+                \Illuminate\Support\Facades\Log::info("credits:reap-orphans released {$released} orphan reservation(s)");
+            }
+        })->name('credits:reap-orphans')->hourly()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
 
