@@ -154,6 +154,32 @@ class PublicContactController
             // Don't fail the form submission just because notification dispatch hiccupped.
         }
 
+        // ─── 7. Automation trigger (PATCH 7, 2026-05-08) ──────────────
+        // Fires any active automation whose trigger_type='form_submitted'.
+        // Wrapped in try/catch so a misconfigured automation never breaks
+        // the public form submission.
+        try {
+            app(\App\Engines\Marketing\Services\MarketingService::class)->triggerAutomation(
+                $wsId,
+                'form_submitted',
+                [
+                    'contact_id'   => $contactId,
+                    'email'        => $validated['email'],
+                    'firstname'    => $validated['firstname'],
+                    'phone'        => $validated['phone'] ?? null,
+                    'message'      => $validated['message'],
+                    'subdomain'    => $subdomain,
+                    'is_duplicate' => $isDuplicate,
+                ]
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Contact form automation trigger failed', [
+                'workspace_id' => $wsId,
+                'contact_id'   => $contactId,
+                'error'        => $e->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'success'      => true,
             'message'      => 'Thank you! We will get back to you soon.',

@@ -93,6 +93,17 @@ return Application::configure(basePath: dirname(__DIR__))
             ->onFailure(function () {
                 \Illuminate\Support\Facades\Log::error('Notifications purge cron failed');
             });
+
+        // PATCH 7 (2026-05-08) — email-sequence runner.
+        // Fires every 15 minutes; finds due steps for active enrollments
+        // and sends through the existing Postmark mailer.
+        $schedule->command('lu:sequences:run')
+            ->name('lu:sequences:run')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('Sequence runner failed');
+            });
     })
     ->withMiddleware(function (Middleware $middleware) {
 

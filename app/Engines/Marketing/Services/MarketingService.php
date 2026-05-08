@@ -7,6 +7,8 @@ use App\Connectors\DeepSeekConnector;
 use App\Core\Intelligence\EngineIntelligenceService;
 use App\Engines\Creative\Services\CreativeService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class MarketingService
@@ -331,7 +333,14 @@ class MarketingService
     }
 
     /**
-     * Trigger automation when an event occurs (called by EngineExecutionService cross-engine sync).
+     * Trigger automation when an event occurs.
+     *
+     * PATCH 7 (2026-05-08): replaced the increment-and-exit stub with a real
+     * action dispatcher. Walks the automation's steps_json and runs each
+     * supported action (send_email / notify_owner / add_tag /
+     * enroll_in_sequence). Per-step failures are logged and don't abort the
+     * batch. Per-automation failures are caught so one bad automation
+     * doesn't stop the others.
      */
     public function triggerAutomation(int $wsId, string $triggerType, array $context): int
     {
@@ -340,17 +349,152 @@ class MarketingService
 
         $triggered = 0;
         foreach ($automations as $auto) {
-            $steps = json_decode($auto->steps_json ?? '[]', true);
-            foreach ($steps as $step) {
-                // Queue each step with delay
-                $delay = $step['delay_minutes'] ?? 0;
-                // In production: dispatch to queue with delay
-                // For now: record execution
+            try {
+                $this->executeAutomationActions($auto, $context);
+                DB::table('automations')->where('id', $auto->id)->increment('execution_count');
+                $triggered++;
+            } catch (\Throwable $e) {
+                Log::error("Automation {$auto->id} failed", [
+                    'workspace_id' => $wsId,
+                    'trigger'      => $triggerType,
+                    'error'        => $e->getMessage(),
+                ]);
             }
-            DB::table('automations')->where('id', $auto->id)->increment('execution_count');
-            $triggered++;
         }
         return $triggered;
+    }
+
+    /**
+     * Walk the automation's steps_json and run each action.
+     */
+    private function executeAutomationActions(object $automation, array $context): void
+    {
+        $steps = json_decode($automation->steps_json ?? '[]', true) ?: [];
+        if (! is_array($steps)) return;
+
+        foreach ($steps as $i => $step) {
+            $type = (string) ($step['type'] ?? '');
+            try {
+                match ($type) {
+                    'send_email'         => $this->autoSendEmail($automation, $step, $context),
+                    'notify_owner'       => $this->autoNotifyOwner($automation, $step, $context),
+                    'add_tag'            => $this->autoAddTag($automation, $step, $context),
+                    'enroll_in_sequence' => $this->autoEnrollInSequence($automation, $step, $context),
+                    default              => Log::info("Automation action type '{$type}' not implemented", [
+                        'automation_id' => $automation->id,
+                        'step_index'    => $i,
+                    ]),
+                };
+            } catch (\Throwable $e) {
+                Log::warning("Automation step failed (continuing batch)", [
+                    'automation_id' => $automation->id,
+                    'step_index'    => $i,
+                    'type'          => $type,
+                    'error'         => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    private function autoSendEmail(object $automation, array $action, array $context): void
+    {
+        $email = (string) ($context['email'] ?? '');
+        if ($email === '') return;
+
+        $subject = (string) ($action['subject'] ?? 'Message from us');
+        $body    = (string) ($action['body']    ?? '');
+
+        Mail::send(
+            'emails.notification',
+            [
+                'notification' => (object) [
+                    'title'      => $subject,
+                    'body'       => $body,
+                    'action_url' => $action['action_url'] ?? null,
+                ],
+                'user' => (object) [
+                    'email' => $email,
+                    'name'  => $context['firstname'] ?? $context['name'] ?? null,
+                ],
+            ],
+            function ($m) use ($email, $context, $subject) {
+                $m->to($email, $context['firstname'] ?? null)
+                  ->subject($subject)
+                  ->from(
+                      config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@levelupgrowth.io')),
+                      config('mail.from.name',    env('MAIL_FROM_NAME',    'LevelUp Growth'))
+                  );
+            }
+        );
+    }
+
+    private function autoNotifyOwner(object $automation, array $action, array $context): void
+    {
+        $owner = DB::table('workspace_users')
+            ->where('workspace_id', $automation->workspace_id)
+            ->where('role', 'owner')
+            ->first();
+        if (! $owner) return;
+
+        $notif = app(\App\Core\Notifications\NotificationService::class);
+        $notif->dispatch(
+            type:        \App\Core\Notifications\NotificationTypes::SYSTEM_ADMIN_BROADCAST,
+            userId:      (int) $owner->user_id,
+            title:       (string) ($action['title'] ?? 'Automation triggered'),
+            workspaceId: (int) $automation->workspace_id,
+            body:        (string) ($action['body']  ?? "Automation '{$automation->name}' fired."),
+            data:        $context,
+            severity:    'info'
+        );
+    }
+
+    private function autoAddTag(object $automation, array $action, array $context): void
+    {
+        $contactId = (int) ($context['contact_id'] ?? 0);
+        $newTag    = (string) ($action['tag'] ?? '');
+        if ($contactId <= 0 || $newTag === '') return;
+
+        $contact = DB::table('contacts')->where('id', $contactId)->first();
+        if (! $contact) return;
+
+        $tags = json_decode($contact->tags ?? '[]', true);
+        if (! is_array($tags)) $tags = [];
+
+        if (! in_array($newTag, $tags, true)) {
+            $tags[] = $newTag;
+            DB::table('contacts')->where('id', $contactId)->update([
+                'tags'       => json_encode(array_values($tags)),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    private function autoEnrollInSequence(object $automation, array $action, array $context): void
+    {
+        $sequenceId = (int) ($action['sequence_id'] ?? 0);
+        $contactId  = (int) ($context['contact_id'] ?? 0);
+        if ($sequenceId <= 0 || $contactId <= 0) return;
+
+        // Verify sequence belongs to this workspace + is active.
+        $seq = DB::table('sequences')
+            ->where('id', $sequenceId)
+            ->where('workspace_id', $automation->workspace_id)
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->first();
+        if (! $seq) return;
+
+        // Insert-or-ignore enrollment (idempotency anchor: ws + seq + contact unique).
+        DB::table('sequence_enrollments')->insertOrIgnore([
+            'workspace_id'       => $automation->workspace_id,
+            'sequence_id'        => $sequenceId,
+            'contact_id'         => $contactId,
+            'enrolled_at'        => now(),
+            'current_step_order' => 1,
+            'status'             => 'active',
+            'created_at'         => now(),
+            'updated_at'         => now(),
+        ]);
     }
 
     // ═══════════════════════════════════════════════════════

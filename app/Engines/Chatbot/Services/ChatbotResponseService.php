@@ -481,6 +481,28 @@ class ChatbotResponseService
 
         $this->notifyChatbotLeadCapture($workspaceId, (int) $lead->id, $name, $email, $phone, $sessionId, false);
 
+        // PATCH 7 (2026-05-08): fire any active 'lead_captured' automation.
+        // Wrapped so a misconfigured automation never breaks lead capture.
+        try {
+            app(\App\Engines\Marketing\Services\MarketingService::class)->triggerAutomation(
+                $workspaceId,
+                'lead_captured',
+                [
+                    'contact_id' => (int) $lead->id,
+                    'email'      => $email,
+                    'firstname'  => $name,
+                    'phone'      => $phone,
+                    'source'     => 'chatbot888',
+                ]
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Chatbot lead automation trigger failed', [
+                'workspace_id' => $workspaceId,
+                'lead_id'      => (int) $lead->id,
+                'error'        => $e->getMessage(),
+            ]);
+        }
+
         return ['success' => true, 'data' => ['lead_id' => $lead->id, 'created' => true, 'updated' => false]];
     }
 
