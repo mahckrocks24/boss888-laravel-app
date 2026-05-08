@@ -161,7 +161,7 @@ function _mktRender(el) {
                 : S.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd)">
                     <span style="font-size:18px">${window.icon('ai',14)}</span>
                     <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name||'Sequence'}</div>
-                    <div style="font-size:10px;color:var(--t3)">${s.trigger_event||'manual'} · ${s.step_count||0} step${(s.step_count||0)!==1?'s':''}</div></div>
+                    <div style="font-size:10px;color:var(--t3)">${s.trigger_type||s.trigger_event||'manual'} · ${s.step_count||0} step${(s.step_count||0)!==1?'s':''}</div></div>
                     <button class="btn btn-ghost btn-sm" style="color:var(--rd);font-size:11px" onclick="mktDeleteSequence(${s.id},'${(s.name||'').replace(/'/g,'')}')">${window.icon('delete',14)}</button>
                   </div>`).join('')}
               <button class="btn btn-outline btn-sm" style="width:100%;margin-top:10px" onclick="mktNewSequence()">+ New Sequence</button>
@@ -268,7 +268,7 @@ function _mktRender(el) {
               <th>Sequence</th><th>Trigger</th><th>Steps</th><th>Status</th><th></th>
             </tr></thead><tbody>${S.map(s=>`<tr>
               <td><strong>${s.name||'Untitled'}</strong><div style="font-size:11px;color:var(--t3)">${s.description||''}</div></td>
-              <td><span class="badge badge-blue">${s.trigger_event||'manual'}</span></td>
+              <td><span class="badge badge-blue">${s.trigger_type||s.trigger_event||'manual'}</span></td>
               <td style="font-size:12px">${s.step_count||0} step${(s.step_count||0)!==1?'s':''}</td>
               <td><span class="badge ${(s.status||'active')==='active'?'badge-green':'badge-grey'}">${s.status||'active'}</span></td>
               <td><div style="display:flex;gap:4px">
@@ -487,10 +487,16 @@ window.mktNewSequence = function() {
     if (!name) { showToast('Enter a sequence name.','error'); return; }
     _mktSetLoading(bd,'#msq-save',true,'Creating…');
     try {
+      // PATCH 10 Fix 6 — DB column is `trigger_type`, not `trigger_event`.
+      // SequenceService::createSequence (SequenceService.php:9) reads
+      // trigger_type and ignored trigger_event silently — every new sequence
+      // had the wrong trigger and never fired. status field is also accepted
+      // by the service.
       const s = await _mktApi('POST', '/marketing/sequences', {
-        name, trigger_event: bd.querySelector('#ms-tr').value,
-        description: bd.querySelector('#ms-d').value.trim(),
-        status: 'active',
+        name,
+        trigger_type: bd.querySelector('#ms-tr').value,
+        description:  bd.querySelector('#ms-d').value.trim(),
+        status:       'active'
       });
       _mkt.sequences.unshift(s.sequence || s);
       bd.remove(); showToast('Sequence created!','success');
@@ -531,11 +537,17 @@ window.mktAddStep = function(seqId, seqName) {
   bd.querySelector('#mss-save').onclick = async () => {
     _mktSetLoading(bd,'#mss-save',true,'Adding…');
     try {
+      // PATCH 10 Fix 6 — DB columns on sequence_steps are
+      // type/delay_hours/email_subject/email_body_html. The previous payload
+      // (step_type/delay_days/subject/body) was 100% silently dropped by
+      // SequenceService::addStep (SequenceService.php:90) and the runner
+      // (lu:sequences:run) had nothing to send.
+      // delay_days × 24 → delay_hours.
       await _mktApi('POST', '/marketing/sequences/' + seqId + '/steps', {
-        step_type:   bd.querySelector('#mss-ty').value,
-        delay_days:  parseInt(bd.querySelector('#mss-delay').value,10)||0,
-        subject:     bd.querySelector('#mss-subj').value.trim(),
-        body:        bd.querySelector('#mss-body').value,
+        type:             bd.querySelector('#mss-ty').value,
+        delay_hours:      (parseInt(bd.querySelector('#mss-delay').value,10)||0) * 24,
+        email_subject:    bd.querySelector('#mss-subj').value.trim(),
+        email_body_html:  bd.querySelector('#mss-body').value
       });
       bd.remove(); showToast('Step added!','success');
       mktLoad(document.getElementById('marketing-root'));

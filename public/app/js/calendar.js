@@ -271,11 +271,15 @@ window.calNewEvent = function(preDay) {
       const d=bd.querySelector('#ce-d').value;
       const tm=bd.querySelector('#ce-tm').value;
       const et=bd.querySelector('#ce-et').value;
-      const start_at=d?d+' '+(tm||'09:00')+':00':null;
-      const end_at=d&&et?d+' '+et+':00':start_at;
+      // PATCH 10 Fix 5 — calendar_events DB columns are starts_at/ends_at/category.
+      // Frontend was sending start_at/end_at/event_type; CalendarService::createEvent
+      // (CalendarService.php:9) silently dropped them, INSERT failed because
+      // starts_at is NOT NULL. Aligned to schema.
+      const starts_at=d?d+' '+(tm||'09:00')+':00':null;
+      const ends_at=d&&et?d+' '+et+':00':starts_at;
       const ev=await _calApi('POST','/calendar/events',{
-        title, event_type: bd.querySelector('#ce-ty').value,
-        start_at, end_at,
+        title, category: bd.querySelector('#ce-ty').value,
+        starts_at, ends_at,
         description: bd.querySelector('#ce-n').value.trim(),
         workspace_id: 1,
       });
@@ -329,11 +333,12 @@ window.calEditEventById = async function(id) {
       const d=bd.querySelector('#ee-d').value;
       const tm=bd.querySelector('#ee-tm').value;
       const et=bd.querySelector('#ee-et').value;
-      const start_at=d?d+' '+(tm||'09:00')+':00':null;
-      const end_at=d&&et?d+' '+et+':00':start_at;
+      // PATCH 10 Fix 5 — see create payload above; aligned starts_at/ends_at/category.
+      const starts_at=d?d+' '+(tm||'09:00')+':00':null;
+      const ends_at=d&&et?d+' '+et+':00':starts_at;
       const updated=await _calApi('PUT','/calendar/events/'+id,{
-        title, event_type: bd.querySelector('#ee-ty').value,
-        start_at, end_at,
+        title, category: bd.querySelector('#ee-ty').value,
+        starts_at, ends_at,
         description: bd.querySelector('#ee-n').value.trim(),
       });
       const idx=_cal.events.findIndex(e=>e.id===id);
@@ -393,9 +398,10 @@ window.calNewBookingSlot = function() {
     try{
       const d=bd.querySelector('#cbs-d').value;
       const tm=bd.querySelector('#cbs-tm').value;
+      // PATCH 10 Fix 5 — booking slots payload aligned to schema.
       await _calApi('POST','/calendar/booking-slots',{
         title, duration_minutes: parseInt(bd.querySelector('#cbs-dur').value,10)||30,
-        start_at: d&&tm?d+' '+tm+':00':null,
+        starts_at: d&&tm?d+' '+tm+':00':null,
         description: bd.querySelector('#cbs-n').value.trim(),
         workspace_id: 1,
       });

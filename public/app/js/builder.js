@@ -1097,13 +1097,53 @@ async function _t3ArthurSend(websiteId) {
 
   try {
     var t = localStorage.getItem('lu_token') || '';
-    console.log('[Arthur send]', { block_id: window._t3SelectedBlock || null, element_key: window._t3SelectedElement || null, message: msg });
-    var r = await fetch('/api/builder/websites/' + websiteId + '/arthur-edit', {
-      method: 'POST',
-      headers: {'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json', 'Accept': 'application/json'},
-      body: JSON.stringify({message: msg, block_id: window._t3SelectedBlock || null, element_key: window._t3SelectedElement || null})
-    });
-    var d = await r.json();
+    console.log('[Arthur send]', { block_id: window._t3SelectedBlock || null, element_key: window._t3SelectedElement || null, message: msg, pageId: (typeof bldCurrentPageId !== 'undefined' ? bldCurrentPageId : null) });
+    var r, d;
+    var pid = (typeof bldCurrentPageId !== 'undefined' && bldCurrentPageId) ? bldCurrentPageId : null;
+    var triedCanonical = false;
+    if (pid) {
+      // PATCH 10 Fix 2 — Try canonical Patch 8.5 endpoint first.
+      // This mutates pages.sections_json with snapshots; works only on
+      // sites that have sections_json populated (i.e. not legacy static-HTML
+      // sites like Chef Red). The endpoint has a 422 legacy gate that
+      // returns {error,legacy:true} when sections_json is empty — fall back
+      // to the legacy regex closure in that case to keep Chef Red working
+      // until T3.4.
+      triedCanonical = true;
+      r = await fetch('/api/builder/pages/' + pid + '/arthur-edit', {
+        method: 'POST',
+        headers: {'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({message: msg, section_index: null})
+      });
+      d = await r.json();
+      if (r.status === 422 && d && d.legacy === true) {
+        console.log('[Arthur] canonical 422 legacy gate — falling back to legacy closure');
+        triedCanonical = false; // signal fallback path
+      } else {
+        // Adapt Patch 8.5 response shape to the legacy `method/message` shape
+        // the rest of this function expects, so the UI rendering branches keep working.
+        if (d && d.success) {
+          d = {
+            method: 'action',
+            message: d.reply || (d.actions_applied ? (d.actions_applied + ' edit' + (d.actions_applied === 1 ? '' : 's') + ' applied') : 'Done.'),
+            reload_preview: true,
+            credits_used: 0,
+            _canonical: true
+          };
+        } else if (d && d.error) {
+          // d.error already in the shape the legacy branch handles
+        }
+      }
+    }
+    if (!triedCanonical || (r && r.status === 422 && d && d.legacy === true)) {
+      // Legacy fallback — works for static-HTML sites (Chef Red era)
+      r = await fetch('/api/builder/websites/' + websiteId + '/arthur-edit', {
+        method: 'POST',
+        headers: {'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({message: msg, block_id: window._t3SelectedBlock || null, element_key: window._t3SelectedElement || null})
+      });
+      d = await r.json();
+    }
 
     var typing = document.getElementById('t3-typing');
     if (typing) typing.remove();
@@ -1739,17 +1779,20 @@ async function bldSave() {
   try {
     if (bldCurrentPage._source === 'standalone' || _bldPageSource === 'standalone') {
       // Save via core builder
+      // PATCH 10 Fix 3 — unwrap `layout` so backend BuilderService::updatePage
+      // (`app/Engines/Builder/Services/BuilderService.php:205`) actually
+      // receives the `sections` field. The previous nested `layout: {sections}`
+      // shape silently dropped to BuilderService and the API returned a lying
+      // `{updated:true}` while `pages.sections_json` was never written.
+      // Backend whitelist: title, slug, type, status, is_homepage, position, sections, sections_json, seo.
       await fetch(API+'builder/save', {
         method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'},
         body: JSON.stringify({
           page_id: bldCurrentPageId,
-          source: 'user',
-          layout: {
-            title: bldCurrentPage.title,
-            type: bldCurrentPage.type || bldCurrentPage.page_type || 'landing',
-            sections: bldCurrentPage.sections || [],
-            theme: bldCurrentPage.theme || {},
-          },
+          source:  'user',
+          title:   bldCurrentPage.title,
+          type:    bldCurrentPage.type || bldCurrentPage.page_type || 'landing',
+          sections: bldCurrentPage.sections || []
         })
       });
     } else {

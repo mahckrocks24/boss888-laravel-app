@@ -414,6 +414,13 @@ function drawTaskLines() { /* no-op — canvas connector lines for kanban */ }
 
 
 var _luEngineLoading = {};
+// PATCH 10 Fix 1 — Define LU_API_BASE BEFORE any engine JS loads.
+// Engine helpers (write.js _wrUrl, creative.js _crUrl, crm.js, etc.) build URLs
+// as `(window.LU_API_BASE || '/api') + '/api/<engine>' + path`. The fallback
+// '/api' produces double-/api like /api/api/write/articles → 404. Set to ''
+// so the helpers produce the correct /api/write/articles path (the helpers
+// always concatenate '/api/<engine>' themselves).
+window.LU_API_BASE = '';
 // Engine bust — file mtime from server so LiteSpeed cache can never serve stale engine JS
 window.LU_ENGINE_BUST = (window.LU_CFG && window.LU_CFG.engineBust) ? window.LU_CFG.engineBust : (window.LU_CFG ? window.LU_CFG.version : '3.0.4');
 
@@ -5180,10 +5187,15 @@ function _notifStartPolling() {
 
 async function _notifPoll() {
   try {
-    var r = await _luFetch('GET', '/notifications?unread=true&limit=5');
+    // PATCH 10 Fix 4 — Use the dedicated unread-count endpoint (returns
+    // {count: N}). Previous version called /notifications?unread=true&limit=5
+    // and read d.total_unread, which the controller never returns — bell
+    // perpetually showed zero regardless of real unread state.
+    // Backend: app/Http/Controllers/Api/NotificationController.php:43 unreadCount()
+    var r = await _luFetch('GET', '/notifications/unread-count');
     if (!r.ok) return;
     var d = await r.json();
-    var count = d.total_unread || 0;
+    var count = (typeof d.count === 'number') ? d.count : (d.total_unread || 0);
     var bell = document.getElementById('lu-notif-bell');
     if (!bell) return;
     if (count > 0) {

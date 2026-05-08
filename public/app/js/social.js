@@ -320,21 +320,49 @@ window.socialNewPost = function() {
     const btn2=postImmediately?bd.querySelector('#sp-post-btn'):bd.querySelector('#sp-draft-btn');
     btn2.disabled=true;btn2.textContent='Saving…';
     try {
-      // Create post
+      // PATCH 10 Fix 7 — DB column `social_posts.platform` is varchar(30) singular,
+      // not an array. Send first platform as canonical; keep `platforms` for any
+      // backend that may expand to multi-platform fan-out later.
+      const primaryPlatform = pls[0] || 'facebook';
       const created=await _socApi('POST','/social/posts',{
-        content,platforms:pls,status:'draft',
+        content,
+        platform:  primaryPlatform,
+        platforms: pls,
+        status:'draft',
         scheduled_at:sched||null,
         media_url:media_url||null,
       });
       const postId=created.id||created.post?.id;
 
       // If publishing immediately, call publish endpoint
+      let publishResult = null;
+      let publishedOk = false;
       if(postImmediately&&!sched&&postId){
-        try { await _socApi('POST','/social/posts/'+postId+'/publish'); }
+        try {
+          publishResult = await _socApi('POST','/social/posts/'+postId+'/publish');
+          // PATCH 10 Fix 7 — honest publish status. Backend SocialConnector::publish
+          // is currently a stub (SOCIAL_CONNECTOR_URL empty in env), so server-side
+          // publishPost flips status='failed' and returns published:false. Do NOT
+          // show a green "Published!" toast in that case.
+          publishedOk = !!(publishResult && (publishResult.published === true || publishResult.success === true));
+        }
         catch(e){ showToast('Post created but publish failed: '+e.message,'error'); }
       }
       _soc.posts.unshift(created.post||created);
-      bd.remove(); showToast(status==='draft'?'Draft saved!':'Post created!','success');
+      bd.remove();
+      if (status==='draft') {
+        showToast('Draft saved.','success');
+      } else if (postImmediately && !sched) {
+        if (publishedOk) {
+          showToast('Post published.','success');
+        } else {
+          showToast('Post saved as draft — connect a social account to publish live.','info');
+        }
+      } else if (sched) {
+        showToast('Post scheduled.','success');
+      } else {
+        showToast('Post created.','success');
+      }
       socialLoad(document.getElementById('social-root'));
     } catch(e) {
       showToast(e.message,'error');
@@ -351,9 +379,18 @@ window.socialPublishPost = async function(postId) {
   window._socialPubInFlight=postId;
   showToast('Publishing post…','info');
   try {
-    // Patch: correct endpoint is /social/posts/:id/publish (not publish-facebook)
-    await _socApi('POST', '/social/posts/'+postId+'/publish');
-    showToast('Post published!','success');
+    // PATCH 10 Fix 7 — honest publish status. Backend SocialConnector::publish
+    // is a stub today (empty SOCIAL_CONNECTOR_URL); server-side publishPost
+    // flips status='failed' and returns {published:false}. UI must check the
+    // real result, not show "Published!" unconditionally.
+    var resp = await _socApi('POST', '/social/posts/'+postId+'/publish');
+    var ok = !!(resp && (resp.published === true || resp.success === true));
+    if (ok) {
+      showToast('Post published.','success');
+    } else {
+      var why = (resp && (resp.error || resp.message)) || 'social connector not configured';
+      showToast('Publish failed (' + why + '). Saved as draft — connect a social account to retry.','info');
+    }
     socialLoad(document.getElementById('social-root'));
   } catch(e) { showToast('Publish failed: '+e.message,'error'); }
   finally { window._socialPubInFlight=null; }

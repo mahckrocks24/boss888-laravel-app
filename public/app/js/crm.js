@@ -101,6 +101,7 @@ window.crmLoad = async function(el) {
     var dash    = await _crmGet('/dashboard').catch(function(e){console.warn('[LuCRM] dash:',e.message);return null;});
     var stages  = await _crmGet('/pipeline/stages').catch(function(){return [];});
     var leads   = await _crmGet('/leads').catch(function(){return {leads:[]};});
+    var contacts= await _crmGet('/contacts').catch(function(){return {contacts:[]};});  // PATCH 10 Fix 8
     var modules = await _crmGet('/modules').catch(function(){return {};});
     var settings= await _crmGet('/settings').catch(function(){return {};});
     var tasks   = await _crmGet('/tasks?status=pending').catch(function(){return {tasks:[]};});
@@ -108,7 +109,34 @@ window.crmLoad = async function(el) {
 
     _crm.dash     = dash;
     _crm.stages   = Array.isArray(stages) ? stages : [];
-    _crm.leads    = (leads&&leads.leads) ? leads.leads : [];
+
+    // PATCH 10 Fix 8 — surface website-form contacts in the Leads list.
+    // PublicContactController::submit (T3.2) writes form submissions to the
+    // `contacts` table, NOT `leads`. Without this merge, customers' inbound
+    // leads from their own website never appeared in the CRM Leads UI.
+    // Adapt contact rows to lead shape + tag with source='website_form' so
+    // the existing renderer treats them as leads, with a visible source badge.
+    var rawLeads = (leads && leads.leads) ? leads.leads : [];
+    var rawContacts = (contacts && (contacts.contacts || contacts.data)) ? (contacts.contacts || contacts.data) : (Array.isArray(contacts) ? contacts : []);
+    var contactsAsLeads = (rawContacts || []).map(function(c){
+      return {
+        id: 'contact_' + c.id,
+        _origin: 'contact',
+        _origin_id: c.id,
+        first_name: c.first_name || (c.name ? c.name.split(' ')[0] : ''),
+        last_name:  c.last_name  || (c.name ? c.name.split(' ').slice(1).join(' ') : ''),
+        name:       c.name || ([c.first_name, c.last_name].filter(Boolean).join(' ')),
+        email:      c.email,
+        phone:      c.phone,
+        source:     c.source || 'website_form',
+        status:     c.status || 'new',
+        notes:      c.notes,
+        created_at: c.created_at,
+        updated_at: c.updated_at
+      };
+    });
+    _crm.leads = rawLeads.concat(contactsAsLeads);
+
     _crm.modules  = Object.entries(modules||{}).map(function(p){return Object.assign({slug:p[0]},p[1]);});
     _crm.settings = settings||{};
     _crm.tasks    = (tasks&&tasks.tasks) ? tasks.tasks : [];
