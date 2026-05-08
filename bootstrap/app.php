@@ -97,6 +97,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
 
         $middleware->prepend(\App\Http\Middleware\PublishedSiteMiddleware::class);
+        // Run BEFORE PublishedSite so request()->ip() resolves to the real
+        // client (CF-Connecting-IP / X-Forwarded-For) rather than the
+        // Cloudflare edge node, which is what per-IP throttling +
+        // audit logs need.
+        $middleware->prepend(\App\Http\Middleware\TrustProxies::class);
         $middleware->append(\App\Http\Middleware\CorsMiddleware::class);
         $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
 
