@@ -291,6 +291,75 @@ class RuntimeClient
     }
 
     /**
+     * POST /internal/assistant — full intelligent assistant endpoint.
+     *
+     * ADDED (Patch Assistant, 2026-05-09): wires Laravel into the runtime's
+     * /internal/assistant module which provides:
+     *   - Workspace context (from WP REST + Redis lu-memory long-term, merged
+     *     by lu-context.js::getWorkspaceContext, 15-min cache)
+     *   - Conversation history persistence (./conversation, keyed by
+     *     conversation_id)
+     *   - Tool routing (./assistant-tool-router, 58+ tools)
+     *   - Strategic mode (multi-specialist consultation when intent calls for it)
+     *
+     * Runtime body shape (per index.js:1167-1169):
+     *   { message, context={}, conversation_id='default', agent_id='dmm' }
+     *
+     * Response shape: `{response: "...", ...other fields}`. Some response
+     * variants (action-routed) MAY include `create_tasks: [...]` — callers
+     * should pass that through to TaskService if present.
+     *
+     * Returns the parsed JSON body. On failure returns
+     * ['response' => null, 'error' => true, 'reason' => ...].
+     */
+    public function assistant(
+        string $message,
+        array $context = [],
+        string $conversationId = 'default',
+        string $agentId = 'dmm',
+        int $timeout = 60
+    ): array {
+        if (! $this->isConfigured()) {
+            return ['response' => null, 'error' => true, 'reason' => 'runtime_not_configured'];
+        }
+        try {
+            $resp = Http::withHeaders([
+                'X-LevelUp-Secret' => $this->secret,
+                'Content-Type'     => 'application/json',
+                'Accept'           => 'application/json',
+            ])
+            ->timeout($timeout)
+            ->post($this->baseUrl . '/internal/assistant', [
+                'message'         => $message,
+                'context'         => $context,
+                'conversation_id' => $conversationId,
+                'agent_id'        => $agentId,
+            ]);
+
+            if (! $resp->successful()) {
+                Log::warning('RuntimeClient::assistant non-2xx', [
+                    'http_code' => $resp->status(),
+                    'body'      => substr((string) $resp->body(), 0, 400),
+                ]);
+                return ['response' => null, 'error' => true, 'reason' => 'http_' . $resp->status()];
+            }
+
+            $body = $resp->json() ?? [];
+            // Normalise: ensure callers always see at least a `response` key.
+            if (!isset($body['response']) && isset($body['reply']))   $body['response'] = $body['reply'];
+            if (!isset($body['response']) && isset($body['content'])) $body['response'] = $body['content'];
+
+            return $body;
+        } catch (ConnectionException $e) {
+            Log::warning('RuntimeClient::assistant connection failed', ['error' => $e->getMessage()]);
+            return ['response' => null, 'error' => true, 'reason' => 'connection_failed'];
+        } catch (\Throwable $e) {
+            Log::error('RuntimeClient::assistant unexpected error', ['error' => $e->getMessage()]);
+            return ['response' => null, 'error' => true, 'reason' => 'exception'];
+        }
+    }
+
+    /**
      * POST /internal/write/draft — generate a new AI article draft.
      *
      * ADDED 2026-04-12 (Phase 2C-W1 / doc 14): replaces direct DeepSeekConnector

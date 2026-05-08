@@ -556,23 +556,68 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         $runtime = app(\App\Connectors\RuntimeClient::class);
         if ($runtime->isConfigured()) {
             try {
-                $result = $runtime->chatJson($systemPrompt, $userPrompt, [
-                    'agent_slug' => $slug, 'agent_name' => $agent->name,
-                    'workspace' => $workspace->business_name ?? '',
-                ], 600);
+                // PATCH (Assistant 2a) — primary reply now goes through
+                // /internal/assistant which gives the agent access to runtime
+                // workspace memory (lu-context.js: WP REST + Redis long-term),
+                // conversation history, and tool routing (58 tools). The
+                // previous chatJson path bypassed all of that.
+                //
+                // Hybrid: assistant() for the reply + memory context;
+                // chatJson() as a SECOND call to extract structured create_tasks
+                // when the message reads like an action request, since
+                // /internal/assistant returns prose, not the {reply, create_tasks}
+                // JSON shape Sarah-chat expected. Doubled cost on action
+                // requests vs the old single-call pattern; conversational
+                // quality is materially better.
+                $assist = $runtime->assistant(
+                    $userPrompt,
+                    [
+                        'workspace_id'  => $wsId,
+                        'business_name' => $workspace->business_name ?? $workspace->name ?? '',
+                        'industry'      => $workspace->industry ?? '',
+                        'location'      => $workspace->location ?? '',
+                        'agent_slug'    => $slug,
+                        'agent_name'    => $agent->name,
+                    ],
+                    "agent_chat_ws_{$wsId}_{$slug}",
+                    $slug === 'sarah' ? 'dmm' : $slug
+                );
+                $assistReply = $assist['response'] ?? null;
+                if ($assistReply) {
+                    $reply = $assistReply;
+                }
 
-                if ($result['success'] ?? false) {
-                    $parsed = $result['parsed'] ?? [];
-                    $reply = $parsed['reply'] ?? $result['text'] ?? $reply;
-                    $requiresSarah = (bool)($parsed['requires_sarah'] ?? false);
-                    $sarahContext = $parsed['sarah_context'] ?? '';
+                // Extract create_tasks: assistant may surface them via runtime
+                // tool router; if not, and the message is action-like, fall back
+                // to chatJson structured extraction so TaskService still fires.
+                $createTasks = $assist['create_tasks'] ?? [];
+                $requiresSarah = (bool) ($assist['requires_sarah'] ?? false);
+                $sarahContext  = $assist['sarah_context'] ?? '';
 
-                    // ── EXECUTE: If Sarah decided to create tasks, do it ──
-                    // Support both create_task (single) and create_tasks (array)
-                    $createTasks = $parsed['create_tasks'] ?? [];
-                    if (empty($createTasks) && !empty($parsed['create_task'])) {
-                        $createTasks = [$parsed['create_task']];
+                $needTaskExtract = empty($createTasks) && (
+                    !$assistReply
+                    || preg_match('/\b(create|generate|run|publish|schedule|write|build|launch|start|assign|post|send|audit|analyze)\b/i', $userPrompt)
+                );
+                if ($needTaskExtract) {
+                    $cj = $runtime->chatJson($systemPrompt, $userPrompt, [
+                        'agent_slug' => $slug, 'agent_name' => $agent->name,
+                        'workspace'  => $workspace->business_name ?? '',
+                    ], 600);
+                    if ($cj['success'] ?? false) {
+                        $parsed = $cj['parsed'] ?? [];
+                        if (!$assistReply) {
+                            $reply = $parsed['reply'] ?? $cj['text'] ?? $reply;
+                        }
+                        $requiresSarah = $requiresSarah ?: (bool)($parsed['requires_sarah'] ?? false);
+                        $sarahContext  = $sarahContext  ?: ($parsed['sarah_context'] ?? '');
+                        $createTasks   = $parsed['create_tasks'] ?? [];
+                        if (empty($createTasks) && !empty($parsed['create_task'])) {
+                            $createTasks = [$parsed['create_task']];
+                        }
                     }
+                }
+
+                if (true) {  // preserve indentation of original `if ($result['success'])` block
                     foreach ($createTasks as $createTask) {
                     if ($createTask && is_array($createTask) && !empty($createTask['agent'])) {
                         try {
@@ -3712,21 +3757,35 @@ HTMLSCRIPT;
                 }
                 $messages[] = ['role' => 'user', 'content' => $message];
 
-                $result = $runtime->chatJson(
-                    $systemPrompt,
+                // PATCH (Assistant 3) — primary path now /internal/assistant.
+                // Runtime endpoint pulls workspace context from lu-context.js
+                // (WP REST + Redis long-term, 15-min cache), persists conversation
+                // history per conversation_id, and routes through tool-router.
+                // Laravel-built systemPrompt + workspace_intelligence are still
+                // sent as `context` so the runtime can layer them in.
+                $assist = $runtime->assistant(
                     $message,
-                    ['task' => 'assistant_chat', 'workspace_id' => $wsId],
-                    1200
+                    [
+                        'workspace_id'    => $wsId,
+                        'business_name'   => isset($ws) ? ($ws->name ?? '') : '',
+                        'industry'        => isset($ws) ? ($ws->industry ?? '') : '',
+                        'location'        => isset($ws) ? ($ws->location ?? '') : '',
+                        'plan'            => isset($plan) ? ($plan->name ?? 'Free') : 'Free',
+                        'credits_balance' => isset($credits) ? ($credits->balance ?? 0) : 0,
+                        'workspace_intelligence' => $workspace_intelligence,
+                    ],
+                    "widget_ws_{$wsId}",
+                    'dmm'
                 );
-
-                if (($result['success'] ?? false) && !empty($result['content'])) {
+                $assistReply = $assist['response'] ?? null;
+                if ($assistReply) {
                     return response()->json([
-                        'response' => $result['content'],
+                        'response'       => $assistReply,
                         'agent_response' => true,
-                        'agent_name' => 'Sarah',
-                        'agent_emoji' => '👩‍💼',
-                        'agent_color' => '#F59E0B',
-                        'is_action' => $isAction,
+                        'agent_name'     => 'Sarah',
+                        'agent_emoji'    => '👩‍💼',
+                        'agent_color'    => '#F59E0B',
+                        'is_action'      => $isAction,
                     ]);
                 }
             }
