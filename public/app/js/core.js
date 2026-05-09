@@ -3110,7 +3110,30 @@ function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function escH(t){return esc(t).replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // removed duplicate fmt — see line 2525
 
-function fmt(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^### (.+)$/gm,'<h3 style="font-size:11px;color:var(--bl);margin:10px 0 4px;font-weight:700">$1</h3>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');}
+// PATCH (chat-markdown, 2026-05-09) — fmt() now handles bullet points
+// (lines starting with `- ` or `• `). Consecutive bullet lines collapse
+// into a single <ul>. Italic via *single-asterisk*. Order matters:
+// process bullets BEFORE \n -> <br> conversion so list items stay
+// structured.
+function fmt(t){
+  var s = _bldSafeText(t)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/(^|[\s])\*([^*\n]+)\*/g,'$1<em>$2</em>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^### (.+)$/gm,'<h3 style="font-size:11px;color:var(--bl);margin:10px 0 4px;font-weight:700">$1</h3>');
+  // Bullet handling: convert each `- ` or `• ` line to <li>, then wrap
+  // contiguous <li>...</li> runs in a <ul>.
+  s = s.replace(/^[\-•]\s+(.+)$/gm,'<li>$1</li>');
+  s = s.replace(/(<li>[\s\S]*?<\/li>)(\s*<li>[\s\S]*?<\/li>)*/g, function(m){
+    return '<ul style="margin:6px 0 8px;padding-left:18px;line-height:1.55">' + m + '</ul>';
+  });
+  // Newlines AFTER bullets are converted (don't insert <br> inside <ul>)
+  s = s.replace(/<\/ul>\n+/g,'</ul>')
+       .replace(/\n\n/g,'<br><br>')
+       .replace(/\n/g,'<br>');
+  return s;
+}
 async function post(url,data){var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')},body:JSON.stringify(data)});var d=await r.json();if(!r.ok){if(d.code==='PLAN_GATED'||d.code==='NO_CREDITS'){showPlanGate(d.error||d.message||'This feature requires a plan upgrade.');return d;}throw new Error(d.message||d.error||'Request failed');}return d;}
 async function get(url){var r=await fetch(url,{cache:'no-store',headers:{'Accept':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')}});return r.json();}
 

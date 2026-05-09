@@ -512,22 +512,54 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             $content = str_replace('TASK BRIEF:', '', $content);
         }
 
+        // PATCH (Sarah brand context, 2026-05-09) — Pull workspace_memory
+        // facts and inject as AUTHORITATIVE GROUND TRUTH at the top of
+        // Sarah's system prompt. Without this Sarah ECHOES user typos
+        // (e.g. visitor types "Levelupgroth.io" — Sarah repeats it
+        // instead of using the canonical "levelupgrowth.io" from memory).
+        $brandFacts = [];
+        try {
+            $memRows = DB::table('workspace_memory')->where('workspace_id', $wsId)->get(['key','value_json']);
+            foreach ($memRows as $row) {
+                $val = is_string($row->value_json) ? json_decode($row->value_json, true) : $row->value_json;
+                if (is_string($val) && $val !== '') $brandFacts[$row->key] = $val;
+            }
+        } catch (\Throwable $e) {}
+        $brandFactsBlock = "AUTHORITATIVE WORKSPACE FACTS (these are GROUND TRUTH — use them, never echo back user typos or alternatives):\n";
+        $brandFactsBlock .= "- Business name: " . ($brandFacts['business_name'] ?? $workspace->business_name ?? $workspace->name ?? 'this business') . "\n";
+        if (! empty($brandFacts['domain']))   $brandFactsBlock .= "- Domain: " . $brandFacts['domain'] . "\n";
+        if (! empty($brandFacts['industry'])) $brandFactsBlock .= "- Industry: " . $brandFacts['industry'] . "\n";
+        elseif (! empty($workspace->industry)) $brandFactsBlock .= "- Industry: " . $workspace->industry . "\n";
+        if (! empty($brandFacts['location'])) $brandFactsBlock .= "- Location: " . $brandFacts['location'] . "\n";
+        elseif (! empty($workspace->location)) $brandFactsBlock .= "- Location: " . $workspace->location . "\n";
+        $brandFactsBlock .= "Rule: if the user mis-spells the business name or domain, USE the correct spelling above. Never echo a typo.\n\n";
+
+        $formatRules = "FORMAT YOUR RESPONSES:\n"
+            . "- Use **bold** for section headers\n"
+            . "- Use line breaks between sections\n"
+            . "- Use bullet points (- text) for lists, one short line each, max 5 per list\n"
+            . "- Lead with the most important point\n"
+            . "- Never write walls of text\n\n";
+
         // ── Build system prompt ──
         if ($isSarah) {
-            $systemPrompt = "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for {$workspace->business_name}.\n"
-                . "Industry: " . ($workspace->industry ?? 'General') . "\n"
+            $systemPrompt = $brandFactsBlock
+                . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
+                . $formatRules
                 . "Available agents and their expertise:\n"
                 . "- james: SEO Strategist (keyword research, SERP analysis, audits)\n"
                 . "- alex: Technical SEO (site audits, Core Web Vitals, schema)\n"
                 . "- priya: Content Manager (articles, copy, editorial)\n"
                 . "- marcus: Social Media (Instagram, LinkedIn, TikTok)\n"
                 . "- elena: CRM & Leads (pipeline, lead scoring, follow-ups)\n"
-                . "- sam: Email Marketing (campaigns, sequences, automation)\n"
+                // PATCH (Sam removal, 2026-05-09) — Sam is no longer in
+                // the canonical 21-agent roster. Email marketing is
+                // covered by the marketing engine via vera.
                 . ($recentTasks ? "Current tasks:\n- {$recentTasks}\n" : "No active tasks.\n")
                 . "When the user asks you to create/assign/run tasks, include a create_tasks ARRAY in your JSON. You can include MULTIPLE tasks.\n"
                 . "Each task in create_tasks must have: agent (slug), engine, action, and description.\n"
-                . "Engine mapping: james/alex/diana/ryan/sofia=seo, priya/leo/maya/chris/nora=write, marcus/zara/tyler/aria/jordan=social, elena/kai/max=crm, sam/vera=marketing\n"
+                . "Engine mapping: james/alex/diana/ryan/sofia=seo, priya/leo/maya/chris/nora=write, marcus/zara/tyler/aria/jordan=social, elena/kai/max=crm, vera=marketing\n"
                 . "Action examples: serp_analysis, deep_audit, write_article, social_create_post, create_lead, create_campaign\n"
                 . "Be decisive and action-oriented. Keep responses under 150 words.\n"
                 . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":false,\"create_tasks\":[{\"agent\":\"james\",\"engine\":\"seo\",\"action\":\"serp_analysis\",\"description\":\"Run SEO analysis\"}]}\n"                . "Include multiple objects in create_tasks array for multiple assignments. Empty array [] if no tasks needed.\n"
@@ -540,9 +572,11 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
                 . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
         } else {
-            $systemPrompt = "You are {$agent->name}, {$agent->title} for {$workspace->business_name}.\n"
+            $systemPrompt = $brandFactsBlock
+                . "You are {$agent->name}, {$agent->title} for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "Your expertise: " . implode(', ', $skills) . "\n"
                 . ($recentTasks ? "Your recent tasks:\n- {$recentTasks}\n" : "No recent tasks.\n")
+                . $formatRules
                 . "Answer questions about your work directly. Be helpful and specific.\n"
                 . "For NEW task requests beyond your current scope, say you'll need Sarah to assign it officially.\n"
                 . "Keep responses under 120 words.\n"
