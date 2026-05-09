@@ -986,17 +986,17 @@ function _arthurShowWebsiteCard(websiteId, name, industry) {
         + '<div style="font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">' + bld_escH(name) + '</div>'
         + '<div style="font-size:12px;color:var(--t3);margin-bottom:16px">' + bld_escH(industry) + ' website \u2022 draft</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-        + '<button onclick="wsPreviewSite(' + websiteId + ')" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">'+window.icon('eye',18)+' Preview</button>'
-        + '<button onclick="document.getElementById(\'arthur-modal\').remove();wsDoPublish(' + websiteId + ')" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">'+window.icon('rocket',18)+' Publish</button>'
-        + '<button onclick="document.getElementById(\'arthur-modal\').remove();wsLoadSites()" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">View in Websites</button>'
+        + '<a href="/storage/sites/' + websiteId + '/index.html" target="_blank" rel="noopener" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px">'+window.icon('eye',18)+' Preview</a>'
+        + '<button onclick="(function(){var m=document.getElementById(\'arthur-modal\');if(m)m.remove();if(typeof wsOpenSite===\'function\')wsOpenSite(' + websiteId + ');})()" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">'+window.icon('edit',18)+' Open in Editor</button>'
         + '</div></div>';
 
     feed.innerHTML += card;
     feed.scrollTop = feed.scrollHeight;
 
-    // Disable input after completion
+    // PATCH (FIX 3, 2026-05-09) \u2014 placeholder updated to direct the user
+    // toward the editor instead of "Close to continue".
     var inp = document.getElementById('arthur-chat-input');
-    if (inp) { inp.placeholder = 'Website created! Close to continue.'; inp.disabled = true; }
+    if (inp) { inp.placeholder = 'Your website is ready! Open it in the editor to customize.'; inp.disabled = true; }
 }
 
 

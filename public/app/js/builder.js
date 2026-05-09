@@ -812,7 +812,7 @@ function _wsShowTemplateEditor(site) {
       '<span style="flex:1"></span>' +
       '<span style="color:var(--t3);font-size:11px">Click any text to edit</span>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
-      '<button onclick="wsDoPublish(' + wsId + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
+      '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
     // Main
     '<div style="flex:1;display:flex;overflow:hidden">' +
@@ -1947,7 +1947,14 @@ window._luConfirmSubdomain = async function (websiteId) {
       return;
     }
 
-    document.getElementById('subdomain-modal').remove();
+    // PATCH (FIX 2, 2026-05-09) — null-safe modal close + remove any
+    // sibling publish-modal so neither dialog stays open after success.
+    var sm = document.getElementById('subdomain-modal');
+    if (sm) sm.remove();
+    var pm = document.getElementById('publish-modal');
+    if (pm) pm.remove();
+    var pmAlt = document.getElementById('ws-pub-modal');
+    if (pmAlt) pmAlt.remove();
 
     var url = pubD.url || ('https://' + slug + '.levelupgrowth.io');
     var toast = document.createElement('div');
@@ -1965,6 +1972,59 @@ window._luConfirmSubdomain = async function (websiteId) {
     btn.disabled = false;
     btn.style.opacity = '1';
   }
+};
+
+// PATCH (publish-flow-fix v2, 2026-05-09) — FIX 1
+// Wrapper used by the template-editor toolbar Publish button. The plain
+// wsDoPublish() takes no args and reads the global wsPubTarget; in the
+// editor view that global isn't set, so clicking Publish was a silent
+// no-op. This helper figures out whether the site is first-publish or
+// republish and routes to the right path.
+window.wsPublishFromEditor = function (wsId, siteName) {
+  // Normalise site name (caller may double-quote-encode it)
+  siteName = (siteName == null) ? '' : String(siteName);
+
+  // Try to find the site in the loaded grid; if not present, fetch a
+  // minimal record so we know its current subdomain + status.
+  var site = (typeof wsSites !== 'undefined' && Array.isArray(wsSites))
+    ? wsSites.find(function (s) { return s && s.id === wsId; })
+    : null;
+
+  function decideAndDispatch(s) {
+    var hasSub  = s && s.subdomain && String(s.subdomain).length > 5;
+    var isPub   = s && (s.status === 'published' || s.publish_state === 'published');
+    if (hasSub && isPub) {
+      // Already published with subdomain — re-publish through the
+      // existing wsDoPublish flow (which expects wsPubTarget set).
+      window.wsPubTarget = s;
+      if (typeof wsDoPublish === 'function') wsDoPublish();
+      return;
+    }
+    // First publish (or no subdomain yet) — show the picker.
+    if (typeof _luShowSubdomainPicker === 'function') {
+      _luShowSubdomainPicker(wsId, siteName);
+    }
+  }
+
+  if (site) {
+    decideAndDispatch(site);
+    return;
+  }
+
+  // Fall back to a quick fetch so the toolbar button works even when
+  // wsSites hasn't loaded yet (e.g. user navigated straight into the
+  // editor without visiting the websites grid).
+  fetch(API + 'websites/' + wsId, {
+    headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' },
+  })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      var s = (j && (j.website || j.data || j)) || { id: wsId, name: siteName };
+      decideAndDispatch(s);
+    })
+    .catch(function () {
+      decideAndDispatch({ id: wsId, name: siteName });
+    });
 };
 
 // ── DEVICE TOGGLE ─────────────────────────────────────────────────────
