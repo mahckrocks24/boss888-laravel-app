@@ -224,9 +224,66 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     $apiBase = rtrim($r->getSchemeAndHttpHost() ?: 'https://staging.levelupgrowth.io', '/');
     // Force https in case Laravel sees http behind Cloudflare's proxy.
     $apiBase = preg_replace('#^http://#', 'https://', $apiBase);
-    $greeting  = (string) ($settings->greeting ?? 'Hi! How can I help you today?');
-    $color     = (string) ($settings->primary_color ?? '#6C5CE7');
-    $theme     = (string) ($settings->theme ?? 'auto');
+
+    // PATCH (chatbot bootstrap business name + brand color, 2026-05-09) —
+    // Resolve the workspace's primary website so we can substitute
+    // {{business}} in the greeting AND inject the website's
+    // template_variables.primary_color before baking the bootstrap JS.
+    // Order: try Origin/Referer host match first (correct site even
+    // when ws has multiple sites), fall back to most-recent-published.
+    $hostHeader = $r->header('Origin') ?: $r->header('Referer') ?: '';
+    $embedHostForLookup = '';
+    if ($hostHeader) {
+        $parsedH = parse_url($hostHeader);
+        $embedHostForLookup = strtolower($parsedH['host'] ?? '');
+    }
+    $websiteForWs = null;
+    if ($embedHostForLookup !== '' && ! in_array($embedHostForLookup, ['levelupgrowth.io', 'www.levelupgrowth.io', 'staging.levelupgrowth.io'], true)) {
+        $websiteForWs = \Illuminate\Support\Facades\DB::table('websites')
+            ->where('workspace_id', $wsId)
+            ->where(function ($q) use ($embedHostForLookup) {
+                $q->where('subdomain', $embedHostForLookup)
+                  ->orWhere('subdomain', explode('.', $embedHostForLookup)[0])
+                  ->orWhere('custom_domain', $embedHostForLookup);
+            })
+            ->whereNull('deleted_at')
+            ->first(['id', 'name', 'template_variables']);
+    }
+    if (! $websiteForWs) {
+        $websiteForWs = \Illuminate\Support\Facades\DB::table('websites')
+            ->where('workspace_id', $wsId)
+            ->whereNull('deleted_at')
+            ->where(function ($q) {
+                $q->where('status', 'published')->orWhere('status', 'draft');
+            })
+            ->orderByRaw("CASE WHEN status='published' THEN 0 ELSE 1 END")
+            ->orderByDesc('updated_at')
+            ->first(['id', 'name', 'template_variables']);
+    }
+
+    $workspaceRow = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['business_name', 'name']);
+    $businessName = (string) ($websiteForWs->name ?? $workspaceRow->business_name ?? $workspaceRow->name ?? 'us');
+
+    // Pull primary_color from website's template_variables, fall back
+    // to chatbot_settings.primary_color, fall back to platform purple.
+    $primaryColor = null;
+    if ($websiteForWs && ! empty($websiteForWs->template_variables)) {
+        $tv = is_string($websiteForWs->template_variables) ? json_decode($websiteForWs->template_variables, true) : null;
+        if (is_array($tv) && ! empty($tv['primary_color'])) {
+            $primaryColor = (string) $tv['primary_color'];
+        }
+    }
+    if (! $primaryColor) $primaryColor = (string) ($settings->primary_color ?? '#6C5CE7');
+
+    // Substitute {{business}} / {{business_name}} in the greeting before
+    // baking. Without this, the widget renders the literal token in its
+    // first bubble (the widget JS uses GREETING constant directly, no
+    // re-fetch from /config — that flow only fires on widget-open).
+    $rawGreeting = (string) ($settings->greeting ?? 'Hi! Welcome to {{business}}. How can I help you today?');
+    $greeting    = str_replace(['{{business}}', '{{business_name}}'], $businessName, $rawGreeting);
+
+    $color = $primaryColor;
+    $theme = (string) ($settings->theme ?? 'auto');
 
     // Bootstrap JS — embeds token + greeting; talks to /api/public/chatbot/*
     $tokenJs    = json_encode($rawToken, JSON_UNESCAPED_SLASHES);

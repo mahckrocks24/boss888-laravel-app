@@ -55,13 +55,16 @@ class PublicChatbotController
             return response()->json(['success' => false, 'error' => 'CHATBOT_DISABLED'], 403);
         }
 
-        // PATCH (per-website chatbot greeting, 2026-05-09) — Resolve the
-        // tenant website by Origin/Referer header so the greeting can
-        // identify the actual business the visitor is on, not the
-        // workspace name. Substitutes {{business}} in chatbot_settings.
-        // greeting with the resolved website name (falls back to
-        // workspace name if no tenant subdomain match).
-        $businessName = $this->resolveBusinessName($r, $wsId);
+        // PATCH (per-website chatbot greeting + brand color, 2026-05-09) —
+        // Resolve the tenant website by Origin/Referer header so:
+        //   (a) {{business}} in greeting substitutes with website.name
+        //   (b) primary_color reads from website's template_variables
+        //       (the brand color the user actually picked when building
+        //       the site), not chatbot_settings' shared workspace value.
+        $resolved      = $this->resolveWebsiteAndBusiness($r, $wsId);
+        $businessName  = $resolved['business_name'];
+        $primaryColor  = $resolved['primary_color'] ?: ($settings->primary_color ?: '#6C5CE7');
+
         $greeting = $settings->greeting ?: 'Hi! Welcome to {{business}}. How can I help you today?';
         $greeting = str_replace(['{{business}}', '{{business_name}}'], $businessName, $greeting);
 
@@ -70,7 +73,7 @@ class PublicChatbotController
             'data' => [
                 'greeting'      => $greeting,
                 'business_name' => $businessName,
-                'primary_color' => $settings->primary_color ?: '#6C5CE7',
+                'primary_color' => $primaryColor,
                 'theme'         => $settings->theme ?: 'auto',
             ],
         ]);
@@ -78,13 +81,14 @@ class PublicChatbotController
 
     /**
      * PATCH (per-website chatbot context, 2026-05-09) — Resolve the
-     * business identity for a request based on Origin / Referer header.
-     * Tenant subdomains -> the website's own name. Platform host or
-     * unknown -> workspace business_name / name. Used for greeting
-     * substitution; the LLM-side context derives independently in
-     * ChatbotContextBuilder via session.page_url.
+     * business identity AND brand color for a request, based on the
+     * Origin / Referer header. Returns ['business_name' => ..., 'primary_color' => ...].
+     * Tenant subdomains -> website.name + website.template_variables.
+     * primary_color. Platform host or unknown -> workspace name +
+     * null color (caller falls back to chatbot_settings then platform
+     * purple).
      */
-    private function resolveBusinessName(Request $r, int $workspaceId): string
+    private function resolveWebsiteAndBusiness(Request $r, int $workspaceId): array
     {
         $origin = (string) ($r->header('Origin') ?: $r->header('Referer') ?: '');
         $host = $origin ? strtolower((string) parse_url($origin, PHP_URL_HOST)) : '';
@@ -98,13 +102,25 @@ class PublicChatbotController
                       ->orWhere('custom_domain', $host);
                 })
                 ->whereNull('deleted_at')
-                ->value('name');
-            if ($row) return (string) $row;
+                ->first(['name', 'template_variables']);
+            if ($row) {
+                $color = null;
+                if (! empty($row->template_variables)) {
+                    $tv = is_string($row->template_variables) ? json_decode($row->template_variables, true) : null;
+                    if (is_array($tv) && ! empty($tv['primary_color'])) {
+                        $color = (string) $tv['primary_color'];
+                    }
+                }
+                return ['business_name' => (string) $row->name, 'primary_color' => $color];
+            }
         }
 
-        // Workspace fallback
+        // Workspace fallback — name only, no website-specific color
         $ws = DB::table('workspaces')->where('id', $workspaceId)->first(['business_name', 'name']);
-        return (string) ($ws->business_name ?? $ws->name ?? 'this business');
+        return [
+            'business_name' => (string) ($ws->business_name ?? $ws->name ?? 'this business'),
+            'primary_color' => null,
+        ];
     }
 
     /**
