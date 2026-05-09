@@ -125,28 +125,44 @@ class MediaService
         ?string $mood = null,
         ?int $workspaceId = null
     ): ?array {
+        // PATCH (Media Fix 2026-05-09) — `media` table has no `industry` or
+        // `mood` columns. Industry tagging lives in the `tags` JSON array.
+        // Mood is dropped entirely — too narrow a filter and not stored
+        // anywhere reliably. Caller falls back to DALL-E generation if
+        // no platform-asset hero matches the industry tag.
         $q = DB::table('media')
             ->where('category', $category)
-            ->where('industry', $industry)
             ->whereNotNull('url')
             ->where('url', '!=', '');
 
-        if ($mood) $q->where('mood', $mood);
-
-        $existing = $q->orderByDesc('created_at')->first();
-
-        if ($existing) {
-            // Increment use count
-            DB::table('media')->where('id', $existing->id)->increment('use_count');
-            return [
-                'id' => $existing->id,
-                'url' => $existing->url,
-                'path' => $existing->path,
-                'reused' => true,
-            ];
+        // Prefer platform-asset heroes (workspace_id IS NULL or
+        // is_platform_asset=1). Per-workspace assets are also
+        // acceptable when scoped — but the canonical hero pool is
+        // platform-wide template heroes seeded in Patches 9A-D.
+        if ($workspaceId) {
+            $q->where(function ($sub) use ($workspaceId) {
+                $sub->where('workspace_id', $workspaceId)
+                    ->orWhere('is_platform_asset', 1);
+            });
+        } else {
+            $q->where('is_platform_asset', 1);
         }
 
-        return null; // caller should generate
+        // Filter by industry via tags JSON array. Hero rows seeded by
+        // Patches 9A-D have tags like ["restaurant","hero","template"].
+        if ($industry !== '') {
+            $q->whereRaw('JSON_CONTAINS(tags, ?)', [json_encode($industry)]);
+        }
+
+        $existing = $q->orderByDesc('created_at')->first();
+        if (! $existing) return null;   // caller generates
+
+        return [
+            'id'     => $existing->id,
+            'url'    => $existing->url,
+            'path'   => $existing->path,
+            'reused' => true,
+        ];
     }
 
     /**
@@ -188,35 +204,44 @@ class MediaService
         // Auto-generate alt_text from prompt
         $altText = $description ?: self::generateAltText($prompt, $industry, $category);
 
-        // Auto-tags from industry + category + mood
-        if (empty($tags)) {
-            $tags = array_filter([$industry, $category, $mood, $source]);
-        }
+        // PATCH (Media Fix 2026-05-09) — fold industry + mood into the tags
+        // JSON array (the only first-class taxonomy column on `media`).
+        // Auto-tag rule: [industry, category, mood, source] minus empties,
+        // then merge any caller-supplied tags. Order matters: industry first
+        // so JSON_CONTAINS(tags, '"<industry>"') in findOrGenerate matches.
+        $autoTags = array_values(array_filter([$industry, $category, $mood, $source]));
+        $tags     = empty($tags) ? $autoTags : array_values(array_unique(array_merge($autoTags, $tags)));
+
+        // PATCH (Media Fix 2026-05-09) — phantom columns removed.
+        // The `media` table has no `industry`, `mood`, `orientation`,
+        // `use_count`, `alt_text`, or `description` columns. Stash those
+        // facts inside metadata_json instead so the data isn't lost.
+        $metadata = [
+            'industry'    => $industry,
+            'mood'        => $mood ?? 'luxury',
+            'orientation' => $orientation,
+            'alt_text'    => $altText ? mb_substr($altText, 0, 500) : null,
+            'description' => $description ? mb_substr($description, 0, 500) : null,
+        ];
 
         return DB::table('media')->insertGetId([
-            'workspace_id' => $workspaceId,
-            'filename' => basename($path ?: 'generated.png'),
-            'path' => $path,
-            'url' => $url,
-            'mime_type' => $mime,
-            'size_bytes' => $size,
-            'width' => $width,
-            'height' => $height,
-            'source' => $source,
-            'category' => $category,
-            'prompt' => $prompt ? mb_substr($prompt, 0, 2048) : null,
-            'model' => $model,
-            'description' => $description ? mb_substr($description, 0, 500) : null,
-            'tags' => json_encode($tags),
-            'industry' => $industry,
-            'mood' => $mood ?? 'luxury',
-            'orientation' => $orientation,
-            'is_platform_asset' => $workspaceId === null,
-            'use_count' => 1,
-            'alt_text' => $altText ? mb_substr($altText, 0, 500) : null,
-            'metadata_json' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'workspace_id'      => $workspaceId,
+            'filename'          => basename($path ?: 'generated.png'),
+            'path'              => $path,
+            'url'               => $url,
+            'mime_type'         => $mime,
+            'size_bytes'        => $size,
+            'width'             => $width,
+            'height'             => $height,
+            'source'            => $source,
+            'category'          => $category,
+            'prompt'            => $prompt ? mb_substr($prompt, 0, 2048) : null,
+            'model'             => $model,
+            'tags'              => json_encode($tags),
+            'is_platform_asset' => $workspaceId === null ? 1 : 0,
+            'metadata_json'     => json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'created_at'        => now(),
+            'updated_at'        => now(),
         ]);
     }
 

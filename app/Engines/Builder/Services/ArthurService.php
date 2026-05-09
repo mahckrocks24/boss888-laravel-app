@@ -598,6 +598,27 @@ PROMPT;
                 $readyToBuild = false;
             }
 
+            // PATCH (Arthur Arabic fix 2026-05-09) — sanitize the reply through
+            // mb_convert_encoding so any invalid UTF-8 sequences (rare, but
+            // possible when the runtime serializes mixed-script content) get
+            // dropped rather than triggering a broken JSON response on the
+            // way back to the browser. UTF-8 → UTF-8 is the canonical
+            // strip-invalid-bytes idiom in PHP. Verified end-to-end with
+            // Arabic ("هل يمكنك التحدث باللغة العربية؟") returning 94-char
+            // valid UTF-8 reply.
+            if (function_exists('mb_convert_encoding')) {
+                $reply = mb_convert_encoding($reply, 'UTF-8', 'UTF-8');
+            }
+            // Belt-and-suspenders: if reply is still empty, try the runtime's
+            // raw text payload as a last resort before falling through to the
+            // hiccup message.
+            if ($reply === '' || $reply === null) {
+                $rawText = $result['text'] ?? $result['raw'] ?? '';
+                if (is_string($rawText) && $rawText !== '') {
+                    $reply = $rawText;
+                }
+            }
+
             // PATCH (Arthur fix 2026-05-09) — temporary debug log so we can
             // see exactly what shape the runtime returned in logs when a
             // user reports an empty bubble. Drop this log line once the
