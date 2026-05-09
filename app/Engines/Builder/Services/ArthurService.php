@@ -421,6 +421,285 @@ class ArthurService
         return false;
     }
 
+    // PATCH (template-resolution, 2026-05-09) — Maps industry keywords/
+    // phrases DIRECTLY to on-disk template slugs. The legacy INDUSTRY_MAP
+    // above maps to abstract "canonical industries" like 'healthcare' that
+    // don't exist as templates on disk — so a "Plastic Surgery" request
+    // that goes through INDUSTRY_MAP gets 'healthcare', getManifest()
+    // returns null, and generateWebsite falls back to RESTAURANT. This
+    // map fixes that by mapping straight to disk template slugs.
+    //
+    // Disk templates (2026-05-09): aesthetic_clinic, architecture,
+    // automotive, barbershop, beauty_salon, cafe, catering, childcare,
+    // construction, consulting, dental, ecommerce, event_venue, gym,
+    // home_services, hotel, interior_design, it_services,
+    // marketing_agency, medical_clinic, online_courses, pet_services,
+    // real_estate_agency, resort, restaurant, retail_shop,
+    // short_term_rental, training_center, travel_agency, tutoring
+    //
+    // Longest-match-wins (sorted by key length in resolveTemplateSlug).
+    private const KEYWORD_TO_TEMPLATE = [
+        // Medical / health (Bico Plastic Surgery → aesthetic_clinic)
+        'plastic surgery'        => 'aesthetic_clinic',
+        'cosmetic surgery'       => 'aesthetic_clinic',
+        'aesthetic clinic'       => 'aesthetic_clinic',
+        'aesthetic medicine'     => 'aesthetic_clinic',
+        'medical spa'            => 'aesthetic_clinic',
+        'medspa'                 => 'aesthetic_clinic',
+        'med spa'                => 'aesthetic_clinic',
+        'dermatology'            => 'aesthetic_clinic',
+        'dermatologist'          => 'aesthetic_clinic',
+        'cosmetic'               => 'aesthetic_clinic',
+        'aesthetic'              => 'aesthetic_clinic',
+        'botox'                  => 'aesthetic_clinic',
+        'fillers'                => 'aesthetic_clinic',
+        'laser clinic'           => 'aesthetic_clinic',
+        'skin clinic'            => 'aesthetic_clinic',
+        'botox clinic'           => 'aesthetic_clinic',
+        'fillers clinic'         => 'aesthetic_clinic',
+        'cosmetic clinic'        => 'aesthetic_clinic',
+        'aesthetic doctor'       => 'aesthetic_clinic',
+        'dental clinic'          => 'dental',
+        'dentist'                => 'dental',
+        'dental'                 => 'dental',
+        'orthodontist'           => 'dental',
+        'orthodontics'           => 'dental',
+        'medical clinic'         => 'medical_clinic',
+        'medical center'         => 'medical_clinic',
+        'general practitioner'   => 'medical_clinic',
+        'family doctor'          => 'medical_clinic',
+        'physician'              => 'medical_clinic',
+        'doctor'                 => 'medical_clinic',
+        'hospital'               => 'medical_clinic',
+        'clinic'                 => 'medical_clinic',
+        'medical'                => 'medical_clinic',
+        'healthcare'             => 'medical_clinic',
+        'health clinic'          => 'medical_clinic',
+        'pediatric'              => 'medical_clinic',
+        'pediatrician'           => 'medical_clinic',
+        'cardiology'             => 'medical_clinic',
+        'gynecology'             => 'medical_clinic',
+        // Food
+        'restaurant'             => 'restaurant',
+        'bistro'                 => 'restaurant',
+        'fine dining'            => 'restaurant',
+        'food truck'             => 'restaurant',
+        'cafe'                   => 'cafe',
+        'coffee shop'            => 'cafe',
+        'bakery'                 => 'cafe',
+        'patisserie'             => 'cafe',
+        'tea house'              => 'cafe',
+        'catering'               => 'catering',
+        'caterer'                => 'catering',
+        // Hospitality
+        'short term rental'      => 'short_term_rental',
+        'short-term rental'      => 'short_term_rental',
+        'vacation rental'        => 'short_term_rental',
+        'airbnb'                 => 'short_term_rental',
+        'beach resort'           => 'resort',
+        'resort'                 => 'resort',
+        'boutique hotel'         => 'hotel',
+        'hotel'                  => 'hotel',
+        'inn'                    => 'hotel',
+        'hospitality'            => 'hotel',
+        // Fitness
+        'crossfit'               => 'gym',
+        'gym'                    => 'gym',
+        'fitness'                => 'gym',
+        'pilates'                => 'gym',
+        'yoga studio'            => 'gym',
+        'yoga'                   => 'gym',
+        'personal trainer'       => 'gym',
+        'personal training'      => 'gym',
+        'martial arts'           => 'gym',
+        // Beauty / wellness
+        'beauty salon'           => 'beauty_salon',
+        'hair salon'             => 'beauty_salon',
+        'nail salon'             => 'beauty_salon',
+        'salon'                  => 'beauty_salon',
+        'spa'                    => 'beauty_salon',
+        'massage'                => 'beauty_salon',
+        'wellness center'        => 'beauty_salon',
+        'wellness'               => 'beauty_salon',
+        'beauty'                 => 'beauty_salon',
+        'barbershop'             => 'barbershop',
+        'barber'                 => 'barbershop',
+        'mens grooming'          => 'barbershop',
+        // Tech
+        'it services'            => 'it_services',
+        'it support'             => 'it_services',
+        'managed it'             => 'it_services',
+        'software development'   => 'it_services',
+        'software'               => 'it_services',
+        'web development'        => 'it_services',
+        'app development'        => 'it_services',
+        'cybersecurity'          => 'it_services',
+        'cloud services'         => 'it_services',
+        'saas'                   => 'it_services',
+        'tech'                   => 'it_services',
+        'technology'             => 'it_services',
+        // Marketing
+        'digital marketing'      => 'marketing_agency',
+        'marketing agency'       => 'marketing_agency',
+        'seo agency'             => 'marketing_agency',
+        'social media agency'    => 'marketing_agency',
+        'advertising agency'     => 'marketing_agency',
+        'web design'             => 'marketing_agency',
+        'branding agency'        => 'marketing_agency',
+        'marketing'              => 'marketing_agency',
+        'photography'            => 'marketing_agency',
+        'photographer'           => 'marketing_agency',
+        // Real estate
+        'real estate agency'     => 'real_estate_agency',
+        'real estate'            => 'real_estate_agency',
+        'realtor'                => 'real_estate_agency',
+        'property'               => 'real_estate_agency',
+        'broker'                 => 'real_estate_agency',
+        // Education
+        'training center'        => 'training_center',
+        'online courses'         => 'online_courses',
+        'online course'          => 'online_courses',
+        'e-learning'             => 'online_courses',
+        'private tutoring'       => 'tutoring',
+        'tutoring'               => 'tutoring',
+        'tutor'                  => 'tutoring',
+        'language school'        => 'tutoring',
+        'academy'                => 'tutoring',
+        'school'                 => 'tutoring',
+        'education'              => 'tutoring',
+        'coaching'               => 'tutoring',
+        // Professional services
+        'consulting'             => 'consulting',
+        'consultant'             => 'consulting',
+        'consultancy'            => 'consulting',
+        'advisory'               => 'consulting',
+        'law firm'               => 'consulting',
+        'lawyer'                 => 'consulting',
+        'attorney'               => 'consulting',
+        'legal services'         => 'consulting',
+        'accounting'             => 'consulting',
+        'accountant'             => 'consulting',
+        'finance'                => 'consulting',
+        'financial advisor'      => 'consulting',
+        // Construction / trades / home
+        'construction'           => 'construction',
+        'contractor'             => 'construction',
+        'builder'                => 'construction',
+        'general contractor'    => 'construction',
+        'home services'          => 'home_services',
+        'home repair'            => 'home_services',
+        'plumber'                => 'home_services',
+        'plumbing'               => 'home_services',
+        'electrician'            => 'home_services',
+        'hvac'                   => 'home_services',
+        'handyman'               => 'home_services',
+        'cleaning'               => 'home_services',
+        'cleaning services'      => 'home_services',
+        // Auto
+        'auto repair'            => 'automotive',
+        'car repair'             => 'automotive',
+        'mechanic'               => 'automotive',
+        'auto detailing'         => 'automotive',
+        'detailing'              => 'automotive',
+        'automotive'             => 'automotive',
+        'auto'                   => 'automotive',
+        'car dealership'         => 'automotive',
+        // Other
+        'interior design'        => 'interior_design',
+        'interior designer'      => 'interior_design',
+        'architecture'           => 'architecture',
+        'architect'              => 'architecture',
+        'urban planning'         => 'architecture',
+        'event venue'            => 'event_venue',
+        'event space'            => 'event_venue',
+        'banquet hall'           => 'event_venue',
+        'wedding venue'          => 'event_venue',
+        'travel agency'          => 'travel_agency',
+        'tour operator'          => 'travel_agency',
+        'travel'                 => 'travel_agency',
+        'pet services'           => 'pet_services',
+        'pet grooming'           => 'pet_services',
+        'pet boarding'           => 'pet_services',
+        'veterinary'             => 'pet_services',
+        'veterinarian'           => 'pet_services',
+        'vet clinic'             => 'pet_services',
+        'pet'                    => 'pet_services',
+        'childcare'              => 'childcare',
+        'daycare'                => 'childcare',
+        'nursery'                => 'childcare',
+        'preschool'              => 'childcare',
+        'kindergarten'           => 'childcare',
+        'online store'           => 'ecommerce',
+        'e-commerce'             => 'ecommerce',
+        'ecommerce'              => 'ecommerce',
+        'shopify'                => 'ecommerce',
+        'retail shop'            => 'retail_shop',
+        'retail'                 => 'retail_shop',
+        'boutique'               => 'retail_shop',
+        'fashion boutique'       => 'retail_shop',
+        'clothing store'         => 'retail_shop',
+        'shop'                   => 'retail_shop',
+        'store'                  => 'retail_shop',
+    ];
+
+    // PATCH (template-resolution, 2026-05-09) — Resolve a free-form industry
+    // string to an on-disk template slug. Tries direct slug match first,
+    // then longest-keyword-wins lookup, then coarse-sector keyword fallback,
+    // and finally falls through to 'consulting' (more generic than the old
+    // 'restaurant' default for unknown businesses).
+    private function resolveTemplateSlug(string $industry): string
+    {
+        $industry = strtolower(trim($industry));
+        if ($industry === '') return 'consulting';
+
+        // 1. Direct disk-template match (e.g. user passed 'aesthetic_clinic')
+        $direct = preg_replace('/[\s-]+/', '_', $industry);
+        if ($this->templates->getManifest($direct)) return $direct;
+
+        // 2. Longest-match-wins keyword search
+        $keys = array_keys(self::KEYWORD_TO_TEMPLATE);
+        usort($keys, fn($a, $b) => strlen($b) - strlen($a));
+        foreach ($keys as $kw) {
+            if (strpos($industry, $kw) !== false) {
+                return self::KEYWORD_TO_TEMPLATE[$kw];
+            }
+        }
+
+        // 3. Coarse sector-word fallback for off-the-map industries
+        $patterns = [
+            '/medical|surgery|surgeon|clinic|dental|doctor|hospital|nurse|physic|pediatric|cardio|gyneco|ortho|optic/' => 'medical_clinic',
+            '/cosmetic|aesthetic|botox|filler|skin|laser|derma/'                                                       => 'aesthetic_clinic',
+            '/beauty|salon|spa|nail|wax|brow|lash|makeup|hair/'                                                        => 'beauty_salon',
+            '/restaurant|food|kitchen|dining|bistro|grill|sushi|pizz|burger|asian|italian|chef/'                       => 'restaurant',
+            '/coffee|cafe|cafe|bakery|tea|brunch|patisserie|donut|dessert|juice/'                                      => 'cafe',
+            '/gym|fit|crossfit|pilates|yoga|martial|train/'                                                            => 'gym',
+            '/legal|law|attorney|advisor|consult|coach|finance|accounting|tax|audit|advisory/'                         => 'consulting',
+            '/agency|marketing|advertis|brand|design|seo|ppc|content|social media|public relations/'                   => 'marketing_agency',
+            '/it |tech|software|cloud|cyber|saas|app|web dev|developer|sysadmin/'                                      => 'it_services',
+            '/property|estate|realtor|broker|real estate/'                                                             => 'real_estate_agency',
+            '/educat|tutor|teach|learn|course|class|academ|institute|school|university|coaching/'                      => 'tutoring',
+            '/construct|build|contractor|trade|repair|electric|plumb|hvac|carpent|roof|paint|renovation/'              => 'construction',
+            '/home services|cleaning|maid|housekeep|landscap|garden|pool service/'                                     => 'home_services',
+            '/auto|car|vehicle|mechanic|detailer/'                                                                     => 'automotive',
+            '/architect/'                                                                                              => 'architecture',
+            '/event|wedding|banquet|venue|conference/'                                                                 => 'event_venue',
+            '/travel|tour|vacation/'                                                                                   => 'travel_agency',
+            '/hotel|resort|airbnb|rental|inn|guest house|lodge|motel/'                                                 => 'hotel',
+            '/pet|vet|animal|dog |cat |grooming/'                                                                     => 'pet_services',
+            '/child|kid |day.*care|nursery|preschool|kindergarten|montessori/'                                         => 'childcare',
+            '/retail|shop|store|boutique|fashion|clothing|jewelry/'                                                   => 'retail_shop',
+            '/online store|ecommerce|e-?commerce|shopify|dropship/'                                                    => 'ecommerce',
+            '/interior/'                                                                                               => 'interior_design',
+        ];
+        foreach ($patterns as $regex => $slug) {
+            if (preg_match($regex, $industry)) return $slug;
+        }
+
+        // 4. Final fallback — 'consulting' is the most generic professional
+        // template; safer than 'restaurant' for unknown businesses.
+        return 'consulting';
+    }
+
     // BUG 2 FIX — normalize an industry string to a canonical slug.
     // Preference order: explicit keyword from INDUSTRY_MAP (longest match
     // wins) > already-valid slug > raw input.
@@ -1236,18 +1515,38 @@ PROMPT;
 
     private function generateWebsite(int $wsId, array $data): array
     {
-        $industry = $data['industry'] ?? 'restaurant';
+        $rawIndustry = (string) ($data['industry'] ?? '');
         $name = $data['business_name'] ?? 'My Business';
 
-        // Check if template exists, fallback to restaurant
+        // PATCH (template-resolution, 2026-05-09) — Resolve the free-form
+        // industry string (from chat() build_data, which never normalises)
+        // to an actual on-disk template slug. The old code did:
+        //   $manifest = getManifest($industry); fallback restaurant;
+        // which sent "Plastic Surgery" → null → restaurant. Now any
+        // "plastic surgery" / "cosmetic clinic" / "med spa" maps to
+        // aesthetic_clinic. Generic medical → medical_clinic. Etc.
+        $industry = $this->resolveTemplateSlug($rawIndustry);
         $manifest = $this->templates->getManifest($industry);
+
+        // Defensive double-check — if resolveTemplateSlug ever returned a
+        // slug that doesn't exist (shouldn't happen — all returns map to
+        // disk templates), fall back to consulting (more generic than
+        // restaurant for unknown businesses).
         if (!$manifest) {
-            $industry = 'restaurant';
-            $manifest = $this->templates->getManifest('restaurant');
+            \Illuminate\Support\Facades\Log::warning('[Arthur] resolveTemplateSlug returned non-existent template', [
+                'raw'      => $rawIndustry,
+                'resolved' => $industry,
+            ]);
+            $industry = 'consulting';
+            $manifest = $this->templates->getManifest('consulting');
         }
         if (!$manifest) {
             return ['type' => 'error', 'message' => 'No templates available. Please contact support.'];
         }
+        \Illuminate\Support\Facades\Log::info('[Arthur] template resolution', [
+            'raw'      => $rawIndustry,
+            'resolved' => $industry,
+        ]);
 
         // Generate content via LLM
         $variables = $this->generateContent($data, $industry);
