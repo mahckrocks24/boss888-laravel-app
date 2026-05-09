@@ -230,9 +230,9 @@ function _arthurShowConfirmActions(buildData) {
               '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em">Logo</div>' +
               '<div style="font-size:11px;color:var(--t3,#888);margin-top:2px">Optional — we\'ll auto-detect your brand colors</div>' +
             '</div>' +
-            '<label data-arthur-upload="1" style="cursor:pointer;background:rgba(108,92,231,0.12);border:1px solid rgba(108,92,231,0.3);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:500;color:#a78bfa;display:flex;align-items:center;gap:6px;transition:all 0.2s;white-space:nowrap">' +
+            '<label data-arthur-upload="1" style="cursor:pointer;background:#6C5CE7;border:1px solid #6C5CE7;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;color:#fff;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;white-space:nowrap;min-height:32px">' +
               '<input type="file" id="arthur-logo-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none" onchange="_arthurConfirmLogoChosen(this)">' +
-              '📎 Upload Logo' +
+              '<span>📎 Upload Logo</span>' +
             '</label>' +
           '</div>' +
           '<div id="arthur-logo-status" style="font-size:11px;color:var(--t3,#888);min-height:16px"></div>' +
@@ -247,9 +247,9 @@ function _arthurShowConfirmActions(buildData) {
             '</div>' +
             '<div style="display:flex;align-items:center;gap:10px">' +
               '<span id="arthur-img-count" style="font-size:11px;color:var(--t3,#888)">0 / 10</span>' +
-              '<label data-arthur-upload="1" style="cursor:pointer;background:rgba(108,92,231,0.12);border:1px solid rgba(108,92,231,0.3);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:500;color:#a78bfa;display:flex;align-items:center;gap:6px;transition:all 0.2s;white-space:nowrap">' +
+              '<label data-arthur-upload="1" style="cursor:pointer;background:#6C5CE7;border:1px solid #6C5CE7;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;color:#fff;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;white-space:nowrap;min-height:32px">' +
                 '<input type="file" id="arthur-images-input" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none" onchange="_arthurConfirmImagesChosen(this)">' +
-                '🖼 Add Photos' +
+                '<span>🖼 Add Photos</span>' +
               '</label>' +
             '</div>' +
           '</div>' +
@@ -288,10 +288,10 @@ function _arthurShowConfirmActions(buildData) {
     // Hover effect on the upload-style purple labels
     panel.querySelectorAll('label[data-arthur-upload="1"]').forEach(function(el){
         el.addEventListener('mouseenter', function(){
-            el.style.background = 'rgba(108,92,231,0.25)';
+            el.style.background = '#7C6CF0';
         });
         el.addEventListener('mouseleave', function(){
-            el.style.background = 'rgba(108,92,231,0.12)';
+            el.style.background = '#6C5CE7';
         });
     });
 
