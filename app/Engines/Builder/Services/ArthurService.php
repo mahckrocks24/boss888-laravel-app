@@ -2307,7 +2307,11 @@ PROMPT;
                 ['workspace_id' => $wsId],
                 [
                     'enabled'               => 1,
-                    'greeting'              => 'Hi! How can I help you today?',
+                    // PATCH (per-website greeting, 2026-05-09) — {{business}}
+                    // is substituted at config-fetch time with the actual
+                    // website name (resolved from Origin header), so each
+                    // tenant subdomain greets as its own brand.
+                    'greeting'              => 'Hi! Welcome to {{business}}. How can I help you today?',
                     'business_context_text' => $data['description'] ?? null,
                     'updated_at'            => now(),
                     'created_at'            => now(),

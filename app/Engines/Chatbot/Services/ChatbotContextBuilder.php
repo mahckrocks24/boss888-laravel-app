@@ -43,10 +43,25 @@ class ChatbotContextBuilder
         $settings = DB::table('chatbot_settings')->where('workspace_id', $workspaceId)->first();
         $brand = DB::table('creative_brand_identities')->where('workspace_id', $workspaceId)->first();
 
-        // Workspace facts (resilient to NULLs)
+        // PATCH (per-website chatbot context, 2026-05-09) — workspace 1
+        // hosts many tenant subdomains in staging; each tenant is a
+        // distinct WEBSITE (websites.name). Resolve the visitor's site
+        // from session.page_url's hostname and prefer websites.name as
+        // the business identity. Without this, every tenant chatbot
+        // greeted as "LevelUp Growth" (the workspace) instead of the
+        // actual business the visitor is on.
+        $website = $this->resolveWebsiteFromPageUrl($workspaceId, (string) ($session->page_url ?? ''));
+
+        // Workspace facts (resilient to NULLs) — used as fallback
         $business = (string) ($ws->business_name ?? $ws->name ?? 'this business');
         $industry = (string) ($ws->industry ?? 'general');
         $location = (string) ($ws->location ?? 'unspecified');
+
+        // Website-level overrides (when tenant-subdomain match found)
+        if ($website) {
+            if (! empty($website->name))               $business = (string) $website->name;
+            if (! empty($website->template_industry))  $industry = (string) $website->template_industry;
+        }
 
         $servicesCsv = '';
         if ($ws && ! empty($ws->services_json)) {
@@ -242,6 +257,39 @@ PROMPT;
             }
         } catch (\Throwable) { /* table absent or query failed — non-fatal */ }
         return '';
+    }
+
+    /**
+     * PATCH (per-website chatbot context, 2026-05-09) — Resolve which
+     * website the visitor is currently on by parsing the session's
+     * page_url hostname. Falls through to null on any failure (caller
+     * keeps the workspace-level identity as fallback).
+     */
+    private function resolveWebsiteFromPageUrl(int $workspaceId, string $pageUrl): ?object
+    {
+        if ($pageUrl === '') return null;
+        try {
+            $host = parse_url($pageUrl, PHP_URL_HOST);
+            if (! $host) return null;
+            $host = strtolower($host);
+            // Skip platform house domains — there's no tenant website to
+            // resolve when the chatbot is on staging.levelupgrowth.io etc.
+            if (in_array($host, ['levelupgrowth.io', 'www.levelupgrowth.io', 'staging.levelupgrowth.io'], true)) {
+                return null;
+            }
+            $row = DB::table('websites')
+                ->where('workspace_id', $workspaceId)
+                ->where(function ($q) use ($host) {
+                    $q->where('subdomain', $host)
+                      ->orWhere('subdomain', explode('.', $host)[0])
+                      ->orWhere('custom_domain', $host);
+                })
+                ->whereNull('deleted_at')
+                ->first(['id', 'name', 'template_industry', 'subdomain']);
+            return $row ?: null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function emptyContext(): array

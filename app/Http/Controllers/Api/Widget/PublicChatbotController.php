@@ -54,14 +54,57 @@ class PublicChatbotController
         if (! $settings || ! $settings->enabled) {
             return response()->json(['success' => false, 'error' => 'CHATBOT_DISABLED'], 403);
         }
+
+        // PATCH (per-website chatbot greeting, 2026-05-09) — Resolve the
+        // tenant website by Origin/Referer header so the greeting can
+        // identify the actual business the visitor is on, not the
+        // workspace name. Substitutes {{business}} in chatbot_settings.
+        // greeting with the resolved website name (falls back to
+        // workspace name if no tenant subdomain match).
+        $businessName = $this->resolveBusinessName($r, $wsId);
+        $greeting = $settings->greeting ?: 'Hi! Welcome to {{business}}. How can I help you today?';
+        $greeting = str_replace(['{{business}}', '{{business_name}}'], $businessName, $greeting);
+
         return response()->json([
             'success' => true,
             'data' => [
-                'greeting'      => $settings->greeting ?: 'Hi! How can I help you today?',
+                'greeting'      => $greeting,
+                'business_name' => $businessName,
                 'primary_color' => $settings->primary_color ?: '#6C5CE7',
                 'theme'         => $settings->theme ?: 'auto',
             ],
         ]);
+    }
+
+    /**
+     * PATCH (per-website chatbot context, 2026-05-09) — Resolve the
+     * business identity for a request based on Origin / Referer header.
+     * Tenant subdomains -> the website's own name. Platform host or
+     * unknown -> workspace business_name / name. Used for greeting
+     * substitution; the LLM-side context derives independently in
+     * ChatbotContextBuilder via session.page_url.
+     */
+    private function resolveBusinessName(Request $r, int $workspaceId): string
+    {
+        $origin = (string) ($r->header('Origin') ?: $r->header('Referer') ?: '');
+        $host = $origin ? strtolower((string) parse_url($origin, PHP_URL_HOST)) : '';
+
+        if ($host !== '' && ! in_array($host, ['levelupgrowth.io', 'www.levelupgrowth.io', 'staging.levelupgrowth.io'], true)) {
+            $row = DB::table('websites')
+                ->where('workspace_id', $workspaceId)
+                ->where(function ($q) use ($host) {
+                    $q->where('subdomain', $host)
+                      ->orWhere('subdomain', explode('.', $host)[0])
+                      ->orWhere('custom_domain', $host);
+                })
+                ->whereNull('deleted_at')
+                ->value('name');
+            if ($row) return (string) $row;
+        }
+
+        // Workspace fallback
+        $ws = DB::table('workspaces')->where('id', $workspaceId)->first(['business_name', 'name']);
+        return (string) ($ws->business_name ?? $ws->name ?? 'this business');
     }
 
     /**
