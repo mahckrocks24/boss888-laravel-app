@@ -45,6 +45,10 @@ class EngineExecutionService
         // instead of bypassing it with a direct Task::create() that used the wrong
         // column name ('payload' vs 'payload_json') and missed idempotency keying.
         private \App\Core\TaskSystem\TaskService $taskService,
+        // PATCH 2026-05-09 — executeAsync was creating tasks but never queueing
+        // them. 12 stuck `tasks` rows, 0 in `jobs`, workers idle. Inject the
+        // dispatcher so async creation flows straight to the queue.
+        private \App\Core\TaskSystem\TaskDispatcher $dispatcher,
     ) {}
 
     /**
@@ -254,11 +258,26 @@ class EngineExecutionService
             'status' => $task->status, 'requires_approval' => $task->requires_approval,
         ]);
 
+        // PATCH 2026-05-09 — push to the queue. Tasks awaiting approval are
+        // not dispatched (they wait on ApprovalService). Tasks already in a
+        // terminal state are skipped defensively.
+        $dispatched = false;
+        if (! $task->requires_approval && in_array($task->status, ['pending', 'queued'], true)) {
+            try {
+                $this->dispatcher->dispatch($task);
+                $dispatched = true;
+            } catch (\Throwable $e) {
+                Log::error("executeAsync dispatch failed for task {$task->id}: " . $e->getMessage());
+                // Row stays pending; queue worker / scheduler can retry.
+            }
+        }
+
         return [
             'success'          => true,
             'task_id'          => $task->id,
             'status'           => $task->status,
             'requires_approval'=> $task->requires_approval,
+            'dispatched'       => $dispatched,
             'mode'             => 'async',
         ];
     }
@@ -281,6 +300,14 @@ class EngineExecutionService
             'beforeafter' => $this->executeBeforeAfterAction($wsId, $action, $params, $context),
             'traffic' => $this->executeTrafficAction($wsId, $action, $params, $context),
             'manualedit' => $this->executeManualEditAction($wsId, $action, $params, $context),
+            // PATCH 2026-05-09 — wire the two engines whose services exist
+            // but were never reachable through the kernel switch. Note:
+            // CapabilityMapService still has no rows for these engines, so
+            // `resolveAction()` at line 75 will reject any action with code
+            // INVALID_ACTION before reaching this switch. These arms exist
+            // so once cap-map rows are added, no second patch is required.
+            'chatbot' => $this->executeChatbotAction($wsId, $action, $params, $context),
+            'studio'  => $this->executeStudioAction($wsId, $action, $params, $context),
             default => throw new \RuntimeException("Unknown engine: {$engine}"),
         };
 
@@ -426,6 +453,37 @@ class EngineExecutionService
         return match ($action) {
             'create_canvas' => $svc->createCanvas($wsId, $params),
             default => throw new \RuntimeException("Unknown ManualEdit action: {$action}"),
+        };
+    }
+
+    // PATCH 2026-05-09 — Studio engine routing.
+    // Real public methods on StudioAiService: generateImage, generateDesign,
+    // suggestCopy, chat. Wiring them so once CapabilityMapService gets
+    // matching rows, an agent / UI can trigger them through the kernel.
+    private function executeStudioAction(int $wsId, string $action, array $params, array $ctx): array
+    {
+        $svc = app(\App\Engines\Studio\Services\StudioAiService::class);
+        return match ($action) {
+            'generate_design' => $svc->generateDesign($wsId, $params),
+            'generate_image'  => $svc->generateImage($wsId, $params),
+            'suggest_copy'    => $svc->suggestCopy($wsId, $params),
+            default => throw new \RuntimeException("Unknown Studio action: {$action}"),
+        };
+    }
+
+    // PATCH 2026-05-09 — Chatbot engine routing.
+    // The chatbot is session-driven (handleMessage takes a sessionId, not a
+    // workspace + action), so the only sensible engine-action surface today
+    // is knowledge-base ingestion. Adding more arms requires rethinking the
+    // session boundary — defer until we have a real use case.
+    private function executeChatbotAction(int $wsId, string $action, array $params, array $ctx): array
+    {
+        return match ($action) {
+            'ingest_text' => [
+                'source_id' => app(\App\Engines\Chatbot\Services\ChatbotKnowledgeService::class)
+                    ->ingestText($wsId, $params['label'] ?? 'untitled', $params['text'] ?? ''),
+            ],
+            default => throw new \RuntimeException("Unknown Chatbot action: {$action}"),
         };
     }
 

@@ -160,6 +160,155 @@ class AgentCapabilityService
             // Site intelligence — full access for technical SEO
             'get_site_pages', 'get_site_page', 'search_site_content', 'scan_site_url',
         ],
+
+        // ─── PATCH 2026-05-09 — 14 missing specialists ────────────────
+        // The 6-agent map (dmm/james/priya/marcus/elena/alex) left the
+        // remaining 14 specialists in the DB with zero capabilities, so
+        // every Sarah delegation to them returned AGENT_NOT_AUTHORIZED.
+        // Tool sets below are aligned to each specialist's title and to
+        // the bare tool IDs from runtime /health (capability-map.js).
+
+        // Diana — Local SEO Specialist
+        'diana' => [
+            'serp_analysis', 'ai_report', 'ai_status', 'list_goals', 'agent_status',
+            'get_lead', 'list_leads', 'log_activity', 'add_note',
+            'list_events', 'check_availability', 'create_event', 'update_event',
+            'list_builder_pages', 'get_builder_page',
+            'get_site_pages', 'get_site_page', 'search_site_content', 'scan_site_url',
+        ],
+
+        // Ryan — Link Building Specialist
+        'ryan' => [
+            'link_suggestions', 'insert_link', 'dismiss_link', 'outbound_links', 'check_outbound',
+            'serp_analysis', 'ai_report', 'ai_status', 'list_goals', 'agent_status',
+            'improve_draft',
+            'list_builder_pages', 'get_builder_page',
+            'get_site_pages', 'get_site_page', 'search_site_content',
+        ],
+
+        // Sofia — International SEO Director
+        'sofia' => [
+            'serp_analysis', 'ai_report', 'deep_audit', 'ai_status', 'list_goals', 'agent_status',
+            'write_article', 'improve_draft',
+            'create_post', 'list_posts', 'update_post',
+            'list_builder_pages', 'get_builder_page', 'generate_page_layout',
+            'get_site_pages', 'get_site_page', 'search_site_content', 'scan_site_url',
+            'analyze_funnel_structure',
+        ],
+
+        // Leo — Brand Copywriter
+        'leo' => [
+            'write_article', 'improve_draft',
+            'list_campaigns', 'create_template', 'list_templates',
+            'create_post', 'update_post', 'list_posts',
+            'generate_image', 'create_asset',
+            'list_builder_pages', 'get_builder_page', 'ai_builder_action',
+            'get_site_pages', 'get_site_page', 'search_site_content',
+        ],
+
+        // Maya — Social Content Writer
+        'maya' => [
+            'write_article', 'improve_draft',
+            'create_post', 'schedule_post', 'list_posts', 'update_post', 'get_queue',
+            'list_events', 'check_availability',
+            'list_builder_pages', 'get_builder_page',
+            'get_site_pages', 'get_site_page', 'search_site_content',
+        ],
+
+        // Chris — Video Script Writer
+        'chris' => [
+            'write_article', 'improve_draft',
+            'create_post', 'list_posts', 'update_post',
+            'generate_image', 'generate_video', 'create_asset',
+            'list_events', 'check_availability',
+            'get_site_pages', 'get_site_page', 'search_site_content',
+        ],
+
+        // Nora — Content Strategy Director
+        'nora' => [
+            'write_article', 'improve_draft',
+            'ai_report', 'ai_status', 'list_goals', 'agent_status',
+            'create_campaign', 'update_campaign', 'list_campaigns',
+            'create_template', 'list_templates', 'create_automation',
+            'list_posts',
+            'list_builder_pages', 'get_builder_page', 'generate_page_layout',
+            'get_site_pages', 'get_site_page', 'search_site_content',
+            'generate_funnel_blueprint', 'analyze_funnel_structure',
+        ],
+
+        // Zara — Instagram Growth Specialist
+        'zara' => [
+            'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post',
+            'get_queue', 'record_social_analytics',
+            'generate_image', 'create_asset',
+            'list_events', 'check_availability', 'create_event',
+            'list_builder_pages', 'get_builder_page',
+        ],
+
+        // Tyler — LinkedIn Marketing Expert
+        'tyler' => [
+            'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post',
+            'get_queue', 'record_social_analytics',
+            'write_article', 'improve_draft',
+            'list_campaigns', 'create_template', 'list_templates',
+            'list_events', 'check_availability', 'create_event',
+        ],
+
+        // Aria — TikTok & Reels Creator
+        'aria' => [
+            'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post',
+            'get_queue', 'record_social_analytics',
+            'generate_image', 'generate_video', 'create_asset',
+            'list_events', 'check_availability',
+        ],
+
+        // Jordan — Social Analytics Director
+        'jordan' => [
+            'list_posts', 'get_queue', 'record_social_analytics',
+            'list_campaigns', 'record_metric',
+            'ai_status', 'list_goals', 'agent_status',
+            'list_events', 'check_availability',
+            'analyze_funnel_structure',
+        ],
+
+        // Kai — Lead Nurturing Specialist
+        'kai' => [
+            'create_lead', 'get_lead', 'update_lead', 'list_leads', 'move_lead',
+            'log_activity', 'add_note', 'enroll_sequence', 'list_sequences',
+            'create_campaign', 'update_campaign', 'list_campaigns',
+            'create_template', 'list_templates', 'create_automation',
+            'send_campaign', 'test_send_email',
+            'list_events', 'check_availability', 'create_event', 'update_event',
+        ],
+
+        // Vera — Marketing Automation Expert
+        'vera' => [
+            'create_campaign', 'update_campaign', 'list_campaigns', 'schedule_campaign',
+            'create_template', 'list_templates', 'create_automation', 'record_metric',
+            'send_campaign', 'test_send_email',
+            'enroll_sequence', 'list_sequences',
+            'get_lead', 'list_leads', 'update_lead', 'log_activity', 'add_note',
+            'list_events', 'check_availability', 'create_event', 'update_event',
+            'analyze_funnel_structure',
+        ],
+
+        // Max — Growth & CRO Director
+        'max' => [
+            // SEO read for funnel/audit insight
+            'serp_analysis', 'ai_report', 'deep_audit', 'ai_status', 'list_goals', 'agent_status',
+            // CRM full
+            'create_lead', 'get_lead', 'update_lead', 'list_leads', 'move_lead',
+            'log_activity', 'add_note', 'enroll_sequence', 'list_sequences',
+            // Marketing — campaigns + automation for growth experiments
+            'create_campaign', 'update_campaign', 'list_campaigns', 'schedule_campaign',
+            'create_template', 'list_templates', 'create_automation', 'record_metric',
+            'send_campaign', 'test_send_email',
+            // Builder — landing-page experiments
+            'list_builder_pages', 'get_builder_page', 'ai_builder_action', 'generate_page_layout',
+            // Funnel intelligence
+            'generate_funnel_blueprint', 'analyze_funnel_structure',
+            'get_site_pages', 'get_site_page', 'search_site_content', 'scan_site_url',
+        ],
     ];
 
     /**
