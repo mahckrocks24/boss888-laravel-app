@@ -396,6 +396,15 @@ function _arthurShowConfirmActionsImpl(buildData) {
         try { panel.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (_) {}
     }, 200);
     setTimeout(scrollToPanel, 350); // authoritative final pass
+
+    // PATCH (force-scroll, 2026-05-09) — final brute-force scroll at 300ms
+    // for cases where the prior passes still leave the panel clipped.
+    setTimeout(function() {
+        var f = document.getElementById('arthur-feed');
+        var p = document.getElementById('arthur-confirm-panel');
+        if (f) f.scrollTop = f.scrollHeight + 9999;
+        if (p) p.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 300);
 }
 
 // Live color picker handler — wired via inline oninput attribute on the
