@@ -327,7 +327,7 @@ function _arthurShowConfirmActionsImpl(buildData) {
           '<button id="arthur-confirm-build-btn" type="button" onclick="_arthurConfirmBuild()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#A855F7);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:0.02em;box-shadow:0 4px 20px rgba(108,92,231,0.3);transition:opacity 0.2s">' +
             '⚡ Build My Website' +
           '</button>' +
-          '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--t3,#888)">Usually takes 45–60 seconds</div>' +
+          '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--t3,#888)">Usually takes 15–20 seconds</div>' +
         '</div>';
 
     try {
@@ -626,17 +626,15 @@ window._arthurConfirmBuild = async function() {
     }
 };
 
-// 8-step build progress animation, 8s per step = ~64s total to match
-// the real ~58-65s build duration (LLM content generation across the
-// whole site, image distribution, brand-color application, persistence).
+// 5-step build progress animation, 3s per step = ~15s total to match
+// the new ~14-20s build duration (post DALL-E gallery removal — only
+// the hero generation is on the critical path now, and that's cached
+// per-industry as a platform asset so it's near-instant).
 var _arthurBuildSteps = [
     '🎨 Selecting your template...',
-    '✍️  Writing your homepage copy...',
-    '📄 Building your service pages...',
+    '✍️  Writing your content...',
     '🖼️  Placing your images...',
-    '🎨 Applying your brand colors...',
-    '⚡ Generating your content...',
-    '🔗 Setting up navigation...',
+    '⚡ Building your website...',
     '✅ Almost ready...'
 ];
 function _arthurShowBuildAnimation(el) {
@@ -650,7 +648,7 @@ function _arthurShowBuildAnimation(el) {
         } else {
             clearInterval(t);
         }
-    }, 8000);
+    }, 3000);
 }
 
 // Shared post-build renderer — used by both the legacy ready_to_build
