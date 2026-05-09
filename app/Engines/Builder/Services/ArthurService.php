@@ -1796,7 +1796,7 @@ PROMPT;
             $manifest = $this->templates->getManifest('consulting');
         }
         if (!$manifest) {
-            return ['type' => 'error', 'message' => 'No templates available. Please contact support.'];
+            return ['type' => 'error', 'message' => 'Could not build your website right now. Please contact support.'];
         }
         \Illuminate\Support\Facades\Log::info('[Arthur] template resolution', [
             'raw'      => $rawIndustry,
@@ -2108,7 +2108,7 @@ PROMPT;
         try {
             $html = $this->templates->render($industry, $variables);
         } catch (\Throwable $e) {
-            return ['type' => 'error', 'message' => 'Template rendering failed: ' . $e->getMessage()];
+            return ['type' => 'error', 'message' => 'Website rendering failed: ' . $e->getMessage()];
         }
 
         // Create website record
@@ -2262,7 +2262,7 @@ PROMPT;
 
         return [
             'type' => 'complete',
-            'message' => "✅ Your website for **{$name}** is ready! I used our premium {$industry} template and generated all the copy. You can preview it, edit the text, or publish it right away.",
+            'message' => "✅ Your website for **{$name}** is ready! I built it from scratch with a premium " . str_replace('_', ' ', $industry) . " design and generated all the copy for you. You can preview it, edit the text, or publish it right away.",
             'website_id' => $websiteId,
             'name' => $name,
             'industry' => $industry,

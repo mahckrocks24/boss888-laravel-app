@@ -601,7 +601,7 @@ window._arthurConfirmBuild = async function() {
           '<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--p,#6C5CE7),#3B82F6);display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
             (window.icon ? window.icon('ai',18) : '🤖') +
           '</div>' +
-          '<div id="arthur-build-step" style="padding:10px 14px;border-radius:12px;background:var(--s2,#1a1a1a);color:var(--t1,#fff);font-size:13px;animation:pulse 1.5s infinite">🎨 Selecting your template...</div>';
+          '<div id="arthur-build-step" style="padding:10px 14px;border-radius:12px;background:var(--s2,#1a1a1a);color:var(--t1,#fff);font-size:13px;animation:pulse 1.5s infinite">🎨 Selecting your design...</div>';
         feed.appendChild(animBox);
         feed.scrollTop = feed.scrollHeight;
         _arthurShowBuildAnimation(document.getElementById('arthur-build-step'));
@@ -638,7 +638,7 @@ window._arthurConfirmBuild = async function() {
 // the hero generation is on the critical path now, and that's cached
 // per-industry as a platform asset so it's near-instant).
 var _arthurBuildSteps = [
-    '🎨 Selecting your template...',
+    '🎨 Selecting your design...',
     '✍️  Writing your content...',
     '🖼️  Placing your images...',
     '⚡ Building your website...',
@@ -758,11 +758,11 @@ function _arthurShowTemplatePick(templates, industry) {
     var feed = document.getElementById('arthur-feed');
     if (!feed) return;
     if (!templates.length) {
-        _arthurAddMsg('arthur', 'I could not find a template for that industry yet — I will build a generic version. Reply "build" to continue, or tell me a different industry.');
+        _arthurAddMsg('arthur', 'I could not find a design for that industry yet — I will build a custom version from scratch. Reply "build" to continue, or tell me a different industry.');
         return;
     }
     var prettyIndustry = (industry || '').replace(/_/g,' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-    var intro = '<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Here ' + (templates.length === 1 ? 'is the' : 'are the') + ' <strong>' + bld_escH(prettyIndustry) + '</strong> template' + (templates.length === 1 ? '' : 's') + ' I recommend. Pick one to start building.</div>';
+    var intro = '<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Here ' + (templates.length === 1 ? 'is the' : 'are the') + ' <strong>' + bld_escH(prettyIndustry) + '</strong> design' + (templates.length === 1 ? '' : 's') + ' I recommend. Pick one to start building.</div>';
     var cards = templates.map(function(t) {
         var thumb = t.thumbnail || '';
         var blocks = t.block_count || t.blocks || 0;
@@ -780,7 +780,7 @@ function _arthurShowTemplatePick(templates, industry) {
                 '</div>' +
                 '<div style="display:flex;gap:8px">' +
                     '<button onclick="window.open(\'' + prev + '\', \'_blank\')" style="flex:1;background:transparent;border:1px solid var(--bd);color:var(--t1);padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12px">\u{1F441} Preview</button>' +
-                    '<button onclick="_arthurConfirmTemplate(\'' + safeIndustry + '\')" style="flex:1.6;background:var(--p,#6C5CE7);border:none;color:#fff;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">Use Template \u2192</button>' +
+                    '<button onclick="_arthurConfirmTemplate(\'' + safeIndustry + '\')" style="flex:1.6;background:var(--p,#6C5CE7);border:none;color:#fff;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">Use This Design \u2192</button>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -823,7 +823,7 @@ window._arthurConfirmTemplate = function(industry) {
     _arthur.state.template_industry  = industry;
     _arthur.state.industry = industry;
     var inp = document.getElementById('arthur-chat-input');
-    if (inp) inp.value = 'Use the ' + industry.replace(/_/g,' ') + ' template.';
+    if (inp) inp.value = 'Use the ' + industry.replace(/_/g,' ') + ' design.';
     if (typeof window._arthurSend === 'function') window._arthurSend();
 };
 
@@ -984,7 +984,7 @@ function _arthurShowWebsiteCard(websiteId, name, industry) {
     var card = '<div style="background:linear-gradient(135deg,rgba(108,92,231,.1),rgba(59,130,246,.1));border:1px solid rgba(108,92,231,.3);border-radius:16px;padding:20px;margin-top:8px">'
         + '<div style="font-size:13px;color:var(--pu);font-weight:600;margin-bottom:8px">⚡ Website Created</div>'
         + '<div style="font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">' + bld_escH(name) + '</div>'
-        + '<div style="font-size:12px;color:var(--t3);margin-bottom:16px">' + bld_escH(industry) + ' template \u2022 draft</div>'
+        + '<div style="font-size:12px;color:var(--t3);margin-bottom:16px">' + bld_escH(industry) + ' website \u2022 draft</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
         + '<button onclick="wsPreviewSite(' + websiteId + ')" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">'+window.icon('eye',18)+' Preview</button>'
         + '<button onclick="document.getElementById(\'arthur-modal\').remove();wsDoPublish(' + websiteId + ')" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">'+window.icon('rocket',18)+' Publish</button>'
@@ -1013,7 +1013,7 @@ function _arthurShowBuilding() {
         "<span style=\"color:var(--t1);font-weight:600;font-size:14px\">Building your website...</span></div>" +
         "<div id=\"arthur-build-steps\">" +
         "<div class=\"ab-step\" id=\"ab-s1\">\u23f3 Understanding your business...</div>" +
-        "<div class=\"ab-step\" id=\"ab-s2\">\u23f3 Loading template...</div>" +
+        "<div class=\"ab-step\" id=\"ab-s2\">\u23f3 Loading your design...</div>" +
         "<div class=\"ab-step\" id=\"ab-s3\">\u23f3 Writing your content...</div>" +
         "<div class=\"ab-step\" id=\"ab-s4\">\u23f3 Generating hero image...</div>" +
         "<div class=\"ab-step\" id=\"ab-s5\">\u23f3 Deploying your website...</div>" +
