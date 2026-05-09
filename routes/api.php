@@ -7868,3 +7868,13 @@ Route::prefix('public/chatbot')->group(function () {
     Route::post('/booking-request', [\App\Http\Controllers\Api\Widget\PublicChatbotController::class, 'bookingRequest']);
     Route::post('/callback-request', [\App\Http\Controllers\Api\Widget\PublicChatbotController::class, 'callbackRequest']);
 });
+
+// ── Public News widget endpoints (Option C, 2026-05-09) ──────────────
+// Read-only stories + categories for tenant news_channel sites. No auth;
+// tenant subdomain in URL scopes the lookup. Returns only published,
+// non-deleted articles (already publicly visible on the tenant subdomain
+// itself, so no new exposure).
+Route::prefix('public/news')->group(function () {
+    Route::get('/{subdomain}/stories',    [\App\Http\Controllers\Api\Widget\PublicNewsController::class, 'stories'])->where('subdomain', '[a-z0-9\-]+');
+    Route::get('/{subdomain}/categories', [\App\Http\Controllers\Api\Widget\PublicNewsController::class, 'categories'])->where('subdomain', '[a-z0-9\-]+');
+});

@@ -332,7 +332,7 @@ h1,h2,h3,h4 { font-family: var(--fh); font-weight: 700; line-height: 1.15; color
       <a href="#" class="see-all">See all stories →</a>
     </div>
 
-    <div class="stories-grid">
+    <div class="stories-grid" id="news-stories-grid">
       <article class="story-card">
         <div class="story-image"><img src="{{story_1_image}}" alt="{{story_1_title}}" data-field="story_1_image"><span class="story-cat-tag" data-field="story_1_category">{{story_1_category}}</span></div>
         <h3 data-field="story_1_title">{{story_1_title}}</h3>
@@ -515,6 +515,68 @@ document.querySelector('.nav-burger')?.addEventListener('click', function(){
 document.querySelectorAll('[data-conditional]').forEach(function(el){
   if (!el.getAttribute('href') || el.getAttribute('href') === '') el.style.display = 'none';
 });
+
+// ── PROGRESSIVE ENHANCEMENT — fetch live stories from the platform's
+//    public news API and swap the static seed with the latest articles.
+//    Silent fall-through to the static seed if the API call fails or
+//    returns no posts (keeps SEO + zero-empty-state behaviour intact).
+(function(){
+  var grid = document.getElementById('news-stories-grid');
+  if (!grid) return;
+
+  // The widget is served from a tenant subdomain (e.g. thegulftribune.
+  // levelupgrowth.io). Subdomain → workspace lookup happens server-side.
+  var host = location.hostname || '';
+  var sub  = host.split('.')[0];
+  if (!sub || ['www','staging','app','api','localhost'].indexOf(sub) !== -1) return;
+
+  // Platform API origin. For tenant subdomains under levelupgrowth.io we
+  // call back to the parent. For custom domains, we hardcode staging.
+  var apiOrigin = 'https://staging.levelupgrowth.io';
+  if (host.endsWith('.levelupgrowth.io')) {
+    apiOrigin = location.protocol + '//' + 'staging.levelupgrowth.io';
+  }
+
+  function escHtml(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function fmtDate(iso){
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d)) return '';
+      return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+    } catch (_) { return ''; }
+  }
+  var heroFloor = document.querySelector('.hero-media img');
+  var fallbackImg = (heroFloor && heroFloor.getAttribute('src')) || '/storage/builder-heroes/news_channel.jpg';
+
+  fetch(apiOrigin + '/api/public/news/' + encodeURIComponent(sub) + '/stories?limit=6', {
+    method: 'GET',
+    credentials: 'omit',
+  })
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(data){
+    if (!data || !Array.isArray(data.posts) || data.posts.length === 0) return; // keep static seed
+    grid.innerHTML = data.posts.slice(0, 6).map(function(p){
+      var img = p.featured_image_url || fallbackImg;
+      return '<article class="story-card">' +
+        '<div class="story-image">' +
+          '<img src="' + escHtml(img) + '" alt="' + escHtml(p.title) + '">' +
+          '<span class="story-cat-tag">' + escHtml((p.category || 'NEWS').toUpperCase()) + '</span>' +
+        '</div>' +
+        '<h3>' + escHtml(p.title) + '</h3>' +
+        '<p>' + escHtml(p.excerpt || '') + '</p>' +
+        '<div class="story-meta">' +
+          '<span class="by">' + escHtml(p.author || 'Staff') + '</span>' +
+          '<span class="story-meta-dot"></span>' +
+          '<span>' + escHtml(fmtDate(p.published_iso || p.published_at)) + '</span>' +
+          '<span class="story-meta-dot"></span>' +
+          '<span>' + escHtml(p.read_time || '3 min read') + '</span>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+  })
+  .catch(function(){ /* silent — static seed remains visible */ });
+})();
 </script>
 </body>
 </html>

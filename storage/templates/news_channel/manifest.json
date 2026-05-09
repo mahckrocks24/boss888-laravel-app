@@ -8,8 +8,13 @@
   "preview_image": "preview.jpg",
   "created_at": "2026-05-09",
   "industry_tags": ["news", "media", "journalism", "editorial", "press", "broadcast"],
+  "is_news_channel": true,
   "social_fields": ["facebook_url", "twitter_url", "instagram_url", "linkedin_url", "youtube_url", "tiktok_url", "telegram_url"],
-  "blog": { "enabled": true, "posts_per_page": 12 },
+  "blog": {
+    "enabled": true,
+    "posts_per_page": 12,
+    "categories": ["Politics", "Business", "Technology", "Sports", "Culture", "World"]
+  },
   "contact_form": { "enabled": true },
 
   "blocks": [

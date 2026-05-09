@@ -90,8 +90,14 @@ class PublishedSiteMiddleware
         // Triggers on /blog or /blog/<anything>; if the workspace plan does
         // not include content_writing, render404 (don't expose tenant's
         // blog content publicly when their plan doesn't pay for it).
+        // PATCH (news_channel exemption, 2026-05-09) — news templates are
+        // built around their blog/news feed by definition; gating it on a
+        // separate content_writing plan flag would block their core
+        // functionality. Skip the gate when the website is a news_channel.
+        $isNewsChannel = $website && ($website->template_industry ?? null) === 'news_channel';
         if ($website
             && (int) $website->workspace_id !== 1
+            && !$isNewsChannel
             && (str_starts_with($slug, 'blog') || str_starts_with($path, 'blog/'))) {
             $sub = DB::table('subscriptions')
                 ->where('workspace_id', $website->workspace_id)

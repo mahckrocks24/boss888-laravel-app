@@ -851,6 +851,110 @@ class ArthurService
         }
     }
 
+    // PATCH (Option C, 2026-05-09) — Seed 6 LLM-generated news articles
+    // into the articles table for a freshly-built news_channel site.
+    // Mutates $variables to populate static story_N_* slots so the page
+    // is non-empty + SEO-friendly on first paint. The PublicNewsController
+    // /api/public/news/{subdomain}/stories endpoint then serves the same
+    // articles dynamically for live updates.
+    private function seedNewsArticles(int $wsId, string $businessName, string $location, array &$variables): int
+    {
+        $categories = ['Politics', 'Business', 'Technology', 'Sports', 'Culture', 'World'];
+
+        if (! $this->runtime->isConfigured()) {
+            Log::warning('[Arthur] runtime not configured — skipping news article seeding');
+            return 0;
+        }
+
+        $userPrompt = "Generate 6 realistic news headlines and excerpts for a news channel called '{$businessName}' "
+            . "based in {$location}. One article per category. Categories: "
+            . implode(', ', $categories) . ".\n\n"
+            . "Return JSON with the word json — an object with key \"articles\" containing an array of 6 items, "
+            . "each shaped: {\"title\": \"verb-led news headline, ~10 words\", "
+            . "\"category\": \"one of the 6 categories\", "
+            . "\"excerpt\": \"two-sentence news excerpt that reads like real reporting\", "
+            . "\"author\": \"professional journalist name with surname\", "
+            . "\"read_time_minutes\": 3-9}\n\n"
+            . "Tone: editorial, authoritative, journalistic. Headlines must sound like real news with a verb "
+            . "and a real claim — never marketing copy. NEVER mention dining, food, fitness, salon, or product sales.";
+
+        try {
+            $result = $this->runtime->chatJson(
+                "You are a senior news editor at a premium Gulf-region newsroom. Return only valid JSON.",
+                $userPrompt,
+                ['workspace_id' => $wsId, 'task' => 'news_seed'],
+                1500
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] news seed chatJson threw: ' . $e->getMessage());
+            return 0;
+        }
+
+        $parsed = is_array($result['parsed'] ?? null) ? $result['parsed'] : [];
+        $articles = $parsed['articles'] ?? $parsed ?? [];
+        if (!is_array($articles)) return 0;
+
+        $count = 0;
+        foreach ($articles as $i => $a) {
+            if (!is_array($a) || empty($a['title'])) continue;
+            if ($count >= 6) break;
+
+            $title    = mb_substr((string) $a['title'], 0, 250);
+            $category = (string) ($a['category'] ?? $categories[$i % 6]);
+            $excerpt  = mb_substr((string) ($a['excerpt'] ?? ''), 0, 480);
+            $author   = mb_substr((string) ($a['author'] ?? 'Staff Reporter'), 0, 80);
+            $readMin  = (int) ($a['read_time_minutes'] ?? 4);
+            if ($readMin < 1) $readMin = 3;
+            $publishedAt = now()->subHours($i * 8 + rand(1, 4));
+
+            $slug = \Illuminate\Support\Str::slug($title) ?: ('news-' . uniqid());
+
+            try {
+                DB::table('articles')->insertOrIgnore([
+                    'workspace_id'      => $wsId,
+                    'title'             => $title,
+                    'slug'              => $slug,
+                    'content'           => '<p>' . htmlspecialchars($excerpt, ENT_QUOTES, 'UTF-8') . '</p>',
+                    'excerpt'           => $excerpt,
+                    'status'            => 'published',
+                    'type'              => 'news',
+                    'blog_category'     => $category,
+                    'tags_json'         => json_encode([$category, 'news', 'seed']),
+                    'is_marketing_blog' => 0,
+                    'featured_image_url'=> '',
+                    'meta_title'        => $title,
+                    'meta_description'  => $excerpt,
+                    'focus_keyword'     => $category,
+                    'brief_json'        => json_encode([
+                        'author'    => $author,
+                        'read_time' => $readMin . ' min read',
+                        'seed'      => true,
+                    ]),
+                    'word_count'        => str_word_count($excerpt),
+                    'read_time'         => $readMin,
+                    'published_at'      => $publishedAt,
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ]);
+
+                // Inject into static template variables (story_1..story_6).
+                $n = $count + 1;
+                $variables["story_{$n}_title"]        = $title;
+                $variables["story_{$n}_category"]     = strtoupper($category);
+                $variables["story_{$n}_excerpt"]      = $excerpt;
+                $variables["story_{$n}_byline"]       = $author;
+                $variables["story_{$n}_date"]         = $publishedAt->diffForHumans();
+                $variables["story_{$n}_reading_time"] = $readMin . ' min read';
+
+                $count++;
+            } catch (\Throwable $e) {
+                Log::warning('[Arthur] news article insert failed: ' . $e->getMessage());
+            }
+        }
+
+        return $count;
+    }
+
     // BUG 2 FIX — normalize an industry string to a canonical slug.
     // Preference order: explicit keyword from INDUSTRY_MAP (longest match
     // wins) > already-valid slug > raw input.
@@ -2019,6 +2123,26 @@ PROMPT;
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // PATCH (Option C, 2026-05-09) — for news_channel sites, seed
+        // 6 LLM-generated news articles into the articles table so the
+        // public news API has live content from day 1, AND inject the
+        // first 6 into the static template variables for SEO + no
+        // empty-state on first paint.
+        if ($industry === 'news_channel') {
+            try {
+                $seeded = $this->seedNewsArticles($wsId, $name, $data['location'] ?? 'Dubai', $variables);
+                if ($seeded > 0) {
+                    DB::table('websites')->where('id', $websiteId)->update([
+                        'template_variables' => json_encode($variables),
+                        'updated_at' => now(),
+                    ]);
+                    Log::info('[Arthur] news_channel seeded ' . $seeded . ' articles for ws=' . $wsId);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[Arthur] news_channel article seeding failed: ' . $e->getMessage());
+            }
+        }
 
         // T1 (2026-04-20) — move temp logo into permanent site storage.
         // Done BEFORE deploy so the rendered HTML points at the final URL.
