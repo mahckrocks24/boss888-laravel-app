@@ -179,6 +179,8 @@ window._arthurSend = async function() {
             _arthur.history.push({ role: 'arthur', content: reply });
         }
 
+        try { console.log('[arthur] response type=' + d.type, { ready_to_confirm: d.ready_to_confirm, ready_to_build: d.ready_to_build, has_build_data: !!(d.build_data && d.build_data.business_name) }); } catch(_){}
+
         // type='confirm' → show action buttons (Upload Logo + Build)
         if (d.type === 'confirm') {
             _arthurShowConfirmActions(d.build_data || {});
@@ -201,10 +203,38 @@ window._arthurSend = async function() {
 // horizontal rows separated by hairline borders: logo / photos /
 // colors / build. Purple accent on upload buttons with hover.
 function _arthurShowConfirmActions(buildData) {
+    try { console.log('[arthur] _arthurShowConfirmActions called', { buildData: buildData }); } catch(_){}
+    try {
+        return _arthurShowConfirmActionsImpl(buildData);
+    } catch (eOuter) {
+        try { console.error('[arthur] panel rendering threw — falling back to plain build button', eOuter); } catch(_){}
+        // Fallback: render a plain Build button so the user is never stranded.
+        var fbFeed = document.getElementById('arthur-feed');
+        if (fbFeed) {
+            if (buildData) window._arthurBuildData = buildData;
+            window._arthurLogoUrl = window._arthurLogoUrl || '';
+            window._arthurImages  = window._arthurImages  || [];
+            window._arthurColors  = window._arthurColors  || { primary: '#6C5CE7', secondary: '#3B8BF5' };
+            var fb = document.createElement('div');
+            fb.id = 'arthur-confirm-panel';
+            fb.style.cssText = 'margin-top:16px;padding:16px;background:#15151A;border:1px solid #2A2A33;border-radius:12px;text-align:center';
+            fb.innerHTML =
+                '<div style="font-size:13px;color:#fff;margin-bottom:12px">Ready to build your website?</div>' +
+                '<button onclick="_arthurConfirmBuild()" style="padding:12px 28px;background:#6C5CE7;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">⚡ Build My Website</button>';
+            fbFeed.appendChild(fb);
+            try { fbFeed.scrollTop = fbFeed.scrollHeight; } catch(_){}
+        }
+    }
+}
+
+function _arthurShowConfirmActionsImpl(buildData) {
     var feed = document.getElementById('arthur-feed')
             || document.getElementById('arthur-messages')
             || document.querySelector('.arthur-messages');
-    if (!feed) return;
+    if (!feed) {
+        try { console.error('[arthur] confirm panel: no feed container found'); } catch(_){}
+        return;
+    }
     var prev = document.getElementById('arthur-confirm-panel');
     if (prev) prev.remove();
 
@@ -216,15 +246,16 @@ function _arthurShowConfirmActions(buildData) {
 
     var panel = document.createElement('div');
     panel.id  = 'arthur-confirm-panel';
+    // Solid surface (the prior 3%-white wash on a dark chat was invisible).
     panel.style.cssText =
         'margin-top:16px;display:flex;flex-direction:column;gap:0;' +
         'border-radius:14px;overflow:hidden;' +
-        'border:1px solid rgba(255,255,255,0.08);' +
-        'background:rgba(255,255,255,0.03)';
+        'border:1px solid #2A2A33;' +
+        'background:#15151A';
 
     panel.innerHTML =
         // ── LOGO ROW ──
-        '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+        '<div style="padding:16px 20px;border-bottom:1px solid #2A2A33">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
             '<div>' +
               '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em">Logo</div>' +
@@ -239,7 +270,7 @@ function _arthurShowConfirmActions(buildData) {
         '</div>' +
 
         // ── PHOTOS ROW ──
-        '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+        '<div style="padding:16px 20px;border-bottom:1px solid #2A2A33">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
             '<div>' +
               '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em">Your Photos</div>' +
@@ -258,7 +289,7 @@ function _arthurShowConfirmActions(buildData) {
         '</div>' +
 
         // ── COLORS ROW ──
-        '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+        '<div style="padding:16px 20px;border-bottom:1px solid #2A2A33">' +
           '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em;margin-bottom:12px">Brand Colors</div>' +
           '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">' +
             '<div style="display:flex;align-items:center;gap:10px">' +
@@ -283,17 +314,25 @@ function _arthurShowConfirmActions(buildData) {
           '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--t3,#888)">Usually takes 45–60 seconds</div>' +
         '</div>';
 
-    feed.appendChild(panel);
+    try {
+        feed.appendChild(panel);
+        try { console.log('[arthur] confirm panel appended', panel); } catch(_){}
+    } catch (eAppend) {
+        try { console.error('[arthur] panel append failed', eAppend); } catch(_){}
+    }
 
     // Hover effect on the upload-style purple labels
-    panel.querySelectorAll('label[data-arthur-upload="1"]').forEach(function(el){
-        el.addEventListener('mouseenter', function(){
-            el.style.background = '#7C6CF0';
-        });
-        el.addEventListener('mouseleave', function(){
-            el.style.background = '#6C5CE7';
-        });
-    });
+    try {
+        var labels = panel.querySelectorAll('label[data-arthur-upload="1"]');
+        for (var li = 0; li < labels.length; li++) {
+            (function(el){
+                el.addEventListener('mouseenter', function(){ el.style.background = '#7C6CF0'; });
+                el.addEventListener('mouseleave', function(){ el.style.background = '#6C5CE7'; });
+            })(labels[li]);
+        }
+    } catch (eHover) {
+        try { console.warn('[arthur] hover wiring failed', eHover); } catch(_){}
+    }
 
     // PATCH (Send-as-Build, 2026-05-09) — soft-disable the chat input so
     // the user's eyes go to the panel, but Send/Enter still work as Build.
@@ -304,7 +343,11 @@ function _arthurShowConfirmActions(buildData) {
         inp.setAttribute('disabled', 'true');
     }
 
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll panel into view — wrap in try since some browsers may flake.
+    try { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
+    // Belt-and-suspenders: also scroll the feed itself to the bottom so the
+    // panel is guaranteed visible even if scrollIntoView is a no-op.
+    try { feed.scrollTop = feed.scrollHeight; } catch (_) {}
 }
 
 // Live color picker handler — wired via inline oninput attribute on the
