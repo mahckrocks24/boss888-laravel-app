@@ -665,6 +665,21 @@ class ArthurService
         'clothing store'         => 'retail_shop',
         'shop'                   => 'retail_shop',
         'store'                  => 'retail_shop',
+        // News / media (added 2026-05-09)
+        'news channel'           => 'news_channel',
+        'news network'           => 'news_channel',
+        'news website'           => 'news_channel',
+        'news outlet'            => 'news_channel',
+        'online news'            => 'news_channel',
+        'newspaper'              => 'news_channel',
+        'media company'          => 'news_channel',
+        'media outlet'           => 'news_channel',
+        'press'                  => 'news_channel',
+        'broadcast'              => 'news_channel',
+        'broadcasting'           => 'news_channel',
+        'journalism'             => 'news_channel',
+        'editorial'              => 'news_channel',
+        'news'                   => 'news_channel',
     ];
 
     // PATCH (template-resolution, 2026-05-09) — Resolve a free-form industry
@@ -708,6 +723,7 @@ class ArthurService
             '/auto|car|vehicle|mechanic|detailer/'                                                                     => 'automotive',
             '/architect/'                                                                                              => 'architecture',
             '/event|wedding|banquet|venue|conference/'                                                                 => 'event_venue',
+            '/news|journal|press|broadcast|tribune|gazette|media outlet|reporter/'                                     => 'news_channel',
             '/travel|tour|vacation/'                                                                                   => 'travel_agency',
             '/hotel|resort|airbnb|rental|inn|guest house|lodge|motel/'                                                 => 'hotel',
             '/pet|vet|animal|dog |cat |grooming/'                                                                     => 'pet_services',
@@ -2293,6 +2309,8 @@ PROMPT;
             'online_courses'     => 'Write for an online-course platform. Services = course categories, formats. CTAs: Enroll Now, Start Learning.',
             // Events
             'event_venue'        => 'Write for an event venue / event production company. Services = event types (weddings, corporate, private celebrations). CTAs: Check Availability, Book a Consultation.',
+            // News / media (added 2026-05-09)
+            'news_channel'       => 'Write for a premium online news channel. Editorial tone, authoritative, journalistic. Headlines must sound like real news with a verb and a real claim — never marketing copy. Categories: Politics, Business, Technology, Sports, Culture, Opinion. Bylines = professional journalist names with surnames (e.g. "Layla Al-Mansoori", "Karim Hashem"). CTAs: Read More, Subscribe, Watch Live. Reading times in minutes. NEVER mention dining, food, kitchen, gym, salon, or product sales.',
         ];
         $hint = $industryHints[$industry] ?? "Use {$industry}-appropriate content only. Do not generate content from a different industry.";
 
@@ -2434,6 +2452,8 @@ PROMPT;
             'online_courses'     => 'Modern online-learning setup, laptop with course content on screen, headphones, notebook, warm desk light, focused environment',
             // Events
             'event_venue'        => 'Stunning event venue ballroom, dramatic uplighting, elegant tablescapes with floral centerpieces, premium celebration space, golden warm tones',
+            // News / media (added 2026-05-09)
+            'news_channel'       => 'Premium editorial newsroom, modern journalism workspace, multiple monitors with breaking news headlines, professional broadcast studio with anchor desk, dramatic blue and red key lighting, high-end TV-news production aesthetic',
         ];
 
         $base = $prompts[$industry] ?? "Professional modern {$industry} business interior, clean design, warm lighting, premium atmosphere";

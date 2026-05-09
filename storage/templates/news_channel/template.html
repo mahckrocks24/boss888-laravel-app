@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>{{business_name}} — News</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{canonical_url}}">
+<meta property="og:title" content="{{business_name}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:locale" content="{{og_locale}}">
+<meta property="og:image" content="{{og_image}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{business_name}}">
+<meta name="twitter:description" content="{{meta_description}}">
+<meta name="twitter:image" content="{{og_image}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --primary: {{primary_color}};
+  --secondary: {{secondary_color}};
+  --accent: {{accent_color}};
+  --bg: {{bg_color}};
+  --ink: {{ink_color}};
+  --muted: {{muted_color}};
+  --border: {{border_color}};
+  --fh: 'Playfair Display', Georgia, serif;
+  --fb: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--fb); background: var(--bg); color: var(--ink); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+h1,h2,h3,h4 { font-family: var(--fh); font-weight: 700; line-height: 1.15; color: var(--secondary); letter-spacing: -0.01em; }
+.container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+/* ── BREAKING TICKER ───────────────────────────────────────── */
+.ticker {
+  background: var(--primary); color: #fff;
+  font-family: var(--fb); font-weight: 600; font-size: 13px;
+  display: flex; align-items: center; height: 40px;
+  overflow: hidden;
+}
+.ticker-label {
+  background: rgba(0,0,0,0.18); padding: 8px 18px;
+  font-size: 11px; letter-spacing: 0.15em; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.ticker-label::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  background: #fff; animation: pulse 1.4s ease-in-out infinite;
+}
+.ticker-track { overflow: hidden; flex: 1; position: relative; }
+.ticker-text {
+  white-space: nowrap; padding-left: 100%;
+  animation: marquee 50s linear infinite;
+  display: inline-block;
+}
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* ── NAVIGATION ───────────────────────────────────────── */
+.nav {
+  background: #fff; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1000;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; gap: 24px; }
+.nav-logo { font-family: var(--fh); font-weight: 900; font-size: 28px; color: var(--secondary); letter-spacing: -0.02em; }
+.nav-links { display: flex; align-items: center; gap: 28px; list-style: none; }
+.nav-links li a { font-size: 14px; font-weight: 500; color: var(--ink); transition: color .15s; }
+.nav-links li a:hover { color: var(--primary); }
+.nav-cta {
+  background: var(--primary); color: #fff; font-weight: 600; font-size: 13px;
+  padding: 10px 20px; border-radius: 4px; transition: background .15s;
+}
+.nav-cta:hover { background: #A8182F; }
+.nav-burger { display: none; background: none; border: 0; font-size: 22px; cursor: pointer; color: var(--secondary); }
+
+/* ── HERO STORY ───────────────────────────────────────── */
+.hero { padding: 40px 0 56px; }
+.hero-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: center; }
+.hero-media { position: relative; aspect-ratio: 16/10; border-radius: 4px; overflow: hidden; background: #ddd; }
+.hero-media img { width: 100%; height: 100%; object-fit: cover; }
+.hero-cat-tag {
+  position: absolute; top: 16px; left: 16px;
+  background: var(--primary); color: #fff;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  padding: 6px 12px;
+}
+.hero-live {
+  position: absolute; top: 16px; right: 16px;
+  background: rgba(0,0,0,0.78); color: #fff;
+  padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.hero-live::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--primary); animation: pulse 1.2s ease-in-out infinite;
+}
+.hero-content .eyebrow { font-size: 11px; letter-spacing: 0.2em; color: var(--primary); font-weight: 700; margin-bottom: 16px; }
+.hero-content h1 {
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  margin-bottom: 18px; color: var(--secondary);
+  font-weight: 900;
+}
+.hero-content .hero-sub { font-size: 17px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+.hero-meta { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+.hero-meta-divider { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+.hero-byline { font-weight: 600; color: var(--secondary); }
+.hero-cta {
+  display: inline-block; background: var(--secondary); color: #fff;
+  padding: 14px 26px; font-size: 14px; font-weight: 600;
+  border-radius: 4px; transition: background .15s;
+}
+.hero-cta:hover { background: var(--primary); }
+
+/* ── TOP STORIES GRID ───────────────────────────────────────── */
+.stories { padding: 64px 0; border-top: 1px solid var(--border); background: #fff; }
+.section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 36px; gap: 16px; flex-wrap: wrap; }
+.section-eyebrow { font-size: 11px; letter-spacing: 0.2em; color: var(--primary); font-weight: 700; margin-bottom: 8px; }
+.section-h2 { font-size: clamp(1.6rem, 2.6vw, 2.4rem); font-weight: 900; color: var(--secondary); }
+.stories-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.story-card { display: flex; flex-direction: column; gap: 14px; cursor: pointer; transition: transform .2s; }
+.story-card:hover { transform: translateY(-3px); }
+.story-image {
+  aspect-ratio: 16/10; background: #ddd; border-radius: 4px; overflow: hidden;
+  position: relative;
+}
+.story-image img { width: 100%; height: 100%; object-fit: cover; }
+.story-cat-tag {
+  position: absolute; top: 10px; left: 10px;
+  background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  padding: 4px 9px;
+}
+.story-card h3 {
+  font-size: 1.25rem; font-weight: 700; color: var(--secondary);
+  line-height: 1.3; transition: color .15s;
+}
+.story-card:hover h3 { color: var(--primary); }
+.story-card p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.story-meta {
+  display: flex; gap: 8px; align-items: center;
+  font-size: 12px; color: var(--muted);
+  border-top: 1px solid var(--border); padding-top: 10px;
+}
+.story-meta .by { font-weight: 600; color: var(--secondary); }
+.story-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+
+/* ── CATEGORY STRIPS ───────────────────────────────────────── */
+.cat-strips { padding: 64px 0; background: var(--bg); }
+.cat-strip { margin-bottom: 32px; padding: 24px; background: #fff; border: 1px solid var(--border); border-radius: 4px; }
+.cat-strip-head {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 2px solid var(--primary); padding-bottom: 12px; margin-bottom: 16px;
+}
+.cat-strip-head h3 { font-size: 1.5rem; font-weight: 900; color: var(--secondary); }
+.cat-strip-head .cat-tagline { font-size: 12px; color: var(--muted); font-style: italic; }
+.cat-strip-head a.see-all { font-size: 12px; font-weight: 600; color: var(--primary); letter-spacing: 0.05em; }
+
+/* ── FEATURED VIDEO ───────────────────────────────────────── */
+.video-section { padding: 64px 0; background: var(--secondary); color: #fff; }
+.video-section h2 { color: #fff; }
+.video-section .section-eyebrow { color: var(--accent); }
+.video-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: center; }
+.video-thumb {
+  aspect-ratio: 16/9; background: #000; border-radius: 4px; overflow: hidden;
+  position: relative; cursor: pointer;
+}
+.video-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+.video-play {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 64px; color: #fff;
+}
+.video-play::before {
+  content: ''; width: 84px; height: 84px; border-radius: 50%;
+  background: var(--primary); display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 32px rgba(196,30,58,0.45);
+}
+.video-play::after {
+  content: '▶'; position: absolute; font-size: 28px; color: #fff; padding-left: 8px;
+}
+.video-section h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); margin-bottom: 16px; }
+.video-section p { color: rgba(255,255,255,0.78); font-size: 16px; line-height: 1.6; max-width: 480px; }
+
+/* ── OPINION ───────────────────────────────────────── */
+.opinion { padding: 80px 0; background: #fff; border-top: 1px solid var(--border); }
+.opinion-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 48px; }
+.columnist { display: flex; gap: 24px; align-items: flex-start; }
+.columnist-photo {
+  width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+  background: #ddd;
+}
+.columnist-photo img { width: 100%; height: 100%; object-fit: cover; }
+.columnist-meta { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.columnist-meta strong { color: var(--primary); font-weight: 700; }
+.columnist h3 {
+  font-size: 1.4rem; line-height: 1.3; margin-bottom: 10px;
+  color: var(--secondary); font-weight: 700;
+}
+.columnist p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+/* ── NEWSLETTER ───────────────────────────────────────── */
+.newsletter { background: var(--primary); color: #fff; padding: 80px 0; text-align: center; }
+.newsletter-eyebrow { font-size: 11px; letter-spacing: 0.2em; color: rgba(255,255,255,0.85); font-weight: 700; margin-bottom: 12px; }
+.newsletter h2 { color: #fff; font-size: clamp(2rem, 3.4vw, 3rem); font-weight: 900; margin-bottom: 14px; }
+.newsletter p { font-size: 16px; color: rgba(255,255,255,0.85); max-width: 560px; margin: 0 auto 28px; line-height: 1.6; }
+.newsletter-form { display: flex; gap: 12px; max-width: 520px; margin: 0 auto; flex-wrap: wrap; }
+.newsletter-form input {
+  flex: 1; min-width: 220px; padding: 14px 18px;
+  border: 0; border-radius: 4px; font-size: 14px; font-family: var(--fb);
+  background: #fff; color: var(--ink); outline: none;
+}
+.newsletter-form button {
+  background: var(--secondary); color: #fff;
+  padding: 14px 26px; border: 0; border-radius: 4px;
+  font-size: 14px; font-weight: 600; font-family: var(--fb);
+  cursor: pointer; transition: background .15s;
+}
+.newsletter-form button:hover { background: #000; }
+
+/* ── FOOTER ───────────────────────────────────────── */
+.footer { background: var(--secondary); color: rgba(255,255,255,0.85); padding: 64px 0 32px; }
+.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 36px; margin-bottom: 48px; }
+.footer-logo { font-family: var(--fh); font-weight: 900; font-size: 26px; color: #fff; margin-bottom: 14px; letter-spacing: -0.02em; }
+.footer-about { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.65); }
+.footer h4 { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: #fff; font-weight: 600; margin-bottom: 16px; font-family: var(--fb); }
+.footer-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-links a { font-size: 14px; color: rgba(255,255,255,0.65); transition: color .15s; }
+.footer-links a:hover { color: var(--primary); }
+.footer-social { display: flex; gap: 12px; flex-wrap: wrap; }
+.footer-social a {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.85); transition: all .15s; font-size: 14px;
+}
+.footer-social a:hover { background: var(--primary); color: #fff; }
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 24px;
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  font-size: 12px; color: rgba(255,255,255,0.55);
+}
+
+/* ── RESPONSIVE ───────────────────────────────────────── */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-burger { display: inline-block; }
+  .hero-grid, .video-grid, .opinion-grid { grid-template-columns: 1fr; gap: 32px; }
+  .stories-grid { grid-template-columns: 1fr; gap: 24px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .nav-cta { display: none; }
+  .ticker-label { padding: 8px 12px; font-size: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── BREAKING TICKER ── -->
+<div class="ticker" data-section="ticker">
+  <span class="ticker-label" data-field="ticker_label">{{ticker_label}}</span>
+  <div class="ticker-track">
+    <span class="ticker-text" data-field="ticker_text">{{ticker_text}}</span>
+  </div>
+</div>
+
+<!-- ── NAVIGATION ── -->
+<nav class="nav" data-section="nav">
+  <div class="nav-inner container">
+    <a href="/" class="nav-logo" data-field="business_name">{{business_name}}</a>
+    <ul class="nav-links">
+      <li><a href="#politics" data-field="nav_link_1">{{nav_link_1}}</a></li>
+      <li><a href="#business" data-field="nav_link_2">{{nav_link_2}}</a></li>
+      <li><a href="#tech" data-field="nav_link_3">{{nav_link_3}}</a></li>
+      <li><a href="#sports" data-field="nav_link_4">{{nav_link_4}}</a></li>
+      <li><a href="#culture" data-field="nav_link_5">{{nav_link_5}}</a></li>
+      <li><a href="#opinion" data-field="nav_link_6">{{nav_link_6}}</a></li>
+    </ul>
+    <a href="#newsletter" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
+    <button class="nav-burger" aria-label="Menu">☰</button>
+  </div>
+</nav>
+
+<!-- ── HERO STORY ── -->
+<section class="hero" data-section="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-media">
+        <img src="{{hero_image}}" alt="{{hero_title}}" data-field="hero_image">
+        <span class="hero-cat-tag" data-field="hero_category">{{hero_category}}</span>
+        <span class="hero-live">LIVE</span>
+      </div>
+      <div class="hero-content">
+        <div class="eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</div>
+        <h1 data-field="hero_title">{{hero_title}}</h1>
+        <p class="hero-sub" data-field="hero_subtitle">{{hero_subtitle}}</p>
+        <div class="hero-meta">
+          <span class="hero-byline" data-field="hero_byline">{{hero_byline}}</span>
+          <span class="hero-meta-divider"></span>
+          <span data-field="hero_date">{{hero_date}}</span>
+          <span class="hero-meta-divider"></span>
+          <span data-field="hero_reading_time">{{hero_reading_time}}</span>
+        </div>
+        <a href="#" class="hero-cta" data-field="hero_cta">{{hero_cta}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TOP STORIES GRID ── -->
+<section class="stories" data-section="top_stories">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow" data-field="stories_eyebrow">{{stories_eyebrow}}</div>
+        <h2 class="section-h2" data-field="stories_title">{{stories_title}}</h2>
+      </div>
+      <a href="#" class="see-all">See all stories →</a>
+    </div>
+
+    <div class="stories-grid">
+      <article class="story-card">
+        <div class="story-image"><img src="{{story_1_image}}" alt="{{story_1_title}}" data-field="story_1_image"><span class="story-cat-tag" data-field="story_1_category">{{story_1_category}}</span></div>
+        <h3 data-field="story_1_title">{{story_1_title}}</h3>
+        <p data-field="story_1_excerpt">{{story_1_excerpt}}</p>
+        <div class="story-meta"><span class="by" data-field="story_1_byline">{{story_1_byline}}</span><span class="story-meta-dot"></span><span data-field="story_1_date">{{story_1_date}}</span><span class="story-meta-dot"></span><span data-field="story_1_reading_time">{{story_1_reading_time}}</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="{{story_2_image}}" alt="{{story_2_title}}" data-field="story_2_image"><span class="story-cat-tag" data-field="story_2_category">{{story_2_category}}</span></div>
+        <h3 data-field="story_2_title">{{story_2_title}}</h3>
+        <p data-field="story_2_excerpt">{{story_2_excerpt}}</p>
+        <div class="story-meta"><span class="by" data-field="story_2_byline">{{story_2_byline}}</span><span class="story-meta-dot"></span><span data-field="story_2_date">{{story_2_date}}</span><span class="story-meta-dot"></span><span data-field="story_2_reading_time">{{story_2_reading_time}}</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="{{story_3_image}}" alt="{{story_3_title}}" data-field="story_3_image"><span class="story-cat-tag" data-field="story_3_category">{{story_3_category}}</span></div>
+        <h3 data-field="story_3_title">{{story_3_title}}</h3>
+        <p data-field="story_3_excerpt">{{story_3_excerpt}}</p>
+        <div class="story-meta"><span class="by" data-field="story_3_byline">{{story_3_byline}}</span><span class="story-meta-dot"></span><span data-field="story_3_date">{{story_3_date}}</span><span class="story-meta-dot"></span><span data-field="story_3_reading_time">{{story_3_reading_time}}</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="{{story_4_image}}" alt="{{story_4_title}}" data-field="story_4_image"><span class="story-cat-tag" data-field="story_4_category">{{story_4_category}}</span></div>
+        <h3 data-field="story_4_title">{{story_4_title}}</h3>
+        <p data-field="story_4_excerpt">{{story_4_excerpt}}</p>
+        <div class="story-meta"><span class="by" data-field="story_4_byline">{{story_4_byline}}</span><span class="story-meta-dot"></span><span data-field="story_4_date">{{story_4_date}}</span><span class="story-meta-dot"></span><span data-field="story_4_reading_time">{{story_4_reading_time}}</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="{{story_5_image}}" alt="{{story_5_title}}" data-field="story_5_image"><span class="story-cat-tag" data-field="story_5_category">{{story_5_category}}</span></div>
+        <h3 data-field="story_5_title">{{story_5_title}}</h3>
+        <p data-field="story_5_excerpt">{{story_5_excerpt}}</p>
+        <div class="story-meta"><span class="by" data-field="story_5_byline">{{story_5_byline}}</span><span class="story-meta-dot"></span><span data-field="story_5_date">{{story_5_date}}</span><span class="story-meta-dot"></span><span data-field="story_5_reading_time">{{story_5_reading_time}}</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="{{story_6_image}}" alt="{{story_6_title}}" data-field="story_6_image"><span class="story-cat-tag" data-field="story_6_category">{{story_6_category}}</span></div>
+        <h3 data-field="story_6_title">{{story_6_title}}</h3>
+        <p data-field="story_6_excerpt">{{story_6_excerpt}}</p>
+        <div class="story-meta"><span class="by" data-field="story_6_byline">{{story_6_byline}}</span><span class="story-meta-dot"></span><span data-field="story_6_date">{{story_6_date}}</span><span class="story-meta-dot"></span><span data-field="story_6_reading_time">{{story_6_reading_time}}</span></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ── CATEGORY STRIPS ── -->
+<section class="cat-strips" data-section="category_strips">
+  <div class="container">
+    <div class="cat-strip">
+      <div class="cat-strip-head">
+        <div><h3 data-field="cat_1_name">{{cat_1_name}}</h3><div class="cat-tagline" data-field="cat_1_tagline">{{cat_1_tagline}}</div></div>
+        <a href="#" class="see-all">See all →</a>
+      </div>
+    </div>
+    <div class="cat-strip">
+      <div class="cat-strip-head">
+        <div><h3 data-field="cat_2_name">{{cat_2_name}}</h3><div class="cat-tagline" data-field="cat_2_tagline">{{cat_2_tagline}}</div></div>
+        <a href="#" class="see-all">See all →</a>
+      </div>
+    </div>
+    <div class="cat-strip">
+      <div class="cat-strip-head">
+        <div><h3 data-field="cat_3_name">{{cat_3_name}}</h3><div class="cat-tagline" data-field="cat_3_tagline">{{cat_3_tagline}}</div></div>
+        <a href="#" class="see-all">See all →</a>
+      </div>
+    </div>
+    <div class="cat-strip">
+      <div class="cat-strip-head">
+        <div><h3 data-field="cat_4_name">{{cat_4_name}}</h3><div class="cat-tagline" data-field="cat_4_tagline">{{cat_4_tagline}}</div></div>
+        <a href="#" class="see-all">See all →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURED VIDEO ── -->
+<section class="video-section" data-section="video">
+  <div class="container">
+    <div class="video-grid">
+      <div class="video-thumb"><img src="{{video_thumbnail}}" alt="{{video_title}}" data-field="video_thumbnail"><div class="video-play"></div></div>
+      <div>
+        <div class="section-eyebrow" data-field="video_eyebrow">{{video_eyebrow}}</div>
+        <h2 data-field="video_title">{{video_title}}</h2>
+        <p data-field="video_subtitle">{{video_subtitle}}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── OPINION ── -->
+<section class="opinion" data-section="opinion" id="opinion">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow" data-field="opinion_eyebrow">{{opinion_eyebrow}}</div>
+        <h2 class="section-h2" data-field="opinion_title">{{opinion_title}}</h2>
+      </div>
+    </div>
+    <div class="opinion-grid">
+      <article class="columnist">
+        <div class="columnist-photo"><img src="{{opinion_1_image}}" alt="{{opinion_1_name}}" data-field="opinion_1_image"></div>
+        <div>
+          <div class="columnist-meta"><strong data-field="opinion_1_name">{{opinion_1_name}}</strong> · <span data-field="opinion_1_role">{{opinion_1_role}}</span></div>
+          <h3 data-field="opinion_1_title">{{opinion_1_title}}</h3>
+          <p data-field="opinion_1_excerpt">{{opinion_1_excerpt}}</p>
+        </div>
+      </article>
+      <article class="columnist">
+        <div class="columnist-photo"><img src="{{opinion_2_image}}" alt="{{opinion_2_name}}" data-field="opinion_2_image"></div>
+        <div>
+          <div class="columnist-meta"><strong data-field="opinion_2_name">{{opinion_2_name}}</strong> · <span data-field="opinion_2_role">{{opinion_2_role}}</span></div>
+          <h3 data-field="opinion_2_title">{{opinion_2_title}}</h3>
+          <p data-field="opinion_2_excerpt">{{opinion_2_excerpt}}</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ── NEWSLETTER ── -->
+<section class="newsletter" data-section="newsletter" id="newsletter">
+  <div class="container">
+    <div class="newsletter-eyebrow" data-field="newsletter_eyebrow">{{newsletter_eyebrow}}</div>
+    <h2 data-field="newsletter_title">{{newsletter_title}}</h2>
+    <p data-field="newsletter_subtitle">{{newsletter_subtitle}}</p>
+    <form class="newsletter-form" action="/api/public/contact" method="post">
+      <input type="email" name="email" placeholder="{{newsletter_input_placeholder}}" required>
+      <button type="submit" data-field="newsletter_cta">{{newsletter_cta}}</button>
+    </form>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="footer" data-section="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo" data-field="business_name">{{business_name}}</div>
+        <p class="footer-about" data-field="footer_about">{{footer_about}}</p>
+      </div>
+      <div>
+        <h4>Sections</h4>
+        <ul class="footer-links">
+          <li><a href="#" data-field="cat_1_name">{{cat_1_name}}</a></li>
+          <li><a href="#" data-field="cat_2_name">{{cat_2_name}}</a></li>
+          <li><a href="#" data-field="cat_3_name">{{cat_3_name}}</a></li>
+          <li><a href="#" data-field="cat_4_name">{{cat_4_name}}</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Newsroom</h4>
+        <ul class="footer-links">
+          <li><a href="mailto:{{contact_email}}" data-field="contact_email">{{contact_email}}</a></li>
+          <li><a href="tel:{{contact_phone}}" data-field="contact_phone">{{contact_phone}}</a></li>
+          <li><span data-field="contact_address">{{contact_address}}</span></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Follow</h4>
+        <div class="footer-social">
+          <a href="{{facebook_url}}"  aria-label="Facebook"  data-field="facebook_url"  data-conditional="facebook_url">f</a>
+          <a href="{{twitter_url}}"   aria-label="X"         data-field="twitter_url"   data-conditional="twitter_url">𝕏</a>
+          <a href="{{instagram_url}}" aria-label="Instagram" data-field="instagram_url" data-conditional="instagram_url">◉</a>
+          <a href="{{linkedin_url}}"  aria-label="LinkedIn"  data-field="linkedin_url"  data-conditional="linkedin_url">in</a>
+          <a href="{{youtube_url}}"   aria-label="YouTube"   data-field="youtube_url"   data-conditional="youtube_url">▶</a>
+          <a href="{{tiktok_url}}"    aria-label="TikTok"    data-field="tiktok_url"    data-conditional="tiktok_url">♪</a>
+          <a href="{{telegram_url}}"  aria-label="Telegram"  data-field="telegram_url"  data-conditional="telegram_url">✈</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span data-field="footer_text">{{footer_text}}</span>
+      <span data-field="footer_legal">{{footer_legal}}</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Mobile burger menu toggle
+document.querySelector('.nav-burger')?.addEventListener('click', function(){
+  var links = document.querySelector('.nav-links');
+  if (links) links.style.display = (links.style.display === 'flex') ? 'none' : 'flex';
+});
+// Hide social links with no URL
+document.querySelectorAll('[data-conditional]').forEach(function(el){
+  if (!el.getAttribute('href') || el.getAttribute('href') === '') el.style.display = 'none';
+});
+</script>
+</body>
+</html>
