@@ -661,6 +661,7 @@ async function nav(view){
   if(view==='automation') { var _el=document.getElementById('automation-root'); if(_el && typeof autoLoad==='function') autoLoad(_el); }
   if(view==='blog')       { await luLoadEngine('blog'); var _el=document.getElementById('blog-root'); if(_el && typeof blogLoad==='function') blogLoad(_el); }
   if(view==='studio')     { await luLoadEngine('studio'); var _el=document.getElementById('studio-root'); if(_el && typeof studioLoad==='function') studioLoad(_el); }
+  if(view==='chatbot')    { var _el=document.getElementById('chatbot-root'); if(_el && typeof chatbotLoad==='function') chatbotLoad(_el); }
   if(view==='messages')   { var _el=document.getElementById('messages-root'); if(_el && typeof messagesLoad==='function') messagesLoad(_el); }
   // Generic engine dispatch — external plugins register via window._lu_engine_loaders
   if (window._lu_engine_loaders && window._lu_engine_loaders[view]) {

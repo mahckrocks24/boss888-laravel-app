@@ -131,6 +131,220 @@ Route::get('/invite/{token}', function (string $token) {
 // Published sites now served via PublishedSiteMiddleware (not domain routes)
 
 
+// ── Chatbot888 public widget bootstrap (2026-05-09) ──────────────────────
+// GET /chatbot.js?ws=N
+// Returns vanilla-JS bootstrap that mounts a chat bubble in the bottom-right
+// corner of the host page. Workspace gating + chatbot.enabled check + plan
+// check (Pro+/Agency via FeatureGateService::canAccessChatbot) all happen
+// here — if any check fails, we still return valid (empty) JS so the host
+// page never sees a JS error in console.
+Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
+    $wsId = (int) $r->query('ws', 0);
+    $reject = function (string $reason) {
+        $body = "/* LevelUp chatbot — disabled: {$reason} */";
+        return response($body, 200)
+            ->header('Content-Type', 'application/javascript; charset=utf-8')
+            ->header('Cache-Control', 'public, max-age=60');
+    };
+
+    if ($wsId <= 0) return $reject('missing_ws');
+
+    // Plan check + chatbot enabled check
+    $gate = app(\App\Core\Billing\FeatureGateService::class);
+    if (! $gate->canAccessChatbot($wsId)) return $reject('plan_required');
+
+    $settings = \Illuminate\Support\Facades\DB::table('chatbot_settings')->where('workspace_id', $wsId)->first();
+    if (! $settings || ! $settings->enabled) return $reject('chatbot_disabled');
+
+    // Discover the embed host from Origin (cross-origin) or Referer.
+    // Without it we can't allowlist anything; reject so we don't accumulate
+    // domain-less tokens.
+    $hostHeader = $r->header('Origin') ?: $r->header('Referer') ?: '';
+    $embedHost = '';
+    if ($hostHeader) {
+        $parsed = parse_url($hostHeader);
+        $embedHost = strtolower($parsed['host'] ?? '');
+    }
+    if ($embedHost === '') return $reject('no_origin');
+
+    // Token policy: the chatbot widget token is PUBLIC by design (it ships
+    // in the script tag). Domain allowlist + revocation are the security
+    // boundary. To avoid token-table bloat, auto-bootstrap mints only one
+    // token per (workspace, label='Auto-bootstrap'); subsequent calls
+    // reuse it and ADD the new host to its allowed_domains list.
+    $tokenSvc = app(\App\Engines\Chatbot\Services\ChatbotWidgetTokenService::class);
+    $existing = \Illuminate\Support\Facades\DB::table('chatbot_widget_tokens')
+        ->where('workspace_id', $wsId)
+        ->where('status', 'active')
+        ->where('label', 'Auto-bootstrap')
+        ->orderByDesc('id')
+        ->first();
+
+    $rawToken = null;
+    if ($existing) {
+        // Token hash is one-way; we don't have the plaintext anymore. To
+        // keep the embed snippet stable, we encode the plaintext in
+        // settings_json on first mint. If it's missing, we'll mint anew.
+        $allowedDomains = json_decode($existing->allowed_domains_json ?: '[]', true) ?: [];
+        if (! in_array($embedHost, $allowedDomains, true)) {
+            $allowedDomains[] = $embedHost;
+            \Illuminate\Support\Facades\DB::table('chatbot_widget_tokens')
+                ->where('id', $existing->id)
+                ->update(['allowed_domains_json' => json_encode($allowedDomains), 'updated_at' => now()]);
+        }
+        // Token plaintext is cached in workspace meta the first time we mint.
+        $cachedRow = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first();
+        $meta = is_string($cachedRow->settings_json ?? null) ? json_decode($cachedRow->settings_json, true) : ($cachedRow->settings_json ?? []);
+        $meta = is_array($meta) ? $meta : [];
+        $rawToken = $meta['chatbot_bootstrap_token'] ?? null;
+    }
+    if (! $rawToken) {
+        try {
+            $minted = $tokenSvc->mint($wsId, null, null, [$embedHost], 'Auto-bootstrap');
+            $rawToken = $minted['plain'] ?? null;
+            // Cache plaintext in workspaces.settings_json so we can reuse it
+            // without re-minting (and without an extra column).
+            if ($rawToken) {
+                $wsRow = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first();
+                $meta = is_string($wsRow->settings_json ?? null) ? json_decode($wsRow->settings_json, true) : ($wsRow->settings_json ?? []);
+                $meta = is_array($meta) ? $meta : [];
+                $meta['chatbot_bootstrap_token'] = $rawToken;
+                \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)
+                    ->update(['settings_json' => json_encode($meta), 'updated_at' => now()]);
+            }
+        } catch (\Throwable $e) {
+            return $reject('token_mint_failed: ' . $e->getMessage());
+        }
+    }
+    if (! $rawToken) return $reject('no_token');
+
+    // API_BASE = the scheme+host of the request (so the widget calls back
+    // to the same domain it was served from). Cloudflare/nginx pass this
+    // through correctly. Falls back to staging if request data is absent.
+    $apiBase = rtrim($r->getSchemeAndHttpHost() ?: 'https://staging.levelupgrowth.io', '/');
+    // Force https in case Laravel sees http behind Cloudflare's proxy.
+    $apiBase = preg_replace('#^http://#', 'https://', $apiBase);
+    $greeting  = (string) ($settings->greeting ?? 'Hi! How can I help you today?');
+    $color     = (string) ($settings->primary_color ?? '#6C5CE7');
+    $theme     = (string) ($settings->theme ?? 'auto');
+
+    // Bootstrap JS — embeds token + greeting; talks to /api/public/chatbot/*
+    $tokenJs    = json_encode($rawToken, JSON_UNESCAPED_SLASHES);
+    $apiBaseJs  = json_encode($apiBase, JSON_UNESCAPED_SLASHES);
+    $greetingJs = json_encode($greeting, JSON_UNESCAPED_UNICODE);
+    $colorJs    = json_encode($color);
+    $themeJs    = json_encode($theme);
+    $wsIdJs     = (int) $wsId;
+
+    $js = <<<JS
+/* LevelUp Chatbot888 widget — auto-generated for workspace {$wsIdJs} */
+(function(){
+  if (window.__luChatbotMounted) return; window.__luChatbotMounted = true;
+  var TOKEN    = {$tokenJs};
+  var API_BASE = {$apiBaseJs};
+  var GREETING = {$greetingJs};
+  var COLOR    = {$colorJs};
+  var THEME    = {$themeJs};
+
+  function api(method, path, body){
+    return fetch(API_BASE + '/api/public/chatbot' + path, {
+      method: method,
+      headers: { 'Content-Type':'application/json', 'Accept':'application/json', 'X-CHATBOT-TOKEN': TOKEN },
+      body: body ? JSON.stringify(body) : undefined,
+    }).then(function(r){ return r.json().catch(function(){ return {success:false}; }); });
+  }
+
+  var session = null;
+  var bubble, panel, feed, input, sendBtn;
+
+  function makeBubble(){
+    bubble = document.createElement('div');
+    bubble.id = 'lu-cb-bubble';
+    bubble.style.cssText = 'position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:'+COLOR+';color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:2147483647;font-size:24px;line-height:1;border:none;transition:transform .15s';
+    bubble.innerHTML = '\u{1F4AC}';
+    bubble.onmouseenter = function(){ bubble.style.transform = 'scale(1.06)'; };
+    bubble.onmouseleave = function(){ bubble.style.transform = 'scale(1)'; };
+    bubble.onclick = openPanel;
+    document.body.appendChild(bubble);
+  }
+
+  function openPanel(){
+    if (panel) { panel.style.display = 'flex'; bubble.style.display = 'none'; if (input) input.focus(); return; }
+    panel = document.createElement('div');
+    panel.id = 'lu-cb-panel';
+    var dark = (THEME === 'dark') || (THEME === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    var bg   = dark ? '#15151A' : '#ffffff';
+    var fg   = dark ? '#ffffff' : '#111111';
+    var muted= dark ? '#9aa0aa' : '#666666';
+    var bd   = dark ? '#2a2a33' : '#e5e7eb';
+    panel.style.cssText = 'position:fixed;bottom:20px;right:20px;width:360px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 60px);background:'+bg+';color:'+fg+';border:1px solid '+bd+';border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.4);z-index:2147483647;font-family:system-ui,-apple-system,sans-serif';
+    panel.innerHTML =
+      '<div style="padding:14px 16px;background:'+COLOR+';color:#fff;display:flex;align-items:center;justify-content:space-between">' +
+        '<div style="font-size:14px;font-weight:600">Chat with us</div>' +
+        '<button id="lu-cb-close" style="background:none;border:none;color:#fff;cursor:pointer;font-size:18px;padding:0;line-height:1">×</button>' +
+      '</div>' +
+      '<div id="lu-cb-feed" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5"></div>' +
+      '<div style="padding:10px;border-top:1px solid '+bd+';display:flex;gap:8px">' +
+        '<input id="lu-cb-input" placeholder="Type a message…" style="flex:1;background:transparent;border:1px solid '+bd+';border-radius:8px;color:'+fg+';padding:9px 12px;font-size:13px;font-family:inherit;outline:none">' +
+        '<button id="lu-cb-send" style="background:'+COLOR+';color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer">Send</button>' +
+      '</div>';
+    document.body.appendChild(panel);
+    bubble.style.display = 'none';
+    feed   = panel.querySelector('#lu-cb-feed');
+    input  = panel.querySelector('#lu-cb-input');
+    sendBtn= panel.querySelector('#lu-cb-send');
+    panel.querySelector('#lu-cb-close').onclick = function(){ panel.style.display = 'none'; bubble.style.display = 'flex'; };
+    sendBtn.onclick = sendMsg;
+    input.onkeydown = function(e){ if (e.key === 'Enter') sendMsg(); };
+    addBubble('bot', GREETING);
+    startSession();
+    setTimeout(function(){ input.focus(); }, 50);
+  }
+
+  function startSession(){
+    if (session) return;
+    api('POST', '/session/start', { page_url: location.href, fingerprint: '' }).then(function(j){
+      if (j && j.success && j.data && j.data.session_id) session = j.data.session_id;
+    });
+  }
+
+  function addBubble(who, text){
+    var d = document.createElement('div');
+    var isUser = (who === 'user');
+    d.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:10px;align-self:'+(isUser?'flex-end':'flex-start')+';background:'+(isUser?COLOR:'rgba(127,127,127,0.12)')+';color:'+(isUser?'#fff':'inherit')+';white-space:pre-wrap';
+    d.textContent = text;
+    feed.appendChild(d);
+    feed.scrollTop = feed.scrollHeight;
+    return d;
+  }
+
+  function sendMsg(){
+    var t = (input.value || '').trim();
+    if (!t || !session) return;
+    input.value = '';
+    addBubble('user', t);
+    var typing = addBubble('bot', '…');
+    api('POST', '/message', { session_id: session, message: t }).then(function(j){
+      typing.remove();
+      var reply = (j && j.success && j.data && (j.data.answer || j.data.reply)) || (j && j.error) || 'Sorry, something went wrong.';
+      addBubble('bot', reply);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', makeBubble);
+  } else {
+    makeBubble();
+  }
+})();
+JS;
+
+    return response($js, 200)
+        ->header('Content-Type', 'application/javascript; charset=utf-8')
+        ->header('Cache-Control', 'private, max-age=60'); // short cache; settings can change
+})->name('chatbot.bootstrap');
+
+
 // ── Blog ─────────────────────────────────────────────────────
 Route::get("/blog", fn() => response()->file(public_path("marketing/pages/blog.html")));
 Route::get("/blog/{slug}", fn() => response()->file(public_path("marketing/pages/blog-post.html")))->where("slug", "[a-z0-9\-]+");

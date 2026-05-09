@@ -123,7 +123,9 @@ class PublishedSiteMiddleware
             ]);
             foreach ($staticCandidates as $staticPath) {
                 if (is_file($staticPath)) {
-                    return response(file_get_contents($staticPath), 200)
+                    $html = file_get_contents($staticPath);
+                    $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
+                    return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=300, s-maxage=300')
                         ->header('X-Served-By', 'static-template');
@@ -148,9 +150,45 @@ class PublishedSiteMiddleware
             return $this->render404();
         }
 
+        $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) ($website->id ?? 0));
+
         return response($html, 200)
             ->header('Content-Type', 'text/html; charset=utf-8')
             ->header('Cache-Control', 'public, max-age=300, s-maxage=300');
+    }
+
+    /**
+     * Inject the chatbot bootstrap script before </body> when the workspace
+     * has the chatbot enabled. Runs AFTER the cached HTML is retrieved so a
+     * settings toggle takes effect without needing to bust the page cache.
+     */
+    private function injectChatbotWidget(string $html, int $workspaceId, int $websiteId): string
+    {
+        if ($workspaceId <= 0) return $html;
+        if (str_contains($html, 'chatbot.js?ws=')) return $html; // already injected
+
+        // Cheap workspace-scoped lookup, cached 60s so we don't hit the DB
+        // on every page render.
+        $key = "chatbot_enabled_ws_{$workspaceId}";
+        $enabled = Cache::remember($key, 60, function () use ($workspaceId) {
+            $row = DB::table('chatbot_settings')->where('workspace_id', $workspaceId)->first();
+            return (bool) ($row && $row->enabled);
+        });
+        if (! $enabled) return $html;
+
+        // Use the staging/production platform domain explicitly. config('app.url')
+        // can return the bare IP on this droplet which would cause mixed-content
+        // and CORS failures from tenant subdomains.
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST) ?: '';
+        $origin = (str_contains($appHost, 'levelupgrowth.io'))
+            ? 'https://' . ($appHost ?: 'staging.levelupgrowth.io')
+            : 'https://staging.levelupgrowth.io';
+        $tag = '<script src="' . $origin . '/chatbot.js?ws=' . $workspaceId . '" async></script>';
+
+        $needle = '</body>';
+        $pos = strripos($html, $needle);
+        if ($pos === false) return $html . "\n" . $tag;
+        return substr($html, 0, $pos) . $tag . substr($html, $pos);
     }
 
     private function render404()
