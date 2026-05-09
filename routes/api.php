@@ -541,6 +541,22 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             . "- Lead with the most important point\n"
             . "- Never write walls of text\n\n";
 
+        // PATCH (Phase 2 — tool schema + read-back, 2026-05-10) — assemble the
+        // closed tool schema for this agent and any unread completed-task
+        // insights. Both blocks are appended to the system prompt below.
+        $toolSchemaSvc = app(\App\Core\Orchestration\ToolSchemaService::class);
+        $toolSchemaBlock = $toolSchemaSvc->getToolSchemaPrompt($slug);
+
+        $insightsBlock = '';
+        if ($isSarah) {
+            try {
+                $readBack = app(\App\Core\Orchestration\SarahReadBackService::class);
+                $insightsBlock = $readBack->renderInsightsBlock($wsId, 5);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[SarahChat] read-back failed: ' . $e->getMessage());
+            }
+        }
+
         // ── Build system prompt ──
         if ($isSarah) {
             $systemPrompt = $brandFactsBlock
@@ -562,13 +578,18 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "Engine mapping: james/alex/diana/ryan/sofia=seo, priya/leo/maya/chris/nora=write, marcus/zara/tyler/aria/jordan=social, elena/kai/max=crm, vera=marketing\n"
                 . "Action examples: serp_analysis, deep_audit, write_article, social_create_post, create_lead, create_campaign\n"
                 . "Be decisive and action-oriented. Keep responses under 150 words.\n"
-                . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":false,\"create_tasks\":[{\"agent\":\"james\",\"engine\":\"seo\",\"action\":\"serp_analysis\",\"description\":\"Run SEO analysis\"}]}\n"                . "Include multiple objects in create_tasks array for multiple assignments. Empty array [] if no tasks needed.\n"
+                . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":false,\"create_tasks\":[],\"tool_calls\":[]}\n"
+                . "  - create_tasks: array of {agent, engine, action, description} when delegating work\n"
+                . "  - tool_calls: array of {tool, params, reason} when you need to LOOK SOMETHING UP yourself (use this for platform info questions like 'how many websites' — do NOT delegate these to agents)\n"
+                . "Include multiple objects in create_tasks for multiple assignments. Both arrays default to [] when not needed.\n"
                 . "IMPORTANT: When the user sends a TASK BRIEF with Title/Description/Assign to, respond with a confirmation plan:\n"
                 . "- Acknowledge the task\n"
                 . "- List who you'll assign and what engine/action you'll use\n"
                 . "- Ask: 'Shall I proceed?'\n"
                 . "- Include create_tasks in your JSON ONLY when the user confirms (says yes/proceed/go ahead)\n"
                 . "- When user confirms, create ALL tasks from the previous brief and include create_tasks array.\n"
+                . "\n" . $insightsBlock
+                . "\n" . $toolSchemaBlock
                 . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
                 . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
         } else {
@@ -580,7 +601,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "Answer questions about your work directly. Be helpful and specific.\n"
                 . "For NEW task requests beyond your current scope, say you'll need Sarah to assign it officially.\n"
                 . "Keep responses under 120 words.\n"
-                . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":true/false,\"sarah_context\":\"context if redirecting\"}\n"
+                . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":true/false,\"sarah_context\":\"context if redirecting\",\"tool_calls\":[]}\n"
+                . "  - tool_calls: array of {tool, params, reason} when you need to look something up. Empty [] otherwise.\n"
+                . "\n" . $toolSchemaBlock
                 . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
                 . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
         }
@@ -629,12 +652,19 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 // tool router; if not, and the message is action-like, fall back
                 // to chatJson structured extraction so TaskService still fires.
                 $createTasks = $assist['create_tasks'] ?? [];
+                $toolCalls   = $assist['tool_calls'] ?? [];
                 $requiresSarah = (bool) ($assist['requires_sarah'] ?? false);
                 $sarahContext  = $assist['sarah_context'] ?? '';
 
-                $needTaskExtract = empty($createTasks) && (
+                // PATCH (Phase 2 — tool schema, 2026-05-10) — extended the
+                // re-extract trigger to include info-query verbs so platform
+                // tools (get_website_count, get_credit_balance, etc.) get a
+                // shot at firing. The assistant() endpoint does not know our
+                // schema, so chatJson with the closed schema is what surfaces
+                // tool_calls.
+                $needTaskExtract = (empty($createTasks) && empty($toolCalls)) && (
                     !$assistReply
-                    || preg_match('/\b(create|generate|run|publish|schedule|write|build|launch|start|assign|post|send|audit|analyze)\b/i', $userPrompt)
+                    || preg_match('/\b(create|generate|run|publish|schedule|write|build|launch|start|assign|post|send|audit|analyze|how many|how much|list|show|count|status|balance|websites|leads|campaigns|tasks)\b/i', $userPrompt)
                 );
                 if ($needTaskExtract) {
                     $cj = $runtime->chatJson($systemPrompt, $userPrompt, [
@@ -648,9 +678,70 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                         }
                         $requiresSarah = $requiresSarah ?: (bool)($parsed['requires_sarah'] ?? false);
                         $sarahContext  = $sarahContext  ?: ($parsed['sarah_context'] ?? '');
-                        $createTasks   = $parsed['create_tasks'] ?? [];
+                        $createTasks   = $parsed['create_tasks'] ?? $createTasks;
+                        $toolCalls     = $parsed['tool_calls']   ?? $toolCalls;
                         if (empty($createTasks) && !empty($parsed['create_task'])) {
                             $createTasks = [$parsed['create_task']];
+                        }
+                    }
+                }
+
+                // PATCH (Phase 2 — tool execution, 2026-05-10) — execute each
+                // tool_call through ToolSchemaService. Platform info tools are
+                // answered immediately from the DB; engine tools route through
+                // EngineExecutionService::execute(). Results are concatenated
+                // onto the user-facing reply so the user sees the actual data.
+                if (!empty($toolCalls) && is_array($toolCalls)) {
+                    $toolResults = [];
+                    foreach ($toolCalls as $tc) {
+                        if (!is_array($tc) || empty($tc['tool'])) continue;
+                        try {
+                            $tr = $toolSchemaSvc->executeToolCall(
+                                (string)$tc['tool'],
+                                is_array($tc['params'] ?? null) ? $tc['params'] : [],
+                                $wsId,
+                                $slug
+                            );
+                            $toolResults[] = ['tool' => $tc['tool'], 'result' => $tr];
+                            \Illuminate\Support\Facades\Log::info('[AgentChat] tool_call executed', [
+                                'agent' => $slug, 'tool' => $tc['tool'],
+                                'success' => $tr['success'] ?? false,
+                                'code' => $tr['code'] ?? null,
+                            ]);
+                        } catch (\Throwable $tcErr) {
+                            \Illuminate\Support\Facades\Log::warning('[AgentChat] tool_call failed: ' . $tcErr->getMessage());
+                            $toolResults[] = ['tool' => $tc['tool'] ?? 'unknown', 'result' => ['success' => false, 'error' => $tcErr->getMessage()]];
+                        }
+                    }
+
+                    // Compose a natural follow-up: send the results back to
+                    // the LLM and ask it to render a final reply. Falls back
+                    // to a templated concatenation if the runtime is offline.
+                    if (!empty($toolResults)) {
+                        $resultsForLlm = [];
+                        $resultsForFallback = [];
+                        foreach ($toolResults as $tr) {
+                            $resultsForLlm[] = $tr['tool'] . ' => ' . json_encode($tr['result'], JSON_UNESCAPED_UNICODE);
+                            $rText = $tr['result']['result'] ?? $tr['result']['error'] ?? json_encode($tr['result']);
+                            $resultsForFallback[] = '• ' . $rText;
+                        }
+                        $followSystem = "You just called tools. Render a final reply in 1-3 sentences using the results below. Output JSON: {\"reply\":\"...\"}.";
+                        $followUser = "Original user message: {$content}\n\nTool results:\n" . implode("\n", $resultsForLlm);
+                        try {
+                            $follow = $runtime->chatJson($followSystem, $followUser, [], 300);
+                            if (($follow['success'] ?? false)) {
+                                $finalReply = $follow['parsed']['reply'] ?? $follow['text'] ?? '';
+                                if ($finalReply) {
+                                    $reply = trim($finalReply);
+                                } else {
+                                    $reply = ($reply ? $reply . "\n\n" : '') . implode("\n", $resultsForFallback);
+                                }
+                            } else {
+                                $reply = ($reply ? $reply . "\n\n" : '') . implode("\n", $resultsForFallback);
+                            }
+                        } catch (\Throwable $followErr) {
+                            \Illuminate\Support\Facades\Log::warning('[AgentChat] tool follow-up failed: ' . $followErr->getMessage());
+                            $reply = ($reply ? $reply . "\n\n" : '') . implode("\n", $resultsForFallback);
                         }
                     }
                 }
