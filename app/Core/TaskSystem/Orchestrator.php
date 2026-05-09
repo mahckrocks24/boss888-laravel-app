@@ -181,6 +181,16 @@ class Orchestrator
             $this->progress->recordEvent($task->id, 'execution_completed', 'completed',
                 message: 'Task completed successfully');
 
+            // PATCH (Phase 2F, 2026-05-10) — execution-plan dependency unlock.
+            // If this task is part of a multi-step plan, see if any sibling
+            // tasks become unblocked. Wrapped in try/catch so any plan-side
+            // failure cannot derail the orchestrator's normal completion path.
+            try {
+                app(\App\Core\Orchestration\ExecutionPlanService::class)->onTaskComplete($task->id);
+            } catch (\Throwable $planErr) {
+                \Illuminate\Support\Facades\Log::warning("ExecutionPlanService::onTaskComplete failed for task {$task->id}: " . $planErr->getMessage());
+            }
+
             // Record rate limit usage
             $this->rateLimiter->record($task->workspace_id, $agentSlug, $connectorName ?? '');
 

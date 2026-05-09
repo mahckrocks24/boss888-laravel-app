@@ -253,6 +253,22 @@ class EngineExecutionService
             'priority'        => $context['priority'] ?? 'normal',
         ]);
 
+        // PATCH (Phase 2G — confidence scoring, 2026-05-10) — record a
+        // 0.0..1.0 confidence on every async task so the admin dashboard
+        // (and future risk-based gating) has a signal to read. The score
+        // is INFORMATIONAL on this pass — the canonical approval gate
+        // remains CapabilityMapService.
+        try {
+            $conf = app(\App\Core\Orchestration\ConfidenceScorer::class)
+                ->score($engine, $action, $params, $wsId);
+            \Illuminate\Support\Facades\DB::table('tasks')->where('id', $task->id)->update([
+                'confidence_score'  => $conf['score'],
+                'confidence_reason' => mb_substr($conf['reason'], 0, 500),
+            ]);
+        } catch (\Throwable $confErr) {
+            Log::warning("ConfidenceScorer failed for task {$task->id}: " . $confErr->getMessage());
+        }
+
         Log::info("Task {$task->id} created via TaskService (async)", [
             'engine' => $engine, 'action' => $action, 'ws' => $wsId,
             'status' => $task->status, 'requires_approval' => $task->requires_approval,

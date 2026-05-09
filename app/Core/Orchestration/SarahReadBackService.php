@@ -65,6 +65,29 @@ class SarahReadBackService
                 'interpretation' => $interpretation,
             ];
 
+            // PATCH (Phase 2H, 2026-05-10) — push the interpreted result
+            // into the cross-agent knowledge base so other specialists pick
+            // it up in their next system prompt. 30-day TTL by default.
+            try {
+                app(\App\Core\Intelligence\WorkspaceKnowledgeBase::class)->store(
+                    $wsId,
+                    $agentSlug,
+                    $row->engine . '_result',
+                    "{$agentName} completed {$row->engine}/{$row->action} (task #{$row->id})",
+                    [
+                        'task_id'        => $row->id,
+                        'engine'         => $row->engine,
+                        'action'         => $row->action,
+                        'result'         => $result,
+                        'interpretation' => $interpretation,
+                        'completed_at'   => $row->completed_at,
+                    ],
+                    30
+                );
+            } catch (\Throwable $kbErr) {
+                Log::warning("SarahReadBackService::checkCompletedTasks KB store failed for task {$row->id}: " . $kbErr->getMessage());
+            }
+
             DB::table('tasks')->where('id', $row->id)->update(['sarah_read_at' => now()]);
         }
 

@@ -149,6 +149,68 @@ Route::middleware(['auth.jwt', 'admin'])->prefix('admin/orchestration')->group(f
     });
 });
 
+// Phase 2F/H/I admin endpoints
+Route::middleware(['auth.jwt', 'admin'])->prefix('admin/plans')->group(function () {
+    Route::post('/', function (\Illuminate\Http\Request $r) {
+        $data = $r->validate([
+            'workspace_id' => 'required|integer',
+            'goal'         => 'required|string|max:500',
+            'steps'        => 'required|array|min:1',
+            'steps.*.engine' => 'required|string',
+            'steps.*.action' => 'required|string',
+            'meta'         => 'sometimes|array',
+        ]);
+        $svc = app(\App\Core\Orchestration\ExecutionPlanService::class);
+        $planId = $svc->createPlan(
+            (int)$data['workspace_id'],
+            $data['goal'],
+            $data['steps'],
+            $data['meta'] ?? []
+        );
+        return response()->json(['plan_id' => $planId, 'status' => $svc->getPlanStatus($planId)]);
+    });
+
+    Route::get('/{planId}', function (string $planId) {
+        return response()->json(app(\App\Core\Orchestration\ExecutionPlanService::class)->getPlanStatus($planId));
+    });
+});
+
+Route::middleware(['auth.jwt', 'admin'])->prefix('admin/knowledge')->group(function () {
+    Route::get('/{wsId}', function (int $wsId) {
+        $kb = app(\App\Core\Intelligence\WorkspaceKnowledgeBase::class);
+        return response()->json(['workspace_id' => $wsId, 'entries' => $kb->getRelevant($wsId, '', 25)]);
+    });
+
+    Route::post('/{wsId}/purge-expired', function () {
+        $deleted = app(\App\Core\Intelligence\WorkspaceKnowledgeBase::class)->purgeExpired();
+        return response()->json(['purged' => $deleted]);
+    });
+});
+
+Route::middleware(['auth.jwt', 'admin'])->prefix('admin/strategy')->group(function () {
+    Route::get('/{wsId}/learnings/{type}', function (int $wsId, string $type) {
+        $svc = app(\App\Core\Intelligence\StrategyLearningService::class);
+        return response()->json([
+            'workspace_id' => $wsId,
+            'type'         => $type,
+            'learnings'    => $svc->getLearnings($wsId, $type),
+            'outcomes'     => $svc->listOutcomes($wsId, $type, 10),
+        ]);
+    });
+
+    Route::post('/{wsId}/outcomes', function (int $wsId, \Illuminate\Http\Request $r) {
+        $data = $r->validate([
+            'strategy_type' => 'required|string',
+            'strategy_data' => 'required|array',
+            'outcome_data'  => 'required|array',
+        ]);
+        $id = app(\App\Core\Intelligence\StrategyLearningService::class)->recordOutcome(
+            $wsId, $data['strategy_type'], $data['strategy_data'], $data['outcome_data']
+        );
+        return response()->json(['outcome_id' => $id]);
+    });
+});
+
 Route::middleware(['auth.jwt', 'admin'])->prefix('admin/agents')->group(function () {
     Route::get('/{slug}/capabilities', function (string $slug) {
         $svc = app(\App\Core\Agent\AgentCapabilityService::class);
@@ -626,6 +688,18 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             }
         }
 
+        // PATCH (Phase 2H — cross-agent knowledge, 2026-05-10) — every agent
+        // sees what their teammates have learned in this workspace. Sarah's
+        // own readback above already records into the KB on her side; here
+        // we surface it for the OTHER specialists.
+        $sharedKnowledgeBlock = '';
+        try {
+            $sharedKnowledgeBlock = app(\App\Core\Intelligence\WorkspaceKnowledgeBase::class)
+                ->buildContextBlock($wsId, $slug, 5);
+        } catch (\Throwable $kbErr) {
+            \Illuminate\Support\Facades\Log::warning('[AgentChat] KB block failed: ' . $kbErr->getMessage());
+        }
+
         // ── Build system prompt ──
         if ($isSarah) {
             $systemPrompt = $brandFactsBlock
@@ -658,6 +732,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "- Include create_tasks in your JSON ONLY when the user confirms (says yes/proceed/go ahead)\n"
                 . "- When user confirms, create ALL tasks from the previous brief and include create_tasks array.\n"
                 . "\n" . $insightsBlock
+                . "\n" . $sharedKnowledgeBlock
                 . "\n" . $toolSchemaBlock
                 . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
                 . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
@@ -672,6 +747,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "Keep responses under 120 words.\n"
                 . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":true/false,\"sarah_context\":\"context if redirecting\",\"tool_calls\":[]}\n"
                 . "  - tool_calls: array of {tool, params, reason} when you need to look something up. Empty [] otherwise.\n"
+                . "\n" . $sharedKnowledgeBlock
                 . "\n" . $toolSchemaBlock
                 . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
                 . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
