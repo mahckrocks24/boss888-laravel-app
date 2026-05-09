@@ -1862,38 +1862,63 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
             $arthur = new \App\Engines\Builder\Services\ArthurService();
 
-            // PATCH (Arthur AI conversation, 2026-05-09) — Arthur is now a real
-            // LLM dialogue. Frontend posts {message, history}; chat() returns
-            // a normalised {type, reply, ready_to_build, build_data, history}
-            // shape. When ready_to_build fires, we call buildFromChat() inline
-            // so the response can include website_id + website_url and the
-            // frontend can redirect immediately.
+            // PATCH (Arthur confirm flow, 2026-05-09) — two modes on this route:
             //
-            // The legacy scripted handleMessage() flow (template picker,
-            // image upload, color extraction, scanColorsServerSide,
-            // simpleExtract, etc.) remains in the service for any callers
-            // that opt in — but the route no longer exposes it by default.
-            $result = $arthur->chat($wsId, $msg, $history);
+            //   (a) Conversation turn: client posts {message, history}.
+            //       chat() returns type='question' (still gathering info) or
+            //       type='confirm' (LLM has enough — send back the summary so
+            //       the frontend can render Upload Logo + Build buttons). On
+            //       'confirm' we DO NOT build yet; we cache build_data for
+            //       300s so the follow-up confirm POST can retrieve it.
+            //
+            //   (b) Confirm action: client posts {confirm:true, logo_url:'…',
+            //       build_data:{…optional echo…}}. We pull build_data from
+            //       cache (or trust the client echo as fallback), call
+            //       buildFromChat($wsId, $buildData, $logoUrl), and return
+            //       type='complete' with website_id + website_url.
+            $isConfirm = (bool) $r->input('confirm', false);
 
-            if (!empty($result['ready_to_build']) && is_array($result['build_data'] ?? null)) {
+            if ($isConfirm) {
+                $logoUrl  = (string) $r->input('logo_url', '');
+                $clientBd = $r->input('build_data', []);
+                $cached   = \Illuminate\Support\Facades\Cache::get('arthur_build_data_' . $wsId, []);
+                $buildData = is_array($cached) && !empty($cached['business_name'])
+                    ? $cached
+                    : (is_array($clientBd) ? $clientBd : []);
+
+                if (empty($buildData['business_name'])) {
+                    return response()->json([
+                        'type'        => 'error',
+                        'build_error' => 'Build data missing or expired. Please describe your business again.',
+                    ], 400);
+                }
+
                 try {
-                    $built = $arthur->buildFromChat($wsId, $result['build_data']);
-                    $result['website_id']  = $built['website_id']  ?? null;
-                    $result['website_url'] = $built['website_url'] ?? null;
-                    $result['build_outcome'] = $built['type'] ?? 'website_created';
-                    if (($built['type'] ?? '') === 'error') {
-                        $result['build_error'] = $built['message'] ?? 'website build failed';
-                    }
+                    $built = $arthur->buildFromChat($wsId, $buildData, $logoUrl !== '' ? $logoUrl : null);
+                    \Illuminate\Support\Facades\Cache::forget('arthur_build_data_' . $wsId);
+                    return response()->json([
+                        'type'          => 'complete',
+                        'website_id'    => $built['website_id']  ?? null,
+                        'website_url'   => $built['website_url'] ?? null,
+                        'build_outcome' => $built['type'] ?? 'website_created',
+                        'build_error'   => (($built['type'] ?? '') === 'error') ? ($built['message'] ?? 'website build failed') : null,
+                        'build_data'    => $buildData,
+                    ]);
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::error('[Arthur:buildFromChat] failed', [
                         'workspace_id' => $wsId,
                         'error'        => $e->getMessage(),
                     ]);
-                    $result['build_outcome'] = 'error';
-                    $result['build_error']   = 'Build failed: ' . $e->getMessage();
+                    return response()->json([
+                        'type'        => 'error',
+                        'build_outcome' => 'error',
+                        'build_error' => 'Build failed: ' . $e->getMessage(),
+                    ], 500);
                 }
             }
 
+            // Conversation turn — pure chat() dialogue, no build trigger.
+            $result = $arthur->chat($wsId, $msg, $history);
             return response()->json($result);
         });
 

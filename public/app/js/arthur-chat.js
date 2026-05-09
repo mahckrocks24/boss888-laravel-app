@@ -125,18 +125,11 @@ window.wsShowArthurWizard = function(prefillArg) {
 }
 
 window._arthurSend = async function() {
-    // PATCH (Arthur AI conversation, 2026-05-09)
-    // Replaces the prior 175-line scripted dispatcher (8 response-type
-    // branches: question/confirm_details/template_pick/template_slider/
-    // image_upload/logo_upload/palette_choice/complete/error) with a
-    // clean LLM-driven dialogue. Server contract is now:
-    //   { type: 'question'|'complete', reply, ready_to_build,
-    //     build_data, history, website_id?, website_url?,
-    //     build_outcome?, build_error? }
-    // Frontend rule: keep _arthur.history in sync with whatever the
-    // server returns, render Arthur's reply, and on type=complete
-    // redirect / dispatch event for onboarding listeners. No regex.
-    // No extraction. No state machine.
+    // PATCH (Arthur confirm + logo flow, 2026-05-09)
+    // Server contract is now:
+    //   type='question' → continue conversation
+    //   type='confirm'  → render summary + Upload Logo / Build buttons
+    //   type='complete' → website built, show success card
     var inp = document.getElementById('arthur-chat-input');
     if (!inp) return;
     if (_arthur.busy) { _arthur.busy = false; }
@@ -162,12 +155,11 @@ window._arthurSend = async function() {
 
         var _t = document.getElementById('arthur-typing'); if (_t) _t.remove();
 
-        // Always render Arthur's reply (chat() always returns `reply`)
+        // Always render Arthur's reply
         var reply = d.reply || d.message || '';
         if (reply) _arthurAddMsg('arthur', reply);
 
-        // Sync conversation history with server (server returns merged
-        // history including the latest turn, so we trust it as canonical)
+        // Sync history with server (canonical merged copy)
         if (Array.isArray(d.history)) {
             _arthur.history = d.history;
         } else {
@@ -175,29 +167,15 @@ window._arthurSend = async function() {
             _arthur.history.push({ role: 'arthur', content: reply });
         }
 
-        // Ready-to-build → website was created server-side; show
-        // success card + dispatch onboarding event.
-        var done = (d.type === 'complete') || d.ready_to_build === true;
-        if (done) {
-            if (d.build_outcome === 'error') {
-                _arthurAddMsg('arthur', '⚠️ ' + (d.build_error || 'Build failed. Please try again.'));
-            } else if (d.website_id) {
-                var bdata = d.build_data || {};
-                _arthurShowWebsiteCard(d.website_id, bdata.business_name || 'Your Website', bdata.industry || '');
-                try {
-                    window.dispatchEvent(new CustomEvent('lu:website-generated', {
-                        detail: {
-                            website_id: d.website_id,
-                            name:       bdata.business_name || '',
-                            industry:   bdata.industry || '',
-                            subdomain:  d.website_url || null,
-                        },
-                    }));
-                } catch (_e) {}
-                setTimeout(function() { if (typeof wsLoadSites === 'function') wsLoadSites(); }, 1500);
-            } else {
-                _arthurAddMsg('arthur', "I'm ready to build, but the build call didn't return an ID. Try again or refresh.");
-            }
+        // type='confirm' → show action buttons (Upload Logo + Build)
+        if (d.type === 'confirm') {
+            window._arthurBuildData = d.build_data || {};
+            window._arthurLogoUrl   = '';
+            _arthurShowConfirmActions();
+        }
+        // type='complete' OR legacy ready_to_build → website was built
+        else if (d.type === 'complete' || d.ready_to_build === true) {
+            _arthurRenderBuildResult(d);
         }
     } catch (e) {
         var _t2 = document.getElementById('arthur-typing'); if (_t2) _t2.remove();
@@ -207,6 +185,152 @@ window._arthurSend = async function() {
     _arthur.busy = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Send →'; }
 };
+
+// ── Confirm-state UI (Upload Logo + Build My Website) ─────────────
+// PATCH (Arthur confirm flow, 2026-05-09)
+function _arthurShowConfirmActions() {
+    var feed = document.getElementById('arthur-feed');
+    if (!feed) return;
+    var prev = document.getElementById('arthur-confirm-actions');
+    if (prev) prev.remove();
+    var box = document.createElement('div');
+    box.id = 'arthur-confirm-actions';
+    box.style.cssText = 'display:flex;gap:12px;margin:12px 0 8px;flex-wrap:wrap';
+    box.innerHTML =
+        '<label id="arthur-logo-label" style="cursor:pointer;background:var(--s2,#1a1a1a);border:1.5px solid var(--bd,#333);border-radius:8px;padding:10px 18px;font-size:13px;font-weight:500;color:var(--t1,#fff);display:inline-flex;align-items:center;gap:8px">' +
+          '<input type="file" id="arthur-confirm-logo-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none">' +
+          '<span>📎 Upload Logo</span>' +
+        '</label>' +
+        '<button id="arthur-confirm-build-btn" type="button" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px">' +
+          '⚡ Build My Website' +
+        '</button>' +
+        '<div id="arthur-confirm-status" style="flex-basis:100%;font-size:12px;color:var(--t3,#888);min-height:16px;margin-top:4px"></div>';
+    feed.appendChild(box);
+    var fi = document.getElementById('arthur-confirm-logo-input');
+    if (fi) fi.onchange = function(ev){ _arthurConfirmLogoChosen(ev); };
+    var bb = document.getElementById('arthur-confirm-build-btn');
+    if (bb) bb.onclick = function(){ _arthurConfirmBuild(); };
+    feed.scrollTop = feed.scrollHeight;
+}
+
+function _arthurConfirmLogoChosen(ev) {
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { alert('Logo must be under 2MB.'); return; }
+    var allowed = ['image/png','image/jpeg','image/svg+xml','image/webp'];
+    if (allowed.indexOf(file.type) === -1) { alert('Logo must be PNG, JPG, SVG, or WEBP.'); return; }
+    var st = document.getElementById('arthur-confirm-status');
+    if (st) { st.textContent = 'Uploading logo…'; st.style.color = 'var(--t3,#888)'; }
+    var fd = new FormData();
+    fd.append('logo', file);
+    var token = localStorage.getItem('lu_token') || '';
+    fetch('/api/builder/logo-upload-temp', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd
+    }).then(function(r){ return r.json().catch(function(){ return {}; }); }).then(function(d){
+        if (!d || d.error || d.success === false) {
+            if (st) { st.textContent = 'Upload failed: ' + ((d && (d.error || d.message)) || 'unknown'); st.style.color = '#F87171'; }
+            return;
+        }
+        window._arthurLogoUrl = d.temp_url || '';
+        if (st) { st.textContent = '✅ Logo uploaded'; st.style.color = '#10B981'; }
+    }).catch(function(err){
+        if (st) { st.textContent = 'Network error: ' + err.message; st.style.color = '#F87171'; }
+    });
+}
+
+window._arthurConfirmBuild = async function() {
+    var box = document.getElementById('arthur-confirm-actions');
+    if (box) box.remove();
+    _arthurAddMsg('user', 'Build my website.');
+
+    var feed = document.getElementById('arthur-feed');
+    var animBox = null;
+    if (feed) {
+        animBox = document.createElement('div');
+        animBox.id = 'arthur-build-anim';
+        animBox.style.cssText = 'display:flex;gap:10px;align-items:flex-start;margin:8px 0';
+        animBox.innerHTML =
+          '<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--p,#6C5CE7),#3B82F6);display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+            (window.icon ? window.icon('ai',18) : '🤖') +
+          '</div>' +
+          '<div id="arthur-build-step" style="padding:10px 14px;border-radius:12px;background:var(--s2,#1a1a1a);color:var(--t1,#fff);font-size:13px;animation:pulse 1.5s infinite">🎨 Selecting your template...</div>';
+        feed.appendChild(animBox);
+        feed.scrollTop = feed.scrollHeight;
+        _arthurShowBuildAnimation(document.getElementById('arthur-build-step'));
+    }
+
+    try {
+        var token = localStorage.getItem('lu_token') || '';
+        var r = await fetch('/api/builder/arthur/message', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token },
+            body:    JSON.stringify({
+                confirm:    true,
+                logo_url:   window._arthurLogoUrl || '',
+                build_data: window._arthurBuildData || {},
+            })
+        });
+        var d = await r.json();
+        var anim = document.getElementById('arthur-build-anim');
+        if (anim) anim.remove();
+        _arthurRenderBuildResult(d);
+    } catch (e) {
+        var anim2 = document.getElementById('arthur-build-anim');
+        if (anim2) anim2.remove();
+        _arthurAddMsg('arthur', '⚠️ Build error: ' + e.message);
+    }
+};
+
+// 5-step build progress animation (replaces static "Thinking…")
+var _arthurBuildSteps = [
+    '🎨 Selecting your template...',
+    '✍️  Writing your content...',
+    '🖼️  Adding images...',
+    '⚡ Putting it all together...',
+    '✅ Almost done...'
+];
+function _arthurShowBuildAnimation(el) {
+    if (!el) return;
+    var i = 0;
+    el.textContent = _arthurBuildSteps[0];
+    var t = setInterval(function() {
+        i++;
+        if (i < _arthurBuildSteps.length) {
+            el.textContent = _arthurBuildSteps[i];
+        } else {
+            clearInterval(t);
+        }
+    }, 1800);
+}
+
+// Shared post-build renderer — used by both the legacy ready_to_build
+// path and the new confirm POST response.
+function _arthurRenderBuildResult(d) {
+    if (!d) return;
+    if ((d.build_outcome === 'error') || d.type === 'error' || d.build_error) {
+        _arthurAddMsg('arthur', '⚠️ ' + (d.build_error || 'Build failed. Please try again.'));
+        return;
+    }
+    if (d.website_id) {
+        var bdata = d.build_data || window._arthurBuildData || {};
+        _arthurShowWebsiteCard(d.website_id, bdata.business_name || 'Your Website', bdata.industry || '');
+        try {
+            window.dispatchEvent(new CustomEvent('lu:website-generated', {
+                detail: {
+                    website_id: d.website_id,
+                    name:       bdata.business_name || '',
+                    industry:   bdata.industry || '',
+                    subdomain:  d.website_url || null,
+                },
+            }));
+        } catch (_e) {}
+        setTimeout(function() { if (typeof wsLoadSites === 'function') wsLoadSites(); }, 1500);
+    } else {
+        _arthurAddMsg('arthur', "I'm ready to build, but the build call didn't return an ID. Try again or refresh.");
+    }
+}
 
 function _arthurAddMsg(role, text) {
     var feed = document.getElementById('arthur-feed');

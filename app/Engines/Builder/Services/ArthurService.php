@@ -532,14 +532,33 @@ Rules:
 - Use "I'll" not "I can"; never hedge ("maybe", "I think")
 
 When you have enough to build (minimum: name + industry + location),
-return ONLY a JSON object with these fields:
-  {"reply": "<your short conversational message>",
-   "ready_to_build": true,
+DO NOT build immediately. First show the user a confirmation summary
+so they can review and optionally upload a logo. Return ONLY a JSON
+object with these fields:
+  {"reply": "<summary message — see SUMMARY FORMAT below>",
+   "ready_to_confirm": true,
    "build_data": {"business_name":"...","industry":"...","location":"...","services":"...","style":"modern","description":"..."}}
+
+SUMMARY FORMAT — when ready_to_confirm is true, the "reply" field
+MUST be the following summary, translated into the user's language
+(keep emoji and **bold** markdown intact):
+
+Here's what I have for your website:
+
+🏢 **Business:** {business name}
+📍 **Location:** {location}
+🎯 **Industry:** {industry}
+⚙️ **Services:** {services}
+🎨 **Style:** {style}
+
+Does everything look correct? Also — do you have a logo you'd like to use?
 
 Until you have enough, return a JSON object with:
   {"reply": "<your short conversational message>",
-   "ready_to_build": false}
+   "ready_to_confirm": false}
+
+Never set "ready_to_build" yourself — the frontend triggers the actual
+build after the user clicks confirm. Always use "ready_to_confirm".
 
 Always respond with valid JSON only — no prose outside the JSON object.
 The "reply" field must be in the same language the user is writing in
@@ -571,9 +590,10 @@ PROMPT;
         }
         $transcript .= "User: {$userMessage}";
 
-        $reply         = '';
-        $readyToBuild  = false;
-        $buildData     = [];
+        $reply           = '';
+        $readyToBuild    = false;
+        $readyToConfirm  = false;
+        $buildData       = [];
 
         try {
             $result = $this->runtime->chatJson($systemPrompt, $transcript, [
@@ -598,12 +618,14 @@ PROMPT;
                 ?? $result['text']
                 ?? ''
             );
-            $readyToBuild = (bool) ($parsed['ready_to_build'] ?? $result['ready_to_build'] ?? false);
+            $readyToBuild   = (bool) ($parsed['ready_to_build']   ?? $result['ready_to_build']   ?? false);
+            $readyToConfirm = (bool) ($parsed['ready_to_confirm'] ?? $result['ready_to_confirm'] ?? false);
             $buildDataRaw = $parsed['build_data'] ?? $result['build_data'] ?? null;
             $buildData    = is_array($buildDataRaw) ? $buildDataRaw : [];
-            if ($readyToBuild && empty($buildData['business_name'])) {
+            if (($readyToBuild || $readyToConfirm) && empty($buildData['business_name'])) {
                 // protect against the model claiming ready without payload
-                $readyToBuild = false;
+                $readyToBuild   = false;
+                $readyToConfirm = false;
             }
 
             // PATCH (Arthur Arabic fix 2026-05-09) — sanitize the reply through
@@ -650,7 +672,8 @@ PROMPT;
 
         if ($reply === '') {
             $reply = "I'm having a brief connection hiccup — could you say that again?";
-            $readyToBuild = false;
+            $readyToBuild   = false;
+            $readyToConfirm = false;
             $buildData = [];
         }
 
@@ -659,25 +682,55 @@ PROMPT;
             ['role' => 'arthur', 'content' => $reply],
         ]);
 
+        // PATCH (Arthur confirm flow 2026-05-09) — when the LLM signals
+        // ready_to_confirm, cache the build_data server-side so a follow-up
+        // {confirm:true} POST can retrieve it without trusting client echo.
+        // 5 minute TTL is plenty for a user to upload a logo + click build.
+        if ($readyToConfirm && !empty($buildData['business_name'])) {
+            try {
+                \Illuminate\Support\Facades\Cache::put(
+                    'arthur_build_data_' . $workspaceId,
+                    $buildData,
+                    300
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[Arthur:chat] cache put failed: ' . $e->getMessage());
+            }
+        }
+
+        $type = 'question';
+        if ($readyToBuild)        $type = 'complete';
+        elseif ($readyToConfirm)  $type = 'confirm';
+
         return [
-            'type'           => $readyToBuild ? 'complete' : 'question',
-            'reply'          => $reply,
-            'ready_to_build' => $readyToBuild,
-            'build_data'     => $buildData,
-            'history'        => $newHistory,
+            'type'             => $type,
+            'reply'            => $reply,
+            'ready_to_build'   => $readyToBuild,
+            'ready_to_confirm' => $readyToConfirm,
+            'build_data'       => $buildData,
+            'history'          => $newHistory,
         ];
     }
 
     /**
      * Public wrapper around the existing private generateWebsite() so the
-     * /arthur/message route can trigger website creation when chat() returns
-     * ready_to_build=true. Maps build_data → generateWebsite($wsId, $data).
+     * /arthur/message route can trigger website creation when the user
+     * confirms (chat() returned ready_to_confirm=true and the user clicked
+     * "Build My Website"). Maps build_data → generateWebsite($wsId, $data).
+     *
+     * If the caller passes a logo_url (from /api/builder/logo-upload-temp),
+     * it is plumbed through with the logo_upload opt-in flag so
+     * generateWebsite()'s logo gating at line 1395-1406 picks it up.
      *
      * Returns whatever generateWebsite returns: typically
      *   ['type' => 'website_created'|'error', 'website_id' => ?, 'website_url' => ?, 'message' => ?]
      */
-    public function buildFromChat(int $workspaceId, array $buildData): array
+    public function buildFromChat(int $workspaceId, array $buildData, ?string $logoUrl = null): array
     {
+        if ($logoUrl !== null && $logoUrl !== '') {
+            $buildData['logo_url']    = $logoUrl;
+            $buildData['logo_upload'] = true;
+        }
         return $this->generateWebsite($workspaceId, $buildData);
     }
 
