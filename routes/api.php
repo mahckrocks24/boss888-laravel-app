@@ -3932,6 +3932,37 @@ HTMLSCRIPT;
                 $workspace_intelligence .= "\nACTIVE SEO GOALS:\n";
                 foreach ($goals as $g) { $workspace_intelligence .= "  - {$g->title}\n"; }
             }
+
+            // PATCH (Aria platform-aware, 2026-05-09) — Inject the 21
+            // platform-wide agents + workspace task counts so Aria can
+            // answer "Is Sarah available?" / "How many tasks are running?"
+            // /  "Who handles SEO?" directly. Agents table has no
+            // workspace_id — agents are platform-wide. Availability is
+            // implicit: all 21 agents are online unless the platform
+            // takes them down.
+            $agents = \Illuminate\Support\Facades\DB::table('agents')
+                ->orderBy('id')
+                ->get(['slug', 'name', 'title']);
+            if (count($agents) > 0) {
+                $workspace_intelligence .= "\nAGENTS (" . count($agents) . " — all available unless flagged):\n";
+                foreach ($agents as $a) {
+                    $workspace_intelligence .= "  - " . $a->name . " (" . ($a->title ?: $a->slug) . ") — slug=" . $a->slug . "\n";
+                }
+            }
+            $taskCounts = \Illuminate\Support\Facades\DB::table('tasks')
+                ->where('workspace_id', $wsId)
+                ->selectRaw('status, COUNT(*) as c')
+                ->groupBy('status')
+                ->pluck('c', 'status')
+                ->toArray();
+            if (! empty($taskCounts)) {
+                $workspace_intelligence .= "\nTASKS (workspace {$wsId}):\n";
+                foreach (['pending','queued','running','awaiting_approval','completed','failed'] as $st) {
+                    if (isset($taskCounts[$st]) && $taskCounts[$st] > 0) {
+                        $workspace_intelligence .= "  - {$st}: {$taskCounts[$st]}\n";
+                    }
+                }
+            }
         } catch (\Throwable $e) {
             $workspace_intelligence = "\n(Could not load workspace data: {$e->getMessage()})";
         }
@@ -4003,6 +4034,16 @@ HTMLSCRIPT;
                     "tell me about your business", "what business are you",
                     "what industry", "you haven't specified", "you havent specified",
                     "haven't shared", "share what industry",
+                    // PATCH (Aria platform-aware, 2026-05-09) — also catch
+                    // generic SaaS strategy ramble. The runtime's default
+                    // assistant prompt sometimes pivots to MRR/CAC/growth-
+                    // hacking advice when asked a specific platform question.
+                    // Mark those replies generic so the chatJson fallback
+                    // (which uses Aria's platform-aware system prompt with
+                    // agents + tasks injected) takes over.
+                    'mrr', 'monthly recurring revenue', 'customer acquisition cost',
+                    'cac', 'churn rate', 'ltv:cac', 'growth hack', 'product-led growth',
+                    'go-to-market', 'gtm strategy', 'unit economics',
                 ];
                 $isGeneric = false;
                 if ($assistReply) {
@@ -4034,11 +4075,33 @@ HTMLSCRIPT;
             // direct fallback that bypassed RuntimeClient.
             $runtime = app(\App\Connectors\RuntimeClient::class);
             if ($runtime->isConfigured()) {
-                $systemPrompt = "You are the LevelUp Growth AI Assistant."
-                    . "\nYou help users navigate the platform, answer questions about their workspace data, and direct them to the right tools."
-                    . "\nBe helpful, concise, and professional. Return ONLY a JSON object: {\"reply\":\"<your concise answer>\"}."
-                    . "\nThe \"reply\" field value must mirror the user's language; JSON keys themselves stay in English."
-                    . "\n\n" . \App\Core\LLM\PromptTemplates::languageRule()
+                // PATCH (Aria platform-aware, 2026-05-09) — Aria is a
+                // PLATFORM intelligence assistant, not a marketing
+                // strategist. She answers direct questions about agents,
+                // tasks, and navigation in 2-3 sentences. She NEVER
+                // gives generic SaaS / MRR / CAC / growth advice when
+                // asked something specific. The PLATFORM STATE block
+                // below (agents + tasks + workspace data) is her source
+                // of truth — she answers from it, not from training.
+                $systemPrompt = "You are Aria, the platform intelligence assistant for LevelUp Growth — an AI marketing platform.\n\n"
+                    . "YOUR JOB: answer questions about THIS user's platform — their agents, their tasks, their websites, their data — directly and briefly.\n\n"
+                    . "STYLE RULES:\n"
+                    . "- Answer the actual question asked. Never pivot to generic advice.\n"
+                    . "- 2-3 sentences max for simple questions. One sentence is often best.\n"
+                    . "- Use the PLATFORM STATE below as your source of truth.\n"
+                    . "- For availability questions: all agents listed below are available unless flagged otherwise. Just say so.\n"
+                    . "- For task / website / article questions: read the counts and lists below and quote them.\n"
+                    . "- For 'who handles X' questions: name the agent from the list and tell the user where to message them (Messages panel).\n"
+                    . "- Never give generic marketing strategy advice (MRR, CAC, growth tactics, etc.) unless the user explicitly asks for strategy.\n"
+                    . "- Never say 'I'm just an AI' or apologize for limits. Just answer.\n"
+                    . "- Never invent agents, tasks, or data — if it's not in the PLATFORM STATE, say you don't have that info and offer to direct them somewhere useful.\n\n"
+                    . "EXAMPLES:\n"
+                    . "Q: 'Is Sarah available?' -> 'Yes, Sarah (Digital Marketing Manager) is available. Message her in the Messages panel to assign work.'\n"
+                    . "Q: 'How many tasks are running?' -> Quote the running count from PLATFORM STATE.\n"
+                    . "Q: 'Who handles SEO?' -> 'James is your SEO Strategist. Open the Messages panel and message James.'\n"
+                    . "Q: 'What can you do?' -> 'I can tell you about your agents, tasks, articles, websites, and SEO data — and direct you to the right place. What do you need?'\n\n"
+                    . "OUTPUT: Return ONLY a JSON object: {\"reply\":\"<your concise answer>\"}. The reply value mirrors the user's language; JSON keys stay in English.\n\n"
+                    . \App\Core\LLM\PromptTemplates::languageRule()
                     . $workspace_intelligence;
 
                 $historyText = '';
