@@ -267,7 +267,7 @@ function _arthurShowConfirmActions() {
           '<button id="arthur-confirm-build-btn" type="button" style="width:100%;background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">' +
             '⚡ Build My Website' +
           '</button>' +
-          '<div style="text-align:center;font-size:11px;color:var(--t3,#888);margin-top:8px">Usually takes 15–30 seconds</div>' +
+          '<div style="text-align:center;font-size:11px;color:var(--t3,#888);margin-top:8px">Usually takes 45–60 seconds</div>' +
         '</div>';
 
     feed.appendChild(box);
@@ -504,13 +504,18 @@ window._arthurConfirmBuild = async function() {
     }
 };
 
-// 5-step build progress animation (replaces static "Thinking…")
+// 8-step build progress animation, 8s per step = ~64s total to match
+// the real ~58-65s build duration (LLM content generation across the
+// whole site, image distribution, brand-color application, persistence).
 var _arthurBuildSteps = [
     '🎨 Selecting your template...',
-    '✍️  Writing your content...',
-    '🖼️  Adding images...',
-    '⚡ Putting it all together...',
-    '✅ Almost done...'
+    '✍️  Writing your homepage copy...',
+    '📄 Building your service pages...',
+    '🖼️  Placing your images...',
+    '🎨 Applying your brand colors...',
+    '⚡ Generating your content...',
+    '🔗 Setting up navigation...',
+    '✅ Almost ready...'
 ];
 function _arthurShowBuildAnimation(el) {
     if (!el) return;
@@ -523,7 +528,7 @@ function _arthurShowBuildAnimation(el) {
         } else {
             clearInterval(t);
         }
-    }, 1800);
+    }, 8000);
 }
 
 // Shared post-build renderer — used by both the legacy ready_to_build
