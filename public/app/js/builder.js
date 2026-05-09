@@ -1776,7 +1776,7 @@ async function wsDoPublish(){
   // Already published — just republish (update content)
   const btn=document.getElementById('ws-pub-btn');btn.textContent='Publishing…';btn.disabled=true;
   try{
-    const r=await fetch(bldApi+'websites/'+wsPubTarget.id+'/publish',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'},body:'{}'});
+    const r=await fetch(API+'builder/websites/'+wsPubTarget.id+'/publish',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'},body:'{}'});
     const d=await r.json();
     if(d.success){
       if(site){site.publish_state='published';site.status='published';}
@@ -1794,6 +1794,178 @@ async function wsDoPublish(){
     }
   }catch(e){showToast('Publish failed: '+e.message,'error');btn.textContent=''+window.icon("rocket",14)+' Publish Now';btn.disabled=false;}
 }
+
+// ── SUBDOMAIN PICKER MODAL (publish-flow-fix, 2026-05-09) ─────────────
+// Shown by wsDoPublish when a website has no subdomain yet.
+// Calls /builder/check-subdomain on every keystroke (300ms debounced),
+// then on confirm: POST /builder/websites/{id}/set-subdomain ->
+// POST /builder/websites/{id}/publish.
+window._luShowSubdomainPicker = function (websiteId, businessName) {
+  // Generate a sane suggestion from the business name
+  var suggested = String(businessName || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s\-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 30);
+  if (suggested.length < 3) suggested = 'my-site';
+
+  var existing = document.getElementById('subdomain-modal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'subdomain-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif';
+
+  modal.innerHTML =
+    '<div style="background:var(--s1,#161927);border:1px solid var(--bd,#333);border-radius:16px;padding:28px;width:90%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
+      '<h3 style="margin:0 0 6px;font-size:18px;font-weight:700;color:var(--t1,#fff)">Choose your web address</h3>' +
+      '<p style="margin:0 0 20px;font-size:13px;color:var(--t3,#888);line-height:1.5">This will be your website\'s public URL on the internet.</p>' +
+      '<div style="display:flex;align-items:stretch;gap:0;border:1.5px solid var(--bd,#333);border-radius:10px;overflow:hidden;margin-bottom:6px">' +
+        '<div style="padding:12px 14px;background:var(--s2,#1a1a1a);color:var(--t3,#888);font-size:13px;white-space:nowrap;display:flex;align-items:center">https://</div>' +
+        '<input id="subdomain-input" type="text" value="' + bld_escH(suggested) + '" placeholder="your-business-name" style="flex:1;border:none;outline:none;padding:12px;background:var(--s1,#161927);color:var(--t1,#fff);font-size:14px;font-family:inherit">' +
+        '<div style="padding:12px 14px;background:var(--s2,#1a1a1a);color:var(--t3,#888);font-size:13px;white-space:nowrap;display:flex;align-items:center">.levelupgrowth.io</div>' +
+      '</div>' +
+      '<div id="subdomain-status" style="font-size:12px;min-height:18px;margin-bottom:18px;color:var(--t3,#888)">Checking availability…</div>' +
+      '<div style="display:flex;gap:10px">' +
+        '<button onclick="document.getElementById(\'subdomain-modal\').remove()" style="flex:1;padding:11px;border-radius:8px;border:1.5px solid var(--bd,#333);background:transparent;color:var(--t1,#fff);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">Cancel</button>' +
+        '<button id="subdomain-confirm" onclick="_luConfirmSubdomain(' + websiteId + ')" disabled style="flex:2;padding:11px;border-radius:8px;border:none;background:var(--p,#6C5CE7);color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;opacity:0.5">Publish Website ⚡</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+
+  var input  = document.getElementById('subdomain-input');
+  var status = document.getElementById('subdomain-status');
+  var btn    = document.getElementById('subdomain-confirm');
+  var debounceTimer;
+
+  function setBtnEnabled(on) {
+    btn.disabled = !on;
+    btn.style.opacity = on ? '1' : '0.5';
+    btn.style.cursor = on ? 'pointer' : 'not-allowed';
+  }
+
+  function checkAvailability(slug) {
+    if (!slug || slug.length < 3) {
+      status.textContent = 'Enter at least 3 characters';
+      status.style.color = 'var(--t3,#888)';
+      setBtnEnabled(false);
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(slug)) {
+      status.textContent = 'Use lowercase letters, numbers and hyphens only';
+      status.style.color = '#f87171';
+      setBtnEnabled(false);
+      return;
+    }
+    status.textContent = 'Checking…';
+    status.style.color = 'var(--t3,#888)';
+    setBtnEnabled(false);
+
+    fetch(API + 'builder/check-subdomain?slug=' + encodeURIComponent(slug) + '&exclude=' + encodeURIComponent(websiteId), {
+      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.available) {
+          status.textContent = '✅ ' + slug + '.levelupgrowth.io is available';
+          status.style.color = '#10b981';
+          setBtnEnabled(true);
+        } else {
+          var msg = d && d.error ? d.error : 'Already taken';
+          if (d && d.suggestion) msg += ' — try ' + d.suggestion;
+          status.textContent = '❌ ' + msg;
+          status.style.color = '#f87171';
+          setBtnEnabled(false);
+        }
+      })
+      .catch(function () {
+        status.textContent = 'Could not check availability — try again';
+        status.style.color = '#f87171';
+        setBtnEnabled(false);
+      });
+  }
+
+  input.addEventListener('input', function () {
+    var slug = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (slug !== this.value) this.value = slug;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function () { checkAvailability(slug); }, 300);
+  });
+
+  // Auto-check the suggested value
+  setTimeout(function () { checkAvailability(suggested); }, 200);
+  setTimeout(function () { input.focus(); input.select(); }, 250);
+};
+
+window._luConfirmSubdomain = async function (websiteId) {
+  var input  = document.getElementById('subdomain-input');
+  var status = document.getElementById('subdomain-status');
+  var btn    = document.getElementById('subdomain-confirm');
+  if (!input || !btn) return;
+
+  var slug = input.value.trim();
+  if (!slug) return;
+
+  btn.textContent = 'Publishing…';
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+
+  try {
+    // 1. Set subdomain
+    var setR = await fetch(API + 'builder/websites/' + websiteId + '/set-subdomain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' },
+      body: JSON.stringify({ subdomain: slug }),
+    });
+    var setD = await setR.json();
+    if (!setR.ok || !setD || !setD.success) {
+      status.textContent = (setD && setD.error) || 'Could not save subdomain';
+      status.style.color = '#f87171';
+      btn.textContent = 'Try Again';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      return;
+    }
+
+    // 2. Publish
+    var pubR = await fetch(API + 'builder/websites/' + websiteId + '/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' },
+      body: '{}',
+    });
+    var pubD = await pubR.json();
+    if (!pubR.ok || !pubD || !pubD.success) {
+      status.textContent = (pubD && pubD.error) || 'Publish failed after subdomain set';
+      status.style.color = '#f87171';
+      btn.textContent = 'Try Again';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      return;
+    }
+
+    document.getElementById('subdomain-modal').remove();
+
+    var url = pubD.url || ('https://' + slug + '.levelupgrowth.io');
+    var toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10001;background:#10b981;color:#fff;padding:14px 18px;border-radius:10px;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,0.35);max-width:320px;font-family:system-ui,sans-serif;line-height:1.5';
+    toast.innerHTML = '🚀 <strong>Website published!</strong><br><a href="' + bld_escH(url) + '" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">' + bld_escH(url) + '</a>';
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.remove(); }, 7000);
+
+    // Refresh the websites grid + any open editor's status
+    if (typeof wsLoadSites === 'function') wsLoadSites();
+  } catch (e) {
+    status.textContent = 'Network error: ' + (e && e.message ? e.message : 'unknown');
+    status.style.color = '#f87171';
+    btn.textContent = 'Try Again';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+};
 
 // ── DEVICE TOGGLE ─────────────────────────────────────────────────────
 
@@ -1890,7 +2062,7 @@ async function bldPublish() {
   btn.textContent='Publishing…'; btn.disabled=true;
   try {
     await bldSave();
-    const r = await fetch(bldApi+'websites/'+wsId+'/publish',{
+    const r = await fetch(API+'builder/websites/'+wsId+'/publish',{
       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'},body:'{}'
     });
     const d = await r.json();

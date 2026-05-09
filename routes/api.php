@@ -1767,7 +1767,16 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::get('/pages/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getPage($id)));
         // Writes through pipeline
         Route::post('/websites', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'create_website', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
-        Route::post('/websites/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'publish_website', ['website_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        // PATCH (publish-flow-fix, 2026-05-09) — duplicate publish route
+        // removed. The closure version at /builder/websites/{id}/publish
+        // (line ~5430) is now the canonical publish endpoint — it gates
+        // on websites.subdomain being non-NULL (returns 422 with a
+        // user-facing message if missing), preventing "site is published
+        // but has no URL to access" states. The engine path here
+        // bypassed that check and was the second of two routes
+        // resolving to the same path; first-registered wins, so this
+        // one was masking the closure entirely.
+        // Route::post('/websites/{id}/publish', ...) — removed
         Route::post('/websites/{wid}/pages', fn(\Illuminate\Http\Request $r, $wid) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'generate_page', array_merge($r->all(), ['website_id' => $wid]), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         Route::put('/pages/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updatePage($id, $r->all()));
 
@@ -5433,6 +5442,71 @@ Route::delete('/builder/websites/{id}/custom-domain', function (\Illuminate\Http
     $service = new \App\Services\CustomDomainService();
     return response()->json($service->disconnect((int) $id));
 })->middleware('auth.jwt');
+// ═══ Set subdomain on a website (2026-05-09) ═══
+// POST /api/builder/websites/{id}/set-subdomain
+// Body: {"subdomain": "my-site"}
+// Validates slug format + availability + workspace ownership; writes
+// websites.subdomain = '{slug}.levelupgrowth.io'. Required before publish
+// (the publish closure 422s on missing subdomain).
+Route::post('/builder/websites/{id}/set-subdomain', function (\Illuminate\Http\Request $request, $id) {
+    $website = \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->first();
+    if (!$website) return response()->json(['error' => 'Website not found'], 404);
+
+    // Workspace ownership check (workspaces.user_id doesn't exist —
+    // ownership lives on workspace_users pivot). Mirrors the publish
+    // closure's auth pattern so we keep behaviour consistent.
+    $user = $request->user();
+    if (!$user) return response()->json(['error' => 'Unauthorized'], 401);
+    $ws = \Illuminate\Support\Facades\DB::table('workspace_users')
+        ->where('workspace_id', $website->workspace_id)
+        ->where('user_id', $user->id)
+        ->first();
+    if (!$ws) return response()->json(['error' => 'Unauthorized'], 403);
+
+    $slug = strtolower(trim((string) $request->input('subdomain', '')));
+    // Normalise: lowercase, allow only alnum + hyphen, collapse repeats
+    $slug = preg_replace('/[^a-z0-9-]+/', '', $slug);
+    $slug = preg_replace('/-+/', '-', (string) $slug);
+    $slug = trim((string) $slug, '-');
+
+    if (!preg_match('/^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/', $slug)) {
+        return response()->json([
+            'error' => 'Invalid subdomain. Use lowercase letters, numbers and hyphens only (3-50 chars).',
+        ], 422);
+    }
+
+    // Reserved-word block (matches /check-subdomain rules)
+    $reserved = ['www', 'app', 'api', 'admin', 'staging', 'mail', 'ftp', 'smtp', 'pop',
+                 'levelup', 'levelupgrowth', 'support', 'help', 'blog', 'test', 'demo',
+                 'dashboard', 'panel', 'login', 'signup', 'register', 'auth', 'oauth',
+                 'billing', 'payment', 'stripe', 'webhook', 'internal', 'system', 'root',
+                 'cdn', 'assets', 'static', 'media', 'img', 'images', 'css', 'js'];
+    if (in_array($slug, $reserved, true)) {
+        return response()->json(['error' => 'That web address is reserved. Try another.'], 422);
+    }
+
+    $fullSub = $slug . '.levelupgrowth.io';
+    $taken = \Illuminate\Support\Facades\DB::table('websites')
+        ->where('subdomain', $fullSub)
+        ->where('id', '!=', $id)
+        ->whereNull('deleted_at')
+        ->exists();
+    if ($taken) {
+        return response()->json(['error' => 'That web address is already taken. Try another.'], 422);
+    }
+
+    \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->update([
+        'subdomain'  => $fullSub,
+        'updated_at' => now(),
+    ]);
+
+    return response()->json([
+        'success'   => true,
+        'subdomain' => $fullSub,
+        'url'       => 'https://' . $fullSub,
+    ]);
+})->middleware('auth.jwt');
+
 // ═══ Subdomain Availability Check ═══
 Route::get('/builder/check-subdomain', function (\Illuminate\Http\Request $request) {
     $slug = strtolower(trim($request->query('slug', '')));
