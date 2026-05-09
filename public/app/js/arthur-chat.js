@@ -130,6 +130,18 @@ window._arthurSend = async function() {
     //   type='question' → continue conversation
     //   type='confirm'  → render summary + Upload Logo / Build buttons
     //   type='complete' → website built, show success card
+
+    // PATCH (Send-as-Build, 2026-05-09) — when the confirm panel is on
+    // screen, both the Send button and Enter key act as "Build" so the
+    // user can't accidentally re-prompt the LLM after the conversation
+    // has already concluded with a summary.
+    if (document.getElementById('arthur-confirm-panel')) {
+        if (typeof window._arthurConfirmBuild === 'function') {
+            window._arthurConfirmBuild();
+        }
+        return;
+    }
+
     var inp = document.getElementById('arthur-chat-input');
     if (!inp) return;
     if (_arthur.busy) { _arthur.busy = false; }
@@ -283,7 +295,28 @@ function _arthurShowConfirmActions() {
     var bb = document.getElementById('arthur-confirm-build-btn');
     if (bb) bb.onclick = function(){ _arthurConfirmBuild(); };
 
+    // PATCH (Send-as-Build, 2026-05-09) — soft-disable the chat input so
+    // the user's eyes go to the panel, but Send/Enter still work as Build.
+    var inp = document.getElementById('arthur-chat-input');
+    if (inp) {
+        inp.dataset.prevPlaceholder = inp.getAttribute('placeholder') || '';
+        inp.setAttribute('placeholder', 'Click Build My Website or upload assets above…');
+        inp.setAttribute('disabled', 'true');
+    }
+
     feed.scrollTop = feed.scrollHeight;
+}
+
+// Restore the chat input to typeable state (called when the panel goes
+// away, either because build started or build returned an error).
+function _arthurResetChatInput() {
+    var inp = document.getElementById('arthur-chat-input');
+    if (!inp) return;
+    inp.removeAttribute('disabled');
+    if (inp.dataset.prevPlaceholder !== undefined) {
+        inp.setAttribute('placeholder', inp.dataset.prevPlaceholder);
+        delete inp.dataset.prevPlaceholder;
+    }
 }
 
 // ── Logo upload — auto-extracts brand colors via ColorExtractorService ──
@@ -426,6 +459,7 @@ window._arthurRemoveImage = function(idx) {
 window._arthurConfirmBuild = async function() {
     var box = document.getElementById('arthur-confirm-panel');
     if (box) box.remove();
+    _arthurResetChatInput();
     _arthurAddMsg('user', 'Build my website.');
 
     var feed = document.getElementById('arthur-feed');
