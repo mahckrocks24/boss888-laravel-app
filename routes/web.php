@@ -326,7 +326,13 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     var typing = addBubble('bot', '…');
     api('POST', '/message', { session_id: session, message: t }).then(function(j){
       typing.remove();
-      var reply = (j && j.success && j.data && (j.data.answer || j.data.reply)) || (j && j.error) || 'Sorry, something went wrong.';
+      // PATCH (chatbot-widget-reply, 2026-05-09) — PublicChatbotController
+      // returns the reply under data.message (per its JSON schema:
+      // {success, data:{message, intent, needs_contact, ...}}).
+      // Widget was reading data.answer / data.reply, falling through to
+      // "Sorry, something went wrong." even when the LLM produced a
+      // perfect response. data.message added as the primary read.
+      var reply = (j && j.success && j.data && (j.data.message || j.data.answer || j.data.reply)) || (j && j.error) || 'Sorry, something went wrong.';
       addBubble('bot', reply);
     });
   }
