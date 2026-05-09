@@ -1879,6 +1879,14 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             $isConfirm = (bool) $r->input('confirm', false);
 
             if ($isConfirm) {
+                // PATCH (Arthur build timeout, 2026-05-09) — website builds
+                // commonly take 50-70s (LLM content generation across 5+ JSON
+                // calls + image generation). Default PHP-FPM max_execution_time
+                // is 30s and nginx fastcgi_read_timeout was 60s — both fixed.
+                // Override the per-request limits so a slow LLM round-trip
+                // doesn't kill the script while it's still doing real work.
+                @set_time_limit(180);
+                @ini_set('max_execution_time', '180');
                 $logoUrl  = (string) $r->input('logo_url', '');
                 $clientBd = $r->input('build_data', []);
                 $cached   = \Illuminate\Support\Facades\Cache::get('arthur_build_data_' . $wsId, []);

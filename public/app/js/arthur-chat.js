@@ -495,9 +495,13 @@ function _arthurShowBuildAnimation(el) {
 // Shared post-build renderer — used by both the legacy ready_to_build
 // path and the new confirm POST response.
 function _arthurRenderBuildResult(d) {
-    if (!d) return;
+    if (!d) {
+        _arthurAddMsg('arthur', '⚠️ Build failed: empty response from server. Check storage/logs/laravel.log.');
+        return;
+    }
     if ((d.build_outcome === 'error') || d.type === 'error' || d.build_error) {
-        _arthurAddMsg('arthur', '⚠️ ' + (d.build_error || 'Build failed. Please try again.'));
+        var msg = d.build_error || d.error || d.message || 'Build failed. Check storage/logs/laravel.log.';
+        _arthurAddMsg('arthur', '⚠️ ' + msg);
         return;
     }
     if (d.website_id) {
@@ -515,7 +519,11 @@ function _arthurRenderBuildResult(d) {
         } catch (_e) {}
         setTimeout(function() { if (typeof wsLoadSites === 'function') wsLoadSites(); }, 1500);
     } else {
-        _arthurAddMsg('arthur', "I'm ready to build, but the build call didn't return an ID. Try again or refresh.");
+        // Surface whatever the server actually said instead of the generic
+        // "didn't return an ID" — typical causes are PHP timeouts, nginx
+        // upstream timeouts, or LLM provider errors.
+        var detail = d.error || d.message || d.build_error || 'No website_id returned. Check storage/logs/laravel.log.';
+        _arthurAddMsg('arthur', '⚠️ Build incomplete: ' + detail);
     }
 }
 
