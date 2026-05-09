@@ -354,22 +354,48 @@ function _arthurShowConfirmActionsImpl(buildData) {
     // they want to revise the brief, and the explicit Build button in
     // the panel is the only build trigger.
 
-    // PATCH (panel-clipped-by-scroll, 2026-05-09) — Defer scroll calls
-    // so the browser has a chance to reflow with the freshly-appended
-    // panel BEFORE we read scrollHeight. Without these setTimeouts the
-    // scroll fires synchronously, scrollHeight is still the pre-append
-    // value, and the panel ends up below the visible scroll area.
-    // Two passes:
-    //   t=150ms — force feed.scrollTop = scrollHeight (jumps to bottom)
-    //   t=200ms — panel.scrollIntoView({block:'nearest'}) as a smooth
-    //              correction; 'nearest' is smarter than 'start' because
-    //              if the panel is already visible it won't yank the user.
-    setTimeout(function(){
+    // PATCH (panel-only-tip-shows, 2026-05-09) — Aggressive scroll fix.
+    //
+    // Root cause #1: classic flexbox bug. feed has `flex:1; overflow-y:auto`
+    // inside a max-height:640px modal but no `min-height:0`. Without that,
+    // the flex item can't shrink below its content's min-content size, so
+    // the feed grows past the modal and the modal's `overflow:hidden`
+    // clips it. Result: feed.scrollTop = scrollHeight does nothing because
+    // the feed itself isn't actually scrollable in this state.
+    //
+    // Root cause #2: prior fix called scrollIntoView AFTER scrollTop=
+    // scrollHeight. scrollIntoView with block:'nearest' on a content-
+    // overflowing element can land on the TOP, undoing the bottom scroll.
+    //
+    // Fix:
+    //  1. Force min-height:0 on feed so flexbox actually constrains it.
+    //  2. Force a reflow by reading offsetHeight.
+    //  3. requestAnimationFrame chain so layout fully settles before each
+    //     scroll attempt.
+    //  4. Use block:'end' (anchors panel-bottom to viewport-bottom) so
+    //     the maximum amount of the panel is visible.
+    //  5. Final pass at 350ms with feed.scrollTop = scrollHeight as the
+    //     authoritative last-write — guaranteed to land at the bottom.
+    try { feed.style.minHeight = '0'; } catch (_) {}
+    void feed.offsetHeight; // force reflow
+
+    function scrollToPanel() {
         try { feed.scrollTop = feed.scrollHeight; } catch (_) {}
-    }, 150);
+    }
+
+    if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(function(){
+            scrollToPanel();
+            requestAnimationFrame(scrollToPanel);
+        });
+    } else {
+        scrollToPanel();
+    }
+    setTimeout(scrollToPanel, 100);
     setTimeout(function(){
-        try { panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
+        try { panel.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (_) {}
     }, 200);
+    setTimeout(scrollToPanel, 350); // authoritative final pass
 }
 
 // Live color picker handler — wired via inline oninput attribute on the
