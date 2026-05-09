@@ -148,14 +148,40 @@ class MediaService
             $q->where('is_platform_asset', 1);
         }
 
-        // Filter by industry via tags JSON array. Hero rows seeded by
-        // Patches 9A-D have tags like ["restaurant","hero","template"].
-        if ($industry !== '') {
-            $q->whereRaw('JSON_CONTAINS(tags, ?)', [json_encode($industry)]);
+        // PATCH (cross-industry-tags, 2026-05-09) — TIERED lookup.
+        // Tier 1 — exact industry slug match (e.g. 'dental')
+        // Tier 2 — semantic cross-industry tags (e.g. medical, luxury_interior)
+        // Tier 3 — universal 'general' floor
+        // We try each tier in order and return the first non-empty result.
+        // This stops a restaurant build from grabbing a dental photo just
+        // because both are tagged 'general' — exact-match always wins.
+        if ($industry === '') {
+            $existing = $q->orderByDesc('created_at')->first();
+            if (! $existing) return null;
+            return ['id' => $existing->id, 'url' => $existing->url, 'path' => $existing->path, 'reused' => true];
         }
 
-        $existing = $q->orderByDesc('created_at')->first();
-        if (! $existing) return null;   // caller generates
+        $tagSets = [
+            [$industry],                                                                          // Tier 1
+            array_diff(self::getCompatibleTags($industry), [$industry, 'general']),               // Tier 2
+            ['general'],                                                                          // Tier 3
+        ];
+
+        foreach ($tagSets as $set) {
+            if (empty($set)) continue;
+            $tier = clone $q;
+            $tier->where(function ($sub) use ($set) {
+                foreach ($set as $tag) {
+                    $sub->orWhereRaw('JSON_CONTAINS(tags, ?)', [json_encode($tag)]);
+                }
+            });
+            $hit = $tier->orderByDesc('created_at')->first();
+            if ($hit) {
+                return ['id' => $hit->id, 'url' => $hit->url, 'path' => $hit->path, 'reused' => true];
+            }
+        }
+
+        return null; // caller generates
 
         return [
             'id'     => $existing->id,
@@ -163,6 +189,71 @@ class MediaService
             'path'   => $existing->path,
             'reused' => true,
         ];
+    }
+
+    /**
+     * PATCH (cross-industry-tags, 2026-05-09)
+     *
+     * Returns the list of tags an image should match against to be considered
+     * suitable for the given industry. The first element is always the
+     * industry's exact slug (highest specificity); subsequent elements are
+     * cross-industry semantic tags (skyline, office, luxury_interior, etc.)
+     * that the image might also legitimately serve. The 'general' floor tag
+     * is always included so retagged platform assets without a specific
+     * sector match still surface for any industry.
+     */
+    private static function getCompatibleTags(string $industry): array
+    {
+        $crossTags = [
+            // Professional / B2B / corporate
+            'consulting'         => ['skyline', 'office', 'dubai', 'team'],
+            'marketing_agency'   => ['office', 'technology', 'team', 'dubai'],
+            'it_services'        => ['skyline', 'office', 'technology', 'dubai'],
+            'real_estate_agency' => ['skyline', 'building', 'dubai', 'luxury_interior'],
+            'architecture'       => ['skyline', 'building', 'office'],
+            'construction'       => ['skyline', 'building', 'dubai'],
+            'home_services'      => ['building'],
+            'interior_design'    => ['luxury_interior', 'building', 'office'],
+            // Hospitality
+            'hotel'              => ['luxury_interior', 'dubai', 'food', 'building'],
+            'resort'             => ['nature', 'luxury_interior', 'food'],
+            'short_term_rental'  => ['dubai', 'luxury_interior'],
+            'travel_agency'      => ['nature', 'dubai'],
+            'event_venue'        => ['luxury_interior', 'food'],
+            // Food
+            'restaurant'         => ['food', 'luxury_interior'],
+            'cafe'               => ['food'],
+            'catering'           => ['food'],
+            // Health / medical
+            'dental'             => ['medical'],
+            'medical_clinic'     => ['medical'],
+            'aesthetic_clinic'   => ['medical', 'luxury_interior'],
+            // Wellness / fitness / beauty
+            'gym'                => ['fitness'],
+            'beauty_salon'       => ['luxury_interior', 'retail'],
+            'barbershop'         => ['retail'],
+            // Pet / kids
+            'pet_services'       => ['nature'],
+            'childcare'          => ['education', 'fitness'],
+            // Retail / commerce
+            'retail_shop'        => ['retail', 'dubai'],
+            'ecommerce'          => ['retail', 'technology'],
+            'automotive'         => ['retail'],
+            // Education
+            'tutoring'           => ['education', 'team'],
+            'training_center'    => ['education', 'office', 'team'],
+            'online_courses'     => ['education', 'technology'],
+            // News / media
+            'news_channel'       => ['office', 'technology', 'dubai'],
+        ];
+
+        // Always include: the exact industry slug + cross-industry tags +
+        // 'general' (universal floor for retagged platform assets).
+        return array_values(array_unique(array_merge(
+            [$industry],
+            $crossTags[$industry] ?? [],
+            ['general']
+        )));
     }
 
     /**
@@ -210,7 +301,20 @@ class MediaService
         // then merge any caller-supplied tags. Order matters: industry first
         // so JSON_CONTAINS(tags, '"<industry>"') in findOrGenerate matches.
         $autoTags = array_values(array_filter([$industry, $category, $mood, $source]));
-        $tags     = empty($tags) ? $autoTags : array_values(array_unique(array_merge($autoTags, $tags)));
+
+        // PATCH (cross-industry-tags, 2026-05-09) — Auto-derive semantic
+        // cross-industry tags from the prompt (skyline / office / medical /
+        // food / luxury_interior / fitness / technology / nature etc.) so
+        // the same image can serve multiple industries via findOrGenerate.
+        // Always append 'general' as the universal floor tag.
+        $semanticTags = self::deriveSemanticTags((string) $prompt);
+        $semanticTags[] = 'general';
+
+        $tags = array_values(array_unique(array_merge(
+            $autoTags,
+            $semanticTags,
+            is_array($tags) ? $tags : []
+        )));
 
         // PATCH (Media Fix 2026-05-09) — phantom columns removed.
         // The `media` table has no `industry`, `mood`, `orientation`,
@@ -243,6 +347,43 @@ class MediaService
             'created_at'        => now(),
             'updated_at'        => now(),
         ]);
+    }
+
+    /**
+     * PATCH (cross-industry-tags, 2026-05-09)
+     *
+     * Derive semantic cross-industry tags from a generation prompt so the
+     * resulting image can be reused across more than just its origin
+     * industry. The keyword map is intentionally narrow — we only add a
+     * tag when the prompt contains the matching keyword. Order doesn't
+     * matter (the tags array is deduped + reordered downstream).
+     */
+    private static function deriveSemanticTags(string $prompt): array
+    {
+        $p = strtolower($prompt);
+        if ($p === '') return [];
+        $rules = [
+            'skyline'        => ['/skyline|cityscape|panorama|aerial.*city|downtown/'],
+            'dubai'          => ['/dubai|burj|marina|jumeirah|mena|gulf|emirates|abu dhabi|sharjah/'],
+            'office'         => ['/office|workspace|boardroom|coworking|cubicle|conference room|meeting room/'],
+            'building'       => ['/building|tower|facade|exterior|architectural|construction site/'],
+            'luxury_interior'=> ['/luxury|elegant|premium|marble|chandelier|five.?star|opulent|sophisticated interior/'],
+            'medical'        => ['/medical|clinic|dental|doctor|hospital|surgical|treatment room|health/'],
+            'food'           => ['/restaurant|food|kitchen|dining|chef|cuisine|coffee|cafe|bakery|catering|dish|plating/'],
+            'nature'         => ['/nature|beach|ocean|mountain|forest|tropical|landscape|garden|outdoor|sunset|sunrise/'],
+            'technology'     => ['/technology|tech|coding|server|monitor|software|digital|laptop|cloud|cyber|ai\\b|data/'],
+            'team'           => ['/team|collaboration|colleagues|group of people|workshop|conference|standup/'],
+            'retail'         => ['/retail|shop|store|boutique|product display|shelving|merchandise/'],
+            'education'      => ['/education|tutoring|classroom|study|student|learning|library|whiteboard/'],
+            'fitness'        => ['/gym|fitness|workout|training|crossfit|pilates|yoga|athletic|exercise/'],
+        ];
+        $tags = [];
+        foreach ($rules as $tag => $patterns) {
+            foreach ($patterns as $rx) {
+                if (preg_match($rx, $p)) { $tags[] = $tag; break; }
+            }
+        }
+        return $tags;
     }
 
     private static function generateAltText(?string $prompt, string $industry, string $category): string
