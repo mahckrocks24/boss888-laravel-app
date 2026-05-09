@@ -181,9 +181,25 @@ window._arthurSend = async function() {
 
         try { console.log('[arthur] response type=' + d.type, { ready_to_confirm: d.ready_to_confirm, ready_to_build: d.ready_to_build, has_build_data: !!(d.build_data && d.build_data.business_name) }); } catch(_){}
 
+        // PATCH (panel-not-rendering safety net, 2026-05-09) — sometimes the
+        // LLM produces the summary text but forgets to set ready_to_confirm
+        // in the JSON, so d.type comes back as 'question'. Detect the summary
+        // pattern (🏢 + 📍 emoji markers + bold Business label) and treat it
+        // as a confirm regardless of the server flag.
+        var looksLikeSummary = false;
+        try {
+            looksLikeSummary = typeof reply === 'string'
+                && reply.indexOf('🏢') !== -1
+                && reply.indexOf('📍') !== -1
+                && /\bBusiness\b/i.test(reply);
+        } catch(_) {}
+
         // type='confirm' → show action buttons (Upload Logo + Build)
-        if (d.type === 'confirm') {
-            _arthurShowConfirmActions(d.build_data || {});
+        if (d.type === 'confirm' || (looksLikeSummary && d.type !== 'complete')) {
+            try { console.log('[arthur] rendering confirm panel (server type=' + d.type + ', looksLikeSummary=' + looksLikeSummary + ')'); } catch(_){}
+            // Build a fallback build_data from history if server didn't send one
+            var bd = (d.build_data && d.build_data.business_name) ? d.build_data : (window._arthurBuildData || {});
+            _arthurShowConfirmActions(bd);
         }
         // type='complete' OR legacy ready_to_build → website was built
         else if (d.type === 'complete' || d.ready_to_build === true) {
@@ -246,12 +262,13 @@ function _arthurShowConfirmActionsImpl(buildData) {
 
     var panel = document.createElement('div');
     panel.id  = 'arthur-confirm-panel';
-    // Solid surface (the prior 3%-white wash on a dark chat was invisible).
+    // Solid surface + visible accent border so the panel is impossible to miss.
     panel.style.cssText =
         'margin-top:16px;display:flex;flex-direction:column;gap:0;' +
         'border-radius:14px;overflow:hidden;' +
-        'border:1px solid #2A2A33;' +
-        'background:#15151A';
+        'border:1px solid #6C5CE7;' +
+        'background:#15151A;' +
+        'box-shadow:0 0 0 1px rgba(108,92,231,0.25),0 8px 32px rgba(0,0,0,0.4)';
 
     panel.innerHTML =
         // ── LOGO ROW ──
