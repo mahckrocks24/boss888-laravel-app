@@ -1851,13 +1851,46 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         });
         Route::post("/websites/{id}/deploy-prep", fn($r, $id) => response()->json(["ready" => true]));
         Route::post('/arthur/message', function (\Illuminate\Http\Request $r) {
-            $wsId = $r->attributes->get('workspace_id');
-            $msg = $r->input('message', '');
+            $wsId    = $r->attributes->get('workspace_id');
+            $msg     = (string) $r->input('message', '');
             $history = $r->input('history', []);
-            $state = $r->input('state', []);
-            $colors = $r->input('colors', null);
+            if (!is_array($history)) $history = [];
+
             $arthur = new \App\Engines\Builder\Services\ArthurService();
-            return response()->json($arthur->handleMessage($wsId, $msg, $history, $state, is_array($colors) ? $colors : null));
+
+            // PATCH (Arthur AI conversation, 2026-05-09) — Arthur is now a real
+            // LLM dialogue. Frontend posts {message, history}; chat() returns
+            // a normalised {type, reply, ready_to_build, build_data, history}
+            // shape. When ready_to_build fires, we call buildFromChat() inline
+            // so the response can include website_id + website_url and the
+            // frontend can redirect immediately.
+            //
+            // The legacy scripted handleMessage() flow (template picker,
+            // image upload, color extraction, scanColorsServerSide,
+            // simpleExtract, etc.) remains in the service for any callers
+            // that opt in — but the route no longer exposes it by default.
+            $result = $arthur->chat($wsId, $msg, $history);
+
+            if (!empty($result['ready_to_build']) && is_array($result['build_data'] ?? null)) {
+                try {
+                    $built = $arthur->buildFromChat($wsId, $result['build_data']);
+                    $result['website_id']  = $built['website_id']  ?? null;
+                    $result['website_url'] = $built['website_url'] ?? null;
+                    $result['build_outcome'] = $built['type'] ?? 'website_created';
+                    if (($built['type'] ?? '') === 'error') {
+                        $result['build_error'] = $built['message'] ?? 'website build failed';
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('[Arthur:buildFromChat] failed', [
+                        'workspace_id' => $wsId,
+                        'error'        => $e->getMessage(),
+                    ]);
+                    $result['build_outcome'] = 'error';
+                    $result['build_error']   = 'Build failed: ' . $e->getMessage();
+                }
+            }
+
+            return response()->json($result);
         });
 
         // Arthur user photo upload — multipart, ONE file per request.
@@ -3778,7 +3811,28 @@ HTMLSCRIPT;
                     'dmm'
                 );
                 $assistReply = $assist['response'] ?? null;
+                // PATCH (Assistant 3b, 2026-05-09) — generic-response detection.
+                // After clearing the runtime's Shukran ghost, /internal/assistant
+                // sometimes returns "you haven't told me about your business yet"
+                // when its memory layer is empty. The Laravel-built
+                // workspace_intelligence string passed in `context` is currently
+                // ignored by the runtime (TASK 1 runtime patch fixes this once
+                // deployed). Until then, detect those generic replies and fall
+                // through to the chatJson fallback below which uses the rich
+                // Laravel-side workspace_intelligence.
+                $genericMarkers = [
+                    "haven't told me", "havent told me", "could you share",
+                    "tell me about your business", "what business are you",
+                    "what industry", "you haven't specified", "you havent specified",
+                    "haven't shared", "share what industry",
+                ];
+                $isGeneric = false;
                 if ($assistReply) {
+                    foreach ($genericMarkers as $g) {
+                        if (stripos($assistReply, $g) !== false) { $isGeneric = true; break; }
+                    }
+                }
+                if ($assistReply && !$isGeneric) {
                     return response()->json([
                         'response'       => $assistReply,
                         'agent_response' => true,
@@ -3788,6 +3842,8 @@ HTMLSCRIPT;
                         'is_action'      => $isAction,
                     ]);
                 }
+                // assistant returned empty or generic — fall through to the
+                // chatJson path below which has full workspace_intelligence.
             }
 
             // PATCH 4 (2026-05-08): runtime-only path. Was a DeepSeekConnector

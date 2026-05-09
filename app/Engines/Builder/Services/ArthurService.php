@@ -475,6 +475,152 @@ class ArthurService
     }
 
     /**
+     * NEW conversational entry point — pure LLM, no regex, no scripted steps.
+     *
+     * PATCH (Arthur AI conversation, 2026-05-09): the spec called for replacing
+     * the entire scripted-wizard flow (handleMessage + extractAllFields +
+     * extractFields + simpleExtract + getNextQuestion + scanColorsServerSide
+     * + isCrossIndustryLeak + ...) with a single LLM-driven dialogue.
+     *
+     * Arthur talks like Sarah — natural, contextual, intelligent. He
+     * decides when he has enough info to build the website and signals
+     * via a [READY_TO_BUILD] marker followed by JSON.
+     *
+     * Returns:
+     *   [
+     *     'type'           => 'question' | 'complete',
+     *     'reply'          => string,                  // user-visible text
+     *     'ready_to_build' => bool,
+     *     'build_data'     => array,                   // when ready_to_build
+     *     'history'        => array,                   // updated for next turn
+     *   ]
+     *
+     * The route handler (POST /api/builder/arthur/message) is responsible for
+     * calling buildFromChat() if ready_to_build is true. This keeps chat()
+     * pure (no DB writes, no template work) so it can be unit-tested as a
+     * conversation function.
+     *
+     * handleMessage() above remains for callers that want the older scripted
+     * flow with template picker + image upload + color extraction. The
+     * route /api/builder/arthur/message now uses chat() exclusively;
+     * handleMessage is reachable via direct service calls only.
+     */
+    public function chat(int $workspaceId, string $userMessage, array $history = []): array
+    {
+        $systemPrompt = <<<'PROMPT'
+You are Arthur, an expert AI website builder for LevelUp Growth.
+You have a natural, warm conversation to understand a business
+then build them a professional website.
+
+You are like a skilled web designer on a discovery call.
+NOT a form. NOT a robot. A real conversation.
+
+Through natural dialogue, learn:
+- Business name
+- What they do / industry
+- Location / who they serve
+- Main services or products
+- Style preference (modern, luxury, minimal, classic)
+
+Rules:
+- Ask 1-2 questions at a time maximum
+- React naturally to what they say
+- If they give multiple details at once, acknowledge all
+- Keep responses to 2-3 sentences max
+- Be warm, encouraging, professional
+- Never repeat a question you already got an answer to
+- Use "I'll" not "I can"; never hedge ("maybe", "I think")
+
+When you have enough to build (minimum: name + industry + location),
+return ONLY a JSON object with these fields:
+  {"reply": "<your short conversational message>",
+   "ready_to_build": true,
+   "build_data": {"business_name":"...","industry":"...","location":"...","services":"...","style":"modern","description":"..."}}
+
+Until you have enough, return a JSON object with:
+  {"reply": "<your short conversational message>",
+   "ready_to_build": false}
+
+Always respond with valid JSON only — no prose outside the JSON object.
+PROMPT;
+
+        // Build a conversation transcript and pass as the user prompt body
+        // (chatJson takes a single user prompt; conversation history is
+        // folded in as the prompt context). The runtime's chat_json task
+        // uses response_format: json_object so the model returns parsed JSON.
+        $transcript = '';
+        foreach ($history as $msg) {
+            $role = (($msg['role'] ?? '') === 'arthur') ? 'Arthur' : 'User';
+            $content = (string) ($msg['content'] ?? '');
+            if ($content !== '') $transcript .= "{$role}: {$content}\n";
+        }
+        $transcript .= "User: {$userMessage}";
+
+        $reply         = '';
+        $readyToBuild  = false;
+        $buildData     = [];
+
+        try {
+            $result = $this->runtime->chatJson($systemPrompt, $transcript, [
+                'workspace_id' => $workspaceId,
+                'task'         => 'arthur_chat',
+            ], 800);
+
+            if (($result['success'] ?? false) && is_array($result['parsed'] ?? null)) {
+                $parsed       = $result['parsed'];
+                $reply        = (string) ($parsed['reply'] ?? '');
+                $readyToBuild = (bool)   ($parsed['ready_to_build'] ?? false);
+                $buildData    = is_array($parsed['build_data'] ?? null) ? $parsed['build_data'] : [];
+                if ($readyToBuild && empty($buildData['business_name'])) {
+                    // protect against the model claiming ready without payload
+                    $readyToBuild = false;
+                }
+            } else {
+                Log::warning('[Arthur:chat] runtime returned no parsed JSON', [
+                    'workspace_id' => $workspaceId,
+                    'error'        => $result['error'] ?? null,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur:chat] runtime call threw: ' . $e->getMessage(), [
+                'workspace_id' => $workspaceId,
+            ]);
+        }
+
+        if ($reply === '') {
+            $reply = "I'm having a brief connection hiccup — could you say that again?";
+            $readyToBuild = false;
+            $buildData = [];
+        }
+
+        $newHistory = array_merge($history, [
+            ['role' => 'user',   'content' => $userMessage],
+            ['role' => 'arthur', 'content' => $reply],
+        ]);
+
+        return [
+            'type'           => $readyToBuild ? 'complete' : 'question',
+            'reply'          => $reply,
+            'ready_to_build' => $readyToBuild,
+            'build_data'     => $buildData,
+            'history'        => $newHistory,
+        ];
+    }
+
+    /**
+     * Public wrapper around the existing private generateWebsite() so the
+     * /arthur/message route can trigger website creation when chat() returns
+     * ready_to_build=true. Maps build_data → generateWebsite($wsId, $data).
+     *
+     * Returns whatever generateWebsite returns: typically
+     *   ['type' => 'website_created'|'error', 'website_id' => ?, 'website_url' => ?, 'message' => ?]
+     */
+    public function buildFromChat(int $workspaceId, array $buildData): array
+    {
+        return $this->generateWebsite($workspaceId, $buildData);
+    }
+
+    /**
      * Handle a message from the user in the Arthur chat.
      */
     public function handleMessage(int $wsId, string $message, array $history = [], array $state = [], ?array $colorsFromPayload = null): array

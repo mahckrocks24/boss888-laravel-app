@@ -125,11 +125,23 @@ window.wsShowArthurWizard = function(prefillArg) {
 }
 
 window._arthurSend = async function() {
+    // PATCH (Arthur AI conversation, 2026-05-09)
+    // Replaces the prior 175-line scripted dispatcher (8 response-type
+    // branches: question/confirm_details/template_pick/template_slider/
+    // image_upload/logo_upload/palette_choice/complete/error) with a
+    // clean LLM-driven dialogue. Server contract is now:
+    //   { type: 'question'|'complete', reply, ready_to_build,
+    //     build_data, history, website_id?, website_url?,
+    //     build_outcome?, build_error? }
+    // Frontend rule: keep _arthur.history in sync with whatever the
+    // server returns, render Arthur's reply, and on type=complete
+    // redirect / dispatch event for onboarding listeners. No regex.
+    // No extraction. No state machine.
     var inp = document.getElementById('arthur-chat-input');
-    if (!inp) { console.log("[Arthur] No input element"); return; }
-if (_arthur.busy) { console.log("[Arthur] Busy flag stuck — resetting"); _arthur.busy = false; }
+    if (!inp) return;
+    if (_arthur.busy) { _arthur.busy = false; }
     var msg = inp.value.trim();
-    if (!msg) { console.log("[Arthur] Empty message"); return; }
+    if (!msg) return;
     inp.value = '';
 
     _arthur.busy = true;
@@ -137,166 +149,63 @@ if (_arthur.busy) { console.log("[Arthur] Busy flag stuck — resetting"); _arth
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
     _arthurAddMsg('user', msg);
-
-    // FIX 1 — capture colors from this message before sending. If the
-    // capture changes state.colors, Arthur acknowledges in the chat feed
-    // so the user gets instant feedback.
-    var _colorRes = window._arthurExtractColors(msg);
-    if (_colorRes.changed) {
-        var _c = _arthur.state.colors;
-        var _bits = [];
-        if (_c.primary)   _bits.push('**' + _c.primary   + '** as your primary colour');
-        if (_c.secondary) _bits.push('**' + _c.secondary + '** as secondary');
-        if (_c.accent)    _bits.push('**' + _c.accent    + '** as accent');
-        if (_bits.length) _arthurAddMsg('arthur', "Got it \u2014 I'll use " + _bits.join(', ') + ".");
-    }
-
-    // Only show the 5-step build banner when we're actually about to build
-    // (user has confirmed a template). Every other message — chat, extraction,
-    // template_pick — shows the lightweight "Thinking..." indicator so the
-    // UI does not lie about what is happening.
-    var _isBuilding = !!(_arthur.state && _arthur.state.template_confirmed);
-    if (_isBuilding) {
-        _arthurShowBuilding();
-    } else {
-        _arthurAddMsg('typing', '');
-    }
+    _arthurAddMsg('typing', '');
 
     try {
         var t = localStorage.getItem('lu_token') || '';
         var r = await fetch('/api/builder/arthur/message', {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + t },
-            body: JSON.stringify({ message: msg, history: _arthur.history, state: _arthur.state, colors: _arthur.state.colors })
+            body:    JSON.stringify({ message: msg, history: _arthur.history || [] })
         });
         var d = await r.json();
 
-        // Remove both indicators — whichever one was shown.
-        var _b = document.getElementById('arthur-building'); if (_b) _b.remove();
-        var _t = document.getElementById('arthur-typing');   if (_t) _t.remove();
+        var _t = document.getElementById('arthur-typing'); if (_t) _t.remove();
 
-        if (d.type === 'question') {
-            _arthurAddMsg('arthur', d.message);
-            // Merge server state back into local state; preserve colors we
-            // captured client-side in case the server echoed an older state.
-            var _srvState = d.state || {};
-            var _keepColors = (_arthur.state && _arthur.state.colors) || { primary: null, secondary: null, accent: null };
-            _arthur.state = _srvState;
-            if (!_arthur.state.colors || (!_arthur.state.colors.primary && !_arthur.state.colors.secondary && !_arthur.state.colors.accent)) {
-                _arthur.state.colors = _keepColors;
-            }
-            _arthurUpdateProgress(d.progress || []);
+        // Always render Arthur's reply (chat() always returns `reply`)
+        var reply = d.reply || d.message || '';
+        if (reply) _arthurAddMsg('arthur', reply);
 
-        } else if (d.type === 'confirm_details') {
-            // BUG 1 FIX — server extracted multiple fields in one shot.
-            // Show the bubble + [Yes, build it] / [Edit details] buttons.
-            var _srvState = d.state || {};
-            var _keepColors = (_arthur.state && _arthur.state.colors) || { primary: null, secondary: null, accent: null };
-            _arthur.state = _srvState;
-            if (!_arthur.state.colors || (!_arthur.state.colors.primary && !_arthur.state.colors.secondary && !_arthur.state.colors.accent)) {
-                _arthur.state.colors = _keepColors;
-            }
-            _arthurUpdateProgress(d.progress || []);
-            if (d.message) _arthurAddMsg('arthur', d.message);
-            _arthurShowConfirmDetails();
-
-        } else if (d.type === 'template_pick') {
-            // Industry is known — server is asking the user to confirm
-            // the template before generation fires.
-            // Merge server state back into local state; preserve colors we
-            // captured client-side in case the server echoed an older state.
-            var _srvState = d.state || {};
-            var _keepColors = (_arthur.state && _arthur.state.colors) || { primary: null, secondary: null, accent: null };
-            _arthur.state = _srvState;
-            if (!_arthur.state.colors || (!_arthur.state.colors.primary && !_arthur.state.colors.secondary && !_arthur.state.colors.accent)) {
-                _arthur.state.colors = _keepColors;
-            }
-            _arthurUpdateProgress(d.progress || []);
-            if (d.message) _arthurAddMsg('arthur', d.message);
-            _arthurShowTemplatePick(d.templates || [], d.industry || _arthur.state.industry || '');
-
-        } else if (d.type === 'template_slider') {
-            // 2026-04-21 — Template slider retired server-side. If a stale
-            // build still emits this, treat it as confirmed with the first
-            // template in the list — state updates silently; the next user
-            // message will progress the flow (server is already patched to
-            // never send this type again once the backend deploy lands).
-            var _srvState2 = d.state || {};
-            var _keepColors2 = (_arthur.state && _arthur.state.colors) || { primary: null, secondary: null, accent: null };
-            _arthur.state = _srvState2;
-            if (!_arthur.state.colors || (!_arthur.state.colors.primary && !_arthur.state.colors.secondary && !_arthur.state.colors.accent)) {
-                _arthur.state.colors = _keepColors2;
-            }
-            _arthur.state.template_confirmed = true;
-            var _firstTpl = (d.templates && d.templates[0]) || null;
-            if (_firstTpl && _firstTpl.industry) _arthur.state.industry = _firstTpl.industry;
-            _arthurUpdateProgress(d.progress || []);
-            try { console.info('[arthur] template_slider intercepted — silently confirming', _arthur.state.industry); } catch(_e) {}
-
-        } else if (d.type === 'image_upload') {
-            // Template confirmed — server is asking the user to upload
-            // photos (gallery/team/services). Hero stays AI-generated.
-            // Merge server state back into local state; preserve colors we
-            // captured client-side in case the server echoed an older state.
-            var _srvState = d.state || {};
-            var _keepColors = (_arthur.state && _arthur.state.colors) || { primary: null, secondary: null, accent: null };
-            _arthur.state = _srvState;
-            if (!_arthur.state.colors || (!_arthur.state.colors.primary && !_arthur.state.colors.secondary && !_arthur.state.colors.accent)) {
-                _arthur.state.colors = _keepColors;
-            }
-            _arthurUpdateProgress(d.progress || []);
-            if (d.message) _arthurAddMsg('arthur', d.message);
-            _arthurShowImageUpload(d.max || 10);
-
-        } else if (d.type === 'logo_upload') {
-            // T1 (2026-04-20) — wizard asks for optional logo.
-            var _s3 = d.state || {};
-            _arthur.state = _s3;
-            _arthurUpdateProgress(d.progress || []);
-            if (d.message) _arthurAddMsg('arthur', d.message);
-            _arthurShowLogoUpload();
-
-        } else if (d.type === 'palette_choice') {
-            // T2 (2026-04-20) — server proposed palettes from logo colors.
-            var _s4 = d.state || {};
-            _arthur.state = _s4;
-            _arthurUpdateProgress(d.progress || []);
-            if (d.message) _arthurAddMsg('arthur', d.message);
-            _arthurShowPaletteChoice(d.palettes || []);
-
-        } else if (d.type === 'complete') {
-            _arthurAddMsg('arthur', d.message);
-            _arthurShowWebsiteCard(d.website_id, d.name, d.industry);
-            // Notify external listeners (onboarding Step 3 hooks this to fire
-            // POST /api/onboarding/complete and enter the dashboard).
-            try {
-                window.dispatchEvent(new CustomEvent('lu:website-generated', {
-                    detail: {
-                        website_id: d.website_id,
-                        name: d.name,
-                        industry: d.industry,
-                        subdomain: d.subdomain || null,
-                    },
-                }));
-            } catch (_e) {}
-            // Reload websites list
-            setTimeout(function() { if (typeof wsLoadSites === 'function') wsLoadSites(); }, 1500);
-
-        } else if (d.type === 'error') {
-            _arthurAddMsg('arthur', ''+window.icon('warning',18)+' ' + (d.message || 'Something went wrong.'));
+        // Sync conversation history with server (server returns merged
+        // history including the latest turn, so we trust it as canonical)
+        if (Array.isArray(d.history)) {
+            _arthur.history = d.history;
+        } else {
+            _arthur.history.push({ role: 'user',   content: msg });
+            _arthur.history.push({ role: 'arthur', content: reply });
         }
 
-        _arthur.history.push({ role: 'user', content: msg });
-        _arthur.history.push({ role: 'assistant', content: d.message || '' });
-
+        // Ready-to-build → website was created server-side; show
+        // success card + dispatch onboarding event.
+        var done = (d.type === 'complete') || d.ready_to_build === true;
+        if (done) {
+            if (d.build_outcome === 'error') {
+                _arthurAddMsg('arthur', '⚠️ ' + (d.build_error || 'Build failed. Please try again.'));
+            } else if (d.website_id) {
+                var bdata = d.build_data || {};
+                _arthurShowWebsiteCard(d.website_id, bdata.business_name || 'Your Website', bdata.industry || '');
+                try {
+                    window.dispatchEvent(new CustomEvent('lu:website-generated', {
+                        detail: {
+                            website_id: d.website_id,
+                            name:       bdata.business_name || '',
+                            industry:   bdata.industry || '',
+                            subdomain:  d.website_url || null,
+                        },
+                    }));
+                } catch (_e) {}
+                setTimeout(function() { if (typeof wsLoadSites === 'function') wsLoadSites(); }, 1500);
+            } else {
+                _arthurAddMsg('arthur', "I'm ready to build, but the build call didn't return an ID. Try again or refresh.");
+            }
+        }
     } catch (e) {
-        var _b2 = document.getElementById('arthur-building'); if (_b2) _b2.remove();
-        var _t2 = document.getElementById('arthur-typing');   if (_t2) _t2.remove();
-        _arthurAddMsg('arthur', ''+window.icon('warning',18)+' Error: ' + e.message);
+        var _t2 = document.getElementById('arthur-typing'); if (_t2) _t2.remove();
+        _arthurAddMsg('arthur', '⚠️ Error: ' + e.message);
     }
 
     _arthur.busy = false;
-    if (btn) { btn.disabled = false; btn.textContent = 'Send \u2192'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Send →'; }
 };
 
 function _arthurAddMsg(role, text) {
