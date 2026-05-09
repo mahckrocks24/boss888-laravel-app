@@ -1867,8 +1867,19 @@ PROMPT;
                     if ($imgData) {
                         file_put_contents($heroFullPath . '/' . basename($heroLocalPath), $imgData);
                         $variables['hero_image'] = $heroLocalPath;
-                        // Register in global media library
-                        try { \App\Services\MediaService::registerFull($heroLocalPath, $heroLocalPath, 'dalle', 'hero', $industry, $wsId, $this->getHeroImagePrompt($industry, $data['location'] ?? 'Dubai'), 'dall-e-3', 'luxury'); } catch (\Throwable $e) {}
+                        // PATCH (image-rule, 2026-05-09) — Register the hero
+                        // as a PLATFORM asset (workspace_id=null) so every
+                        // future build of the same industry reuses it via
+                        // findOrGenerate, regardless of workspace. One
+                        // DALL-E call per industry, ever.
+                        try {
+                            \App\Services\MediaService::registerFull(
+                                $heroLocalPath, $heroLocalPath, 'dalle', 'hero', $industry,
+                                null, // workspace_id=null → is_platform_asset=1
+                                $this->getHeroImagePrompt($industry, $data['location'] ?? 'Dubai'),
+                                'dall-e-3', 'luxury'
+                            );
+                        } catch (\Throwable $e) {}
                     } else {
                         $variables['hero_image'] = $imgResult['url']; // fallback to URL
                     }
@@ -1878,41 +1889,35 @@ PROMPT;
         }
         } // end else (no existing hero)
 
-        // Generate gallery images (3 via DALL-E, reuse hero for remaining).
-        // Prompts are industry-specific so a fitness site doesn't end up
-        // with restaurant food photos in its gallery (bug found 2026-04-19).
-        $galleryPrompts = $this->getGalleryPrompts($industry, $data['location'] ?? 'Dubai');
+        // PATCH (image-rule, 2026-05-09) — Gallery generation REMOVED.
+        // Old behaviour: 3 DALL-E calls per build × every site = ~$0.12/build
+        // wasted on gallery shots that lived for one render.
+        // New rule: pull from the platform media library (industry-tagged
+        // template_image / hero category), fall back to the hero image
+        // if the library has nothing for this industry. ZERO new DALL-E
+        // calls for gallery slots, ever.
         $galleryImages = [];
-        foreach ($galleryPrompts as $i => $prompt) {
-            try {
-                $gResult = $this->runtime->imageGenerate($prompt, ['size' => '1024x1024', 'quality' => 'standard']);
-                if ($gResult['success'] ?? false) {
-                    $galLocalPath = '/storage/sites/gallery/' . uniqid('gal_') . '.png';
-                        $galFullPath = storage_path('app/public/sites/gallery');
-                        if (!is_dir($galFullPath)) mkdir($galFullPath, 0755, true);
-                        $galData = @file_get_contents($gResult['url']);
-                        if ($galData) {
-                            file_put_contents($galFullPath . '/' . basename($galLocalPath), $galData);
-                            $galleryImages[] = $galLocalPath;
-                            // Register in media library
-                            try { \App\Services\MediaService::registerFull($galLocalPath, $galLocalPath, 'dalle', 'gallery', $industry, $wsId, $prompt, 'dall-e-3', 'luxury'); } catch (\Throwable $e) {}
-                        } else {
-                            $galleryImages[] = $gResult['url'];
-                        }
-                }
-            } catch (\Throwable $e) {
-                Log::warning("[Arthur] Gallery image {$i} failed: " . $e->getMessage());
-            }
+        try {
+            $galleryImages = DB::table('media')
+                ->where('is_platform_asset', 1)
+                ->where('asset_type', 'image')
+                ->whereIn('category', ['template_image', 'hero', 'gallery'])
+                ->whereRaw('JSON_CONTAINS(tags, ?)', [json_encode($industry)])
+                ->whereNotNull('url')
+                ->where('url', '!=', '')
+                ->inRandomOrder()
+                ->limit(11)
+                ->pluck('url')
+                ->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] gallery library lookup failed: ' . $e->getMessage());
         }
-        // Fill gallery slots — generated images first, then reuse hero, then empty
+        // Fill gallery slots — library photos first, then repeat the hero
+        // for any leftover slot so no template variable is left empty.
+        $heroFloor = $variables['hero_image'] ?? '';
         for ($gi = 1; $gi <= 11; $gi++) {
-            if (isset($galleryImages[$gi - 1])) {
-                $variables['gallery_image_' . $gi] = $galleryImages[$gi - 1];
-            } elseif (!empty($variables['hero_image']) && $gi <= 6) {
-                $variables['gallery_image_' . $gi] = $variables['hero_image'];
-            } else {
-                $variables['gallery_image_' . $gi] = '';
-            }
+            $variables['gallery_image_' . $gi] = $galleryImages[$gi - 1]
+                ?? $heroFloor;
         }
 
 
