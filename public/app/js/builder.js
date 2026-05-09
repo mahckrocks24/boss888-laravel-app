@@ -660,13 +660,46 @@ async function wsLoadSites(){
 }
 
 function wsUpdateStats(){
-  const total=wsSites.length,pub=wsSites.filter(s=>s.publish_state==='published').length,dom=wsSites.filter(s=>s.domain).length;
+  const total=wsSites.length,pub=wsSites.filter(s=>s.publish_state==='published'||s.status==='published').length,dom=wsSites.filter(s=>s.domain).length;
   const el=id=>document.getElementById(id);
-  if(el('ws-stat-total')) el('ws-stat-total').textContent=total;
+  // PATCH (plan-limit, 2026-05-09) — show "X / MAX" when wsMaxWebsites
+  // is known (set by _luUpdateWebsiteUsage from /api/websites response).
+  var max = (typeof wsMaxWebsites === 'number' && wsMaxWebsites > 0) ? wsMaxWebsites : null;
+  if(el('ws-stat-total')) el('ws-stat-total').textContent = max ? (total + ' / ' + max) : total;
   if(el('ws-stat-pub'))   el('ws-stat-pub').textContent=pub;
   if(el('ws-stat-draft')) el('ws-stat-draft').textContent=total-pub;
   if(el('ws-stat-domain'))el('ws-stat-domain').textContent=dom;
+
+  // Disable + New Website button if at limit.
+  if (max && total >= max) {
+    document.querySelectorAll('button.ct-btn.primary[onclick*="wsShowCreate"]').forEach(function(b){
+      b.disabled = true;
+      b.style.opacity = '0.5';
+      b.style.cursor = 'not-allowed';
+      b.title = 'Plan limit reached (' + max + ' websites). Upgrade to add more.';
+    });
+  } else {
+    document.querySelectorAll('button.ct-btn.primary[onclick*="wsShowCreate"]').forEach(function(b){
+      b.disabled = false;
+      b.style.opacity = '';
+      b.style.cursor = '';
+      b.title = '';
+    });
+  }
 }
+
+// PATCH (plan-limit, 2026-05-09) — captures plan max_websites + current
+// usage from /api/websites response so wsUpdateStats can render the
+// "X / MAX" format. Called from wsLoadSites if the response includes
+// a usage block (server already returns this — see routes/api.php
+// /websites endpoint).
+window.wsMaxWebsites = null;
+window._luUpdateWebsiteUsage = function (usage) {
+  if (!usage) return;
+  if (typeof usage.max === 'number') wsMaxWebsites = usage.max;
+  else if (typeof usage.max_websites === 'number') wsMaxWebsites = usage.max_websites;
+  if (typeof wsUpdateStats === 'function') wsUpdateStats();
+};
 
 function wsRenderGrid(){
   const grid=document.getElementById('ws-grid'); if(!grid) return;
@@ -717,8 +750,21 @@ function wsRenderGrid(){
         +(platform==='wordpress'?`<button class="ct-btn" onclick="event.stopPropagation();_wsExtPluginInfo()" style="font-size:11px;padding:4px 10px;color:var(--bl)">Install Plugin</button>`:'')
         +`<button onclick="event.stopPropagation();wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
     }else{
+      // PATCH (FIX 1, 2026-05-09) — published sites get View↗ instead of
+      // Publish. Live URL precedence: custom_domain > subdomain > /storage
+      // /sites/{id}/index.html. Publish only renders for drafts.
+      var _isPub = s.publish_state === 'published' || s.status === 'published';
+      var _liveUrlBtn;
+      if (s.custom_domain) _liveUrlBtn = 'https://' + s.custom_domain;
+      else if (s.subdomain) _liveUrlBtn = 'https://' + (String(s.subdomain).indexOf('.') === -1 ? s.subdomain + '.levelupgrowth.io' : s.subdomain);
+      else _liveUrlBtn = '/storage/sites/' + s.id + '/index.html';
+
+      var _publishOrView = _isPub
+        ? `<a href="${bld_escH(_liveUrlBtn)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="ct-btn primary" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">View ↗</a>`
+        : `<button class="ct-btn primary" onclick="wsShowPublish(${s.id})" style="font-size:11px;padding:4px 10px">Publish</button>`;
+
       actions=`<button class="ct-btn" onclick="wsOpenSite(${s.id})" style="font-size:11px;padding:4px 10px">Edit</button>`
-        +`<button class="ct-btn primary" onclick="wsShowPublish(${s.id})" style="font-size:11px;padding:4px 10px">Publish</button>`
+        + _publishOrView
         +`<button onclick="wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
     }
 

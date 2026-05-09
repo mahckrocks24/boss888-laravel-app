@@ -1770,6 +1770,42 @@ PROMPT;
 
     private function generateWebsite(int $wsId, array $data): array
     {
+        // PATCH (plan-limit, 2026-05-09) — Mirrors BuilderService::createWebsite's
+        // limit check. ArthurService used to bypass it (insert directly into
+        // websites table), so users could exceed their plan via Arthur even
+        // when the create-website route enforced the cap.
+        try {
+            $currentCount = DB::table('websites')
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->count();
+            $sub = DB::table('subscriptions')
+                ->where('workspace_id', $wsId)
+                ->whereIn('status', ['active', 'trialing'])
+                ->latest()
+                ->first();
+            $plan = null;
+            if ($sub) $plan = DB::table('plans')->where('id', $sub->plan_id)->first();
+            if (! $plan) $plan = DB::table('plans')->where('slug', 'free')->first();
+            $maxWebsites = (int) ($plan->max_websites ?? 1);
+            if ($currentCount >= $maxWebsites) {
+                $planName = $plan->name ?? 'Free';
+                return [
+                    'type'          => 'error',
+                    'message'       => "You've reached your plan limit of {$maxWebsites} website" . ($maxWebsites === 1 ? '' : 's') . " on the {$planName} plan. Upgrade your plan or delete an existing website to continue.",
+                    'limit_reached' => true,
+                    'current'       => $currentCount,
+                    'max'           => $maxWebsites,
+                    'plan'          => $planName,
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Non-fatal: if the limit lookup fails (DB hiccup), let the build
+            // proceed rather than stranding the user. BuilderService's check
+            // already runs as a backstop.
+            Log::warning('[Arthur] plan-limit check failed: ' . $e->getMessage(), ['workspace_id' => $wsId]);
+        }
+
         $rawIndustry = (string) ($data['industry'] ?? '');
         $name = $data['business_name'] ?? 'My Business';
 
