@@ -2237,11 +2237,15 @@ PROMPT;
                 }
             }
 
-            // Blog — always last, always created.
+            // PATCH (FIX 1, 2026-05-09) — news_channel sites get a "News"
+            // page (slug=news) instead of "Blog" (slug=blog). Same type
+            // and sections — only the user-visible label changes so the
+            // nav reads "News" not "Blog" on a news site.
+            $isNewsChannel = ($industry === 'news_channel');
             DB::table('pages')->insert([
                 'website_id'    => $websiteId,
-                'title'         => 'Blog',
-                'slug'          => 'blog',
+                'title'         => $isNewsChannel ? 'News' : 'Blog',
+                'slug'          => $isNewsChannel ? 'news' : 'blog',
                 'type'          => 'blog',
                 'status'        => 'published',
                 'position'      => $homePos++,
@@ -2252,6 +2256,58 @@ PROMPT;
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Arthur] page creation failed: ' . $e->getMessage(), ['website_id' => $websiteId]);
+        }
+
+        // PATCH (FIX 2, 2026-05-09) — Auto-enable the chatbot widget on
+        // every build. chatbot_settings is workspace-UNIQUE (one row per
+        // workspace), so we updateOrInsert keyed on workspace_id and
+        // FORCE enabled=1 (per owner directive — auto-enable should
+        // override any prior user toggle).
+        // Once the row is enabled, PublishedSiteMiddleware injects
+        // <script src="…/chatbot.js?ws=N" async></script> before </body>
+        // on every served page automatically.
+        try {
+            DB::table('chatbot_settings')->updateOrInsert(
+                ['workspace_id' => $wsId],
+                [
+                    'enabled'               => 1,
+                    'greeting'              => 'Hi! How can I help you today?',
+                    'business_context_text' => $data['description'] ?? null,
+                    'updated_at'            => now(),
+                    'created_at'            => now(),
+                ]
+            );
+            Log::info('[Arthur] chatbot auto-enabled for ws=' . $wsId);
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] chatbot auto-enable failed: ' . $e->getMessage(), ['workspace_id' => $wsId]);
+        }
+
+        // PATCH (FIX 4, 2026-05-09) — Inject the chatbot bootstrap script
+        // directly into the static index.html on disk. The
+        // PublishedSiteMiddleware already injects on subdomain serve, but
+        // direct /storage/sites/{id}/index.html access (admin previews,
+        // raw URL sharing, etc.) wouldn't see the script otherwise. Idempotent.
+        try {
+            $staticHtmlPath = storage_path('app/public/sites/' . $websiteId . '/index.html');
+            if (is_file($staticHtmlPath)) {
+                $html = file_get_contents($staticHtmlPath);
+                if ($html && strpos($html, 'chatbot.js?ws=') === false) {
+                    $appHost = parse_url((string) config('app.url'), PHP_URL_HOST) ?: '';
+                    $origin = (str_contains($appHost, 'levelupgrowth.io'))
+                        ? 'https://' . ($appHost ?: 'staging.levelupgrowth.io')
+                        : 'https://staging.levelupgrowth.io';
+                    $tag = '<script src="' . $origin . '/chatbot.js?ws=' . $wsId . '" async></script>';
+                    $pos = strripos($html, '</body>');
+                    if ($pos !== false) {
+                        $html = substr($html, 0, $pos) . $tag . substr($html, $pos);
+                    } else {
+                        $html .= "\n" . $tag;
+                    }
+                    file_put_contents($staticHtmlPath, $html);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] static chatbot script injection failed: ' . $e->getMessage());
         }
 
         // Log intelligence
