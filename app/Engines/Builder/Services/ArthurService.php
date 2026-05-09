@@ -544,6 +544,13 @@ Until you have enough, return a JSON object with:
 Always respond with valid JSON only — no prose outside the JSON object.
 PROMPT;
 
+        // PATCH (Arthur fix 2026-05-09) — speed: trim history to last 10 turns
+        // (5 user + 5 arthur). Prevents prompt bloat after long conversations
+        // and keeps Arthur as snappy as Sarah / the LevelUp Assistant.
+        if (count($history) > 10) {
+            $history = array_slice($history, -10);
+        }
+
         // Build a conversation transcript and pass as the user prompt body
         // (chatJson takes a single user prompt; conversation history is
         // folded in as the prompt context). The runtime's chat_json task
@@ -566,19 +573,44 @@ PROMPT;
                 'task'         => 'arthur_chat',
             ], 800);
 
-            if (($result['success'] ?? false) && is_array($result['parsed'] ?? null)) {
-                $parsed       = $result['parsed'];
-                $reply        = (string) ($parsed['reply'] ?? '');
-                $readyToBuild = (bool)   ($parsed['ready_to_build'] ?? false);
-                $buildData    = is_array($parsed['build_data'] ?? null) ? $parsed['build_data'] : [];
-                if ($readyToBuild && empty($buildData['business_name'])) {
-                    // protect against the model claiming ready without payload
-                    $readyToBuild = false;
-                }
-            } else {
-                Log::warning('[Arthur:chat] runtime returned no parsed JSON', [
+            // PATCH (Arthur fix 2026-05-09) — defensive widened reply extraction.
+            // The runtime's chat_json sometimes returns the reply under different
+            // keys depending on whether DeepSeek's response_format=json_object
+            // succeeded in parsing or fell back to raw text. Cover all known
+            // shapes so we never show an empty bubble.
+            $parsed = is_array($result['parsed'] ?? null) ? $result['parsed'] : [];
+            $reply  = (string) (
+                $parsed['reply']
+                ?? $parsed['response']
+                ?? $parsed['message']
+                ?? $parsed['content']
+                ?? $result['reply']
+                ?? $result['response']
+                ?? $result['content']
+                ?? $result['text']
+                ?? ''
+            );
+            $readyToBuild = (bool) ($parsed['ready_to_build'] ?? $result['ready_to_build'] ?? false);
+            $buildDataRaw = $parsed['build_data'] ?? $result['build_data'] ?? null;
+            $buildData    = is_array($buildDataRaw) ? $buildDataRaw : [];
+            if ($readyToBuild && empty($buildData['business_name'])) {
+                // protect against the model claiming ready without payload
+                $readyToBuild = false;
+            }
+
+            // PATCH (Arthur fix 2026-05-09) — temporary debug log so we can
+            // see exactly what shape the runtime returned in logs when a
+            // user reports an empty bubble. Drop this log line once the
+            // empty-response issue is confirmed eliminated.
+            if ($reply === '') {
+                Log::warning('[Arthur:chat] reply extraction came up empty', [
                     'workspace_id' => $workspaceId,
+                    'success'      => $result['success'] ?? null,
                     'error'        => $result['error'] ?? null,
+                    'parsed_keys'  => array_keys($parsed),
+                    'raw_keys'     => array_keys($result),
+                    'parsed_dump'  => json_encode($parsed, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                    'text_len'     => isset($result['text']) ? strlen((string) $result['text']) : null,
                 ]);
             }
         } catch (\Throwable $e) {
