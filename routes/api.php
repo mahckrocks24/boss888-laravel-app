@@ -103,6 +103,75 @@ Route::post('/admin/auth', function (\Illuminate\Http\Request $r) {
     ]);
 });
 
+// ── Phase 2 Admin: Orchestration Health + Capability Registry ──────────────
+// All gated behind auth.jwt + admin (platform-admin flag). Pair with the
+// admin panel's existing /admin/auth → JWT flow.
+Route::middleware(['auth.jwt', 'admin'])->prefix('admin/orchestration')->group(function () {
+    Route::get('/health', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->query('workspace_id');
+        $svc = app(\App\Core\Orchestration\OrchestrationHealthService::class);
+        return response()->json($svc->snapshot($wsId ? (int)$wsId : null));
+    });
+
+    Route::get('/orphans', function () {
+        $sm = app(\App\Core\Orchestration\TaskStateMachine::class);
+        return response()->json([
+            'orphans' => $sm->detectOrphans()->map(fn($r) => [
+                'id'           => (int)$r->id,
+                'workspace_id' => (int)$r->workspace_id,
+                'engine'       => $r->engine,
+                'action'       => $r->action,
+                'status'       => $r->status,
+                'updated_at'   => $r->updated_at,
+            ])->all(),
+        ]);
+    });
+
+    Route::post('/recover-orphans', function () {
+        $sm = app(\App\Core\Orchestration\TaskStateMachine::class);
+        return response()->json(['recovered' => $sm->recoverOrphans(30)]);
+    });
+
+    Route::post('/transition', function (\Illuminate\Http\Request $r) {
+        $r->validate([
+            'task_id'  => 'required|integer',
+            'to'       => 'required|string',
+            'reason'   => 'sometimes|string',
+        ]);
+        $sm = app(\App\Core\Orchestration\TaskStateMachine::class);
+        $applied = $sm->transition((int)$r->input('task_id'), $r->input('to'), [
+            'progress_message' => 'admin transition: ' . ($r->input('reason') ?? 'manual'),
+        ]);
+        return response()->json([
+            'success' => $applied !== null,
+            'status'  => $applied,
+        ], $applied !== null ? 200 : 422);
+    });
+});
+
+Route::middleware(['auth.jwt', 'admin'])->prefix('admin/agents')->group(function () {
+    Route::get('/{slug}/capabilities', function (string $slug) {
+        $svc = app(\App\Core\Agent\AgentCapabilityService::class);
+        return response()->json([
+            'agent_slug'   => $slug,
+            'capabilities' => $svc->getCapabilities($slug),
+        ]);
+    });
+
+    Route::post('/{slug}/capabilities', function (string $slug, \Illuminate\Http\Request $r) {
+        $r->validate(['tool_id' => 'required|string']);
+        $svc = app(\App\Core\Agent\AgentCapabilityService::class);
+        $svc->grant($slug, $r->input('tool_id'), 'admin:' . ($r->user()->email ?? 'unknown'));
+        return response()->json(['success' => true, 'agent' => $slug, 'tool' => $r->input('tool_id')]);
+    });
+
+    Route::delete('/{slug}/capabilities/{toolId}', function (string $slug, string $toolId, \Illuminate\Http\Request $r) {
+        $svc = app(\App\Core\Agent\AgentCapabilityService::class);
+        $ok  = $svc->revoke($slug, $toolId, 'admin:' . ($r->user()->email ?? 'unknown'));
+        return response()->json(['success' => $ok, 'agent' => $slug, 'tool' => $toolId]);
+    });
+});
+
 // ── Public OAuth Callbacks ────────────────────────────────────────────────
 // OAuth callbacks are hit by platform redirects (browser → Facebook → callback URL).
 // The browser won't have a JWT at this point, so these MUST be outside auth.jwt.

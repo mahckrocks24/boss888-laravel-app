@@ -2,6 +2,11 @@
 
 namespace App\Core\Agent;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+
 /**
  * AgentCapabilityService — Ported from runtime capability-map.js
  *
@@ -331,67 +336,153 @@ class AgentCapabilityService
     public function canUse(string $agentSlug, string $toolId): bool
     {
         $key = self::SLUG_ALIASES[$agentSlug] ?? $agentSlug;
+
+        // Phase 2D — DB-first dynamic registry. Cached for 5 min so a hot
+        // request path doesn't hammer MySQL. Static map remains as a runtime
+        // safety net (used when agent_capabilities is empty / missing).
+        if ($this->dbRegistryAvailable()) {
+            $cacheKey = "agent_cap:v1:{$key}:{$toolId}";
+            $hit = Cache::remember($cacheKey, 300, function () use ($key, $toolId) {
+                if (DB::table('agent_capabilities')
+                    ->where('agent_slug', $key)
+                    ->where('tool_id', $toolId)
+                    ->where('is_active', true)
+                    ->exists()) {
+                    return 1;
+                }
+                if (str_contains($toolId, '_')) {
+                    $bare = preg_replace('/^[a-z]+_/', '', $toolId, 1);
+                    if ($bare && $bare !== $toolId) {
+                        return DB::table('agent_capabilities')
+                            ->where('agent_slug', $key)
+                            ->where('tool_id', $bare)
+                            ->where('is_active', true)
+                            ->exists() ? 1 : 0;
+                    }
+                }
+                return 0;
+            });
+            if ($hit === 1) return true;
+            // DB said no — but still fall through to static map so a
+            // half-seeded table never breaks an agent.
+        }
+
         $capabilities = self::CAPABILITY_MAP[$key] ?? [];
-
-        // Direct match
         if (in_array($toolId, $capabilities, true)) return true;
-
-        // Engine-prefixed → bare tool name fallback.
-        // e.g. `social_create_post` → also try `create_post`.
         if (str_contains($toolId, '_')) {
             $bare = preg_replace('/^[a-z]+_/', '', $toolId, 1);
             if ($bare && $bare !== $toolId && in_array($bare, $capabilities, true)) return true;
         }
-
         return false;
     }
 
     /**
-     * Get all tool IDs an agent is permitted to use.
-     *
-     * @param string $agentSlug
-     * @return array
+     * Get all tool IDs an agent is permitted to use. Reads the DB registry
+     * when present; falls back to the static map.
      */
     public function getCapabilities(string $agentSlug): array
     {
         $key = self::SLUG_ALIASES[$agentSlug] ?? $agentSlug;
+
+        if ($this->dbRegistryAvailable()) {
+            $tools = Cache::remember("agent_cap:v1:list:{$key}", 300, function () use ($key) {
+                return DB::table('agent_capabilities')
+                    ->where('agent_slug', $key)
+                    ->where('is_active', true)
+                    ->pluck('tool_id')
+                    ->all();
+            });
+            if (!empty($tools)) return $tools;
+        }
         return self::CAPABILITY_MAP[$key] ?? [];
     }
 
-    /**
-     * Get all agents that have access to a specific tool.
-     *
-     * @param string $toolId
-     * @return array  List of agent slugs
-     */
     public function getAgentsForTool(string $toolId): array
     {
+        if ($this->dbRegistryAvailable()) {
+            $rows = DB::table('agent_capabilities')
+                ->where('tool_id', $toolId)
+                ->where('is_active', true)
+                ->pluck('agent_slug')
+                ->all();
+            if (!empty($rows)) return $rows;
+        }
         $agents = [];
         foreach (self::CAPABILITY_MAP as $agentSlug => $tools) {
-            if (in_array($toolId, $tools, true)) {
-                $agents[] = $agentSlug;
-            }
+            if (in_array($toolId, $tools, true)) $agents[] = $agentSlug;
         }
         return $agents;
     }
 
-    /**
-     * Get the full capability map (for admin/debug).
-     *
-     * @return array
-     */
     public function getAllCapabilities(): array
     {
         return self::CAPABILITY_MAP;
     }
 
-    /**
-     * Get all known agent slugs.
-     *
-     * @return array
-     */
     public function getAgentSlugs(): array
     {
+        if ($this->dbRegistryAvailable()) {
+            $slugs = DB::table('agent_capabilities')
+                ->where('is_active', true)
+                ->pluck('agent_slug')
+                ->unique()
+                ->values()
+                ->all();
+            if (!empty($slugs)) return $slugs;
+        }
         return array_keys(self::CAPABILITY_MAP);
+    }
+
+    /**
+     * Phase 2D — admin grant. Bumps the cache so the change is reflected
+     * within seconds without waiting for the 5-min TTL.
+     */
+    public function grant(string $agentSlug, string $toolId, ?string $grantedBy = null): bool
+    {
+        $key = self::SLUG_ALIASES[$agentSlug] ?? $agentSlug;
+        DB::table('agent_capabilities')->updateOrInsert(
+            ['agent_slug' => $key, 'tool_id' => $toolId],
+            [
+                'is_active'  => true,
+                'granted_at' => now(),
+                'granted_by' => $grantedBy,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+        Cache::forget("agent_cap:v1:{$key}:{$toolId}");
+        Cache::forget("agent_cap:v1:list:{$key}");
+        Log::info("AgentCapability grant: {$key} -> {$toolId}", ['by' => $grantedBy]);
+        return true;
+    }
+
+    public function revoke(string $agentSlug, string $toolId, ?string $revokedBy = null): bool
+    {
+        $key = self::SLUG_ALIASES[$agentSlug] ?? $agentSlug;
+        $n = DB::table('agent_capabilities')
+            ->where('agent_slug', $key)
+            ->where('tool_id', $toolId)
+            ->update(['is_active' => false, 'updated_at' => now()]);
+        Cache::forget("agent_cap:v1:{$key}:{$toolId}");
+        Cache::forget("agent_cap:v1:list:{$key}");
+        Log::info("AgentCapability revoke: {$key} -> {$toolId}", ['by' => $revokedBy, 'rows' => $n]);
+        return $n > 0;
+    }
+
+    /**
+     * Cheap (cached 60s) check that the registry table exists and has rows.
+     * Avoids per-request schema introspection while still giving the static
+     * fallback a chance if the table is dropped or empty.
+     */
+    private function dbRegistryAvailable(): bool
+    {
+        return (bool) Cache::remember('agent_cap:v1:registry_ready', 60, function () {
+            try {
+                if (!Schema::hasTable('agent_capabilities')) return false;
+                return DB::table('agent_capabilities')->where('is_active', true)->exists();
+            } catch (\Throwable $e) {
+                return false;
+            }
+        });
     }
 }

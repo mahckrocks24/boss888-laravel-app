@@ -141,6 +141,21 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::info("credits:reap-orphans released {$released} orphan reservation(s)");
             }
         })->name('credits:reap-orphans')->hourly()->withoutOverlapping();
+
+        // PATCH (Phase 2C, 2026-05-10) — task orphan reaper. Tasks stuck in
+        // running / queued > 30 min usually mean a worker crashed or Redis
+        // was flushed mid-job. recoverOrphans() marks them as failed with a
+        // clear reason so the dashboard reflects real state.
+        $schedule->call(function () {
+            try {
+                $recovered = app(\App\Core\Orchestration\TaskStateMachine::class)->recoverOrphans(30);
+                if ($recovered > 0) {
+                    \Illuminate\Support\Facades\Log::info("tasks:recover-orphans recovered {$recovered} orphan task(s)");
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('tasks:recover-orphans failed: ' . $e->getMessage());
+            }
+        })->name('tasks:recover-orphans')->everyFifteenMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
 
@@ -168,6 +183,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // TrafficDefenseService into the request pipeline. Apply via
             // Route::middleware(['auth.jwt', 'traffic.defense']).
             'traffic.defense' => \App\Http\Middleware\TrafficDefenseMiddleware::class,
+            // Phase 2E (2026-05-10) — platform admin gate. Required by the
+            // orchestration health endpoint + capability-registry admin API.
+            // Checks $user->is_platform_admin; pair with auth.jwt.
+            'admin'           => \App\Http\Middleware\AdminMiddleware::class,
         ]);
 
         $middleware->throttleApi();
