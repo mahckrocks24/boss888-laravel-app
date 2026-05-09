@@ -536,7 +536,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "- List who you'll assign and what engine/action you'll use\n"
                 . "- Ask: 'Shall I proceed?'\n"
                 . "- Include create_tasks in your JSON ONLY when the user confirms (says yes/proceed/go ahead)\n"
-                . "- When user confirms, create ALL tasks from the previous brief and include create_tasks array.";
+                . "- When user confirms, create ALL tasks from the previous brief and include create_tasks array.\n"
+                . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
+                . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
         } else {
             $systemPrompt = "You are {$agent->name}, {$agent->title} for {$workspace->business_name}.\n"
                 . "Your expertise: " . implode(', ', $skills) . "\n"
@@ -544,7 +546,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "Answer questions about your work directly. Be helpful and specific.\n"
                 . "For NEW task requests beyond your current scope, say you'll need Sarah to assign it officially.\n"
                 . "Keep responses under 120 words.\n"
-                . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":true/false,\"sarah_context\":\"context if redirecting\"}";
+                . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":true/false,\"sarah_context\":\"context if redirecting\"}\n"
+                . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
+                . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
         }
 
         // ── Call runtime LLM ──
@@ -3780,6 +3784,7 @@ HTMLSCRIPT;
                     . "\n- You can answer questions about the workspace data shown below, but you don't execute actions yourself"
                     . "\n\nBe helpful. If you see missing data or issues in the workspace, mention them and suggest which agent or section can fix it."
                     . "\nBe concise — 2-3 sentences for simple questions, more for complex strategy."
+                    . "\n\n" . \App\Core\LLM\PromptTemplates::languageRule()
                     . $workspace_intelligence;
 
                 $messages = [['role' => 'system', 'content' => $systemPrompt]];
@@ -3853,6 +3858,8 @@ HTMLSCRIPT;
                 $systemPrompt = "You are the LevelUp Growth AI Assistant."
                     . "\nYou help users navigate the platform, answer questions about their workspace data, and direct them to the right tools."
                     . "\nBe helpful, concise, and professional. Return ONLY a JSON object: {\"reply\":\"<your concise answer>\"}."
+                    . "\nThe \"reply\" field value must mirror the user's language; JSON keys themselves stay in English."
+                    . "\n\n" . \App\Core\LLM\PromptTemplates::languageRule()
                     . $workspace_intelligence;
 
                 $historyText = '';

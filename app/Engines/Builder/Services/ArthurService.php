@@ -542,7 +542,15 @@ Until you have enough, return a JSON object with:
    "ready_to_build": false}
 
 Always respond with valid JSON only — no prose outside the JSON object.
+The "reply" field must be in the same language the user is writing in
+(Arabic, German, French, Chinese, Korean, Hindi, Urdu, Tagalog, etc.) —
+match the user's language naturally. The JSON keys themselves stay
+in English; only the value of "reply" mirrors the user's language.
 PROMPT;
+
+        // PATCH (i18n 2026-05-09) — append the platform-wide language rule.
+        // Single-quoted heredoc above can't interpolate, so concatenate.
+        $systemPrompt .= "\n\n" . \App\Core\LLM\PromptTemplates::languageRule();
 
         // PATCH (Arthur fix 2026-05-09) — speed: trim history to last 10 turns
         // (5 user + 5 arthur). Prevents prompt bloat after long conversations

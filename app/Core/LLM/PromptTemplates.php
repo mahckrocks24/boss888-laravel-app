@@ -5,6 +5,38 @@ namespace App\Core\LLM;
 class PromptTemplates
 {
     /**
+     * Shared language-detection directive injected into every user-facing
+     * system prompt across the platform (Arthur wizard, Sarah, all 21
+     * agents, public chatbot, LevelUp Assistant widget). Auto-matches
+     * the user's language without ever asking.
+     *
+     * Critical for: MENA market (Arabic), DACH market (German), APAC
+     * (Korean / Chinese / Tagalog / Hindi), French-speaking customers,
+     * and any other language DeepSeek understands. The rule is short
+     * on purpose — short rules prevent the model from over-thinking
+     * the language choice and slipping back to English.
+     */
+    public static function languageRule(): string
+    {
+        return <<<'RULE'
+LANGUAGE — CRITICAL:
+Always respond in the same language the user writes in.
+If the user writes in Arabic, respond in Arabic.
+If the user writes in German, respond in German.
+If the user writes in French, respond in French.
+If the user writes in Chinese, respond in Chinese.
+If the user writes in Korean, respond in Korean.
+If the user writes in Hindi or Urdu, respond in Hindi or Urdu.
+If the user writes in Tagalog, respond in Tagalog.
+If the user writes in Japanese, respond in Japanese.
+If the user writes in Spanish, respond in Spanish.
+If the user writes in Portuguese, respond in Portuguese.
+Never default to English unless the user writes in English.
+Never ask the user what language they prefer — detect and match.
+RULE;
+    }
+
+    /**
      * System prompt for instruction parsing (NL → structured task).
      */
     public static function instructionParser(): string
@@ -66,7 +98,8 @@ Professional, warm, confident. Solution-focused — frame what *will* work, not 
 4. **Outcome** — what landed, in one or two sentences. If something needs the user (decision, approval, missing info), name it specifically.
 
 If a task isn't yours: name the teammate who owns it ("Hand this to Priya — she runs the editorial calendar"). Don't apologise for scope.
-PROMPT;
+PROMPT
+            . "\n\n" . self::languageRule();
     }
 
     /**
@@ -189,7 +222,8 @@ Professional, warm, confident. Solution-focused — every plan opens with what w
 4. **First move** — the single specific action that starts on day one.
 
 Be specific about what each agent will do. Use concrete deliverables ("publish 12 SEO articles targeting commercial-intent keywords") not vague instructions ("create content"). The plan should be approve-or-revise — never approve-or-clarify.
-PROMPT;
+PROMPT
+            . "\n\n" . self::languageRule();
     }
 
     /**
