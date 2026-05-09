@@ -722,10 +722,36 @@ function wsRenderGrid(){
         +`<button onclick="wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
     }
 
+    // PATCH (clickable site names, 2026-05-09) — title links to the live
+    // site in a new tab. URL precedence: external_url > custom_domain >
+    // subdomain (when published) > /storage/sites/{id}/index.html. The
+    // anchor calls event.stopPropagation() so clicking the title doesn't
+    // also trigger the card-click editor (wsOpenSite).
+    var _liveUrl;
+    if (isExt && s.external_url) {
+      _liveUrl = s.external_url;
+    } else if (s.custom_domain) {
+      _liveUrl = 'https://' + s.custom_domain;
+    } else if (s.subdomain && (s.publish_state === 'published' || s.status === 'published')) {
+      _liveUrl = 'https://' + (String(s.subdomain).indexOf('.') === -1
+        ? s.subdomain + '.levelupgrowth.io'
+        : s.subdomain);
+    } else if (s.domain) {
+      _liveUrl = 'https://' + s.domain;
+    } else {
+      _liveUrl = '/storage/sites/' + s.id + '/index.html';
+    }
+    var _titleHtml = '<a href="' + bld_escH(_liveUrl) + '" target="_blank" rel="noopener" '
+      + 'onclick="event.stopPropagation()" '
+      + 'style="color:inherit;text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.20)" '
+      + 'onmouseover="this.style.color=\'var(--p)\';this.style.borderBottomColor=\'var(--p)\'" '
+      + 'onmouseout="this.style.color=\'inherit\';this.style.borderBottomColor=\'rgba(255,255,255,0.20)\'">'
+      + bld_escH(s.title || s.name) + '</a>';
+
     return `<div class="ws-card" onclick="${isExt?'':'wsOpenSite('+s.id+')'}">
       ${thumbContent}
       <div class="ws-info">
-        <div class="ws-title">${bld_escH(s.title||s.name)}</div>
+        <div class="ws-title">${_titleHtml}</div>
         <div class="ws-meta">${metaLine}</div>
         ${s.domain&&!isExt?`<div style="margin-bottom:6px;font-size:10px;color:var(--bl)">${window.icon('globe',14)} ${bld_escH(s.domain)}</div>`:''}
         <div class="ws-footer">
