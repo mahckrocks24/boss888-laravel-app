@@ -730,7 +730,7 @@ class ArthurService
     private function extractAllFields(string $message, array $history, array $state): array
     {
         if (!$this->runtime->isConfigured()) {
-            $state = $this->simpleExtract($message, $state);
+            $state = $this->simpleExtract($message, $state, $history);
             $state['industry'] = $this->normalizeIndustry($state['industry'] ?? null, $message);
             $state['ready'] = !empty($state['business_name']) && !empty($state['industry']);
             return $state;
@@ -787,7 +787,7 @@ PROMPT;
             }
         } catch (\Throwable $e) {
             Log::warning('[Arthur] extractAllFields failed: ' . $e->getMessage());
-            $state = $this->simpleExtract($message, $state);
+            $state = $this->simpleExtract($message, $state, $history);
         }
 
         // Post-process the industry through the keyword map so misclassified
@@ -802,7 +802,7 @@ PROMPT;
     {
         if (!$this->runtime->isConfigured()) {
             // Fallback: simple keyword extraction
-            return $this->simpleExtract($message, $state);
+            return $this->simpleExtract($message, $state, $history);
         }
 
         $historyText = '';
@@ -842,10 +842,10 @@ PROMPT;
             Log::warning('[Arthur] Extraction failed: ' . $e->getMessage());
         }
 
-        return $this->simpleExtract($message, $state);
+        return $this->simpleExtract($message, $state, $history);
     }
 
-    private function simpleExtract(string $message, array $state): array
+    private function simpleExtract(string $message, array $state, array $history = []): array
     {
         $lower = mb_strtolower($message);
 
@@ -889,6 +889,33 @@ PROMPT;
                 $state['business_name'] = trim($m[1]);
             } elseif (preg_match('/"([^"]+)"/', $message, $m)) {
                 $state['business_name'] = trim($m[1]);
+            }
+        }
+
+        // Conversational fallback — when the runtime LLM is unavailable, plain
+        // user replies like "MR Digital Media" never match the regex patterns
+        // above and the wizard loops forever asking the same question. Look at
+        // the most recent Arthur message in history to figure out which field
+        // the user is answering and capture the message verbatim.
+        $trimmed = trim($message);
+        if ($trimmed !== '' && !empty($history)) {
+            $lastArthur = '';
+            for ($i = count($history) - 1; $i >= 0; $i--) {
+                $h = $history[$i];
+                if (is_array($h) && ($h['role'] ?? '') === 'assistant') {
+                    $lastArthur = mb_strtolower((string)($h['content'] ?? ''));
+                    break;
+                }
+            }
+            if ($lastArthur !== '') {
+                if (empty($state['business_name']) && mb_strpos($lastArthur, "name of your business") !== false) {
+                    $state['business_name'] = $trimmed;
+                } elseif (empty($state['location']) && mb_strpos($lastArthur, 'based?') !== false) {
+                    $state['location'] = $trimmed;
+                } elseif (empty($state['services']) && (mb_strpos($lastArthur, 'services or products') !== false || mb_strpos($lastArthur, 'what services') !== false)) {
+                    $parts = preg_split('/\s*,\s*|\s*;\s*|\s+and\s+/i', $trimmed);
+                    $state['services'] = array_values(array_filter(array_map('trim', $parts)));
+                }
             }
         }
 

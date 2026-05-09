@@ -115,9 +115,9 @@ window.wsShowArthurWizard = function(prefillArg) {
             + (_prefillObj.location ? (" Based in " + _prefillObj.location + ".") : '')
             + "\n\nI'll use your brand colors and logo from signup. One moment while I get started\u2026";
     } else if (_preIndustry) {
-        _openLine = "I'll build your " + _preIndustry.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); }) + " website. '+window.icon('star',18)+'\n\nWhat's your business name, and where are you based?";
+        _openLine = "I'll build your " + _preIndustry.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); }) + " website. \u26a1\n\nWhat's your business name, and where are you based?";
     } else {
-        _openLine = "Hi! I'm Arthur, and I'll be building your website today. '+window.icon('star',18)+'\n\nTell me about your business \u2014 what you do, where you're based, who your customers are, and any design preferences you have. The more you share, the better your website will be.\n\nYou can write it all in one go, or we can take it step by step \u2014 whatever works for you.";
+        _openLine = "Hi! I'm Arthur, and I'll be building your website today. \u26a1\n\nTell me about your business \u2014 what you do, where you're based, who your customers are, and any design preferences you have. The more you share, the better your website will be.\n\nYou can write it all in one go, or we can take it step by step \u2014 whatever works for you.";
     }
     _arthurAddMsg('arthur', _openLine);
 
@@ -588,7 +588,7 @@ function _arthurShowWebsiteCard(websiteId, name, industry) {
     if (!feed) return;
 
     var card = '<div style="background:linear-gradient(135deg,rgba(108,92,231,.1),rgba(59,130,246,.1));border:1px solid rgba(108,92,231,.3);border-radius:16px;padding:20px;margin-top:8px">'
-        + '<div style="font-size:13px;color:var(--pu);font-weight:600;margin-bottom:8px">'+window.icon('star',18)+' Website Created</div>'
+        + '<div style="font-size:13px;color:var(--pu);font-weight:600;margin-bottom:8px">⚡ Website Created</div>'
         + '<div style="font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">' + bld_escH(name) + '</div>'
         + '<div style="font-size:12px;color:var(--t3);margin-bottom:16px">' + bld_escH(industry) + ' template \u2022 draft</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
