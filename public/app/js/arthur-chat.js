@@ -354,11 +354,22 @@ function _arthurShowConfirmActionsImpl(buildData) {
     // they want to revise the brief, and the explicit Build button in
     // the panel is the only build trigger.
 
-    // Scroll panel into view — wrap in try since some browsers may flake.
-    try { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
-    // Belt-and-suspenders: also scroll the feed itself to the bottom so the
-    // panel is guaranteed visible even if scrollIntoView is a no-op.
-    try { feed.scrollTop = feed.scrollHeight; } catch (_) {}
+    // PATCH (panel-clipped-by-scroll, 2026-05-09) — Defer scroll calls
+    // so the browser has a chance to reflow with the freshly-appended
+    // panel BEFORE we read scrollHeight. Without these setTimeouts the
+    // scroll fires synchronously, scrollHeight is still the pre-append
+    // value, and the panel ends up below the visible scroll area.
+    // Two passes:
+    //   t=150ms — force feed.scrollTop = scrollHeight (jumps to bottom)
+    //   t=200ms — panel.scrollIntoView({block:'nearest'}) as a smooth
+    //              correction; 'nearest' is smarter than 'start' because
+    //              if the panel is already visible it won't yank the user.
+    setTimeout(function(){
+        try { feed.scrollTop = feed.scrollHeight; } catch (_) {}
+    }, 150);
+    setTimeout(function(){
+        try { panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
+    }, 200);
 }
 
 // Live color picker handler — wired via inline oninput attribute on the
