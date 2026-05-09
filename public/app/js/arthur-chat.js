@@ -261,12 +261,19 @@ function _arthurShowConfirmActionsImpl(buildData) {
 
     var panel = document.createElement('div');
     panel.id  = 'arthur-confirm-panel';
-    // Solid surface + visible accent border so the panel is impossible to miss.
+    // PATCH (panel-1.6px-collapse, 2026-05-09) — `overflow:hidden` on the
+    // outer panel collapsed it to 1.6px tall inside the flex column feed.
+    // The intent of overflow:hidden was to round-corner-clip the inner
+    // rows; instead it ate the panel's height. Removed. min-height floor
+    // added so the panel always reserves its full footprint even before
+    // children paint, eliminating the layout-thrash window where the
+    // scroll fix was racing against zero-height.
     panel.style.cssText =
         'margin-top:16px;display:flex;flex-direction:column;gap:0;' +
-        'border-radius:14px;overflow:hidden;' +
+        'border-radius:14px;' +
         'border:1px solid #6C5CE7;' +
         'background:#15151A;' +
+        'min-height:320px;' +
         'box-shadow:0 0 0 1px rgba(108,92,231,0.25),0 8px 32px rgba(0,0,0,0.4)';
 
     panel.innerHTML =
