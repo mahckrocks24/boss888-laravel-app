@@ -181,9 +181,7 @@ window._arthurSend = async function() {
 
         // type='confirm' → show action buttons (Upload Logo + Build)
         if (d.type === 'confirm') {
-            window._arthurBuildData = d.build_data || {};
-            window._arthurLogoUrl   = '';
-            _arthurShowConfirmActions();
+            _arthurShowConfirmActions(d.build_data || {});
         }
         // type='complete' OR legacy ready_to_build → website was built
         else if (d.type === 'complete' || d.ready_to_build === true) {
@@ -198,102 +196,104 @@ window._arthurSend = async function() {
     if (btn) { btn.disabled = false; btn.textContent = 'Send →'; }
 };
 
-// ── Confirm panel — 4 sections (logo / images / colors / build) ──
-// PATCH (full confirm panel, 2026-05-09)
-// Replaces the prior 2-button confirm UI with the canonical April 17
-// design: logo upload (with auto color extraction), up to 10 website
-// images (auto-optimized), brand color pickers, and a build button.
-function _arthurShowConfirmActions() {
-    var feed = document.getElementById('arthur-feed');
+// ── Confirm panel — premium dark redesign, 2026-05-09 ────────────
+// Compact row layout matching the platform's dark aesthetic. Four
+// horizontal rows separated by hairline borders: logo / photos /
+// colors / build. Purple accent on upload buttons with hover.
+function _arthurShowConfirmActions(buildData) {
+    var feed = document.getElementById('arthur-feed')
+            || document.getElementById('arthur-messages')
+            || document.querySelector('.arthur-messages');
     if (!feed) return;
     var prev = document.getElementById('arthur-confirm-panel');
     if (prev) prev.remove();
 
     // Reset confirm-state stores
+    if (buildData) window._arthurBuildData = buildData;
     window._arthurLogoUrl = '';
     window._arthurImages  = [];
     window._arthurColors  = { primary: '#6C5CE7', secondary: '#3B8BF5' };
 
-    var box = document.createElement('div');
-    box.id = 'arthur-confirm-panel';
-    box.style.cssText = 'background:var(--s2,#1a1a1a);border:1px solid var(--bd,#333);border-radius:14px;padding:18px;margin:12px 0';
-    box.innerHTML =
-        // ── SECTION 1 — LOGO ──────────────────────────────
-        '<div style="margin-bottom:18px">' +
-          '<div style="font-size:13px;font-weight:600;color:var(--t1,#fff);margin-bottom:6px">Logo (optional)</div>' +
-          '<div style="font-size:12px;color:var(--t3,#888);margin-bottom:10px">Upload your logo and we\'ll detect your brand colors automatically</div>' +
-          '<label id="arthur-confirm-logo-label" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;background:var(--s1,#0d0d0d);border:1.5px dashed var(--bd,#333);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--t1,#fff)">' +
-            '<input type="file" id="arthur-confirm-logo-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none">' +
-            '<span>📎 Choose Logo File</span>' +
-          '</label>' +
-          '<div id="arthur-confirm-logo-status" style="font-size:12px;color:var(--t3,#888);margin-top:8px;min-height:16px"></div>' +
-        '</div>' +
+    var panel = document.createElement('div');
+    panel.id  = 'arthur-confirm-panel';
+    panel.style.cssText =
+        'margin-top:16px;display:flex;flex-direction:column;gap:0;' +
+        'border-radius:14px;overflow:hidden;' +
+        'border:1px solid rgba(255,255,255,0.08);' +
+        'background:rgba(255,255,255,0.03)';
 
-        // ── SECTION 2 — IMAGES (up to 10) ─────────────────
-        '<div style="margin-bottom:18px;border-top:1px solid var(--bd,#333);padding-top:18px">' +
-          '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
-            '<div style="font-size:13px;font-weight:600;color:var(--t1,#fff)">Your Images (up to 10)</div>' +
-            '<div id="arthur-img-counter" style="font-size:12px;color:var(--t3,#888)">0 / 10 images added</div>' +
-          '</div>' +
-          '<div style="font-size:12px;color:var(--t3,#888);margin-bottom:10px">Add photos of your work, team, products, or space — we\'ll place them across your website</div>' +
-          '<label id="arthur-confirm-img-label" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;background:var(--s1,#0d0d0d);border:1.5px dashed var(--bd,#333);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--t1,#fff)">' +
-            '<input type="file" id="arthur-confirm-img-input" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">' +
-            '<span>🖼️ Add Photos</span>' +
-          '</label>' +
-          '<div id="arthur-img-status" style="font-size:12px;color:var(--t3,#888);margin-top:8px;min-height:16px"></div>' +
-          '<div id="arthur-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:12px"></div>' +
-        '</div>' +
-
-        // ── SECTION 3 — BRAND COLORS ──────────────────────
-        '<div style="margin-bottom:18px;border-top:1px solid var(--bd,#333);padding-top:18px">' +
-          '<div style="font-size:13px;font-weight:600;color:var(--t1,#fff);margin-bottom:10px">Brand Colors</div>' +
-          '<div id="arthur-color-auto-note" style="font-size:11px;color:#10B981;margin-bottom:10px;display:none">✓ Auto-detected from logo</div>' +
-          '<div style="display:flex;gap:18px;flex-wrap:wrap">' +
-            '<label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1,#fff)">' +
-              '<span style="min-width:80px">Primary</span>' +
-              '<input type="color" id="arthur-color-primary" value="#6C5CE7" style="width:40px;height:32px;border:1px solid var(--bd,#333);border-radius:6px;cursor:pointer;padding:0;background:transparent">' +
-              '<span id="arthur-color-primary-hex" style="font-family:ui-monospace,monospace;font-size:12px;color:var(--t3,#888)">#6C5CE7</span>' +
-            '</label>' +
-            '<label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1,#fff)">' +
-              '<span style="min-width:80px">Secondary</span>' +
-              '<input type="color" id="arthur-color-secondary" value="#3B8BF5" style="width:40px;height:32px;border:1px solid var(--bd,#333);border-radius:6px;cursor:pointer;padding:0;background:transparent">' +
-              '<span id="arthur-color-secondary-hex" style="font-family:ui-monospace,monospace;font-size:12px;color:var(--t3,#888)">#3B8BF5</span>' +
+    panel.innerHTML =
+        // ── LOGO ROW ──
+        '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+            '<div>' +
+              '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em">Logo</div>' +
+              '<div style="font-size:11px;color:var(--t3,#888);margin-top:2px">Optional — we\'ll auto-detect your brand colors</div>' +
+            '</div>' +
+            '<label data-arthur-upload="1" style="cursor:pointer;background:rgba(108,92,231,0.12);border:1px solid rgba(108,92,231,0.3);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:500;color:#a78bfa;display:flex;align-items:center;gap:6px;transition:all 0.2s;white-space:nowrap">' +
+              '<input type="file" id="arthur-logo-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none" onchange="_arthurConfirmLogoChosen(this)">' +
+              '📎 Upload Logo' +
             '</label>' +
           '</div>' +
+          '<div id="arthur-logo-status" style="font-size:11px;color:var(--t3,#888);min-height:16px"></div>' +
         '</div>' +
 
-        // ── SECTION 4 — BUILD ────────────────────────────
-        '<div style="border-top:1px solid var(--bd,#333);padding-top:18px">' +
-          '<button id="arthur-confirm-build-btn" type="button" style="width:100%;background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">' +
+        // ── PHOTOS ROW ──
+        '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+            '<div>' +
+              '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em">Your Photos</div>' +
+              '<div style="font-size:11px;color:var(--t3,#888);margin-top:2px">Up to 10 — placed across all sections</div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:10px">' +
+              '<span id="arthur-img-count" style="font-size:11px;color:var(--t3,#888)">0 / 10</span>' +
+              '<label data-arthur-upload="1" style="cursor:pointer;background:rgba(108,92,231,0.12);border:1px solid rgba(108,92,231,0.3);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:500;color:#a78bfa;display:flex;align-items:center;gap:6px;transition:all 0.2s;white-space:nowrap">' +
+                '<input type="file" id="arthur-images-input" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none" onchange="_arthurConfirmImagesChosen(this)">' +
+                '🖼 Add Photos' +
+              '</label>' +
+            '</div>' +
+          '</div>' +
+          '<div id="arthur-img-status" style="font-size:11px;color:#10b981;min-height:14px;margin-bottom:6px"></div>' +
+          '<div id="arthur-img-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-height:0"></div>' +
+        '</div>' +
+
+        // ── COLORS ROW ──
+        '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+          '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em;margin-bottom:12px">Brand Colors</div>' +
+          '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">' +
+            '<div style="display:flex;align-items:center;gap:10px">' +
+              '<label style="font-size:11px;color:var(--t3,#888);white-space:nowrap">Primary</label>' +
+              '<input type="color" id="arthur-color-primary" value="#6C5CE7" oninput="_arthurColorChanged(\'primary\',this.value)" style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;padding:2px;background:transparent">' +
+              '<span id="arthur-color-primary-hex" style="font-size:11px;color:var(--t3,#888);font-family:monospace">#6C5CE7</span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:10px">' +
+              '<label style="font-size:11px;color:var(--t3,#888);white-space:nowrap">Secondary</label>' +
+              '<input type="color" id="arthur-color-secondary" value="#3B8BF5" oninput="_arthurColorChanged(\'secondary\',this.value)" style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;padding:2px;background:transparent">' +
+              '<span id="arthur-color-secondary-hex" style="font-size:11px;color:var(--t3,#888);font-family:monospace">#3B8BF5</span>' +
+            '</div>' +
+            '<div id="arthur-color-note" style="font-size:11px;color:#10b981;min-height:14px"></div>' +
+          '</div>' +
+        '</div>' +
+
+        // ── BUILD BUTTON ──
+        '<div style="padding:16px 20px">' +
+          '<button id="arthur-confirm-build-btn" type="button" onclick="_arthurConfirmBuild()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#A855F7);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:0.02em;box-shadow:0 4px 20px rgba(108,92,231,0.3);transition:opacity 0.2s">' +
             '⚡ Build My Website' +
           '</button>' +
-          '<div style="text-align:center;font-size:11px;color:var(--t3,#888);margin-top:8px">Usually takes 45–60 seconds</div>' +
+          '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--t3,#888)">Usually takes 45–60 seconds</div>' +
         '</div>';
 
-    feed.appendChild(box);
+    feed.appendChild(panel);
 
-    // Wire all event handlers
-    var logoInput = document.getElementById('arthur-confirm-logo-input');
-    if (logoInput) logoInput.onchange = function(ev){ _arthurConfirmLogoChosen(ev); };
-
-    var imgInput = document.getElementById('arthur-confirm-img-input');
-    if (imgInput) imgInput.onchange = function(ev){ _arthurConfirmImagesChosen(ev); };
-
-    var pri = document.getElementById('arthur-color-primary');
-    var sec = document.getElementById('arthur-color-secondary');
-    if (pri) pri.onchange = function(){
-        window._arthurColors.primary = this.value;
-        var hx = document.getElementById('arthur-color-primary-hex');
-        if (hx) hx.textContent = this.value.toUpperCase();
-    };
-    if (sec) sec.onchange = function(){
-        window._arthurColors.secondary = this.value;
-        var hx = document.getElementById('arthur-color-secondary-hex');
-        if (hx) hx.textContent = this.value.toUpperCase();
-    };
-
-    var bb = document.getElementById('arthur-confirm-build-btn');
-    if (bb) bb.onclick = function(){ _arthurConfirmBuild(); };
+    // Hover effect on the upload-style purple labels
+    panel.querySelectorAll('label[data-arthur-upload="1"]').forEach(function(el){
+        el.addEventListener('mouseenter', function(){
+            el.style.background = 'rgba(108,92,231,0.25)';
+        });
+        el.addEventListener('mouseleave', function(){
+            el.style.background = 'rgba(108,92,231,0.12)';
+        });
+    });
 
     // PATCH (Send-as-Build, 2026-05-09) — soft-disable the chat input so
     // the user's eyes go to the panel, but Send/Enter still work as Build.
@@ -304,8 +304,18 @@ function _arthurShowConfirmActions() {
         inp.setAttribute('disabled', 'true');
     }
 
-    feed.scrollTop = feed.scrollHeight;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// Live color picker handler — wired via inline oninput attribute on the
+// <input type="color"> elements. Accepts the role name + new hex value,
+// updates window._arthurColors and the inline hex label.
+window._arthurColorChanged = function(role, hex) {
+    if (!window._arthurColors) window._arthurColors = {};
+    window._arthurColors[role] = hex;
+    var label = document.getElementById('arthur-color-' + role + '-hex');
+    if (label) label.textContent = (hex || '').toUpperCase();
+};
 
 // Restore the chat input to typeable state (called when the panel goes
 // away, either because build started or build returned an error).
@@ -320,13 +330,19 @@ function _arthurResetChatInput() {
 }
 
 // ── Logo upload — auto-extracts brand colors via ColorExtractorService ──
-function _arthurConfirmLogoChosen(ev) {
-    var file = ev.target.files && ev.target.files[0];
+// Accepts either an Event (legacy `addEventListener` wiring) OR the input
+// element itself (new inline `onchange="_arthurConfirmLogoChosen(this)"`).
+window._arthurConfirmLogoChosen = function(arg) {
+    var el = (arg && arg.target && arg.target.files !== undefined) ? arg.target
+           : (arg && arg.files !== undefined) ? arg
+           : null;
+    if (!el) return;
+    var file = el.files && el.files[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) { alert('Logo must be under 2MB.'); return; }
     var allowed = ['image/png','image/jpeg','image/svg+xml','image/webp'];
     if (allowed.indexOf(file.type) === -1) { alert('Logo must be PNG, JPG, SVG, or WEBP.'); return; }
-    var st = document.getElementById('arthur-confirm-logo-status');
+    var st = document.getElementById('arthur-logo-status');
     if (st) { st.textContent = 'Uploading logo…'; st.style.color = 'var(--t3,#888)'; }
     var fd = new FormData();
     fd.append('logo', file);
@@ -358,8 +374,8 @@ function _arthurConfirmLogoChosen(ev) {
                 if (sec) sec.value = p.secondary;
                 if (pHx) pHx.textContent = p.primary.toUpperCase();
                 if (sHx) sHx.textContent = p.secondary.toUpperCase();
-                var note = document.getElementById('arthur-color-auto-note');
-                if (note) note.style.display = 'block';
+                var note = document.getElementById('arthur-color-note');
+                if (note) note.textContent = '✓ Auto-detected from logo';
                 colorsApplied = true;
             }
         }
@@ -370,18 +386,23 @@ function _arthurConfirmLogoChosen(ev) {
     }).catch(function(err){
         if (st) { st.textContent = 'Network error: ' + err.message; st.style.color = '#F87171'; }
     });
-}
+};
 
 // ── Image upload — multi-select, queued, auto-optimized server-side ──
-function _arthurConfirmImagesChosen(ev) {
-    var files = Array.from(ev.target.files || []);
+// Accepts either Event or input element (see _arthurConfirmLogoChosen).
+window._arthurConfirmImagesChosen = function(arg) {
+    var el = (arg && arg.target && arg.target.files !== undefined) ? arg.target
+           : (arg && arg.files !== undefined) ? arg
+           : null;
+    if (!el) return;
+    var files = Array.from(el.files || []);
     if (!files.length) return;
     var st = document.getElementById('arthur-img-status');
     var current = (window._arthurImages || []).length;
     var slotsLeft = 10 - current;
     if (slotsLeft <= 0) {
         if (st) { st.textContent = 'You\'ve already added 10 images.'; st.style.color = '#F87171'; }
-        ev.target.value = '';
+        el.value = '';
         return;
     }
     var queue = files.slice(0, slotsLeft);
@@ -389,9 +410,9 @@ function _arthurConfirmImagesChosen(ev) {
         st.textContent = 'Only first ' + slotsLeft + ' image(s) accepted (10-image cap).';
         st.style.color = 'var(--t3,#888)';
     }
-    ev.target.value = ''; // allow re-pick of same files
+    el.value = ''; // allow re-pick of same files
     queue.forEach(function(f){ _arthurUploadOneImage(f); });
-}
+};
 
 function _arthurUploadOneImage(file) {
     var st = document.getElementById('arthur-img-status');
@@ -438,10 +459,11 @@ function _arthurUploadOneImage(file) {
 
 function _arthurRenderImageGrid() {
     var grid = document.getElementById('arthur-img-grid');
-    var counter = document.getElementById('arthur-img-counter');
+    var counter = document.getElementById('arthur-img-count')
+               || document.getElementById('arthur-img-counter');
     if (!grid) return;
     var imgs = window._arthurImages || [];
-    if (counter) counter.textContent = imgs.length + ' / 10 images added';
+    if (counter) counter.textContent = imgs.length + ' / 10';
     grid.innerHTML = imgs.map(function(url, idx){
         return '<div style="position:relative;width:100%;padding-top:100%;border-radius:8px;overflow:hidden;border:1px solid var(--bd,#333);background:var(--s1,#0d0d0d)">' +
           '<img src="' + url + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">' +
