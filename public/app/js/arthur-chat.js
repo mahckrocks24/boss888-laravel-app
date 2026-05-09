@@ -186,40 +186,114 @@ window._arthurSend = async function() {
     if (btn) { btn.disabled = false; btn.textContent = 'Send →'; }
 };
 
-// ── Confirm-state UI (Upload Logo + Build My Website) ─────────────
-// PATCH (Arthur confirm flow, 2026-05-09)
+// ── Confirm panel — 4 sections (logo / images / colors / build) ──
+// PATCH (full confirm panel, 2026-05-09)
+// Replaces the prior 2-button confirm UI with the canonical April 17
+// design: logo upload (with auto color extraction), up to 10 website
+// images (auto-optimized), brand color pickers, and a build button.
 function _arthurShowConfirmActions() {
     var feed = document.getElementById('arthur-feed');
     if (!feed) return;
-    var prev = document.getElementById('arthur-confirm-actions');
+    var prev = document.getElementById('arthur-confirm-panel');
     if (prev) prev.remove();
+
+    // Reset confirm-state stores
+    window._arthurLogoUrl = '';
+    window._arthurImages  = [];
+    window._arthurColors  = { primary: '#6C5CE7', secondary: '#3B8BF5' };
+
     var box = document.createElement('div');
-    box.id = 'arthur-confirm-actions';
-    box.style.cssText = 'display:flex;gap:12px;margin:12px 0 8px;flex-wrap:wrap';
+    box.id = 'arthur-confirm-panel';
+    box.style.cssText = 'background:var(--s2,#1a1a1a);border:1px solid var(--bd,#333);border-radius:14px;padding:18px;margin:12px 0';
     box.innerHTML =
-        '<label id="arthur-logo-label" style="cursor:pointer;background:var(--s2,#1a1a1a);border:1.5px solid var(--bd,#333);border-radius:8px;padding:10px 18px;font-size:13px;font-weight:500;color:var(--t1,#fff);display:inline-flex;align-items:center;gap:8px">' +
-          '<input type="file" id="arthur-confirm-logo-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none">' +
-          '<span>📎 Upload Logo</span>' +
-        '</label>' +
-        '<button id="arthur-confirm-build-btn" type="button" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px">' +
-          '⚡ Build My Website' +
-        '</button>' +
-        '<div id="arthur-confirm-status" style="flex-basis:100%;font-size:12px;color:var(--t3,#888);min-height:16px;margin-top:4px"></div>';
+        // ── SECTION 1 — LOGO ──────────────────────────────
+        '<div style="margin-bottom:18px">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--t1,#fff);margin-bottom:6px">Logo (optional)</div>' +
+          '<div style="font-size:12px;color:var(--t3,#888);margin-bottom:10px">Upload your logo and we\'ll detect your brand colors automatically</div>' +
+          '<label id="arthur-confirm-logo-label" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;background:var(--s1,#0d0d0d);border:1.5px dashed var(--bd,#333);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--t1,#fff)">' +
+            '<input type="file" id="arthur-confirm-logo-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none">' +
+            '<span>📎 Choose Logo File</span>' +
+          '</label>' +
+          '<div id="arthur-confirm-logo-status" style="font-size:12px;color:var(--t3,#888);margin-top:8px;min-height:16px"></div>' +
+        '</div>' +
+
+        // ── SECTION 2 — IMAGES (up to 10) ─────────────────
+        '<div style="margin-bottom:18px;border-top:1px solid var(--bd,#333);padding-top:18px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
+            '<div style="font-size:13px;font-weight:600;color:var(--t1,#fff)">Your Images (up to 10)</div>' +
+            '<div id="arthur-img-counter" style="font-size:12px;color:var(--t3,#888)">0 / 10 images added</div>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--t3,#888);margin-bottom:10px">Add photos of your work, team, products, or space — we\'ll place them across your website</div>' +
+          '<label id="arthur-confirm-img-label" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;background:var(--s1,#0d0d0d);border:1.5px dashed var(--bd,#333);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--t1,#fff)">' +
+            '<input type="file" id="arthur-confirm-img-input" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">' +
+            '<span>🖼️ Add Photos</span>' +
+          '</label>' +
+          '<div id="arthur-img-status" style="font-size:12px;color:var(--t3,#888);margin-top:8px;min-height:16px"></div>' +
+          '<div id="arthur-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:12px"></div>' +
+        '</div>' +
+
+        // ── SECTION 3 — BRAND COLORS ──────────────────────
+        '<div style="margin-bottom:18px;border-top:1px solid var(--bd,#333);padding-top:18px">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--t1,#fff);margin-bottom:10px">Brand Colors</div>' +
+          '<div id="arthur-color-auto-note" style="font-size:11px;color:#10B981;margin-bottom:10px;display:none">✓ Auto-detected from logo</div>' +
+          '<div style="display:flex;gap:18px;flex-wrap:wrap">' +
+            '<label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1,#fff)">' +
+              '<span style="min-width:80px">Primary</span>' +
+              '<input type="color" id="arthur-color-primary" value="#6C5CE7" style="width:40px;height:32px;border:1px solid var(--bd,#333);border-radius:6px;cursor:pointer;padding:0;background:transparent">' +
+              '<span id="arthur-color-primary-hex" style="font-family:ui-monospace,monospace;font-size:12px;color:var(--t3,#888)">#6C5CE7</span>' +
+            '</label>' +
+            '<label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1,#fff)">' +
+              '<span style="min-width:80px">Secondary</span>' +
+              '<input type="color" id="arthur-color-secondary" value="#3B8BF5" style="width:40px;height:32px;border:1px solid var(--bd,#333);border-radius:6px;cursor:pointer;padding:0;background:transparent">' +
+              '<span id="arthur-color-secondary-hex" style="font-family:ui-monospace,monospace;font-size:12px;color:var(--t3,#888)">#3B8BF5</span>' +
+            '</label>' +
+          '</div>' +
+        '</div>' +
+
+        // ── SECTION 4 — BUILD ────────────────────────────
+        '<div style="border-top:1px solid var(--bd,#333);padding-top:18px">' +
+          '<button id="arthur-confirm-build-btn" type="button" style="width:100%;background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">' +
+            '⚡ Build My Website' +
+          '</button>' +
+          '<div style="text-align:center;font-size:11px;color:var(--t3,#888);margin-top:8px">Usually takes 15–30 seconds</div>' +
+        '</div>';
+
     feed.appendChild(box);
-    var fi = document.getElementById('arthur-confirm-logo-input');
-    if (fi) fi.onchange = function(ev){ _arthurConfirmLogoChosen(ev); };
+
+    // Wire all event handlers
+    var logoInput = document.getElementById('arthur-confirm-logo-input');
+    if (logoInput) logoInput.onchange = function(ev){ _arthurConfirmLogoChosen(ev); };
+
+    var imgInput = document.getElementById('arthur-confirm-img-input');
+    if (imgInput) imgInput.onchange = function(ev){ _arthurConfirmImagesChosen(ev); };
+
+    var pri = document.getElementById('arthur-color-primary');
+    var sec = document.getElementById('arthur-color-secondary');
+    if (pri) pri.onchange = function(){
+        window._arthurColors.primary = this.value;
+        var hx = document.getElementById('arthur-color-primary-hex');
+        if (hx) hx.textContent = this.value.toUpperCase();
+    };
+    if (sec) sec.onchange = function(){
+        window._arthurColors.secondary = this.value;
+        var hx = document.getElementById('arthur-color-secondary-hex');
+        if (hx) hx.textContent = this.value.toUpperCase();
+    };
+
     var bb = document.getElementById('arthur-confirm-build-btn');
     if (bb) bb.onclick = function(){ _arthurConfirmBuild(); };
+
     feed.scrollTop = feed.scrollHeight;
 }
 
+// ── Logo upload — auto-extracts brand colors via ColorExtractorService ──
 function _arthurConfirmLogoChosen(ev) {
     var file = ev.target.files && ev.target.files[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) { alert('Logo must be under 2MB.'); return; }
     var allowed = ['image/png','image/jpeg','image/svg+xml','image/webp'];
     if (allowed.indexOf(file.type) === -1) { alert('Logo must be PNG, JPG, SVG, or WEBP.'); return; }
-    var st = document.getElementById('arthur-confirm-status');
+    var st = document.getElementById('arthur-confirm-logo-status');
     if (st) { st.textContent = 'Uploading logo…'; st.style.color = 'var(--t3,#888)'; }
     var fd = new FormData();
     fd.append('logo', file);
@@ -234,14 +308,123 @@ function _arthurConfirmLogoChosen(ev) {
             return;
         }
         window._arthurLogoUrl = d.temp_url || '';
-        if (st) { st.textContent = '✅ Logo uploaded'; st.style.color = '#10B981'; }
+
+        // Auto-fill brand colors from the first palette returned by
+        // ColorExtractorService (if any).
+        var colorsApplied = false;
+        if (Array.isArray(d.palettes) && d.palettes.length) {
+            var p = d.palettes[0];
+            if (p && p.primary && p.secondary) {
+                window._arthurColors.primary   = p.primary;
+                window._arthurColors.secondary = p.secondary;
+                var pri = document.getElementById('arthur-color-primary');
+                var sec = document.getElementById('arthur-color-secondary');
+                var pHx = document.getElementById('arthur-color-primary-hex');
+                var sHx = document.getElementById('arthur-color-secondary-hex');
+                if (pri) pri.value = p.primary;
+                if (sec) sec.value = p.secondary;
+                if (pHx) pHx.textContent = p.primary.toUpperCase();
+                if (sHx) sHx.textContent = p.secondary.toUpperCase();
+                var note = document.getElementById('arthur-color-auto-note');
+                if (note) note.style.display = 'block';
+                colorsApplied = true;
+            }
+        }
+        if (st) {
+            st.textContent = colorsApplied ? '✅ Logo uploaded — brand colors detected' : '✅ Logo uploaded';
+            st.style.color = '#10B981';
+        }
     }).catch(function(err){
         if (st) { st.textContent = 'Network error: ' + err.message; st.style.color = '#F87171'; }
     });
 }
 
+// ── Image upload — multi-select, queued, auto-optimized server-side ──
+function _arthurConfirmImagesChosen(ev) {
+    var files = Array.from(ev.target.files || []);
+    if (!files.length) return;
+    var st = document.getElementById('arthur-img-status');
+    var current = (window._arthurImages || []).length;
+    var slotsLeft = 10 - current;
+    if (slotsLeft <= 0) {
+        if (st) { st.textContent = 'You\'ve already added 10 images.'; st.style.color = '#F87171'; }
+        ev.target.value = '';
+        return;
+    }
+    var queue = files.slice(0, slotsLeft);
+    if (files.length > slotsLeft && st) {
+        st.textContent = 'Only first ' + slotsLeft + ' image(s) accepted (10-image cap).';
+        st.style.color = 'var(--t3,#888)';
+    }
+    ev.target.value = ''; // allow re-pick of same files
+    queue.forEach(function(f){ _arthurUploadOneImage(f); });
+}
+
+function _arthurUploadOneImage(file) {
+    var st = document.getElementById('arthur-img-status');
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        if (st) { st.textContent = file.name + ' too large (max 5 MB).'; st.style.color = '#F87171'; }
+        return;
+    }
+    var allowed = ['image/png','image/jpeg','image/webp'];
+    if (allowed.indexOf(file.type) === -1) {
+        if (st) { st.textContent = file.name + ' rejected: PNG / JPG / WEBP only.'; st.style.color = '#F87171'; }
+        return;
+    }
+    if (st) { st.textContent = 'Optimizing ' + file.name + '…'; st.style.color = 'var(--t3,#888)'; }
+
+    var fd = new FormData();
+    fd.append('image', file);
+    var token = localStorage.getItem('lu_token') || '';
+    var origSize = file.size;
+    var fileName = file.name;
+
+    fetch('/api/builder/image-upload-temp', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd
+    }).then(function(r){ return r.json().catch(function(){ return {}; }); }).then(function(d){
+        if (!d || d.error || d.success === false) {
+            if (st) { st.textContent = fileName + ' failed: ' + ((d && (d.error || d.message)) || 'unknown'); st.style.color = '#F87171'; }
+            return;
+        }
+        if (!Array.isArray(window._arthurImages)) window._arthurImages = [];
+        window._arthurImages.push(d.temp_url);
+        _arthurRenderImageGrid();
+        var origKb = Math.round(origSize / 1024);
+        var optKb  = Math.round((d.optimized_size || 0) / 1024);
+        if (st) {
+            st.textContent = fileName + ' — ' + origKb + 'KB → ' + optKb + 'KB ✅';
+            st.style.color = '#10B981';
+        }
+    }).catch(function(err){
+        if (st) { st.textContent = 'Network error: ' + err.message; st.style.color = '#F87171'; }
+    });
+}
+
+function _arthurRenderImageGrid() {
+    var grid = document.getElementById('arthur-img-grid');
+    var counter = document.getElementById('arthur-img-counter');
+    if (!grid) return;
+    var imgs = window._arthurImages || [];
+    if (counter) counter.textContent = imgs.length + ' / 10 images added';
+    grid.innerHTML = imgs.map(function(url, idx){
+        return '<div style="position:relative;width:100%;padding-top:100%;border-radius:8px;overflow:hidden;border:1px solid var(--bd,#333);background:var(--s1,#0d0d0d)">' +
+          '<img src="' + url + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">' +
+          '<button type="button" onclick="_arthurRemoveImage(' + idx + ')" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border:none;border-radius:50%;background:rgba(0,0,0,0.65);color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Remove">×</button>' +
+        '</div>';
+    }).join('');
+}
+
+window._arthurRemoveImage = function(idx) {
+    if (!Array.isArray(window._arthurImages)) return;
+    window._arthurImages.splice(idx, 1);
+    _arthurRenderImageGrid();
+};
+
 window._arthurConfirmBuild = async function() {
-    var box = document.getElementById('arthur-confirm-actions');
+    var box = document.getElementById('arthur-confirm-panel');
     if (box) box.remove();
     _arthurAddMsg('user', 'Build my website.');
 
@@ -263,13 +446,17 @@ window._arthurConfirmBuild = async function() {
 
     try {
         var token = localStorage.getItem('lu_token') || '';
+        var colors = window._arthurColors || { primary: '#6C5CE7', secondary: '#3B8BF5' };
         var r = await fetch('/api/builder/arthur/message', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token },
             body:    JSON.stringify({
-                confirm:    true,
-                logo_url:   window._arthurLogoUrl || '',
-                build_data: window._arthurBuildData || {},
+                confirm:         true,
+                logo_url:        window._arthurLogoUrl || '',
+                images:          window._arthurImages || [],
+                primary_color:   colors.primary,
+                secondary_color: colors.secondary,
+                build_data:      window._arthurBuildData || {},
             })
         });
         var d = await r.json();

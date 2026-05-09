@@ -1886,6 +1886,24 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                     ? $cached
                     : (is_array($clientBd) ? $clientBd : []);
 
+                // PATCH (full confirm panel, 2026-05-09) — accept images[]
+                // and primary_color / secondary_color from the new UI.
+                $imagesIn = $r->input('images', []);
+                $images   = [];
+                if (is_array($imagesIn)) {
+                    foreach ($imagesIn as $u) {
+                        if (is_string($u) && $u !== '') $images[] = $u;
+                    }
+                }
+                $images = array_slice($images, 0, 10); // hard cap 10
+
+                $primary   = (string) $r->input('primary_color', '');
+                $secondary = (string) $r->input('secondary_color', '');
+                $hex = '/^#[0-9a-fA-F]{6}$/';
+                $colors = [];
+                if ($primary   !== '' && preg_match($hex, $primary))   $colors['primary']   = $primary;
+                if ($secondary !== '' && preg_match($hex, $secondary)) $colors['secondary'] = $secondary;
+
                 if (empty($buildData['business_name'])) {
                     return response()->json([
                         'type'        => 'error',
@@ -1894,7 +1912,13 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 }
 
                 try {
-                    $built = $arthur->buildFromChat($wsId, $buildData, $logoUrl !== '' ? $logoUrl : null);
+                    $built = $arthur->buildFromChat(
+                        $wsId,
+                        $buildData,
+                        $logoUrl !== '' ? $logoUrl : null,
+                        $images,
+                        $colors
+                    );
                     \Illuminate\Support\Facades\Cache::forget('arthur_build_data_' . $wsId);
                     return response()->json([
                         'type'          => 'complete',
@@ -2029,6 +2053,113 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 'size'      => $size,
                 'mime'      => $mime,
                 'palettes'  => $palettes,
+            ]);
+        });
+
+        // ── Arthur image-upload-temp (full confirm panel, 2026-05-09) ────
+        // Uploads ONE website image at a time. Auto-optimizes via GD:
+        // resize to max 1920px wide, re-encode JPEG at 85% quality.
+        // Caller accumulates returned temp_url's into the `images[]` array
+        // sent on the follow-up /arthur/message {confirm:true} POST.
+        // Field name: "image". 5 MB cap. PNG/JPG/JPEG/WEBP only.
+        Route::post('/image-upload-temp', function (\Illuminate\Http\Request $r) {
+            $file = $r->file('image');
+            if (!$file instanceof \Illuminate\Http\UploadedFile || !$file->isValid()) {
+                return response()->json(['error' => 'No valid image file received (field: image).'], 400);
+            }
+            $origSize = $file->getSize();
+            $mime     = $file->getMimeType() ?: $file->getClientMimeType();
+            if ($origSize > 5 * 1024 * 1024) {
+                return response()->json(['error' => 'Image too large (max 5 MB).'], 413);
+            }
+            $allowed = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp'];
+            if (!isset($allowed[$mime])) {
+                return response()->json(['error' => 'Unsupported image type. Use PNG, JPG, or WEBP.'], 415);
+            }
+
+            $dir = storage_path('app/public/tmp/images');
+            if (!is_dir($dir)) @mkdir($dir, 0775, true);
+
+            // Auto-optimize via GD: load → resize if >1920px wide → re-encode
+            // as JPEG quality 85 (unless source is PNG with alpha, then keep PNG).
+            $srcRaw = @file_get_contents($file->getRealPath());
+            if ($srcRaw === false || $srcRaw === '') {
+                return response()->json(['error' => 'Could not read uploaded file.'], 400);
+            }
+            $src = @imagecreatefromstring($srcRaw);
+            if (!$src) {
+                return response()->json(['error' => 'Image decode failed (corrupt file?).'], 422);
+            }
+            $w = imagesx($src);
+            $h = imagesy($src);
+            $maxW = 1920;
+            if ($w > $maxW) {
+                $newW = $maxW;
+                $newH = (int) round($h * ($maxW / $w));
+                $resized = imagecreatetruecolor($newW, $newH);
+                if ($mime === 'image/png') {
+                    imagealphablending($resized, false);
+                    imagesavealpha($resized, true);
+                    $transparent = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+                    imagefilledrectangle($resized, 0, 0, $newW, $newH, $transparent);
+                }
+                imagecopyresampled($resized, $src, 0, 0, 0, 0, $newW, $newH, $w, $h);
+                imagedestroy($src);
+                $src = $resized;
+                $w = $newW; $h = $newH;
+            }
+
+            // Detect PNG alpha: if PNG and has alpha, keep PNG; else JPEG quality 85.
+            $hasAlpha = false;
+            if ($mime === 'image/png') {
+                // imageistruecolor + check a few pixels for non-255 alpha
+                imagealphablending($src, false);
+                for ($y = 0; $y < $h && !$hasAlpha; $y += max(1, intdiv($h, 20))) {
+                    for ($x = 0; $x < $w && !$hasAlpha; $x += max(1, intdiv($w, 20))) {
+                        $c = imagecolorat($src, $x, $y);
+                        $a = ($c >> 24) & 0x7F;
+                        if ($a > 0) $hasAlpha = true;
+                    }
+                }
+            }
+
+            $ext = ($mime === 'image/png' && $hasAlpha) ? 'png' : 'jpg';
+            $name = 'img_' . bin2hex(random_bytes(8)) . '.' . $ext;
+            $outPath = $dir . '/' . $name;
+
+            if ($ext === 'png') {
+                imagealphablending($src, false);
+                imagesavealpha($src, true);
+                $ok = @imagepng($src, $outPath, 6);
+            } else {
+                // Flatten alpha onto white for JPEG output
+                if ($mime === 'image/png') {
+                    $flat = imagecreatetruecolor($w, $h);
+                    $white = imagecolorallocate($flat, 255, 255, 255);
+                    imagefilledrectangle($flat, 0, 0, $w, $h, $white);
+                    imagecopy($flat, $src, 0, 0, 0, 0, $w, $h);
+                    imagedestroy($src);
+                    $src = $flat;
+                }
+                $ok = @imagejpeg($src, $outPath, 85);
+            }
+            imagedestroy($src);
+
+            if (!$ok || !is_file($outPath)) {
+                return response()->json(['error' => 'Optimization failed.'], 500);
+            }
+            @chmod($outPath, 0644);
+            $optSize = filesize($outPath) ?: 0;
+
+            return response()->json([
+                'success'        => true,
+                'temp_url'       => '/storage/tmp/images/' . $name,
+                'temp_path'      => $outPath,
+                'original_size'  => (int) $origSize,
+                'optimized_size' => (int) $optSize,
+                'width'          => $w,
+                'height'         => $h,
+                'format'         => $ext,
             ]);
         });
 

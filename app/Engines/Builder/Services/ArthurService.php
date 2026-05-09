@@ -541,7 +541,10 @@ object with these fields:
 
 SUMMARY FORMAT — when ready_to_confirm is true, the "reply" field
 MUST be the following summary, translated into the user's language
-(keep emoji and **bold** markdown intact):
+(keep emoji and **bold** markdown intact). DO NOT ask any questions —
+the frontend renders an interactive panel below your message where
+the user can upload a logo, add images, pick brand colors, and click
+Build. Your reply is just the recap:
 
 Here's what I have for your website:
 
@@ -551,7 +554,7 @@ Here's what I have for your website:
 ⚙️ **Services:** {services}
 🎨 **Style:** {style}
 
-Does everything look correct? Also — do you have a logo you'd like to use?
+Add your logo, photos, and brand colors below — then I'll build it.
 
 Until you have enough, return a JSON object with:
   {"reply": "<your short conversational message>",
@@ -715,21 +718,37 @@ PROMPT;
     /**
      * Public wrapper around the existing private generateWebsite() so the
      * /arthur/message route can trigger website creation when the user
-     * confirms (chat() returned ready_to_confirm=true and the user clicked
-     * "Build My Website"). Maps build_data → generateWebsite($wsId, $data).
+     * confirms via the full confirm panel (logo + images + colors + build).
      *
-     * If the caller passes a logo_url (from /api/builder/logo-upload-temp),
-     * it is plumbed through with the logo_upload opt-in flag so
-     * generateWebsite()'s logo gating at line 1395-1406 picks it up.
+     * Plumbs through:
+     *   - $logoUrl  → $data['logo_url'] + $data['logo_upload']=true
+     *   - $images   → $data['uploaded_images']  (consumed at line ~1383
+     *                 of generateWebsite, distributed across all image
+     *                 manifest vars in order, hard-capped at 10)
+     *   - $colors   → $data['colors']           (applied via applyBrandColors)
      *
      * Returns whatever generateWebsite returns: typically
      *   ['type' => 'website_created'|'error', 'website_id' => ?, 'website_url' => ?, 'message' => ?]
      */
-    public function buildFromChat(int $workspaceId, array $buildData, ?string $logoUrl = null): array
-    {
+    public function buildFromChat(
+        int $workspaceId,
+        array $buildData,
+        ?string $logoUrl = null,
+        array $images = [],
+        array $colors = []
+    ): array {
         if ($logoUrl !== null && $logoUrl !== '') {
             $buildData['logo_url']    = $logoUrl;
             $buildData['logo_upload'] = true;
+        }
+        if (!empty($images)) {
+            $buildData['uploaded_images'] = array_slice(array_values($images), 0, 10);
+        }
+        if (!empty($colors)) {
+            $buildData['colors'] = array_merge(
+                (array) ($buildData['colors'] ?? []),
+                array_filter($colors, fn($v) => is_string($v) && $v !== '')
+            );
         }
         return $this->generateWebsite($workspaceId, $buildData);
     }
