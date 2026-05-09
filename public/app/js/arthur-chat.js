@@ -131,17 +131,13 @@ window._arthurSend = async function() {
     //   type='confirm'  → render summary + Upload Logo / Build buttons
     //   type='complete' → website built, show success card
 
-    // PATCH (Send-as-Build, 2026-05-09) — when the confirm panel is on
-    // screen, both the Send button and Enter key act as "Build" so the
-    // user can't accidentally re-prompt the LLM after the conversation
-    // has already concluded with a summary.
-    if (document.getElementById('arthur-confirm-panel')) {
-        if (typeof window._arthurConfirmBuild === 'function') {
-            window._arthurConfirmBuild();
-        }
-        return;
-    }
-
+    // PATCH (panel-bypass-removed, 2026-05-09) — Send button and Enter key
+    // ALWAYS send a chat message. Previously they delegated to
+    // _arthurConfirmBuild() if the confirm panel existed in the DOM, but
+    // that caused builds to fire when the panel was invisible (a CSS
+    // issue) and the user typed text trying to engage the chat. The
+    // explicit "Build My Website" button in the panel is the ONLY path
+    // that triggers a build.
     var inp = document.getElementById('arthur-chat-input');
     if (!inp) return;
     if (_arthur.busy) { _arthur.busy = false; }
@@ -199,7 +195,10 @@ window._arthurSend = async function() {
             try { console.log('[arthur] rendering confirm panel (server type=' + d.type + ', looksLikeSummary=' + looksLikeSummary + ')'); } catch(_){}
             // Build a fallback build_data from history if server didn't send one
             var bd = (d.build_data && d.build_data.business_name) ? d.build_data : (window._arthurBuildData || {});
-            _arthurShowConfirmActions(bd);
+            // setTimeout 100ms — let the summary message bubble paint to the
+            // DOM before we append the panel below it. Avoids race conditions
+            // with feed scroll/layout reflow.
+            setTimeout(function(){ _arthurShowConfirmActions(bd); }, 100);
         }
         // type='complete' OR legacy ready_to_build → website was built
         else if (d.type === 'complete' || d.ready_to_build === true) {
@@ -351,14 +350,9 @@ function _arthurShowConfirmActionsImpl(buildData) {
         try { console.warn('[arthur] hover wiring failed', eHover); } catch(_){}
     }
 
-    // PATCH (Send-as-Build, 2026-05-09) — soft-disable the chat input so
-    // the user's eyes go to the panel, but Send/Enter still work as Build.
-    var inp = document.getElementById('arthur-chat-input');
-    if (inp) {
-        inp.dataset.prevPlaceholder = inp.getAttribute('placeholder') || '';
-        inp.setAttribute('placeholder', 'Click Build My Website or upload assets above…');
-        inp.setAttribute('disabled', 'true');
-    }
+    // No longer disable the chat input — the user can keep chatting if
+    // they want to revise the brief, and the explicit Build button in
+    // the panel is the only build trigger.
 
     // Scroll panel into view — wrap in try since some browsers may flake.
     try { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}

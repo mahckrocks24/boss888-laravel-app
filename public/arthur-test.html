@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Arthur Confirm Panel — Forensic Test</title>
+<style>
+  :root {
+    --p:  #6C5CE7;
+    --s1: #0d0d0d;
+    --s2: #1a1a1a;
+    --t1: #ffffff;
+    --t3: #888888;
+    --bd: #2a2a2a;
+  }
+  body { background:#000; color:#fff; font-family:system-ui,-apple-system,sans-serif; margin:0; padding:24px; }
+  h1 { font-size:18px; margin:0 0 8px }
+  .meta { font-size:12px; color:#888; margin-bottom:24px; }
+  .stage {
+    max-width: 700px;
+    background: var(--s1);
+    border:1px solid var(--bd);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  /* Mirror the actual Arthur DOM as built by the live JS */
+  #arthur-feed {
+    height: 600px;
+    overflow-y:auto;
+    padding:16px 24px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    background: var(--s1);
+  }
+  #report {
+    margin-top:24px;
+    padding:16px;
+    background: #0a0a0f;
+    border:1px solid #2a2a2a;
+    border-radius:8px;
+    font-family: ui-monospace,monospace;
+    font-size:12px;
+    white-space:pre-wrap;
+    color:#9adcff;
+  }
+</style>
+</head>
+<body>
+
+<h1>Arthur Confirm Panel — Forensic Test</h1>
+<div class="meta">
+  This page loads the live <code>/app/js/arthur-chat.js</code> and forces
+  <code>_arthurShowConfirmActions</code> to render with mock build_data.
+  No auth, no API call — just pure DOM rendering.
+</div>
+
+<div class="stage">
+  <div id="arthur-feed"></div>
+</div>
+
+<div id="report">running…</div>
+
+<!-- Stub the icon helper that the chat normally provides -->
+<script>
+window.icon = function(name, size){ return '<span style="font-size:'+(size||16)+'px">●</span>'; };
+window.bld_escH = function(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+window._arthur = { history: [], busy: false };
+</script>
+
+<!-- Load live JS with cache-bust -->
+<script src="/app/js/arthur-chat.js?v=forensic-1"></script>
+
+<script>
+(function () {
+  var lines = [];
+  function log() { lines.push(Array.from(arguments).map(function(a){
+    if (typeof a === 'object') { try { return JSON.stringify(a, null, 2); } catch(_){ return String(a); } }
+    return String(a);
+  }).join(' ')); document.getElementById('report').textContent = lines.join('\n'); }
+
+  // Mirror a summary message in the feed before rendering the panel
+  var feed = document.getElementById('arthur-feed');
+  var bubble = document.createElement('div');
+  bubble.style.cssText = 'background:#1a1a1a;color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;max-width:80%;align-self:flex-start;white-space:pre-wrap';
+  bubble.textContent = "Here's what I have for your website:\n\n🏢 Business: Test Bistro\n📍 Location: Dubai\n🎯 Industry: Restaurant\n⚙️ Services: Italian\n🎨 Style: Modern\n\nAdd your logo, photos, and brand colors below — then I'll build it.";
+  feed.appendChild(bubble);
+
+  log('STEP 1 — feed exists?', !!document.getElementById('arthur-feed'));
+  log('STEP 2 — _arthurShowConfirmActions defined?', typeof window._arthurShowConfirmActions);
+  log('STEP 3 — _arthurConfirmBuild defined?',         typeof window._arthurConfirmBuild);
+  log('STEP 4 — _arthurColorChanged defined?',         typeof window._arthurColorChanged);
+
+  if (typeof window._arthurShowConfirmActions !== 'function') {
+    log('FATAL — _arthurShowConfirmActions is not a function. Live JS did not load.');
+    return;
+  }
+
+  var bd = {
+    business_name: 'Test Bistro',
+    industry: 'restaurant',
+    location: 'Dubai',
+    services: 'Italian',
+    style: 'modern',
+    description: 'Test'
+  };
+
+  log('STEP 5 — calling _arthurShowConfirmActions(bd)…');
+  try { window._arthurShowConfirmActions(bd); }
+  catch (e) { log('THREW:', e && e.message); }
+
+  setTimeout(function(){
+    var panel = document.getElementById('arthur-confirm-panel');
+    log('STEP 6 — panel in DOM?', !!panel);
+    if (panel) {
+      var cs = window.getComputedStyle(panel);
+      var rect = panel.getBoundingClientRect();
+      log('STEP 7 — computed display:',  cs.display);
+      log('STEP 7 — computed visibility:', cs.visibility);
+      log('STEP 7 — computed opacity:',   cs.opacity);
+      log('STEP 7 — computed background:', cs.backgroundColor);
+      log('STEP 7 — width/height (px):',  rect.width + 'x' + rect.height);
+      log('STEP 7 — children count:',     panel.children.length);
+      log('STEP 8 — upload labels found:', panel.querySelectorAll('label[data-arthur-upload="1"]').length);
+      log('STEP 9 — color inputs found:', panel.querySelectorAll('input[type=color]').length);
+      log('STEP 10 — Build button found:', !!panel.querySelector('#arthur-confirm-build-btn'));
+    }
+  }, 300);
+})();
+</script>
+</body>
+</html>
