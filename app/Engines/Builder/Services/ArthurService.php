@@ -491,12 +491,25 @@ class ArthurService
         'tea house'              => 'cafe',
         'catering'               => 'catering',
         'caterer'                => 'catering',
+        'catering service'       => 'catering',
+        'event catering'         => 'catering',
+        'food catering'          => 'catering',
+        'wedding catering'       => 'catering',
+        'corporate catering'     => 'catering',
+        'private chef'           => 'catering',
+        'banqueting'             => 'catering',
         // Hospitality
         'short term rental'      => 'short_term_rental',
         'short-term rental'      => 'short_term_rental',
         'vacation rental'        => 'short_term_rental',
         'airbnb'                 => 'short_term_rental',
         'beach resort'           => 'resort',
+        'luxury resort'          => 'resort',
+        'holiday resort'         => 'resort',
+        'island resort'          => 'resort',
+        'desert resort'          => 'resort',
+        'spa resort'             => 'resort',
+        'all-inclusive resort'   => 'resort',
         'resort'                 => 'resort',
         'boutique hotel'         => 'hotel',
         'hotel'                  => 'hotel',
@@ -557,6 +570,12 @@ class ArthurService
         'broker'                 => 'real_estate_agency',
         // Education
         'training center'        => 'training_center',
+        'training centre'        => 'training_center',
+        'vocational training'    => 'training_center',
+        'skills training'        => 'training_center',
+        'corporate training'     => 'training_center',
+        'professional training'  => 'training_center',
+        'certification'          => 'training_center',
         'online courses'         => 'online_courses',
         'online course'          => 'online_courses',
         'e-learning'             => 'online_courses',
@@ -607,6 +626,12 @@ class ArthurService
         // Other
         'interior design'        => 'interior_design',
         'interior designer'      => 'interior_design',
+        'home decor'             => 'interior_design',
+        'interior decoration'    => 'interior_design',
+        'fit out'                => 'interior_design',
+        'fitout'                 => 'interior_design',
+        'space planning'         => 'interior_design',
+        'home staging'           => 'interior_design',
         'architecture'           => 'architecture',
         'architect'              => 'architecture',
         'urban planning'         => 'architecture',
@@ -698,6 +723,116 @@ class ArthurService
         // 4. Final fallback — 'consulting' is the most generic professional
         // template; safer than 'restaurant' for unknown businesses.
         return 'consulting';
+    }
+
+    // PATCH (image-injection, 2026-05-09) — Build a fallback image pool
+    // from the platform media library, prioritised by industry tag.
+    //
+    // 1. Workspace-owned uploads tagged with the industry slug
+    // 2. Platform-asset images tagged with the industry slug
+    // 3. Platform-asset images in category=template_image OR category=hero
+    //
+    // Returns up to ~20 distinct URLs so injectImagesToTemplate can fill
+    // every image slot in the template even with no uploaded images.
+    private function buildImagePool(string $industry, int $wsId): array
+    {
+        $pool = [];
+        try {
+            // Tier 1 — workspace's own uploads tagged with the industry
+            $rows = \Illuminate\Support\Facades\DB::table('media')
+                ->where('workspace_id', $wsId)
+                ->where('asset_type', 'image')
+                ->whereNotNull('url')
+                ->where('url', '!=', '')
+                ->whereRaw('JSON_CONTAINS(tags, ?)', ['"' . $industry . '"'])
+                ->limit(15)
+                ->pluck('url')->toArray();
+            foreach ($rows as $u) if ($u && !in_array($u, $pool, true)) $pool[] = $u;
+
+            // Tier 2 — platform-asset images tagged with this industry
+            if (count($pool) < 15) {
+                $rows = \Illuminate\Support\Facades\DB::table('media')
+                    ->where('is_platform_asset', 1)
+                    ->where('asset_type', 'image')
+                    ->whereNotNull('url')
+                    ->where('url', '!=', '')
+                    ->whereRaw('JSON_CONTAINS(tags, ?)', ['"' . $industry . '"'])
+                    ->inRandomOrder()
+                    ->limit(15)->pluck('url')->toArray();
+                foreach ($rows as $u) if ($u && !in_array($u, $pool, true)) $pool[] = $u;
+            }
+
+            // Tier 3 — generic platform-asset template/hero images (any
+            // industry) as a last-resort floor so empty slots aren't blank.
+            if (count($pool) < 8) {
+                $rows = \Illuminate\Support\Facades\DB::table('media')
+                    ->where('is_platform_asset', 1)
+                    ->where('asset_type', 'image')
+                    ->whereIn('category', ['template_image', 'hero'])
+                    ->whereNotNull('url')
+                    ->where('url', '!=', '')
+                    ->inRandomOrder()
+                    ->limit(8)->pluck('url')->toArray();
+                foreach ($rows as $u) if ($u && !in_array($u, $pool, true)) $pool[] = $u;
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Arthur] buildImagePool query failed: ' . $e->getMessage());
+        }
+        return $pool;
+    }
+
+    // PATCH (image-injection, 2026-05-09) — Fill every manifest type=image
+    // variable that's still empty (or still on the industry-hero floor URL)
+    // from the media pool. Each pool image is consumed at most once per
+    // call; if the pool runs out we cycle back to the start so no var is
+    // left blank. Logo and OG slots are deliberately excluded — logo has
+    // its own opt-in flow, og falls through to hero.
+    //
+    // Also writes image_1..image_10 aliases pointing at the same pool so
+    // any future template that uses generic image slots Just Works.
+    private function injectImagesToTemplate(array &$variables, array $manifest, array $pool, ?string $heroDefaultUrl, bool $logoUploadOptIn): void
+    {
+        if (empty($manifest['variables'])) return;
+
+        // Build the ordered list of slots that still need filling.
+        $needFill = [];
+        foreach ($manifest['variables'] as $varKey => $varSpec) {
+            $type = is_array($varSpec) ? ($varSpec['type'] ?? 'text') : 'text';
+            if ($type !== 'image') continue;
+            if ($varKey === 'logo_url' && !$logoUploadOptIn) continue;
+            if ($varKey === 'og_image') continue; // handled separately
+            $current = $variables[$varKey] ?? '';
+            $isFloor = ($current === '' || $current === null
+                || ($heroDefaultUrl && $current === $heroDefaultUrl));
+            // hero_image specifically is allowed to keep the hero floor —
+            // it's the most prominent image and the floor IS the right
+            // industry hero. Only fill OTHER image vars from the pool.
+            if ($varKey === 'hero_image' && $current === $heroDefaultUrl) continue;
+            if ($isFloor) $needFill[] = $varKey;
+        }
+
+        if (empty($needFill)) {
+            // Even with nothing to fill on the manifest, set the generic
+            // image_1..image_10 aliases for any template that uses them.
+        } elseif (empty($pool)) {
+            // No media to draw from — leave slots on whatever floor they
+            // already have (manifest default / hero floor / empty).
+        } else {
+            $i = 0;
+            foreach ($needFill as $varKey) {
+                $variables[$varKey] = $pool[$i % count($pool)];
+                $i++;
+            }
+        }
+
+        // Generic image_1..image_10 aliases — same pool, cycled.
+        if (!empty($pool)) {
+            for ($n = 1; $n <= 10; $n++) {
+                if (empty($variables['image_' . $n])) {
+                    $variables['image_' . $n] = $pool[($n - 1) % count($pool)];
+                }
+            }
+        }
     }
 
     // BUG 2 FIX — normalize an industry string to a canonical slug.
@@ -1762,6 +1897,28 @@ PROMPT;
             }
         } catch (\Throwable $e) { /* non-fatal */ }
 
+        // PATCH (image-injection, 2026-05-09) — Media-library fallback.
+        // After uploaded-images + manifest defaults are applied, any
+        // image var still empty (or still on the industry hero floor)
+        // gets filled from the workspace's media library, prioritised by
+        // industry tag, then platform-asset template_image category,
+        // then any platform asset. This means a Bico Plastic Surgery
+        // site with 0 uploads still gets aesthetic_clinic-tagged photos
+        // in the doctor_*_image, gallery_*_image slots — instead of the
+        // hero leaking into every slot.
+        try {
+            $imagePool = $this->buildImagePool($industry, $wsId);
+            $this->injectImagesToTemplate(
+                $variables,
+                $manifestForImgs ?? ($this->templates->getManifest($industry) ?: []),
+                $imagePool,
+                $heroDefaultUrl,
+                $logoUploadOptIn
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Arthur] image pool fallback failed: ' . $e->getMessage());
+        }
+
         // FIX 3 — after all image + content work, walk EVERY manifest var
         // and substitute the manifest default when the current value is
         // empty. Rule: generated/uploaded content > manifest default > empty.
@@ -1977,86 +2134,94 @@ PROMPT;
         $services = is_array($servicesRaw) ? implode(', ', $servicesRaw) : (string)$servicesRaw;
         $emailSlug = strtolower(preg_replace('/[^a-z0-9]/', '', $name));
 
+        // PATCH (FIX 1, 2026-05-09) — Restaurant-flavored hardcoded defaults
+        // were leaking through to non-food sites (Bico Plastic Surgery shipped
+        // with "From Our Kitchen", "Signature Dishes", "International Cuisine"
+        // because the manifest didn't declare those slots so the restaurant
+        // seed survived). New defaults are NEUTRAL: industry-agnostic
+        // placeholders the LLM is expected to overwrite. Manifest defaults
+        // (loaded next) and the LLM call below win over these.
+        $industryHuman = ucfirst(str_replace('_', ' ', $industry));
         $defaults = [
-            'business_name' => $name,
-            'business_tagline' => $name . ' — Premium ' . ucfirst($industry),
-            'hero_title' => $name,
-            'hero_subtitle' => 'Experience excellence in ' . $location,
-            'hero_cta' => 'Get Started',
+            'business_name'      => $name,
+            'business_tagline'   => "{$name} — {$industryHuman} · {$location}",
+            'hero_title'         => $name,
+            'hero_subtitle'      => $data['description'] ?? "Trusted {$industryHuman} in {$location}.",
+            'hero_cta'           => 'Get Started',
             'hero_cta_secondary' => 'Learn More',
-            'hero_eyebrow' => ucfirst($industry) . ' · ' . $location,
-            'about_eyebrow' => 'About Us',
-            'about_title' => 'Our Story',
-            'about_text_1' => "At {$name}, we are passionate about delivering exceptional quality to our clients in {$location}.",
-            'about_text_2' => 'With years of experience, we bring expertise and dedication to every project.',
-            'about_text_3' => "Our commitment to excellence sets us apart in the {$industry} industry.",
-            'about_signature' => $name,
-            'about_image' => '',
-            'about_image_display' => 'display:none',
-            'services_eyebrow' => 'What We Do',
-            'services_title' => 'Our Services',
-            'service_1_title' => 'Fine Dining',
-            'service_1_text' => 'Tailored solutions designed for your specific needs.',
-            'service_2_title' => 'Private Events',
-            'service_2_text' => 'Professional guidance from industry experts.',
-            'service_3_title' => 'Catering',
-            'service_3_text' => 'Bespoke offerings crafted to exceed expectations.',
-            'service_4_display' => 'display:none',
-            'service_5_display' => 'display:none',
-            'service_6_display' => 'display:none',
-            'gallery_display' => 'display:none',
-            'stats_display' => '',
-            'stat_1_value' => '500+', 'stat_1_label' => 'Happy Guests',
-            'stat_2_value' => '15+', 'stat_2_label' => 'Years Experience',
-            'stat_3_value' => '50+', 'stat_3_label' => 'Menu Items',
-            'stat_4_value' => '4.9', 'stat_4_label' => 'Average Rating',
-            'cuisine_image_display' => 'display:none',
-            'gallery_eyebrow' => 'Our Work',
-            'gallery_title' => 'Gallery',
-            'cuisines_eyebrow' => 'Specialties',
-            'cuisines_title' => 'What We Offer',
-            'cuisines_intro' => "At {$name}, our expertise spans a range of specialties.",
-            'cuisine_1_name' => 'Signature Dishes',
-            'cuisine_1_note' => 'Our finest creations',
-            'cuisine_2_name' => 'International Cuisine',
-            'cuisine_2_note' => 'Global flavors',
-            'cuisine_3_name' => 'Seasonal Specials',
-            'cuisine_3_note' => 'Fresh and local',
-            'testimonial_1_quote' => "Working with {$name} has been an exceptional experience. The quality and attention to detail is unmatched.",
-            'testimonial_1_author' => 'Ahmed K. — Dubai',
-            'testimonial_2_quote' => "The team delivers consistently outstanding results. Highly recommended for anyone seeking premium service.",
-            'testimonial_2_author' => 'Sarah M. — Business Executive',
-            'testimonial_3_quote' => "Professional, reliable, and truly passionate about what they do. A standout in the {$location} market.",
-            'testimonial_3_author' => 'James L. — Corporate Client',
-                        'cuisine_4_name' => '', 'cuisine_4_note' => '',
-            'cuisine_5_name' => '', 'cuisine_5_note' => '',
-            'cuisine_6_name' => '', 'cuisine_6_note' => '',            'process_eyebrow' => 'How It Works',
-            'process_title' => 'Our Process',
-            'process_1_title' => 'Discovery',
-            'process_1_text' => 'We learn about your needs and goals.',
-            'process_2_title' => 'Custom Plan',
-            'process_2_text' => 'We design a tailored solution for you.',
-            'process_3_title' => 'Delivery',
-            'process_3_text' => 'We execute with precision and care.',
-            'process_4_title' => 'Follow-Up',
-            'process_4_text' => 'We ensure your complete satisfaction.',
-            'contact_eyebrow' => 'Get In Touch',
-            'contact_title' => 'Contact Us',
+            'hero_eyebrow'       => "{$industryHuman} · {$location}",
+            'about_eyebrow'      => 'About Us',
+            'about_title'        => 'About Us',
+            'about_text_1'       => "At {$name}, we are committed to delivering exceptional quality to our clients in {$location}.",
+            'about_text_2'       => 'With years of experience, we bring expertise and dedication to every engagement.',
+            'about_text_3'       => "Our commitment to excellence sets us apart.",
+            'about_signature'    => $name,
+            'about_image'        => '',
+            'about_image_display'=> 'display:none',
+            'services_eyebrow'   => 'What We Do',
+            'services_title'     => 'Our Services',
+            'services_intro'     => "Comprehensive {$industryHuman} services tailored to your needs.",
+            'service_1_title'    => '',
+            'service_1_text'     => '',
+            'service_2_title'    => '',
+            'service_2_text'     => '',
+            'service_3_title'    => '',
+            'service_3_text'     => '',
+            'service_4_display'  => 'display:none',
+            'service_5_display'  => 'display:none',
+            'service_6_display'  => 'display:none',
+            'gallery_display'    => 'display:none',
+            'gallery_eyebrow'    => 'Our Work',
+            'gallery_title'      => 'Gallery',
+            'stats_display'      => '',
+            'stat_1_value'       => '',
+            'stat_1_label'       => '',
+            'stat_2_value'       => '',
+            'stat_2_label'       => '',
+            'stat_3_value'       => '',
+            'stat_3_label'       => '',
+            'stat_4_value'       => '',
+            'stat_4_label'       => '',
+            // cuisine_* removed — only food templates declare them in their
+            // manifest, where they get the right defaults. Non-food sites
+            // never need them.
+            'testimonial_1_quote'  => '',
+            'testimonial_1_author' => '',
+            'testimonial_2_quote'  => '',
+            'testimonial_2_author' => '',
+            'testimonial_3_quote'  => '',
+            'testimonial_3_author' => '',
+            'process_eyebrow'    => 'How It Works',
+            'process_title'      => 'Our Process',
+            'process_1_title'    => 'Discovery',
+            'process_1_text'     => 'We learn about your needs and goals.',
+            'process_2_title'    => 'Plan',
+            'process_2_text'     => 'We design a tailored solution for you.',
+            'process_3_title'    => 'Delivery',
+            'process_3_text'     => 'We execute with precision and care.',
+            'process_4_title'    => 'Follow-Up',
+            'process_4_text'     => 'We ensure your complete satisfaction.',
+            'contact_eyebrow'    => 'Get In Touch',
+            'contact_title'      => 'Contact Us',
             'contact_form_title' => "Let's Start a Conversation",
-            'contact_email' => 'info@' . $emailSlug . '.com',
-            'contact_website' => strtolower(str_replace([' ', "'"], ['', ''], $name)) . '.com',
+            'contact_email'      => 'info@' . $emailSlug . '.com',
+            'contact_website'    => strtolower(str_replace([' ', "'"], ['', ''], $name)) . '.com',
             'contact_service_area' => $location,
-            'contact_availability_text' => "Currently accepting new clients. Contact us to discuss how {$name} can help you.",
-            'blog_section_title' => 'From Our Kitchen',
-            'blog_1_title' => 'The Art of Fine Dining', 'blog_1_excerpt' => 'Discover what sets premium dining apart in one of the worlds most dynamic cities.', 'blog_1_category' => 'Dining',
-            'blog_2_title' => 'Behind the Scenes', 'blog_2_excerpt' => 'A closer look at the craft and passion that goes into everything we do.', 'blog_2_category' => 'Inside',
-            'blog_3_title' => 'What Our Guests Say', 'blog_3_excerpt' => 'Real stories from guests about their exceptional experiences.', 'blog_3_category' => 'Reviews',
-            'meta_description' => "{$name} — Premium {$industry} services in {$location}. Experience excellence.",
-            'primary_color' => '#C9943A',
-            'primary_light' => '#DFB96A',
-            'bg_color' => '#0A0806',
-            'text_color' => '#F2EBDF',
-            'footer_text' => '© ' . date('Y') . ' ' . $name . '. All rights reserved.',
+            'contact_availability_text' => "Currently accepting new clients in {$location}.",
+            // Neutral blog title — LLM overwrites with industry-appropriate
+            // (e.g. 'Health Tips' for medical, 'Training Tips' for gym).
+            'blog_section_title' => 'Our Blog',
+            'blog_1_title'       => '',
+            'blog_1_excerpt'     => '',
+            'blog_1_category'    => '',
+            'blog_2_title'       => '',
+            'blog_2_excerpt'     => '',
+            'blog_2_category'    => '',
+            'blog_3_title'       => '',
+            'blog_3_excerpt'     => '',
+            'blog_3_category'    => '',
+            'meta_description'   => "{$name} — {$industryHuman} in {$location}.",
+            'footer_text'        => '© ' . date('Y') . ' ' . $name . '. All rights reserved.',
         ];
 
         // FIX 3 — seed defaults from the industry's manifest, not the
@@ -2084,22 +2249,62 @@ PROMPT;
             return $defaults;
         }
 
-        // FIX 4 — industry-specific guidance for the LLM. Each industry
-        // gets a one-liner of appropriate content examples, plus an
-        // explicit don't-generate-a-different-industry constraint.
+        // PATCH (FIX 2, 2026-05-09) — Industry hints expanded from 10 → 30
+        // entries. Keys MUST match actual on-disk template slugs — the
+        // resolved industry (post resolveTemplateSlug) is what the lookup
+        // uses, NOT abstract names like 'healthcare' or 'fitness'.
         $industryHints = [
-            'fitness'         => "Use fitness content ONLY. Services = training programs (HIIT, Strength, Yoga, Pilates, Mobility, Personal Training). NEVER mention dining, cuisine, chefs, or menus. Testimonials from members about physical transformation.",
-            'restaurant'      => "Use restaurant content ONLY. Services = dining experiences (tasting menu, private events, catering, chef's table). NEVER mention workouts, clinics, law firms, or SaaS.",
-            'healthcare'      => "Use healthcare content ONLY. Services = medical treatments (consultations, diagnostics, procedures, preventive care). NEVER mention dining, fitness classes, or retail.",
-            'legal'           => "Use legal-firm content ONLY. Services = practice areas (corporate, litigation, family, real estate, M&A, IP). NEVER mention dining, fitness, or retail.",
-            'beauty'          => "Use beauty-salon content ONLY. Services = treatments (hair colour, cut, facial, manicure, makeup). NEVER mention dining, fitness, law, or SaaS.",
-            'real_estate'     => "Use real-estate content ONLY. Services = transactions (sales, leasing, property management, investment). NEVER mention dining, fitness, or clinics.",
-            'interior_design' => "Use interior-design content ONLY. Services = design offerings (residential design, commercial, consultation, project management). NEVER mention dining, fitness, or clinics.",
-            'fashion'         => "Use fashion-atelier content ONLY. Services = garment categories (outerwear, evening, tailoring, knitwear, bespoke). NEVER mention dining, fitness, or clinics.",
-            'technology'      => "Use B2B SaaS content ONLY. Services = product features (tracing, evals, cost tracking, alerting, self-host). NEVER mention dining, fitness, or salons.",
-            'events'          => "Use event-production content ONLY. Services = event types (weddings, corporate galas, product launches, private celebrations). NEVER mention dining menus, fitness, or clinics.",
+            // Food & hospitality
+            'restaurant'         => 'Write for an upscale restaurant. Services = dining experiences (tasting menu, private events, catering). CTAs: Reserve, Book a Table. NEVER mention clinics, gyms, SaaS, or law firms.',
+            'cafe'               => 'Write for a specialty coffee shop / bakery. Cozy, artisan, community feel. Services = roasted coffee, pastries, brunch, light meals. CTAs: Visit Us, Order Now.',
+            'catering'           => 'Write for a premium catering company. Services = event catering categories (weddings, corporate, private dinners). CTAs: Get a Quote, Plan Your Event.',
+            'hotel'              => 'Write for a boutique luxury hotel. Services = room types, dining, spa, events. CTAs: Book Now, Check Availability.',
+            'resort'             => 'Write for a luxury resort. Services = experiences (suites, spa, dining, activities). CTAs: Book Your Stay, Explore.',
+            'short_term_rental'  => 'Write for a short-term vacation rental. Services = property types (studios, apartments, villas). CTAs: Book Now, View Availability.',
+            'travel_agency'      => 'Write for a travel agency. Services = trip categories (luxury, family, honeymoons, corporate). CTAs: Plan Your Trip, Get a Quote.',
+            // Medical / health
+            'dental'             => 'Write for a dental practice. Services = treatments (cleanings, whitening, implants, orthodontics, cosmetic). CTAs: Book Appointment, Call Us. NEVER mention dining, gym, or food.',
+            'medical_clinic'     => 'Write for a multi-specialty medical clinic. Services = consultations, diagnostics, primary care, specialist referrals. CTAs: Book Consultation, Call Now. NEVER mention dining or food.',
+            'aesthetic_clinic'   => 'Write for an aesthetic / cosmetic / plastic-surgery clinic. Services = procedures (rhinoplasty, liposuction, fillers, botox, laser). Premium, doctor-led, results-focused. CTAs: Book Consultation, Learn More. NEVER mention dining, food, kitchen, cuisine, or menus.',
+            // Fitness / beauty
+            'gym'                => 'Write for a fitness gym / training studio. Services = training programs (HIIT, strength, conditioning, yoga, pilates, personal training). CTAs: Start Training, Join Now. NEVER mention dining or food.',
+            'beauty_salon'       => 'Write for a beauty salon. Services = treatments (hair, facials, manicures, makeup, waxing). CTAs: Book Appointment, See Services. NEVER mention dining or food.',
+            'barbershop'         => 'Write for a traditional barbershop. Services = mens grooming (cuts, fades, hot-towel shaves, beard, kids cuts). CTAs: Book a Chair, Walk In.',
+            // Pet & childcare
+            'pet_services'       => 'Write for a pet care business (vet, grooming, daycare). Services = pet care categories. CTAs: Book Now, Meet the Team.',
+            'childcare'          => 'Write for a childcare / nursery / preschool. Services = age groups, programs, activities. CTAs: Enroll Now, Schedule a Visit.',
+            // Professional services
+            'consulting'         => 'Write for a professional consulting firm. Services = practice areas (strategy, operations, finance, advisory). CTAs: Book a Call, Get Started. NEVER mention dining, food, or fitness.',
+            'marketing_agency'   => 'Write for a digital marketing agency. Services = (SEO, paid ads, social media, content, web design). CTAs: Get a Free Audit, Let’s Talk. NEVER mention dining, food, or fitness.',
+            'it_services'        => 'Write for an IT services company. Services = (managed IT, cloud, cybersecurity, support, software). CTAs: Get Support, Request a Quote.',
+            // Real estate / design / construction
+            'real_estate_agency' => 'Write for a real estate agency. Services = (sales, leasing, property management, investment advisory). CTAs: View Listings, Contact Agent.',
+            'architecture'       => 'Write for an architecture practice. Services = (residential, commercial, masterplanning, interiors). CTAs: View Portfolio, Get in Touch.',
+            'interior_design'    => 'Write for an interior design studio. Services = (residential, commercial, consultation, project management). CTAs: Book Consultation, View Work.',
+            'construction'       => 'Write for a construction company. Services = (residential build, commercial fit-out, MEP, turnkey, renovation). CTAs: Get a Quote, View Projects.',
+            'home_services'      => 'Write for a home-services company (cleaning / handyman / HVAC / plumbing). Services = service categories. CTAs: Book Service, Get a Quote.',
+            'automotive'         => 'Write for an automotive business (dealership / service / detailing). Services = (sales, service, detailing, parts, finance). CTAs: Book Service, View Inventory.',
+            // Retail / commerce
+            'retail_shop'        => 'Write for a brick-and-mortar retail shop. Services = product categories. CTAs: Shop Now, View Collection.',
+            'ecommerce'          => 'Write for an online ecommerce store. Services = product categories. CTAs: Shop Now, Browse Collection.',
+            // Education
+            'tutoring'           => 'Write for a tutoring / private-education service. Services = subject areas, age groups. CTAs: Book a Session, Enroll Now.',
+            'training_center'    => 'Write for a vocational training center. Services = courses, certifications, corporate training. CTAs: Enroll Now, View Courses.',
+            'online_courses'     => 'Write for an online-course platform. Services = course categories, formats. CTAs: Enroll Now, Start Learning.',
+            // Events
+            'event_venue'        => 'Write for an event venue / event production company. Services = event types (weddings, corporate, private celebrations). CTAs: Check Availability, Book a Consultation.',
         ];
         $hint = $industryHints[$industry] ?? "Use {$industry}-appropriate content only. Do not generate content from a different industry.";
+
+        // PATCH (FIX 4, 2026-05-09) — Add blog_section_title to the prompt
+        // (was leaking 'From Our Kitchen' restaurant default before).
+        // cuisine_* fields are now ONLY requested for food templates;
+        // every other industry never gets cuisine_* generated, so they
+        // can't leak.
+        $isFoodIndustry = in_array($industry, ['restaurant', 'cafe', 'catering'], true);
+        $cuisineBlock = $isFoodIndustry
+            ? "cuisine_1_name, cuisine_1_note (a signature dish or category), cuisine_2_name, cuisine_2_note, cuisine_3_name, cuisine_3_note,\n"
+            : '';
 
         try {
             $prompt = "Generate complete website content for '{$name}', a {$industry} business in {$location}. "
@@ -2114,17 +2319,20 @@ PROMPT;
                 . "about_title, about_text_1, about_text_2, about_text_3 (2-3 sentences each, {$industry}-appropriate),\n"
                 . "service_1_title, service_1_text, service_2_title, service_2_text, service_3_title, service_3_text "
                 . "(each service MUST be a {$industry} offering — not a different industry's service),\n"
+                . $cuisineBlock
                 . "testimonial_1_quote, testimonial_1_author (Full Name — Title, City),\n"
                 . "testimonial_2_quote, testimonial_2_author,\n"
                 . "testimonial_3_quote, testimonial_3_author (all testimonials must read like real {$industry} clients),\n"
                 . "contact_email, contact_service_area, contact_availability_text,\n"
+                . "blog_section_title (a short section title appropriate to {$industry} — e.g. 'Health Tips' for medical, 'Training Tips' for gym, 'Industry Insights' for consulting, 'Brewer's Notes' for cafe; for an aesthetic clinic try 'Beauty & Confidence'. NEVER use 'From Our Kitchen' unless this is literally a restaurant/cafe/catering business),\n"
                 . "blog_1_title, blog_1_excerpt, blog_1_category "
-                . "(blog content must be about {$industry} topics — e.g. for fitness: training methodology, recovery; for restaurant: cooking technique, sourcing),\n"
+                . "(blog content must be about {$industry} topics — e.g. for fitness: training methodology, recovery; for restaurant: cooking technique, sourcing; for aesthetic_clinic: pre/post-op care, treatment Q&A; for medical_clinic: preventive health, chronic care; for marketing_agency: SEO/PPC/content strategy),\n"
                 . "blog_2_title, blog_2_excerpt, blog_2_category,\n"
                 . "blog_3_title, blog_3_excerpt, blog_3_category,\n"
                 . "meta_description (under 160 chars for SEO).\n\n"
                 . "IMPORTANT: No HTML tags. No markdown. Plain text. Dubai/UAE tone. Premium quality. "
-                . "Do NOT use content appropriate for any industry OTHER than {$industry}.";
+                . "Do NOT use content appropriate for any industry OTHER than {$industry}. "
+                . ($isFoodIndustry ? '' : "Do NOT mention cuisine, menus, dishes, kitchen, dining, or chefs anywhere — this is NOT a food business.");
 
             $result = $this->runtime->chatJson(
                 "You are a professional website copywriter for a {$industry} business in Dubai/UAE. "
@@ -2181,18 +2389,54 @@ PROMPT;
 
     private function getHeroImagePrompt(string $industry, string $location): string
     {
+        // PATCH (FIX 3, 2026-05-09) — Hero prompts expanded from 8 → 30
+        // entries. Keys MUST match on-disk template slugs (the resolved
+        // industry post resolveTemplateSlug). Generic fallback retained
+        // for any future template that lands here without a specific
+        // prompt, so the call never fails.
         $prompts = [
-            'restaurant' => "Elegant upscale restaurant interior, warm ambient candlelight, dark wood tables set for dinner, intimate fine dining atmosphere, soft bokeh background, professional food photography style, wide cinematic shot, warm golden tones",
-            'fitness' => "Modern premium gym interior, professional equipment, dramatic lighting, wide angle, clean minimalist design, motivational atmosphere",
-            'beauty' => "Luxurious beauty salon interior, soft warm lighting, elegant decor, professional treatment area, spa atmosphere",
-            'healthcare' => "Modern medical clinic reception, clean bright interior, professional healthcare environment, welcoming design",
-            'legal' => "Prestigious law office interior, dark wood furniture, leather chairs, floor-to-ceiling bookshelves, professional atmosphere",
-            'real_estate' => "Stunning luxury penthouse interior with panoramic city view at golden hour, modern architecture, floor-to-ceiling windows",
-            'technology' => "Modern tech office space, clean minimalist design, large monitors, collaborative workspace, blue accent lighting",
-            'events' => "Elegant event venue setup, dramatic lighting, luxurious table settings, floral centerpieces, grand ballroom atmosphere",
+            // Food & hospitality
+            'restaurant'         => 'Elegant upscale restaurant interior, warm ambient candlelight, dark wood tables set for dinner, intimate fine dining atmosphere, soft bokeh background, professional food photography style, wide cinematic shot, warm golden tones',
+            'cafe'               => 'Cozy modern coffee shop interior, plant-filled, latte art on bar counter, artisan bakery items on wood counter, warm morning light streaming through windows',
+            'catering'           => 'Elegant catering spread on long banquet table, beautifully arranged platters, professional event setup with stemware and floral centerpieces',
+            'hotel'              => 'Luxurious boutique hotel lobby, marble floors, crystal chandelier, premium hospitality, golden hour daylight',
+            'resort'             => 'Tropical luxury resort, infinity pool overlooking calm sea, palm trees, dramatic golden-hour landscape',
+            'short_term_rental'  => 'Modern stylish apartment interior, floor-to-ceiling windows with city view, premium furnishings, bright daylight',
+            'travel_agency'      => 'Stunning travel destination, exotic landscape, mountains or coastline at golden hour, sense of adventure and exploration',
+            // Medical / health
+            'dental'             => 'Modern dental clinic, clean bright white interior, professional dental chair, welcoming reception, calming atmosphere',
+            'medical_clinic'     => 'Professional modern medical clinic reception, clean bright interior, soft daylight, trusted healthcare environment',
+            'aesthetic_clinic'   => 'Luxury aesthetic / plastic-surgery clinic, pristine white and warm-marble interior, premium beauty treatment room, sophisticated calm ambiance',
+            // Fitness / beauty
+            'gym'                => 'Modern premium gym interior, professional equipment racks, dramatic lighting, wide angle, motivational atmosphere',
+            'beauty_salon'       => 'Elegant beauty salon interior, styling chairs, vanity mirrors with warm bulb lighting, sophisticated decor, spa atmosphere',
+            'barbershop'         => 'Classic modern barbershop, leather chairs, vintage barber tools, warm Edison-bulb lighting, masculine sophisticated interior',
+            // Pet & childcare
+            'pet_services'       => 'Happy pet being groomed by a calm professional, warm welcoming environment, natural daylight, modern clean facility',
+            'childcare'          => 'Bright colorful childcare center play area, age-appropriate toys, soft natural light, safe nurturing environment, no children visible',
+            // Professional services
+            'consulting'         => 'Professional corporate boardroom, glass walls, city view, leather chairs around walnut conference table, confident sophisticated atmosphere',
+            'marketing_agency'   => 'Modern creative agency office, team collaborating around large screens with analytics dashboards, dynamic professional environment, daylight',
+            'it_services'        => 'Modern technology workspace, server racks softly lit, multiple monitors with code, professional IT environment, blue accent lighting',
+            // Real estate / design / construction
+            'real_estate_agency' => 'Stunning luxury property exterior, modern architecture, floor-to-ceiling windows, manicured landscaping, golden hour',
+            'architecture'       => 'Award-winning modern architecture, striking building geometry, blue-hour exterior, dramatic detail of facade',
+            'interior_design'    => 'Stunning luxury interior design, curated living space, premium materials and finishes, warm natural light',
+            'construction'       => 'Modern construction site at golden hour, partially completed structure, clean professional, skilled workers in branded uniforms (no faces)',
+            'home_services'      => 'Professional home-service technician working in a clean modern home, quality workmanship in progress, natural daylight',
+            'automotive'         => 'Premium automotive showroom or service bay, luxury cars under dramatic lighting, polished concrete floor, professional environment',
+            // Retail / commerce
+            'retail_shop'        => 'Elegant modern retail store, beautiful product displays on warm wood shelves, premium shopping experience, soft daylight',
+            'ecommerce'          => 'Premium ecommerce product flat-lay or photo studio scene, clean white background, beautifully styled product, soft studio lighting',
+            // Education
+            'tutoring'           => 'Engaged student studying at a modern desk with tutor pointing at a textbook, warm natural light, focused educational atmosphere',
+            'training_center'    => 'Modern training facility classroom, projector screen with content, students at desks (no clear faces), professional atmosphere',
+            'online_courses'     => 'Modern online-learning setup, laptop with course content on screen, headphones, notebook, warm desk light, focused environment',
+            // Events
+            'event_venue'        => 'Stunning event venue ballroom, dramatic uplighting, elegant tablescapes with floral centerpieces, premium celebration space, golden warm tones',
         ];
 
-        $base = $prompts[$industry] ?? "Professional modern business interior, clean design, warm lighting, premium atmosphere";
+        $base = $prompts[$industry] ?? "Professional modern {$industry} business interior, clean design, warm lighting, premium atmosphere";
         return $base . ", photorealistic, 16:9 aspect ratio, no text, no signs, no logos, no words, no lettering, no watermarks";
     }
 
