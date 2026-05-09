@@ -4014,9 +4014,15 @@ HTMLSCRIPT;
                     return response()->json([
                         'response'       => $assistReply,
                         'agent_response' => true,
-                        'agent_name'     => 'Sarah',
-                        'agent_emoji'    => '👩‍💼',
-                        'agent_color'    => '#F59E0B',
+                        // PATCH (widget-persona, 2026-05-09) — widget rebrand:
+                        // Aria persona instead of Sarah. Runtime agent_id stays
+                        // 'dmm' because 'assistant' isn't a registered runtime
+                        // persona (verified against runtime /health) — but the
+                        // widget UI presents itself as Aria so it stays
+                        // distinct from the Messages-panel Sarah surface.
+                        'agent_name'     => 'Aria',
+                        'agent_emoji'    => '✨',
+                        'agent_color'    => '#06B6D4',
                         'is_action'      => $isAction,
                     ]);
                 }
