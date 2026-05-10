@@ -62,6 +62,10 @@ async function _socApi(method, path, body) {
 // LOAD + RENDER
 // ═══════════════════════════════════════════════════════════════════
 async function socialLoad(el) {
+  // M5 Batch 2: mobile-first column layout
+  if (window.innerWidth < 768 && el) {
+    el.style.flexDirection = 'column';
+  }
   if (!el) return;
   el.innerHTML = loadingCard(300);
   try {

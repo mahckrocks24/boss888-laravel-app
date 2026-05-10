@@ -28,6 +28,21 @@
   // ── Public entry points ───────────────────────────────────────
   // core.js calls studioLoad(el) via its engine-dispatch pattern.
   window.studioLoad = function (rootEl) {
+    // M5 Batch 2: desktop-only gate
+    if (window.innerWidth < 1024) {
+      var el = rootEl || document.querySelector("[id*=\"studio-root\"]") || document.getElementById("std-root");
+      if (el) {
+        el.innerHTML =
+          '<div class="lu-desktop-gate">' +
+            '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+              '<circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>' +
+            '</svg>' +
+            '<h3>Studio</h3>' +
+            '<p>The visual studio requires a desktop or laptop. Open this on a larger screen to create and edit media.</p>' +
+          '</div>';
+      }
+      return;
+    }
     _rootEl = rootEl || document.getElementById('studio-root') || document.body;
     try { _rootEl.style.position = 'relative'; } catch(_){}
     _mountGallery();

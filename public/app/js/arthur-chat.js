@@ -83,7 +83,7 @@ window.wsShowArthurWizard = function(prefillArg) {
     ov.id = 'arthur-modal';
     ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center';
     ov.innerHTML =
-        '<div style="background:var(--s1,#161927);border:1px solid var(--bd);border-radius:20px;width:90%;max-width:600px;height:80vh;max-height:640px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5)">'
+        '<div class="lu-arthur-modal" style="background:var(--s1,#161927);border:1px solid var(--bd);border-radius:20px;width:90%;max-width:600px;height:80vh;max-height:640px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5)">'
         // Header
         + '<div style="padding:20px 24px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px">'
         + '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--p,#6C5CE7),#3B82F6);display:flex;align-items:center;justify-content:center;font-size:20px">⚡</div>'

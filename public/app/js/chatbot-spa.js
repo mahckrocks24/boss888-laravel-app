@@ -270,7 +270,7 @@
   // ── TAB 3 — Conversations ────────────────────────────────────────
   function _renderConversations() {
     document.getElementById('cb-body').innerHTML =
-      '<div style="display:grid;grid-template-columns:300px 1fr;gap:16px;height:100%;min-height:480px">' +
+      '<div style="display:grid;grid-template-columns:' + (window.innerWidth < 768 ? '1fr' : '300px 1fr') + ';gap:16px;height:100%;min-height:480px">' +
         '<div id="cb-conv-list" style="background:#15151A;border:1px solid #2A2A33;border-radius:12px;overflow-y:auto;padding:8px">' +
           '<div style="padding:24px;text-align:center;color:var(--t3);font-size:12px">Loading…</div>' +
         '</div>' +
