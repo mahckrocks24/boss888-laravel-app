@@ -41,7 +41,7 @@
 
 .lu-onboard {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100vh;min-height: 100dvh;
   background: var(--ob-bg);
   color: var(--ob-text);
   font-family: 'Inter', system-ui, sans-serif;
@@ -62,7 +62,7 @@
    — that traps tall content above the viewport. Step 2 (#lu-ob2-page) lives
    here too, outside .lu-onboard, so this universal override is what makes
    the long Business Info form scrollable on desktop AND mobile.
-   Login/Signup are unaffected: their inner wraps have min-height:100vh
+   Login/Signup are unaffected: their inner wraps have min-height:100vh;min-height:100dvh
    plus their own flex centering, so the card stays visually centered. */
 #lu-auth-root {
   align-items: flex-start !important;
@@ -83,7 +83,7 @@
 .lu-onboard .ob-signup-wrap {
   display: grid;
   grid-template-columns: 55% 45%;
-  min-height: 100vh;
+  min-height: 100vh;min-height: 100dvh;
   height: auto;       /* never fixed — grow with content */
 }
 
@@ -91,7 +91,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 100vh;min-height: 100dvh;
   padding: 40px 20px;
   background:
     radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.10) 0%, transparent 60%),
@@ -486,7 +486,7 @@
     display: flex;
     flex-direction: column;
     grid-template-columns: 1fr;
-    min-height: 100vh;
+    min-height: 100vh;min-height: 100dvh;
     height: auto;
   }
   .lu-onboard .ob-left {
@@ -528,7 +528,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .ob-quiz-wrap {
-  min-height: 100vh;
+  min-height: 100vh;min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;

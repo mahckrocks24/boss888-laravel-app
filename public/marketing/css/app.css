@@ -19,7 +19,7 @@ html, body { height: 100%; background: var(--bg); color: #E5E7EB; font-family: v
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 2px }
 
 /* ── AUTH SHELL ── */
-#auth-shell { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,.12) 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, rgba(59,130,246,.07) 0%, transparent 55%), var(--bg) }
+#auth-shell { display: flex; align-items: center; justify-content: center; min-height: 100vh;min-height: 100dvh; background: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,.12) 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, rgba(59,130,246,.07) 0%, transparent 55%), var(--bg) }
 
 .auth-wrap { width: 100%; max-width: 420px; padding: 20px }
 .auth-card { background: var(--card); border: 1px solid var(--border2); border-radius: 20px; padding: 36px 32px }
@@ -78,7 +78,7 @@ select.form-input { cursor: pointer }
 .ob-done-check { color: var(--green); font-weight: 700; font-size: 15px; flex-shrink: 0 }
 
 /* ── APP SHELL ── */
-#app-shell { display: flex; height: 100vh; overflow: hidden }
+#app-shell { display: flex; height: 100vh;height: 100dvh; overflow: hidden }
 
 /* ── SIDEBAR ── */
 .app-sidebar { width: var(--sidebar); flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden }

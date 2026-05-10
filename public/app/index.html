@@ -1,5 +1,9 @@
-<!DOCTYPE html><html lang="en"><head>
+<!DOCTYPE html>
+<!-- M1 mobile foundation: tokens + dvh + safe-area + z-index system --><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0B0F19">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
@@ -13,6 +17,21 @@
 <link rel="stylesheet" href="/app/css/orb.css">
 <style>
 :root{
+  /* ── M1 mobile foundation tokens ── */
+  --bp-sm: 480px; --bp-md: 768px; --bp-lg: 1024px;
+  --bp-xl: 1280px; --bp-2xl: 1536px;
+  --z-dropdown: 100; --z-sidebar: 200; --z-topbar: 300;
+  --z-overlay: 399; --z-modal: 400; --z-drawer: 500;
+  --z-toast: 600; --z-tooltip: 700; --z-critical: 999;
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left,   0px);
+  --safe-right:  env(safe-area-inset-right,  0px);
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px;
+  --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px;
+  --touch-min: 44px;
+  --dur-fast:150ms; --dur-normal:250ms; --dur-slow:400ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
   --bg:#0F1117;--s1:#171A21;--s2:#1E2230;--s3:#252A3A;
   --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
   --p:#6C5CE7;--pg:rgba(108,92,231,.22);--ps:rgba(108,92,231,.1);
@@ -31,7 +50,7 @@
 /* Light Theme */
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;font-family:var(--fb);background:var(--bg);color:var(--t1);font-size:14px;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
+html,body{height:100%;overflow:hidden;overflow-x:hidden;font-family:var(--fb);background:var(--bg);color:var(--t1);font-size:14px;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
 .engine-title,.page-title{font-weight:600;letter-spacing:-0.02em}
 button{font-family:var(--fb);cursor:pointer;border:none;outline:none}
 textarea,input{font-family:var(--fb);outline:none}
@@ -39,10 +58,10 @@ textarea,input{font-family:var(--fb);outline:none}
 ::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
 
 /* ── App layout ── */
-.app{display:flex;height:100vh;overflow:hidden}
+.app{display:flex;height:100vh;height:100dvh;overflow:hidden;overflow-x:hidden;padding-bottom:var(--safe-bottom);padding-left:var(--safe-left);padding-right:var(--safe-right)}
 
 /* ── Sidebar ── */
-.sidebar{width:220px;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto;overflow-x:hidden}
+.sidebar{width:220px;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;height:100vh;height:100dvh;overflow-y:auto;overflow-x:hidden}
 .sb-brand{padding:20px 16px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
 .sb-lm{width:32px;height:32px;background:linear-gradient(135deg,var(--p),#9B8DF8);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:14px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 4px 14px var(--pg)}
 .sb-brand-text strong{font-family:var(--fh);font-size:13px;font-weight:700;color:var(--t1);display:block;line-height:1.2}
@@ -64,7 +83,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .view.active{display:flex}
 
 /* ── Arthur AI Bubble ────────────────────────────────────────────── */
-.arthur-inline-panel{position:fixed;z-index:9999;background:var(--s1);border:1px solid var(--pu);border-radius:14px;box-shadow:0 8px 32px rgba(108,92,231,.25),0 2px 8px rgba(0,0,0,.4);padding:0;width:300px;display:none;flex-direction:column;overflow:hidden;transition:box-shadow .3s ease,border-color .3s ease;user-select:none;will-change:transform}
+.arthur-inline-panel{position:fixed;z-index:var(--z-critical);background:var(--s1);border:1px solid var(--pu);border-radius:14px;box-shadow:0 8px 32px rgba(108,92,231,.25),0 2px 8px rgba(0,0,0,.4);padding:0;width:300px;display:none;flex-direction:column;overflow:hidden;transition:box-shadow .3s ease,border-color .3s ease;user-select:none;will-change:transform}
 .arthur-inline-panel.arthur-opening{animation:arthurPanelPop .15s cubic-bezier(.4,0,.2,1) forwards}
 .arthur-inline-panel.arthur-active{box-shadow:0 0 0 1px rgba(108,92,231,.6),0 0 28px rgba(108,92,231,.5),0 8px 32px rgba(108,92,231,.3);border-color:rgba(108,92,231,.8);animation:arthurGlowPulse 1.8s ease-in-out infinite}
 .arthur-panel-header{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(108,92,231,.2);background:linear-gradient(135deg,rgba(108,92,231,.12),rgba(0,229,168,.06));cursor:grab}
@@ -117,7 +136,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .bld-block-goal{font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── Publish modal ─────────────────────────────────────────────────── */
-.pub-modal{position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;display:none}
+.pub-modal{position:fixed;inset:0;z-index:var(--z-critical);display:flex;align-items:center;justify-content:center;display:none}
 .pub-modal.visible{display:flex}
 .pub-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
 .pub-box{position:relative;z-index:1;background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:28px;width:480px;max-width:95vw}
@@ -166,7 +185,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .zone-label{position:absolute;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;opacity:.35;pointer-events:none;z-index:0}
 
 /* ══════════════ GLOBAL AI ASSISTANT ══════════════ */
-.ai-fab{position:fixed;bottom:24px;right:24px;z-index:500;width:48px;height:48px;
+.ai-fab{position:fixed;bottom:calc(24px + var(--safe-bottom));right:24px;z-index:var(--z-drawer);width:48px;height:48px;
   background:linear-gradient(135deg,var(--p),#9B8DF8);border-radius:50%;
   display:flex;align-items:center;justify-content:center;font-size:20px;
   box-shadow:0 4px 20px var(--pg),0 2px 8px rgba(0,0,0,.4);cursor:pointer;
@@ -178,7 +197,7 @@ textarea,input{font-family:var(--fb);outline:none}
   font-size:8px;font-weight:700;color:#000;display:none}
 .ai-fab-badge.visible{display:flex}
 
-.ai-panel{position:fixed;bottom:84px;right:24px;z-index:499;width:380px;
+.ai-panel{position:fixed;bottom:calc(84px + var(--safe-bottom));right:24px;z-index:var(--z-modal);width:380px;
   background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);
   box-shadow:0 16px 56px rgba(0,0,0,.55);display:flex;flex-direction:column;
   max-height:580px;transform:translateY(12px) scale(.97);opacity:0;pointer-events:none;
@@ -257,7 +276,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .tn-status{font-size:8px;color:var(--t3)}
 
 /* ══════════════ SELECTION TOOLBAR ══════════════ */
-.selection-toolbar{position:fixed;bottom:56px;left:50%;transform:translateX(-50%);z-index:200;
+.selection-toolbar{position:fixed;bottom:calc(56px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:var(--z-sidebar);
   background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg);padding:8px 12px;
   display:none;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);
   white-space:nowrap}
@@ -272,7 +291,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .sel-divider{width:1px;height:20px;background:var(--bd);margin:0 2px}
 
 /* ══════════════ DIRECT ASSIGN MODAL ══════════════ */
-.da-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:300;
+.da-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:var(--z-topbar);
   display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
 .da-backdrop.visible{opacity:1;pointer-events:all}
 .da-modal{width:500px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);
@@ -319,7 +338,7 @@ textarea,input{font-family:var(--fb);outline:none}
 
 /* Connection tooltip */
 .conn-tooltip{
-  position:fixed;z-index:100;background:var(--s1);border:1px solid var(--bd2);
+  position:fixed;z-index:var(--z-dropdown);background:var(--s1);border:1px solid var(--bd2);
   border-radius:var(--rg);padding:14px;box-shadow:0 8px 32px rgba(0,0,0,.4);
   min-width:240px;max-width:320px;pointer-events:none;
   opacity:0;transition:opacity .15s;
@@ -342,7 +361,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .ct-add-note:hover{background:var(--p);color:#fff}
 
 /* Task approval modal */
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:var(--z-sidebar);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
 .modal-backdrop.visible{opacity:1;pointer-events:all}
 .approval-modal{width:680px;max-height:80vh;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.5)}
 .am-hdr{padding:22px 24px 16px;border-bottom:1px solid var(--bd);flex-shrink:0}
@@ -489,7 +508,7 @@ textarea,input{font-family:var(--fb);outline:none}
 
 /* ══════════════ REPORTS ══════════════ */
 /* ── DM Modal ── */
-.dm-modal{position:fixed;z-index:3000;width:260px;background:var(--s1);border:1px solid var(--bd);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;animation:dmPop .15s ease}
+.dm-modal{position:fixed;z-index:var(--z-drawer);width:260px;background:var(--s1);border:1px solid var(--bd);border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;animation:dmPop .15s ease}
 @keyframes dmPop{from{opacity:0;transform:scale(.95) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .dm-hdr{padding:11px 13px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:9px}
 .dm-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
@@ -521,7 +540,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .proj-kanban{display:flex;gap:12px;padding:16px 20px;overflow-x:auto;flex:1;align-items:flex-start}
 .proj-kanban::-webkit-scrollbar{height:5px}
 .proj-kanban::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
-.kb-col{width:220px;flex-shrink:0;background:var(--s1);border:1px solid var(--bd);border-radius:10px;display:flex;flex-direction:column;max-height:calc(100vh - 160px)}
+.kb-col{width:220px;flex-shrink:0;background:var(--s1);border:1px solid var(--bd);border-radius:10px;display:flex;flex-direction:column;max-height:calc(100vh - 160px);max-height:calc(100dvh - 160px)}
 .kb-col-hdr{padding:11px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:7px;flex-shrink:0}
 .kb-col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .kb-col-lbl{font-family:var(--fh);font-size:11px;font-weight:700;color:var(--t1);flex:1}
@@ -555,7 +574,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .tl-bar{height:20px;border-radius:6px;position:absolute;cursor:pointer;display:flex;align-items:center;padding:0 7px;font-size:9px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;top:6px;transition:filter .15s}
 .tl-bar:hover{filter:brightness(1.2)}
 /* Task Drawer */
-.task-drawer{position:fixed;inset:0;z-index:2000;display:flex;justify-content:flex-end}
+.task-drawer{position:fixed;inset:0;z-index:var(--z-drawer);display:flex;justify-content:flex-end}
 .td-overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px)}
 .td-panel{position:relative;width:480px;background:var(--s1);border-left:1px solid var(--bd);display:flex;flex-direction:column;height:100%;overflow:hidden;animation:slideIn .2s ease}
 @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
@@ -634,14 +653,14 @@ textarea,input{font-family:var(--fb);outline:none}
 .exec-chain-hdr{font-size:11px;font-weight:700;color:var(--p);display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .exec-proposal{margin-top:12px;padding:12px 14px;background:var(--s2);border:1px solid var(--bd2);border-radius:10px}
 .exec-action-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--s1);border:1px solid var(--bd)}
-.exec-progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:10000;pointer-events:none}
+.exec-progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:var(--z-critical);pointer-events:none}
 .exec-progress-bar{height:100%;background:linear-gradient(90deg,var(--p),var(--ac));border-radius:0 2px 2px 0;transition:width .3s;animation:exec-pulse 1.5s ease-in-out infinite}
 @keyframes exec-pulse{0%,100%{opacity:1}50%{opacity:.6}}
 @keyframes arthurShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 .arthur-loading{position:relative;pointer-events:none;overflow:hidden}
 .arthur-loading::after{content:'';position:absolute;inset:0;z-index:50;background:linear-gradient(90deg,transparent 0%,rgba(108,92,231,.08) 20%,rgba(108,92,231,.18) 50%,rgba(108,92,231,.08) 80%,transparent 100%);animation:arthurShimmer 1.4s ease-in-out infinite}
 .arthur-loading::before{content:'';position:absolute;inset:0;z-index:49;background:rgba(15,17,23,.25);border-radius:inherit}
-.exec-toast{position:fixed;bottom:80px;right:20px;z-index:9998;background:var(--s2);border:1px solid var(--bd2);border-radius:12px;padding:14px 18px;box-shadow:0 10px 40px rgba(0,0,0,.4);max-width:340px;animation:fadeUp .3s ease;display:flex;align-items:center;gap:12px}
+.exec-toast{position:fixed;bottom:calc(80px + var(--safe-bottom));right:20px;z-index:var(--z-critical);background:var(--s2);border:1px solid var(--bd2);border-radius:12px;padding:14px 18px;box-shadow:0 10px 40px rgba(0,0,0,.4);max-width:340px;animation:fadeUp .3s ease;display:flex;align-items:center;gap:12px}
 .exec-toast .et-spinner{width:20px;height:20px;border:2.5px solid var(--bd);border-top-color:var(--p);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .gov-approve{background:var(--ac);color:#0F1117}.gov-approve:hover{filter:brightness(1.1)}
@@ -667,9 +686,9 @@ textarea,input{font-family:var(--fb);outline:none}
 .av-card-expertise{margin-top:10px;font-size:11px;color:var(--t2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
 /* Agent drawer */
-.agent-drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s}
+.agent-drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:var(--z-topbar);opacity:0;pointer-events:none;transition:opacity .3s}
 .agent-drawer-bg.visible{opacity:1;pointer-events:all}
-.agent-drawer{position:fixed;top:0;right:0;bottom:0;width:50vw;min-width:480px;background:var(--s1);border-left:1px solid var(--bd);display:flex;flex-direction:column;z-index:301;transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);box-shadow:-12px 0 60px rgba(0,0,0,.5)}
+.agent-drawer{position:fixed;top:0;right:0;bottom:0;width:50vw;min-width:480px;background:var(--s1);border-left:1px solid var(--bd);display:flex;flex-direction:column;z-index:var(--z-topbar);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);box-shadow:-12px 0 60px rgba(0,0,0,.5)}
 .agent-drawer.open{transform:translateX(0)}
 .ad-hdr{padding:22px 24px 0;flex-shrink:0}
 .ad-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}
@@ -2447,8 +2466,8 @@ table tbody tr:hover{background:var(--s2)}
       </div>
 
       <!-- Campaign detail panel (slide-in) -->
-      <div id="cmp-detail-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400" onclick="closeCampaignDetail()"></div>
-      <div id="cmp-detail-panel" style="position:fixed;top:0;right:0;bottom:0;width:52vw;min-width:500px;background:var(--s1);border-left:1px solid var(--bd);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);z-index:401;display:flex;flex-direction:column;overflow:hidden">
+      <div id="cmp-detail-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:var(--z-modal)" onclick="closeCampaignDetail()"></div>
+      <div id="cmp-detail-panel" style="position:fixed;top:0;right:0;bottom:0;width:52vw;min-width:500px;background:var(--s1);border-left:1px solid var(--bd);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);z-index:var(--z-modal);display:flex;flex-direction:column;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bd)">
           <div id="cmp-detail-title" style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1)">Campaign</div>
           <button onclick="closeCampaignDetail()" style="background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer">✕</button>
@@ -2457,7 +2476,7 @@ table tbody tr:hover{background:var(--s2)}
       </div>
 
       <!-- New campaign modal -->
-      <div id="cmp-new-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:center;justify-content:center">
+      <div id="cmp-new-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:var(--z-drawer);align-items:center;justify-content:center">
         <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);padding:28px;width:480px;max-width:95vw">
           <div style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--t1);margin-bottom:20px">New Campaign</div>
           <div style="margin-bottom:14px">
@@ -2896,7 +2915,7 @@ table tbody tr:hover{background:var(--s2)}
       </div>
 
       <!-- Create website modal -->
-      <div id="ws-create-modal" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center">
+      <div id="ws-create-modal" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:var(--z-dropdown);align-items:center;justify-content:center">
         <div style="background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:28px;width:480px;max-width:95vw">
           <h3 style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">New Website</h3>
           <p style="color:var(--t3);font-size:12px;margin-bottom:20px">Create a multi-page website managed by LevelUp</p>
@@ -2916,7 +2935,7 @@ table tbody tr:hover{background:var(--s2)}
       </div>
 
       <!-- Publish modal (shared for pages + sites) -->
-      <div id="ws-pub-modal" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center">
+      <div id="ws-pub-modal" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:var(--z-dropdown);align-items:center;justify-content:center">
         <div style="background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:28px;width:500px;max-width:95vw">
           <h3 style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px" id="ws-pub-title">Publish Website</h3>
           <p style="color:var(--t3);font-size:12px;margin-bottom:20px" id="ws-pub-subtitle">Configure publishing settings</p>
@@ -3045,7 +3064,7 @@ table tbody tr:hover{background:var(--s2)}
       <div id="dp-tasks-list"></div>
     </div>
     <div class="ad-pane" id="dp-messages">
-      <div id="msgs-feed-container" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;min-height:200px;max-height:calc(100vh - 380px);overflow-y:auto" class="msgs-feed"></div>
+      <div id="msgs-feed-container" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;min-height:200px;max-height:calc(100vh - 380px);max-height:calc(100dvh - 380px);overflow-y:auto" class="msgs-feed"></div>
       <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
         <button onclick="sendAgentMessage('my_tasks')" style="background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:4px 12px;font-size:10px;color:var(--t2);cursor:pointer;font-weight:600"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><circle cx="5" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg> My Tasks</button>
         <button onclick="sendAgentMessage('recent_completions')" style="background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:4px 12px;font-size:10px;color:var(--t2);cursor:pointer;font-weight:600">✅ Completions</button>
