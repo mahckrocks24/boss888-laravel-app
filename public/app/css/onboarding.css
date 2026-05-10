@@ -57,15 +57,17 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Override #lu-auth-root flex centering when content overflows on mobile.
+/* Override #lu-auth-root flex centering at ALL viewport sizes (4.0.3).
    core.js sets the overlay to position:fixed inset:0 with align-items:center
-   — that traps content above the viewport. Use flex-start + scroll instead. */
-@media (max-width: 880px) {
-  #lu-auth-root {
-    align-items: flex-start !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
+   — that traps tall content above the viewport. Step 2 (#lu-ob2-page) lives
+   here too, outside .lu-onboard, so this universal override is what makes
+   the long Business Info form scrollable on desktop AND mobile.
+   Login/Signup are unaffected: their inner wraps have min-height:100vh
+   plus their own flex centering, so the card stays visually centered. */
+#lu-auth-root {
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Reset within namespace only */
