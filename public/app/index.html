@@ -1488,6 +1488,117 @@ img:not([loading]) {
   .cmd-kpi-value { font-size: 22px !important; }
   .cmd-kpi-label { font-size: 11px !important; }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   M5 hotfix — Command Center text overlap + CRM KPI 2-col mobile grid
+   Targets exact class names found in audit (.cmd-feed-* and .cmd-agent-*).
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Command Center: feed/activity rows ── */
+@media (max-width: 1023px) {
+
+  /* Feed row container: flex-row, no wrap */
+  .cmd-feed-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    min-height: 44px !important;
+    overflow: hidden !important;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  /* Orb / avatar fixed size */
+  .cmd-feed-row .orb,
+  .cmd-feed-row [class*="orb"] {
+    flex-shrink: 0 !important;
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Body fills remaining width and truncates */
+  .cmd-feed-body {
+    flex: 1 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Label: single-line ellipsis (was multi-line wrap → overlap) */
+  .cmd-feed-label {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+  }
+
+  /* Time: smaller, never wraps */
+  .cmd-feed-time {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    font-size: 11px !important;
+    color: #6B7280 !important;
+  }
+
+  /* Agent cards: text truncates inside flexbox body */
+  .cmd-agent-card {
+    align-items: center !important;
+  }
+  .cmd-agent-body {
+    flex: 1 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  .cmd-agent-name,
+  .cmd-agent-title,
+  .cmd-agent-meta {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .cmd-agent-meta { flex-wrap: wrap !important; }
+}
+
+/* ── CRM KPI cards: 2-col grid on mobile, 3-col on tablet ── */
+@media (max-width: 767px) {
+  .crm-kpi-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    overflow-x: hidden !important;
+  }
+  .crm-kpi {
+    width: 100% !important;
+    min-width: unset !important;
+    padding: 14px 12px !important;
+  }
+  .crm-kpi-value {
+    font-size: 22px !important;
+  }
+  .crm-kpi-label {
+    font-size: 11px !important;
+  }
+
+  /* CRM tabs — horizontal scroll if too many */
+  [class*="crm-tab"],
+  [id*="crm-tab"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none !important;
+  }
+  [class*="crm-tab"]::-webkit-scrollbar { display: none; }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .crm-kpi-row {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+  }
+}
 </style>
 
 <style>

@@ -512,7 +512,7 @@ function _dashHtml() {
 
     var pvLabel='$'+(pipelineVal>=1000000?(pipelineVal/1000000).toFixed(1)+'M':pipelineVal>=1000?(pipelineVal/1000).toFixed(1)+'K':pipelineVal.toFixed(0));
     return alert+
-        '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:20px">'+
+        '<div class="crm-kpi-row" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:20px">'+
             _stat('Total Leads',total,'var(--t1)')+_stat('Pipeline Value',pvLabel,'var(--ac)')+_stat('Hot Leads '+window.icon("info",14)+'',hot,'var(--rd)')+
             _stat('Sources',uniqSrc.length,'var(--t2)')+_stat('Tasks',_crm.tasks.length,overdueCnt?'var(--rd)':'var(--p)')+
         '</div>'+
@@ -529,7 +529,7 @@ function _dashHtml() {
             '<button class="btn btn-outline" onclick="window._crmTab(\'today\')" style="flex:1">→ Today</button>'+
         '</div>';
 }
-function _stat(l,v,c){return '<div class="card" style="padding:20px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px">'+l+'</div><div style="font-size:36px;font-weight:700;color:'+c+'">'+v+'</div></div>';}
+function _stat(l,v,c){return '<div class="card crm-kpi" style="padding:20px"><div class="crm-kpi-label" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px">'+l+'</div><div class="crm-kpi-value" style="font-size:36px;font-weight:700;color:'+c+'">'+v+'</div></div>';}
 
 // =============================================================================
 // TODAY VIEW
