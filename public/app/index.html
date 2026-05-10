@@ -1759,6 +1759,46 @@ html, body, .app, .lu-main {
   touch-action: pan-y !important;
   overscroll-behavior: none !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   M9 — Orientation + Tablet rules
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Tablet portrait (768-1023px) — sidebar visible, no hamburger */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar { width: 200px !important; }
+  .lu-main, .main { margin-left: 200px !important; }
+  .lu-topbar { display: none !important; }
+  .lu-card-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .lu-engine-panel { width: 260px !important; }
+  #cmd-kpis { grid-template-columns: repeat(2, 1fr) !important; }
+  .lu-modal, [class*="-modal"] { width: min(680px, 90vw) !important; }
+}
+
+/* Landscape phone — shorter chrome */
+@media (max-width: 767px) and (orientation: landscape) {
+  .lu-topbar { height: 44px !important; padding-top: 0 !important; }
+  .lu-modal, [class*="-modal"],
+  #agent-drawer, [id*="agent-drawer"] {
+    max-height: 90dvh !important; height: auto !important;
+  }
+  #lu-arthur-modal, [id*="arthur-modal"],
+  #lu-msg-modal, [id*="msg-modal"] { height: 85dvh !important; }
+  .ob-orbit-wrap { width: 180px !important; height: 180px !important; }
+  .ob-quiz-wrap { padding: 16px !important; }
+  .ob-quiz-question { font-size: 22px !important; }
+}
+
+/* iPad split-screen narrow (320-500px) */
+@media (min-width: 320px) and (max-width: 500px) {
+  .lu-card-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Wide desktop (≥ 1536px) */
+@media (min-width: 1536px) {
+  .lu-card-grid { grid-template-columns: repeat(4, 1fr) !important; }
+  .lu-engine-panel { width: 400px !important; }
+}
 </style>
 
 <style>

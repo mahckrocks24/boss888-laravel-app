@@ -86,3 +86,7 @@ phpunit.cache/
 _backup/
 .archives/
 .puppeteer-cache/
+test-results/
+tests/mobile/report/
+tests/mobile/screenshots/
+playwright-report/
