@@ -1748,6 +1748,17 @@ img:not([loading]) {
     min-width: 40px !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Disable browser swipe-back gesture (iOS/Chrome Android edge-swipe → back)
+   ═════════════════════════════════════════════════════════════════════════ */
+html, body, .app, .lu-main {
+  overscroll-behavior-x: none !important;
+}
+.app {
+  touch-action: pan-y !important;
+  overscroll-behavior: none !important;
+}
 </style>
 
 <style>
@@ -4609,4 +4620,14 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 <script defer src="/app/js/messages-ui.js?v=4.5.0"></script>
 <script defer src="/app/js/arthur-chat.js?v=5.9.3-result-card"></script>
 <script defer src="/app/js/chatbot-spa.js?v=1.0.0"></script>
+
+<script>
+/* Block left-edge swipe → browser back. Only the leftmost 20px catches it,
+   which is narrower than any UI affordance (hamburger ≈ 40px from edge). */
+document.addEventListener('touchstart', function (e) {
+  if (e.touches[0].clientX < 20) {
+    e.preventDefault();
+  }
+}, { passive: false });
+</script>
 </body></html>
