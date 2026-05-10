@@ -1843,23 +1843,36 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
-   Workspace canvas — minimal mobile fix (post-revert)
-   - Hide legend
-   - Reposition selection-toolbar as a full-width bottom pill
+   Workspace canvas — minimal mobile fix v2
+   - Canvas legend: KEEP visible, reposition below the 56px mobile topbar
+   - Selection toolbar: full-width pill at bottom (8px gutter, 20px from edge)
    - DO NOT touch .agent-node positioning (canvas relies on absolute pos)
    - DO NOT touch #canvas-agents or #view-workspace overflow
    - AI FAB handled by the Mobile FAB stack block below
    ═════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 767px) {
-  .canvas-legend {
-    display: none !important;
+@media (max-width: 1023px) {
+  /* Push the legend out from behind the mobile topbar (56px + 8px gap) */
+  .canvas-legend,
+  div.canvas-legend {
+    top: 64px !important;
+    right: 8px !important;
+    left: auto !important;
+    z-index: var(--z-dropdown) !important;
   }
-  .selection-toolbar {
+}
+
+@media (max-width: 767px) {
+  /* Selection toolbar — tight pill at bottom edge */
+  .selection-toolbar,
+  #selection-toolbar {
     position: fixed !important;
-    bottom: calc(16px + var(--safe-bottom)) !important;
-    left: 16px !important;
-    right: 16px !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 20px !important;
+    top: auto !important;
+    transform: none !important;
     width: auto !important;
+    max-width: calc(100vw - 16px) !important;
     z-index: var(--z-dropdown) !important;
     flex-wrap: wrap !important;
     gap: 8px !important;
