@@ -186,9 +186,7 @@ function _renderSignup() {
       <div class="ob-left">
         <div class="ob-logo">
           <div class="ob-logo-mark">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M11.5 2L4 11h6.5L8.5 18L16 9h-6.5L11.5 2z" fill="#fff" stroke="#fff" stroke-width="0.5" stroke-linejoin="round"/>
-            </svg>
+            <img src="/img/logo-icon-40.png" style="width:40px;height:40px;object-fit:contain" alt="">
           </div>
           <span class="ob-logo-name">LevelUpGrowth</span>
         </div>
