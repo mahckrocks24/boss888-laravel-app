@@ -252,8 +252,12 @@ function luLogout() {
   localStorage.removeItem('lu_token');
   localStorage.removeItem('lu_refresh_token');
   localStorage.removeItem('lu_user_id');
+  localStorage.removeItem('lu_user_name');
+  localStorage.removeItem('lu_workspace_id');
   localStorage.removeItem('lu_onboarded');
-  window.location.reload();
+  // Strip any hash (e.g. #signup) so _appBootstrap routes to login, not signup.
+  // Using location.replace so the logged-in URL isn't kept in history.
+  window.location.replace(window.location.pathname + window.location.search);
 }
 
 function loadSettings() {
