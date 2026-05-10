@@ -1984,6 +1984,19 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
     border-color: rgba(124,58,237,0.6) !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Workspace canvas pinch-to-zoom — visual primitives
+   ═════════════════════════════════════════════════════════════════════════ */
+#canvas-agents {
+  transform-origin: 0 0;
+  will-change: transform;
+  transition: transform 0.05s linear;
+}
+/* Prevent zoomed canvas from triggering page-level scroll */
+#view-workspace {
+  overflow: hidden !important;
+}
 </style>
 
 <style>
@@ -5095,6 +5108,119 @@ document.addEventListener('touchstart', function (e) {
 
   document.addEventListener('lu:bootstrap-complete', initTouchDrag);
   setTimeout(initTouchDrag, 2000);  // fallback if bootstrap event missed
+})();
+</script>
+
+<script>
+/* ═════════════════════════════════════════════════════════════════════════
+   Pinch-to-zoom on workspace canvas — mobile pinch + desktop ctrl+wheel.
+   3-finger tap resets to 1.0. Scale persists in localStorage (ws_canvas_scale).
+   Restores on re-init when navigating back to workspace.
+   ═════════════════════════════════════════════════════════════════════════ */
+(function() {
+  var _scale    = 1;
+  var _minScale = 0.3;
+  var _maxScale = 3;
+  var _lastDist = 0;
+  var _pinching = false;
+  var _originX  = 0;
+  var _originY  = 0;
+
+  function getCanvas() {
+    return document.getElementById('canvas-agents') ||
+           document.querySelector('[id*="canvas-agents"]');
+  }
+
+  function applyScale(canvas, scale, ox, oy) {
+    _scale = Math.min(_maxScale, Math.max(_minScale, scale));
+    canvas.style.transformOrigin = ox + 'px ' + oy + 'px';
+    canvas.style.transform = 'scale(' + _scale + ')';
+  }
+
+  function dist(t1, t2) {
+    var dx = t1.clientX - t2.clientX;
+    var dy = t1.clientY - t2.clientY;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
+
+  function initPinchZoom() {
+    var canvas = getCanvas();
+    if (!canvas) { setTimeout(initPinchZoom, 1000); return; }
+    if (canvas._luPinchWired) return;
+    canvas._luPinchWired = true;
+
+    // ── Mobile: two-finger pinch ──
+    canvas.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        _pinching = true;
+        _lastDist = dist(e.touches[0], e.touches[1]);
+        var rect = canvas.getBoundingClientRect();
+        _originX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+        _originY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', function(e) {
+      if (!_pinching || e.touches.length !== 2) return;
+      e.preventDefault();
+      var newDist = dist(e.touches[0], e.touches[1]);
+      var delta = newDist / _lastDist;
+      _lastDist = newDist;
+      applyScale(canvas, _scale * delta, _originX, _originY);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', function(e) {
+      if (e.touches.length < 2 && _pinching) {
+        _pinching = false;
+        try { localStorage.setItem('ws_canvas_scale', _scale); } catch(_) {}
+      }
+    }, { passive: true });
+
+    // ── Mobile: three-finger tap = reset zoom (separate listener so the
+    //    early-return on the pinch one doesn't shadow it) ──
+    canvas.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 3) {
+        e.preventDefault();
+        _scale = 1;
+        canvas.style.transform = 'scale(1)';
+        canvas.style.transformOrigin = 'center center';
+        try { localStorage.setItem('ws_canvas_scale', 1); } catch(_) {}
+        if (typeof showToast === 'function') showToast('Zoom reset', 'info');
+      }
+    }, { passive: false });
+
+    // ── Desktop: ctrl/cmd + wheel ──
+    canvas.addEventListener('wheel', function(e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      var rect = canvas.getBoundingClientRect();
+      var ox = e.clientX - rect.left;
+      var oy = e.clientY - rect.top;
+      var delta = e.deltaY > 0 ? 0.9 : 1.1;
+      applyScale(canvas, _scale * delta, ox, oy);
+      try { localStorage.setItem('ws_canvas_scale', _scale); } catch(_) {}
+    }, { passive: false });
+
+    // Restore saved scale
+    var saved = parseFloat(localStorage.getItem('ws_canvas_scale'));
+    if (saved && saved !== 1 && !isNaN(saved)) {
+      _scale = saved;
+      canvas.style.transform = 'scale(' + _scale + ')';
+      canvas.style.transformOrigin = 'center center';
+    }
+  }
+
+  document.addEventListener('lu:bootstrap-complete', initPinchZoom);
+  setTimeout(initPinchZoom, 2000);
+
+  // Re-init when navigating to workspace (canvas may be re-rendered)
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('[onclick*="nav(\'workspace\')"]') ||
+        e.target.closest('#ni-workspace')) {
+      setTimeout(initPinchZoom, 300);
+    }
+  });
 })();
 </script>
 </body></html>
