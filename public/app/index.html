@@ -874,6 +874,104 @@ table tbody tr:hover{background:var(--s2)}
 .ad-pane, .cmd-feed, .view {
   -webkit-overflow-scrolling: touch;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   M2 — Mobile sidebar (drawer + hamburger + topbar)
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Mobile overlay (sidebar backdrop) ── */
+.lu-mob-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: var(--z-overlay);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.lu-mob-overlay.show { display: block; }
+
+/* ── Mobile top bar (hidden on desktop) ── */
+.lu-topbar { display: none; }
+
+.lu-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--t2, #8B97B0);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  align-items: center;
+  justify-content: center;
+}
+.lu-hamburger:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+
+.lu-topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Manrope', 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--t1, #E8EDF5);
+}
+
+.lu-topbar-actions {
+  width: var(--touch-min);
+  /* placeholder for future notification/avatar — balances hamburger */
+}
+
+@media (max-width: 1023px) {
+  /* Stack app shell vertically so topbar sits above main content */
+  .app { flex-direction: column; }
+
+  /* Topbar visible */
+  .lu-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 16px;
+    padding-left:  calc(16px + var(--safe-left));
+    padding-right: calc(16px + var(--safe-right));
+    padding-top:   var(--safe-top);
+    background: var(--s1, #171A21);
+    border-bottom: 1px solid var(--bd, rgba(255,255,255,.07));
+    position: sticky;
+    top: 0;
+    z-index: var(--z-topbar);
+    flex-shrink: 0;
+  }
+
+  .lu-hamburger { display: flex; }
+
+  /* Sidebar becomes a drawer */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform var(--dur-normal) var(--ease-out);
+    z-index: var(--z-drawer);
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.6);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sidebar.mob-open { transform: translateX(0); }
+
+  /* Main reclaims full width since sidebar is out of flow */
+  .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
 </style>
 
 <style>
@@ -987,6 +1085,63 @@ table tbody tr:hover{background:var(--s2)}
 </head>
 <body>
 <div class="app">
+<!-- ── M2: Mobile overlay + top bar (1023px and below) ── -->
+<div class="lu-mob-overlay" id="lu-mob-overlay" onclick="luToggleSidebar()"></div>
+<div class="lu-topbar" id="lu-topbar">
+  <button class="lu-hamburger" id="lu-hamburger" type="button" onclick="luToggleSidebar()" aria-label="Open menu">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <line x1="2" y1="6"  x2="20" y2="6"  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <line x1="2" y1="11" x2="20" y2="11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <line x1="2" y1="16" x2="20" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <div class="lu-topbar-logo">
+    <img src="/img/logo-icon-40.png" onerror="this.style.display='none'" style="width:28px;height:28px;object-fit:contain" alt="">
+    <span>LevelUp Growth</span>
+  </div>
+  <div class="lu-topbar-actions"></div>
+</div>
+<script>
+/* ── M2: Mobile sidebar toggle (defined before any user interaction) ── */
+function luToggleSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var overlay = document.getElementById('lu-mob-overlay');
+  if (!sidebar) return;
+  var isOpen = sidebar.classList.contains('mob-open');
+  if (isOpen) {
+    sidebar.classList.remove('mob-open');
+    if (overlay) overlay.classList.remove('show');
+    document.body.style.overflow = '';
+  } else {
+    sidebar.classList.add('mob-open');
+    if (overlay) overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+/* Close drawer on nav-item tap (mobile only) */
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.sidebar .nav-item, .sidebar a').forEach(function (el) {
+    el.addEventListener('click', function () {
+      if (window.innerWidth < 1024) {
+        var sidebar = document.querySelector('.sidebar');
+        var overlay = document.getElementById('lu-mob-overlay');
+        if (sidebar) sidebar.classList.remove('mob-open');
+        if (overlay) overlay.classList.remove('show');
+        document.body.style.overflow = '';
+      }
+    });
+  });
+});
+
+/* Close on ESC */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  var sidebar = document.querySelector('.sidebar');
+  if (sidebar && sidebar.classList.contains('mob-open')) luToggleSidebar();
+});
+</script>
+
 
   <!-- Sidebar -->
   <div class="sidebar">
