@@ -972,6 +972,52 @@ table tbody tr:hover{background:var(--s2)}
     width: 100% !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   M3 — Keyboard + Input handling
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Keyboard-aware layout (when virtual keyboard opens) ── */
+body.keyboard-open .lu-topbar      { display: none !important; }
+body.keyboard-open .lu-mob-overlay { display: none !important; }
+body.keyboard-open .ai-fab         { display: none !important; }
+body.keyboard-open .lu-bottom-nav  { display: none !important; }
+
+/* ── Sticky chat/compose bars above the keyboard ── */
+.lu-chat-input-wrap,
+.lu-compose-bar,
+[class*="msg-input"],
+[class*="chat-footer"] {
+  position: sticky;
+  bottom: 0;
+  background: var(--s1, #171A21);
+  padding-bottom: max(8px, var(--safe-bottom));
+  z-index: var(--z-dropdown);
+}
+
+/* ── Auto-grow textarea ── */
+textarea.lu-auto-grow {
+  min-height: 44px;
+  max-height: 200px;
+  overflow-y: auto;
+  resize: none;
+  transition: height 0.1s ease;
+}
+
+/* ── iOS auto-zoom prevention (font-size >= 16px on focus) ── */
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: max(16px, 1rem) !important;
+  }
+}
 </style>
 
 <style>
@@ -1141,6 +1187,77 @@ document.addEventListener('keydown', function (e) {
   if (sidebar && sidebar.classList.contains('mob-open')) luToggleSidebar();
 });
 </script>
+<script>
+/* ── M3: Keyboard & Input Handling ── */
+
+// Detect virtual keyboard via visualViewport
+(function () {
+  if (!window.visualViewport) return;
+  var KEYBOARD_THRESHOLD = 0.75; // open if vvh < 75% of screen
+  window.visualViewport.addEventListener('resize', function () {
+    var ratio = window.visualViewport.height / window.screen.height;
+    document.body.classList.toggle('keyboard-open', ratio < KEYBOARD_THRESHOLD);
+  });
+})();
+
+// iOS pushes focused inputs behind fixed bars — scroll into view
+document.addEventListener('focusin', function (e) {
+  var el = e.target;
+  if (!el || !el.tagName) return;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].indexOf(el.tagName) === -1) return;
+  if (window.innerWidth > 768) return;
+  setTimeout(function () {
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+  }, 350);
+}, true);
+
+// Auto-grow any textarea on input
+function luAutoGrow(el) {
+  if (!el || el.tagName !== 'TEXTAREA') return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+document.addEventListener('input', function (e) {
+  if (e.target.tagName === 'TEXTAREA') luAutoGrow(e.target);
+});
+
+// On load: tag every textarea with lu-auto-grow + initial size
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('textarea').forEach(function (el) {
+    el.classList.add('lu-auto-grow');
+    luAutoGrow(el);
+  });
+});
+
+// Focus trap for modals
+function luTrapFocus(modal) {
+  if (!modal) return;
+  var sel = 'a[href],button:not([disabled]),input:not([disabled]),' +
+            'textarea:not([disabled]),select:not([disabled]),' +
+            '[tabindex]:not([tabindex="-1"])';
+  var focusable = Array.prototype.slice.call(modal.querySelectorAll(sel));
+  if (!focusable.length) return;
+  var first = focusable[0], last = focusable[focusable.length - 1];
+  modal._trapHandler = function (e) {
+    if (e.key !== 'Tab') return;
+    if (e.shiftKey) {
+      if (document.activeElement === first) { last.focus(); e.preventDefault(); }
+    } else {
+      if (document.activeElement === last) { first.focus(); e.preventDefault(); }
+    }
+  };
+  modal.addEventListener('keydown', modal._trapHandler);
+  first.focus();
+}
+function luReleaseFocus(modal) {
+  if (modal && modal._trapHandler) modal.removeEventListener('keydown', modal._trapHandler);
+}
+
+window.luTrapFocus    = luTrapFocus;
+window.luReleaseFocus = luReleaseFocus;
+window.luAutoGrow     = luAutoGrow;
+</script>
+
 
 
   <!-- Sidebar -->
