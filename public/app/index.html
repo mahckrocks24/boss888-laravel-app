@@ -4679,7 +4679,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.5.4-touch-fixes"></script>
+<script defer src="/app/js/core.js?v=4.5.5-canvas-fixes"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
@@ -5179,10 +5179,11 @@ document.addEventListener('touchstart', function (e) {
         _originY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
         e.preventDefault();
       }
-      // Single finger on empty canvas = pan (only when zoomed in)
-      if (e.touches.length === 1 && _scale > 1.05) {
+      // Single finger on empty canvas = pan (at any scale, including 1.0)
+      if (e.touches.length === 1) {
         var onCard = e.target.closest('.agent-node,[class*="agent-node"],.ws-card');
-        if (!onCard) {
+        var onToolbar = e.target.closest('.selection-toolbar,#selection-toolbar,.canvas-toolbar');
+        if (!onCard && !onToolbar) {
           _panning    = true;
           _panTouchId = e.touches[0].identifier;
           _panStartX  = e.touches[0].clientX - _panX;
@@ -5201,8 +5202,8 @@ document.addEventListener('touchstart', function (e) {
         applyScale(canvas, _scale * delta, _originX, _originY);
         return;
       }
-      // Pan branch (single finger, zoomed in)
-      if (_panning && e.touches.length === 1) {
+      // Pan branch (single finger — yields to selection-rect when active)
+      if (_panning && !window._luTouchSelActive && e.touches.length === 1) {
         var t = e.touches[0];
         if (t.identifier === _panTouchId) {
           e.preventDefault();
@@ -5314,6 +5315,8 @@ document.addEventListener('touchstart', function (e) {
   var _selRect    = null;
   var _selTapTime = 0;
   var DBL_MS      = 300;
+  // Canvas-space bounds of the active selection rect (for hit-test in touchend)
+  var _selBox     = { x1:0, y1:0, x2:0, y2:0 };
 
   function initTouchSelect() {
     var canvas = document.getElementById('canvas-agents');
@@ -5342,8 +5345,13 @@ document.addEventListener('touchstart', function (e) {
       if (e.touches.length === 1 && now - _selTapTime < DBL_MS) {
         e.preventDefault();
         _selActive = true;
+        window._luTouchSelActive = true;  // tell pan IIFE to stand down
         _selStartX = (touch.clientX - rect.left - panX) / scale;
         _selStartY = (touch.clientY - rect.top  - panY) / scale;
+        _selBox.x1 = _selStartX;
+        _selBox.y1 = _selStartY;
+        _selBox.x2 = _selStartX;
+        _selBox.y2 = _selStartY;
         _selRect.style.left    = _selStartX + 'px';
         _selRect.style.top     = _selStartY + 'px';
         _selRect.style.width   = '0';
@@ -5364,29 +5372,37 @@ document.addEventListener('touchstart', function (e) {
       var panY  = window._luCanvasPanY  || 0;
       var curX  = (touch.clientX - rect.left - panX) / scale;
       var curY  = (touch.clientY - rect.top  - panY) / scale;
-      var x = Math.min(_selStartX, curX);
-      var y = Math.min(_selStartY, curY);
-      var w = Math.abs(curX - _selStartX);
-      var h = Math.abs(curY - _selStartY);
-      _selRect.style.left   = x + 'px';
-      _selRect.style.top    = y + 'px';
-      _selRect.style.width  = w + 'px';
-      _selRect.style.height = h + 'px';
+      _selBox.x1 = Math.min(_selStartX, curX);
+      _selBox.y1 = Math.min(_selStartY, curY);
+      _selBox.x2 = Math.max(_selStartX, curX);
+      _selBox.y2 = Math.max(_selStartY, curY);
+      _selRect.style.left   = _selBox.x1 + 'px';
+      _selRect.style.top    = _selBox.y1 + 'px';
+      _selRect.style.width  = (_selBox.x2 - _selBox.x1) + 'px';
+      _selRect.style.height = (_selBox.y2 - _selBox.y1) + 'px';
     }, { passive: false });
 
     canvas.addEventListener('touchend', function() {
       if (!_selActive) return;
       _selActive = false;
+      window._luTouchSelActive = false;  // release pan
       _selRect.style.display = 'none';
 
-      var selB = _selRect.getBoundingClientRect();
+      // Hit test in canvas space (card.style.left/top are canvas-space pixels)
       var selected = [];
       canvas.querySelectorAll('.agent-node,[class*="agent-node"]').forEach(function(card) {
-        var cb = card.getBoundingClientRect();
-        if (cb.left < selB.right && cb.right > selB.left &&
-            cb.top  < selB.bottom && cb.bottom > selB.top) {
+        var cardX = parseInt(card.style.left) || 0;
+        var cardY = parseInt(card.style.top)  || 0;
+        var cardW = card.offsetWidth  || 160;
+        var cardH = card.offsetHeight || 120;
+        if (cardX < _selBox.x2 &&
+            cardX + cardW > _selBox.x1 &&
+            cardY < _selBox.y2 &&
+            cardY + cardH > _selBox.y1) {
           selected.push(card);
           card.classList.add('ws-selected');
+          card.style.outline = '2px solid #7C3AED';
+          card.style.outlineOffset = '2px';
         }
       });
 
@@ -5397,7 +5413,11 @@ document.addEventListener('touchstart', function (e) {
         if (typeof showToast === 'function')
           showToast(selected.length + ' agent' + (selected.length > 1 ? 's' : '') + ' selected', 'info');
       } else {
-        canvas.querySelectorAll('.ws-selected').forEach(function(c) { c.classList.remove('ws-selected'); });
+        canvas.querySelectorAll('.ws-selected').forEach(function(c) {
+          c.classList.remove('ws-selected');
+          c.style.outline = '';
+          c.style.outlineOffset = '';
+        });
         if (toolbar) toolbar.style.display = 'none';
       }
     }, { passive: true });
