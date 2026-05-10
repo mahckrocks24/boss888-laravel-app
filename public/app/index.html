@@ -4858,39 +4858,62 @@ document.addEventListener('touchstart', function (e) {
     }
   }
 
-  // Messages modal watcher
-  function wireMsg() {
-    var msgModal = document.getElementById('lu-msg-modal');
-    var msgBtn   = document.getElementById('lu-messages-floater');
-    if (msgBtn && !msgBtn._luFabWired) {
-      msgBtn._luFabWired = true;
-      msgBtn.addEventListener('click', function() {
-        setTimeout(function() {
-          var m = document.getElementById('lu-msg-modal');
-          var visible = m && m.style.display !== 'none' && getComputedStyle(m).display !== 'none';
-          document.body.classList.toggle('messages-open', !!visible);
-          if (visible) document.body.classList.remove('ai-panel-open');
-        }, 50);
-      });
-    }
-    if (msgModal && !msgModal._luFabObserved) {
-      msgModal._luFabObserved = true;
-      var obs = new MutationObserver(function() {
-        var visible = msgModal.style.display !== 'none' && getComputedStyle(msgModal).display !== 'none';
-        document.body.classList.toggle('messages-open', visible);
-      });
-      obs.observe(msgModal, { attributes: true, attributeFilter: ['style','class'] });
-    }
-  }
-
-  // Wire now and re-try on bootstrap (messages-ui.js creates the floater lazily)
-  function wire() { wireAi(); wireMsg(); }
+  // Messages modal watcher moved to a separate self-retrying IIFE below
+  // (polling-based, more reliable than MutationObserver for lazy-created modal).
+  function wire() { wireAi(); }
   if (document.readyState !== 'loading') wire();
   else document.addEventListener('DOMContentLoaded', wire);
   document.addEventListener('lu:bootstrap-complete', wire);
   // Catch lazy-created elements (messages-ui.js creates floater on first call)
   setTimeout(wire, 1000);
   setTimeout(wire, 3000);
+})();
+
+/* Messages FAB body-class watcher — polling-based.
+   wireMsgFab retries every 500ms until both #lu-messages-floater AND
+   #lu-msg-modal exist (the modal is created lazily by messages-ui.js).
+   Once wired, a 300ms interval keeps body.messages-open in sync with the
+   modal's inline `display` regardless of who toggled it. */
+(function wireMsgFab() {
+  if (window._luMsgFabWired) return;
+  var msgBtn   = document.getElementById('lu-messages-floater');
+  var msgModal = document.getElementById('lu-msg-modal');
+  if (!msgBtn || !msgModal) { setTimeout(wireMsgFab, 500); return; }
+  window._luMsgFabWired = true;
+
+  // Polling state sync — 300ms is cheap and survives any close pathway
+  setInterval(function() {
+    if (window.innerWidth > 767) return;  // mobile only
+    var modalOpen = msgModal.style.display !== 'none' &&
+                    msgModal.style.display !== '';
+    var bodyHasClass = document.body.classList.contains('messages-open');
+    if (modalOpen && !bodyHasClass) {
+      document.body.classList.add('messages-open');
+      document.body.classList.remove('ai-panel-open');
+    } else if (!modalOpen && bodyHasClass) {
+      document.body.classList.remove('messages-open');
+    }
+  }, 300);
+
+  // Instant feedback on direct click (don't wait for next poll tick)
+  msgBtn.addEventListener('click', function() {
+    setTimeout(function() {
+      var open = msgModal.style.display !== 'none' &&
+                 msgModal.style.display !== '';
+      document.body.classList.toggle('messages-open', open);
+      if (open) document.body.classList.remove('ai-panel-open');
+    }, 100);
+  });
+
+  // Catch in-modal close button clicks immediately too
+  msgModal.addEventListener('click', function(e) {
+    var isClose = e.target.closest('[class*="close"],[id*="close"],[onclick*="close"]');
+    if (isClose) {
+      setTimeout(function() {
+        document.body.classList.remove('messages-open');
+      }, 100);
+    }
+  });
 })();
 </script>
 </body></html>
