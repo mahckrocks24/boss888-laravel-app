@@ -131,6 +131,16 @@
   margin-bottom: 40px;
 }
 
+/* New logo image — sits directly inside .ob-logo (no purple container) */
+.lu-onboard .ob-logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* Legacy container — used only by the login screen "L" letter (signup
+   no longer wraps its image). */
 .lu-onboard .ob-logo-mark {
   width: 40px;
   height: 40px;

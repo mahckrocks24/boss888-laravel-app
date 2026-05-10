@@ -185,9 +185,7 @@ function _renderSignup() {
 
       <div class="ob-left">
         <div class="ob-logo">
-          <div class="ob-logo-mark">
-            <img src="/img/logo-icon-40.png" style="width:40px;height:40px;object-fit:contain" alt="">
-          </div>
+          <img src="/img/logo-icon-40.png" class="ob-logo-img" alt="">
           <span class="ob-logo-name">LevelUpGrowth</span>
         </div>
 
