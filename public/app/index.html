@@ -1041,19 +1041,22 @@ button, a, .btn, .card,
 /* Prevent accidental pull-to-refresh */
 body { overscroll-behavior-y: contain; }
 
-/* Drawer handle visual hint on mobile */
+/* Drawer handle — sticky ::before so it stays visible while sidebar scrolls (M4+M7+M8 hotfix) */
 @media (max-width: 1023px) {
-  .sidebar::after {
+  .sidebar::before {
     content: '';
     display: block;
     width: 36px;
     height: 4px;
     background: rgba(255, 255, 255, 0.15);
     border-radius: 2px;
-    position: absolute;
+    position: sticky;
     top: 8px;
     left: 50%;
     transform: translateX(-50%);
+    margin: 8px auto;
+    z-index: 1;
+    flex-shrink: 0;
     pointer-events: none;
   }
 }
@@ -1077,11 +1080,13 @@ body { overscroll-behavior-y: contain; }
   font-size: max(12px, 0.75rem) !important;
 }
 
-/* Fluid headings (matches marketing site clamp() pattern) */
-.lu-page-title,
-[class*="-heading"],
-[class*="-title"]:not(title):not(.lu-topbar-logo) {
-  font-size: clamp(16px, 2.5vw, 24px);
+/* Fluid headings — page-level only, mobile only (M4+M7+M8 hotfix) */
+@media (max-width: 1023px) {
+  .lu-page-title,
+  .engine-title,
+  .lu-section-heading {
+    font-size: clamp(18px, 4vw, 26px);
+  }
 }
 
 /* Touch targets — 44px minimum on mobile */
@@ -1132,16 +1137,26 @@ body { overscroll-behavior-y: contain; }
    M8 — Performance (mobile GPU budget + reduced-motion)
    ═════════════════════════════════════════════════════════════════════════ */
 
-/* Disable backdrop-filter on mobile (GPU-expensive) */
+/* Disable backdrop-filter on actual backdrop users (M4+M7+M8 hotfix) */
 @media (max-width: 767px) {
-  [class*="glass"],
-  [class*="-blur"],
-  .lu-mob-overlay {
+  .modal-backdrop,
+  .da-backdrop,
+  .pub-backdrop,
+  .td-overlay,
+  .canvas-legend,
+  .agent-drawer-bg,
+  .lu-mob-overlay,
+  [class*="-backdrop"],
+  [class*="-overlay"] {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
-  [class*="glass"] {
-    background: var(--s2, #0F1520) !important;
+  .modal-backdrop,
+  .da-backdrop,
+  .pub-backdrop,
+  .td-overlay,
+  [class*="-backdrop"] {
+    background: rgba(0, 0, 0, 0.7) !important;
   }
   .lu-mob-overlay {
     background: rgba(0, 0, 0, 0.65) !important;
