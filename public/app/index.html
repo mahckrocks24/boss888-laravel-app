@@ -1932,6 +1932,16 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
     display: none !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Mobile touch drag — visual feedback on active drag
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  .touch-dragging {
+    box-shadow: 0 8px 32px rgba(124,58,237,0.4) !important;
+    border-color: rgba(124,58,237,0.6) !important;
+  }
+}
 </style>
 
 <style>
@@ -4914,6 +4924,115 @@ document.addEventListener('touchstart', function (e) {
       }, 100);
     }
   });
+})();
+</script>
+
+<script>
+/* ═════════════════════════════════════════════════════════════════════════
+   Mobile touch drag for workspace agent cards.
+   Double-tap activates drag mode; subsequent touchmove drags the card.
+   Position saved to localStorage (key: ws_pos_<id>).
+   Desktop unaffected — early-exit when innerWidth > 1023.
+   ═════════════════════════════════════════════════════════════════════════ */
+(function() {
+  if (window.innerWidth > 1023) return;
+
+  var DOUBLE_TAP_MS = 300;
+  var _tapTime = {};
+  var _dragging = false;
+  var _dragEl = null;
+  var _dragOffsetX = 0;
+  var _dragOffsetY = 0;
+
+  function initTouchDrag() {
+    var canvas = document.getElementById('canvas-agents');
+    if (!canvas) { setTimeout(initTouchDrag, 1000); return; }
+    if (canvas._luTouchDragWired) return;
+    canvas._luTouchDragWired = true;
+
+    canvas.addEventListener('touchstart', function(e) {
+      var card = e.target.closest('.agent-node') ||
+                 e.target.closest('[class*="agent-node"]') ||
+                 e.target.closest('.ws-card') ||
+                 e.target.closest('[class*="ws-card"]');
+      if (!card) return;
+
+      var id = card.id || card.dataset.agentId || card.dataset.agent || 'anon';
+      var now = Date.now();
+
+      if (_tapTime[id] && now - _tapTime[id] < DOUBLE_TAP_MS) {
+        // Double tap detected — activate drag mode
+        e.preventDefault();
+        _dragEl = card;
+        _dragging = true;
+
+        var touch = e.touches[0];
+        var rect = card.getBoundingClientRect();
+        _dragOffsetX = touch.clientX - rect.left;
+        _dragOffsetY = touch.clientY - rect.top;
+
+        card.style.opacity    = '0.85';
+        card.style.transform  = 'scale(1.03)';
+        card.style.zIndex     = '999';
+        card.style.transition = 'none';
+        card.style.cursor     = 'grabbing';
+        card.classList.add('touch-dragging');
+
+        if (typeof window.showToast === 'function') {
+          showToast('Drag to reposition', 'info');
+        }
+      }
+
+      _tapTime[id] = now;
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', function(e) {
+      if (!_dragging || !_dragEl) return;
+      e.preventDefault();
+
+      var touch = e.touches[0];
+      var canvasRect = canvas.getBoundingClientRect();
+
+      var newX = touch.clientX - canvasRect.left - _dragOffsetX;
+      var newY = touch.clientY - canvasRect.top  - _dragOffsetY;
+
+      var maxX = canvasRect.width  - _dragEl.offsetWidth;
+      var maxY = canvasRect.height - _dragEl.offsetHeight;
+      newX = Math.max(0, Math.min(newX, maxX));
+      newY = Math.max(0, Math.min(newY, maxY));
+
+      _dragEl.style.position = 'absolute';
+      _dragEl.style.left = newX + 'px';
+      _dragEl.style.top  = newY + 'px';
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', function() {
+      if (!_dragging || !_dragEl) return;
+
+      _dragEl.style.opacity    = '';
+      _dragEl.style.transform  = '';
+      _dragEl.style.zIndex     = '';
+      _dragEl.style.cursor     = '';
+      _dragEl.style.transition = '';
+      _dragEl.classList.remove('touch-dragging');
+
+      var key = 'ws_pos_' + (_dragEl.id || _dragEl.dataset.agentId || _dragEl.dataset.agent || '');
+      if (key !== 'ws_pos_') {
+        try {
+          localStorage.setItem(key, JSON.stringify({
+            left: _dragEl.style.left,
+            top:  _dragEl.style.top
+          }));
+        } catch(_) {}
+      }
+
+      _dragging = false;
+      _dragEl = null;
+    }, { passive: true });
+  }
+
+  document.addEventListener('lu:bootstrap-complete', initTouchDrag);
+  setTimeout(initTouchDrag, 2000);  // fallback if bootstrap event missed
 })();
 </script>
 </body></html>
