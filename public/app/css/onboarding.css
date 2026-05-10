@@ -144,6 +144,8 @@
 }
 
 /* ── Orbit ──────────────────────────────────────────────────────────────── */
+/* The wrap is just a 320×320 container. Each .ob-slot positions one real
+   .orb (rendered by /app/css/orb.css). Slots animate; orbs render. */
 .lu-onboard .ob-orbit-wrap {
   position: relative;
   width: 320px;
@@ -152,126 +154,42 @@
   flex-shrink: 0;
 }
 
-/* Base orb — 3D sphere effect via radial highlight + background-blend-mode.
-   background-color is set inline per-orb (matching agent color), and
-   background-image (the radial highlight) blends over it. */
-.lu-onboard .ob-orb {
+.lu-onboard .ob-slot {
   position: absolute;
   top: 50%;
   left: 50%;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Manrope', sans-serif;
-  font-weight: 700;
-  color: rgba(255,255,255,0.95);
-  cursor: default;
-  transition: transform 0.2s, box-shadow 0.3s;
-  background-image: radial-gradient(
-    circle at 35% 35%,
-    rgba(255,255,255,0.35) 0%,
-    rgba(255,255,255,0) 55%
-  );
-  background-blend-mode: overlay;
-}
-.lu-onboard .ob-orb span { pointer-events: none; }
-
-.lu-onboard .ob-orb:hover {
-  transform: scale(1.15);
-  z-index: 20;
 }
 
-.lu-onboard .ob-orb::after {
-  content: attr(data-name) ' — ' attr(data-role);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.92);
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
-}
-.lu-onboard .ob-orb:hover::after { opacity: 1; }
-
-/* Sarah — centre, larger, amber pulse */
-.lu-onboard .ob-orb--centre {
-  width: 64px;
-  height: 64px;
-  margin-left: -32px;
-  margin-top: -32px;
-  z-index: 5;
-  font-size: 15px;
-  font-weight: 800;
-  animation: ob-sarah-pulse 2s ease-in-out infinite alternate;
-}
-.lu-onboard .ob-orb--sarah {
-  width: 64px !important;
-  height: 64px !important;
-  font-size: 15px !important;
-  font-weight: 800 !important;
+.lu-onboard .ob-slot--centre {
+  transform: translate(-50%, -50%);
   z-index: 10;
 }
 
-/* Inner ring */
-.lu-onboard .ob-orb--inner {
-  width: 46px;
-  height: 46px;
-  margin-left: -23px;
-  margin-top: -23px;
-  font-size: 12px;
-  --r: 110px;
-  animation: ob-orbit 20s linear infinite;
+.lu-onboard .ob-slot--inner {
+  animation: ob-orbit-inner 20s linear infinite;
+  animation-delay: calc(var(--ob-angle) / 360 * -20s);
+  transform-origin: 0 0;
 }
 
-/* Outer ring */
-.lu-onboard .ob-orb--outer {
-  width: 34px;
-  height: 34px;
-  margin-left: -17px;
-  margin-top: -17px;
-  font-size: 10px;
-  --r: 148px;
-  animation: ob-orbit 35s linear infinite;
+.lu-onboard .ob-slot--outer {
+  animation: ob-orbit-outer 35s linear infinite;
+  animation-delay: calc(var(--ob-angle) / 360 * -35s);
+  transform-origin: 0 0;
 }
 
-/* Flash on signup success — purple for everyone except Sarah */
-.lu-onboard .ob-orb--flash {
-  animation: ob-orb-flash 0.4s ease-in-out;
-}
-@keyframes ob-orb-flash {
-  0%, 100% { box-shadow: none; }
-  50%      { box-shadow: 0 0 20px rgba(124,58,237,0.8); }
-}
-.lu-onboard .ob-orb--sarah.ob-orb--flash {
-  animation: none;
-  box-shadow: 0 0 20px rgba(245,158,11,0.8) !important;
+@keyframes ob-orbit-inner {
+  from { transform: rotate(var(--ob-angle))               translateX(110px) rotate(calc(-1 * var(--ob-angle))); }
+  to   { transform: rotate(calc(var(--ob-angle) + 360deg)) translateX(110px) rotate(calc(-1 * (var(--ob-angle) + 360deg))); }
 }
 
-/* Single orbit keyframe driven by --r (per-ring radius) */
-@keyframes ob-orbit {
-  from { transform: rotate(var(--start)) translateX(var(--r)) rotate(calc(-1 * var(--start))); }
-  to   { transform: rotate(calc(var(--start) + 360deg)) translateX(var(--r)) rotate(calc(-360deg - var(--start))); }
-}
-
-/* Sarah's pulse — amber glow only */
-@keyframes ob-sarah-pulse {
-  from { box-shadow: 0 0 16px rgba(245,158,11,0.4); }
-  to   { box-shadow: 0 0 32px rgba(245,158,11,0.65); }
+@keyframes ob-orbit-outer {
+  from { transform: rotate(var(--ob-angle))               translateX(148px) rotate(calc(-1 * var(--ob-angle))); }
+  to   { transform: rotate(calc(var(--ob-angle) + 360deg)) translateX(148px) rotate(calc(-1 * (var(--ob-angle) + 360deg))); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lu-onboard .ob-orb--inner,
-  .lu-onboard .ob-orb--outer,
-  .lu-onboard .ob-orb--centre {
+  .lu-onboard .ob-slot--inner,
+  .lu-onboard .ob-slot--outer {
     animation: none;
   }
 }
@@ -536,22 +454,21 @@
     min-height: auto;
   }
   .lu-onboard .ob-orbit-wrap {
-    width: 220px;
-    height: 220px;
+    width: 240px;
+    height: 240px;
   }
-  .lu-onboard .ob-orb--centre,
-  .lu-onboard .ob-orb--sarah {
-    width: 50px !important;
-    height: 50px !important;
-    margin: -25px 0 0 -25px;
-    font-size: 13px !important;
+  /* Tighter orbit radii so the real orbs fit inside the smaller wrap.
+     Orb sizes themselves are controlled by orb.css's data-size tokens. */
+  @keyframes ob-orbit-inner-mobile {
+    from { transform: rotate(var(--ob-angle))               translateX(80px) rotate(calc(-1 * var(--ob-angle))); }
+    to   { transform: rotate(calc(var(--ob-angle) + 360deg)) translateX(80px) rotate(calc(-1 * (var(--ob-angle) + 360deg))); }
   }
-  .lu-onboard .ob-orb--inner {
-    width: 38px; height: 38px; margin: -19px 0 0 -19px; --r: 75px; font-size: 11px;
+  @keyframes ob-orbit-outer-mobile {
+    from { transform: rotate(var(--ob-angle))               translateX(108px) rotate(calc(-1 * var(--ob-angle))); }
+    to   { transform: rotate(calc(var(--ob-angle) + 360deg)) translateX(108px) rotate(calc(-1 * (var(--ob-angle) + 360deg))); }
   }
-  .lu-onboard .ob-orb--outer {
-    width: 28px; height: 28px; margin: -14px 0 0 -14px; --r: 100px; font-size: 10px;
-  }
+  .lu-onboard .ob-slot--inner { animation-name: ob-orbit-inner-mobile; }
+  .lu-onboard .ob-slot--outer { animation-name: ob-orbit-outer-mobile; }
   .lu-onboard .ob-right { padding: 24px; border-left: none; border-top: 1px solid var(--ob-border); }
   .lu-onboard .ob-card { padding: 28px 24px; }
 }

@@ -17,30 +17,69 @@
  * Markup uses .lu-onboard namespace; styles in /app/css/onboarding.css.
  */
 
-// ── Agent roster (used by signup orbit) ──────────────────────────────────────
-// [name, initials, color, role, ring]
-var _OB_AGENTS = [
-  ['Sarah',  'SR', '#F59E0B', 'Digital Marketing Manager', 'centre'],
-  ['James',  'JM', '#3B82F6', 'SEO Strategist',            'inner'],
-  ['Priya',  'PR', '#7C3AED', 'Content Writer',            'inner'],
-  ['Marcus', 'MA', '#EC4899', 'Social Media Manager',      'inner'],
-  ['Elena',  'EL', '#00E5A8', 'CRM & Growth',              'inner'],
-  ['Alex',   'AX', '#06B6D4', 'SEO Analyst',               'inner'],
-  ['Diana',  'DI', '#3B82F6', 'SEO Specialist',            'outer'],
-  ['Ryan',   'RY', '#3B82F6', 'SEO Specialist',            'outer'],
-  ['Sofia',  'SO', '#7C3AED', 'Copywriter',                'outer'],
-  ['Leo',    'LO', '#7C3AED', 'Blog Writer',               'outer'],
-  ['Maya',   'MY', '#7C3AED', 'Content Strategist',        'outer'],
-  ['Chris',  'CH', '#7C3AED', 'Brand Voice',               'outer'],
-  ['Nora',   'NO', '#7C3AED', 'Email Copywriter',          'outer'],
-  ['Zara',   'ZA', '#EC4899', 'Instagram Manager',         'outer'],
-  ['Tyler',  'TY', '#EC4899', 'LinkedIn Manager',          'outer'],
-  ['Aria',   'AR', '#06B6D4', 'Brand Voice AI',            'outer'],
-  ['Jordan', 'JO', '#EC4899', 'TikTok Manager',            'outer'],
-  ['Kai',    'KI', '#00E5A8', 'Lead Nurture',              'outer'],
-  ['Vera',   'VE', '#00E5A8', 'Email Automation',          'outer'],
-  ['Max',    'MX', '#00E5A8', 'Growth Hacker',             'outer']
-];
+// ── Orbit builder (Phase O2.4 — uses real OrbAvatar from orb.js) ─────────────
+// orb.js + orb.css (loaded by index.html before onboarding.js) provide the
+// canonical agent-orb visual system. We just position them in two orbits.
+function _obBuildOrbit() {
+  var agents = [
+    // [id, ring, size]
+    { id: 'sarah',  ring: 'centre', size: 'lg' },
+    // Inner ring — 5 agents
+    { id: 'james',  ring: 'inner',  size: 'md' },
+    { id: 'priya',  ring: 'inner',  size: 'md' },
+    { id: 'marcus', ring: 'inner',  size: 'md' },
+    { id: 'elena',  ring: 'inner',  size: 'md' },
+    { id: 'alex',   ring: 'inner',  size: 'md' },
+    // Outer ring — 14 agents
+    { id: 'diana',  ring: 'outer',  size: 'sm' },
+    { id: 'ryan',   ring: 'outer',  size: 'sm' },
+    { id: 'sofia',  ring: 'outer',  size: 'sm' },
+    { id: 'leo',    ring: 'outer',  size: 'sm' },
+    { id: 'maya',   ring: 'outer',  size: 'sm' },
+    { id: 'nora',   ring: 'outer',  size: 'sm' },
+    { id: 'zara',   ring: 'outer',  size: 'sm' },
+    { id: 'tyler',  ring: 'outer',  size: 'sm' },
+    { id: 'jordan', ring: 'outer',  size: 'sm' },
+    { id: 'chris',  ring: 'outer',  size: 'sm' },
+    { id: 'aria',   ring: 'outer',  size: 'sm' },
+    { id: 'kai',    ring: 'outer',  size: 'sm' },
+    { id: 'vera',   ring: 'outer',  size: 'sm' },
+    { id: 'max',    ring: 'outer',  size: 'sm' }
+  ];
+
+  var innerCount = 0, outerCount = 0;
+  var innerTotal = 5, outerTotal = 14;
+
+  function makeOrbHTML(id, size) {
+    if (window.OrbAvatar && window.OrbAvatar.buildAgentOrb) {
+      return window.OrbAvatar.buildAgentOrb(id, size, 'idle');
+    }
+    // Fallback if orb.js failed to load — minimal placeholder
+    return '<div class="orb" data-type="seo" data-size="' + size +
+           '" data-state="idle"><div class="orb-core"></div>' +
+           '<div class="orb-shine"></div><div class="orb-ring"></div></div>';
+  }
+
+  var html = '<div class="ob-orbit-wrap">';
+  agents.forEach(function(a) {
+    var orbHtml = makeOrbHTML(a.id, a.size);
+    if (a.ring === 'centre') {
+      html += '<div class="ob-slot ob-slot--centre">' + orbHtml + '</div>';
+    } else if (a.ring === 'inner') {
+      var angle = (innerCount / innerTotal) * 360;
+      html += '<div class="ob-slot ob-slot--inner" style="--ob-angle:' +
+              angle + 'deg">' + orbHtml + '</div>';
+      innerCount++;
+    } else {
+      var angle = (outerCount / outerTotal) * 360;
+      html += '<div class="ob-slot ob-slot--outer" style="--ob-angle:' +
+              angle + 'deg">' + orbHtml + '</div>';
+      outerCount++;
+    }
+  });
+  html += '</div>';
+  return html;
+}
 
 // ── TASK 1.4: Login view (Phase O2 — centred card) ───────────────────────────
 function _renderLogin() {
@@ -137,35 +176,8 @@ function _renderSignup() {
   var appShell = document.querySelector('.app');
   if (appShell) appShell.style.display = 'none';
 
-  // Build orbit
-  var innerAgents = _OB_AGENTS.filter(function(a){ return a[4] === 'inner'; });
-  var outerAgents = _OB_AGENTS.filter(function(a){ return a[4] === 'outer'; });
-  var innerStep = 360 / innerAgents.length;
-  var outerStep = 360 / outerAgents.length;
-
-  function orbHTML(a, ring, idx, step) {
-    var start = idx * step;
-    var cls = 'ob-orb ob-orb--' + ring;
-    var color = a[2];
-    return '<div class="' + cls + '" data-name="' + _luEsc(a[0]) +
-           '" data-role="' + _luEsc(a[3]) +
-           '" data-color="' + color + '"' +
-           ' style="--start:' + start + 'deg;--orb-color:' + color +
-           ';background-color:' + color +
-           ';box-shadow:0 0 12px ' + color + '55,0 0 4px ' + color + '30">' +
-           '<span>' + a[1] + '</span></div>';
-  }
-
-  var sarah = _OB_AGENTS[0];
-  // Sarah's box-shadow is animated by ob-sarah-pulse keyframe — no inline shadow.
-  var sarahHTML = '<div class="ob-orb ob-orb--centre ob-orb--sarah" data-name="' + _luEsc(sarah[0]) +
-                  '" data-role="' + _luEsc(sarah[3]) +
-                  '" data-color="' + sarah[2] + '"' +
-                  ' style="--orb-color:' + sarah[2] +
-                  ';background-color:' + sarah[2] + '">' +
-                  '<span>' + sarah[1] + '</span></div>';
-  var innerHTML = innerAgents.map(function(a, i){ return orbHTML(a, 'inner', i, innerStep); }).join('');
-  var outerHTML = outerAgents.map(function(a, i){ return orbHTML(a, 'outer', i, outerStep); }).join('');
+  // Orbit markup is built by _obBuildOrbit() — uses real OrbAvatar orbs
+  var orbitHTML = _obBuildOrbit();
 
   root.innerHTML = `
   <div class="lu-onboard">
@@ -183,11 +195,7 @@ function _renderSignup() {
 
         <h1 class="ob-headline">Your AI marketing<br>team starts now.</h1>
 
-        <div class="ob-orbit-wrap">
-          ${sarahHTML}
-          ${innerHTML}
-          ${outerHTML}
-        </div>
+        ${orbitHTML}
 
         <ul class="ob-props">
           <li>Website live in under 5 minutes</li>
@@ -381,13 +389,13 @@ async function _doSignup() {
     if (d.user && d.user.id) localStorage.setItem('lu_user_id', String(d.user.id));
     if (d.user && d.user.name) localStorage.setItem('lu_user_name', d.user.name);
 
-    // Success: flash all orbs amber, then advance to Step 2
-    var orbs = document.querySelectorAll('.ob-orb');
-    orbs.forEach(function(o){ o.classList.add('ob-orb--flash'); });
+    // Success: pulse all orbs into 'success' state via orb.css, then advance.
+    var orbs = document.querySelectorAll('.lu-onboard .orb');
+    orbs.forEach(function(o){ o.dataset.state = 'success'; });
     setTimeout(function(){
-      orbs.forEach(function(o){ o.classList.remove('ob-orb--flash'); });
+      orbs.forEach(function(o){ o.dataset.state = 'idle'; });
       _renderOnboardingStep2({});
-    }, 400);
+    }, 500);
   } catch(e) {
     _setBtnLoading('ob-su-submit', false, null, 'Join the team');
   }
