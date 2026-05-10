@@ -29,6 +29,7 @@
 <body>
   <div class="card">
     <div class="logo">
+      <img src="/img/logo-icon-40.png" alt="" style="width:48px;height:48px;object-fit:contain;display:block;margin:0 auto 12px">
       <div class="logo-text">LevelUp</div>
       <div class="logo-sub">Platform Admin</div>
     </div>

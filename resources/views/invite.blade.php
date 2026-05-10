@@ -25,7 +25,7 @@
 </head>
 <body>
   <div class="card">
-    <div class="logo">LevelUp</div>
+    <div class="logo" style="display:flex;align-items:center;justify-content:center;gap:8px"><img src="/img/logo-icon-40.png" alt="" style="width:32px;height:32px;object-fit:contain"><span>LevelUp</span></div>
     <div id="invite-preview" class="loading">Loading invitation…</div>
     <div id="error" class="error"></div>
     <div id="success" class="success"></div>

@@ -283,7 +283,7 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-logo" style="display:flex;align-items:center;gap:10px">
-      <div style="width:32px;height:32px;background:linear-gradient(135deg,var(--p),#9B8DF8);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:14px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 4px 14px var(--pg)">L</div>
+      <img src="/img/logo-icon-40.png" alt="" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">
       <div><div class="logo-text" style="font-size:13px">LevelUp Growth</div><div class="logo-sub">Admin Console</div></div>
     </div>
     <nav>

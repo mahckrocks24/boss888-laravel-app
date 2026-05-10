@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LevelUp Growth Platform</title>
   <meta name="description" content="AI marketing OS for SMBs — your dedicated AI marketing team.">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><radialGradient id='g' cx='25' cy='25' r='30'><stop offset='0' stop-color='%23A78BFA'/><stop offset='1' stop-color='%233B0764'/></radialGradient></defs><circle cx='32' cy='32' r='28' fill='url(%23g)'/></svg>">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
   @php
     // MEDIUM-07 FIX: glob() finds the hashed bundle dynamically so rebuilds
     // need no manual edits. If the build is missing, $reactBundle = null and
@@ -38,7 +40,7 @@
     @if($buildMissing)
       {{-- MEDIUM-07 FIX: clear message instead of silent spinner when build is absent --}}
       <div class="lu-preloader">
-        <div class="lu-logo">LevelUp</div>
+        <div class="lu-logo" style="display:flex;align-items:center;justify-content:center;gap:10px"><img src="/img/logo-icon-40.png" alt="" style="width:36px;height:36px;object-fit:contain"><span>LevelUp</span></div>
         <div class="lu-maintenance">
           @if(config('app.env') === 'local' || config('app.debug'))
             <h2>React build not found</h2>
@@ -52,7 +54,7 @@
       </div>
     @else
       <div class="lu-preloader">
-        <div class="lu-logo">LevelUp</div>
+        <div class="lu-logo" style="display:flex;align-items:center;justify-content:center;gap:10px"><img src="/img/logo-icon-40.png" alt="" style="width:36px;height:36px;object-fit:contain"><span>LevelUp</span></div>
         <div class="lu-spinner"></div>
       </div>
     @endif

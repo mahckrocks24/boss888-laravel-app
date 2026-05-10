@@ -94,7 +94,7 @@ function _renderLogin() {
     <div class="ob-login-wrap">
       <div class="ob-card">
         <div class="ob-login-logo">
-          <div class="ob-logo-mark">L</div>
+          <img src="/img/logo-icon-40.png" class="ob-logo-img" alt="">
           <span>LevelUp Growth</span>
         </div>
         <h2 class="ob-card-title">Welcome back</h2>
