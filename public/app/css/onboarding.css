@@ -1039,3 +1039,17 @@
 .ob-country-options::-webkit-scrollbar { width: 4px; }
 .ob-country-options::-webkit-scrollbar-track { background: transparent; }
 .ob-country-options::-webkit-scrollbar-thumb { background: #7C3AED; border-radius: 4px; }
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Mobile: slow orbit — frantic at small size (existing keyframes already
+   shrink radii via ob-orbit-*-mobile; this only changes duration).
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 880px) {
+  .lu-onboard .ob-slot--inner { animation-duration: 35s !important; }
+  .lu-onboard .ob-slot--outer { animation-duration: 55s !important; }
+}
+@media (max-width: 640px) {
+  .lu-onboard .ob-slot--inner { animation-duration: 45s !important; }
+  .lu-onboard .ob-slot--outer { animation-duration: 70s !important; }
+}
