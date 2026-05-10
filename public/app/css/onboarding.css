@@ -1,6 +1,487 @@
 /*
  * LevelUp Growth — Onboarding UI
- * Clean slate. No !important. No inline overrides.
- * Namespace: .lu-onboard
- * Phase O1 — 2026-05-10
+ * Phase O2 (2026-05-10): Mission Control dark theme + 20-agent orbit + amber CTA
+ * Namespace: .lu-onboard (all rules scoped — does not leak to the rest of the app)
+ *
+ * Note on outer orbit radius: spec called for 150px, but the .ob-orbit-wrap is
+ * 280px (140px max from centre). 32px outer orbs at 150px would overflow.
+ * Using 125px keeps them visible inside the wrapper.
  */
+
+.lu-onboard {
+  --ob-bg:         #0A0B0F;
+  --ob-surface:    #111318;
+  --ob-border:     rgba(255,255,255,0.07);
+  --ob-border-act: rgba(245,158,11,0.4);
+  --ob-amber:      #F59E0B;
+  --ob-teal:       #00E5A8;
+  --ob-blue:       #3B82F6;
+  --ob-purple:    #7C3AED;
+  --ob-pink:       #EC4899;
+  --ob-cyan:       #06B6D4;
+  --ob-text:       #F0F0F0;
+  --ob-muted:      rgba(240,240,240,0.45);
+  --ob-radius:     12px;
+
+  width: 100%;
+  min-height: 100vh;
+  background: var(--ob-bg);
+  color: var(--ob-text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Reset within namespace only */
+.lu-onboard *, .lu-onboard *::before, .lu-onboard *::after {
+  box-sizing: border-box;
+}
+.lu-onboard h1, .lu-onboard h2, .lu-onboard p, .lu-onboard ul {
+  margin: 0;
+}
+.lu-onboard ul { padding: 0; list-style: none; }
+
+/* ── Layout wrappers ──────────────────────────────────────────────────────── */
+.lu-onboard .ob-signup-wrap {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  min-height: 100vh;
+}
+
+.lu-onboard .ob-login-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px 20px;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(245,158,11,0.05) 0%, transparent 60%),
+    var(--ob-bg);
+}
+
+/* ── Left panel ──────────────────────────────────────────────────────────── */
+.lu-onboard .ob-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px;
+  background:
+    radial-gradient(ellipse at 30% 50%, rgba(245,158,11,0.06) 0%, transparent 70%),
+    var(--ob-bg);
+}
+
+.lu-onboard .ob-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 48px;
+}
+.lu-onboard .ob-logo span {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  color: #fff;
+}
+
+.lu-onboard .ob-logo-mark {
+  width: 36px;
+  height: 36px;
+  background: var(--ob-amber);
+  color: #000;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lu-onboard .ob-headline {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1.15;
+  color: #fff;
+  margin-bottom: 40px;
+}
+
+/* ── Orbit ──────────────────────────────────────────────────────────────── */
+.lu-onboard .ob-orbit-wrap {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  margin-bottom: 40px;
+}
+
+.lu-onboard .ob-orb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: #fff;
+  background: var(--orb-color, #6C5CE7);
+  box-shadow: 0 0 12px rgba(108,92,231,0.25);
+  transition: transform 0.2s, box-shadow 0.3s, background 0.3s;
+  cursor: default;
+}
+.lu-onboard .ob-orb span { pointer-events: none; }
+
+.lu-onboard .ob-orb--centre {
+  width: 56px;
+  height: 56px;
+  margin-left: -28px;
+  margin-top: -28px;
+  z-index: 5;
+  font-size: 13px;
+  animation: ob-sarah-pulse 2s ease-in-out infinite alternate;
+}
+
+.lu-onboard .ob-orb--inner {
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  margin-top: -22px;
+  --r: 110px;
+  animation: ob-orbit 20s linear infinite;
+}
+
+.lu-onboard .ob-orb--outer {
+  width: 32px;
+  height: 32px;
+  margin-left: -16px;
+  margin-top: -16px;
+  font-size: 10px;
+  --r: 125px;
+  animation: ob-orbit 35s linear infinite;
+}
+
+.lu-onboard .ob-orb:hover {
+  transform: scale(1.2);
+  z-index: 10;
+}
+
+.lu-onboard .ob-orb::after {
+  content: attr(data-name) ' — ' attr(data-role);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.92);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.lu-onboard .ob-orb:hover::after { opacity: 1; }
+
+.lu-onboard .ob-orb--flash {
+  background: var(--ob-amber) !important;
+  box-shadow: 0 0 24px var(--ob-amber);
+}
+
+/* Single keyframe driven by CSS var --r (per-orb radius) */
+@keyframes ob-orbit {
+  from { transform: rotate(var(--start)) translateX(var(--r)) rotate(calc(-1 * var(--start))); }
+  to   { transform: rotate(calc(var(--start) + 360deg)) translateX(var(--r)) rotate(calc(-360deg - var(--start))); }
+}
+
+@keyframes ob-sarah-pulse {
+  from { box-shadow: 0 0 16px rgba(245,158,11,0.4); }
+  to   { box-shadow: 0 0 32px rgba(245,158,11,0.65); }
+}
+
+/* Honour reduced-motion users */
+@media (prefers-reduced-motion: reduce) {
+  .lu-onboard .ob-orb--inner,
+  .lu-onboard .ob-orb--outer,
+  .lu-onboard .ob-orb--centre {
+    animation: none;
+  }
+}
+
+/* ── Value props ─────────────────────────────────────────────────────────── */
+.lu-onboard .ob-props {
+  margin: 0 0 24px 0;
+}
+.lu-onboard .ob-props li {
+  color: var(--ob-muted);
+  font-size: 14px;
+  padding: 6px 0 6px 20px;
+  position: relative;
+}
+.lu-onboard .ob-props li::before {
+  content: '\2726';        /* ✦ */
+  position: absolute;
+  left: 0;
+  color: var(--ob-amber);
+}
+
+.lu-onboard .ob-social-proof {
+  font-size: 13px;
+  color: var(--ob-muted);
+}
+
+/* ── Right panel + login wrapper share ob-card ───────────────────────────── */
+.lu-onboard .ob-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: var(--ob-surface);
+}
+
+.lu-onboard .ob-card {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--ob-border);
+  border-radius: 16px;
+  padding: 40px 44px;
+}
+
+.lu-onboard .ob-login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+.lu-onboard .ob-login-logo span {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: #fff;
+}
+
+.lu-onboard .ob-card-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.lu-onboard .ob-card-sub {
+  font-size: 14px;
+  color: var(--ob-muted);
+  margin-bottom: 32px;
+}
+
+.lu-onboard .ob-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lu-onboard .ob-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lu-onboard .ob-form input {
+  height: 52px;
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid var(--ob-border);
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  padding: 0 16px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.lu-onboard .ob-form input::placeholder {
+  color: var(--ob-muted);
+}
+.lu-onboard .ob-form input:focus {
+  border-color: var(--ob-border-act);
+  background: rgba(255,255,255,0.05);
+}
+.lu-onboard .ob-form input.ob-input-err {
+  border-color: rgba(239,68,68,0.5);
+}
+
+/* Password show/hide toggle */
+.lu-onboard .ob-pwd-wrap {
+  position: relative;
+}
+.lu-onboard .ob-form .ob-pwd-wrap input {
+  padding-right: 60px;
+}
+.lu-onboard .ob-pwd-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  color: var(--ob-muted);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.lu-onboard .ob-pwd-toggle:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.04);
+}
+
+/* Strength meter */
+.lu-onboard .ob-pwd-strength {
+  margin-top: 4px;
+}
+.lu-onboard .ob-pwd-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.lu-onboard .ob-pwd-seg {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+.lu-onboard .ob-pwd-seg.active { background: var(--ob-amber); }
+.lu-onboard .ob-pwd-seg.strong { background: var(--ob-teal); }
+
+.lu-onboard .ob-pwd-rules {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lu-onboard .ob-rule {
+  font-size: 12px;
+  color: var(--ob-muted);
+  transition: color 0.2s;
+}
+.lu-onboard .ob-rule.met { color: var(--ob-teal); }
+
+/* Field errors */
+.lu-onboard .ob-field-err {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #FCA5A5;
+}
+.lu-onboard .ob-field-err-line {
+  font-size: 12px;
+  color: #F87171;
+  margin-top: 2px;
+}
+
+/* CTA */
+.lu-onboard .ob-btn-primary {
+  width: 100%;
+  height: 52px;
+  background: linear-gradient(135deg, #F59E0B, #F97316);
+  border: 0;
+  border-radius: 8px;
+  color: #000;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.lu-onboard .ob-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(245,158,11,0.4);
+}
+.lu-onboard .ob-btn-primary:active { transform: translateY(0); }
+.lu-onboard .ob-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.lu-onboard .ob-btn-arrow {
+  font-size: 18px;
+  line-height: 1;
+}
+.lu-onboard .ob-btn-spinner {
+  display: inline-block;
+  font-size: 18px;
+  line-height: 1;
+  animation: ob-spin 0.7s linear infinite;
+}
+@keyframes ob-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Footer links */
+.lu-onboard .ob-switch,
+.lu-onboard .ob-legal {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ob-muted);
+  margin-top: 16px;
+}
+.lu-onboard .ob-legal { font-size: 12px; line-height: 1.5; }
+.lu-onboard .ob-switch a,
+.lu-onboard .ob-legal a {
+  color: var(--ob-amber);
+  text-decoration: none;
+  font-weight: 600;
+}
+.lu-onboard .ob-switch a:hover,
+.lu-onboard .ob-legal a:hover { text-decoration: underline; }
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 880px) {
+  .lu-onboard .ob-signup-wrap {
+    grid-template-columns: 1fr;
+  }
+  .lu-onboard .ob-left {
+    padding: 32px 24px;
+    min-height: auto;
+  }
+  .lu-onboard .ob-headline {
+    font-size: 32px;
+  }
+  .lu-onboard .ob-orbit-wrap {
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 40px;
+  }
+  .lu-onboard .ob-orb--centre {
+    width: 44px; height: 44px; margin: -22px 0 0 -22px; font-size: 12px;
+  }
+  .lu-onboard .ob-orb--inner {
+    width: 36px; height: 36px; margin: -18px 0 0 -18px; --r: 75px;
+  }
+  .lu-onboard .ob-orb--outer {
+    width: 26px; height: 26px; margin: -13px 0 0 -13px; --r: 90px; font-size: 9px;
+  }
+  .lu-onboard .ob-right { padding: 24px; }
+  .lu-onboard .ob-card { padding: 28px 24px; }
+}
+
+@media (max-width: 480px) {
+  .lu-onboard .ob-headline { font-size: 28px; }
+  .lu-onboard .ob-pwd-rules { gap: 8px; }
+}

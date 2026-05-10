@@ -1,22 +1,48 @@
 /*
  * LevelUp Growth — Onboarding + Auth Views
- * Extracted from core.js (Phase O1 — 2026-05-10)
+ * Phase O1 (2026-05-10): extracted from core.js
+ * Phase O2 (2026-05-10): Step 1 redesigned — Mission Control dark theme,
+ *                       20-agent orbit, amber CTA, real social proof.
  *
  * Contains:
- *   - _renderLogin / _doLogin
- *   - _renderSignup / _doSignup / _su* helpers
- *   - _renderOnboardingStep2 / _ob2 state / _ob2Submit
- *   - _showOnboardingStep3 / _OB_INDUSTRY_SLUG (Arthur wizard prefill)
+ *   - _renderLogin / _doLogin (centred .ob-card)
+ *   - _renderSignup / _doSignup / _su* (split panel + orbit + strength meter)
+ *   - _renderOnboardingStep2 / _ob2 / _ob2Submit (preserved from O1)
+ *   - _showOnboardingStep3 / _OB_INDUSTRY_SLUG (preserved from O1)
  *
- * Depends on globals from core.js (loaded BEFORE this file via <script defer>):
+ * Globals from core.js (must load BEFORE this file via <script defer>):
  *   _luBase, _luFetch, _luEsc, _appBootstrap, _appEnterDashboard,
  *   showToast, nav, window.icon, window.wsShowArthurWizard, window._arthurSend
  *
- * _appBootstrap is invoked from DOMContentLoaded in core.js, which fires
- * AFTER all defer scripts complete — so all symbols here are ready in time.
+ * Markup uses .lu-onboard namespace; styles in /app/css/onboarding.css.
  */
 
-// ── TASK 1.4: Login view ─────────────────────────────────────────────────────
+// ── Agent roster (used by signup orbit) ──────────────────────────────────────
+// [name, initials, color, role, ring]
+var _OB_AGENTS = [
+  ['Sarah',  'SR', '#F59E0B', 'Digital Marketing Manager', 'centre'],
+  ['James',  'JM', '#3B82F6', 'SEO Strategist',            'inner'],
+  ['Priya',  'PR', '#7C3AED', 'Content Writer',            'inner'],
+  ['Marcus', 'MA', '#EC4899', 'Social Media Manager',      'inner'],
+  ['Elena',  'EL', '#00E5A8', 'CRM & Growth',              'inner'],
+  ['Alex',   'AX', '#06B6D4', 'SEO Analyst',               'inner'],
+  ['Diana',  'DI', '#3B82F6', 'SEO Specialist',            'outer'],
+  ['Ryan',   'RY', '#3B82F6', 'SEO Specialist',            'outer'],
+  ['Sofia',  'SO', '#7C3AED', 'Copywriter',                'outer'],
+  ['Leo',    'LO', '#7C3AED', 'Blog Writer',               'outer'],
+  ['Maya',   'MY', '#7C3AED', 'Content Strategist',        'outer'],
+  ['Chris',  'CH', '#7C3AED', 'Brand Voice',               'outer'],
+  ['Nora',   'NO', '#7C3AED', 'Email Copywriter',          'outer'],
+  ['Zara',   'ZA', '#EC4899', 'Instagram Manager',         'outer'],
+  ['Tyler',  'TY', '#EC4899', 'LinkedIn Manager',          'outer'],
+  ['Aria',   'AR', '#06B6D4', 'Brand Voice AI',            'outer'],
+  ['Jordan', 'JO', '#EC4899', 'TikTok Manager',            'outer'],
+  ['Kai',    'KI', '#00E5A8', 'Lead Nurture',              'outer'],
+  ['Vera',   'VE', '#00E5A8', 'Email Automation',          'outer'],
+  ['Max',    'MX', '#00E5A8', 'Growth Hacker',             'outer']
+];
+
+// ── TASK 1.4: Login view (Phase O2 — centred card) ───────────────────────────
 function _renderLogin() {
   var root = document.getElementById('lu-auth-root');
   if (!root) return;
@@ -25,37 +51,66 @@ function _renderLogin() {
   if (appShell) appShell.style.display = 'none';
 
   root.innerHTML = `
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg,#0F1117)">
-    <div style="width:360px;padding:36px;background:var(--s1,#171A21);border:1px solid var(--bd,#2a2d3e);border-radius:16px">
-      <div style="text-align:center;margin-bottom:28px">
-        <div style="width:48px;height:48px;background:linear-gradient(135deg,#6C5CE7,#9B8DF8);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#fff;box-shadow:0 4px 14px rgba(108,92,231,.22);margin-bottom:14px">L</div>
-        <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--t1,#e0e0e0)">LevelUp Growth</div>
-        <div style="font-size:11px;color:var(--t3,#777);margin-top:4px;text-transform:uppercase;letter-spacing:1.5px">AI OS Platform</div>
-        <div style="font-size:13px;color:var(--t3,#777);margin-top:12px">Sign in to your workspace</div>
-      </div>
-      <div class="form-group" style="margin-bottom:14px">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="lu-login-email" type="email" placeholder="you@company.com" autocomplete="email">
-      </div>
-      <div class="form-group" style="margin-bottom:20px">
-        <label class="form-label">Password</label>
-        <input class="form-input" id="lu-login-pwd" type="password" autocomplete="current-password">
-      </div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center" id="lu-login-btn" onclick="_doLogin()">Sign In →</button>
-      <div id="lu-login-err" style="color:var(--rd,#F87171);font-size:12px;margin-top:10px;display:none;text-align:center"></div>
-      <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--t3,#777)">
-        No account? <a href="#" onclick="_renderSignup();return false" style="color:var(--p,#6C5CE7)">Create one free →</a>
+  <div class="lu-onboard">
+    <div class="ob-login-wrap">
+      <div class="ob-card">
+        <div class="ob-login-logo">
+          <div class="ob-logo-mark">L</div>
+          <span>LevelUp Growth</span>
+        </div>
+        <h2 class="ob-card-title">Welcome back</h2>
+        <p class="ob-card-sub">Sign in to your workspace</p>
+
+        <div class="ob-form">
+          <div class="ob-field">
+            <input id="ob-login-email" type="email" placeholder="Email address" autocomplete="email">
+          </div>
+          <div class="ob-field">
+            <div class="ob-pwd-wrap">
+              <input id="ob-login-pwd" type="password" placeholder="Password" autocomplete="current-password">
+              <button type="button" class="ob-pwd-toggle" onclick="_suTogglePwd('ob-login-pwd','ob-login-pwd-tg')" id="ob-login-pwd-tg">Show</button>
+            </div>
+          </div>
+          <div class="ob-field-err" id="ob-login-err" style="display:none"></div>
+          <button class="ob-btn-primary" id="ob-login-btn" onclick="_doLogin()">
+            <span class="ob-btn-label">Sign in</span>
+            <span class="ob-btn-arrow">&rarr;</span>
+            <span class="ob-btn-spinner" style="display:none">&#8634;</span>
+          </button>
+        </div>
+
+        <p class="ob-switch">No account?
+          <a href="#" onclick="_renderSignup();return false;">Create one free</a>
+        </p>
       </div>
     </div>
   </div>`;
 }
 
+function _setBtnLoading(btnId, loading, loadingLabel, idleLabel) {
+  var btn = document.getElementById(btnId);
+  if (!btn) return;
+  var lbl = btn.querySelector('.ob-btn-label');
+  var arr = btn.querySelector('.ob-btn-arrow');
+  var spn = btn.querySelector('.ob-btn-spinner');
+  if (loading) {
+    btn.disabled = true;
+    if (lbl && loadingLabel) lbl.textContent = loadingLabel;
+    if (arr) arr.style.display = 'none';
+    if (spn) spn.style.display = '';
+  } else {
+    btn.disabled = false;
+    if (lbl && idleLabel) lbl.textContent = idleLabel;
+    if (arr) arr.style.display = '';
+    if (spn) spn.style.display = 'none';
+  }
+}
+
 async function _doLogin() {
-  var email = (document.getElementById('lu-login-email')||{}).value||'';
-  var pwd   = (document.getElementById('lu-login-pwd')||{}).value||'';
-  var btn   = document.getElementById('lu-login-btn');
-  var err   = document.getElementById('lu-login-err');
-  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  var email = (document.getElementById('ob-login-email')||{}).value||'';
+  var pwd   = (document.getElementById('ob-login-pwd')||{}).value||'';
+  var err   = document.getElementById('ob-login-err');
+  _setBtnLoading('ob-login-btn', true, 'Signing in…', 'Sign in');
   if (err) err.style.display = 'none';
   try {
     var r = await fetch(_luBase + '/api/auth/login', {
@@ -70,11 +125,11 @@ async function _doLogin() {
     await _appBootstrap();
   } catch(e) {
     if (err) { err.style.display = 'block'; err.textContent = e.message; }
-    if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
+    _setBtnLoading('ob-login-btn', false, null, 'Sign in');
   }
 }
 
-// ── Signup view (Onboarding Step 1 — runbook 2026-04-25) ─────────────────────
+// ── Signup view (Onboarding Step 1 — Phase O2 redesign 2026-05-10) ───────────
 function _renderSignup() {
   var root = document.getElementById('lu-auth-root');
   if (!root) return;
@@ -82,90 +137,138 @@ function _renderSignup() {
   var appShell = document.querySelector('.app');
   if (appShell) appShell.style.display = 'none';
 
-  var orbs = ['Sarah','James','Priya','Marcus','Elena','Alex'].map(function(n){
-    return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#6C5CE7,#00E5A8);box-shadow:0 0 14px rgba(108,92,231,.3)"></div><div style="font-size:10px;color:rgba(240,240,248,.72)">'+n+'</div></div>';
-  }).join('');
+  // Build orbit
+  var innerAgents = _OB_AGENTS.filter(function(a){ return a[4] === 'inner'; });
+  var outerAgents = _OB_AGENTS.filter(function(a){ return a[4] === 'outer'; });
+  var innerStep = 360 / innerAgents.length;
+  var outerStep = 360 / outerAgents.length;
+
+  function orbHTML(a, ring, idx, step) {
+    var start = idx * step;
+    var cls = 'ob-orb ob-orb--' + ring;
+    return '<div class="' + cls + '" data-name="' + _luEsc(a[0]) + '" data-role="' + _luEsc(a[3]) +
+           '" style="--start:' + start + 'deg;--orb-color:' + a[2] + '">' +
+           '<span>' + a[1] + '</span></div>';
+  }
+
+  var sarah = _OB_AGENTS[0];
+  var sarahHTML = '<div class="ob-orb ob-orb--centre" data-name="' + _luEsc(sarah[0]) +
+                  '" data-role="' + _luEsc(sarah[3]) + '" style="--orb-color:' + sarah[2] + '">' +
+                  '<span>' + sarah[1] + '</span></div>';
+  var innerHTML = innerAgents.map(function(a, i){ return orbHTML(a, 'inner', i, innerStep); }).join('');
+  var outerHTML = outerAgents.map(function(a, i){ return orbHTML(a, 'outer', i, outerStep); }).join('');
 
   root.innerHTML = `
-  <div id="lu-signup-page" style="min-height:100vh;display:flex;background:#06070D;color:#F0F0F8;font-family:'DM Sans',system-ui,sans-serif">
-    <div class="lu-signup-left" style="flex:0 0 40%;padding:56px 48px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(180deg,#06070D 0%,#0C0D15 100%);border-right:1px solid rgba(255,255,255,.07)">
-      <div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:40px;height:40px;background:linear-gradient(135deg,#6C5CE7,#9B8DF8);border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff">L</div>
-          <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;letter-spacing:.02em">LevelUp Growth</div>
-        </div>
-      </div>
-      <div style="margin:40px 0">
-        <h1 style="font-family:Syne,sans-serif;font-size:40px;line-height:1.1;font-weight:800;margin:0 0 28px;color:#F0F0F8">Your AI marketing team<br>starts in 5 minutes</h1>
-        <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:36px">
-          <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:rgba(240,240,248,.9)"><span style="color:#00E5A8;font-weight:700;font-size:18px">✓</span> Website live in under 5 minutes</div>
-          <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:rgba(240,240,248,.9)"><span style="color:#00E5A8;font-weight:700;font-size:18px">✓</span> Sarah analyses your market today</div>
-          <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:rgba(240,240,248,.9)"><span style="color:#00E5A8;font-weight:700;font-size:18px">✓</span> No credit card required</div>
-        </div>
-        <div style="display:flex;gap:18px;align-items:flex-end;margin-bottom:16px">${orbs}</div>
-        <div style="font-size:13px;color:rgba(240,240,248,.52)">21 specialists ready to work for you</div>
-      </div>
-      <div style="font-size:13px;color:rgba(240,240,248,.52);padding-top:24px;border-top:1px solid rgba(255,255,255,.07)">
-        <strong style="color:#F0F0F8">4,847+</strong> businesses growing with LevelUp
-      </div>
-    </div>
-    <div class="lu-signup-right" style="flex:1;padding:56px 48px;display:flex;align-items:center;justify-content:center;background:#0C0D15">
-      <div style="width:100%;max-width:420px">
-        <h2 style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;margin:0 0 8px;color:#F0F0F8">Create your free account</h2>
-        <p style="color:rgba(240,240,248,.52);font-size:14px;margin:0 0 28px">Start free. Upgrade when ready.</p>
+  <div class="lu-onboard">
+    <div class="ob-signup-wrap">
 
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">Full name</label>
-          <input id="lu-su-name" type="text" autocomplete="name" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box" placeholder="Alex Johnson">
-          <div id="lu-su-name-err" style="color:#F87171;font-size:12px;margin-top:6px;display:none"></div>
+      <div class="ob-left">
+        <div class="ob-logo">
+          <div class="ob-logo-mark">L</div>
+          <span>LevelUp Growth</span>
         </div>
 
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">Email address</label>
-          <input id="lu-su-email" type="email" autocomplete="email" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box" placeholder="you@company.com">
-          <div id="lu-su-email-err" style="color:#F87171;font-size:12px;margin-top:6px;display:none"></div>
+        <h1 class="ob-headline">Your AI marketing<br>team starts now.</h1>
+
+        <div class="ob-orbit-wrap">
+          ${sarahHTML}
+          ${innerHTML}
+          ${outerHTML}
         </div>
 
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">Password</label>
-          <div style="position:relative">
-            <input id="lu-su-pwd" type="password" autocomplete="new-password" oninput="_suCheckPwd()" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 44px 12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box">
-            <button type="button" onclick="_suTogglePwd('lu-su-pwd','lu-su-pwd-toggle')" id="lu-su-pwd-toggle" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:rgba(240,240,248,.52);cursor:pointer;font-size:12px;padding:4px 8px">Show</button>
+        <ul class="ob-props">
+          <li>Website live in under 5 minutes</li>
+          <li>Sarah analyses your market today</li>
+          <li>No credit card required</li>
+        </ul>
+
+        <p class="ob-social-proof" id="ob-social-proof" style="display:none"></p>
+      </div>
+
+      <div class="ob-right">
+        <div class="ob-card">
+          <h2 class="ob-card-title">Create your account</h2>
+          <p class="ob-card-sub">Free forever. No card needed.</p>
+
+          <div class="ob-form">
+            <div class="ob-field">
+              <input id="ob-su-name" type="text" placeholder="Full name" autocomplete="name">
+              <div class="ob-field-err-line" id="ob-su-name-err" style="display:none"></div>
+            </div>
+
+            <div class="ob-field">
+              <input id="ob-su-email" type="email" placeholder="Email address" autocomplete="email">
+              <div class="ob-field-err-line" id="ob-su-email-err" style="display:none"></div>
+            </div>
+
+            <div class="ob-field">
+              <div class="ob-pwd-wrap">
+                <input id="ob-su-pwd" type="password" placeholder="Password" autocomplete="new-password" oninput="_suCheckPwd()">
+                <button type="button" class="ob-pwd-toggle" onclick="_suTogglePwd('ob-su-pwd','ob-su-pwd-tg')" id="ob-su-pwd-tg">Show</button>
+              </div>
+              <div class="ob-field-err-line" id="ob-su-pwd-err" style="display:none"></div>
+              <div class="ob-pwd-strength">
+                <div class="ob-pwd-bar">
+                  <span class="ob-pwd-seg" id="ob-seg-1"></span>
+                  <span class="ob-pwd-seg" id="ob-seg-2"></span>
+                  <span class="ob-pwd-seg" id="ob-seg-3"></span>
+                  <span class="ob-pwd-seg" id="ob-seg-4"></span>
+                </div>
+                <div class="ob-pwd-rules">
+                  <span class="ob-rule" id="ob-rule-len">8+ chars</span>
+                  <span class="ob-rule" id="ob-rule-upper">Uppercase</span>
+                  <span class="ob-rule" id="ob-rule-num">Number</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ob-field">
+              <div class="ob-pwd-wrap">
+                <input id="ob-su-pwd2" type="password" placeholder="Confirm password" autocomplete="new-password">
+                <button type="button" class="ob-pwd-toggle" onclick="_suTogglePwd('ob-su-pwd2','ob-su-pwd2-tg')" id="ob-su-pwd2-tg">Show</button>
+              </div>
+              <div class="ob-field-err-line" id="ob-su-pwd2-err" style="display:none"></div>
+            </div>
+
+            <div class="ob-field-err" id="ob-su-err" style="display:none"></div>
+
+            <button class="ob-btn-primary" id="ob-su-submit" onclick="_doSignup()">
+              <span class="ob-btn-label">Join the team</span>
+              <span class="ob-btn-arrow">&rarr;</span>
+              <span class="ob-btn-spinner" style="display:none">&#8634;</span>
+            </button>
           </div>
-          <div id="lu-su-pwd-err" style="color:#F87171;font-size:12px;margin-top:6px;display:none"></div>
-          <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
-            <div id="lu-su-r1" style="font-size:12px;color:rgba(240,240,248,.52)"><span class="lu-su-r-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);margin-right:8px"></span>At least 8 characters</div>
-            <div id="lu-su-r2" style="font-size:12px;color:rgba(240,240,248,.52)"><span class="lu-su-r-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);margin-right:8px"></span>One uppercase letter</div>
-            <div id="lu-su-r3" style="font-size:12px;color:rgba(240,240,248,.52)"><span class="lu-su-r-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);margin-right:8px"></span>One number</div>
-          </div>
+
+          <p class="ob-switch">Already have an account?
+            <a href="#" onclick="_renderLogin();return false;">Sign in</a>
+          </p>
+          <p class="ob-legal">
+            By continuing you agree to our
+            <a href="https://levelupgrowth.io/terms" target="_blank">Terms</a> and
+            <a href="https://levelupgrowth.io/privacy" target="_blank">Privacy Policy</a>
+          </p>
         </div>
-
-        <div style="margin-bottom:24px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">Confirm password</label>
-          <input id="lu-su-pwd2" type="password" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box">
-          <div id="lu-su-pwd2-err" style="color:#F87171;font-size:12px;margin-top:6px;display:none"></div>
-        </div>
-
-        <button id="lu-su-btn" onclick="_doSignup()" style="width:100%;padding:14px;background:#6C5CE7;color:#fff;border:0;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Create free account →</button>
-        <div id="lu-su-err" style="color:#F87171;font-size:13px;margin-top:12px;display:none;text-align:center"></div>
-
-        <p style="font-size:12px;color:rgba(240,240,248,.52);margin:16px 0 0;text-align:center;line-height:1.5">By signing up you agree to our <a href="https://levelupgrowth.io/terms" target="_blank" style="color:#6C5CE7;text-decoration:none">Terms of Service</a> and <a href="https://levelupgrowth.io/privacy" target="_blank" style="color:#6C5CE7;text-decoration:none">Privacy Policy</a></p>
-
-        <p style="font-size:13px;color:rgba(240,240,248,.72);margin:24px 0 0;text-align:center">Already have an account? <a href="#" onclick="_renderLogin();return false" style="color:#6C5CE7;text-decoration:none;font-weight:600">Sign in →</a></p>
       </div>
+
     </div>
-  </div>
-  <style>
-    #lu-signup-page input:focus { outline:none; border-color:#6C5CE7 !important; box-shadow:0 0 0 3px rgba(108,92,231,.15); }
-    #lu-signup-page button#lu-su-btn:hover { background:#5948d9; }
-    #lu-signup-page button#lu-su-btn:disabled { opacity:.6; cursor:not-allowed; }
-    @media (max-width: 880px) {
-      #lu-signup-page { flex-direction:column; }
-      #lu-signup-page .lu-signup-left { flex:none !important; padding:36px 28px !important; }
-      #lu-signup-page .lu-signup-right { padding:36px 28px !important; }
-      #lu-signup-page h1 { font-size:28px !important; }
-    }
-  </style>`;
+  </div>`;
+
+  _obFetchSocialProof();
+}
+
+function _obFetchSocialProof() {
+  fetch(_luBase + '/api/public/workspace-count', { headers: { 'Accept': 'application/json' } })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      if (d && typeof d.count === 'number' && d.count >= 50) {
+        var el = document.getElementById('ob-social-proof');
+        if (el) {
+          el.textContent = 'Join ' + d.count + '+ businesses in MENA & beyond';
+          el.style.display = 'block';
+        }
+      }
+    })
+    .catch(function(){ /* silently fail — never show fake number */ });
 }
 
 function _suTogglePwd(inputId, btnId){
@@ -177,52 +280,71 @@ function _suTogglePwd(inputId, btnId){
 }
 
 function _suCheckPwd(){
-  var p = (document.getElementById('lu-su-pwd')||{}).value || '';
-  var r1 = document.querySelector('#lu-su-r1 .lu-su-r-dot');
-  var r2 = document.querySelector('#lu-su-r2 .lu-su-r-dot');
-  var r3 = document.querySelector('#lu-su-r3 .lu-su-r-dot');
-  var ok = '#00E5A8', off = 'rgba(255,255,255,.2)';
-  if (r1) r1.style.background = (p.length >= 8) ? ok : off;
-  if (r2) r2.style.background = (/[A-Z]/.test(p)) ? ok : off;
-  if (r3) r3.style.background = (/[0-9]/.test(p)) ? ok : off;
+  var p = (document.getElementById('ob-su-pwd')||{}).value || '';
+  var hasLen   = p.length >= 8;
+  var hasUpper = /[A-Z]/.test(p);
+  var hasNum   = /[0-9]/.test(p);
+  var hasLong  = p.length >= 12;
+
+  var rL = document.getElementById('ob-rule-len');
+  var rU = document.getElementById('ob-rule-upper');
+  var rN = document.getElementById('ob-rule-num');
+  if (rL) rL.classList.toggle('met', hasLen);
+  if (rU) rU.classList.toggle('met', hasUpper);
+  if (rN) rN.classList.toggle('met', hasNum);
+
+  var rulesMet = (hasLen?1:0) + (hasUpper?1:0) + (hasNum?1:0);
+  var allRules = (rulesMet === 3);
+  var strong   = allRules && hasLong;
+  for (var i = 1; i <= 4; i++) {
+    var s = document.getElementById('ob-seg-' + i);
+    if (!s) continue;
+    s.classList.remove('active');
+    s.classList.remove('strong');
+    if (i <= rulesMet) {
+      if (strong) s.classList.add('strong');
+      else        s.classList.add('active');
+    } else if (i === 4 && strong) {
+      s.classList.add('strong');
+    }
+  }
 }
 
 function _suShowFieldErr(fieldId, msg) {
   var el = document.getElementById(fieldId + '-err');
   var inp = document.getElementById(fieldId);
   if (el) { el.style.display = 'block'; el.textContent = msg; }
-  if (inp) inp.style.borderColor = '#F87171';
+  if (inp) inp.classList.add('ob-input-err');
 }
 
 function _suClearFieldErrs() {
-  ['lu-su-name','lu-su-email','lu-su-pwd','lu-su-pwd2'].forEach(function(id){
+  ['ob-su-name','ob-su-email','ob-su-pwd','ob-su-pwd2'].forEach(function(id){
     var el = document.getElementById(id + '-err');
     var inp = document.getElementById(id);
     if (el) el.style.display = 'none';
-    if (inp) inp.style.borderColor = 'rgba(255,255,255,.1)';
+    if (inp) inp.classList.remove('ob-input-err');
   });
-  var ge = document.getElementById('lu-su-err');
+  var ge = document.getElementById('ob-su-err');
   if (ge) ge.style.display = 'none';
 }
 
 async function _doSignup() {
-  var name  = (document.getElementById('lu-su-name')||{}).value.trim();
-  var email = (document.getElementById('lu-su-email')||{}).value.trim();
-  var pwd   = (document.getElementById('lu-su-pwd')||{}).value || '';
-  var pwd2  = (document.getElementById('lu-su-pwd2')||{}).value || '';
-  var btn   = document.getElementById('lu-su-btn');
+  var name  = (document.getElementById('ob-su-name')||{}).value.trim();
+  var email = (document.getElementById('ob-su-email')||{}).value.trim();
+  var pwd   = (document.getElementById('ob-su-pwd')||{}).value || '';
+  var pwd2  = (document.getElementById('ob-su-pwd2')||{}).value || '';
 
   _suClearFieldErrs();
   var bad = false;
-  if (!name)  { _suShowFieldErr('lu-su-name', 'Please enter your full name.'); bad = true; }
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { _suShowFieldErr('lu-su-email', 'Please enter a valid email.'); bad = true; }
-  if (pwd.length < 8) { _suShowFieldErr('lu-su-pwd', 'Password must be at least 8 characters.'); bad = true; }
-  else if (!/[A-Z]/.test(pwd)) { _suShowFieldErr('lu-su-pwd', 'Password must include an uppercase letter.'); bad = true; }
-  else if (!/[0-9]/.test(pwd)) { _suShowFieldErr('lu-su-pwd', 'Password must include a number.'); bad = true; }
-  if (pwd !== pwd2) { _suShowFieldErr('lu-su-pwd2', 'Passwords do not match.'); bad = true; }
+  if (!name)  { _suShowFieldErr('ob-su-name', 'Please enter your full name.'); bad = true; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { _suShowFieldErr('ob-su-email', 'Please enter a valid email.'); bad = true; }
+  if (pwd.length < 8) { _suShowFieldErr('ob-su-pwd', 'Password must be at least 8 characters.'); bad = true; }
+  else if (!/[A-Z]/.test(pwd)) { _suShowFieldErr('ob-su-pwd', 'Password must include an uppercase letter.'); bad = true; }
+  else if (!/[0-9]/.test(pwd)) { _suShowFieldErr('ob-su-pwd', 'Password must include a number.'); bad = true; }
+  if (pwd !== pwd2) { _suShowFieldErr('ob-su-pwd2', 'Passwords do not match.'); bad = true; }
   if (bad) return;
 
-  if (btn) { btn.disabled = true; btn.textContent = 'Creating account…'; }
+  _setBtnLoading('ob-su-submit', true, 'Creating account…', 'Join the team');
   try {
     var r = await fetch(_luBase + '/api/auth/register', {
       method: 'POST',
@@ -231,13 +353,12 @@ async function _doSignup() {
     });
     var d = await r.json().catch(function(){ return {}; });
     if (!r.ok || !d.access_token) {
-      // Laravel 422 validation errors: { errors: { field: [msg] } }
       if (d.errors) {
-        if (d.errors.email) _suShowFieldErr('lu-su-email', d.errors.email[0]);
-        if (d.errors.password) _suShowFieldErr('lu-su-pwd', d.errors.password[0]);
-        if (d.errors.name) _suShowFieldErr('lu-su-name', d.errors.name[0]);
+        if (d.errors.email)    _suShowFieldErr('ob-su-email', d.errors.email[0]);
+        if (d.errors.password) _suShowFieldErr('ob-su-pwd', d.errors.password[0]);
+        if (d.errors.name)     _suShowFieldErr('ob-su-name', d.errors.name[0]);
       } else {
-        var ge = document.getElementById('lu-su-err');
+        var ge = document.getElementById('ob-su-err');
         if (ge) { ge.style.display = 'block'; ge.textContent = d.message || d.error || 'Signup failed.'; }
       }
       throw new Error('validation');
@@ -246,9 +367,16 @@ async function _doSignup() {
     if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token);
     if (d.user && d.user.id) localStorage.setItem('lu_user_id', String(d.user.id));
     if (d.user && d.user.name) localStorage.setItem('lu_user_name', d.user.name);
-    _renderOnboardingStep2({});
+
+    // Success: flash all orbs amber, then advance to Step 2
+    var orbs = document.querySelectorAll('.ob-orb');
+    orbs.forEach(function(o){ o.classList.add('ob-orb--flash'); });
+    setTimeout(function(){
+      orbs.forEach(function(o){ o.classList.remove('ob-orb--flash'); });
+      _renderOnboardingStep2({});
+    }, 400);
   } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Create free account →'; }
+    _setBtnLoading('ob-su-submit', false, null, 'Join the team');
   }
 }
 

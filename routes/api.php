@@ -48,6 +48,11 @@ Route::get('/health', function () {
 // Simple liveness probe — minimal, fast
 Route::get('/ping', fn () => response()->json(['pong' => true, 'ts' => now()->timestamp]))->name('ping');
 
+Route::get('/public/workspace-count', function () {
+    $count = \App\Models\Workspace::where('onboarded', true)->count();
+    return response()->json(['count' => $count]);
+})->name('public.workspace.count');
+
 use App\Http\Controllers\Api\MeetingController;
 use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\ManualExecutionController;
