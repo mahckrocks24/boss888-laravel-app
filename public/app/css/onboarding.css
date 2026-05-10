@@ -894,6 +894,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding-bottom: max(16px, var(--safe-bottom));
 }
 .ob-quiz-back {
   background: none;
@@ -942,6 +943,10 @@
 
 /* Mobile */
 @media (max-width: 640px) {
+  .ob-quiz-nav {
+    padding-bottom: max(24px, var(--safe-bottom));
+    margin-bottom: var(--safe-bottom);
+  }
   .ob-quiz-wrap { padding: 24px 16px; }
   .ob-quiz-question { font-size: 26px; }
   .ob-quiz-sub { font-size: 14px; margin-bottom: 24px; }
@@ -995,7 +1000,7 @@
   background: #1E2028;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 10px;
-  z-index: 999;
+  z-index: var(--z-modal);
   overflow: hidden;
   box-shadow: 0 16px 40px rgba(0,0,0,0.5);
 }

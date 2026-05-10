@@ -863,6 +863,17 @@ table tbody tr:hover{background:var(--s2)}
     @media(max-width:1100px){.dash-body{grid-template-columns:200px 1fr}.dash-body>*:last-child{display:none}}
     @media(max-width:800px){.dash-stats{grid-template-columns:repeat(2,1fr)}.dash-body{grid-template-columns:1fr}}
 /* ── End Dashboard System ──────────────────────────────────────────────── */
+
+/* ── M1.1: iOS momentum scroll on all overflow-y containers ── */
+[style*="overflow-y:auto"],
+[style*="overflow-y: auto"],
+[style*="overflow-y:scroll"],
+[style*="overflow-y: scroll"],
+.sidebar, .ai-feed, .am-tasks, .ma-list, .disc-feed,
+.mi-body, .kb-cards, .td-pane, .sm-body, .agents-view,
+.ad-pane, .cmd-feed, .view {
+  -webkit-overflow-scrolling: touch;
+}
 </style>
 
 <style>
@@ -3341,7 +3352,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/core.js?v=4.5.1-markdown-format"></script>
-<link rel="stylesheet" href="/app/css/onboarding.css?v=5.2.0">
+<link rel="stylesheet" href="/app/css/onboarding.css?v=5.3.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
 <script defer src="/app/js/media-picker.js?v=4.5.0"></script>
