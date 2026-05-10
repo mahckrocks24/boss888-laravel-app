@@ -146,14 +146,23 @@ function _renderSignup() {
   function orbHTML(a, ring, idx, step) {
     var start = idx * step;
     var cls = 'ob-orb ob-orb--' + ring;
-    return '<div class="' + cls + '" data-name="' + _luEsc(a[0]) + '" data-role="' + _luEsc(a[3]) +
-           '" style="--start:' + start + 'deg;--orb-color:' + a[2] + '">' +
+    var color = a[2];
+    return '<div class="' + cls + '" data-name="' + _luEsc(a[0]) +
+           '" data-role="' + _luEsc(a[3]) +
+           '" data-color="' + color + '"' +
+           ' style="--start:' + start + 'deg;--orb-color:' + color +
+           ';background-color:' + color +
+           ';box-shadow:0 0 12px ' + color + '55,0 0 4px ' + color + '30">' +
            '<span>' + a[1] + '</span></div>';
   }
 
   var sarah = _OB_AGENTS[0];
+  // Sarah's box-shadow is animated by ob-sarah-pulse keyframe — no inline shadow.
   var sarahHTML = '<div class="ob-orb ob-orb--centre ob-orb--sarah" data-name="' + _luEsc(sarah[0]) +
-                  '" data-role="' + _luEsc(sarah[3]) + '" style="--orb-color:' + sarah[2] + '">' +
+                  '" data-role="' + _luEsc(sarah[3]) +
+                  '" data-color="' + sarah[2] + '"' +
+                  ' style="--orb-color:' + sarah[2] +
+                  ';background-color:' + sarah[2] + '">' +
                   '<span>' + sarah[1] + '</span></div>';
   var innerHTML = innerAgents.map(function(a, i){ return orbHTML(a, 'inner', i, innerStep); }).join('');
   var outerHTML = outerAgents.map(function(a, i){ return orbHTML(a, 'outer', i, outerStep); }).join('');
@@ -164,8 +173,12 @@ function _renderSignup() {
 
       <div class="ob-left">
         <div class="ob-logo">
-          <div class="ob-logo-mark">L</div>
-          <span>LevelUp Growth</span>
+          <div class="ob-logo-mark">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M11.5 2L4 11h6.5L8.5 18L16 9h-6.5L11.5 2z" fill="#fff" stroke="#fff" stroke-width="0.5" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="ob-logo-name">LevelUpGrowth</span>
         </div>
 
         <h1 class="ob-headline">Your AI marketing<br>team starts now.</h1>

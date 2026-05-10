@@ -1,14 +1,14 @@
 /*
  * LevelUp Growth — Onboarding UI
  * Phase O2   (2026-05-10): Mission Control dark theme + 20-agent orbit
- * Phase O2.1 (2026-05-10): Design system aligned with marketing site —
- *                           purple-blue primary, teal accent, Manrope/Inter
- *                           typography, amber retained ONLY for Sarah orb.
+ * Phase O2.1 (2026-05-10): Marketing-aligned tokens — purple/blue, Manrope/Inter
+ * Phase O2.2 (2026-05-10): 3D sphere orbs + lightning-bolt logo + 320px orbit
  * Namespace: .lu-onboard
  *
- * Note on outer orbit radius: spec called for 150px, but the .ob-orbit-wrap
- * is 280px (140px max from centre). 32px outer orbs at 150px would overflow.
- * Using 125px keeps them visible inside the wrapper.
+ * Note on outer-orbit overflow: at --r:148px the 34px outer-orb edge sits at
+ * 165px from the wrap centre; the 320px wrap allows 160px. Outer orbs sweep
+ * 5px past the wrap edge — intentional per spec, blends into the .ob-left
+ * panel since the wrap has no border or background.
  */
 
 :root,
@@ -83,11 +83,11 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 60px;
+  padding: 56px 52px;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 60% 70% at 30% 50%, rgba(124,58,237,0.12) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(0,229,168,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 80% at 25% 55%, rgba(124,58,237,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 45% at 75% 85%, rgba(0,229,168,0.07) 0%, transparent 55%),
     var(--ob-bg);
 }
 
@@ -104,52 +104,57 @@
 }
 .lu-onboard .ob-left > * { position: relative; z-index: 1; }
 
+/* ── Logo (signup left panel — lightning bolt + LevelUpGrowth) ───────────── */
 .lu-onboard .ob-logo {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 48px;
-}
-.lu-onboard .ob-logo span {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.01em;
-  color: #fff;
+  margin-bottom: 40px;
 }
 
 .lu-onboard .ob-logo-mark {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   background: var(--ob-purple);
-  color: #fff;
-  font-family: 'Manrope', sans-serif;
-  font-weight: 800;
-  font-size: 18px;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(124,58,237,0.4);
 }
 
+.lu-onboard .ob-logo-name {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+
+/* Headline */
 .lu-onboard .ob-headline {
   font-family: 'Manrope', sans-serif;
   font-weight: 800;
-  font-size: 48px;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-size: clamp(32px, 3.5vw, 48px);
+  line-height: 1.12;
+  letter-spacing: -0.5px;
   color: #fff;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 /* ── Orbit ──────────────────────────────────────────────────────────────── */
 .lu-onboard .ob-orbit-wrap {
   position: relative;
-  width: 280px;
-  height: 280px;
-  margin-bottom: 40px;
+  width: 320px;
+  height: 320px;
+  margin: 0 auto 40px;
+  flex-shrink: 0;
 }
 
+/* Base orb — 3D sphere effect via radial highlight + background-blend-mode.
+   background-color is set inline per-orb (matching agent color), and
+   background-image (the radial highlight) blends over it. */
 .lu-onboard .ob-orb {
   position: absolute;
   top: 50%;
@@ -158,49 +163,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 11px;
-  color: #fff;
-  background: var(--orb-color, #7C3AED);
-  box-shadow: 0 0 12px rgba(124,58,237,0.25);
-  transition: transform 0.2s, box-shadow 0.3s, background 0.3s;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  color: rgba(255,255,255,0.95);
   cursor: default;
+  transition: transform 0.2s, box-shadow 0.3s;
+  background-image: radial-gradient(
+    circle at 35% 35%,
+    rgba(255,255,255,0.35) 0%,
+    rgba(255,255,255,0) 55%
+  );
+  background-blend-mode: overlay;
 }
 .lu-onboard .ob-orb span { pointer-events: none; }
 
-.lu-onboard .ob-orb--centre {
-  width: 56px;
-  height: 56px;
-  margin-left: -28px;
-  margin-top: -28px;
-  z-index: 5;
-  font-size: 13px;
-  animation: ob-sarah-pulse 2s ease-in-out infinite alternate;
-}
-
-.lu-onboard .ob-orb--inner {
-  width: 44px;
-  height: 44px;
-  margin-left: -22px;
-  margin-top: -22px;
-  --r: 110px;
-  animation: ob-orbit 20s linear infinite;
-}
-
-.lu-onboard .ob-orb--outer {
-  width: 32px;
-  height: 32px;
-  margin-left: -16px;
-  margin-top: -16px;
-  font-size: 10px;
-  --r: 125px;
-  animation: ob-orbit 35s linear infinite;
-}
-
 .lu-onboard .ob-orb:hover {
-  transform: scale(1.2);
-  z-index: 10;
+  transform: scale(1.15);
+  z-index: 20;
 }
 
 .lu-onboard .ob-orb::after {
@@ -213,6 +192,7 @@
   color: #fff;
   padding: 6px 10px;
   border-radius: 6px;
+  font-family: 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
@@ -222,7 +202,48 @@
 }
 .lu-onboard .ob-orb:hover::after { opacity: 1; }
 
-/* Flash animation: purple for everyone except Sarah */
+/* Sarah — centre, larger, amber pulse */
+.lu-onboard .ob-orb--centre {
+  width: 64px;
+  height: 64px;
+  margin-left: -32px;
+  margin-top: -32px;
+  z-index: 5;
+  font-size: 15px;
+  font-weight: 800;
+  animation: ob-sarah-pulse 2s ease-in-out infinite alternate;
+}
+.lu-onboard .ob-orb--sarah {
+  width: 64px !important;
+  height: 64px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  z-index: 10;
+}
+
+/* Inner ring */
+.lu-onboard .ob-orb--inner {
+  width: 46px;
+  height: 46px;
+  margin-left: -23px;
+  margin-top: -23px;
+  font-size: 12px;
+  --r: 110px;
+  animation: ob-orbit 20s linear infinite;
+}
+
+/* Outer ring */
+.lu-onboard .ob-orb--outer {
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+  margin-top: -17px;
+  font-size: 10px;
+  --r: 148px;
+  animation: ob-orbit 35s linear infinite;
+}
+
+/* Flash on signup success — purple for everyone except Sarah */
 .lu-onboard .ob-orb--flash {
   animation: ob-orb-flash 0.4s ease-in-out;
 }
@@ -230,25 +251,23 @@
   0%, 100% { box-shadow: none; }
   50%      { box-shadow: 0 0 20px rgba(124,58,237,0.8); }
 }
-/* Sarah's flash stays amber — override the purple keyframe with a static glow */
 .lu-onboard .ob-orb--sarah.ob-orb--flash {
   animation: none;
   box-shadow: 0 0 20px rgba(245,158,11,0.8) !important;
 }
 
-/* Single keyframe driven by CSS var --r (per-orb radius) */
+/* Single orbit keyframe driven by --r (per-ring radius) */
 @keyframes ob-orbit {
   from { transform: rotate(var(--start)) translateX(var(--r)) rotate(calc(-1 * var(--start))); }
   to   { transform: rotate(calc(var(--start) + 360deg)) translateX(var(--r)) rotate(calc(-360deg - var(--start))); }
 }
 
-/* Sarah's pulse — amber glow, used only by .ob-orb--centre (Sarah) */
+/* Sarah's pulse — amber glow only */
 @keyframes ob-sarah-pulse {
   from { box-shadow: 0 0 16px rgba(245,158,11,0.4); }
   to   { box-shadow: 0 0 32px rgba(245,158,11,0.65); }
 }
 
-/* Honour reduced-motion users */
 @media (prefers-reduced-motion: reduce) {
   .lu-onboard .ob-orb--inner,
   .lu-onboard .ob-orb--outer,
@@ -268,7 +287,7 @@
   position: relative;
 }
 .lu-onboard .ob-props li::before {
-  content: '\2726';        /* ✦ */
+  content: '\2726';
   position: absolute;
   left: 0;
   color: var(--ob-teal);
@@ -378,12 +397,8 @@
 }
 
 /* Password show/hide toggle */
-.lu-onboard .ob-pwd-wrap {
-  position: relative;
-}
-.lu-onboard .ob-form .ob-pwd-wrap input {
-  padding-right: 60px;
-}
+.lu-onboard .ob-pwd-wrap { position: relative; }
+.lu-onboard .ob-form .ob-pwd-wrap input { padding-right: 60px; }
 .lu-onboard .ob-pwd-toggle {
   position: absolute;
   right: 8px;
@@ -406,9 +421,7 @@
 }
 
 /* Strength meter */
-.lu-onboard .ob-pwd-strength {
-  margin-top: 4px;
-}
+.lu-onboard .ob-pwd-strength { margin-top: 4px; }
 .lu-onboard .ob-pwd-bar {
   display: flex;
   gap: 4px;
@@ -522,28 +535,27 @@
     padding: 32px 24px;
     min-height: auto;
   }
-  .lu-onboard .ob-headline {
-    font-size: 32px;
-  }
   .lu-onboard .ob-orbit-wrap {
-    width: 200px;
-    height: 200px;
-    margin: 0 auto 40px;
+    width: 220px;
+    height: 220px;
   }
-  .lu-onboard .ob-orb--centre {
-    width: 44px; height: 44px; margin: -22px 0 0 -22px; font-size: 12px;
+  .lu-onboard .ob-orb--centre,
+  .lu-onboard .ob-orb--sarah {
+    width: 50px !important;
+    height: 50px !important;
+    margin: -25px 0 0 -25px;
+    font-size: 13px !important;
   }
   .lu-onboard .ob-orb--inner {
-    width: 36px; height: 36px; margin: -18px 0 0 -18px; --r: 75px;
+    width: 38px; height: 38px; margin: -19px 0 0 -19px; --r: 75px; font-size: 11px;
   }
   .lu-onboard .ob-orb--outer {
-    width: 26px; height: 26px; margin: -13px 0 0 -13px; --r: 90px; font-size: 9px;
+    width: 28px; height: 28px; margin: -14px 0 0 -14px; --r: 100px; font-size: 10px;
   }
   .lu-onboard .ob-right { padding: 24px; border-left: none; border-top: 1px solid var(--ob-border); }
   .lu-onboard .ob-card { padding: 28px 24px; }
 }
 
 @media (max-width: 480px) {
-  .lu-onboard .ob-headline { font-size: 28px; }
   .lu-onboard .ob-pwd-rules { gap: 8px; }
 }
