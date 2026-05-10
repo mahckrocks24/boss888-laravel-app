@@ -1843,15 +1843,26 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
-   Workspace canvas — minimal mobile fix v2
-   - Canvas legend: KEEP visible, reposition below the 56px mobile topbar
-   - Selection toolbar: full-width pill at bottom (8px gutter, 20px from edge)
+   Workspace canvas — minimal mobile fix v3
+   - Canvas top toolbar: push below 56px mobile topbar (tablet keeps right-aligned)
+   - Canvas legend: tablet → top-right corner; phone → bottom-left corner
+   - Selection toolbar: phone → bottom:80px (clears legend + FAB stack)
    - DO NOT touch .agent-node positioning (canvas relies on absolute pos)
    - DO NOT touch #canvas-agents or #view-workspace overflow
-   - AI FAB handled by the Mobile FAB stack block below
+   - AI FAB / messages floater handled by the Mobile FAB stack block below
    ═════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1023px) {
-  /* Push the legend out from behind the mobile topbar (56px + 8px gap) */
+  /* Canvas top toolbar — push below the 56px mobile topbar */
+  .canvas-toolbar,
+  div.canvas-toolbar {
+    top: 64px !important;
+    right: 8px !important;
+    left: auto !important;
+    z-index: var(--z-dropdown) !important;
+    flex-wrap: wrap !important;
+    max-width: calc(100vw - 220px) !important;
+  }
+  /* Legend on tablet: top-right under the mobile topbar */
   .canvas-legend,
   div.canvas-legend {
     top: 64px !important;
@@ -1862,20 +1873,51 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
 }
 
 @media (max-width: 767px) {
-  /* Selection toolbar — tight pill at bottom edge */
-  .selection-toolbar,
-  #selection-toolbar {
-    position: fixed !important;
+  /* Canvas top toolbar — full-width below topbar on phone */
+  .canvas-toolbar,
+  div.canvas-toolbar {
+    top: 64px !important;
     left: 8px !important;
     right: 8px !important;
-    bottom: 20px !important;
+    max-width: calc(100vw - 16px) !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .canvas-toolbar button,
+  .canvas-toolbar .ct-btn {
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Legend on phone: bottom-left corner, above safe area (overrides 1023px top:64px) */
+  .canvas-legend,
+  div.canvas-legend {
+    top: auto !important;
+    bottom: calc(80px + var(--safe-bottom)) !important;
+    left: 8px !important;
+    right: auto !important;
+    z-index: var(--z-dropdown) !important;
+    font-size: 11px !important;
+    padding: 8px 10px !important;
+    max-width: 160px !important;
+  }
+
+  /* Selection toolbar — above legend + FAB stack (bottom:80px instead of 20px) */
+  .selection-toolbar,
+  #selection-toolbar,
+  div.selection-toolbar {
+    position: fixed !important;
+    bottom: calc(80px + var(--safe-bottom)) !important;
+    left: 8px !important;
+    right: 8px !important;
     top: auto !important;
     transform: none !important;
     width: auto !important;
     max-width: calc(100vw - 16px) !important;
     z-index: var(--z-dropdown) !important;
     flex-wrap: wrap !important;
-    gap: 8px !important;
+    gap: 6px !important;
     background: var(--s1, #121826) !important;
     border-radius: 12px !important;
     padding: 10px 12px !important;
