@@ -705,9 +705,13 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             \Illuminate\Support\Facades\Log::warning('[AgentChat] KB block failed: ' . $kbErr->getMessage());
         }
 
+        // PATCH (concise-persona, 2026-05-10) — prepend a sharp/conversational
+        // rule to every agent's DM system prompt. Overrides the professor tone.
+        $conciseRule = "You are a sharp, direct AI specialist. Keep all responses SHORT and CONVERSATIONAL — maximum 3 sentences unless the user explicitly asks for a plan, report, or detailed breakdown. No bullet frameworks, no numbered action plans, no headers unless asked. Talk like a smart colleague in a Slack message, not a consultant writing a strategy document. If the user asks a simple question, give a simple answer.\n\n";
+
         // ── Build system prompt ──
         if ($isSarah) {
-            $systemPrompt = $brandFactsBlock
+            $systemPrompt = $conciseRule . $brandFactsBlock
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
                 . $formatRules
@@ -742,7 +746,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
                 . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
         } else {
-            $systemPrompt = $brandFactsBlock
+            $systemPrompt = $conciseRule . $brandFactsBlock
                 . "You are {$agent->name}, {$agent->title} for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "Your expertise: " . implode(', ', $skills) . "\n"
                 . ($recentTasks ? "Your recent tasks:\n- {$recentTasks}\n" : "No recent tasks.\n")
