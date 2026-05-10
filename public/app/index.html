@@ -4641,7 +4641,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.5.7-canvas-toolbar"></script>
+<script defer src="/app/js/core.js?v=4.5.8-doubletap"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
@@ -4918,6 +4918,183 @@ document.addEventListener('touchstart', function (e) {
   // Catch lazy-created elements (messages-ui.js creates floater on first call)
   setTimeout(wire, 1000);
   setTimeout(wire, 3000);
+})();
+</script>
+
+<script>
+/* ═════════════════════════════════════════════════════════════════════════
+   Mobile canvas: double-tap agent = drag, double-tap empty canvas = select.
+   No pinch/pan/zoom. No scale-awareness. Single touch only.
+   Persists drag to PUT /api/workspace/agents/positions { agent: <slug>, x, y }
+   ═════════════════════════════════════════════════════════════════════════ */
+(function() {
+  if (window.innerWidth > 1023) return;
+
+  var DBL = 300;
+  var _lastTap = 0;
+  var _lastTapEl = null;
+
+  // Drag state
+  var _drag = null;
+  var _dragOX = 0;
+  var _dragOY = 0;
+
+  // Select state
+  var _sel = false;
+  var _selSX = 0;
+  var _selSY = 0;
+  var _selBox = { x1:0, y1:0, x2:0, y2:0 };
+  var _selRect = null;
+
+  function init() {
+    var canvas = document.getElementById('canvas-agents');
+    if (!canvas) { setTimeout(init, 1000); return; }
+    if (canvas._luDoubleTapWired) return;
+    canvas._luDoubleTapWired = true;
+
+    _selRect = document.createElement('div');
+    _selRect.style.cssText =
+      'position:absolute;border:2px solid #7C3AED;' +
+      'background:rgba(124,58,237,0.08);border-radius:4px;' +
+      'pointer-events:none;display:none;z-index:500;';
+    canvas.appendChild(_selRect);
+
+    canvas.addEventListener('touchstart', function(e) {
+      if (e.touches.length !== 1) return;
+      var touch = e.touches[0];
+      var now = Date.now();
+      var card = e.target.closest('.agent-node,[class*="agent-node"]');
+      var onCanvas = !card;
+      var dbl = (now - _lastTap < DBL) &&
+                (e.target === _lastTapEl || card === _lastTapEl);
+
+      _lastTap = now;
+      _lastTapEl = card || e.target;
+
+      if (dbl && card) {
+        // Double-tap agent → start drag
+        e.preventDefault();
+        _drag = card;
+        var rect = canvas.getBoundingClientRect();
+        _dragOX = touch.clientX - rect.left - (parseInt(card.style.left) || 0);
+        _dragOY = touch.clientY - rect.top  - (parseInt(card.style.top)  || 0);
+        card.style.opacity = '0.8';
+        card.style.zIndex  = '999';
+        card.style.transition = 'none';
+        if (typeof showToast === 'function') showToast('Drag to reposition', 'info');
+      } else if (dbl && onCanvas) {
+        // Double-tap empty canvas → start selection
+        e.preventDefault();
+        _sel = true;
+        var rect = canvas.getBoundingClientRect();
+        _selSX = touch.clientX - rect.left;
+        _selSY = touch.clientY - rect.top;
+        _selRect.style.left   = _selSX + 'px';
+        _selRect.style.top    = _selSY + 'px';
+        _selRect.style.width  = '0';
+        _selRect.style.height = '0';
+        _selRect.style.display = 'block';
+        if (typeof showToast === 'function') showToast('Drag to select agents', 'info');
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', function(e) {
+      if (e.touches.length !== 1) return;
+      var touch = e.touches[0];
+      var rect = canvas.getBoundingClientRect();
+
+      if (_drag) {
+        e.preventDefault();
+        var x = touch.clientX - rect.left - _dragOX;
+        var y = touch.clientY - rect.top  - _dragOY;
+        x = Math.max(0, Math.min(x, canvas.offsetWidth  - _drag.offsetWidth));
+        y = Math.max(0, Math.min(y, canvas.offsetHeight - _drag.offsetHeight));
+        _drag.style.position = 'absolute';
+        _drag.style.left = x + 'px';
+        _drag.style.top  = y + 'px';
+      }
+
+      if (_sel) {
+        e.preventDefault();
+        var curX = touch.clientX - rect.left;
+        var curY = touch.clientY - rect.top;
+        _selBox.x1 = Math.min(_selSX, curX);
+        _selBox.y1 = Math.min(_selSY, curY);
+        _selBox.x2 = Math.max(_selSX, curX);
+        _selBox.y2 = Math.max(_selSY, curY);
+        _selRect.style.left   = _selBox.x1 + 'px';
+        _selRect.style.top    = _selBox.y1 + 'px';
+        _selRect.style.width  = (_selBox.x2 - _selBox.x1) + 'px';
+        _selRect.style.height = (_selBox.y2 - _selBox.y1) + 'px';
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', function() {
+      if (_drag) {
+        _drag.style.opacity = '';
+        _drag.style.zIndex  = '';
+        _drag.style.transition = '';
+        // Persist via PUT /api/workspace/agents/positions
+        // NOTE: backend expects `agent` (slug), NOT `agent_id`.
+        // agent slug is on data-agent (set by _loadWorkspaceAgents).
+        var slug = _drag.dataset.agent || _drag.dataset.agentId ||
+                   (_drag.id || '').replace('agent-', '');
+        if (slug) {
+          var t = localStorage.getItem('lu_token') || '';
+          fetch('/api/workspace/agents/positions', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + t
+            },
+            body: JSON.stringify({
+              agent: slug,
+              x: parseInt(_drag.style.left, 10) || 0,
+              y: parseInt(_drag.style.top, 10)  || 0
+            })
+          }).catch(function() {});
+        }
+        _drag = null;
+      }
+
+      if (_sel) {
+        _sel = false;
+        _selRect.style.display = 'none';
+
+        var selected = [];
+        canvas.querySelectorAll('.agent-node,[class*="agent-node"]').forEach(function(card) {
+          var cx = parseInt(card.style.left) || 0;
+          var cy = parseInt(card.style.top)  || 0;
+          var cw = card.offsetWidth  || 160;
+          var ch = card.offsetHeight || 120;
+          if (cx < _selBox.x2 && cx + cw > _selBox.x1 &&
+              cy < _selBox.y2 && cy + ch > _selBox.y1) {
+            selected.push(card);
+            card.style.outline = '2px solid #7C3AED';
+            card.style.outlineOffset = '2px';
+          }
+        });
+
+        var toolbar = document.getElementById('selection-toolbar') ||
+                      document.querySelector('.selection-toolbar');
+        if (selected.length > 0) {
+          if (toolbar) toolbar.style.display = 'flex';
+          if (typeof showToast === 'function')
+            showToast(selected.length + ' agent' +
+              (selected.length > 1 ? 's' : '') + ' selected', 'info');
+        } else {
+          canvas.querySelectorAll('.agent-node,[class*="agent-node"]').forEach(function(c) {
+            c.style.outline = '';
+            c.style.outlineOffset = '';
+          });
+          if (toolbar) toolbar.style.display = 'none';
+        }
+      }
+    }, { passive: true });
+  }
+
+  document.addEventListener('lu:bootstrap-complete', init);
+  setTimeout(init, 2000);
 })();
 </script>
 </body></html>
