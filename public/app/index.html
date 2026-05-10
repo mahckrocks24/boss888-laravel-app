@@ -1843,85 +1843,30 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
-   Workspace canvas mobile fixes
+   Workspace canvas — minimal mobile fix (post-revert)
+   - Hide legend
+   - Reposition selection-toolbar as a full-width bottom pill
+   - DO NOT touch .agent-node positioning (canvas relies on absolute pos)
+   - DO NOT touch #canvas-agents or #view-workspace overflow
+   - AI FAB handled by the Mobile FAB stack block below
    ═════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 1023px) {
-
-  /* Canvas legend — hide on mobile (too small to be useful) */
-  .canvas-legend,
-  div.canvas-legend {
+@media (max-width: 767px) {
+  .canvas-legend {
     display: none !important;
   }
-
-  /* Selection toolbar — anchor to bottom, full width minus FAB button */
-  .selection-toolbar,
-  [class*="selection-toolbar"],
-  [id*="selection-toolbar"] {
-    left: 8px !important;
-    right: 72px !important;
-    bottom: calc(72px + var(--safe-bottom)) !important;
-    top: auto !important;
-    width: auto !important;
-    max-width: calc(100vw - 88px) !important;
-    transform: none !important;
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 6px !important;
+  .selection-toolbar {
     position: fixed !important;
-    z-index: var(--z-dropdown) !important;
-  }
-
-  /* Agent / Websites cards — constrain width */
-  .agent-node,
-  [class*="agent-node"],
-  .ws-card,
-  [class*="ws-card"] {
-    max-width: calc(100vw - 40px) !important;
-    min-width: unset !important;
-  }
-}
-
-@media (max-width: 767px) {
-
-  /* Canvas container — scroll vertically, not a fixed 3000×2000 plane */
-  #canvas-agents,
-  .canvas-agents,
-  [id*="canvas-agents"] {
-    position: relative !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    min-height: 100dvh !important;
-    overflow: visible !important;
-  }
-
-  /* View workspace — scrollable */
-  #view-workspace,
-  .view-workspace {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  /* Agent cards — stack vertically instead of absolute radial positioning */
-  .agent-node,
-  [class*="agent-node"] {
-    position: relative !important;
-    left: auto !important;
-    top: auto !important;
-    transform: none !important;
-    margin: 8px 16px !important;
-    width: calc(100% - 32px) !important;
-  }
-
-  /* AI FAB button — bottom-right */
-  .ai-fab,
-  #ai-fab,
-  [id*="ai-fab"],
-  [class*="ai-fab"] {
-    position: fixed !important;
-    bottom: calc(20px + var(--safe-bottom)) !important;
+    bottom: calc(16px + var(--safe-bottom)) !important;
+    left: 16px !important;
     right: 16px !important;
-    z-index: var(--z-toast) !important;
+    width: auto !important;
+    z-index: var(--z-dropdown) !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    background: var(--s1, #121826) !important;
+    border-radius: 12px !important;
+    padding: 10px 12px !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4) !important;
   }
 }
 
