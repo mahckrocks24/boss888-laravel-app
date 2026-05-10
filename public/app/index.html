@@ -1959,6 +1959,27 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
     min-width: 0 !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Canvas legend — push below the mobile canvas toolbar (top:130px = 64+58+8)
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .canvas-legend,
+  div.canvas-legend {
+    position: fixed !important;
+    top: 130px !important;
+    right: 8px !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: var(--z-dropdown) !important;
+    font-size: 11px !important;
+    padding: 8px 10px !important;
+    max-width: 160px !important;
+    background: var(--s1, #121826) !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+  }
+}
 </style>
 
 <style>
@@ -4641,7 +4662,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.5.8-doubletap"></script>
+<script defer src="/app/js/core.js?v=4.5.9-legend-below"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
