@@ -1810,6 +1810,37 @@ body:has(#view-meeting.active) #ws-activity-panel,
 body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
   display: none !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Workspace canvas: constrain orb size on agent-node cards.
+   Canvas cards are `.agent-node` (NOT `.ws-card` — that's the Websites view).
+   `.ws-card` selectors retained from spec for defense but harmless on canvas.
+   ═════════════════════════════════════════════════════════════════════════ */
+.agent-node .orb,
+.ws-card    .orb,
+.ws-card    [class*="orb"],
+#canvas-agents .orb {
+  width:  40px !important;
+  height: 40px !important;
+  --os:   40px !important;
+}
+
+@media (max-width: 767px) {
+  .agent-node .orb,
+  .ws-card    .orb,
+  .ws-card    [class*="orb"],
+  #canvas-agents .orb {
+    width:  32px !important;
+    height: 32px !important;
+    --os:   32px !important;
+  }
+  /* `.ws-card` width clamp from spec — harmless on canvas, helps Websites view */
+  .ws-card {
+    min-width: unset !important;
+    width:     calc(100vw - 48px) !important;
+    max-width: 320px !important;
+  }
+}
 </style>
 
 <style>
