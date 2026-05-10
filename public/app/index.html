@@ -1089,20 +1089,36 @@ body { overscroll-behavior-y: contain; }
   }
 }
 
-/* Touch targets — 44px minimum on mobile */
+/* Touch targets — 44px minimum on mobile (checkbox/radio handled separately) */
 @media (max-width: 767px) {
   button,
   .btn,
   [role="button"],
   .nav-item,
   .tab-item,
-  input[type="checkbox"],
-  input[type="radio"],
   .lu-hamburger,
   [class*="-icon-btn"],
   [class*="-action-btn"] {
     min-height: var(--touch-min, 44px);
     min-width:  var(--touch-min, 44px);
+  }
+
+  /* Checkbox/radio — keep native 18px size; expand tap area via label wrapper */
+  label:has(input[type="checkbox"]),
+  label:has(input[type="radio"]) {
+    min-height: var(--touch-min, 44px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: unset !important;
+    min-width:  unset !important;
+    width: 18px !important;
+    height: 18px !important;
+    flex-shrink: 0;
   }
 
   /* Sidebar nav rows — generous tap area */
