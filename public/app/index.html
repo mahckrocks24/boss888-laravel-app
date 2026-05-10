@@ -5068,6 +5068,26 @@ document.addEventListener('touchstart', function (e) {
         } catch(_) {}
       }
 
+      // Sync to server — mirrors desktop mouse drag at lines 2579 + 2852.
+      // API contract: PUT /api/workspace/agents/positions { agent: <slug>, x, y }
+      // Workspace resolved server-side from auth middleware (no X-Workspace-Id header).
+      var agentSlug = _dragEl.dataset.agent || _dragEl.dataset.agentId;
+      if (agentSlug) {
+        var tk = localStorage.getItem('lu_token') || '';
+        fetch('/api/workspace/agents/positions', {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'Bearer ' + tk,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            agent: agentSlug,
+            x: parseInt(_dragEl.style.left, 10) || 0,
+            y: parseInt(_dragEl.style.top, 10) || 0
+          })
+        }).catch(function() {});  // silent fail — localStorage already saved
+      }
+
       _dragging = false;
       _dragEl = null;
     }, { passive: true });
