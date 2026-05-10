@@ -447,8 +447,58 @@ var _OB2_COLORS = ['#6C5CE7','#00E5A8','#F43F5E','#F59E0B','#3B82F6','#111827'];
 
 function _ob2Esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
+// ── Quiz state (Phase O3) ────────────────────────────────────────────────
+var _ob2QuizStep = 1;
+
+var _OB2_INDUSTRY_ICONS = {
+  'Architecture':       '\u{1F3DB}️',
+  'Automotive':         '\u{1F697}',
+  'Beauty & Wellness':  '\u{1F486}',
+  'Cafe & Coffee':      '☕',
+  'Childcare':          '\u{1F476}',
+  'Cleaning Services':  '\u{1F9F9}',
+  'Consulting':         '\u{1F4BC}',
+  'Construction':       '\u{1F6A7}',
+  'Education':          '\u{1F393}',
+  'Events':             '\u{1F389}',
+  'Fashion & Retail':   '\u{1F457}',
+  'Finance':            '\u{1F4B0}',
+  'Fitness & Gym':      '\u{1F4AA}',
+  'Healthcare':         '\u{1F3E5}',
+  'Hospitality & Hotel':'\u{1F3E8}',
+  'Interior Design':    '\u{1F6CB}️',
+  'Legal Services':     '⚖️',
+  'Logistics':          '\u{1F4E6}',
+  'Marketing Agency':   '\u{1F4E2}',
+  'Pet Services':       '\u{1F43E}',
+  'Photography':        '\u{1F4F8}',
+  'Real Estate':        '\u{1F3D8}️',
+  'Real Estate Broker': '\u{1F511}',
+  'Restaurant':         '\u{1F37D}️',
+  'Technology & SaaS':  '\u{1F4BB}',
+  'Travel & Tourism':   '✈️',
+  'Wellness':           '\u{1F9D8}'
+};
+
+var _OB2_CUSTOMER_ICONS = {
+  local:         '\u{1F3D9}️',
+  national:      '\u{1F5FA}️',
+  international: '\u{1F30D}',
+  b2b:           '\u{1F91D}'
+};
+
+var _OB2_AED_COUNTRIES = ['AE','SA','QA','KW'];
+var _OB2_BUDGETS_USD = ['Under $500','$500-2K','$2K-5K','$5K+'];
+var _OB2_BUDGETS_AED = ['Under AED 2K','AED 2-8K','AED 8-20K','AED 20K+'];
+
+function _ob2GetBudgets() {
+  return _OB2_AED_COUNTRIES.indexOf(_ob2.country) !== -1
+    ? _OB2_BUDGETS_AED
+    : _OB2_BUDGETS_USD;
+}
+
+// ── Entry point: called from _doSignup({}) and on resume ─────────────────
 function _renderOnboardingStep2(prefill) {
-  // Merge prefill from /onboarding/status resume
   prefill = prefill || {};
   if (prefill.business_name) _ob2.business_name = prefill.business_name;
   if (prefill.industry)      _ob2.industry = prefill.industry;
@@ -460,243 +510,293 @@ function _renderOnboardingStep2(prefill) {
       if (od[k]) _ob2[k] = od[k];
     });
   }
+  // Fresh entry (not internal re-render): reset to step 1
+  if (prefill !== _ob2) _ob2QuizStep = 1;
+  _ob2RenderCurrentQuiz();
+}
 
+// ── Internal re-render — preserves _ob2QuizStep ──────────────────────────
+function _ob2RenderCurrentQuiz() {
   var root = document.getElementById('lu-auth-root');
   if (!root) return;
   root.style.display = 'flex';
   var appShell = document.querySelector('.app');
   if (appShell) appShell.style.display = 'none';
 
-  var indOptions = _OB2_INDUSTRIES.map(function(v){
-    return '<option value="'+_ob2Esc(v)+'"'+(_ob2.industry===v?' selected':'')+'>'+_ob2Esc(v)+'</option>';
-  }).join('');
-  var ctryOptions = _OB2_COUNTRIES.map(function(c){
-    return '<option value="'+_ob2Esc(c[0])+'"'+(_ob2.country===c[0]?' selected':'')+'>'+_ob2Esc(c[1])+'</option>';
+  var stepBody = '';
+  if (_ob2QuizStep === 1) stepBody = _renderQuizStep1();
+  else if (_ob2QuizStep === 2) stepBody = _renderQuizStep2();
+  else if (_ob2QuizStep === 3) stepBody = _renderQuizStep3();
+  else if (_ob2QuizStep === 4) stepBody = _renderQuizStep4();
+  else if (_ob2QuizStep === 5) stepBody = _renderQuizStep5();
+
+  var segs = [1,2,3,4,5].map(function(n){
+    var cls = (n < _ob2QuizStep ? 'done' : (n === _ob2QuizStep ? 'active' : ''));
+    return '<div class="ob-quiz-seg ' + cls + '"></div>';
   }).join('');
 
+  root.innerHTML =
+    '<div class="ob-quiz-wrap">' +
+      '<div class="ob-quiz-inner">' +
+        '<div class="ob-quiz-progress">' + segs + '</div>' +
+        '<div id="ob-quiz-content" class="ob-quiz-enter">' + stepBody + '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+// ── Animation-orchestrated transition ────────────────────────────────────
+function _ob2QuizGoTo(n) {
+  if (n < 1 || n > 5) return;
+  var content = document.getElementById('ob-quiz-content');
+  if (content) {
+    content.classList.remove('ob-quiz-enter');
+    content.classList.add('ob-quiz-exit');
+    setTimeout(function() {
+      _ob2QuizStep = n;
+      _ob2RenderCurrentQuiz();
+    }, 200);
+  } else {
+    _ob2QuizStep = n;
+    _ob2RenderCurrentQuiz();
+  }
+}
+
+// ── Capture inputs from current step into _ob2 ───────────────────────────
+function _ob2CaptureStep() {
+  if (_ob2QuizStep === 1) {
+    var nameEl = document.getElementById('ob2-name');
+    if (nameEl) _ob2.business_name = nameEl.value.trim();
+  } else if (_ob2QuizStep === 2) {
+    var cityEl = document.getElementById('ob2-city');
+    var ctryEl = document.getElementById('ob2-country');
+    var webEl  = document.getElementById('ob2-website');
+    if (cityEl) _ob2.city    = cityEl.value.trim();
+    if (ctryEl) _ob2.country = ctryEl.value;
+    if (webEl)  _ob2.website = webEl.value.trim();
+  }
+  // Steps 3,4: select handlers already updated state.
+  // Step 5: brand_color via onchange/oninput; logo_url via upload.
+}
+
+function _ob2QuizCanAdvance() {
+  if (_ob2QuizStep === 1) return !!(_ob2.business_name && _ob2.industry);
+  if (_ob2QuizStep === 2) return !!(_ob2.city && _ob2.country);
+  if (_ob2QuizStep === 3) return !!_ob2.primary_goal;
+  if (_ob2QuizStep === 4) return !!(_ob2.customer_type && _ob2.employees);
+  if (_ob2QuizStep === 5) return true;
+  return false;
+}
+
+function _ob2QuizNext() {
+  _ob2CaptureStep();
+  if (!_ob2QuizCanAdvance()) return;
+  if (_ob2QuizStep === 5) { _ob2Submit(); return; }
+  _ob2QuizGoTo(_ob2QuizStep + 1);
+}
+
+function _ob2QuizBack() {
+  _ob2CaptureStep();
+  if (_ob2QuizStep === 1) { _renderSignup(); return; }
+  _ob2QuizGoTo(_ob2QuizStep - 1);
+}
+
+function _ob2UpdateNextBtn() {
+  var btn = document.querySelector('.ob-quiz-next');
+  if (btn) btn.disabled = !_ob2QuizCanAdvance();
+}
+
+// ── Step renderers ───────────────────────────────────────────────────────
+function _renderQuizStep1() {
+  var indCards = _OB2_INDUSTRIES.map(function(name){
+    var icon = _OB2_INDUSTRY_ICONS[name] || '\u{1F3E2}';
+    var sel = _ob2.industry === name;
+    return '<div class="ob-ind-card' + (sel?' selected':'') + '" data-label="' + _ob2Esc(name) +
+      '" onclick="_ob2SelectIndustry(\'' + _ob2Esc(name).replace(/'/g, "\\'") + '\')">' +
+      '<div class="ob-ind-emoji">' + icon + '</div>' +
+      '<div class="ob-ind-label">' + _ob2Esc(name) + '</div></div>';
+  }).join('');
+
+  var canNext = _ob2.business_name && _ob2.industry;
+  return (
+    '<div class="ob-quiz-step-label">Step 1 of 5</div>' +
+    '<h1 class="ob-quiz-question">What\'s your business called?</h1>' +
+    '<p class="ob-quiz-sub">We\'ll use this to personalise everything Sarah builds for you.</p>' +
+    '<div class="ob-quiz-body">' +
+      '<input id="ob2-name" type="text" class="ob-quiz-input" placeholder="e.g. Nour Restaurant" value="' + _ob2Esc(_ob2.business_name) + '" oninput="_ob2.business_name=this.value.trim();_ob2UpdateNextBtn()">' +
+      '<div class="ob-quiz-section-label">Pick your industry</div>' +
+      '<input id="ob2-ind-search" type="text" class="ob-quiz-input ob-quiz-input--search" placeholder="Search industries…" oninput="_ob2FilterIndustry()">' +
+      '<div class="ob-ind-grid">' + indCards + '</div>' +
+    '</div>' +
+    '<div class="ob-quiz-nav">' +
+      '<button class="ob-quiz-back" onclick="_ob2QuizBack()">← Back</button>' +
+      '<button class="ob-quiz-next" onclick="_ob2QuizNext()"' + (canNext?'':' disabled') + '>Continue →</button>' +
+    '</div>'
+  );
+}
+
+function _renderQuizStep2() {
+  var ctryOptions = _OB2_COUNTRIES.map(function(c){
+    return '<option value="' + _ob2Esc(c[0]) + '"' + (_ob2.country===c[0]?' selected':'') + '>' + _ob2Esc(c[1]) + '</option>';
+  }).join('');
+  var canNext = _ob2.city && _ob2.country;
+  return (
+    '<div class="ob-quiz-step-label">Step 2 of 5</div>' +
+    '<h1 class="ob-quiz-question">Where are you based?</h1>' +
+    '<p class="ob-quiz-sub">Sarah will research your local market and competitors.</p>' +
+    '<div class="ob-quiz-body">' +
+      '<div class="ob-quiz-row">' +
+        '<div class="ob-quiz-field">' +
+          '<label class="ob-quiz-field-label">City</label>' +
+          '<input id="ob2-city" type="text" class="ob-quiz-input" placeholder="Dubai" value="' + _ob2Esc(_ob2.city) + '" oninput="_ob2.city=this.value.trim();_ob2UpdateNextBtn()">' +
+        '</div>' +
+        '<div class="ob-quiz-field">' +
+          '<label class="ob-quiz-field-label">Country</label>' +
+          '<select id="ob2-country" class="ob-quiz-input ob-quiz-input--select" onchange="_ob2.country=this.value;_ob2UpdateNextBtn()">' + ctryOptions + '</select>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ob-quiz-field">' +
+        '<label class="ob-quiz-field-label ob-quiz-field-label--optional">Business website (optional)</label>' +
+        '<input id="ob2-website" type="url" class="ob-quiz-input" placeholder="https://yourbusiness.com" value="' + _ob2Esc(_ob2.website) + '" oninput="_ob2.website=this.value.trim()">' +
+      '</div>' +
+    '</div>' +
+    '<div class="ob-quiz-nav">' +
+      '<button class="ob-quiz-back" onclick="_ob2QuizBack()">← Back</button>' +
+      '<button class="ob-quiz-next" onclick="_ob2QuizNext()"' + (canNext?'':' disabled') + '>Continue →</button>' +
+    '</div>'
+  );
+}
+
+function _renderQuizStep3() {
   var goalCards = _OB2_GOALS.map(function(g){
     var sel = _ob2.primary_goal === g[0];
-    return '<div class="ob2-goal-card" data-val="'+_ob2Esc(g[0])+'" onclick="_ob2SelectGoal(\''+g[0]+'\')" style="background:'+(sel?'rgba(108,92,231,.08)':'rgba(255,255,255,.03)')+';border:1px solid '+(sel?'#6C5CE7':'rgba(255,255,255,.07)')+';border-radius:12px;padding:18px;cursor:pointer;text-align:left;transition:all .15s"><div style="font-size:26px;margin-bottom:8px">'+g[2]+'</div><div style="font-size:14px;font-weight:600;color:#F0F0F8;line-height:1.3">'+_ob2Esc(g[1])+'</div></div>';
+    return '<div class="ob-goal-card' + (sel?' selected':'') + '" onclick="_ob2SelectGoal(\'' + g[0] + '\')">' +
+      '<div class="ob-goal-emoji">' + g[2] + '</div>' +
+      '<div class="ob-goal-label">' + _ob2Esc(g[1]) + '</div></div>';
   }).join('');
+  return (
+    '<div class="ob-quiz-step-label">Step 3 of 5</div>' +
+    '<h1 class="ob-quiz-question">What\'s your #1 marketing goal right now?</h1>' +
+    '<p class="ob-quiz-sub">Your whole AI team will focus on this first.</p>' +
+    '<div class="ob-quiz-body">' +
+      '<div class="ob-goal-grid">' + goalCards + '</div>' +
+    '</div>' +
+    '<div class="ob-quiz-nav">' +
+      '<button class="ob-quiz-back" onclick="_ob2QuizBack()">← Back</button>' +
+      '<span style="font-size:13px;color:#6B7280">Tap a card to continue</span>' +
+    '</div>'
+  );
+}
 
+function _renderQuizStep4() {
   var custCards = _OB2_CUSTOMERS.map(function(c){
     var sel = _ob2.customer_type === c[0];
-    return '<div onclick="_ob2SelectCustomer(\''+c[0]+'\')" style="background:'+(sel?'rgba(108,92,231,.08)':'rgba(255,255,255,.03)')+';border:1px solid '+(sel?'#6C5CE7':'rgba(255,255,255,.07)')+';border-radius:10px;padding:14px 16px;cursor:pointer;font-size:14px;color:#F0F0F8;transition:all .15s">'+_ob2Esc(c[1])+'</div>';
+    var icon = _OB2_CUSTOMER_ICONS[c[0]] || '';
+    return '<div class="ob-goal-card' + (sel?' selected':'') + '" onclick="_ob2SelectCustomer(\'' + c[0] + '\')">' +
+      '<div class="ob-goal-emoji">' + icon + '</div>' +
+      '<div class="ob-goal-label">' + _ob2Esc(c[1]) + '</div></div>';
   }).join('');
 
-  var empBtns = _OB2_EMPLOYEES.map(function(e){
+  var empPills = _OB2_EMPLOYEES.map(function(e){
     var sel = _ob2.employees === e;
-    return '<button type="button" onclick="_ob2SelectEmp(\''+_ob2Esc(e)+'\')" style="flex:1;padding:10px 12px;background:'+(sel?'rgba(108,92,231,.15)':'rgba(255,255,255,.04)')+';border:1px solid '+(sel?'#6C5CE7':'rgba(255,255,255,.1)')+';color:#F0F0F8;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">'+_ob2Esc(e)+'</button>';
+    return '<button class="ob-pill' + (sel?' selected':'') + '" onclick="_ob2SelectEmp(\'' + _ob2Esc(e).replace(/'/g, "\\'") + '\')">' + _ob2Esc(e) + '</button>';
   }).join('');
 
-  var budBtns = _OB2_BUDGETS.map(function(b){
+  var budgets = _ob2GetBudgets();
+  var budPills = budgets.map(function(b){
     var sel = _ob2.budget === b;
-    return '<button type="button" onclick="_ob2SelectBud(\''+_ob2Esc(b)+'\')" style="flex:1;padding:10px 12px;background:'+(sel?'rgba(108,92,231,.15)':'rgba(255,255,255,.04)')+';border:1px solid '+(sel?'#6C5CE7':'rgba(255,255,255,.1)')+';color:#F0F0F8;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">'+_ob2Esc(b)+'</button>';
+    return '<button class="ob-pill' + (sel?' selected':'') + '" onclick="_ob2SelectBud(\'' + _ob2Esc(b).replace(/'/g, "\\'") + '\')">' + _ob2Esc(b) + '</button>';
   }).join('');
 
+  var canNext = _ob2.customer_type && _ob2.employees;
+  return (
+    '<div class="ob-quiz-step-label">Step 4 of 5</div>' +
+    '<h1 class="ob-quiz-question">Tell us about your business</h1>' +
+    '<p class="ob-quiz-sub">Helps Sarah calibrate the right strategy for your stage.</p>' +
+    '<div class="ob-quiz-body">' +
+      '<div class="ob-quiz-section-label">Who are your customers?</div>' +
+      '<div class="ob-goal-grid">' + custCards + '</div>' +
+      '<div class="ob-quiz-section-label" style="margin-top:28px">How many employees?</div>' +
+      '<div class="ob-pill-row">' + empPills + '</div>' +
+      '<div class="ob-quiz-section-label" style="margin-top:28px">Monthly marketing budget <span class="ob-quiz-section-label--optional">(optional)</span></div>' +
+      '<div class="ob-pill-row">' + budPills + '</div>' +
+    '</div>' +
+    '<div class="ob-quiz-nav">' +
+      '<button class="ob-quiz-back" onclick="_ob2QuizBack()">← Back</button>' +
+      '<button class="ob-quiz-next" onclick="_ob2QuizNext()"' + (canNext?'':' disabled') + '>Continue →</button>' +
+    '</div>'
+  );
+}
+
+function _renderQuizStep5() {
   var swatches = _OB2_COLORS.map(function(c){
     var sel = _ob2.brand_color === c;
-    return '<div onclick="_ob2SelectColor(\''+c+'\')" style="width:36px;height:36px;border-radius:8px;background:'+c+';cursor:pointer;border:2px solid '+(sel?'#F0F0F8':'rgba(255,255,255,.1)')+';box-shadow:'+(sel?'0 0 0 2px rgba(108,92,231,.3)':'none')+'"></div>';
+    return '<div onclick="_ob2SelectColor(\'' + c + '\')" class="ob-swatch' + (sel?' selected':'') + '" style="background:' + c + '"></div>';
   }).join('');
 
-  root.innerHTML = `
-  <div id="lu-ob2-page" style="min-height:100vh;background:#06070D;color:#F0F0F8;font-family:'DM Sans',system-ui,sans-serif;padding:40px 20px">
-    <div style="max-width:720px;margin:0 auto">
-      <!-- Progress -->
-      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:40px;font-size:12px;color:rgba(240,240,248,.52)">
-        <span style="color:rgba(240,240,248,.4)">1 Account</span>
-        <span style="opacity:.3">→</span>
-        <span style="color:#F0F0F8;font-weight:600">2 Your Business</span>
-        <span style="opacity:.3">→</span>
-        <span style="color:rgba(240,240,248,.4)">3 Setup</span>
-      </div>
-      <div style="background:linear-gradient(90deg,#6C5CE7 66%,rgba(255,255,255,.07) 66%);height:3px;border-radius:2px;max-width:480px;margin:0 auto 40px"></div>
+  var logoPreview = _ob2.logo_url
+    ? '<div class="ob-logo-preview"><img src="' + _ob2Esc(_ob2.logo_url) + '" alt="logo"><button type="button" class="ob-logo-remove" onclick="_ob2RemoveLogo()">Remove</button></div>'
+    : '';
 
-      <h1 style="font-family:Syne,sans-serif;font-size:30px;font-weight:800;margin:0 0 10px;text-align:center">Tell us about your business</h1>
-      <p style="color:rgba(240,240,248,.72);font-size:14px;text-align:center;margin:0 0 36px">This takes 2 minutes and powers everything your AI team does.</p>
-
-      <div style="background:#0C0D15;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:32px">
-        <!-- Section 1: Basics -->
-        <div style="font-size:12px;font-weight:700;color:rgba(240,240,248,.52);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">The basics</div>
-
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">Business name <span style="color:#F87171">*</span></label>
-          <input id="ob2-name" type="text" value="${_ob2Esc(_ob2.business_name)}" placeholder="e.g. Nour Restaurant" class="ob2-inp" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box">
-        </div>
-
-        <div style="margin-bottom:16px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">Industry <span style="color:#F87171">*</span></label>
-          <input id="ob2-ind-search" type="text" oninput="_ob2FilterIndustry()" placeholder="Search industries…" class="ob2-inp" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 14px;color:#F0F0F8;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:6px">
-          <select id="ob2-industry" size="1" class="ob2-inp" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box">
-            <option value="">Select your industry…</option>
-            ${indOptions}
-          </select>
-        </div>
-
-        <div style="display:flex;gap:12px;margin-bottom:16px">
-          <div style="flex:1">
-            <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">City <span style="color:#F87171">*</span></label>
-            <input id="ob2-city" type="text" value="${_ob2Esc(_ob2.city)}" placeholder="Dubai" class="ob2-inp" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box">
-          </div>
-          <div style="flex:1">
-            <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">Country <span style="color:#F87171">*</span></label>
-            <select id="ob2-country" class="ob2-inp" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box">${ctryOptions}</select>
-          </div>
-        </div>
-
-        <div style="margin-bottom:28px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:6px">Business website <span style="color:rgba(240,240,248,.52)">(optional)</span></label>
-          <input id="ob2-website" type="url" value="${_ob2Esc(_ob2.website)}" placeholder="https://yourbusiness.com (if you have one)" class="ob2-inp" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#F0F0F8;font-size:15px;font-family:inherit;box-sizing:border-box">
-        </div>
-
-        <!-- Section 2: Goal -->
-        <div style="font-size:12px;font-weight:700;color:rgba(240,240,248,.52);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">Your goal</div>
-
-        <div style="margin-bottom:24px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:10px">What's your main goal right now? <span style="color:#F87171">*</span></label>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">${goalCards}</div>
-        </div>
-
-        <div style="margin-bottom:20px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:10px">Who are your customers? <span style="color:#F87171">*</span></label>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">${custCards}</div>
-        </div>
-
-        <div style="margin-bottom:20px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:10px">How many employees?</label>
-          <div style="display:flex;gap:8px">${empBtns}</div>
-        </div>
-
-        <div style="margin-bottom:28px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:10px">Monthly marketing budget <span style="color:rgba(240,240,248,.52)">(optional)</span></label>
-          <div style="display:flex;gap:8px">${budBtns}</div>
-        </div>
-
-        <!-- Section 3: Brand -->
-        <div style="font-size:12px;font-weight:700;color:rgba(240,240,248,.52);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">Brand basics</div>
-
-        <div style="margin-bottom:20px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:10px">Brand colors <span style="color:rgba(240,240,248,.52)">(optional)</span></label>
-          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${swatches}</div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <input id="ob2-color-picker" type="color" value="${_ob2Esc(_ob2.brand_color)}" onchange="_ob2ColorFromPicker()" style="width:44px;height:38px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:transparent;cursor:pointer;padding:2px">
-            <input id="ob2-color-hex" type="text" value="${_ob2Esc(_ob2.brand_color)}" oninput="_ob2ColorFromHex()" maxlength="7" class="ob2-inp" style="flex:1;max-width:140px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 14px;color:#F0F0F8;font-size:14px;font-family:'SF Mono',monospace;box-sizing:border-box">
-            <span style="font-size:12px;color:rgba(240,240,248,.52)">We'll use this in your website and designs</span>
-          </div>
-        </div>
-
-        <div style="margin-bottom:28px">
-          <label style="display:block;font-size:13px;color:rgba(240,240,248,.72);margin-bottom:10px">Logo <span style="color:rgba(240,240,248,.52)">(optional)</span></label>
-          <div id="ob2-logo-preview" style="display:${_ob2.logo_url?'flex':'none'};align-items:center;gap:12px;margin-bottom:10px">
-            <img src="${_ob2Esc(_ob2.logo_url)}" alt="logo" style="max-width:96px;max-height:64px;border-radius:8px;background:rgba(255,255,255,.05);padding:6px">
-            <button type="button" onclick="_ob2RemoveLogo()" style="background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(240,240,248,.72);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit">Remove</button>
-          </div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <label for="ob2-logo-file" id="ob2-logo-label" style="padding:10px 16px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);border-radius:10px;color:rgba(240,240,248,.72);cursor:pointer;font-size:13px">Upload logo</label>
-            <input id="ob2-logo-file" type="file" accept="image/png,image/jpeg,image/svg+xml" onchange="_ob2UploadLogo(this)" style="display:none">
-            <span id="ob2-logo-status" style="font-size:12px;color:rgba(240,240,248,.52)">PNG, JPG, SVG, max 5MB</span>
-          </div>
-        </div>
-
-        <div id="ob2-err" style="color:#F87171;font-size:13px;margin-bottom:16px;display:none;text-align:center"></div>
-
-        <button id="ob2-submit" onclick="_ob2Submit()" style="width:100%;padding:14px;background:#6C5CE7;color:#fff;border:0;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Let's go →</button>
-        <p style="text-align:center;font-size:12px;color:rgba(240,240,248,.52);margin:12px 0 0">Sarah will present your strategy within minutes of completing setup</p>
-      </div>
-    </div>
-  </div>
-  <style>
-    /* PATCH (onboarding polish) — overrides on top of inline styles */
-    #lu-ob2-page { --ob-p:#6C5CE7; --ob-p-deep:#5948D9; --ob-bg:#0C0D15; --ob-fg:#F0F0F8; --ob-muted:rgba(240,240,248,.52); --ob-border:rgba(255,255,255,.08); }
-    #lu-ob2-page > div { max-width: 640px !important; }              /* spec: 640px max */
-    #lu-ob2-page > div > div[style*="background:#0C0D15"] { padding: 40px 48px !important; border-radius: 12px !important; }
-
-    /* Inputs / selects — 48px height, 10px radius, 1.5px border, 15px font */
-    #lu-ob2-page .ob2-inp {
-      height: 48px !important; min-height: 48px !important;
-      border: 1.5px solid var(--ob-border) !important;
-      border-radius: 8px !important;
-      padding: 0 16px !important;
-      font-size: 15px !important;
-      transition: border-color .15s ease, box-shadow .15s ease;
-    }
-    #lu-ob2-page select.ob2-inp { padding: 0 38px 0 16px !important; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23F0F0F8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' opacity='.7'/></svg>") !important; background-position: right 14px center !important; background-repeat: no-repeat !important; }
-    #lu-ob2-page textarea.ob2-inp { height:auto !important; padding:12px 16px !important; }
-    #lu-ob2-page .ob2-inp:focus { outline:none !important; border-color:var(--ob-p) !important; box-shadow:0 0 0 3px rgba(108,92,231,.15) !important; }
-
-    /* Goal cards — equal-height grid, 100px min, 1.5px border, 10px radius, 12px gap, 28px icon */
-    #lu-ob2-page [style*="grid-template-columns:repeat(2,1fr)"] { gap: 12px !important; }
-    #lu-ob2-page .ob2-goal-card {
-      min-height: 100px !important;
-      padding: 20px !important;
-      border-width: 1.5px !important;
-      border-radius: 10px !important;
-      transition: border-color .15s ease, background-color .15s ease, transform .1s ease !important;
-    }
-    #lu-ob2-page .ob2-goal-card > div:first-child { font-size: 28px !important; }
-    #lu-ob2-page .ob2-goal-card > div:last-child  { font-size: 14px !important; font-weight: 500 !important; line-height: 1.3 !important; }
-    #lu-ob2-page .ob2-goal-card:hover {
-      border-color: var(--ob-p) !important;
-      background-color: rgba(108,92,231,.04) !important;
-    }
-
-    /* Section labels (YOUR GOAL etc.) — 11px / 0.08em — already close, normalise */
-    #lu-ob2-page div[style*="text-transform:uppercase"][style*="letter-spacing:.08em"] {
-      font-size: 11px !important; letter-spacing: 0.08em !important; color: var(--ob-muted) !important; margin-bottom: 18px !important;
-    }
-    /* Question labels — 15px / weight 500 */
-    #lu-ob2-page label[style*="display:block"][style*="font-size:13px"] { font-size: 13px !important; }
-    /* Section spacing — 32px */
-    #lu-ob2-page div[style*="margin-bottom:28px"] { margin-bottom: 32px !important; }
-
-    /* Submit button — full-width, 52px, weight 600 */
-    #lu-ob2-page button#ob2-submit {
-      height: 52px !important; padding: 0 20px !important;
-      border-radius: 10px !important;
-      font-size: 15px !important; font-weight: 600 !important;
-      transition: background-color .15s ease, transform .1s ease;
-    }
-    #lu-ob2-page button#ob2-submit:hover { background:var(--ob-p-deep) !important; transform: translateY(-1px); }
-    #lu-ob2-page button#ob2-submit:disabled { opacity:.6; cursor:not-allowed; transform:none; }
-
-    /* Mobile — single-col goal cards under 480px, reduce padding under 640px */
-    @media (max-width: 640px) {
-      #lu-ob2-page > div > div[style*="background:#0C0D15"] { padding: 24px !important; }
-      #lu-ob2-page [style*="grid-template-columns:repeat(2,1fr)"] { grid-template-columns: 1fr !important; }
-      #lu-ob2-page [style*="display:flex;gap:12px"] { flex-direction:column !important; }
-    }
-  </style>`;
-
-  // Wire industry select change back to state
-  var indSel = document.getElementById('ob2-industry');
-  if (indSel) indSel.addEventListener('change', function(){ _ob2.industry = this.value; });
-  // Wire country select change back to state
-  var ctrySel = document.getElementById('ob2-country');
-  if (ctrySel) ctrySel.addEventListener('change', function(){ _ob2.country = this.value; });
+  return (
+    '<div class="ob-quiz-step-label">Step 5 of 5</div>' +
+    '<h1 class="ob-quiz-question">Let\'s set up your brand</h1>' +
+    '<p class="ob-quiz-sub">Arthur will use these to build your website.</p>' +
+    '<div class="ob-quiz-body">' +
+      '<div class="ob-quiz-section-label">Brand color</div>' +
+      '<div class="ob-swatch-row">' + swatches + '</div>' +
+      '<div class="ob-color-row">' +
+        '<input id="ob2-color-picker" type="color" value="' + _ob2Esc(_ob2.brand_color) + '" onchange="_ob2ColorFromPicker()">' +
+        '<input id="ob2-color-hex" type="text" value="' + _ob2Esc(_ob2.brand_color) + '" oninput="_ob2ColorFromHex()" maxlength="7" class="ob-quiz-input ob-quiz-input--hex">' +
+      '</div>' +
+      '<div class="ob-quiz-section-label" style="margin-top:28px">Logo <span class="ob-quiz-section-label--optional">(optional)</span></div>' +
+      logoPreview +
+      '<label for="ob2-logo-file" class="ob-logo-drop">' +
+        '<div class="ob-logo-drop-icon">\u{1F4C1}</div>' +
+        '<div class="ob-logo-drop-text">Click to upload</div>' +
+        '<div class="ob-logo-drop-hint" id="ob2-logo-status">PNG, JPG, SVG — max 5MB</div>' +
+      '</label>' +
+      '<input id="ob2-logo-file" type="file" accept="image/png,image/jpeg,image/svg+xml" onchange="_ob2UploadLogo(this)" style="display:none">' +
+    '</div>' +
+    '<div id="ob2-err" class="ob-quiz-err" style="display:none"></div>' +
+    '<div class="ob-quiz-nav">' +
+      '<button class="ob-quiz-back" onclick="_ob2QuizBack()">← Back</button>' +
+      '<button class="ob-quiz-next" onclick="_ob2QuizNext()">Let\'s go →</button>' +
+    '</div>' +
+    '<p style="text-align:center;font-size:12px;color:#6B7280;margin-top:16px">Sarah will present your strategy within minutes</p>'
+  );
 }
 
+// ── Helpers + select handlers ────────────────────────────────────────────
 function _ob2FilterIndustry() {
   var q = (document.getElementById('ob2-ind-search')||{}).value.toLowerCase();
-  var sel = document.getElementById('ob2-industry');
-  if (!sel) return;
-  var matches = _OB2_INDUSTRIES.filter(function(v){ return v.toLowerCase().indexOf(q) !== -1; });
-  var html = '<option value="">Select your industry…</option>' + matches.map(function(v){
-    return '<option value="'+_ob2Esc(v)+'"'+(_ob2.industry===v?' selected':'')+'>'+_ob2Esc(v)+'</option>';
-  }).join('');
-  sel.innerHTML = html;
+  document.querySelectorAll('.ob-ind-card').forEach(function(card){
+    var label = (card.dataset.label || '').toLowerCase();
+    card.style.display = label.indexOf(q) !== -1 ? '' : 'none';
+  });
 }
 
-function _ob2SelectGoal(g) { _ob2.primary_goal = g; _renderOnboardingStep2(_ob2); }
-function _ob2SelectCustomer(c) { _ob2.customer_type = c; _renderOnboardingStep2(_ob2); }
-function _ob2SelectEmp(e) { _ob2.employees = e; _renderOnboardingStep2(_ob2); }
-function _ob2SelectBud(b) { _ob2.budget = b; _renderOnboardingStep2(_ob2); }
+function _ob2SelectIndustry(name) {
+  _ob2CaptureStep();
+  _ob2.industry = name;
+  _ob2RenderCurrentQuiz();
+}
+
+function _ob2SelectGoal(g) {
+  _ob2.primary_goal = g;
+  _ob2RenderCurrentQuiz();
+  // Auto-advance to step 4 after brief feedback
+  setTimeout(function(){ _ob2QuizGoTo(4); }, 300);
+}
+function _ob2SelectCustomer(c) { _ob2.customer_type = c; _ob2RenderCurrentQuiz(); }
+function _ob2SelectEmp(e)      { _ob2.employees = e;      _ob2RenderCurrentQuiz(); }
+function _ob2SelectBud(b)      { _ob2.budget = b;         _ob2RenderCurrentQuiz(); }
 function _ob2SelectColor(c) {
   _ob2.brand_color = c;
   var picker = document.getElementById('ob2-color-picker');
   var hex = document.getElementById('ob2-color-hex');
   if (picker) picker.value = c;
   if (hex) hex.value = c;
-  _renderOnboardingStep2(_ob2);
+  _ob2RenderCurrentQuiz();
 }
 function _ob2ColorFromPicker() {
   var v = (document.getElementById('ob2-color-picker')||{}).value;
@@ -715,8 +815,9 @@ function _ob2ColorFromHex() {
 }
 function _ob2RemoveLogo() {
   _ob2.logo_url = '';
-  _renderOnboardingStep2(_ob2);
+  _ob2RenderCurrentQuiz();
 }
+
 
 async function _ob2UploadLogo(inp) {
   var file = inp && inp.files ? inp.files[0] : null;
@@ -742,7 +843,7 @@ async function _ob2UploadLogo(inp) {
     if (!url) throw new Error('No URL returned from upload');
     _ob2.logo_url = url;
     if (status) { status.textContent = 'Uploaded'; status.style.color = '#00E5A8'; }
-    _renderOnboardingStep2(_ob2);
+    _ob2RenderCurrentQuiz();
   } catch(e) {
     if (status) { status.textContent = 'Upload failed: ' + (e.message || 'error'); status.style.color = '#F87171'; }
   }
