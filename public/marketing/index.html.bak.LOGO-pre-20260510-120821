@@ -3,12 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><radialGradient id='g' cx='25' cy='25' r='30'><stop offset='0' stop-color='%23A78BFA'/><stop offset='1' stop-color='%233B0764'/></radialGradient></defs><circle cx='32' cy='32' r='28' fill='url(%23g)'/></svg>">
 <title>LevelUpGrowth — Build, Launch &amp; Grow with AI</title>
-<link rel="stylesheet" href="/marketing/css/site.css?v=2.0.0">
-<link rel="stylesheet" href="/marketing/css/orb.css?v=2.0.0">
+<link rel="stylesheet" href="/marketing/css/site.css">
+<link rel="stylesheet" href="/marketing/css/orb.css">
 <style>
 #hero{min-height:100vh;display:flex;align-items:center;padding:120px 28px 80px;position:relative;overflow:hidden}
 .hero-bg-1{position:absolute;top:5%;left:50%;transform:translateX(-50%);width:900px;height:700px;background:radial-gradient(ellipse,rgba(124,58,237,.12) 0%,transparent 68%);pointer-events:none}
@@ -340,8 +338,8 @@
 </div>
 
 <div id="site-footer-placeholder"></div>
-<script src="/marketing/js/site.js?v=2.0.0"></script>
-<script src="/marketing/js/orb.js?v=2.0.0"></script>
+<script src="/marketing/js/site.js"></script>
+<script src="/marketing/js/orb.js"></script>
 <script>
 // ── Simulation data ────────────────────────────────────────────
 var SIM = {
