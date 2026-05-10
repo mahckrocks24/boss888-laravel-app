@@ -1799,6 +1799,17 @@ html, body, .app, .lu-main {
   .lu-card-grid { grid-template-columns: repeat(4, 1fr) !important; }
   .lu-engine-panel { width: 400px !important; }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Hide #ws-activity-panel ("Live Activity") in Strategy Room view.
+   The panel is a sibling of #view-meeting (position:absolute, z-index:50),
+   so when the user opened it on workspace and then navigated to meeting,
+   it leaked through. :has() parent-selector covers all browsers ≥ 2023.
+   ═════════════════════════════════════════════════════════════════════════ */
+body:has(#view-meeting.active) #ws-activity-panel,
+body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
+  display: none !important;
+}
 </style>
 
 <style>

@@ -615,6 +615,9 @@ async function nav(view){
   el.classList.add('active');
   var ni=document.getElementById('ni-'+view);if(ni)ni.classList.add('active');
   currentView=view;
+  // Hide the Live Activity panel when in Strategy Room (it's a sibling of view-meeting, not a child of view-workspace)
+  var _wsAct=document.getElementById('ws-activity-panel');
+  if(_wsAct){ _wsAct.style.display = (view==='meeting') ? 'none' : ''; }
   if(view==='reports')    loadReports();
   if(view==='projects')   loadProjects();
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
