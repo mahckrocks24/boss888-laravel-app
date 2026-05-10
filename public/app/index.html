@@ -1579,12 +1579,7 @@ img:not([loading]) {
 
 /* ── CRM KPI cards: 2-col grid on mobile, 3-col on tablet ── */
 @media (max-width: 767px) {
-  .crm-kpi-row {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
-    overflow-x: hidden !important;
-  }
+  /* .crm-kpi-row grid override removed — inline auto-fit handles responsive cols now */
   .crm-kpi {
     width: 100% !important;
     min-width: unset !important;
@@ -1608,13 +1603,7 @@ img:not([loading]) {
   [class*="crm-tab"]::-webkit-scrollbar { display: none; }
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
-  .crm-kpi-row {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 12px !important;
-  }
-}
+/* CRM tablet KPI rule removed — inline auto-fit handles it */
 
 /* ═════════════════════════════════════════════════════════════════════════
    Agent drawer mobile fix — full-width bottom-sheet on phones

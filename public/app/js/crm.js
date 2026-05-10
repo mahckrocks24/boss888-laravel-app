@@ -199,7 +199,7 @@ function _crmRender(el) {
     el.innerHTML =
         '<div style="padding:24px;min-height:100%;box-sizing:border-box">' +
             '<div class="page-header" style="margin-top:10px"><div class="page-header-left"><h1>CRM</h1></div></div>' +
-            '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid var(--bd);padding-bottom:16px">'+tabsHtml+'</div>' +
+            '<div class="crm-tab-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid var(--bd);padding-bottom:16px">'+tabsHtml+'</div>' +
             body +
         '</div>';
 }
@@ -512,7 +512,7 @@ function _dashHtml() {
 
     var pvLabel='$'+(pipelineVal>=1000000?(pipelineVal/1000000).toFixed(1)+'M':pipelineVal>=1000?(pipelineVal/1000).toFixed(1)+'K':pipelineVal.toFixed(0));
     return alert+
-        '<div class="crm-kpi-row" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:20px">'+
+        '<div class="crm-kpi-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">'+
             _stat('Total Leads',total,'var(--t1)')+_stat('Pipeline Value',pvLabel,'var(--ac)')+_stat('Hot Leads '+window.icon("info",14)+'',hot,'var(--rd)')+
             _stat('Sources',uniqSrc.length,'var(--t2)')+_stat('Tasks',_crm.tasks.length,overdueCnt?'var(--rd)':'var(--p)')+
         '</div>'+
