@@ -497,6 +497,91 @@ function _ob2GetBudgets() {
     : _OB2_BUDGETS_USD;
 }
 
+// ── Goal SVG icons (monochrome, currentColor) ────────────────────────────
+var _OB2_GOAL_SVG = {
+  leads:   '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  social:  '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
+  seo:     '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  email:   '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+  website: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+  agency:  '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>'
+};
+
+// ── Customer SVG icons ───────────────────────────────────────────────────
+var _OB2_CUSTOMER_SVG = {
+  local:         '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  national:      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>',
+  international: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+  b2b:           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+};
+
+// ── Country dropdown (custom — replaces native <select>) ─────────────────
+var _ob2CountryOpen = false;
+
+function _ob2CountryLabel(code) {
+  var c = _OB2_COUNTRIES.find(function(x){ return x[0] === code; });
+  return c ? c[1] : (code || 'Select country');
+}
+
+function _ob2ToggleCountry() {
+  var list = document.getElementById('ob-country-list');
+  var wrap = document.getElementById('ob-country-wrap');
+  if (!list || !wrap) return;
+  _ob2CountryOpen = !_ob2CountryOpen;
+  list.style.display = _ob2CountryOpen ? 'block' : 'none';
+  wrap.classList.toggle('open', _ob2CountryOpen);
+  if (_ob2CountryOpen) {
+    _ob2RenderCountryOptions('');
+    setTimeout(function() {
+      var s = document.getElementById('ob-country-search');
+      if (s) s.focus();
+    }, 50);
+  }
+}
+
+function _ob2RenderCountryOptions(filter) {
+  var container = document.getElementById('ob-country-options');
+  if (!container) return;
+  var f = (filter || '').toLowerCase();
+  var html = '';
+  _OB2_COUNTRIES.forEach(function(c) {
+    var code = c[0], label = c[1];
+    if (!f || label.toLowerCase().indexOf(f) !== -1) {
+      var selected = _ob2.country === code ? ' selected' : '';
+      html += '<div class="ob-country-opt' + selected + '" onclick="_ob2SelectCountry(\'' + code + '\')">' + _ob2Esc(label) + '</div>';
+    }
+  });
+  container.innerHTML = html || '<div class="ob-country-opt ob-country-none">No results</div>';
+}
+
+function _ob2FilterCountries(val) {
+  _ob2RenderCountryOptions(val);
+}
+
+function _ob2SelectCountry(code) {
+  _ob2.country = code;
+  var lblEl = document.getElementById('ob-country-label');
+  if (lblEl) lblEl.textContent = _ob2CountryLabel(code);
+  var list = document.getElementById('ob-country-list');
+  if (list) list.style.display = 'none';
+  _ob2CountryOpen = false;
+  var wrap = document.getElementById('ob-country-wrap');
+  if (wrap) wrap.classList.remove('open');
+  _ob2UpdateNextBtn();
+}
+
+// Close dropdown on outside click (script-load-time listener — fires once)
+document.addEventListener('click', function(e) {
+  if (!_ob2CountryOpen) return;
+  var wrap = document.getElementById('ob-country-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    var list = document.getElementById('ob-country-list');
+    if (list) list.style.display = 'none';
+    _ob2CountryOpen = false;
+    wrap.classList.remove('open');
+  }
+});
+
 // ── Entry point: called from _doSignup({}) and on resume ─────────────────
 function _renderOnboardingStep2(prefill) {
   prefill = prefill || {};
@@ -635,10 +720,8 @@ function _renderQuizStep1() {
 }
 
 function _renderQuizStep2() {
-  var ctryOptions = _OB2_COUNTRIES.map(function(c){
-    return '<option value="' + _ob2Esc(c[0]) + '"' + (_ob2.country===c[0]?' selected':'') + '>' + _ob2Esc(c[1]) + '</option>';
-  }).join('');
   var canNext = _ob2.city && _ob2.country;
+  var countryLabel = _ob2Esc(_ob2CountryLabel(_ob2.country));
   return (
     '<div class="ob-quiz-step-label">Step 2 of 5</div>' +
     '<h1 class="ob-quiz-question">Where are you based?</h1>' +
@@ -651,7 +734,18 @@ function _renderQuizStep2() {
         '</div>' +
         '<div class="ob-quiz-field">' +
           '<label class="ob-quiz-field-label">Country</label>' +
-          '<select id="ob2-country" class="ob-quiz-input ob-quiz-input--select" onchange="_ob2.country=this.value;_ob2UpdateNextBtn()">' + ctryOptions + '</select>' +
+          '<div class="ob-country-wrap" id="ob-country-wrap">' +
+            '<button class="ob-country-btn" id="ob-country-btn" type="button" onclick="_ob2ToggleCountry()">' +
+              '<span id="ob-country-label">' + countryLabel + '</span>' +
+              '<svg width="12" height="12" viewBox="0 0 12 12" fill="none">' +
+                '<path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+              '</svg>' +
+            '</button>' +
+            '<div class="ob-country-list" id="ob-country-list" style="display:none">' +
+              '<input class="ob-country-search" id="ob-country-search" type="text" placeholder="Search country..." oninput="_ob2FilterCountries(this.value)">' +
+              '<div class="ob-country-options" id="ob-country-options"></div>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
       '<div class="ob-quiz-field">' +
@@ -669,8 +763,9 @@ function _renderQuizStep2() {
 function _renderQuizStep3() {
   var goalCards = _OB2_GOALS.map(function(g){
     var sel = _ob2.primary_goal === g[0];
+    var iconSvg = _OB2_GOAL_SVG[g[0]] || '';
     return '<div class="ob-goal-card' + (sel?' selected':'') + '" onclick="_ob2SelectGoal(\'' + g[0] + '\')">' +
-      '<div class="ob-goal-emoji">' + g[2] + '</div>' +
+      '<div class="ob-goal-icon">' + iconSvg + '</div>' +
       '<div class="ob-goal-label">' + _ob2Esc(g[1]) + '</div></div>';
   }).join('');
   return (
@@ -690,9 +785,9 @@ function _renderQuizStep3() {
 function _renderQuizStep4() {
   var custCards = _OB2_CUSTOMERS.map(function(c){
     var sel = _ob2.customer_type === c[0];
-    var icon = _OB2_CUSTOMER_ICONS[c[0]] || '';
+    var iconSvg = _OB2_CUSTOMER_SVG[c[0]] || '';
     return '<div class="ob-goal-card' + (sel?' selected':'') + '" onclick="_ob2SelectCustomer(\'' + c[0] + '\')">' +
-      '<div class="ob-goal-emoji">' + icon + '</div>' +
+      '<div class="ob-goal-icon">' + iconSvg + '</div>' +
       '<div class="ob-goal-label">' + _ob2Esc(c[1]) + '</div></div>';
   }).join('');
 
