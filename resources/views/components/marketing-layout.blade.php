@@ -93,7 +93,7 @@
 
 <nav>
   <div class="nav-inner">
-    <a href="/" class="nav-logo">LevelUp</a>
+    <a href="/" class="nav-logo" style="display:inline-flex;align-items:center;gap:8px"><img src="/img/logo-icon-40.png" alt="" style="width:32px;height:32px;object-fit:contain"><span>LevelUp</span></a>
     <div class="nav-links">
       <a href="/features">Features</a>
       <a href="/specialists">AI Team</a>
@@ -111,7 +111,7 @@
   <div class="footer-inner">
     <div class="footer-grid">
       <div>
-        <div class="footer-logo">LevelUp</div>
+        <div class="footer-logo" style="display:flex;align-items:center;gap:8px"><img src="/img/logo-icon-40.png" alt="" style="width:28px;height:28px;object-fit:contain"><span>LevelUp</span></div>
         <p class="footer-desc">AI marketing OS for SMBs in MENA, DACH, and SEA. Your dedicated AI marketing team, always on, always executing — with your approval.</p>
       </div>
       <div class="footer-col">

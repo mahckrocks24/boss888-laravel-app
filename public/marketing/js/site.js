@@ -9,7 +9,7 @@ const NAV_HTML = `
 <nav id="nav">
   <div class="nav-inner">
     <a class="nav-logo" href="/">
-      <div class="nav-logo-icon">⚡</div>
+      <div class="nav-logo-icon"><img src="/img/logo-icon-40.png" alt=""></div>
       <span>LevelUpGrowth</span>
     </a>
     <div class="nav-links">
@@ -69,7 +69,7 @@ const FOOTER_HTML = `
     <div class="footer-grid">
       <div>
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">
-          <div class="nav-logo-icon">⚡</div>
+          <div class="nav-logo-icon"><img src="/img/logo-icon-40.png" alt=""></div>
           <span style="font-family:var(--ff-h);font-weight:800;font-size:17px">LevelUpGrowth</span>
         </div>
         <p style="color:#4B5563;font-size:13.5px;line-height:1.75;max-width:240px">Your AI Marketing Operating System. Website, SEO, Content, CRM, and more — all in one platform.</p>

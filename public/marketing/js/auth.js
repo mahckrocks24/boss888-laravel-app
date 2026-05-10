@@ -10,7 +10,7 @@ const AuthViews = {
         container.innerHTML = `
         <div class="auth-wrap">
           <div class="auth-card">
-            <div class="auth-logo"><div class="nav-logo-icon">⚡</div><span>LevelUpGrowth</span></div>
+            <div class="auth-logo"><div class="nav-logo-icon"><img src="/img/logo-icon-40.png" alt=""></div><span>LevelUpGrowth</span></div>
             <h2 class="auth-title">Welcome back</h2>
             <p class="auth-sub">Sign in to your AI marketing workspace.</p>
 
@@ -80,7 +80,7 @@ const AuthViews = {
         container.innerHTML = `
         <div class="auth-wrap">
           <div class="auth-card">
-            <div class="auth-logo"><div class="nav-logo-icon">⚡</div><span>LevelUpGrowth</span></div>
+            <div class="auth-logo"><div class="nav-logo-icon"><img src="/img/logo-icon-40.png" alt=""></div><span>LevelUpGrowth</span></div>
             <h2 class="auth-title">Create your account</h2>
             ${planBadge}
             <p class="auth-sub">Free plan available · Build your website · AI trial unlocks after first website · No credit card required.</p>
