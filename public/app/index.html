@@ -1420,6 +1420,74 @@ img:not([loading]) {
     margin: 0 !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   M5 Command Center mobile fix
+   Inline style on #cmd-row2 / #cmd-kpis was beating existing @media rules.
+   These !important overrides force stacking on mobile.
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+
+  /* Outer 3-col container → single column (overrides inline style) */
+  #cmd-row2,
+  #cmd-kpis,
+  .cmd-agents-grid,
+  #view-command-center,
+  [id*="command-center"],
+  [class*="cc-grid"],
+  [class*="cc-layout"],
+  [class*="cc-wrap"],
+  [class*="cmd-center"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Each column / panel → full width */
+  [class*="cc-col"],
+  [class*="cc-panel"],
+  [class*="team-col"],
+  [class*="strategy-col"],
+  [class*="approval-col"],
+  [class*="cc-section"],
+  .cmd-kpi {
+    width: 100% !important;
+    min-width: unset !important;
+    max-width: 100% !important;
+    flex-shrink: 1 !important;
+  }
+
+  /* Agent activity rows — prevent overflow */
+  [class*="cc-agent"],
+  [class*="cc-activity"],
+  [class*="cc-item"],
+  .cmd-feed-row {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Approval / action buttons — full width on mobile */
+  [class*="cc-approve"],
+  [class*="approval-btn"],
+  [class*="cc-action"] {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Tighter padding on small phones */
+  #view-command,
+  #cmd-root,
+  #view-command-center,
+  [id*="command-center"] {
+    padding: 12px !important;
+  }
+  /* KPI value sizing — readable but compact */
+  .cmd-kpi-value { font-size: 22px !important; }
+  .cmd-kpi-label { font-size: 11px !important; }
+}
 </style>
 
 <style>
