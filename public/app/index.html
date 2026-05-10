@@ -1018,6 +1018,177 @@ textarea.lu-auto-grow {
     font-size: max(16px, 1rem) !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   M4 — Gesture System (touch-action governance + drawer hint)
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Buttons + tap targets — no double-tap zoom */
+button, a, .btn, .card,
+.nav-item, .tab-item,
+[role="button"], [role="tab"] {
+  touch-action: manipulation;
+}
+
+/* Scroll containers — vertical only */
+.lu-main,
+.sidebar,
+[class*="lu-modal"],
+[class*="-modal"] {
+  touch-action: pan-y;
+}
+
+/* Prevent accidental pull-to-refresh */
+body { overscroll-behavior-y: contain; }
+
+/* Drawer handle visual hint on mobile */
+@media (max-width: 1023px) {
+  .sidebar::after {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   M7 — Typography floor + touch targets + focus-visible fallbacks
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* 12px minimum — fix 9/10/11px offenders */
+.an-activity,
+.tn-title,
+.mock-url,
+.agent-name,
+[class*="-meta"],
+[class*="-label-sm"],
+[class*="-badge"],
+[class*="-tag"],
+[class*="-stat-label"],
+.orb-label,
+.nav-section-label {
+  font-size: max(12px, 0.75rem) !important;
+}
+
+/* Fluid headings (matches marketing site clamp() pattern) */
+.lu-page-title,
+[class*="-heading"],
+[class*="-title"]:not(title):not(.lu-topbar-logo) {
+  font-size: clamp(16px, 2.5vw, 24px);
+}
+
+/* Touch targets — 44px minimum on mobile */
+@media (max-width: 767px) {
+  button,
+  .btn,
+  [role="button"],
+  .nav-item,
+  .tab-item,
+  input[type="checkbox"],
+  input[type="radio"],
+  .lu-hamburger,
+  [class*="-icon-btn"],
+  [class*="-action-btn"] {
+    min-height: var(--touch-min, 44px);
+    min-width:  var(--touch-min, 44px);
+  }
+
+  /* Sidebar nav rows — generous tap area */
+  .sidebar .nav-item,
+  .sidebar a {
+    padding: 12px 16px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Hover → focus-visible parity (keyboard + touch users get the affordance) */
+.btn:hover,
+.btn:focus-visible {
+  outline: 2px solid var(--p, #7C3AED);
+  outline-offset: 2px;
+}
+
+.nav-item:hover,
+.nav-item:focus-visible,
+.nav-item.active {
+  background: rgba(124, 58, 237, 0.10);
+}
+
+.card:hover,
+.card:focus-within {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   M8 — Performance (mobile GPU budget + reduced-motion)
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Disable backdrop-filter on mobile (GPU-expensive) */
+@media (max-width: 767px) {
+  [class*="glass"],
+  [class*="-blur"],
+  .lu-mob-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  [class*="glass"] {
+    background: var(--s2, #0F1520) !important;
+  }
+  .lu-mob-overlay {
+    background: rgba(0, 0, 0, 0.65) !important;
+  }
+}
+
+/* Reduce animation duration on mobile */
+@media (max-width: 767px) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: var(--dur-fast, 150ms) !important;
+    transition-duration: var(--dur-fast, 150ms) !important;
+  }
+  /* Sidebar drawer keeps its full-quality slide */
+  .sidebar {
+    transition-duration: var(--dur-normal, 250ms) !important;
+  }
+}
+
+/* Honour user motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .sidebar { transition: none !important; }
+}
+
+/* CSS lazy-load hint for images without explicit loading attr */
+img:not([loading]) {
+  content-visibility: auto;
+}
+
+/* Layout containment for heavy panels */
+.lu-main,
+.sidebar,
+[class*="-modal"] {
+  contain: layout style;
+}
+
+/* Will-change only when actually animating */
+.sidebar.mob-open {
+  will-change: transform;
+}
 </style>
 
 <style>
@@ -1257,6 +1428,53 @@ window.luTrapFocus    = luTrapFocus;
 window.luReleaseFocus = luReleaseFocus;
 window.luAutoGrow     = luAutoGrow;
 </script>
+<script>
+/* ── M4: Gesture System ── */
+
+function luSwipeToClose(el, direction, callback) {
+  if (!el) return;
+  var startX, startY, startTime;
+  el.addEventListener('touchstart', function (e) {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startTime = Date.now();
+  }, { passive: true });
+  el.addEventListener('touchend', function (e) {
+    if (Date.now() - startTime > 350) return;
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = e.changedTouches[0].clientY - startY;
+    if (direction === 'left'  && dx < -60 && Math.abs(dy) < 50) callback();
+    if (direction === 'right' && dx >  60 && Math.abs(dy) < 50) callback();
+    if (direction === 'down'  && dy >  60 && Math.abs(dx) < 50) callback();
+    if (direction === 'up'    && dy < -60 && Math.abs(dx) < 50) callback();
+  }, { passive: true });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  // Swipe-left on sidebar to close drawer
+  var sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    luSwipeToClose(sidebar, 'left', function () {
+      if (sidebar.classList.contains('mob-open')) luToggleSidebar();
+    });
+  }
+
+  // Any element with data-swipe-close="targetId" → swipe-down closes the target
+  document.querySelectorAll('[data-swipe-close]').forEach(function (el) {
+    var targetId = el.getAttribute('data-swipe-close');
+    var target = document.getElementById(targetId) || el.closest('.lu-modal');
+    if (target) {
+      luSwipeToClose(el, 'down', function () {
+        target.style.display = 'none';
+        document.body.style.overflow = '';
+      });
+    }
+  });
+});
+
+window.luSwipeToClose = luSwipeToClose;
+</script>
+
 
 
 
