@@ -1843,26 +1843,15 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
-   Workspace canvas — minimal mobile fix v3
-   - Canvas top toolbar: push below 56px mobile topbar (tablet keeps right-aligned)
-   - Canvas legend: tablet → top-right corner; phone → bottom-left corner
-   - Selection toolbar: phone → bottom:80px (clears legend + FAB stack)
+   Workspace canvas — minimal mobile fix v2
+   - Canvas legend: KEEP visible, reposition below the 56px mobile topbar
+   - Selection toolbar: full-width pill at bottom (8px gutter, 20px from edge)
    - DO NOT touch .agent-node positioning (canvas relies on absolute pos)
    - DO NOT touch #canvas-agents or #view-workspace overflow
-   - AI FAB / messages floater handled by the Mobile FAB stack block below
+   - AI FAB handled by the Mobile FAB stack block below
    ═════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1023px) {
-  /* Canvas top toolbar — push below the 56px mobile topbar */
-  .canvas-toolbar,
-  div.canvas-toolbar {
-    top: 64px !important;
-    right: 8px !important;
-    left: auto !important;
-    z-index: var(--z-dropdown) !important;
-    flex-wrap: wrap !important;
-    max-width: calc(100vw - 220px) !important;
-  }
-  /* Legend on tablet: top-right under the mobile topbar */
+  /* Push the legend out from behind the mobile topbar (56px + 8px gap) */
   .canvas-legend,
   div.canvas-legend {
     top: 64px !important;
@@ -1873,51 +1862,20 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
 }
 
 @media (max-width: 767px) {
-  /* Canvas top toolbar — full-width below topbar on phone */
-  .canvas-toolbar,
-  div.canvas-toolbar {
-    top: 64px !important;
-    left: 8px !important;
-    right: 8px !important;
-    max-width: calc(100vw - 16px) !important;
-    flex-wrap: wrap !important;
-    gap: 6px !important;
-  }
-  .canvas-toolbar button,
-  .canvas-toolbar .ct-btn {
-    font-size: 12px !important;
-    padding: 6px 10px !important;
-    white-space: nowrap !important;
-  }
-
-  /* Legend on phone: bottom-left corner, above safe area (overrides 1023px top:64px) */
-  .canvas-legend,
-  div.canvas-legend {
-    top: auto !important;
-    bottom: calc(80px + var(--safe-bottom)) !important;
-    left: 8px !important;
-    right: auto !important;
-    z-index: var(--z-dropdown) !important;
-    font-size: 11px !important;
-    padding: 8px 10px !important;
-    max-width: 160px !important;
-  }
-
-  /* Selection toolbar — above legend + FAB stack (bottom:80px instead of 20px) */
+  /* Selection toolbar — tight pill at bottom edge */
   .selection-toolbar,
-  #selection-toolbar,
-  div.selection-toolbar {
+  #selection-toolbar {
     position: fixed !important;
-    bottom: calc(80px + var(--safe-bottom)) !important;
     left: 8px !important;
     right: 8px !important;
+    bottom: 20px !important;
     top: auto !important;
     transform: none !important;
     width: auto !important;
     max-width: calc(100vw - 16px) !important;
     z-index: var(--z-dropdown) !important;
     flex-wrap: wrap !important;
-    gap: 6px !important;
+    gap: 8px !important;
     background: var(--s1, #121826) !important;
     border-radius: 12px !important;
     padding: 10px 12px !important;
@@ -1973,29 +1931,6 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
   body.messages-open [class*="ai-fab"] {
     display: none !important;
   }
-}
-
-/* ═════════════════════════════════════════════════════════════════════════
-   Mobile touch drag — visual feedback on active drag
-   ═════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 1023px) {
-  .touch-dragging {
-    box-shadow: 0 8px 32px rgba(124,58,237,0.4) !important;
-    border-color: rgba(124,58,237,0.6) !important;
-  }
-}
-
-/* ═════════════════════════════════════════════════════════════════════════
-   Workspace canvas pinch-to-zoom — visual primitives
-   ═════════════════════════════════════════════════════════════════════════ */
-#canvas-agents {
-  transform-origin: 0 0;
-  will-change: transform;
-  transition: transform 0.05s linear;
-}
-/* Prevent zoomed canvas from triggering page-level scroll */
-#view-workspace {
-  overflow: hidden !important;
 }
 </style>
 
@@ -4679,7 +4614,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.5.5-canvas-fixes"></script>
+<script defer src="/app/js/core.js?v=4.5.6-revert"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
@@ -4923,9 +4858,33 @@ document.addEventListener('touchstart', function (e) {
     }
   }
 
-  // Messages modal watcher moved to a separate self-retrying IIFE below
-  // (polling-based, more reliable than MutationObserver for lazy-created modal).
-  function wire() { wireAi(); }
+  // Messages modal watcher
+  function wireMsg() {
+    var msgModal = document.getElementById('lu-msg-modal');
+    var msgBtn   = document.getElementById('lu-messages-floater');
+    if (msgBtn && !msgBtn._luFabWired) {
+      msgBtn._luFabWired = true;
+      msgBtn.addEventListener('click', function() {
+        setTimeout(function() {
+          var m = document.getElementById('lu-msg-modal');
+          var visible = m && m.style.display !== 'none' && getComputedStyle(m).display !== 'none';
+          document.body.classList.toggle('messages-open', !!visible);
+          if (visible) document.body.classList.remove('ai-panel-open');
+        }, 50);
+      });
+    }
+    if (msgModal && !msgModal._luFabObserved) {
+      msgModal._luFabObserved = true;
+      var obs = new MutationObserver(function() {
+        var visible = msgModal.style.display !== 'none' && getComputedStyle(msgModal).display !== 'none';
+        document.body.classList.toggle('messages-open', visible);
+      });
+      obs.observe(msgModal, { attributes: true, attributeFilter: ['style','class'] });
+    }
+  }
+
+  // Wire now and re-try on bootstrap (messages-ui.js creates the floater lazily)
+  function wire() { wireAi(); wireMsg(); }
   if (document.readyState !== 'loading') wire();
   else document.addEventListener('DOMContentLoaded', wire);
   document.addEventListener('lu:bootstrap-complete', wire);
@@ -4933,497 +4892,5 @@ document.addEventListener('touchstart', function (e) {
   setTimeout(wire, 1000);
   setTimeout(wire, 3000);
 })();
-
-/* Messages FAB body-class watcher — polling-based.
-   wireMsgFab retries every 500ms until both #lu-messages-floater AND
-   #lu-msg-modal exist (the modal is created lazily by messages-ui.js).
-   Once wired, a 300ms interval keeps body.messages-open in sync with the
-   modal's inline `display` regardless of who toggled it. */
-(function wireMsgFab() {
-  if (window._luMsgFabWired) return;
-  var msgBtn   = document.getElementById('lu-messages-floater');
-  var msgModal = document.getElementById('lu-msg-modal');
-  if (!msgBtn || !msgModal) { setTimeout(wireMsgFab, 500); return; }
-  window._luMsgFabWired = true;
-
-  // Polling state sync — 300ms is cheap and survives any close pathway
-  setInterval(function() {
-    if (window.innerWidth > 767) return;  // mobile only
-    var modalOpen = msgModal.style.display !== 'none' &&
-                    msgModal.style.display !== '';
-    var bodyHasClass = document.body.classList.contains('messages-open');
-    if (modalOpen && !bodyHasClass) {
-      document.body.classList.add('messages-open');
-      document.body.classList.remove('ai-panel-open');
-    } else if (!modalOpen && bodyHasClass) {
-      document.body.classList.remove('messages-open');
-    }
-  }, 300);
-
-  // Instant feedback on direct click (don't wait for next poll tick)
-  msgBtn.addEventListener('click', function() {
-    setTimeout(function() {
-      var open = msgModal.style.display !== 'none' &&
-                 msgModal.style.display !== '';
-      document.body.classList.toggle('messages-open', open);
-      if (open) document.body.classList.remove('ai-panel-open');
-    }, 100);
-  });
-
-  // Catch in-modal close button clicks immediately too
-  msgModal.addEventListener('click', function(e) {
-    var isClose = e.target.closest('[class*="close"],[id*="close"],[onclick*="close"]');
-    if (isClose) {
-      setTimeout(function() {
-        document.body.classList.remove('messages-open');
-      }, 100);
-    }
-  });
-})();
 </script>
-
-<script>
-/* ═════════════════════════════════════════════════════════════════════════
-   Mobile touch drag for workspace agent cards.
-   Double-tap activates drag mode; subsequent touchmove drags the card.
-   Position saved to localStorage (key: ws_pos_<id>).
-   Desktop unaffected — early-exit when innerWidth > 1023.
-   ═════════════════════════════════════════════════════════════════════════ */
-(function() {
-  if (window.innerWidth > 1023) return;
-
-  var DOUBLE_TAP_MS = 300;
-  var _tapTime = {};
-  var _dragging = false;
-  var _dragEl = null;
-  var _dragOffsetX = 0;
-  var _dragOffsetY = 0;
-
-  function initTouchDrag() {
-    var canvas = document.getElementById('canvas-agents');
-    if (!canvas) { setTimeout(initTouchDrag, 1000); return; }
-    if (canvas._luTouchDragWired) return;
-    canvas._luTouchDragWired = true;
-
-    canvas.addEventListener('touchstart', function(e) {
-      var card = e.target.closest('.agent-node') ||
-                 e.target.closest('[class*="agent-node"]') ||
-                 e.target.closest('.ws-card') ||
-                 e.target.closest('[class*="ws-card"]');
-      if (!card) return;
-
-      var id = card.id || card.dataset.agentId || card.dataset.agent || 'anon';
-      var now = Date.now();
-
-      if (_tapTime[id] && now - _tapTime[id] < DOUBLE_TAP_MS) {
-        // Double tap detected — activate drag mode
-        e.preventDefault();
-        _dragEl = card;
-        _dragging = true;
-
-        var touch = e.touches[0];
-        var canvasScale = window._luCanvasScale || 1;
-        var panX = window._luCanvasPanX || 0;
-        var panY = window._luCanvasPanY || 0;
-        var canvasRect2 = canvas.getBoundingClientRect();
-        // Position within the transformed canvas space, then subtract card.style.left/top
-        _dragOffsetX = (touch.clientX - canvasRect2.left - panX) / canvasScale - (parseInt(card.style.left) || 0);
-        _dragOffsetY = (touch.clientY - canvasRect2.top  - panY) / canvasScale - (parseInt(card.style.top)  || 0);
-
-        card.style.opacity    = '0.85';
-        card.style.transform  = 'scale(1.03)';
-        card.style.zIndex     = '999';
-        card.style.transition = 'none';
-        card.style.cursor     = 'grabbing';
-        card.classList.add('touch-dragging');
-
-        if (typeof window.showToast === 'function') {
-          showToast('Drag to reposition', 'info');
-        }
-      }
-
-      _tapTime[id] = now;
-    }, { passive: false });
-
-    canvas.addEventListener('touchmove', function(e) {
-      if (!_dragging || !_dragEl) return;
-      e.preventDefault();
-
-      var touch = e.touches[0];
-      var canvasRect = canvas.getBoundingClientRect();
-
-      // Account for canvas scale + pan transform (set by pinch IIFE)
-      var canvasScale = window._luCanvasScale || 1;
-      var panX = window._luCanvasPanX || 0;
-      var panY = window._luCanvasPanY || 0;
-      var newX = (touch.clientX - canvasRect.left - panX) / canvasScale - _dragOffsetX;
-      var newY = (touch.clientY - canvasRect.top  - panY) / canvasScale - _dragOffsetY;
-
-      var maxX = canvasRect.width  - _dragEl.offsetWidth;
-      var maxY = canvasRect.height - _dragEl.offsetHeight;
-      newX = Math.max(0, Math.min(newX, maxX));
-      newY = Math.max(0, Math.min(newY, maxY));
-
-      _dragEl.style.position = 'absolute';
-      _dragEl.style.left = newX + 'px';
-      _dragEl.style.top  = newY + 'px';
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', function() {
-      if (!_dragging || !_dragEl) return;
-
-      _dragEl.style.opacity    = '';
-      _dragEl.style.transform  = '';
-      _dragEl.style.zIndex     = '';
-      _dragEl.style.cursor     = '';
-      _dragEl.style.transition = '';
-      _dragEl.classList.remove('touch-dragging');
-
-      var key = 'ws_pos_' + (_dragEl.id || _dragEl.dataset.agentId || _dragEl.dataset.agent || '');
-      if (key !== 'ws_pos_') {
-        try {
-          localStorage.setItem(key, JSON.stringify({
-            left: _dragEl.style.left,
-            top:  _dragEl.style.top
-          }));
-        } catch(_) {}
-      }
-
-      // Sync to server — mirrors desktop mouse drag at lines 2579 + 2852.
-      // API contract: PUT /api/workspace/agents/positions { agent: <slug>, x, y }
-      // Workspace resolved server-side from auth middleware (no X-Workspace-Id header).
-      var agentSlug = _dragEl.dataset.agent || _dragEl.dataset.agentId;
-      if (agentSlug) {
-        var tk = localStorage.getItem('lu_token') || '';
-        fetch('/api/workspace/agents/positions', {
-          method: 'PUT',
-          headers: {
-            'Authorization': 'Bearer ' + tk,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            agent: agentSlug,
-            x: parseInt(_dragEl.style.left, 10) || 0,
-            y: parseInt(_dragEl.style.top, 10) || 0
-          })
-        }).catch(function() {});  // silent fail — localStorage already saved
-      }
-
-      _dragging = false;
-      _dragEl = null;
-    }, { passive: true });
-  }
-
-  document.addEventListener('lu:bootstrap-complete', initTouchDrag);
-  setTimeout(initTouchDrag, 2000);  // fallback if bootstrap event missed
-})();
-</script>
-
-<script>
-/* ═════════════════════════════════════════════════════════════════════════
-   Pinch-to-zoom on workspace canvas — mobile pinch + desktop ctrl+wheel.
-   3-finger tap resets to 1.0. Scale persists in localStorage (ws_canvas_scale).
-   Restores on re-init when navigating back to workspace.
-   ═════════════════════════════════════════════════════════════════════════ */
-(function() {
-  var _scale    = 1;
-  var _minScale = 0.3;
-  var _maxScale = 3;
-  var _lastDist = 0;
-  var _pinching = false;
-  var _originX  = 0;
-  var _originY  = 0;
-  // Pan state (single-finger drag on empty canvas when zoomed in)
-  var _panX        = 0;
-  var _panY        = 0;
-  var _panStartX   = 0;
-  var _panStartY   = 0;
-  var _panning     = false;
-  var _panTouchId  = null;
-
-  function getCanvas() {
-    return document.getElementById('canvas-agents') ||
-           document.querySelector('[id*="canvas-agents"]');
-  }
-
-  function applyScale(canvas, scale, ox, oy) {
-    _scale = Math.min(_maxScale, Math.max(_minScale, scale));
-    // Origin always 0,0 — pan/scale combined as translate + scale
-    canvas.style.transformOrigin = '0 0';
-    canvas.style.transform = 'translate(' + _panX + 'px,' + _panY + 'px) scale(' + _scale + ')';
-    // Expose for touch drag + selection rect coord math
-    window._luCanvasScale = _scale;
-    window._luCanvasPanX  = _panX;
-    window._luCanvasPanY  = _panY;
-  }
-
-  function dist(t1, t2) {
-    var dx = t1.clientX - t2.clientX;
-    var dy = t1.clientY - t2.clientY;
-    return Math.sqrt(dx*dx + dy*dy);
-  }
-
-  function initPinchZoom() {
-    var canvas = getCanvas();
-    if (!canvas) { setTimeout(initPinchZoom, 1000); return; }
-    if (canvas._luPinchWired) return;
-    canvas._luPinchWired = true;
-
-    // ── Mobile: two-finger pinch ──
-    canvas.addEventListener('touchstart', function(e) {
-      if (e.touches.length === 2) {
-        _pinching = true;
-        _lastDist = dist(e.touches[0], e.touches[1]);
-        var rect = canvas.getBoundingClientRect();
-        _originX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
-        _originY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
-        e.preventDefault();
-      }
-      // Single finger on empty canvas = pan (at any scale, including 1.0)
-      if (e.touches.length === 1) {
-        var onCard = e.target.closest('.agent-node,[class*="agent-node"],.ws-card');
-        var onToolbar = e.target.closest('.selection-toolbar,#selection-toolbar,.canvas-toolbar');
-        if (!onCard && !onToolbar) {
-          _panning    = true;
-          _panTouchId = e.touches[0].identifier;
-          _panStartX  = e.touches[0].clientX - _panX;
-          _panStartY  = e.touches[0].clientY - _panY;
-        }
-      }
-    }, { passive: false });
-
-    canvas.addEventListener('touchmove', function(e) {
-      // Pinch zoom branch
-      if (_pinching && e.touches.length === 2) {
-        e.preventDefault();
-        var newDist = dist(e.touches[0], e.touches[1]);
-        var delta = newDist / _lastDist;
-        _lastDist = newDist;
-        applyScale(canvas, _scale * delta, _originX, _originY);
-        return;
-      }
-      // Pan branch (single finger — yields to selection-rect when active)
-      if (_panning && !window._luTouchSelActive && e.touches.length === 1) {
-        var t = e.touches[0];
-        if (t.identifier === _panTouchId) {
-          e.preventDefault();
-          _panX = t.clientX - _panStartX;
-          _panY = t.clientY - _panStartY;
-          canvas.style.transformOrigin = '0 0';
-          canvas.style.transform =
-            'translate(' + _panX + 'px,' + _panY + 'px) scale(' + _scale + ')';
-          window._luCanvasPanX = _panX;
-          window._luCanvasPanY = _panY;
-        }
-      }
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', function(e) {
-      if (e.touches.length < 2 && _pinching) {
-        _pinching = false;
-        try { localStorage.setItem('ws_canvas_scale', _scale); } catch(_) {}
-      }
-      if (e.touches.length === 0 && _panning) {
-        _panning = false;
-        try { localStorage.setItem('ws_canvas_pan', JSON.stringify({ x: _panX, y: _panY })); } catch(_) {}
-      }
-    }, { passive: true });
-
-    // ── Mobile: three-finger tap = reset zoom (separate listener so the
-    //    early-return on the pinch one doesn't shadow it) ──
-    canvas.addEventListener('touchstart', function(e) {
-      if (e.touches.length === 3) {
-        e.preventDefault();
-        _scale = 1;
-        _panX = 0; _panY = 0;
-        canvas.style.transform = 'scale(1)';
-        canvas.style.transformOrigin = 'center center';
-        window._luCanvasScale = 1;
-        window._luCanvasPanX  = 0;
-        window._luCanvasPanY  = 0;
-        try {
-          localStorage.setItem('ws_canvas_scale', 1);
-          localStorage.removeItem('ws_canvas_pan');
-        } catch(_) {}
-        if (typeof showToast === 'function') showToast('Zoom reset', 'info');
-      }
-    }, { passive: false });
-
-    // ── Desktop: ctrl/cmd + wheel ──
-    canvas.addEventListener('wheel', function(e) {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      var rect = canvas.getBoundingClientRect();
-      var ox = e.clientX - rect.left;
-      var oy = e.clientY - rect.top;
-      var delta = e.deltaY > 0 ? 0.9 : 1.1;
-      applyScale(canvas, _scale * delta, ox, oy);
-      try { localStorage.setItem('ws_canvas_scale', _scale); } catch(_) {}
-    }, { passive: false });
-
-    // Expose globals so touch drag + selection rect can read them
-    window._luCanvasScale = _scale;
-    window._luCanvasPanX  = _panX;
-    window._luCanvasPanY  = _panY;
-
-    // Restore saved scale + pan
-    var saved = parseFloat(localStorage.getItem('ws_canvas_scale'));
-    if (saved && saved !== 1 && !isNaN(saved)) {
-      _scale = saved;
-      window._luCanvasScale = _scale;
-    }
-    try {
-      var savedPan = JSON.parse(localStorage.getItem('ws_canvas_pan') || 'null');
-      if (savedPan && typeof savedPan.x === 'number') {
-        _panX = savedPan.x;
-        _panY = savedPan.y;
-        window._luCanvasPanX = _panX;
-        window._luCanvasPanY = _panY;
-      }
-    } catch(_) {}
-    if (_scale !== 1 || _panX !== 0 || _panY !== 0) {
-      canvas.style.transformOrigin = '0 0';
-      canvas.style.transform = 'translate(' + _panX + 'px,' + _panY + 'px) scale(' + _scale + ')';
-    }
-  }
-
-  document.addEventListener('lu:bootstrap-complete', initPinchZoom);
-  setTimeout(initPinchZoom, 2000);
-
-  // Re-init when navigating to workspace (canvas may be re-rendered)
-  document.addEventListener('click', function(e) {
-    if (e.target.closest('[onclick*="nav(\'workspace\')"]') ||
-        e.target.closest('#ni-workspace')) {
-      setTimeout(initPinchZoom, 300);
-    }
-  });
-})();
-</script>
-
-<script>
-/* ═════════════════════════════════════════════════════════════════════════
-   Mobile: double-tap empty canvas → draw selection rectangle.
-   Uses window._luCanvasScale / _luCanvasPanX / _luCanvasPanY so the
-   rectangle stays accurate under zoom + pan.
-   ═════════════════════════════════════════════════════════════════════════ */
-(function() {
-  if (window.innerWidth > 1023) return;
-
-  var _selActive  = false;
-  var _selStartX  = 0;
-  var _selStartY  = 0;
-  var _selRect    = null;
-  var _selTapTime = 0;
-  var DBL_MS      = 300;
-  // Canvas-space bounds of the active selection rect (for hit-test in touchend)
-  var _selBox     = { x1:0, y1:0, x2:0, y2:0 };
-
-  function initTouchSelect() {
-    var canvas = document.getElementById('canvas-agents');
-    if (!canvas) { setTimeout(initTouchSelect, 1000); return; }
-    if (canvas._luTouchSelectWired) return;
-    canvas._luTouchSelectWired = true;
-
-    _selRect = document.createElement('div');
-    _selRect.style.cssText =
-      'position:absolute;border:2px solid #7C3AED;' +
-      'background:rgba(124,58,237,0.08);border-radius:4px;' +
-      'pointer-events:none;display:none;z-index:500;';
-    canvas.appendChild(_selRect);
-
-    canvas.addEventListener('touchstart', function(e) {
-      var onCard = e.target.closest('.agent-node,[class*="agent-node"],.ws-card');
-      if (onCard) return;  // drag handler owns this
-
-      var now   = Date.now();
-      var touch = e.touches[0];
-      var rect  = canvas.getBoundingClientRect();
-      var scale = window._luCanvasScale || 1;
-      var panX  = window._luCanvasPanX  || 0;
-      var panY  = window._luCanvasPanY  || 0;
-
-      if (e.touches.length === 1 && now - _selTapTime < DBL_MS) {
-        e.preventDefault();
-        _selActive = true;
-        window._luTouchSelActive = true;  // tell pan IIFE to stand down
-        _selStartX = (touch.clientX - rect.left - panX) / scale;
-        _selStartY = (touch.clientY - rect.top  - panY) / scale;
-        _selBox.x1 = _selStartX;
-        _selBox.y1 = _selStartY;
-        _selBox.x2 = _selStartX;
-        _selBox.y2 = _selStartY;
-        _selRect.style.left    = _selStartX + 'px';
-        _selRect.style.top     = _selStartY + 'px';
-        _selRect.style.width   = '0';
-        _selRect.style.height  = '0';
-        _selRect.style.display = 'block';
-        if (typeof showToast === 'function') showToast('Drag to select agents', 'info');
-      }
-      _selTapTime = now;
-    }, { passive: false });
-
-    canvas.addEventListener('touchmove', function(e) {
-      if (!_selActive || e.touches.length !== 1) return;
-      e.preventDefault();
-      var touch = e.touches[0];
-      var rect  = canvas.getBoundingClientRect();
-      var scale = window._luCanvasScale || 1;
-      var panX  = window._luCanvasPanX  || 0;
-      var panY  = window._luCanvasPanY  || 0;
-      var curX  = (touch.clientX - rect.left - panX) / scale;
-      var curY  = (touch.clientY - rect.top  - panY) / scale;
-      _selBox.x1 = Math.min(_selStartX, curX);
-      _selBox.y1 = Math.min(_selStartY, curY);
-      _selBox.x2 = Math.max(_selStartX, curX);
-      _selBox.y2 = Math.max(_selStartY, curY);
-      _selRect.style.left   = _selBox.x1 + 'px';
-      _selRect.style.top    = _selBox.y1 + 'px';
-      _selRect.style.width  = (_selBox.x2 - _selBox.x1) + 'px';
-      _selRect.style.height = (_selBox.y2 - _selBox.y1) + 'px';
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', function() {
-      if (!_selActive) return;
-      _selActive = false;
-      window._luTouchSelActive = false;  // release pan
-      _selRect.style.display = 'none';
-
-      // Hit test in canvas space (card.style.left/top are canvas-space pixels)
-      var selected = [];
-      canvas.querySelectorAll('.agent-node,[class*="agent-node"]').forEach(function(card) {
-        var cardX = parseInt(card.style.left) || 0;
-        var cardY = parseInt(card.style.top)  || 0;
-        var cardW = card.offsetWidth  || 160;
-        var cardH = card.offsetHeight || 120;
-        if (cardX < _selBox.x2 &&
-            cardX + cardW > _selBox.x1 &&
-            cardY < _selBox.y2 &&
-            cardY + cardH > _selBox.y1) {
-          selected.push(card);
-          card.classList.add('ws-selected');
-          card.style.outline = '2px solid #7C3AED';
-          card.style.outlineOffset = '2px';
-        }
-      });
-
-      var toolbar = document.getElementById('selection-toolbar') ||
-                    document.querySelector('.selection-toolbar');
-      if (selected.length > 0) {
-        if (toolbar) toolbar.style.display = 'flex';
-        if (typeof showToast === 'function')
-          showToast(selected.length + ' agent' + (selected.length > 1 ? 's' : '') + ' selected', 'info');
-      } else {
-        canvas.querySelectorAll('.ws-selected').forEach(function(c) {
-          c.classList.remove('ws-selected');
-          c.style.outline = '';
-          c.style.outlineOffset = '';
-        });
-        if (toolbar) toolbar.style.display = 'none';
-      }
-    }, { passive: true });
-  }
-
-  document.addEventListener('lu:bootstrap-complete', initTouchSelect);
-  setTimeout(initTouchSelect, 2000);
-})();
-</script></body></html>
+</body></html>
