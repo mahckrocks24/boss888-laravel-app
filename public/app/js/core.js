@@ -36,6 +36,13 @@ function showToast(msg, type) {
   setTimeout(function() { el.style.opacity = '0'; setTimeout(function() { el.remove(); }, 300); }, 3000);
 }
 
+// Alias for backwards compat — _luToast was referenced (~11 sites) but never defined.
+// All approval / reject / bulk action handlers used `if (typeof _luToast === 'function') _luToast(msg)`
+// which silently no-op'd. Now they route to showToast and the user sees feedback.
+var _luToast = function(msg, type) {
+  if (typeof showToast === 'function') showToast(msg, type || 'info');
+};
+
 function luConfirm(msg, title, confirmText, cancelText) {
   return new Promise(function(resolve) {
     var overlay = document.createElement('div');
@@ -5047,8 +5054,14 @@ function _cmdcRenderApprovals(list, total) {
       '<div class="cmd-approval-head">' + orb + '<div class="cmd-approval-label">' + _cmdcEsc(a.label) + '</div></div>' +
       '<div class="cmd-approval-meta">' + _cmdcEsc(a.time_ago) + (a.credit_cost ? ' · ' + a.credit_cost + ' credits' : '') + '</div>' +
       '<div class="cmd-approval-actions">' +
-        '<button class="cmd-btn cmd-btn-approve" onclick="_cmdcApprovalAction(' + a.id + ',\'approve\')">Approve</button>' +
-        '<button class="cmd-btn cmd-btn-reject"  onclick="_cmdcApprovalAction(' + a.id + ',\'reject\')">Reject</button>' +
+        (a.task_id
+          ? '<button class="cmd-btn cmd-btn-approve" onclick="_cmdcApprovalAction(' + a.id + ',\'approve\')">Approve</button>'
+          : '<button class="cmd-btn cmd-btn-approve" disabled title="Task no longer exists" style="opacity:0.4;cursor:not-allowed">Approve</button>'
+        ) +
+        (a.task_id
+          ? '<button class="cmd-btn cmd-btn-reject"  onclick="_cmdcApprovalAction(' + a.id + ',\'reject\')">Reject</button>'
+          : '<button class="cmd-btn cmd-btn-reject" disabled title="Task no longer exists" style="opacity:0.4;cursor:not-allowed">Reject</button>'
+        ) +
       '</div>' +
     '</div>';
   }).join('');
