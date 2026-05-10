@@ -152,7 +152,7 @@ function _renderSignup() {
   }
 
   var sarah = _OB_AGENTS[0];
-  var sarahHTML = '<div class="ob-orb ob-orb--centre" data-name="' + _luEsc(sarah[0]) +
+  var sarahHTML = '<div class="ob-orb ob-orb--centre ob-orb--sarah" data-name="' + _luEsc(sarah[0]) +
                   '" data-role="' + _luEsc(sarah[3]) + '" style="--orb-color:' + sarah[2] + '">' +
                   '<span>' + sarah[1] + '</span></div>';
   var innerHTML = innerAgents.map(function(a, i){ return orbHTML(a, 'inner', i, innerStep); }).join('');

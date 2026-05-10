@@ -1,33 +1,50 @@
 /*
  * LevelUp Growth — Onboarding UI
- * Phase O2 (2026-05-10): Mission Control dark theme + 20-agent orbit + amber CTA
- * Namespace: .lu-onboard (all rules scoped — does not leak to the rest of the app)
+ * Phase O2   (2026-05-10): Mission Control dark theme + 20-agent orbit
+ * Phase O2.1 (2026-05-10): Design system aligned with marketing site —
+ *                           purple-blue primary, teal accent, Manrope/Inter
+ *                           typography, amber retained ONLY for Sarah orb.
+ * Namespace: .lu-onboard
  *
- * Note on outer orbit radius: spec called for 150px, but the .ob-orbit-wrap is
- * 280px (140px max from centre). 32px outer orbs at 150px would overflow.
+ * Note on outer orbit radius: spec called for 150px, but the .ob-orbit-wrap
+ * is 280px (140px max from centre). 32px outer orbs at 150px would overflow.
  * Using 125px keeps them visible inside the wrapper.
  */
 
+:root,
 .lu-onboard {
-  --ob-bg:         #0A0B0F;
-  --ob-surface:    #111318;
-  --ob-border:     rgba(255,255,255,0.07);
-  --ob-border-act: rgba(245,158,11,0.4);
-  --ob-amber:      #F59E0B;
-  --ob-teal:       #00E5A8;
-  --ob-blue:       #3B82F6;
-  --ob-purple:    #7C3AED;
-  --ob-pink:       #EC4899;
-  --ob-cyan:       #06B6D4;
-  --ob-text:       #F0F0F0;
-  --ob-muted:      rgba(240,240,240,0.45);
-  --ob-radius:     12px;
+  --ob-bg:         #0B0F19;
+  --ob-card:       #121826;
+  --ob-card2:      #0F1520;
+  --ob-border:     #1F2937;
+  --ob-border2:    #2D3748;
+  --ob-border-act: rgba(124,58,237,0.45);
 
+  --ob-purple:     #7C3AED;
+  --ob-blue:       #3B82F6;
+  --ob-teal:       #00E5A8;
+  --ob-violet:     #A78BFA;
+  --ob-amber:      #F59E0B;   /* Sarah's color only — nowhere else */
+
+  --ob-text:       #FFFFFF;
+  --ob-muted:      #9CA3AF;
+  --ob-faint:      #6B7280;
+
+  --ob-grad:       linear-gradient(135deg, #7C3AED, #3B82F6);
+  --ob-grad-text:  linear-gradient(135deg, #7C3AED, #00E5A8);
+  --ob-glow:       rgba(124,58,237,0.3);
+  --ob-glow-hover: rgba(124,58,237,0.5);
+
+  --ob-r:          16px;
+  --ob-r2:         12px;
+}
+
+.lu-onboard {
   width: 100%;
   min-height: 100vh;
   background: var(--ob-bg);
   color: var(--ob-text);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -56,20 +73,36 @@
   min-height: 100vh;
   padding: 40px 20px;
   background:
-    radial-gradient(ellipse at 50% 30%, rgba(245,158,11,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.10) 0%, transparent 60%),
     var(--ob-bg);
 }
 
 /* ── Left panel ──────────────────────────────────────────────────────────── */
 .lu-onboard .ob-left {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 60px;
+  overflow: hidden;
   background:
-    radial-gradient(ellipse at 30% 50%, rgba(245,158,11,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 70% at 30% 50%, rgba(124,58,237,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(0,229,168,0.06) 0%, transparent 55%),
     var(--ob-bg);
 }
+
+.lu-onboard .ob-left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 0;
+}
+.lu-onboard .ob-left > * { position: relative; z-index: 1; }
 
 .lu-onboard .ob-logo {
   display: flex;
@@ -78,7 +111,7 @@
   margin-bottom: 48px;
 }
 .lu-onboard .ob-logo span {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Manrope', sans-serif;
   font-weight: 700;
   font-size: 16px;
   letter-spacing: 0.01em;
@@ -88,10 +121,10 @@
 .lu-onboard .ob-logo-mark {
   width: 36px;
   height: 36px;
-  background: var(--ob-amber);
-  color: #000;
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
+  background: var(--ob-purple);
+  color: #fff;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
   font-size: 18px;
   border-radius: 8px;
   display: flex;
@@ -100,10 +133,11 @@
 }
 
 .lu-onboard .ob-headline {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
   font-size: 48px;
   line-height: 1.15;
+  letter-spacing: -0.02em;
   color: #fff;
   margin-bottom: 40px;
 }
@@ -124,12 +158,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 11px;
   color: #fff;
-  background: var(--orb-color, #6C5CE7);
-  box-shadow: 0 0 12px rgba(108,92,231,0.25);
+  background: var(--orb-color, #7C3AED);
+  box-shadow: 0 0 12px rgba(124,58,237,0.25);
   transition: transform 0.2s, box-shadow 0.3s, background 0.3s;
   cursor: default;
 }
@@ -188,9 +222,18 @@
 }
 .lu-onboard .ob-orb:hover::after { opacity: 1; }
 
+/* Flash animation: purple for everyone except Sarah */
 .lu-onboard .ob-orb--flash {
-  background: var(--ob-amber) !important;
-  box-shadow: 0 0 24px var(--ob-amber);
+  animation: ob-orb-flash 0.4s ease-in-out;
+}
+@keyframes ob-orb-flash {
+  0%, 100% { box-shadow: none; }
+  50%      { box-shadow: 0 0 20px rgba(124,58,237,0.8); }
+}
+/* Sarah's flash stays amber — override the purple keyframe with a static glow */
+.lu-onboard .ob-orb--sarah.ob-orb--flash {
+  animation: none;
+  box-shadow: 0 0 20px rgba(245,158,11,0.8) !important;
 }
 
 /* Single keyframe driven by CSS var --r (per-orb radius) */
@@ -199,6 +242,7 @@
   to   { transform: rotate(calc(var(--start) + 360deg)) translateX(var(--r)) rotate(calc(-360deg - var(--start))); }
 }
 
+/* Sarah's pulse — amber glow, used only by .ob-orb--centre (Sarah) */
 @keyframes ob-sarah-pulse {
   from { box-shadow: 0 0 16px rgba(245,158,11,0.4); }
   to   { box-shadow: 0 0 32px rgba(245,158,11,0.65); }
@@ -227,12 +271,12 @@
   content: '\2726';        /* ✦ */
   position: absolute;
   left: 0;
-  color: var(--ob-amber);
+  color: var(--ob-teal);
 }
 
 .lu-onboard .ob-social-proof {
   font-size: 13px;
-  color: var(--ob-muted);
+  color: var(--ob-faint);
 }
 
 /* ── Right panel + login wrapper share ob-card ───────────────────────────── */
@@ -241,16 +285,32 @@
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: var(--ob-surface);
+  background: var(--ob-card2);
+  border-left: 1px solid var(--ob-border);
 }
 
 .lu-onboard .ob-card {
+  position: relative;
   width: 100%;
   max-width: 440px;
   background: rgba(255,255,255,0.02);
-  border: 1px solid var(--ob-border);
+  border: 1px solid var(--ob-border2);
   border-radius: 16px;
   padding: 40px 44px;
+  box-shadow:
+    0 0 0 1px rgba(124,58,237,0.06),
+    0 24px 48px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.lu-onboard .ob-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #7C3AED, #00E5A8);
+  border-radius: 16px 16px 0 0;
 }
 
 .lu-onboard .ob-login-logo {
@@ -261,18 +321,19 @@
   margin-bottom: 32px;
 }
 .lu-onboard .ob-login-logo span {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Manrope', sans-serif;
   font-weight: 700;
   font-size: 18px;
   color: #fff;
 }
 
 .lu-onboard .ob-card-title {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
   font-size: 24px;
   color: #fff;
   margin-bottom: 6px;
+  letter-spacing: -0.01em;
 }
 .lu-onboard .ob-card-sub {
   font-size: 14px;
@@ -296,10 +357,10 @@
   height: 52px;
   width: 100%;
   background: rgba(255,255,255,0.04);
-  border: 1.5px solid var(--ob-border);
+  border: 1.5px solid var(--ob-border2);
   border-radius: 8px;
   color: #fff;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 15px;
   padding: 0 16px;
   outline: none;
@@ -310,7 +371,7 @@
 }
 .lu-onboard .ob-form input:focus {
   border-color: var(--ob-border-act);
-  background: rgba(255,255,255,0.05);
+  background: rgba(124,58,237,0.04);
 }
 .lu-onboard .ob-form input.ob-input-err {
   border-color: rgba(239,68,68,0.5);
@@ -332,7 +393,7 @@
   border: 0;
   color: var(--ob-muted);
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 500;
   padding: 6px 10px;
@@ -360,7 +421,7 @@
   border-radius: 2px;
   transition: background 0.3s;
 }
-.lu-onboard .ob-pwd-seg.active { background: var(--ob-amber); }
+.lu-onboard .ob-pwd-seg.active { background: var(--ob-purple); }
 .lu-onboard .ob-pwd-seg.strong { background: var(--ob-teal); }
 
 .lu-onboard .ob-pwd-rules {
@@ -394,23 +455,24 @@
 .lu-onboard .ob-btn-primary {
   width: 100%;
   height: 52px;
-  background: linear-gradient(135deg, #F59E0B, #F97316);
+  background: var(--ob-grad);
   border: 0;
   border-radius: 8px;
-  color: #000;
-  font-family: 'Syne', sans-serif;
-  font-weight: 600;
+  color: #fff;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
   font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  box-shadow: 0 0 24px var(--ob-glow);
   transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
 .lu-onboard .ob-btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(245,158,11,0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 40px var(--ob-glow-hover);
 }
 .lu-onboard .ob-btn-primary:active { transform: translateY(0); }
 .lu-onboard .ob-btn-primary:disabled {
@@ -444,7 +506,7 @@
 .lu-onboard .ob-legal { font-size: 12px; line-height: 1.5; }
 .lu-onboard .ob-switch a,
 .lu-onboard .ob-legal a {
-  color: var(--ob-amber);
+  color: var(--ob-teal);
   text-decoration: none;
   font-weight: 600;
 }
@@ -477,7 +539,7 @@
   .lu-onboard .ob-orb--outer {
     width: 26px; height: 26px; margin: -13px 0 0 -13px; --r: 90px; font-size: 9px;
   }
-  .lu-onboard .ob-right { padding: 24px; }
+  .lu-onboard .ob-right { padding: 24px; border-left: none; border-top: 1px solid var(--ob-border); }
   .lu-onboard .ob-card { padding: 28px 24px; }
 }
 
