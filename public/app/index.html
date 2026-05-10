@@ -1932,6 +1932,33 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
     display: none !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Canvas toolbar — mobile-only repositioning (below 56px topbar)
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .canvas-toolbar {
+    position: fixed !important;
+    top: 64px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    z-index: var(--z-dropdown) !important;
+    background: var(--s1, #121826) !important;
+    padding: 8px !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+  }
+  .canvas-toolbar .ct-btn {
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+    flex: 1 !important;
+    text-align: center !important;
+    min-width: 0 !important;
+  }
+}
 </style>
 
 <style>
@@ -4614,7 +4641,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.5.6-revert"></script>
+<script defer src="/app/js/core.js?v=4.5.7-canvas-toolbar"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
