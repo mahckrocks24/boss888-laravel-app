@@ -4165,6 +4165,8 @@ function _appEnterDashboard() {
   _checkTrialStatus();
   // Start notification polling
   _notifStartPolling();
+  // Signal that bootstrap is complete (consumers like the workspace canvas loader rely on this)
+  document.dispatchEvent(new Event('lu:bootstrap-complete'));
 }
 
 // ── Onboarding + auth views ──────────────────────────────────────────
