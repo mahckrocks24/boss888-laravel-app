@@ -121,7 +121,7 @@ async function _msgLoadThread(slug){
       var bg=isUser?'var(--p,#6C5CE7)':color+'18';
       var tc=isUser?'#fff':'var(--t1)';
       var border=isUser?'none':'1px solid '+color+'30';
-      return'<div style="display:flex;justify-content:'+align+';margin-bottom:8px"><div style="max-width:80%;padding:10px 14px;border-radius:12px;background:'+bg+';border:'+border+';color:'+tc+';font-size:13px;line-height:1.5"><div>'+_msgE(m.content)+'</div><div style="font-size:9px;opacity:.6;margin-top:4px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
+      return'<div style="display:flex;justify-content:'+align+';margin-bottom:8px"><div style="max-width:80%;padding:10px 14px;border-radius:12px;background:'+bg+';border:'+border+';color:'+tc+';font-size:13px;line-height:1.5"><div>'+(isUser?_msgE(m.content):(typeof fmt==='function'?fmt(m.content):_msgE(m.content)))+'</div><div style="font-size:9px;opacity:.6;margin-top:4px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
     }).join('');
     feed.scrollTop=feed.scrollHeight;
   }catch(e){feed.innerHTML='<div style="color:var(--rd);padding:20px;font-size:12px">Failed to load messages</div>';}
