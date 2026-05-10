@@ -714,7 +714,6 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             $systemPrompt = $conciseRule . $brandFactsBlock
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
-                . $formatRules
                 . "Available agents and their expertise:\n"
                 . "- james: SEO Strategist (keyword research, SERP analysis, audits)\n"
                 . "- alex: Technical SEO (site audits, Core Web Vitals, schema)\n"
@@ -750,7 +749,6 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . "You are {$agent->name}, {$agent->title} for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "Your expertise: " . implode(', ', $skills) . "\n"
                 . ($recentTasks ? "Your recent tasks:\n- {$recentTasks}\n" : "No recent tasks.\n")
-                . $formatRules
                 . "Answer questions about your work directly. Be helpful and specific.\n"
                 . "For NEW task requests beyond your current scope, say you'll need Sarah to assign it officially.\n"
                 . "Keep responses under 120 words.\n"
