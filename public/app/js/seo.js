@@ -113,7 +113,7 @@ async function _seoAudits(el) {
     if (audits.length === 0) {
       h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("more",14)+'</div><p>No audits yet. Run your first site audit.</p></div>';
     } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+      h += '<div class="lu-table-wrap" style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
       h += '<thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">URL</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Score</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Date</th></tr></thead><tbody>';
       audits.forEach(a => {
         h += '<tr style="cursor:pointer" onclick="_seoViewAudit(' + a.id + ')"><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04)">' + (a.url || a.domain || '—') + '</td><td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)"><span style="color:' + (a.score >= 80 ? 'var(--ac)' : a.score >= 50 ? 'var(--am)' : 'var(--rd)') + ';font-weight:600">' + (a.score || '—') + '</span></td><td style="padding:10px 12px;color:var(--t2);text-align:center;border-bottom:1px solid rgba(255,255,255,.04)">' + (a.created_at ? new Date(a.created_at).toLocaleDateString() : '—') + '</td></tr>';
@@ -161,7 +161,7 @@ async function _seoKeywords(el) {
     if (kws.length === 0) {
       h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("lock",14)+'</div><p>No keywords tracked yet.</p></div>';
     } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+      h += '<div class="lu-table-wrap" style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
       h += '<thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Keyword</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Position</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Volume</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Actions</th></tr></thead><tbody>';
       kws.forEach(k => {
         h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.keyword || k.term || '—') + '</td><td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.position || '—') + '</td><td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.volume || '—') + '</td><td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)"><button class="btn btn-outline btn-sm" onclick="_seoDeleteKeyword(' + k.id + ')" style="font-size:11px;color:var(--rd)">Delete</button></td></tr>';
@@ -343,7 +343,7 @@ async function _seoWorkspace(el) {
     if (kws.length === 0) {
       h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("chart",14)+'</div><p>Add keywords to start tracking optimization.</p><button class="btn btn-primary" onclick="_seoAddKeyword()">+ Track Keyword</button></div>';
     } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Keyword</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Position</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Volume</th></tr></thead><tbody>';
+      h += '<div class="lu-table-wrap" style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Keyword</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Position</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Volume</th></tr></thead><tbody>';
       kws.forEach(function(k) { h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.keyword || k.term || '—') + '</td><td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.position || '—') + '</td><td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.volume || '—') + '</td></tr>'; });
       h += '</tbody></table></div>';
     }
@@ -381,7 +381,7 @@ async function _seoOutbound(el) {
     if (!Array.isArray(links) || links.length === 0) {
       h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("globe",14)+'</div><p>No outbound links scanned yet.</p></div>';
     } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">URL</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Status</th></tr></thead><tbody>';
+      h += '<div class="lu-table-wrap" style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">URL</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Status</th></tr></thead><tbody>';
       links.forEach(function(l) { h += '<tr><td style="padding:10px 12px;color:var(--bl);border-bottom:1px solid rgba(255,255,255,.04);word-break:break-all">' + (l.url || '—') + '</td><td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)">' + (l.status_code || '—') + '</td></tr>'; });
       h += '</tbody></table></div>';
     }
@@ -416,7 +416,7 @@ async function _seoRedirects(el) {
     if (redirects.length === 0) {
       h += '<div style="text-align:center;padding:40px;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:12px;margin-bottom:24px"><div style="font-size:40px;margin-bottom:14px">&#8618;</div><p>No redirects configured yet. Add your first redirect rule.</p></div>';
     } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:24px"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+      h += '<div class="lu-table-wrap" style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:24px"><table style="width:100%;border-collapse:collapse;font-size:13px">';
       h += '<thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">From</th><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">To</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Type</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Actions</th></tr></thead><tbody>';
       redirects.forEach(function(r) {
         h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04);word-break:break-all">' + (r.from || '—') + '</td>' +
@@ -430,7 +430,7 @@ async function _seoRedirects(el) {
     if (entries.length === 0) {
       h += '<div style="text-align:center;padding:30px;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:12px"><p>No 404 errors logged yet. This is a good sign!</p></div>';
     } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+      h += '<div class="lu-table-wrap" style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
       h += '<thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">URL</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Hits</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Last Seen</th></tr></thead><tbody>';
       entries.forEach(function(e) {
         h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04);word-break:break-all">' + (e.url || '—') + '</td>' +
@@ -653,7 +653,7 @@ console.log('[LevelUp] SEO engine loaded (Laravel native — 14 tabs, 33 routes)
                     h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("lock",14)+'</div><p>No keywords tracked yet.</p></div>';
                 }
             } else {
-                h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+                h += '<div class="lu-table-wrap" style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
                 h += '<thead><tr>'
                     + '<th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Keyword</th>'
                     + '<th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd);text-align:center">Rank</th>'

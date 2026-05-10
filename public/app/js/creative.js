@@ -98,6 +98,19 @@ function _crToast(msg, type) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 window.creativeLoad = async function(el) {
+  // M5 Batch 1: mobile preview-only gate
+  if (window.innerWidth < 768) {
+    el.innerHTML =
+      '<div class="lu-engine-panel" style="width:100%">' +
+        '<div class="lu-desktop-gate">' +
+          '<h3>Creative Engine</h3>' +
+          '<p>Full creative tools are available on desktop. ' +
+          'View and download existing assets here, edit on desktop.</p>' +
+        '</div>' +
+      '</div>';
+    return;
+  }
+
     if (!el) { console.error('[LuCreative] creativeLoad: no element'); return; }
     _cr.rootEl = el;
     console.log('[LuCreative] creativeLoad() → #' + el.id);
