@@ -5363,6 +5363,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
 console.log('[LevelUp] v3.3.0 — auth, onboarding, notifications, analytics loaded');
 
+// LGSC embed mode: force-route to the SEO engine after bootstrap completes.
+// _appBootstrap's embed branch goes to the dashboard; the WP Connector iframe
+// is meant to land on #seo. Wait a tick for the dashboard render to finish,
+// then trigger hashchange + direct seoLoad() so whichever route handler is
+// wired up picks it up.
+if (window._LGSC_EMBED) {
+  setTimeout(function() {
+    if (window.location.hash.indexOf('seo') === -1) {
+      window.location.hash = 'seo';
+    }
+    if (typeof window.seoLoad === 'function') {
+      var mainEl = document.getElementById('view-seo')
+                || document.getElementById('main-content')
+                || document.querySelector('.lu-main')
+                || document.querySelector('[data-view]')
+                || document.body;
+      try { window.seoLoad(mainEl); } catch (e) { console.warn('[LGSC] seoLoad failed:', e); }
+    }
+    try { window.dispatchEvent(new HashChangeEvent('hashchange')); } catch (_) {}
+    try { console.log('[LGSC] SEO engine triggered'); } catch (_) {}
+  }, 300);
+}
+
 // ── BILLING v5.5.4 ─────────────────────────────────────────────────────────
 window.loadBilling = async function loadBilling() {
   _billCheckReturnFlags();
