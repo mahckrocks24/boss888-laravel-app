@@ -5465,3 +5465,193 @@ function _billCheckReturnFlags() {
   history.replaceState(null, '', '#billing');
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Settings: API Keys + WordPress Sites renderers (2026-05-11)
+// These are designed to be called against any container element (e.g.
+// document.getElementById('view-settings-apikeys')). The HTML wiring of
+// new tabs in the settings view is a separate UI task — these globals
+// stand on their own and can be invoked programmatically.
+// ═══════════════════════════════════════════════════════════════════════════
+window._renderApiKeys = async function _renderApiKeys(el) {
+  if (!el) return;
+  el.innerHTML = '<div style="padding:24px"><div id="apk-wrap"><div class="lu-loading">Loading…</div></div></div>';
+  var wrap = el.querySelector('#apk-wrap');
+  try {
+    var r = await _luFetch('GET', '/settings/api-keys');
+    var d = await r.json();
+    if (!d.success) { wrap.innerHTML = '<div style="color:#EF4444">Failed to load keys.</div>'; return; }
+    var keys = d.keys || [];
+    var html =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
+        '<h3 style="font:700 18px Manrope,sans-serif;color:#fff;margin:0">API Keys</h3>' +
+        '<button onclick="_generateApiKey()" class="btn btn-primary" style="font-size:13px;padding:8px 16px">+ Generate Key</button>' +
+      '</div>' +
+      '<p style="font:400 13px Inter,sans-serif;color:#9CA3AF;margin-bottom:20px">' +
+        'Use these keys to connect your WordPress site with the LevelUp Growth SEO Connector plugin.' +
+      '</p>';
+    if (keys.length === 0) {
+      html += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:32px;text-align:center;color:#6B7280">No API keys yet. Generate one to connect your WordPress site.</div>';
+    } else {
+      html += '<div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden">';
+      keys.forEach(function (k) {
+        html +=
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.05)">' +
+            '<div>' +
+              '<div style="font:600 14px Inter,sans-serif;color:#fff">' + (k.name || 'API Key') + '</div>' +
+              '<div style="font:400 12px Inter,sans-serif;color:#6B7280;margin-top:2px">' +
+                '<code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;font-size:11px">' + k.key_preview + '</code>' +
+                ' · Created ' + (k.created_at ? String(k.created_at).split(' ')[0] : '—') +
+                (k.last_used_at ? ' · Last used ' + String(k.last_used_at).split(' ')[0] : ' · Never used') +
+              '</div>' +
+            '</div>' +
+            '<button onclick="_revokeApiKey(' + k.id + ')" style="background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:6px 12px;font:500 12px Inter,sans-serif;cursor:pointer">Revoke</button>' +
+          '</div>';
+      });
+      html += '</div>';
+    }
+    wrap.innerHTML = html;
+  } catch (e) { wrap.innerHTML = '<div style="color:#EF4444">Error: ' + (e.message || e) + '</div>'; }
+};
+
+window._generateApiKey = async function _generateApiKey() {
+  var name = prompt('Key name (e.g. "shukranuae.com connector"):', 'WP Connector');
+  if (!name) return;
+  try {
+    var r = await _luFetch('POST', '/settings/api-keys', { name: name, type: 'connector' });
+    var d = await r.json();
+    if (!d.success || !d.key) {
+      if (typeof showToast === 'function') showToast('Failed to generate key', 'error');
+      return;
+    }
+    // Modal — display key ONCE
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    modal.innerHTML =
+      '<div style="background:#121826;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;max-width:520px;width:100%">' +
+        '<h3 style="font:700 18px Manrope,sans-serif;color:#fff;margin:0 0 8px">API Key Generated</h3>' +
+        '<p style="font:400 13px Inter,sans-serif;color:#F59E0B;margin:0 0 16px">⚠ Copy this key now — it will not be shown again.</p>' +
+        '<div id="apk-new-value" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;font:500 13px/1.5 monospace;color:#fff;word-break:break-all;margin-bottom:16px">' + d.key + '</div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button id="apk-copy" class="btn btn-primary" style="flex:1">Copy Key</button>' +
+          '<button id="apk-done" style="background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 16px;cursor:pointer;flex:1">Done</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    modal.querySelector('#apk-copy').addEventListener('click', function () {
+      navigator.clipboard.writeText(d.key);
+      if (typeof showToast === 'function') showToast('Copied', 'info');
+    });
+    modal.querySelector('#apk-done').addEventListener('click', function () {
+      modal.remove();
+      // Re-render the current API Keys container if visible
+      var wrap = document.querySelector('#apk-wrap');
+      if (wrap) window._renderApiKeys(wrap.parentElement);
+    });
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Error: ' + (e.message || e), 'error');
+  }
+};
+
+window._revokeApiKey = async function _revokeApiKey(id) {
+  if (!confirm('Revoke this key? Any connected sites using it will stop working.')) return;
+  try {
+    var r = await _luFetch('DELETE', '/settings/api-keys/' + id);
+    var d = await r.json();
+    if (d.success) {
+      if (typeof showToast === 'function') showToast('Key revoked', 'info');
+      var wrap = document.querySelector('#apk-wrap');
+      if (wrap) window._renderApiKeys(wrap.parentElement);
+    }
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Error: ' + (e.message || e), 'error');
+  }
+};
+
+window._renderWpSites = async function _renderWpSites(el) {
+  if (!el) return;
+  el.innerHTML = '<div style="padding:24px"><div id="wps-wrap"><div class="lu-loading">Loading…</div></div></div>';
+  var wrap = el.querySelector('#wps-wrap');
+  try {
+    var r = await _luFetch('GET', '/settings/wp-sites');
+    var d = await r.json();
+    if (!d.success) { wrap.innerHTML = '<div style="color:#EF4444">Failed to load sites.</div>'; return; }
+    var sites = d.sites || [];
+    var html =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
+        '<h3 style="font:700 18px Manrope,sans-serif;color:#fff;margin:0">WordPress Sites</h3>' +
+      '</div>' +
+      '<p style="font:400 13px Inter,sans-serif;color:#9CA3AF;margin-bottom:20px">' +
+        'Connect your WordPress site by installing the LevelUp SEO Connector plugin and entering your API key + webhook secret.' +
+      '</p>';
+    if (sites.length === 0) {
+      html +=
+        '<div style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.12);border-radius:12px;padding:32px;text-align:center">' +
+          '<div style="font-size:32px;margin-bottom:12px">🔗</div>' +
+          '<div style="font:600 15px Manrope,sans-serif;color:#fff;margin-bottom:8px">No WordPress site connected</div>' +
+          '<div style="font:400 13px Inter,sans-serif;color:#6B7280;max-width:340px;margin:0 auto;line-height:1.6">' +
+            '1. Install the LevelUp SEO Connector plugin on your WP site<br>' +
+            '2. Generate an API key above<br>' +
+            '3. Paste the key + your webhook secret into the plugin settings' +
+          '</div>' +
+        '</div>';
+    } else {
+      sites.forEach(function (s) {
+        html +=
+          '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:12px">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
+              '<div>' +
+                '<div style="font:600 15px Manrope,sans-serif;color:#fff">' + (s.name || s.url) + '</div>' +
+                '<div style="font:400 12px Inter,sans-serif;color:#6B7280;margin-top:4px">' + s.url + '</div>' +
+                '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
+                  '<span style="background:rgba(0,229,168,0.1);color:#00E5A8;border:1px solid rgba(0,229,168,0.2);border-radius:6px;padding:3px 8px;font:500 11px Inter,sans-serif">✓ Connected</span>' +
+                  '<span style="background:rgba(255,255,255,0.05);color:#9CA3AF;border-radius:6px;padding:3px 8px;font:500 11px Inter,sans-serif">' + s.pages_indexed + ' pages indexed</span>' +
+                '</div>' +
+              '</div>' +
+              '<button onclick="_disconnectWpSite()" style="background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:6px 12px;font:500 12px Inter,sans-serif;cursor:pointer;flex-shrink:0">Disconnect</button>' +
+            '</div>' +
+            '<div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.05)">' +
+              '<div style="font:500 12px Inter,sans-serif;color:#6B7280;margin-bottom:6px">Webhook Secret</div>' +
+              '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+                '<code style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:6px;font-size:11px;color:#9CA3AF;flex:1;min-width:200px;word-break:break-all">' + (s.webhook_secret || '—') + '</code>' +
+                '<button onclick="navigator.clipboard.writeText(\'' + (s.webhook_secret || '') + '\');if(typeof showToast===\'function\')showToast(\'Copied\',\'info\')" style="background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 10px;font:500 11px Inter,sans-serif;cursor:pointer">Copy</button>' +
+                '<button onclick="_rotateWebhookSecret()" style="background:rgba(255,255,255,0.06);color:#9CA3AF;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 10px;font:500 11px Inter,sans-serif;cursor:pointer">Rotate</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+      });
+    }
+    wrap.innerHTML = html;
+  } catch (e) { wrap.innerHTML = '<div style="color:#EF4444">Error: ' + (e.message || e) + '</div>'; }
+};
+
+window._disconnectWpSite = async function _disconnectWpSite() {
+  if (!confirm('Disconnect this WordPress site? SEO data will be kept but the site will stop syncing.')) return;
+  try {
+    var r = await _luFetch('DELETE', '/settings/wp-sites');
+    var d = await r.json();
+    if (d.success) {
+      if (typeof showToast === 'function') showToast('Site disconnected', 'info');
+      var wrap = document.querySelector('#wps-wrap');
+      if (wrap) window._renderWpSites(wrap.parentElement);
+    }
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Error: ' + (e.message || e), 'error');
+  }
+};
+
+window._rotateWebhookSecret = async function _rotateWebhookSecret() {
+  if (!confirm('Rotate webhook secret? You will need to update the secret in your WP plugin settings.')) return;
+  try {
+    var r = await _luFetch('POST', '/settings/wp-sites/rotate-secret');
+    var d = await r.json();
+    if (d.success) {
+      if (typeof showToast === 'function') showToast('Secret rotated — update your WP plugin settings', 'info');
+      var wrap = document.querySelector('#wps-wrap');
+      if (wrap) window._renderWpSites(wrap.parentElement);
+    }
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Error: ' + (e.message || e), 'error');
+  }
+};

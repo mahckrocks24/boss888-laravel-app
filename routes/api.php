@@ -8726,3 +8726,113 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         return response()->json(['success' => true, 'data' => $result]);
     });
 });
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// §5 Settings — API Keys + WordPress Sites (2026-05-11)
+// Auth: JWT (workspace-scoped). Powers the in-app settings tabs that let the
+// user mint connector API keys, view/revoke them, and inspect connected WP
+// sites + rotate webhook secrets.
+// ════════════════════════════════════════════════════════════════════════════
+Route::middleware(['auth.jwt'])->prefix('settings')->group(function () {
+
+    // ── API Keys ────────────────────────────────────────────────────────
+    Route::prefix('api-keys')->group(function () {
+
+        // List active keys (no full key text — preview only)
+        Route::get('/', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $keys = \Illuminate\Support\Facades\DB::table('api_keys')
+                ->where('workspace_id', $wsId)
+                ->where('is_active', true)
+                ->orderByDesc('created_at')
+                ->get([
+                    'id', 'name', 'type',
+                    \Illuminate\Support\Facades\DB::raw("CONCAT(LEFT(`key`, 12), '…') as key_preview"),
+                    'last_used_at', 'created_at',
+                ]);
+            return response()->json(['success' => true, 'keys' => $keys]);
+        });
+
+        // Mint a new key — returns full lgs_* once; never shown again
+        Route::post('/', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $data = $r->validate([
+                'name' => 'nullable|string|max:100',
+                'type' => 'nullable|in:connector,agent,admin',
+            ]);
+            $key = 'lgs_' . bin2hex(random_bytes(24));  // 52-char (lgs_ + 48 hex)
+            $id  = \Illuminate\Support\Facades\DB::table('api_keys')->insertGetId([
+                'workspace_id' => $wsId,
+                'user_id'      => optional($r->user())->id,
+                'key'          => $key,
+                'name'         => $data['name'] ?? 'WP Connector',
+                'type'         => $data['type'] ?? 'connector',
+                'is_active'    => true,
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+            return response()->json([
+                'success' => true,
+                'key'     => $key,
+                'id'      => $id,
+                'message' => 'Copy this key now — it will not be shown again.',
+            ]);
+        });
+
+        // Revoke (soft-delete via is_active=false)
+        Route::delete('/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = $r->attributes->get('workspace_id');
+            $rows = \Illuminate\Support\Facades\DB::table('api_keys')
+                ->where('id', $id)
+                ->where('workspace_id', $wsId)
+                ->update(['is_active' => false, 'updated_at' => now()]);
+            return response()->json(['success' => (bool) $rows]);
+        });
+    });
+
+    // ── WordPress Sites ─────────────────────────────────────────────────
+    Route::prefix('wp-sites')->group(function () {
+
+        // List connected sites (currently 1-per-workspace via seo_settings)
+        Route::get('/', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $get = fn($k) => \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', $k)->value('value');
+            $siteUrl       = $get('site_url');
+            $siteName      = $get('site_name');
+            $webhookSecret = $get('webhook_secret');
+            $indexed       = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)->count();
+            $sites = $siteUrl ? [[
+                'url'            => $siteUrl,
+                'name'           => $siteName ?: $siteUrl,
+                'webhook_secret' => $webhookSecret,
+                'pages_indexed'  => $indexed,
+                'status'         => 'connected',
+            ]] : [];
+            return response()->json(['success' => true, 'sites' => $sites]);
+        });
+
+        // Disconnect — drops site_url, site_name, webhook_secret rows
+        Route::delete('/', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $rows = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)
+                ->whereIn('key', ['site_url', 'site_name', 'webhook_secret'])
+                ->delete();
+            return response()->json(['success' => true, 'deleted' => $rows]);
+        });
+
+        // Rotate webhook secret (40-char hex)
+        Route::post('/rotate-secret', function (\Illuminate\Http\Request $r) {
+            $wsId   = $r->attributes->get('workspace_id');
+            $secret = bin2hex(random_bytes(20));
+            \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
+                ['workspace_id' => $wsId, 'key' => 'webhook_secret'],
+                ['value' => $secret, 'updated_at' => now(), 'created_at' => now()]
+            );
+            return response()->json(['success' => true, 'secret' => $secret]);
+        });
+    });
+});
