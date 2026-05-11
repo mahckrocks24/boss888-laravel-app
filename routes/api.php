@@ -1908,6 +1908,243 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             return response()->json(["saved" => true]);
         });
 
+        // ─── 2026-05-12: Missing /seo/* routes — close the SPA orphan-tab gap.
+        // These mirror equivalent /connector/* endpoints so the SEO engine
+        // bundle (which calls /api/seo/*) gets HTTP 200 instead of 404.
+
+        // Pages tab
+        Route::get('/indexed-content', function (\Illuminate\Http\Request $r) {
+            $wsId    = $r->attributes->get('workspace_id');
+            $perPage = min(100, max(1, (int) $r->query('per_page', 25)));
+            $filter  = $r->query('filter', '');
+            $q       = $r->query('q', '');
+            $query   = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId);
+            if ($filter === 'low_score')    { $query->where('content_score', '<', 50); }
+            if ($filter === 'missing_meta') { $query->whereNull('meta_description'); }
+            if ($filter === 'thin_content') { $query->where('word_count', '<', 300); }
+            if ($filter === 'no_h1')        { $query->whereNull('h1'); }
+            if ($q) {
+                $query->where(function ($x) use ($q) {
+                    $x->where('url', 'like', "%{$q}%")->orWhere('title', 'like', "%{$q}%");
+                });
+            }
+            $pages = $query->orderBy('content_score')->paginate($perPage);
+            return response()->json([
+                'success' => true,
+                'items'   => $pages->items(),
+                'total'   => $pages->total(),
+                'page'    => $pages->currentPage(),
+            ]);
+        });
+
+        Route::post('/scan-pages', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $url  = $r->input('url') ?: \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+            if (!$url) {
+                return response()->json(['success' => false, 'error' => 'url_required'], 422);
+            }
+            try {
+                $svc = app(\App\Engines\SEO\Services\SeoService::class);
+                $result = $svc->fetchAndIndexUrl($wsId, $url);
+                return response()->json(['success' => true, 'result' => $result]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+        });
+
+        Route::get('/image-issues', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $limit = min(200, (int) $r->query('limit', 50));
+            $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where(function ($q) {
+                    $q->where('image_count', 0)->orWhereNull('image_count');
+                })
+                ->orderBy('content_score')
+                ->limit($limit)
+                ->get(['url', 'title', 'image_count', 'content_score']);
+            return response()->json([
+                'success' => true,
+                'issues'  => $pages,
+                'total'   => $pages->count(),
+            ]);
+        });
+
+        Route::get('/ctr-analysis', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Connect Google Search Console to see CTR data.',
+                'data'    => [],
+            ]);
+        });
+
+        // Quick wins — uses REAL seo_audit_items columns (category, details, score)
+        // NOT severity/recommendation which don't exist. Mirrors the working
+        // /connector/quick-wins handler.
+        Route::get('/quick-wins', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $url  = $r->query('url', '');
+            $items = \Illuminate\Support\Facades\DB::table('seo_audit_items')
+                ->join('seo_audits', 'seo_audit_items.audit_id', '=', 'seo_audits.id')
+                ->where('seo_audits.workspace_id', $wsId)
+                ->where('seo_audit_items.status', 'fail')
+                ->when($url, fn ($q) => $q->where('seo_audit_items.url', $url))
+                ->orderBy('seo_audit_items.score')
+                ->limit(20)
+                ->select(
+                    'seo_audit_items.check_name as title',
+                    'seo_audit_items.category as severity',
+                    'seo_audit_items.details as description',
+                    'seo_audit_items.url'
+                )
+                ->get();
+            $rankWins = \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)
+                ->whereBetween('current_rank', [11, 20])
+                ->limit(10)
+                ->get(['keyword', 'current_rank', 'volume', 'target_url'])
+                ->map(fn ($k) => [
+                    'title'       => "Rank boost: \"{$k->keyword}\" (pos #{$k->current_rank})",
+                    'severity'    => 'opportunity',
+                    'description' => "Volume: {$k->volume}. Push from #{$k->current_rank} to top 10.",
+                    'url'         => $k->target_url,
+                ]);
+            return response()->json([
+                'success'    => true,
+                'quick_wins' => array_merge($items->toArray(), $rankWins->toArray()),
+                'total'      => $items->count() + $rankWins->count(),
+            ]);
+        });
+
+        // Links tab
+        Route::get('/link-opportunities', function (\Illuminate\Http\Request $r) {
+            $wsId   = $r->attributes->get('workspace_id');
+            $srcUrl = $r->query('source_url', '');
+            $svc    = app(\App\Engines\SEO\Services\SeoService::class);
+            $result = $svc->generateLinkSuggestions($wsId, ['source_url' => $srcUrl]);
+            return response()->json([
+                'success'     => true,
+                'suggestions' => $result['suggestions'] ?? $result,
+            ]);
+        });
+
+        // Topics tab — stubs until topic clustering ships
+        Route::get('/clusters', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'  => true,
+                'clusters' => [],
+                'message'  => 'Topic clustering coming soon.',
+            ]);
+        });
+        Route::get('/clusters/gaps', function (\Illuminate\Http\Request $r) {
+            return response()->json(['success' => true, 'gaps' => []]);
+        });
+
+        // Competitors tab — derive from SERP results
+        Route::get('/competitors', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $comps = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+                ->where('workspace_id', $wsId)
+                ->whereNotNull('domain')
+                ->select('domain',
+                    \Illuminate\Support\Facades\DB::raw('COUNT(*) as appearances'),
+                    \Illuminate\Support\Facades\DB::raw('AVG(position) as avg_position'))
+                ->groupBy('domain')
+                ->orderByDesc('appearances')
+                ->limit(20)
+                ->get();
+            return response()->json(['success' => true, 'competitors' => $comps]);
+        });
+        Route::get('/competitors/tracked', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $comps = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+                ->where('workspace_id', $wsId)
+                ->whereNotNull('domain')
+                ->select('domain',
+                    \Illuminate\Support\Facades\DB::raw('COUNT(*) as appearances'),
+                    \Illuminate\Support\Facades\DB::raw('AVG(position) as avg_position'))
+                ->groupBy('domain')
+                ->orderByDesc('appearances')
+                ->limit(20)
+                ->get();
+            return response()->json(['success' => true, 'competitors' => $comps]);
+        });
+
+        // Insights tab
+        Route::get('/insights/summary', function (\Illuminate\Http\Request $r) {
+            $wsId       = $r->attributes->get('workspace_id');
+            $avgScore   = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                            ->where('workspace_id', $wsId)->avg('content_score');
+            $totalPages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                            ->where('workspace_id', $wsId)->count();
+            $keywords   = \Illuminate\Support\Facades\DB::table('seo_keywords')
+                            ->where('workspace_id', $wsId)->count();
+            return response()->json([
+                'success'     => true,
+                'avg_score'   => (int) round($avgScore ?? 0),
+                'total_pages' => $totalPages,
+                'keywords'    => $keywords,
+            ]);
+        });
+        Route::get('/insights/content-performance', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('content_score')
+                ->limit(20)
+                ->get(['url', 'title', 'content_score', 'word_count', 'updated_at']);
+            return response()->json(['success' => true, 'pages' => $pages]);
+        });
+        Route::get('/insights/top-pages', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('content_score')
+                ->limit(10)
+                ->get(['url', 'title', 'content_score']);
+            return response()->json(['success' => true, 'pages' => $pages]);
+        });
+        Route::get('/insights/traffic', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Connect Google Search Console for traffic data.',
+                'data'    => [],
+            ]);
+        });
+
+        // Reports tab
+        Route::get('/brand', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $ws   = \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId);
+            return response()->json([
+                'success' => true,
+                'brand'   => [
+                    'name' => $ws->name ?? '',
+                    'slug' => $ws->slug ?? '',
+                ],
+            ]);
+        });
+
+        // Settings — list articles
+        Route::get('/articles', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $arts = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get(['id', 'title', 'status', 'created_at']);
+            return response()->json(['success' => true, 'articles' => $arts]);
+        });
+
+        // ai-report — GET alias (the existing POST stays at line 1760)
+        Route::get('/ai-report', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $svc  = app(\App\Engines\SEO\Services\SeoService::class);
+            return response()->json($svc->getReport($wsId));
+        });
+
     });
 
     // ══════════════════════════════════════════════════════════════
