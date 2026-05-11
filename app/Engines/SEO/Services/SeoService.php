@@ -2094,37 +2094,68 @@ class SeoService
         $text = preg_replace('/\s+/', ' ', trim($text));
         $wordCount = str_word_count($text);
 
+        // 2026-05-13 Phase 1 — extract internal links with anchors so we can
+        // (a) populate seo_link_graph (b) score CTR + (c) drive PageRank.
+        $internalLinkRows = $this->extractInternalLinksWithAnchors($html ?? '', $url);
+        $internalLinks    = count($internalLinkRows);
+        $externalLinks    = 0;
         $urlHost = parse_url($url, PHP_URL_HOST);
-        $internalLinks = 0;
-        $externalLinks = 0;
         foreach ($dom->getElementsByTagName('a') as $a) {
             $href = $a->getAttribute('href');
-            if (empty($href) || $href === '#') continue;
+            if (empty($href) || $href === '#') { continue; }
             $linkHost = parse_url($href, PHP_URL_HOST);
-            if ($linkHost === null || $linkHost === $urlHost) $internalLinks++;
-            else $externalLinks++;
+            if ($linkHost && $linkHost !== $urlHost) { $externalLinks++; }
         }
 
         $intent = self::classifyIntent($titleText, $url, $text);
-        $scoreResult = $this->scoreContent($titleText, $metaDesc, $h1Text, $h2Count, $wordCount, $imageCount, $internalLinks);
 
+        // Build the data array up-front so scoreContentExtended can see all
+        // the Phase 0 / Phase 1 signals (has_schema, has_og, internal links).
         $data = [
-            'workspace_id' => $wsId,
-            'title' => $titleText, 'meta_title' => $titleText, 'meta_description' => $metaDesc,
-            'h1' => $h1Text, 'h2_count' => $h2Count, 'word_count' => $wordCount,
-            'image_count' => $imageCount, 'internal_link_count' => $internalLinks, 'external_link_count' => $externalLinks,
-            'canonical' => $canonical, 'robots' => $metaRobots,
-            'has_schema' => $hasSchema, 'has_og' => $hasOg, 'lang' => $lang, 'intent' => $intent,
-            'content_score' => $scoreResult['score'],
-            'http_status' => $httpStatus, 'response_time_ms' => $responseTimeMs, 'page_size_bytes' => $pageSize,
-            'score_breakdown_json' => json_encode($scoreResult['breakdown']),
+            'workspace_id'         => $wsId,
+            'title'                => $titleText,
+            'meta_title'           => $titleText,
+            'meta_description'     => $metaDesc,
+            'h1'                   => $h1Text,
+            'h2_count'             => $h2Count,
+            'word_count'           => $wordCount,
+            'image_count'          => $imageCount,
+            'internal_link_count'  => $internalLinks,
+            'external_link_count'  => $externalLinks,
+            'canonical'            => $canonical,
+            'robots'               => $metaRobots,
+            'has_schema'           => $hasSchema,
+            'has_og'               => $hasOg,
+            'lang'                 => $lang,
+            'intent'               => $intent,
+            'http_status'          => $httpStatus,
+            'response_time_ms'     => $responseTimeMs,
+            'page_size_bytes'      => $pageSize,
+            'content'              => $text,
+            'url'                  => $url,
         ];
 
-        $this->upsertContentIndex($url, $data);
+        // Phase 1 — extended scorer (includes schema_markup, og_tags,
+        // internal_links_weighted, readability).
+        $scoreResult = $this->scoreContentExtended($data);
+        $data['content_score']        = $scoreResult['score'];
+        $data['score_breakdown_json'] = json_encode($scoreResult['breakdown']);
+
+        // Phase 1 — CTR potential scoring (intent × meta quality × schema × URL clarity).
+        $ctr = $this->scoreCtrPotential($data);
+        $data['ctr_potential_score'] = $ctr['score'];
+        $data['ctr_label']           = $ctr['label'];
+
+        // 2026-05-13 hotfix — $data['content'] and $data['url'] aren't columns
+        // in seo_content_index; upsertContentIndex would otherwise silently
+        // fail (try/catch in that method just Log::warnings). Strip them
+        // before the upsert so ctr_potential_score + ctr_label actually persist.
+        $upsertData = $data;
+        unset($upsertData['content'], $upsertData['url']);
+        $this->upsertContentIndex($url, $upsertData);
         $this->logActivity($wsId, null, 'index_url', 'seo_index', null, ['url' => $url, 'score' => $scoreResult['score']]);
 
-        // 2026-05-12: FIX 6 — extract outbound (external) links into seo_outbound_links.
-        // FIX 7 — extract <img> tags into seo_images for alt-text auditing.
+        // 2026-05-12: extract outbound (external) links + <img> tags.
         try {
             $this->extractOutboundLinks($wsId, $url, $html ?? '');
             $this->extractImages($wsId, $url, $html ?? '');
@@ -2132,14 +2163,51 @@ class SeoService
             Log::debug('[SEO] link/image extraction failed for ' . $url . ': ' . $e->getMessage());
         }
 
-        // 2026-05-12: FIX 4 — auto-generate internal link suggestions after indexing.
+        // 2026-05-13 Phase 1 — persist internal-link graph rows. Delete-then-
+        // insert per source URL keeps the table coherent without a UNIQUE
+        // constraint (an anchor can change between visits).
+        try {
+            DB::table('seo_link_graph')
+                ->where('workspace_id', $wsId)
+                ->where('source_url', $url)
+                ->where('is_internal', true)
+                ->delete();
+            if (!empty($internalLinkRows)) {
+                $rows = [];
+                $now = now();
+                foreach ($internalLinkRows as $row) {
+                    $rows[] = [
+                        'workspace_id' => $wsId,
+                        'source_url'   => $url,
+                        'target_url'   => $row['url'],
+                        'anchor_text'  => $row['anchor'] ?? null,
+                        'is_internal'  => true,
+                        'created_at'   => $now,
+                        'updated_at'   => $now,
+                    ];
+                }
+                DB::table('seo_link_graph')->insert($rows);
+            }
+        } catch (\Throwable $e) {
+            Log::debug('[SEO] link_graph insert failed for ' . $url . ': ' . $e->getMessage());
+        }
+
+        // 2026-05-12: auto-generate internal link suggestions after indexing.
         try {
             $this->generateLinkSuggestions($wsId, ['source_url' => $url]);
         } catch (\Throwable $e) {
             Log::debug('[SEO] link suggestions failed for ' . $url . ': ' . $e->getMessage());
         }
 
-        return ['success' => true, 'url' => $url, 'score' => $scoreResult['score'], 'word_count' => $wordCount, 'intent' => $intent];
+        return [
+            'success'    => true,
+            'url'        => $url,
+            'score'      => $scoreResult['score'],
+            'word_count' => $wordCount,
+            'intent'     => $intent,
+            'ctr_score'  => $ctr['score'],
+            'ctr_label'  => $ctr['label'],
+        ];
     }
 
     /**
@@ -2147,6 +2215,116 @@ class SeoService
      * Internal links (same host) are skipped — handled separately by the
      * generateLinkSuggestions flow.
      */
+    /**
+     * 2026-05-13 Phase 1 — extract internal links WITH anchor text using
+     * DOMDocument (more reliable than regex with HTML). Returns an array
+     * of {url, anchor} pairs scoped to the same host as $baseUrl.
+     */
+    private function extractInternalLinksWithAnchors(string $html, string $baseUrl): array
+    {
+        if ($html === '' || $baseUrl === '') { return []; }
+        $host = parse_url($baseUrl, PHP_URL_HOST);
+        if (!$host) { return []; }
+
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        @$dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $scheme = parse_url($baseUrl, PHP_URL_SCHEME) ?: 'https';
+        $seen   = [];
+        $links  = [];
+        foreach ($dom->getElementsByTagName('a') as $a) {
+            $href = trim($a->getAttribute('href'));
+            if ($href === '' || $href[0] === '#') { continue; }
+            // Resolve relative URLs
+            if (str_starts_with($href, '/')) {
+                $href = $scheme . '://' . $host . $href;
+            } elseif (!str_starts_with($href, 'http')) {
+                continue;
+            }
+            $linkHost = parse_url($href, PHP_URL_HOST);
+            if (!$linkHost || $linkHost !== $host) { continue; }
+            // 2026-05-13 hotfix — mirror fetchAndIndexUrl URL normalization
+            // (strip trailing slash, preserve query+fragment) so link_graph
+            // targets match seo_content_index urls. Without this, every
+            // page reports inbound_links = 0 and PageRank degenerates.
+            $hp = parse_url($href);
+            if ($hp && isset($hp['scheme'], $hp['host'])) {
+                $path  = isset($hp['path']) ? rtrim($hp['path'], '/') : '';
+                $clean = $hp['scheme'] . '://' . $hp['host'] . $path;
+                if (!empty($hp['query']))    { $clean .= '?' . $hp['query']; }
+                if (!empty($hp['fragment'])) { $clean .= '#' . $hp['fragment']; }
+                $href = $clean;
+            }
+            if (isset($seen[$href])) { continue; }
+            $seen[$href] = true;
+            $anchor = trim($a->textContent ?? '');
+            $links[] = [
+                'url'    => $href,
+                'anchor' => mb_substr($anchor, 0, 300),
+            ];
+        }
+        return $links;
+    }
+
+    /**
+     * 2026-05-13 Phase 1 — compute CTR potential 0..100 for a page given
+     * its meta/intent/schema signals. Heuristic; correlates with the
+     * factors known to drive SERP click-through.
+     *
+     * Returns {score, label, reasons}.
+     */
+    private function scoreCtrPotential(array $data): array
+    {
+        $score   = 0;
+        $reasons = [];
+
+        // Intent alignment (30 pts) — commercial/transactional pages
+        // typically out-click informational ones in SERPs.
+        $intent = $data['intent'] ?? 'unknown';
+        if (in_array($intent, ['commercial', 'transactional'], true)) {
+            $score += 30; $reasons[] = 'High-intent page type';
+        } elseif ($intent === 'informational') {
+            $score += 20; $reasons[] = 'Informational intent';
+        } else {
+            $score += 10;
+        }
+
+        // Meta title length (25 pts)
+        $titleLen = mb_strlen((string) ($data['meta_title'] ?? $data['title'] ?? ''));
+        if ($titleLen >= 30 && $titleLen <= 60) {
+            $score += 25; $reasons[] = 'Optimal title length';
+        } elseif ($titleLen > 0) {
+            $score += 12; $reasons[] = 'Title present but suboptimal length';
+        }
+
+        // Meta description length (25 pts)
+        $descLen = mb_strlen((string) ($data['meta_description'] ?? ''));
+        if ($descLen >= 70 && $descLen <= 160) {
+            $score += 25; $reasons[] = 'Optimal description length';
+        } elseif ($descLen > 0) {
+            $score += 12;
+        }
+
+        // Schema markup (10 pts) — rich results = higher SERP CTR
+        if (!empty($data['has_schema'])) {
+            $score += 10; $reasons[] = 'Schema markup detected';
+        }
+
+        // URL clarity (10 pts) — short, readable slugs without long digit runs
+        $url  = (string) ($data['url'] ?? '');
+        $slug = basename(rtrim(parse_url($url, PHP_URL_PATH) ?? '', '/'));
+        if ($slug && mb_strlen($slug) <= 50 && !preg_match('/[0-9]{5,}/', $slug)) {
+            $score += 10; $reasons[] = 'Clean URL structure';
+        }
+
+        $score = min(100, $score);
+        $label = $score >= 80 ? 'High' : ($score >= 50 ? 'Medium' : 'Low');
+
+        return ['score' => $score, 'label' => $label, 'reasons' => $reasons];
+    }
+
     private function extractOutboundLinks(int $wsId, string $sourceUrl, string $html): void
     {
         if ($html === '') { return; }
@@ -2249,14 +2427,22 @@ class SeoService
         // FIX 2026-05-11: compute score INSIDE the wrapper so we can persist
         // content_score + score_breakdown_json on the same upsert. Previously
         // the route computed score post-upsert and never wrote it back.
-        $score = $this->scoreContent(
-            $data['title'] ?? '',
-            $data['meta_description'] ?? '',
-            $data['h1'] ?? '',
-            $h2Count, $wordCount, $imgCount, $intLinks,
-            null,
-            $data['content'] ?? null
-        );
+        // 2026-05-13 Phase 1 — switch to scoreContentExtended so connector-pushed
+        // pages also get schema/og/internal_links/readability scoring.
+        $score = $this->scoreContentExtended([
+            'title'               => $data['title'] ?? '',
+            'meta_title'          => $data['title'] ?? '',
+            'meta_description'    => $data['meta_description'] ?? '',
+            'h1'                  => $data['h1'] ?? '',
+            'h2_count'            => $h2Count,
+            'word_count'          => $wordCount,
+            'image_count'         => $imgCount,
+            'internal_link_count' => $intLinks,
+            'has_schema'          => (bool) ($data['has_schema'] ?? false),
+            'has_og'              => (bool) ($data['has_og'] ?? false),
+            'content'             => $data['content'] ?? null,
+            'keyword'             => $data['target_keyword'] ?? null,
+        ]);
 
         $payload = [
             'workspace_id'         => $wsId,

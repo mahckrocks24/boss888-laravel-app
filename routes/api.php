@@ -2174,10 +2174,26 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         });
 
         Route::get('/ctr-analysis', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            // 2026-05-13 Phase 1 — read computed CTR potential from
+            // seo_content_index. Populated by scoreCtrPotential() during
+            // fetchAndIndexUrl. Real GSC integration comes in Phase 2.
+            $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->whereNotNull('ctr_potential_score')
+                ->orderByDesc('ctr_potential_score')
+                ->limit(50)
+                ->get(['url', 'title', 'ctr_potential_score', 'ctr_label',
+                       'meta_title', 'meta_description', 'intent', 'content_score']);
+            $avg = $pages->avg('ctr_potential_score');
             return response()->json([
-                'success' => true,
-                'message' => 'Connect Google Search Console to see CTR data.',
-                'data'    => [],
+                'success'   => true,
+                'pages'     => $pages,
+                'avg_score' => $avg ? (int) round($avg) : null,
+                'total'     => $pages->count(),
+                'message'   => $pages->isEmpty()
+                    ? 'Run a deep audit or scan-pages to populate CTR potential scores.'
+                    : null,
             ]);
         });
 
@@ -2270,19 +2286,48 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         // Insights tab
         Route::get('/insights/summary', function (\Illuminate\Http\Request $r) {
-            $wsId       = $r->attributes->get('workspace_id');
-            $avgScore   = \Illuminate\Support\Facades\DB::table('seo_content_index')
-                            ->where('workspace_id', $wsId)->avg('content_score');
-            $totalPages = \Illuminate\Support\Facades\DB::table('seo_content_index')
-                            ->where('workspace_id', $wsId)->count();
-            $keywords   = \Illuminate\Support\Facades\DB::table('seo_keywords')
-                            ->where('workspace_id', $wsId)->count();
+            $wsId = $r->attributes->get('workspace_id');
+
+            // 2026-05-13 Phase 1 — return REAL insights from seo_insights
+            // (populated by `php artisan seo:insights`). Sort critical→warning→opportunity.
+            $insights = \Illuminate\Support\Facades\DB::table('seo_insights')
+                ->where('workspace_id', $wsId)
+                ->whereNull('dismissed_at')
+                ->orderByRaw("CASE priority WHEN 'critical' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END")
+                ->orderByDesc('created_at')
+                ->get();
+
+            $summary = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->selectRaw('COUNT(*)                                              AS total_pages,
+                             ROUND(AVG(content_score), 1)                          AS avg_score,
+                             SUM(CASE WHEN inbound_links = 0 THEN 1 ELSE 0 END)    AS orphan_pages,
+                             SUM(CASE WHEN word_count   <  300 THEN 1 ELSE 0 END)  AS thin_pages,
+                             SUM(CASE WHEN meta_description IS NULL THEN 1 ELSE 0 END) AS missing_meta')
+                ->first();
+
+            $keywords = \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)->count();
+
             return response()->json([
                 'success'     => true,
-                'avg_score'   => (int) round($avgScore ?? 0),
-                'total_pages' => $totalPages,
+                'insights'    => $insights,
+                'total'       => $insights->count(),
+                'summary'     => $summary,
+                'avg_score'   => (int) round($summary->avg_score ?? 0),
+                'total_pages' => (int) ($summary->total_pages ?? 0),
                 'keywords'    => $keywords,
             ]);
+        });
+
+        // 2026-05-13 Phase 1 — POST /seo/insights/{id}/dismiss
+        Route::post('/insights/{id}/dismiss', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = $r->attributes->get('workspace_id');
+            \Illuminate\Support\Facades\DB::table('seo_insights')
+                ->where('id', $id)
+                ->where('workspace_id', $wsId)
+                ->update(['dismissed_at' => now(), 'updated_at' => now()]);
+            return response()->json(['success' => true]);
         });
         Route::get('/insights/content-performance', function (\Illuminate\Http\Request $r) {
             $wsId  = $r->attributes->get('workspace_id');

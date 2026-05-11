@@ -9,7 +9,10 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule): void
     {
-        // empty for now
+        // 2026-05-13 Phase 1 — SEO scheduled jobs.
+        $schedule->command('seo:insights')->daily()->withoutOverlapping();
+        $schedule->command('seo:authority-score')->weekly()->sundays()->at('03:00')->withoutOverlapping();
+        $schedule->command('seo:outbound-check')->twiceDaily(2, 14)->withoutOverlapping();
     }
 
     protected function commands(): void
