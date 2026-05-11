@@ -1,3 +1,36 @@
+// ═══════════════════════════════════════════════════════════════════
+// LGSC Embed Mode Detection — MUST RUN FIRST, before any fetch() fires
+// Reads ?lgsc_key=...&lgsc_ws=...&embed=1 from the URL query (hash fallback).
+// Sets window._LGSC_EMBED so every auth helper below can switch to X-API-KEY.
+// ═══════════════════════════════════════════════════════════════════
+(function _lgscDetectEmbed() {
+  var params = new URLSearchParams(window.location.search || '');
+  var key    = params.get('lgsc_key');
+  var wsId   = params.get('lgsc_ws');
+  var embed  = params.get('embed');
+  if (!key) {
+    var hash = window.location.hash || '';
+    var qIdx = hash.indexOf('?');
+    if (qIdx !== -1) {
+      var hp = new URLSearchParams(hash.substring(qIdx + 1));
+      key   = hp.get('lgsc_key');
+      wsId  = hp.get('lgsc_ws');
+      embed = hp.get('embed');
+    }
+  }
+  if (key && wsId && embed === '1') {
+    window._LGSC_EMBED = {
+      api_key:      key,
+      workspace_id: parseInt(wsId, 10),
+      embed:        true,
+    };
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.classList.add('lgsc-embed-mode');
+    }
+    try { console.log('[LGSC] Embed mode detected, ws=' + wsId + ', key=' + key.substring(0, 12) + '…'); } catch (_) {}
+  }
+})();
+
 // LevelUp Core v3.2.2
 // ═══════════════════════════════════════════════════════════════════
 // LevelUp Core JS v3.0.2
@@ -525,6 +558,13 @@ var API=window.LU_CFG.api, NONCE=window.LU_CFG.nonce, BN=window.LU_CFG.bn, BU=wi
 // Both can coexist — the REST auth filter handles either header.
 function authHeader() {
     var h = { 'Accept': 'application/json' };
+    // Embed mode (WP Connector iframe): always use API key auth — never JWT.
+    // This single check fans out to every fetch() that uses authHeader().
+    if (window._LGSC_EMBED && window._LGSC_EMBED.api_key) {
+        h['X-API-KEY']      = window._LGSC_EMBED.api_key;
+        h['X-Workspace-ID'] = String(window._LGSC_EMBED.workspace_id || '');
+        return h;
+    }
     var token = localStorage.getItem('lu_token');
     if (token) {
         h['Authorization'] = 'Bearer ' + token;
@@ -533,6 +573,19 @@ function authHeader() {
         h['X-WP-Nonce'] = NONCE;
     }
     return h;
+}
+
+// Helper: embed-aware Authorization headers for inline fetch() calls that
+// don't use authHeader() (post/get/put inline helpers and a few direct sites).
+function _lgscAuthForFetch(extra) {
+    extra = extra || {};
+    if (window._LGSC_EMBED && window._LGSC_EMBED.api_key) {
+        extra['X-API-KEY']      = window._LGSC_EMBED.api_key;
+        extra['X-Workspace-ID'] = String(window._LGSC_EMBED.workspace_id || '');
+    } else {
+        extra['Authorization'] = 'Bearer ' + (localStorage.getItem('lu_token') || '');
+    }
+    return extra;
 }
 // ── safeJson — safe fetch wrapper preventing "Unexpected token <" ────────────
 // Use instead of res.json() when response may be HTML (401 redirect etc).
@@ -2291,7 +2344,7 @@ async function submitTaskNote() {
 
 // Helper: PUT request
 async function put(url, data) {
-    var r = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')}, body:JSON.stringify(data) });
+    var r = await fetch(url, { method:'PUT', headers:_lgscAuthForFetch({'Content-Type':'application/json'}), body:JSON.stringify(data) });
     if (!r.ok) throw new Error('PUT failed: ' + r.status);
     return r.json();
 }
@@ -3157,8 +3210,8 @@ function fmt(t){
        .replace(/\n/g,'<br>');
   return s;
 }
-async function post(url,data){var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')},body:JSON.stringify(data)});var d=await r.json();if(!r.ok){if(d.code==='PLAN_GATED'||d.code==='NO_CREDITS'){showPlanGate(d.error||d.message||'This feature requires a plan upgrade.');return d;}throw new Error(d.message||d.error||'Request failed');}return d;}
-async function get(url){var r=await fetch(url,{cache:'no-store',headers:{'Accept':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')}});return r.json();}
+async function post(url,data){var r=await fetch(url,{method:'POST',headers:_lgscAuthForFetch({'Content-Type':'application/json','Accept':'application/json'}),body:JSON.stringify(data)});var d=await r.json();if(!r.ok){if(d.code==='PLAN_GATED'||d.code==='NO_CREDITS'){showPlanGate(d.error||d.message||'This feature requires a plan upgrade.');return d;}throw new Error(d.message||d.error||'Request failed');}return d;}
+async function get(url){var r=await fetch(url,{cache:'no-store',headers:_lgscAuthForFetch({'Accept':'application/json'})});return r.json();}
 
 // ── File upload ────────────────────────────────────────────────────────────
 let pendingAttachments = [];
@@ -4063,40 +4116,6 @@ var _luBase = (function() {
     return window.location.origin;
 })();
 
-// ── Embed mode (WP Connector iframe) ─────────────────────────────────────
-// Parses lgsc_key + lgsc_ws + embed=1 from the URL hash on first load and
-// stores them in window._LGSC_EMBED. When set, _luFetch uses the API key
-// auth path (X-API-KEY) instead of the localStorage JWT, and the JwtAuth
-// middleware on Laravel side accepts the same header as fallback auth.
-(function _lgscDetectEmbed() {
-  // Try real query string first — plugin v1.0.9+ puts params there:
-  //   /app/?lgsc_key=...&lgsc_ws=...&embed=1#seo
-  var params = new URLSearchParams(window.location.search || '');
-  var key    = params.get('lgsc_key');
-  var wsId   = params.get('lgsc_ws');
-  var embed  = params.get('embed');
-  // Legacy fallback for older plugin URLs (/app/#seo?lgsc_key=...)
-  if (!key) {
-    var hash = window.location.hash || '';
-    var qIdx = hash.indexOf('?');
-    if (qIdx !== -1) {
-      var hashParams = new URLSearchParams(hash.substring(qIdx + 1));
-      key   = hashParams.get('lgsc_key');
-      wsId  = hashParams.get('lgsc_ws');
-      embed = hashParams.get('embed');
-    }
-  }
-  if (key && wsId && embed === '1') {
-    window._LGSC_EMBED = {
-      api_key:      key,
-      workspace_id: parseInt(wsId, 10),
-      embed:        true,
-    };
-    document.documentElement.classList.add('lgsc-embed-mode');
-    try { console.log('[LGSC] Embed mode detected, ws=' + wsId); } catch (_) {}
-  }
-})();
-
 async function _luFetch(method, path, body) {
   var token  = localStorage.getItem('lu_token');
   var nonce  = (window.LU_CFG && window.LU_CFG.nonce) ? window.LU_CFG.nonce : '';
@@ -4129,6 +4148,14 @@ async function _appBootstrap() {
   if (window.LU_CFG && window.LU_CFG.nonce) return; // WP-rendered context
   if (window.location.pathname.indexOf('/wp-admin') !== -1) return; // extra guard
   if (!document.getElementById('lu-auth-root')) return;
+
+  // LGSC embed mode: skip login/refresh dance — we authenticate via X-API-KEY
+  // on every API call. Jump straight to the dashboard.
+  if (window._LGSC_EMBED && window._LGSC_EMBED.api_key) {
+    window._currentWorkspaceId = window._LGSC_EMBED.workspace_id;
+    try { _appEnterDashboard(); } catch (e) { console.warn('[LGSC] embed bootstrap fallback:', e); }
+    return;
+  }
 
   var token = localStorage.getItem('lu_token');
   if (!token) { if (window.location.hash === "#signup") { _renderSignup(); } else { _renderLogin(); } return; }
@@ -4163,7 +4190,7 @@ async function _appBootstrap() {
   // dashboard. Caches the flag so subsequent loads skip the network call.
   try {
     var wsRes = await fetch(_luBase + '/api/builder/websites', {
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('lu_token'), 'Accept': 'application/json' },
+      headers: _lgscAuthForFetch({ 'Accept': 'application/json' }),
       cache: 'no-store',
     });
     if (wsRes.ok) {
@@ -4178,7 +4205,7 @@ async function _appBootstrap() {
   } catch(_) { /* fall through to onboarding-status check */ }
   try {
     var sr = await fetch(_luBase + '/api/onboarding/status', {
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('lu_token'), 'Accept': 'application/json' },
+      headers: _lgscAuthForFetch({ 'Accept': 'application/json' }),
       cache: 'no-store',
     });
     if (sr.ok) {
