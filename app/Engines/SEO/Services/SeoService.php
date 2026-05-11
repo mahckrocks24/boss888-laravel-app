@@ -1791,6 +1791,18 @@ class SeoService
      */
     public function fetchAndIndexUrl(int $wsId, string $url): array
     {
+        // 2026-05-12: normalize URL to a single canonical form so
+        // 'https://site.com' and 'https://site.com/' don't produce
+        // duplicate rows in seo_content_index / seo_images /
+        // seo_outbound_links. Strip query/fragment last so they survive.
+        $parts = parse_url($url);
+        if ($parts && isset($parts['scheme'], $parts['host'])) {
+            $path = isset($parts['path']) ? rtrim($parts['path'], '/') : '';
+            $url  = $parts['scheme'] . '://' . $parts['host'] . $path;
+            if (!empty($parts['query']))    { $url .= '?' . $parts['query']; }
+            if (!empty($parts['fragment'])) { $url .= '#' . $parts['fragment']; }
+        }
+
         $fetchStart = microtime(true);
         try {
             $response = Http::timeout(15)->withHeaders(['User-Agent' => 'LevelUpSEO/1.0 (indexer)'])->get($url);
@@ -1956,8 +1968,13 @@ class SeoService
             $altText    = null;
             $emptyAlt   = false;
             if (!$missingAlt && preg_match('/\salt="([^"]*)"/i', $tag, $altM)) {
-                $altText  = $altM[1];
-                $emptyAlt = trim($altText) === '';
+                $rawAlt = $altM[1];
+                // 2026-05-12: decode HTML entities + force UTF-8. Fixes
+                // 'â€“' garble where Windows-1252 bytes were being read as
+                // raw UTF-8.
+                $encoded = mb_convert_encoding($rawAlt, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+                $altText = trim(html_entity_decode($encoded, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $emptyAlt = $altText === '';
             }
 
             $titleText = null;

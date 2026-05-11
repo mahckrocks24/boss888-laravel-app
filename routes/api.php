@@ -2058,13 +2058,27 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 ->orderByDesc('updated_at')
                 ->limit($limit)
                 ->get(['page_url', 'image_url', 'alt_text', 'missing_alt', 'empty_alt', 'suggested_alt']);
-            $summary = \Illuminate\Support\Facades\DB::table('seo_images')
+            $sumRow = \Illuminate\Support\Facades\DB::table('seo_images')
                 ->where('workspace_id', $wsId)
                 ->selectRaw('COUNT(*) AS total,
                              SUM(missing_alt) AS missing_alt,
                              SUM(empty_alt)   AS empty_alt,
-                             COUNT(DISTINCT page_url) AS pages_affected')
+                             COUNT(DISTINCT page_url) AS pages')
                 ->first();
+            // 2026-05-12: shape matches /image-summary so the SPA can read
+            // either response with the same parsing code.
+            $missing = (int) ($sumRow->missing_alt ?? 0);
+            $empty   = (int) ($sumRow->empty_alt   ?? 0);
+            $summary = [
+                'total_images'        => (int) ($sumRow->total ?? 0),
+                'pages_scanned'       => (int) ($sumRow->pages ?? 0),
+                'pages_affected'      => (int) ($sumRow->pages ?? 0),
+                'missing_alt'         => $missing,
+                'empty_alt'           => $empty,
+                'issues_found'        => $missing + $empty,
+                'filename_unfriendly' => 0,
+                'wrong_format'        => 0,
+            ];
             return response()->json([
                 'success' => true,
                 'issues'  => $issues,
@@ -2113,7 +2127,22 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                              SUM(empty_alt)   AS empty_alt,
                              COUNT(DISTINCT page_url) AS pages')
                 ->first();
-            return response()->json(['success' => true, 'summary' => $s]);
+            // 2026-05-12: field names the SPA reads (lgseRenderImagesBody).
+            // Cast SUM() results to int — MySQL returns DECIMAL-as-string.
+            $missing = (int) ($s->missing_alt ?? 0);
+            $empty   = (int) ($s->empty_alt   ?? 0);
+            return response()->json([
+                'success' => true,
+                'summary' => [
+                    'total_images'        => (int) ($s->total ?? 0),
+                    'pages_scanned'       => (int) ($s->pages ?? 0),
+                    'missing_alt'         => $missing,
+                    'empty_alt'           => $empty,
+                    'issues_found'        => $missing + $empty,
+                    'filename_unfriendly' => 0,
+                    'wrong_format'        => 0,
+                ],
+            ]);
         });
 
         // 2026-05-12: FIX 3 — /seo/serp-results
