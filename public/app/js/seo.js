@@ -3429,6 +3429,24 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
     setTimeout(function () { animateGauge(document.getElementById('lgse-main-gauge'), 80); }, 50);
     loadOverviewData();
+
+    // 2026-05-12: cold-workspace fast-path. If we know the site URL but have
+    // no audit history, auto-trigger the first audit so the dashboard fills
+    // in without the user having to find the modal. Waits 2s for
+    // loadOverviewData / loadSiteList to settle.
+    setTimeout(function () {
+      var siteUrl = window._lgseActiveSite || window._LGSC_SITE_URL;
+      var sites   = window._lgseSites || [];
+      if (siteUrl && sites.length === 0 && !window._lgseAutoAuditFired
+          && typeof window.lgseDoRunAudit === 'function') {
+        window._lgseAutoAuditFired = true;
+        if (typeof window.showToast === 'function') {
+          window.showToast('Starting first audit for ' + siteUrl + '…', 'info');
+        }
+        try { console.log('[LGSE] Cold workspace — auto-running first audit: ' + siteUrl); } catch (_) {}
+        window.lgseDoRunAudit(siteUrl);
+      }
+    }, 2000);
   }
 
   function dimCard(id, label, hint, weight, color) {
@@ -3664,6 +3682,17 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   // P0-AUD-FIX2: Workspace site list. Boot-time fetch from audit history
   // (audit-history fallback only — /api/seo/workspaces/sites does not exist).
   function loadSiteList() {
+    // 2026-05-12: pre-arm _lgseActiveSite from workspace seo_settings before
+    // falling back to audit-history-derived sites. Fires once per page load.
+    if (!window._lgseActiveSite && !window._lgseSettingsFetched) {
+      window._lgseSettingsFetched = true;
+      api('GET', '/settings').then(function (s) {
+        if (s && s.site_url && !window._lgseActiveSite) {
+          window._lgseActiveSite = s.site_url;
+          try { console.log('[LGSE] Active site from /seo/settings: ' + s.site_url); } catch (_) {}
+        }
+      }).catch(function () {});
+    }
     if (window._lgseSites && window._lgseSites.length) return;
     api('GET', '/audits?limit=50').then(function (d) {
       var rows = (d && (d.audits || d.data)) || (Array.isArray(d) ? d : []);
@@ -3724,7 +3753,10 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       siteOptions = '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:7px;padding:8px 12px;font-size:11.5px;color:var(--lgse-t2);margin-bottom:8px;font-family:var(--lgse-mono)">' + esc(sites[0].url)
         + '<input type="hidden" id="lgse-audit-url-select" value="' + esc(sites[0].url) + '"></div>';
     } else {
-      siteOptions = '<input type="text" id="lgse-audit-url-select" placeholder="https://yoursite.com" style="width:100%;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:7px;padding:8px 12px;font-size:11.5px;color:var(--lgse-t1);outline:none;margin-bottom:8px">';
+      // 2026-05-12: pre-fill from _lgseActiveSite or _LGSC_SITE_URL (embed)
+      var _prefill = window._lgseActiveSite || window._LGSC_SITE_URL || '';
+      var _prefillEsc = _prefill.replace(/"/g, '&quot;');
+      siteOptions = '<input type="text" id="lgse-audit-url-select" placeholder="https://yoursite.com" value="' + _prefillEsc + '" style="width:100%;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:7px;padding:8px 12px;font-size:11.5px;color:var(--lgse-t1);outline:none;margin-bottom:8px">';
     }
 
     var overlay = document.createElement('div');
@@ -3794,6 +3826,11 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   window.lgseRunDeepScan = function () {
     var sites = window._lgseSites || [];
     var siteUrl = window._lgseActiveSite || (sites[0] && sites[0].url) || '';
+    // 2026-05-12: fall back to the embed-passed site URL before prompting.
+    if (!siteUrl && window._LGSC_SITE_URL) {
+      siteUrl = window._LGSC_SITE_URL;
+      window._lgseActiveSite = siteUrl;
+    }
     if (!siteUrl) { window.lgseRunAudit(); return; }
     var btn = document.getElementById('lgse-deepscan-btn');
     var progEl = document.getElementById('lgse-deepscan-progress');

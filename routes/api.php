@@ -8310,6 +8310,25 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
     // ── Health check ─────────────────────────────────────────────────────
     Route::get('/ping', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
+
+        // 2026-05-12: auto-seed seo_settings.site_url from the plugin's home_url
+        // (sent via X-Site-URL header or ?site_url= query). Idempotent — only
+        // writes when the row is missing or the URL has changed. Lets the SPA
+        // pre-fill the audit modal without a separate /connector/register-site
+        // call.
+        $siteUrl = $r->header('X-Site-URL') ?: $r->query('site_url');
+        if ($siteUrl) {
+            $clean = rtrim((string) $siteUrl, '/');
+            $existing = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+            if ($existing !== $clean) {
+                \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
+                    ['workspace_id' => $wsId, 'key' => 'site_url'],
+                    ['value' => $clean, 'updated_at' => now(), 'created_at' => now()]
+                );
+            }
+        }
+
         $ws   = \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId);
         $plan = $ws ? \Illuminate\Support\Facades\DB::table('plans')
             ->join('subscriptions', 'plans.id', '=', 'subscriptions.plan_id')

@@ -21,6 +21,19 @@
     embed:        true,
   };
 
+  // 2026-05-12: plugin v1.0.13+ ships home_url() as ?lgsc_site=…
+  // Set both _LGSC_SITE_URL (read by seo.js cold-state fallbacks) and
+  // _lgseActiveSite (immediately scoped for the audit modal pre-fill).
+  var lgscSite = params.get('lgsc_site');
+  if (lgscSite) {
+    try {
+      var decoded = decodeURIComponent(lgscSite);
+      window._LGSC_SITE_URL  = decoded;
+      window._lgseActiveSite = decoded;
+      try { console.log('[LGSC] Site URL from embed: ' + decoded); } catch (_) {}
+    } catch (_) {}
+  }
+
   function _isApi(urlStr) {
     if (!urlStr) return false;
     return urlStr.indexOf('levelupgrowth.io/api') > -1 ||
@@ -4813,7 +4826,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.7.10-prod-only-block"></script>
+<script defer src="/app/js/core.js?v=4.7.11-cold-ws"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
