@@ -3750,6 +3750,12 @@ window.luSwipeToClose = luSwipeToClose;
         })();
         </script>
 
+        <!-- API Keys section — populated by window._renderApiKeys() -->
+        <div id="apk-section" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+
+        <!-- WordPress Sites section — populated by window._renderWpSites() -->
+        <div id="wps-section" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+
         <div style="background:var(--s1);border:1px solid rgba(248,113,113,.2);border-radius:var(--rg);padding:20px">
           <div style="font-size:13px;font-weight:700;color:var(--rd);margin-bottom:14px">Danger Zone</div>
           <div style="display:flex;gap:10px">
@@ -4672,7 +4678,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.6.0-settings-api"></script>
+<script defer src="/app/js/core.js?v=4.6.1-settings-wired"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->

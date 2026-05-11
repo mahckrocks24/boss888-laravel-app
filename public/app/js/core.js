@@ -265,6 +265,15 @@ function loadSettings() {
   if (!el) return;
   // Populate profile fields from cached user data
   _populateProfileFields();
+  // Wire the API Keys + WordPress Sites cards (renderers defined at file tail)
+  var apkEl = document.getElementById('apk-section');
+  if (apkEl && typeof window._renderApiKeys === 'function') {
+    try { window._renderApiKeys(apkEl); } catch (_) {}
+  }
+  var wpsEl = document.getElementById('wps-section');
+  if (wpsEl && typeof window._renderWpSites === 'function') {
+    try { window._renderWpSites(wpsEl); } catch (_) {}
+  }
 }
 
 async function _populateProfileFields() {
