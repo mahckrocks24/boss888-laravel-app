@@ -1808,26 +1808,48 @@ class SeoService
      * the plugin sends (h2s/images/internal_links arrays → counts) and adds
      * workspace_id before upserting.
      */
-    public function indexPageFromConnector(int $wsId, array $data): int
+    public function indexPageFromConnector(int $wsId, array $data): array
     {
         $url = $data['url'] ?? '';
         if (empty($url)) {
             throw new \InvalidArgumentException('url required');
         }
+        $h2Count   = isset($data['h2s']) && is_array($data['h2s']) ? count($data['h2s']) : 0;
+        $wordCount = (int) ($data['word_count'] ?? 0);
+        $imgCount  = isset($data['images']) && is_array($data['images']) ? count($data['images']) : 0;
+        $intLinks  = isset($data['internal_links']) && is_array($data['internal_links']) ? count($data['internal_links']) : 0;
+
+        // FIX 2026-05-11: compute score INSIDE the wrapper so we can persist
+        // content_score + score_breakdown_json on the same upsert. Previously
+        // the route computed score post-upsert and never wrote it back.
+        $score = $this->scoreContent(
+            $data['title'] ?? '',
+            $data['meta_description'] ?? '',
+            $data['h1'] ?? '',
+            $h2Count, $wordCount, $imgCount, $intLinks,
+            null,
+            $data['content'] ?? null
+        );
+
         $payload = [
-            'workspace_id'        => $wsId,
-            'title'               => $data['title'] ?? null,
-            'meta_title'          => $data['title'] ?? null,
-            'meta_description'    => $data['meta_description'] ?? null,
-            'h1'                  => $data['h1'] ?? null,
-            'h2_count'            => isset($data['h2s']) && is_array($data['h2s']) ? count($data['h2s']) : 0,
-            'word_count'          => (int) ($data['word_count'] ?? 0),
-            'image_count'         => isset($data['images']) && is_array($data['images']) ? count($data['images']) : 0,
-            'internal_link_count' => isset($data['internal_links']) && is_array($data['internal_links']) ? count($data['internal_links']) : 0,
+            'workspace_id'         => $wsId,
+            'title'                => $data['title'] ?? null,
+            'meta_title'           => $data['title'] ?? null,
+            'meta_description'     => $data['meta_description'] ?? null,
+            'h1'                   => $data['h1'] ?? null,
+            'h2_count'             => $h2Count,
+            'word_count'           => $wordCount,
+            'image_count'          => $imgCount,
+            'internal_link_count'  => $intLinks,
+            'content_score'        => $score['score'] ?? null,
+            'score_breakdown_json' => isset($score['breakdown']) ? json_encode($score['breakdown']) : null,
         ];
         $this->upsertContentIndex($url, $payload);
         $row = DB::table('seo_content_index')->where('url_hash', hash('sha256', $url))->first();
-        return $row ? (int) $row->id : 0;
+        return [
+            'page_id' => $row ? (int) $row->id : 0,
+            'score'   => $score,
+        ];
     }
 
     /**

@@ -8343,22 +8343,12 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             'internal_links'   => 'nullable|array',
         ]);
         $svc = app(\App\Engines\SEO\Services\SeoService::class);
-        $pageId = $svc->indexPageFromConnector($wsId, $data);
-        $score  = $svc->scoreContent(
-            $data['title'] ?? '',
-            $data['meta_description'] ?? '',
-            $data['h1'] ?? '',
-            isset($data['h2s']) && is_array($data['h2s']) ? count($data['h2s']) : 0,
-            (int) ($data['word_count'] ?? 0),
-            isset($data['images']) && is_array($data['images']) ? count($data['images']) : 0,
-            isset($data['internal_links']) && is_array($data['internal_links']) ? count($data['internal_links']) : 0,
-            null,
-            $data['content'] ?? null
-        );
+        // Single call — service computes score, persists it, returns both
+        $result = $svc->indexPageFromConnector($wsId, $data);
         return response()->json([
             'success' => true,
-            'page_id' => $pageId,
-            'score'   => $score,
+            'page_id' => $result['page_id'],
+            'score'   => $result['score'],
         ]);
     });
 
