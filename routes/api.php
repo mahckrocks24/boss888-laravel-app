@@ -8323,7 +8323,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             'success'           => true,
             'workspace_name'    => $ws->name ?? 'Unknown',
             'plan'              => $plan->slug ?? 'free',
-            'credits_remaining' => 0,
+            'credits_remaining' => (int) (\Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0),
             'seo_pages_indexed' => $indexed,
         ]);
     });
