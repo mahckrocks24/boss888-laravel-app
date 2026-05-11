@@ -2047,19 +2047,100 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         Route::get('/image-issues', function (\Illuminate\Http\Request $r) {
             $wsId  = $r->attributes->get('workspace_id');
-            $limit = min(200, (int) $r->query('limit', 50));
-            $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            $limit = min(500, (int) $r->query('limit', 100));
+            // 2026-05-12: v2 — query per-image seo_images table (populated by
+            // fetchAndIndexUrl). Flags both missing-alt and empty-alt.
+            $issues = \Illuminate\Support\Facades\DB::table('seo_images')
                 ->where('workspace_id', $wsId)
                 ->where(function ($q) {
-                    $q->where('image_count', 0)->orWhereNull('image_count');
+                    $q->where('missing_alt', true)->orWhere('empty_alt', true);
                 })
-                ->orderBy('content_score')
+                ->orderByDesc('updated_at')
                 ->limit($limit)
-                ->get(['url', 'title', 'image_count', 'content_score']);
+                ->get(['page_url', 'image_url', 'alt_text', 'missing_alt', 'empty_alt', 'suggested_alt']);
+            $summary = \Illuminate\Support\Facades\DB::table('seo_images')
+                ->where('workspace_id', $wsId)
+                ->selectRaw('COUNT(*) AS total,
+                             SUM(missing_alt) AS missing_alt,
+                             SUM(empty_alt)   AS empty_alt,
+                             COUNT(DISTINCT page_url) AS pages_affected')
+                ->first();
             return response()->json([
                 'success' => true,
-                'issues'  => $pages,
-                'total'   => $pages->count(),
+                'issues'  => $issues,
+                'total'   => $issues->count(),
+                'summary' => $summary,
+            ]);
+        });
+
+        // 2026-05-12: FIX 7 supporting routes
+        Route::post('/image-issues/bulk-analyze', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->pluck('url')->toArray();
+            $svc = app(\App\Engines\SEO\Services\SeoService::class);
+            $scanned = 0;
+            foreach (array_slice($pages, 0, 30) as $u) {
+                try { $svc->fetchAndIndexUrl($wsId, $u); $scanned++; } catch (\Throwable $e) {}
+            }
+            return response()->json(['success' => true, 'pages_scanned' => $scanned]);
+        });
+
+        Route::post('/image-issues/suggest-alt', function (\Illuminate\Http\Request $r) {
+            $wsId    = $r->attributes->get('workspace_id');
+            $imgUrl  = $r->input('image_url', '');
+            $pageUrl = $r->input('page_url', '');
+            $page    = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)->where('url', $pageUrl)->first();
+            // Heuristic suggestion — derive from page context. Future: route
+            // through RuntimeClient for an AI-generated alt.
+            $base = $page->h1 ?: ($page->title ?? '');
+            $suggested = mb_substr(trim($base ?: 'Image on ' . $pageUrl), 0, 120);
+            \Illuminate\Support\Facades\DB::table('seo_images')
+                ->where('workspace_id', $wsId)
+                ->where('image_url', $imgUrl)
+                ->update(['suggested_alt' => $suggested, 'updated_at' => now()]);
+            return response()->json(['success' => true, 'suggested_alt' => $suggested]);
+        });
+
+        Route::get('/image-summary', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $s = \Illuminate\Support\Facades\DB::table('seo_images')
+                ->where('workspace_id', $wsId)
+                ->selectRaw('COUNT(*) AS total,
+                             SUM(missing_alt) AS missing_alt,
+                             SUM(empty_alt)   AS empty_alt,
+                             COUNT(DISTINCT page_url) AS pages')
+                ->first();
+            return response()->json(['success' => true, 'summary' => $s]);
+        });
+
+        // 2026-05-12: FIX 3 — /seo/serp-results
+        Route::get('/serp-results', function (\Illuminate\Http\Request $r) {
+            $wsId    = $r->attributes->get('workspace_id');
+            $keyword = $r->query('keyword', '');
+            $query   = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+                ->where('workspace_id', $wsId);
+            if ($keyword) { $query->where('keyword', 'like', "%{$keyword}%"); }
+            $results = $query->orderByDesc('created_at')
+                ->limit(50)
+                ->get(['id', 'keyword', 'domain', 'position', 'url', 'title', 'snippet', 'created_at']);
+            return response()->json(['success' => true, 'results' => $results, 'total' => $results->count()]);
+        });
+
+        // 2026-05-12: FIX 6 — /seo/outbound now reads seo_outbound_links table
+        Route::get('/outbound', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $links = \Illuminate\Support\Facades\DB::table('seo_outbound_links')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('updated_at')
+                ->limit(200)
+                ->get(['source_url', 'target_url', 'target_host', 'anchor_text', 'status', 'updated_at']);
+            return response()->json([
+                'success' => true,
+                'links'   => $links,
+                'total'   => $links->count(),
             ]);
         });
 
@@ -2080,8 +2161,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             $items = \Illuminate\Support\Facades\DB::table('seo_audit_items')
                 ->join('seo_audits', 'seo_audit_items.audit_id', '=', 'seo_audits.id')
                 ->where('seo_audits.workspace_id', $wsId)
-                ->where('seo_audit_items.status', 'fail')
+                ->whereIn('seo_audit_items.status', ['error', 'warning'])
                 ->when($url, fn ($q) => $q->where('seo_audit_items.url', $url))
+                ->orderByRaw("CASE seo_audit_items.status WHEN 'error' THEN 1 ELSE 2 END")
                 ->orderBy('seo_audit_items.score')
                 ->limit(20)
                 ->select(
@@ -8708,8 +8790,9 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         $items = \Illuminate\Support\Facades\DB::table('seo_audit_items')
             ->join('seo_audits', 'seo_audit_items.audit_id', '=', 'seo_audits.id')
             ->where('seo_audits.workspace_id', $wsId)
-            ->where('seo_audit_items.status', 'fail')
+            ->whereIn('seo_audit_items.status', ['error', 'warning'])
             ->when($url, fn($q) => $q->where('seo_audit_items.url', $url))
+            ->orderByRaw("CASE seo_audit_items.status WHEN 'error' THEN 1 ELSE 2 END")
             ->orderBy('seo_audit_items.score')  // lower score = bigger gap
             ->limit(20)
             ->select(

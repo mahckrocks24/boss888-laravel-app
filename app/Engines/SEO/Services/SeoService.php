@@ -118,6 +118,9 @@ class SeoService
                 'keyword' => $keyword,
                 'position' => $results['current_position'] ?? null,
                 'url' => $params['url'] ?? null,
+                'domain' => isset($params['url'])
+                    ? preg_replace('/^www\./', '', parse_url($params['url'], PHP_URL_HOST) ?? '')
+                    : null,
                 'snippet' => $results['top_competitors'][0]['domain'] ?? null,
                 'features' => json_encode($results['serp_features'] ?? []),
                 'volume' => $results['estimated_volume'] ?? null,
@@ -128,6 +131,68 @@ class SeoService
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            // 2026-05-12: persist one row per competitor so /competitors can
+            // aggregate domains across SERPs. Each competitor gets its own
+            // row keyed by audit + position + domain.
+            $competitors = $results['top_competitors'] ?? [];
+            foreach ($competitors as $idx => $comp) {
+                $compUrl  = $comp['url'] ?? $comp['domain'] ?? '';
+                $compHost = preg_replace('/^www\./', '', parse_url($compUrl, PHP_URL_HOST) ?? '');
+                if (!$compHost) { continue; }
+                DB::table('seo_serp_results')->insert([
+                    'audit_id'     => $auditId,
+                    'workspace_id' => $wsId,
+                    'keyword'      => $keyword,
+                    'position'     => $idx + 1,
+                    'rank'         => $idx + 1,
+                    'url'          => $compUrl,
+                    'domain'       => $compHost,
+                    'title'        => $comp['title'] ?? null,
+                    'snippet'      => $comp['snippet'] ?? null,
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+
+            // 2026-05-12: FIX 5 — auto-update seo_keywords.current_rank when
+            // the SERP query matches a tracked keyword and our site appears
+            // in the results.
+            try {
+                $tracked = DB::table('seo_keywords')
+                    ->where('workspace_id', $wsId)
+                    ->whereRaw('LOWER(keyword) = LOWER(?)', [$keyword])
+                    ->first();
+                if ($tracked) {
+                    $siteUrl = DB::table('seo_settings')->where('workspace_id', $wsId)
+                        ->where('key', 'site_url')->value('value');
+                    $siteHost = $siteUrl
+                        ? preg_replace('/^www\./', '', parse_url($siteUrl, PHP_URL_HOST) ?? '')
+                        : null;
+                    $ourPosition = null;
+                    if ($siteHost) {
+                        foreach ($competitors as $idx => $comp) {
+                            $compUrl = $comp['url'] ?? $comp['domain'] ?? '';
+                            $compHost = preg_replace('/^www\./', '', parse_url($compUrl, PHP_URL_HOST) ?? '');
+                            if ($compHost === $siteHost) { $ourPosition = $idx + 1; break; }
+                        }
+                    }
+                    if ($ourPosition === null && !empty($results['current_position'])) {
+                        $ourPosition = (int) $results['current_position'];
+                    }
+                    if ($ourPosition !== null) {
+                        DB::table('seo_keywords')->where('id', $tracked->id)->update([
+                            'previous_rank'   => $tracked->current_rank,
+                            'current_rank'    => $ourPosition,
+                            'rank_change'     => ($tracked->current_rank ?? $ourPosition) - $ourPosition,
+                            'last_rank_check' => now(),
+                            'updated_at'      => now(),
+                        ]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::debug('[SEO] Rank tracking update failed: ' . $e->getMessage());
+            }
         } catch (\Throwable $e) {
             Log::warning('SeoService: Could not store SERP result', ['error' => $e->getMessage()]);
         }
@@ -383,37 +448,56 @@ class SeoService
 
     public function generateLinkSuggestions(int $wsId, array $params): array
     {
-        $url = $params['url'] ?? '';
-        // Analyze content and suggest internal linking opportunities
-        // In production: crawls site pages and finds semantic connections
-        $pages = DB::table('pages')
-            ->join('websites', 'pages.website_id', '=', 'websites.id')
-            ->where('websites.workspace_id', $wsId)
-            ->select('pages.title', 'pages.slug', 'websites.domain')
+        $url = $params['url'] ?? $params['source_url'] ?? '';
+        // 2026-05-12: read from seo_content_index (works for connector-only
+        // workspaces too — was previously joining pages+websites which only
+        // exist when the builder engine has run).
+        $indexed = DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->select('url', 'title', 'meta_description')
             ->get();
-
         $keywords = DB::table('seo_keywords')->where('workspace_id', $wsId)->pluck('keyword')->toArray();
 
         $suggestions = [];
-        foreach ($pages as $page) {
+        foreach ($indexed as $page) {
+            if ($url && $page->url === $url) { continue; } // don't link page to itself
             foreach ($keywords as $kw) {
-                if (stripos($page->title, $kw) !== false || stripos($kw, $page->slug) !== false) {
+                if ($kw && (stripos($page->title ?? '', $kw) !== false
+                         || stripos($page->meta_description ?? '', $kw) !== false)) {
                     $suggestions[] = [
-                        'workspace_id' => $wsId,
-                        'source_url' => $url ?: '/',
-                        'target_url' => ($page->domain ? "https://{$page->domain}" : '') . "/{$page->slug}",
-                        'anchor_text' => $kw,
-                        'type' => 'internal',
-                        'status' => 'suggested',
-                        'priority_score' => rand(30, 90),
-                        'created_at' => now(), 'updated_at' => now(),
+                        'workspace_id'   => $wsId,
+                        'source_url'     => $url ?: '/',
+                        'target_url'     => $page->url,
+                        'anchor_text'    => $kw,
+                        'type'           => 'internal',
+                        'status'         => 'suggested',
+                        'priority_score' => rand(40, 90),
+                        'created_at'     => now(),
+                        'updated_at'     => now(),
                     ];
                 }
             }
         }
 
         if (!empty($suggestions)) {
-            DB::table('seo_links')->insert(array_slice($suggestions, 0, 20));
+            // Trim to 20 and use updateOrInsert to avoid duplicate rows on re-runs.
+            foreach (array_slice($suggestions, 0, 20) as $s) {
+                DB::table('seo_links')->updateOrInsert(
+                    [
+                        'workspace_id' => $s['workspace_id'],
+                        'source_url'   => $s['source_url'],
+                        'target_url'   => $s['target_url'],
+                    ],
+                    [
+                        'anchor_text'    => $s['anchor_text'],
+                        'type'           => $s['type'],
+                        'status'         => $s['status'],
+                        'priority_score' => $s['priority_score'],
+                        'updated_at'     => $s['updated_at'],
+                        'created_at'     => $s['created_at'],
+                    ]
+                );
+            }
         }
 
         // Log activity
@@ -1796,18 +1880,113 @@ class SeoService
         $this->upsertContentIndex($url, $data);
         $this->logActivity($wsId, null, 'index_url', 'seo_index', null, ['url' => $url, 'score' => $scoreResult['score']]);
 
+        // 2026-05-12: FIX 6 — extract outbound (external) links into seo_outbound_links.
+        // FIX 7 — extract <img> tags into seo_images for alt-text auditing.
+        try {
+            $this->extractOutboundLinks($wsId, $url, $html ?? '');
+            $this->extractImages($wsId, $url, $html ?? '');
+        } catch (\Throwable $e) {
+            Log::debug('[SEO] link/image extraction failed for ' . $url . ': ' . $e->getMessage());
+        }
+
+        // 2026-05-12: FIX 4 — auto-generate internal link suggestions after indexing.
+        try {
+            $this->generateLinkSuggestions($wsId, ['source_url' => $url]);
+        } catch (\Throwable $e) {
+            Log::debug('[SEO] link suggestions failed for ' . $url . ': ' . $e->getMessage());
+        }
+
         return ['success' => true, 'url' => $url, 'score' => $scoreResult['score'], 'word_count' => $wordCount, 'intent' => $intent];
     }
 
     /**
-     * Upsert a row in seo_content_index by URL hash.
+     * 2026-05-12: extract external links from raw HTML into seo_outbound_links.
+     * Internal links (same host) are skipped — handled separately by the
+     * generateLinkSuggestions flow.
      */
-    /**
-     * Public wrapper for upsertContentIndex — called from the WP Connector
-     * route closure (POST /api/connector/analyze-page). Normalises the payload
-     * the plugin sends (h2s/images/internal_links arrays → counts) and adds
-     * workspace_id before upserting.
-     */
+    private function extractOutboundLinks(int $wsId, string $sourceUrl, string $html): void
+    {
+        if ($html === '') { return; }
+        // Match double-quoted href only — covers virtually all real HTML and
+        // sidesteps PHP-single-quote + regex-single-quote escape conflicts.
+        preg_match_all('/<a\b[^>]*?\shref="(https?:\/\/[^"]+)"[^>]*>(.*?)<\/a>/si', $html, $m);
+        $srcHost = preg_replace('/^www\./', '', parse_url($sourceUrl, PHP_URL_HOST) ?? '');
+        if (!$srcHost) { return; }
+        $seen = [];
+        foreach ($m[1] ?? [] as $i => $targetUrl) {
+            if (isset($seen[$targetUrl])) { continue; }
+            $seen[$targetUrl] = true;
+            $tgtHost = preg_replace('/^www\./', '', parse_url($targetUrl, PHP_URL_HOST) ?? '');
+            if (!$tgtHost || $tgtHost === $srcHost) { continue; }
+            $anchor = trim(strip_tags($m[2][$i] ?? ''));
+            try {
+                DB::table('seo_outbound_links')->updateOrInsert(
+                    ['workspace_id' => $wsId, 'source_url' => $sourceUrl, 'target_url' => $targetUrl],
+                    [
+                        'target_host' => $tgtHost,
+                        'anchor_text' => mb_substr($anchor, 0, 300),
+                        'updated_at'  => now(),
+                        'created_at'  => now(),
+                    ]
+                );
+            } catch (\Throwable $e) { /* table may not exist on first deploy */ }
+        }
+    }
+
+    
+    private function extractImages(int $wsId, string $pageUrl, string $html): void
+    {
+        if ($html === '') { return; }
+        preg_match_all('/<img\b[^>]+>/i', $html, $tags);
+        foreach ($tags[0] ?? [] as $tag) {
+            // src= must be double-quoted to match our cleaned regex set.
+            if (!preg_match('/\ssrc="([^"]+)"/i', $tag, $srcM)) { continue; }
+            $imgSrc = trim($srcM[1]);
+            if ($imgSrc === '' || stripos($imgSrc, 'data:') === 0) { continue; }
+
+            // Resolve relative URLs against the page URL.
+            if (stripos($imgSrc, 'http') !== 0) {
+                $imgSrc = $imgSrc[0] === '/'
+                    ? rtrim($pageUrl, '/') . $imgSrc
+                    : rtrim($pageUrl, '/') . '/' . ltrim($imgSrc, '/');
+            }
+
+            // alt detection — distinguish missing from empty.
+            $missingAlt = !preg_match('/\salt=/i', $tag);
+            $altText    = null;
+            $emptyAlt   = false;
+            if (!$missingAlt && preg_match('/\salt="([^"]*)"/i', $tag, $altM)) {
+                $altText  = $altM[1];
+                $emptyAlt = trim($altText) === '';
+            }
+
+            $titleText = null;
+            if (preg_match('/\stitle="([^"]*)"/i', $tag, $titleM)) {
+                $titleText = $titleM[1];
+            }
+
+            $width  = preg_match('/\swidth="(\d+)"/i',  $tag, $wM) ? (int) $wM[1] : null;
+            $height = preg_match('/\sheight="(\d+)"/i', $tag, $hM) ? (int) $hM[1] : null;
+
+            try {
+                DB::table('seo_images')->updateOrInsert(
+                    ['workspace_id' => $wsId, 'page_url' => $pageUrl, 'image_url' => $imgSrc],
+                    [
+                        'alt_text'    => $altText !== null ? mb_substr($altText, 0, 500) : null,
+                        'title_text'  => $titleText !== null ? mb_substr($titleText, 0, 500) : null,
+                        'missing_alt' => $missingAlt,
+                        'empty_alt'   => $emptyAlt,
+                        'width'       => $width,
+                        'height'      => $height,
+                        'updated_at'  => now(),
+                        'created_at'  => now(),
+                    ]
+                );
+            } catch (\Throwable $e) { /* table may not exist on first deploy */ }
+        }
+    }
+
+    
     public function indexPageFromConnector(int $wsId, array $data): array
     {
         $url = $data['url'] ?? '';
