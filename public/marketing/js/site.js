@@ -178,9 +178,12 @@ document.addEventListener('click', e => {
 });
 
 // ── Plan selection (pricing → signup) ────────────────────────
+// 2026-05-11: signups deactivated. selectPlan() now bounces to homepage
+// rather than the signup page. Plan localStorage write left in place so
+// re-enabling is a clean revert of one line.
 function selectPlan(name, price) {
     try { localStorage.setItem('lu_selected_plan', name); localStorage.setItem('lu_selected_price', price); } catch(_) {}
-    window.location.href = '/app/#signup';
+    window.location.href = '/';
 }
 
 // ── Escape helper ─────────────────────────────────────────────

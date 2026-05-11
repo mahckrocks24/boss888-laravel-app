@@ -66,18 +66,28 @@ const AuthViews = {
     },
 
     renderSignup(container) {
-        // Read plan selection carried from pricing page (if any)
-        let planBadge = '';
-        try {
-            const plan  = localStorage.getItem('lu_selected_plan');
-            const price = localStorage.getItem('lu_selected_price');
-            if (plan) {
-                planBadge = `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);border-radius:100px;padding:5px 14px;font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:14px;font-family:var(--ff-h)">
-                    Selected plan: ${_esc(plan)}${price ? ' · ' + _esc(price) : ''}
-                  </div>`;
-            }
-        } catch(_) {}
+        // 2026-05-11: signups deactivated platform-wide. Render the
+        // disabled notice in place of the form. Restore by reverting
+        // this function back to the pre-2026-05-11 body.
+        container.innerHTML = `
+        <div class="auth-wrap">
+          <div class="auth-card">
+            <div class="auth-logo"><div class="nav-logo-icon"><img src="/img/logo-icon-40.png" alt=""></div><span>LevelUpGrowth</span></div>
+            <h2 class="auth-title">Signups are temporarily disabled</h2>
+            <p class="auth-sub">We are not accepting new accounts at the moment. Existing customers can sign in below.</p>
+            <div class="auth-switch" style="margin-top:18px">
+              <a href="#" onclick="Router.go('login');return false">Go to sign in →</a>
+            </div>
+            <div class="auth-switch" style="margin-top:6px;font-size:11.5px">
+              <a href="/" style="color:var(--faint)">← Back to website</a>
+            </div>
+          </div>
+        </div>`;
+        return;
 
+        // The legacy form below is unreachable while signups are
+        // disabled. Kept intact so re-enabling is one-line revert above.
+        // eslint-disable-next-line no-unreachable
         container.innerHTML = `
         <div class="auth-wrap">
           <div class="auth-card">
@@ -113,6 +123,13 @@ const AuthViews = {
     },
 
     async doSignup() {
+        // 2026-05-11: signups deactivated. Show the disabled notice in
+        // the form's error slot. Defence-in-depth for any cached HTML
+        // that still has the form mounted and the button wired.
+        AuthViews._err('Signups are temporarily disabled.', 'su');
+        return;
+
+        // eslint-disable-next-line no-unreachable
         const name  = document.getElementById('su-name')?.value?.trim();
         const email = document.getElementById('su-email')?.value?.trim();
         const pwd   = document.getElementById('su-pwd')?.value;
