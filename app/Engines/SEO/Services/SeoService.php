@@ -1853,15 +1853,68 @@ class SeoService
     }
 
     /**
-     * Stub for WP Connector AI assistant. Currently returns a parking response —
-     * full integration will route through the main agent assistant pipeline.
+     * SEO assistant — routed through RuntimeClient::assistant() with a James
+     * (SEO Strategist) persona + dynamic workspace context (latest audit score,
+     * top keywords). Replaces the earlier stub.
+     *
+     * NOTE: SEOContextProvider only exposes get(); the LLM call goes via
+     * RuntimeClient::assistant() — the same path agent DMs use.
      */
     public function assistantMessage(int $wsId, string $message, array $context = []): array
     {
-        return [
-            'response'    => 'SEO assistant is being connected. Use the main LevelUp Growth app for full AI assistance for now.',
-            'suggestions' => [],
-        ];
+        try {
+            $auditScore = DB::table('seo_audits')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('created_at')
+                ->value('score');
+            $keywords = DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('volume')
+                ->limit(5)
+                ->pluck('keyword')
+                ->toArray();
+            $workspace = DB::table('workspaces')->find($wsId);
+            $bizName   = $workspace->business_name ?? $workspace->name ?? 'this workspace';
+
+            $systemPrompt = "You are James, an expert SEO Strategist for {$bizName}. "
+                . 'Current site SEO score: ' . ($auditScore ?? 'not yet audited') . '/100. '
+                . 'Top tracked keywords: ' . implode(', ', $keywords ?: ['none yet']) . '. '
+                . 'Be sharp, conversational, and direct — max 3 sentences unless the user '
+                . 'explicitly asks for a plan or detailed breakdown. No bullet frameworks unless asked.';
+
+            $runtime = app(\App\Connectors\RuntimeClient::class);
+            if (! method_exists($runtime, 'isConfigured') || ! $runtime->isConfigured()) {
+                return [
+                    'response'    => 'James is offline right now (runtime not configured). Try the main app SEO dashboard for current insights.',
+                    'suggestions' => [],
+                    'agent'       => 'james',
+                ];
+            }
+            $resp = $runtime->assistant(
+                $message,
+                [
+                    'workspace_id'  => $wsId,
+                    'business_name' => $bizName,
+                    'agent_slug'    => 'james',
+                    'agent_name'    => 'James',
+                    'system_prompt' => $systemPrompt,
+                ],
+                "seo_assistant_ws_{$wsId}",
+                'james'
+            );
+            return [
+                'response'    => $resp['response'] ?? 'Trouble parsing the response. Try again?',
+                'suggestions' => [],
+                'agent'       => 'james',
+            ];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[SEO Assistant] ' . $e->getMessage());
+            return [
+                'response'    => "I'm having trouble connecting right now. Check your SEO dashboard for the latest insights.",
+                'suggestions' => [],
+                'agent'       => 'james',
+            ];
+        }
     }
 
     private function upsertContentIndex(string $url, array $data): void

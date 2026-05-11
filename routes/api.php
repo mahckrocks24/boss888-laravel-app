@@ -8506,6 +8506,214 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         return response()->json($svc->getReport($wsId));
     });
 
+    // ── Content Publishing Pipeline ─────────────────────────────────────
+
+    // Generate featured image via Creative engine (Phase 2 — DALL-E 3)
+    Route::post('/generate-image', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'prompt'  => 'required|string|max:1000',
+            'style'   => 'nullable|string|max:100',
+            'context' => 'nullable|string|max:500',
+        ]);
+        // Build prompt with context layered in
+        $prompt = $data['prompt'];
+        if (!empty($data['context'])) {
+            $prompt = 'Blog featured image for: ' . $data['context'] . '. ' . $prompt;
+        }
+        if (!empty($data['style'])) {
+            $prompt .= ' Style: ' . $data['style'];
+        }
+        $svc    = app(\App\Engines\Creative\Services\CreativeService::class);
+        $result = $svc->generateImage($wsId, [
+            'prompt'       => $prompt,
+            'aspect_ratio' => '1:1',  // CreativeService uses aspect_ratio, not 'size'
+            'quality'      => 'standard',
+            'style'        => 'natural',
+            'type'         => 'featured_image',
+        ]);
+        return response()->json([
+            'success'      => ($result['status'] ?? '') === 'completed' && !empty($result['url']),
+            'image_url'    => $result['url'] ?? null,
+            'asset_id'     => $result['asset_id'] ?? null,
+            'status'       => $result['status'] ?? 'unknown',
+            'credits_used' => $result['credits_used'] ?? 10,
+            'prompt_used'  => $prompt,
+            'error'        => $result['error'] ?? null,
+        ]);
+    });
+
+    // Register a WP site connection (called once by plugin during setup)
+    Route::post('/register-site', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'site_url'       => 'required|url',
+            'webhook_secret' => 'required|string|min:10',
+            'site_name'      => 'nullable|string|max:255',
+        ]);
+        $now = now();
+        \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
+            ['workspace_id' => $wsId, 'key' => 'site_url'],
+            ['value' => rtrim($data['site_url'], '/'), 'updated_at' => $now, 'created_at' => $now]
+        );
+        \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
+            ['workspace_id' => $wsId, 'key' => 'webhook_secret'],
+            ['value' => $data['webhook_secret'], 'updated_at' => $now, 'created_at' => $now]
+        );
+        if (!empty($data['site_name'])) {
+            \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
+                ['workspace_id' => $wsId, 'key' => 'site_name'],
+                ['value' => $data['site_name'], 'updated_at' => $now, 'created_at' => $now]
+            );
+        }
+        return response()->json(['success' => true, 'message' => 'Site registered successfully.']);
+    });
+
+    // Publish article to WP site via lgsc/v1/create-post callback
+    Route::post('/publish-post', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'title'              => 'required|string|max:500',
+            'content'            => 'required|string',
+            'status'             => 'nullable|in:publish,draft,future',
+            'categories'         => 'nullable|array',
+            'tags'               => 'nullable|array',
+            'meta_title'         => 'nullable|string|max:500',
+            'meta_description'   => 'nullable|string|max:1000',
+            'featured_image_url' => 'nullable|url',
+            'featured_image_alt' => 'nullable|string|max:300',
+            'levelup_article_id' => 'nullable|integer',
+            'scheduled_at'       => 'nullable|string',
+        ]);
+        $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+        $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+        if (!$siteUrl) {
+            return response()->json([
+                'error'   => 'site_not_configured',
+                'message' => 'No WordPress site registered. Call /connector/register-site first.',
+            ], 422);
+        }
+        $payload = array_merge($data, [
+            'secret' => $webhookSecret ?? '',
+            'status' => $data['status'] ?? 'publish',
+        ]);
+        $wpUrl = rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/create-post';
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(30)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post($wpUrl, $payload);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error'   => 'wp_unreachable',
+                'message' => 'Could not reach WordPress site: ' . $e->getMessage(),
+            ], 502);
+        }
+        if (!$response->successful()) {
+            return response()->json([
+                'error'    => 'wp_publish_failed',
+                'message'  => 'WordPress returned HTTP ' . $response->status(),
+                'wp_error' => $response->json(),
+            ], 502);
+        }
+        $wpResult = $response->json();
+        // Track in seo_content_index
+        if (!empty($wpResult['url'])) {
+            \Illuminate\Support\Facades\DB::table('seo_content_index')->updateOrInsert(
+                ['workspace_id' => $wsId, 'url_hash' => hash('sha256', $wpResult['url'])],
+                [
+                    'url'        => $wpResult['url'],
+                    'title'      => $data['title'],
+                    'updated_at' => now(),
+                ]
+            );
+        }
+        return response()->json([
+            'success'   => true,
+            'post_id'   => $wpResult['post_id'] ?? null,
+            'url'       => $wpResult['url'] ?? null,
+            'status'    => $wpResult['status'] ?? ($data['status'] ?? 'publish'),
+            'thumbnail' => $wpResult['thumbnail_id'] ?? null,
+        ]);
+    });
+
+    // Update existing WP post via lgsc/v1/update-post
+    Route::post('/update-post', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'post_id'            => 'nullable|integer',
+            'url'                => 'nullable|url',
+            'title'              => 'nullable|string|max:500',
+            'content'            => 'nullable|string',
+            'meta_title'         => 'nullable|string|max:500',
+            'meta_description'   => 'nullable|string|max:1000',
+            'featured_image_url' => 'nullable|url',
+            'featured_image_alt' => 'nullable|string|max:300',
+        ]);
+        if (empty($data['post_id']) && empty($data['url'])) {
+            return response()->json(['error' => 'post_id or url required'], 422);
+        }
+        $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+        $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+        if (!$siteUrl) {
+            return response()->json(['error' => 'site_not_configured'], 422);
+        }
+        $payload = array_merge($data, ['secret' => $webhookSecret ?? '']);
+        $wpUrl   = rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/update-post';
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(30)->post($wpUrl, $payload);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'wp_unreachable', 'message' => $e->getMessage()], 502);
+        }
+        if (!$response->successful()) {
+            return response()->json([
+                'error'    => 'wp_update_failed',
+                'status'   => $response->status(),
+                'wp_error' => $response->json(),
+            ], 502);
+        }
+        return response()->json(['success' => true] + $response->json());
+    });
+
+    // List posts from WP site via lgsc/v1/posts
+    Route::get('/posts', function (\Illuminate\Http\Request $r) {
+        $wsId    = $r->attributes->get('workspace_id');
+        $perPage = min(100, max(1, (int) $r->query('per_page', 25)));
+        $page    = max(1, (int) $r->query('page', 1));
+        $status  = $r->query('status', 'publish');
+        $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+        $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+        if (!$siteUrl) {
+            return response()->json(['success' => true, 'posts' => [], 'total' => 0]);
+        }
+        $wpUrl = rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/posts';
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(15)->get($wpUrl, [
+                'secret'   => $webhookSecret ?? '',
+                'page'     => $page,
+                'per_page' => $perPage,
+                'status'   => $status,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => true, 'posts' => [], 'total' => 0,
+                'error'   => 'wp_unreachable',
+            ]);
+        }
+        if (!$response->successful()) {
+            return response()->json([
+                'success' => true, 'posts' => [], 'total' => 0,
+                'error'   => 'wp_' . $response->status(),
+            ]);
+        }
+        return response()->json($response->json());
+    });
+
     // ── Assistant message ──────────────────────────────────────────────
     Route::post('/assistant/message', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
