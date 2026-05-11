@@ -1940,18 +1940,109 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         Route::post('/scan-pages', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
-            $url  = $r->input('url') ?: \Illuminate\Support\Facades\DB::table('seo_settings')
+            $siteUrl = $r->input('url') ?: \Illuminate\Support\Facades\DB::table('seo_settings')
                 ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
-            if (!$url) {
+            if (!$siteUrl) {
                 return response()->json(['success' => false, 'error' => 'url_required'], 422);
             }
-            try {
-                $svc = app(\App\Engines\SEO\Services\SeoService::class);
-                $result = $svc->fetchAndIndexUrl($wsId, $url);
-                return response()->json(['success' => true, 'result' => $result]);
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+
+            $siteUrl = rtrim((string) $siteUrl, '/');
+            $maxPages = min(50, (int) $r->input('max_pages', 50));
+
+            // 2026-05-12: walk sitemap (or sitemap-index, recursively) to
+            // collect page URLs. Falls back to indexing only the homepage
+            // if no sitemap is reachable.
+            $fetchXml = function (string $url) {
+                try {
+                    $resp = \Illuminate\Support\Facades\Http::timeout(10)
+                        ->withHeaders(['User-Agent' => 'LevelUpSEO/1.0 (sitemap-crawler)'])
+                        ->get($url);
+                    if (!$resp->successful()) { return null; }
+                    $body = $resp->body();
+                    // Skip HTML 404 pages that respond with 200 (some WP installs do this).
+                    if (stripos($body, '<sitemapindex') === false &&
+                        stripos($body, '<urlset')      === false) {
+                        return null;
+                    }
+                    return $body;
+                } catch (\Throwable $e) {
+                    return null;
+                }
+            };
+
+            $extractLocs = function (string $xml) {
+                preg_match_all('/<loc>\s*([^<\s]+)\s*<\/loc>/i', $xml, $m);
+                return array_map(
+                    fn ($u) => trim(html_entity_decode((string) $u)),
+                    $m[1] ?? []
+                );
+            };
+
+            $isSitemapIndex = fn (string $xml) => stripos($xml, '<sitemapindex') !== false;
+
+            $pageUrls = [];
+            $sitemapsTried = [];
+            foreach (['/sitemap.xml', '/wp-sitemap.xml', '/sitemap_index.xml'] as $path) {
+                $rootUrl = $siteUrl . $path;
+                $sitemapsTried[] = $rootUrl;
+                $xml = $fetchXml($rootUrl);
+                if (!$xml) { continue; }
+
+                if ($isSitemapIndex($xml)) {
+                    // Nested — fetch each sub-sitemap's URLs (cap 10 sub-maps).
+                    foreach (array_slice($extractLocs($xml), 0, 10) as $subUrl) {
+                        $subXml = $fetchXml($subUrl);
+                        if ($subXml) {
+                            $pageUrls = array_merge($pageUrls, $extractLocs($subXml));
+                        }
+                        if (count($pageUrls) >= $maxPages * 2) { break; }
+                    }
+                } else {
+                    // Flat sitemap — extract page URLs directly.
+                    $pageUrls = $extractLocs($xml);
+                }
+                if (!empty($pageUrls)) { break; }
             }
+
+            // Filter out non-page resources and dedupe.
+            $skipExt = '/\.(jpg|jpeg|png|gif|webp|svg|pdf|zip|xml|css|js|ico|woff2?|ttf|otf|eot|mp4|webm|mp3)(\?.*)?$/i';
+            $pageUrls = array_values(array_unique(array_filter(
+                $pageUrls,
+                fn ($u) => $u && !preg_match($skipExt, $u) && stripos($u, $siteUrl) === 0
+            )));
+
+            // Always include homepage so an empty/missing sitemap still gets something.
+            if (!in_array($siteUrl, $pageUrls, true) &&
+                !in_array($siteUrl . '/', $pageUrls, true)) {
+                array_unshift($pageUrls, $siteUrl);
+            }
+            $pageUrls = array_slice($pageUrls, 0, $maxPages);
+
+            // Index each. Catch per-URL exceptions so one bad page doesn't kill the run.
+            $svc = app(\App\Engines\SEO\Services\SeoService::class);
+            $indexed = 0;
+            $failed  = [];
+            foreach ($pageUrls as $u) {
+                try {
+                    $res = $svc->fetchAndIndexUrl($wsId, $u);
+                    if (!empty($res['success']) || isset($res['page_id'])) {
+                        $indexed++;
+                    } else {
+                        $failed[] = ['url' => $u, 'error' => $res['error'] ?? 'unknown'];
+                    }
+                } catch (\Throwable $e) {
+                    $failed[] = ['url' => $u, 'error' => $e->getMessage()];
+                }
+            }
+
+            return response()->json([
+                'success'         => true,
+                'pages_indexed'   => $indexed,
+                'urls_found'      => count($pageUrls),
+                'sitemaps_tried'  => $sitemapsTried,
+                'errors'          => array_slice($failed, 0, 5),
+                'errors_total'    => count($failed),
+            ]);
         });
 
         Route::get('/image-issues', function (\Illuminate\Http\Request $r) {
