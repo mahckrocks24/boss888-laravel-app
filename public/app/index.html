@@ -2084,9 +2084,11 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
 
 /* ═════════════════════════════════════════════════════════════════════════
    Embed mode (WP Connector iframe) — hide the SPA chrome that doesn't
-   belong inside the WP admin frame. Activated when window._LGSC_EMBED is
-   detected; core.js adds the `lgsc-embed-mode` class to <html>.
+   belong inside the WP admin frame, and stretch the main content to fill
+   the iframe. Activated when window._LGSC_EMBED is detected; core.js adds
+   the `lgsc-embed-mode` class to <html>.
    ═════════════════════════════════════════════════════════════════════════ */
+html.lgsc-embed-mode .app-sidebar,
 html.lgsc-embed-mode .sidebar,
 html.lgsc-embed-mode .lu-topbar,
 html.lgsc-embed-mode .lu-hamburger,
@@ -2094,10 +2096,36 @@ html.lgsc-embed-mode .ai-fab,
 html.lgsc-embed-mode #lu-messages-floater {
   display: none !important;
 }
+
+/* CRITICAL: expand main content to fill the full iframe */
+html.lgsc-embed-mode .lu-main,
 html.lgsc-embed-mode .main,
-html.lgsc-embed-mode .lu-main {
+html.lgsc-embed-mode #main-content,
+html.lgsc-embed-mode [class*="main"],
+html.lgsc-embed-mode body,
+html.lgsc-embed-mode #app {
   margin-left: 0 !important;
+  padding-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100vh !important;
+  overflow: auto !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
+
+/* Make sure the SEO view itself is visible (overrides display:none state) */
+html.lgsc-embed-mode #view-seo,
+html.lgsc-embed-mode .view-seo,
+html.lgsc-embed-mode [data-view="seo"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
 html.lgsc-embed-mode body {
   background: var(--bg) !important;
 }
@@ -4789,7 +4817,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.7.5-nav-router"></script>
+<script defer src="/app/js/core.js?v=4.7.6-embed-css"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
