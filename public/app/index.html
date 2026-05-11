@@ -2098,7 +2098,12 @@ html.lgsc-embed-mode #lu-messages-floater { display: none !important; }
 html.lgsc-embed-mode .lu-main,
 html.lgsc-embed-mode .main {
   margin-left: 0 !important;
-  width: 100% !important;
+  width: 100%;
+}
+html.lgsc-embed-mode .main {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 html.lgsc-embed-mode body {
   background: var(--bg, #0B0F19) !important;
@@ -2108,12 +2113,17 @@ html.lgsc-embed-mode body {
 /* Force the SEO view visible (overrides the inline style="display:none"
    on #view-seo and any visibility/opacity state the SPA sets). */
 html.lgsc-embed-mode #view-seo {
-  display: block !important;
+  display: flex !important;
+  flex-direction: column !important;
   visibility: visible !important;
   opacity: 1 !important;
   position: relative !important;
-  height: auto !important;
-  min-height: 100vh !important;
+  height: 100vh !important;
+  flex: 1 1 auto !important;
+}
+html.lgsc-embed-mode #view-seo > #seo-root {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
 }
 </style>
 
@@ -4803,7 +4813,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.7.7-precise-css"></script>
+<script defer src="/app/js/core.js?v=4.7.8-flex-fix"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
