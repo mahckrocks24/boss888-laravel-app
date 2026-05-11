@@ -13,6 +13,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('seo:insights')->daily()->withoutOverlapping();
         $schedule->command('seo:authority-score')->weekly()->sundays()->at('03:00')->withoutOverlapping();
         $schedule->command('seo:outbound-check')->twiceDaily(2, 14)->withoutOverlapping();
+
+        // 2026-05-15 Phase 3 — semantic clustering rebuild.
+        $schedule->command('seo:cluster')->weekly()->sundays()->at('04:00')->withoutOverlapping();
     }
 
     protected function commands(): void

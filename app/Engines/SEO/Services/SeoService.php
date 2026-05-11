@@ -509,6 +509,12 @@ class SeoService
                 . ($sourcePage->meta_description ?? ''))
             : [];
 
+        // 2026-05-15 hotfix — authority-only mode when source URL has no
+        // tokenisable context (sourceUrl absent OR source not indexed yet).
+        // Lower the gate to auth > 0.2 so workspaces with modest authority
+        // distributions still produce suggestions.
+        $authorityOnly = empty($sourceTokens);
+
         // Skip pages already linked from this source
         $existingTargets = DB::table('seo_link_graph')
             ->where('workspace_id', $wsId)
@@ -532,9 +538,10 @@ class SeoService
             $auth    = (float) ($candidate->authority_score ?? 0);
             $relevance = ($jaccard * 0.7) + ($auth * 0.3);
 
-            // Workspace-wide call (no source) — fall back to authority-only when
-            // there's no source token set to compare against.
-            if ($relevance > 0.05 || ($sourceTokens === [] && $auth > 0.3)) {
+            // 2026-05-15 hotfix — when authority-only (no source tokens), gate
+            // purely on authority. Otherwise gate on Jaccard relevance.
+            $meets = $authorityOnly ? ($auth > 0.2) : ($relevance > 0.05);
+            if ($meets) {
                 $anchor = $this->suggestAnchor($candidate->title ?? '', $sourceTokens);
                 $suggestions[] = [
                     'target_url'       => $candidate->url,

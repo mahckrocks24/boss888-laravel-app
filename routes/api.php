@@ -2310,15 +2310,66 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         });
 
         // Topics tab — stubs until topic clustering ships
+        // 2026-05-15 Phase 3 — semantic clusters
         Route::get('/clusters', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $clusters = \Illuminate\Support\Facades\DB::table('seo_clusters')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('page_count')
+                ->get();
+            foreach ($clusters as $cluster) {
+                $cluster->members = \Illuminate\Support\Facades\DB::table('seo_cluster_members')
+                    ->where('seo_cluster_members.cluster_id', $cluster->id)
+                    ->leftJoin('seo_content_index as sci', function ($j) use ($wsId) {
+                        $j->on('seo_cluster_members.url', '=', 'sci.url')
+                          ->where('sci.workspace_id', $wsId);
+                    })
+                    ->select(
+                        'seo_cluster_members.url',
+                        'seo_cluster_members.similarity',
+                        'sci.title',
+                        'sci.content_score',
+                        'sci.authority_score'
+                    )
+                    ->orderByDesc('seo_cluster_members.similarity')
+                    ->get();
+            }
             return response()->json([
                 'success'  => true,
-                'clusters' => [],
-                'message'  => 'Topic clustering coming soon.',
+                'clusters' => $clusters,
+                'total'    => $clusters->count(),
+                'message'  => $clusters->isEmpty()
+                    ? 'Run "seo:cluster" or POST /seo/clusters/rebuild to generate topic clusters.'
+                    : null,
             ]);
         });
         Route::get('/clusters/gaps', function (\Illuminate\Http\Request $r) {
-            return response()->json(['success' => true, 'gaps' => []]);
+            $wsId = $r->attributes->get('workspace_id');
+            $gaps = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->whereNull('cluster_id')
+                ->where('word_count', '>', 100)
+                ->orderByDesc('content_score')
+                ->limit(50)
+                ->get(['url', 'title', 'content_score', 'word_count', 'inbound_links']);
+            return response()->json([
+                'success' => true,
+                'gaps'    => $gaps,
+                'total'   => $gaps->count(),
+                'message' => 'These pages are not part of any topic cluster. '
+                           . 'Add internal links to related pages to improve topical authority.',
+            ]);
+        });
+        Route::post('/clusters/rebuild', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            \Illuminate\Support\Facades\Artisan::call('seo:cluster', ['workspace_id' => $wsId]);
+            $count = \Illuminate\Support\Facades\DB::table('seo_clusters')
+                ->where('workspace_id', $wsId)->count();
+            return response()->json([
+                'success'  => true,
+                'clusters' => $count,
+                'message'  => "Rebuilt {$count} topic clusters.",
+            ]);
         });
 
         // Competitors tab — derive from SERP results
@@ -8844,6 +8895,123 @@ Route::prefix('public/news')->group(function () {
 // Added 2026-05-11 to unblock the 5 SEO orphan tabs.
 // ════════════════════════════════════════════════════════════════════════════
 Route::middleware(['api.key'])->prefix('connector')->group(function () {
+
+    // 2026-05-15 Phase 3 — bulk sync from WP plugin v1.0.14+. Accepts rich
+    // payload (post_id, full meta, images, internal_links, outbound_links)
+    // and persists across seo_content_index + seo_link_graph + seo_images
+    // + seo_outbound_links in one round-trip per batch. Recomputes
+    // authority score after the batch is indexed.
+    Route::post('/sync-site', function (\Illuminate\Http\Request $r) {
+        $wsId  = $r->attributes->get('workspace_id');
+        $pages = $r->input('pages', []);
+        if (!is_array($pages) || empty($pages)) {
+            return response()->json(['success' => false, 'error' => 'pages_array_required'], 422);
+        }
+
+        $svc     = app(\App\Engines\SEO\Services\SeoService::class);
+        $indexed = 0;
+        $errors  = [];
+
+        foreach ($pages as $page) {
+            try {
+                if (empty($page['url'])) { throw new \InvalidArgumentException('url missing'); }
+
+                // Core index pass — runs scoreContentExtended (Phase 0/1)
+                $svc->indexPageFromConnector($wsId, $page);
+
+                // Link graph from internal_links payload
+                if (!empty($page['internal_links']) && is_array($page['internal_links'])) {
+                    \Illuminate\Support\Facades\DB::table('seo_link_graph')
+                        ->where('workspace_id', $wsId)
+                        ->where('source_url', $page['url'])
+                        ->where('is_internal', true)
+                        ->delete();
+                    $rows = [];
+                    foreach ($page['internal_links'] as $link) {
+                        $target = is_array($link) ? ($link['url'] ?? null) : (string) $link;
+                        if (!$target) { continue; }
+                        $rows[] = [
+                            'workspace_id' => $wsId,
+                            'source_url'   => $page['url'],
+                            'target_url'   => $target,
+                            'anchor_text'  => is_array($link) ? ($link['anchor'] ?? null) : null,
+                            'is_internal'  => true,
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ];
+                    }
+                    if (!empty($rows)) {
+                        \Illuminate\Support\Facades\DB::table('seo_link_graph')->insert($rows);
+                    }
+                }
+
+                // Rich images from WP media library
+                if (!empty($page['images']) && is_array($page['images'])) {
+                    foreach ($page['images'] as $img) {
+                        if (empty($img['url'])) { continue; }
+                        $hasAlt = array_key_exists('alt', $img);
+                        \Illuminate\Support\Facades\DB::table('seo_images')->updateOrInsert(
+                            ['workspace_id' => $wsId, 'page_url' => $page['url'], 'image_url' => $img['url']],
+                            [
+                                'alt_text'    => $hasAlt ? (string) $img['alt'] : null,
+                                'missing_alt' => !$hasAlt,
+                                'empty_alt'   => $hasAlt && trim((string) $img['alt']) === '',
+                                'width'       => $img['width']  ?? null,
+                                'height'      => $img['height'] ?? null,
+                                'updated_at'  => now(),
+                                'created_at'  => now(),
+                            ]
+                        );
+                    }
+                }
+
+                // Outbound links from content
+                if (!empty($page['outbound_links']) && is_array($page['outbound_links'])) {
+                    \Illuminate\Support\Facades\DB::table('seo_outbound_links')
+                        ->where('workspace_id', $wsId)
+                        ->where('source_url', $page['url'])
+                        ->delete();
+                    foreach ($page['outbound_links'] as $link) {
+                        $target = is_array($link) ? ($link['url'] ?? null) : (string) $link;
+                        if (!$target) { continue; }
+                        $host = preg_replace('/^www\./', '', parse_url($target, PHP_URL_HOST) ?? '');
+                        \Illuminate\Support\Facades\DB::table('seo_outbound_links')->insert([
+                            'workspace_id' => $wsId,
+                            'source_url'   => $page['url'],
+                            'target_url'   => $target,
+                            'target_host'  => $host,
+                            'anchor_text'  => is_array($link)
+                                ? mb_substr((string) ($link['anchor'] ?? ''), 0, 300)
+                                : null,
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+                    }
+                }
+
+                $indexed++;
+            } catch (\Throwable $e) {
+                $errors[] = ($page['url'] ?? '?') . ': ' . $e->getMessage();
+            }
+        }
+
+        // Recompute authority across the workspace after a successful batch.
+        if ($indexed > 0) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('seo:authority-score',
+                    ['workspace_id' => $wsId]);
+            } catch (\Throwable $e) {
+                \Log::warning('[SEO] post-sync authority-score failed: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success'      => true,
+            'pages_synced' => $indexed,
+            'errors'       => array_slice($errors, 0, 5),
+            'errors_total' => count($errors),
+        ]);
+    });
 
     // ── Health check ─────────────────────────────────────────────────────
     Route::get('/ping', function (\Illuminate\Http\Request $r) {
