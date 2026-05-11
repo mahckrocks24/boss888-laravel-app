@@ -1802,6 +1802,46 @@ class SeoService
     /**
      * Upsert a row in seo_content_index by URL hash.
      */
+    /**
+     * Public wrapper for upsertContentIndex — called from the WP Connector
+     * route closure (POST /api/connector/analyze-page). Normalises the payload
+     * the plugin sends (h2s/images/internal_links arrays → counts) and adds
+     * workspace_id before upserting.
+     */
+    public function indexPageFromConnector(int $wsId, array $data): int
+    {
+        $url = $data['url'] ?? '';
+        if (empty($url)) {
+            throw new \InvalidArgumentException('url required');
+        }
+        $payload = [
+            'workspace_id'        => $wsId,
+            'title'               => $data['title'] ?? null,
+            'meta_title'          => $data['title'] ?? null,
+            'meta_description'    => $data['meta_description'] ?? null,
+            'h1'                  => $data['h1'] ?? null,
+            'h2_count'            => isset($data['h2s']) && is_array($data['h2s']) ? count($data['h2s']) : 0,
+            'word_count'          => (int) ($data['word_count'] ?? 0),
+            'image_count'         => isset($data['images']) && is_array($data['images']) ? count($data['images']) : 0,
+            'internal_link_count' => isset($data['internal_links']) && is_array($data['internal_links']) ? count($data['internal_links']) : 0,
+        ];
+        $this->upsertContentIndex($url, $payload);
+        $row = DB::table('seo_content_index')->where('url_hash', hash('sha256', $url))->first();
+        return $row ? (int) $row->id : 0;
+    }
+
+    /**
+     * Stub for WP Connector AI assistant. Currently returns a parking response —
+     * full integration will route through the main agent assistant pipeline.
+     */
+    public function assistantMessage(int $wsId, string $message, array $context = []): array
+    {
+        return [
+            'response'    => 'SEO assistant is being connected. Use the main LevelUp Growth app for full AI assistance for now.',
+            'suggestions' => [],
+        ];
+    }
+
     private function upsertContentIndex(string $url, array $data): void
     {
         try {

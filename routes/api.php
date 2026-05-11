@@ -8298,3 +8298,233 @@ Route::prefix('public/news')->group(function () {
     Route::get('/{subdomain}/stories',    [\App\Http\Controllers\Api\Widget\PublicNewsController::class, 'stories'])->where('subdomain', '[a-z0-9\-]+');
     Route::get('/{subdomain}/categories', [\App\Http\Controllers\Api\Widget\PublicNewsController::class, 'categories'])->where('subdomain', '[a-z0-9\-]+');
 });
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// §4 WP Connector endpoints — LUSEO Connector plugin v1.0.5+ integration
+// Auth: X-API-KEY header (or ?api_key= query). Scoped per workspace via api_keys.
+// Added 2026-05-11 to unblock the 5 SEO orphan tabs.
+// ════════════════════════════════════════════════════════════════════════════
+Route::middleware(['api.key'])->prefix('connector')->group(function () {
+
+    // ── Health check ─────────────────────────────────────────────────────
+    Route::get('/ping', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $ws   = \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId);
+        $plan = $ws ? \Illuminate\Support\Facades\DB::table('plans')
+            ->join('subscriptions', 'plans.id', '=', 'subscriptions.plan_id')
+            ->where('subscriptions.workspace_id', $wsId)
+            ->where('subscriptions.status', 'active')
+            ->select('plans.name', 'plans.slug')
+            ->first() : null;
+        $indexed = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)->count();
+        return response()->json([
+            'success'           => true,
+            'workspace_name'    => $ws->name ?? 'Unknown',
+            'plan'              => $plan->slug ?? 'free',
+            'credits_remaining' => 0,
+            'seo_pages_indexed' => $indexed,
+        ]);
+    });
+
+    // ── Analyze a page — WP sends content, we score + index ─────────────
+    Route::post('/analyze-page', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'url'              => 'required|url',
+            'title'            => 'nullable|string|max:500',
+            'meta_description' => 'nullable|string|max:1000',
+            'content'          => 'nullable|string',
+            'h1'               => 'nullable|string|max:500',
+            'h2s'              => 'nullable|array',
+            'word_count'       => 'nullable|integer',
+            'images'           => 'nullable|array',
+            'internal_links'   => 'nullable|array',
+        ]);
+        $svc = app(\App\Engines\SEO\Services\SeoService::class);
+        $pageId = $svc->indexPageFromConnector($wsId, $data);
+        $score  = $svc->scoreContent(
+            $data['title'] ?? '',
+            $data['meta_description'] ?? '',
+            $data['h1'] ?? '',
+            isset($data['h2s']) && is_array($data['h2s']) ? count($data['h2s']) : 0,
+            (int) ($data['word_count'] ?? 0),
+            isset($data['images']) && is_array($data['images']) ? count($data['images']) : 0,
+            isset($data['internal_links']) && is_array($data['internal_links']) ? count($data['internal_links']) : 0,
+            null,
+            $data['content'] ?? null
+        );
+        return response()->json([
+            'success' => true,
+            'page_id' => $pageId,
+            'score'   => $score,
+        ]);
+    });
+
+    // ── Quick wins (from real seo_audit_items + low-rank keywords) ──────
+    Route::get('/quick-wins', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $url  = $r->query('url', '');
+        // Use REAL columns: category, check_name, status, score, details
+        // (NOT severity/recommendation as the original spec assumed)
+        $items = \Illuminate\Support\Facades\DB::table('seo_audit_items')
+            ->join('seo_audits', 'seo_audit_items.audit_id', '=', 'seo_audits.id')
+            ->where('seo_audits.workspace_id', $wsId)
+            ->where('seo_audit_items.status', 'fail')
+            ->when($url, fn($q) => $q->where('seo_audit_items.url', $url))
+            ->orderBy('seo_audit_items.score')  // lower score = bigger gap
+            ->limit(20)
+            ->select(
+                'seo_audit_items.check_name as title',
+                'seo_audit_items.category as severity',
+                'seo_audit_items.details as description',
+                'seo_audit_items.url'
+            )
+            ->get();
+        // Ranking opportunities (positions 11-20 — push to first page)
+        $rankWins = \Illuminate\Support\Facades\DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)
+            ->whereBetween('current_rank', [11, 20])
+            ->limit(10)
+            ->get(['keyword', 'current_rank', 'volume', 'target_url'])
+            ->map(fn($k) => [
+                'title'       => "Rank boost: \"{$k->keyword}\" (pos #{$k->current_rank})",
+                'severity'    => 'opportunity',
+                'description' => "Volume: {$k->volume}. Push from #{$k->current_rank} to top 10.",
+                'url'         => $k->target_url,
+            ]);
+        return response()->json([
+            'success'    => true,
+            'quick_wins' => array_merge($items->toArray(), $rankWins->toArray()),
+            'total'      => $items->count() + $rankWins->count(),
+        ]);
+    });
+
+    // ── Save meta back to Laravel index ─────────────────────────────────
+    Route::patch('/save-meta', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'url'              => 'required|url',
+            'meta_title'       => 'nullable|string|max:500',
+            'meta_description' => 'nullable|string|max:1000',
+        ]);
+        \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->where('url_hash', hash('sha256', $data['url']))
+            ->update([
+                'title'            => $data['meta_title'] ?? null,
+                'meta_description' => $data['meta_description'] ?? null,
+                'updated_at'       => now(),
+            ]);
+        return response()->json(['success' => true]);
+    });
+
+    // ── Link opportunities ──────────────────────────────────────────────
+    Route::get('/link-opportunities', function (\Illuminate\Http\Request $r) {
+        $wsId   = $r->attributes->get('workspace_id');
+        $srcUrl = $r->query('source_url', '');
+        $svc    = app(\App\Engines\SEO\Services\SeoService::class);
+        $result = $svc->generateLinkSuggestions($wsId, ['source_url' => $srcUrl]);
+        return response()->json([
+            'success'     => true,
+            'suggestions' => $result['suggestions'] ?? $result,
+        ]);
+    });
+
+    // ── Page score ──────────────────────────────────────────────────────
+    Route::get('/pages/score', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $url  = $r->query('url', '');
+        $page = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->where('url_hash', hash('sha256', $url))
+            ->first();
+        return response()->json([
+            'success'      => true,
+            'url'          => $url,
+            'score'        => $page ? (int) $page->content_score : null,
+            'last_indexed' => $page ? $page->updated_at : null,
+        ]);
+    });
+
+    // ── Indexed content list (paginated) ────────────────────────────────
+    Route::get('/indexed-content', function (\Illuminate\Http\Request $r) {
+        $wsId    = $r->attributes->get('workspace_id');
+        $perPage = min(100, max(1, (int) $r->query('per_page', 25)));
+        $filter  = $r->query('filter', '');
+        $q       = $r->query('q', '');
+        $query   = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId);
+        if ($filter === 'low_score')      $query->where('content_score', '<', 50);
+        if ($filter === 'missing_meta')   $query->whereNull('meta_description');
+        if ($filter === 'thin_content')   $query->where('word_count', '<', 300);
+        if ($filter === 'no_h1')          $query->whereNull('h1');
+        if ($q) $query->where(fn($x) =>
+            $x->where('url', 'like', "%$q%")
+              ->orWhere('title', 'like', "%$q%")
+        );
+        return response()->json([
+            'success' => true,
+            'data'    => $query->orderBy('content_score')->paginate($perPage),
+        ]);
+    });
+
+    // ── Keywords list ───────────────────────────────────────────────────
+    Route::get('/keywords', function (\Illuminate\Http\Request $r) {
+        $wsId    = $r->attributes->get('workspace_id');
+        $perPage = min(100, max(1, (int) $r->query('per_page', 25)));
+        return response()->json([
+            'success' => true,
+            'data'    => \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('volume')
+                ->paginate($perPage),
+        ]);
+    });
+
+    Route::get('/keywords/{id}', function (\Illuminate\Http\Request $r, $id) {
+        $wsId = $r->attributes->get('workspace_id');
+        $kw   = \Illuminate\Support\Facades\DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)->find($id);
+        if (! $kw) return response()->json(['error' => 'not_found'], 404);
+        return response()->json(['success' => true, 'data' => $kw]);
+    });
+
+    // ── Competitors (derived from seo_serp_results.domain — NOT competitor_domain) ──
+    Route::get('/competitors', function (\Illuminate\Http\Request $r) {
+        $wsId  = $r->attributes->get('workspace_id');
+        $comps = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+            ->where('workspace_id', $wsId)
+            ->whereNotNull('domain')
+            ->select(
+                'domain',
+                \Illuminate\Support\Facades\DB::raw('COUNT(*) as appearances'),
+                \Illuminate\Support\Facades\DB::raw('AVG(position) as avg_position')
+            )
+            ->groupBy('domain')
+            ->orderByDesc('appearances')
+            ->limit(20)
+            ->get();
+        return response()->json(['success' => true, 'competitors' => $comps]);
+    });
+
+    // ── Reports (calls SeoService::getReport — NOT report) ──────────────
+    Route::get('/reports', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $svc  = app(\App\Engines\SEO\Services\SeoService::class);
+        return response()->json($svc->getReport($wsId));
+    });
+
+    // ── Assistant message ──────────────────────────────────────────────
+    Route::post('/assistant/message', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'message' => 'required|string|max:2000',
+            'context' => 'nullable|array',
+        ]);
+        $result = app(\App\Engines\SEO\Services\SeoService::class)
+            ->assistantMessage($wsId, $data['message'], $data['context'] ?? []);
+        return response()->json(['success' => true, 'data' => $result]);
+    });
+});
