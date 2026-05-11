@@ -2310,6 +2310,192 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         });
 
         // Topics tab — stubs until topic clustering ships
+        // 2026-05-15 Phase 4 — bidirectional meta save:
+        //   1. update seo_content_index (canonical)
+        //   2. update pages.seo_json IF a matching Builder page exists
+        //   3. push to WP site via /wp-json/lgsc/v1/update-meta (fire-and-forget)
+        Route::patch('/save-meta', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $data = $r->validate([
+                'url'              => 'required|url',
+                'meta_title'       => 'nullable|string|max:500',
+                'meta_description' => 'nullable|string|max:1000',
+            ]);
+            $url = $data['url'];
+            $title = $data['meta_title'] ?? null;
+            $desc  = $data['meta_description'] ?? null;
+
+            // 1. Canonical store
+            \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('url', $url)
+                ->update([
+                    'meta_title'       => $title,
+                    'meta_description' => $desc,
+                    'updated_at'       => now(),
+                ]);
+
+            // 2. If this URL belongs to a Builder page, push back into pages.seo_json.
+            //    We match by slug derived from URL path against websites in this workspace.
+            try {
+                $path = parse_url($url, PHP_URL_PATH) ?? '/';
+                $slug = trim($path, '/') ?: 'home';
+                $page = \Illuminate\Support\Facades\DB::table('pages')
+                    ->join('websites', 'pages.website_id', '=', 'websites.id')
+                    ->where('websites.workspace_id', $wsId)
+                    ->where('pages.slug', $slug)
+                    ->select('pages.*')
+                    ->first();
+                if ($page) {
+                    $seo = json_decode($page->seo_json ?? '{}', true) ?: [];
+                    $seo['meta_title']       = $title;
+                    $seo['meta_description'] = $desc;
+                    $seo['title']            = $title       ?? $seo['title']       ?? null;
+                    $seo['description']      = $desc        ?? $seo['description'] ?? null;
+                    \Illuminate\Support\Facades\DB::table('pages')
+                        ->where('id', $page->id)
+                        ->update([
+                            'meta_title'       => $title,
+                            'meta_description' => $desc,
+                            'seo_json'         => json_encode(array_filter($seo,
+                                fn ($v) => $v !== null && $v !== '')),
+                            'updated_at'       => now(),
+                        ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[SEO] save-meta Builder writeback failed: ' . $e->getMessage());
+            }
+
+            // 3. If this is a connected WP site, fire-and-forget push to the plugin.
+            try {
+                $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+                    ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+                $secret = \Illuminate\Support\Facades\DB::table('seo_settings')
+                    ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+                if ($siteUrl && $secret && str_contains($url, parse_url($siteUrl, PHP_URL_HOST) ?? 'x')) {
+                    \Illuminate\Support\Facades\Http::timeout(5)
+                        ->withHeaders(['User-Agent' => 'LevelUpGrowth/1.0 (meta-sync)'])
+                        ->post(rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/update-meta', [
+                            'secret'           => $secret,
+                            'url'              => $url,
+                            'meta_title'       => $title ?? '',
+                            'meta_description' => $desc  ?? '',
+                        ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::debug('[SEO] save-meta WP push failed: ' . $e->getMessage());
+            }
+
+            return response()->json(['success' => true]);
+        });
+
+        // 2026-05-15 Phase 4 — adapter routes for existing seo.js shape.
+        // The SPA already has full render code expecting these endpoint names
+        // (_seoTopics → /topics/authority, _seoLinks → /links/anchor-analysis +
+        // /anchors/bulk-analysis + /link-graph). Map Phase 1-3 storage to
+        // those shapes without modifying seo.js.
+
+        Route::get('/topics/authority', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $clusters = \Illuminate\Support\Facades\DB::table('seo_clusters')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('page_count')
+                ->get();
+            $topics = $clusters->map(function ($c) use ($wsId) {
+                $hasPillar = !empty($c->pillar_url);
+                return [
+                    'cluster_id'           => (int) $c->id,
+                    'topic'                => (string) ($c->label ?? 'Cluster #' . $c->id),
+                    'authority'            => (int) round((float) ($c->avg_authority ?? 0) * 100),
+                    'member_count'         => (int) ($c->page_count ?? 0),
+                    'avg_content_score'    => (int) round((float) ($c->avg_score ?? 0)),
+                    'completeness_score'   => min(100, (int) ($c->page_count ?? 0) * 20),
+                    'has_pillar'           => $hasPillar,
+                    'pillar_url'           => $c->pillar_url,
+                ];
+            })->values();
+            return response()->json(['success' => true, 'topics' => $topics, 'total' => $topics->count()]);
+        });
+
+        Route::get('/links/anchor-analysis', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            // Flatten anchor analyses into per-issue rows the SPA renders
+            $analyses = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId)
+                ->whereIn('health', ['poor', 'warning'])
+                ->limit(50)
+                ->get();
+            $issues = [];
+            foreach ($analyses as $a) {
+                $dist = json_decode($a->anchor_distribution ?? '[]', true) ?: [];
+                $recs = json_decode($a->recommendations ?? '[]', true) ?: [];
+                $articleTitle = parse_url($a->target_url, PHP_URL_PATH) ?: $a->target_url;
+                if ((int) $a->generic_anchors > 0) {
+                    $issues[] = [
+                        'article_title' => $articleTitle,
+                        'anchor_text'   => 'generic (click here / read more)',
+                        'issue_type'    => 'generic',
+                        'fix'           => $recs[0] ?? 'Replace with descriptive anchor text',
+                        'url'           => $a->target_url,
+                    ];
+                }
+                foreach ($dist as $row) {
+                    if (($row['count'] ?? 0) > 3) {
+                        $issues[] = [
+                            'article_title' => $articleTitle,
+                            'anchor_text'   => $row['anchor'] ?? '',
+                            'issue_type'    => 'over_optimised',
+                            'fix'           => 'Vary anchor text — reused ' . $row['count'] . '×',
+                            'url'           => $a->target_url,
+                        ];
+                    }
+                }
+            }
+            return response()->json(['success' => true, 'issues' => $issues, 'total' => count($issues)]);
+        });
+
+        Route::get('/anchors/bulk-analysis', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $stats = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId)
+                ->selectRaw('SUM(total_inbound)        AS total_issues,
+                             SUM(generic_anchors)     AS generic_issues,
+                             SUM(CASE WHEN health = \'warning\' THEN 1 ELSE 0 END) AS over_optimised')
+                ->first();
+            $dist = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('total_inbound')
+                ->limit(20)
+                ->get(['target_url', 'total_inbound', 'unique_anchors', 'health']);
+            return response()->json([
+                'success'      => true,
+                'summary'      => [
+                    'total_issues'    => (int) ($stats->total_issues ?? 0),
+                    'generic_issues'  => (int) ($stats->generic_issues ?? 0),
+                    'over_optimised'  => (int) ($stats->over_optimised ?? 0),
+                ],
+                'distribution' => $dist,
+            ]);
+        });
+
+        Route::get('/link-graph', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $nodes = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->limit(100)
+                ->get(['url AS id', 'title AS label', 'authority_score', 'inbound_links']);
+            $edges = \Illuminate\Support\Facades\DB::table('seo_link_graph')
+                ->where('workspace_id', $wsId)
+                ->where('is_internal', true)
+                ->limit(500)
+                ->get(['source_url AS source', 'target_url AS target', 'anchor_text']);
+            return response()->json([
+                'success' => true,
+                'nodes'   => $nodes,
+                'edges'   => $edges,
+            ]);
+        });
+
         // 2026-05-15 Phase 3 — semantic clusters
         Route::get('/clusters', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
@@ -9123,6 +9309,10 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
 
     // ── Save meta back to Laravel index ─────────────────────────────────
     Route::patch('/save-meta', function (\Illuminate\Http\Request $r) {
+        // 2026-05-15 Phase 4 — was using sha256() but upsertContentIndex
+        // hashes via md5(); the prior version updated zero rows. Also
+        // wrote to `title` instead of `meta_title`. Match by url string +
+        // workspace and write the proper columns.
         $wsId = $r->attributes->get('workspace_id');
         $data = $r->validate([
             'url'              => 'required|url',
@@ -9131,9 +9321,9 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         ]);
         \Illuminate\Support\Facades\DB::table('seo_content_index')
             ->where('workspace_id', $wsId)
-            ->where('url_hash', hash('sha256', $data['url']))
+            ->where('url', $data['url'])
             ->update([
-                'title'            => $data['meta_title'] ?? null,
+                'meta_title'       => $data['meta_title']       ?? null,
                 'meta_description' => $data['meta_description'] ?? null,
                 'updated_at'       => now(),
             ]);

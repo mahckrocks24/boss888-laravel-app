@@ -201,12 +201,38 @@ class BuilderService
         ]);
 
         // 2026-05-12 Phase 0 — sync to SEO index (non-fatal on error)
+        // 2026-05-15 Phase 4 — also auto-seed seo_settings.site_url on first
+        // page creation per workspace, so the SEO engine has a starting URL.
         try {
             $page = DB::table('pages')->find($id);
             $website = DB::table('websites')->find($websiteId);
             if ($page && $website && !empty($website->workspace_id)) {
+                $wsId = (int) $website->workspace_id;
+                // First-page seed of seo_settings — only when no site_url exists.
+                $hasSiteUrl = DB::table('seo_settings')
+                    ->where('workspace_id', $wsId)->where('key', 'site_url')->exists();
+                if (!$hasSiteUrl) {
+                    $sub  = $website->subdomain ?? $website->slug ?? null;
+                    if ($sub) {
+                        DB::table('seo_settings')->insert([
+                            'workspace_id' => $wsId,
+                            'key'          => 'site_url',
+                            'value'        => 'https://' . $sub . '.levelupgrowth.io',
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+                        DB::table('seo_settings')->insert([
+                            'workspace_id' => $wsId,
+                            'key'          => 'site_name',
+                            'value'        => $website->name ?? 'My Site',
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+                        Log::info("[SEO] Auto-seeded seo_settings for ws={$wsId} on first Builder page");
+                    }
+                }
                 app(\App\Engines\SEO\Services\SeoService::class)
-                    ->syncFromBuilder((int) $website->workspace_id, $page);
+                    ->syncFromBuilder($wsId, $page);
             }
         } catch (\Throwable $e) {
             \Log::warning('[SEO] Builder createPage sync failed: ' . $e->getMessage());
