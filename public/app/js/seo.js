@@ -2547,8 +2547,6 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     { id: 'competitors', label: 'Competitors',  icon: 'globe' },
     { id: 'insights',    label: 'Insights',     icon: 'info' },
     { id: 'reports',     label: 'Reports',      icon: 'check' },
-    { id: 'assistant',   label: 'AI Assistant', icon: 'info' },
-    { id: 'chatbot',     label: 'Chatbot',      icon: 'info' },
   ];
 
   // FIX 2026-05-11 (sprint): Tabs with unimplemented backend — hidden until ready.
@@ -3358,8 +3356,6 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     { id: 'competitors', label: 'Competitors' },
     { id: 'insights',    label: 'Insights' },
     { id: 'reports',     label: 'Reports' },
-    { id: 'assistant',   label: 'AI Assistant' },
-    { id: 'chatbot',     label: 'Chatbot' },
   ];
 
   // Legacy ID aliases — preserve deep links.
@@ -3387,6 +3383,116 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       bar.appendChild(d);
     });
     switchTab('overview');
+
+    // 2026-05-15 — AI Assistant FAB + slide-in drawer.
+    // Renders once per session. Body-level so fixed positioning escapes
+    // the embed iframe container. Offset right:88px so it doesn't stack
+    // on the standalone SPA's global .ai-fab (which sits at right:24px).
+    _lgseInjectAiDrawer();
+    var fab = document.getElementById('lgse-ai-fab');
+    if (fab) { fab.style.display = 'flex'; }
+  }
+
+  function _lgseInjectAiDrawer() {
+    if (document.getElementById('lgse-ai-fab')) { return; }
+    var qs = [
+      'What are my biggest SEO issues?',
+      'Which pages need work?',
+      'Summarize my latest audit.',
+      'How can I improve my score?',
+    ];
+    var chips = qs.map(function (q) {
+      var safe = q.replace(/'/g, "\\'");
+      return '<button data-q="' + q.replace(/"/g, '&quot;') + '" onclick="window._lgseDrawerSuggest(\'' + safe + '\')" '
+        + 'style="background:rgba(255,255,255,0.05);color:#9CA3AF;'
+        + 'border:1px solid rgba(255,255,255,0.08);border-radius:16px;'
+        + 'padding:5px 10px;font-size:11px;cursor:pointer">'
+        + q + '</button>';
+    }).join('');
+
+    var wrap = document.createElement('div');
+    wrap.innerHTML =
+      // FAB — bottom-right, offset 88px right of edge so it doesn't
+      // overlap the global ai-fab in standalone SPA mode.
+      '<button id="lgse-ai-fab" onclick="window._lgseDrawerOpen()"'
+        + ' style="position:fixed;bottom:24px;right:88px;z-index:10000;'
+        + 'width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;'
+        + 'background:linear-gradient(135deg,#7C3AED,#3B82F6);'
+        + 'box-shadow:0 4px 20px rgba(124,58,237,0.4);'
+        + 'display:none;align-items:center;justify-content:center;'
+        + 'font-size:22px;transition:transform 0.2s"'
+        + ' onmouseover="this.style.transform=\'scale(1.1)\'"'
+        + ' onmouseout="this.style.transform=\'scale(1)\'"'
+        + ' title="AI SEO Assistant">&#129302;</button>'
+      // Overlay
+      + '<div id="lgse-ai-overlay" onclick="window._lgseDrawerClose()"'
+        + ' style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5)"></div>'
+      // Drawer
+      + '<div id="lgse-ai-drawer"'
+        + ' style="display:none;position:fixed;top:0;right:0;bottom:0;width:420px;max-width:95vw;'
+        + 'z-index:9999;background:#121826;border-left:1px solid rgba(255,255,255,0.08);'
+        + 'flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,0.4)">'
+        // Header
+        + '<div style="display:flex;align-items:center;gap:10px;padding:20px 20px 16px;'
+        + 'border-bottom:1px solid rgba(255,255,255,0.06)">'
+          + '<span style="font-size:20px">&#129302;</span>'
+          + '<div style="flex:1">'
+            + '<div style="font-size:16px;font-weight:700;color:#fff">SEO AI Assistant</div>'
+            + '<div style="font-size:12px;color:#6B7280">Powered by James &middot; LevelUp Growth</div>'
+          + '</div>'
+          + '<button onclick="window._lgseDrawerClose()"'
+            + ' style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:4px">&times;</button>'
+        + '</div>'
+        // Thread
+        + '<div id="lgse-drawer-thread"'
+          + ' style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px">'
+          + '<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);'
+          + 'border-radius:12px;padding:14px 16px;max-width:90%">'
+            + '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">James &middot; SEO Strategist</div>'
+            + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB">'
+              + 'Hi &mdash; I can answer SEO questions about your workspace using your real audit data, '
+              + 'indexed pages, and tracked keywords. Ask me something.'
+            + '</div>'
+          + '</div>'
+        + '</div>'
+        // Suggestion chips
+        + '<div id="lgse-drawer-suggestions"'
+          + ' style="padding:0 20px 12px;display:flex;gap:6px;flex-wrap:wrap">'
+          + chips
+        + '</div>'
+        // Input
+        + '<div style="padding:12px 20px 20px;border-top:1px solid rgba(255,255,255,0.06)">'
+          + '<div style="display:flex;gap:8px">'
+            + '<textarea id="lgse-drawer-input" rows="2" maxlength="2000"'
+              + ' placeholder="Ask anything about your SEO\u2026"'
+              + ' style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);'
+              + 'border-radius:10px;padding:10px 14px;color:#fff;'
+              + 'font-size:13px;resize:none;outline:none;font-family:inherit"></textarea>'
+            + '<button onclick="window._lgseDrawerSend()"'
+              + ' style="background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;'
+              + 'border:none;border-radius:10px;padding:10px 16px;'
+              + 'font-size:13px;font-weight:600;cursor:pointer;align-self:flex-end">Send</button>'
+          + '</div>'
+          + '<div style="font-size:11px;color:#4B5563;margin-top:8px;text-align:center">'
+            + 'Responses based on your real workspace data'
+          + '</div>'
+        + '</div>'
+      + '</div>';
+    document.body.appendChild(wrap);
+
+    setTimeout(function () {
+      var inp = document.getElementById('lgse-drawer-input');
+      if (inp) {
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (typeof window._lgseDrawerSend === 'function') {
+              window._lgseDrawerSend();
+            }
+          }
+        });
+      }
+    }, 200);
   }
 
   function switchTab(id) {
@@ -3402,7 +3508,6 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       overview: renderOverview, audit: renderAudit, keywords: renderKeywords,
       pages: renderPages, links: renderLinks, topics: renderTopics,
       competitors: renderCompetitors, insights: renderInsights, reports: renderReports,
-      assistant: renderAssistant, chatbot: renderChatbot,
     };
     (renderers[id] || renderOverview)(content);
   }
@@ -7312,13 +7417,120 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 })();
 
 
-// 2026-05-15 Phase 4b — AI Assistant tab global helpers.
-// Defined on window so the onclick attributes injected by renderAssistant
-// can reach them across the IIFE boundary.
-window._lgseAssistantSuggest = function (btn) {
-  var q = btn.getAttribute('data-q');
-  var inp = document.getElementById('lgse-chat-input');
+// 2026-05-15 — AI Assistant drawer global helpers.
+// Window-attached so the inline onclick handlers injected by
+// _lgseInjectAiDrawer can reach them. Also: hide FAB when leaving SEO.
+
+window._lgseDrawerOpen = function () {
+  var d = document.getElementById('lgse-ai-drawer');
+  var o = document.getElementById('lgse-ai-overlay');
+  if (d) { d.style.display = 'flex'; }
+  if (o) { o.style.display = 'block'; }
+  setTimeout(function () {
+    var inp = document.getElementById('lgse-drawer-input');
+    if (inp) { inp.focus(); }
+  }, 100);
+};
+
+window._lgseDrawerClose = function () {
+  var d = document.getElementById('lgse-ai-drawer');
+  var o = document.getElementById('lgse-ai-overlay');
+  if (d) { d.style.display = 'none'; }
+  if (o) { o.style.display = 'none'; }
+};
+
+window._lgseDrawerSuggest = function (q) {
+  var inp = document.getElementById('lgse-drawer-input');
   if (inp && q) { inp.value = q; inp.focus(); }
+};
+
+// Called by core.js nav() when leaving the SEO engine.
+window._lgseHideFab = function () {
+  var fab = document.getElementById('lgse-ai-fab');
+  if (fab) { fab.style.display = 'none'; }
+  if (typeof window._lgseDrawerClose === 'function') { window._lgseDrawerClose(); }
+};
+
+window._lgseDrawerSend = function () {
+  var inp = document.getElementById('lgse-drawer-input');
+  var thread = document.getElementById('lgse-drawer-thread');
+  var suggs = document.getElementById('lgse-drawer-suggestions');
+  if (!inp || !thread) { return; }
+  var msg = (inp.value || '').trim();
+  if (!msg) { return; }
+
+  function escMsg(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  if (suggs) { suggs.style.display = 'none'; }
+
+  var userBubble = document.createElement('div');
+  userBubble.style.cssText = 'align-self:flex-end;background:rgba(59,130,246,0.12);'
+    + 'border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:12px 16px;max-width:90%';
+  userBubble.innerHTML = '<div style="font-size:14px;line-height:1.6;color:#E5E7EB">'
+    + escMsg(msg).replace(/\n/g, '<br>') + '</div>';
+  thread.appendChild(userBubble);
+
+  var typing = document.createElement('div');
+  typing.id = 'lgse-drawer-typing';
+  typing.style.cssText = 'background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.15);'
+    + 'border-radius:12px;padding:14px 16px;max-width:90%';
+  typing.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:4px">James</div>'
+    + '<div style="color:#6B7280;font-size:13px">Thinking&hellip;</div>';
+  thread.appendChild(typing);
+  thread.scrollTop = thread.scrollHeight;
+  inp.value = '';
+
+  function appendBot(text) {
+    var t = document.getElementById('lgse-drawer-typing');
+    if (t) { t.remove(); }
+    var b = document.createElement('div');
+    b.style.cssText = 'background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);'
+      + 'border-radius:12px;padding:14px 16px;max-width:90%';
+    b.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">James</div>'
+      + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB">'
+      + escMsg(text).replace(/\n/g, '<br>') + '</div>';
+    thread.appendChild(b);
+    thread.scrollTop = thread.scrollHeight;
+  }
+
+  function appendErr(text) {
+    var t = document.getElementById('lgse-drawer-typing');
+    if (t) { t.remove(); }
+    var e = document.createElement('div');
+    e.style.cssText = 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);'
+      + 'border-radius:12px;padding:12px 16px;max-width:90%';
+    e.innerHTML = '<div style="color:#FCA5A5;font-size:13px">' + escMsg(text) + '</div>';
+    thread.appendChild(e);
+    thread.scrollTop = thread.scrollHeight;
+  }
+
+  var fetcher = typeof window._luFetch === 'function'
+    ? window._luFetch('POST', '/connector/assistant/message', { message: msg })
+    : fetch(window.location.origin + '/api/connector/assistant/message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+        },
+        body: JSON.stringify({ message: msg }),
+      }).then(function (r) { return r.json(); });
+
+  fetcher.then(function (d) {
+    var text = (d && d.data && d.data.response) ? d.data.response
+             : (d && d.response) ? d.response
+             : (d && d.reply) ? d.reply
+             : 'I could not get a response. Please try again.';
+    appendBot(text);
+  }).catch(function () { appendErr('Connection error. Please try again.'); });
+};
+
+// Legacy tab-mode helpers — kept as no-ops so dead-code renderAssistant/Chatbot
+// (still in the file but no longer in the renderers map) doesn't throw if
+// someone calls them by URL hash.
+window._lgseAssistantSuggest = function (btn) {
+  var q = btn && btn.getAttribute ? btn.getAttribute('data-q') : null;
+  if (q) { window._lgseDrawerSuggest(q); window._lgseDrawerOpen(); }
 };
 
 window._lgseAssistantSend = function () {
