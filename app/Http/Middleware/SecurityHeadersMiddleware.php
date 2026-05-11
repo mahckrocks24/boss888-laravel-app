@@ -24,7 +24,10 @@ class SecurityHeadersMiddleware
         $response = $next($request);
 
         // Prevent clickjacking
-        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        // 2026-05-11: X-Frame-Options removed to allow iframe embedding via
+        // WP Connector plugin. Frame-ancestors policy now set at nginx layer
+        // (Content-Security-Policy 'frame-ancestors *;') and Laravel CSP below.
+        // $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
 
         // Prevent MIME sniffing
         $response->headers->set('X-Content-Type-Options', 'nosniff');
