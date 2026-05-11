@@ -4158,7 +4158,20 @@ async function _appBootstrap() {
   }
 
   var token = localStorage.getItem('lu_token');
-  if (!token) { if (window.location.hash === "#signup") { try { history.replaceState(null, '', window.location.pathname + window.location.search + '#'); } catch (_) { window.location.hash = ''; } } _renderLogin(); return; }
+  if (!token) {
+    if (window.location.hash === "#signup") {
+      var _prod = ['levelupgrowth.io', 'www.levelupgrowth.io'].indexOf(window.location.hostname) !== -1;
+      if (_prod) {
+        try { history.replaceState(null, '', window.location.pathname + window.location.search + '#'); } catch (_) { window.location.hash = ''; }
+        _renderLogin();
+      } else {
+        _renderSignup();
+      }
+    } else {
+      _renderLogin();
+    }
+    return;
+  }
 
   var refreshToken = localStorage.getItem('lu_refresh_token');
   if (!refreshToken) { _renderLogin(); return; }

@@ -29,8 +29,7 @@ const AuthViews = {
             <div id="au-err" class="auth-err"></div>
 
             <div class="auth-switch">
-              <!-- 2026-05-11: signups deactivated. -->
-              <span style="color:var(--faint)">Signups are temporarily disabled.</span>
+              No account? <a href="#" onclick="if(['levelupgrowth.io','www.levelupgrowth.io'].indexOf(location.hostname)!==-1){return false}Router.go('signup');return false">Create one free →</a>
             </div>
             <div class="auth-switch" style="margin-top:6px;font-size:11.5px">
               <a href="/" style="color:var(--faint)">← Back to website</a>
@@ -66,28 +65,25 @@ const AuthViews = {
     },
 
     renderSignup(container) {
-        // 2026-05-11: signups deactivated platform-wide. Render the
-        // disabled notice in place of the form. Restore by reverting
-        // this function back to the pre-2026-05-11 body.
-        container.innerHTML = `
-        <div class="auth-wrap">
-          <div class="auth-card">
-            <div class="auth-logo"><div class="nav-logo-icon"><img src="/img/logo-icon-40.png" alt=""></div><span>LevelUpGrowth</span></div>
-            <h2 class="auth-title">Signups are temporarily disabled</h2>
-            <p class="auth-sub">We are not accepting new accounts at the moment. Existing customers can sign in below.</p>
-            <div class="auth-switch" style="margin-top:18px">
-              <a href="#" onclick="Router.go('login');return false">Go to sign in →</a>
-            </div>
-            <div class="auth-switch" style="margin-top:6px;font-size:11.5px">
-              <a href="/" style="color:var(--faint)">← Back to website</a>
-            </div>
-          </div>
-        </div>`;
-        return;
-
-        // The legacy form below is unreachable while signups are
-        // disabled. Kept intact so re-enabling is one-line revert above.
-        // eslint-disable-next-line no-unreachable
+        // 2026-05-11: signups blocked on production hosts only — staging
+        // (and other hosts) fall through to the real signup form below.
+        if (['levelupgrowth.io', 'www.levelupgrowth.io'].indexOf(location.hostname) !== -1) {
+            container.innerHTML = `
+            <div class="auth-wrap">
+              <div class="auth-card">
+                <div class="auth-logo"><div class="nav-logo-icon"><img src="/img/logo-icon-40.png" alt=""></div><span>LevelUpGrowth</span></div>
+                <h2 class="auth-title">Signups are temporarily disabled</h2>
+                <p class="auth-sub">We are not accepting new accounts at the moment. Existing customers can sign in below.</p>
+                <div class="auth-switch" style="margin-top:18px">
+                  <a href="#" onclick="Router.go('login');return false">Go to sign in →</a>
+                </div>
+                <div class="auth-switch" style="margin-top:6px;font-size:11.5px">
+                  <a href="/" style="color:var(--faint)">← Back to website</a>
+                </div>
+              </div>
+            </div>`;
+            return;
+        }
         container.innerHTML = `
         <div class="auth-wrap">
           <div class="auth-card">
@@ -123,13 +119,11 @@ const AuthViews = {
     },
 
     async doSignup() {
-        // 2026-05-11: signups deactivated. Show the disabled notice in
-        // the form's error slot. Defence-in-depth for any cached HTML
-        // that still has the form mounted and the button wired.
-        AuthViews._err('Signups are temporarily disabled.', 'su');
-        return;
-
-        // eslint-disable-next-line no-unreachable
+        // 2026-05-11: signups blocked on production hosts only.
+        if (['levelupgrowth.io', 'www.levelupgrowth.io'].indexOf(location.hostname) !== -1) {
+            AuthViews._err('Signups are temporarily disabled.', 'su');
+            return;
+        }
         const name  = document.getElementById('su-name')?.value?.trim();
         const email = document.getElementById('su-email')?.value?.trim();
         const pwd   = document.getElementById('su-pwd')?.value;

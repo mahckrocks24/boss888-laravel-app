@@ -178,12 +178,15 @@ document.addEventListener('click', e => {
 });
 
 // ── Plan selection (pricing → signup) ────────────────────────
-// 2026-05-11: signups deactivated. selectPlan() now bounces to homepage
-// rather than the signup page. Plan localStorage write left in place so
-// re-enabling is a clean revert of one line.
+// 2026-05-11: signups blocked on production hostnames only — staging
+// (and other hosts) keep the original /app/#signup target.
 function selectPlan(name, price) {
     try { localStorage.setItem('lu_selected_plan', name); localStorage.setItem('lu_selected_price', price); } catch(_) {}
-    window.location.href = '/';
+    if (['levelupgrowth.io', 'www.levelupgrowth.io'].indexOf(location.hostname) !== -1) {
+        window.location.href = '/';
+    } else {
+        window.location.href = '/app/#signup';
+    }
 }
 
 // ── Escape helper ─────────────────────────────────────────────

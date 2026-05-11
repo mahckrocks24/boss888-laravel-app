@@ -58,8 +58,12 @@ Route::get('/faq', function () {
 })->name('faq');
 
 Route::get('/sign-up', function () {
-    // 2026-05-11: signups deactivated — bounce to homepage.
-    return redirect('/', 302);
+    // 2026-05-11: production hostnames bounce to homepage; staging + others
+    // continue to serve the pricing page that drives the signup flow.
+    if (in_array(request()->getHost(), ['levelupgrowth.io', 'www.levelupgrowth.io'], true)) {
+        return redirect('/', 302);
+    }
+    return response()->file(public_path('marketing/pages/pricing.html'));
 })->name('signup');
 
 // All marketing pages (direct URL access)

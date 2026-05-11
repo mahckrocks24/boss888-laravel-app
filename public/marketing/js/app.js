@@ -114,8 +114,13 @@ const App = {
         document.getElementById('app-shell').style.display  = 'none';
         document.getElementById('auth-shell').style.display = 'flex';
         const container = document.getElementById('auth-view');
-        // 2026-05-11: signups deactivated — render login regardless of `view`.
-        AuthViews.renderLogin(container);
+        // 2026-05-11: signups blocked on production hosts only.
+        const _prod = ['levelupgrowth.io', 'www.levelupgrowth.io'].indexOf(location.hostname) !== -1;
+        if (view === 'signup' && !_prod) {
+            AuthViews.renderSignup(container);
+        } else {
+            AuthViews.renderLogin(container);
+        }
     },
 
     showOnboarding() {
@@ -147,7 +152,7 @@ const App = {
         Router.register('social',    (c) => Engines.renderEnginePlaceholder(c, 'Social Media', '📱', '#F59E0B', 'AI content creation and scheduling across all social platforms.'));
         Router.register('calendar',  (c) => Engines.renderEnginePlaceholder(c, 'Calendar', '📅', '#3B82F6', 'Content calendar and marketing schedule management.'));
         Router.register('login',     () => App.showAuth('login'));
-        Router.register('signup',    () => { try { history.replaceState(null, '', '#'); } catch (_) { window.location.hash = ''; } });
+        Router.register('signup',    () => { if (['levelupgrowth.io', 'www.levelupgrowth.io'].indexOf(location.hostname) !== -1) { try { history.replaceState(null, '', '#'); } catch (_) { window.location.hash = ''; } } else { App.showAuth('signup'); } });
         Router.register('logout',    () => App.logout());
 
         window.addEventListener('hashchange', () => Router.handle());

@@ -16,9 +16,11 @@ class AuthController
 
     public function register(Request $request): JsonResponse
     {
-        // 2026-05-11: signups deactivated platform-wide. Restore by removing
-        // this short-circuit and re-enabling marketing/SPA signup CTAs.
-        abort(403, 'Signups are temporarily disabled.');
+        // 2026-05-11: signups blocked on production hostnames only.
+        // staging.levelupgrowth.io and other hosts still accept registrations.
+        if (in_array($request->getHost(), ['levelupgrowth.io', 'www.levelupgrowth.io'], true)) {
+            abort(403, 'Signups are temporarily disabled.');
+        }
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
