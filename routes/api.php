@@ -2496,6 +2496,21 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             ]);
         });
 
+        // 2026-05-15 Phase 4b — chatbot status surface for SEO engine Chatbot tab.
+        // Reads chatbot_settings (one row per workspace; the actual table — the
+        // earlier draft referred to a non-existent `chatbots` table).
+        Route::get('/chatbot/status', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $chatbot = \Illuminate\Support\Facades\DB::table('chatbot_settings')
+                ->where('workspace_id', $wsId)
+                ->first(['id', 'enabled', 'greeting', 'theme', 'timezone',
+                         'primary_color', 'fallback_email', 'created_at', 'updated_at']);
+            return response()->json([
+                'success' => true,
+                'chatbot' => $chatbot,
+            ]);
+        });
+
         // 2026-05-15 Phase 3 — semantic clusters
         Route::get('/clusters', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
