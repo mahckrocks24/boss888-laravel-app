@@ -1908,6 +1908,66 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             return response()->json(["saved" => true]);
         });
 
+        // ─── 2026-05-14 Phase 2 — anchor intelligence, link equity, AI cache ──
+
+        Route::get('/anchors', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $anchors = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId)
+                ->orderByRaw("CASE health WHEN 'poor' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END")
+                ->orderByDesc('total_inbound')
+                ->get();
+            return response()->json([
+                'success' => true,
+                'pages'   => $anchors,
+                'total'   => $anchors->count(),
+            ]);
+        });
+
+        Route::get('/anchors/analyze', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $url  = $r->query('url', '');
+            if (!$url) {
+                return response()->json(['success' => false, 'error' => 'url_required'], 422);
+            }
+            $svc = app(\App\Engines\SEO\Services\SeoService::class);
+            return response()->json(['success' => true, 'data' => $svc->analyzeAnchors($wsId, $url)]);
+        });
+
+        Route::post('/anchors/bulk-analyze', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('inbound_links', '>', 0)
+                ->limit(30)
+                ->pluck('url');
+            $svc   = app(\App\Engines\SEO\Services\SeoService::class);
+            $count = 0;
+            foreach ($pages as $u) {
+                try { $svc->analyzeAnchors($wsId, $u); $count++; }
+                catch (\Throwable $e) {}
+            }
+            return response()->json(['success' => true, 'pages_analyzed' => $count]);
+        });
+
+        Route::get('/link-equity', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $svc  = app(\App\Engines\SEO\Services\SeoService::class);
+            $data = $svc->computeLinkEquity($wsId);
+            return response()->json(array_merge(['success' => true], $data));
+        });
+
+        Route::delete('/ai-report/cache', function (\Illuminate\Http\Request $r) {
+            $wsId    = $r->attributes->get('workspace_id');
+            $deleted = \Illuminate\Support\Facades\DB::table('seo_ai_reports')
+                ->where('workspace_id', $wsId)->delete();
+            return response()->json([
+                'success' => true,
+                'message' => 'AI report cache cleared',
+                'deleted' => $deleted,
+            ]);
+        });
+
         // ─── 2026-05-12: Missing /seo/* routes — close the SPA orphan-tab gap.
         // These mirror equivalent /connector/* endpoints so the SEO engine
         // bundle (which calls /api/seo/*) gets HTTP 200 instead of 404.

@@ -225,6 +225,22 @@ class SeoService
         $url = $params['url'] ?? '';
         if (empty($url)) throw new \InvalidArgumentException('URL required');
 
+        // 2026-05-14 Phase 2 — cache hit: return prior report for this URL if
+        // generated within the last 24h. Bust manually via DELETE /seo/ai-report/cache.
+        $cached = DB::table('seo_ai_reports')
+            ->where('workspace_id', $wsId)
+            ->where('report_type', 'page')
+            ->where('context_key', $url)
+            ->where('created_at', '>=', now()->subDay())
+            ->orderByDesc('created_at')
+            ->first();
+        if ($cached) {
+            $payload = json_decode($cached->report_json, true) ?: [];
+            $payload['_cached']    = true;
+            $payload['_cached_at'] = (string) $cached->created_at;
+            return $payload;
+        }
+
         $auditId = DB::table('seo_audits')->insertGetId([
             'workspace_id' => $wsId, 'url' => $url,
             'type' => 'ai_report', 'status' => 'running',
@@ -287,7 +303,27 @@ class SeoService
         // Log activity
         $this->logActivity($wsId, null, 'ai_report', 'audit', $auditId, ['url' => $url, 'score' => $report['overall_score']]);
 
-        return ['audit_id' => $auditId, 'status' => 'completed', 'report' => $report];
+        $result = ['audit_id' => $auditId, 'status' => 'completed', 'report' => $report];
+
+        // 2026-05-14 Phase 2 — cache the report by URL with 24h TTL semantic.
+        // Subsequent identical-URL calls return this row until DELETE
+        // /seo/ai-report/cache wipes the workspace's cache or 24h elapses.
+        try {
+            DB::table('seo_ai_reports')->insert([
+                'workspace_id' => $wsId,
+                'audit_id'     => $auditId,
+                'report_type'  => 'page',
+                'context_key'  => $url,
+                'report_json'  => json_encode($result),
+                'tokens_used'  => 0,
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::debug('[SEO] ai_report cache insert failed: ' . $e->getMessage());
+        }
+
+        return $result;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -448,65 +484,285 @@ class SeoService
 
     public function generateLinkSuggestions(int $wsId, array $params): array
     {
-        $url = $params['url'] ?? $params['source_url'] ?? '';
-        // 2026-05-12: read from seo_content_index (works for connector-only
-        // workspaces too — was previously joining pages+websites which only
-        // exist when the builder engine has run).
-        $indexed = DB::table('seo_content_index')
+        // 2026-05-14 Phase 2 — semantic link suggestions using Jaccard token
+        // overlap (title+h1+meta) weighted by authority_score. Replaces the
+        // earlier keyword-in-title pattern matcher (which produced 0 results
+        // for workspaces where keywords didn't appear verbatim in titles).
+        $sourceUrl = $params['url'] ?? $params['source_url'] ?? '';
+
+        $pages = DB::table('seo_content_index')
             ->where('workspace_id', $wsId)
-            ->select('url', 'title', 'meta_description')
-            ->get();
-        $keywords = DB::table('seo_keywords')->where('workspace_id', $wsId)->pluck('keyword')->toArray();
+            ->when($sourceUrl, fn ($q) => $q->where('url', '!=', $sourceUrl))
+            ->get(['url', 'title', 'h1', 'authority_score', 'word_count',
+                   'meta_description', 'intent']);
+        if ($pages->isEmpty()) {
+            return ['generated' => 0, 'suggestions' => []];
+        }
+
+        $sourcePage = $sourceUrl
+            ? DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)->where('url', $sourceUrl)->first()
+            : null;
+        $sourceTokens = $sourcePage
+            ? $this->tokenize(($sourcePage->title ?? '') . ' '
+                . ($sourcePage->h1 ?? '') . ' '
+                . ($sourcePage->meta_description ?? ''))
+            : [];
+
+        // Skip pages already linked from this source
+        $existingTargets = DB::table('seo_link_graph')
+            ->where('workspace_id', $wsId)
+            ->when($sourceUrl, fn ($q) => $q->where('source_url', $sourceUrl))
+            ->pluck('target_url')->toArray();
 
         $suggestions = [];
-        foreach ($indexed as $page) {
-            if ($url && $page->url === $url) { continue; } // don't link page to itself
-            foreach ($keywords as $kw) {
-                if ($kw && (stripos($page->title ?? '', $kw) !== false
-                         || stripos($page->meta_description ?? '', $kw) !== false)) {
-                    $suggestions[] = [
-                        'workspace_id'   => $wsId,
-                        'source_url'     => $url ?: '/',
-                        'target_url'     => $page->url,
-                        'anchor_text'    => $kw,
-                        'type'           => 'internal',
-                        'status'         => 'suggested',
-                        'priority_score' => rand(40, 90),
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
-                    ];
-                }
+        foreach ($pages as $candidate) {
+            if (in_array($candidate->url, $existingTargets, true)) { continue; }
+            if ((int) ($candidate->word_count ?? 0) < 100) { continue; }
+
+            $candidateTokens = $this->tokenize(
+                ($candidate->title ?? '') . ' '
+                . ($candidate->h1 ?? '') . ' '
+                . ($candidate->meta_description ?? '')
+            );
+
+            $overlap = count(array_intersect($sourceTokens, $candidateTokens));
+            $union   = count(array_unique(array_merge($sourceTokens, $candidateTokens)));
+            $jaccard = $union > 0 ? $overlap / $union : 0.0;
+            $auth    = (float) ($candidate->authority_score ?? 0);
+            $relevance = ($jaccard * 0.7) + ($auth * 0.3);
+
+            // Workspace-wide call (no source) — fall back to authority-only when
+            // there's no source token set to compare against.
+            if ($relevance > 0.05 || ($sourceTokens === [] && $auth > 0.3)) {
+                $anchor = $this->suggestAnchor($candidate->title ?? '', $sourceTokens);
+                $suggestions[] = [
+                    'target_url'       => $candidate->url,
+                    'title'            => $candidate->title,
+                    'relevance_score'  => round($relevance, 3),
+                    'authority_score'  => round($auth, 3),
+                    'suggested_anchor' => $anchor,
+                    'word_count'       => (int) $candidate->word_count,
+                    'intent'           => $candidate->intent,
+                ];
             }
         }
 
-        if (!empty($suggestions)) {
-            // Trim to 20 and use updateOrInsert to avoid duplicate rows on re-runs.
-            foreach (array_slice($suggestions, 0, 20) as $s) {
-                DB::table('seo_links')->updateOrInsert(
-                    [
-                        'workspace_id' => $s['workspace_id'],
-                        'source_url'   => $s['source_url'],
-                        'target_url'   => $s['target_url'],
-                    ],
-                    [
-                        'anchor_text'    => $s['anchor_text'],
-                        'type'           => $s['type'],
-                        'status'         => $s['status'],
-                        'priority_score' => $s['priority_score'],
-                        'updated_at'     => $s['updated_at'],
-                        'created_at'     => $s['created_at'],
-                    ]
-                );
-            }
+        // Sort by relevance, cap at 15
+        usort($suggestions, fn ($a, $b) => $b['relevance_score'] <=> $a['relevance_score']);
+        $suggestions = array_slice($suggestions, 0, 15);
+
+        // Persist to seo_links — idempotent via updateOrInsert keyed on
+        // (workspace_id, source_url, target_url). source_url defaults to
+        // 'workspace' for workspace-wide queries (no specific source).
+        foreach ($suggestions as $sug) {
+            DB::table('seo_links')->updateOrInsert(
+                [
+                    'workspace_id' => $wsId,
+                    'source_url'   => $sourceUrl ?: 'workspace',
+                    'target_url'   => $sug['target_url'],
+                ],
+                [
+                    'anchor_text'    => $sug['suggested_anchor'],
+                    'type'           => 'internal',
+                    'status'         => 'suggested',
+                    'priority_score' => (int) ($sug['relevance_score'] * 100),
+                    'updated_at'     => now(),
+                    'created_at'     => now(),
+                ]
+            );
         }
 
-        // Log activity
         $this->logActivity($wsId, null, 'generate_link_suggestions', 'links', null, [
-            'url' => $url,
+            'url'       => $sourceUrl,
             'generated' => count($suggestions),
         ]);
 
-        return ['generated' => count($suggestions), 'suggestions' => array_slice($suggestions, 0, 20)];
+        return ['generated' => count($suggestions), 'suggestions' => $suggestions];
+    }
+
+    /**
+     * 2026-05-14 Phase 2 — tokenize text into a deduped set of meaningful
+     * keywords for Jaccard similarity. Strips stopwords (incl. UAE/Dubai
+     * which dominate workspace 7's content) and short words.
+     */
+    private function tokenize(string $text): array
+    {
+        $stopwords = [
+            'the','a','an','and','or','but','in','on','at','to','for','of','with',
+            'by','from','as','is','was','are','were','be','been','being','have','has',
+            'had','do','does','did','will','would','could','should','may','might',
+            'shall','can','this','that','these','those','it','its','we','our','you',
+            'your','they','their','he','his','she','her','about','dubai','uae',
+            'into','than','then','also','more','most','some','any','all','each',
+        ];
+        $clean  = strtolower(preg_replace('/[^a-zA-Z0-9\s]/', ' ', $text));
+        $words  = preg_split('/\s+/', $clean, -1, PREG_SPLIT_NO_EMPTY);
+        $tokens = array_filter($words, fn ($w) => strlen($w) > 3 && !in_array($w, $stopwords, true));
+        return array_values(array_unique($tokens));
+    }
+
+    /**
+     * 2026-05-14 Phase 2 — pick a natural anchor text snippet from the target
+     * page's title that overlaps with the source page's tokens. Falls back
+     * to first-5-words of title if there's no overlap.
+     */
+    private function suggestAnchor(string $targetTitle, array $sourceTokens): string
+    {
+        if ($targetTitle === '') { return ''; }
+        if (empty($sourceTokens)) {
+            return implode(' ', array_slice(explode(' ', $targetTitle), 0, 5));
+        }
+        $titleTokens = $this->tokenize($targetTitle);
+        $overlap     = array_intersect($titleTokens, $sourceTokens);
+        if (!empty($overlap)) {
+            $word = reset($overlap);
+            if (preg_match('/([A-Za-z]+ ){0,2}' . preg_quote($word, '/') . '( [A-Za-z]+){0,2}/i',
+                           $targetTitle, $m)) {
+                return trim($m[0]);
+            }
+        }
+        return implode(' ', array_slice(explode(' ', $targetTitle), 0, 5));
+    }
+
+    /**
+     * 2026-05-14 Phase 2 — anchor intelligence: how is THIS target URL being
+     * linked from elsewhere in the workspace? Counts generic anchors,
+     * detects over-optimisation, returns recommendations + a health bucket.
+     * Caches the result in seo_anchor_analysis.
+     */
+    public function analyzeAnchors(int $wsId, string $targetUrl): array
+    {
+        $inbound = DB::table('seo_link_graph')
+            ->where('workspace_id', $wsId)
+            ->where('target_url', $targetUrl)
+            ->get(['source_url', 'anchor_text']);
+
+        $anchors = $inbound->pluck('anchor_text')->filter()
+            ->map(fn ($a) => strtolower(trim($a)))->toArray();
+        $totalInbound  = $inbound->count();
+        $uniqueAnchors = count(array_unique($anchors));
+
+        $genericTerms = ['click here','here','read more','learn more','this','link',
+                         'page','website','more','info','details','visit','read'];
+        $genericCount = count(array_filter($anchors,
+            fn ($a) => in_array($a, $genericTerms, true)));
+
+        $anchorCounts  = array_count_values($anchors);
+        $overOptimised = array_filter($anchorCounts, fn ($c) => $c > 3);
+
+        $distribution = [];
+        foreach ($anchorCounts as $anchor => $count) {
+            $distribution[] = ['anchor' => $anchor, 'count' => $count];
+        }
+        usort($distribution, fn ($a, $b) => $b['count'] <=> $a['count']);
+
+        $recommendations = [];
+        if ($genericCount > 0) {
+            $recommendations[] = "Replace {$genericCount} generic anchors ('click here', 'read more') with descriptive text.";
+        }
+        if (!empty($overOptimised)) {
+            $recommendations[] = 'Some anchor texts are over-used. Vary anchor text to appear natural.';
+        }
+        if ($totalInbound === 0) {
+            $recommendations[] = 'This page has no inbound internal links. Add links from related pages.';
+        }
+        if ($uniqueAnchors === 1 && $totalInbound > 2) {
+            $recommendations[] = 'All inbound links use the same anchor text. Diversify for better SEO signals.';
+        }
+
+        $health = 'good';
+        if ($totalInbound === 0 || ($totalInbound > 0 && $genericCount > $totalInbound * 0.5)) {
+            $health = 'poor';
+        } elseif ($genericCount > 0 || !empty($overOptimised)) {
+            $health = 'warning';
+        }
+
+        $result = [
+            'target_url'          => $targetUrl,
+            'total_inbound'       => $totalInbound,
+            'unique_anchors'      => $uniqueAnchors,
+            'generic_anchors'     => $genericCount,
+            'over_optimised'      => array_keys($overOptimised),
+            'anchor_distribution' => array_slice($distribution, 0, 10),
+            'recommendations'     => $recommendations,
+            'health'              => $health,
+        ];
+
+        DB::table('seo_anchor_analysis')->updateOrInsert(
+            ['workspace_id' => $wsId, 'target_url' => $targetUrl],
+            [
+                'total_inbound'       => $totalInbound,
+                'unique_anchors'      => $uniqueAnchors,
+                'generic_anchors'     => $genericCount,
+                'anchor_distribution' => json_encode(array_slice($distribution, 0, 10)),
+                'recommendations'     => json_encode($recommendations),
+                'health'              => $health,
+                'updated_at'          => now(),
+                'created_at'          => now(),
+            ]
+        );
+
+        return $result;
+    }
+
+    /**
+     * 2026-05-14 Phase 2 — link equity: which pages are leaking authority
+     * (high-auth pages with many external outbound links), which are orphaned
+     * or underlinked, and which are healthy. Read-mostly diagnostic — does
+     * not modify content_index, just returns a per-page assessment.
+     */
+    public function computeLinkEquity(int $wsId): array
+    {
+        $pages = DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->get(['url', 'authority_score', 'inbound_links',
+                   'external_link_count', 'content_score', 'word_count']);
+
+        $equity = [];
+        foreach ($pages as $page) {
+            $extOutbound = DB::table('seo_outbound_links')
+                ->where('workspace_id', $wsId)
+                ->where('source_url', $page->url)
+                ->count();
+            $authority   = (float) ($page->authority_score ?? 0);
+            $inbound     = (int)   ($page->inbound_links   ?? 0);
+
+            // Leak risk — high-authority pages with many external outbound
+            // links are bleeding link equity off-site.
+            $leakRisk = 'low';
+            if ($extOutbound > 10 && $authority > 0.5) {
+                $leakRisk = 'high';
+            } elseif ($extOutbound > 5 || ($extOutbound > 2 && $authority > 0.4)) {
+                $leakRisk = 'medium';
+            }
+
+            $opportunity = null;
+            if ($inbound === 0) {
+                $opportunity = 'orphan';
+            } elseif ($inbound < 2 && (int) ($page->content_score ?? 0) > 60) {
+                $opportunity = 'underlinked';
+            }
+
+            $equity[] = [
+                'url'           => $page->url,
+                'authority'     => round($authority, 3),
+                'inbound_links' => $inbound,
+                'ext_outbound'  => $extOutbound,
+                'leak_risk'     => $leakRisk,
+                'opportunity'   => $opportunity,
+                'content_score' => (int) ($page->content_score ?? 0),
+            ];
+        }
+
+        $riskOrder = ['high' => 0, 'medium' => 1, 'low' => 2];
+        usort($equity, function ($a, $b) use ($riskOrder) {
+            $cmp = $riskOrder[$a['leak_risk']] <=> $riskOrder[$b['leak_risk']];
+            if ($cmp !== 0) { return $cmp; }
+            return $b['authority'] <=> $a['authority'];
+        });
+
+        return ['equity' => $equity, 'total' => count($equity)];
     }
 
     public function insertLink(int $wsId, int $linkId): bool
