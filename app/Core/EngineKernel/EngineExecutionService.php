@@ -112,7 +112,13 @@ class EngineExecutionService
         if ($creditCost > 0) {
             $hasCredits = $this->creditService->hasBalance($wsId, $creditCost);
             if (!$hasCredits) {
-                return ['success' => false, 'error' => "Insufficient credits. Required: {$creditCost}", 'code' => 'NO_CREDITS'];
+                return [
+                    'success' => false,
+                    'error'   => "Not enough credits to run this action. {$creditCost} credit"
+                                 . ($creditCost === 1 ? '' : 's') . " required — top up to continue.",
+                    'code'    => 'NO_CREDITS',
+                    'required_credits' => $creditCost,
+                ];
             }
             // Reserve credits
             $reservationId = $this->creditService->reserve($wsId, $creditCost, "{$engine}/{$action}");

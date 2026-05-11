@@ -3319,7 +3319,20 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     var token = localStorage.getItem('lu_token') || '';
     var opts = { method: method, headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json' }, cache: 'no-store' };
     if (body) opts.body = JSON.stringify(body);
-    return fetch(window.location.origin + '/api/seo' + path, opts).then(function (r) { return r.json(); });
+    return fetch(window.location.origin + '/api/seo' + path, opts).then(function (r) {
+      // 2026-05-12: surface backend errors (402 NO_CREDITS, 403 PLAN_GATED,
+      // 422 validation, 5xx) instead of silently resolving with the error JSON.
+      return r.json().then(function (d) {
+        if (!r.ok || (d && d.success === false)) {
+          var err = new Error((d && (d.error || d.message)) || ('HTTP ' + r.status));
+          err.code   = (d && d.code) || null;
+          err.status = r.status;
+          err.body   = d;
+          throw err;
+        }
+        return d;
+      });
+    });
   }
   function countItems(resp, key) {
     if (!resp) return 0;
@@ -3812,7 +3825,19 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       }
       loadAuditList();
     }).catch(function (e) {
-      if (typeof window.showToast === 'function') window.showToast('Failed: ' + (e && e.message || ''), 'error');
+      // 2026-05-12: branch on e.code so the user sees the actual reason
+      // (out of credits, plan-gated, validation error) instead of a generic
+      // 'Failed:' toast that flashes by.
+      var code = e && e.code;
+      var msg  = (e && e.message) || 'Unknown error';
+      if (code === 'NO_CREDITS' && typeof showPlanGate === 'function') {
+        showPlanGate(msg);
+      } else if (code === 'PLAN_GATED' && typeof showPlanGate === 'function') {
+        showPlanGate(msg);
+      } else if (typeof window.showToast === 'function') {
+        window.showToast('Audit failed: ' + msg, 'error');
+      }
+      try { console.warn('[LGSE] Audit failed', { code: code, status: e && e.status, body: e && e.body }); } catch (_) {}
       if (btn) { btn.disabled = false; btn.textContent = '+ Run new audit'; }
     });
   };

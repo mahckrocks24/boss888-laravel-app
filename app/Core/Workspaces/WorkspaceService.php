@@ -44,7 +44,15 @@ class WorkspaceService
 
         $workspace->users()->attach($user->id, ['role' => 'owner']);
 
-        Credit::create(['workspace_id' => $workspace->id, 'balance' => 0]);
+        // 2026-05-12: seed initial credit balance from monthly_credit_allowance
+        // when set. Free signups (allowance=0) get balance:0 as before.
+        $workspace->refresh();
+        $initialBalance = (int) ($workspace->monthly_credit_allowance ?? 0);
+        Credit::create([
+            'workspace_id'     => $workspace->id,
+            'balance'          => $initialBalance,
+            'reserved_balance' => 0,
+        ]);
 
         $agents = Agent::where('status', 'active')->get();
         foreach ($agents as $agent) {
