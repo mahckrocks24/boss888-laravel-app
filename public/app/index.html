@@ -1990,6 +1990,26 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
     touch-action: pan-x pan-y !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Embed mode (WP Connector iframe) — hide the SPA chrome that doesn't
+   belong inside the WP admin frame. Activated when window._LGSC_EMBED is
+   detected; core.js adds the `lgsc-embed-mode` class to <html>.
+   ═════════════════════════════════════════════════════════════════════════ */
+html.lgsc-embed-mode .sidebar,
+html.lgsc-embed-mode .lu-topbar,
+html.lgsc-embed-mode .lu-hamburger,
+html.lgsc-embed-mode .ai-fab,
+html.lgsc-embed-mode #lu-messages-floater {
+  display: none !important;
+}
+html.lgsc-embed-mode .main,
+html.lgsc-embed-mode .lu-main {
+  margin-left: 0 !important;
+}
+html.lgsc-embed-mode body {
+  background: var(--bg) !important;
+}
 </style>
 
 <style>
@@ -4678,7 +4698,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.6.1-settings-wired"></script>
+<script defer src="/app/js/core.js?v=4.7.0-embed"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->

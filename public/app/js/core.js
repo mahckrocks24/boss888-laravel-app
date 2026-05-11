@@ -4063,12 +4063,42 @@ var _luBase = (function() {
     return window.location.origin;
 })();
 
+// ── Embed mode (WP Connector iframe) ─────────────────────────────────────
+// Parses lgsc_key + lgsc_ws + embed=1 from the URL hash on first load and
+// stores them in window._LGSC_EMBED. When set, _luFetch uses the API key
+// auth path (X-API-KEY) instead of the localStorage JWT, and the JwtAuth
+// middleware on Laravel side accepts the same header as fallback auth.
+(function _lgscDetectEmbed() {
+  var hash   = window.location.hash || '';
+  var qIdx   = hash.indexOf('?');
+  if (qIdx === -1) return;
+  var params = new URLSearchParams(hash.substring(qIdx + 1));
+  var key    = params.get('lgsc_key');
+  var wsId   = params.get('lgsc_ws');
+  var embed  = params.get('embed');
+  if (key && wsId && embed === '1') {
+    window._LGSC_EMBED = {
+      api_key:      key,
+      workspace_id: parseInt(wsId, 10),
+      embed:        true,
+    };
+    document.documentElement.classList.add('lgsc-embed-mode');
+  }
+})();
+
 async function _luFetch(method, path, body) {
   var token  = localStorage.getItem('lu_token');
   var nonce  = (window.LU_CFG && window.LU_CFG.nonce) ? window.LU_CFG.nonce : '';
   var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-  if (token)  headers['Authorization']  = 'Bearer ' + token;
-  if (nonce)  headers['X-WP-Nonce']     = nonce;
+  // Embed mode: use API key auth (works against both /connector/* and any
+  // JWT-protected route, since JwtAuthMiddleware now accepts X-API-KEY).
+  if (window._LGSC_EMBED && window._LGSC_EMBED.api_key) {
+    headers['X-API-KEY']      = window._LGSC_EMBED.api_key;
+    headers['X-Workspace-ID'] = String(window._LGSC_EMBED.workspace_id || '');
+  } else {
+    if (token)  headers['Authorization']  = 'Bearer ' + token;
+    if (nonce)  headers['X-WP-Nonce']     = nonce;
+  }
   var opts = { method: method, headers: headers, cache: 'no-store' };
   if (body) opts.body = JSON.stringify(body);
   var r = await fetch(_luBase + '/api' + path, opts);
