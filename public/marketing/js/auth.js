@@ -29,7 +29,8 @@ const AuthViews = {
             <div id="au-err" class="auth-err"></div>
 
             <div class="auth-switch">
-              No account? <a href="#" onclick="Router.go('signup');return false">Create one free →</a>
+              <!-- 2026-05-11: signups deactivated. -->
+              <span style="color:var(--faint)">Signups are temporarily disabled.</span>
             </div>
             <div class="auth-switch" style="margin-top:6px;font-size:11.5px">
               <a href="/" style="color:var(--faint)">← Back to website</a>

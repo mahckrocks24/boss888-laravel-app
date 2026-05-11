@@ -16,6 +16,10 @@ class AuthController
 
     public function register(Request $request): JsonResponse
     {
+        // 2026-05-11: signups deactivated platform-wide. Restore by removing
+        // this short-circuit and re-enabling marketing/SPA signup CTAs.
+        abort(403, 'Signups are temporarily disabled.');
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',

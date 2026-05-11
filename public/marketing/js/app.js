@@ -114,11 +114,8 @@ const App = {
         document.getElementById('app-shell').style.display  = 'none';
         document.getElementById('auth-shell').style.display = 'flex';
         const container = document.getElementById('auth-view');
-        if (view === 'signup') {
-            AuthViews.renderSignup(container);
-        } else {
-            AuthViews.renderLogin(container);
-        }
+        // 2026-05-11: signups deactivated — render login regardless of `view`.
+        AuthViews.renderLogin(container);
     },
 
     showOnboarding() {
@@ -150,7 +147,7 @@ const App = {
         Router.register('social',    (c) => Engines.renderEnginePlaceholder(c, 'Social Media', '📱', '#F59E0B', 'AI content creation and scheduling across all social platforms.'));
         Router.register('calendar',  (c) => Engines.renderEnginePlaceholder(c, 'Calendar', '📅', '#3B82F6', 'Content calendar and marketing schedule management.'));
         Router.register('login',     () => App.showAuth('login'));
-        Router.register('signup',    () => App.showAuth('signup'));
+        Router.register('signup',    () => { try { history.replaceState(null, '', '#'); } catch (_) { window.location.hash = ''; } });
         Router.register('logout',    () => App.logout());
 
         window.addEventListener('hashchange', () => Router.handle());

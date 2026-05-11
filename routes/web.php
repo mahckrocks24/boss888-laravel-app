@@ -58,7 +58,8 @@ Route::get('/faq', function () {
 })->name('faq');
 
 Route::get('/sign-up', function () {
-    return response()->file(public_path('marketing/pages/pricing.html'));
+    // 2026-05-11: signups deactivated — bounce to homepage.
+    return redirect('/', 302);
 })->name('signup');
 
 // All marketing pages (direct URL access)
