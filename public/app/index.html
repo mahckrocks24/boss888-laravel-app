@@ -1,5 +1,96 @@
 <!DOCTYPE html>
 <!-- M1 mobile foundation: tokens + dvh + safe-area + z-index system --><html lang="en"><head>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// LGSC global fetch + XHR interceptor — MUST be first script in <head>.
+// When the SPA is embedded inside WP via the Level-Up Growth Connector
+// plugin, the iframe URL carries ?lgsc_key=...&lgsc_ws=...&embed=1.
+// In that mode every API call (from core.js or any engine bundle) is
+// rewritten on the fly to strip JWT Authorization and inject X-API-KEY.
+// ═══════════════════════════════════════════════════════════════════
+(function _lgscEmbedInterceptor() {
+  var params  = new URLSearchParams(window.location.search || '');
+  var lgscKey = params.get('lgsc_key');
+  var lgscWs  = params.get('lgsc_ws');
+  var isEmbed = params.get('embed') === '1' && !!lgscKey;
+  if (!isEmbed) return;
+
+  window._LGSC_EMBED = {
+    api_key:      lgscKey,
+    workspace_id: parseInt(lgscWs || '0', 10),
+    embed:        true,
+  };
+
+  function _isApi(urlStr) {
+    if (!urlStr) return false;
+    return urlStr.indexOf('levelupgrowth.io/api') > -1 ||
+           urlStr.indexOf('/api/') === 0 ||
+           urlStr.indexOf('/api/') > -1 && urlStr.charAt(0) === '/';
+  }
+
+  // ── fetch() interceptor ───────────────────────────────────────────
+  var _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    opts = opts || {};
+    var hdrs = opts.headers || {};
+    // Normalise Headers instance to plain object so we can mutate it.
+    if (hdrs && typeof hdrs.get === 'function' && typeof hdrs.forEach === 'function') {
+      var plain = {};
+      hdrs.forEach(function(v, k) { plain[k] = v; });
+      hdrs = plain;
+    }
+    var urlStr = typeof url === 'string' ? url : (url && url.url) || '';
+    if (_isApi(urlStr)) {
+      // Wipe any JWT auth and replace with API key + workspace.
+      delete hdrs['Authorization'];
+      delete hdrs['authorization'];
+      hdrs['X-API-KEY']      = lgscKey;
+      hdrs['X-Workspace-ID'] = String(lgscWs || '1');
+      hdrs['X-Workspace-Id'] = String(lgscWs || '1');
+    }
+    opts.headers = hdrs;
+    return _origFetch.call(this, url, opts);
+  };
+
+  // ── XMLHttpRequest interceptor (covers media-picker uploads etc.) ─
+  var _xhrOpen       = XMLHttpRequest.prototype.open;
+  var _xhrSetHeader  = XMLHttpRequest.prototype.setRequestHeader;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    this._lgscUrl   = url;
+    this._lgscIsApi = _isApi(url);
+    return _xhrOpen.apply(this, arguments);
+  };
+  XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
+    if (this._lgscIsApi && typeof name === 'string' &&
+        name.toLowerCase() === 'authorization') {
+      // Swallow JWT header on API requests; emit API key instead.
+      _xhrSetHeader.call(this, 'X-API-KEY',      lgscKey);
+      _xhrSetHeader.call(this, 'X-Workspace-ID', String(lgscWs || '1'));
+      _xhrSetHeader.call(this, 'X-Workspace-Id', String(lgscWs || '1'));
+      return;
+    }
+    return _xhrSetHeader.apply(this, arguments);
+  };
+  // Belt-and-braces: also inject the key on XHRs that never call
+  // setRequestHeader('Authorization') in the first place.
+  var _xhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function(body) {
+    if (this._lgscIsApi) {
+      try {
+        _xhrSetHeader.call(this, 'X-API-KEY',      lgscKey);
+        _xhrSetHeader.call(this, 'X-Workspace-ID', String(lgscWs || '1'));
+        _xhrSetHeader.call(this, 'X-Workspace-Id', String(lgscWs || '1'));
+      } catch (_) {}
+    }
+    return _xhrSend.call(this, body);
+  };
+
+  if (document && document.documentElement) {
+    document.documentElement.classList.add('lgsc-embed-mode');
+  }
+  try { console.log('[LGSC] Global fetch interceptor active, ws=' + lgscWs); } catch (_) {}
+})();
+</script>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -4698,7 +4789,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.7.2-embed-auth"></script>
+<script defer src="/app/js/core.js?v=4.7.3-intercept"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
