@@ -4069,13 +4069,23 @@ var _luBase = (function() {
 // auth path (X-API-KEY) instead of the localStorage JWT, and the JwtAuth
 // middleware on Laravel side accepts the same header as fallback auth.
 (function _lgscDetectEmbed() {
-  var hash   = window.location.hash || '';
-  var qIdx   = hash.indexOf('?');
-  if (qIdx === -1) return;
-  var params = new URLSearchParams(hash.substring(qIdx + 1));
+  // Try real query string first — plugin v1.0.9+ puts params there:
+  //   /app/?lgsc_key=...&lgsc_ws=...&embed=1#seo
+  var params = new URLSearchParams(window.location.search || '');
   var key    = params.get('lgsc_key');
   var wsId   = params.get('lgsc_ws');
   var embed  = params.get('embed');
+  // Legacy fallback for older plugin URLs (/app/#seo?lgsc_key=...)
+  if (!key) {
+    var hash = window.location.hash || '';
+    var qIdx = hash.indexOf('?');
+    if (qIdx !== -1) {
+      var hashParams = new URLSearchParams(hash.substring(qIdx + 1));
+      key   = hashParams.get('lgsc_key');
+      wsId  = hashParams.get('lgsc_ws');
+      embed = hashParams.get('embed');
+    }
+  }
   if (key && wsId && embed === '1') {
     window._LGSC_EMBED = {
       api_key:      key,
@@ -4083,6 +4093,7 @@ var _luBase = (function() {
       embed:        true,
     };
     document.documentElement.classList.add('lgsc-embed-mode');
+    try { console.log('[LGSC] Embed mode detected, ws=' + wsId); } catch (_) {}
   }
 })();
 
