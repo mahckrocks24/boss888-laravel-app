@@ -155,6 +155,17 @@ class WriteService
 
         $this->engineIntel->recordToolUsage('write', 'create_article');
 
+        // 2026-05-12 Phase 0 — sync to SEO index (non-fatal on error)
+        try {
+            $article = DB::table('articles')->find($id);
+            if ($article) {
+                app(\App\Engines\SEO\Services\SeoService::class)
+                    ->syncFromArticle($wsId, $article);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('[SEO] Write createArticle sync failed: ' . $e->getMessage());
+        }
+
         return ['article_id' => $id, 'status' => 'draft'];
     }
 
@@ -234,6 +245,17 @@ class WriteService
 
         $update['updated_at'] = now();
         DB::table('articles')->where('id', $articleId)->update($update);
+
+        // 2026-05-12 Phase 0 — sync to SEO index (non-fatal on error)
+        try {
+            $fresh = DB::table('articles')->find($articleId);
+            if ($fresh) {
+                app(\App\Engines\SEO\Services\SeoService::class)
+                    ->syncFromArticle((int) $fresh->workspace_id, $fresh);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('[SEO] Write updateArticle sync failed: ' . $e->getMessage());
+        }
 
         return ['article_id' => $articleId, 'updated' => true];
     }

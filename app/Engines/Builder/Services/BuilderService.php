@@ -199,6 +199,19 @@ class BuilderService
             'is_homepage' => $data['is_homepage'] ?? false,
             'created_at' => now(), 'updated_at' => now(),
         ]);
+
+        // 2026-05-12 Phase 0 — sync to SEO index (non-fatal on error)
+        try {
+            $page = DB::table('pages')->find($id);
+            $website = DB::table('websites')->find($websiteId);
+            if ($page && $website && !empty($website->workspace_id)) {
+                app(\App\Engines\SEO\Services\SeoService::class)
+                    ->syncFromBuilder((int) $website->workspace_id, $page);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('[SEO] Builder createPage sync failed: ' . $e->getMessage());
+        }
+
         return ['page_id' => $id, 'status' => 'draft'];
     }
 
@@ -244,6 +257,20 @@ class BuilderService
                     'error'   => $e->getMessage(),
                 ]);
             }
+        }
+
+        // 2026-05-12 Phase 0 — sync to SEO index (non-fatal on error)
+        try {
+            $fresh = DB::table('pages')->find($pageId);
+            if ($fresh && !empty($fresh->website_id)) {
+                $website = DB::table('websites')->find($fresh->website_id);
+                if ($website && !empty($website->workspace_id)) {
+                    app(\App\Engines\SEO\Services\SeoService::class)
+                        ->syncFromBuilder((int) $website->workspace_id, $fresh);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[SEO] Builder updatePage sync failed: ' . $e->getMessage());
         }
     }
 

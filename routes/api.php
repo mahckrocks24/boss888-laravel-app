@@ -2186,12 +2186,16 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // /connector/quick-wins handler.
         Route::get('/quick-wins', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
-            $url  = $r->query('url', '');
+            return response()->json(
+                app(\App\Engines\SEO\Services\SeoDataService::class)
+                    ->quickWins($wsId, $r->query('url'))
+            );
+            // legacy inline body kept below — never reached:
             $items = \Illuminate\Support\Facades\DB::table('seo_audit_items')
                 ->join('seo_audits', 'seo_audit_items.audit_id', '=', 'seo_audits.id')
                 ->where('seo_audits.workspace_id', $wsId)
                 ->whereIn('seo_audit_items.status', ['error', 'warning'])
-                ->when($url, fn ($q) => $q->where('seo_audit_items.url', $url))
+                ->when($r->query('url', ''), fn ($q) => $q->where('seo_audit_items.url', $r->query('url')))
                 ->orderByRaw("CASE seo_audit_items.status WHEN 'error' THEN 1 ELSE 2 END")
                 ->orderBy('seo_audit_items.score')
                 ->limit(20)
@@ -2222,14 +2226,11 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         // Links tab
         Route::get('/link-opportunities', function (\Illuminate\Http\Request $r) {
-            $wsId   = $r->attributes->get('workspace_id');
-            $srcUrl = $r->query('source_url', '');
-            $svc    = app(\App\Engines\SEO\Services\SeoService::class);
-            $result = $svc->generateLinkSuggestions($wsId, ['source_url' => $srcUrl]);
-            return response()->json([
-                'success'     => true,
-                'suggestions' => $result['suggestions'] ?? $result,
-            ]);
+            $wsId = $r->attributes->get('workspace_id');
+            return response()->json(
+                app(\App\Engines\SEO\Services\SeoDataService::class)
+                    ->linkOpportunities($wsId, $r->query('source_url', ''))
+            );
         });
 
         // Topics tab — stubs until topic clustering ships
@@ -2246,18 +2247,11 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         // Competitors tab — derive from SERP results
         Route::get('/competitors', function (\Illuminate\Http\Request $r) {
-            $wsId  = $r->attributes->get('workspace_id');
-            $comps = \Illuminate\Support\Facades\DB::table('seo_serp_results')
-                ->where('workspace_id', $wsId)
-                ->whereNotNull('domain')
-                ->select('domain',
-                    \Illuminate\Support\Facades\DB::raw('COUNT(*) as appearances'),
-                    \Illuminate\Support\Facades\DB::raw('AVG(position) as avg_position'))
-                ->groupBy('domain')
-                ->orderByDesc('appearances')
-                ->limit(20)
-                ->get();
-            return response()->json(['success' => true, 'competitors' => $comps]);
+            $wsId = $r->attributes->get('workspace_id');
+            return response()->json(
+                app(\App\Engines\SEO\Services\SeoDataService::class)
+                    ->competitors($wsId)
+            );
         });
         Route::get('/competitors/tracked', function (\Illuminate\Http\Request $r) {
             $wsId  = $r->attributes->get('workspace_id');
@@ -8813,9 +8807,13 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
     // ── Quick wins (from real seo_audit_items + low-rank keywords) ──────
     Route::get('/quick-wins', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
-        $url  = $r->query('url', '');
-        // Use REAL columns: category, check_name, status, score, details
-        // (NOT severity/recommendation as the original spec assumed)
+        // 2026-05-12 Phase 0 — delegate to SeoDataService so /seo and /connector
+        // return identical shapes (no schema drift).
+        return response()->json(
+            app(\App\Engines\SEO\Services\SeoDataService::class)
+                ->quickWins($wsId, $r->query('url'))
+        );
+        // legacy inline body kept below — never reached:
         $items = \Illuminate\Support\Facades\DB::table('seo_audit_items')
             ->join('seo_audits', 'seo_audit_items.audit_id', '=', 'seo_audits.id')
             ->where('seo_audits.workspace_id', $wsId)
@@ -8871,14 +8869,12 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
 
     // ── Link opportunities ──────────────────────────────────────────────
     Route::get('/link-opportunities', function (\Illuminate\Http\Request $r) {
-        $wsId   = $r->attributes->get('workspace_id');
-        $srcUrl = $r->query('source_url', '');
-        $svc    = app(\App\Engines\SEO\Services\SeoService::class);
-        $result = $svc->generateLinkSuggestions($wsId, ['source_url' => $srcUrl]);
-        return response()->json([
-            'success'     => true,
-            'suggestions' => $result['suggestions'] ?? $result,
-        ]);
+        $wsId = $r->attributes->get('workspace_id');
+        // 2026-05-12 Phase 0 — delegate to SeoDataService
+        return response()->json(
+            app(\App\Engines\SEO\Services\SeoDataService::class)
+                ->linkOpportunities($wsId, $r->query('source_url', ''))
+        );
     });
 
     // ── Page score ──────────────────────────────────────────────────────
@@ -8942,20 +8938,12 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
 
     // ── Competitors (derived from seo_serp_results.domain — NOT competitor_domain) ──
     Route::get('/competitors', function (\Illuminate\Http\Request $r) {
-        $wsId  = $r->attributes->get('workspace_id');
-        $comps = \Illuminate\Support\Facades\DB::table('seo_serp_results')
-            ->where('workspace_id', $wsId)
-            ->whereNotNull('domain')
-            ->select(
-                'domain',
-                \Illuminate\Support\Facades\DB::raw('COUNT(*) as appearances'),
-                \Illuminate\Support\Facades\DB::raw('AVG(position) as avg_position')
-            )
-            ->groupBy('domain')
-            ->orderByDesc('appearances')
-            ->limit(20)
-            ->get();
-        return response()->json(['success' => true, 'competitors' => $comps]);
+        $wsId = $r->attributes->get('workspace_id');
+        // 2026-05-12 Phase 0 — delegate to SeoDataService
+        return response()->json(
+            app(\App\Engines\SEO\Services\SeoDataService::class)
+                ->competitors($wsId)
+        );
     });
 
     // ── Reports (calls SeoService::getReport — NOT report) ──────────────

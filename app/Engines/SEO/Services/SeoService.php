@@ -1193,6 +1193,237 @@ class SeoService
      * NOTE: opportunity_score is computed locally from real difficulty +
      * volume + CPC instead of being random.
      */
+    /**
+     * 2026-05-12 Phase 0 — array-based wrapper around the positional
+     * scoreContent() method. Adds 4 new scoring factors not present in
+     * the legacy 9-factor scorer. Total still normalises to 100.
+     *
+     * @param array        $data         Keys: title, meta_title, meta_description, h1,
+     *                                   h2_count, word_count, image_count, internal_link_count,
+     *                                   keyword (focus), has_schema, has_og, content (text body)
+     * @return array                     {score:int, label:string, breakdown:array}
+     */
+    public function scoreContentExtended(array $data): array
+    {
+        // Delegate to the existing 9-factor positional scorer
+        $base = $this->scoreContent(
+            (string) ($data['meta_title']       ?? $data['title']       ?? ''),
+            (string) ($data['meta_description'] ?? ''),
+            (string) ($data['h1']               ?? ''),
+            (int)    ($data['h2_count']         ?? 0),
+            (int)    ($data['word_count']       ?? 0),
+            (int)    ($data['image_count']      ?? 0),
+            (int)    ($data['internal_link_count'] ?? 0),
+            $data['keyword'] ?? null,
+            $data['content'] ?? null
+        );
+
+        $breakdown = $base['breakdown'] ?? [];
+        $total     = (int) ($base['score'] ?? 0);
+
+        // ── New factor: Schema markup (4 pts) ───────────────────────────
+        $hasSchema = (bool) ($data['has_schema'] ?? false);
+        $schemaPts = $hasSchema ? 4 : 0;
+        $breakdown[] = [
+            'factor'  => 'schema_markup',
+            'weight'  => 4,
+            'score'   => $schemaPts,
+            'details' => $hasSchema ? 'Schema markup detected' : 'No structured data — add JSON-LD',
+        ];
+        $total += $schemaPts;
+
+        // ── New factor: Open Graph / Twitter tags (3 pts) ──────────────
+        $hasOg = (bool) ($data['has_og'] ?? false);
+        $ogPts = $hasOg ? 3 : 0;
+        $breakdown[] = [
+            'factor'  => 'og_tags',
+            'weight'  => 3,
+            'score'   => $ogPts,
+            'details' => $hasOg ? 'Open Graph tags present' : 'Missing OG tags for social sharing',
+        ];
+        $total += $ogPts;
+
+        // ── New factor: Internal links count (3 pts) ───────────────────
+        $internalLinks = (int) ($data['internal_link_count'] ?? 0);
+        $ilPts = $internalLinks >= 3 ? 3 : ($internalLinks >= 1 ? 1 : 0);
+        $breakdown[] = [
+            'factor'  => 'internal_links_weighted',
+            'weight'  => 3,
+            'score'   => $ilPts,
+            'details' => "Found {$internalLinks} internal links" . ($internalLinks < 3 ? ' — aim for 3+' : ''),
+        ];
+        $total += $ilPts;
+
+        // ── New factor: Readability — approx Flesch-Kincaid (3 pts) ────
+        $readPts  = 0;
+        $readNote = 'No content for readability check';
+        $text     = strip_tags((string) ($data['content'] ?? ''));
+        if (mb_strlen($text) > 100) {
+            $words     = max(1, str_word_count($text));
+            $sentences = max(1, preg_match_all('/[.!?]+\s/', $text));
+            preg_match_all('/[aeiouAEIOU]+/', $text, $vm);
+            $syllables = max($words, count($vm[0] ?? []));
+            $fk = 206.835 - (1.015 * ($words / $sentences)) - (84.6 * ($syllables / $words));
+            $fk = max(0, min(100, $fk));
+            if ($fk >= 60)      { $readPts = 3; $readNote = 'Easy to read (FK ' . round($fk) . ')'; }
+            elseif ($fk >= 30)  { $readPts = 1; $readNote = 'Moderate readability (FK ' . round($fk) . ')'; }
+            else                { $readPts = 0; $readNote = 'Hard to read (FK ' . round($fk) . ') — simplify sentences'; }
+        }
+        $breakdown[] = [
+            'factor'  => 'readability',
+            'weight'  => 3,
+            'score'   => $readPts,
+            'details' => $readNote,
+        ];
+        $total += $readPts;
+
+        // Normalise to 100 if extras pushed it over
+        if ($total > 100) {
+            $factor = 100 / $total;
+            foreach ($breakdown as &$b) {
+                $b['score'] = (int) round(($b['score'] ?? 0) * $factor);
+            }
+            unset($b);
+            $total = (int) array_sum(array_column($breakdown, 'score'));
+            $total = min(100, $total);
+        }
+
+        return [
+            'score'     => $total,
+            'label'     => $total >= 80 ? 'Great' : ($total >= 60 ? 'Good' : ($total >= 40 ? 'Needs Work' : 'Poor')),
+            'breakdown' => $breakdown,
+        ];
+    }
+
+    /**
+     * 2026-05-12 Phase 0 — sync a Builder page into seo_content_index so the
+     * SEO engine sees Builder-managed pages in the index. Non-destructive;
+     * never modifies the pages table itself.
+     *
+     * Derives URL from websites.domain + pages.slug when available.
+     */
+    public function syncFromBuilder(int $wsId, object $page): void
+    {
+        try {
+            $seoJson = json_decode((string) ($page->seo_json ?? '{}'), true) ?: [];
+
+            // Build absolute URL: scheme://websites.domain/pages.slug
+            $url = null;
+            if (!empty($page->website_id)) {
+                $website = DB::table('websites')->find($page->website_id);
+                if ($website && !empty($website->domain) && !empty($page->slug)) {
+                    $url = 'https://' . rtrim($website->domain, '/') . '/' . ltrim($page->slug, '/');
+                }
+            }
+            // Fall back to workspace site_url + slug
+            if (!$url && !empty($page->slug)) {
+                $siteUrl = DB::table('seo_settings')->where('workspace_id', $wsId)
+                    ->where('key', 'site_url')->value('value');
+                if ($siteUrl) {
+                    $url = rtrim($siteUrl, '/') . '/' . ltrim($page->slug, '/');
+                }
+            }
+            if (!$url) { return; }
+
+            $data = [
+                'workspace_id'     => $wsId,
+                'url'              => $url,
+                'url_hash'         => md5($url),
+                'title'            => $page->title ?? $seoJson['title'] ?? null,
+                'meta_title'       => $page->meta_title       ?? $seoJson['meta_title'] ?? $seoJson['title'] ?? null,
+                'meta_description' => $page->meta_description ?? $seoJson['meta_description'] ?? $seoJson['description'] ?? null,
+                'updated_at'       => now(),
+                'created_at'       => now(),
+            ];
+
+            // Score using the array-based wrapper
+            $scored = $this->scoreContentExtended([
+                'title'            => $data['title'],
+                'meta_title'       => $data['meta_title'],
+                'meta_description' => $data['meta_description'],
+                'h1'               => $page->title ?? '',
+                'word_count'       => 0,
+                'keyword'          => $seoJson['keyword'] ?? null,
+            ]);
+            $data['content_score']        = (int) ($scored['score'] ?? 0);
+            $data['score_breakdown_json'] = json_encode($scored['breakdown'] ?? []);
+
+            DB::table('seo_content_index')->upsert(
+                [$data],
+                ['workspace_id', 'url_hash'],
+                ['url', 'title', 'meta_title', 'meta_description',
+                 'content_score', 'score_breakdown_json', 'updated_at']
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('[SEO] syncFromBuilder failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 2026-05-12 Phase 0 — sync a Write article into seo_content_index so the
+     * SEO engine sees blog content in the index. Non-destructive; never
+     * modifies the articles table itself.
+     *
+     * URL derived from articles.slug + workspace site_url. Articles without
+     * a slug (drafts) are skipped silently.
+     */
+    public function syncFromArticle(int $wsId, object $article): void
+    {
+        try {
+            if (empty($article->slug)) { return; }
+
+            $seoJson = json_decode((string) ($article->seo_json ?? '{}'), true) ?: [];
+
+            $siteUrl = DB::table('seo_settings')->where('workspace_id', $wsId)
+                ->where('key', 'site_url')->value('value');
+            if (!$siteUrl) { return; }
+            $url = rtrim($siteUrl, '/') . '/' . ltrim($article->slug, '/');
+
+            // Extract H1 from content if present, else title
+            $content = (string) ($article->content ?? '');
+            $h1 = $article->title ?? '';
+            if (preg_match('/<h1[^>]*>(.*?)<\/h1>/is', $content, $h1m)) {
+                $h1 = trim(strip_tags($h1m[1]));
+            }
+            $textContent = strip_tags($content);
+            $wordCount   = (int) ($article->word_count ?: str_word_count($textContent));
+
+            $data = [
+                'workspace_id'     => $wsId,
+                'url'              => $url,
+                'url_hash'         => md5($url),
+                'title'            => $article->title ?? null,
+                'meta_title'       => $article->meta_title       ?? $seoJson['meta_title']       ?? $seoJson['title']       ?? $article->title ?? null,
+                'meta_description' => $article->meta_description ?? $seoJson['meta_description'] ?? $seoJson['description'] ?? null,
+                'h1'               => $h1,
+                'word_count'       => $wordCount,
+                'updated_at'       => now(),
+                'created_at'       => now(),
+            ];
+
+            $scored = $this->scoreContentExtended([
+                'title'            => $data['title'],
+                'meta_title'       => $data['meta_title'],
+                'meta_description' => $data['meta_description'],
+                'h1'               => $h1,
+                'word_count'       => $wordCount,
+                'keyword'          => $article->focus_keyword ?? $seoJson['keyword'] ?? null,
+                'content'          => $textContent,
+            ]);
+            $data['content_score']        = (int) ($scored['score'] ?? 0);
+            $data['score_breakdown_json'] = json_encode($scored['breakdown'] ?? []);
+
+            DB::table('seo_content_index')->upsert(
+                [$data],
+                ['workspace_id', 'url_hash'],
+                ['url', 'title', 'meta_title', 'meta_description', 'h1', 'word_count',
+                 'content_score', 'score_breakdown_json', 'updated_at']
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('[SEO] syncFromArticle failed: ' . $e->getMessage());
+        }
+    }
+
     private function performSerpAnalysis(string $keyword, array $params): array
     {
         $isUrl = filter_var($keyword, FILTER_VALIDATE_URL);
