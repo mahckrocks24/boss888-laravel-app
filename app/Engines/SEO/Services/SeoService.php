@@ -43,10 +43,45 @@ class SeoService
     // TOOL 1: SERP ANALYSIS
     // ═══════════════════════════════════════════════════════════
 
+    /**
+     * Best-effort keyword extraction from free-text task description.
+     * Used when Sarah dispatches serp_analysis without an explicit keyword param.
+     * Strips common imperative prefixes and trailing context noise.
+     */
+    private static function _extractKeywordFromText(string $text): string
+    {
+        if (empty($text)) return '';
+        $text = preg_replace(
+            '/^(perform|run|do|execute|analyse|analyze|conduct)\s+(a\s+)?(serp|seo|keyword|search)\s+(analysis|research|audit|check)\s+(for\s+)?/i',
+            '', $text
+        );
+        $text = preg_replace(
+            '/\s+(blog\s+)?(topics?|keywords?|content|pages?|articles?|posts?).*$/i',
+            '', $text
+        );
+        return trim(substr($text, 0, 150));
+    }
+
     public function serpAnalysis(int $wsId, array $params): array
     {
-        $keyword = $params['keyword'] ?? $params['url'] ?? '';
-        if (empty($keyword)) throw new \InvalidArgumentException('Keyword or URL required');
+        // FIX 2026-05-11 (sprint): fall through to target_keyword + extract from
+        // description/title when Sarah dispatches via Orchestrator without an
+        // explicit keyword param. Return structured retryable:false on miss so
+        // the Orchestrator skips retry instead of hammering 3×.
+        $keyword = $params['keyword']
+                ?? $params['url']
+                ?? $params['target_keyword']
+                ?? self::_extractKeywordFromText(
+                       $params['description'] ?? $params['title'] ?? ''
+                   );
+        if (empty($keyword)) {
+            return [
+                'success'   => false,
+                'error'     => 'keyword_required',
+                'message'   => 'Keyword or URL is required for SERP analysis.',
+                'retryable' => false,
+            ];
+        }
 
         // Create audit record
         $auditId = DB::table('seo_audits')->insertGetId([
@@ -707,9 +742,11 @@ class SeoService
         $links = $this->linkSuggestions($wsId, ['limit' => 10]);
 
         // Keyword rank distribution
+        // FIX 2026-05-11: data_get() works on both arrays and objects.
+        // listKeywords() returns ->toArray() so $kw is an array, but be defensive.
         $rankBuckets = ['1-3' => 0, '4-10' => 0, '11-20' => 0, '21-50' => 0, '51+' => 0, 'unranked' => 0];
         foreach ($keywords as $kw) {
-            $r = $kw->current_rank;
+            $r = data_get($kw, 'current_rank');
             if (!$r) $rankBuckets['unranked']++;
             elseif ($r <= 3) $rankBuckets['1-3']++;
             elseif ($r <= 10) $rankBuckets['4-10']++;

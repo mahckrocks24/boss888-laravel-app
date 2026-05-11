@@ -2549,6 +2549,22 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     { id: 'reports',     label: 'Reports',      icon: 'check' },
   ];
 
+  // FIX 2026-05-11 (sprint): Tabs with unimplemented backend — hidden until ready.
+  // Backed by the Phase 1 audit which confirmed these endpoints return 404:
+  // /clusters, /anchors/bulk-analysis, /competitors/tracked, /gsc/*,
+  // /insights/content-performance, /insights/top-pages, /equity/*, /quick-wins,
+  // /image-issues, /ctr-analysis, /link-graph, /indexed-content.
+  var _SEO_ORPHAN_TABS = [
+    'clusters','anchors','competitors','gsc',
+    'insights','equity','quick-wins','image-issues',
+    'ctr-analysis','link-graph','indexed-content',
+    'workspace','integrations','images','ctr','wins'
+  ];
+  TABS = TABS.filter(function (t) {
+    var id = typeof t === 'string' ? t : (t.id || t.key || t);
+    return _SEO_ORPHAN_TABS.indexOf(id) === -1;
+  });
+
   // Map legacy tab IDs to the consolidated tab ID. Used by _seoSwitchTab so
   // any code calling _seoSwitchTab('outbound') still ends up on Links, etc.
   var TAB_ALIAS = {
@@ -2585,6 +2601,24 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
   // Override _seoSwitchTab: alias old IDs, set active class, dispatch to renderer.
   window._seoSwitchTab = function (tab) {
+    // FIX 2026-05-11 (sprint): coming-soon safety net for any orphan tab id
+    // that still slips through (e.g. deep-link). The orphan list mirrors
+    // _SEO_ORPHAN_TABS above.
+    var _SEO_COMING_SOON = [
+      'clusters','anchors','competitors','gsc',
+      'insights','equity','quick-wins','image-issues',
+      'ctr-analysis','link-graph','indexed-content'
+    ];
+    if (_SEO_COMING_SOON.indexOf(tab) > -1) {
+      var _csEl = document.getElementById('seo-content');
+      if (_csEl) _csEl.innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60dvh;gap:16px;text-align:center;padding:40px">' +
+          '<h3 style="font:700 20px/1.3 Manrope,sans-serif;color:#F0F0F0;margin:0">Coming Soon</h3>' +
+          '<p style="font:400 15px/1.6 Inter,sans-serif;color:#9CA3AF;max-width:300px;margin:0">This feature is being integrated.</p>' +
+        '</div>';
+      return;
+    }
+
     // Resolve legacy tab IDs to new 9-tab structure.
     if (TAB_ALIAS[tab]) tab = TAB_ALIAS[tab];
     window._seoTab = tab;

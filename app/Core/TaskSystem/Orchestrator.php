@@ -288,6 +288,12 @@ class Orchestrator
 
                 if (! $result['success']) {
                     $lastError = $result['message'];
+                    // FIX 2026-05-11: poison-task short-circuit — don't burn 3 retries
+                    // when the action explicitly says the failure is not retryable
+                    // (bad payload, quota, validation, etc.)
+                    if (isset($result['retryable']) && $result['retryable'] === false) {
+                        break;
+                    }
                     if ($attempt <= $this->maxRetries) {
                         usleep($attempt * 500_000);
                     }
