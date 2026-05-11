@@ -5364,26 +5364,26 @@ document.addEventListener('DOMContentLoaded', function() {
 console.log('[LevelUp] v3.3.0 — auth, onboarding, notifications, analytics loaded');
 
 // LGSC embed mode: force-route to the SEO engine after bootstrap completes.
-// _appBootstrap's embed branch goes to the dashboard; the WP Connector iframe
-// is meant to land on #seo. Wait a tick for the dashboard render to finish,
-// then trigger hashchange + direct seoLoad() so whichever route handler is
-// wired up picks it up.
+// The SPA's real router is `window.nav(viewName)` (core.js:669 / window.nav
+// alias at line 775). It already handles #view-seo resolution, lazy bundle
+// load via luLoadEngine('seo'), and the seoLoad(_el) handoff. Use it.
 if (window._LGSC_EMBED) {
   setTimeout(function() {
-    if (window.location.hash.indexOf('seo') === -1) {
-      window.location.hash = 'seo';
+    try {
+      // Method 1: use the SPA's own router
+      if (typeof window.nav === 'function') {
+        window.nav('seo');
+        console.log('[LGSC] navigated via window.nav');
+        return;
+      }
+      // Method 2: hash fallback (resilient against future router refactors)
+      window.location.hash = '#seo';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      console.log('[LGSC] navigated via hash');
+    } catch (e) {
+      console.log('[LGSC] nav error: ' + e.message);
     }
-    if (typeof window.seoLoad === 'function') {
-      var mainEl = document.getElementById('view-seo')
-                || document.getElementById('main-content')
-                || document.querySelector('.lu-main')
-                || document.querySelector('[data-view]')
-                || document.body;
-      try { window.seoLoad(mainEl); } catch (e) { console.warn('[LGSC] seoLoad failed:', e); }
-    }
-    try { window.dispatchEvent(new HashChangeEvent('hashchange')); } catch (_) {}
-    try { console.log('[LGSC] SEO engine triggered'); } catch (_) {}
-  }, 300);
+  }, 500);
 }
 
 // ── BILLING v5.5.4 ─────────────────────────────────────────────────────────
