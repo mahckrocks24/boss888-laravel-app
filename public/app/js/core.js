@@ -1933,7 +1933,7 @@ async function sendAgentMessage(quickAction, overrideMessage){
       }
       agDiv.innerHTML=replyHtml;
       feed.appendChild(agDiv);
-      feed.scrollTop=feed.scrollHeight;
+      agDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }catch(e){
     var ti2=document.getElementById('agent-typing-indicator');
@@ -3566,7 +3566,7 @@ function aiAddMsg(role, content, opts={}) {
   }
 
   feed.appendChild(wrap);
-  feed.scrollTop = feed.scrollHeight;
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function aiShowTyping() {

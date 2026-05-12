@@ -7513,7 +7513,7 @@ window._lgseDrawerSend = function () {
       + 'border-radius:12px;padding:12px 16px;max-width:90%';
     e.innerHTML = '<div style="color:#FCA5A5;font-size:13px">' + escMsg(text) + '</div>';
     thread.appendChild(e);
-    thread.scrollTop = thread.scrollHeight;
+    e.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // 2026-05-12 fix — _luFetch returns the raw Response object; .json() it
@@ -7592,7 +7592,7 @@ window._lgseAssistantSend = function () {
         lgseMarkdown(escMsg(text)) +
       '</p>';
     thread.appendChild(bot);
-    thread.scrollTop = thread.scrollHeight;
+    bot.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function appendErr(text) {
@@ -7602,7 +7602,7 @@ window._lgseAssistantSend = function () {
     err.style.cssText = 'background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px 16px;max-width:80%';
     err.innerHTML = '<p style="color:#FCA5A5;margin:0;font-size:13px">' + escMsg(text) + '</p>';
     thread.appendChild(err);
-    thread.scrollTop = thread.scrollHeight;
+    err.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // Prefer _luFetch (core.js global) so embed-mode X-API-KEY routing works.
