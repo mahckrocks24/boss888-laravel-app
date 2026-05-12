@@ -259,8 +259,9 @@ class AgentCapabilityService
             'list_events', 'check_availability', 'create_event',
         ],
 
-        // Aria — TikTok & Reels Creator
-        'aria' => [
+        // Zoe — TikTok & Reels Creator (renamed from "aria" 2026-05-12;
+        // "Aria" is reserved for the platform-assistant persona)
+        'zoe' => [
             'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post',
             'get_queue', 'record_social_analytics',
             'generate_image', 'generate_video', 'create_asset',

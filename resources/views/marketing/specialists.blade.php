@@ -89,7 +89,7 @@
       ['Marcus','marcus','Social Media Manager','#EC4899','📲','Social strategy, posting schedules, community management. Marcus keeps your audience engaged.', ['Social strategy','Scheduling','Community','Content calendar']],
       ['Zara','zara','Instagram & Visual Lead','#EC4899','📸','Reels, stories, visual content strategy. Zara makes your brand look stunning.', ['Reels','Stories','Visual strategy','Instagram']],
       ['Tyler','tyler','B2B Content Lead','#3B82F6','💼','Long-form social drafts, thought-leadership content, and professional copywriting Tyler hands off for manual posting.', ['Long-form drafts','Thought leadership','B2B copy','Manual-post ready']],
-      ['Aria','aria','Visual Content','#EC4899','🎵','Short-form visual content and creative campaign drafts. Aria speaks Gen-Z fluently and packages content you can post.', ['Visual content','Creative campaigns','Trending hooks','Manual-post ready']],
+      ['Zoe','zoe','Visual Content','#EC4899','🎵','Short-form visual content and creative campaign drafts. Zoe speaks Gen-Z fluently and packages content you can post.', ['Visual content','Creative campaigns','Trending hooks','Manual-post ready']],
       ['Jordan','jordan','Community & Social Listening','#3B82F6','📡','Trending topic monitoring, community pulse, and engagement-ready drafts. Jordan keeps you in the conversation.', ['Social listening','Trend monitoring','Community engagement','Reply drafts']],
     ] as $a)
     <div class="agent-card">

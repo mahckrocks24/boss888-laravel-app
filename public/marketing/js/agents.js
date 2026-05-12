@@ -104,7 +104,7 @@ const SPECIALISTS = [
         skills: ['LinkedIn Posts', 'B2B Strategy', 'Lead Gen'],
     },
     {
-        id: 'aria', name: 'Aria', level: 'junior', orbType: 'ads', color: '#F97316',
+        id: 'zoe',  name: 'Zoe',  level: 'junior', orbType: 'ads', color: '#EC4899',
         role: 'TikTok & Reels Creator', category: 'social',
         desc: 'Short-form video strategy, trending formats, and viral hooks.',
         skills: ['TikTok Strategy', 'Trending Formats', 'Viral Hooks'],

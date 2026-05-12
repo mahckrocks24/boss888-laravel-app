@@ -582,7 +582,7 @@ window._svRenderPlatformCards = function(accounts){
     _svPlatformCard({
       platform: 'tiktok', label: 'TikTok',
       icon: window.icon('more',14), ready: false, comingSoon: true,
-      blurb: 'TikTok publishing is coming soon. Aria can still generate TikTok-ready scripts and content you can post manually.',
+      blurb: 'TikTok publishing is coming soon. Zoe can still generate TikTok-ready scripts and content you can post manually.',
     }),
   ].join('');
 };

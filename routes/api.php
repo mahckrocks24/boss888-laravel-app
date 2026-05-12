@@ -403,7 +403,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         $engineMap = [
             'james'=>'seo','alex'=>'seo','diana'=>'seo','ryan'=>'seo','sofia'=>'seo',
             'priya'=>'write','leo'=>'write','maya'=>'write','chris'=>'write','nora'=>'write',
-            'marcus'=>'social','zara'=>'social','tyler'=>'social','aria'=>'social','jordan'=>'social',
+            'marcus'=>'social','zara'=>'social','tyler'=>'social','zoe'=>'social','jordan'=>'social',
             'elena'=>'crm','sam'=>'marketing','kai'=>'crm','vera'=>'marketing','max'=>'crm',
             'sarah'=>'marketing','dmm'=>'marketing',
         ];
@@ -780,7 +780,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 . ($recentTasks ? "Current tasks:\n- {$recentTasks}\n" : "No active tasks.\n")
                 . "When the user asks you to create/assign/run tasks, include a create_tasks ARRAY in your JSON. You can include MULTIPLE tasks.\n"
                 . "Each task in create_tasks must have: agent (slug), engine, action, and description.\n"
-                . "Engine mapping: james/alex/diana/ryan/sofia=seo, priya/leo/maya/chris/nora=write, marcus/zara/tyler/aria/jordan=social, elena/kai/max=crm, vera=marketing\n"
+                . "Engine mapping: james/alex/diana/ryan/sofia=seo, priya/leo/maya/chris/nora=write, marcus/zara/tyler/zoe/jordan=social, elena/kai/max=crm, vera=marketing\n"
                 . "Action examples: serp_analysis, deep_audit, write_article, social_create_post, create_lead, create_campaign\n"
                 . "Be decisive and action-oriented. Keep responses under 150 words.\n"
                 . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":false,\"create_tasks\":[],\"tool_calls\":[]}\n"
