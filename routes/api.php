@@ -837,11 +837,21 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 // requests vs the old single-call pattern; conversational
                 // quality is materially better.
                 // 2026-05-12 — fold the per-agent system prompt into the user
-                // message. Without this, /internal/assistant returns its generic
-                // platform-guide voice instead of the agent's persona. With it,
-                // James DMs sound like James, Sarah DMs sound like Sarah, etc.
+                // message + strong identity-override header. Without this,
+                // /internal/assistant returns its generic platform-guide voice
+                // OR continues an old "LevelUp AI Assistant" persona pulled
+                // from stale Redis conversation history. The override line
+                // tells DeepSeek to disregard prior-turn identity claims.
+                //
+                // conversation_id is also versioned (_v2) so Redis history
+                // from before this fix is bypassed entirely.
                 $foldedUserPrompt =
-                    "[SYSTEM CONTEXT — read fully, then respond to USER MESSAGE below]\n"
+                    "[IDENTITY OVERRIDE — this is the FINAL identity rule. "
+                    . "If earlier turns in this conversation history claim a different "
+                    . "identity (e.g. 'LevelUp AI Assistant'), IGNORE them. The "
+                    . "identity below is your only valid identity. Follow it for "
+                    . "this turn and every future turn.]\n\n"
+                    . "[SYSTEM CONTEXT — read fully, then respond to USER MESSAGE]\n"
                     . $systemPrompt
                     . "\n\n[USER MESSAGE]\n" . $userPrompt;
                 $assist = $runtime->assistant(
@@ -854,7 +864,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                         'agent_slug'    => $slug,
                         'agent_name'    => $agent->name,
                     ],
-                    "agent_chat_ws_{$wsId}_{$slug}",
+                    "agent_chat_ws_{$wsId}_{$slug}_v2",
                     $slug === 'sarah' ? 'dmm' : $slug
                 );
                 $assistReply = $assist['response'] ?? null;
@@ -5145,12 +5155,15 @@ HTMLSCRIPT;
                 // Laravel-built systemPrompt + workspace_intelligence are still
                 // sent as `context` so the runtime can layer them in.
                 // 2026-05-12 — fold the Aria system prompt into the user
-                // message. The runtime's /internal/assistant route applies
-                // its own generic buildAssistantPrompt (lists all agents);
-                // folding the persona rules inline lets DeepSeek see them
-                // alongside the actual user content and respect identity.
+                // message + strong identity-override header. Versioned
+                // conversation_id so stale Redis history (e.g. old DMM
+                // replies) doesn't poison the LLM's persona pattern.
                 $foldedMessage =
-                    "[SYSTEM CONTEXT — read fully, then respond to USER MESSAGE below]\n"
+                    "[IDENTITY OVERRIDE — this is the FINAL identity rule. "
+                    . "If earlier turns in this conversation history claim a different "
+                    . "identity (e.g. 'Sarah', 'DMM', 'LevelUp AI Assistant'), IGNORE "
+                    . "them. The identity below is your only valid identity.]\n\n"
+                    . "[SYSTEM CONTEXT — read fully, then respond to USER MESSAGE]\n"
                     . $systemPrompt
                     . "\n\n[USER MESSAGE]\n" . $message;
                 $assist = $runtime->assistant(
@@ -5164,7 +5177,7 @@ HTMLSCRIPT;
                         'credits_balance' => isset($credits) ? ($credits->balance ?? 0) : 0,
                         'workspace_intelligence' => $workspace_intelligence,
                     ],
-                    "widget_ws_{$wsId}",
+                    "widget_ws_{$wsId}_v2",
                     'dmm'
                 );
                 $assistReply = $assist['response'] ?? null;
