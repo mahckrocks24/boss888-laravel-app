@@ -17,12 +17,17 @@
            border-bottom: 1px solid #2a2d3e; font-size: 14px; }
     .row:last-of-type { border-bottom: none; }
     .row strong { color: #fff; }
-    button { width: 100%; padding: 14px; border-radius: 10px; border: none;
+    button, a.btn { display: block; width: 100%; padding: 14px;
+             border-radius: 10px; border: none; box-sizing: border-box;
              background: linear-gradient(135deg, #7C3AED, #3B82F6); color: #fff;
-             font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 24px; }
-    button:hover { opacity: .9; }
-    .errors { color: #F87171; font-size: 13px; margin-bottom: 12px; }
+             font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 24px;
+             text-decoration: none; text-align: center; }
+    button:hover, a.btn:hover { opacity: .9; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .err { color: #F87171; font-size: 13px; margin-top: 12px; }
     .icon { font-size: 32px; margin-bottom: 16px; text-align: center; }
+    .hidden { display: none; }
+    .muted { color: #8B97B0; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -33,22 +38,103 @@
        This grants the plugin permission to read your SEO data and run
        AI generations on your behalf.</p>
 
-    @if ($errors->any())
-      <div class="errors">{{ $errors->first() }}</div>
-    @endif
+    <div id="not-logged-in" class="hidden">
+      <p class="err">You're not logged into LevelUp Growth in this browser.</p>
+      <a href="/app/?return_to={{ urlencode(request()->fullUrl()) }}" class="btn">
+        Log in →
+      </a>
+    </div>
 
-    <div class="row"><span>Account</span><strong>{{ $user->email }}</strong></div>
-    <div class="row"><span>Workspace</span><strong>{{ $workspace_name }}</strong></div>
-    <div class="row"><span>Permission scope</span><strong>plugin</strong></div>
-    <div class="row"><span>Token expires</span><strong>1 year</strong></div>
+    <div id="logged-in" class="hidden">
+      <div class="row"><span>Account</span><strong id="r-email">…</strong></div>
+      <div class="row"><span>Workspace</span><strong id="r-workspace">…</strong></div>
+      <div class="row"><span>Permission scope</span><strong>plugin</strong></div>
+      <div class="row"><span>Token expires</span><strong>1 year</strong></div>
+      <button id="authorize-btn" type="button">Authorize plugin →</button>
+      <p class="err hidden" id="auth-err"></p>
+    </div>
 
-    <form method="POST" action="{{ route('plugin.connect.authorize') }}">
-      @csrf
-      <input type="hidden" name="redirect_uri" value="{{ $redirect_uri }}">
-      <input type="hidden" name="site_url"
-             value="{{ request()->query('site_url', '') }}">
-      <button type="submit">Authorize plugin →</button>
-    </form>
+    <div id="busy" class="">
+      <p class="muted">Checking your session…</p>
+    </div>
   </div>
+
+<script>
+(function () {
+  var redirectUri = @json($redirect_uri ?? '');
+  var siteUrl     = @json($site_url ?? '');
+  var token       = '';
+  try { token = localStorage.getItem('lu_token') || localStorage.getItem('token') || ''; } catch (e) {}
+
+  var $busy    = document.getElementById('busy');
+  var $logged  = document.getElementById('logged-in');
+  var $nolog   = document.getElementById('not-logged-in');
+  var $email   = document.getElementById('r-email');
+  var $ws      = document.getElementById('r-workspace');
+  var $btn     = document.getElementById('authorize-btn');
+  var $err     = document.getElementById('auth-err');
+
+  if (!token) {
+    $busy.classList.add('hidden');
+    $nolog.classList.remove('hidden');
+    return;
+  }
+
+  // Probe /api/auth/me to confirm token is valid + fetch profile.
+  fetch('/api/auth/me', {
+    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+  })
+  .then(function (r) {
+    if (!r.ok) { throw new Error('not_authed'); }
+    return r.json();
+  })
+  .then(function (j) {
+    var u = j.user || j.data || j;
+    $email.textContent = u.email || '(unknown)';
+    $ws.textContent    = (u.workspace_name || u.current_workspace_name || u.workspace || '(default)');
+    $busy.classList.add('hidden');
+    $logged.classList.remove('hidden');
+  })
+  .catch(function () {
+    $busy.classList.add('hidden');
+    $nolog.classList.remove('hidden');
+  });
+
+  $btn.addEventListener('click', function () {
+    $btn.disabled = true; $btn.textContent = 'Authorizing…';
+    $err.classList.add('hidden');
+    fetch('/api/plugin/connect', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type':  'application/json',
+        'Accept':        'application/json'
+      },
+      body: JSON.stringify({ site_url: siteUrl })
+    })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.j.success) {
+        throw new Error(res.j.error || res.j.message || 'connect_failed');
+      }
+      var pluginToken = res.j.plugin_token;
+      if (redirectUri) {
+        var sep = redirectUri.indexOf('?') >= 0 ? '&' : '?';
+        window.location.href = redirectUri + sep
+          + 'lgsc_connected=1&lgsc_token=' + encodeURIComponent(pluginToken);
+      } else {
+        document.body.innerHTML = '<div class="card"><h1>✅ Connected</h1>'
+          + '<p>Plugin token: <code>' + pluginToken + '</code></p>'
+          + '<p>Copy this token into your WP plugin settings.</p></div>';
+      }
+    })
+    .catch(function (e) {
+      $btn.disabled = false; $btn.textContent = 'Authorize plugin →';
+      $err.textContent = 'Authorization failed: ' + (e.message || 'unknown');
+      $err.classList.remove('hidden');
+    });
+  });
+})();
+</script>
 </body>
 </html>
