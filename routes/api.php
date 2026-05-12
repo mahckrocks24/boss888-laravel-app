@@ -9185,22 +9185,29 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
     });
 
 
-    // P1.2 — Generate full SEO article via DeepSeek with workspace context.
+    // P1.2 — Generate full SEO article + featured image. 2 credits (1 text + 1 image).
+    //         2026-05-12 sprint 2: 5cr → 2cr; reserve-before-execute; image gen
+    //         via CreativeConnector::execute('generate_image', quality=low).
+    //         If image fails after text succeeds: commit 1 (text), return
+    //         image_url=null + image_failed=true. If text itself fails: release.
     Route::post('/generate-article', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
             ->where('workspace_id', $wsId)->value('balance') ?? 0);
-        if ($credits < 5) {
+        if ($credits < 2) {
             return response()->json([
-                'success' => false,
-                'error'   => 'insufficient_credits',
-                'message' => 'Not enough credits to generate an article. 5 credits required.',
-                'code'    => 'NO_CREDITS',
+                'error'            => 'insufficient_credits',
+                'required_credits' => 2,
+                'available'        => $credits,
+                'pool'             => 'ai_credits',
             ], 402);
         }
+        $creditSvc = app(\App\Core\Billing\CreditService::class);
+        $reservationRef = $creditSvc->reserve($wsId, 2, 'generate-article (text+image)');
 
         $keyword    = trim((string) $r->input('keyword', ''));
         if (!$keyword) {
+            $creditSvc->release($wsId, $reservationRef);
             return response()->json(['success' => false, 'error' => 'keyword_required'], 422);
         }
         $tone       = (string) $r->input('tone', 'professional');
@@ -9264,6 +9271,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
                     'messages'    => [['role' => 'user', 'content' => $prompt]],
                 ]);
         } catch (\Throwable $e) {
+            $creditSvc->release($wsId, $reservationRef);
             return response()->json([
                 'success' => false,
                 'error'   => 'llm_error',
@@ -9277,6 +9285,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         $data = json_decode($raw, true);
 
         if (!is_array($data) || empty($data['content'])) {
+            $creditSvc->release($wsId, $reservationRef);
             return response()->json([
                 'success' => false,
                 'error'   => 'generation_failed',
@@ -9285,19 +9294,128 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             ], 500);
         }
 
-        \Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->decrement('balance', 5);
+        // Text generation succeeded. Now generate the featured image via
+        // CreativeConnector — routes through runtime (which owns OpenAI key)
+        // per the hands-vs-brain pattern. quality='low' is HARDCODED MINI.
+        $imageUrl = null;
+        $imageFailed = false;
+        $rawImagePrompt = (string) ($data['image_prompt']
+            ?? "Professional photo for an article about {$keyword}");
+        $finalImagePrompt = "Professional high-quality featured blog image: "
+            . $rawImagePrompt
+            . ". Clean modern composition. No text or typography in image. "
+            . "Suitable for a professional business website.";
+        try {
+            /** @var \App\Connectors\CreativeConnector $cc */
+            $cc = app(\App\Connectors\CreativeConnector::class);
+            $imgResult = $cc->execute('generate_image', [
+                'prompt'       => $finalImagePrompt,
+                'quality'      => 'low',         // HARDCODED — never standard
+                'aspect_ratio' => '1:1',
+                'style'        => 'professional photograph',
+            ]);
+            if (($imgResult['success'] ?? false) && !empty($imgResult['data']['url'])) {
+                $imageUrl = (string) $imgResult['data']['url'];
+            } else {
+                $imageFailed = true;
+                \Illuminate\Support\Facades\Log::warning('generate-article: image gen failed', [
+                    'workspace_id' => $wsId,
+                    'image_result' => $imgResult,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            $imageFailed = true;
+            \Illuminate\Support\Facades\Log::warning('generate-article: image gen exception', [
+                'workspace_id' => $wsId,
+                'error'        => $e->getMessage(),
+            ]);
+        }
 
-        return response()->json([
+        // Commit credits. Reserved 2; refund 1 if image failed.
+        if ($imageFailed) {
+            $creditSvc->release($wsId, $reservationRef);
+            \Illuminate\Support\Facades\DB::table('credits')
+                ->where('workspace_id', $wsId)->decrement('balance', 1);
+            $creditsUsed = 1;
+        } else {
+            $creditSvc->commit($wsId, $reservationRef, 2);
+            $creditsUsed = 2;
+        }
+        $remaining = max(0, $credits - $creditsUsed);
+
+        $resp = [
             'success'           => true,
             'title'             => $data['title']            ?? $keyword,
             'content'           => $data['content'],
             'meta_title'        => $data['meta_title']       ?? ($data['title'] ?? $keyword),
-            'meta_description' => $data['meta_description'] ?? '',
-            'image_prompt'      => $data['image_prompt']     ?? "Professional photo for an article about {$keyword}",
+            'meta_description'  => $data['meta_description'] ?? '',
+            'image_url'         => $imageUrl,
+            'image_prompt'      => $rawImagePrompt,
             'keyword'           => $keyword,
-            'credits_used'      => 5,
-            'credits_remaining' => max(0, $credits - 5),
+            'word_count'        => str_word_count(strip_tags((string) $data['content'])),
+            'credits_used'      => $creditsUsed,
+            'credits_remaining' => $remaining,
+        ];
+        if ($imageFailed) { $resp['image_failed'] = true; }
+        return response()->json($resp);
+    });
+
+    // P1.4 (sprint 2 2026-05-12) — On-demand SEO score for a URL+keyword pair.
+    // 0 credits. Wraps SeoService::indexPageFromConnector for the score and
+    // builds a per-rule breakdown from the heuristics the connector pushes.
+    Route::post('/seo-score', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'url'     => 'required|url',
+            'keyword' => 'required|string|max:255',
+        ]);
+        $svc = app(\App\Engines\SEO\Services\SeoService::class);
+        // Pull the indexed page if it exists; otherwise score what the client sent.
+        $idx = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)->where('url', $data['url'])->first();
+        $title       = $idx->meta_title ?? $idx->title ?? '';
+        $content     = $idx->content ?? '';
+        $description = $idx->meta_description ?? '';
+        $wordCount   = $content ? str_word_count(strip_tags($content)) : 0;
+
+        $kwLower      = mb_strtolower((string) $data['keyword']);
+        $titleHasKw   = $title       !== '' && mb_stripos($title, $kwLower) !== false;
+        $descHasKw    = $description !== '' && mb_stripos($description, $kwLower) !== false;
+        $contentHasKw = $content     !== '' && mb_stripos($content, $kwLower) !== false;
+        $wordCountOk  = $wordCount >= 300;
+        $hasDesc      = $description !== '';
+        $internalLnks = $content ? max(0, substr_count(strtolower($content), '<a ')) : 0;
+        $charsPerWord = $wordCount > 0 ? mb_strlen(strip_tags($content)) / $wordCount : 0;
+        $readability  = $charsPerWord > 0 && $charsPerWord < 6 ? 'good'
+            : ($charsPerWord < 8 ? 'ok' : 'poor');
+
+        // Compose the same 0..100 score the connector uses.
+        $score = (int) ((int) $titleHasKw * 20
+            + (int) $descHasKw * 15
+            + (int) $contentHasKw * 15
+            + (int) $wordCountOk * 15
+            + (int) $hasDesc * 10
+            + min(15, $internalLnks * 3)
+            + ($readability === 'good' ? 10 : ($readability === 'ok' ? 5 : 0)));
+        $score = min(100, max(0, $score));
+
+        return response()->json([
+            'success' => true,
+            'score'   => $score,
+            'breakdown' => [
+                'keyword_in_title'     => $titleHasKw,
+                'keyword_in_meta'      => $descHasKw,
+                'keyword_in_content'   => $contentHasKw,
+                'word_count_ok'        => $wordCountOk,
+                'has_meta_description' => $hasDesc,
+                'has_featured_image'   => null,  // not knowable from indexed content alone
+                'internal_links'       => $internalLnks,
+                'readability'          => $readability,
+            ],
+            'meta' => [
+                'indexed'   => $idx !== null,
+                'word_count'=> $wordCount,
+            ],
         ]);
     });
 

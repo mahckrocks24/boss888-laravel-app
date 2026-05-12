@@ -58,9 +58,17 @@ class TrialService
 
         DB::beginTransaction();
         try {
-            // Mark trial start on workspace
+            // Mark trial start on workspace.
+            // 2026-05-12 sprint 2: also set the new columns introduced in the
+            // 2026_05_16_000002_add_trial_cols_to_workspaces migration.
             $ws->trial_started_at = now();
-            $ws->trial_credits     = self::TRIAL_CREDITS;
+            $ws->trial_credits    = self::TRIAL_CREDITS;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('workspaces', 'is_trial')) {
+                $ws->is_trial = true;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('workspaces', 'trial_expires_at')) {
+                $ws->trial_expires_at = now()->addDays(self::TRIAL_DAYS);
+            }
             $ws->save();
 
             // Create a trial subscription at Growth level
