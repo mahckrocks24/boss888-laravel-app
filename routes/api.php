@@ -327,6 +327,60 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+
+    // 2026-05-16 v1.1 — WP plugin token mint (auth.jwt group; user logged in).
+    Route::post('/plugin/connect', function (\Illuminate\Http\Request $r) {
+        $user = $r->user();
+        $wsId = (int) ($r->input('workspace_id')
+            ?? \Illuminate\Support\Facades\DB::table('workspace_users')
+                ->where('user_id', $user->id)
+                ->orderBy('created_at')
+                ->value('workspace_id'));
+        if (!$wsId) {
+            return response()->json(['success' => false, 'error' => 'no_workspace'], 422);
+        }
+
+        // Revoke prior plugin_user keys for this (user, workspace).
+        \Illuminate\Support\Facades\DB::table('api_keys')
+            ->where('workspace_id', $wsId)
+            ->where('user_id', $user->id)
+            ->where('type', 'plugin_user')
+            ->delete();
+
+        $rawKey = 'lgsc_' . bin2hex(random_bytes(32));
+        \Illuminate\Support\Facades\DB::table('api_keys')->insert([
+            'workspace_id' => $wsId,
+            'user_id'      => $user->id,
+            'key'          => $rawKey,
+            'name'         => 'WP Plugin — ' . ($r->input('site_url') ?: 'unknown'),
+            'type'         => 'plugin_user',
+            'scopes'       => json_encode(['plugin']),
+            'expires_at'   => now()->addYear(),
+            'is_active'    => 1,
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        $ws = \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId);
+        $plan = \Illuminate\Support\Facades\DB::table('subscriptions')
+            ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
+            ->where('subscriptions.workspace_id', $wsId)
+            ->where('subscriptions.status', 'active')
+            ->value('plans.slug') ?? 'free';
+        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+
+        return response()->json([
+            'success'        => true,
+            'plugin_token'   => $rawKey,
+            'workspace_id'   => $wsId,
+            'workspace_name' => $ws->name ?? '',
+            'plan'           => $plan,
+            'credits'        => $credits,
+            'user_email'     => $user->email,
+            'is_wp_bundle'   => str_starts_with($plan, 'wp_'),
+        ]);
+    });
     Route::post('/auth/switch-workspace', [AuthController::class, 'switchWorkspace']);
     Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
     Route::put('/auth/password', [AuthController::class, 'updatePassword']);
@@ -9100,6 +9154,36 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
     // ════════════════════════════════════════════════════════════════════
     // 2026-05-16 v1.1 sprint — content generation + pipeline + bulk meta
     // ════════════════════════════════════════════════════════════════════
+
+    // Plugin status — polled by WP plugin on every admin load
+    Route::get('/plugin/status', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $apiKeyId = $r->attributes->get('api_key_id');
+        $userId = \Illuminate\Support\Facades\DB::table('api_keys')
+            ->where('id', $apiKeyId)->value('user_id');
+        $userEmail = $userId
+            ? \Illuminate\Support\Facades\DB::table('users')
+                ->where('id', $userId)->value('email')
+            : '';
+        $ws = \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId);
+        $plan = \Illuminate\Support\Facades\DB::table('subscriptions')
+            ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
+            ->where('subscriptions.workspace_id', $wsId)
+            ->where('subscriptions.status', 'active')
+            ->value('plans.slug') ?? 'free';
+        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        return response()->json([
+            'success'        => true,
+            'workspace_id'   => $wsId,
+            'workspace_name' => $ws->name ?? '',
+            'plan'           => $plan,
+            'credits'        => $credits,
+            'user_email'     => $userEmail,
+            'is_wp_bundle'   => str_starts_with($plan, 'wp_'),
+        ]);
+    });
+
 
     // P1.2 — Generate full SEO article via DeepSeek with workspace context.
     Route::post('/generate-article', function (\Illuminate\Http\Request $r) {

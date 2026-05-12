@@ -31,6 +31,28 @@
   }
 })();
 
+// 2026-05-16 v1.1 — WP bundle plan visibility gate.
+// When the workspace plan slug starts with 'wp_', hide nav items the
+// bundle doesn't include (builder/social/write/agents). Driven by
+// data-section attributes on .nav-item elements. The flag is set by
+// core.js itself after the workspace profile loads.
+(function _lgscApplyBundleVisibility() {
+  var WP_BUNDLE_VISIBLE = ['seo','chatbot','crm','calendar','account','billing'];
+  window._lgsc_apply_bundle_gate = function (planSlug) {
+    if (!planSlug || planSlug.indexOf('wp_') !== 0) { return; }
+    window._lgsc_plan = planSlug;
+    window._lgsc_is_wp_bundle = true;
+    try {
+      document.querySelectorAll('[data-section]').forEach(function (el) {
+        var sec = el.getAttribute('data-section');
+        if (WP_BUNDLE_VISIBLE.indexOf(sec) === -1) {
+          el.style.display = 'none';
+        }
+      });
+    } catch (e) { /* DOM not ready yet */ }
+  };
+})();
+
 // LevelUp Core v3.2.2
 // ═══════════════════════════════════════════════════════════════════
 // LevelUp Core JS v3.0.2

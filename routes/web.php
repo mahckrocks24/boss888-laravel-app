@@ -516,3 +516,59 @@ function luDev(mode) {
 
     return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
 });
+
+
+// 2026-05-16 v1.1 — WP plugin OAuth-style connect flow.
+Route::middleware('auth')->get('/plugin-connect', function (\Illuminate\Http\Request $r) {
+    $redirect = (string) $r->query('redirect_uri', '');
+    $user = auth()->user();
+    $wsId = (int) \Illuminate\Support\Facades\DB::table('workspace_users')
+        ->where('user_id', $user->id)
+        ->orderBy('created_at')
+        ->value('workspace_id');
+    $ws = $wsId ? \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId) : null;
+    return view('plugin-connect', [
+        'redirect_uri'   => $redirect,
+        'user'           => $user,
+        'workspace_name' => $ws->name ?? '(no workspace)',
+        'workspace_id'   => $wsId,
+    ]);
+})->name('plugin.connect');
+
+Route::middleware('auth')->post('/plugin-connect/authorize', function (\Illuminate\Http\Request $r) {
+    $redirect = (string) $r->input('redirect_uri', '');
+    $siteUrl  = (string) $r->input('site_url', '');
+    $user     = auth()->user();
+    $wsId     = (int) \Illuminate\Support\Facades\DB::table('workspace_users')
+        ->where('user_id', $user->id)
+        ->orderBy('created_at')
+        ->value('workspace_id');
+    if (!$wsId) {
+        return back()->withErrors(['No workspace found for this user.']);
+    }
+
+    // Revoke + mint inline (same logic as POST /api/plugin/connect).
+    \Illuminate\Support\Facades\DB::table('api_keys')
+        ->where('workspace_id', $wsId)
+        ->where('user_id', $user->id)
+        ->where('type', 'plugin_user')
+        ->delete();
+    $rawKey = 'lgsc_' . bin2hex(random_bytes(32));
+    \Illuminate\Support\Facades\DB::table('api_keys')->insert([
+        'workspace_id' => $wsId,
+        'user_id'      => $user->id,
+        'key'          => $rawKey,
+        'name'         => 'WP Plugin — ' . ($siteUrl ?: 'unknown'),
+        'type'         => 'plugin_user',
+        'scopes'       => json_encode(['plugin']),
+        'expires_at'   => now()->addYear(),
+        'is_active'    => 1,
+        'created_at'   => now(),
+        'updated_at'   => now(),
+    ]);
+
+    if ($redirect && str_contains($redirect, 'lgsc_connected=1')) {
+        return redirect($redirect . '&lgsc_token=' . urlencode($rawKey));
+    }
+    return view('plugin-connect-success', ['token' => $rawKey]);
+})->name('plugin.connect.authorize');
