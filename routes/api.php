@@ -9097,6 +9097,328 @@ Route::prefix('public/news')->group(function () {
 // ════════════════════════════════════════════════════════════════════════════
 Route::middleware(['api.key'])->prefix('connector')->group(function () {
 
+    // ════════════════════════════════════════════════════════════════════
+    // 2026-05-16 v1.1 sprint — content generation + pipeline + bulk meta
+    // ════════════════════════════════════════════════════════════════════
+
+    // P1.2 — Generate full SEO article via DeepSeek with workspace context.
+    Route::post('/generate-article', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        if ($credits < 5) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'insufficient_credits',
+                'message' => 'Not enough credits to generate an article. 5 credits required.',
+                'code'    => 'NO_CREDITS',
+            ], 402);
+        }
+
+        $keyword    = trim((string) $r->input('keyword', ''));
+        if (!$keyword) {
+            return response()->json(['success' => false, 'error' => 'keyword_required'], 422);
+        }
+        $tone       = (string) $r->input('tone', 'professional');
+        $audience   = (string) $r->input('audience', '');
+        $wordMin    = max(300, (int) $r->input('word_count_min', 800));
+        $wordMax    = max($wordMin, (int) $r->input('word_count_max', 1200));
+        $faqCount   = min(10, max(0, (int) $r->input('faq_count', 3)));
+        $includeCta = (bool) $r->input('include_cta', true);
+        $location   = (string) $r->input('location', '');
+        $language   = (string) $r->input('language', 'English');
+        $extra      = (string) $r->input('extra_context', '');
+
+        // Workspace SEO context — make content non-duplicate + on-brand.
+        $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+        $targetMarket = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'target_market')->value('value');
+        $topPages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->orderByDesc('authority_score')->limit(5)
+            ->pluck('title')->filter()->take(5)->toArray();
+        $competitors = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+            ->where('workspace_id', $wsId)->whereNotNull('domain')
+            ->select('domain', \Illuminate\Support\Facades\DB::raw('COUNT(*) AS c'))
+            ->groupBy('domain')->orderByDesc('c')->limit(3)
+            ->pluck('domain')->toArray();
+        $existingKeywords = \Illuminate\Support\Facades\DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)->pluck('keyword')->take(10)->toArray();
+
+        $seoCtx  = "Site: " . ($siteUrl ?? '(unknown)') . "\n";
+        $seoCtx .= "Target market: " . ($targetMarket ?? 'general') . "\n";
+        $seoCtx .= "Top performing pages: " . implode(', ', $topPages) . "\n";
+        $seoCtx .= "Known competitors: " . implode(', ', $competitors) . "\n";
+        $seoCtx .= "Already covering: " . implode(', ', $existingKeywords) . "\n";
+
+        $prompt  = "You are an expert SEO content writer. Generate a complete, publish-ready SEO article.\n\n";
+        $prompt .= "KEYWORD: {$keyword}\n";
+        $prompt .= "TONE: {$tone}\n";
+        if ($audience) { $prompt .= "AUDIENCE: {$audience}\n"; }
+        $prompt .= "WORD COUNT: {$wordMin}-{$wordMax} words\n";
+        $prompt .= "FAQ QUESTIONS: {$faqCount}\n";
+        $prompt .= "INCLUDE CTA: " . ($includeCta ? 'yes' : 'no') . "\n";
+        if ($location) { $prompt .= "LOCATION CONTEXT: {$location}\n"; }
+        $prompt .= "LANGUAGE: {$language}\n";
+        if ($extra) { $prompt .= "EXTRA INSTRUCTIONS: {$extra}\n"; }
+        $prompt .= "\nSEO CONTEXT (use to keep content relevant and non-duplicate):\n{$seoCtx}\n";
+        $prompt .= "\nReturn ONLY valid JSON (no prose, no markdown fence):\n";
+        $prompt .= '{"title":"...","content":"...full HTML article body...","meta_title":"...","meta_description":"...","image_prompt":"...short DALL-E prompt for featured image..."}';
+
+        $apiKey = config('services.deepseek.api_key') ?: env('DEEPSEEK_API_KEY');
+        try {
+            $resp = \Illuminate\Support\Facades\Http::timeout(120)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Content-Type'  => 'application/json',
+                ])
+                ->post('https://api.deepseek.com/chat/completions', [
+                    'model'       => 'deepseek-chat',
+                    'max_tokens'  => 4000,
+                    'temperature' => 0.6,
+                    'messages'    => [['role' => 'user', 'content' => $prompt]],
+                ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'llm_error',
+                'message' => $e->getMessage(),
+            ], 502);
+        }
+
+        $raw = (string) $resp->json('choices.0.message.content', '');
+        $raw = preg_replace('/^```(?:json)?\s*/i', '', trim($raw));
+        $raw = preg_replace('/\s*```$/', '', $raw);
+        $data = json_decode($raw, true);
+
+        if (!is_array($data) || empty($data['content'])) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'generation_failed',
+                'message' => 'AI returned empty content.',
+                'raw'     => mb_substr($raw, 0, 400),
+            ], 500);
+        }
+
+        \Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->decrement('balance', 5);
+
+        return response()->json([
+            'success'           => true,
+            'title'             => $data['title']            ?? $keyword,
+            'content'           => $data['content'],
+            'meta_title'        => $data['meta_title']       ?? ($data['title'] ?? $keyword),
+            'meta_description' => $data['meta_description'] ?? '',
+            'image_prompt'      => $data['image_prompt']     ?? "Professional photo for an article about {$keyword}",
+            'keyword'           => $keyword,
+            'credits_used'      => 5,
+            'credits_remaining' => max(0, $credits - 5),
+        ]);
+    });
+
+    // P1.3 — Re-write existing article content for SEO. 2 credits.
+    Route::post('/optimize-article', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $content   = trim((string) $r->input('content', ''));
+        $keyword   = trim((string) $r->input('keyword', ''));
+        $title     = (string) $r->input('title', '');
+        $score     = (int) $r->input('current_score', 0);
+        $breakdown = (array) $r->input('breakdown', []);
+        if (!$content || !$keyword) {
+            return response()->json(['success' => false, 'error' => 'content_and_keyword_required'], 422);
+        }
+        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        if ($credits < 2) {
+            return response()->json([
+                'success' => false, 'error' => 'insufficient_credits', 'code' => 'NO_CREDITS',
+            ], 402);
+        }
+
+        $breakdownStr = '';
+        foreach ($breakdown as $k => $v) {
+            $breakdownStr .= "- {$k}: " . (is_scalar($v) ? $v : json_encode($v)) . "\n";
+        }
+
+        $prompt  = "Optimize this WordPress article for the keyword '{$keyword}'.\n";
+        $prompt .= "Current SEO score: {$score}/100\n";
+        if ($breakdownStr) { $prompt .= "Score breakdown:\n{$breakdownStr}\n"; }
+        $prompt .= "Title: {$title}\n\nContent:\n{$content}\n\n";
+        $prompt .= "Return ONLY the improved HTML content. No explanation. No preamble.";
+
+        $apiKey = config('services.deepseek.api_key') ?: env('DEEPSEEK_API_KEY');
+        try {
+            $resp = \Illuminate\Support\Facades\Http::timeout(120)
+                ->withHeaders(['Authorization' => 'Bearer ' . $apiKey, 'Content-Type' => 'application/json'])
+                ->post('https://api.deepseek.com/chat/completions', [
+                    'model' => 'deepseek-chat', 'max_tokens' => 3000, 'temperature' => 0.4,
+                    'messages' => [['role' => 'user', 'content' => $prompt]],
+                ]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'llm_error', 'message' => $e->getMessage()], 502);
+        }
+        $optimized = trim((string) $resp->json('choices.0.message.content', ''));
+        $optimized = preg_replace('/^```(?:html)?\s*/i', '', $optimized);
+        $optimized = preg_replace('/\s*```$/', '', $optimized);
+        if (!$optimized) {
+            return response()->json(['success' => false, 'error' => 'optimization_failed'], 500);
+        }
+        \Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->decrement('balance', 2);
+        return response()->json([
+            'success'           => true,
+            'content'           => $optimized,
+            'credits_used'      => 2,
+            'credits_remaining' => max(0, $credits - 2),
+        ]);
+    });
+
+    // P1.4 — Suggest a keyword to write about, ranked by gap-opportunity.
+    Route::get('/auto-pick-keyword', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        // 1. Content gap: low-scoring page with a meaningful H1.
+        $gap = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->where('content_score', '<', 50)
+            ->whereNotNull('h1')
+            ->orderBy('content_score')
+            ->first(['h1', 'meta_title', 'title', 'url']);
+        if ($gap) {
+            $kw = $gap->h1 ?: ($gap->meta_title ?: $gap->title);
+            if ($kw) {
+                return response()->json([
+                    'success' => true,
+                    'keyword' => mb_substr((string) $kw, 0, 120),
+                    'source'  => 'gap',
+                    'context' => ['url' => $gap->url],
+                ]);
+            }
+        }
+        // 2. SERP rank-boost opportunity: position 4-20.
+        $serp = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+            ->where('workspace_id', $wsId)
+            ->whereBetween('position', [4, 20])
+            ->orderByDesc('created_at')
+            ->value('keyword');
+        if ($serp) {
+            return response()->json([
+                'success' => true,
+                'keyword' => $serp,
+                'source'  => 'serp',
+            ]);
+        }
+        // 3. Last resort: high-volume tracked keyword.
+        $kw = \Illuminate\Support\Facades\DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)->orderByDesc('volume')->value('keyword');
+        return response()->json([
+            'success' => true,
+            'keyword' => $kw ?? '',
+            'source'  => $kw ? 'tracked' : 'empty',
+        ]);
+    });
+
+    // P1.5 — Pipeline routes (agent goal queue).
+    Route::prefix('pipeline')->group(function () {
+        Route::get('/goals', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $goals = \Illuminate\Support\Facades\DB::table('tasks')
+                ->where('workspace_id', $wsId)
+                ->whereIn('status', ['pending', 'queued', 'running', 'completed', 'failed', 'cancelled'])
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get(['id', 'engine', 'action', 'status', 'payload_json', 'created_at', 'completed_at']);
+            return response()->json(['success' => true, 'goals' => $goals]);
+        });
+
+        Route::post('/submit-goal', function (\Illuminate\Http\Request $r) {
+            $wsId     = $r->attributes->get('workspace_id');
+            $goalText = trim((string) $r->input('goal_text', ''));
+            if (mb_strlen($goalText) < 5) {
+                return response()->json(['success' => false, 'error' => 'goal_text_too_short'], 422);
+            }
+            // tasks schema uses action + payload_json (not task_type + payload).
+            $taskId = \Illuminate\Support\Facades\DB::table('tasks')->insertGetId([
+                'workspace_id' => $wsId,
+                'engine'       => 'seo',
+                'action'       => 'agent_goal',
+                'status'       => 'pending',
+                'source'       => 'agent',
+                'priority'     => 'normal',
+                'payload_json' => json_encode(['goal' => $goalText, 'source' => 'wp_plugin']),
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+            return response()->json(['success' => true, 'task_id' => $taskId]);
+        });
+
+        Route::post('/cancel', function (\Illuminate\Http\Request $r) {
+            $wsId   = $r->attributes->get('workspace_id');
+            $taskId = (int) $r->input('task_id', 0);
+            if (!$taskId) {
+                return response()->json(['success' => false, 'error' => 'task_id_required'], 422);
+            }
+            \Illuminate\Support\Facades\DB::table('tasks')
+                ->where('id', $taskId)
+                ->where('workspace_id', $wsId)
+                ->update(['status' => 'cancelled', 'cancelled_at' => now(), 'updated_at' => now()]);
+            return response()->json(['success' => true]);
+        });
+    });
+
+    // P1.6 — Bulk meta-description generator. 1 credit per post.
+    Route::post('/bulk-generate-meta', function (\Illuminate\Http\Request $r) {
+        $wsId  = $r->attributes->get('workspace_id');
+        $posts = (array) $r->input('posts', []);
+        if (empty($posts)) {
+            return response()->json(['success' => false, 'error' => 'posts_required'], 422);
+        }
+        $cost = count($posts);
+        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        if ($credits < $cost) {
+            return response()->json([
+                'success' => false, 'error' => 'insufficient_credits', 'code' => 'NO_CREDITS',
+                'required' => $cost, 'available' => $credits,
+            ], 402);
+        }
+
+        $apiKey  = config('services.deepseek.api_key') ?: env('DEEPSEEK_API_KEY');
+        $results = [];
+        foreach ($posts as $post) {
+            $prompt  = "Write an SEO meta description (120-160 chars) for:\n";
+            $prompt .= "Title: " . ($post['title'] ?? '') . "\n";
+            $prompt .= "Keyword: " . ($post['keyword'] ?? '') . "\n";
+            $prompt .= "Excerpt: " . mb_substr((string) ($post['content_excerpt'] ?? ''), 0, 300) . "\n";
+            $prompt .= "Return ONLY the meta description text. No quotes. No explanation.";
+            try {
+                $resp = \Illuminate\Support\Facades\Http::timeout(30)
+                    ->withHeaders(['Authorization' => 'Bearer ' . $apiKey, 'Content-Type' => 'application/json'])
+                    ->post('https://api.deepseek.com/chat/completions', [
+                        'model' => 'deepseek-chat', 'max_tokens' => 200, 'temperature' => 0.5,
+                        'messages' => [['role' => 'user', 'content' => $prompt]],
+                    ]);
+                $meta = trim((string) $resp->json('choices.0.message.content', ''));
+                if ($meta) {
+                    $results[] = [
+                        'post_id'          => $post['post_id'] ?? null,
+                        'meta_description' => $meta,
+                    ];
+                }
+            } catch (\Throwable $e) {
+                // skip this post on error
+            }
+        }
+        \Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->decrement('balance', $cost);
+        return response()->json([
+            'success'           => true,
+            'updates'           => $results,
+            'credits_used'      => $cost,
+            'credits_remaining' => max(0, $credits - $cost),
+        ]);
+    });
+
     // 2026-05-15 Phase 3 — bulk sync from WP plugin v1.0.14+. Accepts rich
     // payload (post_id, full meta, images, internal_links, outbound_links)
     // and persists across seo_content_index + seo_link_graph + seo_images

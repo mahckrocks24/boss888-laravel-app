@@ -3420,10 +3420,10 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         + 'background:linear-gradient(135deg,#7C3AED,#3B82F6);'
         + 'box-shadow:0 4px 20px rgba(124,58,237,0.4);'
         + 'display:none;align-items:center;justify-content:center;'
-        + 'font-size:22px;transition:transform 0.2s"'
+        + 'font-size:22px;color:#fff;transition:transform 0.2s"'
         + ' onmouseover="this.style.transform=\'scale(1.1)\'"'
         + ' onmouseout="this.style.transform=\'scale(1)\'"'
-        + ' title="AI SEO Assistant">&#129302;</button>'
+        + ' title="LevelUp SEO Assistant">&#128172;</button>'
       // Overlay
       + '<div id="lgse-ai-overlay" onclick="window._lgseDrawerClose()"'
         + ' style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5)"></div>'
@@ -3435,10 +3435,10 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         // Header
         + '<div style="display:flex;align-items:center;gap:10px;padding:20px 20px 16px;'
         + 'border-bottom:1px solid rgba(255,255,255,0.06)">'
-          + '<span style="font-size:20px">&#129302;</span>'
+          + '<span style="font-size:20px;color:#A78BFA">&#128172;</span>'
           + '<div style="flex:1">'
-            + '<div style="font-size:16px;font-weight:700;color:#fff">SEO AI Assistant</div>'
-            + '<div style="font-size:12px;color:#6B7280">Powered by James &middot; LevelUp Growth</div>'
+            + '<div style="font-size:16px;font-weight:700;color:#fff">LevelUp SEO Assistant</div>'
+            + '<div style="font-size:12px;color:#6B7280">Powered by LevelUp Growth</div>'
           + '</div>'
           + '<button onclick="window._lgseDrawerClose()"'
             + ' style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:4px">&times;</button>'
@@ -3448,10 +3448,10 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
           + ' style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px">'
           + '<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);'
           + 'border-radius:12px;padding:14px 16px;max-width:90%">'
-            + '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">James &middot; SEO Strategist</div>'
+            + '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">LevelUp SEO Assistant</div>'
             + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB">'
               + 'Hi &mdash; I can answer SEO questions about your workspace using your real audit data, '
-              + 'indexed pages, and tracked keywords. Ask me something.'
+              + 'indexed pages, and tracked keywords. Ask me anything.'
             + '</div>'
           + '</div>'
         + '</div>'
@@ -7474,7 +7474,7 @@ window._lgseDrawerSend = function () {
   typing.id = 'lgse-drawer-typing';
   typing.style.cssText = 'background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.15);'
     + 'border-radius:12px;padding:14px 16px;max-width:90%';
-  typing.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:4px">James</div>'
+  typing.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:4px">LevelUp SEO</div>'
     + '<div style="color:#6B7280;font-size:13px">Thinking&hellip;</div>';
   thread.appendChild(typing);
   thread.scrollTop = thread.scrollHeight;
@@ -7486,7 +7486,7 @@ window._lgseDrawerSend = function () {
     var b = document.createElement('div');
     b.style.cssText = 'background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);'
       + 'border-radius:12px;padding:14px 16px;max-width:90%';
-    b.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">James</div>'
+    b.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">LevelUp SEO</div>'
       + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB">'
       + escMsg(text).replace(/\n/g, '<br>') + '</div>';
     thread.appendChild(b);

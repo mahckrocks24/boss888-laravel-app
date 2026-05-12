@@ -2739,31 +2739,76 @@ class SeoService
     public function assistantMessage(int $wsId, string $message, array $context = []): array
     {
         try {
-            $auditScore = DB::table('seo_audits')
-                ->where('workspace_id', $wsId)
-                ->orderByDesc('created_at')
-                ->value('score');
-            $keywords = DB::table('seo_keywords')
-                ->where('workspace_id', $wsId)
-                ->orderByDesc('volume')
-                ->limit(5)
-                ->pluck('keyword')
-                ->toArray();
+            // 2026-05-16 — full site state snapshot, no agent persona.
+            // The assistant speaks as "the LevelUp SEO Assistant", first person,
+            // about the workspace's actual data — no "James", no fake agents.
             $workspace = DB::table('workspaces')->find($wsId);
             $bizName   = $workspace->business_name ?? $workspace->name ?? 'this workspace';
+            $siteUrl   = DB::table('seo_settings')->where('workspace_id', $wsId)
+                ->where('key', 'site_url')->value('value');
+            $audit = DB::table('seo_audits')->where('workspace_id', $wsId)
+                ->orderByDesc('created_at')->first();
+            $auditScore = $audit->score ?? null;
+            $auditAge   = $audit ? $audit->created_at : null;
+            $critical = $audit
+                ? (int) DB::table('seo_audit_items')->where('audit_id', $audit->id)
+                    ->where('status', 'error')->count()
+                : 0;
+            $stats = DB::table('seo_content_index')->where('workspace_id', $wsId)
+                ->selectRaw('COUNT(*) AS pages, ROUND(AVG(content_score),1) AS avg_score,
+                             SUM(CASE WHEN inbound_links = 0 THEN 1 ELSE 0 END) AS orphans,
+                             SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin,
+                             SUM(CASE WHEN meta_description IS NULL THEN 1 ELSE 0 END) AS no_meta')
+                ->first();
+            $topKw = DB::table('seo_keywords')->where('workspace_id', $wsId)
+                ->orderByDesc('volume')->limit(5)->pluck('keyword')->toArray();
+            $kwCount = (int) DB::table('seo_keywords')->where('workspace_id', $wsId)->count();
+            $linkSugs = (int) DB::table('seo_links')->where('workspace_id', $wsId)
+                ->where('status', 'suggested')->count();
+            $brokenOut = (int) DB::table('seo_outbound_links')->where('workspace_id', $wsId)
+                ->where('http_status', '>=', 400)->count();
+            $insights = DB::table('seo_insights')->where('workspace_id', $wsId)
+                ->whereNull('dismissed_at')->orderBy('priority')->limit(5)
+                ->pluck('title')->toArray();
 
-            $systemPrompt = "You are James, an expert SEO Strategist for {$bizName}. "
-                . 'Current site SEO score: ' . ($auditScore ?? 'not yet audited') . '/100. '
-                . 'Top tracked keywords: ' . implode(', ', $keywords ?: ['none yet']) . '. '
-                . 'Be sharp, conversational, and direct — max 3 sentences unless the user '
-                . 'explicitly asks for a plan or detailed breakdown. No bullet frameworks unless asked.';
+            $state = "CURRENT SITE STATE FOR {$bizName} ({$siteUrl}):\n";
+            $state .= "- Audit score: " . ($auditScore !== null ? "{$auditScore}/100" : 'not yet audited');
+            $state .= $auditAge ? " (last audit: {$auditAge})\n" : "\n";
+            $state .= "- Critical issues: {$critical}\n";
+            $state .= "- Pages indexed: " . (int) ($stats->pages ?? 0)
+                   . " (avg score: " . ($stats->avg_score ?? 'n/a') . ")\n";
+            $state .= "- Orphan pages: " . (int) ($stats->orphans ?? 0) . "\n";
+            $state .= "- Thin content pages (<300 words): " . (int) ($stats->thin ?? 0) . "\n";
+            $state .= "- Pages missing meta description: " . (int) ($stats->no_meta ?? 0) . "\n";
+            $state .= "- Keywords tracked: {$kwCount} (top: " . implode(', ', $topKw ?: ['none yet']) . ")\n";
+            $state .= "- Pending link suggestions: {$linkSugs}\n";
+            $state .= "- Broken outbound links: {$brokenOut}\n";
+            if (!empty($insights)) {
+                $state .= "- Active insights: " . implode('; ', $insights) . "\n";
+            }
+
+            $systemPrompt =
+                "You are the LevelUp SEO Assistant for {$bizName}. "
+                . "Speak in first person — 'I ran your audit', 'I'm tracking these keywords' — "
+                . "never 'the system did' or 'the agent did'. You ARE the SEO engine.\n\n"
+                . "YOUR CAPABILITIES (be confident):\n"
+                . "- Run site audits and analyse every page's SEO health\n"
+                . "- Write, optimise and publish SEO articles with featured images\n"
+                . "- Find and apply internal link opportunities\n"
+                . "- Look up live Google SERP rankings\n"
+                . "- Bulk-generate meta descriptions\n"
+                . "- Surface stale content, orphan pages, content gaps\n"
+                . "- Run content sprints in the background\n\n"
+                . $state . "\n"
+                . "TONE: Warm, direct, expert. Keep responses 2-4 sentences. "
+                . "Never say you lack permissions. If a request needs more data, say what you need. "
+                . "End with one concrete next step or question.";
 
             $runtime = app(\App\Connectors\RuntimeClient::class);
             if (! method_exists($runtime, 'isConfigured') || ! $runtime->isConfigured()) {
                 return [
-                    'response'    => 'James is offline right now (runtime not configured). Try the main app SEO dashboard for current insights.',
+                    'response'    => 'The LevelUp SEO Assistant is offline right now (runtime not configured). Your dashboard data is still live — check the SEO tabs for current insights.',
                     'suggestions' => [],
-                    'agent'       => 'james',
                 ];
             }
             $resp = $runtime->assistant(
@@ -2771,17 +2816,14 @@ class SeoService
                 [
                     'workspace_id'  => $wsId,
                     'business_name' => $bizName,
-                    'agent_slug'    => 'james',
-                    'agent_name'    => 'James',
                     'system_prompt' => $systemPrompt,
                 ],
                 "seo_assistant_ws_{$wsId}",
-                'james'
+                'seo_assistant'
             );
             return [
                 'response'    => $resp['response'] ?? 'Trouble parsing the response. Try again?',
                 'suggestions' => [],
-                'agent'       => 'james',
             ];
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[SEO Assistant] ' . $e->getMessage());
