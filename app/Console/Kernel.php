@@ -16,6 +16,10 @@ class Kernel extends ConsoleKernel
 
         // 2026-05-15 Phase 3 — semantic clustering rebuild.
         $schedule->command('seo:cluster')->weekly()->sundays()->at('04:00')->withoutOverlapping();
+
+        // 2026-05-13 — DataForSEO rank + SERP refresh.
+        $schedule->command('seo:rank-track')->dailyAt('03:00')->withoutOverlapping();
+        $schedule->command('seo:serp-refresh')->dailyAt('03:30')->withoutOverlapping();
     }
 
     protected function commands(): void
