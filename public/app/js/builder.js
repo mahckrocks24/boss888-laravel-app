@@ -510,7 +510,7 @@ function bld_aiAddMsg(role, content, opts={}) {
   }
 
   feed.appendChild(wrap);
-  feed.scrollTop = feed.scrollHeight;
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function bld_aiShowTyping() {
@@ -1226,7 +1226,8 @@ async function _t3ArthurSend(websiteId) {
       if (feed) {
         var _cid = 'conf_' + Date.now();
         feed.innerHTML += '<div id="' + _cid + '" style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid #F97316"><div style="color:var(--t1);font-size:13px;line-height:1.5">' + bld_escH(d.message) + '</div><div style="margin-top:10px;display:flex;gap:8px"><button onclick="_t3ConfirmTier4(' + websiteId + ', this, ' + JSON.stringify(d.confirm_action).replace(/"/g, "&quot;") + ', ' + JSON.stringify(d.confirm_data || {}).replace(/"/g, "&quot;") + ')" style="background:var(--p);border:none;color:#fff;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600">Confirm</button><button onclick="document.getElementById(\'' + _cid + '\').remove()" style="background:var(--s3);border:none;color:var(--t2);padding:6px 12px;border-radius:5px;cursor:pointer;font-size:12px">Cancel</button></div></div>';
-        feed.scrollTop = feed.scrollHeight;
+        var _confEl = document.getElementById(_cid);
+        if (_confEl) _confEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } else if (d.method === 'action') {
       if (feed) feed.innerHTML += '<div style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid #00E5A8"><div style="color:var(--t1);font-size:13px">' + bld_escH(d.message) + '</div><div style="color:rgba(255,255,255,0.3);font-size:10px;margin-top:4px">arthur \u00b7 tier 4</div></div>';

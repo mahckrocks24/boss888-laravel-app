@@ -4727,7 +4727,7 @@ window.LU_CFG = {
   restUrl: '/api/',
   pluginUrl: '/app/assets/',
   version: '5.6.0-arthur-ai',
-  engineUrls: {crm:'/app/js/crm.js',marketing:'/app/js/marketing.js',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.5.56-chat-scroll',write:'/app/js/write.js',creative:'/app/js/creative.js',manualedit:'/app/js/manualedit.js',blog:'/app/js/blog.js',studio:'/app/js/studio.js','studio-video':'/app/js/studio-video.js'}};
+  engineUrls: {crm:'/app/js/crm.js',marketing:'/app/js/marketing.js?v=4.0.1-scroll-fix',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.5.56-chat-scroll',write:'/app/js/write.js',creative:'/app/js/creative.js',manualedit:'/app/js/manualedit.js',blog:'/app/js/blog.js',studio:'/app/js/studio.js?v=4.0.1-scroll-fix','studio-video':'/app/js/studio-video.js'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4832,7 +4832,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
 <script defer src="/app/js/media-picker.js?v=4.5.0"></script>
 <!-- v5.0.1 swap 2026-04-10: old builder.js loads first to provide websites view + non-renderer logic; v5 loads second and overrides editor renderer chain via function declaration hoisting. -->
-<script defer src="/app/js/builder.js?v=4.6.2-view-button-and-limits"></script>
+<script defer src="/app/js/builder.js?v=4.6.2-view-button-and-limits-scroll-fix"></script>
 
 
 
@@ -5023,8 +5023,8 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 
 <!-- JS in core.js -->
 
-<script defer src="/app/js/messages-ui.js?v=4.5.1-markdown"></script>
-<script defer src="/app/js/arthur-chat.js?v=5.9.3-result-card"></script>
+<script defer src="/app/js/messages-ui.js?v=4.5.1-markdown-scroll-fix"></script>
+<script defer src="/app/js/arthur-chat.js?v=5.9.3-result-card-scroll-fix"></script>
 <script defer src="/app/js/chatbot-spa.js?v=1.0.0"></script>
 
 <script>

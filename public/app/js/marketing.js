@@ -1707,7 +1707,13 @@ console.log('[LevelUp] marketing engine v2.1.0 loaded');
     if (kind === 'ai-loading'){ b.classList.add('loading'); b.innerHTML = _esc(text) + '<span class="eb-loading-dots"></span>'; }
     else b.textContent = text;
     host.appendChild(b);
-    host.scrollTop = host.scrollHeight;
+    // user msgs + ai-loading typing indicator keep scrollTop; real ai bubbles
+    // scroll to top so long replies show the opening line.
+    if (kind === 'user' || kind === 'ai-loading') {
+      host.scrollTop = host.scrollHeight;
+    } else {
+      b.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
     return b;
   }
 

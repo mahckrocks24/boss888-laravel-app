@@ -1274,8 +1274,13 @@
     el.className = cls;
     el.textContent = msg.content;
     list.appendChild(el);
-    // Keep scroll pinned to bottom.
-    list.scrollTop = list.scrollHeight;
+    // Role-aware: user/error stay scrolled to bottom; AI replies scroll to top
+    // so long messages don't jump past the opening line.
+    if (msg.role === 'user' || msg.role === 'error') {
+      list.scrollTop = list.scrollHeight;
+    } else {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   function _chatRenderLoading(show) {
@@ -3565,7 +3570,13 @@
     b.className = 'st-ai-bubble ' + (kind || 'ai') + (kind === 'ai-loading' ? ' ai-loading' : '');
     b.textContent = text;
     chat.appendChild(b);
-    chat.scrollTop = chat.scrollHeight;
+    // ai-loading is the typing indicator (keep scrollTop). Real AI bubbles
+    // scroll to their top so long replies show the start.
+    if (kind === 'ai-loading') {
+      chat.scrollTop = chat.scrollHeight;
+    } else {
+      b.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   // ── Modal helpers ─────────────────────────────────────────

@@ -237,7 +237,7 @@ function _arthurShowConfirmActions(buildData) {
                 '<div style="font-size:13px;color:#fff;margin-bottom:12px">Ready to build your website?</div>' +
                 '<button onclick="_arthurConfirmBuild()" style="padding:12px 28px;background:#6C5CE7;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">⚡ Build My Website</button>';
             fbFeed.appendChild(fb);
-            try { fbFeed.scrollTop = fbFeed.scrollHeight; } catch(_){}
+            try { fb.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(_){}
         }
     }
 }
@@ -603,7 +603,7 @@ window._arthurConfirmBuild = async function() {
           '</div>' +
           '<div id="arthur-build-step" style="padding:10px 14px;border-radius:12px;background:var(--s2,#1a1a1a);color:var(--t1,#fff);font-size:13px;animation:pulse 1.5s infinite">🎨 Selecting your design...</div>';
         feed.appendChild(animBox);
-        feed.scrollTop = feed.scrollHeight;
+        animBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
         _arthurShowBuildAnimation(document.getElementById('arthur-build-step'));
     }
 
@@ -718,7 +718,13 @@ function _arthurAddMsg(role, text) {
     }
 
     feed.innerHTML += html;
-    feed.scrollTop = feed.scrollHeight;
+    // Role-aware scroll: user messages keep scrollTop (they saw their own
+    // input); agent messages scroll to top so the user sees the START.
+    if (isUser) {
+        feed.scrollTop = feed.scrollHeight;
+    } else if (feed.lastElementChild) {
+        feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 // BUG 1 FIX — inline [Yes, build it] / [Edit details] buttons shown
@@ -733,7 +739,7 @@ window._arthurShowConfirmDetails = function() {
             '<button onclick="_arthurConfirmDetails()" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer">'+window.icon('check',18)+' Yes, build it</button>' +
             '<button onclick="_arthurEditDetails()" style="background:transparent;color:var(--t1);border:1px solid var(--bd);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer">'+window.icon('edit',18)+' Edit details</button>' +
         '</div>';
-    feed.scrollTop = feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 window._arthurConfirmDetails = function() {
     var el = document.getElementById('arthur-confirm-details'); if (el) el.remove();
@@ -786,7 +792,7 @@ function _arthurShowTemplatePick(templates, industry) {
         '</div>';
     }).join('');
     feed.innerHTML += '<div class="arthur-tpl-picker">' + intro + cards + '</div>';
-    feed.scrollTop = feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── Template SLIDER (FIX 3/4 2026-04-20) ────────────────────────
@@ -811,7 +817,7 @@ function _arthurShowTemplateSlider(templates) {
         '</div>';
     }).join('');
     feed.innerHTML += '<div class="arthur-tpl-slider" style="display:flex;gap:12px;overflow-x:auto;padding:8px 0;scroll-snap-type:x mandatory">' + cards + '</div>';
-    feed.scrollTop = feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Called when the user picks a template from the inline picker.
@@ -862,7 +868,7 @@ window._arthurShowImageUpload = function(max) {
             '</div>' +
         '</div>';
     feed.innerHTML += box;
-    feed.scrollTop = feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     var inp   = document.getElementById('au-input');
     var skip  = document.getElementById('au-skip');
@@ -991,7 +997,7 @@ function _arthurShowWebsiteCard(websiteId, name, industry) {
         + '</div></div>';
 
     feed.innerHTML += card;
-    feed.scrollTop = feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     // PATCH (FIX 3, 2026-05-09) \u2014 placeholder updated to direct the user
     // toward the editor instead of "Close to continue".
@@ -1022,7 +1028,7 @@ function _arthurShowBuilding() {
         ".ab-step.done{color:var(--ac,#00E5A8)}" +
         "@keyframes arthurSpin{to{transform:rotate(360deg)}}</style>";
     
-    feed.scrollTop = feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
     // Animate steps
     var steps = ["ab-s1","ab-s2","ab-s3","ab-s4","ab-s5"];
@@ -1291,7 +1297,7 @@ function _arthurShowLogoUpload() {
     feed.appendChild(box);
     var fi = document.getElementById('arthur-logo-file');
     if (fi) fi.onchange = _arthurLogoFileChosen;
-    feed.scrollTop = feed.scrollHeight;
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 window._arthurPickLogo = function() {
@@ -1372,7 +1378,7 @@ function _arthurShowPaletteChoice(palettes) {
         '</div>';
     }).join('');
     feed.innerHTML += '<div id="arthur-palette-row" class="arthur-pal-row" style="display:flex;gap:10px;overflow-x:auto;padding:8px 0">' + row + '</div>';
-    feed.scrollTop = feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 window._arthurConfirmPalette = function(paletteId) {

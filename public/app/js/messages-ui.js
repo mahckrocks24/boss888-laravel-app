@@ -123,7 +123,7 @@ async function _msgLoadThread(slug){
       var border=isUser?'none':'1px solid '+color+'30';
       return'<div style="display:flex;justify-content:'+align+';margin-bottom:8px"><div style="max-width:80%;padding:10px 14px;border-radius:12px;background:'+bg+';border:'+border+';color:'+tc+';font-size:13px;line-height:1.5"><div>'+(isUser?_msgE(m.content):(typeof fmt==='function'?fmt(m.content):_msgE(m.content)))+'</div><div style="font-size:9px;opacity:.6;margin-top:4px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
     }).join('');
-    feed.scrollTop=feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }catch(e){feed.innerHTML='<div style="color:var(--rd);padding:20px;font-size:12px">Failed to load messages</div>';}
 }
 
@@ -243,7 +243,7 @@ async function _msgLoadPageThread(slug){
         +_msgE(m.content)
         +'<div style="font-size:10px;opacity:.5;margin-top:6px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
     }).join('');
-    feed.scrollTop=feed.scrollHeight;
+    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }catch(e){feed.innerHTML='<div style="color:var(--rd);padding:20px">Failed to load</div>';}
 }
 
