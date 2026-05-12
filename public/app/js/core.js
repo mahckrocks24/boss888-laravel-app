@@ -4620,6 +4620,14 @@ async function _checkTrialStatus() {
     var features = (s.plan && s.plan.features) ? s.plan.features : {};
     document.querySelectorAll('[data-feature]').forEach(function(el) {
       var feat = el.getAttribute('data-feature');
+      // 2026-05-12 — In embed mode (WP plugin iframe), force-show Pipeline
+      // and Write regardless of plan feature flags. The bundle plans
+      // already grant access; this is a belt-and-suspenders override so
+      // a stale features_json or plan-data fetch race can't hide them.
+      if (window._LGSC_EMBED && (el.id === 'ni-pipeline' || el.id === 'ni-write')) {
+        el.style.display = '';
+        return;
+      }
       el.style.display = features[feat] ? '' : 'none';
     });
 
