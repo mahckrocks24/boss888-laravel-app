@@ -3583,6 +3583,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     { id: 'competitors', label: 'Competitors' },
     { id: 'insights',    label: 'Insights' },
     { id: 'reports',     label: 'Reports' },
+    { id: 'pipeline',    label: 'Pipeline' },
   ];
 
   // Legacy ID aliases — preserve deep links.
@@ -3735,6 +3736,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       overview: renderOverview, audit: renderAudit, keywords: renderKeywords,
       pages: renderPages, links: renderLinks, topics: renderTopics,
       competitors: renderCompetitors, insights: renderInsights, reports: renderReports,
+      pipeline: renderPipeline,
     };
     (renderers[id] || renderOverview)(content);
   }
@@ -7628,6 +7630,177 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
       if (typeof window.showToast === 'function') window.showToast(type + ' exported (' + Math.round(blob.size / 1024) + ' KB)', 'success');
     } catch (e) { /* silent */ }
+  };
+
+  // ── Tab — Pipeline (Queue + Calendar sub-tabs) ────────────────────────
+  // 2026-05-13 — canonical-block implementation. Hits /api/connector/*
+  // via _luFetch (embed X-API-KEY routing); _seoApi only handles /api/seo/*.
+  function renderPipeline(el) {
+    if (!window._lgsePipeTab)   window._lgsePipeTab   = 'queue';
+    if (!window._lgsePipeMonth) {
+      var __now = new Date();
+      window._lgsePipeMonth = __now.getFullYear() + '-' + String(__now.getMonth() + 1).padStart(2, '0');
+    }
+
+    function pipFetch(path) {
+      if (typeof window._luFetch === 'function') {
+        return window._luFetch('GET', path, null).then(function (r) { return r.json(); });
+      }
+      var t = localStorage.getItem('lu_token') || '';
+      return fetch(window.location.origin + '/api' + path, {
+        headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + t },
+        cache: 'no-store',
+      }).then(function (r) { return r.json(); });
+    }
+
+    function fmtDate(s) {
+      if (!s) return '';
+      return String(s).slice(0, 10);
+    }
+
+    function shiftMonth(ym, delta) {
+      var p = ym.split('-'); var yr = parseInt(p[0], 10); var mo = parseInt(p[1], 10) + delta;
+      if (mo < 1)  { mo = 12; yr--; }
+      if (mo > 12) { mo = 1;  yr++; }
+      return yr + '-' + String(mo).padStart(2, '0');
+    }
+
+    var subQ = window._lgsePipeTab === 'queue';
+    var subC = window._lgsePipeTab === 'calendar';
+    el.innerHTML =
+        '<div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--bd,#1e293b)">' +
+          '<button onclick="window._lgsePipeNav(\'queue\')" '
+            + 'style="padding:10px 16px;cursor:pointer;background:transparent;border:none;border-bottom:2px solid '
+            + (subQ ? 'var(--p,#7C3AED)' : 'transparent') + ';color:' + (subQ ? 'var(--p,#7C3AED)' : 'var(--lgse-t3,#94a3b8)')
+            + ';font-size:13px;font-weight:600">Queue</button>' +
+          '<button onclick="window._lgsePipeNav(\'calendar\')" '
+            + 'style="padding:10px 16px;cursor:pointer;background:transparent;border:none;border-bottom:2px solid '
+            + (subC ? 'var(--p,#7C3AED)' : 'transparent') + ';color:' + (subC ? 'var(--p,#7C3AED)' : 'var(--lgse-t3,#94a3b8)')
+            + ';font-size:13px;font-weight:600">Calendar</button>' +
+        '</div>' +
+        '<div id="lgse-pipe-body" style="color:var(--lgse-t3,#94a3b8);font-size:13px">Loading…</div>';
+
+    var body = document.getElementById('lgse-pipe-body');
+    if (!body) return;
+
+    if (subQ) {
+      pipFetch('/connector/content/pipeline').then(function (r) {
+        if (!r || !r.success) { body.innerHTML = '<p>Could not load pipeline.</p>'; return; }
+        var counts = r.counts || {};
+        var all = (r.pipeline.queued || [])
+          .concat(r.pipeline.running || [])
+          .concat(r.pipeline.completed || [])
+          .concat(r.pipeline.failed || []);
+        var typeC = {
+          generate_article: '#7C3AED', write_article: '#7C3AED', optimize_article: '#8B5CF6',
+          improve_draft: '#8B5CF6',    deep_audit: '#3B82F6', serp_analysis: '#06B6D4',
+          keyword_research: '#06B6D4', bulk_generate_meta: '#F59E0B', generate_meta: '#F59E0B',
+          generate_image: '#EC4899',   autonomous_goal: '#00E5A8', agent_goal: '#F59E0B',
+          link_suggestions: '#10B981',
+        };
+        var html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">';
+        ['queued', 'running', 'completed', 'failed'].forEach(function (s) {
+          html += '<div style="background:#1e293b;border-radius:8px;padding:12px;text-align:center">'
+                +   '<div style="font-size:22px;font-weight:700;color:#fff">' + (counts[s] || 0) + '</div>'
+                +   '<div style="font-size:12px;color:#94a3b8;text-transform:capitalize">' + s + '</div>'
+                + '</div>';
+        });
+        html += '</div>';
+        if (!all.length) {
+          html += '<p style="color:#94a3b8;padding:18px;background:#0f172a;border-radius:8px">No tasks yet. Generate an article or run an audit to populate.</p>';
+        } else {
+          html += '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+                +   '<tr style="color:#64748b;border-bottom:1px solid #1e293b">'
+                +     '<th style="text-align:left;padding:8px">Type</th>'
+                +     '<th style="text-align:left;padding:8px">Status</th>'
+                +     '<th style="text-align:left;padding:8px">Created</th>'
+                +   '</tr>';
+          all.forEach(function (t) {
+            var c = typeC[t.task_type] || '#64748b';
+            html += '<tr style="border-bottom:1px solid #1e293b">'
+                  +   '<td style="padding:8px"><span style="background:' + c + '22;color:' + c
+                  +     ';padding:2px 8px;border-radius:4px;font-size:11px">' + (t.task_type || 'task') + '</span></td>'
+                  +   '<td style="padding:8px;color:#94a3b8">' + (t.status || '') + '</td>'
+                  +   '<td style="padding:8px;color:#64748b">' + fmtDate(t.created_at) + '</td>'
+                  + '</tr>';
+          });
+          html += '</table>';
+        }
+        body.innerHTML = html;
+        if ((counts.running || 0) > 0) {
+          setTimeout(function () {
+            if (window._lgsePipeTab === 'queue') {
+              var c = document.getElementById('lgse-content');
+              if (c) renderPipeline(c);
+            }
+          }, 8000);
+        }
+      }).catch(function () {
+        body.innerHTML = '<p style="color:#ef4444">Pipeline fetch failed.</p>';
+      });
+    } else {
+      pipFetch('/connector/content/calendar?month=' + window._lgsePipeMonth).then(function (r) {
+        if (!r || !r.success) { body.innerHTML = '<p>Could not load calendar.</p>'; return; }
+        var days = r.days || {};
+        var parts = window._lgsePipeMonth.split('-');
+        var yr = parseInt(parts[0], 10);
+        var mo = parseInt(parts[1], 10) - 1;
+        var firstDay = new Date(yr, mo, 1).getDay();
+        var daysInMonth = new Date(yr, mo + 1, 0).getDate();
+        var monthNames = ['January','February','March','April','May','June',
+                          'July','August','September','October','November','December'];
+        var html = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
+                 +   '<button onclick="window._lgsePipeNav(null, \'' + shiftMonth(window._lgsePipeMonth, -1) + '\')" '
+                 +     'style="background:#1e293b;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer">←</button>'
+                 +   '<strong style="color:#fff">' + monthNames[mo] + ' ' + yr + '</strong>'
+                 +   '<button onclick="window._lgsePipeNav(null, \'' + shiftMonth(window._lgsePipeMonth, +1) + '\')" '
+                 +     'style="background:#1e293b;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer">→</button>'
+                 + '</div>';
+        html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+        ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function (d) {
+          html += '<div style="text-align:center;font-size:11px;color:#64748b;padding:4px">' + d + '</div>';
+        });
+        var startOffset = (firstDay + 6) % 7;
+        for (var i = 0; i < startOffset; i++) {
+          html += '<div style="min-height:60px"></div>';
+        }
+        for (var d = 1; d <= daysInMonth; d++) {
+          var key = yr + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+          var items = days[key] || [];
+          var cellHtml = '<div style="background:#1e293b;border-radius:6px;padding:6px;min-height:60px">'
+                       +   '<div style="font-size:11px;color:#64748b;margin-bottom:4px">' + d + '</div>';
+          items.slice(0, 3).forEach(function (item) {
+            var col = item.status === 'completed' ? '#10b981'
+                    : item.type === 'task'        ? '#3B82F6'
+                    :                                '#F59E0B';
+            var title = (item.title || 'Task');
+            var safeTitle = String(title).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            cellHtml += '<div style="background:' + col + '22;color:' + col
+                      + ';font-size:10px;padding:2px 4px;border-radius:3px;margin-bottom:2px;'
+                      + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + safeTitle + '">'
+                      + safeTitle.slice(0, 20) + '</div>';
+          });
+          if (items.length > 3) {
+            cellHtml += '<div style="font-size:10px;color:#64748b">+' + (items.length - 3) + ' more</div>';
+          }
+          cellHtml += '</div>';
+          html += cellHtml;
+        }
+        html += '</div>';
+        body.innerHTML = html;
+      }).catch(function () {
+        body.innerHTML = '<p style="color:#ef4444">Calendar fetch failed.</p>';
+      });
+    }
+  }
+
+  // Global trampoline so the injected onclick handlers (global scope) can
+  // re-enter the IIFE-private renderPipeline.
+  window._lgsePipeNav = function (tab, month) {
+    if (tab)   window._lgsePipeTab   = tab;
+    if (month) window._lgsePipeMonth = month;
+    var c = document.getElementById('lgse-content');
+    if (c) renderPipeline(c);
   };
 
   // ── Override entry point ───────────────────────────────────────────────
