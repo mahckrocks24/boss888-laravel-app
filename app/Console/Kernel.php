@@ -7,20 +7,18 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
+    /**
+     * 2026-05-13 — Laravel 11 routes scheduled tasks through bootstrap/app.php.
+     * This Kernel::schedule() method is no longer invoked. All previous
+     * entries (seo:insights / seo:authority-score / seo:outbound-check /
+     * seo:cluster) moved to bootstrap/app.php in commit landing today.
+     *
+     * Method kept empty (rather than deleted) so anything in the framework
+     * that still calls it has a safe no-op.
+     */
     protected function schedule(Schedule $schedule): void
     {
-        // 2026-05-13 Phase 1 — SEO scheduled jobs.
-        $schedule->command('seo:insights')->daily()->withoutOverlapping();
-        $schedule->command('seo:authority-score')->weekly()->sundays()->at('03:00')->withoutOverlapping();
-        $schedule->command('seo:outbound-check')->twiceDaily(2, 14)->withoutOverlapping();
-
-        // 2026-05-15 Phase 3 — semantic clustering rebuild.
-        // NOTE 2026-05-13 — this Kernel.php schedule() method does NOT FIRE
-        // in this app's Laravel 11 setup; the live scheduler is in
-        // bootstrap/app.php. The 4 entries above (insights / authority-score
-        // / outbound-check / cluster) are orphaned and should be moved.
-        // Tracking that as a follow-up.
-        $schedule->command('seo:cluster')->weekly()->sundays()->at('04:00')->withoutOverlapping();
+        // intentionally empty — see bootstrap/app.php for the live scheduler.
     }
 
     protected function commands(): void

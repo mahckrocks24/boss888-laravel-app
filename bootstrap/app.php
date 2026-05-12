@@ -74,6 +74,48 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('seo:serp-refresh cron failed');
             });
 
+        // 2026-05-13 — migrated from app/Console/Kernel.php which never
+        // fires in Laravel 11. Original schedules preserved verbatim.
+        $schedule->command('seo:insights')
+            ->name('seo:insights')
+            ->daily()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('seo:insights cron failed');
+            });
+
+        $schedule->command('seo:authority-score')
+            ->name('seo:authority-score')
+            ->weeklyOn(0, '03:00')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('seo:authority-score cron failed');
+            });
+
+        $schedule->command('seo:outbound-check')
+            ->name('seo:outbound-check')
+            ->twiceDaily(2, 14)
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('seo:outbound-check cron failed');
+            });
+
+        $schedule->command('seo:cluster')
+            ->name('seo:cluster')
+            ->weeklyOn(0, '04:00')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('seo:cluster cron failed');
+            });
+
         // House account credit replenish — 1st of month at midnight UTC
         $schedule->command('credits:replenish-house')
             ->name('credits:replenish-house')
