@@ -9459,6 +9459,257 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         ]);
     });
 
+    // ════════════════════════════════════════════════════════════════════
+    // 2026-05-12 embed expansion — Pipeline + Calendar + Image regenerate.
+    // ════════════════════════════════════════════════════════════════════
+
+    // P1.5 — Content Pipeline: SEO-related tasks for the workspace.
+    Route::get('/content/pipeline', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        // SEO-scope task actions across the engines we care about.
+        $seoActions = [
+            'write_article', 'improve_draft', 'generate_outline',
+            'generate_headlines', 'generate_meta',
+            'deep_audit', 'serp_analysis', 'bulk_generate_meta',
+            'link_suggestions', 'autonomous_goal', 'agent_goal',
+            'keyword_research', 'generate_image', 'generate_article',
+            'optimize_article',
+        ];
+        $rows = \Illuminate\Support\Facades\DB::table('tasks')
+            ->where('workspace_id', $wsId)
+            ->whereIn('action', $seoActions)
+            ->orderByDesc('id')->limit(200)->get();
+
+        $buckets = ['queued' => [], 'running' => [], 'completed' => [], 'failed' => [], 'cancelled' => []];
+        foreach ($rows as $t) {
+            $payload = json_decode($t->payload_json ?? '{}', true) ?: [];
+            $result  = json_decode($t->result_json  ?? '{}', true) ?: [];
+            $summary = isset($result['summary']) ? (string) $result['summary']
+                : (isset($result['title']) ? (string) $result['title']
+                : (isset($payload['title']) ? (string) $payload['title']
+                : (isset($payload['topic']) ? (string) $payload['topic']
+                : (isset($payload['keyword']) ? (string) $payload['keyword'] : null))));
+            $progress = 0;
+            if ($t->total_steps > 0 && $t->current_step > 0) {
+                $progress = (int) min(100, round(($t->current_step / max(1, $t->total_steps)) * 100));
+            } elseif (in_array($t->status, ['completed'])) { $progress = 100; }
+            elseif (in_array($t->status, ['running','verifying'])) { $progress = 50; }
+            $item = [
+                'id'             => (int) $t->id,
+                'task_type'      => (string) $t->action,
+                'engine'         => (string) $t->engine,
+                'status'         => (string) $t->status,
+                'progress'       => $progress,
+                'payload'        => $payload,
+                'result_summary' => $summary,
+                'created_at'     => (string) $t->created_at,
+                'updated_at'     => (string) ($t->updated_at ?? $t->created_at),
+            ];
+            $bucket = $t->status;
+            if (in_array($bucket, ['pending','awaiting_approval','queued'], true))      { $buckets['queued'][]    = $item; }
+            elseif (in_array($bucket, ['running','verifying'], true))                    { $buckets['running'][]   = $item; }
+            elseif ($bucket === 'completed')                                              { $buckets['completed'][] = $item; }
+            elseif (in_array($bucket, ['failed','degraded','blocked'], true))            { $buckets['failed'][]    = $item; }
+            elseif ($bucket === 'cancelled')                                              { $buckets['cancelled'][] = $item; }
+        }
+        return response()->json([
+            'success'  => true,
+            'pipeline' => $buckets,
+            'counts'   => [
+                'queued'    => count($buckets['queued']),
+                'running'   => count($buckets['running']),
+                'completed' => count($buckets['completed']),
+                'failed'    => count($buckets['failed']),
+                'cancelled' => count($buckets['cancelled']),
+                'total'     => array_sum(array_map('count', $buckets)),
+            ],
+        ]);
+    });
+
+    // P1.6 — SEO Content Calendar: month-grouped articles + tasks.
+    Route::get('/content/calendar', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $month = (string) $r->query('month', date('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+            return response()->json(['success' => false, 'error' => 'bad_month_format'], 422);
+        }
+        [$year, $monthN] = explode('-', $month);
+        $first = sprintf('%04d-%02d-01', $year, $monthN);
+        $last  = date('Y-m-t', strtotime($first));
+
+        $days = [];
+        $push = function (string $date, array $item) use (&$days) {
+            $key = substr($date, 0, 10);
+            if (!isset($days[$key])) { $days[$key] = []; }
+            $days[$key][] = $item;
+        };
+
+        // Articles created or updated within the month
+        $articles = \Illuminate\Support\Facades\DB::table('articles')
+            ->where('workspace_id', $wsId)
+            ->whereDate('created_at', '>=', $first)
+            ->whereDate('created_at', '<=', $last)
+            ->orderBy('created_at')->get();
+        foreach ($articles as $a) {
+            $push((string) $a->created_at, [
+                'type'     => 'article',
+                'id'       => (int) $a->id,
+                'title'    => (string) $a->title,
+                'status'   => (string) $a->status,
+                'keyword'  => $a->focus_keyword ?? null,
+                'score'    => isset($a->seo_json) ? (int) (json_decode($a->seo_json, true)['score'] ?? 0) : null,
+                'url'      => null,
+                'edit_url' => '/app/#write/' . (int) $a->id,
+                'created_at' => (string) $a->created_at,
+            ]);
+        }
+
+        // Pipeline tasks (SEO-scope) in the month
+        $seoActions = [
+            'write_article','improve_draft','deep_audit','serp_analysis',
+            'bulk_generate_meta','generate_image','generate_article',
+            'optimize_article','keyword_research','link_suggestions',
+            'autonomous_goal','agent_goal','generate_outline','generate_headlines',
+        ];
+        $tasks = \Illuminate\Support\Facades\DB::table('tasks')
+            ->where('workspace_id', $wsId)
+            ->whereIn('action', $seoActions)
+            ->whereDate('created_at', '>=', $first)
+            ->whereDate('created_at', '<=', $last)
+            ->orderBy('created_at')->get();
+        foreach ($tasks as $t) {
+            $payload = json_decode($t->payload_json ?? '{}', true) ?: [];
+            $title   = $payload['title'] ?? $payload['topic'] ?? $payload['keyword'] ?? ucfirst(str_replace('_', ' ', (string) $t->action));
+            $push((string) $t->created_at, [
+                'type'     => 'task',
+                'id'       => (int) $t->id,
+                'title'    => (string) $title,
+                'status'   => (string) $t->status,
+                'keyword'  => $payload['keyword'] ?? null,
+                'score'    => null,
+                'url'      => null,
+                'edit_url' => null,
+                'created_at' => (string) $t->created_at,
+            ]);
+        }
+
+        ksort($days);
+        return response()->json([
+            'success' => true,
+            'month'   => $month,
+            'days'    => $days,
+            'counts'  => [
+                'articles' => count($articles),
+                'tasks'    => count($tasks),
+                'days'     => count($days),
+            ],
+        ]);
+    });
+
+    // P1.7 — Regenerate featured image for an indexed page. 1 credit.
+    Route::post('/pages/regenerate-image', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'page_id' => 'nullable|integer',
+            'url'     => 'required|url',
+            'title'   => 'required|string|max:300',
+            'force'   => 'nullable|boolean',
+        ]);
+        $force = (bool) ($data['force'] ?? false);
+
+        // If page exists in seo_content_index and already has image, skip unless force
+        $page = null;
+        if (!empty($data['page_id'])) {
+            $page = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)->where('id', $data['page_id'])->first();
+        }
+        if (!$page) {
+            $page = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)->where('url', $data['url'])->first();
+        }
+        $hasImg = $page && \Illuminate\Support\Facades\Schema::hasColumn('seo_content_index', 'featured_image_url')
+            && !empty($page->featured_image_url);
+        if ($hasImg && !$force) {
+            return response()->json([
+                'success'   => true,
+                'image_url' => (string) $page->featured_image_url,
+                'page_id'   => $page ? (int) $page->id : null,
+                'cached'    => true,
+            ]);
+        }
+
+        // Credit pre-check + reserve
+        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        if ($credits < 1) {
+            return response()->json([
+                'error' => 'insufficient_credits', 'required_credits' => 1,
+                'available' => $credits, 'pool' => 'ai_credits',
+            ], 402);
+        }
+        $creditSvc = app(\App\Core\Billing\CreditService::class);
+        $ref = $creditSvc->reserve($wsId, 1, 'pages/regenerate-image');
+
+        // Pull a top keyword for this page (best-effort) to enrich the prompt
+        $topKw = '';
+        if ($page) {
+            $topKw = (string) (\Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)
+                ->where('target_url', $page->url)
+                ->orderByDesc('volume')->value('keyword') ?? '');
+        }
+        $prompt = "Featured blog image for: " . $data['title']
+            . ($topKw ? " — context: {$topKw}" : "")
+            . ". Professional, clean, modern composition. No text overlay. "
+            . "Suitable for a business website hero or featured slot.";
+
+        $imageUrl = null;
+        try {
+            /** @var \App\Connectors\CreativeConnector $cc */
+            $cc = app(\App\Connectors\CreativeConnector::class);
+            $res = $cc->execute('generate_image', [
+                'prompt'       => $prompt,
+                'quality'      => 'low',         // HARDCODED MINI
+                'aspect_ratio' => '1:1',
+                'style'        => 'professional photograph',
+            ]);
+            if (($res['success'] ?? false) && !empty($res['data']['url'])) {
+                $imageUrl = (string) $res['data']['url'];
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('pages/regenerate-image exception', ['err' => $e->getMessage()]);
+        }
+
+        if (!$imageUrl) {
+            $creditSvc->release($wsId, $ref);
+            return response()->json(['success' => false, 'error' => 'image_generation_failed'], 502);
+        }
+
+        // Commit credit + persist to seo_content_index and articles (if matched)
+        $creditSvc->commit($wsId, $ref, 1);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('seo_content_index', 'featured_image_url')) {
+            \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)->where('url', $data['url'])
+                ->update([
+                    'featured_image_url'  => $imageUrl,
+                    'has_featured_image'  => 1,
+                    'updated_at'          => now(),
+                ]);
+        }
+        \Illuminate\Support\Facades\DB::table('articles')
+            ->where('workspace_id', $wsId)
+            ->where(function ($q) use ($data) {
+                $q->where('title', $data['title']);
+            })
+            ->update(['featured_image_url' => $imageUrl, 'updated_at' => now()]);
+
+        return response()->json([
+            'success'   => true,
+            'image_url' => $imageUrl,
+            'page_id'   => $page ? (int) $page->id : null,
+        ]);
+    });
+
     // P1.3 — Re-write existing article content for SEO. 2 credits.
     Route::post('/optimize-article', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');

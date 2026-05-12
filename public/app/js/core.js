@@ -31,13 +31,35 @@
   }
 })();
 
+// 2026-05-12 — embed-mode nav visibility: show Pipeline + Write tabs
+// when ?lgsc_key&embed=1 is present in the URL (set by core.js's
+// _lgscDetectEmbed IIFE above), regardless of plan slug. In direct SPA
+// access these tabs follow the standard plan gating below.
+(function _lgscApplyEmbedNav() {
+  function show(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = '';
+  }
+  function applyOnReady() {
+    if (window._LGSC_EMBED && window._LGSC_EMBED.api_key) {
+      show('ni-pipeline');
+      show('ni-write');
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyOnReady);
+  } else {
+    applyOnReady();
+  }
+})();
+
 // 2026-05-16 v1.1 — WP bundle plan visibility gate.
 // When the workspace plan slug starts with 'wp_', hide nav items the
 // bundle doesn't include (builder/social/write/agents). Driven by
 // data-section attributes on .nav-item elements. The flag is set by
 // core.js itself after the workspace profile loads.
 (function _lgscApplyBundleVisibility() {
-  var WP_BUNDLE_VISIBLE = ['seo','chatbot','crm','calendar','account','billing'];
+  var WP_BUNDLE_VISIBLE = ['seo','chatbot','crm','calendar','account','billing','pipeline','write'];
   window._lgsc_apply_bundle_gate = function (planSlug) {
     if (!planSlug || planSlug.indexOf('wp_') !== 0) { return; }
     window._lgsc_plan = planSlug;
@@ -520,7 +542,7 @@ async function luLoadEngine(engine) {
   _luEngineLoading[engine] = true;
   var urls = (window.LU_CFG && window.LU_CFG.engineUrls) || {};
   var base = (window.LU_CFG && window.LU_CFG.pluginUrl) ? window.LU_CFG.pluginUrl + '/assets/js/' : '';
-  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video'];
+  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','pipeline'];
   if (lazy.indexOf(engine) === -1) { _luEngineLoading[engine] = false; return; }
   var src = urls[engine] || (base + engine + '.js');
   var isFallback = !urls[engine] && base;
@@ -763,6 +785,7 @@ async function nav(view){
   if(view==='automation') { var _el=document.getElementById('automation-root'); if(_el && typeof autoLoad==='function') autoLoad(_el); }
   if(view==='blog')       { await luLoadEngine('blog'); var _el=document.getElementById('blog-root'); if(_el && typeof blogLoad==='function') blogLoad(_el); }
   if(view==='studio')     { await luLoadEngine('studio'); var _el=document.getElementById('studio-root'); if(_el && typeof studioLoad==='function') studioLoad(_el); }
+  if(view==='pipeline')   { await luLoadEngine('pipeline'); var _el=document.getElementById('pipeline-root'); if(_el && typeof pipelineLoad==='function') pipelineLoad(_el); }
   if(view==='chatbot')    { var _el=document.getElementById('chatbot-root'); if(_el && typeof chatbotLoad==='function') chatbotLoad(_el); }
   if(view==='messages')   { var _el=document.getElementById('messages-root'); if(_el && typeof messagesLoad==='function') messagesLoad(_el); }
   // Generic engine dispatch — external plugins register via window._lu_engine_loaders
