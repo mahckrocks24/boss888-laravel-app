@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * RuntimeClient
@@ -440,27 +441,36 @@ class RuntimeClient
     }
 
     /**
-     * POST /internal/image/generate — DALL-E 3 image generation.
+     * POST /internal/image/generate — gpt-image-1 image generation.
      *
-     * ADDED 2026-04-13 (Phase 2A.-1): replaces the dead-on-call CreativeConnector
-     * path that pointed at a phantom localhost:8000. The runtime now owns the
-     * OpenAI API key and the DALL-E 3 call lives there per the hands-vs-brain
-     * pattern. Laravel persists the resulting URL into the `assets` table.
+     * MIGRATED 2026-05-13 (gpt-image-1): OpenAI deprecated dall-e-3 and
+     * dall-e-2 on this account. Runtime now uses gpt-image-1 which only
+     * returns b64_json (no hosted URL). This method decodes the base64,
+     * writes it to public storage, and returns a public URL to keep every
+     * downstream caller (CreativeConnector, generate-article, regenerate-image,
+     * Bella, etc.) on the same `url` contract.
      *
      * Supported $options:
-     *   - style   (string)         folded into the prompt as "Style: ..."
-     *   - size    (string)         '1024x1024' | '1024x1792' | '1792x1024'
-     *                              defaults to '1024x1024' on the runtime side
-     *   - quality (string)         'standard' | 'hd' (defaults to 'standard')
+     *   - style        (string) folded into the prompt as "Style: ..."
+     *   - size         (string) '1024x1024' | '1024x1536' | '1536x1024' | 'auto'
+     *                  (legacy dall-e-3 sizes alias on the runtime side)
+     *   - workspace_id (int)    namespaces the storage path; falls back to 0
+     *
+     * Storage layout: storage/app/public/ai-images/{workspace_id}/{md5}.png
+     * Public URL via Storage::disk('public')->url() → /storage/ai-images/...
+     *
+     * CREATIVE888 LAW: runtime hardcodes quality='low' for every auto-gen
+     * regardless of what we send. Any `quality` we pass is ignored upstream.
      *
      * @return array{
      *   success: bool,
      *   url?: string,
-     *   revised_prompt?: string,
+     *   revised_prompt?: ?string,
      *   size?: string,
      *   quality?: string,
      *   model?: string,
      *   provider?: string,
+     *   storage_path?: string,
      *   duration_ms?: int,
      *   error?: string,
      *   raw?: array,
@@ -469,12 +479,11 @@ class RuntimeClient
     public function imageGenerate(string $prompt, array $options = []): array
     {
         try {
-            // Image generation typically runs 10-30s but allow up to 120s for HD quality.
+            // gpt-image-1 can take 30-60s; allow up to 120s.
             $resp = $this->post('/internal/image/generate', array_filter([
-                'prompt'  => $prompt,
-                'style'   => $options['style']   ?? null,
-                'size'    => $options['size']    ?? null,
-                'quality' => $options['quality'] ?? null,
+                'prompt' => $prompt,
+                'style'  => $options['style'] ?? null,
+                'size'   => $options['size']  ?? null,
             ], fn($v) => $v !== null && $v !== ''), 120);
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::imageGenerate connection failed', ['error' => $e->getMessage()]);
@@ -494,14 +503,81 @@ class RuntimeClient
             ];
         }
 
+        // Prefer b64_json (gpt-image-1). Fall back to url (legacy dall-e path,
+        // kept for safety if a future env override puts the runtime back on
+        // dall-e-3). Either way callers receive a `url`.
+        $url          = null;
+        $storagePath  = null;
+
+        if (! empty($body['b64_json'])) {
+            $bytes = base64_decode($body['b64_json'], true);
+            if ($bytes === false || strlen($bytes) === 0) {
+                Log::warning('RuntimeClient::imageGenerate base64 decode failed', [
+                    'bytes_in' => strlen($body['b64_json']),
+                ]);
+                return [
+                    'success' => false,
+                    'error'   => 'base64_decode_failed',
+                    'raw'     => $body,
+                ];
+            }
+
+            // workspace_id sources, in priority order:
+            //   1. explicit $options['workspace_id'] (cleanest, when caller knows)
+            //   2. X-Workspace-ID request header (connector API path)
+            //   3. authenticated user's workspace_id (admin/Bella path)
+            //   4. 0 (unscoped — files still namespaced by md5 hash)
+            // Steps 2-4 are wrapped in try/catch because RuntimeClient can be
+            // invoked outside a request lifecycle (e.g., scheduled commands).
+            $wsId = (int) ($options['workspace_id'] ?? 0);
+            if ($wsId === 0) {
+                try {
+                    $hdrWs = (int) request()->header('X-Workspace-ID', 0);
+                    if ($hdrWs > 0) {
+                        $wsId = $hdrWs;
+                    } elseif (auth()->check() && ! empty(auth()->user()->workspace_id)) {
+                        $wsId = (int) auth()->user()->workspace_id;
+                    }
+                } catch (\Throwable) {
+                    // No request/auth context (cron, queue worker, etc.) — leave as 0.
+                }
+            }
+
+            $filename    = md5($prompt . microtime(true) . random_int(0, PHP_INT_MAX)) . '.png';
+            $storagePath = 'ai-images/' . $wsId . '/' . $filename;
+
+            try {
+                Storage::disk('public')->put($storagePath, $bytes);
+                $url = Storage::disk('public')->url($storagePath);
+            } catch (\Throwable $e) {
+                Log::warning('RuntimeClient::imageGenerate storage put failed', [
+                    'path' => $storagePath, 'err' => $e->getMessage(),
+                ]);
+                return [
+                    'success' => false,
+                    'error'   => 'storage_write_failed: ' . $e->getMessage(),
+                ];
+            }
+        } elseif (! empty($body['url'])) {
+            // Legacy URL path (dall-e-3 / dall-e-2). Still supported defensively.
+            $url = $body['url'];
+        } else {
+            return [
+                'success' => false,
+                'error'   => 'runtime returned neither b64_json nor url',
+                'raw'     => $body,
+            ];
+        }
+
         return [
             'success'        => true,
-            'url'            => $body['url'] ?? null,
+            'url'            => $url,
             'revised_prompt' => $body['revised_prompt'] ?? null,
             'size'           => $body['size'] ?? null,
-            'quality'        => $body['quality'] ?? null,
-            'model'          => $body['model'] ?? 'dall-e-3',
+            'quality'        => $body['quality'] ?? 'low',
+            'model'          => $body['model'] ?? 'gpt-image-1',
             'provider'       => $body['provider'] ?? 'openai',
+            'storage_path'   => $storagePath,
             'duration_ms'    => $body['duration_ms'] ?? null,
         ];
     }
