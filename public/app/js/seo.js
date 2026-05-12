@@ -3583,6 +3583,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     { id: 'competitors', label: 'Competitors' },
     { id: 'insights',    label: 'Insights' },
     { id: 'reports',     label: 'Reports' },
+    { id: 'write',       label: 'Write' },
     { id: 'pipeline',    label: 'Pipeline' },
   ];
 
@@ -3602,7 +3603,13 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       + '<div class="lgse-pane" id="lgse-content"></div>'
       + '</div>';
     var bar = document.getElementById('lgse-topbar');
+    // 2026-05-13 — Write tab is embed-only. Direct SPA users have the
+    // Write engine section in their main nav; the in-iframe shortcut is
+    // for WP-bundle users who don't see the sidebar.
+    var _writeEmbedOnly = (window._LGSC_EMBED && window._LGSC_EMBED.api_key)
+      || new URLSearchParams(window.location.search).has('lgsc_key');
     TABS.forEach(function (t) {
+      if (t.id === 'write' && !_writeEmbedOnly) { return; }
       var d = document.createElement('div');
       d.className = 'lgse-nav-tab';
       d.setAttribute('data-tab-id', t.id);
@@ -3741,7 +3748,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       overview: renderOverview, audit: renderAudit, keywords: renderKeywords,
       pages: renderPages, links: renderLinks, topics: renderTopics,
       competitors: renderCompetitors, insights: renderInsights, reports: renderReports,
-      pipeline: renderPipeline,
+      pipeline: renderPipeline, write: renderWrite,
     };
     (renderers[id] || renderOverview)(content);
   }
@@ -5162,6 +5169,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       + th('URL', 'url')
       + th('Score', 'score', { right: true })
       + th('Words', 'words', { right: true })
+      + '<th style="width:52px">Image</th>'
       + '<th>SEO Title</th>'
       + '<th>Description</th>';
 
@@ -5209,6 +5217,21 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         + '</td>'
         + '<td class="mono">' + (score ? scorePill(score) : dash) + '</td>'
         + '<td class="mono">' + (words || dash) + '</td>'
+        + '<td>' + (function () {
+            var titleAttr = esc(p.title || url || '');
+            var safeUrl = encodeURIComponent(url || '');
+            var safeTitle = encodeURIComponent(p.title || url || '');
+            if (p.featured_image_url) {
+              return '<img src="' + esc(p.featured_image_url) + '" '
+                + 'style="width:44px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" '
+                + 'title="Regenerate featured image (1 credit)" '
+                + 'onclick="window._lgseRegenImage(' + pid + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)">';
+            }
+            return '<div onclick="window._lgseRegenImage(' + pid + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)" '
+              + 'style="width:44px;height:36px;background:#1e293b;border:1px dashed #334155;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center" '
+              + 'title="Generate featured image (1 credit)">'
+              + '<span style="color:#475569;font-size:16px">📷</span></div>';
+          })() + '</td>'
         + '<td style="position:relative;max-width:220px">' + window.lgseIleCell(p.meta_title || p.title || '', 'meta_title', url, 60, 50) + '</td>'
         + '<td style="position:relative;max-width:240px">' + window.lgseIleCell(p.meta_description || '', 'meta_description', url, 160, 140) + '</td>';
 
@@ -7798,6 +7821,206 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       });
     }
   }
+
+  // ── Tab — Write Article (embed mode only) ────────────────────────────
+  // 2026-05-13 — Simple form that calls /connector/generate-article (2cr,
+  // 1 text + 1 mini featured image). Goes via _luFetch so X-API-KEY routes
+  // correctly in embed context.
+  function renderWrite(el) {
+    el.innerHTML =
+        '<div style="max-width:680px;margin:0 auto;padding:8px 0">'
+      +   '<h2 style="color:var(--lgse-t1,#fff);font-size:18px;font-weight:600;margin:0 0 4px">Write Article</h2>'
+      +   '<p style="color:var(--lgse-t3,#94a3b8);font-size:13px;margin:0 0 24px">'
+      +     'Generate an SEO-optimised article with a featured image. Uses <strong style="color:#7C3AED">2 credits</strong>.'
+      +   '</p>'
+      +   '<div style="display:grid;gap:14px">'
+      +     '<div>'
+      +       '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Focus Keyword <span style="color:#EF4444">*</span></label>'
+      +       '<input id="lgse-w-keyword" type="text" placeholder="e.g. business setup in Dubai" '
+      +         'style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box">'
+      +     '</div>'
+      +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+      +       '<div>'
+      +         '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Tone</label>'
+      +         '<select id="lgse-w-tone" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:10px 12px;color:#fff;font-size:13px">'
+      +           '<option value="professional">Professional</option>'
+      +           '<option value="informative">Informative</option>'
+      +           '<option value="authoritative">Authoritative</option>'
+      +         '</select>'
+      +       '</div>'
+      +       '<div>'
+      +         '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Language</label>'
+      +         '<select id="lgse-w-lang" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:10px 12px;color:#fff;font-size:13px">'
+      +           '<option value="English">English</option>'
+      +           '<option value="Arabic">Arabic</option>'
+      +         '</select>'
+      +       '</div>'
+      +     '</div>'
+      +     '<div>'
+      +       '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Word Count</label>'
+      +       '<div style="display:flex;gap:8px;align-items:center">'
+      +         '<input id="lgse-w-min" type="number" value="800" min="300" max="3000" '
+      +           'style="width:90px;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:8px 10px;color:#fff;font-size:13px">'
+      +         '<span style="color:#64748b">to</span>'
+      +         '<input id="lgse-w-max" type="number" value="1500" min="500" max="5000" '
+      +           'style="width:90px;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:8px 10px;color:#fff;font-size:13px">'
+      +       '</div>'
+      +     '</div>'
+      +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+      +       '<div>'
+      +         '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">FAQs to include</label>'
+      +         '<input id="lgse-w-faq" type="number" value="3" min="0" max="10" '
+      +           'style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:8px 12px;color:#fff;font-size:13px;box-sizing:border-box">'
+      +       '</div>'
+      +       '<div style="display:flex;align-items:center;gap:8px;padding-top:20px">'
+      +         '<input type="checkbox" id="lgse-w-cta" checked style="width:16px;height:16px;accent-color:#7C3AED">'
+      +         '<label for="lgse-w-cta" style="color:#94a3b8;font-size:13px;cursor:pointer">Include CTA section</label>'
+      +       '</div>'
+      +     '</div>'
+      +     '<div>'
+      +       '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Extra context (optional)</label>'
+      +       '<textarea id="lgse-w-context" rows="2" placeholder="Target audience, specific points to cover, location..." '
+      +         'style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box;resize:vertical"></textarea>'
+      +     '</div>'
+      +     '<p style="color:#64748b;font-size:12px;margin:0">💳 This will use <strong style="color:#7C3AED">2 credits</strong> (1 text + 1 featured image).</p>'
+      +     '<button id="lgse-w-btn" onclick="window._lgseWriteGenerate()" '
+      +       'style="background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%">Generate Article</button>'
+      +     '<div id="lgse-w-result" style="display:none;background:#1e293b;border-radius:8px;padding:16px;margin-top:8px">'
+      +       '<div id="lgse-w-result-inner"></div>'
+      +     '</div>'
+      +   '</div>'
+      + '</div>';
+  }
+
+  window._lgseWriteGenerate = function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var kwEl = $('lgse-w-keyword');
+    var keyword = kwEl ? (kwEl.value || '').trim() : '';
+    if (!keyword) { alert('Please enter a focus keyword.'); return; }
+
+    var btn    = $('lgse-w-btn');
+    var result = $('lgse-w-result');
+    var inner  = $('lgse-w-result-inner');
+    if (!btn || !result || !inner) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Generating… (this can take 60-90s)';
+    result.style.display = 'none';
+
+    var siteUrl = '';
+    try {
+      var sp = new URLSearchParams(window.location.search);
+      siteUrl = sp.get('lgsc_site') || (window._LGSC_EMBED && window._LGSC_EMBED.site_url) || '';
+    } catch (_) {}
+
+    var payload = {
+      keyword:        keyword,
+      tone:           ($('lgse-w-tone') || {}).value || 'professional',
+      language:       ($('lgse-w-lang') || {}).value || 'English',
+      word_count_min: parseInt(($('lgse-w-min') || {}).value || 800, 10),
+      word_count_max: parseInt(($('lgse-w-max') || {}).value || 1500, 10),
+      faq_count:      parseInt(($('lgse-w-faq') || {}).value || 3, 10),
+      include_cta:    ($('lgse-w-cta') || {}).checked !== false,
+      extra_context:  ($('lgse-w-context') || {}).value || '',
+      embed_context:  'seo_plugin',
+      scope:          'seo_optimised',
+      site_url:       siteUrl,
+    };
+
+    var fetcher = (typeof window._luFetch === 'function')
+      ? window._luFetch('POST', '/connector/generate-article', payload).then(function (r) { return r.json(); })
+      : fetch(window.location.origin + '/api/connector/generate-article', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+          },
+          body: JSON.stringify(payload),
+        }).then(function (r) { return r.json(); });
+
+    fetcher.then(function (d) {
+      btn.disabled = false;
+      btn.textContent = 'Generate Article';
+      if (!d || !d.success) {
+        inner.innerHTML = '<p style="color:#f87171;margin:0">' + esc((d && (d.error || d.message)) || 'Generation failed. Please try again.') + '</p>';
+        result.style.display = 'block';
+        return;
+      }
+      var imgHtml = d.image_url
+        ? '<img src="' + esc(d.image_url) + '" alt="" style="width:80px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;margin-left:12px">'
+        : '';
+      var imgFailedHtml = d.image_failed
+        ? ' · <span style="color:#f59e0b">Image generation failed (refunded)</span>'
+        : '';
+      inner.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
+        +   '<div style="min-width:0">'
+        +     '<div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:4px">' + esc(d.title || keyword) + '</div>'
+        +     '<div style="color:#64748b;font-size:12px">'
+        +       (d.word_count || 0) + ' words · ' + (d.credits_used || 2) + ' credits used'
+        +       imgFailedHtml
+        +     '</div>'
+        +   '</div>'
+        +   imgHtml
+        + '</div>'
+        + '<div style="color:#94a3b8;font-size:12px;margin-bottom:12px">' + esc(d.meta_description || '') + '</div>'
+        + '<p style="color:#00E5A8;font-size:12px;margin:0">✓ Article saved.</p>'
+        + '<p style="color:#64748b;font-size:11px;margin:4px 0 0">Go to WordPress Posts to review, edit, and publish.</p>';
+      result.style.display = 'block';
+    }).catch(function () {
+      btn.disabled = false;
+      btn.textContent = 'Generate Article';
+      inner.innerHTML = '<p style="color:#f87171;margin:0">Request failed. Please try again.</p>';
+      result.style.display = 'block';
+    });
+  };
+
+  // Global trampoline for the Pages-tab image regenerate cell.
+  window._lgseRegenImage = function (pageId, pageUrl, pageTitle, el) {
+    if (!confirm('Generate featured image for this page? Uses 1 credit.')) { return; }
+    var cell = el;
+    if (cell && cell.tagName === 'IMG') { cell = cell.parentElement; }
+    if (cell) { cell.style.opacity = '0.4'; }
+
+    var payload = {
+      page_id: pageId,
+      url:     pageUrl,
+      title:   pageTitle,
+      force:   true,
+    };
+    var fetcher = (typeof window._luFetch === 'function')
+      ? window._luFetch('POST', '/connector/pages/regenerate-image', payload).then(function (r) { return r.json(); })
+      : fetch(window.location.origin + '/api/connector/pages/regenerate-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+          },
+          body: JSON.stringify(payload),
+        }).then(function (r) { return r.json(); });
+
+    fetcher.then(function (d) {
+      if (cell) { cell.style.opacity = '1'; }
+      if (!d || !d.success || !d.image_url) {
+        alert('Image generation failed: ' + ((d && (d.error || d.message)) || 'unknown error'));
+        return;
+      }
+      // Replace cell contents with the new image.
+      if (cell) {
+        var safeUrl = encodeURIComponent(pageUrl || '');
+        var safeTitle = encodeURIComponent(pageTitle || '');
+        cell.outerHTML = '<td><img src="' + d.image_url + '" '
+          + 'style="width:44px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" '
+          + 'title="Regenerate featured image (1 credit)" '
+          + 'onclick="window._lgseRegenImage(' + pageId + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)"></td>';
+      }
+    }).catch(function () {
+      if (cell) { cell.style.opacity = '1'; }
+      alert('Request failed. Please try again.');
+    });
+  };
 
   // Global trampoline so the injected onclick handlers (global scope) can
   // re-enter the IIFE-private renderPipeline.
