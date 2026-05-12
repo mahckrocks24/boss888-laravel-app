@@ -3612,13 +3612,18 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     });
     switchTab('overview');
 
-    // 2026-05-15 — AI Assistant FAB + slide-in drawer.
-    // Renders once per session. Body-level so fixed positioning escapes
-    // the embed iframe container. Offset right:88px so it doesn't stack
-    // on the standalone SPA's global .ai-fab (which sits at right:24px).
-    _lgseInjectAiDrawer();
-    var fab = document.getElementById('lgse-ai-fab');
-    if (fab) { fab.style.display = 'flex'; }
+    // 2026-05-13 — Gate the SEO Assistant FAB to embed mode only.
+    // Direct SPA users have Sarah + agents for AI assistance; the
+    // floating drawer is meant for the WP plugin iframe context where
+    // there's no other AI surface. _LGSC_EMBED is set at the top of
+    // core.js when ?lgsc_key= + embed=1 are in the URL.
+    var _seoIsEmbed = (window._LGSC_EMBED && window._LGSC_EMBED.api_key)
+      || new URLSearchParams(window.location.search).has('lgsc_key');
+    if (_seoIsEmbed) {
+      _lgseInjectAiDrawer();
+      var fab = document.getElementById('lgse-ai-fab');
+      if (fab) { fab.style.display = 'flex'; }
+    }
   }
 
   function _lgseInjectAiDrawer() {
