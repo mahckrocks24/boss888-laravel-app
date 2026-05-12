@@ -7499,7 +7499,10 @@ window._lgseDrawerSend = function () {
       + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB"><p style="margin:0">'
       + lgseMarkdown(escMsg(text)) + '</p></div>';
     thread.appendChild(b);
-    thread.scrollTop = thread.scrollHeight;
+    // 2026-05-12 chat-scroll fix: scroll to TOP of the new assistant
+    // message so the user sees the START, not the end (long replies
+    // were jumping past the opening line).
+    b.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function appendErr(text) {
