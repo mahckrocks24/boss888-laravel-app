@@ -836,8 +836,16 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 // JSON shape Sarah-chat expected. Doubled cost on action
                 // requests vs the old single-call pattern; conversational
                 // quality is materially better.
+                // 2026-05-12 — fold the per-agent system prompt into the user
+                // message. Without this, /internal/assistant returns its generic
+                // platform-guide voice instead of the agent's persona. With it,
+                // James DMs sound like James, Sarah DMs sound like Sarah, etc.
+                $foldedUserPrompt =
+                    "[SYSTEM CONTEXT — read fully, then respond to USER MESSAGE below]\n"
+                    . $systemPrompt
+                    . "\n\n[USER MESSAGE]\n" . $userPrompt;
                 $assist = $runtime->assistant(
-                    $userPrompt,
+                    $foldedUserPrompt,
                     [
                         'workspace_id'  => $wsId,
                         'business_name' => $workspace->business_name ?? $workspace->name ?? '',
@@ -5100,7 +5108,17 @@ HTMLSCRIPT;
         try {
             $runtime = app(\App\Connectors\RuntimeClient::class);
             if ($runtime->isConfigured()) {
-                $systemPrompt = "You are the LevelUp Growth AI Assistant — a helpful platform guide that knows everything about this workspace."
+                // 2026-05-12 — Aria identity rules. The widget UI rebrands the
+                // response as Aria (UI label, #06B6D4); the LLM must also self-
+                // identify as Aria, never Sarah/James/DMM, regardless of what
+                // the runtime's generic buildAssistantPrompt suggests.
+                $systemPrompt = "You are Aria, the LevelUp Growth platform intelligence assistant."
+                    . "\n\nIDENTITY RULES (strict):"
+                    . "\n- Your name is Aria. If asked, say so plainly."
+                    . "\n- NEVER call yourself Sarah, James, Priya, Marcus, Elena, Leo, DMM, or any other named agent."
+                    . "\n- NEVER introduce yourself with a persona header like \"**Name, Role:**\"."
+                    . "\n- NEVER say \"as the DMM\" or refer to yourself as \"the marketing manager\"."
+                    . "\n- Speak in plain first person: \"I see your audit score is 72\", not \"Sarah ran your audit\"."
                     . "\n\nYou have FULL access to the user's workspace data (shown below). Use it to give specific, informed answers."
                     . "\nWhen the user asks about their content, websites, keywords, or any workspace data — reference the ACTUAL data below, don't ask them for details you already have."
                     . "\n\nWhen the user requests an ACTION (create, generate, publish, etc.):"
@@ -5126,8 +5144,17 @@ HTMLSCRIPT;
                 // history per conversation_id, and routes through tool-router.
                 // Laravel-built systemPrompt + workspace_intelligence are still
                 // sent as `context` so the runtime can layer them in.
+                // 2026-05-12 — fold the Aria system prompt into the user
+                // message. The runtime's /internal/assistant route applies
+                // its own generic buildAssistantPrompt (lists all agents);
+                // folding the persona rules inline lets DeepSeek see them
+                // alongside the actual user content and respect identity.
+                $foldedMessage =
+                    "[SYSTEM CONTEXT — read fully, then respond to USER MESSAGE below]\n"
+                    . $systemPrompt
+                    . "\n\n[USER MESSAGE]\n" . $message;
                 $assist = $runtime->assistant(
-                    $message,
+                    $foldedMessage,
                     [
                         'workspace_id'    => $wsId,
                         'business_name'   => isset($ws) ? ($ws->name ?? '') : '',
