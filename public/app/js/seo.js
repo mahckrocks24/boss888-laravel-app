@@ -7480,6 +7480,15 @@ window._lgseDrawerSend = function () {
   thread.scrollTop = thread.scrollHeight;
   inp.value = '';
 
+  function lgseMarkdown(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>[\s\S]*?<\/li>(?:\n<li>[\s\S]*?<\/li>)*)/g, '<ul>$1</ul>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+  }
   function appendBot(text) {
     var t = document.getElementById('lgse-drawer-typing');
     if (t) { t.remove(); }
@@ -7487,8 +7496,8 @@ window._lgseDrawerSend = function () {
     b.style.cssText = 'background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);'
       + 'border-radius:12px;padding:14px 16px;max-width:90%';
     b.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">LevelUp SEO</div>'
-      + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB">'
-      + escMsg(text).replace(/\n/g, '<br>') + '</div>';
+      + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB"><p style="margin:0">'
+      + lgseMarkdown(escMsg(text)) + '</p></div>';
     thread.appendChild(b);
     thread.scrollTop = thread.scrollHeight;
   }
@@ -7560,6 +7569,15 @@ window._lgseAssistantSend = function () {
   thread.scrollTop = thread.scrollHeight;
   inp.value = '';
 
+  function lgseMarkdown(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>[\s\S]*?<\/li>(?:\n<li>[\s\S]*?<\/li>)*)/g, '<ul>$1</ul>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+  }
   function appendBot(text) {
     var t = document.getElementById('lgse-typing');
     if (t) t.remove();
@@ -7568,7 +7586,7 @@ window._lgseAssistantSend = function () {
     bot.innerHTML =
       '<span style="font-size:12px;font-weight:600;color:#A78BFA">James</span>' +
       '<p style="font-size:14px;line-height:1.6;color:#E5E7EB;margin:4px 0 0">' +
-        escMsg(text).replace(/\n/g, '<br>') +
+        lgseMarkdown(escMsg(text)) +
       '</p>';
     thread.appendChild(bot);
     thread.scrollTop = thread.scrollHeight;
