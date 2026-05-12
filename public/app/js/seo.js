@@ -7504,8 +7504,12 @@ window._lgseDrawerSend = function () {
     thread.scrollTop = thread.scrollHeight;
   }
 
+  // 2026-05-12 fix — _luFetch returns the raw Response object; .json() it
+  // explicitly so the downstream parser sees the actual body. Without this,
+  // the chat shows "I could not get a response" because d.data is undefined
+  // on a Response.
   var fetcher = typeof window._luFetch === 'function'
-    ? window._luFetch('POST', '/connector/assistant/message', { message: msg })
+    ? window._luFetch('POST', '/connector/assistant/message', { message: msg }).then(function (r) { return r.json(); })
     : fetch(window.location.origin + '/api/connector/assistant/message', {
         method: 'POST',
         headers: {
@@ -7581,8 +7585,12 @@ window._lgseAssistantSend = function () {
   }
 
   // Prefer _luFetch (core.js global) so embed-mode X-API-KEY routing works.
+  // 2026-05-12 fix — _luFetch returns the raw Response object; .json() it
+  // explicitly so the downstream parser sees the actual body. Without this,
+  // the chat shows "I could not get a response" because d.data is undefined
+  // on a Response.
   var fetcher = typeof window._luFetch === 'function'
-    ? window._luFetch('POST', '/connector/assistant/message', { message: msg })
+    ? window._luFetch('POST', '/connector/assistant/message', { message: msg }).then(function (r) { return r.json(); })
     : fetch(window.location.origin + '/api/connector/assistant/message', {
         method: 'POST',
         headers: {
