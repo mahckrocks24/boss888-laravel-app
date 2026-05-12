@@ -7484,6 +7484,8 @@ window._lgseDrawerSend = function () {
     return text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^### (.+)\n?/gm, '<h3 style="margin:8px 0 4px;font-size:14px;font-weight:600">$1</h3>')
+      .replace(/^## (.+)\n?/gm, '<h2 style="margin:10px 0 6px;font-size:15px;font-weight:700">$1</h2>')
       .replace(/^- (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>[\s\S]*?<\/li>(?:\n<li>[\s\S]*?<\/li>)*)/g, '<ul>$1</ul>')
       .replace(/\n\n/g, '</p><p>')
@@ -7576,6 +7578,8 @@ window._lgseAssistantSend = function () {
     return text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^### (.+)\n?/gm, '<h3 style="margin:8px 0 4px;font-size:14px;font-weight:600">$1</h3>')
+      .replace(/^## (.+)\n?/gm, '<h2 style="margin:10px 0 6px;font-size:15px;font-weight:700">$1</h2>')
       .replace(/^- (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>[\s\S]*?<\/li>(?:\n<li>[\s\S]*?<\/li>)*)/g, '<ul>$1</ul>')
       .replace(/\n\n/g, '</p><p>')

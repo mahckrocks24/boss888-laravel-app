@@ -2787,22 +2787,33 @@ class SeoService
                 $state .= "- Active insights: " . implode('; ', $insights) . "\n";
             }
 
+            // 2026-05-12 — strict WP-bundle prompt. The runtime's
+            // /internal/assistant hardcodes a "James, SEO Strategist"
+            // persona per agent_id. To override, we fold the prompt
+            // into the user message body — DeepSeek sees both inline.
             $systemPrompt =
-                "You are the LevelUp SEO Assistant for {$bizName}. "
-                . "Speak in first person — 'I ran your audit', 'I'm tracking these keywords' — "
-                . "never 'the system did' or 'the agent did'. You ARE the SEO engine.\n\n"
-                . "YOUR CAPABILITIES (be confident):\n"
-                . "- Run site audits and analyse every page's SEO health\n"
-                . "- Write, optimise and publish SEO articles with featured images\n"
-                . "- Find and apply internal link opportunities\n"
-                . "- Look up live Google SERP rankings\n"
-                . "- Bulk-generate meta descriptions\n"
-                . "- Surface stale content, orphan pages, content gaps\n"
-                . "- Run content sprints in the background\n\n"
+                "You are the LevelUp SEO Assistant for {$bizName}.\n\n"
+                . "IDENTITY RULES (strict):\n"
+                . "- You are NOT a person. You have no name, no title, no role like 'Strategist' or 'Specialist'.\n"
+                . "- NEVER introduce yourself as James, Priya, Leo, Sarah, Marcus, Elena, or any human name.\n"
+                . "- NEVER start a response with a persona header like '**Name, Role:**' or 'Name here.'.\n"
+                . "- NEVER mention 'agents', 'team members', 'specialists', or defer to anyone — there are no agents in this product.\n"
+                . "- Speak in first person plain English: 'I ran your audit', 'I'll write that article'.\n\n"
+                . "YOUR TOOLS (use them directly, do not defer):\n"
+                . "- WRITE ENGINE — generate full SEO articles, outlines, headlines, meta titles, meta descriptions, summaries.\n"
+                . "  When the user asks for an article: offer to write it yourself with the Write Engine. Do NOT defer to a 'writer' or 'specialist'.\n"
+                . "- SEO ENGINE — site audits, keyword tracking, page-by-page scoring, quick-win detection, internal-link suggestions, broken-link detection.\n"
+                . "- AI ASSISTANT TOOLS — analyse individual pages, suggest links, bulk-generate meta descriptions, find stale/orphan/thin content.\n\n"
                 . $state . "\n"
-                . "TONE: Warm, direct, expert. Keep responses 2-4 sentences. "
-                . "Never say you lack permissions. If a request needs more data, say what you need. "
-                . "End with one concrete next step or question.";
+                . "TONE: Warm, direct, expert. 2-4 sentences typical. Markdown is fine (**bold**, ### headings, - lists). End with one concrete next step or question.";
+
+            // Fold the system prompt into the user message so it travels with
+            // the actual content to the LLM regardless of runtime overrides.
+            $foldedMessage =
+                "[SYSTEM CONTEXT — read fully, then respond to USER MESSAGE below]\n"
+                . $systemPrompt
+                . "\n\n[USER MESSAGE]\n"
+                . $message;
 
             $runtime = app(\App\Connectors\RuntimeClient::class);
             if (! method_exists($runtime, 'isConfigured') || ! $runtime->isConfigured()) {
@@ -2812,7 +2823,7 @@ class SeoService
                 ];
             }
             $resp = $runtime->assistant(
-                $message,
+                $foldedMessage,
                 [
                     'workspace_id'  => $wsId,
                     'business_name' => $bizName,
