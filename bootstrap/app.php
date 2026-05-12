@@ -49,6 +49,31 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('SEO rank tracking cron failed');
             });
 
+        // 2026-05-13 — Daily DataForSEO refresh for stale keywords:
+        //   seo:rank-track   — vol/diff/cpc + current_rank for keywords
+        //                      stale > 24h (cap 100/run)
+        //   seo:serp-refresh — top-20 SERP results for top-10 keywords
+        //                      per workspace (stale > 24h)
+        $schedule->command('seo:rank-track')
+            ->name('seo:rank-track')
+            ->dailyAt('03:00')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('seo:rank-track cron failed');
+            });
+
+        $schedule->command('seo:serp-refresh')
+            ->name('seo:serp-refresh')
+            ->dailyAt('03:30')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('seo:serp-refresh cron failed');
+            });
+
         // House account credit replenish — 1st of month at midnight UTC
         $schedule->command('credits:replenish-house')
             ->name('credits:replenish-house')

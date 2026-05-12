@@ -15,11 +15,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('seo:outbound-check')->twiceDaily(2, 14)->withoutOverlapping();
 
         // 2026-05-15 Phase 3 — semantic clustering rebuild.
+        // NOTE 2026-05-13 — this Kernel.php schedule() method does NOT FIRE
+        // in this app's Laravel 11 setup; the live scheduler is in
+        // bootstrap/app.php. The 4 entries above (insights / authority-score
+        // / outbound-check / cluster) are orphaned and should be moved.
+        // Tracking that as a follow-up.
         $schedule->command('seo:cluster')->weekly()->sundays()->at('04:00')->withoutOverlapping();
-
-        // 2026-05-13 — DataForSEO rank + SERP refresh.
-        $schedule->command('seo:rank-track')->dailyAt('03:00')->withoutOverlapping();
-        $schedule->command('seo:serp-refresh')->dailyAt('03:30')->withoutOverlapping();
     }
 
     protected function commands(): void
