@@ -42,7 +42,7 @@
   }
   function applyOnReady() {
     if (window._LGSC_EMBED && window._LGSC_EMBED.api_key) {
-      show('ni-pipeline');
+      // ni-pipeline removed from sidebar — Pipeline is now a tab inside SEO.
       show('ni-write');
     }
   }
@@ -59,7 +59,7 @@
 // data-section attributes on .nav-item elements. The flag is set by
 // core.js itself after the workspace profile loads.
 (function _lgscApplyBundleVisibility() {
-  var WP_BUNDLE_VISIBLE = ['seo','chatbot','crm','calendar','account','billing','pipeline','write'];
+  var WP_BUNDLE_VISIBLE = ['seo','chatbot','crm','calendar','account','billing','write'];
   window._lgsc_apply_bundle_gate = function (planSlug) {
     if (!planSlug || planSlug.indexOf('wp_') !== 0) { return; }
     window._lgsc_plan = planSlug;
@@ -542,7 +542,7 @@ async function luLoadEngine(engine) {
   _luEngineLoading[engine] = true;
   var urls = (window.LU_CFG && window.LU_CFG.engineUrls) || {};
   var base = (window.LU_CFG && window.LU_CFG.pluginUrl) ? window.LU_CFG.pluginUrl + '/assets/js/' : '';
-  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','pipeline'];
+  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video'];
   if (lazy.indexOf(engine) === -1) { _luEngineLoading[engine] = false; return; }
   var src = urls[engine] || (base + engine + '.js');
   var isFallback = !urls[engine] && base;
@@ -785,7 +785,7 @@ async function nav(view){
   if(view==='automation') { var _el=document.getElementById('automation-root'); if(_el && typeof autoLoad==='function') autoLoad(_el); }
   if(view==='blog')       { await luLoadEngine('blog'); var _el=document.getElementById('blog-root'); if(_el && typeof blogLoad==='function') blogLoad(_el); }
   if(view==='studio')     { await luLoadEngine('studio'); var _el=document.getElementById('studio-root'); if(_el && typeof studioLoad==='function') studioLoad(_el); }
-  if(view==='pipeline')   { await luLoadEngine('pipeline'); var _el=document.getElementById('pipeline-root'); if(_el && typeof pipelineLoad==='function') pipelineLoad(_el); }
+  // 2026-05-12 — Pipeline moved into SEO engine as a tab. Sidebar dispatch removed.
   if(view==='chatbot')    { var _el=document.getElementById('chatbot-root'); if(_el && typeof chatbotLoad==='function') chatbotLoad(_el); }
   if(view==='messages')   { var _el=document.getElementById('messages-root'); if(_el && typeof messagesLoad==='function') messagesLoad(_el); }
   // Generic engine dispatch — external plugins register via window._lu_engine_loaders
@@ -4624,7 +4624,7 @@ async function _checkTrialStatus() {
       // and Write regardless of plan feature flags. The bundle plans
       // already grant access; this is a belt-and-suspenders override so
       // a stale features_json or plan-data fetch race can't hide them.
-      if (window._LGSC_EMBED && (el.id === 'ni-pipeline' || el.id === 'ni-write')) {
+      if (window._LGSC_EMBED && el.id === 'ni-write') {
         el.style.display = '';
         return;
       }

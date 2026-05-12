@@ -2547,6 +2547,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     { id: 'competitors', label: 'Competitors',  icon: 'globe' },
     { id: 'insights',    label: 'Insights',     icon: 'info' },
     { id: 'reports',     label: 'Reports',      icon: 'check' },
+    { id: 'pipeline',    label: 'Pipeline',     icon: 'edit' },
   ];
 
   // FIX 2026-05-11 (sprint): Tabs with unimplemented backend — hidden until ready.
@@ -2651,6 +2652,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     else if (tab === 'competitors') _seoCompetitors(content);
     else if (tab === 'insights')    _seoInsightsAll(content);
     else if (tab === 'reports')     _seoReports(content);
+    else if (tab === 'pipeline')    _seoPipeline(content);
     else _seoOverview(content);
   };
 
@@ -2695,6 +2697,231 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       t.addEventListener('click', function () { loadSection(t.getAttribute('data-section')); });
     });
     loadSection('indexed');
+  };
+
+
+  // ── Compose: Pipeline tab — Queue + Calendar sub-tabs ─────────────────
+  // 2026-05-12 — moved from standalone sidebar engine into the SEO tab
+  // strip per spec. Queue (task list, auto-poll 8s) + Calendar (month grid).
+  var _lgsePipe = { sub: 'queue', month: null, pipeline: null, calendar: null, pollT: null };
+
+  function _lgsePipeEsc(s) {
+    return (s == null ? '' : String(s))
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function _lgsePipeBadge(action) {
+    var map = {
+      generate_article:'#7C3AED', write_article:'#7C3AED', optimize_article:'#8B5CF6',
+      improve_draft:'#8B5CF6', deep_audit:'#3B82F6', serp_analysis:'#06B6D4',
+      keyword_research:'#06B6D4', bulk_generate_meta:'#F59E0B', generate_meta:'#F59E0B',
+      generate_image:'#EC4899', autonomous_goal:'#00E5A8', agent_goal:'#F59E0B',
+      link_suggestions:'#10B981',
+    };
+    return map[action] || '#6B7280';
+  }
+  function _lgsePipeStatusCol(s) {
+    if (s === 'completed') return '#10B981';
+    if (s === 'running' || s === 'verifying') return '#3B82F6';
+    if (s === 'failed' || s === 'degraded' || s === 'blocked') return '#EF4444';
+    if (s === 'cancelled') return '#6B7280';
+    return '#F59E0B';
+  }
+  function _lgsePipeFmtAction(a) {
+    return String(a || '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
+  function _lgsePipeFmtDate(iso) {
+    if (!iso) return '';
+    try { return new Date(String(iso).replace(' ', 'T')).toLocaleString(); }
+    catch (_) { return String(iso); }
+  }
+
+  async function _lgsePipeFetchQueue() {
+    try {
+      if (typeof window._luFetch === 'function') {
+        var r = await window._luFetch('GET', '/connector/content/pipeline', null);
+        return await r.json();
+      }
+      var r2 = await fetch('/api/connector/content/pipeline', {
+        headers: { 'Accept':'application/json',
+                   'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '') },
+      });
+      return await r2.json();
+    } catch (e) { return { success: false, error: 'fetch_failed' }; }
+  }
+  async function _lgsePipeFetchCal(month) {
+    try {
+      if (typeof window._luFetch === 'function') {
+        var r = await window._luFetch('GET', '/connector/content/calendar?month=' + encodeURIComponent(month), null);
+        return await r.json();
+      }
+      var r2 = await fetch('/api/connector/content/calendar?month=' + encodeURIComponent(month), {
+        headers: { 'Accept':'application/json',
+                   'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '') },
+      });
+      return await r2.json();
+    } catch (e) { return { success: false, error: 'fetch_failed' }; }
+  }
+
+  function _lgsePipeRenderQueue() {
+    var p = _lgsePipe.pipeline;
+    if (!p) { return '<div style="padding:32px;text-align:center;color:var(--t3)">Loading queue…</div>'; }
+    if (!p.success) { return '<div style="padding:32px;text-align:center;color:#EF4444">Failed to load pipeline.</div>'; }
+    var c = p.counts || {};
+    var h = '';
+    h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">';
+    [{l:'Queued',v:c.queued||0,c:'#F59E0B'},{l:'Running',v:c.running||0,c:'#3B82F6'},
+     {l:'Completed',v:c.completed||0,c:'#10B981'},{l:'Failed',v:c.failed||0,c:'#EF4444'}].forEach(function(x){
+      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px 16px">'
+         +   '<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">'+x.l+'</div>'
+         +   '<div style="font-size:24px;font-weight:700;color:'+x.c+';margin-top:4px">'+x.v+'</div>'
+         + '</div>';
+    });
+    h += '</div>';
+
+    var rows = [];
+    ['running','queued','completed','failed','cancelled'].forEach(function(b){ rows = rows.concat(p.pipeline[b] || []); });
+    if (rows.length === 0) {
+      h += '<div style="padding:48px;text-align:center;color:var(--t3);background:var(--s1);border:1px dashed var(--bd);border-radius:10px">'
+         + 'No tasks yet.<br><span style="font-size:12px">When you trigger article generation or audits, they appear here.</span></div>';
+      return h;
+    }
+    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden">';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+    h += '<thead style="background:var(--s2)"><tr>'
+       +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Type</th>'
+       +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Task</th>'
+       +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Status</th>'
+       +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Progress</th>'
+       +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Created</th>'
+       + '</tr></thead><tbody>';
+    rows.forEach(function(t){
+      var bc = _lgsePipeBadge(t.task_type);
+      var sc = _lgsePipeStatusCol(t.status);
+      var pr = (t.progress >= 0 ? t.progress : 0);
+      h += '<tr style="border-top:1px solid var(--bd)">'
+         +   '<td style="padding:10px 14px"><span style="background:'+bc+'15;color:'+bc+';padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600">'+_lgsePipeFmtAction(t.task_type)+'</span></td>'
+         +   '<td style="padding:10px 14px;color:var(--t1)">'+_lgsePipeEsc(t.result_summary || _lgsePipeFmtAction(t.task_type))+'</td>'
+         +   '<td style="padding:10px 14px"><span style="color:'+sc+';font-weight:600">'+_lgsePipeEsc(t.status)+'</span></td>'
+         +   '<td style="padding:10px 14px"><div style="background:var(--s2);border-radius:3px;height:6px;width:100px;overflow:hidden"><div style="background:'+sc+';height:100%;width:'+pr+'%"></div></div></td>'
+         +   '<td style="padding:10px 14px;color:var(--t3);font-size:11px">'+_lgsePipeEsc(_lgsePipeFmtDate(t.created_at))+'</td>'
+         + '</tr>';
+    });
+    h += '</tbody></table></div>';
+    return h;
+  }
+
+  function _lgsePipeRenderCal() {
+    var cal = _lgsePipe.calendar;
+    if (!cal) { return '<div style="padding:32px;text-align:center;color:var(--t3)">Loading calendar…</div>'; }
+    if (!cal.success) { return '<div style="padding:32px;text-align:center;color:#EF4444">Failed to load calendar.</div>'; }
+    var month = cal.month || _lgsePipe.month;
+    var parts = month.split('-');
+    var year = parseInt(parts[0], 10);
+    var mo = parseInt(parts[1], 10);
+    var label = new Date(year, mo-1, 1).toLocaleString('default', { month:'long', year:'numeric' });
+    var firstDow = new Date(year, mo-1, 1).getDay();
+    var lastDay = new Date(year, mo, 0).getDate();
+    var prevM=mo-1,prevY=year; if(prevM<1){prevM=12;prevY--;}
+    var nextM=mo+1,nextY=year; if(nextM>12){nextM=1;nextY++;}
+    var pM = prevY+'-'+String(prevM).padStart(2,'0');
+    var nM = nextY+'-'+String(nextM).padStart(2,'0');
+    var h = '';
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+    h += '<button onclick="window._lgsePipeSetMonth(\''+pM+'\')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">← Prev</button>';
+    h += '<h2 style="margin:0;font-size:18px;font-weight:700">'+_lgsePipeEsc(label)+'</h2>';
+    h += '<button onclick="window._lgsePipeSetMonth(\''+nM+'\')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">Next →</button>';
+    h += '</div>';
+    h += '<div style="display:flex;gap:14px;margin-bottom:14px;font-size:11px;color:var(--t3)">'
+       + '<span><span style="background:#10B981;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Completed</span>'
+       + '<span><span style="background:#3B82F6;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Running</span>'
+       + '<span><span style="background:#F59E0B;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Queued</span>'
+       + '<span><span style="background:#7C3AED;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Article</span>'
+       + '</div>';
+    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden">';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--s2);font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">';
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d){
+      h += '<div style="padding:8px 10px;border-right:1px solid var(--bd);text-align:center">'+d+'</div>';
+    });
+    h += '</div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr)">';
+    for (var i=0;i<firstDow;i++) {
+      h += '<div style="min-height:80px;background:var(--s1);border-right:1px solid var(--bd);border-top:1px solid var(--bd)"></div>';
+    }
+    var days = cal.days || {};
+    for (var d=1; d<=lastDay; d++) {
+      var key = year+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      var items = days[key] || [];
+      h += '<div style="min-height:80px;background:var(--s1);border-right:1px solid var(--bd);border-top:1px solid var(--bd);padding:6px 8px;font-size:11px">';
+      h += '<div style="color:var(--t3);font-weight:600;margin-bottom:4px">'+d+'</div>';
+      var maxShow=3;
+      for (var j=0; j<Math.min(items.length, maxShow); j++) {
+        var it = items[j];
+        var col = it.type === 'article' ? '#7C3AED' : _lgsePipeStatusCol(it.status);
+        var tt = String(it.title || '').slice(0,22)+(String(it.title||'').length>22?'…':'');
+        h += '<div style="background:'+col+'20;color:'+col+';padding:2px 5px;border-radius:3px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+_lgsePipeEsc(it.title||'')+'">'+_lgsePipeEsc(tt)+'</div>';
+      }
+      if (items.length > maxShow) {
+        h += '<div style="color:var(--t3);font-size:10px">+'+(items.length-maxShow)+' more</div>';
+      }
+      h += '</div>';
+    }
+    h += '</div></div>';
+    return h;
+  }
+
+  function _lgsePipeRender() {
+    var el = document.getElementById('seo-content');
+    if (!el) return;
+    var sub = _lgsePipe.sub;
+    var html = '';
+    html += '<div class="lgse-tab-bar" style="margin-bottom:18px;border-bottom:1px solid var(--bd);background:transparent">'
+         + '<div class="lgse-subtab seo-tab' + (sub==='queue'?' lgse-active':'') + '" onclick="window._lgsePipeSetSub(\'queue\')" '
+         + 'style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:'+(sub==='queue'?'var(--p)':'var(--t3)')+';border-bottom:2px solid '+(sub==='queue'?'var(--p)':'transparent')+';white-space:nowrap">Queue</div>'
+         + '<div class="lgse-subtab seo-tab' + (sub==='calendar'?' lgse-active':'') + '" onclick="window._lgsePipeSetSub(\'calendar\')" '
+         + 'style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:'+(sub==='calendar'?'var(--p)':'var(--t3)')+';border-bottom:2px solid '+(sub==='calendar'?'var(--p)':'transparent')+';white-space:nowrap">Calendar</div>'
+         + '</div>';
+    html += sub === 'calendar' ? _lgsePipeRenderCal() : _lgsePipeRenderQueue();
+    el.innerHTML = html;
+  }
+
+  window._lgsePipeSetSub = function (s) {
+    _lgsePipe.sub = s;
+    _lgsePipeRender();
+    if (s === 'calendar' && !_lgsePipe.calendar) {
+      _lgsePipeFetchCal(_lgsePipe.month).then(function (d) {
+        _lgsePipe.calendar = d; _lgsePipeRender();
+      });
+    }
+  };
+  window._lgsePipeSetMonth = function (m) {
+    _lgsePipe.month = m; _lgsePipe.calendar = null; _lgsePipeRender();
+    _lgsePipeFetchCal(m).then(function (d) { _lgsePipe.calendar = d; _lgsePipeRender(); });
+  };
+
+  function _lgsePipeStartPoll() {
+    if (_lgsePipe.pollT) return;
+    _lgsePipe.pollT = setInterval(function () {
+      if (_lgsePipe.sub !== 'queue') return;
+      _lgsePipeFetchQueue().then(function (d) {
+        _lgsePipe.pipeline = d; _lgsePipeRender();
+        if (d.success && (!d.counts || d.counts.running === 0)) {
+          clearInterval(_lgsePipe.pollT); _lgsePipe.pollT = null;
+        }
+      });
+    }, 8000);
+  }
+
+  window._seoPipeline = async function (el) {
+    if (!_lgsePipe.month) {
+      var dt = new Date();
+      _lgsePipe.month = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0');
+    }
+    _lgsePipeRender();
+    var d = await _lgsePipeFetchQueue();
+    _lgsePipe.pipeline = d;
+    _lgsePipeRender();
+    if (d.success && d.counts && d.counts.running > 0) _lgsePipeStartPoll();
   };
 
   // ── Compose: Links tab (link intel + outbound + redirects) ─────────────
