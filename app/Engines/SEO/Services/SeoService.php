@@ -2720,6 +2720,10 @@ class SeoService
             'content_score'        => $score['score'] ?? null,
             'score_breakdown_json' => isset($score['breakdown']) ? json_encode($score['breakdown']) : null,
         ];
+        // Change 2B-1: persist WP post_id when provided by plugin
+        if (isset($data['post_id']) && is_numeric($data['post_id'])) {
+            $payload['wp_post_id'] = (int) $data['post_id'];
+        }
         $this->upsertContentIndex($url, $payload);
         $row = DB::table('seo_content_index')->where('url_hash', hash('sha256', $url))->first();
         return [

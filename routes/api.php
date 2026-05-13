@@ -10273,6 +10273,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             'word_count'       => 'nullable|integer',
             'images'           => 'nullable|array',
             'internal_links'   => 'nullable|array',
+            'post_id'          => 'nullable|integer',
         ]);
         $svc = app(\App\Engines\SEO\Services\SeoService::class);
         // Single call — service computes score, persists it, returns both
