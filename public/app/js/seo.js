@@ -7660,6 +7660,83 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     } catch (e) { /* silent */ }
   };
 
+  // ── New Goal modal (Pipeline tab header CTA) ──────────────────────────
+  // 2026-05-13 — submits to POST /api/connector/pipeline/submit-goal which
+  // inserts a tasks row with engine='seo', action='agent_goal'. The
+  // orchestrator picks it up and dispatches to the agent team. Re-uses the
+  // existing lgseShowModal helper for theme + close-on-backdrop + inline
+  // error display.
+  window._seoNewGoalModal = function () {
+    if (typeof window.lgseShowModal !== 'function') {
+      console.warn('[SEO] lgseShowModal not available');
+      return;
+    }
+    var bodyHtml =
+        '<div style="margin-bottom:10px;color:var(--lgse-t2,#94a3b8);font-size:12.5px;line-height:1.5">'
+      +   'Describe what you want done. The SEO team picks it up, plans, '
+      +   'and quotes credit costs before executing anything paid.'
+      + '</div>'
+      + '<textarea id="lgse-goal-text" rows="5" '
+      +   'placeholder="e.g. Improve the homepage SEO score by fixing thin content and broken outbound links" '
+      +   'style="width:100%;padding:10px 12px;background:var(--lgse-bg2,#0f172a);'
+      +   'border:1px solid var(--lgse-border,#1e293b);border-radius:8px;color:var(--lgse-t1,#fff);'
+      +   'font-size:13px;line-height:1.5;font-family:inherit;resize:vertical;min-height:120px;'
+      +   'box-sizing:border-box"></textarea>'
+      + '<div style="margin-top:6px;font-size:11px;color:var(--lgse-t3,#64748b)">'
+      +   'Minimum 5 characters. Submitting uses no credits.'
+      + '</div>';
+
+    window.lgseShowModal('New SEO goal', bodyHtml, function (overlay) {
+      if (typeof lgseClearModalError === 'function') lgseClearModalError();
+      var ta = document.getElementById('lgse-goal-text');
+      var goal = ta ? String(ta.value || '').trim() : '';
+      if (goal.length < 5) {
+        if (typeof lgseModalError === 'function') {
+          lgseModalError('Goal must be at least 5 characters.');
+        }
+        return;
+      }
+      var btn = document.getElementById('lgse-modal-save');
+      if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+      if (typeof window._luFetch !== 'function') {
+        if (typeof lgseModalError === 'function') {
+          lgseModalError('Cannot reach the API (auth helper missing).');
+        }
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit goal'; }
+        return;
+      }
+
+      window._luFetch('POST', '/connector/pipeline/submit-goal', { goal_text: goal })
+        .then(function (r) {
+          return r.json().catch(function () { return { success: false, error: 'bad_json' }; });
+        })
+        .then(function (j) {
+          if (!j || !j.success) {
+            var msg = (j && (j.error || j.message)) || 'Submit failed.';
+            if (typeof lgseModalError === 'function') lgseModalError(String(msg));
+            if (btn) { btn.disabled = false; btn.textContent = 'Submit goal'; }
+            return;
+          }
+          if (overlay && overlay.remove) overlay.remove();
+          // Refresh the Pipeline tab Queue sub-tab so the new task appears.
+          window._lgsePipeTab = 'queue';
+          if (typeof window.lgseSwitchTab === 'function') {
+            window.lgseSwitchTab('pipeline');
+          }
+          if (typeof window.showToast === 'function') {
+            window.showToast('Goal submitted (#' + (j.task_id || '?') + ').', 'success');
+          }
+        })
+        .catch(function (e) {
+          if (typeof lgseModalError === 'function') {
+            lgseModalError('Submit failed: ' + (e && e.message ? e.message : 'network error'));
+          }
+          if (btn) { btn.disabled = false; btn.textContent = 'Submit goal'; }
+        });
+    }, { saveLabel: 'Submit goal' });
+  };
+
   // ── Tab — Pipeline (Queue + Calendar sub-tabs) ────────────────────────
   // 2026-05-13 — canonical-block implementation. Hits /api/connector/*
   // via _luFetch (embed X-API-KEY routing); _seoApi only handles /api/seo/*.
@@ -7696,7 +7773,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     var subQ = window._lgsePipeTab === 'queue';
     var subC = window._lgsePipeTab === 'calendar';
     el.innerHTML =
-        '<div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--bd,#1e293b)">' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:18px;border-bottom:1px solid var(--bd,#1e293b)">' +
           '<button onclick="window._lgsePipeNav(\'queue\')" '
             + 'style="padding:10px 16px;cursor:pointer;background:transparent;border:none;border-bottom:2px solid '
             + (subQ ? 'var(--p,#7C3AED)' : 'transparent') + ';color:' + (subQ ? 'var(--p,#7C3AED)' : 'var(--lgse-t3,#94a3b8)')
@@ -7705,6 +7782,9 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
             + 'style="padding:10px 16px;cursor:pointer;background:transparent;border:none;border-bottom:2px solid '
             + (subC ? 'var(--p,#7C3AED)' : 'transparent') + ';color:' + (subC ? 'var(--p,#7C3AED)' : 'var(--lgse-t3,#94a3b8)')
             + ';font-size:13px;font-weight:600">Calendar</button>' +
+          // 2026-05-13 — New Goal CTA, right-aligned via margin-left:auto.
+          '<button onclick="window._seoNewGoalModal()" class="lgse-btn-primary" '
+            + 'style="margin-left:auto;margin-bottom:6px;font-size:12px;padding:7px 14px">+ New Goal</button>' +
         '</div>' +
         '<div id="lgse-pipe-body" style="color:var(--lgse-t3,#94a3b8);font-size:13px">Loading…</div>';
 
