@@ -5782,7 +5782,11 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       api('GET', '/image-summary').catch(function () { return null; }),
       api('GET', '/image-issues?limit=200').catch(function () { return null; })
     ]).then(function (rs) {
-      var summary = rs[0] || { missing_alt:0, empty_alt:0, filename_unfriendly:0, wrong_format:0, total_images:0, issues_found:0 };
+      // 2026-05-13 — /image-summary returns {success:true, summary:{...}}.
+      // Unwrap the .summary key first; falling through to the raw response keeps
+      // any older flat-shape responses working.
+      var sumResp = rs[0] || {};
+      var summary = (sumResp && sumResp.summary) || sumResp || { missing_alt:0, empty_alt:0, filename_unfriendly:0, wrong_format:0, total_images:0, issues_found:0 };
       var issuesResp = rs[1] || [];
       var issues = Array.isArray(issuesResp) ? issuesResp : ((issuesResp && (issuesResp.issues || issuesResp.data)) || []);
       window._lgseImagesState.summary = summary;
@@ -7216,69 +7220,52 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     if (!p) return;
     var pageUrl   = p.url || '';
     var pageTitle = p.meta_title || p.title || pageUrl;
-    var prompt = 'Professional hero image for a web page about: ' + pageTitle
-      + '. Clean, modern, suitable for a business website featured image. No text overlays.';
 
     var status = document.getElementById('lgse-fi-status-' + id);
-    if (status) { status.textContent = 'Requesting…'; status.style.color = 'var(--lgse-t3)'; }
+    if (status) { status.textContent = 'Generating…'; status.style.color = 'var(--lgse-t3)'; }
 
-    function fallbackToStudio() {
-      var html = ''
-        + '<div style="font-size:12px;color:var(--lgse-t2);line-height:1.6;margin-bottom:8px">Generate a featured image for:<br><strong style="color:var(--lgse-t1)">' + esc(pageTitle) + '</strong></div>'
-        + '<div style="font-size:11px;color:var(--lgse-t3);line-height:1.5">The Creative pipeline rejected this request. Click "Open Studio" — the prompt is in your clipboard so you can paste it.</div>';
-      window.lgseShowModal('Generate featured image', html, function () {
-        try { if (navigator && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(prompt); } catch (_) {}
-        var overlay = document.getElementById('lgse-modal-overlay'); if (overlay) overlay.remove();
-        try { window.location.hash = '#studio'; } catch (_) {}
-      }, { saveLabel: 'Open Studio →', cancelLabel: 'Close' });
+    // 2026-05-13 — call the verified-working connector route directly.
+    // /api/connector/pages/regenerate-image handles credit reserve + commit,
+    // routes through CreativeConnector → RuntimeClient → gpt-image-1, and
+    // writes the PNG to public storage. It returns { success, image_url }.
+    // _luFetch carries X-API-KEY in embed mode and Authorization Bearer in
+    // direct SPA mode — works for both.
+    if (typeof window._luFetch !== 'function') {
+      if (status) { status.textContent = 'Auth helper unavailable — refresh the page.'; status.style.color = 'var(--lgse-red)'; }
+      return;
     }
 
-    // Cross-engine call — the SEO `api()` helper hardcodes /api/seo,
-    // so use fetch() directly against /api/creative/generate/image.
-    var token = localStorage.getItem('lu_token') || '';
-    fetch(window.location.origin + '/api/creative/generate/image', {
-      method: 'POST',
-      cache: 'no-store',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        prompt:         prompt,
-        aspect_ratio:   '16:9', // CreativeService::generateImage uses aspect_ratio (not width/height)
-        width:          1200,   // forwarded for audit; ignored by connector
-        height:         630,
-        quality:        'standard',
-        style:          'natural',
-        source_context: 'seo.featured_image',
-        target_url:     pageUrl
-      })
-    }).then(function (r) {
-      return r.json().then(function (d) { return { http: r.status, body: d || {} }; });
-    }).then(function (env) {
-      var d = env.body;
-      // EngineExecutionService::execute() returns { success, data:{ status, url, ... }, credits_used, ... }
-      // Older shapes used d.result or top-level d.status — keep those as fallbacks.
-      var inner = d.data || d.result || {};
-      var s = String(inner.status || d.status || '').toLowerCase();
-      var imageUrl = inner.url || inner.image_url || (inner.asset && inner.asset.url) || d.url || d.image_url || '';
-      var ok = (d.success === true) || s === 'success' || s === 'completed';
-
-      if (ok && imageUrl) {
-        // lgseSetFeaturedImage handles the PATCH + preview update + status.
-        window.lgseSetFeaturedImage(id, imageUrl);
-        return;
-      }
-      if (s === 'requires_approval' || s === 'pending' || s === 'in_progress' || s === 'queued') {
-        if (status) {
-          status.textContent = 'Sent to approval queue · check Worker Queue';
-          status.style.color = 'var(--lgse-amber)';
+    window._luFetch('POST', '/connector/pages/regenerate-image', {
+      page_id: id,
+      url:     pageUrl,
+      title:   pageTitle,
+      force:   true,
+    })
+      .then(function (r) { return r.json().catch(function () { return { success: false, error: 'bad_json' }; }); })
+      .then(function (d) {
+        if (d && d.success && d.image_url) {
+          // lgseSetFeaturedImage handles the PATCH + preview update + status badge.
+          window.lgseSetFeaturedImage(id, d.image_url);
+          return;
         }
-        return;
-      }
-      // Anything else (failed, unknown, http >= 400 without queue state) → fall back.
-      throw d;
-    }).catch(function () {
-      if (status) { status.textContent = ''; }
-      fallbackToStudio();
-    });
+        if (d && d.error === 'insufficient_credits') {
+          if (status) {
+            status.textContent = 'Not enough credits (need 1).';
+            status.style.color = 'var(--lgse-red)';
+          }
+          return;
+        }
+        if (status) {
+          status.textContent = 'Generation failed: ' + (d && (d.error || d.message) || 'unknown');
+          status.style.color = 'var(--lgse-red)';
+        }
+      })
+      .catch(function (e) {
+        if (status) {
+          status.textContent = 'Network error — try again.';
+          status.style.color = 'var(--lgse-red)';
+        }
+      });
   };
   // ── End P1-H ──────────────────────────────────────────────────────────
 

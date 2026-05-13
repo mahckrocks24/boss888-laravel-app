@@ -1858,6 +1858,104 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // Keywords (3)
         Route::get('/keywords', [$c, 'listKeywords']);
         Route::post('/keywords', [$c, 'addKeyword']);
+        // 2026-05-13 — Keyword suggestions from indexed content. MUST register
+        // BEFORE /keywords/{id} or Laravel matches "suggestions" as {id} and
+        // routes to DELETE → 405. Derives from seo_content_index (title + h1)
+        // and tags `already_tracked` against seo_keywords. No DataForSEO call
+        // (no credit cost) — pure on-site signal.
+        Route::get('/keywords/suggestions', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+
+            $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('content_score')
+                ->limit(40)
+                ->get(['url', 'title', 'h1', 'meta_title']);
+
+            if ($pages->isEmpty()) {
+                return response()->json([
+                    'success'     => true,
+                    'suggestions' => [],
+                    'reason'      => 'no_indexed_pages',
+                ]);
+            }
+
+            // Already-tracked keywords for the workspace (lowercased for compare).
+            $tracked = \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)
+                ->pluck('keyword')
+                ->map(fn ($k) => mb_strtolower((string) $k))
+                ->toArray();
+
+            // Derive candidate keywords from each page: title + h1 + meta_title.
+            // Strategy:
+            //   1. Collect all candidate strings (titles, h1s, meta titles)
+            //   2. Normalise whitespace, strip leading/trailing punctuation
+            //   3. Generate n-grams (2-4 words) per candidate
+            //   4. Dedupe + frequency-rank across all pages
+            //   5. Skip stop-word-only n-grams + already-tracked keywords
+            $stop = [
+                'the','a','an','and','or','but','of','for','to','in','on','at','with','by','from','is','are','was','were',
+                'be','been','being','this','that','these','those','it','its','as','if','your','our','my','we','you','i',
+                'how','what','why','when','where','about','best','top','new','more','most','all','some','any',
+            ];
+            $freq = [];   // n-gram → count
+            $sources = []; // n-gram → first page URL
+            foreach ($pages as $p) {
+                $strings = array_filter([
+                    (string) ($p->title ?? ''),
+                    (string) ($p->h1 ?? ''),
+                    (string) ($p->meta_title ?? ''),
+                ]);
+                foreach ($strings as $s) {
+                    // Strip site-suffix patterns like "| Brand", "- Brand", "— Brand"
+                    $s = preg_replace('/\s*[\|\-–—]\s*[^\|\-–—]+$/u', '', $s) ?? $s;
+                    $s = mb_strtolower(trim($s));
+                    // Replace non-alphanumeric with single space.
+                    $s = preg_replace('/[^a-z0-9]+/u', ' ', $s) ?? $s;
+                    $tokens = array_values(array_filter(
+                        preg_split('/\s+/', $s) ?: [],
+                        fn ($t) => $t !== '' && ! in_array($t, $stop, true) && mb_strlen($t) >= 3
+                    ));
+                    if (count($tokens) < 2) continue;
+                    // 2-, 3-, and 4-grams
+                    for ($n = 2; $n <= 4; $n++) {
+                        for ($i = 0; $i + $n <= count($tokens); $i++) {
+                            $gram = implode(' ', array_slice($tokens, $i, $n));
+                            if (mb_strlen($gram) > 80) continue;
+                            $freq[$gram] = ($freq[$gram] ?? 0) + 1;
+                            if (! isset($sources[$gram])) $sources[$gram] = (string) $p->url;
+                        }
+                    }
+                }
+            }
+            // Rank by frequency (desc), keep top 50, drop already-tracked.
+            arsort($freq);
+            $top = array_slice($freq, 0, 80, true);
+            $suggestions = [];
+            foreach ($top as $kw => $count) {
+                $alreadyTracked = in_array($kw, $tracked, true);
+                if ($alreadyTracked) continue;
+                $suggestions[] = [
+                    'keyword'           => $kw,
+                    'frequency'         => $count,
+                    'volume'            => null,
+                    'competition'       => null,
+                    'competition_index' => null,
+                    'already_tracked'   => false,
+                    'source_url'        => $sources[$kw] ?? null,
+                ];
+                if (count($suggestions) >= 25) break;
+            }
+
+            return response()->json([
+                'success'     => true,
+                'suggestions' => $suggestions,
+                'total'       => count($suggestions),
+                'derived_from'=> 'seo_content_index',
+                'note'        => 'On-site signal only — volume/competition require keyword research (1 credit per keyword).',
+            ]);
+        });
         Route::delete('/keywords/{id}', [$c, 'deleteKeyword']);
 
         // Audits (2)
@@ -1984,6 +2082,37 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         Route::get('/anchors', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
+
+            // 2026-05-13 — auto-backfill from seo_link_graph when empty.
+            // seo_anchor_analysis is populated on demand by bulk-analyze; if
+            // the workspace has 220+ link_graph rows but no anchor_analysis
+            // rows yet, the UI shows "0 anchors" forever. Triggering the
+            // analyser inline on first read seeds the table without needing
+            // a separate cron or button click.
+            $count = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId)->count();
+            if ($count === 0) {
+                $hasGraph = \Illuminate\Support\Facades\DB::table('seo_link_graph')
+                    ->where('workspace_id', $wsId)->where('is_internal', true)
+                    ->limit(1)->exists();
+                if ($hasGraph) {
+                    try {
+                        // Backfill — call computeLinkEquity which feeds the analyser.
+                        $svc = app(\App\Engines\SEO\Services\SeoService::class);
+                        $targetUrls = \Illuminate\Support\Facades\DB::table('seo_link_graph')
+                            ->where('workspace_id', $wsId)->where('is_internal', true)
+                            ->distinct()->pluck('target_url')->take(30)->toArray();
+                        foreach ($targetUrls as $u) {
+                            try { $svc->analyzeAnchors($wsId, $u); } catch (\Throwable) { /* skip */ }
+                        }
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('anchors auto-backfill failed', [
+                            'workspace_id' => $wsId, 'err' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
             $anchors = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
                 ->where('workspace_id', $wsId)
                 ->orderByRaw("CASE health WHEN 'poor' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END")
@@ -9849,14 +9978,62 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
                 'workspace_id' => $wsId,
                 'engine'       => 'seo',
                 'action'       => 'agent_goal',
-                'status'       => 'pending',
+                'status'       => 'running',
                 'source'       => 'agent',
                 'priority'     => 'normal',
                 'payload_json' => json_encode(['goal' => $goalText, 'source' => 'wp_plugin']),
+                'started_at'   => now(),
                 'created_at'   => now(),
                 'updated_at'   => now(),
             ]);
-            return response()->json(['success' => true, 'task_id' => $taskId]);
+
+            // 2026-05-13 — synchronous dispatch through SeoAssistantService.
+            // 'agent_goal' is not in the CapabilityMapService and the existing
+            // TaskExecutionJob → Orchestrator path would throw "No capability
+            // mapped for action: agent_goal". Until a proper async dispatcher
+            // ships (Phase 2 — Sarah's planner consuming the queue), we run the
+            // assistant inline: classifies intent, builds proposal or generates
+            // conversational reply, persists the response on the task row, and
+            // marks completed so the row stops sitting in the pending bucket.
+            try {
+                $svc = app(\App\Engines\SEO\Services\SeoAssistantService::class);
+                $assistantResult = $svc->handle($wsId, $goalText, ['source' => 'submit_goal']);
+
+                \Illuminate\Support\Facades\DB::table('tasks')
+                    ->where('id', $taskId)
+                    ->update([
+                        'status'       => 'completed',
+                        'result_json'  => json_encode($assistantResult, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        'completed_at' => now(),
+                        'updated_at'   => now(),
+                    ]);
+
+                return response()->json([
+                    'success'  => true,
+                    'task_id'  => $taskId,
+                    'reply'    => (string) ($assistantResult['response'] ?? ''),
+                    'executed' => (bool) ($assistantResult['executed'] ?? false),
+                    'result'   => $assistantResult['result'] ?? null,
+                ]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('submit-goal handler failed', [
+                    'workspace_id' => $wsId, 'task_id' => $taskId, 'err' => $e->getMessage(),
+                ]);
+                \Illuminate\Support\Facades\DB::table('tasks')
+                    ->where('id', $taskId)
+                    ->update([
+                        'status'      => 'failed',
+                        'error_text'  => mb_substr($e->getMessage(), 0, 2000),
+                        'failed_at'   => now(),
+                        'updated_at'  => now(),
+                    ]);
+                return response()->json([
+                    'success' => false,
+                    'task_id' => $taskId,
+                    'error'   => 'assistant_failed',
+                    'message' => $e->getMessage(),
+                ], 500);
+            }
         });
 
         Route::post('/cancel', function (\Illuminate\Http\Request $r) {
