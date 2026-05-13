@@ -10608,6 +10608,19 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
                 ]
             );
         }
+        // Change 2B-2 Step 3: persist wp_post_id to articles table
+        if (
+            isset($data['levelup_article_id']) &&
+            is_numeric($data['levelup_article_id']) &&
+            isset($wpResult['post_id']) &&
+            is_numeric($wpResult['post_id'])
+        ) {
+            DB::table('articles')
+                ->where('id', (int) $data['levelup_article_id'])
+                ->where('workspace_id', $wsId)
+                ->update(['wp_post_id' => (int) $wpResult['post_id']]);
+        }
+
         return response()->json([
             'success'   => true,
             'post_id'   => $wpResult['post_id'] ?? null,
