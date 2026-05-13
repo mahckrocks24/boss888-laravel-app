@@ -10263,6 +10263,13 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
     // ── Content Publishing Pipeline ─────────────────────────────────────
 
     // Generate featured image via Creative engine (Phase 2 — DALL-E 3)
+    // 2026-05-13 — credit billing moved into the route layer.
+    // Cost is 1 credit per the canonical credit-cost table (image_gen auto/mini).
+    // The previous version reported "credits_used: 10" via a `?? 10` fallback
+    // but CreativeService::generateImage does no charging itself — i.e. every
+    // call was effectively free. We now reserve→commit/release in the route,
+    // matching the /connector/pages/regenerate-image and /connector/generate-article
+    // pattern. CreativeService stays untouched (CREATIVE888 lock honored).
     Route::post('/generate-image', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         $data = $r->validate([
@@ -10270,6 +10277,23 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             'style'   => 'nullable|string|max:100',
             'context' => 'nullable|string|max:500',
         ]);
+
+        $IMAGE_COST = 1;
+        $balance = (int) (\Illuminate\Support\Facades\DB::table('credits')
+            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        if ($balance < $IMAGE_COST) {
+            return response()->json([
+                'success'         => false,
+                'error'           => 'insufficient_credits',
+                'code'            => 'NO_CREDITS',
+                'required_credits'=> $IMAGE_COST,
+                'available'       => $balance,
+            ], 402);
+        }
+
+        $creditSvc = app(\App\Core\Billing\CreditService::class);
+        $reservationRef = $creditSvc->reserve($wsId, $IMAGE_COST, 'generate-image');
+
         // Build prompt with context layered in
         $prompt = $data['prompt'];
         if (!empty($data['context'])) {
@@ -10278,20 +10302,43 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         if (!empty($data['style'])) {
             $prompt .= ' Style: ' . $data['style'];
         }
-        $svc    = app(\App\Engines\Creative\Services\CreativeService::class);
-        $result = $svc->generateImage($wsId, [
-            'prompt'       => $prompt,
-            'aspect_ratio' => '1:1',  // CreativeService uses aspect_ratio, not 'size'
-            'quality'      => 'standard',
-            'style'        => 'natural',
-            'type'         => 'featured_image',
-        ]);
+
+        try {
+            $svc    = app(\App\Engines\Creative\Services\CreativeService::class);
+            $result = $svc->generateImage($wsId, [
+                'prompt'       => $prompt,
+                'aspect_ratio' => '1:1',  // CreativeService uses aspect_ratio, not 'size'
+                'quality'      => 'standard',
+                'style'        => 'natural',
+                'type'         => 'featured_image',
+            ]);
+        } catch (\Throwable $e) {
+            $creditSvc->release($wsId, $reservationRef);
+            \Illuminate\Support\Facades\Log::warning('generate-image exception', [
+                'workspace_id' => $wsId, 'err' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'error'   => 'generation_failed',
+                'message' => $e->getMessage(),
+            ], 502);
+        }
+
+        $ok = ($result['status'] ?? '') === 'completed' && !empty($result['url']);
+        if ($ok) {
+            $creditSvc->commit($wsId, $reservationRef, $IMAGE_COST);
+            $creditsCharged = $IMAGE_COST;
+        } else {
+            $creditSvc->release($wsId, $reservationRef);
+            $creditsCharged = 0;
+        }
+
         return response()->json([
-            'success'      => ($result['status'] ?? '') === 'completed' && !empty($result['url']),
+            'success'      => $ok,
             'image_url'    => $result['url'] ?? null,
             'asset_id'     => $result['asset_id'] ?? null,
             'status'       => $result['status'] ?? 'unknown',
-            'credits_used' => $result['credits_used'] ?? 10,
+            'credits_used' => $creditsCharged,
             'prompt_used'  => $prompt,
             'error'        => $result['error'] ?? null,
         ]);
