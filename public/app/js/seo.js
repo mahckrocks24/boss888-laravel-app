@@ -3811,6 +3811,12 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         });
         inp.focus();
       }
+      // 2026-05-13 — Restore prior chat history (localStorage).
+      if (typeof window._lgseChatRestore === 'function') {
+        window._lgseChatRestore('lgse-chat-thread');
+        var t = document.getElementById('lgse-chat-thread');
+        if (t) t.scrollTop = t.scrollHeight;
+      }
     }, 100);
   }
 
@@ -8124,6 +8130,14 @@ window._lgseDrawerOpen = function () {
   setTimeout(function () {
     var inp = document.getElementById('lgse-drawer-input');
     if (inp) { inp.focus(); }
+    // 2026-05-13 — Restore prior chat history (localStorage). Guard via a
+    // data flag so re-opening the drawer doesn't append history twice.
+    var t = document.getElementById('lgse-drawer-thread');
+    if (t && !t.dataset.lgseRestored && typeof window._lgseChatRestore === 'function') {
+      window._lgseChatRestore('lgse-drawer-thread');
+      t.dataset.lgseRestored = '1';
+      t.scrollTop = t.scrollHeight;
+    }
   }, 100);
 };
 
@@ -8179,6 +8193,98 @@ window._lgseAppendApprovalRow = function (bubble, inputId, sendFnName) {
   btns[1].addEventListener('click', function () { trigger('cancel'); });
 };
 
+// 2026-05-13 — Chat history persistence in localStorage. Survives page
+// refresh. Scoped per workspace via window._LGSC_EMBED.workspace_id (set
+// by core.js when ?lgsc_key=&lgsc_ws=&embed=1 is in the URL), with a
+// generic fallback for the direct SPA. Capped at 50 messages (oldest
+// dropped). Approve/Decline buttons are stripped before saving so they
+// don't appear (dead) after restore.
+window._lgseChatKey = function () {
+  var ws = (window._LGSC_EMBED && window._LGSC_EMBED.workspace_id)
+    || window._currentWorkspaceId
+    || null;
+  return ws ? ('lgse_chat_ws_' + ws) : 'lgse_chat_history';
+};
+
+window._lgseChatLoad = function () {
+  try {
+    var raw = localStorage.getItem(window._lgseChatKey());
+    if (!raw) return [];
+    var arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+};
+
+window._lgseChatSave = function (bubble, role) {
+  if (!bubble || !bubble.cloneNode) return;
+  var clone = bubble.cloneNode(true);
+  // Strip Approve/Decline button rows + their post-click status pills.
+  // Buttons carry data-act='approve'|'decline'; the pill is a sibling
+  // text node — both live in the row div we want to remove.
+  Array.prototype.forEach.call(clone.querySelectorAll('button[data-act]'), function (b) {
+    if (b.parentElement) b.parentElement.remove();
+  });
+  // Also strip the post-click "Approved/Declined" pill row (no buttons left,
+  // just the span). Identify by checking for the row class fingerprint:
+  // we added rows with `display:flex;gap:8px;margin-top:10px;flex-wrap:wrap`
+  // and they live inside the bubble. Conservatively, find any div whose
+  // text content is exactly 'Approved' or 'Declined' (with optional emoji).
+  Array.prototype.forEach.call(clone.querySelectorAll('div > span'), function (s) {
+    var txt = (s.textContent || '').trim();
+    if (/^[^a-zA-Z]*(Approved|Declined)\s*$/.test(txt) && s.parentElement && s.parentElement.parentElement === clone) {
+      s.parentElement.remove();
+    }
+  });
+
+  var arr = window._lgseChatLoad();
+  arr.push({ role: role || 'assistant', html: clone.outerHTML, ts: Date.now() });
+  if (arr.length > 50) arr = arr.slice(arr.length - 50);
+  try { localStorage.setItem(window._lgseChatKey(), JSON.stringify(arr)); } catch (e) { /* quota */ }
+};
+
+window._lgseChatClear = function () {
+  try { localStorage.removeItem(window._lgseChatKey()); } catch (e) {}
+  // Empty both threads back to their welcome bubble (which is just the first child).
+  ['lgse-chat-thread', 'lgse-drawer-thread'].forEach(function (tid) {
+    var t = document.getElementById(tid);
+    if (!t) return;
+    var welcome = t.firstElementChild;  // the static welcome bubble baked in
+    t.innerHTML = '';
+    if (welcome) t.appendChild(welcome);
+    // Reset drawer restore guard so a future open after clear won't try to
+    // re-inject the (now empty) history.
+    delete t.dataset.lgseRestored;
+  });
+};
+
+// Re-inject stored messages into a thread. Called after the thread DOM is
+// created. Inserts a "— previous session —" divider before the restored
+// bubbles so it's visually clear this is recall, not fresh activity.
+window._lgseChatRestore = function (threadId) {
+  var thread = document.getElementById(threadId);
+  if (!thread) return;
+  var arr = window._lgseChatLoad();
+  if (!arr.length) return;
+
+  var divider = document.createElement('div');
+  divider.style.cssText = 'display:flex;align-items:center;gap:10px;margin:4px 0;color:var(--lgse-t3,#64748b);font-size:11px;font-weight:500';
+  divider.innerHTML =
+      '<span style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></span>'
+    + '<span>previous session · ' + arr.length + ' message' + (arr.length === 1 ? '' : 's') + '</span>'
+    + '<button onclick="window._lgseChatClear()" '
+    +   'style="background:transparent;border:none;color:var(--lgse-t3,#64748b);'
+    +   'font-size:11px;cursor:pointer;padding:2px 6px;text-decoration:underline">Clear</button>'
+    + '<span style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></span>';
+  thread.appendChild(divider);
+
+  arr.forEach(function (m) {
+    var holder = document.createElement('div');
+    holder.innerHTML = m.html;
+    var bubble = holder.firstElementChild;
+    if (bubble) thread.appendChild(bubble);
+  });
+};
+
 window._lgseDrawerSend = function () {
   var inp = document.getElementById('lgse-drawer-input');
   var thread = document.getElementById('lgse-drawer-thread');
@@ -8197,6 +8303,7 @@ window._lgseDrawerSend = function () {
   userBubble.innerHTML = '<div style="font-size:14px;line-height:1.6;color:#E5E7EB">'
     + escMsg(msg).replace(/\n/g, '<br>') + '</div>';
   thread.appendChild(userBubble);
+  if (typeof window._lgseChatSave === 'function') window._lgseChatSave(userBubble, 'user');
 
   var typing = document.createElement('div');
   typing.id = 'lgse-drawer-typing';
@@ -8229,6 +8336,7 @@ window._lgseDrawerSend = function () {
       + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB"><p style="margin:0">'
       + lgseMarkdown(escMsg(text)) + '</p></div>';
     thread.appendChild(b);
+    if (typeof window._lgseChatSave === 'function') window._lgseChatSave(b, 'assistant');
     // 2026-05-13 — Approve / Decline buttons on proposals (drawer variant).
     if (/shall i proceed/i.test(text)) {
       _lgseAppendApprovalRow(b, 'lgse-drawer-input', '_lgseDrawerSend');
@@ -8296,6 +8404,7 @@ window._lgseAssistantSend = function () {
   userBubble.style.cssText = 'align-self:flex-end;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:12px 16px;max-width:80%';
   userBubble.innerHTML = '<p style="font-size:14px;line-height:1.6;color:#E5E7EB;margin:0">' + escMsg(msg) + '</p>';
   thread.appendChild(userBubble);
+  if (typeof window._lgseChatSave === 'function') window._lgseChatSave(userBubble, 'user');
 
   var typing = document.createElement('div');
   typing.id = 'lgse-typing';
@@ -8328,6 +8437,7 @@ window._lgseAssistantSend = function () {
         lgseMarkdown(escMsg(text)) +
       '</p>';
     thread.appendChild(bot);
+    if (typeof window._lgseChatSave === 'function') window._lgseChatSave(bot, 'assistant');
     // 2026-05-13 — Approve / Decline buttons on proposals. The assistant
     // narrates proposals with "Shall I proceed?" — bypass the keyword
     // classifier entirely by binding the buttons to a programmatic send of
