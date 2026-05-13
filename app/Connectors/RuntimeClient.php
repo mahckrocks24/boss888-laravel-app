@@ -673,7 +673,7 @@ class RuntimeClient
                 'cost_usd'     => $this->estimateApiCost($provider, $model, $tokensIn, $tokensOut),
                 'duration_ms'  => $durationMs,
                 'status'       => $status,
-                'error_message'=> $error,
+                'error'        => $error,
                 'created_at'   => now(),
             ]);
         } catch (\Throwable $e) {
