@@ -9846,6 +9846,60 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             })
             ->update(['featured_image_url' => $imageUrl, 'updated_at' => now()]);
 
+        // Change 2B-3 Hook A: if this page maps to a WP post, sideload the
+        // image to WordPress via /lgsc/v1/attach-image and persist the
+        // returned attachment ID. Best-effort: a WP attach failure must NOT
+        // fail Laravel image generation, must NOT roll back credits, must
+        // NOT bubble exceptions. Response contract is unchanged.
+        if ($page && isset($page->wp_post_id) && (int) $page->wp_post_id > 0) {
+            $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+            $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+            if ($siteUrl && $webhookSecret) {
+                try {
+                    $attachUrl = rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/attach-image';
+                    $attachResp = \Illuminate\Support\Facades\Http::timeout(60)
+                        ->withHeaders([
+                            'Content-Type'  => 'application/json',
+                            'X-LGSC-Secret' => $webhookSecret,
+                        ])
+                        ->post($attachUrl, [
+                            'post_id'   => (int) $page->wp_post_id,
+                            'image_url' => $imageUrl,
+                        ]);
+                    if ($attachResp->successful()) {
+                        $attachId = (int) ($attachResp->json('attachment_id') ?? 0);
+                        if ($attachId > 0 && $page && $page->id) {
+                            \Illuminate\Support\Facades\DB::table('seo_content_index')
+                                ->where('workspace_id', $wsId)
+                                ->where('id', $page->id)
+                                ->update(['wp_attachment_id' => $attachId]);
+                        }
+                    } else {
+                        \Illuminate\Support\Facades\Log::warning(
+                            'regenerate-image: attach-image non-2xx',
+                            [
+                                'workspace_id' => $wsId,
+                                'post_id'      => (int) $page->wp_post_id,
+                                'http_status'  => $attachResp->status(),
+                                'body'         => $attachResp->json(),
+                            ]
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning(
+                        'regenerate-image: attach-image exception',
+                        [
+                            'workspace_id' => $wsId,
+                            'post_id'      => (int) $page->wp_post_id,
+                            'error'        => $e->getMessage(),
+                        ]
+                    );
+                }
+            }
+        }
+
         return response()->json([
             'success'   => true,
             'image_url' => $imageUrl,
