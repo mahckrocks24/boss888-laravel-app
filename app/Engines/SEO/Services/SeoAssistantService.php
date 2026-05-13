@@ -497,7 +497,7 @@ class SeoAssistantService
 
         // Execution requests (most-specific first).
         $executions = [
-            'deep_audit'        => ['run audit', 'full audit', 'scan my site', 'site audit', 'audit my site', 'run a full audit', 'run deep audit'],
+            'deep_audit'        => ['run audit', 'full audit', 'scan my site', 'site audit', 'audit my site', 'run a full audit', 'run deep audit', 'run a deep audit', 'run deep audit on', 'run full audit', 'do a deep audit', 'do an audit', 'do a site audit', 'audit my ', 'deep audit my'],
             'generate_article'  => ['write article', 'write a blog', 'write an article', 'generate article', 'generate an article', 'write me an article', 'write us an article', 'create article', 'plan article', 'plan articles', 'plan 6 articles'],
             'serp_analysis'     => ['serp analysis', 'competitor analysis', 'check competitors', 'analyse competitors', 'analyze competitors'],
             'add_keyword'       => ['add keyword', 'track keyword', 'add a keyword', 'start tracking'],
