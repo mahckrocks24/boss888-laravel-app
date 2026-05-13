@@ -10675,6 +10675,54 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
                 ->update(['wp_post_id' => (int) $wpResult['post_id']]);
         }
 
+        // Change 2B-3 Hook B: sideload featured_image_url to WP, persist wp_thumbnail_id.
+        // Best-effort: publish succeeds regardless of attach outcome.
+        if (
+            !empty($data['featured_image_url']) &&
+            filter_var($data['featured_image_url'], FILTER_VALIDATE_URL) &&
+            isset($wpResult['post_id']) &&
+            is_numeric($wpResult['post_id']) &&
+            $siteUrl && $webhookSecret
+        ) {
+            try {
+                $attachResp = \Illuminate\Support\Facades\Http::timeout(60)
+                    ->withHeaders([
+                        'Content-Type'  => 'application/json',
+                        'X-LGSC-Secret' => $webhookSecret,
+                    ])
+                    ->post(rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/attach-image', [
+                        'post_id'   => (int) $wpResult['post_id'],
+                        'image_url' => (string) $data['featured_image_url'],
+                    ]);
+                if ($attachResp->successful()) {
+                    $attachId = (int) ($attachResp->json('attachment_id') ?? 0);
+                    if (
+                        $attachId > 0 &&
+                        isset($data['levelup_article_id']) &&
+                        is_numeric($data['levelup_article_id'])
+                    ) {
+                        DB::table('articles')
+                            ->where('id', (int) $data['levelup_article_id'])
+                            ->where('workspace_id', $wsId)
+                            ->update(['wp_thumbnail_id' => $attachId]);
+                    }
+                } else {
+                    \Illuminate\Support\Facades\Log::warning('publish-post: attach-image non-2xx', [
+                        'workspace_id' => $wsId,
+                        'post_id'      => (int) $wpResult['post_id'],
+                        'http_status'  => $attachResp->status(),
+                        'body'         => $attachResp->json(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('publish-post: attach-image exception', [
+                    'workspace_id' => $wsId,
+                    'post_id'      => (int) $wpResult['post_id'],
+                    'error'        => $e->getMessage(),
+                ]);
+            }
+        }
+
         return response()->json([
             'success'   => true,
             'post_id'   => $wpResult['post_id'] ?? null,
