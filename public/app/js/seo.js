@@ -8050,11 +8050,28 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   };
 
   // Global trampoline for the Pages-tab image regenerate cell.
+  // 2026-05-13 — UX normalization. Native confirm()/alert() dialogs replaced
+  // with inline status injected as a small label inside the cell. Click is
+  // immediate (no confirm). Loading + error states render in-cell.
   window._lgseRegenImage = function (pageId, pageUrl, pageTitle, el) {
-    if (!confirm('Generate featured image for this page? Uses 1 credit.')) { return; }
     var cell = el;
     if (cell && cell.tagName === 'IMG') { cell = cell.parentElement; }
-    if (cell) { cell.style.opacity = '0.4'; }
+    if (!cell) return;
+
+    // Render a tiny in-cell status that survives outerHTML replacement on success.
+    function setCellState(html, opacity) {
+      cell.style.opacity = opacity == null ? '1' : String(opacity);
+      cell.innerHTML = html;
+    }
+    function statusHtml(label, color) {
+      return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;'
+           + 'width:44px;height:36px;border:1px dashed var(--lgse-border,#1e293b);border-radius:4px;'
+           + 'font-size:9px;color:' + (color || 'var(--lgse-t3,#94a3b8)') + ';line-height:1.1;text-align:center">'
+           + label + '</div>';
+    }
+
+    // Loading state — immediate, no confirm.
+    setCellState(statusHtml('Generating<br>1 credit', 'var(--lgse-t3,#94a3b8)'), '0.7');
 
     var payload = {
       page_id: pageId,
@@ -8075,23 +8092,21 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         }).then(function (r) { return r.json(); });
 
     fetcher.then(function (d) {
-      if (cell) { cell.style.opacity = '1'; }
       if (!d || !d.success || !d.image_url) {
-        alert('Image generation failed: ' + ((d && (d.error || d.message)) || 'unknown error'));
+        var msg = (d && (d.error || d.message)) || 'failed';
+        setCellState(statusHtml('Gen failed:<br>' + String(msg).substring(0, 18), 'var(--lgse-red,#ef4444)'), '1');
         return;
       }
-      // Replace cell contents with the new image.
-      if (cell) {
-        var safeUrl = encodeURIComponent(pageUrl || '');
-        var safeTitle = encodeURIComponent(pageTitle || '');
-        cell.outerHTML = '<td><img src="' + d.image_url + '" '
-          + 'style="width:44px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" '
-          + 'title="Regenerate featured image (1 credit)" '
-          + 'onclick="window._lgseRegenImage(' + pageId + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)"></td>';
-      }
+      // Replace cell contents with the new image (preserve re-click rebind).
+      var safeUrl = encodeURIComponent(pageUrl || '');
+      var safeTitle = encodeURIComponent(pageTitle || '');
+      cell.style.opacity = '1';
+      cell.innerHTML = '<img src="' + d.image_url + '" '
+        + 'style="width:44px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" '
+        + 'title="Regenerate featured image (1 credit)" '
+        + 'onclick="window._lgseRegenImage(' + pageId + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)">';
     }).catch(function () {
-      if (cell) { cell.style.opacity = '1'; }
-      alert('Request failed. Please try again.');
+      setCellState(statusHtml('Request<br>failed', 'var(--lgse-red,#ef4444)'), '1');
     });
   };
 
