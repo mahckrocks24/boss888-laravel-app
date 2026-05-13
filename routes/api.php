@@ -10682,6 +10682,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             filter_var($data['featured_image_url'], FILTER_VALIDATE_URL) &&
             isset($wpResult['post_id']) &&
             is_numeric($wpResult['post_id']) &&
+            empty($wpResult['thumbnail_id']) &&
             $siteUrl && $webhookSecret
         ) {
             try {
