@@ -24,6 +24,18 @@
       workspace_id: parseInt(wsId, 10),
       embed:        true,
     };
+    // Change 3: capture WP parent origin for strict-origin postMessage bridge
+    var _lgscWpOriginParam = params.get('lgsc_wp_origin');
+    if (!_lgscWpOriginParam) {
+      var _hashStr = window.location.hash || '';
+      var _qIdx    = _hashStr.indexOf('?');
+      if (_qIdx >= 0) {
+        _lgscWpOriginParam = new URLSearchParams(_hashStr.substring(_qIdx + 1)).get('lgsc_wp_origin');
+      }
+    }
+    if (_lgscWpOriginParam) {
+      try { window._LGSC_EMBED.wp_origin = decodeURIComponent(_lgscWpOriginParam); } catch (_e) {}
+    }
     if (typeof document !== 'undefined' && document.documentElement) {
       document.documentElement.classList.add('lgsc-embed-mode');
     }

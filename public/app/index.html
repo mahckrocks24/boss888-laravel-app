@@ -24,6 +24,12 @@
   // 2026-05-12: plugin v1.0.13+ ships home_url() as ?lgsc_site=…
   // Set both _LGSC_SITE_URL (read by seo.js cold-state fallbacks) and
   // _lgseActiveSite (immediately scoped for the audit modal pre-fill).
+  // Change 3: capture WP parent origin for strict-origin postMessage bridge
+  var lgscWpOrigin = params.get('lgsc_wp_origin');
+  if (lgscWpOrigin) {
+    try { window._LGSC_EMBED.wp_origin = decodeURIComponent(lgscWpOrigin); } catch (_e) {}
+  }
+
   var lgscSite = params.get('lgsc_site');
   if (lgscSite) {
     try {

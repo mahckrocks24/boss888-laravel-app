@@ -2199,6 +2199,38 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             ]);
         });
 
+        // Change 3: PATCH /seo/indexed-content/{id}
+        // Accepts featured_image_url + wp_attachment_id.
+        // Conditional writes only — null/absent fields never wipe existing values.
+        // Fixes pre-existing broken lgseSetFeaturedImage save path (was 404).
+        Route::patch('/indexed-content/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = $r->attributes->get('workspace_id');
+            $data = $r->validate([
+                'featured_image_url' => 'nullable|url',
+                'wp_attachment_id'   => 'nullable|integer',
+            ]);
+            $update = [];
+            if (array_key_exists('featured_image_url', $data) && $data['featured_image_url'] !== null) {
+                $update['featured_image_url'] = $data['featured_image_url'];
+                $update['has_featured_image'] = 1;
+            }
+            if (array_key_exists('wp_attachment_id', $data) && $data['wp_attachment_id'] !== null) {
+                $update['wp_attachment_id'] = (int) $data['wp_attachment_id'];
+            }
+            if (empty($update)) {
+                return response()->json(['success' => false, 'error' => 'nothing_to_update'], 422);
+            }
+            $update['updated_at'] = now();
+            $affected = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('id', (int) $id)
+                ->update($update);
+            if ($affected === 0) {
+                return response()->json(['success' => false, 'error' => 'not_found'], 404);
+            }
+            return response()->json(['success' => true, 'id' => (int) $id]);
+        });
+
         Route::post('/scan-pages', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
             $siteUrl = $r->input('url') ?: \Illuminate\Support\Facades\DB::table('seo_settings')

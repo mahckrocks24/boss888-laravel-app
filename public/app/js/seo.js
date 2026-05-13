@@ -7141,6 +7141,46 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   //           prompt. UI is honest about this.
   // ─────────────────────────────────────────────────────────────────────
   window.lgsePickMedia = function (id) {
+    /* Change 3: WP-native picker via strict-origin postMessage when in embed mode.
+     * Falls back to existing Laravel media picker when standalone.
+     * Message types allowlisted. 60s timeout cleanup on listener.
+     */
+    var embed    = window._LGSC_EMBED || {};
+    var wpOrigin = (typeof embed.wp_origin === 'string' && embed.wp_origin)
+                   ? embed.wp_origin.replace(/\/+$/, '') : null;
+    var inIframe = (window.parent !== window);
+
+    if (wpOrigin && inIframe) {
+      var _timer = null;
+
+      var _handler = function (e) {
+        if (e.origin !== wpOrigin) { return; }
+        if (!e.data || e.data.type !== 'lgsc_media_selected') { return; }
+        if (e.data.target_id !== id) { return; }
+
+        window.removeEventListener('message', _handler);
+        clearTimeout(_timer);
+
+        if (e.data.url) {
+          window.lgseSetFeaturedImage(id, e.data.url, e.data.attachment_id || null);
+        }
+      };
+
+      window.addEventListener('message', _handler);
+
+      _timer = setTimeout(function () {
+        window.removeEventListener('message', _handler);
+      }, 60000);
+
+      window.parent.postMessage({
+        type:      'lgsc_open_wp_media',
+        target_id: id
+      }, wpOrigin);
+
+      return;
+    }
+
+    // Standalone SPA fallback: existing Laravel media picker
     var listEl;
     var html = '<div id="lgse-media-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:400px;overflow-y:auto">'
       + '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--lgse-t3);font-size:11px">Loading media…</div>'
@@ -7179,6 +7219,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       var grid = document.getElementById('lgse-media-grid');
       if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--lgse-red);font-size:11px">Could not load media library.</div>';
     });
+  
   };
 
   window.lgseSelectMediaItem = function (id, src) {
@@ -7187,14 +7228,14 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     window.lgseSetFeaturedImage(id, src);
   };
 
-  window.lgseSetFeaturedImage = function (id, imageUrl) {
+  window.lgseSetFeaturedImage = function (id, imageUrl, attachmentId) {
     if (!id || !imageUrl) return;
     var preview = document.getElementById('lgse-fi-preview-' + id);
     if (preview) preview.innerHTML = '<img src="' + esc(imageUrl) + '" style="width:100%;height:100%;object-fit:cover">';
     var status  = document.getElementById('lgse-fi-status-'  + id);
     if (status) { status.textContent = 'Saving…'; status.style.color = 'var(--lgse-t3)'; }
 
-    api('PATCH', '/indexed-content/' + id, { featured_image_url: imageUrl }).then(function (r) {
+    api('PATCH', '/indexed-content/' + id, Object.assign({ featured_image_url: imageUrl }, attachmentId ? { wp_attachment_id: parseInt(attachmentId, 10) } : {})).then(function (r) {
       if (r && r.success) {
         if (status) {
           status.textContent = '✓ Saved';
