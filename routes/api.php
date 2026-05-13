@@ -10581,7 +10581,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         $wpUrl = rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/create-post';
         try {
             $response = \Illuminate\Support\Facades\Http::timeout(30)
-                ->withHeaders(['Content-Type' => 'application/json'])
+                ->withHeaders(['Content-Type' => 'application/json', 'X-LGSC-Secret' => $webhookSecret ?? ''])
                 ->post($wpUrl, $payload);
         } catch (\Throwable $e) {
             return response()->json([
@@ -10598,11 +10598,11 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         }
         $wpResult = $response->json();
         // Track in seo_content_index
-        if (!empty($wpResult['url'])) {
+        if (!empty(($wpResult['url'] ?? $wpResult['view'] ?? null))) {
             \Illuminate\Support\Facades\DB::table('seo_content_index')->updateOrInsert(
-                ['workspace_id' => $wsId, 'url_hash' => hash('sha256', $wpResult['url'])],
+                ['workspace_id' => $wsId, 'url_hash' => hash('sha256', ($wpResult['url'] ?? $wpResult['view'] ?? null))],
                 [
-                    'url'        => $wpResult['url'],
+                    'url'        => ($wpResult['url'] ?? $wpResult['view'] ?? null),
                     'title'      => $data['title'],
                     'updated_at' => now(),
                 ]
@@ -10611,7 +10611,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         return response()->json([
             'success'   => true,
             'post_id'   => $wpResult['post_id'] ?? null,
-            'url'       => $wpResult['url'] ?? null,
+            'url'       => ($wpResult['url'] ?? $wpResult['view'] ?? null) ?? null,
             'status'    => $wpResult['status'] ?? ($data['status'] ?? 'publish'),
             'thumbnail' => $wpResult['thumbnail_id'] ?? null,
         ]);
