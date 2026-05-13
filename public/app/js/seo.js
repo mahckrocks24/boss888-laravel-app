@@ -8146,6 +8146,39 @@ window._lgseHideFab = function () {
   if (typeof window._lgseDrawerClose === 'function') { window._lgseDrawerClose(); }
 };
 
+// 2026-05-13 — Approve / Decline button row appended to assistant
+// proposal bubbles. Bypasses the keyword classifier by programmatically
+// setting the input value and calling the send function — works
+// identically to the user typing the word and hitting Enter.
+window._lgseAppendApprovalRow = function (bubble, inputId, sendFnName) {
+  if (!bubble) return;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+  row.innerHTML =
+      '<button class="lgse-btn-primary" data-act="approve" '
+    +   'style="font-size:12px;padding:7px 14px">✅ Approve</button>'
+    + '<button class="lgse-btn-secondary" data-act="decline" '
+    +   'style="font-size:12px;padding:7px 14px">❌ Decline</button>';
+  bubble.appendChild(row);
+
+  function trigger(verb) {
+    // Replace the buttons with a status pill so the user sees acknowledgement
+    // even before the next assistant reply lands.
+    var color = verb === 'proceed' ? '#10B981' : '#94a3b8';
+    var label = verb === 'proceed' ? '✅ Approved'  : '❌ Declined';
+    row.innerHTML = '<span style="font-size:11.5px;font-weight:600;color:' + color + '">' + label + '</span>';
+
+    var inp = document.getElementById(inputId);
+    if (inp) { inp.value = verb; }
+    var fn = window[sendFnName];
+    if (typeof fn === 'function') { fn(); }
+  }
+
+  var btns = row.querySelectorAll('button');
+  btns[0].addEventListener('click', function () { trigger('proceed'); });
+  btns[1].addEventListener('click', function () { trigger('cancel'); });
+};
+
 window._lgseDrawerSend = function () {
   var inp = document.getElementById('lgse-drawer-input');
   var thread = document.getElementById('lgse-drawer-thread');
@@ -8196,6 +8229,10 @@ window._lgseDrawerSend = function () {
       + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB"><p style="margin:0">'
       + lgseMarkdown(escMsg(text)) + '</p></div>';
     thread.appendChild(b);
+    // 2026-05-13 — Approve / Decline buttons on proposals (drawer variant).
+    if (/shall i proceed/i.test(text)) {
+      _lgseAppendApprovalRow(b, 'lgse-drawer-input', '_lgseDrawerSend');
+    }
     // 2026-05-12 chat-scroll fix: scroll to TOP of the new assistant
     // message so the user sees the START, not the end (long replies
     // were jumping past the opening line).
@@ -8291,6 +8328,13 @@ window._lgseAssistantSend = function () {
         lgseMarkdown(escMsg(text)) +
       '</p>';
     thread.appendChild(bot);
+    // 2026-05-13 — Approve / Decline buttons on proposals. The assistant
+    // narrates proposals with "Shall I proceed?" — bypass the keyword
+    // classifier entirely by binding the buttons to a programmatic send of
+    // "proceed" / "cancel". No SeoAssistantService changes needed.
+    if (/shall i proceed/i.test(text)) {
+      _lgseAppendApprovalRow(bot, 'lgse-chat-input', '_lgseAssistantSend');
+    }
     bot.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
