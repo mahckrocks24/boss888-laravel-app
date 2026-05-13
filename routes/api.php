@@ -9544,14 +9544,27 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             $days[$key][] = $item;
         };
 
-        // Articles created or updated within the month
+        // Articles in the month — bucket by scheduled_at if set, otherwise
+        // by created_at. Bulk-generated articles (assistant flow) set
+        // scheduled_at to land on planned days; manually-created articles
+        // fall through to created_at.
         $articles = \Illuminate\Support\Facades\DB::table('articles')
             ->where('workspace_id', $wsId)
-            ->whereDate('created_at', '>=', $first)
-            ->whereDate('created_at', '<=', $last)
-            ->orderBy('created_at')->get();
+            ->where(function ($q) use ($first, $last) {
+                $q->where(function ($qq) use ($first, $last) {
+                    $qq->whereNotNull('scheduled_at')
+                       ->whereDate('scheduled_at', '>=', $first)
+                       ->whereDate('scheduled_at', '<=', $last);
+                })->orWhere(function ($qq) use ($first, $last) {
+                    $qq->whereNull('scheduled_at')
+                       ->whereDate('created_at', '>=', $first)
+                       ->whereDate('created_at', '<=', $last);
+                });
+            })
+            ->orderByRaw('COALESCE(scheduled_at, created_at)')->get();
         foreach ($articles as $a) {
-            $push((string) $a->created_at, [
+            $bucketDate = (string) ($a->scheduled_at ?: $a->created_at);
+            $push($bucketDate, [
                 'type'     => 'article',
                 'id'       => (int) $a->id,
                 'title'    => (string) $a->title,
@@ -9560,6 +9573,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
                 'score'    => isset($a->seo_json) ? (int) (json_decode($a->seo_json, true)['score'] ?? 0) : null,
                 'url'      => null,
                 'edit_url' => '/app/#write/' . (int) $a->id,
+                'scheduled_at' => $a->scheduled_at,
                 'created_at' => (string) $a->created_at,
             ]);
         }
