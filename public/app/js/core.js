@@ -1203,7 +1203,7 @@ var taskNodePos = {};
 var ZONE_DEFS = {
   leadership: { agents:['dmm'],                 color:'rgba(108,92,231,.03)' },
   strategy:   { agents:['james','priya','marcus','sofia','jordan','vera','kai'], color:'rgba(59,139,245,.025)' },
-  execution:  { agents:['alex','elena','diana','ryan','leo','maya','chris','nora','zara','tyler','aria','sam','max'], color:'rgba(0,229,168,.02)' },
+  execution:  { agents:['alex','elena','diana','ryan','leo','maya','chris','nora','zara','tyler','zoe','max'], color:'rgba(0,229,168,.02)' },
 };
 
 function drawZones() {
