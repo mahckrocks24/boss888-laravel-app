@@ -78,6 +78,27 @@ class ChatbotResponseService
         }
         $workspaceId = (int) $session->workspace_id;
 
+        // ── Step 0: monthly message cap ──
+        // Plan-defined quota (chatbot_messages_per_month). Short-circuit BEFORE
+        // credit reservation so the visitor sees a clean upgrade prompt rather
+        // than burning credits past the cap. 0 = no cap (unlimited or no plan).
+        $gate = app(\App\Core\Billing\FeatureGateService::class);
+        $monthlyQuota = $gate->chatbotMessagesQuota($workspaceId);
+        if ($monthlyQuota > 0) {
+            $monthlyUsed = $gate->chatbotMessagesUsed($workspaceId);
+            if ($monthlyUsed >= $monthlyQuota) {
+                return [
+                    'success' => false,
+                    'error'   => 'MONTHLY_LIMIT_REACHED',
+                    'message' => 'This chatbot has reached its monthly message limit. Please try again next month, or contact the site owner.',
+                    'data'    => [
+                        'monthly_quota' => $monthlyQuota,
+                        'monthly_used'  => $monthlyUsed,
+                    ],
+                ];
+            }
+        }
+
         // ── Step 1: reserve credit ──
         $reservationRef = null;
         try {

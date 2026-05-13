@@ -10465,6 +10465,147 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             ->assistantMessage($wsId, $data['message'], $data['context'] ?? []);
         return response()->json(['success' => true, 'data' => $result]);
     });
+
+    // ════════════════════════════════════════════════════════════════════
+    // 2026-05-13 — Chatbot connector routes (WP plugin onboarding path)
+    // ════════════════════════════════════════════════════════════════════
+    // The WP plugin only has X-API-KEY auth — the JWT-authed /api/chatbot/*
+    // routes can't be reached from it. These connector mirrors expose the
+    // narrow subset the plugin needs (token mint + KB CRUD) under api.key
+    // auth so onboarding from wp-admin works end-to-end.
+    //
+    // Settings (greeting/color/theme/business hours) remain SPA-only —
+    // single source of truth is the chatbot_settings table, managed via
+    // /api/chatbot/settings in the SPA.
+
+    Route::get('/chatbot/status', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $settings = \Illuminate\Support\Facades\DB::table('chatbot_settings')
+            ->where('workspace_id', $wsId)->first();
+        $latestToken = \Illuminate\Support\Facades\DB::table('chatbot_widget_tokens')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'active')
+            ->orderByDesc('id')
+            ->first(['id', 'token_prefix', 'label', 'allowed_domains_json', 'created_at']);
+        return response()->json([
+            'success'  => true,
+            'data'     => [
+                'enabled'       => (bool) ($settings->enabled ?? false),
+                'greeting'      => $settings->greeting       ?? null,
+                'primary_color' => $settings->primary_color  ?? null,
+                'theme'         => $settings->theme          ?? null,
+                'token'         => $latestToken,
+            ],
+        ]);
+    });
+
+    Route::post('/chatbot/widget-token', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'allowed_domains'    => 'required|array|min:1|max:10',
+            'allowed_domains.*'  => 'string|max:255',
+            'label'              => 'nullable|string|max:255',
+            'site_connection_id' => 'nullable|integer',
+        ]);
+        try {
+            $minted = app(\App\Engines\Chatbot\Services\ChatbotWidgetTokenService::class)
+                ->mint(
+                    $wsId,
+                    isset($data['site_connection_id']) ? (int) $data['site_connection_id'] : null,
+                    null,
+                    $data['allowed_domains'],
+                    $data['label'] ?? 'WP plugin'
+                );
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'token'  => $minted['plain'],
+                    'id'     => $minted['id'],
+                    'prefix' => $minted['prefix'],
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('connector/chatbot/widget-token failed', [
+                'workspace_id' => $wsId, 'err' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => 'MINT_FAILED', 'message' => $e->getMessage()], 500);
+        }
+    });
+
+    Route::get('/chatbot/knowledge', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $sources = \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')
+            ->where('workspace_id', $wsId)
+            ->orderByDesc('created_at')
+            ->get(['id','label','source_type','mime_type','size_bytes','chunk_count','status','error_message','created_at']);
+        $gate = app(\App\Core\Billing\FeatureGateService::class);
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'sources'   => $sources,
+                'doc_count' => $sources->count(),
+                'doc_limit' => $gate->chatbotKbDocLimit($wsId),
+            ],
+        ]);
+    });
+
+    Route::post('/chatbot/knowledge', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $r->validate([
+            'file'  => 'required|file|max:10240', // 10 MB
+            'label' => 'nullable|string|max:255',
+        ]);
+        $gate = app(\App\Core\Billing\FeatureGateService::class);
+        $count = (int) \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')
+            ->where('workspace_id', $wsId)->count();
+        $limit = $gate->chatbotKbDocLimit($wsId);
+        if ($limit > 0 && $count >= $limit) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'KB_LIMIT_REACHED',
+                'message' => "Knowledge base limit reached ({$limit} documents). Delete an existing document or upgrade your plan.",
+            ], 403);
+        }
+        try {
+            $sourceId = app(\App\Engines\Chatbot\Services\ChatbotKnowledgeService::class)
+                ->ingestFile($wsId, $r->file('file'), $r->input('label'));
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'error' => 'VALIDATION', 'message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('connector/chatbot/knowledge upload failed', [
+                'workspace_id' => $wsId, 'err' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => 'INTERNAL', 'message' => 'Could not ingest document.'], 500);
+        }
+        return response()->json([
+            'success' => true,
+            'data'    => \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')->where('id', $sourceId)->first(),
+        ]);
+    });
+
+    Route::post('/chatbot/knowledge/text', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'label' => 'required|string|max:255',
+            'text'  => 'required|string|max:200000',
+        ]);
+        $sourceId = app(\App\Engines\Chatbot\Services\ChatbotKnowledgeService::class)
+            ->ingestText($wsId, $data['label'], $data['text']);
+        return response()->json([
+            'success' => true,
+            'data'    => \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')->where('id', $sourceId)->first(),
+        ]);
+    });
+
+    Route::delete('/chatbot/knowledge/{id}', function (\Illuminate\Http\Request $r, int $id) {
+        $wsId = $r->attributes->get('workspace_id');
+        $ok = app(\App\Engines\Chatbot\Services\ChatbotKnowledgeService::class)
+            ->deleteSource($wsId, $id);
+        if (! $ok) {
+            return response()->json(['success' => false, 'error' => 'NOT_FOUND'], 404);
+        }
+        return response()->json(['success' => true]);
+    });
 });
 
 
