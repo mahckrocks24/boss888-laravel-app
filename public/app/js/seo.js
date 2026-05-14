@@ -19,7 +19,20 @@ var _seoApi = async (method, path, body) => {
   var opts = { method, headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token }, cache: 'no-store' };
   if (body) opts.body = JSON.stringify(body);
   var r = await fetch(window.location.origin + '/api/seo' + path, opts);
-  return r.json();
+  var d;
+  try { d = await r.json(); } catch (e) { d = null; }
+  // NOTE: Throw only on HTTP-level failure.
+  // Some endpoints intentionally return {success:false} with HTTP 200
+  // as a soft non-error signal. Do not normalize this to also throw on
+  // d.success === false without auditing every caller.
+  if (!r.ok) {
+    var err = new Error((d && (d.error || d.message)) || ('HTTP ' + r.status));
+    err.code   = (d && d.code) || null;
+    err.status = r.status;
+    err.body   = d;
+    throw err;
+  }
+  return d;
 };
 
 function seoLoad(el) {
