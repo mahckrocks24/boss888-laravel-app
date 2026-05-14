@@ -9873,7 +9873,12 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
                 'style'        => 'professional photograph',
             ]);
             if (($res['success'] ?? false) && !empty($res['data']['url'])) {
-                $imageUrl = (string) $res['data']['url'];
+                $imageUrl      = (string) $res['data']['url'];
+                $imgWidth      = $res['data']['width'] ?? null;
+                $imgHeight     = $res['data']['height'] ?? null;
+                $imgSize       = (int) ($res['data']['file_size'] ?? 0);
+                $imgModel      = $res['data']['metadata']['model'] ?? 'gpt-image-1';
+                $revisedPrompt = $res['data']['metadata']['revised_prompt'] ?? null;
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('pages/regenerate-image exception', ['err' => $e->getMessage()]);
@@ -9901,6 +9906,51 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
                 $q->where('title', $data['title']);
             })
             ->update(['featured_image_url' => $imageUrl, 'updated_at' => now()]);
+
+        // Change 5: best-effort copy into the Laravel media library so AI
+        // featured images are discoverable in the asset library. Never bubbles.
+        try {
+            $mediaExists = \Illuminate\Support\Facades\DB::table('media')
+                ->where('workspace_id', $wsId)
+                ->where('url', $imageUrl)
+                ->exists();
+            if (!$mediaExists) {
+                $mediaFilename = basename((string) parse_url($imageUrl, PHP_URL_PATH));
+                $metadataJson = json_encode([
+                    'style'          => 'professional photograph',
+                    'quality'        => 'low',
+                    'aspect_ratio'   => '1:1',
+                    'page_id'        => isset($page) && $page ? ($page->id ?? null) : null,
+                    'page_url'       => $data['url'] ?? null,
+                    'revised_prompt' => isset($revisedPrompt) ? $revisedPrompt : null,
+                ]);
+                if ($metadataJson === false) {
+                    $metadataJson = '{}';
+                }
+                \Illuminate\Support\Facades\DB::table('media')->insert([
+                    'workspace_id'      => $wsId,
+                    'filename'          => $mediaFilename !== '' ? $mediaFilename : 'ai-featured.png',
+                    'path'              => $imageUrl,
+                    'url'               => $imageUrl,
+                    'mime_type'         => 'image/png',
+                    'asset_type'        => 'image',
+                    'size_bytes'        => isset($imgSize) ? $imgSize : 0,
+                    'width'             => isset($imgWidth) ? $imgWidth : null,
+                    'height'            => isset($imgHeight) ? $imgHeight : null,
+                    'source'            => 'seo_featured_image',
+                    'category'          => 'image',
+                    'is_platform_asset' => 0,
+                    'is_public'         => 0,
+                    'prompt'            => mb_substr((string) $prompt, 0, 2048),
+                    'model'             => isset($imgModel) ? $imgModel : 'gpt-image-1',
+                    'metadata_json'     => $metadataJson,
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ]);
+            }
+        } catch (\Throwable $_mediaE) {
+            \Illuminate\Support\Facades\Log::warning('Change 5 media insert failed', ['err' => $_mediaE->getMessage()]);
+        }
 
         // Change 2B-3 Hook A: if this page maps to a WP post, sideload the
         // image to WordPress via /lgsc/v1/attach-image and persist the
