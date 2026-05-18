@@ -3463,9 +3463,10 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // /connector/quick-wins handler.
         Route::get('/quick-wins', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
+            // Wave 16c — forward active site URL into quick-wins scope.
             return response()->json(
                 app(\App\Engines\SEO\Services\SeoDataService::class)
-                    ->quickWins($wsId, $r->query('url'))
+                    ->quickWins($wsId, $r->query('url'), $r->query('site_url'))
             );
             // legacy inline body kept below — never reached:
             $items = \Illuminate\Support\Facades\DB::table('seo_audit_items')
@@ -3801,10 +3802,15 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         Route::get('/topics/authority', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
-            $clusters = \Illuminate\Support\Facades\DB::table('seo_clusters')
-                ->where('workspace_id', $wsId)
-                ->orderByDesc('page_count')
-                ->get();
+            $cq = \Illuminate\Support\Facades\DB::table('seo_clusters')
+                ->where('workspace_id', $wsId);
+            // Wave 16c — clusters with a pillar_url on this site only
+            if ($host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r)) {
+                $cq->where(function ($q) use ($host) {
+                    $q->where('pillar_url', 'like', '%//' . $host . '%')->orWhereNull('pillar_url');
+                });
+            }
+            $clusters = $cq->orderByDesc('page_count')->get();
             $topics = $clusters->map(function ($c) use ($wsId) {
                 $hasPillar = !empty($c->pillar_url);
                 return [
@@ -3824,11 +3830,13 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::get('/links/anchor-analysis', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
             // Flatten anchor analyses into per-issue rows the SPA renders
-            $analyses = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+            $aQ = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
                 ->where('workspace_id', $wsId)
-                ->whereIn('health', ['poor', 'warning'])
-                ->limit(50)
-                ->get();
+                ->whereIn('health', ['poor', 'warning']);
+            if ($host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r)) {
+                $aQ->where('target_url', 'like', '%//' . $host . '%');
+            }
+            $analyses = $aQ->limit(50)->get();
             $issues = [];
             foreach ($analyses as $a) {
                 $dist = json_decode($a->anchor_distribution ?? '[]', true) ?: [];
@@ -3860,14 +3868,21 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         Route::get('/anchors/bulk-analysis', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
-            $stats = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
-                ->where('workspace_id', $wsId)
+            // Wave 16c — site scope filter
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $like = $host ? '%//' . $host . '%' : null;
+            $sQ = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId);
+            if ($like) $sQ->where('target_url', 'like', $like);
+            $stats = $sQ
                 ->selectRaw('SUM(total_inbound)        AS total_issues,
                              SUM(generic_anchors)     AS generic_issues,
                              SUM(CASE WHEN health = \'warning\' THEN 1 ELSE 0 END) AS over_optimised')
                 ->first();
-            $dist = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
-                ->where('workspace_id', $wsId)
+            $dQ = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId);
+            if ($like) $dQ->where('target_url', 'like', $like);
+            $dist = $dQ
                 ->orderByDesc('total_inbound')
                 ->limit(20)
                 ->get(['target_url', 'total_inbound', 'unique_anchors', 'health']);

@@ -65,12 +65,14 @@ class SeoController extends BaseEngineController
 
     public function dashboard(Request $r): JsonResponse
     {
-        return $this->readJson($this->seo->getDashboard($this->wsId($r)));
+        // Wave 16c — pass active site URL through to scope all dashboard KPIs.
+        return $this->readJson($this->seo->getDashboard($this->wsId($r), $r->input('site_url')));
     }
 
     public function report(Request $r): JsonResponse
     {
-        return $this->readJson($this->seo->getReport($this->wsId($r)));
+        // Wave 16c — site-scoped report
+        return $this->readJson($this->seo->getReport($this->wsId($r), $r->input('site_url')));
     }
 
     // ═══════════════════════════════════════════════════════

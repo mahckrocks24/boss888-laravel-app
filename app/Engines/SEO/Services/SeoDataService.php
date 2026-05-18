@@ -12,13 +12,18 @@ use Illuminate\Support\Facades\DB;
  */
 class SeoDataService
 {
-    public function quickWins(int $wsId, ?string $url = null): array
+    public function quickWins(int $wsId, ?string $url = null, ?string $siteUrl = null): array
     {
+        // Wave 16c — site scope filter
+        $host = $siteUrl ? \App\Engines\SEO\Support\SiteScope::hostFromUrl($siteUrl) : '';
+        $like = $host !== '' ? ('%//' . $host . '%') : null;
+
         $items = DB::table('seo_audit_items')
             ->join('seo_audits', 'seo_audit_items.audit_id', '=', 'seo_audits.id')
             ->where('seo_audits.workspace_id', $wsId)
             ->whereIn('seo_audit_items.status', ['error', 'warning'])
             ->when($url, fn ($q) => $q->where('seo_audit_items.url', $url))
+            ->when($like, fn ($q) => $q->where('seo_audit_items.url', 'like', $like))
             ->orderByRaw("CASE seo_audit_items.status WHEN 'error' THEN 1 ELSE 2 END")
             ->orderBy('seo_audit_items.score')
             ->limit(20)
@@ -31,9 +36,15 @@ class SeoDataService
             )
             ->get();
 
-        $rankWins = DB::table('seo_keywords')
+        $rankQ = DB::table('seo_keywords')
             ->where('workspace_id', $wsId)
-            ->whereBetween('current_rank', [11, 20])
+            ->whereBetween('current_rank', [11, 20]);
+        if ($like) {
+            $rankQ->where(function ($q) use ($like) {
+                $q->where('target_url', 'like', $like)->orWhereNull('target_url');
+            });
+        }
+        $rankWins = $rankQ
             ->limit(10)
             ->get(['keyword', 'current_rank', 'volume', 'target_url'])
             ->map(fn ($k) => [

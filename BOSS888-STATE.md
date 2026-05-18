@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.11.1-wave16b-assistant-scope`
+- **Cache buster (seo.js)**: `5.11.2-wave16c-controller-routes`
 - **Cache buster (messages-ui.js)**: `4.6.0-wave16b-site-scope`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
@@ -84,6 +84,29 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 16c — site scope extended to controller-backed routes
+- **SeoService** (controller-backed reads now honor `params.site_url` / `$siteUrl`):
+  - `linkSuggestions($wsId, $params)` — filters `source_url` OR `target_url`
+  - `listKeywords($wsId, $filters)` — `target_url LIKE` OR NULL (untargeted keywords show in every scope)
+  - `listAudits($wsId, $filters)` — `url LIKE`
+  - `getDashboard($wsId, ?$siteUrl)` — every sub-query (keywords, audits, links) filtered
+  - `getReport($wsId, ?$siteUrl)` — forwards site_url to all sub-fetches
+- **SeoDataService**:
+  - `quickWins($wsId, ?$url, ?$siteUrl)` — `seo_audit_items.url` + `seo_keywords.target_url` both filtered
+- **SeoController**:
+  - `dashboard()` now passes `$r->input('site_url')`
+  - `report()` now passes `$r->input('site_url')`
+  - `linkSuggestions`/`listKeywords`/`listAudits` already pass `$r->all()` which contains site_url when the frontend sends it
+- **Closures augmented** in `routes/api.php`:
+  - `/quick-wins` — forwards `$r->query('site_url')`
+  - `/topics/authority` — filters `seo_clusters.pillar_url`
+  - `/links/anchor-analysis` — filters `seo_anchor_analysis.target_url`
+  - `/anchors/bulk-analysis` — same (stats + distribution both filtered)
+- **Smoke-verified end-to-end**:
+  - ws1: keywords 1→0 (kw target on other domain), audits 19→1, dashboard `{kw:1,audits:19}→{kw:0,audits:1}` for staging.levelupgrowth.io scope. Bogus site → all 0.
+  - ws7: keywords 2→2 (both targeted/untargeted match), audits 29→20 (9 historical URLs filtered), quickWins 2→2.
+- **What's still workspace-only** (low-traffic surfaces, can extend later if needed): `/agents/{slug}/messages` history (already gets site_url via brand-facts), `/outbound`, `/redirects`, `/ai-status`, `/agent-status`, `/goals` (workspace-level by design).
 
 ### Wave 16b — Sarah + AI Assistant aligned to active site
 - **SEO Assistant (`SeoAssistantService`)**:

@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.11.1-wave16b-assistant-scope loaded — assistant + Sarah aligned to active site'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.11.2-wave16c-controller-routes loaded — site scope extended to keywords/audits/dashboard/report/quick-wins/topics/anchors'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):

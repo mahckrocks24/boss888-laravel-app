@@ -517,9 +517,20 @@ class SeoService
 
     public function linkSuggestions(int $wsId, array $params = []): array
     {
-        return DB::table('seo_links')->where('workspace_id', $wsId)
-            ->where('status', 'suggested')
-            ->orderByDesc('priority_score')
+        $q = DB::table('seo_links')->where('workspace_id', $wsId)
+            ->where('status', 'suggested');
+        // Wave 16c — site scope filter (source OR target hostname)
+        if (! empty($params['site_url'])) {
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromUrl((string) $params['site_url']);
+            if ($host !== '') {
+                $like = '%//' . $host . '%';
+                $q->where(function ($x) use ($like) {
+                    $x->where('source_url', 'like', $like)
+                      ->orWhere('target_url', 'like', $like);
+                });
+            }
+        }
+        return $q->orderByDesc('priority_score')
             ->limit($params['limit'] ?? 50)
             ->get()->toArray();
     }
@@ -1303,6 +1314,16 @@ class SeoService
         $q = DB::table('seo_keywords')->where('workspace_id', $wsId);
         if (!empty($filters['status'])) $q->where('status', $filters['status']);
         if (!empty($filters['search'])) $q->where('keyword', 'like', '%' . $filters['search'] . '%');
+        // Wave 16c — site scope filter on target_url (NULL = untargeted, show in all scopes)
+        if (! empty($filters['site_url'])) {
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromUrl((string) $filters['site_url']);
+            if ($host !== '') {
+                $like = '%//' . $host . '%';
+                $q->where(function ($x) use ($like) {
+                    $x->where('target_url', 'like', $like)->orWhereNull('target_url');
+                });
+            }
+        }
         $keywords = $q->orderByDesc('volume')->get()->toArray();
 
         // Usage metadata
@@ -1342,6 +1363,13 @@ class SeoService
         $q = DB::table('seo_audits')->where('workspace_id', $wsId);
         if (!empty($filters['type'])) $q->where('type', $filters['type']);
         if (!empty($filters['status'])) $q->where('status', $filters['status']);
+        // Wave 16c — site scope filter on audit URL
+        if (! empty($filters['site_url'])) {
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromUrl((string) $filters['site_url']);
+            if ($host !== '') {
+                $q->where('url', 'like', '%//' . $host . '%');
+            }
+        }
         return $q->orderByDesc('created_at')->limit($filters['limit'] ?? 50)->get()->toArray();
     }
 
@@ -1435,10 +1463,20 @@ class SeoService
         ];
     }
 
-    public function getDashboard(int $wsId): array
+    public function getDashboard(int $wsId, ?string $siteUrl = null): array
     {
+        // Wave 16c — site scope filter applied to every sub-query
+        $host = $siteUrl ? \App\Engines\SEO\Support\SiteScope::hostFromUrl($siteUrl) : '';
+        $like = $host !== '' ? ('%//' . $host . '%') : null;
+
         $keywords = DB::table('seo_keywords')->where('workspace_id', $wsId)->where('status', 'tracking');
+        if ($like) {
+            $keywords = $keywords->where(function ($q) use ($like) {
+                $q->where('target_url', 'like', $like)->orWhereNull('target_url');
+            });
+        }
         $audits = DB::table('seo_audits')->where('workspace_id', $wsId);
+        if ($like) { $audits = $audits->where('url', 'like', $like); }
 
         $kwCount = (clone $keywords)->count();
         $avgRank = (clone $keywords)->whereNotNull('current_rank')->avg('current_rank');
@@ -1452,8 +1490,14 @@ class SeoService
         $avgAuditScore = (clone $audits)->where('status', 'completed')->avg('score');
 
         $activeGoals = DB::table('seo_goals')->where('workspace_id', $wsId)->where('status', 'active')->count();
-        $suggestedLinks = DB::table('seo_links')->where('workspace_id', $wsId)->where('status', 'suggested')->count();
-        $insertedLinks = DB::table('seo_links')->where('workspace_id', $wsId)->where('status', 'inserted')->count();
+        $linksQ = DB::table('seo_links')->where('workspace_id', $wsId);
+        if ($like) {
+            $linksQ = $linksQ->where(function ($q) use ($like) {
+                $q->where('source_url', 'like', $like)->orWhere('target_url', 'like', $like);
+            });
+        }
+        $suggestedLinks = (clone $linksQ)->where('status', 'suggested')->count();
+        $insertedLinks  = (clone $linksQ)->where('status', 'inserted')->count();
 
         // Recent audit snapshots for trend data
         $recentSnapshots = [];
@@ -1497,13 +1541,15 @@ class SeoService
         ];
     }
 
-    public function getReport(int $wsId): array
+    public function getReport(int $wsId, ?string $siteUrl = null): array
     {
-        $dashboard = $this->getDashboard($wsId);
-        $keywords = $this->listKeywords($wsId);
-        $recentAudits = $this->listAudits($wsId, ['limit' => 10]);
+        // Wave 16c — forward site_url to every sub-fetch so the report is scoped.
+        $f = $siteUrl ? ['site_url' => $siteUrl] : [];
+        $dashboard = $this->getDashboard($wsId, $siteUrl);
+        $keywords = $this->listKeywords($wsId, $f);
+        $recentAudits = $this->listAudits($wsId, array_merge(['limit' => 10], $f));
         $goals = $this->listGoals($wsId);
-        $links = $this->linkSuggestions($wsId, ['limit' => 10]);
+        $links = $this->linkSuggestions($wsId, array_merge(['limit' => 10], $f));
 
         // Keyword rank distribution
         // FIX 2026-05-11: data_get() works on both arrays and objects.
