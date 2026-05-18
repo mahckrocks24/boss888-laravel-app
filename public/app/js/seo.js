@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.11.2-wave16c-controller-routes loaded — site scope extended to keywords/audits/dashboard/report/quick-wins/topics/anchors'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.12.0-wave18b-action-reports loaded — 11 Reports-tab exports wired (5 raw + 6 action-list), all site-scoped'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -7128,14 +7128,39 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           + '</div>';
       }
 
-      // CSV exports — reuses existing window.lgseExportCsv (auth-aware).
-      html += '<div class="lgse-section-hdr"><span class="lgse-section-title">Data exports</span></div>';
+      // Wave 18a — Raw data exports (full table dumps).
+      html += '<div class="lgse-section-hdr"><span class="lgse-section-title">Raw data exports</span></div>';
       html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:18px">';
-      ['keywords', 'pages', 'links', 'images', 'anchors'].forEach(function (t) {
-        var label = t.charAt(0).toUpperCase() + t.slice(1);
-        html += '<button class="lgse-btn-secondary" style="text-align:left;padding:14px;display:block;cursor:pointer" onclick="lgseExportCsv(\'' + t + '\')">'
-          +   '<div style="font-weight:600;color:var(--lgse-t1);margin-bottom:3px">⬇ ' + label + '</div>'
-          +   '<div style="font-size:10px;color:var(--lgse-t3)">CSV download</div>'
+      [
+        ['keywords', 'Keywords',      'Every tracked keyword + rank'],
+        ['pages',    'Pages',         'Indexed pages + scores'],
+        ['links',    'Links',         'All link suggestions'],
+        ['images',   'Images',        'Image optimization state'],
+        ['anchors',  'Anchors',       'Per-anchor classification'],
+      ].forEach(function (it) {
+        html += '<button class="lgse-btn-secondary" style="text-align:left;padding:14px;display:block;cursor:pointer" onclick="lgseExportCsv(\'' + it[0] + '\')">'
+          +   '<div style="font-weight:600;color:var(--lgse-t1);margin-bottom:3px">⬇ ' + esc(it[1]) + '</div>'
+          +   '<div style="font-size:10px;color:var(--lgse-t3)">' + esc(it[2]) + '</div>'
+          + '</button>';
+      });
+      html += '</div>';
+
+      // Wave 18b — Action-list reports (issues + opportunities surfaced
+      // ready-to-fix). Each one corresponds to a Wave 16e/16f/16g surface
+      // the user already sees in the SPA — same shape, just CSV.
+      html += '<div class="lgse-section-hdr"><span class="lgse-section-title">Action-list reports</span></div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:18px">';
+      [
+        ['orphans',       '⚠ Orphan pages',    'Pages with 0 inbound links'],
+        ['weak-pages',    '⚠ Weak pages',      'Pages with 1–2 inbound links'],
+        ['quick-wins',    '⚡ Quick wins',     'High-impact fixes from latest audit'],
+        ['cluster-gaps',  '⬡ Cluster gaps',    'Topic clusters missing pillars or pages'],
+        ['anchor-health', '⚓ Anchor health',  'Generic + over-optimised + too-long anchors'],
+        ['link-backlog',  '∞ Link backlog',    'Suggested/applied/dismissed per source page'],
+      ].forEach(function (it) {
+        html += '<button class="lgse-btn-secondary" style="text-align:left;padding:14px;display:block;cursor:pointer" onclick="lgseExportCsv(\'' + it[0] + '\')">'
+          +   '<div style="font-weight:600;color:var(--lgse-t1);margin-bottom:3px">' + esc(it[1]) + '</div>'
+          +   '<div style="font-size:10px;color:var(--lgse-t3)">' + esc(it[2]) + '</div>'
           + '</button>';
       });
       html += '</div>';
@@ -7201,10 +7226,16 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     // (no real PDF rendering library wired). For 'pdf' we open the HTML report
     // in a new tab + toast the user to use browser Print → Save as PDF.
     // 'html' keeps its original direct-download behaviour.
+    // Wave 18b — site_url propagated so the report scope matches the dropdown.
+    function _reportUrl(path) {
+      var u = window.location.origin + path;
+      if (window._lgseActiveSiteUrl) u += '?site_url=' + encodeURIComponent(window._lgseActiveSiteUrl);
+      return u;
+    }
     try {
       var token = localStorage.getItem('lu_token') || '';
       if (kind === 'pdf') {
-        var resp = await fetch(window.location.origin + '/api/seo/reports/audit/html', { headers: { 'Authorization': 'Bearer ' + token } });
+        var resp = await fetch(_reportUrl('/api/seo/reports/audit/html'), { headers: { 'Authorization': 'Bearer ' + token } });
         if (!resp.ok) { if (typeof window.showToast === 'function') window.showToast('Could not open report', 'error'); return; }
         var html = await resp.text();
         var blob = new Blob([html], { type: 'text/html' });
@@ -7224,7 +7255,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         return;
       }
       // HTML direct-download path.
-      var r = await fetch(window.location.origin + '/api/seo/reports/audit/html', { headers: { 'Authorization': 'Bearer ' + token } });
+      var r = await fetch(_reportUrl('/api/seo/reports/audit/html'), { headers: { 'Authorization': 'Bearer ' + token } });
       if (!r.ok) { if (typeof window.showToast === 'function') window.showToast('Download failed', 'error'); return; }
       var b = await r.blob();
       var u = URL.createObjectURL(b);
@@ -7237,7 +7268,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   window.lgseExportCsv = async function (type) {
     try {
       var token = localStorage.getItem('lu_token') || '';
-      var resp = await fetch(window.location.origin + '/api/seo/reports/export/' + type, { headers: { 'Authorization': 'Bearer ' + token } });
+      // Wave 18b — propagate active site so CSV matches the SPA's current scope.
+      var url = window.location.origin + '/api/seo/reports/export/' + type;
+      if (window._lgseActiveSiteUrl) {
+        url += '?site_url=' + encodeURIComponent(window._lgseActiveSiteUrl);
+      }
+      var resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
       if (!resp.ok) { if (typeof window.showToast === 'function') window.showToast('Export failed', 'error'); return; }
       var blob = await resp.blob();
       var url = URL.createObjectURL(blob);

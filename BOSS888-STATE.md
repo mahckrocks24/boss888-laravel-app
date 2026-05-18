@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.11.2-wave16c-controller-routes`
+- **Cache buster (seo.js)**: `5.12.0-wave18b-action-reports`
 - **Cache buster (messages-ui.js)**: `4.6.0-wave16b-site-scope`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
@@ -84,6 +84,20 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 18b — 6 Tier-2 action-list reports (+ frontend wiring)
+- **6 new CSV endpoints** sourced from data the SPA already correctly computes (Wave 16e/16f/16g):
+  - `/reports/export/orphans` — Wave 16f orphan list (35/16 rows for ws1/ws7)
+  - `/reports/export/weak-pages` — Wave 16f weak list (12/1 rows)
+  - `/reports/export/quick-wins` — Wave 16c SeoDataService::quickWins data (6/2 rows)
+  - `/reports/export/cluster-gaps` — Wave 16g per-cluster gap analysis (4/13 rows; emits ALL clusters with their gap-key field, healthy ones blank)
+  - `/reports/export/anchor-health` — Wave 16e classification, but only rows with at least one issue (generic / over_optimised / too_long) — 17/54 rows
+  - `/reports/export/link-backlog` — per-source-page aggregation of suggested vs inserted vs dismissed, with apply_rate_pct — 29/55 source pages
+- **Frontend (`public/app/js/seo.js`)**:
+  - Reports tab now has TWO sections: "Raw data exports" (the Wave-18a five) and "Action-list reports" (the Wave-18b six). Each button has a descriptive sub-label (e.g. "Pages with 0 inbound links").
+  - `lgseExportCsv` and `lgseDownloadReport` patched to propagate `window._lgseActiveSiteUrl` via `?site_url=…` query string — closes the Wave-16 site-filter gap for raw-fetch helpers.
+- **Cache buster** `5.11.2-wave16c-controller-routes` → `5.12.0-wave18b-action-reports`.
+- **Smoke-verified** end-to-end for both ws1 and ws7: all 6 endpoints return 200, headers correct, row counts match the corresponding SPA tabs.
 
 ### Wave 18a — fix 7 broken Reports-tab endpoints (-7 silent 404s)
 - The Reports-tab UI already had 5 CSV-export buttons + Export HTML + Print→PDF, but every one of them was calling a 404. Verified live: `curl -o /dev/null -w '%{http_code}' /api/seo/reports/...` → 404 for all 7.

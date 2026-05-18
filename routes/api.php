@@ -2478,6 +2478,172 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::get('/reports/audit/html', $auditReportHandler);
         Route::get('/reports/audit/pdf',  $auditReportHandler);
 
+        // ───────────────────────────────────────────────────────────────
+        // Wave 18b (2026-05-19) — Tier-2 action-list reports.
+        // Six CSVs sourced from data we already correctly compute in the
+        // SPA tabs (Wave 16e/16f/16g) so the downloads match what users
+        // see on screen. All site-scoped via SiteScope.
+        // ───────────────────────────────────────────────────────────────
+
+        // /reports/export/orphans — pages with no inbound internal links.
+        Route::get('/reports/export/orphans', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $q = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('inbound_links', 0);
+            if ($host !== '') { $q->where('url', 'like', '%//' . $host . '%'); }
+            $rows = $q->orderByDesc('content_score')->get(['url', 'title', 'content_score', 'word_count', 'authority_score', 'updated_at']);
+            $fname = 'seo-orphans-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $rows) {
+                echo $csvLine(['url', 'title', 'content_score', 'word_count', 'authority_score', 'last_seen']);
+                foreach ($rows as $row) {
+                    echo $csvLine([$row->url, $row->title, $row->content_score, $row->word_count, $row->authority_score, $row->updated_at]);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // /reports/export/weak-pages — pages with 1-2 inbound (under-linked).
+        Route::get('/reports/export/weak-pages', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $q = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->whereBetween('inbound_links', [1, 2]);
+            if ($host !== '') { $q->where('url', 'like', '%//' . $host . '%'); }
+            $rows = $q->orderBy('inbound_links')->orderByDesc('content_score')
+                ->get(['url', 'title', 'inbound_links', 'content_score', 'word_count', 'authority_score']);
+            $fname = 'seo-weak-pages-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $rows) {
+                echo $csvLine(['url', 'title', 'inbound_count', 'content_score', 'word_count', 'authority_score']);
+                foreach ($rows as $row) {
+                    echo $csvLine([$row->url, $row->title, $row->inbound_links, $row->content_score, $row->word_count, $row->authority_score]);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // /reports/export/quick-wins — reuses SeoDataService::quickWins so the
+        // CSV matches what users see on the Quick Wins sub-tab.
+        Route::get('/reports/export/quick-wins', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $siteUrl = $r->query('site_url');
+            $data = app(\App\Engines\SEO\Services\SeoDataService::class)
+                ->quickWins($wsId, null, $siteUrl ?: null);
+            $wins = $data['quick_wins'] ?? [];
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $fname = 'seo-quick-wins-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $wins) {
+                echo $csvLine(['title', 'severity', 'description', 'url', 'score']);
+                foreach ($wins as $w) {
+                    $w = (array) $w;
+                    echo $csvLine([$w['title'] ?? '', $w['severity'] ?? '', $w['description'] ?? '', $w['url'] ?? '', $w['score'] ?? '']);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // /reports/export/cluster-gaps — Wave 16g per-cluster health gaps.
+        Route::get('/reports/export/cluster-gaps', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $cq = \Illuminate\Support\Facades\DB::table('seo_clusters')->where('workspace_id', $wsId);
+            if ($host !== '') {
+                $cq->where(function ($q) use ($host) {
+                    $q->where('pillar_url', 'like', '%//' . $host . '%')->orWhereNull('pillar_url');
+                });
+            }
+            $clusters = $cq->orderByDesc('page_count')->get();
+            $fname = 'seo-cluster-gaps-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $clusters) {
+                echo $csvLine(['cluster_id', 'topic', 'page_count', 'avg_score', 'avg_authority', 'pillar_url', 'gaps', 'recommendation']);
+                foreach ($clusters as $c) {
+                    $issues = []; $recs = [];
+                    $label = (string) ($c->label ?? 'Cluster #' . $c->id);
+                    if (empty($c->pillar_url))                  { $issues[] = 'no_pillar';      $recs[] = 'Create a pillar page on "' . $label . '".'; }
+                    if ((int) $c->page_count < 3)               { $issues[] = 'thin_cluster';   $recs[] = 'Only ' . (int) $c->page_count . ' pages — add 2-3 more articles.'; }
+                    if ((float) ($c->avg_score ?? 0) < 50)      { $issues[] = 'low_quality';    $recs[] = 'Avg content score ' . round((float) ($c->avg_score ?? 0)) . '/100 — improve existing pages.'; }
+                    if ((float) ($c->avg_authority ?? 0) < 0.3) { $issues[] = 'low_authority';  $recs[] = 'Cluster has weak link authority — add inbound internal links.'; }
+                    echo $csvLine([
+                        $c->id, $label, $c->page_count,
+                        round((float) ($c->avg_score ?? 0), 1),
+                        round((float) ($c->avg_authority ?? 0), 3),
+                        $c->pillar_url ?? '', implode('|', $issues), implode(' ', $recs),
+                    ]);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // /reports/export/anchor-health — only anchors with detected issues.
+        Route::get('/reports/export/anchor-health', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $pagesQ = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')->where('workspace_id', $wsId);
+            if ($host !== '') { $pagesQ->where('target_url', 'like', '%//' . $host . '%'); }
+            $pages = $pagesQ->get();
+            $genericTerms = ['click here','here','read more','learn more','this','link','page','website','more','info','details','visit','read'];
+            $keywordsLower = \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)->pluck('keyword')
+                ->map(fn ($k) => strtolower(trim((string) $k)))->filter()->all();
+            $fname = 'seo-anchor-health-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $pages, $genericTerms, $keywordsLower) {
+                echo $csvLine(['target_url', 'anchor_text', 'count', 'classification', 'issue_type', 'fix']);
+                foreach ($pages as $row) {
+                    $dist = json_decode($row->anchor_distribution ?? '[]', true) ?: [];
+                    foreach ($dist as $entry) {
+                        $anchorText = (string) ($entry['anchor'] ?? '');
+                        $count = (int) ($entry['count'] ?? 1);
+                        if ($anchorText === '') continue;
+                        $anchorLower = strtolower(trim($anchorText));
+                        $isGeneric = in_array($anchorLower, $genericTerms, true);
+                        $isOverOpt = $count > 3;
+                        $isTooLong = mb_strlen($anchorText) > 60;
+                        // Only emit ROWS WITH AT LEAST ONE ISSUE — that's the point of "health".
+                        if (! $isGeneric && ! $isOverOpt && ! $isTooLong) continue;
+                        if ($isGeneric)   { $cls = 'generic';        $fix = 'Replace with descriptive anchor'; $iss = 'generic'; }
+                        elseif ($isOverOpt) { $cls = 'descriptive';  $fix = 'Vary anchor text — reused ' . $count . 'x'; $iss = 'over_optimised'; }
+                        else              { $cls = 'long_phrase';    $fix = 'Trim to 2-6 descriptive words';            $iss = 'too_long'; }
+                        echo $csvLine([$row->target_url, $anchorText, $count, $cls, $iss, $fix]);
+                    }
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // /reports/export/link-backlog — per-source-page count of suggested vs
+        // applied vs dismissed link suggestions. Surfaces where the backlog
+        // is concentrated so the user can prioritise.
+        Route::get('/reports/export/link-backlog', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $q = \Illuminate\Support\Facades\DB::table('seo_links')
+                ->where('workspace_id', $wsId)
+                ->groupBy('source_url')
+                ->selectRaw("source_url,
+                             SUM(CASE WHEN status='suggested' THEN 1 ELSE 0 END) AS suggested_count,
+                             SUM(CASE WHEN status='inserted'  THEN 1 ELSE 0 END) AS inserted_count,
+                             SUM(CASE WHEN status='dismissed' THEN 1 ELSE 0 END) AS dismissed_count,
+                             COUNT(*) AS total_count,
+                             MAX(updated_at) AS last_change");
+            if ($host !== '') {
+                $q->where(function ($x) use ($host) {
+                    $x->where('source_url', 'like', '%//' . $host . '%')
+                      ->orWhere('target_url', 'like', '%//' . $host . '%');
+                });
+            }
+            $rows = $q->orderByDesc('suggested_count')->limit(500)->get();
+            $fname = 'seo-link-backlog-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $rows) {
+                echo $csvLine(['source_url', 'suggested_count', 'inserted_count', 'dismissed_count', 'total_count', 'apply_rate_pct', 'last_change']);
+                foreach ($rows as $row) {
+                    $total = (int) $row->total_count;
+                    $rate = $total > 0 ? (int) round(100 * ((int) $row->inserted_count) / $total) : 0;
+                    echo $csvLine([
+                        $row->source_url,
+                        $row->suggested_count, $row->inserted_count, $row->dismissed_count,
+                        $row->total_count, $rate, $row->last_change,
+                    ]);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
         // ── Wave 15 (2026-05-18) — Manual CTAs (Pages + Links tabs) ──
         // Direct API surface for the Pages-tab "Fix orphan" / "Retry image"
         // chips and the Links-tab "Apply top N" bulk button. Works in both
