@@ -2038,6 +2038,129 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             ]);
         });
 
+        // ── Wave 15 (2026-05-18) — Manual CTAs (Pages + Links tabs) ──
+        // Direct API surface for the Pages-tab "Fix orphan" / "Retry image"
+        // chips and the Links-tab "Apply top N" bulk button. Works in both
+        // contexts (WP X-API-KEY iframe + Laravel JWT SaaS) — the route
+        // group's auth middleware already accepts both, and the underlying
+        // executor's notify() respects Wave-9 context-aware agent routing.
+
+        // POST /api/seo/links/apply-bulk
+        // Body: {limit?: int<=100, mode?: 'orphans_first'|'newest', target_url?: string}
+        // Wraps SeoAssistantService::bulkApplyLinkSuggestionsExternal. The
+        // UI button click IS the user's approval — no proposal/confirm step.
+        Route::post('/links/apply-bulk', function (\Illuminate\Http\Request $r) {
+            $wsId   = (int) $r->attributes->get('workspace_id');
+            $userId = optional($r->user())->id;
+            $params = [];
+            if ($r->filled('limit'))      { $params['limit']      = (int) $r->input('limit'); }
+            if ($r->filled('mode'))       { $params['mode']       = (string) $r->input('mode'); }
+            if ($r->filled('target_url')) { $params['target_url'] = (string) $r->input('target_url'); }
+
+            $svc = app(\App\Engines\SEO\Services\SeoAssistantService::class);
+            $result = $svc->bulkApplyLinkSuggestionsExternal($wsId, $userId ? (int) $userId : null, $params);
+            $status = ($result['success'] ?? false) ? 200 : 402;
+            return response()->json($result, $status);
+        });
+
+        // POST /api/seo/pages/retry-image
+        // Body: {url: string, force?: bool}
+        // Pages-tab "Retry image" chip → looks up the article whose
+        // featured_image_error is non-null AND url matches, calls the
+        // existing connector regenerate-image endpoint, clears the error
+        // column on success.
+        Route::post('/pages/retry-image', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $url  = trim((string) $r->input('url', ''));
+            if ($url === '') {
+                return response()->json(['success' => false, 'error' => 'missing_url'], 422);
+            }
+
+            // Find the article: by wp_post_id via SCI match, OR by slug match in URL.
+            $sci = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('url', $url)
+                ->first(['wp_post_id', 'title']);
+            $article = null;
+            if ($sci && ! empty($sci->wp_post_id)) {
+                $article = \Illuminate\Support\Facades\DB::table('articles')
+                    ->where('workspace_id', $wsId)
+                    ->where('wp_post_id', $sci->wp_post_id)
+                    ->first(['id', 'title', 'slug', 'featured_image_error']);
+            }
+            if (! $article) {
+                // Fallback: last path segment slug match (handles unpublished or
+                // SCI-missing rows).
+                $path = (string) parse_url($url, PHP_URL_PATH);
+                $slug = trim(basename($path));
+                if ($slug !== '') {
+                    $article = \Illuminate\Support\Facades\DB::table('articles')
+                        ->where('workspace_id', $wsId)
+                        ->where('slug', 'like', $slug . '%')
+                        ->orderByDesc('id')
+                        ->first(['id', 'title', 'slug', 'featured_image_error']);
+                }
+            }
+            if (! $article) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'article_not_found',
+                    'message' => 'No Laravel-managed article matches this URL. WordPress-hosted images need to be regenerated from the WP admin.',
+                ], 404);
+            }
+
+            // Call the existing connector endpoint with the workspace's API key.
+            $apiKey = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+            $base   = rtrim((string) config('app.url', 'http://127.0.0.1'), '/');
+            try {
+                $resp = \Illuminate\Support\Facades\Http::withHeaders([
+                        'X-API-KEY'      => (string) $apiKey,
+                        'X-Workspace-ID' => (string) $wsId,
+                        'Accept'         => 'application/json',
+                        'Host'           => 'staging.levelupgrowth.io',
+                    ])
+                    ->timeout(120)
+                    ->post($base . '/api/connector/pages/regenerate-image', [
+                        'url'   => $url,
+                        'title' => $article->title,
+                        'force' => true,
+                    ]);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'connection_failed',
+                    'message' => 'Could not reach the image generator: ' . $e->getMessage(),
+                ], 502);
+            }
+
+            $j = $resp->json() ?: [];
+            if ($resp->successful() && ($j['success'] ?? false) && ! empty($j['image_url'])) {
+                $newAttempts = (int) ($article->featured_image_error ? 1 : 0); // reset counter
+                \Illuminate\Support\Facades\DB::table('articles')
+                    ->where('id', $article->id)
+                    ->update([
+                        'featured_image_url'      => $j['image_url'],
+                        'featured_image_error'    => null,
+                        'featured_image_attempts' => $newAttempts,
+                        'updated_at'              => now(),
+                    ]);
+                return response()->json([
+                    'success'   => true,
+                    'image_url' => $j['image_url'],
+                    'message'   => 'Featured image regenerated.',
+                ]);
+            }
+
+            $err = $j['error'] ?? $j['message'] ?? ('http_' . $resp->status());
+            return response()->json([
+                'success' => false,
+                'error'   => $err,
+                'http'    => $resp->status(),
+                'message' => 'Image generation failed: ' . $err,
+            ], 502);
+        });
+
         // ── Wave 13 (2026-05-18) — Stubs for feature-gap 404s ──
         // The live UI calls these endpoints but the underlying features
         // aren't built yet. Returning structured "not available" envelopes
@@ -2416,18 +2539,32 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             $perPage = min(100, max(1, (int) $r->query('per_page', 25)));
             $filter  = $r->query('filter', '');
             $q       = $r->query('q', '');
-            $query   = \Illuminate\Support\Facades\DB::table('seo_content_index')
-                ->where('workspace_id', $wsId);
-            if ($filter === 'low_score')    { $query->where('content_score', '<', 50); }
-            if ($filter === 'missing_meta') { $query->whereNull('meta_description'); }
-            if ($filter === 'thin_content') { $query->where('word_count', '<', 300); }
-            if ($filter === 'no_h1')        { $query->whereNull('h1'); }
+            $query   = \Illuminate\Support\Facades\DB::table('seo_content_index AS sci')
+                ->leftJoin('articles AS a', function ($j) {
+                    $j->on('a.wp_post_id', '=', 'sci.wp_post_id')
+                      ->on('a.workspace_id', '=', 'sci.workspace_id');
+                })
+                ->where('sci.workspace_id', $wsId)
+                ->select(
+                    'sci.*',
+                    // Wave 15 (2026-05-18) — fields the Pages-tab CTAs need.
+                    'a.featured_image_error',
+                    'a.featured_image_alt',
+                    'a.featured_image_attempts',
+                    'a.id AS article_id'
+                );
+            if ($filter === 'low_score')    { $query->where('sci.content_score', '<', 50); }
+            if ($filter === 'missing_meta') { $query->whereNull('sci.meta_description'); }
+            if ($filter === 'thin_content') { $query->where('sci.word_count', '<', 300); }
+            if ($filter === 'no_h1')        { $query->whereNull('sci.h1'); }
+            if ($filter === 'orphans')      { $query->where('sci.inbound_links', 0); }
+            if ($filter === 'image_failed') { $query->whereNotNull('a.featured_image_error'); }
             if ($q) {
                 $query->where(function ($x) use ($q) {
-                    $x->where('url', 'like', "%{$q}%")->orWhere('title', 'like', "%{$q}%");
+                    $x->where('sci.url', 'like', "%{$q}%")->orWhere('sci.title', 'like', "%{$q}%");
                 });
             }
-            $pages = $query->orderBy('content_score')->paginate($perPage);
+            $pages = $query->orderBy('sci.content_score')->paginate($perPage);
             return response()->json([
                 'success' => true,
                 'items'   => $pages->items(),

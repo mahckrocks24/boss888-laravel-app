@@ -1,7 +1,7 @@
 # BOSS888 — Living State Doc
 
 > Single source of truth for current platform state. Updated end of each session.
-> Last update: **2026-05-18 (Waves 1–14 complete; Wave 10 + 11 + 12 + 14 shipped this session)**
+> Last update: **2026-05-18 (Waves 1–15 complete; Wave 10 + 11 + 12 + 14 + 15 shipped this session)**
 
 ---
 
@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.9.2-save-meta-fix`
+- **Cache buster (seo.js)**: `5.10.0-wave15-ctas`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
 ---
@@ -83,6 +83,21 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 15 — manual CTAs in Pages + Links tabs (both contexts)
+- **Backend**:
+  - `SeoAssistantService::bulkApplyLinkSuggestionsExternal($wsId, $userId, $params)` — public wrapper around Wave-14 executor for non-chat callers. Plan-gates, refreshes orphan count, returns unified envelope.
+  - `execApplyLinkSuggestions` now honors `params.target_url` so per-page "Fix orphan" can scope to one URL.
+  - `POST /api/seo/links/apply-bulk` — body `{limit?, mode?, target_url?}`. Returns `success/result` or 402 `insufficient_credits` envelope.
+  - `POST /api/seo/pages/retry-image` — body `{url, force?}`. Looks up the article by `wp_post_id` (via SCI) or slug fallback, calls the existing connector regenerate-image endpoint, clears `featured_image_error` on success.
+  - `GET /api/seo/indexed-content` augmented — LEFT JOIN `articles ON wp_post_id+workspace_id`. Response now carries `featured_image_error/alt/attempts` + `article_id`. New filters: `orphans`, `image_failed`.
+- **Frontend (`public/app/js/seo.js`)**:
+  - Links tab top bar — "Apply top 20" button (visible when queue has ≥1 suggested row). Confirms, calls `/links/apply-bulk`, toasts the applied/skipped/credits result with top skip reason.
+  - Pages tab Actions column — orphan chip "⚠ Orphan · Fix" (when `inbound_links === 0`), image-error chip "⚠ Image · Retry" (when `featured_image_error` non-null). Tooltips show the failure message + attempt count.
+  - New globals: `_seoApplyTopLinks(limit)`, `_seoFixOrphan(url)`, `_seoRetryImage(url)`.
+- **Two-context safety**: chips/buttons render the same in WP iframe and Laravel SaaS. Underlying executor's `notify()` respects Wave-9 context-aware agent routing (WP → James thread, Laravel → Priya thread for content actions).
+- **Cache buster**: bumped `seo.js?v=5.9.2-save-meta-fix` → `5.10.0-wave15-ctas`.
+- **Smoke-verified**: bulk wrapper returns insufficient_credits envelope correctly when balance < 2 (ws1 has 0); retry-image returns 404 `article_not_found` for unmatched URL; indexed-content response carries all 5 new fields.
 
 ### Wave 14 — orphan-fix execution path (A + B + E)
 - **A — Intent + Proposal** in `SeoAssistantService`: new `apply_link_suggestions` action. detectIntent recognises "fix orphans" / "apply link suggestions" / "add internal links" / "link the orphans" + regex preflight for variable phrasings ("fix my orphan pages", "apply 30 link suggestions"). Listed before `link_suggestions` so apply phrases win over generate.

@@ -261,9 +261,18 @@ async function _seoLinks(el) {
   try {
     var data = await _seoApi('GET', '/links');
     var links = data.suggestions || data.links || data || [];
-    var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
+    var suggestedCount = Array.isArray(links) ? links.filter(function(l){ return !l.status || l.status === 'suggested'; }).length : 0;
+    // Wave 15 (2026-05-18) — "Apply top N" bulk CTA. Visible whenever
+    // there are queued suggestions; hidden otherwise. Same button + same
+    // behavior in WP iframe and Laravel SaaS — the underlying executor
+    // routes notifications to the right thread per Wave 9.
+    var bulkBtn = suggestedCount > 0
+      ? '<button class="btn btn-success" onclick="_seoApplyTopLinks(20)" style="margin-right:6px" title="Bulk-apply the top 20 queued suggestions (orphan targets first)">'+window.icon("zap",14)+' Apply top 20</button>'
+      : '';
+    var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px">' +
       '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0">Internal Link Suggestions</h2>' +
-      '<button class="btn btn-primary" onclick="_seoGenerateLinks()">'+window.icon("link",14)+' Generate Suggestions</button></div>';
+      '<div style="display:flex;gap:6px;align-items:center">' + bulkBtn +
+      '<button class="btn btn-primary" onclick="_seoGenerateLinks()">'+window.icon("link",14)+' Generate Suggestions</button></div></div>';
     if (!Array.isArray(links) || links.length === 0) {
       h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("link",14)+'</div><p>No link suggestions yet. Click Generate to scan your content.</p></div>';
     } else {
@@ -276,6 +285,40 @@ async function _seoLinks(el) {
     }
     el.innerHTML = h;
   } catch(e) { el.innerHTML = _seoError(e); }
+}
+
+// Wave 15 (2026-05-18). Bulk apply of internal-link suggestions from the
+// Links tab top bar. Same handler is reused by the Pages-tab "Fix orphan"
+// chip with a target_url scope (see _seoFixOrphan below).
+async function _seoApplyTopLinks(limit) {
+  if (!confirm('Bulk-apply up to ' + limit + ' link suggestion(s)? You only pay for ones that successfully insert (skipped suggestions are free).')) return;
+  var el = document.getElementById('seo-content');
+  if (el) el.innerHTML = loadingCard(300);
+  try {
+    var d = await _seoApi('POST', '/links/apply-bulk', { limit: limit, mode: 'orphans_first' });
+    if (d.success === false) {
+      if (d.error === 'insufficient_credits') {
+        showToast('Not enough credits — top up at levelupgrowth.io/billing.', 'error');
+      } else {
+        showToast('Bulk apply failed: ' + (d.error || 'unknown'), 'error');
+      }
+    } else {
+      var r = d.result || {};
+      var msg = 'Applied ' + (r.applied || 0) + ' / ' + ((r.applied || 0) + (r.skipped || 0)) + ' suggestion(s).';
+      if ((r.applied || 0) > 0) msg += ' ' + (r.credits_used || 0) + ' credit(s) used.';
+      if ((r.skipped || 0) > 0) {
+        var topReason = '';
+        var reasons = r.skip_reasons || {};
+        var keys = Object.keys(reasons);
+        if (keys.length) topReason = keys.sort(function(a,b){return reasons[b]-reasons[a];})[0];
+        if (topReason) msg += ' Top skip reason: ' + topReason + '.';
+      }
+      showToast(msg, (r.applied || 0) > 0 ? 'success' : 'info');
+    }
+  } catch(e) {
+    showToast('Bulk apply failed: ' + (e.message || e), 'error');
+  }
+  _seoLinks(el);
 }
 
 async function _seoGenerateLinks() {
@@ -798,13 +841,26 @@ async function _seoPages(el) {
 
     h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
     h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-    ['URL','Score','Title','Meta description','H1','Words','Issues',''].forEach(function(c){
+    ['URL','Score','Title','Meta description','H1','Words','Issues','Actions'].forEach(function(c){
       h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">'+c+'</th>';
     });
     h += '</tr></thead><tbody>';
     items.forEach(function(p){
       var sc = p.content_score || 0;
       var scColor = sc >= 70 ? '#10B981' : sc >= 50 ? '#F59E0B' : '#F87171';
+      // Wave 15 (2026-05-18) — orphan + image-error chips in the Actions column.
+      var isOrphan    = (typeof p.inbound_links !== 'undefined') && Number(p.inbound_links) === 0;
+      var imgError    = p.featured_image_error || '';
+      var imgAttempts = Number(p.featured_image_attempts || 0);
+      var actionsCell = '';
+      var urlAttr = (p.url || '').replace(/"/g,'&quot;');
+      if (isOrphan) {
+        actionsCell += '<button onclick="_seoFixOrphan(\''+urlAttr+'\')" title="Apply queued link suggestions targeting this page" style="background:rgba(245,158,11,.12);color:#F59E0B;border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;cursor:pointer;margin-right:4px">⚠ Orphan · Fix</button>';
+      }
+      if (imgError) {
+        var errShort = imgError.length > 60 ? imgError.substring(0,57)+'…' : imgError;
+        actionsCell += '<button onclick="_seoRetryImage(\''+urlAttr+'\')" title="Image gen failed after '+imgAttempts+' attempt(s): '+errShort.replace(/"/g,'&quot;')+'" style="background:rgba(248,113,113,.12);color:#F87171;border:1px solid rgba(248,113,113,.3);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;cursor:pointer">⚠ Image · Retry</button>';
+      }
       h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
       h += '<td style="padding:9px 12px;color:var(--t2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+p.url+'"><a href="'+p.url+'" target="_blank" style="color:var(--t2);text-decoration:none">'+p.url+'</a></td>';
       h += '<td style="padding:9px 12px"><span style="background:'+scColor+'20;color:'+scColor+';padding:2px 8px;border-radius:8px;font-weight:700">'+sc+'</span></td>';
@@ -813,7 +869,7 @@ async function _seoPages(el) {
       h += '<td style="padding:9px 12px"><input value="'+(p.h1||'').replace(/"/g,'&quot;')+'" onblur="_seoPageSave('+p.id+',\'h1\',this.value,this)" style="background:transparent;border:none;color:var(--t1);font-size:12px;width:100%;padding:2px 0" placeholder="(empty)"></td>';
       h += '<td style="padding:9px 12px;color:var(--t2)">'+p.word_count+'</td>';
       h += '<td style="padding:9px 12px"><span style="color:'+(p.issues_count>0?'var(--am)':'var(--t3)')+'">'+p.issues_count+'</span></td>';
-      h += '<td style="padding:9px 12px"></td>';
+      h += '<td style="padding:9px 12px;white-space:nowrap">'+(actionsCell || '<span style="color:var(--t3);font-size:10px">—</span>')+'</td>';
       h += '</tr>';
     });
     h += '</tbody></table></div>';
@@ -844,6 +900,60 @@ window._seoPageSave = async function(id, field, value, inputEl) {
   } catch(e) {
     if (inputEl) inputEl.style.background = 'rgba(248,113,113,.12)';
     if (typeof showToast === 'function') showToast('Save failed: '+(e.message||e), 'error');
+  }
+};
+
+// Wave 15 (2026-05-18). Pages-tab per-row CTAs.
+//
+// _seoFixOrphan(url) — calls /api/seo/links/apply-bulk scoped to this
+// target_url. Applies every queued suggestion pointing at this page.
+//
+// _seoRetryImage(url) — calls /api/seo/pages/retry-image which re-tries
+// the connector image generator + clears the featured_image_error column
+// on success.
+//
+// Both work identically in WP iframe and Laravel SaaS — the backend
+// route's auth middleware accepts X-API-KEY or JWT, and the underlying
+// services respect Wave-9 context-aware agent routing for notifications.
+window._seoFixOrphan = async function(url) {
+  if (!confirm('Apply all queued link suggestions targeting this page? You only pay for ones that successfully insert.')) return;
+  try {
+    var d = await _seoApi('POST', '/links/apply-bulk', { target_url: url, mode: 'orphans_first', limit: 20 });
+    if (d.success === false) {
+      if (d.error === 'insufficient_credits') {
+        showToast('Not enough credits — top up at levelupgrowth.io/billing.', 'error');
+      } else {
+        showToast('Fix-orphan failed: ' + (d.error || 'unknown'), 'error');
+      }
+      return;
+    }
+    var r = d.result || {};
+    if ((r.applied || 0) > 0) {
+      showToast('Applied ' + r.applied + ' link(s) — orphan resolved.', 'success');
+    } else {
+      var reasons = r.skip_reasons || {};
+      var keys = Object.keys(reasons);
+      var topReason = keys.length ? keys.sort(function(a,b){return reasons[b]-reasons[a];})[0] : '';
+      showToast('No suggestions could be applied' + (topReason ? ' (' + topReason + ').' : '.') + ' Try generating fresh link suggestions first.', 'info');
+    }
+    if (typeof _seoSwitchTab === 'function') _seoSwitchTab('pages');
+  } catch(e) {
+    showToast('Fix-orphan failed: ' + (e.message || e), 'error');
+  }
+};
+
+window._seoRetryImage = async function(url) {
+  if (!confirm('Re-try featured image generation for this page?')) return;
+  try {
+    var d = await _seoApi('POST', '/pages/retry-image', { url: url, force: true });
+    if (d.success) {
+      showToast('Image regenerated successfully.', 'success');
+      if (typeof _seoSwitchTab === 'function') _seoSwitchTab('pages');
+    } else {
+      showToast('Retry failed: ' + (d.message || d.error || 'unknown'), 'error');
+    }
+  } catch(e) {
+    showToast('Retry failed: ' + (e.message || e), 'error');
   }
 };
 

@@ -1371,6 +1371,50 @@ class SeoAssistantService
     }
 
     /**
+     * Wave 15 (2026-05-18). Public entry point for non-chat callers (Pages
+     * + Links tab CTA buttons). Mirrors the executor but skips intent
+     * detection and the proposal/confirm flow — the UI button click IS
+     * the user's approval. Plan-gate is still enforced.
+     *
+     * $params keys (all optional):
+     *   limit       int    — default APPLY_LINKS_DEFAULT_LIMIT, capped at 100
+     *   mode        string — 'orphans_first' (default) or 'newest'
+     *   target_url  string — restrict to suggestions whose target_url = this,
+     *                        used by the per-row Pages "Fix orphan" chip.
+     */
+    public function bulkApplyLinkSuggestionsExternal(int $wsId, ?int $userId, array $params): array
+    {
+        $this->currentUserId = $userId;
+
+        // Plan-gate: at minimum need credits for one insert.
+        $balance = (int) (DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0);
+        if ($balance < 2) {
+            return [
+                'success' => false,
+                'error'   => 'insufficient_credits',
+                'balance' => $balance,
+                'needed'  => 2,
+            ];
+        }
+
+        $resolved = array_merge([
+            'limit'        => self::APPLY_LINKS_DEFAULT_LIMIT,
+            'mode'         => 'orphans_first',
+        ], $params);
+        $resolved['orphan_count'] = (int) DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->where('inbound_links', 0)
+            ->count();
+        $resolved['suggested'] = (int) DB::table('seo_links')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'suggested')
+            ->count();
+
+        $exec = $this->execApplyLinkSuggestions($wsId, $resolved, []);
+        return ['success' => true] + $exec;
+    }
+
+    /**
      * Wave 14 (2026-05-18). Cost calculator for bulk apply.
      * Returns max-possible-charge (limit * 2 credits) for plan gating;
      * executor only charges for successful applies.
@@ -1428,6 +1472,10 @@ class SeoAssistantService
     {
         $limit = max(1, min(100, (int) ($params['limit'] ?? self::APPLY_LINKS_DEFAULT_LIMIT)));
         $mode  = (string) ($params['mode'] ?? 'orphans_first');
+        // Wave 15 (2026-05-18). Optional scoping to a single target page —
+        // lets the Pages-tab "Fix orphan" CTA apply only suggestions
+        // pointing at one URL (per-row scope), not the whole workspace.
+        $targetUrl = isset($params['target_url']) ? (string) $params['target_url'] : '';
 
         // Score suggestions: orphan-targeting first, then newest.
         $orphanUrls = [];
@@ -1442,6 +1490,9 @@ class SeoAssistantService
         $query = DB::table('seo_links')
             ->where('workspace_id', $wsId)
             ->where('status', 'suggested');
+        if ($targetUrl !== '') {
+            $query = $query->where('target_url', $targetUrl);
+        }
 
         if (! empty($orphanUrls)) {
             $placeholders = '(' . implode(',', array_fill(0, count($orphanUrls), '?')) . ')';
