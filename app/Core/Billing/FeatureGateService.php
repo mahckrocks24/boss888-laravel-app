@@ -87,8 +87,12 @@ class FeatureGateService
             // Engine access — all plans get manual tools
             'engines'  => [
                 'crm'          => ['manual' => true,  'ai' => $hasFullAI, 'agents' => $hasDMM],
-                'seo'          => ['manual' => true,  'ai' => $hasAI,     'agents' => $hasDMM],
-                'write'        => ['manual' => true,  'ai' => $hasFullAI, 'agents' => $hasDMM],
+                // 2026-05-15 — added 'ai_generation' explicit Growth+ flag.
+                // Existing 'ai' key is research+ permissive (kept for back-compat,
+                // currently unread); 'ai_generation' is the canonical FE check
+                // for SEO AI execution surfaces (bulk metas, optimize, etc).
+                'seo'          => ['manual' => true,  'ai' => $hasAI,     'agents' => $hasDMM, 'ai_generation' => $hasFullAI],
+                'write'        => ['manual' => true,  'ai' => $hasFullAI, 'agents' => $hasDMM, 'ai_generation' => $hasFullAI],
                 'creative'     => [
                     'manual'   => true,
                     'image'    => $hasFullAI,
@@ -186,6 +190,55 @@ class FeatureGateService
     {
         $plan = $this->getActivePlan($wsId);
         return $plan && in_array($plan->ai_access, ['research', 'full']);
+    }
+
+    /**
+     * Canonical SEO AI generation gate (LOCKED 2026-05-15).
+     *
+     * Per official pricing model:
+     *   Free / Starter / AI Lite ($49) -> NO SEO AI generation
+     *   Growth ($99) / Pro ($199) / Agency ($399) -> ALLOWED
+     *
+     * Use this for the SaaS UI path (Bearer JWT). For the WP plugin
+     * X-API-KEY path use canUseSeoAIForConnector() which also accepts
+     * the wp_bundle ai_access='full_seo_and_content' tag.
+     */
+    public function canUseSeoAI(int $wsId): bool
+    {
+        $plan = $this->getActivePlan($wsId);
+        return $plan && $plan->ai_access === 'full';
+    }
+
+    /**
+     * SEO AI gate for the WP-connector path (X-API-KEY caller).
+     * Accepts:
+     *   'full' (Growth/Pro/Agency)
+     *   'full_seo_and_content' (wp_bundle $69 SEO bundle)
+     * Rejects 'research' and 'none'.
+     */
+    public function canUseSeoAIForConnector(int $wsId): bool
+    {
+        $plan = $this->getActivePlan($wsId);
+        return $plan && in_array($plan->ai_access, ['full', 'full_seo_and_content'], true);
+    }
+
+    /**
+     * Phase A (2026-05-16) — Image optimization plan gate.
+     *
+     * Returns true when the workspace's plan permits dispatching an image
+     * optimization job. Same Growth+ semantics as canUseSeoAI for now;
+     * isolated as a separate helper so the gate can evolve independently
+     * (e.g. limited AI-Lite single-image allowance in a later phase).
+     *
+     * NOTE: even when this returns true, the orchestrator MUST additionally
+     * verify ConnectorCapabilityProbe reports optimization_available=true
+     * before actually dispatching. Plan eligibility is necessary but not
+     * sufficient.
+     */
+    public function canUseImageOptimization(int $wsId): bool
+    {
+        $plan = $this->getActivePlan($wsId);
+        return $plan && $plan->ai_access === 'full';
     }
 
     /**

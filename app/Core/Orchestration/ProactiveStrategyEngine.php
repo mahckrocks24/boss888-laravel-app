@@ -61,6 +61,7 @@ class ProactiveStrategyEngine
         private SarahOrchestrator $sarah,
         private GlobalKnowledgeService $globalKnowledge,
         private NotificationService $notifications,
+        private \App\Core\Agents\AgentMessageService $agentMessages,
     ) {}
 
     /**
@@ -90,9 +91,20 @@ class ProactiveStrategyEngine
         ]);
 
         // Send TEMPLATE notification — this is Sarah's ONLY free action
+        $proposalMsg = $this->buildCostEstimateMessage($workspace, $estimate, $balance);
         $this->notifications->send($wsId, 'in_app', 'sarah_proposal', [
             'user_id' => $userId,
-            'message' => $this->buildCostEstimateMessage($workspace, $estimate, $balance),
+            'message' => $proposalMsg,
+        ]);
+
+        // Wave 6 (2026-05-18). Also post into Sarah's chat thread so the
+        // unified messages floater + agent profile + Messages page all
+        // see the cost estimate. Per AI Assistant Operating Rules — AI
+        // surfaces work through the platform, not in the background.
+        $this->agentMessages->postAsAgent($wsId, 'sarah', $proposalMsg, [
+            'notification_type' => 'sarah_proposal',
+            'proposal_id'       => $proposalId,
+            'action_link'       => '/app/?tab=strategy&proposal=' . $proposalId,
         ]);
 
         return [
@@ -236,9 +248,16 @@ class ProactiveStrategyEngine
         if ($pendingApprovals > 0 || $pendingProposals > 0) {
             $total = $pendingApprovals + $pendingProposals;
             $actions[] = ['type' => 'pending_approvals', 'count' => $total];
+            $reminderMsg = "You have {$total} item(s) waiting for your approval. " .
+                "Your AI team is ready to work once you give the go-ahead. Check the Strategy Room.";
             $this->notifications->send($wsId, 'in_app', 'sarah_reminder', [
-                'message' => "You have {$total} item(s) waiting for your approval. " .
-                    "Your AI team is ready to work once you give the go-ahead. Check the Strategy Room.",
+                'message' => $reminderMsg,
+            ]);
+            // Wave 6 (2026-05-18). Mirror into Sarah's chat thread.
+            $this->agentMessages->postAsAgent($wsId, 'sarah', $reminderMsg, [
+                'notification_type' => 'sarah_reminder',
+                'pending_count'     => $total,
+                'action_link'       => '/app/?tab=strategy',
             ]);
         }
 
@@ -304,12 +323,21 @@ class ProactiveStrategyEngine
             ->count();
 
         // Template notification — zero credits
+        $weeklyMsg = "Weekly report from Sarah:\n\n" .
+            "Tasks completed: {$tasksCompleted}\n" .
+            "Credits used: {$creditsUsed}\n" .
+            "New leads: {$newLeads}\n\n" .
+            "Check the Strategy Room for recommendations.";
         $this->notifications->send($wsId, 'in_app', 'sarah_weekly', [
-            'message' => "Weekly report from Sarah:\n\n" .
-                "Tasks completed: {$tasksCompleted}\n" .
-                "Credits used: {$creditsUsed}\n" .
-                "New leads: {$newLeads}\n\n" .
-                "Check the Strategy Room for recommendations.",
+            'message' => $weeklyMsg,
+        ]);
+        // Wave 6 (2026-05-18). Mirror into Sarah's chat thread.
+        $this->agentMessages->postAsAgent($wsId, 'sarah', $weeklyMsg, [
+            'notification_type' => 'sarah_weekly',
+            'tasks_completed'   => $tasksCompleted,
+            'credits_used'      => $creditsUsed,
+            'new_leads'         => $newLeads,
+            'action_link'       => '/app/?tab=strategy',
         ]);
 
         return ['tasks_completed' => $tasksCompleted, 'credits_used' => $creditsUsed, 'new_leads' => $newLeads];
@@ -338,12 +366,20 @@ class ProactiveStrategyEngine
 
         $balance = $this->credits->getBalance($wsId);
 
+        $monthlyMsg = "It's time for your monthly strategy review. I'd like to gather the team.\n\n" .
+            "Estimated cost: {$estimate['total']} credits\n" .
+            "Your balance: " . ($balance['available'] ?? 0) . " credits\n\n" .
+            "Approve in the Strategy Room to start.";
         $this->notifications->send($wsId, 'in_app', 'sarah_monthly_proposal', [
             'user_id' => $userId,
-            'message' => "It's time for your monthly strategy review. I'd like to gather the team.\n\n" .
-                "Estimated cost: {$estimate['total']} credits\n" .
-                "Your balance: " . ($balance['available'] ?? 0) . " credits\n\n" .
-                "Approve in the Strategy Room to start.",
+            'message' => $monthlyMsg,
+        ]);
+        // Wave 6 (2026-05-18). Mirror into Sarah's chat thread.
+        $this->agentMessages->postAsAgent($wsId, 'sarah', $monthlyMsg, [
+            'notification_type' => 'sarah_monthly_proposal',
+            'estimated_credits' => $estimate['total'],
+            'balance'           => $balance['available'] ?? 0,
+            'action_link'       => '/app/?tab=strategy',
         ]);
 
         return ['proposal_id' => $proposalId, 'estimated_credits' => $estimate['total']];

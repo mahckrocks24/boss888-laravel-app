@@ -169,6 +169,14 @@ class RuntimeClient
      */
     public function aiRun(string $task, string $prompt, array $context = [], int $maxTokens = 1200): array
     {
+        // Wave 3 — R9 (2026-05-17). Per AI Assistant Operating Rules: the
+        // AI must consult workspace state before generating. If the caller
+        // passes workspace_id in context (the new pattern), auto-enrich
+        // the context array with brand voice, business profile, and the
+        // workspace KB summary. Silent fallback if anything fails — never
+        // breaks an existing generation that was working without enrichment.
+        $context = $this->enrichContextWithWorkspace($context);
+
         try {
             // /ai/run can run 30-60s for long generations (builder per-page, scene plans).
             // Use a generous timeout — most calls return faster anyway.
@@ -697,4 +705,90 @@ class RuntimeClient
         };
     }
 
+    /**
+     * Wave 3 — R9 (2026-05-17). Auto-enrich the aiRun context array with
+     * workspace state when a workspace_id is supplied. Pulls:
+     *   - business name + brand voice + services from workspaces + seo_settings
+     *   - cross-agent knowledge block from WorkspaceKnowledgeBase
+     *   - focus_keywords list from seo_keywords (top by volume)
+     *   - prior article titles (so the LLM avoids duplicates)
+     * Callers can override any field by setting it explicitly before invoking
+     * aiRun — only NULL/missing fields get filled. Idempotent: a second call
+     * with workspace_kb_loaded=true short-circuits.
+     */
+    private function enrichContextWithWorkspace(array $context): array
+    {
+        if (! isset($context['workspace_id'])) {
+            return $context;
+        }
+        if (! empty($context['workspace_kb_loaded'])) {
+            return $context;
+        }
+
+        $wsId = (int) $context['workspace_id'];
+        try {
+            $ws = DB::table('workspaces')->find($wsId);
+            if ($ws) {
+                $context['business_name'] = $context['business_name']
+                    ?? ($ws->business_name ?? $ws->name ?? null);
+            }
+
+            // Optional workspace settings — schema-tolerant; these keys may not exist.
+            $settingKeys = ['brand_voice', 'services', 'target_audience', 'location', 'business_type'];
+            $settings = DB::table('seo_settings')
+                ->where('workspace_id', $wsId)
+                ->whereIn('key', $settingKeys)
+                ->pluck('value', 'key')
+                ->toArray();
+            foreach ($settingKeys as $k) {
+                if (isset($settings[$k]) && ! isset($context[$k])) {
+                    $context[$k] = $settings[$k];
+                }
+            }
+
+            // Top focus keywords being tracked
+            if (! isset($context['tracked_keywords'])) {
+                $kws = DB::table('seo_keywords')
+                    ->where('workspace_id', $wsId)
+                    ->where('status', 'tracking')
+                    ->orderByDesc('volume')
+                    ->limit(8)
+                    ->pluck('keyword')
+                    ->all();
+                if (! empty($kws)) {
+                    $context['tracked_keywords'] = $kws;
+                }
+            }
+
+            // Recent articles — so the LLM doesn't recommend topics we already wrote
+            if (! isset($context['prior_article_titles'])) {
+                $titles = DB::table('articles')
+                    ->where('workspace_id', $wsId)
+                    ->orderByDesc('created_at')
+                    ->limit(8)
+                    ->pluck('title')
+                    ->all();
+                if (! empty($titles)) {
+                    $context['prior_article_titles'] = $titles;
+                }
+            }
+
+            // Cross-agent knowledge block (text-formatted for direct prompt inclusion)
+            if (! isset($context['workspace_knowledge'])) {
+                $kbBlock = app(\App\Core\Intelligence\WorkspaceKnowledgeBase::class)
+                    ->buildContextBlock($wsId, (string) ($context['for_agent'] ?? ''), 5);
+                if (! empty($kbBlock)) {
+                    $context['workspace_knowledge'] = $kbBlock;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('RuntimeClient::enrichContextWithWorkspace failed', [
+                'workspace_id' => $wsId,
+                'error'        => $e->getMessage(),
+            ]);
+        }
+
+        $context['workspace_kb_loaded'] = true;
+        return $context;
+    }
 }

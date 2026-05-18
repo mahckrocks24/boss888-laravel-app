@@ -43,6 +43,23 @@ class SeoAssistantService
     /** Hard cap on Redis list size (we trim from the head). */
     public const HIST_HARD_CAP = 200;
 
+    /**
+     * Wave 1 — R6 (2026-05-17). 90-day retention as per AI Assistant
+     * Operating Rules. Mirrored to the DB by appendTurn() in addition to
+     * the existing Redis cache.
+     */
+    public const DB_RETENTION_DAYS = 90;
+
+    /**
+     * Wave 1 — R8 (2026-05-17). Shown to the user once per user account
+     * before they can send their first message. Acceptance is persisted on
+     * users.seo_assistant_disclaimer_accepted_at.
+     */
+    public const DISCLAIMER_TEXT = "Conversations with the AI assistant are saved for 90 days to help us improve service and maintain audit history. They are accessible only by your workspace members. By continuing, you accept this retention policy.";
+
+    /** Per-call user_id captured from context so appendTurn() can persist it. */
+    private ?int $currentUserId = null;
+
     public function __construct(
         private RuntimeClient $runtime,
         private SeoService $seo,
@@ -62,6 +79,27 @@ class SeoAssistantService
     public function handle(int $wsId, string $message, array $context = []): array
     {
         try {
+            // Wave 1 — R5/R8 (2026-05-17). Capture user_id for chat-log
+            // persistence and check disclaimer acceptance before any
+            // processing happens. If the user has never accepted the chat
+            // retention disclaimer, return the disclaimer envelope and
+            // process nothing — UI must show the disclaimer modal and POST
+            // to /seo/assistant/accept-disclaimer before retrying.
+            $this->currentUserId = isset($context['user_id']) ? (int) $context['user_id'] : null;
+            if ($this->currentUserId !== null) {
+                $accepted = DB::table('users')
+                    ->where('id', $this->currentUserId)
+                    ->value('seo_assistant_disclaimer_accepted_at');
+                if ($accepted === null) {
+                    return [
+                        'response'             => self::DISCLAIMER_TEXT,
+                        'suggestions'          => [],
+                        'disclaimer_required'  => true,
+                        'disclaimer_text'      => self::DISCLAIMER_TEXT,
+                    ];
+                }
+            }
+
             // 1. Load all three persistent layers.
             $memory = $this->loadMemory($wsId);
             $pending = $this->loadPending($wsId);
@@ -386,6 +424,113 @@ class SeoAssistantService
         // Trim head if we ever exceed the hard cap.
         Redis::ltrim($this->histKey($wsId), -self::HIST_HARD_CAP, -1);
         Redis::expire($this->histKey($wsId), self::HIST_TTL_S);
+
+        // Wave 1 — R5 (2026-05-17). Mirror to DB for 90-day retention
+        // (Redis TTL is only 24h). Independent of Redis success — if
+        // Redis is down, DB still records for compliance. Never fatal.
+        try {
+            DB::table('seo_assistant_messages')->insert([
+                'workspace_id'         => $wsId,
+                'user_id'              => $this->currentUserId,
+                'role'                 => mb_substr($role, 0, 20),
+                'content'              => mb_substr($content, 0, 65535),
+                'action_proposed_json' => $action !== null ? json_encode($action, JSON_UNESCAPED_UNICODE) : null,
+                'created_at'           => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('[SEO Assistant] DB chat-log write failed', [
+                'workspace_id' => $wsId,
+                'user_id'      => $this->currentUserId,
+                'error'        => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Wave 5 (2026-05-18). Proactive notification — REFACTORED to use the
+     * platform-wide messaging infrastructure instead of the SEO-specific
+     * tables. Now writes to:
+     *
+     *   1. `agent_messages` (via AgentMessageService) with agent_slug='james'
+     *      → the unified messages-ui.js floater badge increments
+     *      → the agent profile thread shows the message
+     *      → the Messages section page shows the message
+     *
+     *   2. `notifications` (via NotificationService::dispatch) — only when
+     *      user_id is known. Adds cross-engine notification surface
+     *      visibility (in-app + optional email per user preferences).
+     *
+     * The Wave 4 seo_assistant_notifications table is no longer written;
+     * it remains in the schema for historical inspection only.
+     *
+     * @param string $type One of NotificationTypes::* (or compatible string).
+     *                     Maps loosely: article_done → AGENT_TASK_COMPLETED,
+     *                     audit_done → SEO_AUDIT_COMPLETE, etc.
+     */
+    public function notify(int $wsId, ?int $userId, string $type, string $title, string $body, ?string $actionLink = null, array $meta = []): void
+    {
+        // 1. Post to the agent's thread so the unified messages floater
+        //    badge lights up across all 3 surfaces (floater, profile, page).
+        $chatContent = $title;
+        if ($body !== '') { $chatContent .= "\n\n" . $body; }
+        try {
+            app(\App\Core\Agents\AgentMessageService::class)
+                ->postAsAgent($wsId, 'james', $chatContent, [
+                    'notification_type' => $type,
+                    'action_link'       => $actionLink,
+                ] + $meta);
+        } catch (\Throwable $e) {
+            Log::warning('[SEO Assistant] postAsAgent(james) failed', [
+                'workspace_id' => $wsId, 'type' => $type, 'error' => $e->getMessage(),
+            ]);
+        }
+
+        // 2. Also dispatch a typed platform notification so other surfaces
+        //    (notifications panel, email digest) see it. Requires user_id;
+        //    we fall back to the legacy ws-only send() if user is unknown.
+        try {
+            $notifSvc      = app(\App\Core\Notifications\NotificationService::class);
+            $typeMap       = [
+                'article_done'           => \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED,
+                'audit_done'             => \App\Core\Notifications\NotificationTypes::SEO_AUDIT_COMPLETE,
+                'link_inserted'          => \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED,
+                'link_suggestions_done'  => \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED,
+                'optimization_done'      => \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED,
+            ];
+            $platformType  = $typeMap[$type] ?? \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED;
+            $iconMap       = [
+                'article_done'          => '✍',
+                'audit_done'            => '⚡',
+                'link_inserted'         => '🔗',
+                'link_suggestions_done' => '💡',
+            ];
+            if ($userId !== null) {
+                $notifSvc->dispatch(
+                    $platformType,
+                    $userId,
+                    $title,
+                    $wsId,
+                    $body !== '' ? $body : null,
+                    ['notification_type' => $type] + $meta,
+                    $actionLink,
+                    'success',
+                    $iconMap[$type] ?? '🤖'
+                );
+            } else {
+                // Legacy path — workspace-only, no user targeting
+                $notifSvc->send($wsId, 'in_app', $platformType, [
+                    'title'              => $title,
+                    'body'               => $body,
+                    'action_url'         => $actionLink,
+                    'icon'               => $iconMap[$type] ?? '🤖',
+                    'notification_type'  => $type,
+                ] + $meta);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[SEO Assistant] platform notification dispatch failed', [
+                'workspace_id' => $wsId, 'type' => $type, 'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -527,6 +672,11 @@ class SeoAssistantService
      */
     private function buildProposal(int $wsId, string $action, string $message, array $memory): array
     {
+        // Wave 2 — R2 (2026-05-17). Run a tool sweep on every proposal so
+        // the narration can show what was checked. Cheap (one workspace DB
+        // round-trip — no external HTTP, no LLM call).
+        $sweep = $this->runPreflightSweep($wsId);
+
         $cost = match ($action) {
             'deep_audit'        => 3,
             'generate_article'  => 2,
@@ -538,8 +688,22 @@ class SeoAssistantService
             default             => 1,
         };
 
+        // Wave 2 — R1 (2026-05-17). Audit-freshness gate for generate_article.
+        // If the last audit is older than 7 days OR never run, fold a deep
+        // audit into the proposal as a prerequisite step. One combined
+        // approval, one combined credit total — the executor runs audit
+        // first, then article writing.
+        $requiresAuditFirst = false;
+        if ($action === 'generate_article') {
+            $daysSinceAudit = $sweep['days_since_audit'] ?? null;
+            if ($daysSinceAudit === null || $daysSinceAudit > 7) {
+                $requiresAuditFirst = true;
+                $cost += 3;  // add deep_audit cost
+            }
+        }
+
         $params = match ($action) {
-            'generate_article'  => $this->paramsForGenerateArticle($message, $memory),
+            'generate_article'  => $this->paramsForGenerateArticle($message, $memory, $sweep),
             'add_keyword'       => ['keyword' => $this->extractKeywordFromMessage($message)],
             'deep_audit'        => ['url' => $this->siteUrlFor($wsId)],
             'serp_analysis'     => ['keyword' => $this->extractKeywordFromMessage($message) ?: ($memory['tracked_keywords'][0] ?? '')],
@@ -550,11 +714,111 @@ class SeoAssistantService
         };
 
         return [
-            'action'      => $action,
-            'params'      => $params,
-            'cost'        => $cost,
-            'created_at'  => now()->toISOString(),
-            'confirmed'   => false,
+            'action'                 => $action,
+            'params'                 => $params,
+            'cost'                   => $cost,
+            'preflight'              => $sweep,
+            'requires_audit_first'   => $requiresAuditFirst,
+            'created_at'             => now()->toISOString(),
+            'confirmed'              => false,
+        ];
+    }
+
+    /**
+     * Wave 2 — R2 (2026-05-17). Aggregates the live state of the workspace
+     * the assistant needs to consult before proposing any action. Pure DB
+     * reads — no LLM, no external HTTP, no side effects. The output is
+     * folded into proposal narrations so the user sees what was checked.
+     */
+    private function runPreflightSweep(int $wsId): array
+    {
+        // Last completed deep audit
+        $audit = DB::table('seo_audits')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'completed')
+            ->whereNotNull('score')
+            ->orderByDesc('created_at')
+            ->first(['id', 'score', 'created_at']);
+        $daysSinceAudit = null;
+        if ($audit && $audit->created_at) {
+            $daysSinceAudit = (int) now()->diffInDays(\Carbon\Carbon::parse($audit->created_at), false);
+            $daysSinceAudit = abs($daysSinceAudit);
+        }
+
+        // Tracked keywords (top by volume)
+        $trackedKeywords = DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'tracking')
+            ->orderByDesc('volume')
+            ->limit(10)
+            ->get(['keyword', 'volume', 'current_rank', 'target_url'])
+            ->toArray();
+
+        // Tracked keywords NOT yet addressed (no matching content_index URL)
+        $unaddressedKeywords = [];
+        foreach ($trackedKeywords as $kw) {
+            if (empty($kw->target_url)) {
+                $unaddressedKeywords[] = $kw;
+            }
+        }
+
+        // Content gaps from clusters (gap_topics_json column)
+        $clusterGaps = [];
+        try {
+            $clusters = DB::table('seo_clusters')
+                ->where('workspace_id', $wsId)
+                ->whereNotNull('gap_topics_json')
+                ->orderByDesc('avg_score')
+                ->limit(5)
+                ->get(['cluster_name', 'gap_topics_json']);
+            foreach ($clusters as $c) {
+                $gaps = json_decode((string) $c->gap_topics_json, true) ?: [];
+                if (! empty($gaps)) {
+                    $clusterGaps[] = ['cluster' => $c->cluster_name, 'gaps' => array_slice($gaps, 0, 3)];
+                }
+            }
+        } catch (\Throwable $e) {
+            // gap_topics_json column may not exist in older schemas — non-fatal
+        }
+
+        // Site state aggregates
+        $stats = DB::table('seo_content_index')->where('workspace_id', $wsId)
+            ->selectRaw("COUNT(*) AS total_pages,
+                         ROUND(AVG(content_score),1) AS avg_score,
+                         SUM(CASE WHEN inbound_links = 0 THEN 1 ELSE 0 END) AS orphans,
+                         SUM(CASE WHEN (meta_description IS NULL OR meta_description='') THEN 1 ELSE 0 END) AS missing_meta,
+                         SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin_pages,
+                         SUM(CASE WHEN content_score < 50 AND content_score IS NOT NULL THEN 1 ELSE 0 END) AS below_50")
+            ->first();
+
+        // Active insights (top 3 by priority)
+        $insights = [];
+        try {
+            $insights = DB::table('seo_insights')
+                ->where('workspace_id', $wsId)
+                ->whereNull('dismissed_at')
+                ->orderBy('priority')
+                ->limit(3)
+                ->get(['title', 'description', 'priority'])
+                ->toArray();
+        } catch (\Throwable $e) {
+            // seo_insights may not exist on older deployments — non-fatal
+        }
+
+        return [
+            'days_since_audit'       => $daysSinceAudit,
+            'last_audit_score'       => $audit->score ?? null,
+            'last_audit_at'          => $audit->created_at ?? null,
+            'tracked_keywords'       => $trackedKeywords,
+            'unaddressed_keywords'   => $unaddressedKeywords,
+            'cluster_gaps'           => $clusterGaps,
+            'total_pages'            => (int) ($stats->total_pages ?? 0),
+            'avg_score'              => $stats->avg_score ?? null,
+            'orphans'                => (int) ($stats->orphans ?? 0),
+            'missing_meta'           => (int) ($stats->missing_meta ?? 0),
+            'thin_pages'             => (int) ($stats->thin_pages ?? 0),
+            'below_50'               => (int) ($stats->below_50 ?? 0),
+            'active_insights'        => $insights,
         ];
     }
 
@@ -567,15 +831,35 @@ class SeoAssistantService
     }
 
     /**
-     * For generate_article: pick the keyword from the user's message OR
-     * fall back to the first workspace service / first tracked keyword.
+     * For generate_article: pick the best target keyword. Precedence:
+     *   1. Keyword explicitly extractable from the user's message
+     *   2. Wave 2 R2 (2026-05-17) — top unaddressed tracked keyword (one
+     *      we're tracking but have no content for yet)
+     *   3. First cluster gap (high-value content opportunity)
+     *   4. First service / first tracked keyword (last-resort)
+     * Also folds the sweep summary into params so the executor can reference
+     * what was checked at proposal time.
      */
-    private function paramsForGenerateArticle(string $message, array $memory): array
+    private function paramsForGenerateArticle(string $message, array $memory, array $sweep = []): array
     {
         $keyword = $this->extractKeywordFromMessage($message);
+        $rationale = $keyword !== '' ? 'from your request' : '';
+
+        if ($keyword === '' && ! empty($sweep['unaddressed_keywords'])) {
+            $first = $sweep['unaddressed_keywords'][0];
+            $keyword = (string) ($first->keyword ?? '');
+            $rationale = "your top tracked keyword with no content yet";
+        }
+        if ($keyword === '' && ! empty($sweep['cluster_gaps'])) {
+            $firstCluster = $sweep['cluster_gaps'][0];
+            $keyword = (string) ($firstCluster['gaps'][0] ?? '');
+            $rationale = "a content gap in your '{$firstCluster['cluster']}' cluster";
+        }
         if ($keyword === '') {
             $keyword = $memory['services'][0] ?? ($memory['tracked_keywords'][0] ?? '');
+            $rationale = 'your business focus';
         }
+
         $services = is_array($memory['services'] ?? null) ? $memory['services'] : [];
         $extraContext = '';
         if (! empty($services)) {
@@ -583,66 +867,178 @@ class SeoAssistantService
                 . '. Only write about these services — do not invent products or services we do not offer.';
         }
         return [
-            'keyword'       => $keyword,
-            'tone'          => $memory['brand_voice'] ?? 'professional',
-            'language'      => 'English',
-            'word_count_min'=> 600,
-            'word_count_max'=> 900,
-            'faq_count'     => 2,
-            'include_cta'   => true,
-            'extra_context' => $extraContext,
-            'site_url'      => $this->siteUrlFor(/* will be resolved at execute time */0),
+            'keyword'             => $keyword,
+            'target_rationale'    => $rationale,
+            'tone'                => $memory['brand_voice'] ?? 'professional',
+            'language'            => 'English',
+            'word_count_min'      => 600,
+            'word_count_max'      => 900,
+            'faq_count'           => 2,
+            'include_cta'         => true,
+            'extra_context'       => $extraContext,
+            'site_url'            => $this->siteUrlFor(/* resolved at execute time */ 0),
         ];
     }
 
     /**
      * Lightweight keyword extraction — strips imperative verbs + common
      * sentence furniture. Returns '' when nothing usable remains.
+     *
+     * Wave 2 fix (2026-05-17): determiner groups (me/us) and (an/the/a)
+     * are now independently optional so "write me an article about X"
+     * strips both correctly. Previously the regex required ONE of
+     * (me|us|an|the) which meant "me an" couldn't match.
      */
     private function extractKeywordFromMessage(string $message): string
     {
         $t = trim($message);
+        // Strip "Write [me|us]? [a|an|the]? article about " etc.
         $t = preg_replace(
-            '/^(?:please\s+)?(?:can you\s+|could you\s+)?(?:write|generate|create|plan|run|do|add|track|build)\s+(?:me\s+|us\s+|an?\s+|the\s+)?(?:article|blog|post|piece|content|outline)\s+(?:about|on|for|titled|covering)\s+/i',
+            '/^(?:please\s+)?(?:can you\s+|could you\s+)?(?:write|generate|create|plan|run|do|add|track|build)\s+(?:me\s+|us\s+)?(?:an?\s+|the\s+)?(?:article|blog|post|piece|content|outline)\s+(?:about|on|for|titled|covering)\s+/i',
             '',
             $t
         ) ?? $t;
+        // Strip bare verb forms
         $t = preg_replace(
-            '/^(?:please\s+)?(?:can you\s+|could you\s+)?(?:write|generate|create|plan|run|do|add|track)\s+(?:me\s+|us\s+|an?\s+|the\s+)?/i',
+            '/^(?:please\s+)?(?:can you\s+|could you\s+)?(?:write|generate|create|plan|run|do|add|track)\s+(?:me\s+|us\s+)?(?:an?\s+|the\s+)?/i',
             '',
             $t
         ) ?? $t;
+        // Word-count qualifiers that are not the keyword: "400-word", "500 word"
+        $t = preg_replace('/^\d+[-\s]?word\s+/i', '', $t) ?? $t;
         $t = preg_replace('/^"|"$/u', '', $t) ?? $t;
         $t = trim($t, " .,!?;:\"'");
-        // Cap length so we don't pass paragraphs to keyword fields.
         if (mb_strlen($t) > 120) $t = mb_substr($t, 0, 120);
         return $t;
     }
 
+    /**
+     * Wave 2 — R4 (2026-05-17). Conversational, friendly narrations. User
+     * is a client with zero SEO knowledge — keep it warm and clear, not a
+     * form. The phrase "Shall I proceed?" is preserved verbatim because
+     * the UI's Approve/Decline button renderer scans for it (seo.js
+     * _lgseAppendApprovalRow → /shall i proceed/i).
+     */
     private function narrateProposal(array $proposal, array $memory): string
     {
         $action = $proposal['action'];
-        $cost = $proposal['cost'];
+        $cost   = $proposal['cost'];
         $params = $proposal['params'] ?? [];
+        $sweep  = $proposal['preflight'] ?? [];
+        $needsAudit = (bool) ($proposal['requires_audit_first'] ?? false);
 
         return match ($action) {
-            'generate_article' => sprintf(
-                "I will write an SEO article about **%s**, aligned with your services (%s). This uses **%d credits** (text + featured image). Shall I proceed?",
-                (string) ($params['keyword'] ?? '(topic)'),
-                implode(', ', array_slice($memory['services'] ?? [], 0, 4)) ?: 'your business',
+            'generate_article' => $this->narrateGenerateArticle($params, $sweep, $cost, $needsAudit),
+            'deep_audit'       => sprintf(
+                "Sure — I'll run a full health check on your website. I'll scan up to 50 pages and look for everything: missing meta tags, slow pages, broken links, schema gaps, you name it. You'll get back a prioritised fix list.\n\n"
+                . "%s\n\n"
+                . "This costs **%d credits**. **Shall I proceed?**",
+                $this->describeAuditFreshness($sweep),
                 $cost
             ),
-            'deep_audit'       => "I will run a full SEO audit of {$params['url']}. This uses **{$cost} credits**. Shall I proceed?",
-            'serp_analysis'    => "I will run a SERP / competitor analysis for **{$params['keyword']}**. This uses **{$cost} credit**. Shall I proceed?",
-            'ai_report'        => "I will generate an AI SEO report for your site. This uses **{$cost} credits**. Shall I proceed?",
-            'link_suggestions' => "I will generate internal-link suggestions across your site. This uses **{$cost} credit**. Shall I proceed?",
-            'generate_meta'    => "I will bulk-generate meta titles + descriptions for pages missing them. This uses **{$cost} credit**. Shall I proceed?",
+            'serp_analysis'    => sprintf(
+                "Good call. I'll take a close look at who's currently ranking on Google for **%s** in your market — what kind of content they have, and where there are gaps you could fill.\n\n"
+                . "You'll end up with the top 10 competing pages, their strengths, and a few angles you can attack.\n\n"
+                . "Cost: **%d credit**. **Shall I proceed?**",
+                (string) ($params['keyword'] ?? '(keyword)'),
+                $cost
+            ),
+            'ai_report'        => sprintf(
+                "Happy to put together an AI report on your site's SEO health — what's working, what's not, and the top 5 things to do next. It's a shareable summary (good for sending to a manager or team).\n\n"
+                . "Cost: **%d credits**. **Shall I proceed?**",
+                $cost
+            ),
+            'link_suggestions' => sprintf(
+                "Great idea. I'll scan your pages and find places where adding an internal link would help — both for readers and for Google. I'll suggest specific anchor text and where to insert each one (and you approve them one by one — I won't insert anything without you).\n\n"
+                . "Why this matters: internal links spread authority across your site and help Google understand which pages matter most.\n\n"
+                . "Cost: **%d credit**. **Shall I proceed?**",
+                $cost
+            ),
+            'generate_meta'    => sprintf(
+                "Yep, I can knock those out. I'll auto-write meta titles and descriptions for the **%d page(s)** currently missing them. These are the snippets Google shows in search results — they make a real difference in click-through.\n\n"
+                . "Cost: **%d credit**. **Shall I proceed?**",
+                (int) ($sweep['missing_meta'] ?? 0),
+                $cost
+            ),
             'add_keyword'      => sprintf(
-                "I will start tracking the keyword **%s**. Adding a keyword is **free**. Shall I proceed?",
+                "Done — I'll start tracking **%s**. From now on you'll see where you rank on Google, how that changes week-to-week, and which of your pages are competing for it.\n\n"
+                . "This one's **free**. **Shall I proceed?**",
                 (string) ($params['keyword'] ?? '(keyword)')
             ),
-            default            => "I will run {$action}. Cost: **{$cost} credits**. Shall I proceed?",
+            default            => "I'll run `{$action}` for you. Cost: **{$cost} credits**. **Shall I proceed?**",
         };
+    }
+
+    /**
+     * Generate-article narration. Conversational, explains what was checked,
+     * why this target, and whether an audit runs first. Always reminds the
+     * user that nothing publishes automatically (per operating rule 5).
+     */
+    private function narrateGenerateArticle(array $params, array $sweep, int $cost, bool $needsAudit): string
+    {
+        $keyword   = (string) ($params['keyword'] ?? '(topic)');
+        $rationale = (string) ($params['target_rationale'] ?? '');
+        $minW      = (int)    ($params['word_count_min'] ?? 600);
+        $maxW      = (int)    ($params['word_count_max'] ?? 900);
+
+        // What was checked (short, conversational)
+        $checkLines = [];
+        if (! empty($sweep['total_pages'])) {
+            $checkLines[] = "your {$sweep['total_pages']} indexed pages";
+        }
+        $kwCount = count($sweep['tracked_keywords'] ?? []);
+        if ($kwCount > 0) {
+            $checkLines[] = "{$kwCount} tracked keyword" . ($kwCount === 1 ? '' : 's');
+        }
+        if (! empty($sweep['cluster_gaps'])) {
+            $checkLines[] = count($sweep['cluster_gaps']) . " topic gap(s)";
+        }
+        if (($sweep['last_audit_score'] ?? null) !== null) {
+            $checkLines[] = "your last audit";
+        }
+        $checkSummary = empty($checkLines)
+            ? "your workspace state"
+            : implode(', ', $checkLines);
+
+        $rationaleText = $rationale !== ''
+            ? " — picked this one because it's {$rationale}"
+            : '';
+
+        $auditBlock = '';
+        if ($needsAudit) {
+            $days = $sweep['days_since_audit'] ?? null;
+            $auditAge = $days === null
+                ? "I haven't audited your site yet"
+                : "your last audit was {$days} days ago";
+            $auditBlock = "Quick heads-up: {$auditAge}. The rules I work under say I should re-check before writing so the article targets real, current opportunities (not stale data). So I'll run a full site audit first, then write the article.\n\n";
+        }
+
+        return $auditBlock
+            . sprintf(
+                "Happy to write that. I'll put together a **%d–%d word** article targeting **%s**%s, in your business voice.\n\n"
+                . "I had a look at %s before deciding.\n\n"
+                . "After the draft is ready, I'll come back and offer you a featured image and a few internal-link ideas — each with its own approval, nothing happens behind your back. The article saves as a **draft** in your library; nothing publishes until you specifically tell me to.\n\n"
+                . "Total: **%d credits**. **Shall I proceed?**",
+                $minW, $maxW, $keyword, $rationaleText,
+                $checkSummary,
+                $cost
+            );
+    }
+
+    /** One-line phrase explaining WHY now is a good time for an audit. */
+    private function describeAuditFreshness(array $sweep): string
+    {
+        $days = $sweep['days_since_audit'] ?? null;
+        if ($days === null) {
+            return "I haven't run an audit on this site yet — this will be the baseline reading I compare future runs against.";
+        }
+        if ($days > 30) {
+            return "Your last audit was {$days} days ago. The web changes constantly and a fresh read will catch any recent regressions.";
+        }
+        if ($days > 7) {
+            return "Your last audit was {$days} days ago — long enough that page changes, broken links, or new issues may have crept in.";
+        }
+        return "Your last audit was {$days} days ago — fresh, but you asked, so I'll re-run.";
     }
 
     /**
@@ -654,6 +1050,24 @@ class SeoAssistantService
         $params = $pending['params'] ?? [];
 
         try {
+            // Wave 2 — R1 (2026-05-17). For generate_article when the
+            // freshness gate flagged an audit-first run, execute the deep
+            // audit first, then proceed to article generation. Single
+            // approval, two execution steps. Audit failures stop the chain
+            // and report the audit error.
+            if ($action === 'generate_article' && ! empty($pending['requires_audit_first'])) {
+                $auditResult = $this->execDeepAudit($wsId, ['url' => $this->siteUrlFor($wsId)]);
+                $articleResult = $this->execGenerateArticle($wsId, $params, $memory);
+                return [
+                    'narration' => "**Step 1 — Audit complete.** " . $auditResult['narration']
+                                 . "\n\n**Step 2 — Article written.** " . $articleResult['narration'],
+                    'result'    => [
+                        'audit'   => $auditResult['result'] ?? [],
+                        'article' => $articleResult['result'] ?? [],
+                    ],
+                ];
+            }
+
             return match ($action) {
                 'generate_article'  => $this->execGenerateArticle($wsId, $params, $memory),
                 'deep_audit'        => $this->execDeepAudit($wsId, $params),
@@ -765,11 +1179,46 @@ class SeoAssistantService
             ]);
         }
 
-        $imgLabel = $imgOk ? '✓ featured image' : '✗ image gen timed out (text only)';
+        $imgLabel = $imgOk ? 'with a featured image' : 'text only (image gen timed out)';
         $idTag    = $articleId ? " (#{$articleId})" : '';
+        $narration = "Done — your article **\"{$title}\"** is saved as a draft{$idTag}, {$words} words {$imgLabel}. **{$cu} credit"
+            . ($cu === 1 ? '' : 's') . " used.** Nothing has been published — it's sitting in your library waiting for your review.";
+
+        // Wave 4 (2026-05-18). Proactive notification on completion so the
+        // user sees a badge on the FAB even when the chat drawer is closed.
+        if ($articleId) {
+            $this->notify(
+                $wsId, $this->currentUserId, 'article_done',
+                "Article ready: \"{$title}\"",
+                "Your draft is in the library — {$words} words, {$imgLabel}. Open the assistant to review and decide what's next.",
+                "/app/?tab=write&article={$articleId}",
+                ['article_id' => $articleId, 'word_count' => $words, 'credits_used' => $cu]
+            );
+        }
+
+        // Wave 3 — R6 (2026-05-17). Engine chain — after writing an
+        // article, proactively offer the next sensible step: scanning for
+        // internal-link opportunities. The user can decline by saying
+        // "skip" or approve with "yes" to continue the chain. Each link
+        // application after that still needs its own approval (rule 5).
+        $nextProposal = null;
+        if ($articleId) {
+            try {
+                $nextProposal = $this->buildProposal($wsId, 'link_suggestions', '', $memory);
+                // Mark the chain origin so downstream logic can group / report
+                $nextProposal['chain_origin'] = [
+                    'action'     => 'generate_article',
+                    'article_id' => $articleId,
+                ];
+            } catch (\Throwable $e) {
+                Log::debug('[SEO Assistant] could not build follow-up link_suggestions proposal: ' . $e->getMessage());
+            }
+        }
+
         return [
-            'narration' => "Done. Article created{$idTag}: **{$title}** ({$words} words, {$imgLabel}). Draft saved. **{$cu} credit" . ($cu === 1 ? '' : 's') . " used.**",
-            'result'    => [
+            'narration'     => $narration,
+            'next_proposal' => $nextProposal,
+            'result'        => [
                 'article_id'   => $articleId,
                 'title'        => $title,
                 'word_count'   => $words,
@@ -787,6 +1236,17 @@ class SeoAssistantService
         $score = (int) ($result['score'] ?? 0);
         $crit  = (int) ($result['critical_count'] ?? $result['critical'] ?? 0);
         $warn  = (int) ($result['warnings_count'] ?? $result['warnings'] ?? 0);
+
+        // Wave 4 (2026-05-18). Proactive notification on completion.
+        $tier = $score >= 80 ? 'great' : ($score >= 60 ? 'good' : ($score >= 40 ? 'needs work' : 'critical'));
+        $this->notify(
+            $wsId, $this->currentUserId, 'audit_done',
+            "Audit complete — site scored {$score}/100 ({$tier})",
+            "{$crit} critical issues and {$warn} warnings found. Open the assistant for the prioritised fix list, or jump to the Audit tab to review.",
+            "/app/?tab=seo&sub=audit",
+            ['score' => $score, 'critical' => $crit, 'warnings' => $warn]
+        );
+
         return [
             'narration' => "Audit complete. Score: **{$score}/100**. {$crit} critical issues, {$warn} warnings. **3 credits used.**",
             'result'    => $result,
@@ -817,6 +1277,17 @@ class SeoAssistantService
     {
         $result = $this->seo->generateLinkSuggestions($wsId, $params);
         $count = is_array($result) ? count($result) : 0;
+
+        if ($count > 0) {
+            $this->notify(
+                $wsId, $this->currentUserId, 'link_suggestions_done',
+                "Found {$count} internal-link " . ($count === 1 ? 'opportunity' : 'opportunities'),
+                "Each one comes with the suggested anchor text and target page. Open the assistant and say 'show me the links' — I'll walk through them one by one for your approval.",
+                "/app/?tab=seo&sub=links",
+                ['count' => $count]
+            );
+        }
+
         return [
             'narration' => "Generated **{$count} internal-link suggestions**. View them in the Links tab. **1 credit used.**",
             'result'    => ['count' => $count],
@@ -887,12 +1358,26 @@ class SeoAssistantService
         $this->appendTurn($wsId, 'user', $message);
         $exec = $this->executeAction($wsId, $pending, $memory);
         $this->clearPending($wsId);
+
+        $narration = (string) ($exec['narration'] ?? '');
+
+        // Wave 3 — R6 (2026-05-17). If the executor returned a follow-up
+        // proposal (e.g. article done → suggest internal links next),
+        // save it as the new pending and append its narration so the user
+        // can keep chaining with simple yes/no answers. Each chained step
+        // is still its own approval — no auto-execution.
+        if (! empty($exec['next_proposal']) && is_array($exec['next_proposal'])) {
+            $this->savePending($wsId, $exec['next_proposal']);
+            $followText = $this->narrateProposal($exec['next_proposal'], $memory);
+            $narration .= "\n\n---\n\n**Next step (optional):**\n\n" . $followText;
+        }
+
         // Refresh memory after the action (articles + tasks)
         $memory = $this->refreshLiveMemory($wsId, $memory);
         $this->saveMemory($wsId, $memory);
-        $this->appendTurn($wsId, 'assistant', $exec['narration']);
+        $this->appendTurn($wsId, 'assistant', $narration, $exec['next_proposal'] ?? null);
         return [
-            'response'    => $exec['narration'],
+            'response'    => $narration,
             'suggestions' => [],
             'executed'    => true,
             'result'      => $exec['result'] ?? null,
@@ -945,18 +1430,81 @@ class SeoAssistantService
 
         $reply = (string) ($resp['response'] ?? "I'm having trouble connecting right now. Check your SEO dashboard for the latest insights.");
 
-        // If the LLM offered to execute (recognised verbs in reply), surface
-        // any matching action as pending so the next turn can confirm.
+        // Wave 2 — R3 (2026-05-17). If the LLM offered to execute, surface
+        // it as a pending proposal so the user can just say "yes" next
+        // turn. Critically, when the LLM recommends an ALTERNATIVE topic
+        // (e.g. "I can't write about X, but I could write about Y"), the
+        // proposal must use the LLM's recommended Y, not the user's
+        // original X. extractKeywordFromReply pulls the recommendation.
         $inferredAction = $this->detectActionInReply($reply);
         $pendingForTurn = null;
         if ($inferredAction !== null) {
-            $proposal = $this->buildProposal($wsId, $inferredAction, $message, $memory);
+            // For generate_article we want the LLM's recommended topic, not
+            // the user's rejected one. For other actions, the user's
+            // message is the source.
+            $proposalSource = $inferredAction === 'generate_article'
+                ? ($this->extractKeywordFromReply($reply) ?: $message)
+                : $message;
+            $proposal = $this->buildProposal($wsId, $inferredAction, $proposalSource, $memory);
             $this->savePending($wsId, $proposal);
             $pendingForTurn = $proposal;
+
+            // R3: append the proposal narration so the UI can render
+            // Approve/Decline (the trigger is the "Shall I proceed?"
+            // phrase that _lgseAppendApprovalRow scans for).
+            $proposalText = $this->narrateProposal($proposal, $memory);
+            $reply = rtrim($reply) . "\n\n---\n\n" . $proposalText;
         }
 
         $this->appendTurn($wsId, 'assistant', $reply, $pendingForTurn);
         return ['response' => $reply, 'suggestions' => []];
+    }
+
+    /**
+     * Wave 2 — R3 helper (2026-05-17). When the LLM recommends an
+     * alternative topic in a free-text reply ("Write an article targeting
+     * your top tracked keyword 'AI marketing Dubai'..."), extract the
+     * recommended topic so the proposal uses it instead of the user's
+     * rejected topic. Looks for quoted phrases first, then "targeting X"
+     * patterns.
+     */
+    private function extractKeywordFromReply(string $reply): string
+    {
+        // Pattern A: phrase inside paired quotes (straight " or smart " ' )
+        // Plain straight apostrophe (') is excluded because it appears in
+        // contractions (can't, don't) and would mis-match.
+        if (preg_match('/"([A-Za-z0-9][^"]{3,80}?)"|\x{201C}([A-Za-z0-9][^\x{201D}]{3,80}?)\x{201D}|\x{2018}([A-Za-z0-9][^\x{2019}]{3,80}?)\x{2019}/u', $reply, $m)) {
+            $candidate = trim($m[1] ?: ($m[2] ?? $m[3] ?? ''));
+            if ($candidate !== '' && mb_strlen($candidate) > 3) {
+                return $candidate;
+            }
+        }
+        // Pattern B: "about/targeting/on X" — allows the captured topic to
+        // start with a quote character (which is then stripped). Also
+        // strips leading "article on/about" preamble that sometimes leaks
+        // in from natural LLM phrasing.
+        if (preg_match('/\b(?:targeting|about|on|covering|around)\s+(?:your\s+|the\s+|an?\s+)?(?:top\s+)?(?:tracked\s+)?(?:keyword\s+)?([\'"\x{2018}\x{201C}A-Za-z][^\.\,;:!?\(\)]{2,80})/iu', $reply, $m)) {
+            $candidate = trim($m[1]);
+            // If the candidate starts with a quote, truncate at the matching close quote.
+            $firstChar = mb_substr($candidate, 0, 1);
+            $quoteMap = ["'" => "'", '"' => '"', "\u{2018}" => "\u{2019}", "\u{201C}" => "\u{201D}"];
+            if (isset($quoteMap[$firstChar])) {
+                $closePos = mb_strpos($candidate, $quoteMap[$firstChar], 1);
+                if ($closePos !== false) {
+                    $candidate = mb_substr($candidate, 1, $closePos - 1);
+                }
+            }
+            // Strip trailing qualifiers
+            $candidate = preg_replace('/\s+(currently|right now|today|—|-)\s.*$/i', '', $candidate);
+            // Strip leading "article on/about" preamble
+            $candidate = preg_replace('/^(?:an?\s+|the\s+)?(?:article|blog|post|piece|content)\s+(?:on|about|for|covering)\s+/i', '', (string) $candidate);
+            // Strip leading + trailing quote characters of any flavor
+            $candidate = trim($candidate, " \t\n\r\0\x0B.,!?;:\"'\x{2018}\x{2019}\x{201C}\x{201D}");
+            if ($candidate !== '' && mb_strlen($candidate) > 3) {
+                return $candidate;
+            }
+        }
+        return '';
     }
 
     /**
@@ -1173,8 +1721,15 @@ class SeoAssistantService
         $p[] = 'Never reference tabs that do not exist (no GSC tab, no Traffic tab, no Backlinks tab).';
 
         $p[] = '';
-        $p[] = '════ TONE ════';
-        $p[] = 'Warm, direct, expert. 2-4 sentences typical. Markdown is fine. End with one concrete next step or question.';
+        $p[] = '════ TONE & VOICE ════';
+        $p[] = 'You are talking with a small business owner who knows their business but NOT SEO.';
+        $p[] = 'Be friendly, warm, and conversational — like a knowledgeable friend who happens to do SEO, not a corporate report.';
+        $p[] = 'Use "you" and "I" naturally. Contractions are fine ("I\'ve", "you\'re", "let\'s").';
+        $p[] = 'Open with a warm acknowledgement when appropriate ("Good question.", "Sure thing,", "Happy to help with that.").';
+        $p[] = 'Explain SEO concepts in plain language — no jargon without an inline definition.';
+        $p[] = '2-4 sentences typical, longer only when explaining something genuinely complex.';
+        $p[] = 'End with a clear next step or question. Markdown bullets/bold for clarity, not decoration.';
+        $p[] = 'Never sound bureaucratic. Avoid "kindly", "as per", "please be advised". You\'re a partner, not a clerk.';
 
         return implode("\n", $p);
     }

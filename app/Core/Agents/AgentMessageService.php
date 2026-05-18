@@ -1,0 +1,116 @@
+<?php
+
+namespace App\Core\Agents;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * AgentMessageService — central writer for agent-to-user messages.
+ *
+ * Wave 5 (2026-05-18). Single entry point for any agent (James, Sarah,
+ * Priya, etc.) to post a message that lands in the user's view via the
+ * platform messages-ui.js floater, the agent profile thread, and the
+ * unified Messages page. All three surfaces consume the same
+ * `agent_messages` table — so writing here lights up all three at once.
+ *
+ * Pair with NotificationService::dispatch() when the message ALSO
+ * deserves a cross-engine notification (e.g. task completed); use
+ * postAsAgent() alone when it's purely a chat update.
+ *
+ * Counts as unread when role='agent' AND read_at IS NULL — see
+ * /messages/unread-count route. Once the user opens that agent's
+ * thread, /messages/{slug}/read flips read_at and the badge clears.
+ */
+class AgentMessageService
+{
+    /**
+     * Post a message AS an agent (proactive update from the agent to the
+     * user). Returns the new agent_messages row id on success.
+     *
+     * @param int    $wsId        Workspace id
+     * @param string $agentSlug   Lowercase agent slug — must exist in `agents` table
+     * @param string $content     Message body (markdown OK). Up to 65k chars; truncated.
+     * @param array  $metadata    Optional structured metadata (action_link, related_ids, etc.)
+     */
+    public function postAsAgent(int $wsId, string $agentSlug, string $content, array $metadata = []): ?int
+    {
+        $agentSlug = strtolower(trim($agentSlug));
+        if ($agentSlug === '') {
+            return null;
+        }
+        // Validate slug — silently skip if agent unknown (no DB error)
+        $agent = DB::table('agents')->where('slug', $agentSlug)->first(['id', 'name']);
+        if (! $agent) {
+            Log::warning('AgentMessageService::postAsAgent — unknown agent slug', [
+                'workspace_id' => $wsId, 'slug' => $agentSlug,
+            ]);
+            return null;
+        }
+
+        try {
+            $id = DB::table('agent_messages')->insertGetId([
+                'workspace_id'  => $wsId,
+                'agent_slug'    => $agentSlug,
+                'sender'        => $agent->name,
+                'content'       => mb_substr($content, 0, 65535),
+                'role'          => 'agent',
+                'metadata_json' => empty($metadata) ? null : json_encode($metadata, JSON_UNESCAPED_UNICODE),
+                'read_at'       => null,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+            return (int) $id;
+        } catch (\Throwable $e) {
+            Log::warning('AgentMessageService::postAsAgent — insert failed', [
+                'workspace_id' => $wsId, 'slug' => $agentSlug, 'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Convenience for posting from the user side. Mirrors the existing
+     * agent-messages POST route's write — exposed here so service code
+     * can record user inputs without duplicating insert logic.
+     */
+    public function postFromUser(int $wsId, string $agentSlug, ?int $userId, string $content): ?int
+    {
+        $agentSlug = strtolower(trim($agentSlug));
+        try {
+            $id = DB::table('agent_messages')->insertGetId([
+                'workspace_id'  => $wsId,
+                'agent_slug'    => $agentSlug,
+                'sender'        => $userId ? ('user:' . $userId) : 'user',
+                'content'       => mb_substr($content, 0, 65535),
+                'role'          => 'user',
+                'metadata_json' => null,
+                'read_at'       => now(),  // user messages are read by default
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+            return (int) $id;
+        } catch (\Throwable $e) {
+            Log::warning('AgentMessageService::postFromUser — insert failed', [
+                'workspace_id' => $wsId, 'slug' => $agentSlug, 'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Mark all unread messages from a given agent as read for the
+     * workspace. Called by the /messages/{slug}/read route — exposed
+     * here so service-layer code can also clear without duplication.
+     */
+    public function markAgentThreadRead(int $wsId, string $agentSlug): int
+    {
+        $agentSlug = strtolower(trim($agentSlug));
+        return DB::table('agent_messages')
+            ->where('workspace_id', $wsId)
+            ->where('agent_slug', $agentSlug)
+            ->where('role', 'agent')
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+    }
+}

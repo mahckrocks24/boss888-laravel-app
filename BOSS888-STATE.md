@@ -1,242 +1,130 @@
-# BOSS888-STATE.md
+# BOSS888 — Living State Doc
 
-**Last updated:** 2026-05-09 (Intelligence patch 40ee45a + Assistant wire c433ccd)
-**Updated by:** Claude Code (orientation session)
-**Rule:** Refresh this file at every session end. Never let it go stale.
+> Single source of truth for current platform state. Updated end of each session.
+> Last update: **2026-05-18 (Waves 1–9 + 13 complete)**
 
 ---
 
-## Stack
+## Build state
 
-- Laravel: 11.51.0
-- PHP: 8.3.30 (NTS, OPcache 8.3.30, built 2026-05-05)
-- Runtime: 2.28.0 (Railway, phase 2)
-- Agents: 21 (dmm + 20 specialists)
-- Tools: 58 runtime tools
-- ai_run task types: 11 (`chat_json` LIVE — Phase 0.17 shipped)
-- Internal routes: 3 (`/internal/health`, `/internal/image/generate`, `/internal/vision/analyze`)
-- DB: `levelup_staging` @ 127.0.0.1 (MySQL 8.0.45)
-- Redis: 6 (PECL-built ext, see project_redis_apt_untracked_files.md)
-- Droplet: 134.209.93.41 AMS3 (`Level-Up-Growth`, Ubuntu 22.04)
-- SSH key: `~/.ssh/do_levelup`
-- Mail: Postmark PENDING APPROVAL (Test mode) ⏳ — infrastructure FULLY WIRED 2026-05-07: `symfony/postmark-mailer` v7.4.9 + `symfony/http-client` v7.4.9 installed, `POSTMARK_TOKEN` set, DKIM ✅ + Return-Path ✅ verified for `levelupgrowth.io`. Account is in Test mode pending Postmark manual approval (expected within hours). In Test mode, sends only deliver to addresses within verified domains (e.g. `admin@levelupgrowth.io` worked); external recipients will be rejected until approval. Once approval lands, no code change needed — mail starts flowing automatically.
-- Notifications v2: LIVE 2026-05-07 — extended `notifications` table (+9 cols, backward-compat with existing send()), new `notification_preferences` table, NotificationService extended with dispatch/broadcast/unreadCount/markAllRead, queued SendNotificationEmail job + Blade template, NotificationController +4 endpoints, AdminNotificationController + admin broadcast, `lu:notifications:purge` command (daily 90-day retention), trigger wiring shipped at: StripeService (5 events, 9 sites incl. dev paths), AuthController (signup → admin), EngineExecutionService (agent task complete/fail/approval, gated by source==agent).
-- Contact form pipeline (T3.2): LIVE 2026-05-08 — `POST /api/public/contact/{subdomain}` (rate-limited 10/min/IP), CRM write to `contacts` with email-based dedup + polymorphic `activities` touchpoint logging, LEAD_CONTACT_FORM + LEAD_DUPLICATE_FLAGGED notifications, BuilderRenderer::renderContact() rewritten with proper `name=` attrs + `fetch()` handler + success/error UI, blog gating (Growth+ plans only via `content_writing=true`; workspace 1 exempt), LEAD_CHATBOT_CAPTURE notification added to ChatbotResponseService::captureLead.
-- Media Library (T3.1): UNBLOCKED 2026-05-08 — MediaController SQL bug fixed (removed `industry`, `description`, `use_count` references — columns no migration ever added; library() now returns 200). 17 platform hero images backfilled into `media` table (category=hero, is_platform_asset=1, source=platform). 6 mis-flagged Chef Red ws=2 rows corrected. All 17 hero JPGs regenerated via DALL-E 3 (1792x1024 hd) replacing earlier mockup screenshots — photorealistic stock photography, ~2-3MB per image, prompts + provenance recorded in media.prompt + metadata_json.
-- Thumbnails + media delete + admin generate (T3.1D): LIVE 2026-05-08 (commit b19774a) — `ThumbnailService` (GD 400×300 cover-crop JPEG q85) + `ThumbnailController` (self-healing cache: nginx try_files miss → PHP generates + saves → 2nd+ request served by nginx directly) + `lu:thumbnails:backfill` artisan command (96/112 generated, 16 skipped due to pre-existing Chef Red path drift). DELETE `/api/media/{id}` (workspace-scoped) + DELETE `/api/admin/media/{id}` (admin) — both remove original + thumbnail + DB row. POST `/api/admin/media/generate` (admin DALL-E) generates with inline thumbnail so picker grid never shows blank cards.
-- Admin Media Library Generate UI (T3.8): LIVE 2026-05-08 (commit 8320d5d) — `✦ Generate` button (cyan) added to admin Media Library toolbar alongside `+ Upload`. Modal: prompt textarea (1000-char counter, red >900) + size (square / landscape / portrait) + quality (standard / hd) + category dropdown + optional filename. Live cost preview (6-state matrix $0.04–$0.12). Auto-filename = first 5 prompt words slugified + epoch. Submit POSTs JSON to `/api/admin/media/generate`; success → toast `✓ Image generated — $X.XX charged` + grid refresh; backdrop click locked while busy. JS syntax verified via `node --check` (2,462-line SPA block clean).
-- Security Perimeter Patch 1 (commit 6a6a921, 2026-05-08): post-DR-audit hardening. (1) Replaced `auth:sanctum` → `auth.jwt` on 6 builder routes (publish/unpublish/custom-domain x3/check-subdomain) — was causing HTTP 500 "Auth guard [sanctum] is not defined"; now returns 401 cleanly. (2) Created `config/auth.php` (was missing entirely; cause of guard resolution failure). (3) Throttle `10,5` on `/api/auth/login` + `5,15` on `/api/auth/forgot-password` — verified 429 on 11th attempt via direct-origin curl. (4) `AuthService::forgotPassword` no longer returns plain `reset_token` in JSON response; instead sends a Postmark email via new `resources/views/emails/password-reset.blade.php` template. (5) 4 `.env.bak*` files moved to `/root/quarantine/20260508/`.
-- Scheduler + TrustProxies Patch 2 (commit c916bb3, 2026-05-08): (1) Laravel scheduler enabled via `www-data` crontab (`* * * * * cd /var/www/levelup-staging && php artisan schedule:run >> /var/log/laravel-scheduler.log 2>&1`). All 8 scheduled commands now fire — Sarah proactive (daily/weekly/monthly), `trial:expire`, `seo:track-ranks`, `credits:replenish-house`, `house:weekly-proactive`, `lu:notifications:purge`. Verified within 60s of install ("No scheduled commands are ready to run" = OK, none due now; lu:notifications:purge fires next at 0 0 * * *). (2) `App\Http\Middleware\TrustProxies` created with full Cloudflare IPv4 + IPv6 ranges (15 v4 blocks + 7 v6 blocks). Prepended in `bootstrap/app.php` so `request->ip()` resolves the real client IP from `CF-Connecting-IP` / `X-Forwarded-For`, not the CF edge node. Verified: standalone PHP test confirms `203.0.113.42` extracted from synthetic CF-Connecting-IP header (vs `162.158.42.5` REMOTE_ADDR). Direct-origin throttle test with fixed CF-Connecting-IP shows clean 9→0 decrement and HTTP 429 on 11th attempt. End-to-end through-CF test now emits `x-ratelimit-remaining` headers (was absent before TrustProxies).
-- Assistant wire + memory re-seed (commit c433ccd, 2026-05-09): added `RuntimeClient::assistant()` method (`app/Connectors/RuntimeClient.php:315`) targeting `/internal/assistant` — runtime endpoint that provides workspace context (lu-context.js: WP REST + Redis long-term, 15min cache), conversation history persistence keyed by conversation_id, multi-specialist consultation, and tool-router (58 tools). **Per-agent chat handler** (`routes/api.php:556-625` — Sarah/James/Priya/etc.) rewired with hybrid pattern: `assistant()` for the conversational reply (gains memory + tool awareness) + `chatJson()` as a SECOND call when message reads action-like and assistant didn't surface `create_tasks`, preserving the TaskService task-creation path from Patch Intel Fix 2. Conversation IDs namespaced per-agent: `agent_chat_ws_{wsId}_{slug}`. **LevelUp Assistant widget** (`routes/api.php:3760-3795`) — single `assistant()` call, conversation namespace `widget_ws_{wsId}`. **workspace-memory.js layer**: probed runtime source (Runtime/runtime592026/...) and confirmed POST shape is `{wsId, field, value}` (NOT `{workspace_id, key, value}` as audit spec assumed); re-seeded both workspaces (ws=1 LevelUp Growth + ws=2 Chef Red Raymundo) with correct identities — verified GET returns the new data. **KNOWN BLOCKER**: `/internal/assistant` reads workspace identity via `lu-context.js::getWorkspaceContext` which fetches from WordPress (`fetchWPContext(wp_url, wp_secret)`) and ignores both the `context` we pass AND the workspace-memory Redis key we seeded. Live test: both ws=1 + ws=2 still receive Shukran Group identity. **Runtime-side fix needed on Railway** (one of: unset WP_URL env, retire upstream WP source, OR patch lu-context.js merge to prefer Redis). Until that ships, the rewire is architecturally correct but user-visible identity is still Shukran. Backups at `/root/{RuntimeClient,api}.bak-asst-20260508-2251.php`.
-- Deep Intelligence Layer — 8 fixes (commit 40ee45a, 2026-05-09): targeted patch from the Deep Intelligence Layer Audit. **Fix 1**: `AgentReasoningService.php:120` `$memory->getAll()` → `$memory->all()` (was throwing silently — every agent prompt got "Memory unavailable."; now renders the 4 seeded ws=1 facts correctly). **Fix 2**: 3 raw task-insert sites rewired through `TaskService::create($wsId, $data)` — `routes/api.php:584` (Sarah-chat), `app/Core/Orchestration/AgentMeetingEngine.php:664` (post-meeting synthesis), `app/Core/Orchestration/SarahOrchestrator.php:247` (createPlan). New tasks now hit the canonical pipeline (capability check, approval mode, idempotency hash, audit log, dispatcher). The 12 stuck pending tasks from earlier session were intentionally NOT auto-redispatched (no idempotency keys → duplicate-execution risk). **Fix 3**: hourly `credits:reap-orphans` scheduler entry added to `bootstrap/app.php`; immediate manual release of 6 orphan reservations via PHP CLI dropped `credits.reserved_balance` for ws=1 from 60 → 0 (60 credits unfrozen). **Fix 4**: `2026_05_09_000100_create_api_usage_logs_table` migration ran in 168ms — restores RuntimeClient::logApiUsage telemetry sink (was silently catching INSERT failures). `global_knowledge` table already exists (was misreported as `global_knowledge_base` in audit). **Fix 5**: 5 new provider classes under `app/Core/Intelligence/Providers/` (SEO, CRM, Social, Billing, Content) each owning their domain table boundary; `AgentMeetingEngine::buildWorkspaceContext` refactored to aggregate them + workspace_memory facts. Verified live: ws=1 context now returns industry, location, content counts, credit balance, and 4 memory facts in a structured prompt. **Fix 6**: `UPDATE workspaces SET onboarded=1 WHERE id IN (1,2)` (with TODO note for production: proper onboarding-completion logic with checkpoints + readiness validation). Sarah's daily/weekly/monthly proactive cron now has workspaces to operate on. **Fix 7**: `RuntimeClient::chatJson:236` enforces "json" keyword — appends "Respond with valid JSON only. No prose, no markdown fences." to system prompt when neither system nor user prompt contains the literal word "json". Fixes the 6 silent DeepSeek 400 rejects logged 2026-05-08. **Fix 8**: `seo:track-ranks` schedule was already in place (verified existing). 12 files modified, +402/-52 lines. Per-component intel score uplift estimated 4.1/10 → ~7.1/10. Backups at `/root/*.bak-intel-20260508-2236.{php}`.
-- i18n — auto language detection across all user-facing chat surfaces (commit 0321f7b, 2026-05-09): added canonical `PromptTemplates::languageRule()` static method (returns a short directive naming 11 explicit languages — Arabic, German, French, Chinese, Korean, Hindi, Urdu, Tagalog, Japanese, Spanish, Portuguese — plus catch-all "never default to English"). Injected into 5 sites: (1) `PromptTemplates::agentReasoning()` — covers all 21 agents via AgentReasoningService; (2) `PromptTemplates::strategyMeeting()` — covers SarahOrchestrator + AgentMeetingEngine; (3) `ArthurService::chat()` — concat to systemPrompt + JSON-keys-stay-English note; (4) `routes/api.php` 4 inline prompts (lines 517, 541, 3774, 3853 — Sarah-chat + per-agent + widget primary + widget fallback); (5) `ChatbotContextBuilder::renderSystemPrompt` — language directive embedded at line 140 of the conversion-focused heredoc so visitors get answers in their own language. **Verified live with 5-language smoke test against ArthurService::chat**: Arabic مرحبا → Arabic reply, German Hallo → German reply, French Bonjour → French reply, Korean 안녕하세요 → Korean reply, Tagalog Kumusta → Tagalog reply. Script detection confirmed correct UTF-8 output for non-Latin scripts. NOT in this patch: tool/utility prompts that don't face users directly (Studio AI design, BlueprintService scene planning, EmailBuilder content gen, BellaController admin) — they return content/JSON for downstream rendering, so language matching is less critical and deferred. Backups: `/root/{PromptTemplates,ArthurService,api,ChatbotContextBuilder}.php.bak-i18n-20260509-0818`.
-- MediaService phantom columns + Arabic UTF-8 sanitize (commit 87b1a09, 2026-05-09): the `media` table has NO `industry`, `mood`, `orientation`, `use_count`, `alt_text`, or `description` columns — `MediaService.php` was written against a schema that doesn't exist, crashing every Arthur build call with `SQLSTATE[42S22]: Column not found: industry`. **`findOrGenerate()`** rewritten to use `JSON_CONTAINS(tags, ?)` for industry filtering (canonical taxonomy column on media); mood filter dropped entirely (no column anywhere); workspace scoping prefers per-workspace then platform assets. **`registerFull()`** INSERT cleaned: 6 phantom columns folded into `tags` JSON array (industry first so JSON_CONTAINS matches) + `metadata_json` (industry/mood/orientation/alt_text/description). Verified: `findOrGenerate(restaurant/architecture/dental, hero)` all return real Patch 9A-D seeded heroes; `buildFromChat(1, [restaurant test])` returned `website_id=4, type=complete` (was crashing before). **Arabic UTF-8 sanitize** in ArthurService::chat: `mb_convert_encoding($reply, 'UTF-8', 'UTF-8')` strips invalid sequences; raw-text fallback (`$result['text']` / `$result['raw']`) before falling through to hiccup message. Verified Arabic test "هل يمكنك التحدث باللغة العربية؟" returns valid 85-char Arabic reply. Backups: `/root/{MediaService,ArthurService}.bak-{mediafix,arthurfix}-*.php`.
-- Arthur AI conversation redesign + assistant wire (commits 04e31e7 + a00084e, 2026-05-09): replaced 175-line scripted Arthur dispatcher (8 response-type branches) with `ArthurService::chat()` — pure LLM dialogue via RuntimeClient::chatJson, system prompt instructs natural ChatGPT-style conversation, returns `{type, reply, ready_to_build, build_data, history}`. **No regex, no extraction, no scripted steps.** Added `buildFromChat()` public wrapper around existing private `generateWebsite()` so route can trigger website creation when chat() signals ready_to_build. Route `/api/builder/arthur/message` rewritten from 8-line delegation to clean chat() + auto-buildFromChat handler. Frontend `_arthurSend()` reduced from 175 → 83 lines (clean LLM-conversation handler with history + redirect-on-complete). Cache-bust `LU_CFG.version` 5.5.9 → 5.6.0-arthur-ai. **Patch a00084e**: bumped `arthur-chat.js?v=4.5.0` → `?v=5.0.0-arthur-ai` (browser was caching pre-fix file); widened reply extraction to 8 possible runtime response shapes (parsed.reply/response/message/content + top-level reply/response/content/text); 10-turn history slice for speed. **Also wired `RuntimeClient::assistant()` method** for `/internal/assistant` endpoint with full workspace context support; Sarah-chat handler hybrid (assistant for reply + chatJson for task extraction); LevelUp Assistant widget single-call. **Runtime memory ghost cleared**: WP_SECRET restored on Railway, `lu:mem:ws:*` keys DEL'd from Railway Redis, `workspace:*:memory` re-seeded with LevelUp Growth + Chef Red identities. Runtime patch (Option A — context override) applied locally to `C:\Users\User\Runtime\runtime592026\extracted\levelup-runtime2-main\index.js` line 1213 — owner pushed to GitHub, Railway redeployed. Verified: `/internal/assistant` returns "You're in the SaaS / AI Marketing Platform business. Your company is LevelUp Growth, based in Dubai, UAE." for ws=1 and "Chef Red Raymundo" for ws=2.
-- Patch 10 — Frontend Rewiring + Payload Contracts (commit a2d1fbd, 2026-05-09): 8 critical alignment fixes from the Section X forensic audit. **Fix 1**: defined `window.LU_API_BASE = ''` in core.js:423 — kills the `/api/api/write/*` 404 pattern that broke the entire Write engine and parts of Creative (video/credits/cost-map endpoints). Verified via curl: `/api/write/articles` returns 401 (was 404). **Fix 2**: builder.js:1101 (`_t3ArthurSend`) now tries the canonical Patch 8.5 endpoint `POST /api/builder/pages/{pid}/arthur-edit` first when `bldCurrentPageId` is set, falling back to the legacy regex closure on the 422 legacy gate (Chef Red era sites). Adapts the {success, sections, reply, actions_applied} response shape to the legacy {method, message} shape so existing UI rendering branches keep working. **Fix 3**: builder.js:1782 (`bldSave`) unwraps `layout: {sections}` to top-level `sections` so `BuilderService::updatePage` (BuilderService.php:205) actually persists. The previous nested shape returned `{updated:true}` as a lie while `pages.sections_json` was never written — THE most consequential single bug in the X.5 alignment finding. **Fix 4**: notification bell `_notifPoll()` switched from `/notifications?unread=true` reading `d.total_unread` (never returned) to `/notifications/unread-count` reading `d.count`. Bell badge now reflects real unread state instead of perpetual zero. **Fix 5**: calendar.js 3 payload sites (create event, edit event, create booking slot) renamed `start_at`/`end_at`/`event_type` → `starts_at`/`ends_at`/`category` to match `calendar_events` table schema. Verified: INSERT works. **Fix 6**: marketing.js sequence step payload aligned to `sequence_steps` schema — `step_type/delay_days/subject/body` → `type/delay_hours/email_subject/email_body_html` (with delay_days × 24 conversion). Sequence create payload `trigger_event` → `trigger_type` to match `sequences.trigger_type` column. Display sites updated for backward compat. **Fix 7**: social.js publish honesty — `socialPublishPost` and the create-then-publish flow now check `response.published` / `response.success` and show "Publish failed (<reason>). Saved as draft — connect a social account to retry." instead of unconditional "Post published!" toast. Create payload also sends `platform` (singular, first checked) alongside `platforms` (array, forward-compat) to match `social_posts.platform` varchar column. **Fix 8**: crm.js Leads tab now fetches `/crm/contacts` in parallel and merges into `_crm.leads` with shape adaptation + `source='website_form'` tag — customers' inbound leads from their own websites now appear in the CRM UI (T3.2 contact form pipeline writes to `contacts`, not `leads`). **Cache-bust**: `LU_CFG.version` 5.5.7 → 5.5.8-p10 in `public/app/index.html`. **Backups**: `/root/{core,write,builder,calendar,marketing,social,crm,creative}.bak-p10-20260508-2143.js`. **Per-engine alignment integrity uplift** (estimated): Builder 50→75%, Arthur 35→70%, Write 5→80%, Calendar 35→80%, Marketing 55→80%, Social 50→70%, Notifications 30→80%, CRM 60→80%. **NOT in this patch** (Section X gaps remaining): live Stripe end-to-end test, BuilderRenderer section type expansion 7→15, real social platform publishing (Meta/LinkedIn/X APIs), APP888 rewire from `/wp-json/lu/v1` → `/api/exec-api`, ManualEdit `/api/creative/generate` route fix, Chatbot admin SPA construction.
-- Platform Fixes — agent tone, memory, subdomain, admin error states (commit f2dc952, 2026-05-09): four owner-flagged issues fixed in one patch. **Fix 1**: rewrote `agentReasoning()` and `strategyMeeting()` in `app/Core/LLM/PromptTemplates.php` with the 8-rule tone standard — lead with answer, ban hedging ("I think"/"maybe"/"might"), commit-language ("I'll" not "I can"), no filler endings, structured format (numbered steps + bullets + bold key terms + tables), MENA/Dubai aware. Sarah's plan format now locks owner+deliverable+timeline+dependency per step. **Fix 2**: workspace_memory ws=1 was EMPTY (the typo "Levelupgroth.io" lived in `agent_messages` chat history rows id=3,4 — not memory). Per owner direction: didn't mutate chat history; instead seeded 4 canonical facts (business_name=LevelUp Growth, domain=levelupgrowth.io, industry=SaaS / AI Marketing Platform, location=Dubai, UAE). Also updated `workspaces.id=1` (name + business_name + industry + location, was all NULL). Adapted SQL to actual schema (`key`+`value_json` not spec's `key_name`+`content`). **Fix 3**: `websites.id=2` subdomain `levelupgrowth.levelupgrowth.io` → `platform.levelupgrowth.io` (clean tenant slug; staging.levelupgrowth.io path NOT chosen because it would conflict with admin app + API routes via PublishedSiteMiddleware). CF DNS still needs CNAME `platform → staging` to route the new hostname. **Fix 4**: hardened `api()` helper in `resources/views/admin/app.blade.php` to handle network errors + non-2xx + JSON parse errors → returns null + console.error instead of throwing. Added `renderApiError(label)` helper that renders friendly error card with Try Again link. Replaced **all 16 silent `if (!data) return;` bails** with friendly error states (14 page handlers → renderApiError, 2 toast helpers → showAdminToast). Backups: `/root/PromptTemplates.bak-fixes-20260508-2114.php` + `/root/app.blade.bak-fixes-20260508-2114.php`. **Flagged for Patch 10**: `core.js:540` hardcodes `var AGENTS = {...}` with only 6 of 21 agents — frontend equivalent of the AgentMeetingEngine selectTeam 6→20 issue.
-- Templates Standards Retrofit Phase E Patch 9E (commit 03b5b61, 2026-05-09): **all 27 canonical templates** (+ 3 bonus = 30 total) **now pass all 4 platform standards** ✅. Per-template ensured: (1) `social_fields[]` array of 7 platforms in manifest + 7 distinct `social_*` data-field anchors in template.html footer, (2) blog support — top-level `blog{enabled,posts_per_page}` marker + `blocks[blog]` with `config.enabled=true`, (3) viewport meta + @media queries (already OK on all 30 from earlier work), (4) contact form wired to `/api/public/contact/{subdomain}` via `handleContactSubmit` JS handler. **Coverage breakdown**: 13 originals (per spec) — added social_fields + footer 7 anchors, blog block + top marker, contact form section + JS; 4 Phase A revivals (extended) — same; 13 Phase B/C/D forks (extended) — added top-level blog marker + canonical contact form section (already had social_fields + blog block + footer anchors). **it_services special case**: had its own contact form with a noop demo JS handler — rewired the existing `handleContactSubmit(form,e)` to post to `/api/public/contact/{subdomain}` with field-name mapping (name→firstname). **Schema deviation noted**: spec showed `social_fields` as a dict; canonical (and what platform reads) is an array of `{slug,label,key}` — used the canonical form, which still passes the spec's `'social_fields' in str(d)` audit. **Stats**: 60 files modified, ~116 retrofit edits, +26K / -16K lines, **0 OpenAI cost** (pure HTML/JSON edits). Pre-patch backup: `/root/templates-pre-patch9e-20260508-2038.tar.gz` (195K). **Patch 9 fully closed** — A+B+C+D+E.
-- Templates 27-Industry Phase D Patch 9D (commits 589f211 → 1f37009 → a00187d → 98ac5ba, 2026-05-09): **9 from-scratch templates** built by forking the dental base structure and customising end-to-end. Group 1 — restaurant (#C0392B Maison Rouge), catering (#E67E22 Lumière), resort (#0891B2 Coral Reef Maldives). Group 2 — short_term_rental (#0F172A Skyline Residences), travel_agency (#0369A1 Bel Étranger). Group 3 — tutoring (#7C3AED Beacon Tutoring), online_courses (#059669 Beacon Online Academy). Group 4 — retail_shop (#BE185D Atelier Rose), ecommerce (#1D4ED8 Northpoint Goods). Each template ships with: ~620-line manifest with full content (services × 6, team × 4, process × 4, certs × 6, gallery_1..5), ~720-line template.html (nav labels swapped per industry, footer h4s swapped, gallery section inserted before contact), 1 DALL-E 3 hd hero (1792×1024, $0.12) + 5 DALL-E 3 std supporting cards (1024×1024, $0.04 each). Inherited from dental: 7-platform social_fields, blog block enabled, mobile responsive @media, contact form. **Cost**: $1.08 heroes + $1.80 cards = **$2.88 Phase D total**. **State**: 30 templates on disk (27 canonical + 3 bonus: automotive/childcare/pet_services), 30 builder_default_assets rows (1:1), 9 new hero JPGs, 45 new card JPGs in `storage/app/public/template-images/{slug}/`, all DB rows committed (9 hero + 45 template_image media rows). **Coverage: 27 of 27 canonical industries ✅**. Mid-batch network outage (~21:50 UTC) caused 3 heroes + 33 cards to fail with HTTP 0; idempotent retry recovered all of them cleanly. **training_center audit** (read-only finding from this patch): one of the 13 original templates that doesn't yet meet the 4 platform standards (social_fields=0, blog block disabled, no contact form). Flagged for Phase E retrofit pass. **Patch 9 cumulative cost**: $3.84 OpenAI ($0.48 Phase A + $0.48 Phase B+C + $2.88 Phase D).
-- Templates 27-Industry Phase B+C Patch 9B+C (commit c766cbe, 2026-05-08): **3 healthcare forks** (dental #0EA5E9 / medical_clinic #10B981 / aesthetic_clinic #8B5CF6) forked from `boss888-patches\2026-04-18-tpl-healthcare\` + **1 barbershop fork** (#1F2937 dark + #D97706 amber accent) forked from the new beauty_salon template. Each fork has differentiated copy (services, hero, doctor/team intro), variant-specific colour theming, and **platform-standard upgrades**: 7-platform social footer (FB/IG/LI/X/YT/TikTok/WhatsApp), blog teaser block (config.enabled=true), inherited mobile-responsive @media queries, inherited contact form. Barbershop additionally strips "salon" wording (regex case-aware swap) and overrides chalk+carbon vars for dark theme. **4 new heroes** (DALL-E 3 hd 1792×1024, $0.48 total, 25-28s each). DB: `builder_default_assets` ids 22-25, `media` ids 118-121. **State after**: 21 templates on disk, 21 builder_default_assets rows, 18 of 27 canonical (was 14).
-- Templates 27-Industry Phase A Patch 9A (commit 2401364, 2026-05-08): foundation work for the canonical 27. **5 renamed in place** (cleaning→home_services, education→training_center, hospitality→hotel, real_estate_broker→real_estate_agency, technology→it_services) — manifests, hero JPGs, `builder_default_assets`, `media` table all updated atomically. **4 retired** (finance/logistics/photography/wellness deleted from disk + DB; bonus industries automotive/childcare/pet_services kept per spec). **4 revived from local `boss888-patches\2026-04-18-tpl-*\`** (beauty_salon, gym, event_venue, interior_design) — full `template.html` (44-52KB) + `manifest.json` (24-31KB) copied + slug-adapted. **4 new heroes generated** via DALL-E 3 hd 1792×1024 (~$0.48 total, 24-34s each). **State**: 17 templates on disk, 17 `builder_default_assets` rows, all with template.html + manifest.json. Coverage vs canonical 27: **14 of 27** (5 already correct + 5 renamed + 4 revived). 13 missing — Phases B/C/D pending. **NOT in this patch**: platform-standards upgrade (blog/mobile/social footer/contact form on every template) deferred to a follow-up upgrade pass; phases B/C/D deferred per scope check.
-- Arthur JSON Edit Contract Tier 1 Patch 8.5 (commit 5222338, 2026-05-08): the new canonical Arthur edit path. **`POST /api/builder/pages/{pageId}/arthur-edit`** mutates `sections_json` deterministically — runtime returns `{actions: [...], reply}`, each action validated against `SectionSchema` and applied atomically inside a `DB::transaction` with snapshots before+after via `BuilderSnapshotService`. Six ops supported: `update_text / update_field / update_image / add_section / remove_section / reorder_section`. Max 5 actions per response. **`SectionSchema`** declares 15 types (header/hero/features/cta/contact_form/blog_list/footer/gallery/services/team/testimonials/faq/pricing/stats/generic) with required + optional fields per type; validate() returns `{ok, errors?}`. Section data shape is **FLAT** (`{type, heading, body}`), matching the canonical sections_json on page id=2 and what BuilderRenderer reads — adapted from the spec's nested-`data` shape to keep the renderer compatible. **Legacy regex closure at `routes/api.php:6973` UNTOUCHED** per spec — Chef Red and other static-only sites still use it; that closure retires in Patch 8.6 (T3.4). **422 legacy gate**: pages with empty/missing sections_json return `{error:..., legacy:true}` HTTP 422 — verified live by temp-zeroing page 1, hitting endpoint, restoring. **End-to-end verified**: `editPage(2, "Change the hero heading to: Transform Your Business Today", 0)` returned success+reply+1 action applied, `arthur_edit_before` (685 bytes) + `arthur_edit_after` (692 bytes) snapshots captured, hero heading mutated in DB, page restored to original state. Cross-workspace request returns HTTP 404. Legacy chef-red.levelupgrowth.io still serves HTTP 200.
-- Builder Architecture Lock Tier 1 Patch 8 (commit 715c36f, 2026-05-08): `pages.sections_json` is now the only canonical source of truth for builder content. Static HTML downgraded to render-output-only. (1) **Migration adds `page_id`, `sections_json` (longtext), `reason` columns to `canvas_states`** — coexists with existing ManualEdit usage (keyed on `asset_id`) without column collision. Index on `(page_id, created_at)` for snapshot history. (2) **NEW `BuilderSnapshotService`** with `snapshot/restore/history/pruneOldSnapshots`. Restore auto-snapshots current state as `pre_restore` so it's itself undoable. Prune only touches rows with `page_id IS NOT NULL`, leaving ManualEdit canvas states alone. (3) **NEW `BuilderSnapshotController`** + 2 routes: `GET /api/builder/pages/{pageId}/history` and `POST /api/builder/pages/{pageId}/restore/{stateId}`. Both auth.jwt-gated and workspace-scoped via `pages → websites.workspace_id` join. (4) **`BuilderService::updatePage()`** now auto-snapshots before+after every sections-changing edit. (5) **`ArthurService::generateWebsite()`** now populates `sections_json` on every page row it inserts using new `buildDefaultSectionsForPage(slug, data)` helper. New Arthur sites are pure-canonical from now on; old sites stay on static HTML until T3.4. (6) **Static-HTML `templates->deploy()` call + `arthur-edit` closure** marked `LEGACY: T3.4` in source — retire in Patches 8.5/8.6. (7) **Weekly snapshot pruning** scheduler entry (`builder:prune-snapshots`, Sunday 00:00 UTC, 30-day retention). (8) **`docs/BUILDER-ARCHITECTURE.md`** (131 lines) — architecture law documented. **Verified end-to-end**: migration ran cleanly, snapshot service round-trip works, HTTP `GET /history` returns 200 with workspace-scoped result, `BuilderService::updatePage` correctly captures 2 snapshots (`before_edit + after_edit`) per sections-changing call, schedule:list shows `builder:prune-snapshots`. **Tier 2 + Tier 3 tracked on PLAN.md as future patches** (Arthur structured-JSON edits + Chef Red migration + static-HTML retirement).
-- Sequence Runner + Automation Executor Patch 7 (commit 5538f6f, 2026-05-08): the two marketing-engine stubs are now real. (1) **NEW migration `sequence_enrollments`** — there was no enrollment mechanism in the schema, so I built one. Columns: `workspace_id, sequence_id, contact_id, enrolled_at, current_step_order, last_sent_at, status, completed_at`. Unique `(ws+seq+contact)` prevents double-enroll. Indexed for runner's hot query path. (2) **NEW command `lu:sequences:run`** at `app/Console/Commands/RunSequences.php` — iterates active sequences + active enrollments; checks per-step due time as `(last_sent_at OR enrolled_at) + delay_hours ≤ NOW()`; sends via existing `emails.notification` Blade through Postmark; advances `current_step_order`; marks `completed` when past the final step. Per-step failures log + don't advance (retried next tick). Scheduled `->everyFifteenMinutes()` in `bootstrap/app.php`. (3) **`MarketingService::triggerAutomation()`** stub replaced with real action dispatcher. Walks `automations.steps_json` and runs `send_email | notify_owner | add_tag | enroll_in_sequence` actions. Each action + each automation try/catch-wrapped so one failure doesn't abort the batch. (4) **Triggers wired**: `PublicContactController::submit` fires `form_submitted` after the existing notification dispatch; `ChatbotResponseService::captureLead` fires `lead_captured` after `notifyChatbotLeadCapture`. Both wrapped so a misconfigured automation can never break form submission or lead capture. **Verified end-to-end**: test automation row → standalone PHP trigger → `triggered=1` returned, notification row id=4 fired (`system.admin_broadcast / "Test automation fired"`), `execution_count` incremented 0→1. Test rows cleaned up. `lu:sequences:run --dry` runs cleanly with no data ("No active sequences. Nothing to do.").
-- UptimeRobot monitoring ACTIVE (2026-05-08): owner provisioned external HTTPS probe of the platform. 5-minute polling interval. No code or repo change — pure dashboard config. Combined with Sentry (errors) + DO snapshots (recovery) + offsite Spaces (backup), the full observability + durability layer is now live: failures get caught (Sentry), staleness gets flagged (UptimeRobot), and recovery has a 5-minute path (DO snapshot). Owner action progress: 5 of 7 done. Still pending: CF SSL → Full, OpenAI/DeepSeek spend caps, DO billing alert + 2nd payment method.
-- Sentry observability ACTIVE (commit 7c3da0d, 2026-05-08): DSN populated in `.env` (EU ingest, project `php-laravel` under `levelupgrowth.sentry.io`). `config/sentry.php` published from vendor and committed. **Test event verified**: `php artisan sentry:test` sent event ID `c8775d1de53d442bbab434957f5b288f`. Errors will now land in the Sentry dashboard automatically — no further code change needed. Combined with the DO Spaces wiring + DO snapshot cron, the durability + observability stack is materially complete.
-- DO Spaces offsite backup ACTIVE (commit 5376515, 2026-05-08): owner provided DO Spaces credentials + DO API token. `/root/.s3cfg` deployed (perms 600), `daily-backup.sh` updated to push to `s3://boss888-backups/db-backups/` with 30-day offsite rotation alongside the existing 7-day local rotation. **Verified live**: `db-20260508-1521.sql.gz` (97 KB) landed in the bucket on first cron-equivalent run. `.env` populated with `DO_SPACES_KEY/SECRET/BUCKET/REGION/ENDPOINT` (server-only, NOT committed); placeholders added to `.env.example`. **DO snapshot cron also activated**: `/root/.do-token` populated (perms 600), test snapshot fired via API and confirmed `in-progress` (action timestamp `2026-05-08T15:13:12Z`, droplet=569018530). Daily snapshot now runs at 02:00 UTC. **Durability is now real** — droplet death recovery time drops from 85 min (Path B rebuild) to 5–15 min (Path A snapshot restore) per `RUNBOOK-RESTORE.md`. Owner-action checklist progress: 3 of 7 items DONE (DO API token ✓, DO Spaces ✓, daily backup pipeline ✓); still pending: CF SSL → Full, Sentry DSN, UptimeRobot monitor, OpenAI/DeepSeek spend caps, DO billing alert + 2nd payment method.
-- Durability + Observability Patch 6 (commit e84175c, 2026-05-08): the May-4-must-never-repeat patch. (1) **RUNBOOK-RESTORE.md** (283 lines, lives at repo root + git-tracked) — documented full restore procedure with two paths (snapshot restore = 5min RTO, full rebuild = 85min RTO). Lists every secret needed, every untracked file, every credential. Step-by-step with verified commands. (2) **`scripts/daily-backup.sh`** — reads DB creds from `.env` (no baked-in passwords), mysqldump → gzip → `/root/backups/db-{TS}.sql.gz`, 7-day auto-rotation, optional s3cmd offsite push when `/root/.s3cfg` is configured. **Verified working**: today's 714 KB dump compressed to 96 KB. (3) **`scripts/do-snapshot.sh`** — calls DO API to snapshot the droplet, reads droplet ID from cloud-init metadata, sources `DO_API_TOKEN` from `/root/.do-token` (placeholder, owner provides). Errors cleanly without crashing when token missing. (4) **Root crontab now has 3 entries** — daily-backup at 01:00, do-snapshot at 02:00, certbot renew at 03:00 (Patch 3). (5) **`sentry/sentry-laravel ^4.25` installed** via composer; `SENTRY_LARAVEL_DSN=` placeholder added to `.env.example`. Once owner provides DSN, errors will land in Sentry without further code change. (6) **`/root/MONITORING-SETUP.md`** (server-only, not committed) — 7-item owner checklist: CF SSL → Full, DO Spaces creation, DO API token, Sentry DSN, UptimeRobot monitor, OpenAI/DeepSeek spend caps, DO billing alert + second payment method (the May 4 root cause). **Local-only durability is live; offsite + observability are pending owner-action items.**
-- Marketing Truth + Agent Fallback Patch 5 (commit 6447997, 2026-05-08): (1) **8 unsupported marketing claims removed** from both blade templates AND the static HTML files actually served. Critical finding mid-patch: routes/web.php at lines 48/52/56/etc. serves `public/marketing/*.html` (NOT the blade templates). My initial blade edits weren't reaching live pages — same fixes had to be applied to the static HTMLs. Specifics: home (`results-guaranteed` → `outcome-focused`; `run automatically — 24/7` → `Sarah proactively monitors and recommends`), features (`Multi-platform social posting (Instagram, LinkedIn, TikTok, X)` → `Native publishing to FB/IG; drafts for LinkedIn, TikTok, X to post manually`; `automation sequences` → `AI-assisted copy`; platform grid relabeled), specialists (Tyler `LinkedIn Marketing Expert` → `B2B Content Lead`; Aria `TikTok & Reels Creator` → `Visual Content Lead`; Jordan `Twitter/X & Community` → `Community & Social Listening`; Maya `drip campaigns` → `Email campaigns and newsletters`; Kai `Drip sequences` → `Email-campaign nurturing`; Marcus `creates and schedules across IG/LI/FB/TikTok` → `posts natively to FB/IG; drafts post-ready content for LinkedIn/X/TikTok`). (2) **`PromptTemplates::strategyMeeting()` DB-failure fallback** at lines 138-146 no longer hardcodes the 5-of-20 specialist list (James/Priya/Marcus/Elena/Alex). Now returns `"Your team is temporarily unavailable. Reason about general capabilities only."` so Sarah degrades gracefully rather than silently excluding 15 specialists when cache:clear races with a stuck DB connection. (3) **Plans DB verified** — already matches the canonical $39 add-on spec (Free/Starter/AI Lite/Growth: chatbot_included=false + addon_eligible=true; Pro/Agency: included=true). No PlanSeeder change needed; the audit's "mismatch" was vs. stale memory not vs. canonical spec. **Verified live**: curl `https://staging.levelupgrowth.io/` shows `outcome-focused` + `proactively monitors` (not `results-guaranteed` + `automatically 24/7`); `/specialists` shows `B2B Content Lead` + `Visual Content Lead` (not `LinkedIn Marketing Expert` + `TikTok & Reels Creator`); HTTP 200 on home + `/features` + `/specialists`. **Reported for next patch (NOT touched in this one)**: `AgentMeetingEngine.php:754,808` `selectTeam()` still has a hardcoded 6-agent keyword regex map limiting routing to 6 of 20 specialists — migrating to ToolSelectorService scoring is a follow-up.
-- Hands-vs-Brain Re-Enforcement Patch 4 (commit 3f77d6c, 2026-05-08): the CLAUDE.md "eliminated 2026-04-12" claim was stale — forensic audit found **12 live LLM/provider bypass sites** across 7 files. All eliminated in one commit. (1) **StudioAiService**: 3 `$this->llm->chatJson` (lines 83/239/279) → `runtime->chatJson`; 1 direct DALL-E `Http::post` (line 166) → `runtime->imageGenerate`. Constructor: `DeepSeekConnector` → `RuntimeClient`. (2) **GeometryAnalyzerService + SceneValidatorService**: each had a direct `Http::post('https://api.openai.com/v1/chat/completions')` for GPT-4o vision → `runtime->visionAnalyze` (passes URL through). `getOpenAiKey()` deleted from both. (3) **BellaController**: `DeepSeekConnector $llm` DI removed (was injected but never actually called — `$this->runtime` has been the real path since Phase 2L.5). (4) **EmailBuilderService**: 3 `$this->llm->chatJson` (lines 681/737/766) + 1 `$this->llm->chat` (line 1421 — wrapped with JSON insight schema since runtime returns parsed JSON) → all `runtime->chatJson`. `DeepSeekConnector` DI removed. (5) **routes/api.php**: 3 inline closures rewritten — `/studio/chat` (line 2543-2580), AI assistant fallback (3684-3708), Arthur chat fallback (7084-7109) → all `runtime->chatJson`. (6) **AdminMediaController::generate** (T3.8): the direct `curl_init('https://api.openai.com/v1/images/generations')` I built today (line 606) → `runtime->imageGenerate`. Same-day cleanup. (7) **Studio AI credit gate**: 4 routes (`/api/studio/ai/{generate-design,generate-image,suggest-copy,chat}`) wrapped with shared closure helper that runs `FeatureGateService::canUseAI` (403 if not allowed) + `CreditService::reserve` (402 if insufficient) + commit-on-success / release-on-failure. Costs: generate-design 5, generate-image 8, suggest-copy 1, chat 1. Verified end-to-end: `POST /api/studio/ai/suggest-copy` returned HTTP 200 with 5 real LLM suggestions through the runtime + plan + credit pipeline. Builder publish + wizard 501 still hold.
-- Origin TLS + Builder Wizard Patch 3 (commit dd86cff, 2026-05-08): (1) Let's Encrypt cert issued for `staging.levelupgrowth.io` (R13, expires 2026-08-06). nginx 443 server block added with HSTS (`max-age=31536000; includeSubDomains`). Auto-renewal: root crontab `0 3 * * * certbot renew --post-hook 'systemctl reload nginx'` plus the apt-installed `certbot.timer`. Cert covers `staging.levelupgrowth.io` only — **CF SSL must be set to "Full" (NOT "Full strict")** until a SAN/wildcard cert covers all `*.levelupgrowth.io` tenant subdomains. nginx config IS NOT in git — lives at `/etc/nginx/sites-available/levelup-staging` with backup `levelup-staging.bak-PATCH3-{TS}`. (2) Builder wizard fatal Errors eliminated. `BuilderService::wizardGenerate()` body replaced with clean 501-style return (was calling 4 helpers removed 2026-04-19). `POST /api/builder/wizard` and `POST /api/websites/create` route handlers swapped to inline 501 closures with `replacement: '/api/builder/arthur/message'` JSON. Both endpoints now return HTTP 501 with auth, HTTP 401 without — never 500. (3) Latent regressions fixed during verification: `config/auth.php defaults.guard` changed from `api` to `web` (the Patch 1 `api`/`token` driver was making `Auth::user()` query the non-existent `users.api_token` column on every auth'd request, producing 500s — now any auth path defaults to session guard, JWT remains the only real auth path via `JwtAuthMiddleware`). `routes/api.php` builder publish + unpublish closures were querying `workspaces.user_id` (column doesn't exist; ownership lives in `workspace_users` pivot) — both swapped to `workspace_users.where(workspace_id, user_id)`. **Verified end-to-end**: `/api/builder/websites/2/publish` with auth returns HTTP 200 success (was 500); both wizard endpoints return clean 501 with replacement message.
+- **Laravel**: 11.51.0 on AMS3 droplet `134.209.93.41` (web user `www-data`, path `/var/www/levelup-staging`)
+- **PHP**: 8.3
+- **DB**: MySQL `levelup_staging` (user `levelup`)
+- **Runtime**: v2.25.3 on Railway (operational)
+- **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
+- **Cache buster (seo.js)**: `5.9.2-save-meta-fix`
+- **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
-## Image generation policy (LOCKED — T3.6 implementation pending)
+---
 
-| Tier | Hero image source | Cost per site |
+## What shipped this session (2026-05-17 + 2026-05-18)
+
+### SEO scoring system (F1-F12) — verified end-to-end
+Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority cron, F3 weight math, F4 H1 placeholder reject, F5 readability column, F6 UI clampScore, F7 score_version, F8 syncFromArticle full inputs, F9 per-workspace weight wiring, F10 dashboard per-category aggregation, F11 live `/api/seo/knowledge`, F12 4 missing-route aliases.
+
+### Wave 1 — 90-day chat retention + disclaimer modal
+- `seo_assistant_messages` table + 90-day purge cron
+- Disclaimer column on users + `accept-disclaimer` route + UI modal
+
+### Wave 2 — Driver behavior (rules 1-4)
+- R1 audit-freshness gate on article gen (2-step proposal if last audit > 7 days)
+- R2 `runPreflightSweep` tool aggregation on every proposal
+- R3 auto-propose when LLM recommends alternative + keyword extraction
+- R4 conversational tone in narrations + system prompt TONE block
+
+### Wave 3 — Engine ecosystem
+- R6 post-article engine chain (next_proposal mechanism in `branchConfirm`)
+- R7 `aiInsertLink` actually mutates HTML (preview + apply, position rules)
+- R9 RuntimeClient auto-injects workspace KB into every aiRun call
+
+### Wave 4 → 5 — Proactive notifications, then refactored to platform messaging
+- Wave 4 built parallel SEO-specific notification infrastructure
+- Wave 5 refactored to use existing `agent_messages` + `notifications` + `messages-ui.js` floater
+- New `AgentMessageService::postAsAgent($wsId, $slug, $content)` — single entry point any agent can use
+
+### Wave 6 — Sarah on the platform messaging pattern
+- All 4 ProactiveStrategyEngine sites now dual-write `notifications` + Sarah's `agent_messages` thread
+- Same pattern available for any other agent (one-line per call site)
+
+### Wave 7 — Publish wiring + Wave-4 cleanup
+- New `POST /api/write/articles/{id}/publish` orchestrates: status flip → WP push → wp_post_id persist → Priya notification
+- `blog.js _blPublish` now two-step (save edits + call publish endpoint)
+- Removed 4 unused Wave-4 routes (table preserved for safety)
+
+### Wave 8 — Two-context worker labels (the user-clarified branding rule)
+- `_lgseIsEmbed()` + `_lgseAgentLabel(slug)` helpers
+- WP iframe → all AI surfaces collapse to "SEO AI Assistant"
+- Laravel SaaS → full named team (James, Sarah, Priya, etc.)
+- Sarah delegation modal routes through SEO AI Assistant in embed mode (option C: open drawer + auto-send → user gets "Shall I proceed?" proposal)
+- 5 FAB/drawer "LevelUp SEO" labels normalized to bare "SEO AI Assistant"
+
+### Wave 9 — Context-aware publish notification routing
+- WP plugin caller (X-API-KEY auth) → publish notification posts to James's thread (visible in WP SEO drawer)
+- Laravel SaaS caller (JWT auth) → publish notification posts to Priya's thread (Content Manager owns the surface in SaaS UX)
+
+### Wave 13 — 404 route stubs
+- 11 routes that the UI calls but had no backend handlers now return structured `{success, feature_status, message}` envelopes
+- 404 count in full UI sweep: **13 → 1**
+- **Wave 13b**: fixed the last 404 — `/connector/save-meta` (UI was calling `_seoApi('PATCH', '/connector/save-meta')` which mounted as `/api/seo/connector/save-meta`; corrected URL to `/save-meta` which routes to `/api/seo/save-meta` and accepts the same body)
+- **Final 404 count: 0**. Every UI endpoint has a backend handler.
+
+---
+
+## Compliance with AI Assistant Operating Rules (all 7)
+
+| # | Rule | Status |
 |---|---|---|
-| Free | Fixed `/storage/builder-heroes/{industry}.jpg` (same stock per industry) | $0 |
-| Trial (3-day) | Random pick from the existing 17 hero pool | $0 |
-| Starter+ (paid) | Fresh DALL-E 3 hd 1792×1024 generated at site-creation time, stored at `/storage/workspace-heroes/{workspace_id}/{website_id}.jpg` | $0.12 |
-| Growth+ — blog featured images | DALL-E 3 standard 1024×1024 | $0.04 each |
+| 1 | Audit-freshness preflight before article gen | ✅ Wave 2 |
+| 2 | Tool sweep before proposing | ✅ Wave 2 |
+| 3 | Proactive driver (auto-propose) | ✅ Wave 2 |
+| 4 | Zero-SEO-knowledge user (friendly tone) | ✅ Wave 2 |
+| 5 | No auto-publish, one-by-one | ✅ All waves; Wave 7 publish only on explicit user click |
+| 6 | 90-day chat retention + disclaimer | ✅ Wave 1 |
+| 7 | AI uses engines, never bypasses | ✅ Wave 3 (engines wired) + Wave 5 (platform messaging) |
 
-**Implementation gate:** T3.6 in PLAN.md. Depends on T5.2 (pricing) and BLOCKS production launch. Files to patch when T3.6 runs: PlanSeeder (`hero_image_generation` boolean per plan), FeatureGateService (`canGenerateHeroImage(wsId)`), the site-creation flow, BuilderRenderer (workspace-specific hero with industry-stock fallback).
-
-**Today's T3.1 hero regeneration was a one-off platform-asset replacement** (the 17 industry stock photos themselves) — not a tenant-on-creation generation. Tenants are NOT generating heroes today; they get the industry stock by default until T3.6 ships.
-
----
-
-## Last Commit
-
-```
-c433ccd feat(intelligence): wire /internal/assistant + Sarah-chat + widget rewire
-40ee45a fix(intelligence): Deep Intelligence Layer — 8 fixes (intel score 4.1 → ~7)
-6f9ee0b fix(onboarding): skip wizard for existing workspaces + UI polish
-0321f7b feat(i18n): auto language detection across all chat surfaces
-87b1a09 fix(arthur/media): MediaService phantom columns + Arabic UTF-8 sanitize
-a00084e fix(arthur): empty response + icon cache-bust
-04e31e7 feat(arthur): real AI conversation — remove all regex/steps + Assistant widget fallback
-c433ccd feat(intelligence): wire /internal/assistant + Sarah-chat + widget rewire
-40ee45a fix(intelligence): Deep Intelligence Layer — 8 fixes
-6f9ee0b fix(onboarding): skip wizard for existing workspaces + UI polish
-a2d1fbd fix(frontend): Patch 10 — frontend rewiring + payload contracts (8 fixes)
-f2dc952 fix(agents/ui): tone polish + memory seed + subdomain + admin error states
-03b5b61 feat(templates): Patch 9E — standards retrofit on all 27 canonical templates
-98ac5ba feat(templates): Patch 9D Group 4 — retail (retail_shop/ecommerce)
-a00187d feat(templates): Patch 9D Group 3 — education (tutoring/online_courses)
-1f37009 feat(templates): Patch 9D Group 2 — travel & rental (short_term_rental/travel_agency)
-589f211 feat(templates): Patch 9D Group 1 — food & hospitality (restaurant/catering/resort)
-00eab6d chore: STATE.md — Patch 9B+C 18 of 27 templates
-c766cbe feat(templates): Patch 9B+C — healthcare fork + barbershop (4 new)
-2401364 feat(templates): Patch 9A — rename + revive 14 templates
-5222338 feat(builder): Patch 8.5 Tier 1 — Arthur JSON edit contract
-715c36f feat(builder): Patch 8 — architecture lock Tier 1
-5538f6f feat(marketing): Patch 7 — sequence runner + automation executor
-4797c56 chore: STATE.md - UptimeRobot monitoring ACTIVE (5/7 owner items done)
-f5c4603 chore: STATE.md - Sentry observability ACTIVE
-7c3da0d chore(observability): wire Sentry DSN
-5376515 chore(durability): wire DO Spaces offsite backup
-e84175c chore(durability): Patch 6 — DR runbook + backup automation + Sentry
-6447997 fix(marketing/agents): Patch 5 — marketing truth + agent fallback
-3f77d6c fix(architecture): Patch 4 — eliminate LLM bypass sites + studio AI credit gate
-dd86cff fix(security/builder): Patch 3 — origin TLS + builder wizard
-c916bb3 fix(security/scheduler): Patch 2
-6a6a921 fix(security): Patch 1 — security perimeter
-8320d5d feat: T3.8 Media Library admin generate UI
-b19774a feat: on-the-fly thumbnails + media delete + admin generate
-8c30b07 feat: unique template images — 79 DALL-E 3 slots across 17 industry templates
-a4eab58 fix: AdminMediaController SQL — remove non-existent columns
-67a4704 fix: MediaController SQL — remove non-existent columns
-0e6e5bd feat: T3.2 contact form pipeline — platform-wide
-f6029d1 fix: notification dedup — remove legacy send() duplicates in StripeService
-```
+## Compliance with two-context branding rule
+- WP iframe → all AI worker surfaces show "SEO AI Assistant" only (Wave 8)
+- Laravel SaaS → all AI worker surfaces show named specialists (unchanged from baseline)
 
 ---
 
-## Workspaces & Sites
+## Active deprecations (kept for safety, can remove next sprint)
 
-| Metric | Count |
-|---|---|
-| workspaces | 2 |
-| websites | 2 |
-| plans | 6 |
-| users | 2 |
-
-Plan slugs: `free`, `starter`, `ai-lite`, `growth`, `pro`, `agency`.
+- `seo_assistant_notifications` table — no new writes since Wave 5, rows still queryable
+- `'assistant_proactive'` role in `seo_assistant_messages` — no new writes
+- `renderAssistant` dead-code tab handler — kept with leak labels fixed for hygiene
 
 ---
 
-## Live Client Sites
+## Open known issues
 
-**Static, deployed alongside Laravel:**
-- `/var/www/chef-red/` — full site: `index.html`, `blog/`, `images/`, `sitemap.xml`, `404.html`, `_slug-map.json`. Chef Red is the first live client. CHATBOT888 widget injected (per recent commits).
-- `/var/www/clutter-angels/` — `index.html` only (placeholder, full site deploy pending).
-
-**Nginx sites-enabled (wildcard 2026-05-07):**
-- `levelup-staging` → `134.209.93.41`, `levelupgrowth.io`, `*.levelupgrowth.io`, `chefredraymundo.com`, `www.chefredraymundo.com`
-- `clutter-angels` → `clutter-angels.levelupgrowth.io` (likely shadowed by the wildcard now; can be retired later)
-- Pre-wildcard backup: `/etc/nginx/sites-available/levelup-staging.bak-wildcard-20260507-1514`
-- Effect: any new `*.levelupgrowth.io` subdomain auto-routes to Laravel; no manual nginx edits needed for new tenants.
-
-**Nginx sites-available (NOT enabled):**
-- `chef-red` (file exists but no symlink — chef-red.levelupgrowth.io and chefredraymundo.com are served via the levelup-staging vhost's multi server_name list)
-- `default` (catch-all `_`)
-- `levelup-staging.bak.20260506-2002` (rollback artifact)
-
----
-
-## Chatbot Tables
-
-8 tables (created 2026-05-06 via `2026_05_06_200000_create_chatbot_tables`, batch [7]):
-
-```
-chatbot_escalations
-chatbot_knowledge_chunks
-chatbot_knowledge_sources
-chatbot_messages
-chatbot_sessions
-chatbot_settings
-chatbot_usage_logs
-chatbot_widget_tokens
-```
-
----
-
-## Templates
-
-17 industry templates in `storage/templates/`:
-architecture, automotive, cafe, childcare, cleaning, construction, consulting, education, finance, hospitality, logistics, marketing_agency, pet_services, photography, real_estate_broker, technology, wellness.
-
-Each is a directory containing a `manifest.json`.
-
----
-
-## Migration Ledger Summary
-
-91 migrations, all status **Ran**. Batch breakdown:
-- [1] 27 — auth/workspace/plans/credits/CRM foundation (2026-04-04)
-- [2] ~50 — intelligence, creative, SEO, blog cols, studio, bookings (through 2026-04-18)
-- [3] 11 — media library, studio, sequences, email builder, approvals, onboarding (through 2026-04-25)
-- [4] `recovery_lost_columns` (2026-05-05 droplet redeploy patch)
-- [5] `recovery_builder_default_assets` (2026-05-06)
-- [6] `recovery_approvals_schema` (2026-05-06)
-- [7] `create_chatbot_tables` (2026-05-06 — chatbot rebuilt post-recovery)
-
----
-
-## Backups (latest on `/root/`)
-
-- `backup-20260507-0646.sql` (604K) — today's morning backup
-- `backup-20260506-2200.sql` (599K)
-- `backup-20260506-1300.sql` (401K)
-
-Daily backup is purely manual (no cron yet — open infra task).
-
----
-
-## Known Code Gaps (refreshed end-of-day 2026-05-07)
-
-**Resolved during Block 2** (commit 3ea4934):
-- ~~`BuilderRenderer::injectChatbotWidget` missing~~ → added in T2.2; exercised end-to-end through nginx (with T2.5 `enabled=false` suppression)
-- ~~PlanSeeder missing 4 chatbot keys~~ → added in T2.1; all 6 plans now have full entitlement matrix
-- ~~No `STRIPE_MODE` env var~~ → set to `test` in T2.4 stage 1 (.env additions tracked via .env.example placeholders, not committed)
-- ~~CHATBOT888 settings change doesn't bust render cache~~ → cache invalidation added in T2.3 (`updateSettings` / `mintWidgetToken` / `revokeWidgetToken`)
-- ~~`Subscription` model fillable missing chatbot_addon fields~~ → fixed in T2.6 (latent pre-existing bug surfaced during verify)
-
-**Resolved post-Block 2** (commits f8d98e9, 9939f6c):
-- ~~`POSTMARK_TOKEN` empty + Postmark transport not installed~~ → infrastructure fully wired 2026-05-07. Token set, `symfony/postmark-mailer` + `symfony/http-client` v7.4.9 installed (commit 9939f6c), DKIM + Return-Path verified for `levelupgrowth.io`, live `Mail::raw()` test dispatched cleanly to admin@levelupgrowth.io. **Account in Test mode pending Postmark manual approval** — external recipients gated until approval lands. Code path is complete; no further dev work needed for mail to start flowing.
-- ~~nginx server_name brittle (per-subdomain entries needed)~~ → wildcard `*.levelupgrowth.io` in place 2026-05-07 (commit f8d98e9 documents); new tenants auto-route to Laravel
-
-**Still open**:
-1. **Blog completely ungated** — `routes/web.php:128-129` + `routes/api.php:5125` have no auth, no plan check. Owner decision pending (T5.1).
-2. **No `daily-progress/` or `storage/audits/` directories on the server** — both are local-only on Windows. Server-side log discipline not yet established.
-3. **`subscriptions.chatbot_addon_active=1` for ws=2 with NULL `chatbot_addon_item_id`** — data drift from Chef Red May-6 setup. Functionally fine (Path 1 entitlement masks it). Cleanup deferred to T6.2.
-4. **CHATBOT_ADDON_PRICE_ID not in `config/billing.php`** — only env-resolved. Works fine via `config(...) ?? env(...)` fallback in StripeService, but for symmetry with other Stripe keys should be added to the config file. Minor.
-5. **Stripe live add-on flow only PARTIALLY verified** (T2.4) — synchronous `subscriptionItems->create` requires a real `stripe_subscription_id` on the workspace, which requires real checkout flow + webhook reachability. Deferred to T6.2.
-6. **`storage/templates/` + `storage/creative-templates/` untracked in git** — 17 industry packs are on disk but not version-controlled. Should be tracked or explicitly gitignored.
-7. **No `default_server` directive in nginx port 80 vhosts** — Host-header fallthrough relies on alphabetical sites-enabled load order. Surfaced during T2.2 when `levelupgrowth.levelupgrowth.io` was missing from server_name. Adding explicit `default_server` would harden against future drift.
-
----
-
-## Open Tasks (from masterplan BOSS888-MASTERPLAN-2026-05-07.md)
-
-| ID | Task | Status |
+| Area | Issue | Severity |
 |---|---|---|
-| T1.1 | STATE.md created | ✅ 2026-05-07 |
-| T1.2 | Backfill daily-progress May 3-7 | ✅ 2026-05-07 |
-| T1.3 | Update PLAN.md | ✅ 2026-05-07 |
-| T2.1 | PlanSeeder chatbot keys | ✅ 2026-05-07 |
-| T2.2 | BuilderRenderer injectChatbotWidget | ✅ 2026-05-07 |
-| T2.3 | Cache invalidation on chatbot toggle | ✅ 2026-05-07 |
-| T2.4 | Stripe TEST add-on verification | ⚠️ PARTIAL 2026-05-07 (live sub create → T6.2) |
-| T2.5 | injectChatbotWidget: suppress when enabled=false | ✅ 2026-05-07 |
-| T2.6 | StripeService chatbot_addon_active + Subscription fillable fix | ✅ 2026-05-07 |
-| T3.1 | Template hero zoom/crop fix | ⬜ |
-| T3.2 | Contact form audit | ⬜ (audit done 2026-05-07, fix pending) |
-| T3.3 | Clutter Angels workspace setup | ⏸ ON HOLD 2026-05-07 |
-| T3.4 | Chef Red: migrate static HTML → BuilderRenderer | ⬜ NEW 2026-05-07 (multi-session) |
-| T3.5 | Platform rule: no static-only sites; DB sections_json required | ⬜ NEW 2026-05-07 |
-| T4.1 | KB retrieval OR logic fix | ⬜ |
-| T4.2 | LevelUpGrowth homepage content | ⬜ |
-| T5.1 | Blog gating — awaiting owner decision | ⏳ |
-| T5.2 | Pricing changes — awaiting owner input | ⏳ |
-| T6.1 | Phase 9 APP888 patches | ⬜ |
-| T6.2 | Phase 10 production deployment | ⬜ |
+| Auto-optimization | No post-publish hook dispatches `OptimizeWpAttachmentJob` | MED (Wave 10 — needs UX design) |
+| Featured image | Manual via `/pages/regenerate-image`. Not auto-chained after article create. Alt text not auto-set | MED (Wave 11 — needs UX design) |
+| Calendar | `scheduled_at` plumbing exists but unreachable from chat flow | MED (Wave 12 — needs date-parsing UX) |
+| `/connector/save-meta` PATCH | Last hard 404 — wrong route-prefix group, needs separate handling | LOW |
+| Sarah extension | Sarah's existing calls now mirror to her chat thread (Wave 6 DONE). Other agents (Priya/Marcus/Elena) have no proactive code today | LOW (N/A until features land) |
+| Git commits | All Wave 1-13 changes uncommitted on `master` working tree (safe only in tarballs) | HIGH |
+
+---
+
+## Crons active (relevant)
+```
+0  23  * * *   seo:track-ranks
+0  3   * * *   seo:rank-track
+30 3   * * *   seo:serp-refresh
+0  0   * * *   seo:insights
+0  3   * * *   seo:authority-score          # F2: weekly → daily
+0  2,14 * * *  seo:outbound-check
+0  4   * * 0   seo:cluster
+0  4   * * *   seo:purge-chat-history       # NEW W1: 90-day chat retention
+```
+
+---
+
+## Workspace 1 test data
+- `articles.id=26` "E2E Smoke: Ergonomic Office Chairs Dubai" — kept for repeated smoke tests
+- Disclaimer accepted for admin user (id=1)
+
+INSTALL STATUS: SAFE TO INSTALL — STAGING ONLY (Waves 1-9 + 13 deployed + smoke verified).

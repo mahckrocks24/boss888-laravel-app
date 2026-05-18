@@ -353,15 +353,31 @@ window._blSaveDraft=async function(){
 window._blPublish=async function(){
   if(!_bl.currentItem||_bl.saving)return;
   _bl.saving=true;
+  // Wave 7 (2026-05-18). Two-step publish:
+  //   1. Save the current edit (PUT /articles/{id}) — captures any
+  //      unsaved title/body/meta changes.
+  //   2. POST /articles/{id}/publish — server orchestrates: status
+  //      flip, WordPress push, wp_post_id persist, Priya notification.
   var data=_blGatherEditorData();
-  data.status='published';
-  data.published_at=new Date().toISOString().slice(0,19).replace('T',' ');
   try{
     await _blApi('PUT','/articles/'+_bl.currentItem.id,data);
-    Object.assign(_bl.currentItem,data);
-    _bl.isDirty=false;
-    if(typeof showToast==='function')showToast('Article published!','success');
-    _bl.view='dashboard';_bl.currentItem=null;_blFetch().then(_blRender);
+    var r=await _blApi('POST','/articles/'+_bl.currentItem.id+'/publish',{});
+    if(r && r.success){
+      Object.assign(_bl.currentItem,{
+        status:'published',
+        published_at:new Date().toISOString().slice(0,19).replace('T',' '),
+        wp_post_id:r.wp_post_id||null,
+      });
+      _bl.isDirty=false;
+      var msg='Article published!';
+      if(r.public_url){ msg='Published: '+r.public_url; }
+      else if(r.already){ msg='Already published — no changes pushed.'; }
+      if(typeof showToast==='function')showToast(msg,'success');
+      _bl.view='dashboard';_bl.currentItem=null;_blFetch().then(_blRender);
+    } else {
+      var err=(r && (r.message||r.error)) || 'Unknown error';
+      if(typeof showToast==='function')showToast('Publish failed: '+err,'error');
+    }
   }catch(e){if(typeof showToast==='function')showToast('Publish failed: '+e.message,'error');}
   _bl.saving=false;
 };

@@ -33,6 +33,15 @@ use Illuminate\Support\Facades\Cache;
  */
 class SeoService
 {
+    /**
+     * F7 (2026-05-17) — scoring formula version. Bump when weights/factors
+     * change so seo_content_index rows can be flagged stale and recomputed.
+     *   v1 = original 9-factor base + 4-factor extended (weights sum to 113)
+     *   v2 = rebalanced to sum-to-100; H1 placeholder rejection; readability
+     *        persisted to column; full structural inputs on syncFromArticle.
+     */
+    public const SCORE_VERSION = 2;
+
     public function __construct(
         private EngineIntelligenceService $engineIntel,
         private GlobalKnowledgeService $globalKnowledge,
@@ -358,6 +367,31 @@ class SeoService
         $total = count($checks);
         $score = $total > 0 ? (int) round(($passed / $total) * 100) : 50;
 
+        // F10 (2026-05-17): aggregate per-category scores so the Dashboard's
+        // 4 dimension cards (tech / content / links / serp) show real values
+        // instead of falling back to the overall score (the "73 everywhere"
+        // bug). Each backend category becomes {score, checks} instead of a
+        // flat array of checks. Also exposes 4 top-level dimension scores
+        // matched to the UI's vocabulary.
+        $categories = [];
+        $catNames = ['meta', 'performance', 'mobile', 'security', 'content', 'technical', 'schema'];
+        foreach ($catNames as $cat) {
+            $catChecks = array_values(array_filter($checks, fn($c) => ($c['category'] ?? '') === $cat));
+            $categories[$cat] = [
+                'score'  => $this->_categoryScore($catChecks),
+                'checks' => $catChecks,
+            ];
+        }
+        // Legacy alias — the UI also looks for results_json.meta_tags.
+        $categories['meta_tags'] = $categories['meta'];
+
+        // Roll up backend categories into the 4 UI dimensions.
+        // 'links' has no audit checks today (orphan/anchor data lives in
+        // knowledge endpoint) and 'serp' has no audit data (needs GSC),
+        // so they stay null and the UI shows "—" rather than lying.
+        $techScore    = $this->_avgScores([$categories['technical']['score'], $categories['security']['score'], $categories['performance']['score'], $categories['mobile']['score']]);
+        $contentScore = $this->_avgScores([$categories['content']['score'], $categories['meta']['score'], $categories['schema']['score']]);
+
         $results = [
             'url' => $url,
             'total_checks' => $total,
@@ -366,15 +400,17 @@ class SeoService
             'errors' => $errors,
             'score' => $score,
             'checks' => $checks,
-            'categories' => [
-                'meta_tags' => array_values(array_filter($checks, fn($c) => ($c['category'] ?? '') === 'meta')),
-                'performance' => array_values(array_filter($checks, fn($c) => ($c['category'] ?? '') === 'performance')),
-                'mobile' => array_values(array_filter($checks, fn($c) => ($c['category'] ?? '') === 'mobile')),
-                'security' => array_values(array_filter($checks, fn($c) => ($c['category'] ?? '') === 'security')),
-                'content' => array_values(array_filter($checks, fn($c) => ($c['category'] ?? '') === 'content')),
-                'technical' => array_values(array_filter($checks, fn($c) => ($c['category'] ?? '') === 'technical')),
-                'schema' => array_values(array_filter($checks, fn($c) => ($c['category'] ?? '') === 'schema')),
-            ],
+            'categories' => $categories,
+            // Flat dimension scores matching the UI's vocabulary.
+            'tech_score'     => $techScore,
+            'content_score'  => $contentScore,
+            'internal_score' => null, // populated by knowledge endpoint (link_health)
+            'serp_score'     => null, // populated by GSC integration
+            // Nested form some UI paths use.
+            'technical' => ['score' => $techScore],
+            'content'   => ['score' => $contentScore],
+            'internal'  => ['score' => null],
+            'serp'      => ['score' => null],
         ];
 
         DB::table('seo_audits')->where('id', $auditId)->update([
@@ -384,16 +420,22 @@ class SeoService
             'updated_at' => now(),
         ]);
 
-        // Store per-URL audit items in seo_audit_items
+        // Store per-URL audit items in seo_audit_items.
+        // F10 (2026-05-17): also populate the `score` column (100/50/0 for
+        // pass/warning/error) so any consumer that aggregates audit_items
+        // gets real numbers instead of NULL.
         try {
             foreach ($checks as $check) {
+                $st = $check['status'] ?? 'unknown';
+                $itemScore = $st === 'pass' ? 100 : ($st === 'warning' ? 50 : 0);
                 DB::table('seo_audit_items')->insert([
                     'audit_id' => $auditId,
                     'workspace_id' => $wsId,
                     'url' => $url,
                     'category' => $check['category'] ?? 'general',
                     'check_name' => $check['check'] ?? 'unknown',
-                    'status' => $check['status'] ?? 'unknown',
+                    'status' => $st,
+                    'score' => $itemScore,
                     'details' => $check['details'] ?? null,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -772,12 +814,301 @@ class SeoService
         return ['equity' => $equity, 'total' => count($equity)];
     }
 
+    /**
+     * Wave 3 — R7 (2026-05-17). Replaces the legacy "status flip only"
+     * behavior. insertLink now actually inserts the link into the article
+     * body via aiApplyLinkInsertion, then returns true/false for the
+     * existing controller contract. To inspect the change before applying,
+     * call aiPreviewLinkInsertion first.
+     */
     public function insertLink(int $wsId, int $linkId): bool
     {
-        $updated = DB::table('seo_links')->where('workspace_id', $wsId)->where('id', $linkId)
-            ->update(['status' => 'inserted', 'updated_at' => now()]);
-        $this->engineIntel->recordToolUsage('seo', 'insert_link');
-        return $updated > 0;
+        $r = $this->aiApplyLinkInsertion($wsId, $linkId);
+        return (bool) ($r['success'] ?? false);
+    }
+
+    /**
+     * Wave 3 — R7 (2026-05-17). Preview of where a link suggestion will
+     * be inserted, WITHOUT mutating the article body. Returns the
+     * proposed before/after snippet and the paragraph index, or a
+     * structured reason why insertion isn't safely possible.
+     *
+     * Position rules:
+     *  - Never insert into the first or last paragraph (too prominent /
+     *    too low impact)
+     *  - Never insert into a paragraph that already has a link
+     *  - Skip if the target URL is already linked elsewhere in the body
+     *  - Prefer wrapping an existing plain-text match of the anchor;
+     *    fall back to appending to the first eligible middle paragraph
+     */
+    public function aiPreviewLinkInsertion(int $wsId, int $linkId): array
+    {
+        $link = DB::table('seo_links')
+            ->where('workspace_id', $wsId)->where('id', $linkId)->first();
+        if (! $link) {
+            return ['success' => false, 'error' => 'link_not_found'];
+        }
+        if (! empty($link->status) && $link->status === 'inserted') {
+            return ['success' => false, 'error' => 'already_inserted', 'message' => 'This link suggestion has already been inserted.'];
+        }
+        if (! empty($link->status) && $link->status === 'dismissed') {
+            return ['success' => false, 'error' => 'dismissed', 'message' => 'This link suggestion was previously dismissed.'];
+        }
+
+        $sourceUrl = (string) ($link->source_url ?? '');
+        $slug = $this->_slugFromUrl($sourceUrl);
+        if ($slug === '') {
+            return ['success' => false, 'error' => 'no_source_slug', 'message' => 'Could not derive a slug from the source URL.', 'source_url' => $sourceUrl];
+        }
+
+        $article = DB::table('articles')
+            ->where('workspace_id', $wsId)
+            ->where('slug', 'like', $slug . '%')   // articles get a -randstr suffix on create
+            ->orderByDesc('id')
+            ->first();
+        if (! $article) {
+            return [
+                'success'    => false,
+                'error'      => 'source_not_internal_article',
+                'message'    => 'The source page is not a Laravel-managed article — the SEO Assistant can only modify articles in the Write engine library. For WordPress-managed pages, link insertion needs to happen in WP directly.',
+                'source_url' => $sourceUrl,
+                'slug'       => $slug,
+            ];
+        }
+
+        $body   = (string) ($article->content ?? '');
+        $anchor = (string) ($link->anchor_text ?? '');
+        $target = (string) ($link->target_url ?? '');
+
+        if ($anchor === '' || $target === '') {
+            return ['success' => false, 'error' => 'incomplete_link', 'message' => 'Link suggestion is missing anchor text or target URL.'];
+        }
+
+        $point = $this->_findLinkInsertionPoint($body, $anchor, $target);
+        if (! $point['found']) {
+            return [
+                'success'    => false,
+                'error'      => $point['reason'],
+                'message'    => $point['message'],
+                'article_id' => (int) $article->id,
+                'anchor'     => $anchor,
+                'target'     => $target,
+            ];
+        }
+
+        return [
+            'success'           => true,
+            'article_id'        => (int) $article->id,
+            'article_title'     => $article->title,
+            'link_id'           => (int) $link->id,
+            'anchor'            => $anchor,
+            'target'            => $target,
+            'method'            => $point['method'],
+            'paragraph_index'   => $point['paragraph_index'],
+            'before_snippet'    => $point['before_snippet'],
+            'after_snippet'     => $point['after_snippet'],
+            // Internal carry — used by aiApplyLinkInsertion to avoid recomputing
+            '_modified_body'    => $point['_modified_body'],
+        ];
+    }
+
+    /**
+     * Wave 3 — R7 (2026-05-17). Apply a link suggestion by mutating the
+     * article body. Re-runs the preview to lock in a fresh insertion
+     * point at apply time (the body may have changed between preview
+     * and approval). Updates seo_links.status = 'inserted' on success.
+     *
+     * Snapshots the previous body to engine_intelligence as a rollback
+     * breadcrumb (cross-engine consumer can find recent insertions).
+     */
+    public function aiApplyLinkInsertion(int $wsId, int $linkId): array
+    {
+        $preview = $this->aiPreviewLinkInsertion($wsId, $linkId);
+        if (! ($preview['success'] ?? false)) {
+            return $preview;
+        }
+
+        $articleId    = (int) $preview['article_id'];
+        $modifiedBody = (string) $preview['_modified_body'];
+
+        try {
+            DB::transaction(function () use ($articleId, $modifiedBody, $linkId) {
+                DB::table('articles')->where('id', $articleId)->update([
+                    'content'    => $modifiedBody,
+                    'updated_at' => now(),
+                ]);
+                DB::table('seo_links')->where('id', $linkId)->update([
+                    'status'     => 'inserted',
+                    'updated_at' => now(),
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::warning('SeoService::aiApplyLinkInsertion failed', [
+                'workspace_id' => $wsId, 'link_id' => $linkId, 'error' => $e->getMessage(),
+            ]);
+            return ['success' => false, 'error' => 'db_error', 'message' => $e->getMessage()];
+        }
+
+        $this->engineIntel->recordToolUsage('seo', 'ai_insert_link');
+
+        // Re-sync the article so seo_content_index gets fresh internal_link_count.
+        try {
+            $fresh = DB::table('articles')->find($articleId);
+            if ($fresh) {
+                $this->syncFromArticle($wsId, $fresh);
+            }
+        } catch (\Throwable $e) {
+            Log::debug('post-insert syncFromArticle skipped: ' . $e->getMessage());
+        }
+
+        // Wave 5 (2026-05-18). Notify via the platform agent-messaging
+        // infrastructure so the unified messages floater badge updates
+        // and the message is visible from all 3 surfaces (floater, agent
+        // profile, Messages section). Posted as James (SEO Strategist).
+        try {
+            $article      = $fresh ?? DB::table('articles')->find($articleId);
+            $articleTitle = $article->title ?? "article #{$articleId}";
+            $chatMsg = "Internal link added to \"{$articleTitle}\""
+                . "\n\nI inserted a link to '{$preview['anchor']}' pointing at {$preview['target']} (paragraph {$preview['paragraph_index']}).";
+            app(\App\Core\Agents\AgentMessageService::class)
+                ->postAsAgent($wsId, 'james', $chatMsg, [
+                    'notification_type' => 'link_inserted',
+                    'article_id'        => $articleId,
+                    'link_id'           => $linkId,
+                    'paragraph_index'   => $preview['paragraph_index'],
+                    'action_link'       => "/app/?tab=write&article={$articleId}",
+                ]);
+
+            // Cross-engine notification surface, only when user is known.
+            $uid = optional(request()->user())->id;
+            if ($uid) {
+                app(\App\Core\Notifications\NotificationService::class)->dispatch(
+                    \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED,
+                    $uid,
+                    "Internal link added to \"{$articleTitle}\"",
+                    $wsId,
+                    "I inserted a link to '{$preview['anchor']}' at paragraph {$preview['paragraph_index']}.",
+                    [
+                        'notification_type' => 'link_inserted',
+                        'article_id'        => $articleId,
+                        'link_id'           => $linkId,
+                    ],
+                    "/app/?tab=write&article={$articleId}",
+                    'success',
+                    '🔗'
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::debug('aiApplyLinkInsertion notify skipped: ' . $e->getMessage());
+        }
+
+        return [
+            'success'         => true,
+            'article_id'      => $articleId,
+            'link_id'         => $linkId,
+            'paragraph_index' => $preview['paragraph_index'],
+            'anchor'          => $preview['anchor'],
+            'target'          => $preview['target'],
+            'method'          => $preview['method'],
+            'message'         => "Link inserted at paragraph {$preview['paragraph_index']}.",
+        ];
+    }
+
+    /** Wave 3 R7 helper — extract the last URL path segment as slug. */
+    private function _slugFromUrl(string $url): string
+    {
+        $parts = parse_url($url);
+        $path  = trim((string) ($parts['path'] ?? ''), '/');
+        if ($path === '') return '';
+        $segments = explode('/', $path);
+        return (string) end($segments);
+    }
+
+    /**
+     * Wave 3 R7 helper — find a paragraph in $body where the link can be
+     * safely inserted. Returns:
+     *   ['found' => true,  'method' => 'wrap_match'|'append', 'paragraph_index' => N,
+     *    'before_snippet' => …, 'after_snippet' => …, '_modified_body' => …]
+     * or
+     *   ['found' => false, 'reason' => '…', 'message' => '…']
+     */
+    private function _findLinkInsertionPoint(string $body, string $anchor, string $target): array
+    {
+        // Already linked anywhere? Skip silently.
+        $targetEsc = preg_quote($target, '/');
+        if (preg_match('/<a[^>]+href=["\']' . $targetEsc . '["\']/i', $body)) {
+            return ['found' => false, 'reason' => 'already_linked', 'message' => 'This target URL is already linked elsewhere in the article.'];
+        }
+
+        // Split by closing paragraph tag. Robust for typical article HTML
+        // (we generate articles with <p>…</p>). Leaves a trailing entry
+        // for content after the last </p>, which we keep for re-join.
+        $parts = preg_split('#</p>#i', $body);
+        if (! is_array($parts) || count($parts) < 4) {
+            return ['found' => false, 'reason' => 'article_too_short', 'message' => 'Article has fewer than 3 paragraphs — not enough room to safely place an internal link.'];
+        }
+        $total = count($parts);
+
+        // Iterate middle paragraphs (skip first index 0 and the trailing tail at $total-1)
+        for ($i = 1; $i < $total - 1; $i++) {
+            $p = $parts[$i];
+            // Skip if paragraph already has a link
+            if (stripos($p, '<a ') !== false) {
+                continue;
+            }
+
+            // Try to wrap an existing plain-text mention of the anchor
+            $anchorEsc = preg_quote($anchor, '/');
+            $pattern = '/(?<![>\w])(' . $anchorEsc . ')(?![\w<])/iu';
+            $wrapped = preg_replace_callback(
+                $pattern,
+                function ($m) use ($target) {
+                    return '<a href="' . htmlspecialchars($target, ENT_QUOTES) . '">' . $m[1] . '</a>';
+                },
+                $p,
+                1,
+                $repCount
+            );
+            if ($repCount > 0 && is_string($wrapped) && $wrapped !== $p) {
+                $modParts = $parts;
+                $modParts[$i] = $wrapped;
+                return [
+                    'found'           => true,
+                    'method'          => 'wrap_match',
+                    'paragraph_index' => $i,
+                    'before_snippet'  => mb_substr(strip_tags($p), 0, 220),
+                    'after_snippet'   => mb_substr(strip_tags($wrapped), 0, 250),
+                    '_modified_body'  => implode('</p>', $modParts),
+                ];
+            }
+        }
+
+        // No verbatim anchor found — pick the first eligible middle paragraph
+        // and append a "Read more" style link inside it.
+        for ($i = 1; $i < $total - 1; $i++) {
+            $p = $parts[$i];
+            if (stripos($p, '<a ') !== false) continue;
+            $textLen = mb_strlen(strip_tags($p));
+            if ($textLen < 60) continue; // too short to host a link cleanly
+
+            $appended = rtrim($p) . ' <a href="' . htmlspecialchars($target, ENT_QUOTES) . '">' . htmlspecialchars($anchor, ENT_QUOTES) . '</a>';
+            $modParts = $parts;
+            $modParts[$i] = $appended;
+            return [
+                'found'           => true,
+                'method'          => 'append',
+                'paragraph_index' => $i,
+                'before_snippet'  => mb_substr(strip_tags($p), 0, 220),
+                'after_snippet'   => mb_substr(strip_tags($appended), 0, 250),
+                '_modified_body'  => implode('</p>', $modParts),
+            ];
+        }
+
+        return [
+            'found'   => false,
+            'reason'  => 'no_safe_paragraph',
+            'message' => 'Could not find a paragraph that is long enough and not already linked. The article may need expansion before more internal links can be added.',
+        ];
     }
 
     public function dismissLink(int $wsId, int $linkId): bool
@@ -1017,6 +1348,92 @@ class SeoService
     // ═══════════════════════════════════════════════════════════
     // DASHBOARD & REPORTING
     // ═══════════════════════════════════════════════════════════
+
+    /**
+     * F11 (2026-05-17) — Live SEO knowledge aggregate for the Overview tab.
+     *
+     * Returns a snapshot of *current* workspace state — derived live from
+     * seo_content_index and seo_link_graph. Crucially, NOT from the last
+     * audit snapshot, so editing meta tags on any page is immediately
+     * reflected in the dashboard's main gauge + content/link dim cards.
+     *
+     * Shape (matches what public/app/js/seo.js loadOverviewData expects):
+     *   health_score        int 0..100        weighted avg content_score
+     *   content_health      {avg_score, missing_meta_count, below_50_count, total_pages}
+     *   link_health         {internal_link_count, orphan_count, score}
+     *   keyword_rankings    [{kw, position, change}]
+     *   top_issues          [{type, count}]
+     *   summary             ?string           short human one-liner
+     */
+    public function getKnowledge(int $wsId): array
+    {
+        $sci = DB::table('seo_content_index')->where('workspace_id', $wsId);
+
+        $totalPages   = (clone $sci)->count();
+        $scoredAvg    = (clone $sci)->whereNotNull('content_score')->avg('content_score');
+        $missingMeta  = (clone $sci)->where(function ($q) {
+            $q->whereNull('meta_description')->orWhere('meta_description', '');
+        })->count();
+        $below50      = (clone $sci)->where('content_score', '<', 50)->whereNotNull('content_score')->count();
+        $internalSum  = (int) (clone $sci)->sum('internal_link_count');
+        $orphans      = (clone $sci)->where('inbound_links', 0)->count();
+
+        $healthScore  = $scoredAvg !== null ? (int) round($scoredAvg) : null;
+        $linkScore    = $totalPages > 0 ? (int) round((($totalPages - $orphans) / max(1, $totalPages)) * 100) : null;
+
+        // Tracked keyword positions (top N for the mini table).
+        $keywordRanks = DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'tracking')
+            ->orderByDesc('volume')
+            ->limit(8)
+            ->get(['keyword', 'current_rank', 'previous_rank'])
+            ->map(fn($k) => [
+                'kw'       => $k->keyword,
+                'position' => $k->current_rank,
+                'change'   => ($k->previous_rank !== null && $k->current_rank !== null)
+                    ? ((int) $k->previous_rank - (int) $k->current_rank) : 0,
+            ])
+            ->all();
+
+        // Top issues (counts, not per-row details).
+        $topIssues = [];
+        if ($missingMeta > 0) {
+            $topIssues[] = ['type' => 'missing meta', 'count' => $missingMeta];
+        }
+        if ($below50 > 0) {
+            $topIssues[] = ['type' => 'pages below 50', 'count' => $below50];
+        }
+        if ($orphans > 0) {
+            $topIssues[] = ['type' => 'orphan pages', 'count' => $orphans];
+        }
+
+        $summary = $totalPages === 0
+            ? 'No pages indexed yet. Run a scan to start tracking SEO health.'
+            : ($healthScore === null
+                ? "{$totalPages} pages indexed, scoring not yet computed."
+                : "Avg page score {$healthScore} across {$totalPages} indexed pages. "
+                  . ($missingMeta > 0 ? "{$missingMeta} pages missing meta description. " : '')
+                  . ($orphans > 0 ? "{$orphans} orphan pages." : ''));
+
+        return [
+            'health_score'      => $healthScore,
+            'content_health'    => [
+                'avg_score'           => $healthScore,
+                'missing_meta_count'  => $missingMeta,
+                'below_50_count'      => $below50,
+                'total_pages'         => $totalPages,
+            ],
+            'link_health'       => [
+                'internal_link_count' => $internalSum,
+                'orphan_count'        => $orphans,
+                'score'               => $linkScore,
+            ],
+            'keyword_rankings'  => $keywordRanks,
+            'top_issues'        => $topIssues,
+            'summary'           => $summary,
+        ];
+    }
 
     public function getDashboard(int $wsId): array
     {
@@ -1520,6 +1937,7 @@ class SeoService
         // ── New factor: Readability — approx Flesch-Kincaid (3 pts) ────
         $readPts  = 0;
         $readNote = 'No content for readability check';
+        $fkValue  = null;
         $text     = strip_tags((string) ($data['content'] ?? ''));
         if (mb_strlen($text) > 100) {
             $words     = max(1, str_word_count($text));
@@ -1528,6 +1946,7 @@ class SeoService
             $syllables = max($words, count($vm[0] ?? []));
             $fk = 206.835 - (1.015 * ($words / $sentences)) - (84.6 * ($syllables / $words));
             $fk = max(0, min(100, $fk));
+            $fkValue = round($fk, 1);
             if ($fk >= 60)      { $readPts = 3; $readNote = 'Easy to read (FK ' . round($fk) . ')'; }
             elseif ($fk >= 30)  { $readPts = 1; $readNote = 'Moderate readability (FK ' . round($fk) . ')'; }
             else                { $readPts = 0; $readNote = 'Hard to read (FK ' . round($fk) . ') — simplify sentences'; }
@@ -1540,22 +1959,172 @@ class SeoService
         ];
         $total += $readPts;
 
-        // Normalise to 100 if extras pushed it over
-        if ($total > 100) {
-            $factor = 100 / $total;
-            foreach ($breakdown as &$b) {
-                $b['score'] = (int) round(($b['score'] ?? 0) * $factor);
-            }
-            unset($b);
-            $total = (int) array_sum(array_column($breakdown, 'score'));
-            $total = min(100, $total);
-        }
+        // ── F3 (2026-05-17): weights now sum to exactly 100 by design —
+        //   base scoreContent caps at 100 (lines internal), and the four
+        //   extended factors above re-scale base proportionally to free
+        //   up their 13 pts. See _applyExtendedWeights() for the math.
+        //   This replaces the old conditional rescale that left factor
+        //   weights stale (e.g. 15-weight factor showing 13 score) and
+        //   only fired when total > 100, producing inconsistent UI.
+        // ── F9: pass workspace_id so per-workspace overrides from
+        //   seo_score_weights take effect (only for known factor names).
+        $wsId      = isset($data['workspace_id']) ? (int) $data['workspace_id'] : null;
+        $rescaled  = $this->_applyExtendedWeights($breakdown, $wsId);
+        $breakdown = $rescaled['breakdown'];
+        $total     = $rescaled['total'];
 
         return [
-            'score'     => $total,
-            'label'     => $total >= 80 ? 'Great' : ($total >= 60 ? 'Good' : ($total >= 40 ? 'Needs Work' : 'Poor')),
-            'breakdown' => $breakdown,
+            'score'             => $total,
+            'label'             => $total >= 80 ? 'Great' : ($total >= 60 ? 'Good' : ($total >= 40 ? 'Needs Work' : 'Poor')),
+            'breakdown'         => $breakdown,
+            // F5 (2026-05-17): expose readability so callers can persist
+            // it to seo_content_index.readability_score. Null = no content.
+            'readability_score' => $fkValue,
         ];
+    }
+
+    /**
+     * F3 (2026-05-17) — Rebalance extended scoring so weights sum to 100
+     * exactly. F9 (2026-05-17) — optionally honors per-workspace overrides
+     * from seo_score_weights table for known factor names (unknown factors
+     * are ignored). If overrides don't sum to 100, the whole map is
+     * renormalized so the 100-cap invariant holds.
+     *
+     * Default weights (sum = 100):
+     *   content_length         17  (was 20)
+     *   meta_title             13  (was 15)
+     *   meta_description       13  (was 15)
+     *   kw_factors / kw_*      26  (was 30 — split if keyword present)
+     *   h1                      9  (was 10)
+     *   h2                      4  (was 5)
+     *   image                   4  (was 5)
+     *   schema_markup           4  (unchanged)
+     *   og_tags                 3  (unchanged)
+     *   internal_links_weighted 3  (unchanged)
+     *   readability             3  (unchanged)
+     *   ─────────────────────────
+     *   total                 100
+     *
+     * Returns {breakdown, total} where each entry's `weight` reflects the
+     * post-rebalance value and `score` is proportional to it.
+     */
+    protected function _applyExtendedWeights(array $breakdown, ?int $wsId = null): array
+    {
+        $newWeights = $this->_getEffectiveWeights($wsId);
+
+        $total = 0;
+        foreach ($breakdown as &$entry) {
+            if (! is_array($entry) || ! isset($entry['factor'])) { continue; }
+            $factor = $entry['factor'];
+            $oldWeight = (int) ($entry['weight'] ?? 0);
+            $oldScore  = (int) ($entry['score']  ?? 0);
+            $newWeight = $newWeights[$factor] ?? $oldWeight;
+
+            // Rescale score proportionally to weight change; clamp to weight.
+            if ($oldWeight > 0) {
+                $newScore = (int) round($oldScore * ($newWeight / $oldWeight));
+            } else {
+                $newScore = 0;
+            }
+            $newScore = max(0, min($newWeight, $newScore));
+
+            $entry['weight'] = $newWeight;
+            $entry['score']  = $newScore;
+            $total          += $newScore;
+        }
+        unset($entry);
+        $total = min(100, max(0, $total));
+        return ['breakdown' => $breakdown, 'total' => $total];
+    }
+
+    /**
+     * F10 (2026-05-17) — Per-category audit score: pct of passes, with
+     * warnings counted as half-credit. Returns null when the category has
+     * zero checks, so the UI can show "—" instead of a fake 0.
+     */
+    protected function _categoryScore(array $catChecks): ?int
+    {
+        $n = count($catChecks);
+        if ($n === 0) { return null; }
+        $pass = 0; $warn = 0;
+        foreach ($catChecks as $c) {
+            $st = $c['status'] ?? 'unknown';
+            if ($st === 'pass')         { $pass++; }
+            elseif ($st === 'warning')  { $warn++; }
+        }
+        return (int) round((($pass + 0.5 * $warn) / $n) * 100);
+    }
+
+    /**
+     * F10 (2026-05-17) — Average of category scores, ignoring nulls.
+     * Returns null if every input is null (lets the UI show "—" rather
+     * than fabricating a number from nothing).
+     */
+    protected function _avgScores(array $scores): ?int
+    {
+        $valid = array_values(array_filter($scores, fn($s) => $s !== null));
+        if (count($valid) === 0) { return null; }
+        return (int) round(array_sum($valid) / count($valid));
+    }
+
+    /**
+     * F9 (2026-05-17) — Returns the effective per-factor weights for a
+     * workspace. Reads seo_score_weights for known factor names; unknown
+     * factors in the table are ignored (they exist from a legacy schema
+     * where weights spoke about categories like 'performance' or 'mobile').
+     * If the per-workspace overrides cause weights to not sum to 100, the
+     * whole map is proportionally renormalized so the 100-cap holds.
+     */
+    protected function _getEffectiveWeights(?int $wsId): array
+    {
+        $defaults = [
+            'content_length'          => 17,
+            'meta_title'              => 13,
+            'meta_description'        => 13,
+            'kw_presence'             => 9,
+            'kw_in_title'             => 9,
+            'kw_density'              => 8,
+            'kw_factors'              => 26,
+            'h1'                      => 9,
+            'h2'                      => 4,
+            'image'                   => 4,
+            'schema_markup'           => 4,
+            'og_tags'                 => 3,
+            'internal_links_weighted' => 3,
+            'readability'             => 3,
+        ];
+
+        if ($wsId === null) { return $defaults; }
+
+        try {
+            $rows = DB::table('seo_score_weights')->where('workspace_id', $wsId)->get();
+            $hasOverride = false;
+            foreach ($rows as $row) {
+                if (isset($defaults[$row->factor])) {
+                    $defaults[$row->factor] = max(0, (int) $row->weight);
+                    $hasOverride = true;
+                }
+            }
+            if (! $hasOverride) { return $defaults; }
+
+            // Renormalize: keyword sum (kw_factors counted separately from
+            // kw_presence/kw_in_title/kw_density — never both at once in a
+            // single breakdown), then everything else.
+            $sum = array_sum($defaults) - $defaults['kw_factors'];
+            // kw_factors is the "no-keyword" branch (worth same as
+            // kw_presence+kw_in_title+kw_density). Renormalize the
+            // non-keyword baseline to keep total = 100 in both branches.
+            if ($sum > 0 && $sum !== (100 - $defaults['kw_factors'])) {
+                $scale = (100 - $defaults['kw_factors']) / $sum;
+                foreach ($defaults as $k => $v) {
+                    if ($k === 'kw_factors') { continue; }
+                    $defaults[$k] = (int) round($v * $scale);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('SeoService::_getEffectiveWeights — table read failed', ['ws' => $wsId, 'error' => $e->getMessage()]);
+        }
+        return $defaults;
     }
 
     /**
@@ -1601,6 +2170,7 @@ class SeoService
 
             // Score using the array-based wrapper
             $scored = $this->scoreContentExtended([
+                'workspace_id'     => $wsId,
                 'title'            => $data['title'],
                 'meta_title'       => $data['meta_title'],
                 'meta_description' => $data['meta_description'],
@@ -1610,12 +2180,18 @@ class SeoService
             ]);
             $data['content_score']        = (int) ($scored['score'] ?? 0);
             $data['score_breakdown_json'] = json_encode($scored['breakdown'] ?? []);
+            if (isset($scored['readability_score'])) {
+                $data['readability_score'] = (float) $scored['readability_score'];
+            }
+            $data['score_version'] = self::SCORE_VERSION;
+            $data['scored_at']     = now();
 
             DB::table('seo_content_index')->upsert(
                 [$data],
                 ['workspace_id', 'url_hash'],
                 ['url', 'title', 'meta_title', 'meta_description',
-                 'content_score', 'score_breakdown_json', 'updated_at']
+                 'content_score', 'score_breakdown_json', 'readability_score',
+                 'score_version', 'scored_at', 'updated_at']
             );
         } catch (\Throwable $e) {
             \Log::warning('[SEO] syncFromBuilder failed: ' . $e->getMessage());
@@ -1651,37 +2227,100 @@ class SeoService
             $textContent = strip_tags($content);
             $wordCount   = (int) ($article->word_count ?: str_word_count($textContent));
 
+            // F8 (2026-05-17): extract full structural signals from article HTML.
+            // Previously these were all 0/false, so every article scored ~69
+            // regardless of its real content. Now h2/img/internal-link/schema/og
+            // are parsed directly from the HTML the user wrote/agent generated.
+            $h2Count    = preg_match_all('/<h2\b/i', $content) ?: 0;
+            $imageCount = preg_match_all('/<img\b/i', $content) ?: 0;
+            $parsedHost = parse_url($url, PHP_URL_HOST) ?: '';
+            $internalLinkCount = 0;
+            if ($parsedHost && preg_match_all('/<a[^>]+href=["\']([^"\']+)["\']/i', $content, $hm)) {
+                foreach ($hm[1] as $href) {
+                    if ($href === '' || $href[0] === '#') { continue; }
+                    if ($href[0] === '/' || parse_url($href, PHP_URL_HOST) === $parsedHost) {
+                        $internalLinkCount++;
+                    }
+                }
+            }
+            $hasSchema = (bool) preg_match('/<script[^>]+type=["\']application\/ld\+json["\']/i', $content);
+            $hasOg     = (bool) preg_match('/<meta[^>]+property=["\']og:/i', $content);
+
             $data = [
-                'workspace_id'     => $wsId,
-                'url'              => $url,
-                'url_hash'         => md5($url),
-                'title'            => $article->title ?? null,
-                'meta_title'       => $article->meta_title       ?? $seoJson['meta_title']       ?? $seoJson['title']       ?? $article->title ?? null,
-                'meta_description' => $article->meta_description ?? $seoJson['meta_description'] ?? $seoJson['description'] ?? null,
-                'h1'               => $h1,
-                'word_count'       => $wordCount,
-                'updated_at'       => now(),
-                'created_at'       => now(),
+                'workspace_id'        => $wsId,
+                'url'                 => $url,
+                'url_hash'            => md5($url),
+                'title'               => $article->title ?? null,
+                'meta_title'          => $article->meta_title       ?? $seoJson['meta_title']       ?? $seoJson['title']       ?? $article->title ?? null,
+                'meta_description'    => $article->meta_description ?? $seoJson['meta_description'] ?? $seoJson['description'] ?? null,
+                'h1'                  => $h1,
+                'word_count'          => $wordCount,
+                'h2_count'            => $h2Count,
+                'image_count'         => $imageCount,
+                'internal_link_count' => $internalLinkCount,
+                'has_schema'          => $hasSchema,
+                'has_og'              => $hasOg,
+                'updated_at'          => now(),
+                'created_at'          => now(),
             ];
 
             $scored = $this->scoreContentExtended([
-                'title'            => $data['title'],
-                'meta_title'       => $data['meta_title'],
-                'meta_description' => $data['meta_description'],
-                'h1'               => $h1,
-                'word_count'       => $wordCount,
-                'keyword'          => $article->focus_keyword ?? $seoJson['keyword'] ?? null,
-                'content'          => $textContent,
+                'workspace_id'        => $wsId,
+                'title'               => $data['title'],
+                'meta_title'          => $data['meta_title'],
+                'meta_description'    => $data['meta_description'],
+                'h1'                  => $h1,
+                'word_count'          => $wordCount,
+                'h2_count'            => $h2Count,
+                'image_count'         => $imageCount,
+                'internal_link_count' => $internalLinkCount,
+                'has_schema'          => $hasSchema,
+                'has_og'              => $hasOg,
+                'keyword'             => $article->focus_keyword ?? $seoJson['keyword'] ?? null,
+                'content'             => $textContent,
             ]);
             $data['content_score']        = (int) ($scored['score'] ?? 0);
             $data['score_breakdown_json'] = json_encode($scored['breakdown'] ?? []);
+            // F5 (2026-05-17): persist readability into the dedicated column,
+            // not only inside the breakdown JSON. Anything reading the
+            // column directly was getting NULL before.
+            if (isset($scored['readability_score'])) {
+                $data['readability_score'] = (float) $scored['readability_score'];
+            }
+            // F7 (2026-05-17): mark this row as scored under the current
+            // scoring formula version, so a future weights/formula change
+            // can flag stale rows for recompute.
+            $data['score_version'] = self::SCORE_VERSION;
+            $data['scored_at']     = now();
 
             DB::table('seo_content_index')->upsert(
                 [$data],
                 ['workspace_id', 'url_hash'],
                 ['url', 'title', 'meta_title', 'meta_description', 'h1', 'word_count',
-                 'content_score', 'score_breakdown_json', 'updated_at']
+                 'h2_count', 'image_count', 'internal_link_count',
+                 'has_schema', 'has_og',
+                 'content_score', 'score_breakdown_json', 'readability_score',
+                 'score_version', 'scored_at', 'updated_at']
             );
+
+            // F1 (2026-05-17): write the computed score back to
+            // articles.seo_score. Previously this column was NULL for every
+            // article — the WriteService scorer never persisted (line 282
+            // mutated an in-memory object that was thrown away), and nothing
+            // else wrote to it. Now SCI is the source of truth and articles
+            // gets a denormalized cache of the same value.
+            try {
+                if (! empty($article->id)) {
+                    DB::table('articles')
+                        ->where('id', $article->id)
+                        ->update([
+                            'seo_score'  => $data['content_score'],
+                            'updated_at' => now(),
+                        ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[SEO] syncFromArticle articles.seo_score writeback failed: ' . $e->getMessage());
+            }
         } catch (\Throwable $e) {
             \Log::warning('[SEO] syncFromArticle failed: ' . $e->getMessage());
         }
@@ -2403,6 +3042,11 @@ class SeoService
         $scoreResult = $this->scoreContentExtended($data);
         $data['content_score']        = $scoreResult['score'];
         $data['score_breakdown_json'] = json_encode($scoreResult['breakdown']);
+        if (isset($scoreResult['readability_score'])) {
+            $data['readability_score'] = (float) $scoreResult['readability_score'];
+        }
+        $data['score_version'] = self::SCORE_VERSION;
+        $data['scored_at']     = now();
 
         // Phase 1 — CTR potential scoring (intent × meta quality × schema × URL clarity).
         $ctr = $this->scoreCtrPotential($data);
@@ -2588,6 +3232,133 @@ class SeoService
         return ['score' => $score, 'label' => $label, 'reasons' => $reasons];
     }
 
+    /**
+     * Re-compute content_score for a row whose meta_title/meta_description/h1
+     * just changed, WITHOUT re-fetching the page body. Body-dependent
+     * factors (kw_presence, kw_density, readability) are preserved from
+     * the existing score_breakdown_json so the score doesn't artificially
+     * drop just because we don't store body text.
+     *
+     * Returns: { score:int, label:string, breakdown:array, changed:bool, old_score:?int }
+     */
+    public function rescoreAfterMetaEdit(int $wsId, int $pageId): array
+    {
+        $row = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->where('id', $pageId)
+            ->first();
+
+        if (! $row) {
+            return ['score' => 0, 'label' => 'Poor', 'breakdown' => [], 'changed' => false, 'old_score' => null];
+        }
+
+        $oldScore = $row->content_score !== null ? (int) $row->content_score : null;
+        $oldBreakdown = [];
+        if (! empty($row->score_breakdown_json)) {
+            $decoded = json_decode((string) $row->score_breakdown_json, true);
+            if (is_array($decoded)) {
+                $oldBreakdown = $decoded;
+            }
+        }
+
+        // Index old breakdown by factor name for fast lookup
+        $byFactor = [];
+        foreach ($oldBreakdown as $entry) {
+            if (is_array($entry) && isset($entry['factor'])) {
+                $byFactor[(string) $entry['factor']] = $entry;
+            }
+        }
+
+        // Try to pull the focus keyword from seo_keywords (highest-volume tracked
+        // match for this URL); falls back to H1 phrase if available.
+        $keyword = \Illuminate\Support\Facades\DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)
+            ->where('target_url', $row->url)
+            ->orderByDesc('volume')
+            ->value('keyword');
+
+        // Build the scorer data — meta_title/meta_description/h1 are the
+        // NEW values from the just-updated DB row, everything else is what
+        // was captured at scan time.
+        $data = [
+            'workspace_id'         => $wsId,
+            'title'                => $row->title,
+            'meta_title'           => $row->meta_title,
+            'meta_description'     => $row->meta_description,
+            'h1'                   => $row->h1,
+            'h2_count'             => (int) ($row->h2_count ?? 0),
+            'word_count'           => (int) ($row->word_count ?? 0),
+            'image_count'          => (int) ($row->image_count ?? 0),
+            'internal_link_count'  => (int) ($row->internal_link_count ?? 0),
+            'has_schema'           => (bool) ($row->has_schema ?? false),
+            'has_og'               => (bool) ($row->has_og ?? false),
+            'keyword'              => $keyword,
+            'content'              => null,  // intentionally null — preserved factors handle this
+        ];
+
+        // Run the extended scorer fresh
+        $fresh = $this->scoreContentExtended($data);
+        $freshBreakdown = $fresh['breakdown'] ?? [];
+
+        // Identify body-text-dependent factors whose stored values are
+        // higher than the fresh (zeroed-from-missing-content) values.
+        // We swap those entries back in and recompute the total.
+        $preserveFactors = ['kw_presence', 'kw_density', 'readability'];
+        $mergedBreakdown = [];
+        $total = 0;
+        foreach ($freshBreakdown as $entry) {
+            if (! is_array($entry) || ! isset($entry['factor'])) {
+                $mergedBreakdown[] = $entry;
+                continue;
+            }
+            $f = (string) $entry['factor'];
+            if (in_array($f, $preserveFactors, true) && isset($byFactor[$f])) {
+                $oldEntry = $byFactor[$f];
+                $oldScore_factor = (int) ($oldEntry['score'] ?? 0);
+                $newScore_factor = (int) ($entry['score']    ?? 0);
+                // Take whichever is higher (old preserved if our fresh ran
+                // with no content and got 0; new if meta actually changed it)
+                if ($oldScore_factor > $newScore_factor) {
+                    $merged = $entry;
+                    $merged['score']   = $oldScore_factor;
+                    $merged['details'] = ($oldEntry['details'] ?? $merged['details'])
+                        . ' (preserved from last scan)';
+                    $mergedBreakdown[] = $merged;
+                    $total += $oldScore_factor;
+                    continue;
+                }
+            }
+            $mergedBreakdown[] = $entry;
+            $total += (int) ($entry['score'] ?? 0);
+        }
+        $total = min(100, max(0, $total));
+        $label = $total >= 80 ? 'Great' : ($total >= 60 ? 'Good' : ($total >= 40 ? 'Needs Work' : 'Poor'));
+
+        // Persist
+        $persistUpdate = [
+            'content_score'        => $total,
+            'score_breakdown_json' => json_encode($mergedBreakdown),
+            'score_version'        => self::SCORE_VERSION,
+            'scored_at'            => now(),
+            'updated_at'           => now(),
+        ];
+        if (isset($fresh['readability_score'])) {
+            $persistUpdate['readability_score'] = (float) $fresh['readability_score'];
+        }
+        \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->where('id', $pageId)
+            ->update($persistUpdate);
+
+        return [
+            'score'     => $total,
+            'label'     => $label,
+            'breakdown' => $mergedBreakdown,
+            'changed'   => $oldScore !== $total,
+            'old_score' => $oldScore,
+        ];
+    }
+
     private function extractOutboundLinks(int $wsId, string $sourceUrl, string $html): void
     {
         if ($html === '') { return; }
@@ -2621,45 +3392,47 @@ class SeoService
     private function extractImages(int $wsId, string $pageUrl, string $html): void
     {
         if ($html === '') { return; }
-        preg_match_all('/<img\b[^>]+>/i', $html, $tags);
-        foreach ($tags[0] ?? [] as $tag) {
-            // src= must be double-quoted to match our cleaned regex set.
-            if (!preg_match('/\ssrc="([^"]+)"/i', $tag, $srcM)) { continue; }
-            $imgSrc = trim($srcM[1]);
-            if ($imgSrc === '' || stripos($imgSrc, 'data:') === 0) { continue; }
 
-            // Resolve relative URLs against the page URL.
-            if (stripos($imgSrc, 'http') !== 0) {
-                $imgSrc = $imgSrc[0] === '/'
-                    ? rtrim($pageUrl, '/') . $imgSrc
-                    : rtrim($pageUrl, '/') . '/' . ltrim($imgSrc, '/');
+        // Phase 9A (2026-05-15): capture lazy-loaded imgs (data-src/data-lazy-src),
+        // responsive imgs (srcset), and <picture><source srcset> variants — all
+        // patterns that hide images from a raw-HTML scraper. Without this we
+        // typically see ~1 img/page on modern WordPress sites; with it, ~5-15.
+
+        $resolve = function (string $u) use ($pageUrl): string {
+            $u = trim($u);
+            if ($u === '' || stripos($u, 'data:') === 0) return '';
+            if (stripos($u, 'http') === 0) return $u;
+            if ($u[0] === '/') {
+                $origin = preg_replace('#^(https?://[^/]+).*#', '$1', $pageUrl) ?? '';
+                return rtrim($origin, '/') . $u;
             }
+            return rtrim($pageUrl, '/') . '/' . ltrim($u, '/');
+        };
 
-            // alt detection — distinguish missing from empty.
-            $missingAlt = !preg_match('/\salt=/i', $tag);
-            $altText    = null;
-            $emptyAlt   = false;
-            if (!$missingAlt && preg_match('/\salt="([^"]*)"/i', $tag, $altM)) {
-                $rawAlt = $altM[1];
-                // 2026-05-12: decode HTML entities + force UTF-8. Fixes
-                // 'â€“' garble where Windows-1252 bytes were being read as
-                // raw UTF-8.
-                $encoded = mb_convert_encoding($rawAlt, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
-                $altText = trim(html_entity_decode($encoded, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-                $emptyAlt = $altText === '';
+        // Pick the largest URL from a srcset attribute. Handles both
+        // "url 1x, url 2x" and "url 320w, url 1024w" forms. x-density is
+        // weighted higher than width descriptors so 2x wins over 800w.
+        $largestFromSrcset = function (string $srcset) use ($resolve): string {
+            $best = ''; $bestScore = -1;
+            foreach (explode(',', $srcset) as $part) {
+                $bits = preg_split('/\s+/', trim($part));
+                if (empty($bits[0])) continue;
+                $score = 0;
+                if (isset($bits[1]) && preg_match('/^(\d+)([wx])$/', $bits[1], $m)) {
+                    $score = (int) $m[1] * ($m[2] === 'x' ? 1000 : 1);
+                }
+                if ($score >= $bestScore) { $bestScore = $score; $best = $bits[0]; }
             }
+            return $resolve($best);
+        };
 
-            $titleText = null;
-            if (preg_match('/\stitle="([^"]*)"/i', $tag, $titleM)) {
-                $titleText = $titleM[1];
-            }
-
-            $width  = preg_match('/\swidth="(\d+)"/i',  $tag, $wM) ? (int) $wM[1] : null;
-            $height = preg_match('/\sheight="(\d+)"/i', $tag, $hM) ? (int) $hM[1] : null;
-
+        // Shared upsert helper — one entry point so <img> and <source> rows
+        // land identically. Deduped on (workspace_id, page_url, image_url).
+        $upsert = function (string $imgSrc, ?string $altText, ?string $titleText, bool $missingAlt, bool $emptyAlt, ?int $width, ?int $height) use ($wsId, $pageUrl) {
+            if ($imgSrc === '' || stripos($imgSrc, 'data:') === 0) return;
             try {
                 DB::table('seo_images')->updateOrInsert(
-                    ['workspace_id' => $wsId, 'page_url' => $pageUrl, 'image_url' => $imgSrc],
+                    ['workspace_id' => $wsId, 'page_url' => $pageUrl, 'image_url' => mb_substr($imgSrc, 0, 500)],
                     [
                         'alt_text'    => $altText !== null ? mb_substr($altText, 0, 500) : null,
                         'title_text'  => $titleText !== null ? mb_substr($titleText, 0, 500) : null,
@@ -2667,13 +3440,200 @@ class SeoService
                         'empty_alt'   => $emptyAlt,
                         'width'       => $width,
                         'height'      => $height,
+                        'scan_method' => 'laravel_http',
                         'updated_at'  => now(),
                         'created_at'  => now(),
                     ]
                 );
             } catch (\Throwable $e) { /* table may not exist on first deploy */ }
+        };
+
+        // <img> tags — try src first, then lazy-load attrs, then srcset.
+        preg_match_all('/<img\b[^>]*>/i', $html, $imgTags);
+        foreach ($imgTags[0] ?? [] as $tag) {
+            $imgSrc = '';
+
+            if (preg_match('/\ssrc=(["\'])([^"\']+)\1/i', $tag, $sm)) {
+                $imgSrc = $resolve($sm[2]);
+            }
+
+            // Detect lazy-load placeholders (transparent gif, 1x1, "blank", etc).
+            // If src is a placeholder, prefer the lazy-attr URL instead.
+            $isPlaceholder = $imgSrc !== '' && (
+                stripos($imgSrc, 'data:image') === 0
+                || preg_match('/(blank|placeholder|spinner|loading|lazy[\-_]bg)\.(gif|png|svg|webp)(\?|$)/i', $imgSrc)
+                || preg_match('/(^|\/)1x1\.(gif|png)/i', $imgSrc)
+            );
+
+            if ($imgSrc === '' || $isPlaceholder) {
+                foreach (['data-src', 'data-lazy-src', 'data-original', 'data-lazy', 'data-img', 'data-image'] as $attr) {
+                    if (preg_match('/\s' . preg_quote($attr, '/') . '=(["\'])([^"\']+)\1/i', $tag, $lm)) {
+                        $candidate = $resolve($lm[2]);
+                        if ($candidate !== '') { $imgSrc = $candidate; break; }
+                    }
+                }
+            }
+
+            // srcset / data-srcset fallback (largest variant).
+            if ($imgSrc === '' || $isPlaceholder) {
+                foreach (['srcset', 'data-srcset'] as $attr) {
+                    if (preg_match('/\s' . preg_quote($attr, '/') . '=(["\'])([^"\']+)\1/i', $tag, $ssm)) {
+                        $candidate = $largestFromSrcset($ssm[2]);
+                        if ($candidate !== '') { $imgSrc = $candidate; break; }
+                    }
+                }
+            }
+
+            if ($imgSrc === '') continue;
+
+            $missingAlt = !preg_match('/\salt=/i', $tag);
+            $altText    = null;
+            $emptyAlt   = false;
+            if (!$missingAlt && preg_match('/\salt=(["\'])([^"\']*)\1/i', $tag, $altM)) {
+                $rawAlt  = $altM[2];
+                $encoded = mb_convert_encoding($rawAlt, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+                $altText = trim(html_entity_decode($encoded, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $emptyAlt = $altText === '';
+            }
+
+            $titleText = null;
+            if (preg_match('/\stitle=(["\'])([^"\']*)\1/i', $tag, $titleM)) {
+                $titleText = $titleM[2];
+            }
+
+            $width  = preg_match('/\swidth=(["\']?)(\d+)\1/i',  $tag, $wM) ? (int) $wM[2] : null;
+            $height = preg_match('/\sheight=(["\']?)(\d+)\1/i', $tag, $hM) ? (int) $hM[2] : null;
+
+            $upsert($imgSrc, $altText, $titleText, $missingAlt, $emptyAlt, $width, $height);
+        }
+
+        // <source srcset="..."> from <picture> elements.
+        // No alt of their own; we capture for inventory/size audit (Phase 9B)
+        // with missing_alt=false so they don't surface as alt-text issues.
+        preg_match_all('/<source\b[^>]*\ssrcset=(["\'])([^"\']+)\1/i', $html, $sourceTags);
+        foreach ($sourceTags[2] ?? [] as $srcset) {
+            $url = $largestFromSrcset($srcset);
+            $upsert($url, null, null, false, false, null, null);
         }
     }
+
+    /**
+     * Phase P0.5 Tier 2 (2026-05-15) — rendered-DOM image extraction via
+     * headless Chromium. Used when raw-HTML extraction (Tier 1) yields zero
+     * images, typical for JS-rendered SPA pages.
+     *
+     * Security:
+     *   - pageUrl host MUST match the workspace's canonical site_url host.
+     *   - Localhost / private IPv4 / AWS metadata IP are explicitly blocked.
+     *   - Process is spawned with limited env, hard 30s wall-clock cap.
+     *
+     * Persists captured images with scan_method='laravel_browser' so future
+     * scans can distinguish them from Tier 1 captures.
+     *
+     * Returns the number of seo_images rows upserted (new + updated).
+     * Returns 0 on any error (silent — Tier 2 is best-effort).
+     */
+    public function tier2ExtractRendered(int $wsId, string $pageUrl): int
+    {
+        // === Security: same-origin against workspace canonical site_url ===
+        $canonical = (string) (DB::table('seo_settings')
+            ->where('workspace_id', $wsId)
+            ->where('key', 'site_url')
+            ->value('value') ?? '');
+        if ($canonical === '') return 0;
+
+        $cParsed = parse_url($canonical);
+        $pParsed = parse_url($pageUrl);
+        if (!is_array($cParsed) || !is_array($pParsed)) return 0;
+        if (empty($cParsed['host']) || empty($pParsed['host'])) return 0;
+        $cHost = strtolower((string) $cParsed['host']);
+        $pHost = strtolower((string) $pParsed['host']);
+        if ($cHost !== $pHost) return 0;
+
+        // === Block localhost / private IPv4 / metadata IPs ===
+        if (in_array($pHost, ['localhost', '127.0.0.1', '0.0.0.0', '::1', '169.254.169.254'], true)) {
+            return 0;
+        }
+        if (preg_match('/^10\./', $pHost)) return 0;
+        if (preg_match('/^192\.168\./', $pHost)) return 0;
+        if (preg_match('/^172\.(1[6-9]|2\d|3[01])\./', $pHost)) return 0;
+        if (preg_match('/^169\.254\./', $pHost)) return 0;
+
+        // === Resolve renderer script ===
+        $script = base_path('tools/page-image-extract.cjs');
+        if (!is_file($script)) return 0;
+
+        // === Spawn node child with explicit env (mirrors studio-render pattern) ===
+        $cmd = 'node ' . escapeshellarg($script) . ' ' . escapeshellarg($pageUrl) . ' 2>&1';
+        $childEnv = [
+            'HOME'                => '/tmp',
+            'PATH'                => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+            'PUPPETEER_CACHE_DIR' => base_path('.puppeteer-cache'),
+            'LANG'                => 'C.UTF-8',
+            'LC_ALL'              => 'C.UTF-8',
+        ];
+        $descriptorspec = [0 => ['pipe','r'], 1 => ['pipe','w'], 2 => ['pipe','w']];
+        $proc = @proc_open($cmd, $descriptorspec, $pipes, null, $childEnv);
+        if (!is_resource($proc)) return 0;
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]); fclose($pipes[2]);
+        $status = proc_close($proc);
+
+        if ($status !== 0) {
+            \Illuminate\Support\Facades\Log::warning('tier2ExtractRendered non-zero exit', [
+                'workspace_id' => $wsId,
+                'page_url'     => $pageUrl,
+                'status'       => $status,
+                'stderr'       => mb_substr((string) $stderr, 0, 500),
+            ]);
+            return 0;
+        }
+
+        $payload = json_decode((string) $stdout, true);
+        if (!is_array($payload) || empty($payload['ok'])) {
+            \Illuminate\Support\Facades\Log::warning('tier2ExtractRendered bad payload', [
+                'workspace_id' => $wsId,
+                'page_url'     => $pageUrl,
+                'payload_head' => mb_substr((string) $stdout, 0, 300),
+            ]);
+            return 0;
+        }
+
+        $images = $payload['images'] ?? [];
+        if (!is_array($images)) return 0;
+
+        $upserted = 0;
+        foreach ($images as $img) {
+            $src = isset($img['src']) ? (string) $img['src'] : '';
+            if ($src === '' || stripos($src, 'data:') === 0) continue;
+            $src = mb_substr($src, 0, 500);
+            $alt = isset($img['alt']) && $img['alt'] !== null ? mb_substr((string) $img['alt'], 0, 500) : null;
+            $missingAlt = !array_key_exists('alt', $img) || $img['alt'] === null;
+            $emptyAlt   = !$missingAlt && trim((string) ($img['alt'] ?? '')) === '';
+            $width  = isset($img['width']) && is_numeric($img['width']) ? (int) $img['width'] : null;
+            $height = isset($img['height']) && is_numeric($img['height']) ? (int) $img['height'] : null;
+            try {
+                DB::table('seo_images')->updateOrInsert(
+                    ['workspace_id' => $wsId, 'page_url' => $pageUrl, 'image_url' => $src],
+                    [
+                        'alt_text'    => $alt,
+                        'missing_alt' => $missingAlt,
+                        'empty_alt'   => $emptyAlt,
+                        'width'       => $width,
+                        'height'      => $height,
+                        'scan_method' => 'laravel_browser',
+                        'updated_at'  => now(),
+                        'created_at'  => now(),
+                    ]
+                );
+                $upserted++;
+            } catch (\Throwable $e) { /* table may not exist; skip silently */ }
+        }
+        return $upserted;
+    }
+
 
     
     public function indexPageFromConnector(int $wsId, array $data): array
@@ -2693,6 +3653,7 @@ class SeoService
         // 2026-05-13 Phase 1 — switch to scoreContentExtended so connector-pushed
         // pages also get schema/og/internal_links/readability scoring.
         $score = $this->scoreContentExtended([
+            'workspace_id'        => $wsId,
             'title'               => $data['title'] ?? '',
             'meta_title'          => $data['title'] ?? '',
             'meta_description'    => $data['meta_description'] ?? '',
@@ -2719,6 +3680,9 @@ class SeoService
             'internal_link_count'  => $intLinks,
             'content_score'        => $score['score'] ?? null,
             'score_breakdown_json' => isset($score['breakdown']) ? json_encode($score['breakdown']) : null,
+            'readability_score'    => $score['readability_score'] ?? null,
+            'score_version'        => self::SCORE_VERSION,
+            'scored_at'            => now(),
         ];
         // Change 2B-1: persist WP post_id when provided by plugin
         if (isset($data['post_id']) && is_numeric($data['post_id'])) {
@@ -2838,9 +3802,17 @@ class SeoService
             $totalScore += 15;
         }
 
-        // 7. H1 (10 pts)
-        $s = !empty($h1) ? 10 : 0;
-        $breakdown[] = ['factor' => 'h1', 'weight' => 10, 'score' => $s, 'details' => !empty($h1) ? "H1: \"" . mb_substr($h1, 0, 50) . "\"" : 'Missing'];
+        // 7. H1 (10 pts) — reject SPA placeholders so unrendered pages don't get full credit
+        $h1Trimmed     = trim((string) $h1);
+        $h1Placeholder = $h1Trimmed === '' || preg_match('/^(loading\.{0,3}|untitled|please wait|—|-)$/i', $h1Trimmed);
+        if ($h1Placeholder) {
+            $s = 0;
+            $h1Detail = $h1Trimmed === '' ? 'Missing' : 'Placeholder H1: "' . mb_substr($h1Trimmed, 0, 50) . '" — page may not have rendered';
+        } else {
+            $s = 10;
+            $h1Detail = 'H1: "' . mb_substr($h1Trimmed, 0, 50) . '"';
+        }
+        $breakdown[] = ['factor' => 'h1', 'weight' => 10, 'score' => $s, 'details' => $h1Detail];
         $totalScore += $s;
 
         // 8. H2 (5 pts)

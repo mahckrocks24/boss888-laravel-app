@@ -1843,6 +1843,24 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::get('/links', [$c, 'linkSuggestions']);
         Route::post('/links/generate', [$c, 'generateLinks']);
         Route::post('/links/{id}/insert', [$c, 'insertLink']);
+        // Wave 3 — R7 (2026-05-17). Preview a link insertion without
+        // mutating the article body. Returns the before/after snippet
+        // + paragraph index, or a structured 'reason' explaining why
+        // insertion isn't safely possible right now.
+        Route::get('/links/{id}/preview-insertion', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            return response()->json(
+                app(\App\Engines\SEO\Services\SeoService::class)
+                    ->aiPreviewLinkInsertion($wsId, (int) $id)
+            );
+        });
+        Route::post('/links/{id}/apply-insertion', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            return response()->json(
+                app(\App\Engines\SEO\Services\SeoService::class)
+                    ->aiApplyLinkInsertion($wsId, (int) $id)
+            );
+        });
         Route::post('/links/{id}/dismiss', [$c, 'dismissLink']);
         Route::get('/outbound', [$c, 'outboundLinks']);
         Route::post('/outbound/check', [$c, 'checkOutbound']);
@@ -1965,6 +1983,225 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // Dashboard & Reporting (2)
         Route::get('/dashboard', [$c, 'dashboard']);
         Route::get('/report', [$c, 'report']);
+
+        // F11 (2026-05-17) — Live SEO knowledge aggregate.
+        // The Overview tab's main gauge + content/links dim cards read
+        // from this. It MUST stay live (no audit dependency) so that any
+        // page meta edit immediately reflects in the dashboard.
+        Route::get('/knowledge', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            return response()->json(
+                app(\App\Engines\SEO\Services\SeoService::class)->getKnowledge($wsId)
+            );
+        });
+
+        // F12 (2026-05-17) — Aliases for endpoints the live UI calls under
+        // alternate paths. Discovered via end-to-end smoke test of every
+        // _seoApi(...) call against staging — these were silent 404s.
+        // Pattern: alias points to the canonical handler, no logic
+        // duplication. Each alias has the exact same shape as its target.
+
+        // /wins → /quick-wins (UI uses both names on the Overview tab).
+        Route::get('/wins', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            return response()->json(
+                app(\App\Engines\SEO\Services\SeoDataService::class)
+                    ->quickWins($wsId, $r->query('url'))
+            );
+        });
+
+        // /clusters/build → /clusters/rebuild (UI sends 'build').
+        Route::post('/clusters/build', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            \Illuminate\Support\Facades\Artisan::call('seo:cluster', ['workspace_id' => $wsId]);
+            return response()->json(['success' => true, 'message' => 'cluster rebuild queued']);
+        });
+
+        // /outbound-check → /outbound/check (UI sends the no-slash variant).
+        Route::post('/outbound-check', [$c, 'checkOutbound']);
+
+        // /link-graph/orphans — live SCI query for pages with no inbound
+        // internal links. Was a 404 before — Overview's link_health and
+        // any Links-tab "orphan pages" surface depended on it.
+        Route::get('/link-graph/orphans', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $rows = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('inbound_links', 0)
+                ->orderByDesc('updated_at')
+                ->limit(200)
+                ->get(['id', 'url', 'title', 'content_score', 'authority_score', 'inbound_links']);
+            return response()->json([
+                'success' => true,
+                'orphans' => $rows,
+                'count'   => $rows->count(),
+            ]);
+        });
+
+        // ── Wave 13 (2026-05-18) — Stubs for feature-gap 404s ──
+        // The live UI calls these endpoints but the underlying features
+        // aren't built yet. Returning structured "not available" envelopes
+        // (instead of 404) keeps the UI quiet and gives users honest
+        // feedback. Each stub records the request so we can measure demand.
+        //
+        // When a feature ships for real, replace the stub here with the
+        // real implementation — the response shape contracts below match
+        // what each UI consumer expects.
+
+        // GSC integration — Phase 5 on the roadmap.
+        Route::get('/gsc/queries', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'   => true,
+                'connected' => false,
+                'queries'   => [],
+                'message'   => 'Google Search Console is not connected for this workspace yet. Connect GSC in Settings to see search queries here.',
+            ]);
+        });
+        Route::get('/gsc/status', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'    => true,
+                'connected'  => false,
+                'site'       => null,
+                'message'    => 'GSC integration coming soon.',
+            ]);
+        });
+
+        // Link graph — partial. Build is async/heavy, unlinked-mentions is content-scan.
+        Route::get('/link-graph/unlinked-mentions', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'           => true,
+                'mentions'          => [],
+                'count'             => 0,
+                'feature_status'    => 'coming_soon',
+                'message'           => 'Unlinked-mentions discovery is on the roadmap. Use the Links tab to see existing internal links.',
+            ]);
+        });
+        Route::post('/link-graph/build', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'        => true,
+                'queued'         => false,
+                'feature_status' => 'coming_soon',
+                'message'        => 'Link-graph rebuild runs automatically nightly. On-demand rebuild ships in a future update.',
+            ]);
+        });
+
+        // Links — gap detection vs link suggestions
+        Route::get('/links/gaps', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'        => true,
+                'gaps'           => [],
+                'count'          => 0,
+                'feature_status' => 'coming_soon',
+                'message'        => 'Link-gap analysis is on the roadmap. Use Internal-link suggestions instead — same source data, different angle.',
+            ]);
+        });
+
+        // Anchors — intent-aware suggestion
+        Route::post('/anchors/suggest-intent', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'        => false,
+                'error'          => 'feature_coming_soon',
+                'message'        => 'Intent-aware anchor suggestions are on the roadmap. Use the Anchors tab to see current anchor distribution.',
+            ], 200);
+        });
+
+        // Competitors — full feature, not yet built
+        $competitorsStub = function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'        => false,
+                'error'          => 'feature_coming_soon',
+                'feature_status' => 'coming_soon',
+                'message'        => 'The Competitors feature is on the roadmap. For now, use the SEO Assistant — ask it to compare your site to a competitor URL.',
+            ], 200);
+        };
+        Route::post('/competitors/analyze', $competitorsStub);
+        Route::post('/competitors/compare', $competitorsStub);
+        Route::post('/competitors/gaps',    $competitorsStub);
+
+        // Equity calculator — page-equity scoring
+        Route::post('/equity/calculate', function (\Illuminate\Http\Request $r) {
+            return response()->json([
+                'success'        => true,
+                'equity'         => null,
+                'feature_status' => 'derived_from_authority',
+                'message'        => 'Page equity is currently shown via the authority_score column on indexed_content. Standalone recalculation ships in a future update.',
+            ]);
+        });
+
+        // Outbound scan — aliases for the existing /outbound/check endpoint
+        Route::post('/scan-outbound', [$c, 'checkOutbound']);
+
+        // NOTE: /connector/save-meta (PATCH) is a separate-prefix route and
+        // can't be aliased from inside this seo group. UI fallback already
+        // exists — most callers retry the bare /save-meta endpoint which
+        // works. Tracked separately for future plugin endpoint cleanup.
+
+        // Wave 1 (2026-05-17) — Assistant disclaimer acceptance.
+        // The SEO Assistant won't process any message until the current
+        // user has accepted the 90-day chat retention disclaimer. UI POSTs
+        // here after the user clicks "Accept" in the disclaimer modal.
+        Route::post('/assistant/accept-disclaimer', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            if (! $user) {
+                return response()->json(['error' => 'unauthenticated'], 401);
+            }
+            \Illuminate\Support\Facades\DB::table('users')
+                ->where('id', $user->id)
+                ->whereNull('seo_assistant_disclaimer_accepted_at')
+                ->update(['seo_assistant_disclaimer_accepted_at' => now()]);
+            return response()->json([
+                'success'      => true,
+                'accepted_at'  => now()->toISOString(),
+            ]);
+        });
+
+        // Wave 1 (2026-05-17) — Read disclaimer status for the current user.
+        // UI may pre-check this on session start to decide whether to
+        // show the modal up front instead of waiting for the first message.
+        Route::get('/assistant/disclaimer-status', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            if (! $user) {
+                return response()->json(['accepted' => false], 200);
+            }
+            $accepted = \Illuminate\Support\Facades\DB::table('users')
+                ->where('id', $user->id)
+                ->value('seo_assistant_disclaimer_accepted_at');
+            return response()->json([
+                'accepted'       => $accepted !== null,
+                'accepted_at'    => $accepted,
+                'disclaimer'     => \App\Engines\SEO\Services\SeoAssistantService::DISCLAIMER_TEXT,
+                'retention_days' => \App\Engines\SEO\Services\SeoAssistantService::DB_RETENTION_DAYS,
+            ]);
+        });
+
+        // Wave 1 (2026-05-17) — Paginated chat history from DB (90 days).
+        // The existing Redis history is 24h-TTL; this is the durable log.
+        Route::get('/assistant/history', function (\Illuminate\Http\Request $r) {
+            $wsId  = (int) $r->attributes->get('workspace_id');
+            $limit = min(200, max(10, (int) $r->query('limit', 50)));
+            $rows = \Illuminate\Support\Facades\DB::table('seo_assistant_messages')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('created_at')
+                ->limit($limit)
+                ->get(['id', 'role', 'content', 'action_proposed_json', 'created_at']);
+            return response()->json([
+                'success'  => true,
+                'messages' => $rows->reverse()->values(),  // chrono order
+                'count'    => $rows->count(),
+            ]);
+        });
+
+        // ── DEPRECATED Wave 4 routes — removed in Wave 7 (2026-05-18) ──
+        // Routes /assistant/notifications/* were a parallel SEO-specific
+        // notification surface built before discovering the platform
+        // already had /messages/unread-count + agent_messages table.
+        // Wave 5 refactored every writer to use AgentMessageService +
+        // NotificationService::dispatch — these routes had no UI
+        // consumer and have been removed.
+        //
+        // The seo_assistant_notifications table is retained for data
+        // preservation (rows can still be queried directly if needed)
+        // and can be dropped in a future cleanup migration.
 
         // Redirects management (DB-backed)
         Route::get("/redirects", function (\Illuminate\Http\Request $r) {
@@ -2199,6 +2436,19 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             ]);
         });
 
+
+        // Lightweight scan progress poll. Returns {state: {...} | null}.
+        // Type values: 'pages' | 'images'. Cache TTL 600s.
+        Route::get('/scan-status', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $type = (string) $r->query('type', 'pages');
+            if (! in_array($type, ['pages', 'images'], true)) { $type = 'pages'; }
+            return response()->json([
+                'success' => true,
+                'state'   => \App\Engines\SEO\Services\ScanProgressService::get($wsId, $type),
+            ]);
+        });
+
         // Change 3: PATCH /seo/indexed-content/{id}
         // Accepts featured_image_url + wp_attachment_id.
         // Conditional writes only — null/absent fields never wipe existing values.
@@ -2266,6 +2516,30 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             $siteUrl = rtrim((string) $siteUrl, '/');
             $maxPages = min(50, (int) $r->input('max_pages', 50));
 
+            // Telemetry start (cache key visible to /scan-status polling)
+            \App\Engines\SEO\Services\ScanProgressService::start($wsId, 'pages', [
+                'site_url'  => $siteUrl,
+                'max_pages' => $maxPages,
+            ]);
+            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+                'stage' => 'discovering',
+            ]);
+
+            // P0-B1 (2026-05-15): proper same-origin enforcement. Compares
+            // parsed hosts, not string prefixes. Closes SSRF where
+            // 'https://staging.levelupgrowth.io.evil.com' was accepted by
+            // the prior stripos===0 check.
+            $sameOriginAs = function (string $candidate, string $base): bool {
+                $b = parse_url($base);
+                $c = parse_url($candidate);
+                if (!is_array($b) || !is_array($c)) return false;
+                if (empty($b['host']) || empty($c['host'])) return false;
+                if (strtolower((string) $b['host']) !== strtolower((string) $c['host'])) return false;
+                if (!empty($b['scheme']) && !empty($c['scheme'])
+                    && strtolower((string) $b['scheme']) !== strtolower((string) $c['scheme'])) return false;
+                return true;
+            };
+
             // 2026-05-12: walk sitemap (or sitemap-index, recursively) to
             // collect page URLs. Falls back to indexing only the homepage
             // if no sitemap is reachable.
@@ -2297,7 +2571,12 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
             $isSitemapIndex = fn (string $xml) => stripos($xml, '<sitemapindex') !== false;
 
-            $pageUrls = [];
+            // Phase P1+ (2026-05-15): DB-first discovery. The platform owns
+            // articles + pages tables — there is no value in crawling HTML to
+            // find URLs the DB already knows about. Sitemap walk + link crawler
+            // remain as supplements for anything DB doesn't know.
+            $pageUrls = app(\App\Engines\SEO\Services\PageDiscoveryService::class)
+                ->discover($wsId);
             $sitemapsTried = [];
             foreach (['/sitemap.xml', '/wp-sitemap.xml', '/sitemap_index.xml'] as $path) {
                 $rootUrl = $siteUrl . $path;
@@ -2315,17 +2594,82 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                         if (count($pageUrls) >= $maxPages * 2) { break; }
                     }
                 } else {
-                    // Flat sitemap — extract page URLs directly.
-                    $pageUrls = $extractLocs($xml);
+                    // Flat sitemap — extract page URLs directly. Merge with
+                    // any DB-discovered URLs so we don't drop blog/article URLs
+                    // that the platform serves but the sitemap doesn't list.
+                    $pageUrls = array_merge($pageUrls, $extractLocs($xml));
                 }
                 if (!empty($pageUrls)) { break; }
+            }
+
+            // Phase 9A.2 (2026-05-15): when sitemap discovery yields no URLs,
+            // fall back to a depth-1 link crawl from the homepage. Walks <a href>
+            // tags and adds same-origin internal URLs. Capped to maxPages later.
+            if (count($pageUrls) === 0) {
+                try {
+                    $homeResp = \Illuminate\Support\Facades\Http::timeout(10)
+                        ->withHeaders(['User-Agent' => 'LevelUpSEO/1.0 (link-crawler)'])
+                        ->get($siteUrl);
+                    if ($homeResp->successful()) {
+                        $aRegex = '/<a\b[^>]+href=(["\\\'])([^"\\\'#]+)\1/i';
+                        preg_match_all($aRegex, $homeResp->body(), $aMatches);
+                        $resolveLink = function (string $href) use ($siteUrl): string {
+                            $href = trim($href);
+                            if ($href === '' || $href[0] === '#'
+                                || stripos($href, 'mailto:') === 0
+                                || stripos($href, 'tel:') === 0
+                                || stripos($href, 'javascript:') === 0) return '';
+                            if (stripos($href, 'http') === 0) return $href;
+                            if ($href[0] === '/') {
+                                $origin = preg_replace('#^(https?://[^/]+).*#', '$1', $siteUrl);
+                                return rtrim((string) $origin, '/') . $href;
+                            }
+                            return rtrim($siteUrl, '/') . '/' . ltrim($href, '/');
+                        };
+                        foreach (($aMatches[2] ?? []) as $href) {
+                            $resolved = $resolveLink($href);
+                            // Same-origin only — do not crawl external sites.
+                            if ($resolved !== '' && $sameOriginAs($resolved, $siteUrl)) {
+                                $pageUrls[] = $resolved;
+                            }
+                        }
+                        $pageUrls = array_values(array_unique($pageUrls));
+
+                        // Phase P1 (2026-05-15): depth-2 walk — visit each
+                        // depth-1 URL and collect more internal links. Caps
+                        // depth-2 calls so a giant homepage doesn't fan out
+                        // unboundedly. Discovers pages NOT linked from home
+                        // (typical for blog indexes, footer-only links, etc).
+                        $depth1 = $pageUrls;
+                        $depth2Cap = min(15, count($depth1));  // cap HTTP calls
+                        foreach (array_slice($depth1, 0, $depth2Cap) as $depth1Url) {
+                            if (count($pageUrls) >= $maxPages * 2) break;
+                            try {
+                                $sub = \Illuminate\Support\Facades\Http::timeout(8)
+                                    ->withHeaders(['User-Agent' => 'LevelUpSEO/1.0 (link-crawler-d2)'])
+                                    ->get($depth1Url);
+                                if (!$sub->successful()) continue;
+                                preg_match_all($aRegex, $sub->body(), $subMatches);
+                                foreach (($subMatches[2] ?? []) as $href) {
+                                    $resolved = $resolveLink($href);
+                                    if ($resolved !== '' && $sameOriginAs($resolved, $siteUrl)) {
+                                        $pageUrls[] = $resolved;
+                                    }
+                                }
+                            } catch (\Throwable $e) { /* skip bad page */ }
+                        }
+                        $pageUrls = array_values(array_unique($pageUrls));
+                    }
+                } catch (\Throwable $e) {
+                    // fall through to homepage-only behavior
+                }
             }
 
             // Filter out non-page resources and dedupe.
             $skipExt = '/\.(jpg|jpeg|png|gif|webp|svg|pdf|zip|xml|css|js|ico|woff2?|ttf|otf|eot|mp4|webm|mp3)(\?.*)?$/i';
             $pageUrls = array_values(array_unique(array_filter(
                 $pageUrls,
-                fn ($u) => $u && !preg_match($skipExt, $u) && stripos($u, $siteUrl) === 0
+                fn ($u) => $u && !preg_match($skipExt, $u) && $sameOriginAs($u, $siteUrl)
             )));
 
             // Always include homepage so an empty/missing sitemap still gets something.
@@ -2335,22 +2679,50 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             }
             $pageUrls = array_slice($pageUrls, 0, $maxPages);
 
+            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+                'stage' => 'fetching',
+                'total' => count($pageUrls),
+            ]);
+
             // Index each. Catch per-URL exceptions so one bad page doesn't kill the run.
             $svc = app(\App\Engines\SEO\Services\SeoService::class);
             $indexed = 0;
             $failed  = [];
-            foreach ($pageUrls as $u) {
+            foreach ($pageUrls as $i => $u) {
+                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+                    'processed'   => $i,
+                    'current_url' => $u,
+                ]);
                 try {
                     $res = $svc->fetchAndIndexUrl($wsId, $u);
                     if (!empty($res['success']) || isset($res['page_id'])) {
                         $indexed++;
+                        \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+                            'tier1_done' => $indexed,
+                        ]);
                     } else {
                         $failed[] = ['url' => $u, 'error' => $res['error'] ?? 'unknown'];
+                        \App\Engines\SEO\Services\ScanProgressService::recordError(
+                            $wsId, 'pages', $u, (string) ($res['error'] ?? 'unknown')
+                        );
                     }
                 } catch (\Throwable $e) {
                     $failed[] = ['url' => $u, 'error' => $e->getMessage()];
+                    \App\Engines\SEO\Services\ScanProgressService::recordError(
+                        $wsId, 'pages', $u, $e->getMessage()
+                    );
                 }
             }
+            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+                'processed' => count($pageUrls),
+            ]);
+
+            \App\Engines\SEO\Services\ScanProgressService::finish($wsId, 'pages', [
+                'pages_indexed'  => $indexed,
+                'urls_found'     => count($pageUrls),
+                'sitemaps_tried' => $sitemapsTried,
+                'errors_total'   => count($failed),
+            ]);
 
             return response()->json([
                 'success'         => true,
@@ -2363,27 +2735,36 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         });
 
         Route::get('/image-issues', function (\Illuminate\Http\Request $r) {
-            $wsId  = $r->attributes->get('workspace_id');
-            $limit = min(500, (int) $r->query('limit', 100));
-            // 2026-05-12: v2 — query per-image seo_images table (populated by
-            // fetchAndIndexUrl). Flags both missing-alt and empty-alt.
-            $issues = \Illuminate\Support\Facades\DB::table('seo_images')
-                ->where('workspace_id', $wsId)
-                ->where(function ($q) {
-                    $q->where('missing_alt', true)->orWhere('empty_alt', true);
-                })
-                ->orderByDesc('updated_at')
+            $wsId       = $r->attributes->get('workspace_id');
+            $limit      = min(500, (int) $r->query('limit', 100));
+            // Phase 9A.1 (2026-05-15): default returns ALL indexed images so the
+            // SPA can render a full audit view (with flags on issue rows).
+            // Legacy callers can pass ?issues_only=1 to keep the old behavior.
+            $issuesOnly = (int) $r->query('issues_only', 0) === 1;
+
+            $q = \Illuminate\Support\Facades\DB::table('seo_images')
+                ->where('workspace_id', $wsId);
+            if ($issuesOnly) {
+                $q->where(function ($qq) {
+                    $qq->where('missing_alt', true)->orWhere('empty_alt', true);
+                });
+            }
+            $issues = $q->orderByDesc('updated_at')
                 ->limit($limit)
-                ->get(['page_url', 'image_url', 'alt_text', 'missing_alt', 'empty_alt', 'suggested_alt']);
+                ->get([
+                    'id', 'page_url', 'image_url', 'alt_text',
+                    'missing_alt', 'empty_alt', 'suggested_alt',
+                    'width', 'height', 'size_bytes', 'content_type', 'last_probed_at',
+                    'scan_method',
+                ]);
             $sumRow = \Illuminate\Support\Facades\DB::table('seo_images')
                 ->where('workspace_id', $wsId)
                 ->selectRaw('COUNT(*) AS total,
                              SUM(missing_alt) AS missing_alt,
                              SUM(empty_alt)   AS empty_alt,
-                             COUNT(DISTINCT page_url) AS pages')
+                             COUNT(DISTINCT page_url) AS pages,
+                             SUM(size_bytes)   AS bytes_total')
                 ->first();
-            // 2026-05-12: shape matches /image-summary so the SPA can read
-            // either response with the same parsing code.
             $missing = (int) ($sumRow->missing_alt ?? 0);
             $empty   = (int) ($sumRow->empty_alt   ?? 0);
             $summary = [
@@ -2395,6 +2776,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 'issues_found'        => $missing + $empty,
                 'filename_unfriendly' => 0,
                 'wrong_format'        => 0,
+                'bytes_total'         => (int) ($sumRow->bytes_total ?? 0),
             ];
             return response()->json([
                 'success' => true,
@@ -2404,35 +2786,345 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             ]);
         });
 
-        // 2026-05-12: FIX 7 supporting routes
+        // Phase 9A.1 — HEAD-probe each NULL-sized seo_images row to capture
+        // content-length + content-type. Up to {batch} rows per call so the
+        // SPA can call this in chunks without blocking. Failed probes are
+        // marked via last_probed_at so we don't retry endlessly.
+        Route::post('/image-issues/probe-sizes', function (\Illuminate\Http\Request $r) {
+            $wsId  = $r->attributes->get('workspace_id');
+            $batch = max(1, min(100, (int) $r->input('batch', 50)));
+            $rows = \Illuminate\Support\Facades\DB::table('seo_images')
+                ->where('workspace_id', $wsId)
+                ->whereNull('size_bytes')
+                ->whereNull('last_probed_at')
+                ->limit($batch)
+                ->get(['id', 'image_url']);
+            $probed = 0;
+            $failed = 0;
+            foreach ($rows as $row) {
+                try {
+                    $head = \Illuminate\Support\Facades\Http::timeout(8)
+                        ->withHeaders(['User-Agent' => 'LevelUpSEO/1.0 (size-probe)'])
+                        ->head($row->image_url);
+                    $size = $head->successful() ? (int) ($head->header('Content-Length') ?? 0) : 0;
+                    $type = $head->successful() ? (string) ($head->header('Content-Type') ?? '') : '';
+                    \Illuminate\Support\Facades\DB::table('seo_images')
+                        ->where('id', $row->id)
+                        ->update([
+                            'size_bytes'     => $size > 0 ? $size : null,
+                            'content_type'   => $type !== '' ? mb_substr($type, 0, 100) : null,
+                            'last_probed_at' => now(),
+                            'updated_at'     => now(),
+                        ]);
+                    if ($size > 0) { $probed++; } else { $failed++; }
+                } catch (\Throwable $e) {
+                    $failed++;
+                    \Illuminate\Support\Facades\DB::table('seo_images')
+                        ->where('id', $row->id)
+                        ->update(['last_probed_at' => now(), 'updated_at' => now()]);
+                }
+            }
+            $remaining = \Illuminate\Support\Facades\DB::table('seo_images')
+                ->where('workspace_id', $wsId)
+                ->whereNull('size_bytes')
+                ->whereNull('last_probed_at')
+                ->count();
+            return response()->json([
+                'success'   => true,
+                'probed'    => $probed,
+                'failed'    => $failed,
+                'remaining' => $remaining,
+            ]);
+        });
+
+        // Phase 9A.1 — STUB. Phase 9D will implement actual download → recompress
+        // → upload-back pipeline. For now this returns the size on disk + a
+        // rough savings estimate so the user gets a clear "coming soon" message.
+        // Phase A (2026-05-16) — REAL single-image optimization dispatch.
+        // Replaces prior stub that returned fabricated estimated_savings_bytes.
+        // This endpoint ONLY returns {accepted, status, job_id} — actual
+        // optimization runs async in OptimizeWpAttachmentJob and is verified
+        // independently before status transitions to 'optimized'. UI polls
+        // /image-issues/optimize-status for outcome.
+        Route::post('/image-issues/optimize', function (\Illuminate\Http\Request $r) {
+            $wsId   = (int) $r->attributes->get('workspace_id');
+            $userId = $r->user() ? (int) $r->user()->id : null;
+            $imgUrl = trim((string) $r->input('image_url', ''));
+            if ($imgUrl === '') {
+                return response()->json(['accepted' => false, 'status' => 'failed', 'reason' => 'image_url_required'], 422);
+            }
+            $orchestrator = app(\App\Services\SeoOptimization\OptimizationOrchestrator::class);
+            $result = $orchestrator->dispatch($wsId, $userId, $imgUrl);
+            $http   = (int) ($result['http_status'] ?? 200);
+            unset($result['http_status']);
+            return response()->json($result, $http);
+        });
+
+        // Phase A — single-image optimization status (polling endpoint for FE)
+        Route::get('/image-issues/optimize-status', function (\Illuminate\Http\Request $r) {
+            $wsId   = (int) $r->attributes->get('workspace_id');
+            $imgUrl = trim((string) $r->query('image_url', ''));
+            if ($imgUrl === '') {
+                return response()->json(['success' => false, 'error' => 'image_url_required'], 422);
+            }
+            $orchestrator = app(\App\Services\SeoOptimization\OptimizationOrchestrator::class);
+            $state = $orchestrator->getStatus($wsId, $imgUrl);
+            return response()->json(['success' => true, 'state' => $state]);
+        });
+
+        // Phase A — capability probe (admin / debug surface; FE may also call)
+        Route::get('/image-issues/optimize-capability', function (\Illuminate\Http\Request $r) {
+            $wsId  = (int) $r->attributes->get('workspace_id');
+            $force = (bool) $r->query('force', false);
+            $cap   = app(\App\Services\SeoOptimization\ConnectorCapabilityProbe::class)
+                ->probe($wsId, $force);
+            return response()->json(['success' => true, 'capability' => $cap]);
+        });
+
         Route::post('/image-issues/bulk-analyze', function (\Illuminate\Http\Request $r) {
             $wsId  = $r->attributes->get('workspace_id');
             $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
                 ->where('workspace_id', $wsId)
                 ->pluck('url')->toArray();
+
+            \App\Engines\SEO\Services\ScanProgressService::start($wsId, 'images', [
+                'pool' => count($pages),
+            ]);
             $svc = app(\App\Engines\SEO\Services\SeoService::class);
             $scanned = 0;
-            foreach (array_slice($pages, 0, 30) as $u) {
-                try { $svc->fetchAndIndexUrl($wsId, $u); $scanned++; } catch (\Throwable $e) {}
+            $tier1Imgs = 0;
+            $tier2Attempts = 0;
+            $tier2Imgs = 0;
+            // P0.5 Tier 2 cap — each puppeteer call is 5-10s; 10 pages × ~7s
+            // = ~70s. The route is synchronous; capping at 10 keeps total
+            // runtime under typical nginx/PHP-FPM 60s timeout for the common
+            // case where only a few pages need Tier 2.
+            $tier2Cap = 10;
+            $imgPool = array_slice($pages, 0, 30);
+            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                'stage' => 'fetching',
+                'total' => count($imgPool),
+            ]);
+            foreach ($imgPool as $i => $u) {
+                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                    'stage'       => 'fetching',
+                    'processed'   => $i,
+                    'current_url' => $u,
+                ]);
+                $preCount = (int) \Illuminate\Support\Facades\DB::table('seo_images')
+                    ->where('workspace_id', $wsId)
+                    ->where('page_url', $u)
+                    ->count();
+                try { $svc->fetchAndIndexUrl($wsId, $u); $scanned++; } catch (\Throwable $e) {
+                    \App\Engines\SEO\Services\ScanProgressService::recordError($wsId, 'images', $u, $e->getMessage());
+                }
+                $postCount = (int) \Illuminate\Support\Facades\DB::table('seo_images')
+                    ->where('workspace_id', $wsId)
+                    ->where('page_url', $u)
+                    ->count();
+                $tier1Delta = max(0, $postCount - $preCount);
+                $tier1Imgs += $tier1Delta;
+                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                    'tier1_done' => $tier1Imgs,
+                ]);
+                // Tier 2 fallback ONLY when the page has ZERO images after
+                // Tier 1 ran. Note: $tier1Delta === 0 alone is wrong because
+                // updateOrInsert on EXISTING tuples is an UPDATE that doesn't
+                // move row count — that's still successful Tier 1 work and
+                // must NOT trigger Tier 2 (would bleed laravel_browser into
+                // pages already covered by laravel_http or wp_sync).
+                if ($postCount === 0 && $tier2Attempts < $tier2Cap) {
+                    $tier2Attempts++;
+                    \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                        'stage'         => 'rendering',
+                        'tier2_attempts'=> $tier2Attempts,
+                        'current_url'   => $u,
+                    ]);
+                    try {
+                        $tier2Imgs += $svc->tier2ExtractRendered($wsId, $u);
+                        \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                            'tier2_done' => $tier2Imgs,
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('tier2 extract failed', [
+                            'workspace_id' => $wsId,
+                            'page_url'     => $u,
+                            'err'          => $e->getMessage(),
+                        ]);
+                        \App\Engines\SEO\Services\ScanProgressService::recordError($wsId, 'images', $u, 'tier2: ' . $e->getMessage());
+                    }
+                }
             }
-            return response()->json(['success' => true, 'pages_scanned' => $scanned]);
+            \App\Engines\SEO\Services\ScanProgressService::finish($wsId, 'images', [
+                'pages_scanned'  => $scanned,
+                'tier1_images'   => $tier1Imgs,
+                'tier2_attempts' => $tier2Attempts,
+                'tier2_images'   => $tier2Imgs,
+                'tier2_cap'      => $tier2Cap,
+            ]);
+            return response()->json([
+                'success'        => true,
+                'pages_scanned'  => $scanned,
+                'tier1_images'   => $tier1Imgs,
+                'tier2_attempts' => $tier2Attempts,
+                'tier2_images'   => $tier2Imgs,
+                'tier2_cap'      => $tier2Cap,
+            ]);
         });
 
         Route::post('/image-issues/suggest-alt', function (\Illuminate\Http\Request $r) {
             $wsId    = $r->attributes->get('workspace_id');
-            $imgUrl  = $r->input('image_url', '');
-            $pageUrl = $r->input('page_url', '');
+            $imgUrl  = $r->input('image_url') ?: $r->input('image_src', '');
+            $pageUrl = $r->input('page_url') ?: $r->input('page_context', '');
             $page    = \Illuminate\Support\Facades\DB::table('seo_content_index')
                 ->where('workspace_id', $wsId)->where('url', $pageUrl)->first();
-            // Heuristic suggestion — derive from page context. Future: route
-            // through RuntimeClient for an AI-generated alt.
-            $base = $page->h1 ?: ($page->title ?? '');
-            $suggested = mb_substr(trim($base ?: 'Image on ' . $pageUrl), 0, 120);
-            \Illuminate\Support\Facades\DB::table('seo_images')
+
+            // Phase P2-light (2026-05-15): heuristic upgrade. Real AI vision
+            // pending Railway runtime endpoint addition (/internal/image/describe).
+            // For now, derive a meaningful alt from: filename → page H1 → page
+            // title → host fallback. Top-keyword adds context when available.
+            $filename = $imgUrl ? basename((string) parse_url($imgUrl, PHP_URL_PATH)) : '';
+            $cleanFilename = preg_replace('/[-_]+/', ' ', preg_replace('/\.\w+$/', '', $filename));
+            $cleanFilename = preg_replace('/\s+\d+x\d+\s*$/', '', $cleanFilename); // strip "1024x768" suffixes
+            $cleanFilename = trim((string) $cleanFilename);
+
+            $h1    = $page->h1 ?? '';
+            $title = $page->title ?? '';
+            $keyword = '';
+            if ($pageUrl) {
+                $keyword = (string) (\Illuminate\Support\Facades\DB::table('seo_keywords')
+                    ->where('workspace_id', $wsId)
+                    ->where('target_url', $pageUrl)
+                    ->orderByDesc('volume')
+                    ->value('keyword') ?? '');
+            }
+
+            // Strategy: filename if it's descriptive (8+ chars, not a generic ID),
+            // else page context (h1 or title), with keyword prepended if not
+            // already in the context.
+            $isGenericFilename = $cleanFilename === '' || strlen($cleanFilename) < 8
+                || preg_match('/^(img|dsc|dscn|p\d+|gemini|chatgpt|screen|untitled|placeholder|\d+|gal[ -_]\w+)/i', $cleanFilename);
+
+            if (! $isGenericFilename) {
+                $suggested = ucfirst($cleanFilename);
+            } elseif ($h1) {
+                $base = $h1;
+                if ($keyword && stripos($base, $keyword) === false) {
+                    $base = $keyword . ' — ' . $base;
+                }
+                $suggested = $base;
+            } elseif ($title) {
+                $suggested = $title;
+            } else {
+                $host = $pageUrl ? parse_url($pageUrl, PHP_URL_HOST) : 'website';
+                $suggested = 'Image from ' . $host;
+            }
+            $suggested = mb_substr(trim((string) $suggested), 0, 120);
+
+            // Persist suggestion so the SPA can display the saved value on revisit.
+            if ($imgUrl) {
+                \Illuminate\Support\Facades\DB::table('seo_images')
+                    ->where('workspace_id', $wsId)
+                    ->where('image_url', $imgUrl)
+                    ->update([
+                        'suggested_alt' => $suggested,
+                        'updated_at'    => now(),
+                    ]);
+            }
+            return response()->json([
+                'success'       => true,
+                'suggested_alt' => $suggested,
+                'method'        => 'heuristic_v2',
+            ]);
+        });
+
+
+        // P-AltApply (2026-05-15) — write generated alt text back to the canonical
+        // seo_images row + best-effort push to WP via the existing connector
+        // pattern (mirrors /save-meta). For Laravel-only sites (no WP plugin
+        // configured) the WP push is skipped — Laravel persistence is the truth.
+        Route::post('/image-issues/apply-alt', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $data = $r->validate([
+                'image_url' => 'required|url',
+                'alt_text'  => 'required|string|max:500',
+                'page_url'  => 'nullable|url',
+            ]);
+            $alt = trim((string) $data['alt_text']);
+            if ($alt === '') {
+                return response()->json(['success' => false, 'error' => 'alt_text_empty'], 422);
+            }
+
+            // 1. Canonical persistence
+            $affected = \Illuminate\Support\Facades\DB::table('seo_images')
                 ->where('workspace_id', $wsId)
-                ->where('image_url', $imgUrl)
-                ->update(['suggested_alt' => $suggested, 'updated_at' => now()]);
-            return response()->json(['success' => true, 'suggested_alt' => $suggested]);
+                ->where('image_url', $data['image_url'])
+                ->update([
+                    'alt_text'    => $alt,
+                    'missing_alt' => 0,
+                    'empty_alt'   => 0,
+                    'updated_at'  => now(),
+                ]);
+            if ($affected === 0) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'image_not_found',
+                    'message' => 'No seo_images row matched (image_url + workspace).',
+                ], 404);
+            }
+
+            // 2. Best-effort WP push — only when site is connector-attached.
+            //    Mirrors /save-meta pattern: fire-and-forget, don't block on
+            //    plugin-side errors. WP plugin endpoint /wp-json/lgsc/v1/update-image-alt
+            //    is expected; on 404 we honestly report wp_pushed=false.
+            $wpPushed = null;
+            $wpReason = null;
+            $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+            $secret  = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+            if ($siteUrl && $secret) {
+                try {
+                    $resp = \Illuminate\Support\Facades\Http::timeout(5)
+                        ->withHeaders(['User-Agent' => 'LevelUpGrowth/1.0 (alt-sync)'])
+                        ->post(rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/update-image-alt', [
+                            'secret'    => $secret,
+                            'image_url' => $data['image_url'],
+                            'alt_text'  => $alt,
+                        ]);
+                    if ($resp->successful()) {
+                        $wpPushed = true;
+                    } else {
+                        $wpPushed = false;
+                        $wpReason = 'wp_status_' . $resp->status();
+                        \Illuminate\Support\Facades\Log::warning('[SEO] apply-alt WP push non-2xx', [
+                            'ws_id'     => $wsId,
+                            'image_url' => $data['image_url'],
+                            'http'      => $resp->status(),
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    $wpPushed = false;
+                    $wpReason = 'wp_unreachable';
+                    \Illuminate\Support\Facades\Log::warning('[SEO] apply-alt WP push exception: ' . $e->getMessage());
+                }
+            }
+
+            // 3. Recomputed counters for FE state sync (no extra round-trip needed)
+            $sumRow = \Illuminate\Support\Facades\DB::table('seo_images')
+                ->where('workspace_id', $wsId)
+                ->selectRaw('SUM(missing_alt) AS missing, SUM(empty_alt) AS empty_v')
+                ->first();
+
+            return response()->json([
+                'success'           => true,
+                'image_url'         => $data['image_url'],
+                'alt_text'          => $alt,
+                'wp_pushed'         => $wpPushed,
+                'wp_push_reason'    => $wpReason,
+                'missing_remaining' => (int) ($sumRow->missing ?? 0),
+                'empty_remaining'   => (int) ($sumRow->empty_v ?? 0),
+            ]);
         });
 
         Route::get('/image-summary', function (\Illuminate\Http\Request $r) {
@@ -2577,20 +3269,24 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 'url'              => 'required|url',
                 'meta_title'       => 'nullable|string|max:500',
                 'meta_description' => 'nullable|string|max:1000',
+                'h1'               => 'nullable|string|max:500',
             ]);
-            $url = $data['url'];
+            $url   = $data['url'];
             $title = $data['meta_title'] ?? null;
             $desc  = $data['meta_description'] ?? null;
+            $h1    = $data['h1'] ?? null;
 
-            // 1. Canonical store
-            \Illuminate\Support\Facades\DB::table('seo_content_index')
-                ->where('workspace_id', $wsId)
-                ->where('url', $url)
-                ->update([
-                    'meta_title'       => $title,
-                    'meta_description' => $desc,
-                    'updated_at'       => now(),
-                ]);
+            // 1. Canonical store — conditional writes only (null = leave alone)
+            $update = ['updated_at' => now()];
+            if ($title !== null) { $update['meta_title']       = $title; }
+            if ($desc  !== null) { $update['meta_description'] = $desc;  }
+            if ($h1    !== null) { $update['h1']               = $h1;    }
+            if (count($update) > 1) {
+                \Illuminate\Support\Facades\DB::table('seo_content_index')
+                    ->where('workspace_id', $wsId)
+                    ->where('url', $url)
+                    ->update($update);
+            }
 
             // 2. If this URL belongs to a Builder page, push back into pages.seo_json.
             //    We match by slug derived from URL path against websites in this workspace.
@@ -2605,19 +3301,20 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                     ->first();
                 if ($page) {
                     $seo = json_decode($page->seo_json ?? '{}', true) ?: [];
-                    $seo['meta_title']       = $title;
-                    $seo['meta_description'] = $desc;
-                    $seo['title']            = $title       ?? $seo['title']       ?? null;
-                    $seo['description']      = $desc        ?? $seo['description'] ?? null;
+                    if ($title !== null) { $seo['meta_title']       = $title; }
+                    if ($desc  !== null) { $seo['meta_description'] = $desc;  }
+                    if ($h1    !== null) { $seo['h1']               = $h1;    }
+                    $seo['title']       = $title ?? ($seo['title']       ?? null);
+                    $seo['description'] = $desc  ?? ($seo['description'] ?? null);
+
+                    $pageUpdate = ['updated_at' => now(), 'seo_json' => json_encode(
+                        array_filter($seo, fn ($v) => $v !== null && $v !== '')
+                    )];
+                    if ($title !== null) { $pageUpdate['meta_title']       = $title; }
+                    if ($desc  !== null) { $pageUpdate['meta_description'] = $desc;  }
                     \Illuminate\Support\Facades\DB::table('pages')
                         ->where('id', $page->id)
-                        ->update([
-                            'meta_title'       => $title,
-                            'meta_description' => $desc,
-                            'seo_json'         => json_encode(array_filter($seo,
-                                fn ($v) => $v !== null && $v !== '')),
-                            'updated_at'       => now(),
-                        ]);
+                        ->update($pageUpdate);
                 }
             } catch (\Throwable $e) {
                 \Log::warning('[SEO] save-meta Builder writeback failed: ' . $e->getMessage());
@@ -2637,13 +3334,211 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                             'url'              => $url,
                             'meta_title'       => $title ?? '',
                             'meta_description' => $desc  ?? '',
+                            'h1'               => $h1    ?? '',
                         ]);
                 }
             } catch (\Throwable $e) {
                 \Log::debug('[SEO] save-meta WP push failed: ' . $e->getMessage());
             }
 
-            return response()->json(['success' => true]);
+            // Rescore — manual meta edits should refresh content_score too.
+            $newScore = null;
+            $oldScore = null;
+            $row = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)->where('url', $url)->first(['id']);
+            if ($row) {
+                $rescore = app(\App\Engines\SEO\Services\SeoService::class)
+                    ->rescoreAfterMetaEdit($wsId, (int) $row->id);
+                $newScore = $rescore['score'] ?? null;
+                $oldScore = $rescore['old_score'] ?? null;
+            }
+
+            return response()->json([
+                'success'       => true,
+                'new_score'     => $newScore,
+                'old_score'     => $oldScore,
+                'score_changed' => $newScore !== null && $oldScore !== $newScore,
+            ]);
+        });
+
+
+        // Phase A (2026-05-16) — pull WP featured images back into seo_content_index
+        // via the connector's GET /lgsc/v1/posts endpoint. Idempotent + fast.
+        Route::post('/sync-wp-featured-images', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $svc  = app(\App\Services\SeoSync\WpFeaturedImageSyncService::class);
+            $result = $svc->sync($wsId);
+            $http = ($result['success'] ?? false) ? 200 : 503;
+            return response()->json($result, $http);
+        });
+
+        // ─── Meta optimization (Phase A 2026-05-19) ─────────────────────
+        // /meta-optimize/keyword — detect focus keyword for a page (free, all tiers)
+        Route::get('/meta-optimize/keyword', function (\Illuminate\Http\Request $r) {
+            $wsId   = (int) $r->attributes->get('workspace_id');
+            $pageId = (int) $r->query('page_id', 0);
+            if ($pageId <= 0) {
+                return response()->json(['success' => false, 'error' => 'page_id_required'], 422);
+            }
+            $detector = app(\App\Services\SeoOptimization\FocusKeywordDetector::class);
+            return response()->json([
+                'success'  => true,
+                'keyword'  => $detector->detect($wsId, $pageId),
+            ]);
+        });
+
+        // /meta-optimize/run — Growth+ AI optimize + auto-apply via /save-meta
+        // Charges 0.5 credits per page. Single-page entry point; FE bulk
+        // calls this in a loop for each selected page.
+        Route::post('/meta-optimize/run', function (\Illuminate\Http\Request $r) {
+            $wsId   = (int) $r->attributes->get('workspace_id');
+            $pageId = (int) $r->input('page_id', 0);
+            $override = trim((string) $r->input('override_keyword', ''));
+            if ($pageId <= 0) {
+                return response()->json(['success' => false, 'error' => 'page_id_required'], 422);
+            }
+
+            // Plan gate — Growth+ only (canUseImageOptimization is full-AI tier;
+            // same semantic for meta optimization)
+            $gate = app(\App\Core\Billing\FeatureGateService::class);
+            if (! $gate->canUseImageOptimization($wsId)) {
+                return response()->json([
+                    'success'       => false,
+                    'error'         => 'plan_upgrade_required',
+                    'code'          => 'PLAN_UPGRADE_REQUIRED',
+                    'required_plan' => 'growth',
+                ], 403);
+            }
+
+            $detector = app(\App\Services\SeoOptimization\FocusKeywordDetector::class);
+            $optimizer = app(\App\Services\SeoOptimization\MetaOptimizationService::class);
+
+            // 1. Resolve focus keyword (override or detect)
+            $kwResult = $detector->detect($wsId, $pageId);
+            $primary  = $override !== '' ? $override : (string) ($kwResult['primary_keyword'] ?? '');
+            $alts     = is_array($kwResult['alternatives'] ?? null) ? $kwResult['alternatives'] : [];
+            if ($primary === '') {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'no_focus_keyword',
+                    'reason'  => 'detection_returned_none_no_override_supplied',
+                ], 200);
+            }
+
+            // 2. Credit pre-check (0.5 per page)
+            $cost    = $optimizer->creditPerPage();
+            $credits = (float) (\Illuminate\Support\Facades\DB::table('credits')
+                ->where('workspace_id', $wsId)->value('balance') ?? 0);
+            if ($credits < $cost) {
+                return response()->json([
+                    'success'   => false,
+                    'error'     => 'insufficient_credits',
+                    'code'      => 'NO_CREDITS',
+                    'required'  => $cost,
+                    'available' => $credits,
+                ], 402);
+            }
+
+            // 3. Page row lookup (for URL needed at apply time)
+            $page = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('id', $pageId)
+                ->first(['url']);
+            if (! $page) {
+                return response()->json(['success' => false, 'error' => 'page_not_found'], 404);
+            }
+
+            // 4. Run AI optimize
+            $result = $optimizer->optimize($wsId, $pageId, $primary, $alts);
+            if (empty($result['success'])) {
+                // NO credit charge on AI failure
+                return response()->json([
+                    'success'  => false,
+                    'error'    => 'ai_failed',
+                    'reason'   => (string) ($result['error']   ?? 'unknown'),
+                    'details'  => (string) ($result['details'] ?? ''),
+                ], 200);
+            }
+
+            // 5. Apply 'replace' actions via /save-meta (inline call — same workspace
+            //    auth context already validated; we just re-use the meta-save logic).
+            $applyPayload = ['url' => $page->url];
+            $replaceCount = 0;
+            $keepCount    = 0;
+            foreach ($result['actions'] as $a) {
+                if (($a['action'] ?? '') === 'replace' && isset($a['value'])) {
+                    $applyPayload[$a['field']] = (string) $a['value'];
+                    $replaceCount++;
+                } elseif (($a['action'] ?? '') === 'keep') {
+                    $keepCount++;
+                }
+            }
+
+            $wpPushed = null;
+            $wpReason = null;
+            if ($replaceCount > 0) {
+                // Persist via direct DB writes + same WP push pattern /save-meta uses
+                $upd = ['updated_at' => now()];
+                if (isset($applyPayload['meta_title']))       { $upd['meta_title']       = $applyPayload['meta_title']; }
+                if (isset($applyPayload['meta_description'])) { $upd['meta_description'] = $applyPayload['meta_description']; }
+                if (isset($applyPayload['h1']))               { $upd['h1']               = $applyPayload['h1']; }
+                \Illuminate\Support\Facades\DB::table('seo_content_index')
+                    ->where('workspace_id', $wsId)->where('id', $pageId)->update($upd);
+
+                // Best-effort WP push
+                try {
+                    $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+                        ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+                    $secret  = \Illuminate\Support\Facades\DB::table('seo_settings')
+                        ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+                    if ($siteUrl && $secret && str_contains($page->url, parse_url($siteUrl, PHP_URL_HOST) ?? 'x')) {
+                        $resp = \Illuminate\Support\Facades\Http::timeout(8)
+                            ->withHeaders(['User-Agent' => 'LevelUpGrowth/1.0 (meta-opt-sync)'])
+                            ->post(rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/update-meta', [
+                                'secret'           => $secret,
+                                'url'              => $page->url,
+                                'meta_title'       => $applyPayload['meta_title']       ?? '',
+                                'meta_description' => $applyPayload['meta_description'] ?? '',
+                                'h1'               => $applyPayload['h1']               ?? '',
+                            ]);
+                        $wpPushed = $resp->successful();
+                        if (! $wpPushed) { $wpReason = 'wp_status_' . $resp->status(); }
+                    }
+                } catch (\Throwable $e) {
+                    $wpPushed = false;
+                    $wpReason = 'wp_unreachable';
+                    \Illuminate\Support\Facades\Log::warning('[SEO][meta-opt] WP push failed: ' . $e->getMessage());
+                }
+            }
+
+            // 6. Recompute content score (only if any field was actually replaced)
+            $rescore = null;
+            if ($replaceCount > 0) {
+                $rescore = app(\App\Engines\SEO\Services\SeoService::class)
+                    ->rescoreAfterMetaEdit($wsId, $pageId);
+            }
+
+            // 7. Charge credit ONLY if AI executed (which it did — we're here)
+            \Illuminate\Support\Facades\DB::table('credits')
+                ->where('workspace_id', $wsId)->decrement('balance', $cost);
+
+            return response()->json([
+                'success'           => true,
+                'page_id'           => $pageId,
+                'page_url'          => $page->url,
+                'primary_keyword'   => $primary,
+                'keyword_source'    => $kwResult['source'] ?? 'unknown',
+                'actions'           => $result['actions'],
+                'fields_replaced'   => $replaceCount,
+                'fields_kept'       => $keepCount,
+                'wp_pushed'         => $wpPushed,
+                'wp_push_reason'    => $wpReason,
+                'credits_used'      => $cost,
+                'credits_remaining' => max(0, $credits - $cost),
+                'new_score'         => $rescore['score']     ?? null,
+                'old_score'         => $rescore['old_score'] ?? null,
+                'score_changed'     => $rescore['changed']   ?? false,
+            ]);
         });
 
         // 2026-05-15 Phase 4 — adapter routes for existing seo.js shape.
@@ -2972,6 +3867,167 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::delete('/articles/{id}', [$c, 'deleteArticle']);
         Route::get('/articles/{id}/versions', [$c, 'getVersions']);
         Route::post('/articles/{id}/versions/{vid}/restore', [$c, 'restoreVersion']);
+
+        // Wave 7 (2026-05-18). Publish an article to the workspace's
+        // WordPress site. Orchestrates: (1) update status to 'published',
+        // (2) push to WP via existing /connector/publish-post logic,
+        // (3) persist wp_post_id, (4) post notification to Priya's chat
+        // thread so the user sees the result in the unified messages
+        // surfaces. Per AI Assistant Operating Rules: this fires only
+        // on explicit user click (rule 5 — no auto-publish).
+        Route::post('/articles/{id}/publish', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $articleId = (int) $id;
+
+            $article = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('workspace_id', $wsId)->where('id', $articleId)->first();
+            if (! $article) {
+                return response()->json(['error' => 'article_not_found'], 404);
+            }
+            if (! empty($article->wp_post_id)) {
+                return response()->json([
+                    'success'    => true,
+                    'already'    => true,
+                    'wp_post_id' => (int) $article->wp_post_id,
+                    'message'    => 'Article was already published to WordPress.',
+                ]);
+            }
+
+            // Step 1 — site config check (fail fast before mutating state)
+            $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+            $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+            if (! $siteUrl) {
+                return response()->json([
+                    'error'   => 'site_not_configured',
+                    'message' => 'No WordPress site registered for this workspace. Connect your WordPress site in Settings first.',
+                ], 422);
+            }
+
+            // Step 2 — update Laravel-side first so even if WP push fails
+            // we have published_at recorded. wp_post_id stays NULL until
+            // WP confirms.
+            \Illuminate\Support\Facades\DB::table('articles')
+                ->where('id', $articleId)
+                ->update([
+                    'status'       => 'published',
+                    'published_at' => now(),
+                    'updated_at'   => now(),
+                ]);
+
+            // Step 3 — push to WordPress via lgsc/v1/create-post
+            $payload = [
+                'title'              => $article->title,
+                'content'            => $article->content,
+                'status'             => 'publish',
+                'meta_title'         => $article->meta_title ?? $article->title,
+                'meta_description'   => $article->meta_description ?? null,
+                'featured_image_url' => $article->featured_image_url ?? null,
+                'levelup_article_id' => $articleId,
+                'secret'             => $webhookSecret ?? '',
+            ];
+            $wpUrl = rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/create-post';
+            try {
+                $response = \Illuminate\Support\Facades\Http::timeout(30)
+                    ->withHeaders(['Content-Type' => 'application/json', 'X-LGSC-Secret' => $webhookSecret ?? ''])
+                    ->post($wpUrl, $payload);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'wp_unreachable',
+                    'message' => 'Could not reach WordPress site: ' . $e->getMessage()
+                              . ' (article status set to published in your library; you can retry the WordPress push later)',
+                ], 502);
+            }
+
+            if (! $response->successful()) {
+                return response()->json([
+                    'success'   => false,
+                    'error'     => 'wp_publish_failed',
+                    'http'      => $response->status(),
+                    'wp_error'  => $response->json(),
+                    'message'   => "WordPress returned HTTP {$response->status()} — check your plugin connection or site logs.",
+                ], 502);
+            }
+
+            $wpResult = $response->json() ?? [];
+            $wpPostId = isset($wpResult['post_id']) && is_numeric($wpResult['post_id'])
+                ? (int) $wpResult['post_id'] : null;
+            $publicUrl = $wpResult['url'] ?? $wpResult['view'] ?? null;
+
+            // Step 4 — persist wp_post_id + sync SCI row to the WP URL
+            if ($wpPostId) {
+                \Illuminate\Support\Facades\DB::table('articles')
+                    ->where('id', $articleId)
+                    ->update(['wp_post_id' => $wpPostId]);
+            }
+            if ($publicUrl) {
+                try {
+                    \Illuminate\Support\Facades\DB::table('seo_content_index')->updateOrInsert(
+                        ['workspace_id' => $wsId, 'url_hash' => hash('sha256', $publicUrl)],
+                        [
+                            'url'        => $publicUrl,
+                            'title'      => $article->title,
+                            'wp_post_id' => $wpPostId,
+                            'updated_at' => now(),
+                        ]
+                    );
+                } catch (\Throwable $e) { /* non-fatal */ }
+            }
+
+            // Step 5 — notify the user via the appropriate agent's chat
+            // thread. Context-aware routing (Wave 9, 2026-05-18):
+            //   - WP iframe caller (X-API-KEY auth → api_key_id attribute):
+            //     post to 'james' thread. The WP plugin SEO drawer pulls
+            //     /agents/james/messages, so this is the only place a WP
+            //     user will see the publish confirmation after the toast.
+            //   - Laravel SaaS caller (JWT auth): post to 'priya' thread.
+            //     Content Manager owns "your article is live" in the
+            //     team UX.
+            // Same notification surfaces in both contexts.
+            try {
+                $isWpEmbed = $r->attributes->has('api_key_id');
+                $targetAgentSlug = $isWpEmbed ? 'james' : 'priya';
+                $msg = "Your article **\"{$article->title}\"** is now live on your WordPress site.";
+                if ($publicUrl) { $msg .= "\n\nLive URL: {$publicUrl}"; }
+                app(\App\Core\Agents\AgentMessageService::class)
+                    ->postAsAgent($wsId, $targetAgentSlug, $msg, [
+                        'notification_type' => 'article_published',
+                        'article_id'        => $articleId,
+                        'wp_post_id'        => $wpPostId,
+                        'public_url'        => $publicUrl,
+                        'action_link'       => $publicUrl ?: ("/app/?tab=blog&article=" . $articleId),
+                        'caller_context'    => $isWpEmbed ? 'wp_embed' : 'saas',
+                    ]);
+
+                $uid = optional($r->user())->id;
+                if ($uid) {
+                    app(\App\Core\Notifications\NotificationService::class)->dispatch(
+                        \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED,
+                        $uid,
+                        "Published: \"{$article->title}\"",
+                        $wsId,
+                        $publicUrl ? "Live at {$publicUrl}" : "Pushed to WordPress.",
+                        [
+                            'notification_type' => 'article_published',
+                            'article_id'        => $articleId,
+                            'wp_post_id'        => $wpPostId,
+                        ],
+                        $publicUrl,
+                        'success',
+                        '🎉'
+                    );
+                }
+            } catch (\Throwable $e) { /* non-fatal */ }
+
+            return response()->json([
+                'success'    => true,
+                'wp_post_id' => $wpPostId,
+                'public_url' => $publicUrl,
+                'article_id' => $articleId,
+            ]);
+        });
         Route::post('/ai/write', [$c, 'writeArticle']);
         Route::post('/ai/improve', [$c, 'improveDraft']);
         Route::post('/ai/outline', [$c, 'generateOutline']);
@@ -9815,6 +10871,33 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             'force'   => 'nullable|boolean',
         ]);
         $force = (bool) ($data['force'] ?? false);
+        // P-Gate (2026-05-15) — caller-mode-aware SEO AI entitlement.
+        // X-API-KEY caller -> WP path -> canUseSeoAIForConnector
+        // Bearer JWT caller -> SaaS path -> canUseSeoAI (Growth+)
+        $gate = app(\App\Core\Billing\FeatureGateService::class);
+        $isApiKeyCaller = $r->attributes->has('api_key_id');
+        if ($isApiKeyCaller) {
+            if (! $gate->canUseSeoAIForConnector($wsId)) {
+                return response()->json([
+                    'success'       => false,
+                    'error'         => 'plan_upgrade_required',
+                    'code'          => 'PLAN_UPGRADE_REQUIRED',
+                    'required_plan' => 'wp_bundle',
+                    'message'       => 'SEO AI generation requires the WP SEO Bundle ($69) or higher.',
+                ], 403);
+            }
+        } else {
+            if (! $gate->canUseSeoAI($wsId)) {
+                return response()->json([
+                    'success'       => false,
+                    'error'         => 'plan_upgrade_required',
+                    'code'          => 'PLAN_UPGRADE_REQUIRED',
+                    'required_plan' => 'growth',
+                    'message'       => 'AI SEO generation unlocks on Growth ($99) and above.',
+                ], 403);
+            }
+        }
+
 
         // If page exists in seo_content_index and already has image, skip unless force
         $page = null;
@@ -10024,6 +11107,33 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         if (!$content || !$keyword) {
             return response()->json(['success' => false, 'error' => 'content_and_keyword_required'], 422);
         }
+        // P-Gate (2026-05-15) — caller-mode-aware SEO AI entitlement.
+        // X-API-KEY caller -> WP path -> canUseSeoAIForConnector
+        // Bearer JWT caller -> SaaS path -> canUseSeoAI (Growth+)
+        $gate = app(\App\Core\Billing\FeatureGateService::class);
+        $isApiKeyCaller = $r->attributes->has('api_key_id');
+        if ($isApiKeyCaller) {
+            if (! $gate->canUseSeoAIForConnector($wsId)) {
+                return response()->json([
+                    'success'       => false,
+                    'error'         => 'plan_upgrade_required',
+                    'code'          => 'PLAN_UPGRADE_REQUIRED',
+                    'required_plan' => 'wp_bundle',
+                    'message'       => 'SEO AI generation requires the WP SEO Bundle ($69) or higher.',
+                ], 403);
+            }
+        } else {
+            if (! $gate->canUseSeoAI($wsId)) {
+                return response()->json([
+                    'success'       => false,
+                    'error'         => 'plan_upgrade_required',
+                    'code'          => 'PLAN_UPGRADE_REQUIRED',
+                    'required_plan' => 'growth',
+                    'message'       => 'AI SEO generation unlocks on Growth ($99) and above.',
+                ], 403);
+            }
+        }
+
         $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
             ->where('workspace_id', $wsId)->value('balance') ?? 0);
         if ($credits < 2) {
@@ -10043,18 +11153,18 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         $prompt .= "Title: {$title}\n\nContent:\n{$content}\n\n";
         $prompt .= "Return ONLY the improved HTML content. No explanation. No preamble.";
 
-        $apiKey = config('services.deepseek.api_key') ?: env('DEEPSEEK_API_KEY');
-        try {
-            $resp = \Illuminate\Support\Facades\Http::timeout(120)
-                ->withHeaders(['Authorization' => 'Bearer ' . $apiKey, 'Content-Type' => 'application/json'])
-                ->post('https://api.deepseek.com/chat/completions', [
-                    'model' => 'deepseek-chat', 'max_tokens' => 3000, 'temperature' => 0.4,
-                    'messages' => [['role' => 'user', 'content' => $prompt]],
-                ]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'error' => 'llm_error', 'message' => $e->getMessage()], 502);
+        // P1.3 v2 (2026-05-15) — hands-vs-brain refactor.
+        // Replaces direct DeepSeek call with RuntimeClient->aiRun().
+        $runtime = app(\App\Connectors\RuntimeClient::class);
+        $resp    = $runtime->aiRun('seo_content_generation', $prompt, [], 3000);
+        if (empty($resp['success']) || empty($resp['text'])) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'llm_error',
+                'message' => $resp['error'] ?? 'runtime_returned_empty',
+            ], 502);
         }
-        $optimized = trim((string) $resp->json('choices.0.message.content', ''));
+        $optimized = trim((string) $resp['text']);
         $optimized = preg_replace('/^```(?:html)?\s*/i', '', $optimized);
         $optimized = preg_replace('/\s*```$/', '', $optimized);
         if (!$optimized) {
@@ -10157,7 +11267,12 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             // marks completed so the row stops sitting in the pending bucket.
             try {
                 $svc = app(\App\Engines\SEO\Services\SeoAssistantService::class);
-                $assistantResult = $svc->handle($wsId, $goalText, ['source' => 'submit_goal']);
+                // Wave 1 (2026-05-17) — pass user_id through so chat-log
+                // persistence + disclaimer gate can identify the user.
+                $assistantResult = $svc->handle($wsId, $goalText, [
+                    'source'  => 'submit_goal',
+                    'user_id' => $r->user()?->id,
+                ]);
 
                 \Illuminate\Support\Facades\DB::table('tasks')
                     ->where('id', $taskId)
@@ -10217,6 +11332,32 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         if (empty($posts)) {
             return response()->json(['success' => false, 'error' => 'posts_required'], 422);
         }
+        // P-Gate (2026-05-15) — caller-mode-aware SEO AI entitlement.
+        // X-API-KEY caller -> WP path -> canUseSeoAIForConnector
+        // Bearer JWT caller -> SaaS path -> canUseSeoAI (Growth+)
+        $gate = app(\App\Core\Billing\FeatureGateService::class);
+        $isApiKeyCaller = $r->attributes->has('api_key_id');
+        if ($isApiKeyCaller) {
+            if (! $gate->canUseSeoAIForConnector($wsId)) {
+                return response()->json([
+                    'success'       => false,
+                    'error'         => 'plan_upgrade_required',
+                    'code'          => 'PLAN_UPGRADE_REQUIRED',
+                    'required_plan' => 'wp_bundle',
+                    'message'       => 'SEO AI generation requires the WP SEO Bundle ($69) or higher.',
+                ], 403);
+            }
+        } else {
+            if (! $gate->canUseSeoAI($wsId)) {
+                return response()->json([
+                    'success'       => false,
+                    'error'         => 'plan_upgrade_required',
+                    'code'          => 'PLAN_UPGRADE_REQUIRED',
+                    'required_plan' => 'growth',
+                    'message'       => 'AI SEO generation unlocks on Growth ($99) and above.',
+                ], 403);
+            }
+        }
         $cost = count($posts);
         $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
             ->where('workspace_id', $wsId)->value('balance') ?? 0);
@@ -10227,39 +11368,56 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             ], 402);
         }
 
-        $apiKey  = config('services.deepseek.api_key') ?: env('DEEPSEEK_API_KEY');
-        $results = [];
+        // P1.6 v2 (2026-05-15) — hands-vs-brain refactor.
+        // Replaces direct DeepSeek call with RuntimeClient->aiRun().
+        // Charges only for SUCCESSFUL generations (fail-soft).
+        $runtime  = app(\App\Connectors\RuntimeClient::class);
+        $results  = [];
+        $failures = [];
         foreach ($posts as $post) {
+            $title   = (string) ($post['title'] ?? '');
+            $keyword = (string) ($post['keyword'] ?? '');
+            $excerpt = mb_substr((string) ($post['content_excerpt'] ?? ''), 0, 300);
+            // Fold intent into user prompt — runtime task type has its own
+            // hardcoded SYSTEM_PROMPT that can't be overridden via aiRun().
             $prompt  = "Write an SEO meta description (120-160 chars) for:\n";
-            $prompt .= "Title: " . ($post['title'] ?? '') . "\n";
-            $prompt .= "Keyword: " . ($post['keyword'] ?? '') . "\n";
-            $prompt .= "Excerpt: " . mb_substr((string) ($post['content_excerpt'] ?? ''), 0, 300) . "\n";
-            $prompt .= "Return ONLY the meta description text. No quotes. No explanation.";
-            try {
-                $resp = \Illuminate\Support\Facades\Http::timeout(30)
-                    ->withHeaders(['Authorization' => 'Bearer ' . $apiKey, 'Content-Type' => 'application/json'])
-                    ->post('https://api.deepseek.com/chat/completions', [
-                        'model' => 'deepseek-chat', 'max_tokens' => 200, 'temperature' => 0.5,
-                        'messages' => [['role' => 'user', 'content' => $prompt]],
-                    ]);
-                $meta = trim((string) $resp->json('choices.0.message.content', ''));
-                if ($meta) {
+            $prompt .= "Title: {$title}\n";
+            $prompt .= "Keyword: {$keyword}\n";
+            if ($excerpt !== '') { $prompt .= "Excerpt: {$excerpt}\n"; }
+            $prompt .= "Return ONLY the meta description text. No quotes. No explanation. No markdown.";
+
+            $resp = $runtime->aiRun('seo_content_generation', $prompt, [], 200);
+            if (!empty($resp['success']) && !empty($resp['text'])) {
+                $meta = trim((string) $resp['text']);
+                $meta = trim($meta, "\"'`");
+                $meta = preg_replace('/^```[a-z]*\s*/i', '', $meta);
+                $meta = preg_replace('/\s*```$/', '', $meta);
+                if ($meta !== '') {
                     $results[] = [
                         'post_id'          => $post['post_id'] ?? null,
                         'meta_description' => $meta,
                     ];
+                    continue;
                 }
-            } catch (\Throwable $e) {
-                // skip this post on error
             }
+            $failures[] = [
+                'post_id' => $post['post_id'] ?? null,
+                'error'   => $resp['error'] ?? 'empty_response',
+            ];
         }
-        \Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->decrement('balance', $cost);
+
+        $chargeCount = count($results);
+        if ($chargeCount > 0) {
+            \Illuminate\Support\Facades\DB::table('credits')
+                ->where('workspace_id', $wsId)->decrement('balance', $chargeCount);
+        }
+
         return response()->json([
             'success'           => true,
             'updates'           => $results,
-            'credits_used'      => $cost,
-            'credits_remaining' => max(0, $credits - $cost),
+            'failures'          => $failures,
+            'credits_used'      => $chargeCount,
+            'credits_remaining' => max(0, $credits - $chargeCount),
         ]);
     });
 
@@ -10325,6 +11483,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
                                 'empty_alt'   => $hasAlt && trim((string) $img['alt']) === '',
                                 'width'       => $img['width']  ?? null,
                                 'height'      => $img['height'] ?? null,
+                                'scan_method' => 'wp_sync',
                                 'updated_at'  => now(),
                                 'created_at'  => now(),
                             ]
@@ -10922,8 +12081,13 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             'message' => 'required|string|max:2000',
             'context' => 'nullable|array',
         ]);
+        // Wave 1 (2026-05-17) — force user_id into context server-side so
+        // disclaimer gate + chat-log persistence work regardless of what
+        // the client sent. Client-supplied user_id is not trusted.
+        $context = $data['context'] ?? [];
+        $context['user_id'] = $r->user()?->id;
         $result = app(\App\Engines\SEO\Services\SeoService::class)
-            ->assistantMessage($wsId, $data['message'], $data['context'] ?? []);
+            ->assistantMessage($wsId, $data['message'], $context);
         return response()->json(['success' => true, 'data' => $result]);
     });
 

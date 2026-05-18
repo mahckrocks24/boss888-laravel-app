@@ -15,8 +15,20 @@
 var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 var _seoApi = async (method, path, body) => {
-  var token = localStorage.getItem('lu_token') || '';
-  var opts = { method, headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token }, cache: 'no-store' };
+  // Build headers with dual-mode auth (mirrors _luFetch contract):
+  //   - Embed mode (WP iframe): X-API-KEY + X-Workspace-ID
+  //   - Direct SPA mode: Authorization Bearer JWT from localStorage
+  // JwtAuthMiddleware accepts both (per the 2026-05-11 patch), so /api/seo/*
+  // routes work in both modes.
+  var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+  if (window._LGSC_EMBED && window._LGSC_EMBED.api_key) {
+    headers['X-API-KEY']      = window._LGSC_EMBED.api_key;
+    headers['X-Workspace-ID'] = String(window._LGSC_EMBED.workspace_id || '');
+  } else {
+    var token = localStorage.getItem('lu_token') || '';
+    headers['Authorization'] = 'Bearer ' + token;
+  }
+  var opts = { method, headers: headers, cache: 'no-store' };
   if (body) opts.body = JSON.stringify(body);
   var r = await fetch(window.location.origin + '/api/seo' + path, opts);
   var d;
@@ -997,7 +1009,9 @@ window._seoGscSync = async function() {
 };
 
 window._seoGscDisconnect = async function() {
-  if (!confirm('Disconnect Search Console? You can reconnect anytime.')) return;
+  if (typeof window.lgseConfirm !== 'function') return;
+  var ok = await window.lgseConfirm('Disconnect Search Console', 'You can reconnect anytime.', 'Disconnect');
+  if (!ok) return;
   try {
     await _seoApi('POST', '/gsc/disconnect');
     _seoSwitchTab('gsc');
@@ -3447,9 +3461,35 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
-  function scoreClass(n) { n = parseInt(n, 10) || 0; return n >= 90 ? 'lgse-s90' : n >= 70 ? 'lgse-s70' : n >= 50 ? 'lgse-s50' : 'lgse-slow'; }
-  function scoreColor(n) { n = parseInt(n, 10) || 0; return n >= 90 ? '#00c49a' : n >= 70 ? '#3b82f6' : n >= 50 ? '#d97706' : '#ef4444'; }
-  function scorePill(n) { return '<span class="lgse-score ' + scoreClass(n) + '">' + (parseInt(n, 10) || 0) + '</span>'; }
+  // Wave 8 (2026-05-18). Two-context label resolver per platform branding rule.
+  //   - WP iframe (embed mode): every agent identity collapses to the
+  //     single "SEO AI Assistant" surface. The WP user never sees an
+  //     agent name — by product policy, regardless of plan tier.
+  //   - Laravel SaaS (direct login): show the named specialist. The
+  //     platform is built around the agent team — James (SEO Strategist),
+  //     Priya (Content Manager), Sarah (DMM), etc.
+  // Display layer only. agent_messages.agent_slug stays canonical;
+  // _lgseAgentLabel just translates slug → user-facing string per context.
+  window._lgseIsEmbed = function () {
+    return !!(window._LGSC_EMBED && window._LGSC_EMBED.api_key);
+  };
+  window._lgseAgentLabel = function (agentSlug) {
+    if (window._lgseIsEmbed()) return 'SEO AI Assistant';
+    var names = {
+      james:'James', sarah:'Sarah', priya:'Priya', marcus:'Marcus',
+      elena:'Elena', leo:'Leo', alex:'Alex', diana:'Diana',
+      ryan:'Ryan', sofia:'Sofia', chris:'Chris', jordan:'Jordan',
+      kai:'Kai', max:'Max', maya:'Maya', nora:'Nora',
+      tyler:'Tyler', vera:'Vera', zara:'Zara', zoe:'Zoe'
+    };
+    return names[String(agentSlug || '').toLowerCase()] || 'James';
+  };
+
+  // Clamp any score to 0..100 — defense in depth against backend overflow / bad data.
+  function clampScore(n) { n = parseInt(n, 10); return isNaN(n) ? 0 : Math.max(0, Math.min(100, n)); }
+  function scoreClass(n) { n = clampScore(n); return n >= 90 ? 'lgse-s90' : n >= 70 ? 'lgse-s70' : n >= 50 ? 'lgse-s50' : 'lgse-slow'; }
+  function scoreColor(n) { n = clampScore(n); return n >= 90 ? '#00c49a' : n >= 70 ? '#3b82f6' : n >= 50 ? '#d97706' : '#ef4444'; }
+  function scorePill(n) { return '<span class="lgse-score ' + scoreClass(n) + '">' + clampScore(n) + '</span>'; }
   function badge(t, kind) { return '<span class="lgse-badge lgse-b-' + kind + '">' + esc(t) + '</span>'; }
 
   function gauge(score, size, showLabel) {
@@ -3673,10 +3713,21 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         + 'background:linear-gradient(135deg,#7C3AED,#3B82F6);'
         + 'box-shadow:0 4px 20px rgba(124,58,237,0.4);'
         + 'display:none;align-items:center;justify-content:center;'
-        + 'font-size:22px;color:#fff;transition:transform 0.2s"'
+        + 'font-size:22px;color:#fff;transition:transform 0.2s;position:fixed"'
         + ' onmouseover="this.style.transform=\'scale(1.1)\'"'
         + ' onmouseout="this.style.transform=\'scale(1)\'"'
-        + ' title="LevelUp SEO Assistant">&#128172;</button>'
+        + ' title="SEO AI Assistant">&#128172;'
+        // Wave 5 (2026-05-18): badge now sourced from the platform
+        // messages-ui poller (#lu-messages-badge). The seo-specific
+        // poller from Wave 4 has been retired — write through
+        // AgentMessageService::postAsAgent($wsId, "james", ...) and the
+        // platform badge will update automatically.
+        + '<span id="lgse-fab-badge" style="position:absolute;top:-2px;right:-2px;'
+        + 'min-width:18px;height:18px;padding:0 5px;border-radius:9px;'
+        + 'background:#EF4444;color:#fff;font-size:10px;font-weight:700;'
+        + 'line-height:18px;text-align:center;display:none;'
+        + 'box-shadow:0 0 0 2px #121826"></span>'
+        + '</button>'
       // Overlay
       + '<div id="lgse-ai-overlay" onclick="window._lgseDrawerClose()"'
         + ' style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5)"></div>'
@@ -3690,7 +3741,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         + 'border-bottom:1px solid rgba(255,255,255,0.06)">'
           + '<span style="font-size:20px;color:#A78BFA">&#128172;</span>'
           + '<div style="flex:1">'
-            + '<div style="font-size:16px;font-weight:700;color:#fff">LevelUp SEO Assistant</div>'
+            + '<div style="font-size:16px;font-weight:700;color:#fff">SEO AI Assistant</div>'
             + '<div style="font-size:12px;color:#6B7280">Powered by LevelUp Growth</div>'
           + '</div>'
           + '<button onclick="window._lgseDrawerClose()"'
@@ -3701,7 +3752,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
           + ' style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px">'
           + '<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);'
           + 'border-radius:12px;padding:14px 16px;max-width:90%">'
-            + '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">LevelUp SEO Assistant</div>'
+            + '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">SEO AI Assistant</div>'
             + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB">'
               + 'Hi &mdash; I can answer SEO questions about your workspace using your real audit data, '
               + 'indexed pages, and tracked keywords. Ask me anything.'
@@ -3772,14 +3823,14 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     el.innerHTML =
       '<div style="display:flex;flex-direction:column;height:100%;padding:0">'
         + '<div style="padding:20px 24px 0">'
-          + '<h3 style="font-family:var(--fh,Manrope);font-size:18px;font-weight:700;color:var(--lgse-t1);margin:0 0 4px">SEO AI Assistant</h3>'
+          + '<h3 style="font-family:var(--fh,Manrope);font-size:18px;font-weight:700;color:var(--lgse-t1);margin:0 0 4px">' + (window._lgseIsEmbed() ? 'SEO AI Assistant' : 'James — SEO Strategist') + '</h3>'
           + '<p style="font-size:13px;color:var(--lgse-t3);margin:0 0 16px">'
-            + 'SEO-focused assistant powered by James. Answers based on your workspace data.'
+            + (window._lgseIsEmbed() ? 'Answers based on your real workspace data.' : 'SEO-focused assistant. Answers based on your real workspace data.')
           + '</p>'
         + '</div>'
         + '<div id="lgse-chat-thread" style="flex:1;overflow-y:auto;padding:0 24px;display:flex;flex-direction:column;gap:12px;min-height:300px;max-height:60vh">'
           + '<div style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);border-radius:12px;padding:14px 16px;max-width:80%">'
-            + '<span style="font-size:12px;font-weight:600;color:#A78BFA">James</span>'
+            + '<span style="font-size:12px;font-weight:600;color:#A78BFA">' + window._lgseAgentLabel('james') + '</span>'
             + '<p style="font-size:14px;line-height:1.6;color:var(--lgse-t1);margin:4px 0 0">'
               + 'Hi — I can answer SEO questions about your workspace using your real audit data, indexed pages, and tracked keywords. Ask me something.'
             + '</p>'
@@ -3900,7 +3951,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
       + '<div class="lgse-ai-bar" id="lgse-ai-bar" style="display:none">'
         + '<div style="width:30px;height:30px;border-radius:50%;background:rgba(108,92,231,.12);border:1px solid rgba(108,92,231,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">·</div>'
-        + '<div><div class="lgse-ai-name">James · SEO Agent</div><div class="lgse-ai-text" id="lgse-ai-text"></div></div>'
+        + '<div><div class="lgse-ai-name">' + (window._lgseIsEmbed() ? 'SEO AI Assistant' : 'James · SEO Agent') + '</div><div class="lgse-ai-text" id="lgse-ai-text"></div></div>'
       + '</div>'
 
       + '<div class="lgse-section-hdr"><span class="lgse-section-title">Quick wins — click to fix</span><span id="lgse-wins-count" style="font-size:10px;color:var(--lgse-t3)"></span></div>'
@@ -3960,6 +4011,15 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     var num = document.getElementById('dim-n-' + id);
     if (!ring || !num) return;
     var circ = 2 * Math.PI * 18;
+    // F10: null / NaN / undefined → show "—" + empty ring, not a fake 0
+    // (and not the overall audit score, which is the bug we're fixing).
+    if (val === null || val === undefined || isNaN(parseInt(val, 10))) {
+      num.textContent = '—';
+      ring.style.transition = 'stroke-dashoffset .3s ease-out';
+      ring.style.strokeDashoffset = circ;
+      return;
+    }
+    val = Math.max(0, Math.min(100, parseInt(val, 10)));
     setTimeout(function () {
       ring.style.transition = 'stroke-dashoffset .9s ease-out';
       ring.style.strokeDashoffset = circ - (val / 100) * circ;
@@ -3981,7 +4041,16 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
       var auditsArr = (audits && (audits.audits || audits.data)) || (Array.isArray(audits) ? audits : []);
       var latest = auditsArr[0] || {};
-      var score = parseInt(latest.score || (knowledge && knowledge.health_score) || 0, 10);
+      // F11 (2026-05-17) — prefer LIVE health_score from /knowledge so the
+      // gauge reflects current page state (updates immediately when meta
+      // tags are edited). Fall back to the audit snapshot only if there's
+      // no indexed content yet. This fixes the "Overview doesn't move when
+      // I edit metadata" complaint.
+      var liveHealth = knowledge && knowledge.health_score;
+      var auditScore = parseInt(latest.score, 10);
+      var score = (liveHealth !== null && liveHealth !== undefined)
+        ? parseInt(liveHealth, 10)
+        : (isNaN(auditScore) ? 0 : auditScore);
 
       // Main gauge fresh paint.
       var mg = document.getElementById('lgse-main-gauge');
@@ -3996,20 +4065,37 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       }
 
       // Dimension scores — derive from audit results_json or knowledge.
+      // F10 (2026-05-17): each dim is null when no real sub-score is
+      // available. Previously the fallback copied the overall score into
+      // every empty dim, producing the "73 on all 4 cards" bug where the
+      // user couldn't tell which dimension actually scored what.
       var results_json = {};
       try { results_json = typeof latest.results_json === 'string' ? JSON.parse(latest.results_json) : (latest.results_json || {}); } catch (e) {}
+      function _pick() {
+        for (var i = 0; i < arguments.length; i++) {
+          var v = arguments[i];
+          if (v === null || v === undefined || v === '') continue;
+          var n = parseInt(v, 10);
+          if (!isNaN(n)) return n;
+        }
+        return null;
+      }
+      var contentHealthAvg = knowledge && knowledge.content_health && knowledge.content_health.avg_score;
+      var linkHealth       = (knowledge && knowledge.link_health) || {};
+      // F11: content + links prefer LIVE knowledge first (so they update on
+      // meta edits); fall back to the audit snapshot. Tech stays audit-first
+      // (technical checks like HTTPS/response time don't change on a meta
+      // edit). SERP stays audit/GSC-only.
       var dims = {
-        tech: parseInt((results_json.technical && results_json.technical.score) || results_json.tech_score || score, 10),
-        con: parseInt((results_json.content && results_json.content.score) || results_json.content_score || (knowledge && knowledge.content_health && knowledge.content_health.avg_score) || 0, 10),
-        links: parseInt((results_json.internal && results_json.internal.score) || results_json.internal_score || 0, 10),
-        serp: parseInt((results_json.serp && results_json.serp.score) || results_json.serp_score || score, 10),
+        tech:  _pick(results_json.technical && results_json.technical.score, results_json.tech_score),
+        con:   _pick(contentHealthAvg, results_json.content && results_json.content.score, results_json.content_score),
+        links: _pick(linkHealth.score, results_json.internal && results_json.internal.score, results_json.internal_score),
+        serp:  _pick(results_json.serp && results_json.serp.score, results_json.serp_score),
       };
-      // Fallback: split overall score evenly if no sub-scores.
-      Object.keys(dims).forEach(function (k) { if (!dims[k]) dims[k] = score; });
-      animateDim('tech', dims.tech);
-      animateDim('con', dims.con);
+      animateDim('tech',  dims.tech);
+      animateDim('con',   dims.con);
       animateDim('links', dims.links);
-      animateDim('serp', dims.serp);
+      animateDim('serp',  dims.serp);
 
       // KPIs.
       var pCount = countItems(indexed, 'items');
@@ -4164,32 +4250,58 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
   // ── Tab 2 — Audit ──────────────────────────────────────────────────────
 
-  // P0-AUD-FIX2: Workspace site list. Boot-time fetch from audit history
-  // (audit-history fallback only — /api/seo/workspaces/sites does not exist).
+  // P0-AUD-FIX2 (rev 2026-05-16): Workspace site list.
+  //
+  // Precedence:
+  //   1. If /settings returns a site_url (workspace has a connected WP site),
+  //      that IS the website. Lock _lgseSites to a single entry. Skip audit
+  //      history entirely — it contains junk (keyword-as-url misuse) and
+  //      sub-page URLs that should not appear as separate "sites".
+  //   2. Otherwise (no connected WP site), fall back to audit-history-derived
+  //      dropdown for Laravel-only / multi-site workspaces.
   function loadSiteList() {
-    // 2026-05-12: pre-arm _lgseActiveSite from workspace seo_settings before
-    // falling back to audit-history-derived sites. Fires once per page load.
-    if (!window._lgseActiveSite && !window._lgseSettingsFetched) {
-      window._lgseSettingsFetched = true;
-      api('GET', '/settings').then(function (s) {
-        if (s && s.site_url && !window._lgseActiveSite) {
-          window._lgseActiveSite = s.site_url;
-          try { console.log('[LGSE] Active site from /seo/settings: ' + s.site_url); } catch (_) {}
-        }
-      }).catch(function () {});
-    }
     if (window._lgseSites && window._lgseSites.length) return;
-    api('GET', '/audits?limit=50').then(function (d) {
-      var rows = (d && (d.audits || d.data)) || (Array.isArray(d) ? d : []);
-      var seen = {};
-      var sites = [];
-      rows.forEach(function (a) {
-        var u = a && a.url;
-        if (u && !seen[u]) { seen[u] = 1; sites.push({ url: u, name: u }); }
-      });
-      window._lgseSites = sites;
-      if (!window._lgseActiveSite && sites.length) window._lgseActiveSite = sites[0].url;
-    }).catch(function () { window._lgseSites = window._lgseSites || []; });
+
+    // Fetch /settings first. The result decides whether we even look at
+    // audit history. We chain rather than race to avoid the connected-site
+    // pill flickering through a junk-dominated dropdown.
+    var settingsPromise;
+    if (window._lgseSettingsFetched && window._lgseActiveSite) {
+      // Already fetched and we have a site — synthesize a resolved promise.
+      settingsPromise = Promise.resolve({ site_url: window._lgseActiveSite });
+    } else {
+      window._lgseSettingsFetched = true;
+      settingsPromise = api('GET', '/settings').catch(function () { return null; });
+    }
+
+    settingsPromise.then(function (s) {
+      var connectedSite = s && s.site_url ? String(s.site_url).trim() : '';
+      if (connectedSite) {
+        // WP-connected workspace — hard-lock to this one site.
+        window._lgseActiveSite = connectedSite;
+        window._lgseSites = [{ url: connectedSite, name: connectedSite }];
+        window._lgseSiteIsLocked = true;
+        try { console.log('[LGSE] Audit picker locked to connected WP site: ' + connectedSite); } catch (_) {}
+        return;
+      }
+      // No connected WP site — fall back to audit-history dropdown.
+      window._lgseSiteIsLocked = false;
+      api('GET', '/audits?limit=50').then(function (d) {
+        var rows = (d && (d.audits || d.data)) || (Array.isArray(d) ? d : []);
+        var seen = {};
+        var sites = [];
+        rows.forEach(function (a) {
+          var u = a && a.url;
+          // Reject obvious garbage: must look like an http(s) URL.
+          if (u && !seen[u] && /^https?:\/\//i.test(u)) {
+            seen[u] = 1;
+            sites.push({ url: u, name: u });
+          }
+        });
+        window._lgseSites = sites;
+        if (!window._lgseActiveSite && sites.length) window._lgseActiveSite = sites[0].url;
+      }).catch(function () { window._lgseSites = window._lgseSites || []; });
+    });
   }
 
   // P0-AUD-FIX3: site-selector strip rendered above the audit list.
@@ -4816,27 +4928,252 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       if (typeof window.lgseRunAudit === 'function') window.lgseRunAudit();
       return;
     }
-    var btn = document.getElementById('lgse-scanpages-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Scanning…'; }
-    api('POST', '/index-pages', { url: url }).then(function (r) {
-      if (btn) { btn.disabled = false; btn.textContent = '⟳ Scan Pages'; }
-      if (typeof window.showToast === 'function') {
-        if (r && r.success) window.showToast('Indexed: ' + url + (r.score != null ? ' (score ' + r.score + ')' : ''), 'success');
-        else window.showToast('Scan failed: ' + (r && r.error || 'unknown'), 'error');
+    window.lgseStartScan('pages', { url: url }, '/scan-pages');
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // P-Telemetry (2026-05-15) — polling-driven scan UX.
+  // Replaces single-shot Promise + "⏳ Scanning…" with REAL stage
+  // transitions sourced from /scan-status (cache-backed).
+  // ─────────────────────────────────────────────────────────────────────
+  window._lgseScanPollers = window._lgseScanPollers || {};
+  window._lgseScanStart   = window._lgseScanStart   || {};
+
+  window.lgseStartScan = function (type, payload, postPath) {
+    if (window._lgseScanPollers[type]) {
+      // Already running — ignore duplicate clicks
+      return;
+    }
+    window._lgseScanStart[type] = Date.now();
+    window.lgseRenderScanProgress(type, { state: 'running', stage: 'starting' });
+
+    // Begin polling immediately so the user sees stage transitions
+    window._lgseScanPollers[type] = setInterval(function () {
+      api('GET', '/scan-status?type=' + encodeURIComponent(type)).then(function (r) {
+        if (r && r.state) window.lgseRenderScanProgress(type, r.state);
+      }).catch(function () { /* poll error — ignore one tick */ });
+    }, 1000);
+
+    // Kick off the actual scan POST
+    api('POST', postPath, payload).then(function (resp) {
+      window.lgseStopScanPoll(type);
+      // One last poll to capture the final 'done' state from cache (preferred
+      // over the POST response — it has stage transitions + tier counts).
+      api('GET', '/scan-status?type=' + encodeURIComponent(type)).then(function (sr) {
+        var state = (sr && sr.state) || { state: 'done', stage: 'done', summary: resp };
+        window.lgseRenderScanProgress(type, state);
+        // Refresh the affected views
+        if (type === 'pages') {
+          if (typeof window.lgseLoadPages === 'function') {
+            setTimeout(window.lgseLoadPages, 600);
+          } else if (typeof window.lgseSwitchTab === 'function') {
+            setTimeout(function () { window.lgseSwitchTab('pages'); }, 600);
+          }
+        } else if (type === 'images') {
+          if (typeof window.lgseRenderImages === 'function') {
+            setTimeout(window.lgseRenderImages, 600);
+          }
+        }
+      });
+    }).catch(function (e) {
+      window.lgseStopScanPoll(type);
+      window.lgseRenderScanProgress(type, {
+        state: 'failed',
+        stage: 'failed',
+        error: (e && (e.message || (e.body && e.body.error))) || 'network or server error'
+      });
+    });
+  };
+
+  window.lgseStopScanPoll = function (type) {
+    if (window._lgseScanPollers[type]) {
+      clearInterval(window._lgseScanPollers[type]);
+      delete window._lgseScanPollers[type];
+    }
+  };
+
+  window.lgseRenderScanProgress = function (type, state) {
+    if (!state) return;
+    // Find or create the live region — sits next to the Scan button.
+    var hostId = type === 'pages' ? 'lgse-scanpages-progress' : 'lgse-scanimages-progress';
+    var host = document.getElementById(hostId);
+    if (!host) {
+      // Anchor each panel to its own scan button (stable ids only).
+      // Insertion point is the button's IMMEDIATE parent (the toolbar/flex
+      // row), so the panel sits as a sibling directly under the toolbar,
+      // visually attached to the action that triggered it.
+      var anchorId = type === 'pages' ? 'lgse-scanpages-btn' : 'lgse-scanimages-btn';
+      var anchor = document.getElementById(anchorId);
+      // Empty-state fallback — when no data, the toolbar isn't rendered;
+      // emptyState() emits a button without our id but with the same onclick.
+      if (!anchor) {
+        var fallbackSel = type === 'pages'
+          ? '[onclick*="lgseScanAndIndexPages"]'
+          : '[onclick*="lgseStartImageScan"]';
+        anchor = document.querySelector(fallbackSel);
       }
-      // Re-render the Pages tab so the indexed sub-tab re-fetches.
-      if (typeof window.lgseSwitchTab === 'function') window.lgseSwitchTab('pages');
-    }).catch(function () {
-      if (btn) { btn.disabled = false; btn.textContent = '⟳ Scan Pages'; }
-      if (typeof window.showToast === 'function') window.showToast('Scan failed.', 'error');
+      if (!anchor || !anchor.parentNode) return;
+      host = document.createElement('div');
+      host.id = hostId;
+      host.style.cssText = 'margin-top:10px;padding:10px 12px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;font-size:11.5px;color:var(--lgse-t2);max-width:520px';
+      var toolbar = anchor.parentNode;
+      if (toolbar.parentNode) {
+        toolbar.parentNode.insertBefore(host, toolbar.nextSibling);
+      } else {
+        toolbar.appendChild(host);
+      }
+    }
+
+    var stageLabels = {
+      starting:    'Starting scan…',
+      discovering: 'Discovering pages (sitemap + DB)…',
+      fetching:    'Fetching page content',
+      rendering:   'Browser-rendering JS-only page',
+      saving:      'Saving results',
+      done:        'Scan complete',
+      failed:      'Scan failed'
+    };
+    var label = stageLabels[state.stage] || state.stage || '...';
+    var elapsed = window._lgseScanStart[type] ? Math.round((Date.now() - window._lgseScanStart[type]) / 1000) : 0;
+
+    var btn = document.getElementById(type === 'pages' ? 'lgse-scanpages-btn' : 'lgse-scanimages-btn');
+    if (btn) btn.disabled = (state.state === 'running');
+
+    if (state.state === 'failed') {
+      host.style.borderColor = 'var(--lgse-red)';
+      host.innerHTML =
+          '<div style="color:var(--lgse-red);font-weight:600;margin-bottom:4px">⚠ ' + lgseEsc(label) + '</div>'
+        + '<div>' + lgseEsc(state.error || 'unknown') + '</div>'
+        + '<button class="lgse-btn-secondary" style="margin-top:8px;font-size:10.5px;padding:4px 10px" onclick="document.getElementById(\'' + hostId + '\').remove()">Dismiss</button>';
+      if (btn) { btn.disabled = false; btn.textContent = type === 'pages' ? '⟳ Scan Pages' : 'Scan images'; }
+      return;
+    }
+
+    if (state.state === 'done') {
+      host.style.borderColor = 'var(--lgse-teal)';
+      var s = state.summary || {};
+      var lines = ['<div style="color:var(--lgse-teal);font-weight:600;margin-bottom:6px">✓ Scan complete (' + elapsed + 's)</div>'];
+      if (type === 'pages') {
+        lines.push('<div>' + (s.pages_indexed || 0) + ' pages indexed of ' + (s.urls_found || 0) + ' discovered.</div>');
+        if (s.errors_total > 0) lines.push('<div style="color:var(--lgse-amber)">' + s.errors_total + ' page(s) failed (see logs).</div>');
+        if (s.sitemaps_tried && s.sitemaps_tried.length) {
+          lines.push('<div style="color:var(--lgse-t3);font-size:10.5px;margin-top:4px">Sitemaps tried: ' + s.sitemaps_tried.length + '</div>');
+        }
+      } else {
+        lines.push('<div>' + (s.pages_scanned || 0) + ' pages scanned · ' + (s.tier1_images || 0) + ' images via raw HTML</div>');
+        if (s.tier2_attempts > 0) {
+          lines.push('<div>Browser-rendered ' + s.tier2_attempts + ' page(s) (tier2) → ' + (s.tier2_images || 0) + ' additional images.</div>');
+        }
+        if (state.errors > 0) lines.push('<div style="color:var(--lgse-amber)">' + state.errors + ' error(s) during scan.</div>');
+      }
+      lines.push('<button class="lgse-btn-secondary" style="margin-top:8px;font-size:10.5px;padding:4px 10px" onclick="document.getElementById(\'' + hostId + '\').remove()">Dismiss</button>');
+      host.innerHTML = lines.join('');
+      if (btn) { btn.disabled = false; btn.textContent = type === 'pages' ? '⟳ Scan Pages' : 'Scan images'; }
+      return;
+    }
+
+    // Running state
+    host.style.borderColor = 'var(--lgse-purple)';
+    var processed = state.processed || 0;
+    var total     = state.total || 0;
+    var counter   = (total > 0) ? processed + '/' + total : (processed > 0 ? processed + '' : '');
+    var current   = state.current_url ? lgseTruncMid(state.current_url, 60) : '';
+    var tier2     = (state.tier2_attempts || 0) > 0 ? ' · browser-rendered ' + state.tier2_attempts : '';
+    var rows = [
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">',
+        '<span style="display:inline-block;width:10px;height:10px;border:2px solid var(--lgse-purple);border-top-color:transparent;border-radius:50%;animation:lgse-spin 0.7s linear infinite"></span>',
+        '<span style="color:var(--lgse-t1);font-weight:500">' + lgseEsc(label) + '</span>',
+        counter ? ('<span style="color:var(--lgse-t3)">' + counter + '</span>') : '',
+        '<span style="color:var(--lgse-t3);margin-left:auto">' + elapsed + 's' + tier2 + '</span>',
+      '</div>'
+    ];
+    if (current) rows.push('<div style="color:var(--lgse-t3);font-size:10.5px;font-family:monospace">' + lgseEsc(current) + '</div>');
+    if (state.errors > 0) rows.push('<div style="color:var(--lgse-amber);font-size:10.5px;margin-top:4px">' + state.errors + ' error(s) so far</div>');
+    host.innerHTML = rows.join('');
+  };
+
+  // Single trigger function for the image scan — replaces inline onclick strings
+  window.lgseStartImageScan = function () {
+    window.lgseStartScan('images', {}, '/image-issues/bulk-analyze');
+  };
+
+  // Tiny helpers (defensive — esc + truncate)
+  function lgseEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function lgseTruncMid(s, n) {
+    s = String(s || '');
+    if (s.length <= n) return s;
+    var keep = Math.floor((n - 1) / 2);
+    return s.substring(0, keep) + '…' + s.substring(s.length - keep);
+  }
+
+  // Inject keyframes once for the spinner
+  if (!document.getElementById('lgse-scan-keyframes')) {
+    var sty = document.createElement('style');
+    sty.id = 'lgse-scan-keyframes';
+    sty.textContent = '@keyframes lgse-spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(sty);
+  }
+
+  // Phase A (2026-05-16) — pull WP featured images into the audit table.
+  // Calls /api/seo/sync-wp-featured-images, which queries the connector's
+  // /lgsc/v1/posts and back-fills featured_image_url + wp_post_id.
+  window.lgseSyncWpFeaturedImages = function (btn) {
+    var b = btn || document.getElementById('lgse-sync-featured-btn');
+    var orig = b ? b.innerText : '';
+    if (b) { b.disabled = true; b.innerText = 'Syncing…'; }
+    api('POST', '/sync-wp-featured-images', {}).then(function (r) {
+      if (b) { b.disabled = false; b.innerText = orig || '⟳ Sync featured images'; }
+      if (!r || r.success !== true) {
+        var msg = (r && r.message) ? r.message
+                : (r && r.error)   ? r.error
+                : 'Couldn\'t reach your connected WordPress site.';
+        if (r && r.error === 'no_connector_config') {
+          msg = 'No WordPress site is connected to this workspace.';
+        }
+        window.lgseAlert('Sync failed', msg);
+        return;
+      }
+      var matched  = parseInt(r.pages_matched   || 0, 10);
+      var synced   = parseInt(r.images_synced   || 0, 10);
+      var fetched  = parseInt(r.posts_fetched   || 0, 10);
+      var skipped  = parseInt(r.skipped_already_set || 0, 10);
+      var msg;
+      if (synced > 0) {
+        msg = synced + ' featured image' + (synced === 1 ? '' : 's') + ' synced from your website.';
+        if (skipped > 0) msg += '\n' + skipped + ' already up-to-date.';
+        if (matched - synced - skipped > 0) {
+          msg += '\n' + (matched - synced - skipped) + ' page(s) matched without a featured image.';
+        }
+      } else if (fetched === 0) {
+        msg = 'No posts returned by your WordPress site.';
+      } else if (matched === 0) {
+        msg = fetched + ' posts fetched, but none matched your indexed pages by URL. Try re-scanning pages first.';
+      } else {
+        msg = 'All featured images are already up to date (' + skipped + ' pages already synced).';
+      }
+      window.lgseAlert('Sync complete', msg);
+      // Refresh the Indexed Content table so new images appear immediately
+      if (typeof window.lgseLoadPages === 'function') {
+        setTimeout(window.lgseLoadPages, 400);
+      }
+    }).catch(function (e) {
+      if (b) { b.disabled = false; b.innerText = orig || '⟳ Sync featured images'; }
+      var em = (e && e.message) || 'network error';
+      window.lgseAlert('Sync failed', em);
     });
   };
 
   function renderPages(el) {
+    // P-Dedup (2026-05-15): removed outer Scan Pages button. It carried
+    // duplicate id=lgse-scanpages-btn (collided with the toolbar one inside
+    // Indexed Content), persisted across all 4 sub-tabs (visible on Images
+    // tab too), and confused panel anchor resolution. Each sub-tab now
+    // owns its own scan trigger.
     el.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">'
-        + '<div>' + pageTitle('Pages', 'On-page optimization across content, images, and CTR opportunities.') + '</div>'
-        + '<button class="lgse-btn-secondary" id="lgse-scanpages-btn" onclick="lgseScanAndIndexPages()" style="flex-shrink:0">⟳ Scan Pages</button>'
+      '<div style="margin-bottom:14px">'
+        + pageTitle('Pages', 'On-page optimization across content, images, and CTR opportunities.')
       + '</div>'
       + '<div class="lgse-subtabs" id="lgse-pages-subtabs">'
         + '<div class="lgse-subtab active" data-sec="indexed">Indexed Content</div>'
@@ -4941,7 +5278,10 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     el.dataset.savedValue = newVal;
     window.lgseIleClose(el);
 
-    api('PATCH', '/connector/save-meta', body).then(function (resp) {
+    // Wave 13b (2026-05-18): was '/connector/save-meta' (404 — wrong prefix
+    // for the api() wrapper which mounts under /api/seo/). The /save-meta
+    // route at /api/seo/save-meta exists and accepts the same body.
+    api('PATCH', '/save-meta', body).then(function (resp) {
       if (!resp || resp.success === false) {
         if (display) {
           display.style.color = 'var(--lgse-red)';
@@ -5102,6 +5442,9 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   };
 
   window.lgseLoadPages = function () {
+    // P-Gate — kick off capability fetch (one-shot, idempotent)
+    if (typeof window.lgseEnsureCaps === 'function') { window.lgseEnsureCaps(); }
+
     var body = document.getElementById('lgse-pg-body');
     if (!body) return;
     body.innerHTML = '<div style="padding:24px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading pages…</div>';
@@ -5226,7 +5569,9 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       // relative paths by the browser if used in href. Force absolute.
       var externalUrl = url ? (/^https?:\/\//i.test(url) ? url : 'https://' + url) : '';
 
-      var tr = '<tr data-page-id="' + pid + '">'
+      // P0.7 (2026-05-15) — data-lgse-url enables Quick Wins URL-based row targeting
+      // (Quick Wins doesn't know the row id, only the URL). Used by lgseHighlightUrl.
+      var tr = '<tr data-page-id="' + pid + '" data-lgse-url="' + esc(url) + '">'
         + '<td style="text-align:center"><input type="checkbox" class="lgse-pg-check" data-pid="' + pid + '" onchange="lgseUpdateBulkBar()" style="cursor:pointer"></td>'
         + '<td onclick="lgseExpandPageRow(' + pid + ')" style="cursor:pointer;text-align:center;color:var(--lgse-t3);font-size:10px" title="Show details"><span class="lgse-pg-chev" data-pid="' + pid + '" style="display:inline-block;transition:transform .15s">▶</span></td>'
         + '<td class="lgse-url" title="' + esc(url) + '">'
@@ -5300,6 +5645,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       +   '</div>'
       +   '<button onclick="lgseExportPagesCsv()" style="background:transparent;color:var(--lgse-t2);border:1px solid var(--lgse-border);border-radius:7px;padding:7px 12px;font-size:11px;cursor:pointer">Export CSV</button>'
       +   '<button class="lgse-btn-secondary" id="lgse-scanpages-btn" onclick="lgseScanAndIndexPages()" style="font-size:11px">⟳ Scan Pages</button>'
+      +   '<button class="lgse-btn-secondary" id="lgse-sync-featured-btn" onclick="lgseSyncWpFeaturedImages(this)" style="font-size:11px" title="Pull featured images from your connected WordPress site">⟳ Sync featured images</button>'
       + '</div>'
       // Filter pills.
       + '<div id="lgse-pg-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' + lgsePagesFiltersHtml() + '</div>'
@@ -5348,25 +5694,299 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       body.innerHTML = h;
     }).catch(function () { body.innerHTML = emptyState('⚠', 'CTR analysis unavailable', 'Connect Google Search Console to enable.'); });
   }
+  // P0.6 (2026-05-15) — Quick Wins is now an ACTION ROUTER. Each card is
+  // clickable and routes to the correct fixing surface (Indexed Content,
+  // Images sub-tab, Links tab) OR opens an honest informational modal for
+  // system-level issues that LevelUp cannot fix. No fake auto-fixes, no
+  // dead clicks. Routing logic lives in window.lgseRouteWin.
+  // P0.7 — fix→verify→refresh loop. Records Quick Wins that the operator
+  // has just resolved via inline save (lgseSavePageRow). loadWins filters
+  // these out so resolved cards disappear immediately. Audit job catches
+  // up later and persists the resolution. Cleared on full page refresh —
+  // intentional (server is the source of truth, this is just optimistic UI).
+  window._lgseRecentlyFixed = window._lgseRecentlyFixed || {};
+  window.lgseMarkWinResolved = function (url, titlePrefix) {
+    if (!url || !titlePrefix) return;
+    window._lgseRecentlyFixed[titlePrefix + '|' + url] = Date.now();
+  };
+  // Helper: does THIS quick-win match a recently-fixed signature?
+  // Match by title startsWith + url exact. Handles "Meta description exists"
+  // → "Meta description exists" AND "Meta description length (70-160)".
+  function _winIsRecentlyResolved(w) {
+    var t = String(w.title || '');
+    var u = String(w.url || '');
+    if (!t || !u) return false;
+    var keys = Object.keys(window._lgseRecentlyFixed);
+    for (var i = 0; i < keys.length; i++) {
+      var sep = keys[i].indexOf('|');
+      if (sep < 0) continue;
+      var kPrefix = keys[i].slice(0, sep);
+      var kUrl    = keys[i].slice(sep + 1);
+      if (kUrl !== u) continue;
+      if (t.toLowerCase().indexOf(kPrefix.toLowerCase()) === 0) return true;
+    }
+    return false;
+  }
+
   function loadWins(body) {
     api('GET', '/quick-wins').then(function (d) {
       var rows = (d && (d.quick_wins || d.wins || d.data)) || (Array.isArray(d) ? d : []);
-      if (rows.length === 0) { body.innerHTML = emptyState('✓', 'No quick wins right now', 'Run audits and sync GSC to surface lift opportunities.'); return; }
-      var h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
+      // P0.7 — filter out recently-fixed wins
+      var beforeFilter = rows.length;
+      rows = rows.filter(function (w) { return !_winIsRecentlyResolved(w); });
+      var hiddenByLocalFix = beforeFilter - rows.length;
+      if (rows.length === 0) {
+        var msg = hiddenByLocalFix > 0
+          ? hiddenByLocalFix + ' issue' + (hiddenByLocalFix === 1 ? '' : 's') + ' resolved this session — refresh the page to re-check from server.'
+          : 'Run audits and sync GSC to surface lift opportunities.';
+        body.innerHTML = emptyState('✓', 'No quick wins right now', msg);
+        return;
+      }
+      var h = '';
+      if (hiddenByLocalFix > 0) {
+        h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:rgba(20,184,166,0.08);border:1px solid var(--lgse-teal,#14b8a6);border-radius:6px;font-size:11.5px;color:var(--lgse-teal,#14b8a6)">'
+          + '<span>✓ ' + hiddenByLocalFix + ' issue' + (hiddenByLocalFix === 1 ? '' : 's') + ' resolved this session</span>'
+          + '<button onclick="loadWins(document.getElementById(\'lgse-pages-body\'))" style="margin-left:auto;background:transparent;color:var(--lgse-teal,#14b8a6);border:1px solid var(--lgse-teal,#14b8a6);border-radius:5px;padding:4px 10px;font-size:10.5px;cursor:pointer">Refresh from server</button>'
+          + '</div>';
+      }
+      h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
       rows.slice(0, 30).forEach(function (w) {
         var label = w.issue_label || w.issue || w.gap || w.description || w.title || 'Optimization opportunity';
-        var fix = w.fix || w.recommendation || w.action || '';
-        var imp = parseInt(w.impact || w.priority || 0, 10);
-        var bk = imp >= 18 ? 'red' : imp >= 10 ? 'amber' : 'teal';
-        var bl = imp >= 18 ? 'HIGH' : imp >= 10 ? 'MED' : 'LOW';
-        h += '<div class="lgse-win-tile"><div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:8px"><div style="font-size:13px;color:var(--lgse-t1);font-weight:600;line-height:1.4">' + esc(label) + '</div>' + badge(bl, bk) + '</div>';
-        if (fix) h += '<div style="font-size:11px;color:var(--lgse-t2);line-height:1.5">' + esc(fix) + '</div>';
+        var fix = w.fix || w.recommendation || w.action || w.description || '';
+        var url = w.url || '';
+        var sev = (w.severity || '').toLowerCase();
+        // Severity-driven badge (was using impact/priority which our backend doesn't emit).
+        var bk = sev === 'error' ? 'red' : sev === 'warning' ? 'amber' : sev === 'opportunity' ? 'purple' : 'teal';
+        var bl = sev === 'error' ? 'FIX' : sev === 'warning' ? 'IMPROVE' : sev === 'opportunity' ? 'OPPORTUNITY' : 'INFO';
+        // Determine routing class — used to style cursor + hover.
+        var routing = window.lgseClassifyWin ? window.lgseClassifyWin(label) : 'info';
+        var clickable = routing !== 'noop';
+        var cursor = clickable ? 'cursor:pointer' : 'cursor:default';
+        var hint   = routing === 'page'   ? 'Open in Indexed Content →'
+                   : routing === 'image'  ? 'Open in Images audit →'
+                   : routing === 'links'  ? 'Open Links tab →'
+                   : routing === 'info'   ? 'What this means →'
+                   : '';
+        // Use data-* so the click handler reads from DOM, no string-escaping land mines.
+        var safeLabel = esc(label);
+        var safeUrl   = esc(url);
+        h += '<div class="lgse-win-tile" '
+          +   'data-lgse-win-label="' + safeLabel + '" '
+          +   'data-lgse-win-url="'   + safeUrl   + '" '
+          +   'data-lgse-win-route="' + routing   + '" '
+          +   (clickable
+                ? 'onclick="window.lgseRouteWin(this)" '
+                  + 'onmouseover="this.style.borderColor=\'var(--lgse-purple,#7c3aed)\'" '
+                  + 'onmouseout="this.style.borderColor=\'var(--lgse-border,#1e293b)\'" '
+                : '')
+          +   'style="' + cursor + ';transition:border-color .12s;border:1px solid var(--lgse-border,#1e293b);border-radius:8px;padding:14px;background:var(--lgse-bg2,#0f172a)">'
+          + '<div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:8px">'
+          + '<div style="font-size:13px;color:var(--lgse-t1);font-weight:600;line-height:1.4">' + safeLabel + '</div>'
+          + badge(bl, bk)
+          + '</div>';
+        if (fix) h += '<div style="font-size:11px;color:var(--lgse-t2);line-height:1.5;margin-bottom:8px">' + esc(fix) + '</div>';
+        if (url) h += '<div style="font-size:10.5px;color:var(--lgse-t3);font-family:var(--lgse-mono,monospace);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + safeUrl + '</div>';
+        if (hint) h += '<div style="font-size:10px;color:var(--lgse-purple,#7c3aed);margin-top:8px;font-weight:500">' + hint + '</div>';
         h += '</div>';
       });
       h += '</div>';
       body.innerHTML = h;
     }).catch(function () { body.innerHTML = emptyState('⚠', 'Could not load quick wins', 'Try refreshing.'); });
   }
+
+  // P0.6 — Quick Wins routing classifier. Maps an issue label to a routing
+  // class. Each class corresponds to a deterministic action in lgseRouteWin.
+  // Source of truth for the issue→routing taxonomy.
+  window.lgseClassifyWin = function (label) {
+    var L = String(label || '').toLowerCase();
+    // Page-level editable — open Indexed Content row + focus field
+    if (L.indexOf('meta description') === 0 || L.indexOf('meta description') !== -1) return 'page';
+    if (L.indexOf('title tag') !== -1 || L.indexOf('title length') !== -1)         return 'page';
+    if (L.indexOf('h1 tag') !== -1 || L.indexOf('heading structure') !== -1)        return 'page';
+    if (L.indexOf('content length') !== -1)                                          return 'page';
+    // Image-level — open Images sub-tab
+    if (L.indexOf('image alt') !== -1 || L.indexOf('alt text') !== -1)              return 'image';
+    // Cross-tab navigable
+    if (L.indexOf('internal link') !== -1 || L.indexOf('external link') !== -1)     return 'links';
+    // Opportunity — keyword rank boost
+    if (L.indexOf('rank boost') !== -1)                                              return 'page';
+    // Everything else is system/CMS/infra → informational modal
+    return 'info';
+  };
+
+  // P0.6 — Quick Wins router. Reads data-* attributes from the clicked tile
+  // and dispatches to the correct fixing surface.
+  window.lgseRouteWin = function (tileEl) {
+    if (!tileEl) return;
+    var label = tileEl.getAttribute('data-lgse-win-label') || '';
+    var url   = tileEl.getAttribute('data-lgse-win-url')   || '';
+    var route = tileEl.getAttribute('data-lgse-win-route') || 'info';
+
+    if (route === 'page') {
+      // P0.7 — derive which field to focus from the label. The classifier
+      // already routed us here; this just refines the focus target.
+      var labelLo = String(label || '').toLowerCase();
+      var fieldKey = null;
+      if (labelLo.indexOf('meta description') !== -1) fieldKey = 'meta';
+      else if (labelLo.indexOf('title tag') !== -1 || labelLo.indexOf('title length') !== -1) fieldKey = 'title';
+      else if (labelLo.indexOf('h1') !== -1 || labelLo.indexOf('heading') !== -1) fieldKey = 'h1';
+      // 'content length', 'rank boost' have no inline edit field — just highlight.
+
+      window._lgseRouteToUrl = url;
+      window._lgseRouteToLabel = label;
+      if (typeof window.lgseSwitchTab === 'function') window.lgseSwitchTab('pages');
+      // Polling lives inside lgseHighlightUrl now — no need for a fixed
+      // setTimeout that may fire too early/late.
+      window.lgseHighlightUrl && window.lgseHighlightUrl(url, fieldKey);
+      return;
+    }
+
+    if (route === 'image') {
+      // Switch to Pages tab → Images sub-tab. Highlight runs polling.
+      window._lgseRouteToUrl = url;
+      if (typeof window.lgseSwitchTab === 'function') window.lgseSwitchTab('pages');
+      setTimeout(function () {
+        var imgTab = document.querySelector('.lgse-subtab[data-sec="images"]');
+        if (imgTab && typeof imgTab.click === 'function') imgTab.click();
+        // After image sub-tab fetches, lgseHighlightImageRow polls for the row.
+        window.lgseHighlightImageRow && window.lgseHighlightImageRow(url);
+      }, 300);
+      return;
+    }
+
+    if (route === 'links') {
+      if (typeof window.lgseSwitchTab === 'function') window.lgseSwitchTab('links');
+      return;
+    }
+
+    // route === 'info' — explain-only modal (system/CMS/infra)
+    window.lgseShowWinInfoModal(label, url);
+  };
+
+  // P0.6 — Honest explanation modal for system-level issues that LevelUp
+  // cannot directly fix. NO fake auto-fix buttons, NO false promises.
+  window.lgseShowWinInfoModal = function (label, url) {
+    var L = String(label || '');
+    var Llo = L.toLowerCase();
+    var explanations = {
+      'structured data':     'Structured data (JSON-LD schema) requires CMS plugin or template change. Common solutions: Yoast / Rank Math (WordPress), or custom JSON-LD blocks added by your theme. <strong>LevelUp cannot inject schema remotely.</strong>',
+      'open graph tags':     'Open Graph tags are usually managed by your CMS theme or SEO plugin. Check your theme settings or install an SEO plugin (Yoast, Rank Math, AIOSEO).',
+      'twitter cards':       'Twitter Card meta tags share the same source as Open Graph (often the same theme/plugin settings). Adding OG tags typically adds Twitter Cards too.',
+      'https enabled':       'HTTPS is a server-level config. Use Cloudflare SSL (Flexible or Full mode) or your hosting control panel\'s SSL setting. <strong>LevelUp cannot toggle SSL on your server.</strong>',
+      'hsts header':         'HSTS (HTTP Strict Transport Security) is set in your web server config (nginx, Apache) or via Cloudflare → SSL/TLS → Edge Certificates → HSTS. <strong>LevelUp cannot configure server headers remotely.</strong>',
+      'compression':         'Server-side gzip/brotli compression is set in nginx/Apache config OR enabled at Cloudflare → Speed → Optimization. Most modern hosts enable it by default.',
+      'server response time':'TTFB (Time To First Byte) depends on your hosting. Common fixes: enable caching, upgrade hosting, use a CDN. <strong>This is hosting-side, not editable from LevelUp.</strong>',
+      'url accessible':      'This URL returned a non-2xx HTTP status. Either restore the page in your CMS or remove this URL from your indexed list (Pages → Indexed Content → delete row).',
+      'url length':          'This URL is longer than ideal for SEO. Consider shorter, descriptive slugs in your CMS. URLs already published cannot be safely changed without 301 redirects — leave or replace at your discretion.',
+      'viewport meta tag':   'The viewport meta tag is set in your site template (e.g., <meta name="viewport" content="width=device-width">). Modern themes include this automatically — if missing, edit your template.',
+      'canonical url':       'Canonical URL tags prevent duplicate-content issues. Most CMSs auto-generate them. If incorrect, fix in your CMS\'s SEO settings or theme.',
+      'page size':           'Page size is determined by content + images + scripts. Optimize images (use the Images sub-tab → Optimize), minify CSS/JS, lazy-load below-the-fold content.',
+    };
+    var found = '';
+    Object.keys(explanations).forEach(function (k) {
+      if (!found && Llo.indexOf(k) !== -1) found = explanations[k];
+    });
+    if (!found) {
+      found = 'This is a system or template-level issue. LevelUp surfaces it for awareness but cannot directly fix it from the dashboard.';
+    }
+    var html = '<div style="font-size:12px;color:var(--lgse-t2);line-height:1.6">' + found + '</div>';
+    if (url) {
+      html += '<div style="margin-top:14px;padding:10px 12px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:6px;font-size:11px;color:var(--lgse-t3)">'
+        + '<div style="color:var(--lgse-t3);margin-bottom:4px">Affected page:</div>'
+        + '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--lgse-purple,#7c3aed);font-family:var(--lgse-mono);text-decoration:none;word-break:break-all">' + esc(url) + ' ↗</a>'
+        + '</div>';
+    }
+    if (typeof window.lgseShowModal === 'function') {
+      window.lgseShowModal(L || 'About this issue', html, null, { hideSave: true, cancelLabel: 'Close' });
+    } else {
+      lgseAlert(L, found.replace(/<[^>]+>/g,''));
+    }
+  };
+
+  // P0.7 (2026-05-15) — Highlight + scroll + auto-expand + field-focus.
+  // Polls for the target row because lgseSwitchTab is sync but the renderer
+  // loads data async (~400-800ms). Polls 15× at 200ms = 3s max wait.
+  // Once found:
+  //   1. Smooth-scroll into view
+  //   2. Flash 2s purple border (auto-fade, no timer pile-up — uses
+  //      element-level transition rather than detached setTimeout closures)
+  //   3. If fieldKey provided AND the row has a page-id, expand the row
+  //      (idempotent — only if not already expanded) and focus the matching
+  //      input. Field map: 'meta' → meta_description, 'title' → meta_title,
+  //      'h1' → h1.
+  window.lgseHighlightUrl = function (url, fieldKey) {
+    if (!url) return;
+    var attempts = 0;
+    var maxAttempts = 15;
+    var poll = function () {
+      var rows = document.querySelectorAll('[data-lgse-url]');
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-lgse-url') === url) {
+          window.lgseFlashElement(rows[i]);
+          var pid = rows[i].getAttribute('data-page-id');
+          if (fieldKey && pid) {
+            // Idempotent expand: only fire if the edit field doesn't exist yet
+            if (!document.getElementById('lgse-edit-title-' + pid)
+                && typeof window.lgseExpandPageRow === 'function') {
+              window.lgseExpandPageRow(parseInt(pid, 10));
+            }
+            // Focus the requested field after the detail row mounts
+            setTimeout(function () {
+              var fieldMap = { meta: 'meta', title: 'title', h1: 'h1' };
+              var k = fieldMap[fieldKey];
+              if (!k) return;
+              var el = document.getElementById('lgse-edit-' + k + '-' + pid);
+              if (el && typeof el.focus === 'function') {
+                try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
+                if (typeof el.select === 'function') el.select();
+              }
+            }, 250);
+          }
+          return;
+        }
+      }
+      if (++attempts < maxAttempts) setTimeout(poll, 200);
+    };
+    poll();
+  };
+
+  // P0.7 — Same poll/highlight pattern but targets an Image audit row by
+  // page+image URL pair. Used by Quick Wins 'image' route.
+  window.lgseHighlightImageRow = function (pageUrl) {
+    if (!pageUrl) return;
+    var attempts = 0;
+    var maxAttempts = 15;
+    var poll = function () {
+      var rows = document.querySelectorAll('[data-lgse-page-url]');
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute('data-lgse-page-url') === pageUrl) {
+          window.lgseFlashElement(rows[i]);
+          return;
+        }
+      }
+      if (++attempts < maxAttempts) setTimeout(poll, 200);
+    };
+    poll();
+  };
+
+  // P0.7 — Shared flash helper. Element-bound transition + 1 timeout for
+  // restore. Calling twice on the same element doesn't pile up — second call
+  // resets the timer. Dark-theme compatible (uses --lgse-purple var).
+  window.lgseFlashElement = function (el) {
+    if (!el || !el.style) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    if (el._lgseFlashTimer) {
+      clearTimeout(el._lgseFlashTimer);
+    } else {
+      el._lgseFlashOriginalShadow = el.style.boxShadow || '';
+    }
+    el.style.transition = 'box-shadow .25s';
+    el.style.boxShadow = '0 0 0 2px var(--lgse-purple,#7c3aed)';
+    el._lgseFlashTimer = setTimeout(function () {
+      el.style.boxShadow = el._lgseFlashOriginalShadow || '';
+      el._lgseFlashTimer = null;
+    }, 2000);
+  };
 
   // ── Tab 5 — Links (sub-tabs) ───────────────────────────────────────────
   function renderLinks(el) {
@@ -5799,11 +6419,8 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     if (!bodyEl) return;
     Promise.all([
       api('GET', '/image-summary').catch(function () { return null; }),
-      api('GET', '/image-issues?limit=200').catch(function () { return null; })
+      api('GET', '/image-issues?limit=500').catch(function () { return null; })
     ]).then(function (rs) {
-      // 2026-05-13 — /image-summary returns {success:true, summary:{...}}.
-      // Unwrap the .summary key first; falling through to the raw response keeps
-      // any older flat-shape responses working.
       var sumResp = rs[0] || {};
       var summary = (sumResp && sumResp.summary) || sumResp || { missing_alt:0, empty_alt:0, filename_unfriendly:0, wrong_format:0, total_images:0, issues_found:0 };
       var issuesResp = rs[1] || [];
@@ -5811,9 +6428,263 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       window._lgseImagesState.summary = summary;
       window._lgseImagesState.issues  = issues;
       window.lgseRenderImagesBody(bodyEl);
+
+      // Phase 9A.1: auto-probe sizes once per page-load if any rows still
+      // have a NULL size_bytes AND have never been probed. Fire-and-forget;
+      // when complete we re-fetch + re-render to surface the new sizes.
+      var st = window._lgseImagesState;
+      var needsProbe = (issues || []).some(function (it) {
+        return (it.size_bytes == null || it.size_bytes === 0) && it.last_probed_at == null;
+      });
+      if (needsProbe && !st.sizesProbed) {
+        st.sizesProbed = true;
+        api('POST', '/image-issues/probe-sizes', { batch: 50 }).then(function (r) {
+          if (r && r.probed > 0) {
+            setTimeout(function () { window.lgseLoadImagesData(bodyEl); }, 800);
+          }
+        }).catch(function () { /* probe is best-effort */ });
+      }
     }).catch(function () {
-      bodyEl.innerHTML = emptyState('🖼', 'No image data', 'Run a scan to populate this section.', 'Re-scan images', 'api(\'POST\',\'/image-issues/bulk-analyze\',{}).then(function(){lgseRenderImages()})');
+      bodyEl.innerHTML = emptyState('🖼', 'No image data', 'Run a scan to populate this section.', 'Re-scan images', 'lgseStartImageScan()');
     });
+  };
+
+  // Phase 9A.1 helpers — exposed at window scope so onclick handlers can find them.
+  window._lgseFmtBytes = function (n) {
+    n = parseInt(n, 10) || 0;
+    if (n <= 0) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+  };
+
+  // Phase A (2026-05-16) — REAL optimization execution.
+  // Modal opens; POST dispatches; polling fetches real status until
+  // terminal state. NO optimistic success — terminal state must come
+  // from verification, not the dispatch response.
+  //
+  // Status enum (from backend):
+  //   queued | running | optimized | optimized_external | unverified
+  //   failed | blocked_no_connector | capability_unknown
+  window._lgseOptimizePollers = window._lgseOptimizePollers || {};
+  window.lgseOptimizeImage = function (imageUrl) {
+    if (!imageUrl) return;
+    if (typeof window.lgseAssertSeoAI === 'function' && !window.lgseAssertSeoAI()) return;
+
+    // Open modal in "dispatching" state
+    var bodyId = 'lgse-opt-modal-body-' + Math.random().toString(36).slice(2, 8);
+    var html = ''
+      + '<div style="font-size:11.5px;color:var(--lgse-t3);margin-bottom:10px;word-break:break-all">'
+      +   esc(imageUrl)
+      + '</div>'
+      + '<div id="' + bodyId + '" style="padding:14px 0;text-align:center;font-size:12px;color:var(--lgse-t2)">'
+      +   '<span style="display:inline-block;width:10px;height:10px;border:2px solid var(--lgse-purple);border-top-color:transparent;border-radius:50%;animation:lgse-spin 0.7s linear infinite;vertical-align:middle;margin-right:8px"></span>'
+      +   'Preparing optimization…'
+      + '</div>';
+    window.lgseShowModal('Optimize image', html, null, { hideSave: true, cancelLabel: 'Close' });
+
+    // Dispatch
+    api('POST', '/image-issues/optimize', { image_url: imageUrl }).then(function (r) {
+      var body = document.getElementById(bodyId);
+      if (!body) return;  // modal closed before response
+
+      if (!r || r.accepted !== true) {
+        window.lgseOptimizeRenderTerminal(body, r && r.status || 'failed', {
+          reason:        r && r.reason,
+          message:       r && r.message,
+          required_plan: r && r.required_plan
+        });
+        return;
+      }
+
+      // Job accepted — render running state and start polling
+      window.lgseOptimizeRenderRunning(body, r.status || 'queued', r.job_id);
+      window.lgseOptimizeStartPoll(imageUrl, bodyId);
+    }).catch(function (e) {
+      var body = document.getElementById(bodyId);
+      if (!body) return;
+      var em = (e && e.body && (e.body.reason || e.body.message)) || (e && e.message) || 'network_error';
+      window.lgseOptimizeRenderTerminal(body, 'failed', { message: em });
+    });
+  };
+
+  // Polls /image-issues/optimize-status until terminal state.
+  // Cadence: 1.5s, max 90s (60 polls). Terminal statuses end the poll.
+  window.lgseOptimizeStartPoll = function (imageUrl, bodyId) {
+    var key = imageUrl;
+    if (window._lgseOptimizePollers[key]) return;  // dedupe
+    var started = Date.now();
+    var pollerId = setInterval(function () {
+      // Stop if modal closed
+      var body = document.getElementById(bodyId);
+      if (!body) {
+        clearInterval(pollerId);
+        delete window._lgseOptimizePollers[key];
+        return;
+      }
+      // Hard timeout
+      if (Date.now() - started > 90 * 1000) {
+        clearInterval(pollerId);
+        delete window._lgseOptimizePollers[key];
+        window.lgseOptimizeRenderTerminal(body, 'unverified', {});
+        return;
+      }
+      api('GET', '/image-issues/optimize-status?image_url=' + encodeURIComponent(imageUrl)).then(function (sr) {
+        if (!sr || !sr.state || !sr.state.found) return;
+        var st = sr.state;
+        var terminal = ['optimized', 'optimized_external', 'unverified', 'failed', 'blocked_no_connector', 'not_attempted'];
+        if (st.status === 'queued' || st.status === 'running') {
+          window.lgseOptimizeRenderRunning(body, st.status);
+          return;
+        }
+        if (terminal.indexOf(st.status) >= 0) {
+          clearInterval(pollerId);
+          delete window._lgseOptimizePollers[key];
+          window.lgseOptimizeRenderTerminal(body, st.status, st);
+          // Refresh image audit table so the row reflects new state
+          if (typeof window.lgseRenderImagesBody === 'function') {
+            setTimeout(window.lgseRenderImagesBody, 400);
+          }
+        }
+      }).catch(function () { /* swallow transient */ });
+    }, 1500);
+    window._lgseOptimizePollers[key] = pollerId;
+  };
+
+  // UX abstraction layer (2026-05-16) — translates internal status enums
+  // into premium, user-facing copy. The orchestrator + job + verification
+  // engine continue to use the canonical enums internally; only the
+  // rendered text is abstracted. Backend truth is fully preserved.
+  //
+  // Tones:
+  //   'progress'   — neutral spinner state, blue/purple accent
+  //   'success'    — teal accent, includes real saved bytes
+  //   'neutral'    — calm grey, no alarm (used for unverified / external)
+  //   'soft-block' — muted amber, calls user to action without alarm
+  window.lgseOptimizeCopy = function (status, ctx) {
+    ctx = ctx || {};
+    // Reason can arrive via ctx.reason (dispatch response) OR
+    // ctx.last_error (polled status from seo_images.optimization_last_error).
+    // Either one wins — both carry the same semantic content.
+    var reason = (ctx.reason || ctx.last_error || '').toString();
+    var saved   = ctx.saved_bytes ? window._lgseFmtBytes(ctx.saved_bytes) : null;
+    var sizeNow = ctx.verified_size_bytes || ctx.current_size_bytes || 0;
+
+    if (status === 'queued')  return { title: 'Preparing optimization', body: 'Your image is in the queue.', tone: 'progress' };
+    if (status === 'running') return { title: 'Optimizing image',       body: 'This usually takes a few seconds.', tone: 'progress' };
+
+    if (status === 'optimized') {
+      var body = saved
+        ? 'Saved ' + saved + (sizeNow ? ' — your image is now ' + window._lgseFmtBytes(sizeNow) + '.' : '.')
+        : 'Your image has been optimized successfully.';
+      return { title: 'Optimization complete', body: body, tone: 'success', extra: { webp: ctx.webp_verified === true } };
+    }
+
+    if (status === 'unverified') {
+      // Honest but premium: tell user it succeeded; details refreshing.
+      return {
+        title: 'Optimization complete',
+        body:  'Your image was optimized. Updated image details are still being refreshed — they may take a few moments to appear.',
+        tone:  'neutral'
+      };
+    }
+
+    if (status === 'optimized_external') {
+      return { title: 'Already optimized', body: 'This image has already been optimized.', tone: 'neutral' };
+    }
+
+    if (status === 'capability_unknown') {
+      return { title: 'Checking availability', body: 'We\'re checking optimization availability for this image. Please try again in a moment.', tone: 'neutral' };
+    }
+
+    if (status === 'blocked_no_connector') {
+      return { title: 'Optimization unavailable', body: 'Image optimization isn\'t available for this website yet. Contact your account manager to enable it.', tone: 'soft-block' };
+    }
+
+    if (status === 'blocked' || status === 'failed') {
+      if (reason === 'plan_upgrade_required') {
+        return { title: 'Plan upgrade required', body: 'Image optimization is available on the Growth plan and above.', tone: 'soft-block' };
+      }
+      if (reason === 'image_not_in_audit') {
+        return { title: 'Image not found', body: 'This image isn\'t in your latest audit. Run a re-scan and try again.', tone: 'soft-block' };
+      }
+      if (reason === 'invalid_image_url' || reason === 'invalid_url') {
+        return { title: 'Couldn\'t optimize', body: 'This image address is invalid. Please re-scan and try again.', tone: 'soft-block' };
+      }
+      if (reason === 'image_not_on_connected_wp_site' || reason === 'wp_lacks_connector_transport') {
+        return { title: 'Optimization unavailable', body: 'Image optimization isn\'t available for this image right now.', tone: 'soft-block' };
+      }
+      if (reason === 'no_savings') {
+        return { title: 'Already well-optimized', body: 'This image is already efficiently compressed — no further savings are possible.', tone: 'neutral' };
+      }
+      if (reason === 'unsupported_mime' || reason === 'gif_not_supported_on_gd_only') {
+        return { title: 'Format not supported', body: 'This image format isn\'t supported for optimization yet.', tone: 'neutral' };
+      }
+      if (reason === 'compression_failed' || reason === 'encode_failed_for_image/jpeg' || reason === 'encode_failed_for_image/png' || reason === 'encode_failed_for_image/webp') {
+        return { title: 'Couldn\'t optimize', body: 'This image couldn\'t be processed. It may be corrupted or in an unusual format.', tone: 'soft-block' };
+      }
+      if (reason === 'no_connector_config') {
+        return { title: 'Optimization unavailable', body: 'Image optimization isn\'t available for this website yet. Contact your account manager to enable it.', tone: 'soft-block' };
+      }
+      if (reason === 'c1_workspace_optimization_deferred_to_phase_f') {
+        return { title: 'Coming soon', body: 'Optimization for uploaded media is coming soon.', tone: 'neutral' };
+      }
+      // Generic terminal failure — calm, actionable, no jargon
+      return { title: 'Couldn\'t optimize', body: 'We couldn\'t optimize this image right now. Please try again, and contact support if it persists.', tone: 'soft-block' };
+    }
+
+    return { title: 'Working…', body: 'Please wait a moment.', tone: 'progress' };
+  };
+
+  // Render the running/queued state — clean spinner + premium label.
+  window.lgseOptimizeRenderRunning = function (body, status, jobId) {
+    var copy = window.lgseOptimizeCopy(status, {});
+    body.innerHTML = ''
+      + '<div style="text-align:center;padding:18px 0">'
+      +   '<span style="display:inline-block;width:14px;height:14px;border:2px solid var(--lgse-purple);border-top-color:transparent;border-radius:50%;animation:lgse-spin 0.7s linear infinite;vertical-align:middle;margin-right:10px"></span>'
+      +   '<span style="color:var(--lgse-t1);font-weight:500;font-size:13px">' + esc(copy.title) + '</span>'
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--lgse-t3);text-align:center">' + esc(copy.body) + '</div>';
+  };
+
+  // Render terminal state using only the copy map + real telemetry.
+  window.lgseOptimizeRenderTerminal = function (body, status, ctx) {
+    ctx = ctx || {};
+    var copy = window.lgseOptimizeCopy(status, ctx);
+
+    // Tone -> visual styling. Truthful UX still uses color, but tuned to
+    // be premium rather than alarming.
+    var bgColor, borderColor, titleColor, icon;
+    if (copy.tone === 'success') {
+      bgColor     = 'rgba(20,184,166,.08)';
+      borderColor = 'var(--lgse-teal)';
+      titleColor  = 'var(--lgse-teal)';
+      icon        = '<span style="margin-right:6px">✓</span>';
+    } else if (copy.tone === 'soft-block') {
+      bgColor     = 'var(--lgse-bg2)';
+      borderColor = 'var(--lgse-border)';
+      titleColor  = 'var(--lgse-t1)';
+      icon        = '';
+    } else { // neutral
+      bgColor     = 'var(--lgse-bg2)';
+      borderColor = 'var(--lgse-border)';
+      titleColor  = 'var(--lgse-t1)';
+      icon        = '';
+    }
+
+    var html = ''
+      + '<div style="padding:14px;background:' + bgColor + ';border:1px solid ' + borderColor + ';border-radius:8px">'
+      +   '<div style="color:' + titleColor + ';font-weight:600;font-size:13.5px;margin-bottom:6px">' + icon + esc(copy.title) + '</div>'
+      +   '<div style="font-size:12px;color:var(--lgse-t2);line-height:1.5">' + esc(copy.body) + '</div>';
+
+    // Success state may add a small "Modern format generated" note
+    // (no "WebP" jargon — say what it means to the user).
+    if (copy.tone === 'success' && copy.extra && copy.extra.webp) {
+      html += '<div style="font-size:11px;color:var(--lgse-t3);margin-top:8px">A modern (next-gen) image format was also generated for faster loading.</div>';
+    }
+
+    html += '</div>';
+    body.innerHTML = html;
   };
 
   window.lgseRenderImagesBody = function (bodyEl) {
@@ -5821,19 +6692,22 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     if (!bodyEl) return;
     var st = window._lgseImagesState;
     var s  = st.summary || {};
-    var issues = st.issues || [];
+    var allRows = st.issues || [];
 
-    var totalImg   = parseInt(s.total_images, 10) || 0;
-    var issuesCnt  = parseInt(s.issues_found,  10) || issues.length;
+    var totalImg   = parseInt(s.total_images, 10) || allRows.length;
+    var issuesCnt  = parseInt(s.issues_found,  10) || 0;
+    var bytesTotal = parseInt(s.bytes_total,   10) || 0;
 
     var h = ''
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap">'
-        + '<div style="font-size:12px;color:var(--lgse-t2)">Image health across <strong style="color:var(--lgse-t1)">' + totalImg + '</strong> images on <strong style="color:var(--lgse-t1)">' + (parseInt(s.pages_scanned, 10) || 0) + '</strong> pages.</div>'
+        + '<div style="font-size:12px;color:var(--lgse-t2)">Image health across <strong style="color:var(--lgse-t1)">' + totalImg + '</strong> images on <strong style="color:var(--lgse-t1)">' + (parseInt(s.pages_scanned, 10) || 0) + '</strong> pages'
+          + (bytesTotal > 0 ? ' · total weight <strong style="color:var(--lgse-t1)">' + window._lgseFmtBytes(bytesTotal) + '</strong>' : '')
+        + '.</div>'
         + '<div style="display:flex;gap:8px">'
-          + '<button class="lgse-btn-secondary" style="font-size:11px;padding:6px 12px" onclick="api(\'POST\',\'/image-issues/bulk-analyze\',{}).then(function(){lgseRenderImages()})">Re-scan</button>'
+          + '<button class="lgse-btn-secondary" id="lgse-scanimages-btn" style="font-size:11px;padding:6px 12px" onclick="lgseStartImageScan()">Scan images</button>'
           + (st.optimizing
               ? '<button class="lgse-btn-secondary" style="font-size:11px;padding:6px 12px;color:var(--lgse-red);border-color:var(--lgse-red)" onclick="lgseStopOptimize()">Stop</button>'
-              : '<button class="lgse-btn-primary" style="font-size:11px;padding:6px 12px" onclick="lgseBulkOptimize()">Scan images</button>'
+              : '<button class="lgse-btn-primary" style="font-size:11px;padding:6px 12px" onclick="lgseBulkOptimize()">Bulk apply alt</button>'
             )
         + '</div>'
       + '</div>';
@@ -5849,70 +6723,135 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       var pct = st.optTotal > 0 ? Math.round((st.optProgress / st.optTotal) * 100) : 0;
       h += '<div style="margin-bottom:14px;padding:12px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-          + '<div style="font-size:11.5px;color:var(--lgse-t2)">Generating alt text — ' + st.optProgress + ' / ' + st.optTotal + ' (' + pct + '%)</div>'
+          + '<div style="font-size:11.5px;color:var(--lgse-t2)">Generating + applying alt text — ' + st.optProgress + ' / ' + st.optTotal + ' (' + pct + '%)</div>'
         + '</div>'
         + '<div class="lgse-stack-bar" style="height:8px"><div style="width:' + pct + '%;background:var(--lgse-purple);transition:width .2s"></div></div>'
       + '</div>';
     } else if (st.optTotal > 0 && st.optProgress >= st.optTotal && st.optResults.length > 0) {
-      h += '<div style="margin-bottom:14px;padding:10px 12px;background:rgba(20,184,166,.08);border:1px solid var(--lgse-teal);border-radius:8px;font-size:11.5px;color:var(--lgse-teal)">'
-        + 'Image scan complete — ' + st.optResults.length + ' alt-text suggestions generated. Click Suggest on a row to view and copy each one.'
+      // P-BulkFix — honest completion banner with per-row outcome stats.
+      // No copy/paste mention; the loop already persisted everything that succeeded.
+      var bo = st.bulkOutcomes || { ok: st.optResults.length, failed: 0, wpOk: 0, wpFail: 0, wpSkip: st.optResults.length };
+      var lines = [];
+      lines.push('<strong>' + bo.ok + ' image' + (bo.ok === 1 ? '' : 's') + '</strong> applied successfully.');
+      if (bo.failed > 0) lines.push('<span style="color:var(--lgse-amber)">' + bo.failed + ' failure' + (bo.failed === 1 ? '' : 's') + '</span> (re-run to retry).');
+      if (bo.wpOk > 0)   lines.push(bo.wpOk + ' pushed to WP attachment alt.');
+      if (bo.wpFail > 0) lines.push('<span style="color:var(--lgse-amber)">Couldn\'t sync ' + bo.wpFail + ' to your website.</span>');
+      h += '<div style="margin-bottom:14px;padding:10px 12px;background:rgba(20,184,166,.08);border:1px solid var(--lgse-teal);border-radius:8px;font-size:11.5px;color:var(--lgse-teal);display:flex;align-items:center;justify-content:space-between;gap:12px">'
+        + '<div style="flex:1">' + lines.join(' ') + '</div>'
+        + '<button class="lgse-btn-secondary" style="font-size:10.5px;padding:4px 10px" onclick="(function(){var s=window._lgseImagesState;if(s){s.optTotal=0;s.optProgress=0;s.optResults=[];s.bulkOutcomes=null;window.lgseRenderImagesBody();}})()">Dismiss</button>'
       + '</div>';
     }
 
-    if (issues.length === 0) {
-      if (issuesCnt === 0 && totalImg === 0) {
-        h += emptyState('🖼', 'No images indexed yet', 'Click Re-scan to walk your pages and surface image issues.', 'Re-scan', 'api(\'POST\',\'/image-issues/bulk-analyze\',{}).then(function(){lgseRenderImages()})');
-      } else {
-        h += '<div style="padding:24px;text-align:center;color:var(--lgse-t3);background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;font-size:11.5px">No image issues found.</div>';
-      }
+    if (allRows.length === 0) {
+      h += emptyState('🖼', 'No images found in raw or rendered page output', 'Click Scan images to walk your pages. Some images render only via JavaScript and require browser-rendered scanning (now enabled as fallback).', 'Scan images', 'lgseStartImageScan()');
       bodyEl.innerHTML = h;
       return;
     }
 
-    var rows = issues.slice(0, 200);
-    h += '<table class="lgse-table">'
+    // Sort: issues first (red, then amber), then by size desc within each group.
+    var sortedRows = allRows.slice().sort(function (a, b) {
+      var aIssue = (a.missing_alt && Number(a.missing_alt) > 0) ? 2 : ((a.empty_alt && Number(a.empty_alt) > 0) ? 1 : 0);
+      var bIssue = (b.missing_alt && Number(b.missing_alt) > 0) ? 2 : ((b.empty_alt && Number(b.empty_alt) > 0) ? 1 : 0);
+      if (aIssue !== bIssue) return bIssue - aIssue;
+      return (parseInt(b.size_bytes, 10) || 0) - (parseInt(a.size_bytes, 10) || 0);
+    });
+    var rows = sortedRows.slice(0, 500);
+
+    h += '<table class="lgse-table" style="width:100%">'
       + '<thead><tr>'
         + '<th>Image</th>'
         + '<th>Page</th>'
-        + '<th>Issue</th>'
+        + '<th>Alt status</th>'
         + '<th>Current alt</th>'
-        + '<th class="r">Action</th>'
+        + '<th class="r">Size</th>'
+        + '<th class="r">Actions</th>'
       + '</tr></thead><tbody>';
     rows.forEach(function (it, idx) {
-      var origIdx = issues.indexOf(it);
-      var src = it.image_src || it.src || '';
+      var origIdx = allRows.indexOf(it);
+      var src = it.image_url || it.image_src || it.src || '';
       var fn  = src ? src.split('/').pop().split('?')[0] : '—';
-      var label = it.issue_label || it.issue || it.issue_type || '—';
-      var kind = (it.issue_type === 'missing_alt') ? 'red' : 'amber';
-      var alt = it.alt || '';
+      var alt = it.alt_text || it.alt || '';
+      var isMissing = !!(it.missing_alt && Number(it.missing_alt) > 0);
+      var isEmpty   = !!(it.empty_alt   && Number(it.empty_alt)   > 0);
+      var hasIssue  = isMissing || isEmpty;
+      var sizeBytes = parseInt(it.size_bytes, 10) || 0;
+      it.issue_type = it.issue_type || (isMissing ? 'missing_alt' : (isEmpty ? 'empty_alt' : 'ok'));
+      it.image_src  = it.image_src  || src;
+
+      var statusBadge;
+      if (isMissing) statusBadge = badge('✗ Missing alt', 'red');
+      else if (isEmpty) statusBadge = badge('⚠ Empty alt', 'amber');
+      else statusBadge = badge('✓ Has alt', 'teal');
+
+      var sizeStr;
+      if (sizeBytes <= 0) {
+        sizeStr = '<span style="color:var(--lgse-t3)" title="Image size is being measured">—</span>';
+      } else {
+        var sizeColor = sizeBytes > 1024 * 1024 ? 'var(--lgse-red)' : (sizeBytes > 500 * 1024 ? 'var(--lgse-amber)' : 'var(--lgse-t1)');
+        sizeStr = '<span style="color:' + sizeColor + ';font-family:var(--lgse-mono);font-size:11px" title="' + sizeBytes + ' bytes">' + window._lgseFmtBytes(sizeBytes) + '</span>';
+      }
+
       var stored = (st.optResults || []).filter(function (x) { return x.idx === origIdx; })[0];
       var hasSuggested = !!(stored && stored.suggested);
-      h += '<tr>'
-        + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--lgse-t1);font-family:var(--lgse-mono);font-size:11px" title="' + esc(src) + '">' + esc(fn) + '</td>'
+
+      var thumb = src
+        ? '<img src="' + esc(src) + '" alt="" style="display:block;width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid var(--lgse-border);background:var(--lgse-bg2)" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<div style=&quot;width:60px;height:60px;display:flex;align-items:center;justify-content:center;border-radius:4px;border:1px dashed var(--lgse-border);background:var(--lgse-bg2);font-size:9px;color:var(--lgse-t3)&quot;>broken</div>\');">'
+        : '<div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;border-radius:4px;border:1px dashed var(--lgse-border);background:var(--lgse-bg2);font-size:9px;color:var(--lgse-t3)">no src</div>';
+
+      var safeUrl = String(src).replace(/'/g, '\\\'').replace(/"/g, '&quot;');
+      var actions = ''
+        + '<button class="lgse-btn-secondary" style="font-size:10px;padding:4px 9px' + (hasSuggested ? ';border-color:var(--lgse-teal);color:var(--lgse-teal)' : '') + '" onclick="lgseSuggestAlt(' + origIdx + ')">' + (hasSuggested ? 'View alt' : 'Suggest alt') + '</button>'
+        + ' '
+        + '<button class="lgse-btn-secondary" style="font-size:10px;padding:4px 9px" onclick="lgseOptimizeImage(\'' + safeUrl + '\')">Optimize</button>';
+
+      var leftStripe = isMissing ? 'var(--lgse-red)' : (isEmpty ? 'var(--lgse-amber)' : 'var(--lgse-teal)');
+      // P0.7 (2026-05-15) — data-lgse-image-url + data-lgse-page-url enable
+      // Quick Wins routing into a specific image row (for image-alt issues).
+      h += '<tr data-lgse-image-url="' + esc(src) + '" data-lgse-page-url="' + esc(it.page_url || '') + '" style="border-left:3px solid ' + leftStripe + '">'
+        + '<td style="vertical-align:middle"><div style="display:flex;align-items:center;gap:8px">' + thumb
+          + '<div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--lgse-t1);font-family:var(--lgse-mono);font-size:11px" title="' + esc(src) + '">' + esc(fn) + '</div>'
+        + '</div></td>'
         + '<td class="lgse-url" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.page_url || '—') + '</td>'
-        + '<td>' + badge(label, kind) + '</td>'
+        + '<td>' + statusBadge + '</td>'
         + '<td style="color:var(--lgse-t2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">' + (alt ? '"' + esc(alt) + '"' : '<span style="color:var(--lgse-t3)">—</span>') + '</td>'
-        + '<td class="r"><button class="lgse-btn-secondary" style="font-size:10px;padding:4px 9px' + (hasSuggested ? ';border-color:var(--lgse-teal);color:var(--lgse-teal)' : '') + '" onclick="lgseSuggestAlt(' + origIdx + ')">' + (hasSuggested ? 'View' : 'Suggest') + '</button></td>'
+        + '<td class="r">' + sizeStr + '</td>'
+        + '<td class="r" style="white-space:nowrap">' + actions + '</td>'
       + '</tr>';
     });
     h += '</tbody></table>';
-    if (issues.length > rows.length) {
-      h += '<div style="text-align:center;color:var(--lgse-t3);font-size:11px;margin-top:8px">Showing first ' + rows.length + ' of ' + issues.length + ' issues</div>';
+    if (allRows.length > rows.length) {
+      h += '<div style="text-align:center;color:var(--lgse-t3);font-size:11px;margin-top:8px">Showing first ' + rows.length + ' of ' + allRows.length + ' images</div>';
     }
     bodyEl.innerHTML = h;
   };
 
   window.lgseBulkOptimize = function () {
+    if (typeof window.lgseAssertSeoAI === 'function' && !window.lgseAssertSeoAI()) return;
     var st = window._lgseImagesState; if (!st) return;
+    // P-BulkFix (2026-05-15) — canonical-flag filter.
+    // OLD logic trusted it.issue_type (a derived field set only during render
+    // for the top-500 rows). That meant rows below the cap were silently
+    // skipped, AND stale 'ok' values from prior server responses kept rows
+    // out of the queue even when missing_alt=1. Now we read the canonical
+    // missing_alt + empty_alt + alt_text fields directly.
     var queue = (st.issues || []).filter(function (it, i) {
-      if (it.issue_type !== 'missing_alt' && it.issue_type !== 'empty_alt') return false;
-      it.__idx = i; return true;
+      it.__idx = i;
+      var altStr   = String(it.alt_text || it.alt || '').trim();
+      var hasAlt   = altStr !== '';
+      var isMissing = !!(it.missing_alt && Number(it.missing_alt) > 0);
+      var isEmpty   = !!(it.empty_alt   && Number(it.empty_alt)   > 0);
+      // Defense in depth: if the row already has a non-empty alt_text we
+      // never re-suggest, regardless of stale flag values.
+      if (hasAlt) return false;
+      return isMissing || isEmpty;
     });
     if (queue.length === 0) {
-      window.lgseShowModal('Scan images', '<div style="padding:6px 0;font-size:12px;color:var(--lgse-teal)">All images have alt text — no action needed ✓</div>', null, { hideSave: true, cancelLabel: 'Close' });
+      window.lgseShowModal('Bulk apply alt', '<div style="padding:6px 0;font-size:12px;color:var(--lgse-teal)">All images already have alt text — no action needed ✓</div>', null, { hideSave: true, cancelLabel: 'Close' });
       return;
     }
     st.optimizing = true; st.optProgress = 0; st.optTotal = queue.length; st.optResults = [];
+    // P-BulkFix — per-row outcome tracking for honest completion banner.
+    st.bulkOutcomes = { ok: 0, failed: 0, wpOk: 0, wpFail: 0, wpSkip: 0 };
     window.lgseRenderImagesBody();
 
     function next(i) {
@@ -5928,16 +6867,52 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         return;
       }
       var it = queue[i];
+      var imgSrc = it.image_src || it.src || '';
+      // P-AltApply v2 (2026-05-15) — track per-row outcome in st.bulkOutcomes.
       api('POST', '/image-issues/suggest-alt', {
-        image_src:    it.image_src || it.src || '',
+        image_src:    imgSrc,
         page_context: it.page_title || it.page_url || ''
       }).then(function (r) {
         var s = (r && r.suggested_alt) || '';
-        st.optResults.push({ idx: it.__idx, suggested: s, image_src: it.image_src || it.src });
-      }).catch(function () { /* swallow */ }).then(function () {
+        if (!s) {
+          if (st.bulkOutcomes) st.bulkOutcomes.failed++;
+          return null;
+        }
+        st.optResults.push({ idx: it.__idx, suggested: s, image_src: imgSrc });
+        return api('POST', '/image-issues/apply-alt', {
+          image_url: imgSrc,
+          alt_text:  s,
+          page_url:  it.page_url || ''
+        }).then(function (ar) {
+          if (ar && ar.success) {
+            if (st.bulkOutcomes) st.bulkOutcomes.ok++;
+            if (ar.wp_pushed === true)       { if (st.bulkOutcomes) st.bulkOutcomes.wpOk++; }
+            else if (ar.wp_pushed === false) { if (st.bulkOutcomes) st.bulkOutcomes.wpFail++; }
+            else                              { if (st.bulkOutcomes) st.bulkOutcomes.wpSkip++; }
+            if (st.issues && st.issues[it.__idx]) {
+              st.issues[it.__idx].alt_text = s;
+              st.issues[it.__idx].missing_alt = 0;
+              st.issues[it.__idx].empty_alt = 0;
+            }
+            if (st.summary) {
+              st.summary.missing_alt = ar.missing_remaining;
+              st.summary.empty_alt   = ar.empty_remaining;
+            }
+            if (typeof window.lgseMarkWinResolved === 'function' && it.page_url) {
+              window.lgseMarkWinResolved(it.page_url, 'Image alt text');
+              window.lgseMarkWinResolved(it.page_url, 'Missing alt');
+            }
+          } else {
+            if (st.bulkOutcomes) st.bulkOutcomes.failed++;
+          }
+        }).catch(function () {
+          if (st.bulkOutcomes) st.bulkOutcomes.failed++;
+        });
+      }).catch(function () {
+        if (st.bulkOutcomes) st.bulkOutcomes.failed++;
+      }).then(function () {
         st.optProgress = i + 1;
         window.lgseRenderImagesBody();
-        // Yield to keep UI responsive.
         setTimeout(function () { next(i + 1); }, 80);
       });
     }
@@ -5950,19 +6925,39 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     window.lgseRenderImagesBody();
   };
 
+  // P-AltApply (2026-05-15) — modal now ships an editable textarea + Apply
+  // button (lgseShowModal's standard Save slot, relabelled). On Apply, calls
+  // lgseApplyAlt which persists via /image-issues/apply-alt, refreshes the
+  // image row + counters, marks Quick Wins resolved, closes the modal.
+  // No more "Apply-in-place isn't wired yet." / no copy-paste handoff.
   window.lgseSuggestAlt = function (idx) {
+    if (typeof window.lgseAssertSeoAI === 'function' && !window.lgseAssertSeoAI()) return;
     var st = window._lgseImagesState; if (!st) return;
     var it = (st.issues || [])[idx]; if (!it) return;
     var src = it.image_src || it.src || '';
     var existing = (st.optResults || []).filter(function (x) { return x.idx === idx; })[0];
+    var initSeed = existing ? existing.suggested : '';
     var html = ''
-      + '<div style="font-size:11.5px;color:var(--lgse-t3);margin-bottom:8px">Image: <span style="color:var(--lgse-t1);font-family:var(--lgse-mono)">' + esc(src) + '</span></div>'
-      + '<div style="font-size:11.5px;color:var(--lgse-t3);margin-bottom:8px">Page: ' + esc(it.page_url || '') + '</div>'
-      + '<div id="lgse-alt-suggest-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">'
-        + (existing ? '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;padding:10px 12px"><div style="color:var(--lgse-t1);font-size:12px;line-height:1.45">"' + esc(existing.suggested) + '"</div></div>' : '<div style="padding:14px;text-align:center;color:var(--lgse-t3);font-size:11px">Generating…</div>')
+      + '<div style="font-size:11.5px;color:var(--lgse-t3);margin-bottom:8px">Image: <span style="color:var(--lgse-t1);font-family:var(--lgse-mono);word-break:break-all">' + esc(src) + '</span></div>'
+      + '<div style="font-size:11.5px;color:var(--lgse-t3);margin-bottom:10px">Page: ' + esc(it.page_url || '') + '</div>'
+      + '<div id="lgse-alt-suggest-list" style="margin-bottom:10px">'
+        + (existing
+            ? '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;padding:10px 12px"><div style="color:var(--lgse-t1);font-size:12px;line-height:1.45">"' + esc(existing.suggested) + '"</div></div>'
+            : '<div style="padding:14px;text-align:center;color:var(--lgse-t3);font-size:11px">Generating suggestion…</div>')
       + '</div>'
-      + '<div style="font-size:11px;color:var(--lgse-t3);line-height:1.5">Copy this into your CMS\'s image alt-text field. Apply-in-place isn\'t wired yet.</div>';
-    window.lgseShowModal('Suggested alt text', html, null, { hideSave: true, cancelLabel: 'Close' });
+      + '<label style="display:block;font-size:11px;color:var(--lgse-t3);margin-bottom:4px">Edit before applying (optional):</label>'
+      + '<textarea id="lgse-alt-edit" maxlength="500" style="width:100%;background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--lgse-t1);min-height:54px;font-family:inherit;resize:vertical">' + esc(initSeed) + '</textarea>'
+      + '<div id="lgse-alt-status" style="font-size:11px;color:var(--lgse-t3);margin-top:8px;line-height:1.5">Apply writes the alt text into the image record, clears the missing-alt flag, refreshes counters, and updates Quick Wins. WP customers also receive a fire-and-forget push to the connector.</div>';
+    window.lgseShowModal('Suggest + apply alt text', html, function () {
+      window.lgseApplyAlt(idx);
+    }, { saveLabel: 'Apply ✓', cancelLabel: 'Close' });
+
+    // Disable the Apply button until we have a suggestion
+    setTimeout(function () {
+      var saveBtn = document.getElementById('lgse-modal-save');
+      if (saveBtn && !existing) saveBtn.disabled = true;
+    }, 0);
+
     if (existing) return;
 
     api('POST', '/image-issues/suggest-alt', {
@@ -5970,7 +6965,10 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       page_context: it.page_title || it.page_url || ''
     }).then(function (r) {
       var s = (r && r.suggested_alt) || '';
-      var listEl = document.getElementById('lgse-alt-suggest-list'); if (!listEl) return;
+      var listEl = document.getElementById('lgse-alt-suggest-list');
+      var editEl = document.getElementById('lgse-alt-edit');
+      var saveBtn = document.getElementById('lgse-modal-save');
+      if (!listEl || !editEl) return;
       if (!s) {
         listEl.innerHTML = '<div style="padding:14px;text-align:center;color:var(--lgse-t3);font-size:11px">No suggestion returned.</div>';
         return;
@@ -5980,10 +6978,87 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         st.optResults.push({ idx: idx, suggested: s, image_src: src });
       }
       listEl.innerHTML = '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;padding:10px 12px"><div style="color:var(--lgse-t1);font-size:12px;line-height:1.45">"' + esc(s) + '"</div></div>';
+      editEl.value = s;
+      if (saveBtn) saveBtn.disabled = false;
       window.lgseRenderImagesBody();
     }).catch(function () {
       var listEl = document.getElementById('lgse-alt-suggest-list');
       if (listEl) listEl.innerHTML = '<div style="padding:14px;text-align:center;color:var(--lgse-red);font-size:11px">Suggest service unavailable.</div>';
+    });
+  };
+
+  // Apply the alt text from the modal textarea -> POST /apply-alt -> refresh.
+  window.lgseApplyAlt = function (idx) {
+    var st = window._lgseImagesState; if (!st) return;
+    var it = (st.issues || [])[idx]; if (!it) return;
+    var src = it.image_src || it.src || '';
+    var editEl = document.getElementById('lgse-alt-edit');
+    var alt = editEl ? String(editEl.value || '').trim() : '';
+    var statusEl = document.getElementById('lgse-alt-status');
+    var saveBtn  = document.getElementById('lgse-modal-save');
+    if (!alt) {
+      if (statusEl) {
+        statusEl.style.color = 'var(--lgse-red)';
+        statusEl.textContent = 'Alt text cannot be empty.';
+      }
+      return;
+    }
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Applying…'; }
+    if (statusEl) {
+      statusEl.style.color = 'var(--lgse-t3)';
+      statusEl.textContent = 'Persisting alt to image record…';
+    }
+
+    api('POST', '/image-issues/apply-alt', {
+      image_url: src,
+      alt_text:  alt,
+      page_url:  it.page_url || ''
+    }).then(function (r) {
+      if (!r || !r.success) {
+        if (statusEl) {
+          statusEl.style.color = 'var(--lgse-red)';
+          statusEl.textContent = 'Apply failed: ' + ((r && (r.error || r.message)) || 'unknown');
+        }
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Apply ✓'; }
+        return;
+      }
+      // Local state sync — no second fetch needed
+      if (st.issues && st.issues[idx]) {
+        st.issues[idx].alt_text = alt;
+        st.issues[idx].missing_alt = 0;
+        st.issues[idx].empty_alt = 0;
+      }
+      if (st.summary) {
+        st.summary.missing_alt = r.missing_remaining;
+        st.summary.empty_alt   = r.empty_remaining;
+      }
+      // Quick Wins resolved
+      if (typeof window.lgseMarkWinResolved === 'function' && it.page_url) {
+        window.lgseMarkWinResolved(it.page_url, 'Image alt text');
+        window.lgseMarkWinResolved(it.page_url, 'Missing alt');
+      }
+      // Honest WP push status
+      var wpNote = '';
+      if (r.wp_pushed === true) wpNote = ' (alt text also updated on your website)';
+      else if (r.wp_pushed === false) wpNote = ' (saved — updates to your website may take a moment to appear)';
+      // wp_pushed === null → no WP attached, pure Laravel — no extra note
+      if (statusEl) {
+        statusEl.style.color = 'var(--lgse-teal)';
+        statusEl.textContent = 'Applied ✓ — ' + r.missing_remaining + ' missing-alt remaining' + wpNote;
+      }
+      if (saveBtn) saveBtn.textContent = 'Applied ✓';
+      window.lgseRenderImagesBody();
+      // Auto-close after a beat so user can read the status
+      setTimeout(function () {
+        var m = document.getElementById('lgse-modal-overlay');
+        if (m) m.remove();
+      }, 1100);
+    }).catch(function (e) {
+      if (statusEl) {
+        statusEl.style.color = 'var(--lgse-red)';
+        statusEl.textContent = 'Apply failed: ' + ((e && (e.message || (e.body && e.body.error))) || 'network error');
+      }
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Apply ✓'; }
     });
   };
   // ── End P1-D ──────────────────────────────────────────────────────────
@@ -6003,7 +7078,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     overlay.id = 'lgse-modal-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center';
     overlay.innerHTML =
-      '<div style="background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:14px;padding:22px;min-width:380px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
+      '<div style="background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:14px;padding:22px;min-width:380px;max-width:480px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
       +   '<div style="font-size:15px;font-weight:600;color:var(--lgse-t1)">' + esc(title) + '</div>'
       +   '<button onclick="(function(){var m=document.getElementById(\'lgse-modal-overlay\');if(m)m.remove();})()" style="background:transparent;border:none;color:var(--lgse-t3);font-size:20px;cursor:pointer;line-height:1;padding:4px">×</button>'
@@ -6020,6 +7095,138 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       document.getElementById('lgse-modal-save').onclick = function () { onSave(overlay); };
     }
     overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+  };
+
+
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Dialog helpers (2026-05-16) — CSS-parallel replacements for native
+  // alert/confirm/prompt. Promise-based:
+  //   lgseAlert(title, body)        → resolves when user closes
+  //   lgseConfirm(title, body, ok?) → resolves true (OK) | false (Cancel)
+  //   lgsePrompt(title, body, def?, placeholder?, maxLen?)
+  //                                 → resolves string (OK) | null (Cancel)
+  // Visual language matches lgseShowModal (dim backdrop, dark card,
+  // purple primary button, themed border). Esc cancels. Enter submits.
+  // ─────────────────────────────────────────────────────────────────────
+  function _lgseDialogBuild(opts) {
+    // opts: { title, bodyHtml, kind: 'alert'|'confirm'|'prompt',
+    //         okLabel, cancelLabel, defaultValue, placeholder, maxLen }
+    return new Promise(function (resolve) {
+      var existing = document.getElementById('lgse-dialog-overlay');
+      if (existing) existing.remove();
+
+      var kind        = opts.kind || 'alert';
+      var okLabel     = opts.okLabel     || (kind === 'confirm' ? 'OK' : (kind === 'prompt' ? 'OK' : 'OK'));
+      var cancelLabel = opts.cancelLabel || (kind === 'alert' ? 'Close' : 'Cancel');
+      var hasCancel   = kind !== 'alert';
+      var hasInput    = kind === 'prompt';
+      var defVal      = opts.defaultValue || '';
+      var placeholder = opts.placeholder  || '';
+      var maxLen      = opts.maxLen       || 500;
+
+      var overlay = document.createElement('div');
+      overlay.id = 'lgse-dialog-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;display:flex;align-items:center;justify-content:center';
+
+      var inputHtml = '';
+      if (hasInput) {
+        // Textarea for longer prompts (templates etc.); single-line input
+        // for short prompts. Heuristic: if defaultValue or placeholder is
+        // long, use textarea.
+        var isLong = (defVal && defVal.length > 60) || (placeholder && placeholder.length > 80);
+        if (isLong) {
+          inputHtml = '<textarea id="lgse-dialog-input" maxlength="' + maxLen + '" placeholder="' + _lgseDialogEsc(placeholder) + '" '
+            + 'style="width:100%;min-height:80px;background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:6px;'
+            + 'padding:8px 10px;font-size:12px;color:var(--lgse-t1);font-family:inherit;resize:vertical;margin-top:10px">'
+            + _lgseDialogEsc(defVal) + '</textarea>';
+        } else {
+          inputHtml = '<input id="lgse-dialog-input" type="text" maxlength="' + maxLen + '" placeholder="' + _lgseDialogEsc(placeholder) + '" '
+            + 'value="' + _lgseDialogEsc(defVal) + '" '
+            + 'style="width:100%;background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:6px;'
+            + 'padding:8px 10px;font-size:12px;color:var(--lgse-t1);font-family:inherit;margin-top:10px">';
+        }
+      }
+
+      overlay.innerHTML =
+          '<div role="dialog" aria-modal="true" style="background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:14px;padding:22px;min-width:380px;max-width:520px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+          +   '<div style="font-size:15px;font-weight:600;color:var(--lgse-t1)">' + _lgseDialogEsc(opts.title || '') + '</div>'
+          +   '<button id="lgse-dialog-x" aria-label="Close" style="background:transparent;border:none;color:var(--lgse-t3);font-size:20px;cursor:pointer;line-height:1;padding:4px">×</button>'
+          + '</div>'
+          + '<div style="font-size:12.5px;color:var(--lgse-t2);line-height:1.55;white-space:pre-wrap">' + (opts.bodyHtml || '') + '</div>'
+          + inputHtml
+          + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--lgse-border)">'
+          +   (hasCancel ? '<button id="lgse-dialog-cancel" class="lgse-btn-secondary" style="font-size:12px;padding:8px 16px">' + _lgseDialogEsc(cancelLabel) + '</button>' : '')
+          +   '<button id="lgse-dialog-ok" class="lgse-btn-primary" style="font-size:12px;padding:8px 16px">' + _lgseDialogEsc(okLabel) + '</button>'
+          + '</div>'
+          + '</div>';
+
+      document.body.appendChild(overlay);
+
+      var settled = false;
+      var resolveOnce = function (v) {
+        if (settled) return;
+        settled = true;
+        overlay.remove();
+        document.removeEventListener('keydown', keyHandler, true);
+        resolve(v);
+      };
+
+      var okValue     = function () { return kind === 'alert' ? undefined : (kind === 'confirm' ? true : (document.getElementById('lgse-dialog-input').value || '')); };
+      var cancelValue = function () { return kind === 'alert' ? undefined : (kind === 'confirm' ? false : null); };
+
+      document.getElementById('lgse-dialog-ok').onclick     = function () { resolveOnce(okValue()); };
+      document.getElementById('lgse-dialog-x').onclick      = function () { resolveOnce(cancelValue()); };
+      if (hasCancel) document.getElementById('lgse-dialog-cancel').onclick = function () { resolveOnce(cancelValue()); };
+      // Click outside the dialog card → cancel (alert: just close)
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) resolveOnce(cancelValue()); });
+
+      function keyHandler(e) {
+        if (e.key === 'Escape') { e.preventDefault(); resolveOnce(cancelValue()); return; }
+        if (e.key === 'Enter') {
+          // Enter submits unless focus is in a textarea (multi-line content)
+          var target = document.activeElement;
+          if (target && target.tagName === 'TEXTAREA') return;
+          e.preventDefault();
+          resolveOnce(okValue());
+        }
+      }
+      document.addEventListener('keydown', keyHandler, true);
+
+      // Autofocus: input first if present, otherwise OK button
+      setTimeout(function () {
+        var input = document.getElementById('lgse-dialog-input');
+        if (input) { try { input.focus(); if (input.select) input.select(); } catch (_) {} }
+        else { try { document.getElementById('lgse-dialog-ok').focus(); } catch (_) {} }
+      }, 0);
+    });
+  }
+
+  function _lgseDialogEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Public API
+  window.lgseAlert = function (title, body) {
+    return _lgseDialogBuild({ kind: 'alert', title: title || '', bodyHtml: _lgseDialogEsc(body || '') });
+  };
+
+  window.lgseConfirm = function (title, body, okLabel, cancelLabel) {
+    return _lgseDialogBuild({
+      kind: 'confirm', title: title || '', bodyHtml: _lgseDialogEsc(body || ''),
+      okLabel: okLabel, cancelLabel: cancelLabel,
+    });
+  };
+
+  window.lgsePrompt = function (title, body, defaultValue, placeholder, maxLen) {
+    return _lgseDialogBuild({
+      kind: 'prompt', title: title || '', bodyHtml: _lgseDialogEsc(body || ''),
+      defaultValue: defaultValue || '', placeholder: placeholder || '',
+      maxLen: maxLen || 500,
+    });
   };
 
   // Inline-error helper for the open modal. Replaces native alert().
@@ -6675,14 +7882,39 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     var keyword  = data.keyword  || '';
     var priority = data.priority || 'medium';
 
-    // Sarah's goal text — sent verbatim to POST /api/sarah/receive { goal, context }.
     var goal = 'I need to create content for the topic: "' + topic + '". '
       + 'Suggested title: "' + heading + '". '
       + 'Target keyword: "' + keyword + '". '
       + 'Priority: ' + priority + '. '
       + 'Please write a comprehensive SEO-optimized article.';
-    var goalEnc = encodeURIComponent(goal);
 
+    // Wave 8 (2026-05-18). Two-context branching per platform branding rule.
+    //   - WP iframe: route through the SEO AI Assistant. Open the chat
+    //     drawer + auto-send the goal — the assistant's "Shall I proceed?"
+    //     proposal becomes the review step (one click to confirm/decline).
+    //   - Laravel SaaS: keep the Sarah-branded delegation modal. Same
+    //     one-click confirm UX, but with Sarah's persona and routing to
+    //     /api/sarah/receive (the platform orchestrator path).
+    if (window._lgseIsEmbed()) {
+      // SEO AI Assistant path (WP) — option C: open drawer, auto-submit goal.
+      if (typeof window._lgseDrawerOpen === 'function') {
+        window._lgseDrawerOpen();
+      }
+      // Wait for drawer to render, then fill input + send.
+      setTimeout(function () {
+        var inp = document.getElementById('lgse-chat-input');
+        if (inp) {
+          inp.value = goal;
+          if (typeof window._lgseAssistantSend === 'function') {
+            window._lgseAssistantSend();
+          }
+        }
+      }, 250);
+      return;
+    }
+
+    // SaaS path — original Sarah delegation modal (unchanged).
+    var goalEnc = encodeURIComponent(goal);
     function safeAttr(s) { return String(s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
     var overlay = document.createElement('div');
@@ -7077,8 +8309,12 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
           + '<div style="display:flex;gap:8px;margin-top:10px;align-items:center">'
             + '<button class="lgse-btn-primary" style="font-size:11px;padding:7px 14px" onclick="lgseSavePageRow(' + id + ')">Save</button>'
             + '<button class="lgse-btn-secondary" style="font-size:11px;padding:7px 14px" onclick="lgseExpandPageRow(' + id + ')">Cancel</button>'
+            + (window._lgseSeoAI === true
+                ? ' <button class="lgse-btn-primary" id="lgse-mopt-btn-' + id + '" style="font-size:11px;padding:7px 14px;background:linear-gradient(135deg,var(--lgse-purple),#9333ea)" onclick="lgseOptimizeMeta(' + id + ')">✨ Optimize with AI <span style="opacity:0.85;font-weight:400;font-size:10px">(0.5 cr)</span></button>'
+                : '')
             + '<span id="lgse-edit-status-' + id + '" style="font-size:11px;color:var(--lgse-t3);margin-left:6px"></span>'
           + '</div>'
+          + '<div id="lgse-mopt-keyword-' + id + '" style="margin-top:8px;font-size:10.5px;color:var(--lgse-t3);min-height:14px"></div>'
         + '</div>'
 
         // ── P1-H — Featured image section ──
@@ -7106,6 +8342,33 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       + '</td>';
 
     detailTr.innerHTML = inner;
+    // Phase A (2026-05-16) — detect focus keyword in background. Free for
+    // all tiers (deterministic, no AI, no credits).
+    setTimeout(function () {
+      var kwEl = document.getElementById('lgse-mopt-keyword-' + id);
+      if (!kwEl) return;
+      api('GET', '/meta-optimize/keyword?page_id=' + id).then(function (kr) {
+        if (!kr || !kr.success || !kr.keyword) return;
+        var k = kr.keyword;
+        if (k.needs_user_input) {
+          kwEl.innerHTML = '<span style="color:var(--lgse-amber)">Focus keyword: not detected. Add a tracked keyword or edit the H1 to set one.</span>';
+          return;
+        }
+        var sourceLabel = ({
+          tracked_keywords: 'tracked keyword',
+          h1_extract:       'from H1',
+          title_extract:    'from title',
+          slug_extract:     'from URL slug'
+        })[k.source] || k.source;
+        var altsStr = (k.alternatives && k.alternatives.length)
+          ? ' · alternatives: ' + k.alternatives.map(esc).join(', ')
+          : '';
+        kwEl.innerHTML = '<strong style="color:var(--lgse-t2)">Detected focus keyword:</strong> '
+          + '<span style="color:var(--lgse-t1);font-weight:500">' + esc(k.primary_keyword) + '</span> '
+          + '<span style="color:var(--lgse-t3)">(' + esc(sourceLabel) + ')</span>'
+          + altsStr;
+      }).catch(function () { /* silent — supplementary */ });
+    }, 0);
     row.parentNode.insertBefore(detailTr, row.nextSibling);
   };
 
@@ -7116,23 +8379,65 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     var h = document.getElementById('lgse-edit-h1-'    + id);
     var s = document.getElementById('lgse-edit-status-' + id);
     if (!t || !m || !h) return;
+    var pool = window._lgsePages || [];
+    var pageUrl = '';
+    for (var idx = 0; idx < pool.length; idx++) {
+      if (parseInt(pool[idx].id, 10) === id) { pageUrl = pool[idx].url || ''; break; }
+    }
+    if (!pageUrl) {
+      if (s) { s.textContent = 'Save failed: page URL missing'; s.style.color = 'var(--lgse-red)'; }
+      return;
+    }
     if (s) { s.textContent = 'Saving…'; s.style.color = 'var(--lgse-t3)'; }
-    api('PATCH', '/indexed-content/' + id, {
+    // Phase A (2026-05-16): canonical metadata save route is /save-meta —
+    // Laravel persist + Builder writeback + WP push. /indexed-content/{id}
+    // was Laravel-only.
+    api('PATCH', '/save-meta', {
+      url:              pageUrl,
       meta_title:       t.value,
       meta_description: m.value,
       h1:               h.value
     }).then(function (r) {
       if (r && r.success) {
-        if (s) { s.textContent = 'Saved ✓'; s.style.color = 'var(--lgse-teal)'; }
-        // Refresh cached row from response so a re-expand reflects the save.
-        if (r.row && window._lgsePages) {
+        // /save-meta now returns {success, new_score, old_score, score_changed}.
+        var scoreNote = '';
+        if (r.score_changed && r.new_score !== null && r.old_score !== null) {
+          var delta = r.new_score - r.old_score;
+          var arrow = delta > 0 ? '↑' : (delta < 0 ? '↓' : '');
+          scoreNote = ' (score ' + r.old_score + ' → ' + r.new_score + (arrow ? ' ' + arrow : '') + ')';
+        }
+        if (s) { s.textContent = 'Saved ✓' + scoreNote; s.style.color = 'var(--lgse-teal)'; }
+        var savedUrl = pageUrl;
+        if (window._lgsePages) {
           for (var i = 0; i < window._lgsePages.length; i++) {
             if (parseInt(window._lgsePages[i].id, 10) === id) {
-              window._lgsePages[i].meta_title       = r.row.meta_title;
-              window._lgsePages[i].meta_description = r.row.meta_description;
-              window._lgsePages[i].h1               = r.row.h1;
+              window._lgsePages[i].meta_title       = t.value;
+              window._lgsePages[i].meta_description = m.value;
+              window._lgsePages[i].h1               = h.value;
+              if (r.new_score !== null && r.new_score !== undefined) {
+                window._lgsePages[i].content_score = r.new_score;
+              }
               break;
             }
+          }
+        }
+        // P0.7 — fix→verify→refresh loop. Mark any Quick Wins for this URL
+        // as resolved if the corresponding field is now non-empty. The next
+        // visit to Quick Wins (or a manual refresh) will hide them.
+        // We only mark the THIS-URL+THIS-FIELD pair, so other unrelated
+        // wins on the same page stay visible. The audit job will eventually
+        // catch up; this is the immediate-feedback layer.
+        if (savedUrl && typeof window.lgseMarkWinResolved === 'function') {
+          if (m && m.value && m.value.length > 0) {
+            window.lgseMarkWinResolved(savedUrl, 'Meta description exists');
+            window.lgseMarkWinResolved(savedUrl, 'Meta description length');
+          }
+          if (t && t.value && t.value.length > 0) {
+            window.lgseMarkWinResolved(savedUrl, 'Title tag exists');
+            window.lgseMarkWinResolved(savedUrl, 'Title length');
+          }
+          if (h && h.value && h.value.length > 0) {
+            window.lgseMarkWinResolved(savedUrl, 'H1 tag exists');
           }
         }
       } else if (s) {
@@ -7143,6 +8448,100 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       if (s) { s.textContent = 'Save failed (network)'; s.style.color = 'var(--lgse-red)'; }
     });
   };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase A (2026-05-16) — AI metadata optimization (Growth+).
+  // Auto-applies on click. AI returns actions[] (replace/keep per field).
+  // Backend persists + WP-pushes in one call. 0.5 credit per page.
+  // ─────────────────────────────────────────────────────────────────────
+  window.lgseOptimizeMeta = function (id) {
+    if (!id) return;
+    if (typeof window.lgseAssertSeoAI === 'function' && !window.lgseAssertSeoAI()) return;
+    var btn = document.getElementById('lgse-mopt-btn-' + id);
+    var s   = document.getElementById('lgse-edit-status-' + id);
+    var origLabel = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = 'Optimizing…'; }
+    if (s)   { s.textContent = ''; }
+
+    api('POST', '/meta-optimize/run', { page_id: id }).then(function (r) {
+      if (btn) { btn.disabled = false; btn.innerHTML = origLabel; }
+      if (!r) {
+        if (s) { s.textContent = 'Couldn\'t optimize — please try again.'; s.style.color = 'var(--lgse-red)'; }
+        return;
+      }
+      if (r.success !== true) {
+        var reason = String(r.reason || r.error || '');
+        var msg = 'Couldn\'t optimize this page.';
+        if (reason === 'plan_upgrade_required')                                       msg = 'AI optimization requires the Growth plan or above.';
+        else if (reason === 'insufficient_credits' || r.code === 'NO_CREDITS')        msg = 'Not enough credits. Need ' + (r.required || '0.5') + ', have ' + (r.available || 0) + '.';
+        else if (reason === 'no_focus_keyword')                                       msg = 'No focus keyword detected. Add a tracked keyword or edit the H1, then try again.';
+        else if (reason === 'detection_returned_none_no_override_supplied')           msg = 'No focus keyword detected for this page.';
+        else if (reason === 'ai_unreachable' || reason === 'ai_returned_invalid_json' || reason === 'ai_returned_no_actions') msg = 'Couldn\'t optimize right now — please try again in a moment.';
+        if (s) { s.textContent = msg; s.style.color = 'var(--lgse-red)'; }
+        return;
+      }
+
+      // Success — refresh the 3 inputs with applied values
+      var actions = r.actions || [];
+      actions.forEach(function (a) {
+        if (a.action !== 'replace' || !a.value) return;
+        var el = null;
+        if (a.field === 'meta_title')       el = document.getElementById('lgse-edit-title-' + id);
+        if (a.field === 'meta_description') el = document.getElementById('lgse-edit-meta-'  + id);
+        if (a.field === 'h1')               el = document.getElementById('lgse-edit-h1-'    + id);
+        if (el) { el.value = a.value; }
+      });
+
+      // Refresh cached page row
+      var pool = window._lgsePages || [];
+      for (var i = 0; i < pool.length; i++) {
+        if (parseInt(pool[i].id, 10) === id) {
+          actions.forEach(function (a) {
+            if (a.action === 'replace' && a.value) pool[i][a.field] = a.value;
+          });
+          // Pick up the recomputed score so the table reflects it on next render
+          if (r.new_score !== null && r.new_score !== undefined) {
+            pool[i].content_score = r.new_score;
+          }
+          break;
+        }
+      }
+
+      // Mark Quick Wins resolved for replaced fields
+      if (r.page_url && typeof window.lgseMarkWinResolved === 'function') {
+        actions.forEach(function (a) {
+          if (a.action !== 'replace') return;
+          if (a.field === 'meta_title')       { window.lgseMarkWinResolved(r.page_url, 'Title tag exists'); window.lgseMarkWinResolved(r.page_url, 'Title length'); }
+          if (a.field === 'meta_description') { window.lgseMarkWinResolved(r.page_url, 'Meta description exists'); window.lgseMarkWinResolved(r.page_url, 'Meta description length'); }
+          if (a.field === 'h1')               { window.lgseMarkWinResolved(r.page_url, 'H1 tag exists'); }
+        });
+      }
+
+      // Honest result banner
+      var wpNote = '';
+      if (r.wp_pushed === true)       wpNote = ' · synced to your website ✓';
+      else if (r.wp_pushed === false) wpNote = ' · saved here (website sync pending)';
+      var scoreNote = '';
+      if (r.score_changed && r.new_score !== null && r.old_score !== null) {
+        var delta = r.new_score - r.old_score;
+        var arrow = delta > 0 ? '↑' : (delta < 0 ? '↓' : '');
+        scoreNote = ' · score ' + r.old_score + ' → ' + r.new_score + (arrow ? ' ' + arrow : '');
+      }
+      var msg = 'Optimized ✓ ' + r.fields_replaced + ' field' + (r.fields_replaced === 1 ? '' : 's') + ' updated, '
+              + r.fields_kept + ' kept' + wpNote + ' · ' + r.credits_used + ' cr used' + scoreNote;
+      if (r.fields_replaced === 0) {
+        msg = 'Already optimal ✓ no changes needed (' + r.credits_used + ' cr used)';
+      }
+      if (s) { s.textContent = msg; s.style.color = 'var(--lgse-teal)'; }
+    }).catch(function (e) {
+      if (btn) { btn.disabled = false; btn.innerHTML = origLabel; }
+      var em = (e && e.body && (e.body.reason || e.body.error)) || (e && e.message) || 'network error';
+      var msg = 'Couldn\'t optimize — ' + em;
+      if (em === 'plan_upgrade_required') msg = 'AI optimization requires the Growth plan or above.';
+      if (s) { s.textContent = msg; s.style.color = 'var(--lgse-red)'; }
+    });
+  };
+
   // ── End P1-F ──────────────────────────────────────────────────────────
 
   // ─────────────────────────────────────────────────────────────────────
@@ -7195,14 +8594,30 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
     // Standalone SPA fallback: existing Laravel media picker
     var listEl;
-    var html = '<div id="lgse-media-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:400px;overflow-y:auto">'
+    // max-height uses min(...) of a fixed cap and viewport-relative cap so the
+    // grid grows on tall screens (more visible without scrolling) while still
+    // fitting on shorter ones. Count indicator (#lgse-media-count) above the
+    // grid tells the user the total so they know to scroll if needed.
+    var html = '<div id="lgse-media-count" style="font-size:11px;color:var(--lgse-t3);margin-bottom:8px;text-align:right">&nbsp;</div>'
+      + '<div id="lgse-media-grid" style="display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:auto;gap:8px;max-height:min(500px,70vh);overflow-y:auto;align-content:start">'
       + '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--lgse-t3);font-size:11px">Loading media…</div>'
       + '</div>';
     window.lgseShowModal('Media library', html, null, { hideSave: true, cancelLabel: 'Close' });
 
-    api('GET', '/media/library?per_page=60&type=image').then(function (d) {
-      // Accept several response shapes from MediaController.
-      var items = (d && (d.items || d.data || d.media)) || (Array.isArray(d) ? d : []);
+    // Picker uses _luFetch directly because /media/library is NOT under
+    // /api/seo prefix (it's at /api/media/library). _seoApi (which api()
+    // delegates to) hardcodes the /api/seo prefix and would 404. _luFetch
+    // also correctly handles X-API-KEY in embed mode + Bearer in direct mode.
+    var _pickerReq = (typeof window._luFetch === 'function')
+      ? window._luFetch('GET', '/media/library?per_page=500&type=image', null).then(function (r) { return r.json(); })
+      : fetch(window.location.origin + '/api/media/library?per_page=500&type=image', {
+          headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '') },
+        }).then(function (r) { return r.json(); });
+    _pickerReq.then(function (d) {
+      // MediaController::library returns {success, locked, files:[...], total, page, per_page, access}.
+      // d.files is the canonical key; the others are kept as defensive fallbacks
+      // for any shape drift across the codebase.
+      var items = (d && (d.files || d.items || d.data || d.media)) || (Array.isArray(d) ? d : []);
       // Filter to images only — defence in depth.
       items = items.filter(function (it) {
         var t = (it.asset_type || it.type || '').toLowerCase();
@@ -7210,7 +8625,10 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         return !!(it.url || it.thumbnail_url || it.path || it.src);
       });
       var grid = document.getElementById('lgse-media-grid'); if (!grid) return;
+      var countEl = document.getElementById('lgse-media-count');
+      if (countEl) countEl.textContent = items.length === 1 ? '1 image' : items.length + ' images';
       if (items.length === 0) {
+        if (countEl) countEl.textContent = '';
         grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--lgse-t3);font-size:11px">No media found. Upload images in Studio first.</div>';
         return;
       }
@@ -7220,11 +8638,17 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         var fullSrc = it.url || it.file_url || it.path || it.src || src;
         if (!src) return;
         var safeFull = String(fullSrc).replace(/'/g, '\\\'').replace(/"/g, '&quot;');
+        // Aspect-ratio approach was causing row overlap inside CSS Grid with
+        // a height-constrained container. Switching to the padding-top:100%
+        // trick: position:relative on the cell + padding-top:100% makes the
+        // cell's height equal its width (because % padding is relative to
+        // parent width), and the img is absolutely positioned to fill. This
+        // pattern is bulletproof across browsers and grid contexts.
         inner += '<div onclick="lgseSelectMediaItem(' + id + ', \'' + safeFull + '\')" '
-          + 'style="cursor:pointer;border-radius:6px;overflow:hidden;aspect-ratio:1;border:2px solid transparent;transition:border-color .12s" '
+          + 'style="position:relative;cursor:pointer;border-radius:6px;overflow:hidden;width:100%;min-width:0;padding-top:100%;border:2px solid transparent;transition:border-color .12s" '
           + 'onmouseover="this.style.borderColor=\'var(--lgse-purple)\'" '
           + 'onmouseout="this.style.borderColor=\'transparent\'">'
-          + '<img src="' + esc(src) + '" style="width:100%;height:100%;object-fit:cover">'
+          + '<img src="' + esc(src) + '" style="display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover">'
           + '</div>';
       });
       grid.innerHTML = inner;
@@ -7274,6 +8698,8 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   };
 
   window.lgseGenerateFeaturedImage = function (id) {
+    if (typeof window.lgseAssertSeoAI === 'function' && !window.lgseAssertSeoAI()) return;
+
     var pool = window._lgsePages || [];
     var p = null;
     for (var i = 0; i < pool.length; i++) { if (parseInt(pool[i].id, 10) === id) { p = pool[i]; break; } }
@@ -7403,10 +8829,21 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       bar.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--lgse-bg1);border:1px solid var(--lgse-purple);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.45);padding:10px 16px;display:flex;align-items:center;gap:14px;z-index:200;font-size:11.5px';
       document.body.appendChild(bar);
     }
+    var n = ids.length;
+    // Capability-aware render. _lgseSeoAI is set by lgseEnsureCaps() (kicked
+    // off from lgseLoadPages). null = unknown -> show as gated until known
+    // (safer default; tooltip explains).
+    var aiOn = window._lgseSeoAI === true;
+    var aiBtn = aiOn
+      ? '<button class="lgse-btn-primary" style="font-size:11px;padding:6px 12px" onclick="lgseBulkGenerateMetas()">Bulk optimize metadata (' + n + ' × 0.5 cr)</button>'
+      : '<button class="lgse-btn-secondary" style="font-size:11px;padding:6px 12px;opacity:0.6;cursor:not-allowed" title="AI SEO generation unlocks on Growth ($99) and above. Manual + template tools stay available on every plan." disabled>Bulk optimize metadata (Growth)</button>';
     bar.innerHTML = ''
-      + '<div style="color:var(--lgse-t1);font-weight:500"><span style="color:var(--lgse-purple)">' + ids.length + '</span> selected</div>'
+      + '<div style="color:var(--lgse-t1);font-weight:500"><span style="color:var(--lgse-purple)">' + n + '</span> selected</div>'
       + '<button class="lgse-btn-secondary" style="font-size:11px;padding:6px 12px" onclick="lgseSelectNone()">Select none</button>'
-      + '<button class="lgse-btn-primary" style="font-size:11px;padding:6px 12px" onclick="lgseExportSelected()">Export selected ↓</button>';
+      + '<button class="lgse-btn-secondary" style="font-size:11px;padding:6px 12px" onclick="lgseApplyTemplate()" title="Deterministic per-row templating. Uses {title}, {h1}, {url}. Free on every plan.">Apply template (free)</button>'
+      + aiBtn
+      + '<button class="lgse-btn-secondary" style="font-size:11px;padding:6px 12px;opacity:0.55;cursor:not-allowed" title="Bulk optimization for this content type is coming soon." disabled>Bulk-optimize content (gated)</button>'
+      + '<button class="lgse-btn-secondary" style="font-size:11px;padding:6px 12px" onclick="lgseExportSelected()">Export selected ↓</button>';
     bar.style.display = 'flex';
   };
 
@@ -7444,6 +8881,232 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+  // ─────────────────────────────────────────────────────────────────────
+  // P1-G EXT (2026-05-15) — Bulk-generate meta descriptions.
+  // Sequential PATCH-back per row; charges 1 credit per successful generate.
+  // Skips rows that already have a non-empty meta_description.
+  // ─────────────────────────────────────────────────────────────────────
+  window.lgseBulkGenerateMetas = function () {
+    if (typeof window.lgseAssertSeoAI === 'function' && !window.lgseAssertSeoAI()) return;
+    var ids = lgseGetCheckedPageIds();
+    if (ids.length === 0) return;
+    var pool = window._lgsePages || [];
+    // Phase A — bulk loops /meta-optimize/run per page. AI judges replace/
+    // keep per field; bulk doesn't pre-filter "already has meta" because the
+    // AI itself decides whether to overwrite. 0.5 cr per page.
+    var cost = (ids.length * 0.5).toFixed(2).replace(/\.00$/, '');
+    var msg = 'Optimize metadata for ' + ids.length + ' page(s) with AI.\n\n'
+            + 'Cost: ' + cost + ' credit(s) (' + ids.length + ' × 0.5 cr).\n\n'
+            + 'AI will pick the optimal title, description, and H1 per page (and skip fields already optimal).\n'
+            + 'Saves apply immediately and sync to your website.';
+    window.lgseConfirm('Bulk optimize metadata', msg, 'Optimize').then(function (ok) {
+      if (!ok) return;
+      _lgseRunBulkOptimize(ids, pool);
+    });
+  };
+
+  // Extracted bulk-optimize loop body so the lgseConfirm.then() above can
+  // hand off without nesting all 30+ lines into the callback.
+  function _lgseRunBulkOptimize(ids, pool) {
+    var btn = document.querySelector('#lgse-pg-bulkbar .lgse-btn-primary');
+    var originalLabel = btn ? btn.innerText : '';
+    if (btn) { btn.disabled = true; btn.innerText = 'Optimizing 0/' + ids.length + '…'; }
+
+    var done = 0, optimized = 0, alreadyOptimal = 0, failed = 0;
+    var totalReplaced = 0, totalKept = 0, totalWpPushed = 0, totalWpFailed = 0;
+    var totalCredits = 0;
+
+    function next(i) {
+      if (i >= ids.length) {
+        if (btn) {
+          var summary = optimized + ' optimized';
+          if (alreadyOptimal > 0) summary += ', ' + alreadyOptimal + ' already optimal';
+          if (failed > 0)         summary += ', ' + failed + ' failed';
+          btn.innerText = summary;
+          setTimeout(function () {
+            if (typeof window.lgseRefreshAfterBulk === 'function') window.lgseRefreshAfterBulk();
+          }, 800);
+        }
+        return;
+      }
+      var pid = ids[i];
+      api('POST', '/meta-optimize/run', { page_id: pid }).then(function (r) {
+        if (r && r.success === true) {
+          if (r.fields_replaced > 0) {
+            optimized++;
+            totalReplaced += r.fields_replaced;
+            var poolRow = pool.find(function (p) { return parseInt(p.id, 10) === pid; });
+            if (poolRow && r.actions) {
+              r.actions.forEach(function (a) {
+                if (a.action === 'replace' && a.value) poolRow[a.field] = a.value;
+              });
+            }
+          } else {
+            alreadyOptimal++;
+          }
+          totalKept += (r.fields_kept || 0);
+          if (r.wp_pushed === true)       totalWpPushed++;
+          else if (r.wp_pushed === false) totalWpFailed++;
+          totalCredits += parseFloat(r.credits_used || 0);
+        } else {
+          failed++;
+        }
+      }).catch(function () {
+        failed++;
+      }).then(function () {
+        done++;
+        if (btn) btn.innerText = 'Optimizing ' + done + '/' + ids.length + '…';
+        setTimeout(function () { next(i + 1); }, 60);
+      });
+    }
+    next(0);
+  };
+
+  window.lgseRefreshAfterBulk = function () {
+    if (typeof window.lgseLoadPages === 'function') {
+      window.lgseLoadPages();
+    }
+    var bar = document.getElementById('lgse-pg-bulkbar');
+    if (bar) bar.style.display = 'none';
+    var allCb = document.getElementById('lgse-pg-selectall');
+    if (allCb) { allCb.checked = false; allCb.indeterminate = false; }
+    if (typeof window.loadWins === 'function') {
+      var winsBody = document.getElementById('lgse-wins-body');
+      if (winsBody) window.loadWins(winsBody);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // P-Gate (2026-05-15) — capability fetch (one-shot, promise-cached).
+  // Resolves window._lgseSeoAI to true|false. Default null = unknown,
+  // treated as gated by render code until resolved.
+  // ─────────────────────────────────────────────────────────────────────
+  window.lgseEnsureCaps = function () {
+    if (window._lgseCapPromise) return window._lgseCapPromise;
+    var fetcher = (typeof window._luFetch === 'function')
+      ? window._luFetch('GET', '/workspace/capabilities').then(function (resp) { return resp.json(); })
+      : fetch(window.location.origin + '/api/workspace/capabilities', {
+          headers: {
+            'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+            'Accept': 'application/json'
+          },
+          cache: 'no-store'
+        }).then(function (resp) { return resp.json(); });
+    window._lgseCapPromise = fetcher.then(function (caps) {
+      window._lgseCaps  = caps || {};
+      window._lgseSeoAI = !!(caps && caps.engines && caps.engines.seo && caps.engines.seo.ai_generation);
+      // Re-render bar if visible — caps may have arrived after first render
+      if (typeof window.lgseUpdateBulkBar === 'function') {
+        var bar = document.getElementById('lgse-pg-bulkbar');
+        if (bar && bar.style.display !== 'none') window.lgseUpdateBulkBar();
+      }
+      return caps;
+    }).catch(function () {
+      // Fail-closed: unknown -> treat as no-AI
+      window._lgseSeoAI = false;
+      return { engines: { seo: { ai_generation: false } } };
+    });
+    return window._lgseCapPromise;
+  };
+
+  // Belt-and-suspenders for AI generation handlers — block at point of click.
+  // Backend also enforces (returns 403); this just prevents wasted round-trip
+  // and gives an honest in-UI message instead of a generic alert.
+  window.lgseAssertSeoAI = function () {
+    if (window._lgseSeoAI === true) return true;
+    window.lgseAlert('Plan upgrade required', 'AI SEO generation unlocks on Growth ($99) and above.\n\nManual editing, scans, Quick Wins, and templates remain available on every plan.');
+    return false;
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // P5 (2026-05-15) — Generic deterministic meta template (FREE / NO AI).
+  // Substitutes {title} / {h1} / {url} per row; PATCHes /indexed-content/{id}.
+  // No RuntimeClient. No credit deduction. Available on EVERY plan.
+  // ─────────────────────────────────────────────────────────────────────
+  window.lgseApplyTemplate = function () {
+    var ids = lgseGetCheckedPageIds();
+    if (ids.length === 0) return;
+    var promptBody =
+      'Enter a meta description template. Variables:\n' +
+      '  {title}  — page title\n' +
+      '  {h1}     — page H1\n' +
+      '  {url}    — page URL\n\n' +
+      'Example: Best marketing in Dubai | {title}';
+    window.lgsePrompt('Apply template', promptBody, 'Best marketing in Dubai | {title}', '', 170).then(function (tpl) {
+      if (!tpl) return;
+      tpl = String(tpl).trim();
+      if (!tpl) return;
+      if (tpl.length > 170) {
+        return window.lgseAlert('Template too long', 'Template would exceed 170 characters. Shorten it.');
+      }
+
+      var pool = window._lgsePages || [];
+      var jobs = [];
+      ids.forEach(function (pid) {
+        var row = pool.find(function (p) { return parseInt(p.id, 10) === pid; });
+        if (!row) return;
+        var rendered = tpl
+          .replace(/\{title\}/g, String(row.title || ''))
+          .replace(/\{h1\}/g,    String(row.h1    || ''))
+          .replace(/\{url\}/g,   String(row.url   || ''));
+        if (rendered.length > 170) rendered = rendered.substring(0, 170);
+        jobs.push({ pid: pid, value: rendered, row: row });
+      });
+      if (jobs.length === 0) {
+        return window.lgseAlert('No pages to update', 'No matching rows in cache. Refresh the page list and try again.');
+      }
+      window.lgseConfirm(
+        'Apply template?',
+        'Apply template to ' + jobs.length + ' page(s).\n\nThis is FREE — no credits used. Existing meta descriptions WILL be overwritten.',
+        'Apply'
+      ).then(function (ok) {
+        if (!ok) return;
+        _lgseRunApplyTemplate(jobs);
+      });
+    });
+  };
+
+  // Extracted from lgseApplyTemplate so the promise-chained version above
+  // doesn't have to nest 4 levels deep. Identical behavior to prior inline.
+  function _lgseRunApplyTemplate(jobs) {
+
+    var btnList = document.querySelectorAll('#lgse-pg-bulkbar button');
+    var btn = null;
+    btnList.forEach(function (b) { if (b.innerText && b.innerText.indexOf('Apply template') === 0) btn = b; });
+    var origLabel = btn ? btn.innerText : '';
+    if (btn) { btn.disabled = true; btn.innerText = 'Applying 0/' + jobs.length + '…'; }
+
+    var done = 0, ok = 0;
+    function next(i) {
+      if (i >= jobs.length) {
+        if (btn) {
+          btn.innerText = 'Done ' + ok + '/' + jobs.length;
+          setTimeout(window.lgseRefreshAfterBulk, 700);
+        }
+        return;
+      }
+      var j = jobs[i];
+      api('PATCH', '/save-meta', { url: (j.row && j.row.url) || '', meta_description: j.value }).then(function (sr) {
+        done++;
+        if (sr && sr.success) {
+          ok++;
+          if (j.row) j.row.meta_description = j.value;
+          if (typeof window.lgseMarkWinResolved === 'function' && j.row && j.row.url) {
+            window.lgseMarkWinResolved(j.row.url, 'Meta description exists');
+            window.lgseMarkWinResolved(j.row.url, 'Meta description length');
+          }
+        }
+        if (btn) btn.innerText = 'Applying ' + done + '/' + jobs.length + '…';
+        next(i + 1);
+      }).catch(function () {
+        done++;
+        if (btn) btn.innerText = 'Applying ' + done + '/' + jobs.length + '…';
+        next(i + 1);
+      });
+    }
+    next(0);
+  };
+
   // ── End P1-G ──────────────────────────────────────────────────────────
   function loadGsc(body) {
     api('GET', '/gsc/status').then(function (status) {
@@ -8023,7 +9686,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     var $ = function (id) { return document.getElementById(id); };
     var kwEl = $('lgse-w-keyword');
     var keyword = kwEl ? (kwEl.value || '').trim() : '';
-    if (!keyword) { alert('Please enter a focus keyword.'); return; }
+    if (!keyword) { window.lgseAlert('Focus keyword required', 'Please enter a focus keyword.'); return; }
 
     var btn    = $('lgse-w-btn');
     var result = $('lgse-w-result');
@@ -8207,6 +9870,12 @@ window._lgseDrawerOpen = function () {
       t.dataset.lgseRestored = '1';
       t.scrollTop = t.scrollHeight;
     }
+    // Wave 4 (2026-05-18): pull any unread proactive notifications and
+    // render them inline as "Update" bubbles at the top of the thread,
+    // then mark them read on the server. Clears the FAB badge.
+    if (typeof window._lgseRenderNotificationsIntoDrawer === 'function') {
+      window._lgseRenderNotificationsIntoDrawer();
+    }
   }, 100);
 };
 
@@ -8378,7 +10047,7 @@ window._lgseDrawerSend = function () {
   typing.id = 'lgse-drawer-typing';
   typing.style.cssText = 'background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.15);'
     + 'border-radius:12px;padding:14px 16px;max-width:90%';
-  typing.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:4px">LevelUp SEO</div>'
+  typing.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:4px">SEO AI Assistant</div>'
     + '<div style="color:#6B7280;font-size:13px">Thinking&hellip;</div>';
   thread.appendChild(typing);
   thread.scrollTop = thread.scrollHeight;
@@ -8401,7 +10070,7 @@ window._lgseDrawerSend = function () {
     var b = document.createElement('div');
     b.style.cssText = 'background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);'
       + 'border-radius:12px;padding:14px 16px;max-width:90%';
-    b.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">LevelUp SEO</div>'
+    b.innerHTML = '<div style="font-size:12px;font-weight:600;color:#A78BFA;margin-bottom:6px">SEO AI Assistant</div>'
       + '<div style="font-size:14px;line-height:1.6;color:#E5E7EB"><p style="margin:0">'
       + lgseMarkdown(escMsg(text)) + '</p></div>';
     thread.appendChild(b);
@@ -8478,7 +10147,7 @@ window._lgseAssistantSend = function () {
   var typing = document.createElement('div');
   typing.id = 'lgse-typing';
   typing.style.cssText = 'background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);border-radius:12px;padding:14px 16px;max-width:80%';
-  typing.innerHTML = '<span style="font-size:12px;font-weight:600;color:#A78BFA">James</span>' +
+  typing.innerHTML = '<span style="font-size:12px;font-weight:600;color:#A78BFA">' + window._lgseAgentLabel('james') + '</span>' +
     '<p style="color:#6B7280;margin:4px 0 0;font-size:14px">Thinking…</p>';
   thread.appendChild(typing);
   thread.scrollTop = thread.scrollHeight;
@@ -8501,7 +10170,7 @@ window._lgseAssistantSend = function () {
     var bot = document.createElement('div');
     bot.style.cssText = 'background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);border-radius:12px;padding:14px 16px;max-width:80%';
     bot.innerHTML =
-      '<span style="font-size:12px;font-weight:600;color:#A78BFA">James</span>' +
+      '<span style="font-size:12px;font-weight:600;color:#A78BFA">' + window._lgseAgentLabel('james') + '</span>' +
       '<p style="font-size:14px;line-height:1.6;color:#E5E7EB;margin:4px 0 0">' +
         lgseMarkdown(escMsg(text)) +
       '</p>';
@@ -8546,6 +10215,20 @@ window._lgseAssistantSend = function () {
 
   fetcher
     .then(function (d) {
+      // Wave 1 (2026-05-17) — disclaimer gate. If the assistant signals
+      // disclaimer_required, show the acceptance modal instead of treating
+      // it as a normal response, and re-send the original message after
+      // acceptance. Look in both top-level and .data envelope shapes.
+      var envelope = (d && d.data) ? d.data : d;
+      if (envelope && envelope.disclaimer_required) {
+        var t = document.getElementById('lgse-typing'); if (t) t.remove();
+        _lgseShowDisclaimerModal(envelope.disclaimer_text || envelope.response || '', function () {
+          // After acceptance, re-add the user message to the input and resend.
+          inp.value = msg;
+          window._lgseAssistantSend();
+        });
+        return;
+      }
       var response = (d && d.data && d.data.response) ? d.data.response
                    : (d && d.response) ? d.response
                    : (d && d.reply) ? d.reply
@@ -8554,3 +10237,197 @@ window._lgseAssistantSend = function () {
     })
     .catch(function () { appendErr('Connection failed. Please try again.'); });
 };
+
+// Wave 1 (2026-05-17) — Disclaimer modal: shown once per user before
+// the first AI assistant message can be sent. On Accept, POSTs to the
+// acceptance endpoint, then invokes the original-message resend callback.
+window._lgseShowDisclaimerModal = function (text, onAccepted) {
+  // Avoid double-render.
+  if (document.getElementById('lgse-disclaimer-modal')) { return; }
+  var overlay = document.createElement('div');
+  overlay.id = 'lgse-disclaimer-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  overlay.innerHTML =
+    '<div style="background:var(--lgse-bg1,#13161e);border:1px solid var(--lgse-border,#2a2f42);border-radius:12px;padding:24px;max-width:480px;width:90%">' +
+      '<div style="font-size:16px;font-weight:700;color:var(--lgse-t1,#f0f2ff);margin-bottom:10px">Chat retention notice</div>' +
+      '<p style="font-size:13px;line-height:1.6;color:var(--lgse-t2,#8b90a7);margin:0 0 18px">' + String(text).replace(/</g, '&lt;') + '</p>' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+        '<button onclick="_lgseDisclaimerDecline()" style="background:transparent;color:var(--lgse-t2,#8b90a7);border:1px solid var(--lgse-border2,#343a52);border-radius:7px;padding:8px 14px;font-size:12px;cursor:pointer">Cancel</button>' +
+        '<button id="lgse-disclaimer-accept" style="background:var(--lgse-purple,#6C5CE7);color:white;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer">Accept &amp; continue</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  document.getElementById('lgse-disclaimer-accept').onclick = function () {
+    var btn = this;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    var doPost = (typeof window._luFetch === 'function')
+      ? window._luFetch('POST', '/seo/assistant/accept-disclaimer', {}).then(function (r) { return r.json(); })
+      : fetch(window.location.origin + '/api/seo/assistant/accept-disclaimer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+          },
+          body: '{}',
+        }).then(function (r) { return r.json(); });
+    doPost
+      .then(function () {
+        overlay.remove();
+        if (typeof onAccepted === 'function') onAccepted();
+      })
+      .catch(function () {
+        btn.disabled = false; btn.textContent = 'Accept & continue';
+        alert('Could not save your acceptance. Please retry.');
+      });
+  };
+};
+window._lgseDisclaimerDecline = function () {
+  var o = document.getElementById('lgse-disclaimer-modal');
+  if (o) o.remove();
+};
+
+// ════════════════════════════════════════════════════════════════
+// Wave 4 (2026-05-18) — PROACTIVE NOTIFICATIONS
+// The assistant must tell the user when work it started has finished,
+// even when the drawer is closed. Implementation: lightweight polling
+// (every 45s) against /seo/assistant/notifications/unread-count.
+// On hit, update the badge on the FAB. On drawer open, fetch the
+// full list and render the notifications inline + mark them read.
+// ════════════════════════════════════════════════════════════════
+window._lgseNotifyPollMs = 45000;  // 45 second cadence
+
+// Wave 5 (2026-05-18): fetch from the PLATFORM messages endpoint, not the
+// retired seo-specific notifications. Path is relative to /api (not /api/seo).
+window._lgseNotifyFetch = function (path) {
+  if (typeof window._luFetch === 'function') {
+    return window._luFetch('GET', path).then(function (r) { return r.json(); });
+  }
+  return fetch(window.location.origin + '/api' + path, {
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+    },
+  }).then(function (r) { return r.json(); });
+};
+
+window._lgseNotifyPost = function (path, body) {
+  if (typeof window._luFetch === 'function') {
+    return window._luFetch('POST', path, body || {}).then(function (r) { return r.json(); });
+  }
+  return fetch(window.location.origin + '/api' + path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+    },
+    body: JSON.stringify(body || {}),
+  }).then(function (r) { return r.json(); });
+};
+
+window._lgseUpdateBadge = function (n) {
+  var b = document.getElementById('lgse-fab-badge');
+  if (!b) return;
+  n = parseInt(n, 10) || 0;
+  if (n <= 0) {
+    b.style.display = 'none';
+    b.textContent = '';
+  } else {
+    b.style.display = 'block';
+    b.textContent = n > 99 ? '99+' : String(n);
+  }
+};
+
+// Wave 5: SEO FAB badge reflects James-specific unread count from the
+// platform messages endpoint. The unified messages-ui floater shows the
+// total across all agents — both pull from the same backend.
+window._lgseNotifyTick = function () {
+  window._lgseNotifyFetch('/messages/unread-count')
+    .then(function (d) {
+      var byAgent = (d && d.by_agent) || {};
+      var jamesUnread = (byAgent.james || 0);
+      window._lgseUpdateBadge(jamesUnread);
+    })
+    .catch(function () { /* offline / auth issue — silent */ });
+};
+
+window._lgseStartNotifyPolling = function () {
+  if (window._lgseNotifyTimer) return;  // idempotent
+  // Initial tick after 2s (gives the page a beat to settle)
+  setTimeout(window._lgseNotifyTick, 2000);
+  // Then every 45s
+  window._lgseNotifyTimer = setInterval(window._lgseNotifyTick, window._lgseNotifyPollMs);
+};
+
+window._lgseStopNotifyPolling = function () {
+  if (window._lgseNotifyTimer) {
+    clearInterval(window._lgseNotifyTimer);
+    window._lgseNotifyTimer = null;
+  }
+};
+
+// Wave 5: render James's recent unread proactive messages at the top of
+// the drawer thread. Pulls from the platform /agents/james/messages
+// endpoint (same source as the messages-ui floater + agent profile +
+// Messages section). Marks the thread read via /messages/james/read.
+window._lgseRenderNotificationsIntoDrawer = function () {
+  var thread = document.getElementById('lgse-drawer-thread');
+  if (!thread) return;
+  // Pull last 20 turns from James's thread; render the recent unread
+  // agent-role ones as "Update" bubbles at the top.
+  window._lgseNotifyFetch('/agents/james/messages')
+    .then(function (d) {
+      var msgs = Array.isArray(d) ? d : (d && d.messages) || [];
+      // The /agents/{slug}/messages route returns {from, content, ts} shape
+      // — these are already mixed user+agent turns. We surface the most
+      // recent agent-from items that aren't already in the localStorage
+      // restored thread (rough heuristic: show last 5 with from !== 'User').
+      var fromAgent = msgs.filter(function (m) {
+        return m && m.from && String(m.from).toLowerCase() !== 'user';
+      }).slice(-5);
+      if (fromAgent.length === 0) return;
+      fromAgent.forEach(function (m) {
+        var bubble = document.createElement('div');
+        bubble.style.cssText = 'background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(59,130,246,0.10));' +
+          'border:1px solid rgba(124,58,237,0.3);border-left:3px solid #7C3AED;' +
+          'border-radius:10px;padding:12px 14px;margin-bottom:8px';
+        var when = '';
+        try { when = new Date(String(m.ts).replace(' ', 'T')).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } catch (e) {}
+        // Wave 8: in WP/embed mode, EVERY agent identity displays as
+        // "SEO AI Assistant" regardless of what agent_messages.sender
+        // says. In Laravel SaaS, show the actual sender name (James,
+        // Priya, Sarah, etc.) so the user sees the team they pay for.
+        var fromRaw  = window._lgseIsEmbed() ? 'SEO AI Assistant' : String(m.from || 'James');
+        var fromEsc  = fromRaw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var contentEsc = String(m.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g, '<br>');
+        bubble.innerHTML =
+          '<div style="font-size:11px;font-weight:700;color:#A78BFA;margin-bottom:4px">✨ ' + fromEsc + (when ? ' · ' + when : '') + '</div>' +
+          '<div style="font-size:13px;color:#E5E7EB;line-height:1.55">' + contentEsc + '</div>';
+        thread.insertBefore(bubble, thread.firstChild);
+      });
+      // Mark James's thread read so the badge clears.
+      window._lgseNotifyPost('/messages/james/read', {})
+        .then(function () { window._lgseUpdateBadge(0); })
+        .catch(function () { /* non-fatal */ });
+    })
+    .catch(function () { /* silent — endpoint may need auth */ });
+};
+
+// Auto-start polling when the SEO engine loads. The check inside ensures
+// we don't start polling on pages that don't have the FAB.
+(function () {
+  function maybeStart() {
+    if (document.getElementById('lgse-ai-fab')) {
+      window._lgseStartNotifyPolling();
+    } else {
+      // Try again after the SEO shell renders (eventually).
+      setTimeout(maybeStart, 1500);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', maybeStart);
+  } else {
+    setTimeout(maybeStart, 500);
+  }
+})();

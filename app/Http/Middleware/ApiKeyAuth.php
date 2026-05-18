@@ -20,7 +20,16 @@ class ApiKeyAuth
     {
         $key = $request->header('X-API-KEY') ?? $request->query('api_key');
 
+        // No X-API-KEY? Fall through to JWT Bearer — JwtAuthMiddleware already
+        // accepts BOTH Bearer JWT AND X-API-KEY (per 2026-05-11 patch), so
+        // this preserves the WP plugin's X-API-KEY contract while restoring
+        // the SPA's direct-mode Bearer-JWT contract that was rotted when this
+        // middleware was tightened. Same workspace_id attribute is set either
+        // way, so downstream route handlers see no difference.
         if (! $key) {
+            if ($request->bearerToken()) {
+                return app(\App\Http\Middleware\JwtAuthMiddleware::class)->handle($request, $next);
+            }
             return response()->json(['error' => 'api_key_required'], 401);
         }
 

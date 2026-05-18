@@ -45,7 +45,31 @@ class SeoDataService
             ]);
 
         $all = array_merge($items->toArray(), $rankWins->toArray());
-        return ['success' => true, 'quick_wins' => $all, 'total' => count($all)];
+
+        // P0.6 (2026-05-15) — Quick Wins URL hygiene. Filter out entries
+        // whose `url` is malformed (e.g. seo_audit_items rows where the audit
+        // job stored a keyword in the url column). These produced cURL error 3
+        // CURLE_URL_MALFORMAT downstream when any caller tried to fetch them.
+        // Also filter exact-duplicate (title + url) entries — the same issue
+        // surfacing repeatedly as 6 identical cards is noise, not value.
+        $seen = [];
+        $clean = [];
+        foreach ($all as $row) {
+            $row = (array) $row;
+            $url = isset($row['url']) ? trim((string) $row['url']) : '';
+            // Allow empty URL (system-level wins legitimately have no url).
+            // For non-empty: must validate AND must look like http(s).
+            if ($url !== '') {
+                if (! filter_var($url, FILTER_VALIDATE_URL)) continue;
+                if (! preg_match('#^https?://#i', $url))    continue;
+            }
+            $key = ($row['title'] ?? '') . '|' . $url;
+            if (isset($seen[$key])) continue;
+            $seen[$key] = true;
+            $clean[] = $row;
+        }
+
+        return ['success' => true, 'quick_wins' => $clean, 'total' => count($clean)];
     }
 
     public function competitors(int $wsId): array

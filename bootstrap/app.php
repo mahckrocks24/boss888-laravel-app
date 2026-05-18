@@ -88,12 +88,23 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $schedule->command('seo:authority-score')
             ->name('seo:authority-score')
-            ->weeklyOn(0, '03:00')
+            ->dailyAt('03:00')
             ->withoutOverlapping()
             ->onOneServer()
             ->runInBackground()
             ->onFailure(function () {
                 \Illuminate\Support\Facades\Log::error('seo:authority-score cron failed');
+            });
+
+        // Wave 1 (2026-05-17) — 90-day retention purge for SEO assistant
+        // chat history, per AI Assistant Operating Rules.
+        $schedule->command('seo:purge-chat-history')
+            ->name('seo:purge-chat-history')
+            ->dailyAt('04:00')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('seo:purge-chat-history cron failed');
             });
 
         $schedule->command('seo:outbound-check')

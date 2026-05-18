@@ -99,7 +99,7 @@ class MediaController
         $type     = strtolower((string) $request->input('type', 'image'));
         $search   = trim((string) $request->input('search', ''));
         $page     = max(1, (int) $request->input('page', 1));
-        $perPage  = max(1, min(60, (int) $request->input('per_page', 24)));
+        $perPage  = max(1, min(500, (int) $request->input('per_page', 24)));
 
         $access = new MediaAccessService();
         if ($platform) {
@@ -122,9 +122,22 @@ class MediaController
         if ($platform) {
             $q->where('is_platform_asset', 1);
         } else {
-            $q->where('workspace_id', $wsId)->where(function ($i) {
-                $i->whereNull('is_platform_asset')->orWhere('is_platform_asset', 0);
-            });
+            // SHARED MEDIA LIBRARY (per owner directive 2026-05-15): default
+            // mode shows AI-generated + platform assets across all workspaces.
+            // Workspace isolation is intentionally relaxed here — these source
+            // types are treated as shared resources (templates, AI gens, asset
+            // library). User uploads (source upload/uploaded) are EXCLUDED.
+            // Owner's intent: "Display Dalle, platform, dall-e-3, and dall-e,
+            // creative, and seo featured image in the shared media library on
+            // laravel. Skip Upload and uploaded."
+            $q->whereIn('source', [
+                'dalle',
+                'dall-e',
+                'dall-e-3',
+                'creative_engine',
+                'seo_featured_image',
+                'platform',
+            ]);
         }
 
         if ($type === 'image') {
