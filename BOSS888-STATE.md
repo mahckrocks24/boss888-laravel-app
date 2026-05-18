@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.10.3-wave15-deadcode-collapse`
+- **Cache buster (seo.js)**: `5.10.4-wave15-phaseB`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
 ---
@@ -83,6 +83,16 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 15.4 — Phase B: collapse 8 intermediate overrides (-292 lines)
+- Targets had explicit `window.X = ...` overrides further down the file; the later assignment always wins for global function bindings, so the intermediate bodies are unreachable. Collapsed via a single-pass node script (`tmp/wave15_4_collapse.js`) that finds each function's brace-balanced end and replaces the body with a one-line stub that warns if invoked.
+- **Collapsed** (8 blocks, all the body weight saved):
+  - `_seoKeywords` at line 608 (-112 lines)  · later override at 2466
+  - `_seoLinks` at line 1133 (-65 lines)  · later override at 1280
+  - `_seoRenderShell` at lines 1226, 1601, 2225 (-48 lines total)  · last live override at 2680
+  - `_seoSwitchTab` at lines 1243, 1619, 2247 (-75 lines total)  · last live override at 2697
+- **Preserved** (latest of each name kept as safety fallback): `_seoKeywords` @ 2466 · `_seoLinks` @ 1280 · `_seoRenderShell` @ 2680 · `_seoSwitchTab` @ 2697. All four are still unreachable per the live-entry chain (`window.seoLoad` → `buildShell` → LGSE `switchTab`), but conservative for Phase B — Phase C will collapse them once console-warning monitoring confirms zero callers.
+- **Result**: `seo.js` 10,523 → 10,231 lines (-292, -2.8%). All Wave 15.2 CTAs intact (17 reference points). Live entry chain preserved end-to-end. Syntax check passes.
 
 ### Wave 15.3 — conservative dead-code collapse (5 originals)
 - **Goal**: start retiring the cascading-override stack in seo.js. 5 functions where the original (lines 1-700) has at LEAST one explicit `window.X = …` override later in the file — i.e. 100%-confirmed-dead.

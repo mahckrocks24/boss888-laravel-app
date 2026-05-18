@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.10.3-wave15-deadcode-collapse loaded — 5 dead originals collapsed to stubs with fallback'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.10.4-wave15-phaseB loaded — Phase B: 8 intermediate overrides collapsed (-292 lines)'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -605,118 +605,7 @@ console.log('[LevelUp] SEO engine loaded (Laravel native — 14 tabs, 33 routes)
 // ═══════════════════════════════════════════════════════════════
 
 (function() {
-    window._seoKeywords = async function(el) {
-        if (!el) return;
-        try {
-            var data = await _seoApi('GET', '/keywords');
-
-            // Handle both old (array) and new ({keywords, usage, scan}) formats
-            var kws, usage, scan;
-            if (Array.isArray(data)) {
-                kws = data; usage = null; scan = null;
-            } else if (data.keywords) {
-                kws = data.keywords || [];
-                usage = data.usage || null;
-                scan = data.scan || null;
-            } else {
-                kws = data || [];
-                usage = null; scan = null;
-            }
-
-            // Header with usage badge
-            var usageHtml = '';
-            if (usage) {
-                var atLimit = usage.limit > 0 && usage.count >= usage.limit;
-                var barPct = usage.limit > 0 ? Math.min(100, Math.round((usage.count / usage.limit) * 100)) : 0;
-                var barColor = atLimit ? '#EF4444' : '#6C5CE7';
-                usageHtml = '<span style="display:inline-flex;align-items:center;gap:8px;margin-left:12px;font-size:13px;color:#9CA3AF">'
-                    + '<span style="font-weight:600;color:' + (atLimit ? '#EF4444' : '#D1D5DB') + '">' + usage.count + '/' + usage.limit + ' keywords</span>'
-                    + '<span style="width:50px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;display:inline-block;overflow:hidden">'
-                    + '<span style="display:block;height:100%;width:' + barPct + '%;background:' + barColor + ';border-radius:3px"></span></span>'
-                    + (atLimit ? '<a href="/app/#upgrade" style="color:#A78BFA;font-size:11px;font-weight:600;text-decoration:none">Upgrade</a>' : '')
-                    + '</span>';
-            }
-
-            var canAdd = !usage || usage.can_add;
-            var addBtnStyle = canAdd ? '' : 'opacity:0.5;pointer-events:none;';
-            var addBtnTitle = canAdd ? '' : ' title="Keyword limit reached"';
-
-            var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
-                + '<div style="display:flex;align-items:center"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0">Tracked Keywords</h2>' + usageHtml + '</div>'
-                + '<button class="btn btn-primary" onclick="_seoAddKeyword()" style="' + addBtnStyle + '"' + addBtnTitle + '>+ Add Keyword</button></div>';
-
-            if (kws.length === 0) {
-                if (usage && usage.limit === 0) {
-                    h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("lock",14)+'</div><p>Keyword tracking requires AI Lite plan or higher.</p><a href="/app/#upgrade" style="color:#A78BFA">Upgrade your plan →</a></div>';
-                } else {
-                    h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("lock",14)+'</div><p>No keywords tracked yet.</p></div>';
-                }
-            } else {
-                h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-                h += '<thead><tr>'
-                    + '<th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Keyword</th>'
-                    + '<th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd);text-align:center">Rank</th>'
-                    + '<th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd);text-align:center">Change</th>'
-                    + '<th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd);text-align:center">Volume</th>'
-                    + '<th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd);text-align:center">Last Checked</th>'
-                    + '<th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd);text-align:center">Actions</th>'
-                    + '</tr></thead><tbody>';
-
-                kws.forEach(function(k) {
-                    var rank = k.current_rank || k.position;
-                    var rankDisplay = rank ? '#' + rank : '<span style="color:var(--t3)">—</span>';
-                    var rankColor = rank ? (rank <= 3 ? 'var(--gn)' : (rank <= 10 ? '#F59E0B' : 'var(--t2)')) : 'var(--t3)';
-
-                    var change = k.rank_change;
-                    var changeDisplay = '<span style="color:var(--t3)">—</span>';
-                    if (change !== null && change !== undefined && change !== 0) {
-                        changeDisplay = change > 0
-                            ? '<span style="color:var(--gn);font-weight:600">↑' + change + '</span>'
-                            : '<span style="color:var(--rd);font-weight:600">↓' + Math.abs(change) + '</span>';
-                    }
-
-                    var lastCheck = k.last_rank_check;
-                    var lastCheckDisplay = '<span style="font-size:11px;color:var(--t3)">Never</span>';
-                    if (lastCheck) {
-                        var d = new Date(lastCheck);
-                        var diffH = Math.round((new Date() - d) / 3600000);
-                        if (diffH < 1) lastCheckDisplay = '<span style="font-size:11px;color:var(--t3)">Just now</span>';
-                        else if (diffH < 24) lastCheckDisplay = '<span style="font-size:11px;color:var(--t3)">' + diffH + 'h ago</span>';
-                        else lastCheckDisplay = '<span style="font-size:11px;color:var(--t3)">' + Math.round(diffH/24) + 'd ago</span>';
-                    }
-
-                    var rs = 'padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)';
-                    h += '<tr>'
-                        + '<td style="' + rs + ';color:var(--t1)">' + (k.keyword || '—') + '</td>'
-                        + '<td style="' + rs + ';text-align:center;color:' + rankColor + ';font-weight:600">' + rankDisplay + '</td>'
-                        + '<td style="' + rs + ';text-align:center">' + changeDisplay + '</td>'
-                        + '<td style="' + rs + ';text-align:center;color:var(--t2)">' + (k.volume || '—') + '</td>'
-                        + '<td style="' + rs + ';text-align:center">' + lastCheckDisplay + '</td>'
-                        + '<td style="' + rs + ';text-align:center"><button class="btn btn-outline btn-sm" onclick="_seoDeleteKeyword(' + k.id + ')" style="font-size:11px;color:var(--rd)">Delete</button></td>'
-                        + '</tr>';
-                });
-                h += '</tbody></table></div>';
-            }
-
-            // Scan schedule info
-            if (scan) {
-                h += '<div style="margin-top:16px;padding:12px 16px;background:var(--s1);border:1px solid var(--bd);border-radius:8px;font-size:12px;color:var(--t3)">';
-                if (scan.frequency === 'never') {
-                    h += ''+window.icon("lock",14)+' Keyword rank scanning requires AI Lite plan or higher.';
-                } else if (scan.has_scanned) {
-                    h += ''+window.icon("check",14)+' Last scan: ' + scan.last_scan_date_formatted + ' · Next scan: ' + scan.next_scan_date_formatted;
-                } else {
-                    h += ''+window.icon("search",14)+' Your first keyword scan will run on ' + (scan.next_scan_date_formatted || 'the next Monday') + '.';
-                }
-                h += '</div>';
-            }
-
-            el.innerHTML = h;
-        } catch(e) {
-            if (typeof _seoError === 'function') el.innerHTML = _seoError(e);
-            else el.innerHTML = '<div style="color:var(--rd)">Error: ' + e.message + '</div>';
-        }
-    };
+    window._seoKeywords = function () { try { console.warn('[LU SEO 15.4] dead path: _seoKeywords call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 })();
 
 
@@ -1130,71 +1019,7 @@ window._seoImgSuggest = async function(imageSrc, pageContext, idx) {
 // Build 3 — Anchor analysis renderer (extends existing 'links' tab)
 // Override _seoLinks if it exists, otherwise add it.
 var _seoLinksOriginal = window._seoLinks;
-window._seoLinks = async function(el) {
-  try {
-    var opps  = await _seoApi('GET', '/link-opportunities');
-    var anchorR = await _seoApi('GET', '/links/anchor-analysis');
-    var anchors = (anchorR && anchorR.issues) || [];
-
-    var h = '<div style="margin-bottom:16px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Internal Links</h2>';
-    h += '<p style="font-size:13px;color:var(--t2);margin:0">Find linking opportunities + audit existing anchor text.</p></div>';
-
-    // Anchor analysis section
-    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:13px;font-weight:600;color:var(--t1)">Anchor analysis</div></div>';
-    if (anchors.length === 0) {
-      h += '<div style="padding:24px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px;margin-bottom:18px">No anchor issues found in current articles.</div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:18px"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-      ['Article','Anchor','Issue','Fix'].forEach(function(c){ h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">'+c+'</th>'; });
-      h += '</tr></thead><tbody>';
-      anchors.slice(0,30).forEach(function(a){
-        var typeColor = a.issue_type === 'over_optimised' ? '#F87171' : (a.issue_type === 'too_long' ? '#F59E0B' : 'var(--am)');
-        h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-        h += '<td style="padding:9px 12px;color:var(--t2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_luEsc(a.article_title||'')+'</td>';
-        h += '<td style="padding:9px 12px;color:var(--t1);font-weight:600">"'+_luEsc(a.anchor_text||'')+'"</td>';
-        h += '<td style="padding:9px 12px"><span style="background:'+typeColor+'20;color:'+typeColor+';padding:2px 8px;border-radius:8px;font-size:10px">'+_luEsc(a.issue_label||'')+'</span></td>';
-        h += '<td style="padding:9px 12px;color:var(--t2);font-size:11px">'+_luEsc(a.fix||'')+'</td>';
-        h += '</tr>';
-      });
-      h += '</tbody></table></div>';
-    }
-
-    // Link opportunities section
-    var oppsArr = (opps && opps.opportunities) || [];
-    var orphArr = (opps && opps.orphans) || [];
-    h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Link opportunities</div>';
-    if (oppsArr.length === 0) {
-      h += '<div style="padding:24px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px">Need at least 2 indexed pages with overlapping topics to detect opportunities.</div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-      ['Source','Target','Anchor','Score','Action'].forEach(function(c){ h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">'+c+'</th>'; });
-      h += '</tr></thead><tbody>';
-      oppsArr.slice(0,30).forEach(function(o){
-        h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-        h += '<td style="padding:9px 12px;color:var(--t2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_luEsc(o.source_title||o.source_url||'')+'</td>';
-        h += '<td style="padding:9px 12px;color:var(--t2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_luEsc(o.target_title||o.target_url||'')+'</td>';
-        h += '<td style="padding:9px 12px;color:var(--t1)">"'+_luEsc(o.suggested_anchor||'')+'"</td>';
-        h += '<td style="padding:9px 12px"><span style="background:rgba(108,92,231,.12);color:var(--p);padding:2px 8px;border-radius:8px;font-weight:700">'+(o.score||0)+'</span></td>';
-        h += '<td style="padding:9px 12px"><button onclick="_seoApplyLink(' + o.source_id + ',\'' + _luEsc(o.suggested_anchor||'').replace(/\'/g, "\\'") + '\',\'' + _luEsc(o.target_url||'').replace(/\'/g, "\\'") + '\')" style="background:none;border:1px solid var(--p);color:var(--p);padding:3px 10px;border-radius:5px;font-size:10px;cursor:pointer">Apply →</button></td>';
-        h += '</tr>';
-      });
-      h += '</tbody></table></div>';
-    }
-
-    if (orphArr.length > 0) {
-      h += '<div style="font-size:13px;font-weight:600;color:var(--am);margin-top:18px;margin-bottom:8px">Orphan pages (no internal links pointing to them)</div>';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px"><ul style="margin:0;padding-left:20px;font-size:12px;color:var(--t2)">';
-      orphArr.slice(0,10).forEach(function(o){ h += '<li><a href="'+_luEsc(o.url||'')+'" target="_blank" style="color:var(--t2)">'+_luEsc(o.title||o.url)+'</a> · '+(o.word_count||0)+' words · score '+(o.content_score||0)+'</li>'; });
-      h += '</ul></div>';
-    }
-
-    el.innerHTML = h;
-  } catch(e) {
-    el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load: '+(e.message||e)+'</div>';
-  }
-};
+window._seoLinks = function () { try { console.warn('[LU SEO 15.4] dead path: _seoLinks call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
 window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   // sourceId is an article id from seo_content_index? Actually opportunity returns source_id which is the indexed page id, not the article id.
@@ -1223,44 +1048,11 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
   // Inject Topics tab into the tab strip after Links.
   var _origRender = window._seoRenderShell || _seoRenderShell;
-  window._seoRenderShell = function (el) {
-    _origRender(el);
-    var linksTab = document.getElementById('seo-tab-links');
-    if (linksTab && !document.getElementById('seo-tab-topics')) {
-      var t = document.createElement('div');
-      t.className = 'seo-tab';
-      t.id = 'seo-tab-topics';
-      t.style.cssText = 'padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--t2);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap';
-      var ico = (typeof window.icon === 'function') ? window.icon('chart', 14) : '';
-      t.innerHTML = ico + ' Topics';
-      t.onclick = function () { _seoSwitchTab('topics'); };
-      linksTab.parentNode.insertBefore(t, linksTab.nextSibling);
-    }
-  };
+  window._seoRenderShell = function () { try { console.warn('[LU SEO 15.4] dead path: _seoRenderShell call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // Hook _seoSwitchTab to dispatch 'topics'.
   var _origSwitch = window._seoSwitchTab || _seoSwitchTab;
-  window._seoSwitchTab = function (tab) {
-    if (tab === 'topics') {
-      window._seoTab = tab;
-      document.querySelectorAll('.seo-tab').forEach(function (t) {
-        t.style.color = 'var(--t2)';
-        t.style.borderBottomColor = 'transparent';
-      });
-      var active = document.getElementById('seo-tab-topics');
-      if (active) {
-        active.style.color = 'var(--p,#6C5CE7)';
-        active.style.borderBottomColor = 'var(--p,#6C5CE7)';
-      }
-      var content = document.getElementById('seo-content');
-      if (content) {
-        content.innerHTML = (typeof loadingCard === 'function') ? loadingCard(300) : 'Loading…';
-        _seoTopics(content);
-      }
-      return;
-    }
-    return _origSwitch(tab);
-  };
+  window._seoSwitchTab = function () { try { console.warn('[LU SEO 15.4] dead path: _seoSwitchTab call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // Local helpers (do not collide with core).
   function esc(s) { return (typeof window._luEsc === 'function') ? window._luEsc(s || '') : String(s || '').replace(/[<>"]/g, ''); }
@@ -1598,45 +1390,11 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
   // Inject Competitors tab between Topics and Optimization (Workspace).
   var _origRenderW3 = window._seoRenderShell || _seoRenderShell;
-  window._seoRenderShell = function (el) {
-    _origRenderW3(el);
-    var topicsTab = document.getElementById('seo-tab-topics');
-    var anchor = topicsTab || document.getElementById('seo-tab-links');
-    if (anchor && !document.getElementById('seo-tab-competitors')) {
-      var t = document.createElement('div');
-      t.className = 'seo-tab';
-      t.id = 'seo-tab-competitors';
-      t.style.cssText = 'padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--t2);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap';
-      var ico = (typeof window.icon === 'function') ? window.icon('globe', 14) : '';
-      t.innerHTML = ico + ' Competitors';
-      t.onclick = function () { _seoSwitchTab('competitors'); };
-      anchor.parentNode.insertBefore(t, anchor.nextSibling);
-    }
-  };
+  window._seoRenderShell = function () { try { console.warn('[LU SEO 15.4] dead path: _seoRenderShell call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // Hook _seoSwitchTab for the new 'competitors' tab id.
   var _origSwitchW3 = window._seoSwitchTab;
-  window._seoSwitchTab = function (tab) {
-    if (tab === 'competitors') {
-      window._seoTab = tab;
-      document.querySelectorAll('.seo-tab').forEach(function (t) {
-        t.style.color = 'var(--t2)';
-        t.style.borderBottomColor = 'transparent';
-      });
-      var active = document.getElementById('seo-tab-competitors');
-      if (active) {
-        active.style.color = 'var(--p,#6C5CE7)';
-        active.style.borderBottomColor = 'var(--p,#6C5CE7)';
-      }
-      var content = document.getElementById('seo-content');
-      if (content) {
-        content.innerHTML = loadingW3();
-        _seoCompetitors(content);
-      }
-      return;
-    }
-    return _origSwitchW3(tab);
-  };
+  window._seoSwitchTab = function () { try { console.warn('[LU SEO 15.4] dead path: _seoSwitchTab call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Competitors tab ──────────────────────────────────────────────────────
   window._seoCompetitors = async function (el) {
@@ -2222,61 +1980,11 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
   // ── Tab strip rebuild — restyle existing tabs + insert Overview first ──
   var _origRenderShellUI = window._seoRenderShell || _seoRenderShell;
-  window._seoRenderShell = function (el) {
-    lgseInjectStyles();
-    _origRenderShellUI(el);
-    var bar = el.querySelector('.seo-tab') ? el.querySelector('.seo-tab').parentNode : null;
-    if (bar) {
-      bar.classList.add('lgse-tab-bar');
-      // Inject Overview tab as the FIRST tab if not already present.
-      if (!document.getElementById('seo-tab-overview')) {
-        var ov = document.createElement('div');
-        ov.className = 'seo-tab';
-        ov.id = 'seo-tab-overview';
-        ov.style.cssText = 'padding:10px 16px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px';
-        var ico = (typeof window.icon === 'function') ? window.icon('home', 14) : '';
-        ov.innerHTML = ico + ' Overview';
-        ov.onclick = function () { _seoSwitchTab('overview'); };
-        bar.insertBefore(ov, bar.firstChild);
-      }
-    }
-  };
+  window._seoRenderShell = function () { try { console.warn('[LU SEO 15.4] dead path: _seoRenderShell call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // Hook _seoSwitchTab — handle 'overview' + apply lgse-active class.
   var _origSwitchUI = window._seoSwitchTab;
-  window._seoSwitchTab = function (tab) {
-    if (tab === 'overview') {
-      window._seoTab = 'overview';
-      // Reset all tabs.
-      var tabs = document.querySelectorAll('.seo-tab');
-      Array.prototype.forEach.call(tabs, function (t) {
-        t.style.color = 'var(--t3)';
-        t.style.borderBottomColor = 'transparent';
-        t.classList.remove('lgse-active');
-      });
-      var active = document.getElementById('seo-tab-overview');
-      if (active) {
-        active.style.color = 'var(--p)';
-        active.style.borderBottomColor = 'var(--p)';
-        active.classList.add('lgse-active');
-      }
-      var content = document.getElementById('seo-content');
-      if (content) {
-        content.innerHTML = (typeof loadingCard === 'function') ? loadingCard(220) : 'Loading…';
-        _seoOverview(content);
-      }
-      return;
-    }
-    var ret = _origSwitchUI(tab);
-    // After existing handler runs, ensure active class is in sync (some renderers replace innerHTML and lose classes).
-    requestAnimationFrame(function () {
-      var tabs2 = document.querySelectorAll('.seo-tab');
-      Array.prototype.forEach.call(tabs2, function (t) { t.classList.remove('lgse-active'); });
-      var active2 = document.getElementById('seo-tab-' + tab);
-      if (active2) active2.classList.add('lgse-active');
-    });
-    return ret;
-  };
+  window._seoSwitchTab = function () { try { console.warn('[LU SEO 15.4] dead path: _seoSwitchTab call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // Make Overview the default landing tab when seoLoad runs.
   var _origSeoLoad = window.seoLoad || seoLoad;
