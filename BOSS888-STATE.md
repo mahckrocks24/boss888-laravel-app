@@ -1,7 +1,7 @@
 # BOSS888 — Living State Doc
 
 > Single source of truth for current platform state. Updated end of each session.
-> Last update: **2026-05-18 (Waves 1–9 + 13 complete)**
+> Last update: **2026-05-18 (Waves 1–13 complete; Wave 11 + Wave 12 shipped this session)**
 
 ---
 
@@ -62,6 +62,23 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
 - WP plugin caller (X-API-KEY auth) → publish notification posts to James's thread (visible in WP SEO drawer)
 - Laravel SaaS caller (JWT auth) → publish notification posts to Priya's thread (Content Manager owns the surface in SaaS UX)
 
+### Wave 11 — complete-article pipeline (text + image + alt + draft-on-failure)
+- New migration: `articles.featured_image_alt VARCHAR(500)`, `featured_image_error TEXT`, `featured_image_attempts TINYINT`
+- `SeoAssistantService::execGenerateArticle` now retries image gen 3× via `/api/connector/pages/regenerate-image` if the first connector attempt fails. Aborts retry early on `insufficient_credits` / `plan_upgrade`.
+- On final failure: article stays as draft with `featured_image_error` populated + `featured_image_attempts` recorded. Narration tells user the image failed + how to manually retry.
+- On image success: runtime auto-generates SEO-friendly alt text (max 120 chars) via `runtime->aiRun('seo_content_generation', ...)` and persists to `featured_image_alt`.
+
+### Wave 12 — calendar-aware assistant + daily online report
+- New `getCalendarContext($wsId)`: today + upcoming-7-days items from `calendar_events` + `articles.scheduled_at`. Returns `['today' => [...], 'week' => [...]]`.
+- `buildLiveContext` now includes `'calendar'` in its return.
+- `buildSystemPrompt` inserts a `════ CALENDAR ════` section (TODAY + UPCOMING) so the LLM is always aware of scheduled work.
+- New `maybePostDailyOnlineReport($wsId, $userId)` called at top of `handle()`:
+  - Fires only when gap since last user message ≥ 12 hours (`abs()` — Carbon 3 returns signed hours)
+  - Idempotent via `meta_json->daily_report` flag on seo_assistant_messages
+  - Posts a proactive assistant turn into Redis + DB chat history
+  - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
+- Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
 ### Wave 13 — 404 route stubs
 - 11 routes that the UI calls but had no backend handlers now return structured `{success, feature_status, message}` envelopes
 - 404 count in full UI sweep: **13 → 1**
@@ -100,9 +117,9 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
 
 | Area | Issue | Severity |
 |---|---|---|
-| Auto-optimization | No post-publish hook dispatches `OptimizeWpAttachmentJob` | MED (Wave 10 — needs UX design) |
-| Featured image | Manual via `/pages/regenerate-image`. Not auto-chained after article create. Alt text not auto-set | MED (Wave 11 — needs UX design) |
-| Calendar | `scheduled_at` plumbing exists but unreachable from chat flow | MED (Wave 12 — needs date-parsing UX) |
+| Auto-optimization | No post-publish hook dispatches `OptimizeWpAttachmentJob` | MED (Wave 10 — still pending) |
+| Featured image | ✅ Wave 11 shipped — 3× retry, alt-text auto-gen, draft-on-failure with explanatory error | DONE |
+| Calendar | ✅ Wave 12 shipped — context injected into every system prompt + daily online report. Date-parsing for scheduling via chat is still future scope | PARTIAL (Wave 12) |
 | `/connector/save-meta` PATCH | Last hard 404 — wrong route-prefix group, needs separate handling | LOW |
 | Sarah extension | Sarah's existing calls now mirror to her chat thread (Wave 6 DONE). Other agents (Priya/Marcus/Elena) have no proactive code today | LOW (N/A until features land) |
 | Git commits | All Wave 1-13 changes uncommitted on `master` working tree (safe only in tarballs) | HIGH |

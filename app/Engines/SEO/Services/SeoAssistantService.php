@@ -100,6 +100,13 @@ class SeoAssistantService
                 }
             }
 
+            // Wave 12 (2026-05-18). Daily online report — if this is the
+            // user's first message in 12+ hours and today has scheduled
+            // items, post a proactive daily-schedule assistant turn BEFORE
+            // we process the new message. Idempotent: at most one per
+            // (workspace, user, day).
+            $this->maybePostDailyOnlineReport($wsId, $this->currentUserId);
+
             // 1. Load all three persistent layers.
             $memory = $this->loadMemory($wsId);
             $pending = $this->loadPending($wsId);
@@ -1179,7 +1186,95 @@ class SeoAssistantService
             ]);
         }
 
-        $imgLabel = $imgOk ? 'with a featured image' : 'text only (image gen timed out)';
+        // Wave 11 (2026-05-18) — every new article must be COMPLETE.
+        // If the connector's image gen failed on the first attempt, retry
+        // up to 2 more times via /pages/regenerate-image (image-only,
+        // doesn't waste credits regenerating the text). Total 3 attempts.
+        // If all 3 fail (out of credits or persistent error), save the
+        // article as draft + flag featured_image_error so the user knows
+        // why and can manually retry from the Pages tab.
+        $imgAttempts = 1; // we already tried via the connector
+        $imgError    = null;
+        if ($articleId && ! $imgOk) {
+            // Derive the article URL from site_url + slug — same convention
+            // syncFromArticle uses elsewhere.
+            $articleSlug = \Illuminate\Support\Str::slug(mb_substr($title, 0, 100));
+            $articleUrl  = rtrim((string) $payload['site_url'], '/') . '/' . $articleSlug;
+            for ($try = 2; $try <= 3; $try++) {
+                $imgAttempts = $try;
+                try {
+                    $retryResp = Http::withHeaders([
+                            'X-API-KEY'      => (string) $apiKey,
+                            'X-Workspace-ID' => (string) $wsId,
+                            'Accept'         => 'application/json',
+                            'Host'           => 'staging.levelupgrowth.io',
+                        ])
+                        ->timeout(120)
+                        ->post($base . '/api/connector/pages/regenerate-image', [
+                            'url'   => $articleUrl,
+                            'title' => $title,
+                            'force' => true,
+                        ]);
+                    $rj = $retryResp->json() ?: [];
+                    if ($retryResp->successful() && ($rj['success'] ?? false) && ! empty($rj['image_url'])) {
+                        $imageUrl = $rj['image_url'];
+                        $imgOk    = true;
+                        $cu      += (int) ($rj['credits_used'] ?? 1);
+                        DB::table('articles')->where('id', $articleId)->update([
+                            'featured_image_url' => $imageUrl,
+                            'updated_at'         => now(),
+                        ]);
+                        break;
+                    }
+                    $imgError = $rj['error'] ?? $rj['message'] ?? ('http_' . $retryResp->status());
+                    if (str_contains((string) $imgError, 'insufficient_credits') || str_contains((string) $imgError, 'plan_upgrade')) {
+                        break; // No point trying more — credit/plan blocked
+                    }
+                } catch (\Throwable $e) {
+                    $imgError = 'connection_failed: ' . $e->getMessage();
+                }
+            }
+            if (! $imgOk && $articleId) {
+                DB::table('articles')->where('id', $articleId)->update([
+                    'featured_image_error'    => mb_substr("Image generation failed after {$imgAttempts} attempts: " . ($imgError ?? 'unknown'), 0, 65535),
+                    'featured_image_attempts' => $imgAttempts,
+                    'updated_at'              => now(),
+                ]);
+            } else if ($imgOk && $articleId) {
+                DB::table('articles')->where('id', $articleId)->update([
+                    'featured_image_attempts' => $imgAttempts,
+                    'featured_image_error'    => null,
+                ]);
+            }
+        }
+
+        // Wave 11 — generate SEO-friendly alt text via runtime once the
+        // featured image is in place. Cheap (~50 tokens), keeps the image
+        // accessible + improves SEO scoring for image factor.
+        if ($articleId && $imgOk && empty($imageUrl) === false) {
+            try {
+                $altPrompt = "Write a concise (max 120 chars), SEO-friendly alt text describing a featured image for this blog article. "
+                    . "Title: \"{$title}\". Focus keyword: \"" . ($payload['keyword'] ?? '') . "\". "
+                    . "Return ONLY the alt-text string, no quotes, no preamble.";
+                $altResp = $this->runtime->aiRun('seo_content_generation', $altPrompt, ['workspace_id' => $wsId], 60);
+                $altText = trim((string) ($altResp['text'] ?? ''));
+                $altText = preg_replace('/^["\']|["\']$/u', '', $altText) ?? $altText;
+                if ($altText !== '' && mb_strlen($altText) <= 500) {
+                    DB::table('articles')->where('id', $articleId)->update([
+                        'featured_image_alt' => $altText,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::debug('[SEO Assistant] alt-text generation skipped: ' . $e->getMessage());
+            }
+        }
+
+        // Build the narration based on final image state.
+        if ($imgOk) {
+            $imgLabel = 'with an optimized featured image';
+        } else {
+            $imgLabel = '⚠ image generation failed after 3 attempts — added to your library as a draft so you can review the text and retry the image from the Pages tab';
+        }
         $idTag    = $articleId ? " (#{$articleId})" : '';
         $narration = "Done — your article **\"{$title}\"** is saved as a draft{$idTag}, {$words} words {$imgLabel}. **{$cu} credit"
             . ($cu === 1 ? '' : 's') . " used.** Nothing has been published — it's sitting in your library waiting for your review.";
@@ -1528,6 +1623,158 @@ class SeoAssistantService
     // SYSTEM PROMPT BUILDER + LIVE CONTEXT
     // ═══════════════════════════════════════════════════════════════
 
+    /**
+     * Wave 12 (2026-05-18). Calendar context — today's + upcoming-week
+     * scheduled items, drawn from the cross-engine `calendar_events`
+     * table plus `articles.scheduled_at`. Used both in the system
+     * prompt (so the LLM knows what's planned) and in the daily
+     * online-report builder.
+     */
+    private function getCalendarContext(int $wsId): array
+    {
+        $today   = now()->startOfDay();
+        $weekEnd = now()->copy()->addDays(7)->endOfDay();
+
+        $events = DB::table('calendar_events')
+            ->where('workspace_id', $wsId)
+            ->whereBetween('starts_at', [$today, $weekEnd])
+            ->orderBy('starts_at')
+            ->limit(30)
+            ->get(['title', 'category', 'engine', 'starts_at']);
+
+        $scheduledArticles = DB::table('articles')
+            ->where('workspace_id', $wsId)
+            ->whereNotNull('scheduled_at')
+            ->whereBetween('scheduled_at', [$today, $weekEnd])
+            ->orderBy('scheduled_at')
+            ->limit(20)
+            ->get(['title', 'scheduled_at']);
+
+        $todayItems = [];
+        $weekItems  = [];
+        foreach ($events as $e) {
+            $when = \Carbon\Carbon::parse($e->starts_at);
+            $tag  = $e->engine ?: ($e->category ?: 'general');
+            $line = $when->format('H:i') . ' — ' . $e->title . ' (' . $tag . ')';
+            if ($when->isToday()) {
+                $todayItems[] = $line;
+            } else {
+                $weekItems[] = $when->format('M j') . ' ' . $line;
+            }
+        }
+        foreach ($scheduledArticles as $a) {
+            $when = \Carbon\Carbon::parse($a->scheduled_at);
+            $line = $when->format('H:i') . ' — Publish article "' . mb_substr((string) $a->title, 0, 60) . '"';
+            if ($when->isToday()) {
+                $todayItems[] = $line;
+            } else {
+                $weekItems[] = $when->format('M j') . ' ' . $line;
+            }
+        }
+        sort($todayItems);
+        sort($weekItems);
+        return ['today' => $todayItems, 'week' => $weekItems];
+    }
+
+    /**
+     * Wave 12 (2026-05-18). Daily online-schedule report. Posts a
+     * proactive assistant turn into the chat when the user returns
+     * after a >=12h gap AND today (or the coming week) has scheduled
+     * items. Marked in `meta_json` with `daily_report:true` so it
+     * doesn't fire twice in the same day.
+     */
+    private function maybePostDailyOnlineReport(int $wsId, ?int $userId): void
+    {
+        if (! $userId) {
+            return;
+        }
+        try {
+            $todayStart = now()->startOfDay();
+
+            $already = DB::table('seo_assistant_messages')
+                ->where('workspace_id', $wsId)
+                ->where('user_id', $userId)
+                ->where('created_at', '>=', $todayStart)
+                ->where('meta_json->daily_report', true)
+                ->exists();
+            if ($already) {
+                return;
+            }
+
+            $lastUserMsg = DB::table('seo_assistant_messages')
+                ->where('workspace_id', $wsId)
+                ->where('user_id', $userId)
+                ->where('role', 'user')
+                ->orderByDesc('created_at')
+                ->value('created_at');
+
+            if ($lastUserMsg !== null) {
+                // Carbon 3 returns signed hours; we want absolute elapsed time.
+                $gapHours = abs(now()->diffInHours(\Carbon\Carbon::parse($lastUserMsg)));
+                if ($gapHours < 12) {
+                    return;
+                }
+            }
+
+            $cal = $this->getCalendarContext($wsId);
+            if (empty($cal['today']) && empty($cal['week'])) {
+                return;
+            }
+
+            $greeting = "👋 Welcome back — here's your SEO schedule.";
+            if (! empty($cal['today'])) {
+                $greeting .= "\n\n**Today (" . now()->format('D, M j') . "):**";
+                foreach ($cal['today'] as $line) {
+                    $greeting .= "\n• " . $line;
+                }
+            } else {
+                $greeting .= "\n\n**Today:** nothing scheduled.";
+            }
+            if (! empty($cal['week'])) {
+                $greeting .= "\n\n**Upcoming this week:**";
+                foreach (array_slice($cal['week'], 0, 5) as $line) {
+                    $greeting .= "\n• " . $line;
+                }
+            }
+            $greeting .= "\n\nLet me know if you want to adjust anything or run a fresh audit first.";
+
+            DB::table('seo_assistant_messages')->insert([
+                'workspace_id' => $wsId,
+                'user_id'      => $userId,
+                'role'         => 'assistant',
+                'content'      => mb_substr($greeting, 0, 65535),
+                'meta_json'    => json_encode([
+                    'daily_report' => true,
+                    'date'         => now()->toDateString(),
+                ]),
+                'created_at'   => now(),
+            ]);
+
+            Redis::rpush($this->histKey($wsId), json_encode([
+                'role'      => 'assistant',
+                'content'   => mb_substr($greeting, 0, 4000),
+                'timestamp' => now()->toISOString(),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            Redis::ltrim($this->histKey($wsId), -self::HIST_HARD_CAP, -1);
+            Redis::expire($this->histKey($wsId), self::HIST_TTL_S);
+
+            $this->notify(
+                $wsId,
+                $userId,
+                'daily_schedule',
+                'Daily SEO schedule',
+                mb_substr(strip_tags($greeting), 0, 200),
+                null,
+                ['daily_report' => true, 'date' => now()->toDateString()]
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[SEO Assistant] daily online report skipped: ' . $e->getMessage(), [
+                'workspace_id' => $wsId,
+                'user_id'      => $userId,
+            ]);
+        }
+    }
+
     private function buildLiveContext(int $wsId): array
     {
         $audit = DB::table('seo_audits')->where('workspace_id', $wsId)
@@ -1566,6 +1813,8 @@ class SeoAssistantService
             'insights'              => $insights,
             'credits'               => $credits,
             'plan'                  => $plan,
+            // Wave 12 — calendar awareness in every system prompt.
+            'calendar'              => $this->getCalendarContext($wsId),
         ];
     }
 
@@ -1628,6 +1877,28 @@ class SeoAssistantService
         $p[] = 'Pending internal-link suggestions: ' . $live['link_suggestions_count'];
         if (! empty($live['insights'])) {
             $p[] = 'Active insights: ' . implode('; ', $live['insights']);
+        }
+
+        // ── Calendar (Wave 12) ──
+        $cal = $live['calendar'] ?? ['today' => [], 'week' => []];
+        if (! empty($cal['today']) || ! empty($cal['week'])) {
+            $p[] = '';
+            $p[] = '════ CALENDAR ════';
+            if (! empty($cal['today'])) {
+                $p[] = 'TODAY (' . now()->format('Y-m-d, l') . '):';
+                foreach ($cal['today'] as $line) {
+                    $p[] = '  · ' . $line;
+                }
+            } else {
+                $p[] = 'TODAY (' . now()->format('Y-m-d, l') . '): no scheduled items.';
+            }
+            if (! empty($cal['week'])) {
+                $p[] = 'UPCOMING (next 7 days):';
+                foreach (array_slice($cal['week'], 0, 10) as $line) {
+                    $p[] = '  · ' . $line;
+                }
+            }
+            $p[] = '→ Reference these items when relevant ("you have 2 articles scheduled today"). Do not invent items not listed above.';
         }
 
         // ── Pending action ──
