@@ -1,7 +1,7 @@
 # BOSS888 — Living State Doc
 
 > Single source of truth for current platform state. Updated end of each session.
-> Last update: **2026-05-18 (Waves 1–13 complete; Wave 10 + 11 + 12 shipped this session)**
+> Last update: **2026-05-18 (Waves 1–14 complete; Wave 10 + 11 + 12 + 14 shipped this session)**
 
 ---
 
@@ -83,6 +83,13 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 14 — orphan-fix execution path (A + B + E)
+- **A — Intent + Proposal** in `SeoAssistantService`: new `apply_link_suggestions` action. detectIntent recognises "fix orphans" / "apply link suggestions" / "add internal links" / "link the orphans" + regex preflight for variable phrasings ("fix my orphan pages", "apply 30 link suggestions"). Listed before `link_suggestions` so apply phrases win over generate.
+- **B — Bulk executor** `execApplyLinkSuggestions($wsId, $params, $memory)`: picks top-N seo_links rows (status='suggested'), orphan-targeting first via SQL `ORDER BY CASE WHEN target_url IN (...orphans...) THEN 0 ELSE 1 END`, then calls existing `SeoService::aiApplyLinkInsertion` for each. Tracks applied/skipped + skip-reason histogram. Cost = applied × 2 credits (matches CapabilityMap `insert_link` cost). Refreshes orphan count for narration. Notifies via the unified messages floater.
+- **E — Engine chain**: `execLinkSuggestions` now returns `next_proposal => apply_link_suggestions` whenever generation produced suggestions AND orphans > 0. A single user `yes` chains generate → apply.
+- **System-prompt hint**: when both orphans > 0 and suggestions > 0, the assistant gets `TOOL AVAILABLE: apply_link_suggestions` line so the LLM proposes execution instead of "go to the Links tab".
+- Smoke-verified on workspace 1 (35 orphans / 592 suggested): intent detection, proposal cost (50 credits cap for limit=25), narration, executor with limit=2 returned applied=0/skipped=2 with `source_not_internal_article` reason (correct — most ws1 suggestions target WP-hosted pages, which can't be edited from Laravel). System-prompt hint visible.
 
 ### Wave 13 — 404 route stubs
 - 11 routes that the UI calls but had no backend handlers now return structured `{success, feature_status, message}` envelopes

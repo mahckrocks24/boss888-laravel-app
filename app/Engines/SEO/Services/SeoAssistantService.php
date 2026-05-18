@@ -57,6 +57,13 @@ class SeoAssistantService
      */
     public const DISCLAIMER_TEXT = "Conversations with the AI assistant are saved for 90 days to help us improve service and maintain audit history. They are accessible only by your workspace members. By continuing, you accept this retention policy.";
 
+    /**
+     * Wave 14 (2026-05-18). Default cap for bulk apply_link_suggestions.
+     * Keeps a single approval bounded — user can override by saying
+     * "apply 50 link suggestions" etc. (parsed in paramsForApplyLinkSuggestions).
+     */
+    private const APPLY_LINKS_DEFAULT_LIMIT = 20;
+
     /** Per-call user_id captured from context so appendTurn() can persist it. */
     private ?int $currentUserId = null;
 
@@ -647,9 +654,30 @@ class SeoAssistantService
             }
         }
 
-        // Execution requests (most-specific first).
+        // Wave 14 (2026-05-18). Regex preflight for apply_link_suggestions.
+        // Catches phrasings that the substring loop misses:
+        //   "fix my orphan pages"        — extra word between fix and orphan
+        //   "apply 30 link suggestions"  — number splits the phrase
+        //   "I have too many orphans"    — narrative phrasing
+        if (
+            preg_match('/\bfix\b.{0,15}\borphan/i', $m)
+            || preg_match('/\bapply\b.{0,15}\blink/i', $m)
+            || preg_match('/\b(too\s+many|many|reduce|kill|clear)\s+orphan/i', $m)
+        ) {
+            return ['type' => 'execution_request', 'action' => 'apply_link_suggestions'];
+        }
+
+        // Execution requests (most-specific first — earlier entries win
+        // when phrases overlap, so apply_link_suggestions appears BEFORE
+        // link_suggestions to catch "apply internal links" before
+        // "internal link" matches as a generate request).
         $executions = [
             'deep_audit'        => ['run audit', 'full audit', 'scan my site', 'site audit', 'audit my site', 'run a full audit', 'run deep audit', 'run a deep audit', 'run deep audit on', 'run full audit', 'do a deep audit', 'do an audit', 'do a site audit', 'audit my ', 'deep audit my'],
+            // Wave 14 (2026-05-18). Bulk apply of seo_links suggestions.
+            // Listed before link_suggestions so phrases like "apply
+            // internal links" / "fix orphans" win over the generic
+            // "internal link" generator match.
+            'apply_link_suggestions' => ['fix orphan', 'fix orphans', 'fix internal linking', 'apply link suggestion', 'apply link suggestions', 'apply the links', 'apply all links', 'apply the link suggestions', 'apply suggestions', 'add internal links', 'link the orphans', 'apply links to', 'apply internal link', 'apply internal links'],
             'generate_article'  => ['write article', 'write a blog', 'write an article', 'generate article', 'generate an article', 'write me an article', 'write us an article', 'create article', 'plan article', 'plan articles', 'plan 6 articles'],
             'serp_analysis'     => ['serp analysis', 'competitor analysis', 'check competitors', 'analyse competitors', 'analyze competitors'],
             'add_keyword'       => ['add keyword', 'track keyword', 'add a keyword', 'start tracking'],
@@ -692,6 +720,11 @@ class SeoAssistantService
             'link_suggestions'  => 1,
             'generate_meta'     => 1,
             'add_keyword'       => 0,
+            // Wave 14 (2026-05-18). Bulk-apply cost = applied_count * 2
+            // (matches capability map insert_link cost). The proposal cost
+            // is the CAP (limit * 2) for plan-gate purposes; the executor
+            // only charges for successful applies.
+            'apply_link_suggestions' => $this->costForApplyLinkSuggestions($wsId, $message),
             default             => 1,
         };
 
@@ -717,6 +750,7 @@ class SeoAssistantService
             'ai_report'         => ['url' => $this->siteUrlFor($wsId)],
             'link_suggestions'  => ['url' => $this->siteUrlFor($wsId)],
             'generate_meta'     => [],
+            'apply_link_suggestions' => $this->paramsForApplyLinkSuggestions($wsId, $message, $sweep),
             default             => [],
         };
 
@@ -961,6 +995,16 @@ class SeoAssistantService
                 . "Cost: **%d credit**. **Shall I proceed?**",
                 $cost
             ),
+            // Wave 14 (2026-05-18) — bulk apply of internal-link suggestions.
+            'apply_link_suggestions' => sprintf(
+                "Solid call — you've got **%d orphan page(s)** and **%d unprocessed link suggestion(s)** in the queue. I'll work through the top **%d** of them (orphan-targets first), applying each one to its source article. Only Laravel-managed pages can be edited from here — WordPress-hosted pages I'll skip and you can dismiss those manually.\n\n"
+                . "Why this matters: orphans don't accumulate ranking authority. Linking them in from related content fixes that and lifts your link_health factor on the SEO score.\n\n"
+                . "Cost: **up to %d credits** — you only pay for ones I successfully apply (skipped ones are free). **Shall I proceed?**",
+                (int) ($sweep['orphans'] ?? 0),
+                (int) ($params['suggested'] ?? 0),
+                (int) ($params['limit'] ?? self::APPLY_LINKS_DEFAULT_LIMIT),
+                $cost
+            ),
             'generate_meta'    => sprintf(
                 "Yep, I can knock those out. I'll auto-write meta titles and descriptions for the **%d page(s)** currently missing them. These are the snippets Google shows in search results — they make a real difference in click-through.\n\n"
                 . "Cost: **%d credit**. **Shall I proceed?**",
@@ -1080,7 +1124,8 @@ class SeoAssistantService
                 'deep_audit'        => $this->execDeepAudit($wsId, $params),
                 'serp_analysis'     => $this->execSerpAnalysis($wsId, $params),
                 'ai_report'         => $this->execAiReport($wsId, $params),
-                'link_suggestions'  => $this->execLinkSuggestions($wsId, $params),
+                'link_suggestions'  => $this->execLinkSuggestions($wsId, $params, $memory),
+                'apply_link_suggestions' => $this->execApplyLinkSuggestions($wsId, $params, $memory),
                 'add_keyword'       => $this->execAddKeyword($wsId, $params),
                 'generate_meta'     => $this->execGenerateMeta($wsId, $params),
                 default             => ['narration' => "I cannot execute `{$action}` yet — that path is not wired.", 'result' => []],
@@ -1325,6 +1370,176 @@ class SeoAssistantService
         ];
     }
 
+    /**
+     * Wave 14 (2026-05-18). Cost calculator for bulk apply.
+     * Returns max-possible-charge (limit * 2 credits) for plan gating;
+     * executor only charges for successful applies.
+     */
+    private function costForApplyLinkSuggestions(int $wsId, string $message): int
+    {
+        $limit = self::APPLY_LINKS_DEFAULT_LIMIT;
+        if (preg_match('/\bapply\s+(\d{1,3})\b|\b(\d{1,3})\s+link/i', $message, $m)) {
+            $candidate = (int) ($m[1] ?: $m[2] ?: 0);
+            if ($candidate > 0) {
+                $limit = max(1, min(100, $candidate));
+            }
+        }
+        $suggested = (int) DB::table('seo_links')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'suggested')
+            ->count();
+        return max(1, min($limit, max(1, $suggested)) * 2);
+    }
+
+    /**
+     * Wave 14 (2026-05-18). Params for bulk apply proposal. Parses optional
+     * count from the user's message ("apply 30 link suggestions").
+     */
+    private function paramsForApplyLinkSuggestions(int $wsId, string $message, array $sweep): array
+    {
+        $limit = self::APPLY_LINKS_DEFAULT_LIMIT;
+        if (preg_match('/\bapply\s+(\d{1,3})\b|\b(\d{1,3})\s+link/i', $message, $m)) {
+            $candidate = (int) ($m[1] ?: $m[2] ?: 0);
+            if ($candidate > 0) {
+                $limit = max(1, min(100, $candidate));
+            }
+        }
+        $suggested = (int) DB::table('seo_links')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'suggested')
+            ->count();
+        return [
+            'limit'        => $limit,
+            'mode'         => 'orphans_first',
+            'orphan_count' => (int) ($sweep['orphans'] ?? 0),
+            'suggested'    => $suggested,
+        ];
+    }
+
+    /**
+     * Wave 14 (2026-05-18). Bulk-apply executor for internal-link suggestions.
+     * Picks top-N suggested rows from seo_links (preferring those whose
+     * target_url is an orphan), then calls SeoService::aiApplyLinkInsertion
+     * for each. Per AI Assistant Operating Rule 5 this is approval-gated
+     * by the upstream proposal, so we don't add another confirmation step
+     * here. Returns applied/skipped breakdown + a fresh orphan count.
+     */
+    private function execApplyLinkSuggestions(int $wsId, array $params, array $memory): array
+    {
+        $limit = max(1, min(100, (int) ($params['limit'] ?? self::APPLY_LINKS_DEFAULT_LIMIT)));
+        $mode  = (string) ($params['mode'] ?? 'orphans_first');
+
+        // Score suggestions: orphan-targeting first, then newest.
+        $orphanUrls = [];
+        if ($mode === 'orphans_first') {
+            $orphanUrls = DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('inbound_links', 0)
+                ->pluck('url')
+                ->toArray();
+        }
+
+        $query = DB::table('seo_links')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'suggested');
+
+        if (! empty($orphanUrls)) {
+            $placeholders = '(' . implode(',', array_fill(0, count($orphanUrls), '?')) . ')';
+            $query = $query->orderByRaw(
+                "CASE WHEN target_url IN {$placeholders} THEN 0 ELSE 1 END, id DESC",
+                $orphanUrls
+            );
+        } else {
+            $query = $query->orderByDesc('id');
+        }
+
+        $candidates = $query->limit($limit)->pluck('id')->toArray();
+
+        $applied = 0;
+        $skipped = 0;
+        $reasons = [];
+        $appliedDetails = [];
+
+        foreach ($candidates as $linkId) {
+            try {
+                $r = $this->seo->aiApplyLinkInsertion($wsId, (int) $linkId);
+            } catch (\Throwable $e) {
+                $skipped++;
+                $reasons['exception'] = ($reasons['exception'] ?? 0) + 1;
+                Log::warning('[Wave14] aiApplyLinkInsertion threw', [
+                    'ws_id' => $wsId, 'link_id' => $linkId, 'err' => $e->getMessage(),
+                ]);
+                continue;
+            }
+            if (! empty($r['success'])) {
+                $applied++;
+                $appliedDetails[] = [
+                    'link_id'    => (int) $linkId,
+                    'anchor'     => (string) ($r['anchor'] ?? ''),
+                    'target'     => (string) ($r['target'] ?? ''),
+                    'article_id' => (int) ($r['article_id'] ?? 0),
+                ];
+            } else {
+                $skipped++;
+                $key = (string) ($r['error'] ?? 'unknown');
+                $reasons[$key] = ($reasons[$key] ?? 0) + 1;
+            }
+        }
+
+        $creditsUsed = $applied * 2;
+
+        // Refreshed orphan count.
+        $newOrphans = (int) DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->where('inbound_links', 0)
+            ->count();
+        $priorOrphans = (int) ($params['orphan_count'] ?? 0);
+        $reduction    = max(0, $priorOrphans - $newOrphans);
+
+        // Narration tailored to outcome.
+        if ($applied === 0 && $skipped === 0) {
+            $narration = "There are no link suggestions in the queue to apply right now. Run **generate internal-link suggestions** first and I'll pick from there. **0 credits used.**";
+        } elseif ($applied === 0) {
+            $topReason = array_key_first($reasons) ?? 'unknown';
+            $narration = "I worked through **{$skipped} suggestion(s)** but couldn't apply any — most of them target pages that aren't Laravel-managed articles, or the link is already in place. Top reason: `{$topReason}`. **0 credits used.** Want me to re-run link generation to refresh the queue?";
+        } else {
+            $narration = "Done — applied **{$applied} internal link" . ($applied === 1 ? '' : 's') . "** across your articles.";
+            if ($skipped > 0) {
+                $narration .= " {$skipped} suggestion(s) skipped (sources weren't Laravel-managed or links were already in place).";
+            }
+            $narration .= " **{$creditsUsed} credits used.**";
+            if ($reduction > 0) {
+                $narration .= "\n\nOrphan count is now **{$newOrphans}** (down from {$priorOrphans}).";
+            } else {
+                $narration .= "\n\nOrphan count: **{$newOrphans}**.";
+            }
+        }
+
+        // Proactive notification — visible in the floater even if drawer closed.
+        if ($applied > 0) {
+            $this->notify(
+                $wsId, $this->currentUserId, 'links_applied',
+                "{$applied} internal link" . ($applied === 1 ? '' : 's') . " applied",
+                "{$applied} new link" . ($applied === 1 ? ' was' : 's were') . " inserted into your articles. Orphan count is now {$newOrphans}.",
+                "/app/?tab=seo&sub=links",
+                ['applied' => $applied, 'skipped' => $skipped, 'new_orphan_count' => $newOrphans]
+            );
+        }
+
+        return [
+            'narration' => $narration,
+            'result'    => [
+                'applied'          => $applied,
+                'skipped'          => $skipped,
+                'skip_reasons'     => $reasons,
+                'orphan_count'     => $newOrphans,
+                'orphan_reduction' => $reduction,
+                'credits_used'     => $creditsUsed,
+                'details'          => $appliedDetails,
+            ],
+        ];
+    }
+
     private function execDeepAudit(int $wsId, array $params): array
     {
         $result = $this->seo->deepAudit($wsId, $params);
@@ -1368,7 +1583,7 @@ class SeoAssistantService
         ];
     }
 
-    private function execLinkSuggestions(int $wsId, array $params): array
+    private function execLinkSuggestions(int $wsId, array $params, array $memory = []): array
     {
         $result = $this->seo->generateLinkSuggestions($wsId, $params);
         $count = is_array($result) ? count($result) : 0;
@@ -1383,9 +1598,32 @@ class SeoAssistantService
             );
         }
 
+        // Wave 14E (2026-05-18). If generation produced suggestions AND
+        // the workspace still has orphan pages, chain `apply_link_suggestions`
+        // as the follow-up proposal so a single yes/no can drain a chunk of
+        // the queue without the user having to formulate a second request.
+        $nextProposal = null;
+        try {
+            $orphans = (int) DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where('inbound_links', 0)
+                ->count();
+            $totalSuggested = (int) DB::table('seo_links')
+                ->where('workspace_id', $wsId)
+                ->where('status', 'suggested')
+                ->count();
+            if ($count > 0 && $orphans > 0 && $totalSuggested > 0) {
+                $nextProposal = $this->buildProposal($wsId, 'apply_link_suggestions', '', $memory);
+                $nextProposal['chain_origin'] = ['action' => 'link_suggestions', 'generated' => $count];
+            }
+        } catch (\Throwable $e) {
+            Log::debug('[Wave14] could not build apply_link_suggestions chain: ' . $e->getMessage());
+        }
+
         return [
-            'narration' => "Generated **{$count} internal-link suggestions**. View them in the Links tab. **1 credit used.**",
-            'result'    => ['count' => $count],
+            'narration'     => "Generated **{$count} internal-link suggestions**. View them in the Links tab. **1 credit used.**",
+            'next_proposal' => $nextProposal,
+            'result'        => ['count' => $count],
         ];
     }
 
@@ -1875,6 +2113,12 @@ class SeoAssistantService
         $p[] = 'Tracked keywords (top 5): ' . (implode(', ', $live['keywords']) ?: 'none yet');
         $p[] = 'Orphan pages: ' . $live['orphans'] . ' · Thin pages (<300 words): ' . $live['thin'] . ' · Missing meta: ' . $live['no_meta'];
         $p[] = 'Pending internal-link suggestions: ' . $live['link_suggestions_count'];
+        // Wave 14 (2026-05-18). When orphans + suggestions both exist, hint
+        // the LLM that bulk apply is available. Stops the assistant from
+        // suggesting "go to the Links tab" — instead it can propose execution.
+        if (($live['orphans'] ?? 0) > 0 && ($live['link_suggestions_count'] ?? 0) > 0) {
+            $p[] = '→ TOOL AVAILABLE: `apply_link_suggestions` will bulk-apply queued link suggestions (orphan-targets first). If the user expresses concern about orphans, low link_health, or asks to fix internal linking, propose this action.';
+        }
         if (! empty($live['insights'])) {
             $p[] = 'Active insights: ' . implode('; ', $live['insights']);
         }
