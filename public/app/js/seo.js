@@ -1371,8 +1371,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var active = window._lgseActiveSiteUrl || '';
     var opts = sites.map(function (s) {
       var sel = (s.url === active) ? ' selected' : '';
-      var kindTag = s.kind === 'external_wp' ? ' (WordPress)' : '';
-      var label = (s.name || s.host || s.url) + kindTag;
+      // Wave 16d-v2 — no kind-tag; we can't reliably tell HTML vs WP from the
+      // data, so we just show the site name and let the user disambiguate.
+      var label = (s.name || s.host || s.url);
       return '<option value="' + esc(s.url) + '"' + sel + '>' + esc(label) + '</option>';
     }).join('');
     bar.innerHTML =

@@ -2096,28 +2096,82 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 ];
             }
 
-            // External WP-connected site (paid-tier — surfaces as a dropdown row
-            // even when no `websites` table entry exists for it).
+            // External / connector-registered site (surfaces from
+            // seo_settings.site_url when there's no matching `websites` row).
+            //
+            // Wave 16d-v2 (2026-05-19) — dedup correctly when an internal
+            // `websites` row and the external `seo_settings` entry refer to
+            // the SAME brand at different subdomains of one root. Picks the
+            // host that ACTUALLY has SEO data (SCI page count) — the empty
+            // shell drops, the populated host wins. Also stops claiming the
+            // external entry is WordPress: it's whatever URL the user has
+            // connected (could be plain HTML, WP, Shopify…). Label stays
+            // neutral until we have a reliable signal.
+            $rootDomain = static function (string $host): string {
+                if ($host === '') return '';
+                $parts = explode('.', $host);
+                return count($parts) >= 2 ? implode('.', array_slice($parts, -2)) : $host;
+            };
+            $pageCountFor = static function (int $ws, string $host): int {
+                if ($host === '') return 0;
+                return (int) \Illuminate\Support\Facades\DB::table('seo_content_index')
+                    ->where('workspace_id', $ws)
+                    ->where('url', 'like', '%//' . $host . '%')
+                    ->count();
+            };
+
             $extUrl = (string) \Illuminate\Support\Facades\DB::table('seo_settings')
                 ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
             $extName = (string) \Illuminate\Support\Facades\DB::table('seo_settings')
                 ->where('workspace_id', $wsId)->where('key', 'site_name')->value('value');
             if ($extUrl !== '') {
-                $extHost = strtolower((string) parse_url($extUrl, PHP_URL_HOST));
-                $alreadyIn = false;
-                foreach ($sites as $s) {
-                    if (strtolower((string) $s['host']) === $extHost) { $alreadyIn = true; break; }
+                $extHost  = strtolower((string) parse_url($extUrl, PHP_URL_HOST));
+                $extRoot  = $rootDomain($extHost);
+                $extPages = $pageCountFor($wsId, $extHost);
+
+                // Pass 1: exact host match (cleanest signal — same site).
+                $rivalIdx = null;
+                foreach ($sites as $i => $s) {
+                    if (strtolower((string) $s['host']) === $extHost) { $rivalIdx = $i; break; }
                 }
-                if (! $alreadyIn) {
-                    $sites[] = [
-                        'id'       => 'external_' . md5($extUrl),
-                        'name'     => $extName ?: $extHost,
-                        'url'      => rtrim($extUrl, '/'),
-                        'host'     => $extHost,
-                        'kind'     => 'external_wp',
-                        'platform' => 'wordpress',
-                        'status'   => 'connected',
-                    ];
+                // Pass 2: same NAME + same root domain — signals the same
+                // logical brand registered twice (e.g. internal `platform.X.com`
+                // + external `staging.X.com`, both named "X"). Without the
+                // name guard, "same root" would steal an unrelated sibling
+                // site (e.g. 123-fitness-gym.X.com) as the rival.
+                if ($rivalIdx === null && $extRoot !== '') {
+                    $extNameLc = strtolower(trim((string) $extName));
+                    foreach ($sites as $i => $s) {
+                        if ($extNameLc !== ''
+                            && strtolower(trim((string) $s['name'])) === $extNameLc
+                            && $rootDomain(strtolower((string) $s['host'])) === $extRoot) {
+                            $rivalIdx = $i;
+                            break;
+                        }
+                    }
+                }
+
+                $extEntry = [
+                    'id'       => 'external_' . md5($extUrl),
+                    'name'     => $extName ?: $extHost,
+                    'url'      => rtrim($extUrl, '/'),
+                    'host'     => $extHost,
+                    'kind'     => 'external',
+                    'platform' => 'unknown',
+                    'status'   => 'connected',
+                ];
+
+                if ($rivalIdx === null) {
+                    $sites[] = $extEntry;
+                } else {
+                    $rivalHost  = strtolower((string) $sites[$rivalIdx]['host']);
+                    $rivalPages = $pageCountFor($wsId, $rivalHost);
+                    if ($extPages > $rivalPages) {
+                        // External host has more indexed pages — it's the
+                        // real site; replace the empty internal shell.
+                        $sites[$rivalIdx] = $extEntry;
+                    }
+                    // else: rival (internal) has equal/more data; keep it, skip external.
                 }
             }
 
