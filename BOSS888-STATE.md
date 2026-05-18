@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.10.5-wave15-phaseC`
+- **Cache buster (seo.js)**: `5.11.0-wave16-site-dropdown`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
 ---
@@ -83,6 +83,21 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 16 — global site dropdown (multi-site scope for the SEO engine)
+- **Problem**: Laravel SaaS workspaces can register N websites in the `websites` table, but every SEO data table (SCI, keywords, audits, links, insights, articles) is workspace-scoped ONLY — no site discriminator. All tabs blend data across all sites of the workspace.
+- **Phase A solution (Wave 16)**: URL-LIKE filter at query time. No schema change. Frontend dropdown selects active site; backend routes accept `?site_url=` and filter `WHERE url LIKE '%//<host>%'` (or source_url/target_url for the link-graph).
+- **Backend**:
+  - `app/Engines/SEO/Support/SiteScope.php` — new helper, extracts lowercased host from request's `site_url` query/body param.
+  - `GET /api/seo/sites` — picker inventory. Unions `websites` table (internal Laravel sites with non-empty domain/subdomain/custom_domain) + `seo_settings.site_url` for external WP-connected sites (paid-tier, e.g. ws7). Default site = most-recently-audited host that matches a site row, else first site.
+  - `/indexed-content`, `/link-graph/orphans`, `/link-graph` — now respect `site_url` query param. Empty/absent param = full workspace scope (backward compatible).
+- **Frontend (`public/app/js/seo.js`)**:
+  - New "Site" dropdown row injected by `buildShell` ABOVE the tab strip. Hidden in WP-embed mode (single-site iframe; backend filter also bypassed). Visible only in Laravel SaaS.
+  - `window._lgseActiveSiteUrl` global, persisted per-workspace in `localStorage.lgseActiveSite_ws<id>`. Restored on page load.
+  - New `lgseLoadSites()` populates dropdown from `/api/seo/sites`. New `lgseSwitchSite(url)` handler persists choice + re-renders current tab.
+  - `api()` helper auto-appends `?site_url=<active>` to GET requests + merges into POST/PATCH body (when active site set). Bypassed entirely in embed mode.
+- **Smoke-verified**: ws1 returns 7 valid sites (3 drafts with no domain filtered out). ws7 returns 1 (the WP-connected `shukranuae.com` from seo_settings). `/indexed-content?site_url=...` correctly narrows the page list.
+- **Defaults per user spec**: most-recently-audited site (#1), no "All sites" view (#2 — scope is always single-site), AI Assistant context will be scoped in Wave 16b (#3), WP sites surface as `external_wp` dropdown entries.
 
 ### Wave 15.5 — Phase C: aggressive collapse (75 dead functions, -2040 lines, -19.9%)
 - **Backup**: pre-15.5 snapshot of `seo.js` (633 KB) and `index.html` (360 KB) uploaded to `s3://boss888-backups/seo-cleanup-2026-05-18/` (DO Spaces). Local copies at `/tmp/seo.js.bak-pre-15.5-*` on staging. Git history at `d25d1f2` is the immediate-prior commit; full rollback via `git revert da1b8c6..HEAD` or restoring from the Spaces backup.

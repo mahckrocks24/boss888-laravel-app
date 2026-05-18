@@ -2025,16 +2025,119 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // any Links-tab "orphan pages" surface depended on it.
         Route::get('/link-graph/orphans', function (\Illuminate\Http\Request $r) {
             $wsId = (int) $r->attributes->get('workspace_id');
-            $rows = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            $q = \Illuminate\Support\Facades\DB::table('seo_content_index')
                 ->where('workspace_id', $wsId)
-                ->where('inbound_links', 0)
-                ->orderByDesc('updated_at')
-                ->limit(200)
+                ->where('inbound_links', 0);
+            // Wave 16 — site filter (URL-based, since SCI is workspace-scoped only).
+            if ($host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r)) {
+                $q->where('url', 'like', '%//' . $host . '%');
+            }
+            $rows = $q->orderByDesc('updated_at')->limit(200)
                 ->get(['id', 'url', 'title', 'content_score', 'authority_score', 'inbound_links']);
             return response()->json([
                 'success' => true,
                 'orphans' => $rows,
                 'count'   => $rows->count(),
+            ]);
+        });
+
+        // Wave 16 (2026-05-19). GET /api/seo/sites — picker inventory.
+        // Returns the dropdown options for the global site selector at the
+        // top of the SEO engine. Unions:
+        //   1) `websites` table rows (workspace-internal Laravel sites)
+        //   2) `seo_settings.site_url` when it doesn't match any websites row
+        //      (external WP-connected sites — paid-tier feature, ws7 etc.)
+        // Default is the most-recently-audited site (or first if no audits).
+        Route::get('/sites', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+
+            $sites = [];
+
+            // Internal Laravel sites
+            $rows = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->orderByDesc('id')
+                ->get(['id', 'name', 'domain', 'subdomain', 'custom_domain', 'platform', 'status']);
+            foreach ($rows as $row) {
+                $host = '';
+                if (! empty($row->custom_domain))      $host = $row->custom_domain;
+                elseif (! empty($row->domain))         $host = $row->domain;
+                elseif (! empty($row->subdomain)) {
+                    // Wave 16 fix — subdomain column already contains the full
+                    // host (e.g. "growthlab-agency.levelupgrowth.io") in most
+                    // workspaces; only append the platform suffix when bare.
+                    $host = str_contains((string) $row->subdomain, '.')
+                        ? (string) $row->subdomain
+                        : $row->subdomain . '.levelupgrowth.io';
+                }
+                if ($host === '') {
+                    // Skip drafts with no configured domain — they have no URL
+                    // for the SEO engine to scope to.
+                    continue;
+                }
+                $host = strtolower(trim($host, " /\t\n\r"));
+                $sites[] = [
+                    'id'       => 'website_' . $row->id,
+                    'name'     => $row->name ?: $host,
+                    'url'      => 'https://' . $host,
+                    'host'     => $host,
+                    'kind'     => 'internal',
+                    'platform' => $row->platform ?: 'laravel',
+                    'status'   => $row->status ?: 'draft',
+                ];
+            }
+
+            // External WP-connected site (paid-tier — surfaces as a dropdown row
+            // even when no `websites` table entry exists for it).
+            $extUrl = (string) \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+            $extName = (string) \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'site_name')->value('value');
+            if ($extUrl !== '') {
+                $extHost = strtolower((string) parse_url($extUrl, PHP_URL_HOST));
+                $alreadyIn = false;
+                foreach ($sites as $s) {
+                    if (strtolower((string) $s['host']) === $extHost) { $alreadyIn = true; break; }
+                }
+                if (! $alreadyIn) {
+                    $sites[] = [
+                        'id'       => 'external_' . md5($extUrl),
+                        'name'     => $extName ?: $extHost,
+                        'url'      => rtrim($extUrl, '/'),
+                        'host'     => $extHost,
+                        'kind'     => 'external_wp',
+                        'platform' => 'wordpress',
+                        'status'   => 'connected',
+                    ];
+                }
+            }
+
+            // Default site = most-recently-audited (matched by host)
+            $defaultUrl = null;
+            $lastAudit = \Illuminate\Support\Facades\DB::table('seo_audits')
+                ->where('workspace_id', $wsId)
+                ->whereNotNull('url')
+                ->orderByDesc('created_at')
+                ->value('url');
+            if ($lastAudit) {
+                $lastHost = strtolower((string) parse_url($lastAudit, PHP_URL_HOST));
+                foreach ($sites as $s) {
+                    if (strtolower((string) $s['host']) === $lastHost) {
+                        $defaultUrl = $s['url'];
+                        break;
+                    }
+                }
+            }
+            if (! $defaultUrl && ! empty($sites)) {
+                $defaultUrl = $sites[0]['url'];
+            }
+
+            return response()->json([
+                'success'     => true,
+                'sites'       => $sites,
+                'default_url' => $defaultUrl,
+                'count'       => count($sites),
             ]);
         });
 
@@ -2563,6 +2666,10 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 $query->where(function ($x) use ($q) {
                     $x->where('sci.url', 'like', "%{$q}%")->orWhere('sci.title', 'like', "%{$q}%");
                 });
+            }
+            // Wave 16 — site filter (URL-based until Wave 17 adds site_id FK).
+            if ($host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r)) {
+                $query->where('sci.url', 'like', '%//' . $host . '%');
             }
             $pages = $query->orderBy('sci.content_score')->paginate($perPage);
             return response()->json([
@@ -3769,15 +3876,22 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         Route::get('/link-graph', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
-            $nodes = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            // Wave 16 — site scope filter
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $nodesQ = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId);
+            $edgesQ = \Illuminate\Support\Facades\DB::table('seo_link_graph')
                 ->where('workspace_id', $wsId)
-                ->limit(100)
-                ->get(['url AS id', 'title AS label', 'authority_score', 'inbound_links']);
-            $edges = \Illuminate\Support\Facades\DB::table('seo_link_graph')
-                ->where('workspace_id', $wsId)
-                ->where('is_internal', true)
-                ->limit(500)
-                ->get(['source_url AS source', 'target_url AS target', 'anchor_text']);
+                ->where('is_internal', true);
+            if ($host) {
+                $nodesQ->where('url', 'like', '%//' . $host . '%');
+                $edgesQ->where(function ($q) use ($host) {
+                    $q->where('source_url', 'like', '%//' . $host . '%')
+                      ->orWhere('target_url', 'like', '%//' . $host . '%');
+                });
+            }
+            $nodes = $nodesQ->limit(100)->get(['url AS id', 'title AS label', 'authority_score', 'inbound_links']);
+            $edges = $edgesQ->limit(500)->get(['source_url AS source', 'target_url AS target', 'anchor_text']);
             return response()->json([
                 'success' => true,
                 'nodes'   => $nodes,

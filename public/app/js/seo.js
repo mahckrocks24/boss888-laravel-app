@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.10.5-wave15-phaseC loaded — Phase C: 75 dead functions collapsed (-2040 lines / -19.9%)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.11.0-wave16-site-dropdown loaded — global site selector active in Laravel SaaS'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -1326,8 +1326,117 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     return '<div class="lgse-page-title">' + esc(title) + '</div><div class="lgse-page-desc">' + esc(descText) + '</div>';
   }
 
+  // Wave 16 (2026-05-19). Site-list fetch + dropdown render + switcher.
+  function lgseLoadSites() {
+    var bar = document.getElementById('lgse-site-bar');
+    if (!bar) return;
+    bar.style.display = 'flex';
+    bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">Loading sites…</span>';
+
+    // Direct fetch — bypass the api() wrapper since _withSiteScope is a chicken-and-egg here.
+    var token = localStorage.getItem('lu_token') || '';
+    fetch(window.location.origin + '/api/seo/sites', {
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+      cache: 'no-store',
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || !d.success) {
+        bar.innerHTML = '<span style="color:#F87171;font-size:11px">Could not load site list</span>';
+        return;
+      }
+      var sites = d.sites || [];
+      window._lgseSiteList = sites;
+
+      // Resolve active site: restored localStorage > backend default > first
+      var stored = _restoreActiveSite();
+      var validStored = stored && sites.some(function (s) { return s.url === stored; });
+      var activeUrl = validStored ? stored : (d.default_url || (sites[0] && sites[0].url) || '');
+      window._lgseActiveSiteUrl = activeUrl;
+      _persistActiveSite(activeUrl);
+
+      lgseRenderSiteBar();
+    }).catch(function () {
+      bar.innerHTML = '<span style="color:#F87171;font-size:11px">Site picker failed to load</span>';
+    });
+  }
+
+  window.lgseRenderSiteBar = function () {
+    var bar = document.getElementById('lgse-site-bar');
+    if (!bar) return;
+    var sites = window._lgseSiteList || [];
+    if (sites.length === 0) {
+      bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">No websites yet — register one in the Build engine to get started.</span>';
+      return;
+    }
+    var active = window._lgseActiveSiteUrl || '';
+    var opts = sites.map(function (s) {
+      var sel = (s.url === active) ? ' selected' : '';
+      var kindTag = s.kind === 'external_wp' ? ' (WordPress)' : '';
+      var label = (s.name || s.host || s.url) + kindTag;
+      return '<option value="' + esc(s.url) + '"' + sel + '>' + esc(label) + '</option>';
+    }).join('');
+    bar.innerHTML =
+        '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Site</span>'
+      + '<select onchange="lgseSwitchSite(this.value)" style="background:var(--lgse-bg,#0F1117);color:var(--lgse-t1,#E5E7EB);border:1px solid var(--lgse-border,#1f2937);border-radius:6px;padding:6px 10px;font-size:12px;min-width:240px;cursor:pointer">' + opts + '</select>'
+      + '<span id="lgse-site-bar-meta" style="color:var(--lgse-t3,#9CA3AF);font-size:11px;margin-left:auto">'
+      +    'Scoping every tab to this site. ' + sites.length + ' site' + (sites.length === 1 ? '' : 's') + ' total.'
+      + '</span>';
+  };
+
+  // Click handler for the site dropdown. Persists, then re-renders the
+  // current tab so its data refreshes with the new scope.
+  window.lgseSwitchSite = function (url) {
+    window._lgseActiveSiteUrl = url || '';
+    _persistActiveSite(url || '');
+    var meta = document.getElementById('lgse-site-bar-meta');
+    if (meta) meta.textContent = 'Switching to ' + url + '…';
+    // Re-render the currently visible tab to reload with new scope.
+    var activeTab = document.querySelector('.lgse-nav-tab.active');
+    var tabId = activeTab ? activeTab.getAttribute('data-tab-id') : 'overview';
+    if (typeof switchTab === 'function') switchTab(tabId);
+    setTimeout(function () { lgseRenderSiteBar(); }, 50);
+  };
+
+  // Wave 16 (2026-05-19). Global site filter — propagated to every api()
+  // call so all tabs render data for ONE selected website at a time.
+  // Source-of-truth: `window._lgseActiveSiteUrl`. Persisted to
+  // localStorage per workspace. Hidden + bypassed in WP-embed mode
+  // (single site is locked there by the iframe context).
+  function _isEmbedMode() {
+    return (window._LGSC_EMBED && window._LGSC_EMBED.api_key)
+      || new URLSearchParams(window.location.search).has('lgsc_key');
+  }
+  function _activeWsKey() {
+    var ws = (window._LGSC_EMBED && window._LGSC_EMBED.workspace_id)
+      || (window.LU_CFG && window.LU_CFG.workspace_id)
+      || 'default';
+    return 'lgseActiveSite_ws' + ws;
+  }
+  function _persistActiveSite(url) {
+    try { localStorage.setItem(_activeWsKey(), url || ''); } catch(_) {}
+  }
+  function _restoreActiveSite() {
+    try { return localStorage.getItem(_activeWsKey()) || ''; } catch(_) { return ''; }
+  }
+  // Append the active site_url to a URL path so backend can scope queries.
+  function _withSiteScope(path) {
+    if (_isEmbedMode()) return path; // embed iframe is single-site by definition
+    var u = (window._lgseActiveSiteUrl || '').trim();
+    if (!u) return path;
+    var sep = (path.indexOf('?') === -1) ? '?' : '&';
+    return path + sep + 'site_url=' + encodeURIComponent(u);
+  }
+
   // Bridge to existing API helper. _seoApi handles auth + workspace scope.
+  // Wave 16 — site_url query param auto-appended for GETs when active site
+  // is selected. Mutating methods can opt-in by including site_url in body.
   function api(method, path, body) {
+    if (String(method).toUpperCase() === 'GET') {
+      path = _withSiteScope(path);
+    } else if (body && typeof body === 'object' && !Array.isArray(body) && !_isEmbedMode()) {
+      var u = (window._lgseActiveSiteUrl || '').trim();
+      if (u && !body.site_url) body = Object.assign({}, body, { site_url: u });
+    }
     if (typeof window._seoApi === 'function') return window._seoApi(method, path, body);
     // Fallback if _seoApi missing.
     var token = localStorage.getItem('lu_token') || '';
@@ -1385,7 +1494,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   function buildShell(container) {
     lgseInjectStyles();
+    // Wave 16 (2026-05-19) — global site selector row above the tab strip.
+    // Hidden in WP-embed mode (single-site iframe). In Laravel SaaS this is
+    // the "mother dropdown" — every tab's queries flow through the active
+    // site filter via api() → _withSiteScope.
     container.innerHTML = '<div class="lgse-shell">'
+      + '<div id="lgse-site-bar" style="display:none;padding:10px 16px;border-bottom:1px solid var(--lgse-border, #1f2937);background:var(--lgse-bg2, rgba(255,255,255,.02));align-items:center;gap:10px;font-size:12px"></div>'
       + '<div class="lgse-topbar" id="lgse-topbar"></div>'
       + '<div class="lgse-pane" id="lgse-content"></div>'
       + '</div>';
@@ -1404,6 +1518,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       d.onclick = function () { switchTab(t.id); };
       bar.appendChild(d);
     });
+
+    // Wave 16 — fetch site inventory + render dropdown (Laravel-SaaS only).
+    if (!_isEmbedMode()) {
+      lgseLoadSites();
+    }
+
     switchTab('overview');
 
     // 2026-05-13 — Gate the SEO Assistant FAB to embed mode only.
