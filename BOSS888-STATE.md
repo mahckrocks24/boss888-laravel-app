@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.10.4-wave15-phaseB`
+- **Cache buster (seo.js)**: `5.10.5-wave15-phaseC`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
 ---
@@ -83,6 +83,19 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 15.5 — Phase C: aggressive collapse (75 dead functions, -2040 lines, -19.9%)
+- **Backup**: pre-15.5 snapshot of `seo.js` (633 KB) and `index.html` (360 KB) uploaded to `s3://boss888-backups/seo-cleanup-2026-05-18/` (DO Spaces). Local copies at `/tmp/seo.js.bak-pre-15.5-*` on staging. Git history at `d25d1f2` is the immediate-prior commit; full rollback via `git revert da1b8c6..HEAD` or restoring from the Spaces backup.
+- **Process**: single-pass node script with brace-balanced body detection. Skip-list preserved: `_seoApi`, `_seoApplyTopLinks`, `_seoFixOrphan`, `_seoFixAllOrphans`, `_seoRetryImage`, `_seoNewGoalModal`, `_seoPageSave`, `_seoPagesState`, `_seoTab`. Everything else `_seo*` collapsed to a one-line `console.warn` stub. Special case: `_seoSwitchTab` stub also falls back to `lgseSwitchTab(arguments[0])` so any straggler caller still navigates correctly.
+- **75 collapsed functions** include the major dead namespaces:
+  - **Layer 1 originals** (`_seoDashboard`, `_seoAudits`, `_seoRunAudit`, `_seoViewAudit`, `_seoSerp`, `_seoRunSerp`, `_seoAddKeyword`, `_seoDeleteKeyword`, `_seoContent`, `_seoAiReport`, `_seoWriteArticle`, `_seoImproveDraft`, `_seoGoals`, `_seoCreateGoal`, `_seoPauseGoal`, `_seoResumeGoal`, `_seoWorkspace`, `_seoInsights`, `_seoReports`, `_seoOutbound`, `_seoCheckOutbound`, `_seoIntegrations`, `_seoRedirects`, `_seoAddRedirect`, `_seoDeleteRedirect`, `_seoSettings`, `_seoSaveSettings`, `_seoScoreSettings`, `_seoUpdateWeightTotal`, `_seoSaveScoreWeights`, `_seoStubPage`, `_seoStat`, `_seoError`, `_seoPages`, `_seoCtr`, `_seoWins`, `_seoGsc`, `_seoGenerateLinks`, `_seoInsertLink`, `_seoDismissLink`)
+  - **GSC + Image legacy** (`_seoGscConnect`, `_seoGscSync`, `_seoGscDisconnect`, `_seoImages` override, `_seoImgSuggest`, `_seoApplyLink`)
+  - **W2S2 Link Intelligence** (`_seoLinks` (147-line body), `_seoBuildLinkGraph`, `_seoCalcEquity`, `_seoTopics`, `_seoBuildClusters`, `_seoViewCluster`)
+  - **Topics/Competitors** (`_seoCompetitors`, `_seoCmpAnalyze`, `_seoCmpGaps`, `_seoCmpCompare`, `_seoCmpTrack`, `_seoInsights` override, `_seoReports` override, `_seoDownloadReport`, `_seoExportCsv`)
+  - **Overview consolidation** (`_seoOverview` × 2, `_seoAudits` override, `_seoKeywords` override, `_seoGsc` override, `_seoConnectGsc`, `_seoRenderShell`, `_seoSwitchTab`)
+  - **Composed views** (`_seoPagesAll`, `_seoPipeline`, `_seoLinksAll`, `_seoInsightsAll`, `_seoViewAudit`, `_seoIntegrations`, `_seoOverview` final)
+- **Verification**: file `seo.js` 10,231 → 8,191 lines (-2,040 / -19.9%). Syntax check passes. 22 references to CTA helpers preserved. Live entry chain confirmed end-to-end: `window.seoLoad` (line 7598) → `buildShell` (line 1386) → `window.lgseSwitchTab` (line 1553) → `renderPages` (line 2902) → `lgseRenderPagesTable` → user's Pages tab chips.
+- **What to watch for**: `[LU SEO 15.5] dead path:` warnings in DevTools console during normal usage. If any appear, that's a real caller we missed and we revert immediately via `git revert` or the Spaces backup.
 
 ### Wave 15.4 — Phase B: collapse 8 intermediate overrides (-292 lines)
 - Targets had explicit `window.X = ...` overrides further down the file; the later assignment always wins for global function bindings, so the intermediate bodies are unreachable. Collapsed via a single-pass node script (`tmp/wave15_4_collapse.js`) that finds each function's brace-balanced end and replaces the body with a one-line stub that warns if invoked.

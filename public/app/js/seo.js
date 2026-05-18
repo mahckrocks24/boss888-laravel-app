@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.10.4-wave15-phaseB loaded — Phase B: 8 intermediate overrides collapsed (-292 lines)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.10.5-wave15-phaseC loaded — Phase C: 75 dead functions collapsed (-2040 lines / -19.9%)'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -83,121 +83,27 @@ function _seoRenderShell(el) { try { console.warn('[LU SEO 15.3] dead path: _seo
 function _seoSwitchTab(tab) { try { console.warn('[LU SEO 15.3] dead path: _seoSwitchTab(' + tab + ') called — overridden by lgseSwitchTab; routing to lgseSwitchTab as fallback'); } catch(_) {} if (typeof window.lgseSwitchTab === 'function') return window.lgseSwitchTab(tab); }
 
 // ── Dashboard ──────────────────────────────────────────────────────────
-async function _seoDashboard(el) {
-  try {
-    var data = await _seoApi('GET', '/dashboard');
-    var h = '<div style="margin-bottom:24px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">SEO Dashboard</h2>' +
-      '<p style="font-size:13px;color:var(--t2)">Overview of your SEO performance</p></div>';
-    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px">';
-    h += _seoStat('Keywords Tracked', data.keyword_count || 0, 'var(--p)');
-    h += _seoStat('Audits Run', data.audit_count || 0, 'var(--bl)');
-    h += _seoStat('Active Goals', data.active_goals || 0, 'var(--ac)');
-    h += _seoStat('Link Suggestions', data.link_count || 0, 'var(--am)');
-    h += _seoStat('AI Reports', data.ai_report_count || 0, 'var(--pu)');
-    h += _seoStat('Health Score', (data.health_score || '—') + '%', 'var(--ac)');
-    h += '</div>';
-    if (data.recent_audits && data.recent_audits.length) {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px"><div style="font-size:14px;font-weight:600;color:var(--t1);margin-bottom:12px">Recent Audits</div>';
-      data.recent_audits.forEach(a => {
-        h += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="color:var(--t1)">' + (a.url || a.domain || 'Audit #' + a.id) + '</span><span style="color:var(--t2)">' + (a.score || '—') + '/100</span></div>';
-      });
-      h += '</div>';
-    }
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoDashboard(el) { try { console.warn('[LU SEO 15.5] dead path: _seoDashboard call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Site Audit ─────────────────────────────────────────────────────────
-async function _seoAudits(el) {
-  try {
-    var data = await _seoApi('GET', '/audits');
-    var audits = data.audits || data || [];
-    var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-      '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0">Site Audits</h2>' +
-      '<button class="btn btn-primary" onclick="_seoRunAudit()">'+window.icon("more",14)+' Run New Audit</button></div>';
-    if (audits.length === 0) {
-      h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("more",14)+'</div><p>No audits yet. Run your first site audit.</p></div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-      h += '<thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">URL</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Score</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Date</th></tr></thead><tbody>';
-      audits.forEach(a => {
-        h += '<tr style="cursor:pointer" onclick="_seoViewAudit(' + a.id + ')"><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04)">' + (a.url || a.domain || '—') + '</td><td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)"><span style="color:' + (a.score >= 80 ? 'var(--ac)' : a.score >= 50 ? 'var(--am)' : 'var(--rd)') + ';font-weight:600">' + (a.score || '—') + '</span></td><td style="padding:10px 12px;color:var(--t2);text-align:center;border-bottom:1px solid rgba(255,255,255,.04)">' + (a.created_at ? new Date(a.created_at).toLocaleDateString() : '—') + '</td></tr>';
-      });
-      h += '</tbody></table></div>';
-    }
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoAudits(el) { try { console.warn('[LU SEO 15.5] dead path: _seoAudits call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoRunAudit() {
-  var url = await luPrompt('Enter URL to audit:', 'Run Audit', window.location.origin);
-  if (!url) return;
-  var el = document.getElementById('seo-content');
-  if (el) el.innerHTML = loadingCard(300);
-  try {
-    var data = await _seoApi('POST', '/deep-audit', { url: url });
-    showToast('Audit started!', 'success');
-    setTimeout(() => _seoAudits(el), 1000);
-  } catch(e) { showToast('Audit failed: ' + e.message, 'error'); _seoAudits(el); }
-}
+async function _seoRunAudit() { try { console.warn('[LU SEO 15.5] dead path: _seoRunAudit call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoViewAudit(id) {
-  var el = document.getElementById('seo-content');
-  if (!el) return;
-  el.innerHTML = loadingCard(300);
-  try {
-    var data = await _seoApi('GET', '/audits/' + id);
-    var a = data.audit || data;
-    var h = '<div style="margin-bottom:16px"><button class="btn btn-outline btn-sm" onclick="_seoAudits(document.getElementById(\'seo-content\'))">← Back</button></div>';
-    h += '<h2 style="font-family:var(--fh);font-size:20px;color:var(--t1);margin:0 0 16px">Audit: ' + (a.url || a.domain || '#' + a.id) + '</h2>';
-    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px"><pre style="white-space:pre-wrap;font-size:12px;color:var(--t2);max-height:600px;overflow-y:auto">' + JSON.stringify(a, null, 2) + '</pre></div>';
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoViewAudit(id) { try { console.warn('[LU SEO 15.5] dead path: _seoViewAudit call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Keywords ───────────────────────────────────────────────────────────
 // Wave 15.3 — body removed; overridden later (final at line ~2526, then by LGSE renderKeywords)
 async function _seoKeywords(el) { try { console.warn('[LU SEO 15.3] dead path: _seoKeywords called — see renderKeywords (LGSE)'); } catch(_) {} }
 
-async function _seoAddKeyword() {
-  var kw = await luPrompt('Enter keyword to track:', 'Add Keyword');
-  if (!kw) return;
-  try {
-    await _seoApi('POST', '/keywords', { keyword: kw });
-    showToast('Keyword added!', 'success');
-    _seoKeywords(document.getElementById('seo-content'));
-  } catch(e) { showToast('Failed: ' + e.message, 'error'); }
-}
+async function _seoAddKeyword() { try { console.warn('[LU SEO 15.5] dead path: _seoAddKeyword call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoDeleteKeyword(id) {
-  var ok = await luConfirm('Delete this keyword?', 'Delete Keyword', 'Delete', 'Cancel'); if (!ok) return;
-  try {
-    await _seoApi('DELETE', '/keywords/' + id);
-    showToast('Keyword removed.', 'success');
-    _seoKeywords(document.getElementById('seo-content'));
-  } catch(e) { showToast('Failed: ' + e.message, 'error'); }
-}
+async function _seoDeleteKeyword(id) { try { console.warn('[LU SEO 15.5] dead path: _seoDeleteKeyword call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── SERP Analysis ──────────────────────────────────────────────────────
-async function _seoSerp(el) {
-  el.innerHTML = '<div style="max-width:600px">' +
-    '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 16px">SERP Analysis</h2>' +
-    '<p style="font-size:13px;color:var(--t2);margin-bottom:20px">Analyze search engine results for any keyword to understand the competitive landscape.</p>' +
-    '<div style="display:flex;gap:8px"><input type="text" id="seo-serp-kw" class="form-input" placeholder="Enter keyword…" style="flex:1">' +
-    '<button class="btn btn-primary" onclick="_seoRunSerp()">Analyze</button></div>' +
-    '<div id="seo-serp-result" style="margin-top:20px"></div></div>';
-}
+async function _seoSerp(el) { try { console.warn('[LU SEO 15.5] dead path: _seoSerp call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoRunSerp() {
-  var kw = document.getElementById('seo-serp-kw')?.value;
-  if (!kw) { showToast('Enter a keyword.', 'error'); return; }
-  var result = document.getElementById('seo-serp-result');
-  if (result) result.innerHTML = loadingCard(200);
-  try {
-    var data = await _seoApi('POST', '/serp-analysis', { keyword: kw });
-    if (result) result.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px"><pre style="white-space:pre-wrap;font-size:12px;color:var(--t2);max-height:500px;overflow-y:auto">' + JSON.stringify(data, null, 2) + '</pre></div>';
-  } catch(e) { if (result) result.innerHTML = _seoError(e); }
-}
+async function _seoRunSerp() { try { console.warn('[LU SEO 15.5] dead path: _seoRunSerp call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Internal Links ─────────────────────────────────────────────────────
 // Wave 15.3 — body removed; overridden at line ~1193 (W2S1) and ~1340 (W2S2 "Link Intelligence"),
@@ -239,359 +145,74 @@ async function _seoApplyTopLinks(limit) {
   _seoLinks(el);
 }
 
-async function _seoGenerateLinks() {
-  var el = document.getElementById('seo-content');
-  if (el) el.innerHTML = loadingCard(300);
-  try {
-    await _seoApi('POST', '/links/generate', {});
-    showToast('Link suggestions generated!', 'success');
-    _seoLinks(el);
-  } catch(e) { showToast('Failed: ' + e.message, 'error'); _seoLinks(el); }
-}
+async function _seoGenerateLinks() { try { console.warn('[LU SEO 15.5] dead path: _seoGenerateLinks call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoInsertLink(id) {
-  try { await _seoApi('POST', '/links/' + id + '/insert', {}); showToast('Link inserted!', 'success'); _seoLinks(document.getElementById('seo-content')); } catch(e) { showToast('Failed: ' + e.message, 'error'); }
-}
+async function _seoInsertLink(id) { try { console.warn('[LU SEO 15.5] dead path: _seoInsertLink call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoDismissLink(id) {
-  try { await _seoApi('POST', '/links/' + id + '/dismiss', {}); showToast('Dismissed.', 'info'); _seoLinks(document.getElementById('seo-content')); } catch(e) { showToast('Failed: ' + e.message, 'error'); }
-}
+async function _seoDismissLink(id) { try { console.warn('[LU SEO 15.5] dead path: _seoDismissLink call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Content AI ─────────────────────────────────────────────────────────
-async function _seoContent(el) {
-  el.innerHTML = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 16px">Content AI Tools</h2>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">' +
-    '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px">' +
-      '<div style="font-size:28px;margin-bottom:12px">🤖</div>' +
-      '<div style="font-family:var(--fh);font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">AI SEO Report</div>' +
-      '<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Get AI-powered SEO analysis and recommendations for any URL.</div>' +
-      '<input type="text" class="form-input" id="seo-ai-url" placeholder="https://yoursite.com/page" style="margin-bottom:8px">' +
-      '<button class="btn btn-primary" style="width:100%" onclick="_seoAiReport()">Generate Report</button></div>' +
-    '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px">' +
-      '<div style="font-size:28px;margin-bottom:12px">'+window.icon("edit",14)+'</div>' +
-      '<div style="font-family:var(--fh);font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">Write SEO Article</div>' +
-      '<div style="font-size:12px;color:var(--t2);margin-bottom:16px">AI writes an SEO-optimized article for your target keyword.</div>' +
-      '<input type="text" class="form-input" id="seo-write-kw" placeholder="Target keyword" style="margin-bottom:8px">' +
-      '<button class="btn btn-primary" style="width:100%" onclick="_seoWriteArticle()">Write Article</button></div>' +
-    '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px">' +
-      '<div style="font-size:28px;margin-bottom:12px">'+window.icon("edit",14)+'</div>' +
-      '<div style="font-family:var(--fh);font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">Improve Draft</div>' +
-      '<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Paste your draft and get SEO improvement suggestions.</div>' +
-      '<textarea class="form-input" id="seo-draft" placeholder="Paste your draft here..." rows="4" style="margin-bottom:8px;resize:vertical"></textarea>' +
-      '<button class="btn btn-primary" style="width:100%" onclick="_seoImproveDraft()">Improve</button></div>' +
-    '</div><div id="seo-ai-result" style="margin-top:24px"></div>';
-}
+async function _seoContent(el) { try { console.warn('[LU SEO 15.5] dead path: _seoContent call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoAiReport() {
-  var url = document.getElementById('seo-ai-url')?.value;
-  if (!url) { showToast('Enter a URL.', 'error'); return; }
-  var r = document.getElementById('seo-ai-result'); if (r) r.innerHTML = loadingCard(200);
-  try { var d = await _seoApi('POST', '/ai-report', { url: url }); if (r) r.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px"><pre style="white-space:pre-wrap;font-size:12px;color:var(--t2);max-height:500px;overflow-y:auto">' + JSON.stringify(d, null, 2) + '</pre></div>'; } catch(e) { if (r) r.innerHTML = _seoError(e); }
-}
+async function _seoAiReport() { try { console.warn('[LU SEO 15.5] dead path: _seoAiReport call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoWriteArticle() {
-  var kw = document.getElementById('seo-write-kw')?.value;
-  if (!kw) { showToast('Enter a keyword.', 'error'); return; }
-  var r = document.getElementById('seo-ai-result'); if (r) r.innerHTML = loadingCard(200);
-  try { var d = await _seoApi('POST', '/write-article', { keyword: kw }); if (r) r.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px"><pre style="white-space:pre-wrap;font-size:12px;color:var(--t2);max-height:500px;overflow-y:auto">' + JSON.stringify(d, null, 2) + '</pre></div>'; } catch(e) { if (r) r.innerHTML = _seoError(e); }
-}
+async function _seoWriteArticle() { try { console.warn('[LU SEO 15.5] dead path: _seoWriteArticle call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoImproveDraft() {
-  var draft = document.getElementById('seo-draft')?.value;
-  if (!draft) { showToast('Paste a draft first.', 'error'); return; }
-  var r = document.getElementById('seo-ai-result'); if (r) r.innerHTML = loadingCard(200);
-  try { var d = await _seoApi('POST', '/improve-draft', { content: draft }); if (r) r.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:20px"><pre style="white-space:pre-wrap;font-size:12px;color:var(--t2);max-height:500px;overflow-y:auto">' + JSON.stringify(d, null, 2) + '</pre></div>'; } catch(e) { if (r) r.innerHTML = _seoError(e); }
-}
+async function _seoImproveDraft() { try { console.warn('[LU SEO 15.5] dead path: _seoImproveDraft call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Goals ──────────────────────────────────────────────────────────────
-async function _seoGoals(el) {
-  try {
-    var data = await _seoApi('GET', '/goals');
-    var goals = data.goals || data || [];
-    var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-      '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0">SEO Goals</h2>' +
-      '<button class="btn btn-primary" onclick="_seoCreateGoal()">+ New Goal</button></div>';
-    if (goals.length === 0) {
-      h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("more",14)+'</div><p>No SEO goals set. Create your first goal.</p></div>';
-    } else {
-      goals.forEach(g => {
-        var status = g.status || 'active';
-        var color = status === 'active' ? 'var(--ac)' : status === 'paused' ? 'var(--am)' : 'var(--t3)';
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">' +
-          '<div><div style="font-size:14px;font-weight:500;color:var(--t1)">' + (g.title || g.name || 'Goal #' + g.id) + '</div>' +
-          '<div style="font-size:12px;color:var(--t2);margin-top:4px">' + (g.description || g.target || '') + '</div></div>' +
-          '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:' + color + ';font-weight:600;text-transform:uppercase">' + status + '</span>' +
-          (status === 'active' ? '<button class="btn btn-outline btn-sm" onclick="_seoPauseGoal(' + g.id + ')">Pause</button>' : '<button class="btn btn-outline btn-sm" onclick="_seoResumeGoal(' + g.id + ')">Resume</button>') +
-          '</div></div>';
-      });
-    }
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoGoals(el) { try { console.warn('[LU SEO 15.5] dead path: _seoGoals call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoCreateGoal() {
-  var title = await luPrompt('Goal title (e.g., "Rank #1 for AI marketing"):', 'Create Goal');
-  if (!title) return;
-  try { await _seoApi('POST', '/goals', { title: title }); showToast('Goal created!', 'success'); _seoGoals(document.getElementById('seo-content')); } catch(e) { showToast('Failed: ' + e.message, 'error'); }
-}
-async function _seoPauseGoal(id) { try { await _seoApi('POST', '/goals/' + id + '/pause', {}); showToast('Goal paused.', 'info'); _seoGoals(document.getElementById('seo-content')); } catch(e) { showToast('Failed.', 'error'); } }
-async function _seoResumeGoal(id) { try { await _seoApi('POST', '/goals/' + id + '/resume', {}); showToast('Goal resumed.', 'success'); _seoGoals(document.getElementById('seo-content')); } catch(e) { showToast('Failed.', 'error'); } }
+async function _seoCreateGoal() { try { console.warn('[LU SEO 15.5] dead path: _seoCreateGoal call collapsed; live path is the LGSE renderer'); } catch(_) {} }
+async function _seoPauseGoal(id) { try { console.warn('[LU SEO 15.5] dead path: _seoPauseGoal call collapsed; live path is the LGSE renderer'); } catch(_) {} }
+async function _seoResumeGoal(id) { try { console.warn('[LU SEO 15.5] dead path: _seoResumeGoal call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 
 // ── Optimization Workspace ──────────────────────────────────────
-async function _seoWorkspace(el) {
-  try {
-    var data = await _seoApi('GET', '/keywords');
-    var kws = data.keywords || data || [];
-    var h = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Optimization Workspace</h2>' +
-      '<p style="font-size:13px;color:var(--t2);margin-bottom:20px">Track and optimize your indexed content</p>';
-    if (kws.length === 0) {
-      h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("chart",14)+'</div><p>Add keywords to start tracking optimization.</p><button class="btn btn-primary" onclick="_seoAddKeyword()">+ Track Keyword</button></div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Keyword</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Position</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Volume</th></tr></thead><tbody>';
-      kws.forEach(function(k) { h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.keyword || k.term || '—') + '</td><td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.position || '—') + '</td><td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.volume || '—') + '</td></tr>'; });
-      h += '</tbody></table></div>';
-    }
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoWorkspace(el) { try { console.warn('[LU SEO 15.5] dead path: _seoWorkspace call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Insights ────────────────────────────────────────────────────
-async function _seoInsights(el) {
-  try {
-    var data = await _seoApi('GET', '/ai-status');
-    el.innerHTML = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 16px">SEO Insights</h2>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">' +
-      '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px"><div style="font-size:14px;font-weight:600;color:var(--t1);margin-bottom:12px">AI Agent Status</div><pre style="white-space:pre-wrap;font-size:12px;color:var(--t2)">' + JSON.stringify(data, null, 2) + '</pre></div>' +
-      '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px"><div style="font-size:28px;margin-bottom:12px">🤖</div><div style="font-size:14px;font-weight:600;color:var(--t1)">AI Report</div><div style="font-size:12px;color:var(--t2);margin-top:4px">Get AI-powered SEO analysis</div></div>' +
-      '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px"><div style="font-size:28px;margin-bottom:12px">'+window.icon("search",14)+'</div><div style="font-size:14px;font-weight:600;color:var(--t1)">SERP Analysis</div><div style="font-size:12px;color:var(--t2);margin-top:4px">Competitive landscape analysis</div></div></div>';
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoInsights(el) { try { console.warn('[LU SEO 15.5] dead path: _seoInsights call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Reports ─────────────────────────────────────────────────────
-async function _seoReports(el) {
-  try {
-    var data = await _seoApi('GET', '/report');
-    el.innerHTML = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 16px">SEO Reports</h2>' +
-      '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px"><pre style="white-space:pre-wrap;font-size:12px;color:var(--t2);max-height:600px;overflow-y:auto">' + JSON.stringify(data, null, 2) + '</pre></div>';
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoReports(el) { try { console.warn('[LU SEO 15.5] dead path: _seoReports call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Outbound Links ──────────────────────────────────────────────
-async function _seoOutbound(el) {
-  try {
-    var data = await _seoApi('GET', '/outbound');
-    var links = data.links || data || [];
-    var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><div><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0">Outbound Links</h2><p style="font-size:13px;color:var(--t2);margin-top:4px">Monitor external links on your site</p></div><button class="btn btn-primary" onclick="_seoCheckOutbound()">Check Links</button></div>';
-    if (!Array.isArray(links) || links.length === 0) {
-      h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("globe",14)+'</div><p>No outbound links scanned yet.</p></div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">URL</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Status</th></tr></thead><tbody>';
-      links.forEach(function(l) { h += '<tr><td style="padding:10px 12px;color:var(--bl);border-bottom:1px solid rgba(255,255,255,.04);word-break:break-all">' + (l.url || '—') + '</td><td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)">' + (l.status_code || '—') + '</td></tr>'; });
-      h += '</tbody></table></div>';
-    }
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
-async function _seoCheckOutbound() { var el = document.getElementById('seo-content'); if(el) el.innerHTML = loadingCard(300); try { await _seoApi('POST', '/outbound/check', {}); showToast('Scan started!', 'success'); setTimeout(function(){ _seoOutbound(el); }, 2000); } catch(e) { showToast('Failed', 'error'); _seoOutbound(el); } }
+async function _seoOutbound(el) { try { console.warn('[LU SEO 15.5] dead path: _seoOutbound call collapsed; live path is the LGSE renderer'); } catch(_) {} }
+async function _seoCheckOutbound() { try { console.warn('[LU SEO 15.5] dead path: _seoCheckOutbound call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Integrations ────────────────────────────────────────────────
-async function _seoIntegrations(el) {
-  try {
-    var data = await _seoApi('GET', '/agent-status');
-    el.innerHTML = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 16px">Integrations</h2>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">' +
-      '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px"><div style="font-size:28px;margin-bottom:12px">'+window.icon("globe",14)+'</div><div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">Google Search Console</div><div style="font-size:12px;color:var(--t2)">Import keyword rankings and impressions</div></div>' +
-      '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px"><div style="font-size:28px;margin-bottom:12px">🤖</div><div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">AI SEO Agent</div><pre style="font-size:11px;color:var(--t2);white-space:pre-wrap;background:var(--s2);padding:10px;border-radius:8px;margin-top:8px">' + JSON.stringify(data, null, 2) + '</pre></div>' +
-      '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px"><div style="font-size:28px;margin-bottom:12px">'+window.icon("chart",14)+'</div><div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">Google Analytics</div><div style="font-size:12px;color:var(--t2)">Traffic data integration — coming soon</div></div></div>';
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoIntegrations(el) { try { console.warn('[LU SEO 15.5] dead path: _seoIntegrations call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Stub page (for tabs migrating from WP) ──────────────────────
 // ── Redirects ─────────────────────────────────────────────────────
-async function _seoRedirects(el) {
-  try {
-    var data = await _seoApi('GET', '/redirects');
-    var redirects = data.redirects || [];
-    var logData = await _seoApi('GET', '/404-log');
-    var entries = logData.entries || [];
-    var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-      '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0">Redirects</h2>' +
-      '<button class="btn btn-primary" onclick="_seoAddRedirect()">+ Add Redirect</button></div>';
-    if (redirects.length === 0) {
-      h += '<div style="text-align:center;padding:40px;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:12px;margin-bottom:24px"><div style="font-size:40px;margin-bottom:14px">&#8618;</div><p>No redirects configured yet. Add your first redirect rule.</p></div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:24px"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-      h += '<thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">From</th><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">To</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Type</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Actions</th></tr></thead><tbody>';
-      redirects.forEach(function(r) {
-        h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04);word-break:break-all">' + (r.from || '—') + '</td>' +
-          '<td style="padding:10px 12px;color:var(--bl);border-bottom:1px solid rgba(255,255,255,.04);word-break:break-all">' + (r.to || '—') + '</td>' +
-          '<td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (r.type || 301) + '</td>' +
-          '<td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)"><button class="btn btn-outline btn-sm" onclick="_seoDeleteRedirect(' + r.id + ')" style="font-size:11px;color:var(--rd)">Delete</button></td></tr>';
-      });
-      h += '</tbody></table></div>';
-    }
-    h += '<h3 style="font-family:var(--fh);font-size:16px;font-weight:600;color:var(--t1);margin:0 0 12px">404 Error Log</h3>';
-    if (entries.length === 0) {
-      h += '<div style="text-align:center;padding:30px;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:12px"><p>No 404 errors logged yet. This is a good sign!</p></div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-      h += '<thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">URL</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Hits</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Last Seen</th></tr></thead><tbody>';
-      entries.forEach(function(e) {
-        h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04);word-break:break-all">' + (e.url || '—') + '</td>' +
-          '<td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (e.hits || 0) + '</td>' +
-          '<td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (e.last_seen || '—') + '</td></tr>';
-      });
-      h += '</tbody></table></div>';
-    }
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoRedirects(el) { try { console.warn('[LU SEO 15.5] dead path: _seoRedirects call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoAddRedirect() {
-  var from = await luPrompt('From path (e.g. /old-page):', 'Add Redirect');
-  if (!from) return;
-  var to = await luPrompt('To URL (e.g. /new-page or https://...):', 'Destination');
-  if (!to) return;
-  var type = await luPrompt('Redirect type (301 or 302):', 'Redirect Type', '301');
-  if (!type) type = '301';
-  try {
-    await _seoApi('POST', '/redirects', { from: from, to: to, type: parseInt(type) });
-    showToast('Redirect created!', 'success');
-    _seoRedirects(document.getElementById('seo-content'));
-  } catch(e) { showToast('Failed: ' + e.message, 'error'); }
-}
+async function _seoAddRedirect() { try { console.warn('[LU SEO 15.5] dead path: _seoAddRedirect call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoDeleteRedirect(id) {
-  var ok = await luConfirm('Delete this redirect?', 'Delete Redirect', 'Delete', 'Cancel'); if (!ok) return;
-  try {
-    await _seoApi('DELETE', '/redirects/' + id);
-    showToast('Redirect deleted.', 'success');
-    _seoRedirects(document.getElementById('seo-content'));
-  } catch(e) { showToast('Failed: ' + e.message, 'error'); }
-}
+async function _seoDeleteRedirect(id) { try { console.warn('[LU SEO 15.5] dead path: _seoDeleteRedirect call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Images ────────────────────────────────────────────────────────
 // Wave 15.3 — body removed; overridden at line ~1136 and replaced by LGSE's renderImages flow.
 function _seoImages(el) { try { console.warn('[LU SEO 15.3] dead path: _seoImages called — see lgseRenderImages (LGSE)'); } catch(_) {} }
 
 // ── SEO Settings ──────────────────────────────────────────────────
-async function _seoSettings(el) {
-  try {
-    var data = await _seoApi('GET', '/settings');
-    var h = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">SEO Settings</h2>' +
-      '<p style="font-size:13px;color:var(--t2);margin-bottom:20px">Configure title templates, meta descriptions, and sitemap settings</p>';
-    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:600px">';
-    h += '<div style="margin-bottom:20px"><label style="display:block;font-size:13px;font-weight:600;color:var(--t1);margin-bottom:6px">Title Template</label>' +
-      '<input type="text" class="form-input" id="seo-set-title" value="' + (data.title_template || '').replace(/"/g, '&amp;quot;') + '" placeholder="{page_title} | {site_name}" style="width:100%">' +
-      '<div style="font-size:11px;color:var(--t3);margin-top:4px">Variables: {page_title}, {site_name}, {separator}</div></div>';
-    h += '<div style="margin-bottom:20px"><label style="display:block;font-size:13px;font-weight:600;color:var(--t1);margin-bottom:6px">Meta Description Fallback</label>' +
-      '<textarea class="form-input" id="seo-set-meta" rows="3" placeholder="Default meta description when none is set..." style="width:100%;resize:vertical">' + (data.meta_description_fallback || '') + '</textarea></div>';
-    h += '<div style="margin-bottom:24px"><label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--t1);cursor:pointer">' +
-      '<input type="checkbox" id="seo-set-sitemap"' + (data.sitemap_enabled ? ' checked' : '') + ' style="width:18px;height:18px"> Enable XML Sitemap</label>' +
-      '<div style="font-size:11px;color:var(--t3);margin-top:4px;margin-left:28px">Automatically generate and update your sitemap.xml</div></div>';
-    h += '<button class="btn btn-primary" onclick="_seoSaveSettings()">Save Settings</button></div>';
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoSettings(el) { try { console.warn('[LU SEO 15.5] dead path: _seoSettings call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoSaveSettings() {
-  var title = document.getElementById('seo-set-title');
-  var meta = document.getElementById('seo-set-meta');
-  var sitemap = document.getElementById('seo-set-sitemap');
-  var payload = {
-    title_template: title ? title.value : '',
-    meta_description_fallback: meta ? meta.value : '',
-    sitemap_enabled: sitemap ? sitemap.checked : true
-  };
-  try {
-    await _seoApi('POST', '/settings', payload);
-    showToast('SEO settings saved!', 'success');
-  } catch(e) { showToast('Failed to save settings: ' + e.message, 'error'); }
-}
+async function _seoSaveSettings() { try { console.warn('[LU SEO 15.5] dead path: _seoSaveSettings call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Score Settings ────────────────────────────────────────────────
-async function _seoScoreSettings(el) {
-  try {
-    var data = await _seoApi('GET', '/score-weights');
-    var factors = [
-      { key: 'title', label: 'Title Tag', desc: 'Presence and quality of the page title' },
-      { key: 'meta_description', label: 'Meta Description', desc: 'Presence and length of meta description' },
-      { key: 'content_length', label: 'Content Length', desc: 'Minimum word count for quality content' },
-      { key: 'internal_links', label: 'Internal Links', desc: 'Number of internal links on the page' },
-      { key: 'image_alt', label: 'Image Alt Text', desc: 'Alt attributes on images' },
-      { key: 'readability', label: 'Readability', desc: 'Flesch-Kincaid readability score' }
-    ];
-    var h = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Score Settings</h2>' +
-      '<p style="font-size:13px;color:var(--t2);margin-bottom:20px">Configure how SEO scores are calculated for your content. Total must equal 100.</p>';
-    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:600px">';
-    var total = 0;
-    factors.forEach(function(f) {
-      var val = data[f.key] || 0;
-      total += val;
-      h += '<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-        '<label style="font-size:13px;font-weight:600;color:var(--t1)">' + f.label + '</label>' +
-        '<span id="seo-sw-val-' + f.key + '" style="font-size:13px;font-weight:700;color:var(--p,#6C5CE7);min-width:36px;text-align:right">' + val + '%</span></div>' +
-        '<input type="range" id="seo-sw-' + f.key + '" min="0" max="50" value="' + val + '" ' +
-        'oninput="document.getElementById(&quot;seo-sw-val-' + f.key + '&quot;).textContent=this.value+&quot;%&quot;;_seoUpdateWeightTotal()" ' +
-        'style="width:100%;accent-color:var(--p,#6C5CE7)">' +
-        '<div style="font-size:11px;color:var(--t3);margin-top:2px">' + f.desc + '</div></div>';
-    });
-    h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--bd);margin-bottom:16px">' +
-      '<span style="font-size:14px;font-weight:600;color:var(--t1)">Total</span>' +
-      '<span id="seo-sw-total" style="font-size:14px;font-weight:700;color:' + (total === 100 ? 'var(--ac)' : 'var(--rd)') + '">' + total + '%</span></div>';
-    h += '<button class="btn btn-primary" onclick="_seoSaveScoreWeights()">Save Score Weights</button></div>';
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+async function _seoScoreSettings(el) { try { console.warn('[LU SEO 15.5] dead path: _seoScoreSettings call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-function _seoUpdateWeightTotal() {
-  var keys = ['title', 'meta_description', 'content_length', 'internal_links', 'image_alt', 'readability'];
-  var total = 0;
-  keys.forEach(function(k) {
-    var el = document.getElementById('seo-sw-' + k);
-    if (el) total += parseInt(el.value) || 0;
-  });
-  var totalEl = document.getElementById('seo-sw-total');
-  if (totalEl) {
-    totalEl.textContent = total + '%';
-    totalEl.style.color = total === 100 ? 'var(--ac)' : 'var(--rd)';
-  }
-}
+function _seoUpdateWeightTotal() { try { console.warn('[LU SEO 15.5] dead path: _seoUpdateWeightTotal call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-async function _seoSaveScoreWeights() {
-  var keys = ['title', 'meta_description', 'content_length', 'internal_links', 'image_alt', 'readability'];
-  var payload = {};
-  var total = 0;
-  keys.forEach(function(k) {
-    var el = document.getElementById('seo-sw-' + k);
-    var val = el ? parseInt(el.value) || 0 : 0;
-    payload[k] = val;
-    total += val;
-  });
-  if (total !== 100) {
-    showToast('Weights must total 100%. Currently: ' + total + '%', 'error');
-    return;
-  }
-  try {
-    await _seoApi('POST', '/score-weights', payload);
-    showToast('Score weights saved!', 'success');
-  } catch(e) { showToast('Failed to save: ' + e.message, 'error'); }
-}
-function _seoStubPage(el, title, desc, icon) {
-  el.innerHTML = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">' + title + '</h2>' +
-    '<p style="font-size:13px;color:var(--t2);margin-bottom:20px">' + desc + '</p>' +
-    '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">' + icon + '</div><p>Migrating from WordPress module. Full functionality coming soon.</p></div>';
-}
+async function _seoSaveScoreWeights() { try { console.warn('[LU SEO 15.5] dead path: _seoSaveScoreWeights call collapsed; live path is the LGSE renderer'); } catch(_) {} }
+function _seoStubPage(el, title, desc, icon) { try { console.warn('[LU SEO 15.5] dead path: _seoStubPage call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // ── Helpers ────────────────────────────────────────────────────────────
-function _seoStat(label, value, color) {
-  return '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px"><div style="font-size:24px;font-weight:700;font-family:var(--fh);color:' + color + '">' + value + '</div><div style="font-size:12px;color:var(--t2);margin-top:4px">' + label + '</div></div>';
-}
+function _seoStat(label, value, color) { try { console.warn('[LU SEO 15.5] dead path: _seoStat call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-function _seoError(e) {
-  return '<div style="background:rgba(248,113,113,.08);border:1px solid var(--rd,#F87171);border-radius:12px;padding:20px;color:var(--rd)"><strong>Error:</strong> ' + (e.message || e) + '</div>';
-}
+function _seoError(e) { try { console.warn('[LU SEO 15.5] dead path: _seoError call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 window.LU_LOADED_ENGINES = window.LU_LOADED_ENGINES || {};
 window.LU_LOADED_ENGINES['seo'] = true;
@@ -616,79 +237,7 @@ console.log('[LevelUp] SEO engine loaded (Laravel native — 14 tabs, 33 routes)
 // Build 5 — Pages tab (indexed content table with inline editing)
 window._seoPagesState = { page: 1, filter: '', sort: 'score', q: '' };
 
-async function _seoPages(el) {
-  try {
-    var st = window._seoPagesState;
-    var qs = '?page=' + st.page + '&per_page=25&sort=' + encodeURIComponent(st.sort) + '&filter=' + encodeURIComponent(st.filter) + '&q=' + encodeURIComponent(st.q);
-    var d = await _seoApi('GET', '/indexed-content' + qs);
-    var items = d.items || [];
-
-    var h = '<div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">';
-    h += '<div><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Pages</h2>';
-    h += '<p style="font-size:13px;color:var(--t2);margin:0">' + (d.total || 0) + ' indexed pages — click any cell to edit</p></div>';
-    h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
-    h += '<input type="text" placeholder="Search url/title…" value="' + (st.q||'') + '" oninput="window._seoPagesState.q=this.value" onkeydown="if(event.key===\'Enter\'){window._seoPagesState.page=1;_seoSwitchTab(\'pages\')}" style="background:var(--s1);border:1px solid var(--bd);color:var(--t1);border-radius:6px;padding:6px 10px;font-size:12px;width:160px">';
-    var filterOpts = [['','All'],['low_score','Low score (<50)'],['missing_meta','Missing meta'],['thin_content','Thin content'],['no_h1','No H1']];
-    h += '<select onchange="window._seoPagesState.filter=this.value;window._seoPagesState.page=1;_seoSwitchTab(\'pages\')" style="background:var(--s1);border:1px solid var(--bd);color:var(--t1);border-radius:6px;padding:6px 10px;font-size:12px">';
-    filterOpts.forEach(function(o){ h += '<option value="'+o[0]+'"'+(st.filter===o[0]?' selected':'')+'>'+o[1]+'</option>'; });
-    h += '</select>';
-    h += '<button onclick="_seoSwitchTab(\'pages\')" style="background:none;border:1px solid var(--bd);color:var(--t3);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer">↻ Refresh</button>';
-    h += '</div></div>';
-
-    if (items.length === 0) {
-      h += '<div style="padding:40px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px">No pages indexed yet. Run a deep audit to populate this list.</div>';
-      el.innerHTML = h; return;
-    }
-
-    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-    h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-    ['URL','Score','Title','Meta description','H1','Words','Issues','Actions'].forEach(function(c){
-      h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">'+c+'</th>';
-    });
-    h += '</tr></thead><tbody>';
-    items.forEach(function(p){
-      var sc = p.content_score || 0;
-      var scColor = sc >= 70 ? '#10B981' : sc >= 50 ? '#F59E0B' : '#F87171';
-      // Wave 15 (2026-05-18) — orphan + image-error chips in the Actions column.
-      var isOrphan    = (typeof p.inbound_links !== 'undefined') && Number(p.inbound_links) === 0;
-      var imgError    = p.featured_image_error || '';
-      var imgAttempts = Number(p.featured_image_attempts || 0);
-      var actionsCell = '';
-      var urlAttr = (p.url || '').replace(/"/g,'&quot;');
-      if (isOrphan) {
-        actionsCell += '<button onclick="_seoFixOrphan(\''+urlAttr+'\')" title="Apply queued link suggestions targeting this page" style="background:rgba(245,158,11,.12);color:#F59E0B;border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;cursor:pointer;margin-right:4px">⚠ Orphan · Fix</button>';
-      }
-      if (imgError) {
-        var errShort = imgError.length > 60 ? imgError.substring(0,57)+'…' : imgError;
-        actionsCell += '<button onclick="_seoRetryImage(\''+urlAttr+'\')" title="Image gen failed after '+imgAttempts+' attempt(s): '+errShort.replace(/"/g,'&quot;')+'" style="background:rgba(248,113,113,.12);color:#F87171;border:1px solid rgba(248,113,113,.3);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:600;cursor:pointer">⚠ Image · Retry</button>';
-      }
-      h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-      h += '<td style="padding:9px 12px;color:var(--t2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+p.url+'"><a href="'+p.url+'" target="_blank" style="color:var(--t2);text-decoration:none">'+p.url+'</a></td>';
-      h += '<td style="padding:9px 12px"><span style="background:'+scColor+'20;color:'+scColor+';padding:2px 8px;border-radius:8px;font-weight:700">'+sc+'</span></td>';
-      h += '<td style="padding:9px 12px"><input value="'+(p.meta_title||p.title||'').replace(/"/g,'&quot;')+'" onblur="_seoPageSave('+p.id+',\'meta_title\',this.value,this)" style="background:transparent;border:none;color:var(--t1);font-size:12px;width:100%;padding:2px 0"></td>';
-      h += '<td style="padding:9px 12px"><input value="'+(p.meta_description||'').replace(/"/g,'&quot;')+'" onblur="_seoPageSave('+p.id+',\'meta_description\',this.value,this)" style="background:transparent;border:none;color:var(--t1);font-size:12px;width:100%;padding:2px 0" placeholder="(empty)"></td>';
-      h += '<td style="padding:9px 12px"><input value="'+(p.h1||'').replace(/"/g,'&quot;')+'" onblur="_seoPageSave('+p.id+',\'h1\',this.value,this)" style="background:transparent;border:none;color:var(--t1);font-size:12px;width:100%;padding:2px 0" placeholder="(empty)"></td>';
-      h += '<td style="padding:9px 12px;color:var(--t2)">'+p.word_count+'</td>';
-      h += '<td style="padding:9px 12px"><span style="color:'+(p.issues_count>0?'var(--am)':'var(--t3)')+'">'+p.issues_count+'</span></td>';
-      h += '<td style="padding:9px 12px;white-space:nowrap">'+(actionsCell || '<span style="color:var(--t3);font-size:10px">—</span>')+'</td>';
-      h += '</tr>';
-    });
-    h += '</tbody></table></div>';
-
-    if ((d.pages||1) > 1) {
-      h += '<div style="margin-top:14px;display:flex;gap:6px;justify-content:center">';
-      for (var i=1; i<=d.pages; i++) {
-        var ac = (i===d.page);
-        h += '<button onclick="window._seoPagesState.page='+i+';_seoSwitchTab(\'pages\')" style="background:'+(ac?'var(--p)':'var(--s1)')+';color:'+(ac?'#fff':'var(--t3)')+';border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer">'+i+'</button>';
-      }
-      h += '</div>';
-    }
-
-    el.innerHTML = h;
-  } catch(e) {
-    el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load pages: '+(e.message||e)+'</div>';
-  }
-}
+async function _seoPages(el) { try { console.warn('[LU SEO 15.5] dead path: _seoPages call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 window._seoPageSave = async function(id, field, value, inputEl) {
   try {
@@ -791,79 +340,10 @@ window._seoRetryImage = async function(url) {
 };
 
 // Build 2 — CTR Optimizer tab
-async function _seoCtr(el) {
-  try {
-    var d = await _seoApi('GET', '/ctr-analysis');
-    var h = '<div style="margin-bottom:16px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">CTR Optimizer</h2>';
-    h += '<p style="font-size:13px;color:var(--t2);margin:0">Score 0–100 per page based on title/meta/intent alignment. Lower scores = bigger CTR opportunity.</p></div>';
-
-    h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">';
-    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--t1)">'+(d.total_pages||0)+'</div><div style="font-size:11px;color:var(--t3)">Pages analyzed</div></div>';
-    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--p)">'+(d.avg_score||0)+'</div><div style="font-size:11px;color:var(--t3)">Average CTR score</div></div>';
-    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px;text-align:center"><div style="font-size:22px;font-weight:700;color:#F87171">'+(d.low_performers||0)+'</div><div style="font-size:11px;color:var(--t3)">Low performers (≤49)</div></div>';
-    h += '</div>';
-
-    var worst = d.worst_performers || [];
-    if (worst.length === 0) {
-      h += '<div style="padding:40px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px">All pages scoring well! 🎉</div>';
-    } else {
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Worst performers</div>';
-      h += '<div style="display:flex;flex-direction:column;gap:8px">';
-      worst.forEach(function(p){
-        var sc = p.ctr_score, lbl = p.ctr_label;
-        var col = sc >= 75 ? '#10B981' : sc >= 50 ? '#F59E0B' : sc >= 25 ? '#F87171' : '#EF4444';
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px">';
-        h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><span style="background:'+col+'20;color:'+col+';padding:2px 10px;border-radius:8px;font-weight:700;font-size:12px">'+sc+' · '+lbl+'</span><div style="flex:1;font-size:12px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.title||p.url)+'</div></div>';
-        if (p.ctr_reasons && p.ctr_reasons.length) {
-          h += '<div style="font-size:11px;color:var(--t3);margin-bottom:4px">' + p.ctr_reasons.map(function(r){ return '• '+r; }).join('  ') + '</div>';
-        }
-        if (p.ctr_suggestions && p.ctr_suggestions.length) {
-          h += '<div style="font-size:11px;color:var(--am);margin-top:6px"><strong>Suggestions:</strong> ' + p.ctr_suggestions.join(' · ') + '</div>';
-        }
-        h += '</div>';
-      });
-      h += '</div>';
-    }
-
-    el.innerHTML = h;
-  } catch(e) {
-    el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load CTR analysis: '+(e.message||e)+'</div>';
-  }
-}
+async function _seoCtr(el) { try { console.warn('[LU SEO 15.5] dead path: _seoCtr call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 // Build 3 — Quick Wins tab
-async function _seoWins(el) {
-  try {
-    var d = await _seoApi('GET', '/quick-wins?limit=20');
-    var wins = d.quick_wins || [];
-
-    var h = '<div style="margin-bottom:16px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Quick Wins</h2>';
-    h += '<p style="font-size:13px;color:var(--t2);margin:0">High-impact fixes you can ship in under 30 minutes each.</p></div>';
-
-    if (wins.length === 0) {
-      h += '<div style="padding:40px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px">No quick wins found — your pages look healthy! 🎉</div>';
-      el.innerHTML = h; return;
-    }
-
-    h += '<div style="display:flex;flex-direction:column;gap:8px">';
-    wins.forEach(function(w){
-      var imp = w.impact, mins = w.fix_minutes;
-      var impCol = imp >= 25 ? '#10B981' : imp >= 15 ? '#F59E0B' : 'var(--t3)';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px;display:flex;align-items:center;gap:14px">';
-      h += '<div style="text-align:center;min-width:60px"><div style="background:'+impCol+'20;color:'+impCol+';font-size:18px;font-weight:700;padding:6px 10px;border-radius:8px">+' + imp + '</div><div style="font-size:9px;color:var(--t3);margin-top:3px">IMPACT</div></div>';
-      h += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">'+w.issue+'</div>';
-      h += '<div style="font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(w.title||w.url)+'</div>';
-      h += '<div style="font-size:11px;color:var(--am);margin-top:5px">→ '+w.fix+'</div></div>';
-      h += '<div style="text-align:center;min-width:80px"><div style="font-size:14px;font-weight:600;color:var(--t1)">'+mins+'m</div><div style="font-size:10px;color:var(--t3)">FIX TIME</div><button onclick="_seoSwitchTab(\'pages\')" style="background:var(--p);border:none;color:#fff;padding:4px 10px;border-radius:5px;font-size:11px;cursor:pointer;margin-top:6px">Fix</button></div>';
-      h += '</div>';
-    });
-    h += '</div>';
-
-    el.innerHTML = h;
-  } catch(e) {
-    el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load quick wins: '+(e.message||e)+'</div>';
-  }
-}
+async function _seoWins(el) { try { console.warn('[LU SEO 15.5] dead path: _seoWins call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -871,172 +351,25 @@ async function _seoWins(el) {
 // ───────────────────────────────────────────────────────────────────────────
 
 // Build 1 — Google Search Console tab
-async function _seoGsc(el) {
-  try {
-    var status = await _seoApi('GET', '/gsc/status');
-    var h = '<div style="margin-bottom:16px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Search Console</h2>';
-    h += '<p style="font-size:13px;color:var(--t2);margin:0">Real CTR + impressions + position from Google.</p></div>';
+async function _seoGsc(el) { try { console.warn('[LU SEO 15.5] dead path: _seoGsc call collapsed; live path is the LGSE renderer'); } catch(_) {} }
 
-    if (!status.connected) {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:24px;text-align:center">';
-      if (!status.configured) {
-        h += '<div style="font-size:14px;font-weight:600;color:var(--am);margin-bottom:8px">Configuration required</div>';
-        h += '<div style="font-size:12px;color:var(--t2);max-width:480px;margin:0 auto">Set <code>GSC_CLIENT_ID</code> + <code>GSC_CLIENT_SECRET</code> in the platform <code>.env</code>, restart, then click Connect.</div>';
-      } else {
-        h += '<div style="font-size:14px;font-weight:600;color:var(--t1);margin-bottom:8px">Not connected</div>';
-        h += '<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Connect Google Search Console to pull real CTR + impression data per page and query.</div>';
-        h += '<button onclick="_seoGscConnect()" style="background:var(--p);border:none;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Connect Search Console →</button>';
-      }
-      h += '</div>';
-      el.innerHTML = h;
-      return;
-    }
+window._seoGscConnect = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoGscConnect call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">';
-    h += '<div><div style="font-size:13px;font-weight:600;color:#10B981">✓ Connected</div>';
-    h += '<div style="font-size:11px;color:var(--t3);margin-top:2px">Property: ' + (status.site_url||'(unknown)') + '</div>';
-    h += '<div style="font-size:11px;color:var(--t3)">Last synced: ' + (status.last_synced_at ? new Date(status.last_synced_at).toLocaleString() : 'never') + '</div></div>';
-    h += '<div style="display:flex;gap:6px">';
-    h += '<button onclick="_seoGscSync()" style="background:var(--p);border:none;color:#fff;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Sync now</button>';
-    h += '<button onclick="_seoGscDisconnect()" style="background:none;border:1px solid var(--bd);color:var(--rd);border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer">Disconnect</button>';
-    h += '</div></div>';
+window._seoGscSync = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoGscSync call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-    var qs = await _seoApi('GET', '/gsc/queries?limit=20');
-    var queries = (qs && qs.queries) || [];
-    if (queries.length === 0) {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:32px;text-align:center;color:var(--t3);font-size:13px">No data yet. Click <strong>Sync now</strong> to pull last 30 days from Search Console.</div>';
-    } else {
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Top queries</div>';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-      ['Query','Clicks','Impressions','CTR','Position'].forEach(function(c){
-        h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">'+c+'</th>';
-      });
-      h += '</tr></thead><tbody>';
-      queries.forEach(function(q){
-        h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-        h += '<td style="padding:9px 12px;color:var(--t1)">'+_luEsc(q.query||'')+'</td>';
-        h += '<td style="padding:9px 12px;color:var(--t1);font-weight:600">'+(q.clicks||0)+'</td>';
-        h += '<td style="padding:9px 12px;color:var(--t2)">'+(q.impressions||0)+'</td>';
-        h += '<td style="padding:9px 12px;color:var(--t2)">'+((q.ctr*100).toFixed(2))+'%</td>';
-        h += '<td style="padding:9px 12px;color:var(--t2)">'+(q.position||0).toFixed(1)+'</td>';
-        h += '</tr>';
-      });
-      h += '</tbody></table></div>';
-    }
-
-    el.innerHTML = h;
-  } catch(e) {
-    el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load Search Console: '+(e.message||e)+'</div>';
-  }
-}
-
-window._seoGscConnect = async function() {
-  try {
-    var d = await _seoApi('GET', '/gsc/auth-url');
-    if (d && d.url) window.location.href = d.url;
-  } catch(e) { if (typeof showToast==='function') showToast('Could not generate auth URL', 'error'); }
-};
-
-window._seoGscSync = async function() {
-  if (typeof showToast==='function') showToast('Syncing… this can take 10-20 seconds', 'info');
-  try {
-    var d = await _seoApi('POST', '/gsc/sync');
-    if (d && d.success) {
-      if (typeof showToast==='function') showToast('Synced '+(d.synced_rows||0)+' rows from GSC', 'success');
-      _seoSwitchTab('gsc');
-    } else {
-      if (typeof showToast==='function') showToast('Sync failed: '+(d.error||'unknown'), 'error');
-    }
-  } catch(e) { if (typeof showToast==='function') showToast('Sync error', 'error'); }
-};
-
-window._seoGscDisconnect = async function() {
-  if (typeof window.lgseConfirm !== 'function') return;
-  var ok = await window.lgseConfirm('Disconnect Search Console', 'You can reconnect anytime.', 'Disconnect');
-  if (!ok) return;
-  try {
-    await _seoApi('POST', '/gsc/disconnect');
-    _seoSwitchTab('gsc');
-  } catch(e) {}
-};
+window._seoGscDisconnect = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoGscDisconnect call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
 // Build 2 — Image issues renderer (override existing _seoImages if present)
-window._seoImages = async function(el) {
-  try {
-    var summary = await _seoApi('GET', '/image-summary');
-    var issuesData = await _seoApi('GET', '/image-issues?limit=200');
-    var issues = Array.isArray(issuesData) ? issuesData : (issuesData.issues || []);
+window._seoImages = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoImages call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-    var h = '<div style="margin-bottom:16px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Images</h2>';
-    h += '<p style="font-size:13px;color:var(--t2);margin:0">Audit images on indexed pages — alt text, format, dimensions.</p></div>';
-
-    h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">';
-    var s = summary.summary || summary;
-    [['Missing alt', s.missing_alt||0, '#F87171'],
-     ['Empty alt',   s.empty_alt||0,   '#F59E0B'],
-     ['Bad filename',s.filename_unfriendly||0, '#F59E0B'],
-     ['Wrong format',s.wrong_format||0,'#F87171']].forEach(function(c){
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:700;color:'+c[2]+'">'+c[1]+'</div><div style="font-size:10px;color:var(--t3);margin-top:2px;text-transform:uppercase">'+c[0]+'</div></div>';
-    });
-    h += '</div>';
-
-    if (issues.length === 0) {
-      h += '<div style="padding:40px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px">No image issues found across indexed pages. 🎉</div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-      ['Page','Image','Issue','Current alt','Action'].forEach(function(c){ h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">'+c+'</th>'; });
-      h += '</tr></thead><tbody>';
-      issues.slice(0,80).forEach(function(i, idx){
-        h += '<tr id="img-row-'+idx+'" style="border-bottom:1px solid rgba(255,255,255,.03)">';
-        h += '<td style="padding:9px 12px;color:var(--t2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+_luEsc(i.page_url||'')+'">'+_luEsc(i.page_url||'')+'</td>';
-        h += '<td style="padding:9px 12px;color:var(--t2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+_luEsc(i.image_src||'')+'"><a href="'+_luEsc(i.image_src||'#')+'" target="_blank" style="color:var(--t2);text-decoration:none">'+_luEsc(i.filename||'')+'</a></td>';
-        h += '<td style="padding:9px 12px"><span style="background:rgba(245,158,11,.12);color:var(--am);padding:2px 8px;border-radius:8px;font-size:10px">'+_luEsc(i.issue_label||i.issue_type)+'</span></td>';
-        h += '<td style="padding:9px 12px;color:var(--t2)">'+(_luEsc(i.current_alt||'(none)'))+'</td>';
-        h += '<td style="padding:9px 12px"><button onclick="_seoImgSuggest(\''+_luEsc(i.image_src).replace(/\'/g,"\\'")+'\',\''+_luEsc(i.page_context||'').replace(/\'/g,"\\'")+'\','+idx+')" style="background:none;border:1px solid var(--p);color:var(--p);padding:3px 10px;border-radius:5px;font-size:10px;cursor:pointer">Suggest alt</button></td>';
-        h += '</tr>';
-      });
-      h += '</tbody></table></div>';
-    }
-
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load images: '+(e.message||e)+'</div>'; }
-};
-
-window._seoImgSuggest = async function(imageSrc, pageContext, idx) {
-  var row = document.getElementById('img-row-'+idx);
-  if (!row) return;
-  try {
-    var d = await _seoApi('POST', '/image-issues/suggest-alt', { image_src: imageSrc, page_context: pageContext });
-    var alt = d.suggested_alt || '(no suggestion)';
-    var altCell = row.cells[3];
-    altCell.innerHTML = '<input value="'+_luEsc(alt).replace(/"/g,'&quot;')+'" style="background:var(--s2);border:1px solid var(--p);color:var(--t1);font-size:12px;padding:3px 6px;border-radius:4px;width:100%" readonly onclick="this.select()">';
-    if (typeof showToast==='function') showToast('Suggested: '+alt, 'success');
-  } catch(e) { if (typeof showToast==='function') showToast('Could not suggest alt', 'error'); }
-};
+window._seoImgSuggest = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoImgSuggest call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
 // Build 3 — Anchor analysis renderer (extends existing 'links' tab)
 // Override _seoLinks if it exists, otherwise add it.
 var _seoLinksOriginal = window._seoLinks;
 window._seoLinks = function () { try { console.warn('[LU SEO 15.4] dead path: _seoLinks call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
-  // sourceId is an article id from seo_content_index? Actually opportunity returns source_id which is the indexed page id, not the article id.
-  // For staging-MVP: prompt user for article id (most pages map 1:1 to an article).
-  var artIdRaw = null; // P0-AUD-FIX1: native prompt() removed. This function lives in the dead W2S1 block (see banner at top of file); the canonical lgse path is the only live runtime entry.
-  if (!artIdRaw) return;
-  var artId = parseInt(artIdRaw, 10);
-  if (!artId) return;
-  try {
-    var r = await _seoApi('POST', '/links/insert', { article_id: artId, anchor_text: anchor, target_url: targetUrl });
-    if (r && r.pending_approval) {
-      if (typeof showToast==='function') showToast('Link insertion sent for approval', 'success');
-    } else {
-      if (typeof showToast==='function') showToast('Insert response: '+JSON.stringify(r).slice(0,80), 'info');
-    }
-  } catch(e) { if (typeof showToast==='function') showToast('Insert failed', 'error'); }
-};
+window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoApplyLink call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SEO Week 2 Session 2 (LB-SEO-W2S2, 2026-04-27) — Frontend extension
@@ -1069,291 +402,22 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
   // ── Override _seoLinks again (W2S2): extends with Link Graph + Equity sections.
   var _seoLinksW2S1 = window._seoLinks;
-  window._seoLinks = async function (el) {
-    try {
-      var anchorR = await _seoApi('GET', '/links/anchor-analysis');
-      var anchors = (anchorR && anchorR.issues) || [];
-      var bulkR = await _seoApi('GET', '/anchors/bulk-analysis').catch(function () { return null; });
-      var distribution = (bulkR && bulkR.distribution) || [];
-      var bulkSummary = (bulkR && bulkR.summary) || null;
-      var opps = await _seoApi('GET', '/link-opportunities');
-      var oppsArr = (opps && opps.opportunities) || [];
-      var orphArr = (opps && opps.orphans) || [];
-      var graphR = await _seoApi('GET', '/link-graph').catch(function () { return null; });
-      var graphNodes = (graphR && graphR.nodes) || [];
-
-      // Wave 15 (2026-05-18) — fetch suggested-link count for the bulk
-      // "Apply top 20" button. Cheap one-call probe; doesn't block render
-      // if the legacy endpoint isn't there.
-      var legacyLinks = null;
-      try { legacyLinks = await _seoApi('GET', '/links'); } catch(e) {}
-      var legacyArr = (legacyLinks && (legacyLinks.suggestions || legacyLinks.links || legacyLinks)) || [];
-      var suggestedCount = Array.isArray(legacyArr) ? legacyArr.filter(function(l){ return !l.status || l.status === 'suggested'; }).length : 0;
-      var bulkBtn = suggestedCount > 0
-        ? '<button onclick="_seoApplyTopLinks(20)" title="Bulk-apply the top 20 queued suggestions (orphan targets first)" style="background:#10B981;color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">⚡ Apply top 20</button>'
-        : '';
-
-      var h = '';
-      h += '<div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
-      h += '<div><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Link Intelligence</h2>';
-      h += '<p style="font-size:13px;color:var(--t2);margin:0">Real link graph + anchor analysis + equity flow.' + (suggestedCount > 0 ? ' · <span style="color:var(--am)">' + suggestedCount + ' queued suggestion(s)</span>' : '') + '</p></div>';
-      h += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      h += bulkBtn;
-      h += '<button onclick="_seoBuildLinkGraph()" style="background:var(--p);color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Build Link Graph</button>';
-      h += '<button onclick="_seoCalcEquity()" style="background:none;border:1px solid var(--p);color:var(--p);padding:7px 13px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Calculate Equity</button>';
-      h += '</div></div>';
-
-      // ── Anchor distribution summary ───────────────────────────────
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Anchor distribution</div>';
-      if (bulkSummary) {
-        var totalIssues = bulkSummary.total_issues || 0;
-        var generic = bulkSummary.generic_issues || 0;
-        var overOpt = bulkSummary.over_optimised || 0;
-        var ok = Math.max(0, totalIssues - generic - overOpt);
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px">';
-        h += '<div><div style="font-size:11px;color:var(--t3);margin-bottom:6px">Generic</div><div style="font-size:18px;font-weight:700;color:#EF4444">' + generic + '</div>' + bar(totalIssues > 0 ? generic / totalIssues * 100 : 0, '#EF4444') + '</div>';
-        h += '<div><div style="font-size:11px;color:var(--t3);margin-bottom:6px">Over-optimised</div><div style="font-size:18px;font-weight:700;color:#F59E0B">' + overOpt + '</div>' + bar(totalIssues > 0 ? overOpt / totalIssues * 100 : 0, '#F59E0B') + '</div>';
-        h += '<div><div style="font-size:11px;color:var(--t3);margin-bottom:6px">Other</div><div style="font-size:18px;font-weight:700;color:#10B981">' + ok + '</div>' + bar(totalIssues > 0 ? ok / totalIssues * 100 : 0, '#10B981') + '</div>';
-        h += '</div>';
-      } else {
-        h += '<div style="padding:18px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px;margin-bottom:18px">Run anchor bulk analysis to see distribution.</div>';
-      }
-
-      // ── Anchor issues table ───────────────────────────────────────
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Anchor issues</div>';
-      if (anchors.length === 0) {
-        h += '<div style="padding:18px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px;margin-bottom:18px">No anchor issues found.</div>';
-      } else {
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:18px"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-        h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-        ['Article', 'Anchor', 'Issue', 'Fix'].forEach(function (c) { h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">' + c + '</th>'; });
-        h += '</tr></thead><tbody>';
-        anchors.slice(0, 20).forEach(function (a) {
-          var col = (a.issue_type === 'over_optimised' || a.issue_type === 'over_optimised_exact') ? '#F87171' : (a.issue_type === 'too_long' ? '#F59E0B' : '#FBBF24');
-          h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-          h += '<td style="padding:9px 12px;color:var(--t2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(a.article_title) + '</td>';
-          h += '<td style="padding:9px 12px;color:var(--t1);font-weight:600">"' + esc(a.anchor_text) + '"</td>';
-          h += '<td style="padding:9px 12px">' + chip(a.issue_label || '', col) + '</td>';
-          h += '<td style="padding:9px 12px;color:var(--t2);font-size:11px">' + esc(a.fix) + '</td></tr>';
-        });
-        h += '</tbody></table></div>';
-      }
-
-      // ── Link opportunities (existing) ─────────────────────────────
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Link opportunities</div>';
-      if (oppsArr.length === 0) {
-        h += '<div style="padding:18px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px;margin-bottom:18px">Need ≥2 indexed pages with overlapping topics.</div>';
-      } else {
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:18px"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-        h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-        ['Source', 'Target', 'Anchor', 'Score', 'Action'].forEach(function (c) { h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">' + c + '</th>'; });
-        h += '</tr></thead><tbody>';
-        oppsArr.slice(0, 20).forEach(function (o) {
-          h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-          h += '<td style="padding:9px 12px;color:var(--t2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(o.source_title || o.source_url) + '</td>';
-          h += '<td style="padding:9px 12px;color:var(--t2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(o.target_title || o.target_url) + '</td>';
-          h += '<td style="padding:9px 12px;color:var(--t1)">"' + esc(o.suggested_anchor) + '"</td>';
-          h += '<td style="padding:9px 12px">' + chip(String(o.score || 0), scoreColor(o.score || 0)) + '</td>';
-          h += '<td style="padding:9px 12px"><button onclick="_seoApplyLink(' + (o.source_id || 0) + ',\'' + esc(o.suggested_anchor).replace(/\'/g, "\\'") + '\',\'' + esc(o.target_url).replace(/\'/g, "\\'") + '\')" style="background:none;border:1px solid var(--p);color:var(--p);padding:3px 10px;border-radius:5px;font-size:10px;cursor:pointer">Apply →</button></td></tr>';
-        });
-        h += '</tbody></table></div>';
-      }
-
-      // ── Equity leaders (top 5 by equity_score) ────────────────────
-      var equityLeaders = (graphNodes || []).slice().sort(function (a, b) { return (b.equity_score || 0) - (a.equity_score || 0); }).slice(0, 5);
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-top:8px;margin-bottom:10px">Equity leaders (top 5)</div>';
-      if (equityLeaders.length === 0 || !equityLeaders[0].equity_score) {
-        h += '<div style="padding:14px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px;margin-bottom:18px">Click "Calculate Equity" to compute PageRank-style scores.</div>';
-      } else {
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:8px;margin-bottom:18px">';
-        equityLeaders.forEach(function (n) {
-          h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.03)">';
-          h += '<span style="font-size:12px;color:var(--t2);max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.title || n.url) + '</span>';
-          h += '<span style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;color:var(--t3)">in:' + (n.inbound || 0) + '</span>' + chip('Equity ' + (n.equity_score || 0), scoreColor(n.equity_score || 0)) + '</span>';
-          h += '</div>';
-        });
-        h += '</div>';
-      }
-
-      // ── Orphan pages (existing) ──────────────────────────────────
-      if (orphArr.length > 0) {
-        h += '<div style="font-size:13px;font-weight:600;color:var(--am);margin-top:6px;margin-bottom:8px">Orphan pages (no inbound internal links)</div>';
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px"><ul style="margin:0;padding-left:20px;font-size:12px;color:var(--t2)">';
-        orphArr.slice(0, 10).forEach(function (o) {
-          h += '<li><a href="' + esc(o.url) + '" target="_blank" style="color:var(--t2)">' + esc(o.title || o.url) + '</a> · ' + (o.word_count || 0) + ' words · score ' + (o.content_score || 0) + '</li>';
-        });
-        h += '</ul></div>';
-      }
-
-      // ── Equity redistribution suggestions ────────────────────────
-      h += '<div id="seo-equity-suggestions" style="margin-top:18px"></div>';
-
-      el.innerHTML = h;
-
-      // Lazy-load equity suggestions (only useful after equity calc).
-      _seoApi('GET', '/equity/suggestions').then(function (sugg) {
-        var arr = Array.isArray(sugg) ? sugg : ((sugg && sugg.data) || []);
-        if (!arr || arr.length === 0) return;
-        var container = document.getElementById('seo-equity-suggestions');
-        if (!container) return;
-        var hh = '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Redistribution suggestions</div>';
-        hh += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-        hh += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-        ['From', 'To', 'Reason', 'Gain', 'Action'].forEach(function (c) { hh += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">' + c + '</th>'; });
-        hh += '</tr></thead><tbody>';
-        arr.slice(0, 8).forEach(function (s) {
-          hh += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-          hh += '<td style="padding:9px 12px;color:var(--t2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(s.from_title || s.from_url) + '</td>';
-          hh += '<td style="padding:9px 12px;color:var(--t2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(s.to_title || s.to_url) + '</td>';
-          hh += '<td style="padding:9px 12px;color:var(--t2);font-size:11px">' + esc(s.reason || '') + '</td>';
-          hh += '<td style="padding:9px 12px">' + chip('+' + (s.estimated_equity_gain || 0), '#10B981') + '</td>';
-          hh += '<td style="padding:9px 12px"><button onclick="_seoApplyLink(0,\'\',\'' + esc(s.to_url).replace(/\'/g, "\\'") + '\')" style="background:none;border:1px solid var(--p);color:var(--p);padding:3px 10px;border-radius:5px;font-size:10px;cursor:pointer">Apply</button></td></tr>';
-        });
-        hh += '</tbody></table></div>';
-        container.innerHTML = hh;
-      }).catch(function () { /* silent — endpoint exists, just empty */ });
-    } catch (e) {
-      el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load: ' + (e.message || e) + '</div>';
-    }
-  };
+  window._seoLinks = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoLinks call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Build link graph button ──────────────────────────────────────────
-  window._seoBuildLinkGraph = async function () {
-    toast('Building link graph — fetching pages…', 'info');
-    try {
-      var r = await _seoApi('POST', '/link-graph/build', {});
-      var msg = 'Graph built: ' + (r.pages_processed || 0) + ' pages → ' + (r.total_links || 0) + ' links (' + (r.internal_links || 0) + ' int / ' + (r.external_links || 0) + ' ext)';
-      toast(msg, 'success');
-      _seoLinks(document.getElementById('seo-content'));
-    } catch (e) { toast('Build failed: ' + (e.message || ''), 'error'); }
-  };
+  window._seoBuildLinkGraph = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoBuildLinkGraph call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Calculate equity button ──────────────────────────────────────────
-  window._seoCalcEquity = async function () {
-    toast('Running PageRank-style equity flow…', 'info');
-    try {
-      var r = await _seoApi('POST', '/equity/calculate', {});
-      toast('Equity calculated: ' + (r.pages_scored || 0) + ' pages over ' + (r.iterations || 0) + ' iterations.', 'success');
-      _seoLinks(document.getElementById('seo-content'));
-    } catch (e) { toast('Equity calc failed: ' + (e.message || ''), 'error'); }
-  };
+  window._seoCalcEquity = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoCalcEquity call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ─────────────────────────────────────────────────────────────────────
   // Topics tab — Semantic clusters
   // ─────────────────────────────────────────────────────────────────────
-  window._seoTopics = async function (el) {
-    try {
-      var [authR, gapsR] = await Promise.all([
-        _seoApi('GET', '/topics/authority').catch(function () { return null; }),
-        _seoApi('GET', '/clusters/gaps').catch(function () { return null; }),
-      ]);
-      var topics = (authR && authR.topics) || [];
-      var gaps = (gapsR && gapsR.gaps) || [];
+  window._seoTopics = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoTopics call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      var h = '';
-      h += '<div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">';
-      h += '<div><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Topic Authority</h2>';
-      h += '<p style="font-size:13px;color:var(--t2);margin:0">Semantic clusters built from your indexed content (TF-IDF + cosine similarity).</p></div>';
-      h += '<button onclick="_seoBuildClusters()" style="background:var(--p);color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Build Clusters</button>';
-      h += '</div>';
+  window._seoBuildClusters = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoBuildClusters call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      if (topics.length === 0) {
-        h += '<div style="padding:40px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px;margin-bottom:18px">';
-        h += '<div style="font-size:36px;margin-bottom:12px">📚</div>';
-        h += '<div style="font-size:14px;color:var(--t2);margin-bottom:8px">No topic clusters yet.</div>';
-        h += '<div style="font-size:12px;color:var(--t3)">Click <b>Build Clusters</b> to group your indexed pages by topic. Needs ≥2 pages with overlapping content.</div>';
-        h += '</div>';
-        el.innerHTML = h;
-        return;
-      }
-
-      // Topic table
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:18px"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-      ['Topic', 'Authority', 'Pages', 'Avg score', 'Completeness', 'Pillar', 'Action'].forEach(function (c) { h += '<th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">' + c + '</th>'; });
-      h += '</tr></thead><tbody>';
-      topics.slice(0, 30).forEach(function (t) {
-        h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-        h += '<td style="padding:9px 12px;color:var(--t1);font-weight:600">' + esc(t.topic) + '</td>';
-        h += '<td style="padding:9px 12px">' + chip(String(t.authority || 0), scoreColor(t.authority || 0)) + '</td>';
-        h += '<td style="padding:9px 12px;color:var(--t2)">' + (t.member_count || 0) + '</td>';
-        h += '<td style="padding:9px 12px;color:var(--t2)">' + (t.avg_content_score || 0) + '</td>';
-        h += '<td style="padding:9px 12px;width:120px">' + bar(t.completeness_score || 0, scoreColor(t.completeness_score || 0)) + '<div style="font-size:10px;color:var(--t3);margin-top:2px">' + (t.completeness_score || 0) + '/100</div></td>';
-        h += '<td style="padding:9px 12px">' + (t.has_pillar ? chip('✓ pillar', '#10B981') : chip('no pillar', '#F87171')) + '</td>';
-        h += '<td style="padding:9px 12px"><button onclick="_seoViewCluster(' + (t.cluster_id || 0) + ')" style="background:none;border:1px solid var(--p);color:var(--p);padding:3px 10px;border-radius:5px;font-size:10px;cursor:pointer">View →</button></td>';
-        h += '</tr>';
-      });
-      h += '</tbody></table></div>';
-
-      // Cluster gaps
-      if (gaps.length > 0) {
-        h += '<div style="font-size:13px;font-weight:600;color:var(--am);margin-bottom:10px">Cluster gaps (' + gaps.length + ')</div>';
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:8px">';
-        gaps.slice(0, 8).forEach(function (g) {
-          h += '<div style="padding:10px;border-bottom:1px solid rgba(255,255,255,.03)">';
-          h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
-          h += '<span style="font-size:13px;color:var(--t1);font-weight:600">' + esc(g.topic) + '</span>';
-          h += '<span style="display:flex;gap:6px">';
-          (g.gaps || []).forEach(function (gg) { h += chip(gg.replace(/_/g, ' '), '#F59E0B'); });
-          h += '</span></div>';
-          h += '<div style="font-size:11px;color:var(--t2)">' + esc(g.recommendation || '') + '</div>';
-          h += '</div>';
-        });
-        h += '</div>';
-      }
-
-      // Detail panel mount point
-      h += '<div id="seo-cluster-detail" style="margin-top:18px"></div>';
-      el.innerHTML = h;
-    } catch (e) {
-      el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load: ' + (e.message || e) + '</div>';
-    }
-  };
-
-  window._seoBuildClusters = async function () {
-    toast('Building semantic clusters…', 'info');
-    try {
-      var r = await _seoApi('POST', '/clusters/build', {});
-      var n = Array.isArray(r) ? r.length : (r && r.length) || 0;
-      if (n === 0) {
-        toast('No clusters formed — need ≥2 indexed pages with overlapping topics.', 'info');
-      } else {
-        toast('Built ' + n + ' cluster' + (n === 1 ? '' : 's') + '.', 'success');
-      }
-      _seoTopics(document.getElementById('seo-content'));
-    } catch (e) { toast('Cluster build failed: ' + (e.message || ''), 'error'); }
-  };
-
-  window._seoViewCluster = async function (clusterId) {
-    if (!clusterId) return;
-    var detail = document.getElementById('seo-cluster-detail');
-    if (!detail) return;
-    detail.innerHTML = (typeof loadingCard === 'function') ? loadingCard(120) : 'Loading…';
-    try {
-      var r = await _seoApi('GET', '/clusters/' + clusterId + '/members');
-      var members = (r && r.members) || [];
-      var hh = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px">';
-      hh += '<div style="display:flex;justify-content:space-between;margin-bottom:10px"><div style="font-size:13px;font-weight:600;color:var(--t1)">Cluster #' + clusterId + ' — ' + members.length + ' member' + (members.length === 1 ? '' : 's') + '</div>';
-      hh += '<button onclick="document.getElementById(\'seo-cluster-detail\').innerHTML=\'\'" style="background:none;border:1px solid var(--bd);color:var(--t3);padding:3px 10px;border-radius:5px;font-size:10px;cursor:pointer">Close</button></div>';
-      if (members.length === 0) {
-        hh += '<div style="padding:14px;color:var(--t3);text-align:center">No members.</div>';
-      } else {
-        hh += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
-        hh += '<thead><tr style="border-bottom:1px solid var(--bd)"><th style="text-align:left;padding:8px 12px;font-size:10px;color:var(--t3);text-transform:uppercase">Page</th><th style="padding:8px 12px;font-size:10px;color:var(--t3);text-transform:uppercase">Content</th><th style="padding:8px 12px;font-size:10px;color:var(--t3);text-transform:uppercase">Words</th><th style="padding:8px 12px;font-size:10px;color:var(--t3);text-transform:uppercase">Pillar</th></tr></thead><tbody>';
-        members.forEach(function (m) {
-          hh += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-          hh += '<td style="padding:8px 12px;color:var(--t2);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="' + esc(m.page_url) + '" target="_blank" style="color:var(--t2)">' + esc(m.page_title || m.page_url) + '</a></td>';
-          hh += '<td style="padding:8px 12px;text-align:center">' + chip(String(m.content_score || 0), scoreColor(m.content_score || 0)) + '</td>';
-          hh += '<td style="padding:8px 12px;text-align:center;color:var(--t2)">' + (m.word_count || 0) + '</td>';
-          hh += '<td style="padding:8px 12px;text-align:center">' + (m.is_pillar ? chip('★', '#10B981') : '<span style="color:var(--t3)">—</span>') + '</td>';
-          hh += '</tr>';
-        });
-        hh += '</tbody></table>';
-      }
-      hh += '</div>';
-      detail.innerHTML = hh;
-    } catch (e) { detail.innerHTML = '<div style="padding:14px;color:var(--rd)">Failed: ' + (e.message || e) + '</div>'; }
-  };
+  window._seoViewCluster = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoViewCluster call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // If shell already rendered (user navigated to SEO before this script ran),
   // inject the Topics tab immediately.
@@ -1397,362 +461,25 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   window._seoSwitchTab = function () { try { console.warn('[LU SEO 15.4] dead path: _seoSwitchTab call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Competitors tab ──────────────────────────────────────────────────────
-  window._seoCompetitors = async function (el) {
-    try {
-      var trackedR = await _seoApi('GET', '/competitors/tracked').catch(function () { return null; });
-      var tracked = (trackedR && trackedR.tracked) || [];
+  window._seoCompetitors = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoCompetitors call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      var h = '';
-      h += '<div style="margin-bottom:16px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Competitor Analysis</h2>';
-      h += '<p style="font-size:13px;color:var(--t2);margin:0">Top 10 SERP competitors per keyword + content-gap analysis.</p></div>';
+  window._seoCmpAnalyze = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoCmpAnalyze call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      // ── Keyword analysis panel ─────────────────────────────────────
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:18px;margin-bottom:18px">';
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Analyze a keyword</div>';
-      h += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      h += '<input id="cmp-kw" type="text" class="form-input" placeholder="e.g. digital marketing dubai" style="flex:1;min-width:240px;padding:9px 11px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:6px;font-size:13px">';
-      h += '<input id="cmp-loc" type="text" class="form-input" placeholder="Location" value="United Arab Emirates" style="width:200px;padding:9px 11px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:6px;font-size:13px">';
-      h += '<button onclick="_seoCmpAnalyze()" style="background:var(--p);color:#fff;border:0;padding:9px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Analyze</button>';
-      h += '</div>';
-      h += '<div id="cmp-results" style="margin-top:14px"></div>';
-      h += '</div>';
+  window._seoCmpGaps = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoCmpGaps call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      // ── Comparison panel ───────────────────────────────────────────
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:18px;margin-bottom:18px">';
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Compare your page vs SERP</div>';
-      h += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      h += '<input id="cmp-your-url" type="text" class="form-input" placeholder="Your URL (must be in indexed content)" style="flex:1;min-width:240px;padding:9px 11px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:6px;font-size:13px">';
-      h += '<input id="cmp-cmp-kw" type="text" class="form-input" placeholder="Target keyword" style="width:240px;padding:9px 11px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:6px;font-size:13px">';
-      h += '<button onclick="_seoCmpCompare()" style="background:none;border:1px solid var(--p);color:var(--p);padding:8px 15px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Compare</button>';
-      h += '</div>';
-      h += '<div id="cmp-compare-results" style="margin-top:14px"></div>';
-      h += '</div>';
+  window._seoCmpCompare = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoCmpCompare call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      // ── Tracked competitors ────────────────────────────────────────
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:18px">';
-      h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1)">Tracked competitor domains</div></div>';
-      h += '<div style="display:flex;gap:8px;margin-bottom:12px">';
-      h += '<input id="cmp-track-dom" type="text" class="form-input" placeholder="competitor.com" style="flex:1;padding:9px 11px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:6px;font-size:13px">';
-      h += '<button onclick="_seoCmpTrack()" style="background:var(--p);color:#fff;border:0;padding:9px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Track</button>';
-      h += '</div>';
-      if (tracked.length === 0) {
-        h += '<div style="padding:14px;text-align:center;color:var(--t3);font-size:12px">No competitors tracked yet.</div>';
-      } else {
-        h += '<div>';
-        tracked.forEach(function (c) {
-          h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid rgba(255,255,255,.03)">';
-          h += '<span style="font-size:13px;color:var(--t2)">' + escW3(c.competitor_domain) + '</span>';
-          h += '<span style="font-size:11px;color:var(--t3)">' + (c.last_analyzed_at ? 'analyzed ' + escW3(c.last_analyzed_at) : 'not yet analyzed') + '</span>';
-          h += '</div>';
-        });
-        h += '</div>';
-      }
-      h += '</div>';
-
-      el.innerHTML = h;
-    } catch (e) {
-      el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load: ' + (e.message || e) + '</div>';
-    }
-  };
-
-  window._seoCmpAnalyze = async function () {
-    var kw = document.getElementById('cmp-kw');
-    var loc = document.getElementById('cmp-loc');
-    var box = document.getElementById('cmp-results');
-    if (!kw || !box) return;
-    if (!kw.value.trim()) { toastW3('Enter a keyword first.', 'error'); return; }
-    box.innerHTML = loadingW3();
-    try {
-      var r = await _seoApi('POST', '/competitors/analyze', { keyword: kw.value.trim(), location: (loc && loc.value) || 'United Arab Emirates' });
-      var arr = (r && r.competitors) || [];
-      if (arr.length === 0) {
-        box.innerHTML = '<div style="padding:14px;text-align:center;color:var(--t3);background:var(--s2);border-radius:6px;font-size:12px">No SERP data — DataForSEO may not be configured.</div>';
-        return;
-      }
-      var h = '<div style="background:var(--s2);border-radius:6px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-      ['Rank', 'Title', 'Domain', 'Words', 'URL'].forEach(function (c) { h += '<th style="text-align:left;padding:9px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">' + c + '</th>'; });
-      h += '</tr></thead><tbody>';
-      arr.forEach(function (c) {
-        h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-        h += '<td style="padding:8px 12px;color:var(--t2);font-weight:600">#' + (c.rank || 0) + '</td>';
-        h += '<td style="padding:8px 12px;color:var(--t1);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escW3(c.title) + '</td>';
-        h += '<td style="padding:8px 12px;color:var(--t2)">' + escW3(c.domain) + '</td>';
-        h += '<td style="padding:8px 12px;color:var(--t2)">' + (c.est_word_count || 0) + '</td>';
-        h += '<td style="padding:8px 12px"><a href="' + escW3(c.url) + '" target="_blank" style="color:var(--p);font-size:11px">↗</a></td>';
-        h += '</tr>';
-      });
-      h += '</tbody></table></div>';
-      // Trigger gap analysis lazily.
-      h += '<div id="cmp-gaps-mount" style="margin-top:14px"><button onclick="_seoCmpGaps()" style="background:none;border:1px solid var(--p);color:var(--p);padding:7px 13px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Find content gaps with AI</button></div>';
-      box.innerHTML = h;
-    } catch (e) { box.innerHTML = '<div style="color:var(--rd);padding:14px">Failed: ' + (e.message || e) + '</div>'; }
-  };
-
-  window._seoCmpGaps = async function () {
-    var kw = document.getElementById('cmp-kw');
-    var mount = document.getElementById('cmp-gaps-mount');
-    if (!kw || !mount) return;
-    mount.innerHTML = loadingW3();
-    try {
-      var r = await _seoApi('POST', '/competitors/gaps', { keyword: kw.value.trim() });
-      var gaps = (r && r.gaps) || [];
-      if (gaps.length === 0) { mount.innerHTML = '<div style="padding:10px;color:var(--t3);font-size:12px">No gaps detected (or AI runtime unavailable).</div>'; return; }
-      var h = '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:8px">AI-detected content gaps</div>';
-      h += '<div style="background:var(--s2);border-radius:6px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-      ['Topic', 'Found in', 'Priority', 'Suggested heading'].forEach(function (c) { h += '<th style="text-align:left;padding:9px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">' + c + '</th>'; });
-      h += '</tr></thead><tbody>';
-      gaps.forEach(function (g) {
-        var pcol = g.priority === 'high' ? '#EF4444' : (g.priority === 'medium' ? '#F59E0B' : '#10B981');
-        h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-        h += '<td style="padding:8px 12px;color:var(--t1);font-weight:600">' + escW3(g.topic) + '</td>';
-        h += '<td style="padding:8px 12px;color:var(--t2)">' + (g.found_in_n_competitors || 0) + ' / 10</td>';
-        h += '<td style="padding:8px 12px">' + chipW3(g.priority || '', pcol) + '</td>';
-        h += '<td style="padding:8px 12px;color:var(--t2);font-size:11px">' + escW3(g.suggested_heading || '') + '</td>';
-        h += '</tr>';
-      });
-      h += '</tbody></table></div>';
-      mount.innerHTML = h;
-    } catch (e) { mount.innerHTML = '<div style="color:var(--rd);padding:10px">Failed: ' + (e.message || e) + '</div>'; }
-  };
-
-  window._seoCmpCompare = async function () {
-    var url = document.getElementById('cmp-your-url');
-    var kw = document.getElementById('cmp-cmp-kw');
-    var box = document.getElementById('cmp-compare-results');
-    if (!url || !kw || !box) return;
-    if (!url.value.trim() || !kw.value.trim()) { toastW3('Enter both URL and keyword.', 'error'); return; }
-    box.innerHTML = loadingW3();
-    try {
-      var r = await _seoApi('POST', '/competitors/compare', { your_url: url.value.trim(), keyword: kw.value.trim() });
-      if (r && r.error) { box.innerHTML = '<div style="padding:14px;color:var(--am);background:var(--s2);border-radius:6px;font-size:12px">Your URL is not in the indexed content table. Run "outbound scan" or "indexed content" first.</div>'; return; }
-      var you = r.your_page || {};
-      var avg = r.competitor_avg || {};
-      var gaps = r.gaps || [];
-      var recs = r.recommendations || [];
-      var h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px">';
-      h += '<div style="background:var(--s2);padding:12px;border-radius:6px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Your words</div><div style="font-size:20px;font-weight:700;color:var(--t1)">' + (you.word_count || 0) + '</div></div>';
-      h += '<div style="background:var(--s2);padding:12px;border-radius:6px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Avg competitor words</div><div style="font-size:20px;font-weight:700;color:var(--t1)">' + (avg.word_count || 0) + '</div></div>';
-      h += '<div style="background:var(--s2);padding:12px;border-radius:6px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Your content score</div><div style="font-size:20px;font-weight:700;">' + chipW3((you.content_score || 0), scoreColorW3(you.content_score || 0)) + '</div></div>';
-      h += '<div style="background:var(--s2);padding:12px;border-radius:6px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Word delta</div><div style="font-size:20px;font-weight:700;color:' + ((r.word_count_delta || 0) >= 0 ? '#10B981' : '#EF4444') + '">' + (r.word_count_delta > 0 ? '+' : '') + (r.word_count_delta || 0) + '</div></div>';
-      h += '</div>';
-      if (gaps.length > 0) {
-        h += '<div style="font-size:13px;font-weight:600;color:var(--am);margin-bottom:8px">Gaps</div>';
-        h += '<ul style="margin:0;padding-left:18px;font-size:12px;color:var(--t2)">';
-        gaps.forEach(function (g) { var pcol = g.priority === 'high' ? '#EF4444' : (g.priority === 'medium' ? '#F59E0B' : '#10B981'); h += '<li style="margin-bottom:4px">' + chipW3(g.priority || '', pcol) + ' ' + escW3(g.description || '') + '</li>'; });
-        h += '</ul>';
-      }
-      if (recs.length > 0) {
-        h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-top:12px;margin-bottom:8px">Recommendations</div>';
-        h += '<ul style="margin:0;padding-left:18px;font-size:12px;color:var(--t2)">';
-        recs.forEach(function (rc) { h += '<li style="margin-bottom:4px">' + escW3(rc.action || '') + '</li>'; });
-        h += '</ul>';
-      }
-      box.innerHTML = h;
-    } catch (e) { box.innerHTML = '<div style="color:var(--rd);padding:14px">Failed: ' + (e.message || e) + '</div>'; }
-  };
-
-  window._seoCmpTrack = async function () {
-    var input = document.getElementById('cmp-track-dom');
-    if (!input) return;
-    if (!input.value.trim()) { toastW3('Enter a domain first.', 'error'); return; }
-    try {
-      await _seoApi('POST', '/competitors/track', { competitor_domain: input.value.trim() });
-      toastW3('Competitor tracked.', 'success');
-      input.value = '';
-      _seoCompetitors(document.getElementById('seo-content'));
-    } catch (e) { toastW3('Failed: ' + (e.message || ''), 'error'); }
-  };
+  window._seoCmpTrack = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoCmpTrack call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Replace _seoInsights stub ────────────────────────────────────────────
-  window._seoInsights = async function (el) {
-    try {
-      var [traffic, top, perf, summ] = await Promise.all([
-        _seoApi('GET', '/insights/traffic?days=28').catch(function () { return null; }),
-        _seoApi('GET', '/insights/top-pages?days=28&limit=10').catch(function () { return null; }),
-        _seoApi('GET', '/insights/content-performance').catch(function () { return null; }),
-        _seoApi('GET', '/insights/summary').catch(function () { return null; }),
-      ]);
-
-      var t = traffic || {};
-      var pages = (top && top.pages) || [];
-      var p = perf || {};
-      var s = summ || {};
-
-      var h = '';
-      h += '<div style="margin-bottom:16px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Traffic Insights</h2>';
-      h += '<p style="font-size:13px;color:var(--t2);margin:0">28-day GSC data + content score correlation.</p></div>';
-
-      // Headline cards
-      var dirIcon = t.direction === 'up' ? '↑' : (t.direction === 'down' ? '↓' : '→');
-      var dirCol = t.direction === 'up' ? '#10B981' : (t.direction === 'down' ? '#EF4444' : '#9ca3af');
-      h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px">';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);padding:14px;border-radius:8px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Total clicks (28d)</div><div style="font-size:22px;font-weight:700;color:var(--t1)">' + (t.total_clicks || 0).toLocaleString() + '</div></div>';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);padding:14px;border-radius:8px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Total impressions</div><div style="font-size:22px;font-weight:700;color:var(--t1)">' + (t.total_impressions || 0).toLocaleString() + '</div></div>';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);padding:14px;border-radius:8px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Trend</div><div style="font-size:22px;font-weight:700;color:' + dirCol + '">' + dirIcon + ' ' + (t.change_pct || 0) + '%</div></div>';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);padding:14px;border-radius:8px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase">Content correlation</div><div style="font-size:22px;font-weight:700;color:var(--t1)">' + escW3((p.correlation || 'weak')) + '</div></div>';
-      h += '</div>';
-
-      // AI insights / recommendations
-      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);padding:14px;border-radius:8px"><div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:8px">Key insights</div>';
-      if ((s.insights || []).length === 0) {
-        h += '<div style="font-size:12px;color:var(--t3)">Not enough data yet — sync GSC and re-run.</div>';
-      } else {
-        h += '<ul style="margin:0;padding-left:18px;font-size:12px;color:var(--t2)">';
-        s.insights.forEach(function (i) { h += '<li style="margin-bottom:6px">' + escW3(i) + '</li>'; });
-        h += '</ul>';
-      }
-      h += '</div>';
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);padding:14px;border-radius:8px"><div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:8px">Recommendations</div>';
-      if ((s.recommendations || []).length === 0) {
-        h += '<div style="font-size:12px;color:var(--t3)">No recommendations yet.</div>';
-      } else {
-        h += '<ul style="margin:0;padding-left:18px;font-size:12px;color:var(--t2)">';
-        s.recommendations.forEach(function (i) { h += '<li style="margin-bottom:6px">' + escW3(i) + '</li>'; });
-        h += '</ul>';
-      }
-      h += '</div></div>';
-
-      // Top pages table
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Top pages by traffic</div>';
-      if (pages.length === 0) {
-        h += '<div style="padding:14px;text-align:center;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:8px;margin-bottom:18px">No GSC data yet. Connect Search Console and run a sync.</div>';
-      } else {
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:18px"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-        h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
-        ['URL', 'Title', 'Clicks', 'Impr', 'CTR', 'Pos', 'Score'].forEach(function (c) { h += '<th style="text-align:left;padding:9px 12px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">' + c + '</th>'; });
-        h += '</tr></thead><tbody>';
-        pages.forEach(function (p) {
-          h += '<tr style="border-bottom:1px solid rgba(255,255,255,.03)">';
-          h += '<td style="padding:8px 12px;color:var(--t2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="' + escW3(p.url) + '" target="_blank" style="color:var(--t2);font-size:11px">' + escW3(p.url) + '</a></td>';
-          h += '<td style="padding:8px 12px;color:var(--t1);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escW3(p.title) + '</td>';
-          h += '<td style="padding:8px 12px;color:var(--t1);font-weight:600">' + (p.clicks || 0) + '</td>';
-          h += '<td style="padding:8px 12px;color:var(--t2)">' + (p.impressions || 0) + '</td>';
-          h += '<td style="padding:8px 12px;color:var(--t2)">' + Math.round((p.ctr || 0) * 100 * 100) / 100 + '%</td>';
-          h += '<td style="padding:8px 12px;color:var(--t2)">' + (p.position || 0) + '</td>';
-          h += '<td style="padding:8px 12px">' + chipW3((p.content_score || 0), scoreColorW3(p.content_score || 0)) + '</td>';
-          h += '</tr>';
-        });
-        h += '</tbody></table></div>';
-      }
-
-      // Opportunity pages
-      var opps = p.opportunity_pages || [];
-      if (opps.length > 0) {
-        h += '<div style="font-size:13px;font-weight:600;color:var(--am);margin-bottom:8px">Lift-potential pages (high impressions, weak content)</div>';
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:8px">';
-        opps.slice(0, 5).forEach(function (o) {
-          h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid rgba(255,255,255,.03)">';
-          h += '<span style="font-size:12px;color:var(--t2);max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escW3(o.title || o.url) + '</span>';
-          h += '<span style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;color:var(--t3)">' + (o.clicks || 0) + ' clicks · score ' + (o.score || 0) + '</span>' + chipW3('+' + (o.potential_gain || 0) + ' lift', '#10B981') + '</span>';
-          h += '</div>';
-        });
-        h += '</div>';
-      }
-
-      el.innerHTML = h;
-    } catch (e) {
-      el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load: ' + (e.message || e) + '</div>';
-    }
-  };
+  window._seoInsights = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoInsights call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Replace _seoReports stub ─────────────────────────────────────────────
-  window._seoReports = async function (el) {
-    try {
-      var report = await _seoApi('GET', '/reports/audit');
+  window._seoReports = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoReports call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      var token = localStorage.getItem('lu_token') || '';
-      // PDF/HTML/CSV downloads must be GET with Authorization header → use fetch + Blob.
-      var dlBase = window.location.origin + '/api/seo';
+  window._seoDownloadReport = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoDownloadReport call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      var h = '';
-      h += '<div style="margin-bottom:16px"><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">SEO Reports</h2>';
-      h += '<p style="font-size:13px;color:var(--t2);margin:0">Generate audit report (PDF / HTML) + raw data CSV exports.</p></div>';
-
-      // Audit summary card
-      var score = report.health_score || 0;
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);padding:18px;border-radius:10px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center">';
-      h += '<div><div style="font-size:11px;color:var(--t3);text-transform:uppercase;margin-bottom:4px">Health</div><div style="font-size:32px;font-weight:700;color:' + scoreColorW3(score) + '">' + score + '/100</div></div>';
-      h += '<div><div style="font-size:13px;color:var(--t1);font-weight:600">' + escW3((report.workspace || {}).name || 'Workspace') + '</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Pages: ' + ((report.content_summary || {}).total_pages || 0) + ' · Keywords: ' + ((report.keyword_summary || {}).tracking || 0) + ' · Internal links: ' + ((report.link_summary || {}).internal || 0) + '</div></div>';
-      h += '<div style="display:flex;gap:8px">';
-      h += '<button onclick="_seoDownloadReport(\'pdf\')" style="background:var(--p);color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Download PDF</button>';
-      h += '<button onclick="_seoDownloadReport(\'html\')" style="background:none;border:1px solid var(--p);color:var(--p);padding:7px 13px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Download HTML</button>';
-      h += '</div></div>';
-
-      // CSV exports
-      h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Raw data exports</div>';
-      h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:18px">';
-      ['keywords', 'pages', 'links', 'images', 'anchors'].forEach(function (t) {
-        h += '<button onclick="_seoExportCsv(\'' + t + '\')" style="background:var(--s1);border:1px solid var(--bd);color:var(--t1);padding:14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;text-align:left">';
-        h += '<div style="margin-bottom:4px">Export ' + t.charAt(0).toUpperCase() + t.slice(1) + '</div>';
-        h += '<div style="font-size:10px;color:var(--t3);font-weight:400">CSV download</div>';
-        h += '</button>';
-      });
-      h += '</div>';
-
-      // Quick wins preview
-      var quickWins = report.quick_wins || [];
-      if (quickWins.length > 0) {
-        h += '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:10px">Quick wins</div>';
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:8px">';
-        quickWins.slice(0, 5).forEach(function (w) {
-          h += '<div style="padding:8px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px;color:var(--t2)">' + escW3(w.url || w.page || '') + ' — ' + escW3(w.issue || w.gap || '') + ' (impact ' + (w.impact || w.priority || 0) + ')</div>';
-        });
-        h += '</div>';
-      }
-
-      el.innerHTML = h;
-    } catch (e) {
-      el.innerHTML = '<div style="padding:24px;color:var(--rd)">Failed to load: ' + (e.message || e) + '</div>';
-    }
-  };
-
-  window._seoDownloadReport = async function (kind) {
-    try {
-      var token = localStorage.getItem('lu_token') || '';
-      var path = kind === 'pdf' ? '/reports/audit/pdf' : '/reports/audit/html';
-      toastW3('Generating ' + kind.toUpperCase() + '...', 'info');
-      var resp = await fetch(window.location.origin + '/api/seo' + path, {
-        headers: { 'Authorization': 'Bearer ' + token, 'Accept': '*/*' },
-      });
-      if (!resp.ok) { toastW3('Download failed: HTTP ' + resp.status, 'error'); return; }
-      var blob = await resp.blob();
-      var ext = (resp.headers.get('Content-Type') || '').includes('pdf') ? 'pdf' : 'html';
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = 'seo-audit-' + Date.now() + '.' + ext;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toastW3('Downloaded.', 'success');
-    } catch (e) { toastW3('Download error: ' + (e.message || e), 'error'); }
-  };
-
-  window._seoExportCsv = async function (type) {
-    try {
-      var token = localStorage.getItem('lu_token') || '';
-      toastW3('Generating ' + type + '.csv...', 'info');
-      var resp = await fetch(window.location.origin + '/api/seo/reports/export/' + type, {
-        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'text/csv' },
-      });
-      if (!resp.ok) { toastW3('Export failed: HTTP ' + resp.status, 'error'); return; }
-      var blob = await resp.blob();
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = 'seo-' + type + '-' + Date.now() + '.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toastW3(type + ' exported (' + Math.round(blob.size / 1024) + ' KB).', 'success');
-    } catch (e) { toastW3('Export error: ' + (e.message || e), 'error'); }
-  };
+  window._seoExportCsv = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoExportCsv call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // Inject Competitors tab if shell already rendered.
   if (document.readyState !== 'loading') {
@@ -1997,299 +724,21 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   };
 
   // ── Overview tab ────────────────────────────────────────────────────────
-  window._seoOverview = async function (el) {
-    try {
-      var [knowledge, wins] = await Promise.all([
-        _seoApi('GET', '/knowledge').catch(function () { return null; }),
-        _seoApi('GET', '/wins?limit=5').catch(function () { return null; }),
-      ]);
-
-      // Knowledge endpoint returns the structured context object built by SeoKnowledgeService.
-      var k = knowledge || {};
-      var quickWins = [];
-      if (Array.isArray(wins)) quickWins = wins;
-      else if (wins && Array.isArray(wins.quick_wins)) quickWins = wins.quick_wins;
-      else if (wins && Array.isArray(wins.wins)) quickWins = wins.wins;
-      else if (k.quick_wins && Array.isArray(k.quick_wins)) quickWins = k.quick_wins;
-
-      var health = parseInt(k.health_score || 0, 10);
-      var content = k.content_health || {};
-      var topicAuth = k.topic_authority || {};
-      var linkHealth = k.link_health || {};
-      var topIssues = Array.isArray(k.top_issues) ? k.top_issues : [];
-      var keywordRanks = Array.isArray(k.keyword_rankings) ? k.keyword_rankings : [];
-      var summary = k.summary || '';
-
-      var pagesCount = parseInt(content.avg_score != null ? (content.below_50_count + (content.above_50_count || 0)) : 0, 10);
-      // Use direct count when available.
-      pagesCount = pagesCount || 0;
-
-      var keywordCount = keywordRanks.length;
-
-      var h = '<div class="lgse-animate">';
-
-      // Hero row: gauge + KPIs
-      h += '<div style="display:flex;align-items:flex-start;gap:32px;margin-bottom:32px;flex-wrap:wrap">';
-      h += '<div id="lgse-overview-gauge" class="lgse-gauge-wrap" style="width:140px;height:140px;flex-shrink:0">Loading…</div>';
-      h += '<div style="flex:1;min-width:280px">';
-      h += '<div class="lgse-kpi-grid">';
-      h += '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Pages indexed</div><div class="lgse-kpi-value">' + (content.below_50_count != null ? '—' : '0') + '</div><div class="lgse-kpi-change same lgse-kpi-pages-change"></div></div>';
-      h += '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Keywords tracked</div><div class="lgse-kpi-value">' + keywordCount + '</div><div class="lgse-kpi-change same"></div></div>';
-      h += '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Quick wins</div><div class="lgse-kpi-value">' + quickWins.length + '</div><div class="lgse-kpi-change same"></div></div>';
-      h += '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Internal links</div><div class="lgse-kpi-value">' + (linkHealth.internal_link_count || 0) + '</div><div class="lgse-kpi-change same">orphans: ' + (linkHealth.orphan_count || 0) + '</div></div>';
-      h += '</div></div></div>';
-
-      // AI summary callout
-      if (summary) {
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--p);border-radius:8px;padding:14px 18px;margin-bottom:24px">';
-        h += '<div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-weight:600">AI Summary</div>';
-        h += '<div style="font-size:13px;color:var(--t1);line-height:1.55">' + escHtml(summary) + '</div>';
-        h += '</div>';
-      }
-
-      // Issues strip
-      h += '<div class="lgse-section-header"><span class="lgse-section-title">Active Issues</span></div>';
-      h += '<div class="lgse-issues-strip">';
-      if (topIssues.length === 0 && (content.below_50_count || 0) === 0 && (content.missing_meta_count || 0) === 0) {
-        h += '<span style="color:var(--t3);font-size:12px">No active issues — site looks healthy.</span>';
-      } else {
-        topIssues.slice(0, 6).forEach(function (i) {
-          var dotCol = i.type === 'critical' ? '#F87171' : i.type === 'errors' ? '#F87171' : '#F59E0B';
-          h += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'audits\')"><span class="dot" style="background:' + dotCol + '"></span>' + escHtml(i.count + ' ' + i.type) + '</span>';
-        });
-        if ((content.missing_meta_count || 0) > 0) {
-          h += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'pages\')"><span class="dot" style="background:#F87171"></span>' + (content.missing_meta_count || 0) + ' missing meta</span>';
-        }
-        if ((content.below_50_count || 0) > 0) {
-          h += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'pages\')"><span class="dot" style="background:#F59E0B"></span>' + (content.below_50_count || 0) + ' pages &lt; 50</span>';
-        }
-        if ((linkHealth.orphan_count || 0) > 0) {
-          h += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'links\')"><span class="dot" style="background:#F59E0B"></span>' + linkHealth.orphan_count + ' orphan pages</span>';
-        }
-        if (topicAuth.weakest_topic && topicAuth.weakest_topic.topic) {
-          h += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'topics\')"><span class="dot" style="background:#3B8BF5"></span>weak topic: ' + escHtml(topicAuth.weakest_topic.topic) + '</span>';
-        }
-      }
-      h += '</div>';
-
-      // Quick wins
-      h += '<div class="lgse-section-header"><span class="lgse-section-title">Quick Wins</span><span class="lgse-badge lgse-badge-info">Top 3</span></div>';
-      if (quickWins.length === 0) {
-        h += '<div class="lgse-empty-state"><div class="icon">✓</div><h3>No quick wins right now</h3><p>Run an audit or sync GSC to surface high-impact opportunities.</p></div>';
-      } else {
-        h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:24px">';
-        quickWins.slice(0, 3).forEach(function (w) {
-          var label = w.issue_label || w.issue || w.gap || w.description || w.title || 'Optimization opportunity';
-          var fix = w.fix || w.recommendation || w.action || '';
-          var imp = parseInt(w.impact || w.priority || 0, 10);
-          var badgeKind = imp >= 18 ? 'lgse-badge-danger' : imp >= 10 ? 'lgse-badge-warning' : 'lgse-badge-success';
-          var badgeLabel = imp >= 18 ? 'HIGH' : imp >= 10 ? 'MED' : 'LOW';
-          h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px">';
-          h += '<div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:8px">';
-          h += '<div style="font-size:13px;color:var(--t1);font-weight:600;line-height:1.4">' + escHtml(label) + '</div>';
-          h += '<span class="lgse-badge ' + badgeKind + '">' + badgeLabel + '</span>';
-          h += '</div>';
-          if (fix) h += '<div style="font-size:12px;color:var(--t2);line-height:1.5">' + escHtml(fix) + '</div>';
-          h += '</div>';
-        });
-        h += '</div>';
-      }
-
-      // Top keywords mini-table (if any)
-      if (keywordRanks.length > 0) {
-        h += '<div class="lgse-section-header"><span class="lgse-section-title">Tracked Keywords</span><span class="lgse-section-actions"><button class="lgse-btn lgse-btn-ghost" onclick="_seoSwitchTab(\'workspace\')">View all →</button></span></div>';
-        h += '<div class="lgse-table-wrap" style="margin-bottom:24px"><table class="lgse-table">';
-        h += '<thead><tr><th>Keyword</th><th class="num">Position</th><th class="num">Δ</th></tr></thead><tbody>';
-        keywordRanks.slice(0, 5).forEach(function (kw) {
-          var pos = parseInt(kw.pos || kw.position || 0, 10);
-          var posBadge = pos <= 3 ? 'lgse-badge-success' : pos <= 10 ? 'lgse-badge-info' : pos <= 30 ? 'lgse-badge-warning' : 'lgse-badge-muted';
-          h += '<tr>';
-          h += '<td>' + escHtml(kw.kw || kw.keyword || '—') + '</td>';
-          h += '<td class="num"><span class="lgse-badge ' + posBadge + '">' + pos + '</span></td>';
-          h += '<td class="num">' + window.renderPosChange(kw.change || 0) + '</td>';
-          h += '</tr>';
-        });
-        h += '</tbody></table></div>';
-      }
-
-      h += '</div>';
-      el.innerHTML = h;
-
-      // Render gauge after DOM is in place.
-      var gaugeEl = document.getElementById('lgse-overview-gauge');
-      if (gaugeEl) window.renderScoreGauge(gaugeEl, health, 140);
-
-      // Pages-indexed count fix-up — knowledge service doesn't return a single
-      // total but we can derive it from below_50_count + content_health.
-      // Easier: hit /api/seo/indexed-content head for a real count.
-      _seoApi('GET', '/indexed-content?limit=1').then(function (resp) {
-        var total = (resp && (resp.total || resp.count)) || 0;
-        if (!total && resp && Array.isArray(resp.items)) total = resp.items.length;
-        var pagesValEl = el.querySelector('.lgse-kpi-card:nth-child(1) .lgse-kpi-value');
-        if (pagesValEl) pagesValEl.textContent = total;
-      }).catch(function () { /* silent */ });
-    } catch (e) {
-      el.innerHTML = '<div class="lgse-empty-state"><div class="icon">📊</div><h3>Could not load overview</h3><p>' + escHtml(e && e.message ? e.message : 'Try refreshing the page.') + '</p></div>';
-    }
-  };
+  window._seoOverview = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoOverview call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Reskin: _seoAudits — wrap table with lgse-table classes ────────────
   var _origAudits = window._seoAudits;
-  window._seoAudits = async function (el) {
-    try {
-      var data = await _seoApi('GET', '/audits').catch(function () { return null; });
-      var rows = (data && (data.audits || data.data || data)) || [];
-      if (!Array.isArray(rows)) rows = [];
-
-      var h = '<div class="lgse-animate">';
-      h += '<div class="lgse-section-header"><span class="lgse-section-title">Audit Center</span><span class="lgse-section-actions"><button class="lgse-btn lgse-btn-primary" onclick="_seoRunAudit()">Run new audit</button></span></div>';
-
-      if (rows.length === 0) {
-        h += '<div class="lgse-empty-state"><div class="icon">🔍</div><h3>No audits yet</h3><p>Run your first audit to see issues, scores, and a full health snapshot.</p><button class="lgse-btn lgse-btn-primary" onclick="_seoRunAudit()">Run audit</button></div>';
-      } else {
-        h += '<div class="lgse-table-wrap"><table class="lgse-table">';
-        h += '<thead><tr><th>URL</th><th class="num">Score</th><th>Type</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody>';
-        rows.forEach(function (a) {
-          var sc = parseInt(a.score || 0, 10);
-          h += '<tr>';
-          h += '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(a.url || '—') + '</td>';
-          h += '<td class="num">' + (sc > 0 ? '<span class="lgse-badge ' + scoreBadgeKind(sc) + '">' + sc + '</span>' : '<span style="color:var(--t3)">—</span>') + '</td>';
-          h += '<td><span class="lgse-badge lgse-badge-muted">' + escHtml(a.type || '—') + '</span></td>';
-          h += '<td><span class="lgse-badge ' + (a.status === 'completed' ? 'lgse-badge-success' : a.status === 'failed' ? 'lgse-badge-danger' : 'lgse-badge-info') + '">' + escHtml(a.status || '—') + '</span></td>';
-          h += '<td style="color:var(--t2);font-size:12px">' + escHtml(a.created_at || '—') + '</td>';
-          h += '<td><button class="lgse-btn lgse-btn-ghost" onclick="_seoViewAudit(' + (a.id || 0) + ')">View →</button></td>';
-          h += '</tr>';
-        });
-        h += '</tbody></table></div></div>';
-      }
-      el.innerHTML = h;
-    } catch (e) {
-      if (typeof _origAudits === 'function') return _origAudits(el);
-      el.innerHTML = '<div class="lgse-empty-state"><div class="icon">⚠</div><h3>Could not load audits</h3></div>';
-    }
-  };
+  window._seoAudits = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoAudits call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Reskin: _seoKeywords — sparklines + position bands ─────────────────
   var _origKeywords = window._seoKeywords;
-  window._seoKeywords = async function (el) {
-    try {
-      var data = await _seoApi('GET', '/keywords').catch(function () { return null; });
-      var rows = (data && (data.keywords || data.data || data)) || [];
-      if (!Array.isArray(rows)) rows = [];
-
-      var h = '<div class="lgse-animate">';
-      h += '<div class="lgse-section-header"><span class="lgse-section-title">Keyword Tracking</span><span class="lgse-section-actions"><button class="lgse-btn lgse-btn-primary" onclick="_seoAddKeyword()">+ Add keyword</button></span></div>';
-
-      if (rows.length === 0) {
-        h += '<div class="lgse-empty-state"><div class="icon">🎯</div><h3>No keywords tracked</h3><p>Add keywords to monitor their position in search results over time.</p></div>';
-      } else {
-        h += '<div class="lgse-table-wrap"><table class="lgse-table">';
-        h += '<thead><tr><th>Keyword</th><th class="num">Position</th><th class="num">Δ</th><th>Trend</th><th class="num">Volume</th><th></th></tr></thead><tbody>';
-        rows.forEach(function (kw) {
-          var pos = parseInt(kw.current_rank || kw.position || kw.pos || 0, 10);
-          var prev = parseInt(kw.previous_rank || 0, 10);
-          var change = parseInt(kw.rank_change != null ? kw.rank_change : (prev > 0 ? prev - pos : 0), 10);
-          var posBadge = pos === 0 ? 'lgse-badge-muted' : pos <= 3 ? 'lgse-badge-success' : pos <= 10 ? 'lgse-badge-info' : pos <= 30 ? 'lgse-badge-warning' : 'lgse-badge-muted';
-          var vol = parseInt(kw.volume || 0, 10);
-          var volTier = vol >= 10000 ? 'HIGH' : vol >= 1000 ? 'MED' : 'LOW';
-          var volKind = vol >= 10000 ? 'lgse-badge-success' : vol >= 1000 ? 'lgse-badge-info' : 'lgse-badge-muted';
-          // Build positions array from rank history if available; otherwise fall back to two-point change.
-          var positions = Array.isArray(kw.positions) && kw.positions.length > 0 ? kw.positions : (prev > 0 && pos > 0 ? [{pos: prev}, {pos: pos}] : []);
-          h += '<tr>';
-          h += '<td>' + escHtml(kw.keyword || kw.kw || '—') + '</td>';
-          h += '<td class="num">' + (pos > 0 ? '<span class="lgse-badge ' + posBadge + '">' + pos + '</span>' : '<span style="color:var(--t3)">—</span>') + '</td>';
-          h += '<td class="num">' + window.renderPosChange(change) + '</td>';
-          h += '<td>' + (positions.length > 1 ? window.renderSparkline(positions, 60, 20) : '<span style="color:var(--t3);font-size:11px">—</span>') + '</td>';
-          h += '<td class="num">' + (vol > 0 ? '<span class="lgse-badge ' + volKind + '">' + volTier + '</span> ' + vol.toLocaleString() : '<span style="color:var(--t3)">—</span>') + '</td>';
-          h += '<td><button class="lgse-btn lgse-btn-ghost" onclick="_seoDeleteKeyword(' + (kw.id || 0) + ')">×</button></td>';
-          h += '</tr>';
-        });
-        h += '</tbody></table></div></div>';
-      }
-      el.innerHTML = h;
-    } catch (e) {
-      if (typeof _origKeywords === 'function') return _origKeywords(el);
-      el.innerHTML = '<div class="lgse-empty-state"><div class="icon">⚠</div><h3>Could not load keywords</h3></div>';
-    }
-  };
+  window._seoKeywords = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoKeywords call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Reskin: _seoGsc — connection pill at top ───────────────────────────
   var _origGsc = window._seoGsc;
-  window._seoGsc = async function (el) {
-    try {
-      var status = await _seoApi('GET', '/gsc/status').catch(function () { return null; });
-      var connected = !!(status && (status.connected || status.is_connected || status.configured));
-      var lastSync = (status && (status.last_synced_at || status.synced_at)) || null;
-      var siteUrl = (status && status.site_url) || '';
+  window._seoGsc = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoGsc call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
-      var h = '<div class="lgse-animate">';
-      h += '<div class="lgse-section-header">';
-      h += '<span class="lgse-section-title">Search Console</span>';
-      h += '<span class="lgse-section-actions">';
-      if (connected) {
-        h += '<span class="lgse-conn-pill connected"><span class="dot"></span>Connected' + (lastSync ? ' — synced ' + escHtml(lastSync) : '') + '</span>';
-        h += '<button class="lgse-btn lgse-btn-secondary" onclick="_seoApi(\'POST\',\'/gsc/sync\',{}).then(function(){ _seoGsc(document.getElementById(\'seo-content\')); })">Sync now</button>';
-      } else {
-        h += '<span class="lgse-conn-pill disconnected"><span class="dot"></span>Not connected</span>';
-        h += '<button class="lgse-btn lgse-btn-primary" onclick="_seoConnectGsc()">Connect →</button>';
-      }
-      h += '</span></div>';
-
-      if (!connected) {
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:24px;text-align:center">';
-        h += '<div style="font-size:32px;margin-bottom:12px;opacity:.6">🔗</div>';
-        h += '<h3 style="font-size:14px;color:var(--t1);margin:0 0 8px">Connect Google Search Console</h3>';
-        h += '<p style="font-size:12px;color:var(--t2);max-width:420px;margin:0 auto 16px">Sync clicks, impressions, CTR, and position data into your LevelUp workspace. Required for traffic insights and lift-potential pages.</p>';
-        h += '<button class="lgse-btn lgse-btn-primary" onclick="_seoConnectGsc()">Connect with Google →</button>';
-        h += '</div>';
-        el.innerHTML = h + '</div>';
-        return;
-      }
-
-      // Connected — fetch top queries.
-      var qResp = await _seoApi('GET', '/gsc/queries').catch(function () { return null; });
-      var queries = (qResp && (qResp.queries || qResp.data)) || [];
-      h += '<div style="margin-top:16px">';
-      h += '<div class="lgse-section-header"><span class="lgse-section-title">Top Queries' + (siteUrl ? ' — ' + escHtml(siteUrl) : '') + '</span></div>';
-      if (!Array.isArray(queries) || queries.length === 0) {
-        h += '<div class="lgse-empty-state"><div class="icon">📡</div><h3>No GSC data yet</h3><p>Click "Sync now" to fetch the latest 28 days of Search Console data.</p></div>';
-      } else {
-        // Find max ctr for heatmap.
-        var maxCtr = 0;
-        queries.forEach(function (q) { if ((q.ctr || 0) > maxCtr) maxCtr = q.ctr || 0; });
-        h += '<div class="lgse-table-wrap"><table class="lgse-table">';
-        h += '<thead><tr><th>Query</th><th class="num">Clicks</th><th class="num">Impressions</th><th class="num">CTR</th><th class="num">Position</th></tr></thead><tbody>';
-        queries.slice(0, 30).forEach(function (q) {
-          var ctr = parseFloat(q.ctr || 0);
-          var pos = parseFloat(q.position || 0);
-          var ctrPct = (ctr * 100).toFixed(2) + '%';
-          var heat = maxCtr > 0 ? Math.min(0.32, (ctr / maxCtr) * 0.32) : 0;
-          var posBadge = pos <= 3 ? 'lgse-badge-success' : pos <= 10 ? 'lgse-badge-info' : pos <= 30 ? 'lgse-badge-warning' : 'lgse-badge-muted';
-          h += '<tr>';
-          h += '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(q.query || '—') + '</td>';
-          h += '<td class="num">' + (q.clicks || 0) + '</td>';
-          h += '<td class="num">' + (q.impressions || 0) + '</td>';
-          h += '<td class="num" style="background:rgba(108,92,231,' + heat + ')">' + ctrPct + '</td>';
-          h += '<td class="num"><span class="lgse-badge ' + posBadge + '">' + (pos > 0 ? pos.toFixed(1) : '—') + '</span></td>';
-          h += '</tr>';
-        });
-        h += '</tbody></table></div>';
-      }
-      h += '</div></div>';
-      el.innerHTML = h;
-    } catch (e) {
-      if (typeof _origGsc === 'function') return _origGsc(el);
-      el.innerHTML = '<div class="lgse-empty-state"><div class="icon">⚠</div><h3>GSC unavailable</h3></div>';
-    }
-  };
-
-  window._seoConnectGsc = async function () {
-    try {
-      var r = await _seoApi('GET', '/gsc/auth-url');
-      if (r && r.url) window.open(r.url, '_blank');
-      else if (typeof showToast === 'function') showToast('Auth URL unavailable', 'error');
-    } catch (e) { if (typeof showToast === 'function') showToast('Failed: ' + (e.message || ''), 'error'); }
-  };
+  window._seoConnectGsc = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoConnectGsc call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Reskin: ensure Reports / Insights / Topics / Competitors get the
   //   tab-bar styling. Their renderers were already redesigned in W2/W3.
@@ -2385,77 +834,10 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   };
 
   // Override the shell. Inject our own tab strip; preserve seo-content area.
-  window._seoRenderShell = function (el) {
-    if (typeof window.lgseInjectStyles === 'function') window.lgseInjectStyles();
-
-    var tabHtml = TABS.map(function (t) {
-      var iconHtml = (typeof window.icon === 'function') ? window.icon(t.icon, 14) : '';
-      return '<div class="seo-tab lgse-tab" id="seo-tab-' + t.id + '" ' +
-        'onclick="_seoSwitchTab(\'' + t.id + '\')" ' +
-        'style="padding:10px 16px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;display:flex;align-items:center;gap:6px">' +
-        iconHtml + ' ' + t.label + '</div>';
-    }).join('');
-
-    el.innerHTML =
-      '<div class="lgse-tab-bar" style="display:flex;border-bottom:1px solid var(--bd);background:var(--s1);flex-shrink:0;overflow-x:auto">' + tabHtml + '</div>' +
-      '<div id="seo-content" style="flex:1;overflow-y:auto;padding:24px"></div>';
-  };
+  window._seoRenderShell = function () { try { console.warn('[LU SEO 15.5] dead path: _seoRenderShell call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // Override _seoSwitchTab: alias old IDs, set active class, dispatch to renderer.
-  window._seoSwitchTab = function (tab) {
-    // FIX 2026-05-11 (sprint): coming-soon safety net for any orphan tab id
-    // that still slips through (e.g. deep-link). The orphan list mirrors
-    // _SEO_ORPHAN_TABS above.
-    var _SEO_COMING_SOON = [
-      'clusters','anchors','competitors','gsc',
-      'insights','equity','quick-wins','image-issues',
-      'ctr-analysis','link-graph','indexed-content'
-    ];
-    if (_SEO_COMING_SOON.indexOf(tab) > -1) {
-      var _csEl = document.getElementById('seo-content');
-      if (_csEl) _csEl.innerHTML =
-        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60dvh;gap:16px;text-align:center;padding:40px">' +
-          '<h3 style="font:700 20px/1.3 Manrope,sans-serif;color:#F0F0F0;margin:0">Coming Soon</h3>' +
-          '<p style="font:400 15px/1.6 Inter,sans-serif;color:#9CA3AF;max-width:300px;margin:0">This feature is being integrated.</p>' +
-        '</div>';
-      return;
-    }
-
-    // Resolve legacy tab IDs to new 9-tab structure.
-    if (TAB_ALIAS[tab]) tab = TAB_ALIAS[tab];
-    window._seoTab = tab;
-
-    // Reset all tab styles, set active.
-    var tabs = document.querySelectorAll('.seo-tab');
-    Array.prototype.forEach.call(tabs, function (t) {
-      t.style.color = 'var(--t3)';
-      t.style.borderBottomColor = 'transparent';
-      t.classList.remove('lgse-active');
-    });
-    var active = document.getElementById('seo-tab-' + tab);
-    if (active) {
-      active.style.color = 'var(--p)';
-      active.style.borderBottomColor = 'var(--p)';
-      active.classList.add('lgse-active');
-    }
-
-    var content = document.getElementById('seo-content');
-    if (!content) return;
-    content.innerHTML = (typeof loadingCard === 'function') ? loadingCard(220) : 'Loading…';
-
-    // Dispatch.
-    if      (tab === 'overview')    _seoOverview(content);
-    else if (tab === 'audits')      _seoAudits(content);
-    else if (tab === 'workspace')   _seoWorkspace(content);
-    else if (tab === 'pages')       _seoPagesAll(content);
-    else if (tab === 'links')       _seoLinksAll(content);
-    else if (tab === 'topics')      _seoTopics(content);
-    else if (tab === 'competitors') _seoCompetitors(content);
-    else if (tab === 'insights')    _seoInsightsAll(content);
-    else if (tab === 'reports')     _seoReports(content);
-    else if (tab === 'pipeline')    _seoPipeline(content);
-    else _seoOverview(content);
-  };
+  window._seoSwitchTab = function () { try { console.warn('[LU SEO 15.5] dead path: _seoSwitchTab call collapsed; routing to lgseSwitchTab fallback'); } catch(_) {} if (typeof window.lgseSwitchTab === 'function') return window.lgseSwitchTab(arguments[0]); };
 
   // Make Overview the default tab on first load.
   window.seoLoad = function (el) {
@@ -2467,38 +849,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
   };
 
   // ── Compose: Pages tab (pages + images + CTR + quick wins) ─────────────
-  window._seoPagesAll = async function (el) {
-    el.innerHTML = pageHeader('Pages', 'On-page optimization across content, images, and CTR. Click any sub-section to focus.') +
-      '<div class="lgse-tab-bar" style="margin-bottom:18px;border-bottom:1px solid var(--bd);background:transparent">' +
-        '<div class="lgse-subtab seo-tab lgse-active" data-section="indexed" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--p);border-bottom:2px solid var(--p);white-space:nowrap">Indexed Content</div>' +
-        '<div class="lgse-subtab seo-tab" data-section="images" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;white-space:nowrap">Images</div>' +
-        '<div class="lgse-subtab seo-tab" data-section="ctr" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;white-space:nowrap">CTR</div>' +
-        '<div class="lgse-subtab seo-tab" data-section="wins" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;white-space:nowrap">Quick Wins</div>' +
-      '</div>' +
-      '<div id="lgse-pages-section" class="lgse-animate"></div>';
-
-    var section = el.querySelector('#lgse-pages-section');
-
-    function loadSection(name) {
-      // Active sub-tab styling.
-      Array.prototype.forEach.call(el.querySelectorAll('.lgse-subtab'), function (t) {
-        var isActive = t.getAttribute('data-section') === name;
-        t.style.color = isActive ? 'var(--p)' : 'var(--t3)';
-        t.style.borderBottomColor = isActive ? 'var(--p)' : 'transparent';
-      });
-      section.innerHTML = (typeof loadingCard === 'function') ? loadingCard(180) : 'Loading…';
-      if (name === 'indexed' && typeof _seoPages === 'function') return _seoPages(section);
-      if (name === 'images' && typeof _seoImages === 'function') return _seoImages(section);
-      if (name === 'ctr' && typeof _seoCtr === 'function')      return _seoCtr(section);
-      if (name === 'wins' && typeof _seoWins === 'function')    return _seoWins(section);
-      section.innerHTML = '<div class="lgse-empty-state"><div class="icon">·</div><h3>Section unavailable</h3></div>';
-    }
-
-    Array.prototype.forEach.call(el.querySelectorAll('.lgse-subtab'), function (t) {
-      t.addEventListener('click', function () { loadSection(t.getAttribute('data-section')); });
-    });
-    loadSection('indexed');
-  };
+  window._seoPagesAll = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoPagesAll call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
 
   // ── Compose: Pipeline tab — Queue + Calendar sub-tabs ─────────────────
@@ -2713,417 +1064,26 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
     }, 8000);
   }
 
-  window._seoPipeline = async function (el) {
-    if (!_lgsePipe.month) {
-      var dt = new Date();
-      _lgsePipe.month = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0');
-    }
-    _lgsePipeRender();
-    var d = await _lgsePipeFetchQueue();
-    _lgsePipe.pipeline = d;
-    _lgsePipeRender();
-    if (d.success && d.counts && d.counts.running > 0) _lgsePipeStartPoll();
-  };
+  window._seoPipeline = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoPipeline call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Compose: Links tab (link intel + outbound + redirects) ─────────────
-  window._seoLinksAll = async function (el) {
-    el.innerHTML = pageHeader('Links', 'Internal link graph, outbound link health, and 301/302 redirects in one place.') +
-      '<div class="lgse-tab-bar" style="margin-bottom:18px;border-bottom:1px solid var(--bd);background:transparent">' +
-        '<div class="lgse-subtab seo-tab lgse-active" data-section="internal" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--p);border-bottom:2px solid var(--p);white-space:nowrap">Link Intelligence</div>' +
-        '<div class="lgse-subtab seo-tab" data-section="outbound" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;white-space:nowrap">Outbound</div>' +
-        '<div class="lgse-subtab seo-tab" data-section="redirects" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;white-space:nowrap">Redirects</div>' +
-      '</div>' +
-      '<div id="lgse-links-section" class="lgse-animate"></div>';
-
-    var section = el.querySelector('#lgse-links-section');
-    function loadSection(name) {
-      Array.prototype.forEach.call(el.querySelectorAll('.lgse-subtab'), function (t) {
-        var isActive = t.getAttribute('data-section') === name;
-        t.style.color = isActive ? 'var(--p)' : 'var(--t3)';
-        t.style.borderBottomColor = isActive ? 'var(--p)' : 'transparent';
-      });
-      section.innerHTML = (typeof loadingCard === 'function') ? loadingCard(180) : 'Loading…';
-      if (name === 'internal' && typeof _seoLinks === 'function')      return _seoLinks(section);
-      if (name === 'outbound' && typeof _seoOutbound === 'function')   return _seoOutbound(section);
-      if (name === 'redirects' && typeof _seoRedirects === 'function') return _seoRedirects(section);
-      section.innerHTML = '<div class="lgse-empty-state"><div class="icon">·</div><h3>Section unavailable</h3></div>';
-    }
-
-    Array.prototype.forEach.call(el.querySelectorAll('.lgse-subtab'), function (t) {
-      t.addEventListener('click', function () { loadSection(t.getAttribute('data-section')); });
-    });
-    loadSection('internal');
-  };
+  window._seoLinksAll = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoLinksAll call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── Compose: Insights tab (GSC connection + traffic insights) ──────────
-  window._seoInsightsAll = async function (el) {
-    el.innerHTML = pageHeader('Insights', 'Search Console performance + AI-driven traffic insights and content correlations.') +
-      '<div class="lgse-tab-bar" style="margin-bottom:18px;border-bottom:1px solid var(--bd);background:transparent">' +
-        '<div class="lgse-subtab seo-tab lgse-active" data-section="traffic" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--p);border-bottom:2px solid var(--p);white-space:nowrap">Traffic Insights</div>' +
-        '<div class="lgse-subtab seo-tab" data-section="gsc" style="padding:8px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--t3);border-bottom:2px solid transparent;white-space:nowrap">Search Console</div>' +
-      '</div>' +
-      '<div id="lgse-insights-section" class="lgse-animate"></div>';
-
-    var section = el.querySelector('#lgse-insights-section');
-    function loadSection(name) {
-      Array.prototype.forEach.call(el.querySelectorAll('.lgse-subtab'), function (t) {
-        var isActive = t.getAttribute('data-section') === name;
-        t.style.color = isActive ? 'var(--p)' : 'var(--t3)';
-        t.style.borderBottomColor = isActive ? 'var(--p)' : 'transparent';
-      });
-      section.innerHTML = (typeof loadingCard === 'function') ? loadingCard(180) : 'Loading…';
-      if (name === 'traffic' && typeof _seoInsights === 'function') return _seoInsights(section);
-      if (name === 'gsc' && typeof _seoGsc === 'function')           return _seoGsc(section);
-      section.innerHTML = '<div class="lgse-empty-state"><div class="icon">·</div><h3>Section unavailable</h3></div>';
-    }
-
-    Array.prototype.forEach.call(el.querySelectorAll('.lgse-subtab'), function (t) {
-      t.addEventListener('click', function () { loadSection(t.getAttribute('data-section')); });
-    });
-    loadSection('traffic');
-  };
+  window._seoInsightsAll = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoInsightsAll call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── FIX 1 — Audit detail: structured render (was raw JSON) ─────────────
-  window._seoViewAudit = async function (id) {
-    var content = document.getElementById('seo-content');
-    if (!content) return;
-    content.innerHTML = (typeof loadingCard === 'function') ? loadingCard(180) : 'Loading…';
-    try {
-      var a = await _seoApi('GET', '/audits/' + id);
-      // Some API shapes wrap the audit in {audit: {...}} or {data: {...}}.
-      if (a && (a.audit || a.data)) a = a.audit || a.data;
-
-      var results = {};
-      try {
-        if (typeof a.results_json === 'string') results = JSON.parse(a.results_json);
-        else if (a.results_json && typeof a.results_json === 'object') results = a.results_json;
-        else if (a.results) results = a.results;
-      } catch (e) { results = {}; }
-
-      var checks = Array.isArray(results.checks) ? results.checks
-        : (Array.isArray(results.issues) ? results.issues
-        : (Array.isArray(a.issues_json) ? a.issues_json : []));
-
-      // Some audit types have keyed sections instead of a flat checks[] list.
-      // Normalise into {category, check, status, details}.
-      var normalised = [];
-      checks.forEach(function (c) {
-        if (!c || typeof c !== 'object') return;
-        normalised.push({
-          category: c.category || c.section || c.type || 'general',
-          check:    c.check || c.title || c.label || c.name || '—',
-          status:   (c.status || (c.severity === 'error' ? 'error' : c.severity === 'warning' ? 'warning' : 'pass')),
-          details:  c.details || c.message || c.description || c.fix || '',
-          impact:   c.impact || c.priority || 0,
-        });
-      });
-
-      var errors = normalised.filter(function (c) { return c.status === 'error' || c.status === 'fail'; });
-      var warnings = normalised.filter(function (c) { return c.status === 'warning'; });
-      var passed = normalised.filter(function (c) { return c.status === 'pass' || c.status === 'success'; });
-
-      var categories = {};
-      normalised.forEach(function (c) {
-        if (!categories[c.category]) categories[c.category] = [];
-        categories[c.category].push(c);
-      });
-
-      var score = parseInt(a.score || results.score || 0, 10);
-      var url = a.url || results.url || '';
-      var type = a.type || 'audit';
-      var when = a.created_at ? new Date(a.created_at).toLocaleDateString() : '';
-
-      var h = '<div class="lgse-animate" style="padding:0 0 32px">';
-
-      // Header: gauge + title + back link.
-      h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:18px"><button class="lgse-btn lgse-btn-ghost" onclick="_seoSwitchTab(\'audits\')">← Back to audits</button></div>';
-
-      h += '<div style="display:flex;align-items:center;gap:24px;margin-bottom:24px;flex-wrap:wrap">';
-      h += '<div id="audit-detail-gauge" class="lgse-gauge-wrap" style="width:96px;height:96px;flex-shrink:0">Loading…</div>';
-      h += '<div style="flex:1;min-width:240px">';
-      h += '<div style="font-family:var(--fh,inherit);font-size:18px;font-weight:600;color:var(--t1);margin-bottom:4px;word-break:break-all">' + escHtml(url || 'Audit Report') + '</div>';
-      h += '<div style="font-size:12px;color:var(--t3);margin-bottom:10px">' + escHtml(type) + ' audit' + (when ? ' · ' + escHtml(when) : '') + '</div>';
-      h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
-      h += '<span class="lgse-badge lgse-badge-danger">' + errors.length + ' errors</span>';
-      h += '<span class="lgse-badge lgse-badge-warning">' + warnings.length + ' warnings</span>';
-      h += '<span class="lgse-badge lgse-badge-success">' + passed.length + ' passed</span>';
-      h += '</div></div></div>';
-
-      // Categories.
-      if (Object.keys(categories).length === 0) {
-        // Fall back to a key/value table of the raw results for unknown audit types.
-        h += '<div class="lgse-section-header"><span class="lgse-section-title">Audit Details</span></div>';
-        h += '<div class="lgse-table-wrap"><table class="lgse-table"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>';
-        var emitted = 0;
-        Object.keys(results).forEach(function (k) {
-          if (emitted >= 30) return;
-          var v = results[k];
-          if (v == null) return;
-          if (typeof v === 'object') v = JSON.stringify(v).slice(0, 200);
-          h += '<tr><td style="font-weight:600;color:var(--t1)">' + escHtml(k) + '</td><td style="color:var(--t2);font-size:12px">' + escHtml(String(v)) + '</td></tr>';
-          emitted++;
-        });
-        h += '</tbody></table></div>';
-      } else {
-        Object.keys(categories).forEach(function (cat) {
-          var items = categories[cat];
-          h += '<div style="margin-bottom:24px">';
-          h += '<div class="lgse-section-header"><span class="lgse-section-title">' + escHtml(cat) + '</span><span class="lgse-badge lgse-badge-muted">' + items.length + ' checks</span></div>';
-          h += '<div class="lgse-table-wrap"><table class="lgse-table">';
-          h += '<thead><tr><th>Check</th><th>Status</th><th>Details</th></tr></thead><tbody>';
-          items.forEach(function (c) {
-            var badge = c.status === 'error' || c.status === 'fail' ? 'lgse-badge-danger'
-                      : c.status === 'warning' ? 'lgse-badge-warning'
-                      : 'lgse-badge-success';
-            h += '<tr>';
-            h += '<td style="font-weight:600;color:var(--t1)">' + escHtml(c.check) + '</td>';
-            h += '<td><span class="lgse-badge ' + badge + '">' + escHtml(c.status) + '</span></td>';
-            h += '<td style="color:var(--t2);font-size:12px">' + escHtml(c.details) + '</td>';
-            h += '</tr>';
-          });
-          h += '</tbody></table></div></div>';
-        });
-      }
-
-      h += '</div>';
-      content.innerHTML = h;
-
-      var gaugeEl = document.getElementById('audit-detail-gauge');
-      if (gaugeEl && typeof window.renderScoreGauge === 'function') {
-        window.renderScoreGauge(gaugeEl, score, 96);
-      }
-    } catch (e) {
-      content.innerHTML = '<div class="lgse-empty-state"><div class="icon">⚠</div><h3>Could not load audit</h3><p>' + escHtml(e && e.message ? e.message : 'Unknown error') + '</p><button class="lgse-btn lgse-btn-secondary" onclick="_seoSwitchTab(\'audits\')">← Back to audits</button></div>';
-    }
-  };
+  window._seoViewAudit = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoViewAudit call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── FIX 2 — Integrations: KPI summary (was raw JSON) ───────────────────
   // We're consolidating Integrations away (Fix 3 maps it to Reports), but
   // keep _seoIntegrations functional in case anything still calls it.
-  window._seoIntegrations = async function (el) {
-    try {
-      var [agentResp, auditsResp] = await Promise.all([
-        _seoApi('GET', '/agent-status').catch(function () { return null; }),
-        _seoApi('GET', '/audits').catch(function () { return null; }),
-      ]);
-      var goalsResp = await _seoApi('GET', '/goals').catch(function () { return null; });
-
-      var activeGoals = 0;
-      if (goalsResp && Array.isArray(goalsResp)) activeGoals = goalsResp.filter(function (g) { return g.status === 'active'; }).length;
-      else if (goalsResp && Array.isArray(goalsResp.goals)) activeGoals = goalsResp.goals.filter(function (g) { return g.status === 'active'; }).length;
-
-      var auditsArr = (auditsResp && (auditsResp.audits || auditsResp.data || auditsResp)) || [];
-      if (!Array.isArray(auditsArr)) auditsArr = [];
-      var recentAudits = auditsArr.length;
-
-      var lastActivity = '—';
-      if (auditsArr[0] && auditsArr[0].created_at) {
-        lastActivity = new Date(auditsArr[0].created_at).toLocaleDateString();
-      }
-
-      var connected = !!(agentResp && (agentResp.connected || agentResp.success));
-      var statusBadge = connected
-        ? '<span class="lgse-badge lgse-badge-success">● ACTIVE</span>'
-        : '<span class="lgse-badge lgse-badge-muted">○ IDLE</span>';
-
-      var h = '<div class="lgse-animate">';
-      h += pageHeader('Integrations', 'External services and AI agents connected to your SEO workspace.');
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:20px">';
-      h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
-      h += '<div style="display:flex;align-items:center;gap:12px"><div style="font-size:28px">🤖</div><div><div style="font-size:14px;font-weight:600;color:var(--t1)">AI SEO Agent</div><div style="font-size:11px;color:var(--t3)">Autonomous SEO agent · powered by your AI platform</div></div></div>';
-      h += statusBadge;
-      h += '</div>';
-      h += '<div class="lgse-kpi-grid">';
-      h += '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Active Goals</div><div class="lgse-kpi-value">' + activeGoals + '</div></div>';
-      h += '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Audits Run</div><div class="lgse-kpi-value">' + recentAudits + '</div></div>';
-      h += '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Last Activity</div><div class="lgse-kpi-value" style="font-size:14px">' + escHtml(lastActivity) + '</div></div>';
-      h += '</div>';
-      h += '</div></div>';
-      el.innerHTML = h;
-    } catch (e) {
-      el.innerHTML = '<div class="lgse-empty-state"><div class="icon">⚠</div><h3>Integrations unavailable</h3></div>';
-    }
-  };
+  window._seoIntegrations = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoIntegrations call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 
   // ── FIX 4 — Overview KPIs: real counts (were zeros) ────────────────────
   // Override _seoOverview so each KPI hits its own dedicated endpoint instead
   // of trying to derive everything from /knowledge.
-  window._seoOverview = async function (el) {
-    try {
-      // Render the shell first so KPIs hydrate progressively.
-      el.innerHTML =
-        '<div class="lgse-animate">' +
-        pageHeader('Overview', 'SEO health snapshot — score, top issues, quick wins, and tracked keywords.') +
-        '<div style="display:flex;align-items:flex-start;gap:32px;margin-bottom:32px;flex-wrap:wrap">' +
-          '<div id="lgse-overview-gauge" class="lgse-gauge-wrap" style="width:140px;height:140px;flex-shrink:0">Loading…</div>' +
-          '<div style="flex:1;min-width:280px"><div class="lgse-kpi-grid" id="lgse-overview-kpis">' +
-            '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Pages indexed</div><div class="lgse-kpi-value" data-kpi="pages">—</div></div>' +
-            '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Keywords tracked</div><div class="lgse-kpi-value" data-kpi="keywords">—</div></div>' +
-            '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Quick wins</div><div class="lgse-kpi-value" data-kpi="wins">—</div></div>' +
-            '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Internal links</div><div class="lgse-kpi-value" data-kpi="links">—</div></div>' +
-          '</div></div>' +
-        '</div>' +
-        '<div id="lgse-overview-summary"></div>' +
-        '<div class="lgse-section-header"><span class="lgse-section-title">Active Issues</span></div>' +
-        '<div class="lgse-issues-strip" id="lgse-overview-issues"><span style="color:var(--t3);font-size:12px">Loading…</span></div>' +
-        '<div class="lgse-section-header"><span class="lgse-section-title">Quick Wins</span><span class="lgse-badge lgse-badge-info">Top 3</span></div>' +
-        '<div id="lgse-overview-wins"></div>' +
-        '<div id="lgse-overview-keywords"></div>' +
-        '</div>';
-
-      function setKpi(name, value) {
-        var node = el.querySelector('[data-kpi="' + name + '"]');
-        if (node) node.textContent = value;
-      }
-
-      // Parallel data fetches against dedicated endpoints. Each fails soft.
-      var promises = {
-        knowledge:  _seoApi('GET', '/knowledge').catch(function () { return null; }),
-        audits:     _seoApi('GET', '/audits?limit=1').catch(function () { return null; }),
-        keywords:   _seoApi('GET', '/keywords').catch(function () { return null; }),
-        wins:       _seoApi('GET', '/wins?limit=10').catch(function () { return null; }),
-        indexed:    _seoApi('GET', '/indexed-content?limit=1').catch(function () { return null; }),
-      };
-
-      // Helper to count items in a varied response shape.
-      function countItems(resp, listKey) {
-        if (!resp) return 0;
-        if (Array.isArray(resp)) return resp.length;
-        if (resp.total != null) return parseInt(resp.total, 10) || 0;
-        if (resp.count != null) return parseInt(resp.count, 10) || 0;
-        if (listKey && Array.isArray(resp[listKey])) return resp[listKey].length;
-        if (Array.isArray(resp.data)) return resp.data.length;
-        if (Array.isArray(resp.items)) return resp.items.length;
-        return 0;
-      }
-
-      // Resolve in order — gauge + KPIs first, then issues / wins / keywords.
-      var auditsResp = await promises.audits;
-      var auditsArr = auditsResp && (auditsResp.audits || auditsResp.data || auditsResp);
-      if (!Array.isArray(auditsArr)) auditsArr = [];
-      var latestScore = 0;
-      if (auditsArr[0] && auditsArr[0].score != null) latestScore = parseInt(auditsArr[0].score, 10) || 0;
-
-      // If no audit yet, fall back to knowledge.health_score.
-      var knowledge = await promises.knowledge;
-      if (!latestScore && knowledge && knowledge.health_score != null) {
-        latestScore = parseInt(knowledge.health_score, 10) || 0;
-      }
-      var gaugeEl = document.getElementById('lgse-overview-gauge');
-      if (gaugeEl && typeof window.renderScoreGauge === 'function') window.renderScoreGauge(gaugeEl, latestScore, 140);
-
-      // KPIs — each hits its dedicated endpoint.
-      var indexedResp = await promises.indexed;
-      var pagesCount = countItems(indexedResp, 'items');
-      // Some indexed-content endpoints return rows[] without a total — try a fuller fetch as fallback.
-      if (pagesCount === 0) {
-        try {
-          var allIndexed = await _seoApi('GET', '/indexed-content');
-          pagesCount = countItems(allIndexed, 'items');
-        } catch (e) { /* keep 0 */ }
-      }
-      setKpi('pages', pagesCount.toLocaleString());
-
-      var kwResp = await promises.keywords;
-      setKpi('keywords', countItems(kwResp, 'keywords').toLocaleString());
-
-      var winsResp = await promises.wins;
-      var winsCount = 0;
-      var winsArr = [];
-      if (winsResp && Array.isArray(winsResp.quick_wins)) { winsArr = winsResp.quick_wins; winsCount = winsArr.length; }
-      else if (Array.isArray(winsResp)) { winsArr = winsResp; winsCount = winsResp.length; }
-      else if (winsResp && Array.isArray(winsResp.wins)) { winsArr = winsResp.wins; winsCount = winsArr.length; }
-      setKpi('wins', winsCount);
-
-      var linksCount = (knowledge && knowledge.link_health && knowledge.link_health.internal_link_count) || 0;
-      setKpi('links', linksCount.toLocaleString());
-
-      // AI summary callout.
-      var summaryWrap = el.querySelector('#lgse-overview-summary');
-      if (summaryWrap && knowledge && knowledge.summary) {
-        summaryWrap.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--p);border-radius:8px;padding:14px 18px;margin-bottom:24px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-weight:600">AI Summary</div><div style="font-size:13px;color:var(--t1);line-height:1.55">' + escHtml(knowledge.summary) + '</div></div>';
-      }
-
-      // Issues strip.
-      var issuesWrap = el.querySelector('#lgse-overview-issues');
-      if (issuesWrap) {
-        var topIssues = (knowledge && Array.isArray(knowledge.top_issues)) ? knowledge.top_issues : [];
-        var contentH = (knowledge && knowledge.content_health) || {};
-        var linkH = (knowledge && knowledge.link_health) || {};
-        var topicA = (knowledge && knowledge.topic_authority) || {};
-        var anyIssue = topIssues.length > 0 || (contentH.missing_meta_count || 0) > 0 || (contentH.below_50_count || 0) > 0 || (linkH.orphan_count || 0) > 0;
-
-        if (!anyIssue) {
-          issuesWrap.innerHTML = '<span style="color:var(--t3);font-size:12px">No active issues — site looks healthy.</span>';
-        } else {
-          var ih = '';
-          topIssues.slice(0, 4).forEach(function (i) {
-            var col = i.type === 'critical' || i.type === 'errors' ? '#F87171' : '#F59E0B';
-            ih += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'audits\')"><span class="dot" style="background:' + col + '"></span>' + escHtml(i.count + ' ' + i.type) + '</span>';
-          });
-          if ((contentH.missing_meta_count || 0) > 0) {
-            ih += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'pages\')"><span class="dot" style="background:#F87171"></span>' + contentH.missing_meta_count + ' missing meta</span>';
-          }
-          if ((contentH.below_50_count || 0) > 0) {
-            ih += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'pages\')"><span class="dot" style="background:#F59E0B"></span>' + contentH.below_50_count + ' pages &lt; 50</span>';
-          }
-          if ((linkH.orphan_count || 0) > 0) {
-            ih += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'links\')"><span class="dot" style="background:#F59E0B"></span>' + linkH.orphan_count + ' orphan pages</span>';
-          }
-          if (topicA.weakest_topic && topicA.weakest_topic.topic) {
-            ih += '<span class="lgse-issue-chip" onclick="_seoSwitchTab(\'topics\')"><span class="dot" style="background:#3B8BF5"></span>weak topic: ' + escHtml(topicA.weakest_topic.topic) + '</span>';
-          }
-          issuesWrap.innerHTML = ih;
-        }
-      }
-
-      // Quick wins (top 3).
-      var winsWrap = el.querySelector('#lgse-overview-wins');
-      if (winsWrap) {
-        if (winsArr.length === 0) {
-          winsWrap.innerHTML = '<div class="lgse-empty-state"><div class="icon">✓</div><h3>No quick wins right now</h3><p>Run an audit or sync GSC to surface high-impact opportunities.</p><button class="lgse-btn lgse-btn-primary" onclick="_seoSwitchTab(\'audits\')">Go to Audit</button></div>';
-        } else {
-          var wh = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:24px">';
-          winsArr.slice(0, 3).forEach(function (w) {
-            var label = w.issue_label || w.issue || w.gap || w.description || w.title || 'Optimization opportunity';
-            var fix = w.fix || w.recommendation || w.action || '';
-            var imp = parseInt(w.impact || w.priority || 0, 10);
-            var bk = imp >= 18 ? 'lgse-badge-danger' : imp >= 10 ? 'lgse-badge-warning' : 'lgse-badge-success';
-            var bl = imp >= 18 ? 'HIGH' : imp >= 10 ? 'MED' : 'LOW';
-            wh += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px">';
-            wh += '<div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:8px">';
-            wh += '<div style="font-size:13px;color:var(--t1);font-weight:600;line-height:1.4">' + escHtml(label) + '</div>';
-            wh += '<span class="lgse-badge ' + bk + '">' + bl + '</span></div>';
-            if (fix) wh += '<div style="font-size:12px;color:var(--t2);line-height:1.5">' + escHtml(fix) + '</div>';
-            wh += '</div>';
-          });
-          wh += '</div>';
-          winsWrap.innerHTML = wh;
-        }
-      }
-
-      // Tracked keywords mini-table.
-      var kwWrap = el.querySelector('#lgse-overview-keywords');
-      var keywordRanks = (knowledge && Array.isArray(knowledge.keyword_rankings)) ? knowledge.keyword_rankings : [];
-      if (kwWrap && keywordRanks.length > 0) {
-        var kh = '<div class="lgse-section-header"><span class="lgse-section-title">Tracked Keywords</span><span class="lgse-section-actions"><button class="lgse-btn lgse-btn-ghost" onclick="_seoSwitchTab(\'workspace\')">View all →</button></span></div>';
-        kh += '<div class="lgse-table-wrap" style="margin-bottom:24px"><table class="lgse-table"><thead><tr><th>Keyword</th><th class="num">Position</th><th class="num">Δ</th></tr></thead><tbody>';
-        keywordRanks.slice(0, 5).forEach(function (kw) {
-          var pos = parseInt(kw.pos || kw.position || 0, 10);
-          var posBadge = pos === 0 ? 'lgse-badge-muted' : pos <= 3 ? 'lgse-badge-success' : pos <= 10 ? 'lgse-badge-info' : pos <= 30 ? 'lgse-badge-warning' : 'lgse-badge-muted';
-          kh += '<tr>';
-          kh += '<td>' + escHtml(kw.kw || kw.keyword || '—') + '</td>';
-          kh += '<td class="num">' + (pos > 0 ? '<span class="lgse-badge ' + posBadge + '">' + pos + '</span>' : '<span style="color:var(--t3)">—</span>') + '</td>';
-          kh += '<td class="num">' + (typeof window.renderPosChange === 'function' ? window.renderPosChange(kw.change || 0) : '—') + '</td>';
-          kh += '</tr>';
-        });
-        kh += '</tbody></table></div>';
-        kwWrap.innerHTML = kh;
-      }
-    } catch (e) {
-      el.innerHTML = '<div class="lgse-empty-state"><div class="icon">📊</div><h3>Could not load overview</h3><p>' + escHtml(e && e.message ? e.message : 'Try refreshing the page.') + '</p></div>';
-    }
-  };
+  window._seoOverview = async function () { try { console.warn('[LU SEO 15.5] dead path: _seoOverview call collapsed; live path is the LGSE renderer'); } catch(_) {} };
 })();
 
 // ═══════════════════════════════════════════════════════════════════════════
