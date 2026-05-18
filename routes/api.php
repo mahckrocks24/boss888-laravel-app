@@ -2374,13 +2374,57 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         });
 
         // Links — gap detection vs link suggestions
+        // Wave 16f (2026-05-19) — Gaps sub-tab data source.
+        // Was a feature_status=coming_soon stub returning {gaps:[]}. The
+        // Anchors/Gaps/Internal-Links UIs all run off seo_content_index +
+        // seo_link_graph which ARE populated, so we can answer with real
+        // data now. Replaces the Wave 13 placeholder.
+        //
+        // Shape matches what lgseLoadGaps + lgseLoadGapsData expect:
+        //   { orphans:[{url,title,word_count,content_score}],
+        //     weak:[{...same... + inbound_count}],
+        //     summary:{orphan_count,weak_count} }
         Route::get('/links/gaps', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $like = $host !== '' ? ('%//' . $host . '%') : null;
+
+            $base = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId);
+            if ($like) { $base->where('url', 'like', $like); }
+
+            $orphans = (clone $base)
+                ->where('inbound_links', 0)
+                ->orderByDesc('content_score')
+                ->limit(100)
+                ->get(['url', 'title', 'word_count', 'content_score'])
+                ->toArray();
+
+            $weakRows = (clone $base)
+                ->whereBetween('inbound_links', [1, 2])
+                ->orderBy('inbound_links')
+                ->orderByDesc('content_score')
+                ->limit(100)
+                ->get(['url', 'title', 'word_count', 'content_score', 'inbound_links'])
+                ->map(function ($r) {
+                    $row = (array) $r;
+                    $row['inbound_count'] = (int) ($row['inbound_links'] ?? 0);
+                    unset($row['inbound_links']);
+                    return (object) $row;
+                })
+                ->toArray();
+
+            $orphanCount = (clone $base)->where('inbound_links', 0)->count();
+            $weakCount   = (clone $base)->whereBetween('inbound_links', [1, 2])->count();
+
             return response()->json([
-                'success'        => true,
-                'gaps'           => [],
-                'count'          => 0,
-                'feature_status' => 'coming_soon',
-                'message'        => 'Link-gap analysis is on the roadmap. Use Internal-link suggestions instead — same source data, different angle.',
+                'success' => true,
+                'orphans' => $orphans,
+                'weak'    => $weakRows,
+                'summary' => [
+                    'orphan_count' => $orphanCount,
+                    'weak_count'   => $weakCount,
+                ],
             ]);
         });
 
