@@ -2638,15 +2638,118 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 }
             }
 
-            $anchors = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
-                ->where('workspace_id', $wsId)
+            // Wave 16e (2026-05-19) — flatten per-target-page aggregates into
+            // per-anchor rows + compute global distribution, the shape the
+            // Anchors sub-tab JS actually expects (r.anchors + r.distribution).
+            // Was returning {pages:[...]} only, which the JS ignored — hence
+            // the "no data" empty state even though seo_anchor_analysis has rows.
+            $rowsQ = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId);
+            if ($host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r)) {
+                $rowsQ->where('target_url', 'like', '%//' . $host . '%');
+            }
+            $pages = $rowsQ
                 ->orderByRaw("CASE health WHEN 'poor' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END")
                 ->orderByDesc('total_inbound')
                 ->get();
+
+            $genericTerms = ['click here','here','read more','learn more','this','link',
+                             'page','website','more','info','details','visit','read'];
+            $keywordsLower = \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)
+                ->pluck('keyword')
+                ->map(fn ($k) => strtolower(trim((string) $k)))
+                ->filter()
+                ->all();
+
+            $anchors = [];
+            $totals = ['total' => 0, 'generic' => 0, 'exact' => 0, 'natural' => 0];
+
+            foreach ($pages as $row) {
+                $dist = json_decode($row->anchor_distribution ?? '[]', true) ?: [];
+                $articleTitle = trim((string) (parse_url($row->target_url, PHP_URL_PATH) ?: $row->target_url), '/');
+                if ($articleTitle === '') $articleTitle = $row->target_url;
+
+                foreach ($dist as $entry) {
+                    $anchorText = (string) ($entry['anchor'] ?? '');
+                    $count = (int) ($entry['count'] ?? 1);
+                    if ($anchorText === '') continue;
+
+                    $anchorLower = strtolower(trim($anchorText));
+
+                    $classification = 'descriptive';
+                    $kind = 'natural';
+                    if (in_array($anchorLower, $genericTerms, true)) {
+                        $classification = 'generic';
+                        $kind = 'generic';
+                    } elseif (! empty($keywordsLower) && in_array($anchorLower, $keywordsLower, true)) {
+                        $classification = 'exact_match';
+                        $kind = 'exact';
+                    } elseif (mb_strlen($anchorText) > 40) {
+                        $classification = 'long_phrase';
+                        $kind = 'natural';
+                    } elseif (! empty($keywordsLower)) {
+                        // Partial-match: any tracked keyword token appears inside anchor text.
+                        foreach ($keywordsLower as $kw) {
+                            if ($kw !== '' && str_contains($anchorLower, $kw)) {
+                                $classification = 'partial_match';
+                                $kind = 'natural';
+                                break;
+                            }
+                        }
+                    }
+
+                    $issueType = null;
+                    $issueLabel = null;
+                    $fix = null;
+                    if ($classification === 'generic') {
+                        $issueType  = 'generic';
+                        $issueLabel = 'Generic';
+                        $fix        = 'Replace with descriptive anchor text matching the target page topic';
+                    } elseif ($count > 3) {
+                        $issueType  = 'over_optimised';
+                        $issueLabel = 'Over-optimised';
+                        $fix        = 'Vary anchor text — reused ' . $count . '×';
+                    } elseif (mb_strlen($anchorText) > 60) {
+                        $issueType  = 'too_long';
+                        $issueLabel = 'Too long';
+                        $fix        = 'Trim to 2-6 descriptive words';
+                    }
+
+                    $anchors[] = [
+                        'article_title'  => mb_substr($articleTitle, 0, 80),
+                        'anchor_text'    => $anchorText,
+                        'target_url'     => $row->target_url,
+                        'count'          => $count,
+                        'classification' => $classification,
+                        'score'          => null,
+                        'issue_type'     => $issueType,
+                        'issue_label'    => $issueLabel,
+                        'fix'            => $fix,
+                    ];
+
+                    $totals['total']    += $count;
+                    $totals[$kind]      += $count;
+                }
+            }
+
+            $tot = max(1, $totals['total']);
+            $distribution = [
+                'total'        => $totals['total'],
+                'generic'      => $totals['generic'],
+                'exact'        => $totals['exact'],
+                'natural'      => $totals['natural'],
+                'generic_pct'  => (int) round(100 * $totals['generic'] / $tot),
+                'exact_pct'    => (int) round(100 * $totals['exact']   / $tot),
+                'natural_pct'  => (int) round(100 * $totals['natural'] / $tot),
+            ];
+
             return response()->json([
-                'success' => true,
-                'pages'   => $anchors,
-                'total'   => $anchors->count(),
+                'success'      => true,
+                'anchors'      => $anchors,
+                'distribution' => $distribution,
+                'pages'        => $pages,
+                'total'        => count($anchors),
             ]);
         });
 
