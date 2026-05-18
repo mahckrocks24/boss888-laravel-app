@@ -2098,15 +2098,37 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
             // External WP-connected site (paid-tier — surfaces as a dropdown row
             // even when no `websites` table entry exists for it).
+            //
+            // Wave 16d (2026-05-19) — dedupe by ROOT DOMAIN (last 2 dot-segments),
+            // not just exact host. Fixes a false positive where ws1's
+            // `seo_settings.site_url=staging.levelupgrowth.io` (platform dev URL)
+            // was being added as a phantom "external_wp" entry alongside the
+            // user's real Laravel-built `platform.levelupgrowth.io` site —
+            // both shared the same `levelupgrowth.io` root and represented the
+            // same logical brand. Workspaces with a truly independent external
+            // WP (different root, e.g. ws7=shukranuae.com with no internal
+            // websites) still get the entry.
+            $rootDomain = static function (string $host): string {
+                if ($host === '') return '';
+                $parts = explode('.', $host);
+                return count($parts) >= 2 ? implode('.', array_slice($parts, -2)) : $host;
+            };
             $extUrl = (string) \Illuminate\Support\Facades\DB::table('seo_settings')
                 ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
             $extName = (string) \Illuminate\Support\Facades\DB::table('seo_settings')
                 ->where('workspace_id', $wsId)->where('key', 'site_name')->value('value');
             if ($extUrl !== '') {
                 $extHost = strtolower((string) parse_url($extUrl, PHP_URL_HOST));
+                $extRoot = $rootDomain($extHost);
                 $alreadyIn = false;
                 foreach ($sites as $s) {
-                    if (strtolower((string) $s['host']) === $extHost) { $alreadyIn = true; break; }
+                    $sHost = strtolower((string) $s['host']);
+                    if ($sHost === $extHost) { $alreadyIn = true; break; }
+                    if ($extRoot !== '' && $rootDomain($sHost) === $extRoot) {
+                        // Same root domain (e.g. platform.X.com ↔ staging.X.com)
+                        // → treat as the same brand; skip the external fallback.
+                        $alreadyIn = true; break;
+                    }
                 }
                 if (! $alreadyIn) {
                     $sites[] = [
