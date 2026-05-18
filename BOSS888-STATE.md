@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.10.2-wave15-live-ui`
+- **Cache buster (seo.js)**: `5.10.3-wave15-deadcode-collapse`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
 ---
@@ -83,6 +83,19 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 15.3 — conservative dead-code collapse (5 originals)
+- **Goal**: start retiring the cascading-override stack in seo.js. 5 functions where the original (lines 1-700) has at LEAST one explicit `window.X = …` override later in the file — i.e. 100%-confirmed-dead.
+- **Touched** (function declarations only — kept callable as no-op stubs that warn if invoked):
+  - `_seoRenderShell` (line 61) — replaced by buildShell/LGSE
+  - `_seoSwitchTab` (line 93) — replaced by lgseSwitchTab; stub falls back to it so any straggler caller still works
+  - `_seoKeywords` (line 159) — replaced by renderKeywords (LGSE)
+  - `_seoLinks` (line 203) — replaced by loadInternalLinks (LGSE)
+  - `_seoImages` (line 475) — replaced by lgseRenderImages (LGSE)
+- **Untouched** (later overrides, kept as-is): all `window._seoSwitchTab =` / `window._seoRenderShell =` etc. assignments at lines 1226-2697. The LIVE UI is `window.seoLoad` (line 10022) → `buildShell` → `switchTab` → LGSE renderers. None of these legacy overrides actually fire, but conservative collapse — only originals this round.
+- **Lines saved**: 10,559 → 10,523 (-36)
+- **Safety**: anything still calling these prints `[LU SEO 15.3] dead path` warning in console. `_seoSwitchTab` stub additionally routes to `lgseSwitchTab` so even an unexpected caller still navigates correctly.
+- Wave 15.2 CTAs (Pages chips + Links bulk buttons) verified intact (14 references preserved).
 
 ### Wave 15.2 — forensic: CTAs were in the wrong UI namespace entirely
 - **Root cause (the real one)**: `seo.js` actually has TWO SEO UIs stacked in the same file. The original `_seo*` UI (lines 1-3300) plus a complete rewrite using the `lgse*` namespace (lines 3600-10000+). The LIVE entry point `window.seoLoad` (line 2813) calls `_seoSwitchTab` which the `lgseSwitchTab` IIFE has effectively replaced via `_seoRenderShell` / `lgseSwitchTab = switchTab` (line 3945). Result: the LIVE Pages tab is rendered by `renderPages` (line 5294) → `lgseRenderPagesTable` (line 5626). The LIVE Links tab is `renderLinks` (line 6118) → `loadInternalLinks` (line 6142). Both my Wave 15.0 AND Wave 15.1 edits hit the dead `_seo*` UI nobody renders.

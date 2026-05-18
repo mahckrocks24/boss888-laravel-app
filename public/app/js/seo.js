@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.10.2-wave15-live-ui loaded — CTAs wired into lgseRenderPagesTable + loadInternalLinks'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.10.3-wave15-deadcode-collapse loaded — 5 dead originals collapsed to stubs with fallback'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -58,72 +58,29 @@ function seoLoad(el) {
   _seoSwitchTab('dashboard');
 }
 
-function _seoRenderShell(el) {
-  var tabs = [
-    { id: 'dashboard', label: 'Command Center', icon: ''+window.icon("info",14)+'' },
-    { id: 'audits', label: 'Audit Center', icon: ''+window.icon("info",14)+'' },
-    { id: 'links', label: 'Link Opportunities', icon: ''+window.icon("link",14)+'' },
-    { id: 'workspace', label: 'Optimization', icon: ''+window.icon("chart",14)+'' },
-    { id: 'insights', label: 'Insights', icon: ''+window.icon("info",14)+'' },
-    { id: 'reports', label: 'Reports', icon: ''+window.icon("info",14)+'' },
-    { id: 'redirects', label: 'Redirects', icon: '↪' },
-    { id: 'outbound', label: 'Outbound Links', icon: ''+window.icon("globe",14)+'' },
-    { id: 'images', label: 'Images', icon: ''+window.icon("image",14)+'' },
-    { id: 'settings', label: 'Settings', icon: ''+window.icon("edit",14)+'' },
-    { id: 'score', label: 'Scores', icon: ''+window.icon("more",14)+'' },
-    { id: 'integrations', label: 'Integrations', icon: ''+window.icon("link",14)+'' },
-    { id: 'content', label: 'Content AI', icon: ''+window.icon("edit",14)+'' },
-    { id: 'goals', label: 'Goals', icon: ''+window.icon("more",14)+'' },
-        { id: 'gsc', label: 'Search Console', icon: ''+window.icon("chart",14)+'' },
-{ id: 'pages', label: 'Pages', icon: ''+window.icon("more",14)+'' },
-    { id: 'ctr', label: 'CTR Optimizer', icon: ''+window.icon("chart",14)+'' },
-    { id: 'wins', label: 'Quick Wins', icon: ''+window.icon("check",14)+'' },
-  ];
-  var tabHtml = tabs.map(t =>
-    '<div class="seo-tab" id="seo-tab-' + t.id + '" onclick="_seoSwitchTab(\'' + t.id + '\')" ' +
-    'style="padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--t2);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap">' +
-    t.icon + ' ' + t.label + '</div>'
-  ).join('');
+// === Wave 15.3 cleanup (2026-05-18) ==========================================
+// Live entry chain (forensically verified):
+//   window.seoLoad (line ~10022 — last override wins)
+//     → buildShell(inner)               line ~3810  [inside the LGSE IIFE]
+//       → switchTab(tabId)              line ~3937  (exposed as window.lgseSwitchTab)
+//         → renderOverview/renderAudit/renderPages/renderLinks/renderTopics/
+//           renderCompetitors/renderInsights/renderReports/renderPipeline
+//         → loadIndexed/loadInternalLinks/loadOutbound/loadRedirects/etc.
+//           → lgseRenderPagesTable(...)  line ~5626 (Pages chips live here)
+//
+// Originals below (_seoRenderShell, _seoSwitchTab, _seoKeywords, _seoLinks,
+// _seoImages) all have explicit `window.X = …` overrides later in the file.
+// The later assignment always wins for global function bindings, so the
+// originals are unreachable. Bodies collapsed to no-op stubs that warn if
+// somehow still invoked (which would indicate a bug we want to know about).
+//
+// `_seoApi` (line 21) is the only thing in lines 1-3300 that LGSE depends on
+// (via the api() bridge at line ~3755) — it stays untouched.
+// =============================================================================
 
-  el.innerHTML =
-    '<div style="display:flex;border-bottom:1px solid var(--bd);background:var(--s1);flex-shrink:0;overflow-x:auto">' + tabHtml + '</div>' +
-    '<div id="seo-content" style="flex:1;overflow-y:auto;padding:24px"></div>';
-}
+function _seoRenderShell(el) { try { console.warn('[LU SEO 15.3] dead path: _seoRenderShell called — overridden by buildShell/lgse'); } catch(_) {} }
 
-function _seoSwitchTab(tab) {
-  _seoTab = tab;
-  document.querySelectorAll('.seo-tab').forEach(t => {
-    t.style.color = 'var(--t2)';
-    t.style.borderBottomColor = 'transparent';
-  });
-  var active = document.getElementById('seo-tab-' + tab);
-  if (active) {
-    active.style.color = 'var(--p,#6C5CE7)';
-    active.style.borderBottomColor = 'var(--p,#6C5CE7)';
-  }
-  var content = document.getElementById('seo-content');
-  if (!content) return;
-  content.innerHTML = loadingCard(300);
-
-  if (tab === 'dashboard') _seoDashboard(content);
-  else if (tab === 'audits') _seoAudits(content);
-  else if (tab === 'links') _seoLinks(content);
-  else if (tab === 'workspace') _seoWorkspace(content);
-  else if (tab === 'insights') _seoInsights(content);
-  else if (tab === 'reports') _seoReports(content);
-  else if (tab === 'redirects') _seoRedirects(content);
-  else if (tab === 'outbound') _seoOutbound(content);
-  else if (tab === 'images') _seoImages(content);
-  else if (tab === 'settings') _seoSettings(content);
-  else if (tab === 'score') _seoScoreSettings(content);
-  else if (tab === 'integrations') _seoIntegrations(content);
-  else if (tab === 'content') _seoContent(content);
-  else if (tab === 'goals') _seoGoals(content);
-  else if (tab === 'gsc') _seoGsc(content);
-  else if (tab === 'pages') _seoPages(content);
-  else if (tab === 'ctr') _seoCtr(content);
-  else if (tab === 'wins') _seoWins(content);
-}
+function _seoSwitchTab(tab) { try { console.warn('[LU SEO 15.3] dead path: _seoSwitchTab(' + tab + ') called — overridden by lgseSwitchTab; routing to lgseSwitchTab as fallback'); } catch(_) {} if (typeof window.lgseSwitchTab === 'function') return window.lgseSwitchTab(tab); }
 
 // ── Dashboard ──────────────────────────────────────────────────────────
 async function _seoDashboard(el) {
@@ -199,26 +156,8 @@ async function _seoViewAudit(id) {
 }
 
 // ── Keywords ───────────────────────────────────────────────────────────
-async function _seoKeywords(el) {
-  try {
-    var data = await _seoApi('GET', '/keywords');
-    var kws = data.keywords || data || [];
-    var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-      '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0">Tracked Keywords</h2>' +
-      '<button class="btn btn-primary" onclick="_seoAddKeyword()">+ Add Keyword</button></div>';
-    if (kws.length === 0) {
-      h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("lock",14)+'</div><p>No keywords tracked yet.</p></div>';
-    } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-      h += '<thead><tr><th style="text-align:left;padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Keyword</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Position</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Volume</th><th style="padding:12px;color:var(--t3);border-bottom:1px solid var(--bd)">Actions</th></tr></thead><tbody>';
-      kws.forEach(k => {
-        h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.keyword || k.term || '—') + '</td><td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.position || '—') + '</td><td style="padding:10px 12px;text-align:center;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (k.volume || '—') + '</td><td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)"><button class="btn btn-outline btn-sm" onclick="_seoDeleteKeyword(' + k.id + ')" style="font-size:11px;color:var(--rd)">Delete</button></td></tr>';
-      });
-      h += '</tbody></table></div>';
-    }
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+// Wave 15.3 — body removed; overridden later (final at line ~2526, then by LGSE renderKeywords)
+async function _seoKeywords(el) { try { console.warn('[LU SEO 15.3] dead path: _seoKeywords called — see renderKeywords (LGSE)'); } catch(_) {} }
 
 async function _seoAddKeyword() {
   var kw = await luPrompt('Enter keyword to track:', 'Add Keyword');
@@ -261,35 +200,10 @@ async function _seoRunSerp() {
 }
 
 // ── Internal Links ─────────────────────────────────────────────────────
-async function _seoLinks(el) {
-  try {
-    var data = await _seoApi('GET', '/links');
-    var links = data.suggestions || data.links || data || [];
-    var suggestedCount = Array.isArray(links) ? links.filter(function(l){ return !l.status || l.status === 'suggested'; }).length : 0;
-    // Wave 15 (2026-05-18) — "Apply top N" bulk CTA. Visible whenever
-    // there are queued suggestions; hidden otherwise. Same button + same
-    // behavior in WP iframe and Laravel SaaS — the underlying executor
-    // routes notifications to the right thread per Wave 9.
-    var bulkBtn = suggestedCount > 0
-      ? '<button class="btn btn-success" onclick="_seoApplyTopLinks(20)" style="margin-right:6px" title="Bulk-apply the top 20 queued suggestions (orphan targets first)">'+window.icon("zap",14)+' Apply top 20</button>'
-      : '';
-    var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px">' +
-      '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0">Internal Link Suggestions</h2>' +
-      '<div style="display:flex;gap:6px;align-items:center">' + bulkBtn +
-      '<button class="btn btn-primary" onclick="_seoGenerateLinks()">'+window.icon("link",14)+' Generate Suggestions</button></div></div>';
-    if (!Array.isArray(links) || links.length === 0) {
-      h += '<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:14px">'+window.icon("link",14)+'</div><p>No link suggestions yet. Click Generate to scan your content.</p></div>';
-    } else {
-      links.forEach(l => {
-        h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:10px;font-size:13px">' +
-          '<div style="color:var(--t1);font-weight:500;margin-bottom:6px">' + (l.anchor_text || l.keyword || '—') + '</div>' +
-          '<div style="color:var(--t2);font-size:12px;margin-bottom:8px">From: ' + (l.source_url || '—') + ' → ' + (l.target_url || '—') + '</div>' +
-          '<div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="_seoInsertLink(' + l.id + ')">Insert</button><button class="btn btn-outline btn-sm" onclick="_seoDismissLink(' + l.id + ')">Dismiss</button></div></div>';
-      });
-    }
-    el.innerHTML = h;
-  } catch(e) { el.innerHTML = _seoError(e); }
-}
+// Wave 15.3 — body removed; overridden at line ~1193 (W2S1) and ~1340 (W2S2 "Link Intelligence"),
+// and the LIVE renderer is LGSE's loadInternalLinks at line ~6142. Wave 15.0/15.1 patches
+// to this function never executed at runtime.
+async function _seoLinks(el) { try { console.warn('[LU SEO 15.3] dead path: _seoLinks called — see loadInternalLinks (LGSE)'); } catch(_) {} }
 
 // Wave 15 (2026-05-18). Bulk apply of internal-link suggestions from the
 // Links tab top bar. Same handler is reused by the Pages-tab "Fix orphan"
@@ -558,14 +472,8 @@ async function _seoDeleteRedirect(id) {
 }
 
 // ── Images ────────────────────────────────────────────────────────
-function _seoImages(el) {
-  el.innerHTML = '<h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Image Optimization</h2>' +
-    '<p style="font-size:13px;color:var(--t2);margin-bottom:20px">Optimize images for faster page load and better SEO</p>' +
-    '<div style="text-align:center;padding:60px;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:12px">' +
-    '<div style="font-size:48px;margin-bottom:16px">&#128444;</div>' +
-    '<p style="font-size:14px;margin-bottom:8px">Image optimization requires website content.</p>' +
-    '<p style="font-size:13px">Add pages to your site first, then return here to scan and optimize images.</p></div>';
-}
+// Wave 15.3 — body removed; overridden at line ~1136 and replaced by LGSE's renderImages flow.
+function _seoImages(el) { try { console.warn('[LU SEO 15.3] dead path: _seoImages called — see lgseRenderImages (LGSE)'); } catch(_) {} }
 
 // ── SEO Settings ──────────────────────────────────────────────────
 async function _seoSettings(el) {
