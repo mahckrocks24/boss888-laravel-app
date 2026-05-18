@@ -2203,6 +2203,281 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             ]);
         });
 
+        // ═══════════════════════════════════════════════════════════════
+        // Wave 18a (2026-05-19) — Reports tab endpoints
+        // ═══════════════════════════════════════════════════════════════
+        // Five CSV exports + an HTML report. The UI buttons at line ~7078
+        // (lgseDownloadReport) and ~7237 (lgseExportCsv) were calling these
+        // paths and getting silent 404s. All endpoints honor the Wave 16
+        // SiteScope filter (?site_url=…) so reports reflect the user's
+        // currently-selected website.
+        //
+        // CSV streaming via response()->streamDownload to avoid PHP memory
+        // bloat on large workspaces (e.g. ws7 with 1318 link rows).
+
+        // Internal helper — CSV row writer with proper escaping.
+        $csvLine = function (array $row): string {
+            $cells = array_map(function ($v) {
+                if ($v === null) return '';
+                $s = is_scalar($v) ? (string) $v : json_encode($v, JSON_UNESCAPED_SLASHES);
+                if (preg_match('/[",\n\r]/', $s)) {
+                    $s = '"' . str_replace('"', '""', $s) . '"';
+                }
+                return $s;
+            }, $row);
+            return implode(',', $cells) . "\r\n";
+        };
+
+        // GET /api/seo/reports/export/keywords
+        Route::get('/reports/export/keywords', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $q = \Illuminate\Support\Facades\DB::table('seo_keywords')->where('workspace_id', $wsId);
+            if ($host !== '') {
+                $q->where(function ($x) use ($host) {
+                    $x->where('target_url', 'like', '%//' . $host . '%')->orWhereNull('target_url');
+                });
+            }
+            $rows = $q->orderByDesc('volume')->get();
+            $fname = 'seo-keywords-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $rows) {
+                echo $csvLine(['keyword', 'volume', 'current_rank', 'previous_rank', 'status', 'target_url', 'last_checked_at', 'created_at']);
+                foreach ($rows as $row) {
+                    echo $csvLine([
+                        $row->keyword, $row->volume, $row->current_rank, $row->previous_rank,
+                        $row->status, $row->target_url, $row->last_checked_at ?? '', $row->created_at,
+                    ]);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // GET /api/seo/reports/export/pages
+        Route::get('/reports/export/pages', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $q = \Illuminate\Support\Facades\DB::table('seo_content_index AS sci')
+                ->leftJoin('articles AS a', function ($j) {
+                    $j->on('a.wp_post_id', '=', 'sci.wp_post_id')
+                      ->on('a.workspace_id', '=', 'sci.workspace_id');
+                })
+                ->where('sci.workspace_id', $wsId)
+                ->select(
+                    'sci.url', 'sci.title', 'sci.content_score', 'sci.word_count',
+                    'sci.inbound_links', 'sci.internal_link_count', 'sci.external_link_count',
+                    'sci.meta_title', 'sci.meta_description', 'sci.h1', 'sci.authority_score',
+                    'a.featured_image_url', 'a.featured_image_alt', 'a.featured_image_error'
+                );
+            if ($host !== '') { $q->where('sci.url', 'like', '%//' . $host . '%'); }
+            $rows = $q->orderBy('sci.content_score')->get();
+            $fname = 'seo-pages-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $rows) {
+                echo $csvLine(['url', 'title', 'content_score', 'word_count', 'inbound_links',
+                               'internal_link_count', 'external_link_count', 'meta_title',
+                               'meta_description', 'h1', 'authority_score',
+                               'featured_image_url', 'featured_image_alt', 'featured_image_error']);
+                foreach ($rows as $row) {
+                    echo $csvLine([
+                        $row->url, $row->title, $row->content_score, $row->word_count,
+                        $row->inbound_links, $row->internal_link_count, $row->external_link_count,
+                        $row->meta_title, $row->meta_description, $row->h1, $row->authority_score,
+                        $row->featured_image_url, $row->featured_image_alt, $row->featured_image_error,
+                    ]);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // GET /api/seo/reports/export/links
+        Route::get('/reports/export/links', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $q = \Illuminate\Support\Facades\DB::table('seo_links')->where('workspace_id', $wsId);
+            if ($host !== '') {
+                $q->where(function ($x) use ($host) {
+                    $x->where('source_url', 'like', '%//' . $host . '%')
+                      ->orWhere('target_url', 'like', '%//' . $host . '%');
+                });
+            }
+            $rows = $q->orderByDesc('priority_score')->get();
+            $fname = 'seo-links-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $rows) {
+                echo $csvLine(['source_url', 'target_url', 'anchor_text', 'status', 'priority_score', 'created_at', 'updated_at']);
+                foreach ($rows as $row) {
+                    echo $csvLine([
+                        $row->source_url, $row->target_url, $row->anchor_text,
+                        $row->status, $row->priority_score ?? '', $row->created_at, $row->updated_at,
+                    ]);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // GET /api/seo/reports/export/images
+        Route::get('/reports/export/images', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $q = \Illuminate\Support\Facades\DB::table('seo_images')->where('workspace_id', $wsId);
+            if ($host !== '') {
+                $q->where(function ($x) use ($host) {
+                    $x->where('image_url', 'like', '%//' . $host . '%')
+                      ->orWhere('page_url', 'like', '%//' . $host . '%');
+                });
+            }
+            $rows = $q->orderByDesc('updated_at')->get();
+            $fname = 'seo-images-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $rows) {
+                echo $csvLine(['page_url', 'image_url', 'optimization_status', 'optimization_provider',
+                               'size_bytes', 'verified_size_bytes', 'saved_bytes', 'alt_text',
+                               'missing_alt', 'empty_alt', 'webp_url', 'last_optimized_at']);
+                foreach ($rows as $row) {
+                    echo $csvLine([
+                        $row->page_url, $row->image_url, $row->optimization_status,
+                        $row->optimization_provider, $row->size_bytes, $row->verified_size_bytes,
+                        $row->saved_bytes, $row->alt_text, $row->missing_alt, $row->empty_alt,
+                        $row->webp_url, $row->last_optimized_at,
+                    ]);
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // GET /api/seo/reports/export/anchors
+        // Uses Wave 16e flattened-per-anchor data via the same code path
+        // the /anchors endpoint uses, so the CSV matches what users see
+        // on the Anchors sub-tab.
+        Route::get('/reports/export/anchors', function (\Illuminate\Http\Request $r) use ($csvLine) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $rowsQ = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')
+                ->where('workspace_id', $wsId);
+            if ($host !== '') { $rowsQ->where('target_url', 'like', '%//' . $host . '%'); }
+            $pages = $rowsQ->orderByDesc('total_inbound')->get();
+            $genericTerms = ['click here','here','read more','learn more','this','link','page','website','more','info','details','visit','read'];
+            $keywordsLower = \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)->pluck('keyword')
+                ->map(fn ($k) => strtolower(trim((string) $k)))->filter()->all();
+
+            $fname = 'seo-anchors-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
+            return response()->streamDownload(function () use ($csvLine, $pages, $genericTerms, $keywordsLower) {
+                echo $csvLine(['target_url', 'anchor_text', 'count', 'classification', 'issue_type', 'fix']);
+                foreach ($pages as $row) {
+                    $dist = json_decode($row->anchor_distribution ?? '[]', true) ?: [];
+                    foreach ($dist as $entry) {
+                        $anchorText = (string) ($entry['anchor'] ?? '');
+                        $count = (int) ($entry['count'] ?? 1);
+                        if ($anchorText === '') continue;
+                        $anchorLower = strtolower(trim($anchorText));
+                        $classification = 'descriptive';
+                        if (in_array($anchorLower, $genericTerms, true)) {
+                            $classification = 'generic';
+                        } elseif (! empty($keywordsLower) && in_array($anchorLower, $keywordsLower, true)) {
+                            $classification = 'exact_match';
+                        } elseif (mb_strlen($anchorText) > 40) {
+                            $classification = 'long_phrase';
+                        }
+                        $issueType = null; $fix = null;
+                        if ($classification === 'generic') {
+                            $issueType = 'generic'; $fix = 'Replace with descriptive anchor';
+                        } elseif ($count > 3) {
+                            $issueType = 'over_optimised'; $fix = 'Vary anchor text — reused ' . $count . 'x';
+                        }
+                        echo $csvLine([$row->target_url, $anchorText, $count, $classification, $issueType, $fix]);
+                    }
+                }
+            }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        });
+
+        // GET /api/seo/reports/audit/html  (and /pdf — same body; frontend
+        // uses window.print() to convert HTML → PDF).
+        //
+        // Composes the full Reports-tab content as a self-contained HTML
+        // document with print-friendly CSS. Pulls the same data the SPA
+        // renders so the printable + SPA views agree.
+        $auditReportHandler = function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+
+            $aQ = \Illuminate\Support\Facades\DB::table('seo_audits')->where('workspace_id', $wsId);
+            if ($host !== '') { $aQ->where('url', 'like', '%//' . $host . '%'); }
+            $audits = $aQ->orderByDesc('created_at')->limit(20)->get();
+
+            $latest = $audits->first();
+            $oldest = $audits->last();
+            $avgScore = $audits->count() ? (int) round($audits->avg('score')) : 0;
+            $scoreChange = ($latest && $oldest)
+                ? ((int) $latest->score - (int) $oldest->score)
+                : 0;
+
+            $stats = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId);
+            if ($host !== '') { $stats->where('url', 'like', '%//' . $host . '%'); }
+            $kpis = $stats->selectRaw('COUNT(*) AS total, AVG(content_score) AS avg_sc, SUM(CASE WHEN inbound_links=0 THEN 1 ELSE 0 END) AS orphans, SUM(CASE WHEN meta_description IS NULL OR meta_description="" THEN 1 ELSE 0 END) AS no_meta, SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin')->first();
+
+            $linkSugs = \Illuminate\Support\Facades\DB::table('seo_links')
+                ->where('workspace_id', $wsId)->where('status', 'suggested')->count();
+
+            $ws = \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId);
+            $wsName = $ws->business_name ?? $ws->name ?? 'Workspace ' . $wsId;
+            $siteLabel = $host !== '' ? $host : 'all workspace sites';
+            $generatedAt = date('Y-m-d H:i');
+
+            $esc = fn ($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+
+            $auditRowsHtml = '';
+            foreach ($audits as $a) {
+                $when = $a->created_at ? date('M j, Y', strtotime($a->created_at)) : '—';
+                $score = (int) ($a->score ?? 0);
+                $scoreClass = $score >= 70 ? 'good' : ($score >= 50 ? 'warn' : 'bad');
+                $auditRowsHtml .= '<tr><td>' . $esc($when) . '</td><td class="url">' . $esc($a->url) . '</td><td class="' . $scoreClass . '">' . $score . '</td><td>' . $esc($a->status) . '</td></tr>';
+            }
+
+            $html = '<!doctype html><html><head><meta charset="utf-8">'
+                . '<title>SEO Report — ' . $esc($wsName) . ' — ' . $esc($siteLabel) . '</title>'
+                . '<style>'
+                . 'body{font-family:-apple-system,BlinkMacSystemFont,Inter,Arial,sans-serif;color:#1f2937;max-width:920px;margin:24px auto;padding:0 20px;background:#fff}'
+                . 'h1{font-size:24px;margin:0 0 4px}'
+                . '.sub{color:#6b7280;font-size:13px;margin-bottom:24px}'
+                . '.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px}'
+                . '.kpi{border:1px solid #e5e7eb;border-radius:8px;padding:14px}'
+                . '.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:4px}'
+                . '.kpi-val{font-size:22px;font-weight:700;color:#111827}'
+                . 'h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin:24px 0 12px}'
+                . 'table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:18px}'
+                . 'th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #e5e7eb}'
+                . 'th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:600}'
+                . '.good{color:#10b981;font-weight:700}.warn{color:#f59e0b;font-weight:700}.bad{color:#ef4444;font-weight:700}'
+                . '.url{color:#6b7280;font-size:11px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+                . '.foot{margin-top:32px;padding-top:14px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:11px;text-align:center}'
+                . '@media print{body{margin:0}.kpi-grid{break-inside:avoid}}'
+                . '</style></head><body>'
+                . '<h1>SEO Report</h1>'
+                . '<div class="sub">' . $esc($wsName) . ' · ' . $esc($siteLabel) . ' · generated ' . $esc($generatedAt) . '</div>'
+
+                . '<div class="kpi-grid">'
+                . '<div class="kpi"><div class="kpi-label">Avg audit score</div><div class="kpi-val">' . $avgScore . '</div></div>'
+                . '<div class="kpi"><div class="kpi-label">Pages indexed</div><div class="kpi-val">' . (int) ($kpis->total ?? 0) . '</div></div>'
+                . '<div class="kpi"><div class="kpi-label">Orphan pages</div><div class="kpi-val">' . (int) ($kpis->orphans ?? 0) . '</div></div>'
+                . '<div class="kpi"><div class="kpi-label">Missing meta</div><div class="kpi-val">' . (int) ($kpis->no_meta ?? 0) . '</div></div>'
+                . '<div class="kpi"><div class="kpi-label">Link suggestions</div><div class="kpi-val">' . $linkSugs . '</div></div>'
+                . '</div>'
+
+                . '<h2>Site state</h2>'
+                . '<table><tbody>'
+                . '<tr><td>Average content score</td><td>' . round((float) ($kpis->avg_sc ?? 0), 1) . ' / 100</td></tr>'
+                . '<tr><td>Thin pages (&lt;300 words)</td><td>' . (int) ($kpis->thin ?? 0) . '</td></tr>'
+                . '<tr><td>Score change (latest vs oldest of ' . $audits->count() . ' audits)</td><td class="' . ($scoreChange > 0 ? 'good' : ($scoreChange < 0 ? 'bad' : 'warn')) . '">' . ($scoreChange >= 0 ? '+' : '') . $scoreChange . '</td></tr>'
+                . '</tbody></table>'
+
+                . '<h2>Audit history</h2>'
+                . '<table><thead><tr><th>Date</th><th>URL</th><th>Score</th><th>Status</th></tr></thead><tbody>'
+                . ($auditRowsHtml ?: '<tr><td colspan="4" style="color:#9ca3af;text-align:center">No audits in scope.</td></tr>')
+                . '</tbody></table>'
+
+                . '<div class="foot">Generated by LevelUp Growth · Print this page to save as PDF</div>'
+                . '</body></html>';
+
+            return response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+        };
+        Route::get('/reports/audit/html', $auditReportHandler);
+        Route::get('/reports/audit/pdf',  $auditReportHandler);
+
         // ── Wave 15 (2026-05-18) — Manual CTAs (Pages + Links tabs) ──
         // Direct API surface for the Pages-tab "Fix orphan" / "Retry image"
         // chips and the Links-tab "Apply top N" bulk button. Works in both

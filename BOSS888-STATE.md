@@ -85,6 +85,28 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
 
+### Wave 18a — fix 7 broken Reports-tab endpoints (-7 silent 404s)
+- The Reports-tab UI already had 5 CSV-export buttons + Export HTML + Print→PDF, but every one of them was calling a 404. Verified live: `curl -o /dev/null -w '%{http_code}' /api/seo/reports/...` → 404 for all 7.
+- **New endpoints** (each honors Wave 16 `?site_url=` filter via `SiteScope::hostFromRequest()`):
+  - `GET /api/seo/reports/export/keywords` — `seo_keywords` CSV; target_url-host filter with NULL-allowed for untargeted KWs
+  - `GET /api/seo/reports/export/pages`    — `seo_content_index` JOIN `articles` (Wave 11 fields included)
+  - `GET /api/seo/reports/export/links`    — `seo_links` (source OR target host match)
+  - `GET /api/seo/reports/export/images`   — `seo_images` (page_url OR image_url host match)
+  - `GET /api/seo/reports/export/anchors`  — flattened per-anchor rows with classification (Wave 16e logic reused)
+  - `GET /api/seo/reports/audit/html`      — full single-page HTML report (KPI cards + site state + audit history table)
+  - `GET /api/seo/reports/audit/pdf`       — same handler; frontend triggers `window.print()` to PDF-export
+- **All streamed** via `response()->streamDownload(...)` — no PHP memory bloat on big workspaces (ws7 = 1,318 link rows, 110 image rows).
+- **Smoke-verified end-to-end**:
+  - ws1: keywords=1 / pages=48 / links=592 / images=33 / anchors=29 / html=4.8 KB ✓
+  - ws7: keywords=2 / pages=62 / links=1318 / images=110 / anchors=59 / html=4.8 KB ✓
+  - Bogus site_url → 0 rows for all (filter cuts cleanly). Untargeted keywords still surface (correct per Wave 16c OR-IS-NULL design).
+
+### Wave 16d — fix duplicate "LevelUp Growth" in admin's site dropdown
+- **Bug**: ws1 dropdown showed 7 entries including TWO "LevelUp Growth" — one was the real `websites` row id=2 (host=`platform.levelupgrowth.io`, the user's static Laravel-built house site), the other was a phantom `external_wp` synthesized from `seo_settings.site_url=staging.levelupgrowth.io` (stale platform dev URL).
+- **Root cause**: `/api/seo/sites` dedup only checked exact host match. `platform.levelupgrowth.io ≠ staging.levelupgrowth.io` so both got listed even though they share the same logical brand and root domain.
+- **Fix**: dedup now uses **root domain** comparison (last 2 dot-segments). If the external `seo_settings.site_url`'s root matches any internal `websites` row's root, the fallback entry is skipped. Unrelated brands (e.g. ws7 has no internal sites, external WP is `shukranuae.com`) still get the entry — verified.
+- **Verified after fix**: ws1 → 6 entries (all real, no phantom). ws7 → 1 entry (shukranuae.com, kind=external_wp). Default site: ws1 → `123-fitness-gym.levelupgrowth.io` (first), ws7 → `shukranuae.com`.
+
 ### Wave 16c — site scope extended to controller-backed routes
 - **SeoService** (controller-backed reads now honor `params.site_url` / `$siteUrl`):
   - `linkSuggestions($wsId, $params)` — filters `source_url` OR `target_url`
