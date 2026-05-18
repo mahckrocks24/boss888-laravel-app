@@ -85,12 +85,6 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
 
-### Wave 16d — fix duplicate "LevelUp Growth" in admin's site dropdown
-- **Bug**: ws1 dropdown showed 7 entries including TWO "LevelUp Growth" — one was the real `websites` row id=2 (host=`platform.levelupgrowth.io`, the user's static Laravel-built house site), the other was a phantom `external_wp` synthesized from `seo_settings.site_url=staging.levelupgrowth.io` (stale platform dev URL).
-- **Root cause**: `/api/seo/sites` dedup only checked exact host match. `platform.levelupgrowth.io ≠ staging.levelupgrowth.io` so both got listed even though they share the same logical brand and root domain.
-- **Fix**: dedup now uses **root domain** comparison (last 2 dot-segments). If the external `seo_settings.site_url`'s root matches any internal `websites` row's root, the fallback entry is skipped. Unrelated brands (e.g. ws7 has no internal sites, external WP is `shukranuae.com`) still get the entry — verified.
-- **Verified after fix**: ws1 → 6 entries (all real, no phantom). ws7 → 1 entry (shukranuae.com, kind=external_wp). Default site: ws1 → `123-fitness-gym.levelupgrowth.io` (first), ws7 → `shukranuae.com`.
-
 ### Wave 16c — site scope extended to controller-backed routes
 - **SeoService** (controller-backed reads now honor `params.site_url` / `$siteUrl`):
   - `linkSuggestions($wsId, $params)` — filters `source_url` OR `target_url`
