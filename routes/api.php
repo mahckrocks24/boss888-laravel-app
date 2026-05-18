@@ -2384,99 +2384,419 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             }, $fname, ['Content-Type' => 'text/csv; charset=UTF-8']);
         });
 
-        // GET /api/seo/reports/audit/html  (and /pdf — same body; frontend
-        // uses window.print() to convert HTML → PDF).
-        //
-        // Composes the full Reports-tab content as a self-contained HTML
-        // document with print-friendly CSS. Pulls the same data the SPA
-        // renders so the printable + SPA views agree.
-        $auditReportHandler = function (\Illuminate\Http\Request $r) {
-            $wsId = (int) $r->attributes->get('workspace_id');
-            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+        // Wave 18c (2026-05-19) — comprehensive SEO report HTML.
+        // Used by both /reports/audit/html (returns the HTML) and
+        // /reports/audit/pdf (pipes the HTML through puppeteer for binary PDF).
+        // Composes site-state KPIs, ranking summary, link health, content
+        // health, image optimization, top issues, cluster gaps + audit history.
+        $auditReportBuildHtml = function (int $wsId, string $host): string {
+            $like = $host !== '' ? ('%//' . $host . '%') : null;
 
+            // 1. Audit history
             $aQ = \Illuminate\Support\Facades\DB::table('seo_audits')->where('workspace_id', $wsId);
-            if ($host !== '') { $aQ->where('url', 'like', '%//' . $host . '%'); }
+            if ($like) { $aQ->where('url', 'like', $like); }
             $audits = $aQ->orderByDesc('created_at')->limit(20)->get();
-
             $latest = $audits->first();
             $oldest = $audits->last();
             $avgScore = $audits->count() ? (int) round($audits->avg('score')) : 0;
-            $scoreChange = ($latest && $oldest)
-                ? ((int) $latest->score - (int) $oldest->score)
-                : 0;
+            $scoreChange = ($latest && $oldest) ? ((int) $latest->score - (int) $oldest->score) : 0;
 
-            $stats = \Illuminate\Support\Facades\DB::table('seo_content_index')
-                ->where('workspace_id', $wsId);
-            if ($host !== '') { $stats->where('url', 'like', '%//' . $host . '%'); }
-            $kpis = $stats->selectRaw('COUNT(*) AS total, AVG(content_score) AS avg_sc, SUM(CASE WHEN inbound_links=0 THEN 1 ELSE 0 END) AS orphans, SUM(CASE WHEN meta_description IS NULL OR meta_description="" THEN 1 ELSE 0 END) AS no_meta, SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin')->first();
+            // 2. Pages stats
+            $sciQ = \Illuminate\Support\Facades\DB::table('seo_content_index')->where('workspace_id', $wsId);
+            if ($like) { $sciQ->where('url', 'like', $like); }
+            $sci = $sciQ->selectRaw('
+                COUNT(*) AS total,
+                AVG(content_score) AS avg_sc,
+                SUM(CASE WHEN inbound_links=0 THEN 1 ELSE 0 END) AS orphans,
+                SUM(CASE WHEN inbound_links BETWEEN 1 AND 2 THEN 1 ELSE 0 END) AS weak,
+                SUM(CASE WHEN (meta_description IS NULL OR meta_description="") THEN 1 ELSE 0 END) AS no_meta,
+                SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin,
+                SUM(CASE WHEN content_score < 50 THEN 1 ELSE 0 END) AS below_50,
+                SUM(CASE WHEN h1 IS NULL OR h1="" THEN 1 ELSE 0 END) AS no_h1
+            ')->first();
 
-            $linkSugs = \Illuminate\Support\Facades\DB::table('seo_links')
-                ->where('workspace_id', $wsId)->where('status', 'suggested')->count();
+            // 3. Keywords
+            $kwQ = \Illuminate\Support\Facades\DB::table('seo_keywords')->where('workspace_id', $wsId);
+            if ($like) {
+                $kwQ->where(function ($q) use ($like) {
+                    $q->where('target_url', 'like', $like)->orWhereNull('target_url');
+                });
+            }
+            $kwTotal = (clone $kwQ)->count();
+            $kwTop3  = (clone $kwQ)->whereBetween('current_rank', [1, 3])->count();
+            $kwTop10 = (clone $kwQ)->whereBetween('current_rank', [1, 10])->count();
+            $kwImproving = (clone $kwQ)->whereNotNull('current_rank')->whereNotNull('previous_rank')
+                ->whereColumn('current_rank', '<', 'previous_rank')->count();
+            $kwDeclining = (clone $kwQ)->whereNotNull('current_rank')->whereNotNull('previous_rank')
+                ->whereColumn('current_rank', '>', 'previous_rank')->count();
 
+            // 4. Links
+            $lnQ = \Illuminate\Support\Facades\DB::table('seo_links')->where('workspace_id', $wsId);
+            if ($like) {
+                $lnQ->where(function ($q) use ($like) {
+                    $q->where('source_url', 'like', $like)->orWhere('target_url', 'like', $like);
+                });
+            }
+            $linkSugs    = (clone $lnQ)->where('status', 'suggested')->count();
+            $linkApplied = (clone $lnQ)->where('status', 'inserted')->count();
+            $linkDismissed = (clone $lnQ)->where('status', 'dismissed')->count();
+            $linkTotal = $linkSugs + $linkApplied + $linkDismissed;
+            $applyRate = $linkTotal > 0 ? (int) round(100 * $linkApplied / $linkTotal) : 0;
+
+            // 5. Images
+            $imgQ = \Illuminate\Support\Facades\DB::table('seo_images')->where('workspace_id', $wsId);
+            if ($like) {
+                $imgQ->where(function ($q) use ($like) {
+                    $q->where('image_url', 'like', $like)->orWhere('page_url', 'like', $like);
+                });
+            }
+            $imgStats = $imgQ->selectRaw('
+                COUNT(*) AS total,
+                SUM(CASE WHEN optimization_status="optimized" THEN 1 ELSE 0 END) AS optimized,
+                SUM(CASE WHEN optimization_status="failed" THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN missing_alt=1 OR empty_alt=1 THEN 1 ELSE 0 END) AS no_alt,
+                COALESCE(SUM(saved_bytes), 0) AS saved_bytes
+            ')->first();
+
+            // 6. Anchors (only need health-summary counts)
+            $anQ = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')->where('workspace_id', $wsId);
+            if ($like) { $anQ->where('target_url', 'like', $like); }
+            $anchorStats = $anQ->selectRaw('
+                COUNT(*) AS pages,
+                SUM(total_inbound) AS total_inbound,
+                SUM(generic_anchors) AS generic
+            ')->first();
+
+            // 7. Clusters + gaps
+            $clQ = \Illuminate\Support\Facades\DB::table('seo_clusters')->where('workspace_id', $wsId);
+            if ($like) {
+                $clQ->where(function ($q) use ($like) {
+                    $q->where('pillar_url', 'like', $like)->orWhereNull('pillar_url');
+                });
+            }
+            $clusters = $clQ->orderByDesc('page_count')->get();
+            $clustersTotal = $clusters->count();
+            $noPillar = $clusters->whereNull('pillar_url')->count() + $clusters->filter(fn ($c) => empty($c->pillar_url))->count() - $clusters->whereNull('pillar_url')->count();
+            $thinClusters = $clusters->filter(fn ($c) => (int) $c->page_count < 3)->count();
+
+            // 8. Articles (Wave 11 image-error tracking)
+            $artQ = \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId);
+            $articlesTotal = (clone $artQ)->count();
+            $articleImgErrors = (clone $artQ)->whereNotNull('featured_image_error')->count();
+            $articleNoAlt = (clone $artQ)->whereNotNull('featured_image_url')
+                ->where(function ($q) { $q->whereNull('featured_image_alt')->orWhere('featured_image_alt', ''); })
+                ->count();
+
+            // 9. Audit-items (open issues from latest audit)
+            $openIssues = 0;
+            if ($latest && $latest->id) {
+                $openIssues = \Illuminate\Support\Facades\DB::table('seo_audit_items')
+                    ->where('audit_id', $latest->id)
+                    ->whereIn('status', ['error', 'warning'])
+                    ->count();
+            }
+
+            // 10. Workspace info
             $ws = \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId);
             $wsName = $ws->business_name ?? $ws->name ?? 'Workspace ' . $wsId;
             $siteLabel = $host !== '' ? $host : 'all workspace sites';
             $generatedAt = date('Y-m-d H:i');
 
             $esc = fn ($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+            $fmtKb = fn ($b) => number_format(((int) $b) / 1024, 1) . ' KB';
 
-            $auditRowsHtml = '';
+            // Audit rows
+            $auditRows = '';
             foreach ($audits as $a) {
                 $when = $a->created_at ? date('M j, Y', strtotime($a->created_at)) : '—';
                 $score = (int) ($a->score ?? 0);
-                $scoreClass = $score >= 70 ? 'good' : ($score >= 50 ? 'warn' : 'bad');
-                $auditRowsHtml .= '<tr><td>' . $esc($when) . '</td><td class="url">' . $esc($a->url) . '</td><td class="' . $scoreClass . '">' . $score . '</td><td>' . $esc($a->status) . '</td></tr>';
+                $cls = $score >= 70 ? 'good' : ($score >= 50 ? 'warn' : 'bad');
+                $auditRows .= '<tr><td>' . $esc($when) . '</td><td class="url">' . $esc($a->url) . '</td><td class="' . $cls . '">' . $score . '</td><td>' . $esc($a->status) . '</td></tr>';
             }
+
+            // Cluster gap rows (top 10)
+            $clusterRows = '';
+            foreach ($clusters->take(10) as $c) {
+                $gaps = [];
+                if (empty($c->pillar_url))                  $gaps[] = 'no-pillar';
+                if ((int) $c->page_count < 3)               $gaps[] = 'thin';
+                if ((float) ($c->avg_score ?? 0) < 50)      $gaps[] = 'low-quality';
+                if ((float) ($c->avg_authority ?? 0) < 0.3) $gaps[] = 'low-authority';
+                $clusterRows .= '<tr><td>' . $esc($c->label ?? 'Cluster #' . $c->id) . '</td><td>' . (int) $c->page_count . '</td><td>' . round((float) ($c->avg_score ?? 0), 1) . '</td><td>' . ($gaps ? $esc(implode(', ', $gaps)) : '<span class="good">healthy</span>') . '</td></tr>';
+            }
+
+            // KPI card helper.
+            $kpi = function ($label, $val, $cls = '') use ($esc) {
+                return '<div class="kpi"><div class="kpi-label">' . $esc($label) . '</div><div class="kpi-val ' . $cls . '">' . $esc((string) $val) . '</div></div>';
+            };
 
             $html = '<!doctype html><html><head><meta charset="utf-8">'
                 . '<title>SEO Report — ' . $esc($wsName) . ' — ' . $esc($siteLabel) . '</title>'
                 . '<style>'
-                . 'body{font-family:-apple-system,BlinkMacSystemFont,Inter,Arial,sans-serif;color:#1f2937;max-width:920px;margin:24px auto;padding:0 20px;background:#fff}'
-                . 'h1{font-size:24px;margin:0 0 4px}'
+                . 'body{font-family:-apple-system,BlinkMacSystemFont,Inter,Arial,sans-serif;color:#1f2937;max-width:980px;margin:24px auto;padding:0 24px;background:#fff;line-height:1.4}'
+                . 'h1{font-size:26px;margin:0 0 4px;color:#111827}'
                 . '.sub{color:#6b7280;font-size:13px;margin-bottom:24px}'
-                . '.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px}'
-                . '.kpi{border:1px solid #e5e7eb;border-radius:8px;padding:14px}'
-                . '.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:4px}'
-                . '.kpi-val{font-size:22px;font-weight:700;color:#111827}'
-                . 'h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin:24px 0 12px}'
-                . 'table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:18px}'
-                . 'th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #e5e7eb}'
-                . 'th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:600}'
+                . '.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px}'
+                . '.kpi{border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;background:#fafafa}'
+                . '.kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:3px;font-weight:600}'
+                . '.kpi-val{font-size:20px;font-weight:700;color:#111827;font-variant-numeric:tabular-nums}'
+                . 'h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin:22px 0 10px;font-weight:700}'
+                . '.section-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}'
+                . 'table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:14px}'
+                . 'th,td{padding:7px 10px;text-align:left;border-bottom:1px solid #eef0f3}'
+                . 'th{font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:600;background:#fafafa}'
                 . '.good{color:#10b981;font-weight:700}.warn{color:#f59e0b;font-weight:700}.bad{color:#ef4444;font-weight:700}'
                 . '.url{color:#6b7280;font-size:11px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-                . '.foot{margin-top:32px;padding-top:14px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:11px;text-align:center}'
-                . '@media print{body{margin:0}.kpi-grid{break-inside:avoid}}'
+                . '.foot{margin-top:32px;padding-top:14px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:10.5px;text-align:center}'
+                . '@page{size:A4;margin:14mm 12mm}'
+                . '@media print{body{margin:0;padding:0 8mm}.kpi-grid,.section-grid{break-inside:avoid}h2{break-after:avoid}}'
                 . '</style></head><body>'
                 . '<h1>SEO Report</h1>'
-                . '<div class="sub">' . $esc($wsName) . ' · ' . $esc($siteLabel) . ' · generated ' . $esc($generatedAt) . '</div>'
+                . '<div class="sub"><strong>' . $esc($wsName) . '</strong> · ' . $esc($siteLabel) . ' · generated ' . $esc($generatedAt) . '</div>'
 
+                . '<h2>Site health</h2>'
                 . '<div class="kpi-grid">'
-                . '<div class="kpi"><div class="kpi-label">Avg audit score</div><div class="kpi-val">' . $avgScore . '</div></div>'
-                . '<div class="kpi"><div class="kpi-label">Pages indexed</div><div class="kpi-val">' . (int) ($kpis->total ?? 0) . '</div></div>'
-                . '<div class="kpi"><div class="kpi-label">Orphan pages</div><div class="kpi-val">' . (int) ($kpis->orphans ?? 0) . '</div></div>'
-                . '<div class="kpi"><div class="kpi-label">Missing meta</div><div class="kpi-val">' . (int) ($kpis->no_meta ?? 0) . '</div></div>'
-                . '<div class="kpi"><div class="kpi-label">Link suggestions</div><div class="kpi-val">' . $linkSugs . '</div></div>'
+                .   $kpi('Avg score',     $avgScore)
+                .   $kpi('Score change',  ($scoreChange >= 0 ? '+' : '') . $scoreChange, $scoreChange > 0 ? 'good' : ($scoreChange < 0 ? 'bad' : 'warn'))
+                .   $kpi('Audits run',    $audits->count())
+                .   $kpi('Open issues',   $openIssues)
+                .   $kpi('Pages indexed', (int) ($sci->total ?? 0))
                 . '</div>'
 
-                . '<h2>Site state</h2>'
-                . '<table><tbody>'
-                . '<tr><td>Average content score</td><td>' . round((float) ($kpis->avg_sc ?? 0), 1) . ' / 100</td></tr>'
-                . '<tr><td>Thin pages (&lt;300 words)</td><td>' . (int) ($kpis->thin ?? 0) . '</td></tr>'
-                . '<tr><td>Score change (latest vs oldest of ' . $audits->count() . ' audits)</td><td class="' . ($scoreChange > 0 ? 'good' : ($scoreChange < 0 ? 'bad' : 'warn')) . '">' . ($scoreChange >= 0 ? '+' : '') . $scoreChange . '</td></tr>'
+                . '<h2>Content</h2>'
+                . '<div class="kpi-grid">'
+                .   $kpi('Avg content',  round((float) ($sci->avg_sc ?? 0), 1))
+                .   $kpi('Below 50',     (int) ($sci->below_50 ?? 0), ((int) ($sci->below_50 ?? 0) > 0 ? 'warn' : ''))
+                .   $kpi('Thin (<300w)', (int) ($sci->thin ?? 0))
+                .   $kpi('Missing meta', (int) ($sci->no_meta ?? 0), ((int) ($sci->no_meta ?? 0) > 0 ? 'warn' : ''))
+                .   $kpi('No H1',        (int) ($sci->no_h1 ?? 0))
+                . '</div>'
+
+                . '<h2>Links</h2>'
+                . '<div class="kpi-grid">'
+                .   $kpi('Orphan pages', (int) ($sci->orphans ?? 0), ((int) ($sci->orphans ?? 0) > 0 ? 'bad' : 'good'))
+                .   $kpi('Weak (1–2)',   (int) ($sci->weak ?? 0))
+                .   $kpi('Suggested',    $linkSugs)
+                .   $kpi('Applied',      $linkApplied)
+                .   $kpi('Apply rate',   $applyRate . '%', $applyRate >= 50 ? 'good' : ($applyRate >= 20 ? 'warn' : 'bad'))
+                . '</div>'
+
+                . '<h2>Keywords + topics</h2>'
+                . '<div class="kpi-grid">'
+                .   $kpi('Tracked',     $kwTotal)
+                .   $kpi('Top 3',       $kwTop3, $kwTop3 > 0 ? 'good' : '')
+                .   $kpi('Top 10',      $kwTop10)
+                .   $kpi('Improving',   $kwImproving, $kwImproving > 0 ? 'good' : '')
+                .   $kpi('Declining',   $kwDeclining, $kwDeclining > 0 ? 'bad' : '')
+                . '</div>'
+
+                . '<h2>Images + anchors</h2>'
+                . '<div class="kpi-grid">'
+                .   $kpi('Image rows',  (int) ($imgStats->total ?? 0))
+                .   $kpi('Optimized',   (int) ($imgStats->optimized ?? 0), ((int) ($imgStats->optimized ?? 0) > 0 ? 'good' : ''))
+                .   $kpi('Image errors',(int) ($imgStats->failed ?? 0), ((int) ($imgStats->failed ?? 0) > 0 ? 'bad' : ''))
+                .   $kpi('Bytes saved', $fmtKb((int) ($imgStats->saved_bytes ?? 0)))
+                .   $kpi('Generic anchors', (int) ($anchorStats->generic ?? 0), ((int) ($anchorStats->generic ?? 0) > 0 ? 'warn' : ''))
+                . '</div>'
+
+                . '<h2>Clusters (top 10)</h2>'
+                . '<table><thead><tr><th>Cluster</th><th>Pages</th><th>Avg score</th><th>Gaps</th></tr></thead><tbody>'
+                . ($clusterRows ?: '<tr><td colspan="4" style="color:#9ca3af;text-align:center">No clusters built yet. Run topic clustering on the Topics tab.</td></tr>')
                 . '</tbody></table>'
 
                 . '<h2>Audit history</h2>'
                 . '<table><thead><tr><th>Date</th><th>URL</th><th>Score</th><th>Status</th></tr></thead><tbody>'
-                . ($auditRowsHtml ?: '<tr><td colspan="4" style="color:#9ca3af;text-align:center">No audits in scope.</td></tr>')
+                . ($auditRows ?: '<tr><td colspan="4" style="color:#9ca3af;text-align:center">No audits in scope.</td></tr>')
                 . '</tbody></table>'
 
-                . '<div class="foot">Generated by LevelUp Growth · Print this page to save as PDF</div>'
+                . '<div class="foot">Generated by LevelUp Growth · ' . $esc($generatedAt) . '</div>'
                 . '</body></html>';
 
-            return response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+            return $html;
         };
-        Route::get('/reports/audit/html', $auditReportHandler);
-        Route::get('/reports/audit/pdf',  $auditReportHandler);
+
+        // Wave 18c — rich summary endpoint for the Reports-tab top section.
+        // Same data the HTML/PDF report uses but as structured JSON so the SPA
+        // can render 5 sections × 5 KPI cards without re-fetching everything.
+        Route::get('/reports/summary', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $like = $host !== '' ? ('%//' . $host . '%') : null;
+
+            // Audits
+            $aQ = \Illuminate\Support\Facades\DB::table('seo_audits')->where('workspace_id', $wsId);
+            if ($like) { $aQ->where('url', 'like', $like); }
+            $audits  = $aQ->orderByDesc('created_at')->limit(20)->get();
+            $latest  = $audits->first();
+            $oldest  = $audits->last();
+            $avgAud  = $audits->count() ? (int) round($audits->avg('score')) : 0;
+            $delta   = ($latest && $oldest) ? ((int) $latest->score - (int) $oldest->score) : 0;
+            $openIssues = $latest && $latest->id
+                ? (int) \Illuminate\Support\Facades\DB::table('seo_audit_items')
+                    ->where('audit_id', $latest->id)
+                    ->whereIn('status', ['error', 'warning'])->count()
+                : 0;
+
+            // Pages
+            $sciQ = \Illuminate\Support\Facades\DB::table('seo_content_index')->where('workspace_id', $wsId);
+            if ($like) { $sciQ->where('url', 'like', $like); }
+            $sci = $sciQ->selectRaw('
+                COUNT(*) AS total,
+                AVG(content_score) AS avg_sc,
+                SUM(CASE WHEN inbound_links=0 THEN 1 ELSE 0 END) AS orphans,
+                SUM(CASE WHEN inbound_links BETWEEN 1 AND 2 THEN 1 ELSE 0 END) AS weak,
+                SUM(CASE WHEN (meta_description IS NULL OR meta_description="") THEN 1 ELSE 0 END) AS no_meta,
+                SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin,
+                SUM(CASE WHEN content_score < 50 THEN 1 ELSE 0 END) AS below_50,
+                SUM(CASE WHEN h1 IS NULL OR h1="" THEN 1 ELSE 0 END) AS no_h1
+            ')->first();
+
+            // Keywords
+            $kwQ = \Illuminate\Support\Facades\DB::table('seo_keywords')->where('workspace_id', $wsId);
+            if ($like) {
+                $kwQ->where(function ($q) use ($like) {
+                    $q->where('target_url', 'like', $like)->orWhereNull('target_url');
+                });
+            }
+            $kwTotal = (clone $kwQ)->count();
+            $kwTop3  = (clone $kwQ)->whereBetween('current_rank', [1, 3])->count();
+            $kwTop10 = (clone $kwQ)->whereBetween('current_rank', [1, 10])->count();
+            $kwImp   = (clone $kwQ)->whereNotNull('current_rank')->whereNotNull('previous_rank')
+                ->whereColumn('current_rank', '<', 'previous_rank')->count();
+            $kwDec   = (clone $kwQ)->whereNotNull('current_rank')->whereNotNull('previous_rank')
+                ->whereColumn('current_rank', '>', 'previous_rank')->count();
+
+            // Links
+            $lnQ = \Illuminate\Support\Facades\DB::table('seo_links')->where('workspace_id', $wsId);
+            if ($like) {
+                $lnQ->where(function ($q) use ($like) {
+                    $q->where('source_url', 'like', $like)->orWhere('target_url', 'like', $like);
+                });
+            }
+            $lSug    = (clone $lnQ)->where('status', 'suggested')->count();
+            $lApp    = (clone $lnQ)->where('status', 'inserted')->count();
+            $lDis    = (clone $lnQ)->where('status', 'dismissed')->count();
+            $lTot    = $lSug + $lApp + $lDis;
+            $applyR  = $lTot > 0 ? (int) round(100 * $lApp / $lTot) : 0;
+
+            // Images
+            $imgQ = \Illuminate\Support\Facades\DB::table('seo_images')->where('workspace_id', $wsId);
+            if ($like) {
+                $imgQ->where(function ($q) use ($like) {
+                    $q->where('image_url', 'like', $like)->orWhere('page_url', 'like', $like);
+                });
+            }
+            $imgS = $imgQ->selectRaw('
+                COUNT(*) AS total,
+                SUM(CASE WHEN optimization_status="optimized" THEN 1 ELSE 0 END) AS optimized,
+                SUM(CASE WHEN optimization_status="failed" THEN 1 ELSE 0 END) AS failed,
+                COALESCE(SUM(saved_bytes), 0) AS saved_bytes
+            ')->first();
+
+            // Anchors
+            $anQ = \Illuminate\Support\Facades\DB::table('seo_anchor_analysis')->where('workspace_id', $wsId);
+            if ($like) { $anQ->where('target_url', 'like', $like); }
+            $generic = (int) $anQ->sum('generic_anchors');
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'site_health' => [
+                        'avg_audit_score' => $avgAud,
+                        'score_change'    => $delta,
+                        'audits_run'      => $audits->count(),
+                        'open_issues'     => $openIssues,
+                        'pages_indexed'   => (int) ($sci->total ?? 0),
+                    ],
+                    'content' => [
+                        'avg_content_score' => round((float) ($sci->avg_sc ?? 0), 1),
+                        'below_50'          => (int) ($sci->below_50 ?? 0),
+                        'thin'              => (int) ($sci->thin ?? 0),
+                        'no_meta'           => (int) ($sci->no_meta ?? 0),
+                        'no_h1'             => (int) ($sci->no_h1 ?? 0),
+                    ],
+                    'links' => [
+                        'orphans'        => (int) ($sci->orphans ?? 0),
+                        'weak'           => (int) ($sci->weak ?? 0),
+                        'suggested'      => $lSug,
+                        'applied'        => $lApp,
+                        'apply_rate_pct' => $applyR,
+                    ],
+                    'keywords' => [
+                        'tracked'   => $kwTotal,
+                        'top_3'     => $kwTop3,
+                        'top_10'    => $kwTop10,
+                        'improving' => $kwImp,
+                        'declining' => $kwDec,
+                    ],
+                    'images_anchors' => [
+                        'image_rows'      => (int) ($imgS->total ?? 0),
+                        'image_optimized' => (int) ($imgS->optimized ?? 0),
+                        'image_failed'    => (int) ($imgS->failed ?? 0),
+                        'bytes_saved_kb'  => round((int) ($imgS->saved_bytes ?? 0) / 1024, 1),
+                        'generic_anchors' => $generic,
+                    ],
+                ],
+            ]);
+        });
+
+        // HTML response (cheap — no puppeteer).
+        Route::get('/reports/audit/html', function (\Illuminate\Http\Request $r) use ($auditReportBuildHtml) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            return response($auditReportBuildHtml($wsId, $host), 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+            ]);
+        });
+
+        // PDF response — pipes HTML through puppeteer (tools/report-render-pdf.cjs).
+        // Bundled Chromium lives at .puppeteer-cache (already in use for studio
+        // PNG export). Falls back to inline HTML with a 503 header so the
+        // frontend can detect + warn cleanly.
+        Route::get('/reports/audit/pdf', function (\Illuminate\Http\Request $r) use ($auditReportBuildHtml) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+            $html = $auditReportBuildHtml($wsId, $host);
+
+            $script = base_path('tools/report-render-pdf.cjs');
+            if (! is_file($script)) {
+                return response($html, 503, ['Content-Type' => 'text/html; charset=UTF-8', 'X-PDF-Fallback' => 'script_missing']);
+            }
+
+            $childEnv = [
+                'HOME'                => '/tmp',
+                'PATH'                => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+                'PUPPETEER_CACHE_DIR' => base_path('.puppeteer-cache'),
+                'LANG'                => 'C.UTF-8',
+                'LC_ALL'              => 'C.UTF-8',
+            ];
+            $descriptorspec = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+            $proc = @proc_open('node ' . escapeshellarg($script), $descriptorspec, $pipes, null, $childEnv);
+            if (! is_resource($proc)) {
+                return response($html, 503, ['Content-Type' => 'text/html; charset=UTF-8', 'X-PDF-Fallback' => 'proc_open_failed']);
+            }
+            fwrite($pipes[0], $html);
+            fclose($pipes[0]);
+            $pdf = stream_get_contents($pipes[1]);
+            $err = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exit = proc_close($proc);
+
+            if ($exit !== 0 || ! $pdf || strncmp($pdf, '%PDF-', 5) !== 0) {
+                \Illuminate\Support\Facades\Log::warning('[reports/audit/pdf] puppeteer failed', [
+                    'workspace_id' => $wsId, 'exit' => $exit, 'stderr' => mb_substr((string) $err, 0, 500),
+                ]);
+                return response($html, 503, ['Content-Type' => 'text/html; charset=UTF-8', 'X-PDF-Fallback' => 'render_failed']);
+            }
+
+            $fname = 'seo-report-' . ($host ?: 'all') . '-' . date('Ymd') . '.pdf';
+            return response($pdf, 200, [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $fname . '"',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        });
 
         // ───────────────────────────────────────────────────────────────
         // Wave 18b (2026-05-19) — Tier-2 action-list reports.

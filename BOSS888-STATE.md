@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.12.0-wave18b-action-reports`
+- **Cache buster (seo.js)**: `5.12.1-wave18c-rich-summary-pdf`
 - **Cache buster (messages-ui.js)**: `4.6.0-wave16b-site-scope`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
@@ -84,6 +84,20 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 18c — confirm-on-download + real PDF + 5×5 KPI summary
+Three user-reported issues fixed in one wave.
+- **Confirm before download**: both `lgseExportCsv` and `lgseDownloadReport` now show a `confirm()` prompt naming the report + the site scope (e.g. *"Download the Orphan pages CSV for shukranuae.com?"*) — no more instant-download surprises.
+- **Real PDF**: new `tools/report-render-pdf.cjs` puppeteer script reads HTML on stdin and writes binary PDF on stdout. `GET /api/seo/reports/audit/pdf` now pipes the report through it via `proc_open`, returning `Content-Type: application/pdf` (106 KB for ws1, valid `%PDF-` magic bytes verified). Falls back to HTML 503 + `X-PDF-Fallback` header if puppeteer fails (script missing / proc_open failure / non-PDF output); the frontend detects this and warns the user before saving HTML.
+- **Richer summary on Reports tab**: replaced the 5-KPI strip with **5 sections × 5 cards = 25 KPIs** matching the PDF report layout:
+  - **Site health**: Avg score, Score change, Audits run, Open issues, Pages indexed
+  - **Content**: Avg content score, Below 50, Thin (<300w), Missing meta, No H1
+  - **Links**: Orphan pages, Weak (1–2), Suggested, Applied, Apply rate %
+  - **Keywords + topics**: Tracked, Top 3, Top 10, Improving, Declining
+  - **Images + anchors**: Image rows, Optimized, Image errors, Bytes saved, Generic anchors
+- New `GET /api/seo/reports/summary` endpoint serves all 25 KPIs in one shot. Site-scoped via `SiteScope::hostFromRequest`. The SPA fetches it after the initial Reports-tab render so layout never blocks on it.
+- **Cache buster** `5.12.0-wave18b-action-reports` → `5.12.1-wave18c-rich-summary-pdf`.
+- **Smoke-verified end-to-end** for ws1 (52 avg / 0 change / 35 orphans / 592 suggested / 0% apply rate / 1 keyword / 0 image optimized) and ws7 (72 avg / -7 declining / 16 orphans / 1318 suggested / 0% rate / 2 keywords / 3 image errors / 2 generic anchors). PDF is a real PDF for both. Confirm dialog fires before every download.
 
 ### Wave 18b — 6 Tier-2 action-list reports (+ frontend wiring)
 - **6 new CSV endpoints** sourced from data the SPA already correctly computes (Wave 16e/16f/16g):

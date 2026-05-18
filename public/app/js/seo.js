@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.12.0-wave18b-action-reports loaded — 11 Reports-tab exports wired (5 raw + 6 action-list), all site-scoped'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.12.1-wave18c-rich-summary-pdf loaded — confirm-on-download + real PDF + 5×5 KPI summary'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -7091,19 +7091,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           }).join('')
         + '</div>';
 
-      // KPI cards — 5 across (uses existing lgse-kpi-card class).
-      html += '<div class="lgse-kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px">';
-      var kpis = [
-        { l: 'Avg score',     v: avgScore },
-        { l: 'Title coverage', v: titlePct == null ? '—' : titlePct + '%', cls: titlePct != null && titlePct >= 80 ? 'lgse-up' : (titlePct != null && titlePct < 50 ? 'lgse-dn' : '') },
-        { l: 'Desc coverage',  v: descPct  == null ? '—' : descPct  + '%', cls: descPct  != null && descPct  >= 80 ? 'lgse-up' : (descPct  != null && descPct  < 50 ? 'lgse-dn' : '') },
-        { l: 'Audits run',    v: audits.length },
-        { l: 'Score change',  v: (scoreChange > 0 ? '+' : '') + scoreChange, cls: scoreChange > 0 ? 'lgse-up' : (scoreChange < 0 ? 'lgse-dn' : '') },
-      ];
-      kpis.forEach(function (k) {
-        html += '<div class="lgse-kpi-card"><div class="lgse-kpi-label">' + esc(k.l) + '</div><div class="lgse-kpi-val ' + (k.cls || '') + '">' + esc(String(k.v)) + '</div></div>';
-      });
-      html += '</div>';
+      // Wave 18c — placeholder for the rich KPI grid. Populated by an async
+      // /reports/summary fetch below so we don't blow up the initial render
+      // if any of the side-queries are slow. Each section renders 5 cards.
+      html += '<div id="lgse-reports-rich-summary" style="margin-bottom:18px">'
+        +   '<div style="padding:14px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading site health…</div>'
+        + '</div>';
 
       // SMOKE-1.4 — Score trend as CSS bar chart (was: brittle SVG polyline).
       var chartAudits = audits.slice(0, 8).reverse();
@@ -7192,9 +7185,80 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       html += '</tbody></table>';
 
       body.innerHTML = html;
+
+      // Wave 18c — fetch the rich KPI summary in parallel + render once back.
+      var summaryHolder = document.getElementById('lgse-reports-rich-summary');
+      if (summaryHolder) {
+        var summaryUrl = '/reports/summary';
+        api('GET', summaryUrl).then(function (s) {
+          if (!s || !s.success) return;
+          window.lgseRenderReportsSummary(summaryHolder, s);
+        }).catch(function () {
+          summaryHolder.innerHTML = '<div style="padding:14px;color:var(--lgse-t3);text-align:center;font-size:11px">Could not load extended summary.</div>';
+        });
+      }
     }).catch(function () {
       body.innerHTML = emptyState('⚠', 'Could not load reports', 'Check your connection and try again.');
     });
+  };
+
+  // Wave 18c — 5 sections × 5 KPI cards each, mirroring the PDF report layout.
+  window.lgseRenderReportsSummary = function (holderEl, s) {
+    function kpi(label, val, cls) {
+      cls = cls || '';
+      return '<div class="lgse-kpi-card"><div class="lgse-kpi-label">' + esc(label) + '</div><div class="lgse-kpi-val ' + cls + '">' + esc(String(val)) + '</div></div>';
+    }
+    function section(title, cards) {
+      return '<div class="lgse-section-hdr" style="margin-top:10px"><span class="lgse-section-title">' + esc(title) + '</span></div>'
+        +    '<div class="lgse-kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:10px">' + cards.join('') + '</div>';
+    }
+    var d = s.data || {};
+    var siteHealth = d.site_health || {};
+    var content    = d.content     || {};
+    var links      = d.links       || {};
+    var keywords   = d.keywords    || {};
+    var imgAnchor  = d.images_anchors || {};
+    var scCls = function (v) { return v > 0 ? 'lgse-up' : (v < 0 ? 'lgse-dn' : ''); };
+    var rate = links.apply_rate_pct || 0;
+    var ratCls = rate >= 50 ? 'lgse-up' : (rate >= 20 ? '' : 'lgse-dn');
+
+    var html = ''
+      + section('Site health', [
+          kpi('Avg score',     siteHealth.avg_audit_score || 0),
+          kpi('Score change',  (siteHealth.score_change >= 0 ? '+' : '') + (siteHealth.score_change || 0), scCls(siteHealth.score_change || 0)),
+          kpi('Audits run',    siteHealth.audits_run || 0),
+          kpi('Open issues',   siteHealth.open_issues || 0, (siteHealth.open_issues > 0 ? 'lgse-dn' : '')),
+          kpi('Pages indexed', siteHealth.pages_indexed || 0),
+        ])
+      + section('Content', [
+          kpi('Avg content',  content.avg_content_score || 0),
+          kpi('Below 50',     content.below_50 || 0, ((content.below_50 || 0) > 0 ? 'lgse-dn' : '')),
+          kpi('Thin (<300w)', content.thin || 0),
+          kpi('Missing meta', content.no_meta || 0, ((content.no_meta || 0) > 0 ? 'lgse-dn' : '')),
+          kpi('No H1',        content.no_h1 || 0),
+        ])
+      + section('Links', [
+          kpi('Orphan pages', links.orphans || 0, ((links.orphans || 0) > 0 ? 'lgse-dn' : 'lgse-up')),
+          kpi('Weak (1–2)',   links.weak || 0),
+          kpi('Suggested',    links.suggested || 0),
+          kpi('Applied',      links.applied || 0, ((links.applied || 0) > 0 ? 'lgse-up' : '')),
+          kpi('Apply rate',   rate + '%', ratCls),
+        ])
+      + section('Keywords + topics', [
+          kpi('Tracked',     keywords.tracked || 0),
+          kpi('Top 3',       keywords.top_3 || 0, ((keywords.top_3 || 0) > 0 ? 'lgse-up' : '')),
+          kpi('Top 10',      keywords.top_10 || 0),
+          kpi('Improving',   keywords.improving || 0, ((keywords.improving || 0) > 0 ? 'lgse-up' : '')),
+          kpi('Declining',   keywords.declining || 0, ((keywords.declining || 0) > 0 ? 'lgse-dn' : '')),
+        ])
+      + section('Images + anchors', [
+          kpi('Image rows',  imgAnchor.image_rows || 0),
+          kpi('Optimized',   imgAnchor.image_optimized || 0, ((imgAnchor.image_optimized || 0) > 0 ? 'lgse-up' : '')),
+          kpi('Image errors',imgAnchor.image_failed || 0, ((imgAnchor.image_failed || 0) > 0 ? 'lgse-dn' : '')),
+          kpi('Bytes saved', imgAnchor.bytes_saved_kb ? (imgAnchor.bytes_saved_kb + ' KB') : '0'),
+          kpi('Generic anchors', imgAnchor.generic_anchors || 0, ((imgAnchor.generic_anchors || 0) > 0 ? 'lgse-dn' : '')),
+        ]);
+    holderEl.innerHTML = html;
   };
 
   // P0-13: open the matching audit's detail view in the Audit tab.
@@ -7222,50 +7286,72 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     // No-op refetch for now; future: pass since=… to /audits when supported.
   };
   window.lgseDownloadReport = async function (kind) {
-    // ITEM-3 — backend's /reports/audit/pdf returns HTML wrapped as text/html
-    // (no real PDF rendering library wired). For 'pdf' we open the HTML report
-    // in a new tab + toast the user to use browser Print → Save as PDF.
-    // 'html' keeps its original direct-download behaviour.
-    // Wave 18b — site_url propagated so the report scope matches the dropdown.
+    // Wave 18c (2026-05-19) — real binary PDF (puppeteer-rendered) +
+    // confirmation modal. Older version used to open HTML in a new tab
+    // and ask the user to do Print → Save-as-PDF; now the backend renders
+    // a true PDF via puppeteer (tools/report-render-pdf.cjs) and we just
+    // stream it down.
     function _reportUrl(path) {
       var u = window.location.origin + path;
       if (window._lgseActiveSiteUrl) u += '?site_url=' + encodeURIComponent(window._lgseActiveSiteUrl);
       return u;
     }
+    var scopeLabel = window._lgseActiveSiteUrl
+      ? window._lgseActiveSiteUrl.replace(/^https?:\/\//, '')
+      : 'all workspace sites';
+    var label = (kind === 'pdf') ? 'PDF report' : 'HTML report';
+    if (! confirm('Download the ' + label + ' for ' + scopeLabel + '?')) return;
     try {
       var token = localStorage.getItem('lu_token') || '';
-      if (kind === 'pdf') {
-        var resp = await fetch(_reportUrl('/api/seo/reports/audit/html'), { headers: { 'Authorization': 'Bearer ' + token } });
-        if (!resp.ok) { if (typeof window.showToast === 'function') window.showToast('Could not open report', 'error'); return; }
-        var html = await resp.text();
-        var blob = new Blob([html], { type: 'text/html' });
-        var url  = URL.createObjectURL(blob);
-        var w = window.open(url, '_blank', 'noopener');
-        if (!w) {
-          // Popup blocked — fall through to download.
-          var a = document.createElement('a');
-          a.href = url; a.download = 'seo-audit-' + Date.now() + '.html';
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        }
-        if (typeof window.showToast === 'function') {
-          window.showToast('Use browser File → Print → Save as PDF', 'info');
-        }
-        // Revoke after a delay so the new tab has time to fetch the blob.
-        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      var endpoint = (kind === 'pdf') ? '/api/seo/reports/audit/pdf' : '/api/seo/reports/audit/html';
+      var resp = await fetch(_reportUrl(endpoint), { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!resp.ok) {
+        if (typeof window.showToast === 'function') window.showToast(label + ' download failed (' + resp.status + ')', 'error');
         return;
       }
-      // HTML direct-download path.
-      var r = await fetch(_reportUrl('/api/seo/reports/audit/html'), { headers: { 'Authorization': 'Bearer ' + token } });
-      if (!r.ok) { if (typeof window.showToast === 'function') window.showToast('Download failed', 'error'); return; }
-      var b = await r.blob();
-      var u = URL.createObjectURL(b);
-      var ah = document.createElement('a');
-      ah.href = u; ah.download = 'seo-audit-' + Date.now() + '.html';
-      document.body.appendChild(ah); ah.click(); document.body.removeChild(ah);
-      URL.revokeObjectURL(u);
-    } catch (e) { /* silent */ }
+
+      // PDF: detect fallback (puppeteer failed → server returned HTML 503).
+      if (kind === 'pdf') {
+        var ct = (resp.headers.get('Content-Type') || '').toLowerCase();
+        var fbk = resp.headers.get('X-PDF-Fallback');
+        if (ct.indexOf('application/pdf') === -1 || fbk) {
+          if (typeof window.showToast === 'function') {
+            window.showToast('PDF renderer unavailable (' + (fbk || ct) + ') — falling back to HTML.', 'error');
+          }
+          // Treat as HTML fallback so user still gets the report.
+          kind = 'html';
+        }
+      }
+
+      var blob = await resp.blob();
+      var ext  = (kind === 'pdf') ? 'pdf' : 'html';
+      var stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      var fname = 'seo-report-' + (window._lgseActiveSiteUrl ? window._lgseActiveSiteUrl.replace(/^https?:\/\//, '').replace(/[^a-z0-9.-]/gi, '_') : 'all') + '-' + stamp + '.' + ext;
+      var url   = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (typeof window.showToast === 'function') {
+        window.showToast(label + ' downloaded (' + Math.round(blob.size / 1024) + ' KB)', 'success');
+      }
+    } catch (e) {
+      if (typeof window.showToast === 'function') window.showToast(label + ' download failed: ' + (e.message || e), 'error');
+    }
   };
   window.lgseExportCsv = async function (type) {
+    // Wave 18c (2026-05-19) — confirmation before any download.
+    // Human-friendly labels for the prompt; matches the button text.
+    var LABELS = {
+      keywords: 'Keywords', pages: 'Pages', links: 'Links', images: 'Images', anchors: 'Anchors',
+      orphans: 'Orphan pages', 'weak-pages': 'Weak pages', 'quick-wins': 'Quick wins',
+      'cluster-gaps': 'Cluster gaps', 'anchor-health': 'Anchor health', 'link-backlog': 'Link backlog',
+    };
+    var label = LABELS[type] || type;
+    var scope = window._lgseActiveSiteUrl
+      ? (' for ' + (window._lgseActiveSiteUrl.replace(/^https?:\/\//, '')))
+      : ' (all workspace sites)';
+    if (! confirm('Download the ' + label + ' CSV' + scope + '?')) return;
     try {
       var token = localStorage.getItem('lu_token') || '';
       // Wave 18b — propagate active site so CSV matches the SPA's current scope.
