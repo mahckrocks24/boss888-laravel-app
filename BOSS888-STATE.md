@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.10.0-wave15-ctas`
+- **Cache buster (seo.js)**: `5.10.1-wave15-ctas-fix`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
 ---
@@ -83,6 +83,12 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 15.1 — dead-code fix: Apply-top button must live in the W2S2 override
+- **Root cause**: `seo.js` declares `_seoLinks` at line 260 (function declaration), then immediately overrides it via `window._seoLinks = async function...` at line 1189 (W2S1) and again at line 1336 (W2S2 — "Link Intelligence" view). The override at line 1336 is what renders when the user clicks the Links tab. My Wave 15.0 edit went into the line-260 declaration — dead code. Fix: ported the "Apply top 20" button into the W2S2 override's title bar, with `suggestedCount` derived from a cheap `GET /links` probe.
+- **Cache buster**: bumped `5.10.0-wave15-ctas` → `5.10.1-wave15-ctas-fix`. Old buster's URL would have been served stale by CF on next-fetch since CF only re-validates on a NEW URL.
+- **Diagnostic console.log added** at the top of seo.js so users can confirm in DevTools console which version actually loaded: `[LU SEO] seo.js v5.10.1-wave15-ctas-fix loaded — Pages chips + Links bulk button active`.
+- **Pages tab chips**: code at line ~870 was always live (only one `_seoPages` declaration, no override). Per disk check 18/25 page-1 rows have `inbound_links=0`, so once the browser loads the new file the orphan chip should appear on most rows immediately.
 
 ### Wave 15 — manual CTAs in Pages + Links tabs (both contexts)
 - **Backend**:

@@ -14,6 +14,10 @@
 
 var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
+// Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
+// console that they're running the new code with CTAs.
+try { console.log('[LU SEO] seo.js v5.10.1-wave15-ctas-fix loaded — Pages chips + Links bulk button active'); } catch(_e) {}
+
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
   //   - Embed mode (WP iframe): X-API-KEY + X-Workspace-ID
@@ -1346,11 +1350,23 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       var graphR = await _seoApi('GET', '/link-graph').catch(function () { return null; });
       var graphNodes = (graphR && graphR.nodes) || [];
 
+      // Wave 15 (2026-05-18) — fetch suggested-link count for the bulk
+      // "Apply top 20" button. Cheap one-call probe; doesn't block render
+      // if the legacy endpoint isn't there.
+      var legacyLinks = null;
+      try { legacyLinks = await _seoApi('GET', '/links'); } catch(e) {}
+      var legacyArr = (legacyLinks && (legacyLinks.suggestions || legacyLinks.links || legacyLinks)) || [];
+      var suggestedCount = Array.isArray(legacyArr) ? legacyArr.filter(function(l){ return !l.status || l.status === 'suggested'; }).length : 0;
+      var bulkBtn = suggestedCount > 0
+        ? '<button onclick="_seoApplyTopLinks(20)" title="Bulk-apply the top 20 queued suggestions (orphan targets first)" style="background:#10B981;color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">⚡ Apply top 20</button>'
+        : '';
+
       var h = '';
-      h += '<div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">';
+      h += '<div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
       h += '<div><h2 style="font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);margin:0 0 4px">Link Intelligence</h2>';
-      h += '<p style="font-size:13px;color:var(--t2);margin:0">Real link graph + anchor analysis + equity flow.</p></div>';
-      h += '<div style="display:flex;gap:8px">';
+      h += '<p style="font-size:13px;color:var(--t2);margin:0">Real link graph + anchor analysis + equity flow.' + (suggestedCount > 0 ? ' · <span style="color:var(--am)">' + suggestedCount + ' queued suggestion(s)</span>' : '') + '</p></div>';
+      h += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+      h += bulkBtn;
       h += '<button onclick="_seoBuildLinkGraph()" style="background:var(--p);color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Build Link Graph</button>';
       h += '<button onclick="_seoCalcEquity()" style="background:none;border:1px solid var(--p);color:var(--p);padding:7px 13px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Calculate Equity</button>';
       h += '</div></div>';
