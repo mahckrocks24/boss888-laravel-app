@@ -4171,21 +4171,67 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                     : null,
             ]);
         });
+        // Wave 16g (2026-05-19) — Topics tab "Cluster gaps" data source.
+        // Was returning raw unclustered-page rows from seo_content_index, but
+        // the Topics-tab JS (renderTopics → lgseLoadTopics, line ~5544) expects
+        // per-CLUSTER gap reports: {topic, gaps:[gap-type-keys], recommendation}.
+        // Now synthesizes those reports from seo_clusters health signals
+        // (missing pillar, thin cluster, low avg score, low avg authority).
         Route::get('/clusters/gaps', function (\Illuminate\Http\Request $r) {
-            $wsId = $r->attributes->get('workspace_id');
-            $gaps = \Illuminate\Support\Facades\DB::table('seo_content_index')
-                ->where('workspace_id', $wsId)
-                ->whereNull('cluster_id')
-                ->where('word_count', '>', 100)
-                ->orderByDesc('content_score')
-                ->limit(50)
-                ->get(['url', 'title', 'content_score', 'word_count', 'inbound_links']);
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
+
+            $cq = \Illuminate\Support\Facades\DB::table('seo_clusters')
+                ->where('workspace_id', $wsId);
+            if ($host !== '') {
+                $cq->where(function ($q) use ($host) {
+                    $q->where('pillar_url', 'like', '%//' . $host . '%')->orWhereNull('pillar_url');
+                });
+            }
+            $clusters = $cq->orderByDesc('page_count')->get();
+
+            $gaps = [];
+            foreach ($clusters as $c) {
+                $issues = [];
+                $recs = [];
+                $label = (string) ($c->label ?? 'Cluster #' . $c->id);
+
+                if (empty($c->pillar_url)) {
+                    $issues[] = 'no_pillar';
+                    $recs[]   = 'Create a pillar page on "' . $label . '" — a comprehensive piece all related pages link into.';
+                }
+                if ((int) $c->page_count < 3) {
+                    $issues[] = 'thin_cluster';
+                    $recs[]   = 'Only ' . (int) $c->page_count . ' page(s) in this cluster — add 2-3 more articles to build topical authority.';
+                }
+                if ((float) ($c->avg_score ?? 0) < 50) {
+                    $issues[] = 'low_quality';
+                    $recs[]   = 'Avg content score ' . round((float) ($c->avg_score ?? 0)) . '/100 — improve existing pages before adding new ones.';
+                }
+                if ((float) ($c->avg_authority ?? 0) < 0.3) {
+                    $issues[] = 'low_authority';
+                    $recs[]   = 'Cluster pages get few inbound internal links — add references from related content.';
+                }
+
+                if (! empty($issues)) {
+                    $gaps[] = [
+                        'topic'          => $label,
+                        'cluster_id'     => (int) $c->id,
+                        'gaps'           => $issues,
+                        'recommendation' => implode(' ', $recs),
+                        'page_count'     => (int) $c->page_count,
+                        'avg_score'      => round((float) ($c->avg_score ?? 0), 1),
+                    ];
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'gaps'    => $gaps,
-                'total'   => $gaps->count(),
-                'message' => 'These pages are not part of any topic cluster. '
-                           . 'Add internal links to related pages to improve topical authority.',
+                'total'   => count($gaps),
+                'message' => empty($gaps)
+                    ? 'No cluster gaps — your topic clusters look healthy.'
+                    : count($gaps) . ' cluster(s) have gaps. Address them to strengthen topical authority.',
             ]);
         });
         Route::post('/clusters/rebuild', function (\Illuminate\Http\Request $r) {

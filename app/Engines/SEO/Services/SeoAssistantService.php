@@ -817,23 +817,30 @@ class SeoAssistantService
             }
         }
 
-        // Content gaps from clusters (gap_topics_json column)
+        // Wave 16g (2026-05-19) — content gaps from cluster health signals.
+        // Earlier draft tried to read a `gap_topics_json` + `cluster_name`
+        // column that don't exist in the current `seo_clusters` schema
+        // (columns are: label, pillar_url, page_count, avg_score, avg_authority,
+        //  top_terms). Synthesize gaps from health signals instead.
         $clusterGaps = [];
         try {
             $clusters = DB::table('seo_clusters')
                 ->where('workspace_id', $wsId)
-                ->whereNotNull('gap_topics_json')
-                ->orderByDesc('avg_score')
+                ->orderByDesc('page_count')
                 ->limit(5)
-                ->get(['cluster_name', 'gap_topics_json']);
+                ->get(['label', 'pillar_url', 'page_count', 'avg_score', 'avg_authority']);
             foreach ($clusters as $c) {
-                $gaps = json_decode((string) $c->gap_topics_json, true) ?: [];
+                $gaps = [];
+                if (empty($c->pillar_url))                  $gaps[] = 'no_pillar';
+                if ((int) $c->page_count < 3)               $gaps[] = 'thin_cluster';
+                if ((float) ($c->avg_score ?? 0) < 50)      $gaps[] = 'low_quality';
+                if ((float) ($c->avg_authority ?? 0) < 0.3) $gaps[] = 'low_authority';
                 if (! empty($gaps)) {
-                    $clusterGaps[] = ['cluster' => $c->cluster_name, 'gaps' => array_slice($gaps, 0, 3)];
+                    $clusterGaps[] = ['cluster' => $c->label, 'gaps' => $gaps];
                 }
             }
         } catch (\Throwable $e) {
-            // gap_topics_json column may not exist in older schemas — non-fatal
+            // Schema variant or missing table — non-fatal.
         }
 
         // Site state aggregates
