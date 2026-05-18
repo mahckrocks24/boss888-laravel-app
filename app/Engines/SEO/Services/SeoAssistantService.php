@@ -67,6 +67,14 @@ class SeoAssistantService
     /** Per-call user_id captured from context so appendTurn() can persist it. */
     private ?int $currentUserId = null;
 
+    /**
+     * Wave 16b (2026-05-19). Active site URL for this turn, captured from
+     * context['site_url']. When set, all live-context queries filter to
+     * this site's host so the assistant only sees + acts on one website
+     * at a time. Empty/null = full workspace scope (legacy behavior).
+     */
+    private ?string $currentSiteUrl = null;
+
     public function __construct(
         private RuntimeClient $runtime,
         private SeoService $seo,
@@ -92,6 +100,12 @@ class SeoAssistantService
             // retention disclaimer, return the disclaimer envelope and
             // process nothing — UI must show the disclaimer modal and POST
             // to /seo/assistant/accept-disclaimer before retrying.
+
+            // Wave 16b — capture active site URL so every live-context
+            // query in this turn filters to one website.
+            $this->currentSiteUrl = isset($context['site_url']) && is_string($context['site_url'])
+                ? trim($context['site_url'])
+                : null;
             $this->currentUserId = isset($context['user_id']) ? (int) $context['user_id'] : null;
             if ($this->currentUserId !== null) {
                 $accepted = DB::table('users')
@@ -2064,20 +2078,52 @@ class SeoAssistantService
         }
     }
 
+    /**
+     * Wave 16b (2026-05-19). Build a SQL-LIKE host pattern from the current
+     * site URL, or null if no site is active (which means "no filter").
+     */
+    private function siteHostPattern(): ?string
+    {
+        if (! $this->currentSiteUrl) return null;
+        $u = $this->currentSiteUrl;
+        if (! preg_match('#^https?://#i', $u)) $u = 'https://' . ltrim($u, '/');
+        $host = strtolower((string) parse_url($u, PHP_URL_HOST));
+        return $host !== '' ? ('%//' . $host . '%') : null;
+    }
+
     private function buildLiveContext(int $wsId): array
     {
-        $audit = DB::table('seo_audits')->where('workspace_id', $wsId)
-            ->orderByDesc('created_at')->first();
-        $stats = DB::table('seo_content_index')->where('workspace_id', $wsId)
+        // Wave 16b — narrow live context to active site when one is selected.
+        $hostPattern = $this->siteHostPattern();
+        $auditQ = DB::table('seo_audits')->where('workspace_id', $wsId);
+        if ($hostPattern) { $auditQ->where('url', 'like', $hostPattern); }
+        $audit = $auditQ->orderByDesc('created_at')->first();
+
+        $statsQ = DB::table('seo_content_index')->where('workspace_id', $wsId);
+        if ($hostPattern) { $statsQ->where('url', 'like', $hostPattern); }
+        $stats = $statsQ
             ->selectRaw('COUNT(*) AS pages, ROUND(AVG(content_score),1) AS avg_score,
                          SUM(CASE WHEN inbound_links = 0 THEN 1 ELSE 0 END) AS orphans,
                          SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin,
                          SUM(CASE WHEN meta_description IS NULL THEN 1 ELSE 0 END) AS no_meta')
             ->first();
-        $kw = DB::table('seo_keywords')->where('workspace_id', $wsId)
-            ->orderByDesc('volume')->limit(5)->pluck('keyword')->toArray();
-        $linkSugs = (int) DB::table('seo_links')->where('workspace_id', $wsId)
-            ->where('status', 'suggested')->count();
+
+        $kwQ = DB::table('seo_keywords')->where('workspace_id', $wsId);
+        if ($hostPattern) {
+            $kwQ->where(function ($q) use ($hostPattern) {
+                $q->where('target_url', 'like', $hostPattern)->orWhereNull('target_url');
+            });
+        }
+        $kw = $kwQ->orderByDesc('volume')->limit(5)->pluck('keyword')->toArray();
+
+        $linkQ = DB::table('seo_links')->where('workspace_id', $wsId)->where('status', 'suggested');
+        if ($hostPattern) {
+            $linkQ->where(function ($q) use ($hostPattern) {
+                $q->where('target_url', 'like', $hostPattern)->orWhere('source_url', 'like', $hostPattern);
+            });
+        }
+        $linkSugs = (int) $linkQ->count();
+
         $insights = DB::table('seo_insights')->where('workspace_id', $wsId)
             ->whereNull('dismissed_at')->orderBy('priority')->limit(5)
             ->pluck('title')->toArray();
@@ -2104,6 +2150,9 @@ class SeoAssistantService
             'plan'                  => $plan,
             // Wave 12 — calendar awareness in every system prompt.
             'calendar'              => $this->getCalendarContext($wsId),
+            // Wave 16b — active site URL surfaced so buildSystemPrompt can
+            // tell the LLM which website it is currently advising on.
+            'active_site_url'       => $this->currentSiteUrl,
         ];
     }
 
@@ -2154,6 +2203,12 @@ class SeoAssistantService
         // ── Live data ──
         $p[] = '';
         $p[] = '════ LIVE SITE DATA (real-time, refreshed every turn) ════';
+        // Wave 16b (2026-05-19) — make active-site scope explicit to the LLM.
+        if (! empty($live['active_site_url'])) {
+            $p[] = 'ACTIVE WEBSITE: ' . $live['active_site_url'] . ' — every stat below is for THIS site only. Do not reference data from other workspace sites unless the user explicitly asks.';
+        } else {
+            $p[] = 'ACTIVE WEBSITE: (no site selected — stats below cover ALL websites in this workspace combined).';
+        }
         $p[] = 'Plan: ' . $live['plan'] . '. Credit balance: ' . $live['credits'] . '.';
         if ($live['audit_score'] !== null) {
             $p[] = 'Last audit: ' . $live['audit_score'] . '/100 (run ' . ($live['audit_date'] ?? '?') . ') [TRACKED]';

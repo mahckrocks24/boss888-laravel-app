@@ -12,7 +12,8 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.11.0-wave16-site-dropdown`
+- **Cache buster (seo.js)**: `5.11.1-wave16b-assistant-scope`
+- **Cache buster (messages-ui.js)**: `4.6.0-wave16b-site-scope`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
 ---
@@ -83,6 +84,19 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 16b — Sarah + AI Assistant aligned to active site
+- **SEO Assistant (`SeoAssistantService`)**:
+  - New `$currentSiteUrl` private property + `siteHostPattern()` helper.
+  - `handle()` reads `$context['site_url']` and stores it for the turn.
+  - `buildLiveContext()` filters `seo_audits` (`url LIKE`), `seo_content_index` (`url LIKE`), `seo_keywords` (`target_url LIKE` OR `IS NULL` for global), `seo_links` (target OR source). Returns `active_site_url` so the system prompt knows.
+  - `buildSystemPrompt()` now emits an **ACTIVE WEBSITE:** line in the LIVE SITE DATA section telling the LLM the current scope explicitly.
+- **POST `/api/seo/assistant/message`**: accepts top-level `site_url` (in body, or `X-Lgse-Active-Site` header) and forwards it into the assistant context.
+- **Sarah / all agents** (`POST /api/agents/{slug}/messages`): brand-facts block now injects `Currently active website: <url>` when site_url is sent, plus a directive line telling Sarah to anchor strategy + delegations to THAT site.
+- **Frontend**:
+  - `_lgseDrawerSend` (assistant FAB chat — line 7904) and `_lgseAssistantSend` (Overview's tab assistant — line 8010) both add `site_url: window._lgseActiveSiteUrl` to the POST body + `X-Lgse-Active-Site` header.
+  - `messages-ui.js` agent chat (Sarah, James, Priya, etc.) merges `site_url` into the `/agents/{slug}/messages` body via `Object.assign`.
+- **Smoke-verified end-to-end**: ws1's 48 pages narrow to 46 when scoped to `https://staging.levelupgrowth.io` (2 from other domain excluded); ws7's 62 pages stay 62 when scoped to its only site. Non-existent site URL returns 0. ACTIVE WEBSITE line verified in the system prompt.
 
 ### Wave 16 — global site dropdown (multi-site scope for the SEO engine)
 - **Problem**: Laravel SaaS workspaces can register N websites in the `websites` table, but every SEO data table (SCI, keywords, audits, links, insights, articles) is workspace-scoped ONLY — no site discriminator. All tabs blend data across all sites of the workspace.

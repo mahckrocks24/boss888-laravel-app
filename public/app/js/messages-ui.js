@@ -143,7 +143,7 @@ window._msgSend=async function(){
 
   var uiSlug=_msg.agent==='sarah'?'dmm':_msg.agent;
   try{
-    await _msgApi('POST','/agents/'+uiSlug+'/messages',{content:msg,from:'User'});
+    await _msgApi('POST','/agents/'+uiSlug+'/messages',Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{}));
     // Reload full thread to get both user message + agent reply from DB
     await _msgLoadThread(_msg.agent);
     // Mark current agent as read when modal opens
@@ -261,7 +261,7 @@ window._msgPageSend=async function(){
 
   var uiSlug=_msg.agent==='sarah'?'dmm':_msg.agent;
   try{
-    await _msgApi('POST','/agents/'+uiSlug+'/messages',{content:msg,from:'User'});
+    await _msgApi('POST','/agents/'+uiSlug+'/messages',Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{}));
     await _msgLoadPageThread(_msg.agent);
     setTimeout(function(){if(window._msgPollUnread)window._msgPollUnread();},500);
   }catch(e){

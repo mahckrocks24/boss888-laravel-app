@@ -722,6 +722,14 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         elseif (! empty($workspace->industry)) $brandFactsBlock .= "- Industry: " . $workspace->industry . "\n";
         if (! empty($brandFacts['location'])) $brandFactsBlock .= "- Location: " . $brandFacts['location'] . "\n";
         elseif (! empty($workspace->location)) $brandFactsBlock .= "- Location: " . $workspace->location . "\n";
+        // Wave 16b (2026-05-19) — inject the user's currently-selected
+        // website so Sarah (and every agent) tailors strategy + delegations
+        // to that one site instead of the entire workspace.
+        $activeSiteUrl = trim((string) ($r->input('site_url') ?: $r->header('X-Lgse-Active-Site') ?: ''));
+        if ($activeSiteUrl !== '') {
+            $brandFactsBlock .= "- Currently active website (user's selected SEO scope): {$activeSiteUrl}\n";
+            $brandFactsBlock .= "  → Anchor your strategy, audits, and delegations to THIS site. Do not reference the user's other workspace sites unless the user asks.\n";
+        }
         $brandFactsBlock .= "Rule: if the user mis-spells the business name or domain, USE the correct spelling above. Never echo a typo.\n\n";
 
         $formatRules = "FORMAT YOUR RESPONSES:\n"
@@ -12354,14 +12362,22 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
     Route::post('/assistant/message', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         $data = $r->validate([
-            'message' => 'required|string|max:2000',
-            'context' => 'nullable|array',
+            'message'  => 'required|string|max:2000',
+            'context'  => 'nullable|array',
+            'site_url' => 'nullable|string|max:500',
         ]);
         // Wave 1 (2026-05-17) — force user_id into context server-side so
         // disclaimer gate + chat-log persistence work regardless of what
         // the client sent. Client-supplied user_id is not trusted.
         $context = $data['context'] ?? [];
         $context['user_id'] = $r->user()?->id;
+        // Wave 16b (2026-05-19) — pass the active site URL through to the
+        // SEO assistant so its buildLiveContext queries only that site.
+        if (! empty($data['site_url'])) {
+            $context['site_url'] = $data['site_url'];
+        } elseif (empty($context['site_url']) && $h = $r->header('X-Lgse-Active-Site')) {
+            $context['site_url'] = $h;
+        }
         $result = app(\App\Engines\SEO\Services\SeoService::class)
             ->assistantMessage($wsId, $data['message'], $context);
         return response()->json(['success' => true, 'data' => $result]);

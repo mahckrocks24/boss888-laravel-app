@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.11.0-wave16-site-dropdown loaded — global site selector active in Laravel SaaS'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.11.1-wave16b-assistant-scope loaded — assistant + Sarah aligned to active site'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -7978,16 +7978,21 @@ window._lgseDrawerSend = function () {
   // explicitly so the downstream parser sees the actual body. Without this,
   // the chat shows "I could not get a response" because d.data is undefined
   // on a Response.
+  // Wave 16b (2026-05-19) — include the active site URL so the SEO assistant
+  // scopes its live context (orphans, scores, suggestions) to one website.
+  var _msgBody = { message: msg };
+  if (window._lgseActiveSiteUrl) { _msgBody.site_url = window._lgseActiveSiteUrl; }
   var fetcher = typeof window._luFetch === 'function'
-    ? window._luFetch('POST', '/connector/assistant/message', { message: msg }).then(function (r) { return r.json(); })
+    ? window._luFetch('POST', '/connector/assistant/message', _msgBody).then(function (r) { return r.json(); })
     : fetch(window.location.origin + '/api/connector/assistant/message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+          'X-Lgse-Active-Site': (window._lgseActiveSiteUrl || ''),
         },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify(_msgBody),
       }).then(function (r) { return r.json(); });
 
   fetcher.then(function (d) {
@@ -8079,16 +8084,21 @@ window._lgseAssistantSend = function () {
   // explicitly so the downstream parser sees the actual body. Without this,
   // the chat shows "I could not get a response" because d.data is undefined
   // on a Response.
+  // Wave 16b (2026-05-19) — include the active site URL so the SEO assistant
+  // scopes its live context to one website.
+  var _aMsgBody = { message: msg };
+  if (window._lgseActiveSiteUrl) { _aMsgBody.site_url = window._lgseActiveSiteUrl; }
   var fetcher = typeof window._luFetch === 'function'
-    ? window._luFetch('POST', '/connector/assistant/message', { message: msg }).then(function (r) { return r.json(); })
+    ? window._luFetch('POST', '/connector/assistant/message', _aMsgBody).then(function (r) { return r.json(); })
     : fetch(window.location.origin + '/api/connector/assistant/message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+          'X-Lgse-Active-Site': (window._lgseActiveSiteUrl || ''),
         },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify(_aMsgBody),
       }).then(function (r) { return r.json(); });
 
   fetcher
