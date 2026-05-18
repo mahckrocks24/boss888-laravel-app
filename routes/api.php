@@ -4021,6 +4021,31 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 }
             } catch (\Throwable $e) { /* non-fatal */ }
 
+            // Wave 10 (2026-05-18) — post-publish image-optimization hook.
+            // After the article is live on WordPress, queue a job that:
+            //   1. Tier-2 browser-renders the public URL to populate
+            //      seo_images rows for every image WP now hosts on the post
+            //   2. Dispatches OptimizationOrchestrator for each routable
+            //      image (orchestrator does plan-gating + classification)
+            // Queued so the publish endpoint stays fast; puppeteer + the
+            // optimization jobs run async. No-ops cleanly for free-tier
+            // workspaces (orchestrator returns plan_upgrade_required).
+            if ($publicUrl) {
+                try {
+                    \App\Jobs\SeoOptimization\PostPublishOptimizeJob::dispatch(
+                        $wsId,
+                        optional($r->user())->id,
+                        $publicUrl,
+                        $articleId
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning(
+                        '[Wave10] PostPublishOptimizeJob dispatch failed: ' . $e->getMessage(),
+                        ['ws_id' => $wsId, 'article_id' => $articleId]
+                    );
+                }
+            }
+
             return response()->json([
                 'success'    => true,
                 'wp_post_id' => $wpPostId,

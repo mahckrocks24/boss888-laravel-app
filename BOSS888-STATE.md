@@ -1,7 +1,7 @@
 # BOSS888 — Living State Doc
 
 > Single source of truth for current platform state. Updated end of each session.
-> Last update: **2026-05-18 (Waves 1–13 complete; Wave 11 + Wave 12 shipped this session)**
+> Last update: **2026-05-18 (Waves 1–13 complete; Wave 10 + 11 + 12 shipped this session)**
 
 ---
 
@@ -62,6 +62,11 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
 - WP plugin caller (X-API-KEY auth) → publish notification posts to James's thread (visible in WP SEO drawer)
 - Laravel SaaS caller (JWT auth) → publish notification posts to Priya's thread (Content Manager owns the surface in SaaS UX)
 
+### Wave 10 — post-publish image-optimization hook
+- New `PostPublishOptimizeJob` (queued, 2 tries, 300s timeout): Tier-2 browser-renders the published URL → upserts `seo_images` rows → loops not-yet-optimized rows for that page_url → calls `OptimizationOrchestrator::dispatch()` for each. Plan-gating happens inside the orchestrator (free tier returns `plan_upgrade_required`, no spurious queue work).
+- Wave 7 publish route (`POST /api/write/articles/{id}/publish`) now fire-and-forget dispatches the job after WP confirms the post. Publish endpoint stays fast (~200ms); puppeteer + compression runs async on the existing `levelup-worker` supervisor.
+- Idempotent — orchestrator's `already_in_state` check prevents double-queueing on republish.
+
 ### Wave 11 — complete-article pipeline (text + image + alt + draft-on-failure)
 - New migration: `articles.featured_image_alt VARCHAR(500)`, `featured_image_error TEXT`, `featured_image_attempts TINYINT`
 - `SeoAssistantService::execGenerateArticle` now retries image gen 3× via `/api/connector/pages/regenerate-image` if the first connector attempt fails. Aborts retry early on `insufficient_credits` / `plan_upgrade`.
@@ -117,7 +122,7 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
 
 | Area | Issue | Severity |
 |---|---|---|
-| Auto-optimization | No post-publish hook dispatches `OptimizeWpAttachmentJob` | MED (Wave 10 — still pending) |
+| Auto-optimization | ✅ Wave 10 shipped — `PostPublishOptimizeJob` queued from publish route; tier-2 scan + orchestrator dispatch | DONE |
 | Featured image | ✅ Wave 11 shipped — 3× retry, alt-text auto-gen, draft-on-failure with explanatory error | DONE |
 | Calendar | ✅ Wave 12 shipped — context injected into every system prompt + daily online report. Date-parsing for scheduling via chat is still future scope | PARTIAL (Wave 12) |
 | `/connector/save-meta` PATCH | Last hard 404 — wrong route-prefix group, needs separate handling | LOW |
