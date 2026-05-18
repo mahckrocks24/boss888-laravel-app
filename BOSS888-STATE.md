@@ -12,7 +12,7 @@
 - **DB**: MySQL `levelup_staging` (user `levelup`)
 - **Runtime**: v2.25.3 on Railway (operational)
 - **Active git branch**: `master` (uncommitted: scoring fixes + Waves 1–9 + Wave 13)
-- **Cache buster (seo.js)**: `5.10.1-wave15-ctas-fix`
+- **Cache buster (seo.js)**: `5.10.2-wave15-live-ui`
 - **Cache buster (blog.js)**: `1.0.1-wp-publish`
 
 ---
@@ -83,6 +83,14 @@ Weight rebalance to sum 100, F1 articles.seo_score writeback, F2 daily authority
   - Posts a proactive assistant turn into Redis + DB chat history
   - Triggers `notify()` so the unified floater badge increments and `agent_messages` records the message under James's thread
 - Smoke-tested end-to-end on staging: seed calendar event + scheduled article → daily report posts once → second invocation no-op (idempotent).
+
+### Wave 15.2 — forensic: CTAs were in the wrong UI namespace entirely
+- **Root cause (the real one)**: `seo.js` actually has TWO SEO UIs stacked in the same file. The original `_seo*` UI (lines 1-3300) plus a complete rewrite using the `lgse*` namespace (lines 3600-10000+). The LIVE entry point `window.seoLoad` (line 2813) calls `_seoSwitchTab` which the `lgseSwitchTab` IIFE has effectively replaced via `_seoRenderShell` / `lgseSwitchTab = switchTab` (line 3945). Result: the LIVE Pages tab is rendered by `renderPages` (line 5294) → `lgseRenderPagesTable` (line 5626). The LIVE Links tab is `renderLinks` (line 6118) → `loadInternalLinks` (line 6142). Both my Wave 15.0 AND Wave 15.1 edits hit the dead `_seo*` UI nobody renders.
+- **The fix**:
+  - **Pages tab chips** — added inline CTA chips inside the URL cell of `lgseRenderPagesTable` (lines ~5736-5754). Always visible regardless of toggleable column state.
+  - **Links tab bulk button** — added `⚡ Apply top 20 (N)` and `⚠ Fix all orphans (N)` buttons into `loadInternalLinks` next to "Rebuild graph" / "Recalculate equity" (lines ~6211).
+  - New `window._seoFixAllOrphans` handler — calls `/links/apply-bulk` with `mode=orphans_first` after a fresh `/link-graph/orphans` fetch for the confirm dialog count.
+- **Cache buster**: bumped `5.10.1-wave15-ctas-fix` → `5.10.2-wave15-live-ui`. DevTools marker log updated to match.
 
 ### Wave 15.1 — dead-code fix: Apply-top button must live in the W2S2 override
 - **Root cause**: `seo.js` declares `_seoLinks` at line 260 (function declaration), then immediately overrides it via `window._seoLinks = async function...` at line 1189 (W2S1) and again at line 1336 (W2S2 — "Link Intelligence" view). The override at line 1336 is what renders when the user clicks the Links tab. My Wave 15.0 edit went into the line-260 declaration — dead code. Fix: ported the "Apply top 20" button into the W2S2 override's title bar, with `suggestedCount` derived from a cheap `GET /links` probe.

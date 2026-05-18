@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.10.1-wave15-ctas-fix loaded — Pages chips + Links bulk button active'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.10.2-wave15-live-ui loaded — CTAs wired into lgseRenderPagesTable + loadInternalLinks'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -943,6 +943,38 @@ window._seoFixOrphan = async function(url) {
     if (typeof _seoSwitchTab === 'function') _seoSwitchTab('pages');
   } catch(e) {
     showToast('Fix-orphan failed: ' + (e.message || e), 'error');
+  }
+};
+
+// Wave 15.2 (2026-05-18) — bulk-apply for ALL orphan pages. Fetches the
+// current orphan list then calls _seoApplyTopLinks for each (capped at
+// 20 each, server enforces plan/credit gating). Same notification +
+// floater behavior as the chat-driven path.
+window._seoFixAllOrphans = async function() {
+  try {
+    var orphResp = await _seoApi('GET', '/link-graph/orphans');
+    var orphans = (orphResp && (orphResp.orphans || orphResp.data)) || [];
+    if (!Array.isArray(orphans) || orphans.length === 0) {
+      showToast('No orphan pages to fix. Either run a deep audit first or all pages already have inbound links.', 'info');
+      return;
+    }
+    if (!confirm('Apply queued link suggestions to ' + orphans.length + ' orphan page(s)? You only pay for ones that successfully insert.')) return;
+    var d = await _seoApi('POST', '/links/apply-bulk', { mode: 'orphans_first', limit: Math.min(100, orphans.length * 3) });
+    if (d.success === false) {
+      if (d.error === 'insufficient_credits') {
+        showToast('Not enough credits — top up at levelupgrowth.io/billing.', 'error');
+      } else {
+        showToast('Fix-all-orphans failed: ' + (d.error || 'unknown'), 'error');
+      }
+      return;
+    }
+    var r = d.result || {};
+    var msg = 'Applied ' + (r.applied || 0) + ' / ' + ((r.applied || 0) + (r.skipped || 0)) + ' suggestion(s).';
+    if ((r.applied || 0) > 0) msg += ' Orphan count is now ' + (r.orphan_count || '?') + '.';
+    showToast(msg, (r.applied || 0) > 0 ? 'success' : 'info');
+    if (typeof window.lgseSwitchTab === 'function') window.lgseSwitchTab('links');
+  } catch(e) {
+    showToast('Fix-all-orphans failed: ' + (e.message || e), 'error');
   }
 };
 
@@ -5697,6 +5729,21 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
 
       // P0.7 (2026-05-15) — data-lgse-url enables Quick Wins URL-based row targeting
       // (Quick Wins doesn't know the row id, only the URL). Used by lgseHighlightUrl.
+      // Wave 15.2 (2026-05-18) — inline CTA chips in the URL cell. Always
+      // visible regardless of the toggleable-column state. Orphan chip
+      // routes to /links/apply-bulk scoped to this target_url; image-error
+      // chip routes to /pages/retry-image.
+      var imgError = p.featured_image_error || '';
+      var safeUrlAttr = (url || '').replace(/'/g, '%27').replace(/"/g, '&quot;');
+      var inlineChips = '';
+      if (orphan) {
+        inlineChips += '<button onclick="event.stopPropagation();window._seoFixOrphan(\'' + safeUrlAttr + '\')" title="Apply queued link suggestions targeting this page" style="margin-left:8px;background:rgba(245,158,11,.12);color:#F59E0B;border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;cursor:pointer">⚠ Orphan · Fix</button>';
+      }
+      if (imgError) {
+        var errShort = imgError.length > 60 ? imgError.substring(0,57) + '…' : imgError;
+        inlineChips += '<button onclick="event.stopPropagation();window._seoRetryImage(\'' + safeUrlAttr + '\')" title="Image generation failed: ' + errShort.replace(/"/g,'&quot;') + '" style="margin-left:6px;background:rgba(248,113,113,.12);color:#F87171;border:1px solid rgba(248,113,113,.3);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;cursor:pointer">⚠ Image · Retry</button>';
+      }
+
       var tr = '<tr data-page-id="' + pid + '" data-lgse-url="' + esc(url) + '">'
         + '<td style="text-align:center"><input type="checkbox" class="lgse-pg-check" data-pid="' + pid + '" onchange="lgseUpdateBulkBar()" style="cursor:pointer"></td>'
         + '<td onclick="lgseExpandPageRow(' + pid + ')" style="cursor:pointer;text-align:center;color:var(--lgse-t3);font-size:10px" title="Show details"><span class="lgse-pg-chev" data-pid="' + pid + '" style="display:inline-block;transition:transform .15s">▶</span></td>'
@@ -5704,6 +5751,7 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
           + (url
               ? '<a href="' + esc(externalUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--lgse-purple);text-decoration:none" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">' + esc(url) + '</a>'
               : '<span style="color:var(--lgse-t3)">—</span>')
+          + inlineChips
         + '</td>'
         + '<td class="mono">' + (score ? scorePill(score) : dash) + '</td>'
         + '<td class="mono">' + (words || dash) + '</td>'
@@ -6144,8 +6192,13 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
       api('GET', '/link-graph').catch(function () { return null; }),
       api('GET', '/link-graph/orphans').catch(function () { return null; }),
       api('GET', '/links/anchor-analysis').catch(function () { return null; }),
+      // Wave 15.2 (2026-05-18) — fetch queue count for the bulk CTA badge.
+      api('GET', '/links').catch(function () { return null; }),
     ]).then(function (r) {
       var graph = r[0]; var orphans = (r[1] && (r[1].orphans || r[1].data)) || []; var anchors = (r[2] && (r[2].issues || r[2].data)) || [];
+      var legacyLinks = r[3];
+      var legacyArr = (legacyLinks && (legacyLinks.suggestions || legacyLinks.links || legacyLinks)) || [];
+      var suggestedCount = Array.isArray(legacyArr) ? legacyArr.filter(function(l){ return !l.status || l.status === 'suggested'; }).length : 0;
       var nodes = (graph && graph.nodes) || []; var edges = (graph && graph.edges) || [];
       var h = '<div class="lgse-kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">'
         + '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Pages in graph</div><div class="lgse-kpi-val">' + nodes.length + '</div></div>'
@@ -6153,11 +6206,14 @@ window._seoApplyLink = async function(sourceId, anchor, targetUrl) {
         + '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Orphan pages</div><div class="lgse-kpi-val lgse-dn">' + orphans.length + '</div></div>'
         + '<div class="lgse-kpi-card"><div class="lgse-kpi-label">Anchor issues</div><div class="lgse-kpi-val">' + anchors.length + '</div></div>'
       + '</div>'
-      + '<div style="display:flex;gap:8px;margin-bottom:6px">'
+      + '<div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap">'
+        // Wave 15.2 (2026-05-18) — bulk execution CTAs.
+        + '<button onclick="window._seoApplyTopLinks(20)" title="Bulk-apply the top 20 queued internal-link suggestions (orphan targets first)" style="background:#10B981;color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">⚡ Apply top 20' + (suggestedCount > 0 ? ' (' + suggestedCount + ')' : '') + '</button>'
+        + '<button onclick="window._seoFixAllOrphans()" title="Apply queued suggestions to every orphan page" style="background:#F59E0B;color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">⚠ Fix all orphans' + (orphans.length > 0 ? ' (' + orphans.length + ')' : '') + '</button>'
         + '<button class="lgse-btn-primary"   id="lgse-rebuild-graph-btn"   onclick="lgseRebuildGraph(this)">Rebuild graph</button>'
         + '<button class="lgse-btn-secondary" id="lgse-recalc-equity-btn"   onclick="lgseRecalcEquity(this)">Recalculate equity</button>'
       + '</div>'
-      + '<div style="font-size:10px;color:var(--lgse-t3);margin-bottom:14px">Rebuilds the internal link map from your indexed pages. Run after adding new pages or changing links.</div>';
+      + '<div style="font-size:10px;color:var(--lgse-t3);margin-bottom:14px">Apply suggestions executes the queued internal-link inserts. Rebuild walks indexed pages and refreshes the link map.</div>';
 
       if (orphans.length > 0) {
         h += '<div class="lgse-section-hdr"><span class="lgse-section-title">Orphan pages</span></div>';
