@@ -8796,7 +8796,7 @@ HTMLSCRIPT;
             $isOrchestrator = ($slug === 'sarah' || $a->is_dmm ?? false);
             if ($isOrchestrator) {
                 $delegatedQ = \App\Models\Task::where('workspace_id', $wsId)
-                    ->whereRaw("JSON_EXTRACT(payload_json, '$.created_via') IN ('\"sarah_chat\"', '\"sarah_proactive\"')");
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')");
                 // Wave 38d — replace per-agent stats with delegation rollup.
                 $pending = (clone $delegatedQ)->whereIn('status', ['pending','queued','awaiting_approval','blocked'])->count();
                 $executing = (clone $delegatedQ)->whereIn('status', ['running','verifying'])->count();
@@ -8812,7 +8812,7 @@ HTMLSCRIPT;
             // Recent tasks for this agent
             $recentTasks = $isOrchestrator
                 ? \App\Models\Task::where('workspace_id', $wsId)
-                    ->whereRaw("JSON_EXTRACT(payload_json, '$.created_via') IN ('\"sarah_chat\"', '\"sarah_proactive\"')")
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')")
                     ->orderByDesc('created_at')
                     ->limit(10)
                     ->get()
@@ -8880,13 +8880,16 @@ HTMLSCRIPT;
                 'name' => $a->name,
                 'title' => $a->title,
                 'description' => $a->description,
+                'enabled' => in_array($slug, $enabledSlugs ?? [], true),
+                'is_orchestrator' => isset($isOrchestrator) ? (bool) $isOrchestrator : false,
                 'pending' => $pending,
                 'executing' => $executing,
                 'completed' => $completed,
                 'failed' => $failed,
+                'degraded' => isset($degraded) ? (int) $degraded : 0,
                 'total_credits' => $totalCredits,
                 'success_rate' => $successRate,
-                'last_active' => $lastActive[strtolower($slug)] ?? null,
+                'last_active' => $lastActive[$slug] ?? $lastActive[strtolower($slug)] ?? null,
                 'recent_tasks' => $recentTasks,
                 'recent_exec' => $recentExec,
             ];
