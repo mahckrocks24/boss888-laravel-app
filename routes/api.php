@@ -2059,7 +2059,6 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             // Cross-reference with seo_content_index to see how many sitemap URLs we have indexed.
             $indexedUrls = \Illuminate\Support\Facades\DB::table('seo_content_index')
                 ->where('workspace_id', $wsId)
-                ->whereNull('deleted_at')
                 ->pluck('url')
                 ->map(fn ($u) => rtrim(strtolower((string) $u), '/'))
                 ->toArray();
@@ -12480,7 +12479,6 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
 
         $indexedUrls = \Illuminate\Support\Facades\DB::table('seo_content_index')
             ->where('workspace_id', $wsId)
-            ->whereNull('deleted_at')
             ->pluck('url')
             ->map(fn ($u) => rtrim(strtolower((string) $u), '/'))
             ->toArray();
