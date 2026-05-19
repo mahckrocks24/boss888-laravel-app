@@ -800,13 +800,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 . ($recentTasks ? "Current tasks:\n- {$recentTasks}\n" : "No active tasks.\n")
                 . "When the user asks you to create/assign/run tasks, include a create_tasks ARRAY in your JSON. You can include MULTIPLE tasks.\n"
                 . "Each task in create_tasks must have: agent (slug), engine, action, and description.\n"
-                . "Engine mapping: james/alex/diana/ryan/sofia=seo, priya/leo/maya/chris/nora=write, aria/zara/dmm=creative, marcus/zara/tyler/zoe/jordan=social, elena/kai/max=crm, vera=marketing\n"
+                . "Engine mapping: james/alex/diana/ryan/sofia=seo, priya/leo/maya/chris/nora=write, priya/chris/leo/zara=creative (the assigned writer or social agent generates images for their own piece), marcus/zara/tyler/zoe/jordan=social, elena/kai/max=crm, vera=marketing\n"
                 . "Action examples: serp_analysis, deep_audit, write_article, generate_meta, generate_image_mini, link_suggestions, insert_link, social_create_post, create_lead, create_campaign\n"
                 . "\nCHAIN RECIPES — when the user asks for something composite, create the FULL chain in create_tasks (one create_tasks call, multiple objects). The orchestrator runs them in order using parent_task_id.\n"
                 . "  ▸ NEW BLOG ARTICLE (fully optimized, target 1000-1200 words): create these 5 tasks in order, all parented to task #1:\n"
                 . "     1. {agent:priya, engine:write, action:write_article, description:body draft, params:{title, topic, target_keyword, audience, tone, length:1100}}\n"
                 . "     2. {agent:priya, engine:write, action:generate_meta, description:meta title + description, depends_on:[1]}\n"
-                . "     3. {agent:aria, engine:creative, action:generate_image_mini, description:featured image with alt text, depends_on:[1]}\n"
+                . "     3. {agent:priya, engine:creative, action:generate_image_mini, description:featured image with alt text, depends_on:[1]} (priya is the article owner; she commissions the hero image)\n"
                 . "     4. {agent:james, engine:seo, action:link_suggestions, description:find internal links, depends_on:[1]}\n"
                 . "     5. {agent:priya, engine:seo, action:insert_link, description:embed selected links into article body, depends_on:[1,4]}\n"
                 . "  Each step's output (article_id, image_url, etc.) automatically flows to dependent steps via parent_task_id.\n"
@@ -8730,11 +8730,16 @@ HTMLSCRIPT;
     Route::get("/agents/dashboard", function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         // Get workspace-enabled agents only (not all 21)
-        $agents = \App\Models\Agent::select('agents.id','agents.slug','agents.name','agents.title','agents.description')
-            ->join('workspace_agents', 'agents.id', '=', 'workspace_agents.agent_id')
+        // Wave 38a — return ALL 21 agents (was inner-joined to workspace_agents
+        // which hid agents that hadn't been enabled for this workspace but had
+        // task history). UI can mark non-enabled ones with a badge if needed.
+        $enabledSlugs = \Illuminate\Support\Facades\DB::table('workspace_agents')
+            ->join('agents', 'agents.id', '=', 'workspace_agents.agent_id')
             ->where('workspace_agents.workspace_id', $wsId)
             ->where('workspace_agents.enabled', true)
-            ->get();
+            ->pluck('agents.slug')
+            ->toArray();
+        $agents = \App\Models\Agent::select('id','slug','name','title','description')->get();
         // Get task stats grouped by engine (proxy for agent assignment)
         $taskStats = \App\Models\Task::where('workspace_id', $wsId)
             ->selectRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(assigned_agents_json, '$[0]')), engine) as agent_key, status, count(*) as cnt, sum(credit_cost) as credits")
@@ -8762,14 +8767,17 @@ HTMLSCRIPT;
             // Check tasks assigned to this agent or tasks in this agent's engine
             $stats = $taskStats->get($slug, collect());
             $delegations = $delegationStats->get($a->id, collect());
-            $pending = 0; $executing = 0; $completed = 0; $failed = 0; $totalCredits = 0;
+            $pending = 0; $executing = 0; $completed = 0; $failed = 0; $degraded = 0; $totalCredits = 0;
             foreach ($stats as $s) {
                 $totalCredits += (int)$s->credits;
                 match($s->status) {
-                    'pending','queued','awaiting_approval' => $pending += $s->cnt,
+                    'pending','queued','awaiting_approval','blocked' => $pending += $s->cnt,
                     'running','verifying' => $executing += $s->cnt,
                     'completed' => $completed += $s->cnt,
                     'failed','cancelled' => $failed += $s->cnt,
+                    // Wave 38a — degraded counted as its own bucket AND folded
+                    // into failed for the rollup totals (success_rate denominator).
+                    'degraded' => (function() use (&$degraded, &$failed, $s) { $degraded += $s->cnt; $failed += $s->cnt; })(),
                     default => null,
                 };
             }
@@ -8790,13 +8798,25 @@ HTMLSCRIPT;
                 ->orderByDesc('created_at')
                 ->limit(10)
                 ->get()
-                ->map(fn($t) => [
-                    'id' => $t->id, 'title' => $t->progress_message ?? ucfirst(str_replace('_', ' ', $t->action)),
-                    'status' => $t->status, 'engine' => $t->engine, 'tools' => [$t->action],
-                    'created_by' => 'sarah', 'duration_ms' => null,
-                    'created_at' => $t->created_at, 'started_at' => $t->started_at,
-                    'acknowledged_at' => null, 'completed_at' => $t->completed_at,
-                ])->toArray();
+                ->map(function($t) {
+                    // Wave 38a — derive created_by from payload_json.created_via when present.
+                    $payload = is_string($t->payload_json) ? json_decode($t->payload_json, true) : ($t->payload_json ?: []);
+                    $createdVia = is_array($payload) ? ($payload['created_via'] ?? null) : null;
+                    $createdBy = match ($createdVia) {
+                        'sarah_chat' => 'sarah',
+                        'sarah_proactive' => 'sarah',
+                        null => $t->source === 'manual' ? 'user' : 'sarah',
+                        default => 'sarah',
+                    };
+                    return [
+                        'id' => $t->id,
+                        'title' => $t->progress_message ?? ucfirst(str_replace('_', ' ', $t->action)),
+                        'status' => $t->status, 'engine' => $t->engine, 'tools' => [$t->action],
+                        'created_by' => $createdBy, 'duration_ms' => null,
+                        'created_at' => $t->created_at, 'started_at' => $t->started_at,
+                        'acknowledged_at' => null, 'completed_at' => $t->completed_at,
+                    ];
+                })->toArray();
 
             // Recent executions from audit_logs
             $recentExec = \Illuminate\Support\Facades\DB::table('audit_logs')
