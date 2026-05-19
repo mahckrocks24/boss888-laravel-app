@@ -23,19 +23,18 @@ class DashboardController
         $weekAgo = now()->subDays(7);
 
         // ── AGENT TEAM (workspace-enabled only) ────────────────────────────
-        // Wave 39 — return ALL 20 agents (matches Agents tab post-Wave 38a).
-        // workspace_agents.enabled flag still surfaced on each row for plan-tier UX.
-        $agents = DB::table('agents as a')
-            ->leftJoin('workspace_agents as wa', function($j) use ($wsId) {
-                $j->on('a.id', '=', 'wa.agent_id')->where('wa.workspace_id', $wsId);
-            })
+        // Wave 40 — only show agents enabled for this workspace. Plan-tier
+        // gate (Growth = Sarah + 2, Pro = Sarah + 5, Agency = Sarah + 10).
+        $agents = DB::table('workspace_agents as wa')
+            ->join('agents as a', 'a.id', '=', 'wa.agent_id')
+            ->where('wa.workspace_id', $wsId)
+            ->where('wa.enabled', true)
             ->orderByDesc('a.is_dmm')
             ->orderBy('a.name')
             ->get([
                 'a.slug', 'a.name', 'a.title', 'a.category',
                 'a.color', 'a.avatar_url', 'a.status', 'a.is_dmm',
                 'wa.created_at as assigned_at',
-                'wa.enabled as ws_enabled',
             ])
             ->map(function ($a) use ($wsId, $weekAgo) {
                 $engines = $this->enginesForCategory($a->category, $a->slug, (bool) $a->is_dmm);
@@ -79,6 +78,8 @@ class DashboardController
         $feedRows = DB::table('audit_logs')
             ->where('workspace_id', $wsId)
             ->where('action', 'NOT LIKE', 'user.%')
+            ->where('action', 'NOT LIKE', 'agent.direct_message')
+            ->where('action', 'NOT LIKE', 'approval.%')
             ->orderByDesc('created_at')
             ->limit(25)
             ->get(['action', 'entity_type', 'entity_id', 'metadata_json', 'created_at']);
@@ -86,11 +87,32 @@ class DashboardController
         $feed = $feedRows->map(function ($log) {
             [$engine, $action] = $this->splitAction($log->action);
             $meta = json_decode($log->metadata_json ?? 'null', true);
+            // Wave 40 — derive the actual agent from metadata where possible,
+            // not just the engine prefix. Most audit_logs start with task. /
+            // agent. / approval. and all defaulted to Sarah before.
+            $agentSlug = null;
+            if (is_array($meta)) {
+                $agentSlug = $meta['agent_slug'] ?? $meta['agent'] ?? $meta['assigned_to'] ?? null;
+                // task.* entries don't carry agent_slug in metadata. Look up
+                // the task's assigned_agents_json[0] when entity_id is set.
+                if (!$agentSlug && $log->entity_type === 'Task' && $log->entity_id) {
+                    $assigned = \Illuminate\Support\Facades\DB::table('tasks')
+                        ->where('id', $log->entity_id)
+                        ->value('assigned_agents_json');
+                    if ($assigned) {
+                        $arr = is_string($assigned) ? (json_decode($assigned, true) ?: []) : ($assigned ?: []);
+                        $agentSlug = is_array($arr) && !empty($arr) ? $arr[0] : null;
+                    }
+                }
+            }
+            $agent = $agentSlug
+                ? $this->agentForSlug($agentSlug)
+                : $this->agentForEngine($engine);
             return [
                 'engine'    => $engine,
                 'action'    => $action,
                 'label'     => $this->labelFor($engine, $action, $meta),
-                'agent'     => $this->agentForEngine($engine),
+                'agent'     => $agent,
                 'timestamp' => $log->created_at,
                 'time_ago'  => Carbon::parse($log->created_at)->diffForHumans(),
             ];
@@ -307,6 +329,23 @@ class DashboardController
     }
 
     /** Map an engine key to a primary agent (name + slug + color). */
+    /** Wave 40 — Resolve agent by slug from the agents table. Caches per request. */
+    private function agentForSlug(string $slug): array
+    {
+        static $cache = [];
+        $slug = strtolower($slug);
+        if (isset($cache[$slug])) return $cache[$slug];
+        $row = DB::table('agents')->where('slug', $slug)->first(['name', 'slug', 'color']);
+        if ($row) {
+            return $cache[$slug] = [
+                'name'  => $row->name,
+                'slug'  => $row->slug,
+                'color' => $row->color ?: '#6C5CE7',
+            ];
+        }
+        return $cache[$slug] = ['name' => ucfirst($slug), 'slug' => $slug, 'color' => '#6C5CE7'];
+    }
+
     private function agentForEngine(string $engine): array
     {
         $map = [
