@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.3-wave32d loaded — WP flicker fix + Open sitemap button on platform_self'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.4-wave32f loaded — Forensic fix: no silent fallback to arbitrary tenant subdomains'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8664,14 +8664,11 @@ window._lgseDrawerSend = function () {
     // so the local api() helper is not in scope. Use window._seoApi
     // (the global helper that api() falls back to internally).
     var _siteUrl = (window._lgseActiveSiteUrl || '').trim();
-    // Wave 32d — WP plugin/embed: fall back to current location origin if
-    // no active site is set (e.g. plugin running on the WP site directly).
+    // Wave 32f — ALWAYS fall back to current location origin (not just in
+    // embed mode). On the Laravel app shell this resolves staging.levelupgrowth.io
+    // → platform_self mode. In WP plugin it resolves to the WP site host.
     if (!_siteUrl) {
-      try {
-        if (typeof window._lgseIsEmbed === 'function' && window._lgseIsEmbed()) {
-          _siteUrl = window.location.origin || '';
-        }
-      } catch (_e) {}
+      _siteUrl = (window.location && window.location.origin) || '';
     }
     var _path = '/sitemap' + (_siteUrl ? ('?site_url=' + encodeURIComponent(_siteUrl)) : '');
     var _siteCall = (typeof window._seoApi === 'function')

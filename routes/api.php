@@ -1967,20 +1967,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::get('/sitemap', function (\Illuminate\Http\Request $r) {
             $wsId = (int) $r->attributes->get('workspace_id');
             $siteUrl = (string) ($r->query('site_url') ?? '');
-            // Wave 32d — Fall back to workspace's primary published site
-            // when no site_url is provided (WP plugin / embed context).
-            if ($siteUrl === '') {
-                $fallback = \Illuminate\Support\Facades\DB::table('websites')
-                    ->where('workspace_id', $wsId)
-                    ->where('status', 'published')
-                    ->whereNotNull('subdomain')
-                    ->whereNull('deleted_at')
-                    ->orderByDesc('updated_at')
-                    ->first();
-                if ($fallback && !empty($fallback->subdomain)) {
-                    $siteUrl = 'https://' . $fallback->subdomain;
-                }
-            }
+            // Wave 32f — Removed silent fallback to first published tenant.
+            // All subdomains are individual websites; if no site_url is
+            // provided, return unknown rather than picking one arbitrarily.
             $host = $siteUrl ? (parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl) : '';
             $host = strtolower(preg_replace('#^www\.#', '', (string) $host));
 
@@ -2141,17 +2130,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                     $domain = parse_url($siteUrl, PHP_URL_HOST) ?: \App\Engines\SEO\Support\SiteScope::hostFromUrl($siteUrl);
                 }
             }
-            if (!$domain) {
-                $site = \Illuminate\Support\Facades\DB::table('websites')
-                    ->where('workspace_id', $wsId)
-                    ->where('status', 'published')
-                    ->whereNotNull('subdomain')
-                    ->orderByDesc('updated_at')
-                    ->first();
-                if ($site && !empty($site->subdomain)) {
-                    $domain = $site->subdomain;
-                }
-            }
+            // Wave 32f — Removed silent fallback to first published tenant.
+            // The keyword must have target_url set OR the request must include
+            // an explicit site_url. We refuse to scan an arbitrary tenant.
             if (!$domain) {
                 return response()->json([
                     'success' => false,
@@ -12426,19 +12407,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
     Route::get('/sitemap', function (\Illuminate\Http\Request $r) {
         $wsId = (int) $r->attributes->get('workspace_id');
         $siteUrl = (string) ($r->query('site_url') ?? '');
-        // Wave 32d — WP plugin context: fall back to workspace's primary published site.
-        if ($siteUrl === '') {
-            $fallback = \Illuminate\Support\Facades\DB::table('websites')
-                ->where('workspace_id', $wsId)
-                ->where('status', 'published')
-                ->whereNotNull('subdomain')
-                ->whereNull('deleted_at')
-                ->orderByDesc('updated_at')
-                ->first();
-            if ($fallback && !empty($fallback->subdomain)) {
-                $siteUrl = 'https://' . $fallback->subdomain;
-            }
-        }
+        // Wave 32f — Removed silent fallback. Caller must pass site_url.
         $host = $siteUrl ? (parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl) : '';
         $host = strtolower(preg_replace('#^www\.#', '', (string) $host));
 
