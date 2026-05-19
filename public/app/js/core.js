@@ -5357,7 +5357,8 @@ function _cmdcRenderMeetings(list) {
   var sarahOrb = _cmdcOrbHtml({ name: 'Sarah', slug: 'sarah', color: '#F59E0B' });
   el.innerHTML = list.map(function(m) {
     var statusChipCls = m.status === 'completed' ? 'cmd-chip-approved' : (m.status === 'in_progress' ? 'cmd-chip-pending' : 'cmd-chip-default');
-    return '<div class="cmd-site-row" style="cursor:pointer" onclick="nav(\'reports\')">' +
+    var mid = m.id || 0;
+    return '<div class="cmd-site-row" style="cursor:pointer" onclick="nav(\'meeting\');if(typeof _meetingOpen===\'function\')setTimeout(function(){_meetingOpen(' + mid + ')},80)">' +
       sarahOrb +
       '<div class="cmd-site-body">' +
         '<div class="cmd-site-name">' + _cmdcEsc(m.title || 'Strategy meeting') + '</div>' +
