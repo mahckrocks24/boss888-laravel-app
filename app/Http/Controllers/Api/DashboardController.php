@@ -23,16 +23,19 @@ class DashboardController
         $weekAgo = now()->subDays(7);
 
         // ── AGENT TEAM (workspace-enabled only) ────────────────────────────
-        $agents = DB::table('workspace_agents as wa')
-            ->join('agents as a', 'a.id', '=', 'wa.agent_id')
-            ->where('wa.workspace_id', $wsId)
-            ->where('wa.enabled', true)
+        // Wave 39 — return ALL 20 agents (matches Agents tab post-Wave 38a).
+        // workspace_agents.enabled flag still surfaced on each row for plan-tier UX.
+        $agents = DB::table('agents as a')
+            ->leftJoin('workspace_agents as wa', function($j) use ($wsId) {
+                $j->on('a.id', '=', 'wa.agent_id')->where('wa.workspace_id', $wsId);
+            })
             ->orderByDesc('a.is_dmm')
             ->orderBy('a.name')
             ->get([
                 'a.slug', 'a.name', 'a.title', 'a.category',
                 'a.color', 'a.avatar_url', 'a.status', 'a.is_dmm',
                 'wa.created_at as assigned_at',
+                'wa.enabled as ws_enabled',
             ])
             ->map(function ($a) use ($wsId, $weekAgo) {
                 $engines = $this->enginesForCategory($a->category, $a->slug, (bool) $a->is_dmm);

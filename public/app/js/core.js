@@ -5312,14 +5312,12 @@ function _cmdcRenderAgents(list) {
 }
 
 function _cmdcAgentNav(a) {
-  // Map agent category/slug → engine nav target
-  if (a.is_dmm || a.slug === 'sarah') return "nav('meeting')";
-  var category = (a.category || '').toLowerCase();
-  if (category === 'seo')     return "nav('seo')";
-  if (category === 'content') return "nav('write')";
-  if (category === 'social')  return "nav('social')";
-  if (category === 'crm')     return "nav('crm')";
-  return "nav('agents')";
+  // Wave 39 — open the agent drawer (profile + tasks + messages + board)
+  // rather than navigating to their engine. Matches the Agents-tab UX where
+  // clicking an agent card shows that agent's detail panel.
+  // The dmm alias maps to sarah for the drawer ID.
+  var drawerId = (a.is_dmm || a.slug === 'sarah') ? 'dmm' : (a.slug || 'sarah');
+  return "nav('agents');setTimeout(function(){openAgentDrawer('" + drawerId + "')},80)";
 }
 
 function _cmdcRenderWebsites(list) {
