@@ -755,7 +755,7 @@ async function nav(view){
   if(view==='projects')   loadProjects();
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
   if(view==='workspace')  {loadTasks();drawCanvas();drawZones();}
-  if(view==='agents')     loadAgentStats();
+  if(view==='agents')     { loadTasks(); loadAgentStats(); }
   if(view==='governance') loadGovernance();
   if(view==='previews')   { loadPreviews(); _previewAutoRefreshStart(); } else { _previewAutoRefreshStop(); }
   if(view==='settings')   loadSettings();
@@ -1849,7 +1849,7 @@ function drawerTab(tab){
     document.getElementById('dt-'+t)?.classList.toggle('active',t===tab);
     document.getElementById('dp-'+t)?.classList.toggle('active',t===tab);
   });
-  if(tab==='board' && window._agentDrawerOpen) loadAgentStats();
+  if(tab==='board' && window._agentDrawerOpen) loadAgentStats(); if(tab==='tasks' && currentAgent){ if(typeof loadTasks==='function') loadTasks().then(function(){renderDrawerTasks(currentAgent,'all');}); else renderDrawerTasks(currentAgent,'all'); }
 }
 function renderProfilePane(id,ag){
   var ongoing=allTasks.filter(t=>t.assignee===id&&t.status==='ongoing').length;
