@@ -3198,18 +3198,246 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             ], 200);
         });
 
-        // Competitors — full feature, not yet built
-        $competitorsStub = function (\Illuminate\Http\Request $r) {
-            return response()->json([
-                'success'        => false,
-                'error'          => 'feature_coming_soon',
-                'feature_status' => 'coming_soon',
-                'message'        => 'The Competitors feature is on the roadmap. For now, use the SEO Assistant — ask it to compare your site to a competitor URL.',
-            ], 200);
+        // Wave 19 (2026-05-19) — Competitors tab endpoints.
+        // Was three Wave 13 coming-soon stubs; the frontend interpreted the
+        // empty payload as "DataForSEO not configured" even though it is
+        // configured. Now wires through SeoService::serpAnalysis (which uses
+        // DataForSeoConnector) and uses the runtime for AI-driven gap detection.
+
+        // Map common country strings to DataForSEO location codes.
+        $locationFromString = function (?string $loc): int {
+            $loc = strtolower(trim((string) $loc));
+            $map = [
+                ''                       => \App\Connectors\DataForSeoConnector::LOCATION_USA,
+                'united states'          => \App\Connectors\DataForSeoConnector::LOCATION_USA,
+                'usa'                    => \App\Connectors\DataForSeoConnector::LOCATION_USA,
+                'us'                     => \App\Connectors\DataForSeoConnector::LOCATION_USA,
+                'united kingdom'         => \App\Connectors\DataForSeoConnector::LOCATION_UK,
+                'uk'                     => \App\Connectors\DataForSeoConnector::LOCATION_UK,
+                'united arab emirates'   => \App\Connectors\DataForSeoConnector::LOCATION_UAE,
+                'uae'                    => \App\Connectors\DataForSeoConnector::LOCATION_UAE,
+            ];
+            return $map[$loc] ?? \App\Connectors\DataForSeoConnector::LOCATION_USA;
         };
-        Route::post('/competitors/analyze', $competitorsStub);
-        Route::post('/competitors/compare', $competitorsStub);
-        Route::post('/competitors/gaps',    $competitorsStub);
+
+        // POST /api/seo/competitors/analyze
+        // Body: { keyword: string, location?: string }
+        Route::post('/competitors/analyze', function (\Illuminate\Http\Request $r) use ($locationFromString) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $data = $r->validate([
+                'keyword'  => 'required|string|max:200',
+                'location' => 'nullable|string|max:80',
+            ]);
+
+            $locationCode = $locationFromString($data['location'] ?? '');
+
+            // Re-use SeoService::serpAnalysis which already handles DataForSEO,
+            // graceful fallback, and persistence into seo_serp_results.
+            $svc = app(\App\Engines\SEO\Services\SeoService::class);
+            $result = $svc->serpAnalysis($wsId, [
+                'keyword'       => $data['keyword'],
+                'location_code' => $locationCode,
+            ]);
+
+            // If service-level fallback hit (DataForSEO unavailable), try DB cache.
+            $top = $result['top_competitors'] ?? [];
+            if (empty($top)) {
+                $top = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+                    ->where('workspace_id', $wsId)
+                    ->whereRaw('LOWER(keyword) = LOWER(?)', [$data['keyword']])
+                    ->whereNotNull('domain')->where('domain', '!=', '')
+                    ->orderBy('position')->limit(10)
+                    ->get(['position AS rank', 'title', 'domain', 'url', 'snippet'])
+                    ->map(fn ($r) => (array) $r)->toArray();
+            }
+
+            // Normalize + dedupe by (rank, domain) — the DB fallback can
+            // surface duplicate rows from accumulated SERP-history inserts.
+            $seen = [];
+            $competitors = [];
+            foreach ($top as $i => $c) {
+                $c = (array) $c;
+                $rank = (int) ($c['rank'] ?? $c['position'] ?? ($i + 1));
+                $domain = strtolower((string) ($c['domain'] ?? ''));
+                $key = $rank . '|' . $domain;
+                if ($domain === '' || isset($seen[$key])) continue;
+                $seen[$key] = true;
+                $competitors[] = [
+                    'rank'           => $rank,
+                    'title'          => (string) ($c['title'] ?? ''),
+                    'domain'         => $domain,
+                    'url'            => (string) ($c['url'] ?? ''),
+                    'snippet'        => (string) ($c['snippet'] ?? ''),
+                    'est_word_count' => (int)    ($c['est_word_count'] ?? 0),
+                ];
+            }
+            usort($competitors, fn ($a, $b) => $a['rank'] <=> $b['rank']);
+
+            return response()->json([
+                'success'         => true,
+                'competitors'     => $competitors,
+                'keyword'         => $data['keyword'],
+                'location_code'   => $locationCode,
+                'estimated_volume'=> $result['estimated_volume'] ?? null,
+                'difficulty'      => $result['difficulty'] ?? null,
+                'source'          => $result['source'] ?? 'dataforseo',
+                'message'         => empty($competitors)
+                    ? 'No SERP data available right now — DataForSEO may be down or this keyword has no public results.'
+                    : null,
+            ]);
+        });
+
+        // POST /api/seo/competitors/gaps
+        // Body: { keyword: string }
+        // Uses the runtime (DeepSeek) to identify content topics that
+        // appear in top-10 competitor titles/snippets but are missing from
+        // the user's own ranking content.
+        Route::post('/competitors/gaps', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $data = $r->validate(['keyword' => 'required|string|max:200']);
+            $keyword = $data['keyword'];
+
+            // Pull the latest SERP for this keyword from cache.
+            $comps = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+                ->where('workspace_id', $wsId)
+                ->whereRaw('LOWER(keyword) = LOWER(?)', [$keyword])
+                ->whereNotNull('domain')->where('domain', '!=', '')
+                ->orderBy('position')->limit(10)
+                ->get(['position', 'title', 'domain', 'snippet']);
+
+            if ($comps->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'gaps'    => [],
+                    'message' => 'No SERP cache for this keyword — run Analyze first to populate.',
+                ]);
+            }
+
+            // Build runtime prompt: titles + snippets, ask for topics found
+            // in N≥3 competitors that the user should also cover.
+            $compList = $comps->map(function ($c) {
+                return '- #' . $c->position . ' [' . $c->domain . '] '
+                    . ($c->title ?: '(no title)')
+                    . ($c->snippet ? ' — ' . mb_substr($c->snippet, 0, 140) : '');
+            })->implode("\n");
+
+            $prompt = "You are an SEO content strategist. Below are the top-10 Google results for the keyword \"" . $keyword . "\":\n\n"
+                . $compList . "\n\n"
+                . "Identify 5-8 CONTENT TOPICS or SUB-TOPICS that appear repeatedly in competitor titles/snippets and represent content gaps a new article should cover. "
+                . "Return ONLY a JSON array, no prose, no markdown fences. Each item: {topic, found_in_n_competitors, priority (high/medium/low), suggested_heading}. "
+                . "Priority is based on how many competitors mention the topic (≥6: high, 4-5: medium, 3: low). "
+                . "Example: [{\"topic\":\"Pricing comparison\",\"found_in_n_competitors\":7,\"priority\":\"high\",\"suggested_heading\":\"How much does X cost in 2026?\"}]";
+
+            $gaps = [];
+            try {
+                $runtime = app(\App\Connectors\RuntimeClient::class);
+                $resp = $runtime->aiRun('seo_content_generation', $prompt, ['workspace_id' => $wsId], 60);
+                $text = trim((string) ($resp['text'] ?? $resp['response'] ?? ''));
+                // Strip Markdown fences if any.
+                $text = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', $text) ?: $text;
+                $parsed = json_decode($text, true);
+                if (is_array($parsed)) {
+                    foreach ($parsed as $g) {
+                        if (! is_array($g) || empty($g['topic'])) continue;
+                        $gaps[] = [
+                            'topic'                  => (string) $g['topic'],
+                            'found_in_n_competitors' => (int) ($g['found_in_n_competitors'] ?? 0),
+                            'priority'               => in_array(($g['priority'] ?? ''), ['high','medium','low'], true) ? $g['priority'] : 'medium',
+                            'suggested_heading'      => (string) ($g['suggested_heading'] ?? $g['topic']),
+                        ];
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[/competitors/gaps] runtime gap detection failed', [
+                    'workspace_id' => $wsId, 'keyword' => $keyword, 'err' => $e->getMessage(),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'gaps'    => $gaps,
+                'keyword' => $keyword,
+                'message' => empty($gaps)
+                    ? 'AI runtime returned no parseable gaps. Try a more specific keyword or re-run Analyze.'
+                    : null,
+            ]);
+        });
+
+        // POST /api/seo/competitors/compare
+        // Body: { your_url: string, keyword: string }
+        // Compares the user's page to the top-10 SERP for that keyword.
+        Route::post('/competitors/compare', function (\Illuminate\Http\Request $r) use ($locationFromString) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $data = $r->validate([
+                'your_url' => 'required|string|max:500',
+                'keyword'  => 'required|string|max:200',
+                'location' => 'nullable|string|max:80',
+            ]);
+
+            // Fetch user's page from seo_content_index (or zero stats if absent).
+            $yourHost = strtolower((string) parse_url($data['your_url'], PHP_URL_HOST));
+            $you = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->where(function ($q) use ($data) {
+                    $q->where('url', $data['your_url'])
+                      ->orWhere('url', rtrim($data['your_url'], '/'));
+                })
+                ->first(['url', 'title', 'content_score', 'word_count', 'inbound_links', 'meta_description']);
+
+            // Pull top-10 competitor SERP from cache (or trigger fresh analyze).
+            $comps = \Illuminate\Support\Facades\DB::table('seo_serp_results')
+                ->where('workspace_id', $wsId)
+                ->whereRaw('LOWER(keyword) = LOWER(?)', [$data['keyword']])
+                ->whereNotNull('domain')->where('domain', '!=', '')
+                ->orderBy('position')->limit(10)
+                ->get(['position', 'title', 'domain', 'url', 'snippet']);
+
+            $youInTop10 = false;
+            $youPosition = null;
+            foreach ($comps as $c) {
+                if (strtolower((string) $c->domain) === $yourHost) {
+                    $youInTop10 = true;
+                    $youPosition = (int) $c->position;
+                    break;
+                }
+            }
+
+            // Computed comparison KPIs
+            $compAvgTitleLen = $comps->avg(fn ($c) => mb_strlen($c->title ?? ''));
+            $yourTitleLen    = $you ? mb_strlen((string) $you->title) : 0;
+
+            return response()->json([
+                'success'   => true,
+                'keyword'   => $data['keyword'],
+                'your_url'  => $data['your_url'],
+                'your'      => [
+                    'in_top_10'        => $youInTop10,
+                    'position'         => $youPosition,
+                    'indexed'          => (bool) $you,
+                    'title'            => $you->title ?? null,
+                    'word_count'       => $you->word_count ?? null,
+                    'content_score'    => $you->content_score ?? null,
+                    'inbound_links'    => $you->inbound_links ?? null,
+                    'title_length'     => $yourTitleLen,
+                    'meta_description' => $you->meta_description ?? null,
+                ],
+                'competitors' => $comps->map(fn ($c) => [
+                    'rank'   => (int) $c->position,
+                    'title'  => (string) $c->title,
+                    'domain' => (string) $c->domain,
+                    'url'    => (string) $c->url,
+                ])->toArray(),
+                'benchmarks' => [
+                    'competitor_count' => $comps->count(),
+                    'avg_title_length' => (int) round((float) $compAvgTitleLen),
+                ],
+                'message' => $comps->isEmpty()
+                    ? 'No SERP cache. Run Analyze on this keyword first.'
+                    : ($youInTop10
+                        ? "You're already ranking at position #{$youPosition}."
+                        : 'You are not in the top 10 for this keyword.'),
+            ]);
+        });
 
         // Equity calculator — page-equity scoring
         Route::post('/equity/calculate', function (\Illuminate\Http\Request $r) {
