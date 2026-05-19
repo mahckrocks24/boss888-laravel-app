@@ -36,6 +36,65 @@ Route::get('/app/{any?}', function () {
 
 // ── Marketing Site (static HTML from plugin) ──────────────────────────────────
 // Homepage
+// 2026-05-19 (Wave 32e) — Platform sitemap for the LevelUp Growth
+// marketing pages. Auto-discovered routes; updated_at = today.
+Route::get('/sitemap.xml', function (\Illuminate\Http\Request $r) {
+    $base = $r->getSchemeAndHttpHost();  // e.g. https://staging.levelupgrowth.io
+    $today = date('Y-m-d');
+    $pages = [
+        ['loc' => '/',              'priority' => '1.0', 'changefreq' => 'weekly'],
+        ['loc' => '/pricing',       'priority' => '0.9', 'changefreq' => 'monthly'],
+        ['loc' => '/features',      'priority' => '0.9', 'changefreq' => 'monthly'],
+        ['loc' => '/specialists',   'priority' => '0.8', 'changefreq' => 'monthly'],
+        ['loc' => '/how-it-works',  'priority' => '0.8', 'changefreq' => 'monthly'],
+        ['loc' => '/faq',           'priority' => '0.8', 'changefreq' => 'monthly'],
+        ['loc' => '/ai-agents',     'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/ai-assistant',  'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/comparison',    'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/use-cases',     'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/results',       'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/calendar',      'priority' => '0.6', 'changefreq' => 'monthly'],
+        ['loc' => '/creative',      'priority' => '0.6', 'changefreq' => 'monthly'],
+        ['loc' => '/crm',           'priority' => '0.6', 'changefreq' => 'monthly'],
+        ['loc' => '/email',         'priority' => '0.6', 'changefreq' => 'monthly'],
+        ['loc' => '/video',         'priority' => '0.6', 'changefreq' => 'monthly'],
+        ['loc' => '/blog',          'priority' => '0.7', 'changefreq' => 'weekly'],
+        ['loc' => '/sign-up',       'priority' => '0.8', 'changefreq' => 'yearly'],
+    ];
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "
+";
+    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "
+";
+    foreach ($pages as $p) {
+        $xml .= '  <url>' . "
+";
+        $xml .= '    <loc>' . htmlspecialchars($base . $p['loc']) . '</loc>' . "
+";
+        $xml .= '    <lastmod>' . $today . '</lastmod>' . "
+";
+        $xml .= '    <changefreq>' . $p['changefreq'] . '</changefreq>' . "
+";
+        $xml .= '    <priority>' . $p['priority'] . '</priority>' . "
+";
+        $xml .= '  </url>' . "
+";
+    }
+    $xml .= '</urlset>';
+    return response($xml, 200)
+        ->header('Content-Type', 'application/xml; charset=UTF-8')
+        ->header('Cache-Control', 'public, max-age=3600');
+});
+
+Route::get('/robots.txt', function (\Illuminate\Http\Request $r) {
+    $base = $r->getSchemeAndHttpHost();
+    $content = "User-agent: *
+Allow: /
+
+Sitemap: {$base}/sitemap.xml
+";
+    return response($content, 200)->header('Content-Type', 'text/plain');
+});
+
 Route::get('/', function () {
     return response()->file(public_path('marketing/index.html'));
 })->name('home');
