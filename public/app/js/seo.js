@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.6-wave32h loaded — document.referrer in fallback chain for WP iframe context'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.7-wave32i loaded — local esc() so card renders outside main IIFE (fixes WP)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8659,6 +8659,11 @@ window._lgseDrawerSend = function () {
   window.lgseLoadSitemap = function () {
     var card = document.getElementById('lgse-sitemap-card');
     if (!card) return;
+    // Wave 32i — local esc() so this works outside the main IIFE
+    // (esc is closure-local; missing on WP plugin embed which only loads seo.js).
+    var esc = (typeof window.esc === 'function')
+      ? window.esc
+      : function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); };
     card.innerHTML = '<div style="padding:14px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;font-size:11.5px;color:var(--lgse-t3)">Loading sitemap status…</div>';
     // Wave 32a — lgseLoadSitemap is registered OUTSIDE the main IIFE,
     // so the local api() helper is not in scope. Use window._seoApi
@@ -8787,7 +8792,10 @@ window._lgseDrawerSend = function () {
         return;
       }
       card.innerHTML = html;
-    }).catch(function () {
+    }).catch(function (err) {
+      // Wave 32i — log the error so future failures are debuggable rather
+      // than silently wiping the card.
+      try { console.warn('[LU SITEMAP] failed', err && (err.message || err)); } catch (_e) {}
       card.innerHTML = '';
     });
   };
