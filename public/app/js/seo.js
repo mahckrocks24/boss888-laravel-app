@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.5-wave32g loaded — WP host via _LGSC_EMBED.site_url in fallback chain'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.6-wave32h loaded — document.referrer in fallback chain for WP iframe context'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8664,17 +8664,33 @@ window._lgseDrawerSend = function () {
     // so the local api() helper is not in scope. Use window._seoApi
     // (the global helper that api() falls back to internally).
     var _siteUrl = (window._lgseActiveSiteUrl || '').trim();
-    // Wave 32g — Correct fallback chain. WP plugin loads seo.js in an
-    // iframe from staging.levelupgrowth.io; inside that iframe
-    // location.origin is the staging host, NOT the WP host. The WP plugin
-    // pre-sets _LGSC_EMBED.site_url to the actual WP host (also used at
-    // line 8222 for other paths). Check it BEFORE location.origin.
+    // Wave 32h — Full fallback chain to find the right site_url:
+    //   1. _LGSC_EMBED.site_url    (WP plugin populates this when configured)
+    //   2. document.referrer host  (parent frame URL when in an iframe — covers
+    //                               WP plugins that don't set _LGSC_EMBED.site_url)
+    //   3. window.location.origin  (Laravel platform host)
     if (!_siteUrl && window._LGSC_EMBED && window._LGSC_EMBED.site_url) {
       _siteUrl = String(window._LGSC_EMBED.site_url).trim();
     }
     if (!_siteUrl) {
+      try {
+        var _inIframe = (window.parent !== window);
+        if (_inIframe && document.referrer) {
+          var _ref = new URL(document.referrer);
+          // Don't recursively use staging as the referrer — that'd loop us
+          // back to platform_self.
+          var _refHost = _ref.host.toLowerCase().replace(/^www\./, '');
+          var _platformHosts = ['staging.levelupgrowth.io', 'levelupgrowth.io', 'app.levelupgrowth.io'];
+          if (_refHost && _platformHosts.indexOf(_refHost) === -1) {
+            _siteUrl = _ref.origin;
+          }
+        }
+      } catch (_e) {}
+    }
+    if (!_siteUrl) {
       _siteUrl = (window.location && window.location.origin) || '';
     }
+    try { console.log('[LU SITEMAP] resolved site_url:', _siteUrl); } catch (_e) {}
     var _path = '/sitemap' + (_siteUrl ? ('?site_url=' + encodeURIComponent(_siteUrl)) : '');
     var _siteCall = (typeof window._seoApi === 'function')
       ? window._seoApi('GET', _path)
