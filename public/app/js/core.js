@@ -1564,6 +1564,14 @@ async function loadTasks(){
         var co = (p&&p.coordinator) || '';
         return co==='sarah'?'dmm':co;
       })(),
+      // Wave 38h — capture creator (Sarah for delegated chain tasks).
+      delegated_by: (function(){
+        var p = t.payload_json;
+        if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){p={}}}
+        var cv = (p&&p.created_via) || '';
+        if (cv === 'sarah_chat' || cv === 'sarah_proactive') return 'dmm';
+        return null;
+      })(),
       notes: (function(){
         var r = t.result_json;
         if(typeof r==='string'){try{r=JSON.parse(r)}catch(e){r={}}}
@@ -1871,17 +1879,28 @@ function renderProfilePane(id,ag){
     </div>`;
 }
 function renderDrawerTasks(id,filter){
-  var tasks=allTasks.filter(t=>t.assignee===id&&(filter==='all'||t.status===filter));
+  // Wave 38h — Sarah (dmm) is an orchestrator. Her Tasks tab shows tasks
+  // she DELEGATED (created_via=sarah_chat), not tasks she executed.
+  var tasks = (id === 'dmm' || id === 'sarah')
+    ? allTasks.filter(t => t.delegated_by === 'dmm' && (filter==='all'||t.status===filter))
+    : allTasks.filter(t => t.assignee===id && (filter==='all'||t.status===filter));
   var list=document.getElementById('dp-tasks-list');
   if(!tasks.length){list.innerHTML=`<div style="text-align:center;padding:30px;font-size:12px;color:var(--t3)">No ${filter==='all'?'':filter+' '}tasks yet.</div>`;return;}
   var ag=AGENTS[id]||{};
+  var viewingOrchestrator = (id === 'dmm' || id === 'sarah');
   list.innerHTML=tasks.map(t=>{
     var stClass=t.status==='ongoing'?'st-ongoing':t.status==='upcoming'?'st-upcoming':'st-completed';
+    // Wave 38h — orchestrator view: prefix title with the delegate name
+    var displayTitle = t.title;
+    if (viewingOrchestrator && t.assignee && t.assignee !== 'dmm') {
+      var delegateName = (AGENTS[t.assignee] && AGENTS[t.assignee].name) || t.assignee;
+      displayTitle = '→ ' + delegateName + ': ' + (t.title || '(no title)');
+    }
     var timeInfo=t.status==='completed'?`✓ ${t.actual_time||t.estimated_time}min used`:t.status==='upcoming'?`Est. ${t.estimated_time}min`:t.status==='ongoing'?`${window.icon('clock',14)} ${t.estimated_time}min est`:'';
     var tokenInfo=t.status==='completed'?`${((t.actual_tokens||t.estimated_tokens)/1000).toFixed(0)}k tokens`:t.status==='upcoming'?`~${(t.estimated_tokens/1000).toFixed(0)}k tokens est`:`~${(t.estimated_tokens/1000).toFixed(0)}k tokens`;
     var coord=t.coordinator?AGENTS[t.coordinator]:null;
     return `<div class="task-item">
-      <div class="ti-title">${esc(t.title)}</div>
+      <div class="ti-title">${esc(displayTitle)}</div>
       <div class="ti-desc">${esc(t.description)}</div>
       <div class="ti-meta">
         <span class="ti-badge ${stClass}">${t.status}</span>
