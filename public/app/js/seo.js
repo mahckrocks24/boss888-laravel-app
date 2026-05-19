@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.4-wave32f loaded — Forensic fix: no silent fallback to arbitrary tenant subdomains'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.5-wave32g loaded — WP host via _LGSC_EMBED.site_url in fallback chain'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8664,9 +8664,14 @@ window._lgseDrawerSend = function () {
     // so the local api() helper is not in scope. Use window._seoApi
     // (the global helper that api() falls back to internally).
     var _siteUrl = (window._lgseActiveSiteUrl || '').trim();
-    // Wave 32f — ALWAYS fall back to current location origin (not just in
-    // embed mode). On the Laravel app shell this resolves staging.levelupgrowth.io
-    // → platform_self mode. In WP plugin it resolves to the WP site host.
+    // Wave 32g — Correct fallback chain. WP plugin loads seo.js in an
+    // iframe from staging.levelupgrowth.io; inside that iframe
+    // location.origin is the staging host, NOT the WP host. The WP plugin
+    // pre-sets _LGSC_EMBED.site_url to the actual WP host (also used at
+    // line 8222 for other paths). Check it BEFORE location.origin.
+    if (!_siteUrl && window._LGSC_EMBED && window._LGSC_EMBED.site_url) {
+      _siteUrl = String(window._LGSC_EMBED.site_url).trim();
+    }
     if (!_siteUrl) {
       _siteUrl = (window.location && window.location.origin) || '';
     }
