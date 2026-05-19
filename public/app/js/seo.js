@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.9-wave32k loaded — setInterval watchdog forces card to stay rendered'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.23.0-wave33 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8792,37 +8792,6 @@ window._lgseDrawerSend = function () {
         return;
       }
       card.innerHTML = html;
-      // Wave 32k — Brute-force watchdog. Cache the rendered HTML and re-apply
-      // it every 1s if the card is missing or got wiped. Sledgehammer because
-      // MutationObserver in Wave 32j didn't catch whatever's wiping it on WP.
-      window._lgseSitemapLastHtml = html;
-      if (!window._lgseSitemapWatchdog) {
-        window._lgseSitemapWatchdog = setInterval(function () {
-          try {
-            if (!window._lgseSitemapLastHtml) return;
-            var c = document.getElementById('lgse-sitemap-card');
-            if (!c) {
-              // Card removed. Find Pages container and re-inject.
-              var pb = document.getElementById('lgse-pages-body');
-              if (pb && pb.parentElement) {
-                var fresh = document.createElement('div');
-                fresh.id = 'lgse-sitemap-card';
-                fresh.style.marginBottom = '14px';
-                fresh.innerHTML = window._lgseSitemapLastHtml;
-                pb.parentElement.insertBefore(fresh, pb);
-                console.warn('[LU SITEMAP WATCHDOG] card was removed — re-injected');
-              }
-              return;
-            }
-            // If the card was wiped to empty OR reverted to Loading state, restore.
-            var cur = (c.innerHTML || '').trim();
-            if (!cur || cur.indexOf('Loading sitemap status') !== -1) {
-              c.innerHTML = window._lgseSitemapLastHtml;
-              console.warn('[LU SITEMAP WATCHDOG] card was empty — restored');
-            }
-          } catch (_e) {}
-        }, 1000);
-      }
     }).catch(function (err) {
       // Wave 32i — log the error so future failures are debuggable rather
       // than silently wiping the card.
