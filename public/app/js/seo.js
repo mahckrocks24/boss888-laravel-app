@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.0-wave32 loaded — XML Sitemap card in Pages tab'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.1-wave32a loaded — Sitemap card uses window._seoApi (was out of closure scope)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8660,7 +8660,22 @@ window._lgseDrawerSend = function () {
     var card = document.getElementById('lgse-sitemap-card');
     if (!card) return;
     card.innerHTML = '<div style="padding:14px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;font-size:11.5px;color:var(--lgse-t3)">Loading sitemap status…</div>';
-    api('GET', '/sitemap').then(function (d) {
+    // Wave 32a — lgseLoadSitemap is registered OUTSIDE the main IIFE,
+    // so the local api() helper is not in scope. Use window._seoApi
+    // (the global helper that api() falls back to internally).
+    var _siteUrl = (window._lgseActiveSiteUrl || '').trim();
+    var _path = '/sitemap' + (_siteUrl ? ('?site_url=' + encodeURIComponent(_siteUrl)) : '');
+    var _siteCall = (typeof window._seoApi === 'function')
+      ? window._seoApi('GET', _path)
+      : fetch(window.location.origin + '/api/seo' + _path, {
+          headers: {
+            'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+            'Accept': 'application/json',
+          },
+        }).then(function (r) { return r.json(); });
+    try { console.log('[LU SITEMAP] fetching', _path); } catch (_e) {}
+    _siteCall.then(function (d) {
+      try { console.log('[LU SITEMAP] response', d); } catch (_e) {}
       if (!d || !d.success) {
         card.innerHTML = '';
         return;
@@ -8738,7 +8753,18 @@ window._lgseDrawerSend = function () {
   window.lgsePingSitemap = function (btn, url) {
     var orig = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
-    api('POST', '/sitemap/ping', { sitemap_url: url }).then(function (d) {
+    var _pingCall = (typeof window._seoApi === 'function')
+      ? window._seoApi('POST', '/sitemap/ping', { sitemap_url: url })
+      : fetch(window.location.origin + '/api/seo/sitemap/ping', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''),
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ sitemap_url: url }),
+        }).then(function (r) { return r.json(); });
+    _pingCall.then(function (d) {
       if (btn) {
         btn.disabled = false;
         btn.textContent = '✓ Submitted';
