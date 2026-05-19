@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.14.1-wave20b loaded — Tracked keywords accepts comma-separated bulk input'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.14.2-wave20c loaded — Suggestions tab: multi-select with Track + Copy bulk actions'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -2671,6 +2671,14 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       + '<div style="text-align:center;padding:16px 0">'
       +   '<button id="lgse-suggest-btn" class="lgse-btn-primary" onclick="lgseFetchSuggestions()" style="padding:10px 24px;font-size:12px">✨ Analyze my content</button>'
       + '</div>'
+      // Wave 20c — bulk action bar (hidden until 1+ rows selected).
+      + '<div id="lgse-suggest-actions" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:12px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:7px;flex-wrap:wrap">'
+      +   '<span id="lgse-suggest-count" style="font-size:11.5px;color:var(--lgse-t2);font-weight:500">0 selected</span>'
+      +   '<div style="flex:1"></div>'
+      +   '<button class="lgse-btn-primary" onclick="lgseSuggTrackSelected(this)" style="padding:6px 14px;font-size:11px">+ Track selected</button>'
+      +   '<button class="lgse-btn-secondary" onclick="lgseSuggCopySelected(this)" style="padding:6px 14px;font-size:11px">⧉ Copy for Sarah / AI Assistant</button>'
+      +   '<button class="lgse-btn-secondary" onclick="lgseSuggClearSelection()" style="padding:6px 10px;font-size:11px" title="Clear selection">✕</button>'
+      + '</div>'
       + '<div id="lgse-suggestions-list"></div>';
   };
 
@@ -2687,7 +2695,10 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         list.innerHTML = emptyState('⟡', 'No suggestions yet', 'Index more pages first (Pages → Scan now) to get keyword suggestions from your content.');
         return;
       }
-      var h = '<table class="lgse-table"><thead><tr><th>Keyword</th><th class="r">Volume</th><th>Competition</th><th>Status</th><th></th></tr></thead><tbody>';
+      // Wave 20c — checkbox column at front.
+      var h = '<table class="lgse-table"><thead><tr>'
+        + '<th style="width:32px;text-align:center"><input type="checkbox" id="lgse-suggest-all" onchange="lgseSuggToggleAll(this)" title="Select all"></th>'
+        + '<th>Keyword</th><th class="r">Volume</th><th>Competition</th><th>Status</th><th></th></tr></thead><tbody>';
       suggestions.forEach(function (s) {
         var vol = parseInt(s.volume || 0, 10);
         var volTier = vol >= 10000 ? 'HIGH' : vol >= 1000 ? 'MED' : vol > 0 ? 'LOW' : '—';
@@ -2700,7 +2711,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           : (compIdx >= 70 ? 'Hard' : compIdx >= 30 ? 'Medium' : compIdx >= 0 ? 'Easy' : '—');
         var compCls = compLabel === 'Hard' ? 'lgse-b-red' : compLabel === 'Medium' ? 'lgse-b-amber' : compLabel === 'Easy' ? 'lgse-b-teal' : 'lgse-b-muted';
         var safeKw = (s.keyword || '').replace(/'/g, "\\'");
+        var b64Kw = (typeof btoa === 'function') ? btoa(unescape(encodeURIComponent(s.keyword || ''))) : '';
         h += '<tr>'
+          + '<td style="text-align:center"><input type="checkbox" class="lgse-suggest-cb" data-kw-b64="' + b64Kw + '" data-tracked="' + (s.already_tracked ? '1' : '0') + '" onchange="lgseSuggUpdate()"></td>'
           + '<td style="color:var(--lgse-t1);font-weight:500">' + esc(s.keyword || '') + '</td>'
           + '<td class="mono">' + (vol > 0 ? '<span class="lgse-badge ' + volCls + '" style="margin-right:6px">' + volTier + '</span>' + vol.toLocaleString() : '<span style="color:var(--lgse-t3)">—</span>') + '</td>'
           + '<td>' + (compLabel === '—' ? '<span style="color:var(--lgse-t3)">—</span>' : '<span class="lgse-badge ' + compCls + '">' + compLabel + '</span>') + '</td>'
@@ -2725,6 +2738,131 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       if (firstTab) window.lgseKwSubTab('tracked', firstTab);
     }).catch(function () {});
   };
+
+  // Wave 20c — Suggestions multi-select helpers.
+  function _lgseSuggDecode(b64) {
+    try { return decodeURIComponent(escape(atob(b64 || ''))); } catch (_e) { return ''; }
+  }
+  function _lgseSuggCheckedRows() {
+    return Array.prototype.slice.call(document.querySelectorAll('.lgse-suggest-cb:checked'));
+  }
+  function _lgseSuggNotify(msg) {
+    if (typeof window.showToast === 'function') { window.showToast(msg, 'info'); return; }
+    try { console.log('[LU SEO] ' + msg); } catch (_e) {}
+  }
+  window.lgseSuggUpdate = function () {
+    var checked = _lgseSuggCheckedRows();
+    var bar = document.getElementById('lgse-suggest-actions');
+    var lbl = document.getElementById('lgse-suggest-count');
+    if (!bar || !lbl) return;
+    if (checked.length === 0) {
+      bar.style.display = 'none';
+    } else {
+      bar.style.display = 'flex';
+      var trackable = checked.filter(function (c) { return c.getAttribute('data-tracked') !== '1'; }).length;
+      var already   = checked.length - trackable;
+      var msg = checked.length + ' selected';
+      if (already > 0) msg += ' (' + already + ' already tracked)';
+      lbl.textContent = msg;
+    }
+    // Sync the "select all" checkbox state.
+    var all = document.getElementById('lgse-suggest-all');
+    var total = document.querySelectorAll('.lgse-suggest-cb').length;
+    if (all) {
+      all.checked       = (checked.length > 0 && checked.length === total);
+      all.indeterminate = (checked.length > 0 && checked.length < total);
+    }
+  };
+  window.lgseSuggToggleAll = function (cb) {
+    var on = !!(cb && cb.checked);
+    Array.prototype.forEach.call(document.querySelectorAll('.lgse-suggest-cb'), function (c) { c.checked = on; });
+    window.lgseSuggUpdate();
+  };
+  window.lgseSuggClearSelection = function () {
+    Array.prototype.forEach.call(document.querySelectorAll('.lgse-suggest-cb'), function (c) { c.checked = false; });
+    var all = document.getElementById('lgse-suggest-all');
+    if (all) { all.checked = false; all.indeterminate = false; }
+    window.lgseSuggUpdate();
+  };
+  window.lgseSuggTrackSelected = function (btn) {
+    var checked = _lgseSuggCheckedRows();
+    // Filter out already-tracked rows.
+    var toAdd = checked
+      .filter(function (c) { return c.getAttribute('data-tracked') !== '1'; })
+      .map(function (c) { return _lgseSuggDecode(c.getAttribute('data-kw-b64')); })
+      .filter(function (s) { return s && s.length > 0; });
+    if (toAdd.length === 0) {
+      _lgseSuggNotify('No untracked keywords selected.');
+      return;
+    }
+    var country = lgseGetKwCountry();
+    var origLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Tracking ' + toAdd.length + '…'; }
+    var added = 0, skipped = 0, failed = 0, limitHit = false;
+    function step(i) {
+      if (i >= toAdd.length || limitHit) {
+        if (btn) { btn.disabled = false; btn.textContent = origLabel || '+ Track selected'; }
+        var parts = [];
+        if (added)    parts.push(added + ' added');
+        if (skipped)  parts.push(skipped + ' already tracked');
+        if (failed)   parts.push(failed + ' failed');
+        if (limitHit) parts.push('plan limit reached');
+        _lgseSuggNotify(parts.length ? parts.join(', ') + '.' : 'Done.');
+        // Refresh suggestions list (Tracked status will update for added rows).
+        if (typeof window.lgseFetchSuggestions === 'function') window.lgseFetchSuggestions();
+        return;
+      }
+      api('POST', '/keywords', { keyword: toAdd[i], country: country })
+        .then(function () { added++; })
+        .catch(function (e) {
+          var em = (e && (e.message || e.error)) || '';
+          if (/already tracked/i.test(em))   skipped++;
+          else if (/limit reached/i.test(em)) { failed++; limitHit = true; }
+          else                                 failed++;
+        })
+        .finally(function () { step(i + 1); });
+    }
+    step(0);
+  };
+  window.lgseSuggCopySelected = function (btn) {
+    var checked = _lgseSuggCheckedRows();
+    var kws = checked
+      .map(function (c) { return _lgseSuggDecode(c.getAttribute('data-kw-b64')); })
+      .filter(function (s) { return s && s.length > 0; });
+    if (kws.length === 0) {
+      _lgseSuggNotify('Nothing selected to copy.');
+      return;
+    }
+    var text = kws.join(', ');
+    var origLabel = btn ? btn.textContent : '';
+    var done = function (ok) {
+      if (btn) {
+        btn.textContent = ok ? '✓ Copied — paste into Sarah / AI Assistant' : '✕ Copy failed';
+        setTimeout(function () { if (btn) btn.textContent = origLabel || '⧉ Copy for Sarah / AI Assistant'; }, 2500);
+      }
+      _lgseSuggNotify(ok ? ('Copied ' + kws.length + ' keyword' + (kws.length === 1 ? '' : 's') + ' to clipboard. Paste into Sarah or the AI Assistant chat.') : 'Copy failed. Select keywords and try again.');
+    };
+    // Try the modern clipboard API first, then fall back to a hidden textarea.
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(_lgseSuggLegacyCopy(text)); });
+    } else {
+      done(_lgseSuggLegacyCopy(text));
+    }
+  };
+  function _lgseSuggLegacyCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (_e) { ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    } catch (_e) { return false; }
+  }
 
   window.lgseRenderResearchTab = function () {
     var content = document.getElementById('lgse-kw-content');
