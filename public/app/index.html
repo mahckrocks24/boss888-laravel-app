@@ -310,7 +310,7 @@ textarea,input{font-family:var(--fb);outline:none}
 .ai-panel{position:fixed;bottom:calc(84px + var(--safe-bottom));right:24px;z-index:var(--z-modal);width:480px;
   background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);
   box-shadow:0 16px 56px rgba(0,0,0,.55);display:flex;flex-direction:column;
-  max-height:720px;transform:translateY(12px) scale(.97);opacity:0;pointer-events:none;
+  height:calc(100vh - 120px);min-height:520px;max-height:min(760px, calc(100vh - 100px));transform:translateY(12px) scale(.97);opacity:0;pointer-events:none;
   transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s}
 .ai-panel.open{transform:translateY(0) scale(1);opacity:1;pointer-events:all}
 
@@ -4833,7 +4833,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=4.9.0-aria-metered-chat-meter-global"></script>
+<script defer src="/app/js/core.js?v=4.9.1-aria-taller-drawer"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
