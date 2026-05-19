@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.15.0-wave21 loaded — Credit charging wired (research 2cr, suggest 1cr, check 1cr, competitor 2cr, gaps 3cr)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.16.0-wave22 loaded — Chat 0.1cr (10:1 batched); meeting 8cr; Wave 21 corrections (research 1cr, competitor 1cr)'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -2876,7 +2876,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       + '</div>'
       + '<div style="display:flex;gap:8px;margin-bottom:16px">'
       +   '<input id="lgse-research-input" placeholder="e.g. private chef dubai" style="flex:1;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:7px;padding:10px 14px;font-size:12px;color:var(--lgse-t1)">'
-      +   '<button class="lgse-btn-primary" onclick="lgseRunResearch()" style="padding:10px 20px;font-size:12px">Research → <span style="opacity:0.85;font-weight:400;font-size:10px">(2 cr)</span></button>'
+      +   '<button class="lgse-btn-primary" onclick="lgseRunResearch()" style="padding:10px 20px;font-size:12px">Research → <span style="opacity:0.85;font-weight:400;font-size:10px">(1 cr)</span></button>'
       + '</div>'
       + '<div id="lgse-research-results"><div style="text-align:center;padding:40px;color:var(--lgse-t3);font-size:11.5px">Enter a keyword above to discover related search terms</div></div>';
     setTimeout(function () {

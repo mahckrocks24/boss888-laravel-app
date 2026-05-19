@@ -616,6 +616,17 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         $quickAction = $r->input('quick_action'); // my_tasks, recent_completions, whats_next
         $image = $r->input('image'); // base64 image for vision
 
+        // Wave 22 — 10-chat batched metering (0.1 cr effective per chat).
+        $_meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'agent_message');
+        if (!$_meter['sufficient']) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Not enough credits — chat costs 0.1 credit (1 credit per 10 chats). Please top up.',
+                'required_credits' => 1,
+                'chat_counter'     => $_meter['counter'],
+            ], 402);
+        }
+
         // Map 'dmm' alias to 'sarah' (frontend uses 'dmm' for Sarah)
         if ($slug === 'dmm') $slug = 'sarah';
         $agent = \App\Models\Agent::where('slug', $slug)->first();
@@ -1416,6 +1427,12 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         // ── Strategy Meetings (real agent collaboration) ──
         Route::post('/meeting/start', function (\Illuminate\Http\Request $r) {
+            $_wsId = (int) $r->attributes->get('workspace_id');
+            $_credits = app(\App\Core\Billing\CreditService::class);
+            if (!$_credits->hasBalance($_wsId, 8)) {
+                return response()->json(['success' => false, 'error' => 'Not enough credits — strategy meeting costs 8 credits.', 'required_credits' => 8], 402);
+            }
+            $_credits->debit($_wsId, 8, 'sarah/strategy_meeting');
             $r->validate(['goal' => 'required|string']);
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             return response()->json($engine->startMeeting(
@@ -1430,6 +1447,12 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         });
 
         Route::post('/meeting/full', function (\Illuminate\Http\Request $r) {
+            $_wsId = (int) $r->attributes->get('workspace_id');
+            $_credits = app(\App\Core\Billing\CreditService::class);
+            if (!$_credits->hasBalance($_wsId, 8)) {
+                return response()->json(['success' => false, 'error' => 'Not enough credits — strategy meeting costs 8 credits.', 'required_credits' => 8], 402);
+            }
+            $_credits->debit($_wsId, 8, 'sarah/strategy_meeting');
             $r->validate(['goal' => 'required|string']);
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             return response()->json($engine->runFullMeeting(
@@ -1900,9 +1923,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             }
             $wsId = (int) $r->attributes->get('workspace_id');
             $credits = app(\App\Core\Billing\CreditService::class);
-            $cost = 2;
+            $cost = 1;
             if (!$credits->hasBalance($wsId, $cost)) {
-                return response()->json(['success' => false, 'error' => "Not enough credits — keyword research costs {$cost} credits.", 'required_credits' => $cost, 'ideas' => []], 402);
+                return response()->json(['success' => false, 'error' => "Not enough credits — keyword research costs {$cost} credit.", 'required_credits' => $cost, 'ideas' => []], 402);
             }
             $ref = $credits->reserve($wsId, $cost, 'seo/keyword_research');
             try {
@@ -3456,9 +3479,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::post('/competitors/analyze', function (\Illuminate\Http\Request $r) use ($locationFromString) {
             $wsId = (int) $r->attributes->get('workspace_id');
             $credits = app(\App\Core\Billing\CreditService::class);
-            $cost = 2;
+            $cost = 1;
             if (!$credits->hasBalance($wsId, $cost)) {
-                return response()->json(['success' => false, 'error' => "Not enough credits — competitor analysis costs {$cost} credits.", 'required_credits' => $cost], 402);
+                return response()->json(['success' => false, 'error' => "Not enough credits — competitor analysis costs {$cost} credit.", 'required_credits' => $cost], 402);
             }
             $credits->debit($wsId, $cost, 'seo/competitor_serp');
             $wsId = (int) $r->attributes->get('workspace_id');
@@ -3617,9 +3640,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::post('/competitors/compare', function (\Illuminate\Http\Request $r) use ($locationFromString) {
             $wsId = (int) $r->attributes->get('workspace_id');
             $credits = app(\App\Core\Billing\CreditService::class);
-            $cost = 2;
+            $cost = 1;
             if (!$credits->hasBalance($wsId, $cost)) {
-                return response()->json(['success' => false, 'error' => "Not enough credits — competitor compare costs {$cost} credits.", 'required_credits' => $cost], 402);
+                return response()->json(['success' => false, 'error' => "Not enough credits — competitor compare costs {$cost} credit.", 'required_credits' => $cost], 402);
             }
             $credits->debit($wsId, $cost, 'seo/competitor_serp');
             $wsId = (int) $r->attributes->get('workspace_id');
@@ -13872,6 +13895,16 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
             'context'  => 'nullable|array',
             'site_url' => 'nullable|string|max:500',
         ]);
+        // Wave 22 — 10-chat batched metering (0.1 cr effective per chat).
+        $meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'assistant_message');
+        if (!$meter['sufficient']) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Not enough credits — chat costs 0.1 credit (1 credit per 10 chats). Please top up.',
+                'required_credits' => 1,
+                'chat_counter'     => $meter['counter'],
+            ], 402);
+        }
         // Wave 1 (2026-05-17) — force user_id into context server-side so
         // disclaimer gate + chat-log persistence work regardless of what
         // the client sent. Client-supplied user_id is not trusted.

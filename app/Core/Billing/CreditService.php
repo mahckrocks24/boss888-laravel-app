@@ -248,4 +248,38 @@ class CreditService
     {
         $this->releaseReservedCredits($reservationRef);
     }
+
+    /**
+     * Wave 22 — 10-chat batched metering for AI Assistant + agent chats.
+     *
+     * Atomically increments workspaces.chat_meter. On the 10th call,
+     * resets the counter to 0 and debits 1 credit (effective 0.1 cr/chat).
+     *
+     * Returns ['debited' => bool, 'counter' => int, 'sufficient' => bool].
+     * When sufficient=false the caller should reject the chat with a 402.
+     */
+    public function meterChat(int $workspaceId, string $reason = 'chat'): array
+    {
+        return DB::transaction(function () use ($workspaceId, $reason) {
+            $current = (int) (DB::table('workspaces')
+                ->where('id', $workspaceId)
+                ->lockForUpdate()
+                ->value('chat_meter') ?? 0);
+
+            $newCounter = $current + 1;
+
+            if ($newCounter >= 10) {
+                // 10th chat triggers a 1-credit debit; refuse if balance short.
+                if (!$this->hasBalance($workspaceId, 1)) {
+                    return ['debited' => false, 'counter' => $current, 'sufficient' => false];
+                }
+                DB::table('workspaces')->where('id', $workspaceId)->update(['chat_meter' => 0]);
+                $this->debit($workspaceId, 1, $reason);
+                return ['debited' => true, 'counter' => 0, 'sufficient' => true];
+            }
+
+            DB::table('workspaces')->where('id', $workspaceId)->update(['chat_meter' => $newCounter]);
+            return ['debited' => false, 'counter' => $newCounter, 'sufficient' => true];
+        });
+    }
 }
