@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.19.0-wave25 loaded — Badge placed as sibling below input row; diagnostics added'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.20.0-wave28 loaded — AI Assistant badge placement via grandparent wrapper'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -36,14 +36,25 @@ try { console.log('[LU SEO] seo.js v5.19.0-wave25 loaded — Badge placed as sib
       meter.className = 'lgse-chat-meter';
       meter.style.cssText = 'font-size:11px;color:#A78BFA;text-align:right;padding:8px 12px;margin-top:8px;border-radius:8px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2)';
       meter.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit · responses metered at 0.1 cr each</span>';
-      // Wave 25 — Place AFTER the flex row (insertAdjacentElement afterend)
-      // so the badge becomes a sibling below the textarea+Send button row,
-      // not a child squashed inside the flex layout.
-      if (holder.insertAdjacentElement) holder.insertAdjacentElement('afterend', meter);
-      else if (holder.parentElement) holder.parentElement.appendChild(meter);
-      else holder.appendChild(meter);
+      // Wave 28 — find a reliable visible parent.
+      // For #lgse-chat-input (AI Assistant), the panel structure nests the
+      // input row inside a flex-column container. Walk up until we find a
+      // container that has a sibling-after slot AND isn't itself inside an
+      // overflow:hidden region. Easiest: insert the badge into the input's
+      // grandparent (the padding wrapper around the suggestions + input row).
+      // This works for both #lgse-chat-input (grandparent = <div padding:16px 24px>)
+      // and #lu-msg-input (grandparent = <div padding:10px ...>).
+      var anchor = inp.parentElement;             // flex row
+      var wrapper = anchor.parentElement;          // padded outer container
+      if (wrapper) {
+        wrapper.appendChild(meter);                // last child of wrapper
+      } else if (holder.insertAdjacentElement) {
+        holder.insertAdjacentElement('afterend', meter);
+      } else {
+        holder.appendChild(meter);
+      }
       inp.dataset.lgseMeterAttached = '1';
-      try { console.log('[LU CHAT METER] badge attached to #' + inp.id); } catch (_e) {}
+      try { console.log('[LU CHAT METER] badge attached to #' + inp.id + ' (wrapper=' + (wrapper ? wrapper.tagName : 'none') + ')'); } catch (_e) {}
     });
   }
   if (document.readyState !== 'loading') inject();
