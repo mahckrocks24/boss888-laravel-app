@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.1-wave32a loaded — Sitemap card uses window._seoApi (was out of closure scope)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.2-wave32b loaded — Sitemap card handles platform-self host + drops ws filter'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8727,6 +8727,14 @@ window._lgseDrawerSend = function () {
           +   '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.6">'
           +     'No sitemap was found at /sitemap.xml, /wp-sitemap.xml, or /sitemap_index.xml on your site. '
           +     'Add one to improve search-engine discovery of your pages.'
+          +   '</div>'
+          + '</div>';
+      } else if (d.mode === 'platform_self') {
+        html =
+          '<div style="background:rgba(139,92,246,.06);border-left:2px solid #8B5CF6;border-radius:0 8px 8px 0;padding:12px 14px">'
+          +   '<div style="font-size:9px;font-weight:600;color:#8B5CF6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">XML Sitemap · platform host</div>'
+          +   '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.6">'
+          +     esc(d.message || 'This host is the LevelUp Growth platform admin URL, not a content site. Switch to a tenant site in the dropdown above.')
           +   '</div>'
           + '</div>';
       } else {

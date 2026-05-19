@@ -1970,17 +1970,30 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             $host = $siteUrl ? (parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl) : '';
             $host = strtolower(preg_replace('#^www\.#', '', (string) $host));
 
-            // Mode A — does the active site match a Laravel-hosted, published website?
+            // Wave 32b — Platform-self detection. The Laravel app host itself
+            // is not a tenant site — surface a friendly explanation rather than
+            // a misleading not-found.
+            $platformHosts = ['staging.levelupgrowth.io', 'levelupgrowth.io', 'www.levelupgrowth.io', 'app.levelupgrowth.io'];
+            if (in_array($host, $platformHosts, true)) {
+                return response()->json([
+                    'success' => true,
+                    'mode'    => 'platform_self',
+                    'host'    => $host,
+                    'message' => 'This is the LevelUp Growth platform admin URL, not a content site. Sitemaps are auto-generated for your tenant sites — switch to one in the site dropdown above to see its sitemap.',
+                ]);
+            }
+
+            // Mode A — match any Laravel-hosted published site by host.
+            // Wave 32b — dropped workspace_id filter; sitemap is public info.
             $site = null;
             if ($host) {
                 $site = \Illuminate\Support\Facades\DB::table('websites')
-                    ->where('workspace_id', $wsId)
                     ->where('status', 'published')
                     ->where(function ($q) use ($host) {
                         $q->where('subdomain', $host)
-                          ->orWhere('subdomain', 'LIKE', "%.{$host}")
                           ->orWhere('domain', $host);
                     })
+                    ->whereNull('deleted_at')
                     ->first();
             }
 
@@ -2033,8 +2046,9 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                     'success' => true,
                     'mode'    => 'external',
                     'found'   => false,
+                    'host'    => $host,
                     'tried'   => $candidates,
-                    'message' => 'No sitemap found at common locations. Add one to /sitemap.xml on your site.',
+                    'message' => 'No sitemap found at ' . $host . '. Tried /sitemap.xml, /wp-sitemap.xml, /sitemap_index.xml. Add one to improve search-engine discovery.',
                 ]);
             }
 
