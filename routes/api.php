@@ -1035,6 +1035,9 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             ], $ctParams);
 
                             // PATCH (Intel Fix 2a) — TaskService is the canonical path.
+                            // Wave 36c — auto-approve chain tasks when caller is the WP plugin
+                            // (X-API-KEY context). Laravel app users still see the approval queue.
+                            $autoApprove = ($r->header('X-API-KEY') !== null);
                             $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, [
                                 'engine'          => $taskEngine,
                                 'action'          => $taskAction,
@@ -1042,6 +1045,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                 'priority'        => 'normal',
                                 'assigned_agents' => [$taskAgent],
                                 'parent_task_id'  => $parentId,
+                                'auto_approve'    => $autoApprove,
                                 'payload'         => $payload,
                             ]);
                             // Record by position for downstream depends_on references.

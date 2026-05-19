@@ -92,7 +92,25 @@ class CreativeService
 
     public function generateImage(int $wsId, array $params): array
     {
-        $prompt = $params['prompt'] ?? '';
+        $prompt    = $params['prompt'] ?? '';
+        $articleId = isset($params['article_id']) ? (int) $params['article_id'] : null;
+
+        // Wave 36c — when called as a chain child with only article_id, build
+        // a sensible default prompt from the article title so chain steps
+        // succeed without each one re-specifying every field.
+        if ($prompt === '' && $articleId) {
+            $article = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('id', $articleId)
+                ->where('workspace_id', $wsId)
+                ->first(['title', 'focus_keyword', 'blog_category']);
+            if ($article && !empty($article->title)) {
+                $prompt = 'Featured image for the blog article: ' . $article->title;
+                if (!empty($article->focus_keyword)) {
+                    $prompt .= ' (keyword: ' . $article->focus_keyword . ')';
+                }
+            }
+        }
+
         if (empty($prompt)) {
             throw new \InvalidArgumentException('Prompt required');
         }
@@ -135,7 +153,42 @@ class CreativeService
                     'success'        => true,
                 ]);
                 $this->engineIntel->recordToolUsage('creative', 'generate_image', 0.9);
-                return $this->sanitize(array_merge($asset, ['status' => 'completed', 'url' => $result['url']]));
+
+                // Wave 36c — when called as part of an article chain, persist the
+                // featured_image_url + featured_image_alt onto the article row.
+                // Alt text is derived from the article title (or the original
+                // prompt if no article_id was passed).
+                if ($articleId) {
+                    try {
+                        $existing = \Illuminate\Support\Facades\DB::table('articles')
+                            ->where('id', $articleId)->where('workspace_id', $wsId)
+                            ->first(['title']);
+                        $altText = $existing && !empty($existing->title)
+                            ? (string) $existing->title
+                            : (string) ($params['prompt'] ?? $prompt);
+                        \Illuminate\Support\Facades\DB::table('articles')
+                            ->where('id', $articleId)
+                            ->where('workspace_id', $wsId)
+                            ->update([
+                                'featured_image_url' => $result['url'],
+                                'featured_image_alt' => mb_substr($altText, 0, 250),
+                                'updated_at'         => now(),
+                            ]);
+                    } catch (\Throwable $persistErr) {
+                        \Illuminate\Support\Facades\Log::warning('[Creative] article featured-image persistence failed', [
+                            'article_id' => $articleId,
+                            'error'      => $persistErr->getMessage(),
+                        ]);
+                    }
+                }
+
+                return $this->sanitize(array_merge($asset, [
+                    'status'             => 'completed',
+                    'url'                => $result['url'],
+                    'article_id'         => $articleId,
+                    'featured_image_url' => $result['url'],
+                    'featured_image_alt' => isset($altText) ? $altText : null,
+                ]));
             }
 
             $this->failAsset($assetId, $result['error'] ?? 'Generation failed');

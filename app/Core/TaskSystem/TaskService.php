@@ -36,7 +36,7 @@ class TaskService
         // Determine if approval is required — NO BYPASS for protected
         $requiresApproval = match ($approvalMode) {
             'auto' => false,
-            'review' => $data['requires_approval'] ?? true,   // default to requiring
+            'review' => empty($data['auto_approve']) ? ($data['requires_approval'] ?? true) : false,   // Wave 36c — auto_approve=true (WP context) bypasses review
             'protected' => true,                                // ALWAYS
             default => true,
         };
