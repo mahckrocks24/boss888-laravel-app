@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.21.0-wave29 loaded — Target #lgse-drawer-input (LIVE AI Assistant surface)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.21.1-wave30 loaded — Legacy renderAssistant marked DEAD; drawer is the live surface'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1764,6 +1764,21 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   window.lgseSwitchTab = switchTab;
 
   // ── Tab — AI Assistant (James — SEO-focused chat) ────────────────────
+  //
+  // 🪦 DEAD CODE — DO NOT MODIFY. Removed from the renderers map. Kept in
+  // the file only so window._lgseAssistantSend / _lgseAssistantSuggest
+  // (the no-op fallback aliases at the bottom of this file) have something
+  // to redirect against if a hash deep-link arrives.
+  //
+  // The LIVE AI Assistant is the slide-in drawer:
+  //   - input:  #lgse-drawer-input
+  //   - send:   window._lgseDrawerSend
+  //   - open:   window._lgseDrawerOpen
+  //   - render: see _lgseDrawerOpen at line ~8360
+  //
+  // History: Waves 22-28 wasted effort here before Wave 29 forensic
+  // discovered the actual surface was #lgse-drawer-input.
+  // ─────────────────────────────────────────────────────────────────────
   function renderAssistant(el) {
     el.innerHTML =
       '<div style="display:flex;flex-direction:column;height:100%;padding:0">'
@@ -8638,9 +8653,12 @@ window._lgseDrawerSend = function () {
   }).catch(function () { appendErr('Connection error. Please try again.'); });
 };
 
-// Legacy tab-mode helpers — kept as no-ops so dead-code renderAssistant/Chatbot
-// (still in the file but no longer in the renderers map) doesn't throw if
-// someone calls them by URL hash.
+// ─────────────────────────────────────────────────────────────────────
+// 🪦 LEGACY TAB-MODE HELPERS — DEAD CODE. These exist solely as no-op
+// redirects to the live drawer chat for any hash-based deep links that
+// might call them. Do NOT add new behavior here. The live AI Assistant is
+// the drawer (#lgse-drawer-input / _lgseDrawerSend / _lgseDrawerOpen).
+// ─────────────────────────────────────────────────────────────────────
 window._lgseAssistantSuggest = function (btn) {
   var q = btn && btn.getAttribute ? btn.getAttribute('data-q') : null;
   if (q) { window._lgseDrawerSuggest(q); window._lgseDrawerOpen(); }
