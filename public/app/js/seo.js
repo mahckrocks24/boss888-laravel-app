@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.2-wave32b loaded — Sitemap card handles platform-self host + drops ws filter'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.3-wave32d loaded — WP flicker fix + Open sitemap button on platform_self'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8664,6 +8664,15 @@ window._lgseDrawerSend = function () {
     // so the local api() helper is not in scope. Use window._seoApi
     // (the global helper that api() falls back to internally).
     var _siteUrl = (window._lgseActiveSiteUrl || '').trim();
+    // Wave 32d — WP plugin/embed: fall back to current location origin if
+    // no active site is set (e.g. plugin running on the WP site directly).
+    if (!_siteUrl) {
+      try {
+        if (typeof window._lgseIsEmbed === 'function' && window._lgseIsEmbed()) {
+          _siteUrl = window.location.origin || '';
+        }
+      } catch (_e) {}
+    }
     var _path = '/sitemap' + (_siteUrl ? ('?site_url=' + encodeURIComponent(_siteUrl)) : '');
     var _siteCall = (typeof window._seoApi === 'function')
       ? window._seoApi('GET', _path)
@@ -8730,15 +8739,32 @@ window._lgseDrawerSend = function () {
           +   '</div>'
           + '</div>';
       } else if (d.mode === 'platform_self') {
+        var _platUrl = d.sitemap_url || ('https://' + (d.host || '') + '/sitemap.xml');
         html =
           '<div style="background:rgba(139,92,246,.06);border-left:2px solid #8B5CF6;border-radius:0 8px 8px 0;padding:12px 14px">'
-          +   '<div style="font-size:9px;font-weight:600;color:#8B5CF6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">XML Sitemap · platform host</div>'
+          +   '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+          +     '<div style="flex:1;min-width:240px">'
+          +       '<div style="font-size:9px;font-weight:600;color:#8B5CF6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">XML Sitemap · platform host</div>'
+          +       '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.6">'
+          +         esc(d.message || 'This host is the LevelUp Growth platform admin URL, not a content site. Switch to a tenant site in the dropdown above.')
+          +       '</div>'
+          +     '</div>'
+          +     '<div style="flex-shrink:0">'
+          +       '<a href="' + esc(_platUrl) + '" target="_blank" rel="noopener" class="lgse-btn-secondary" style="display:inline-block;padding:6px 12px;font-size:11px;text-decoration:none">Open sitemap ↗</a>'
+          +     '</div>'
+          +   '</div>'
+          + '</div>';
+      } else if (d.mode === 'unknown') {
+        // Wave 32d — friendly empty state instead of wiping the card.
+        html =
+          '<div style="background:rgba(156,163,175,.06);border-left:2px solid #9CA3AF;border-radius:0 8px 8px 0;padding:12px 14px">'
+          +   '<div style="font-size:9px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">XML Sitemap</div>'
           +   '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.6">'
-          +     esc(d.message || 'This host is the LevelUp Growth platform admin URL, not a content site. Switch to a tenant site in the dropdown above.')
+          +     'Select a site from the dropdown above to see its sitemap status.'
           +   '</div>'
           + '</div>';
       } else {
-        // mode unknown — hide quietly
+        // truly unknown — hide quietly
         card.innerHTML = '';
         return;
       }

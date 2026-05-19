@@ -1967,6 +1967,20 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         Route::get('/sitemap', function (\Illuminate\Http\Request $r) {
             $wsId = (int) $r->attributes->get('workspace_id');
             $siteUrl = (string) ($r->query('site_url') ?? '');
+            // Wave 32d — Fall back to workspace's primary published site
+            // when no site_url is provided (WP plugin / embed context).
+            if ($siteUrl === '') {
+                $fallback = \Illuminate\Support\Facades\DB::table('websites')
+                    ->where('workspace_id', $wsId)
+                    ->where('status', 'published')
+                    ->whereNotNull('subdomain')
+                    ->whereNull('deleted_at')
+                    ->orderByDesc('updated_at')
+                    ->first();
+                if ($fallback && !empty($fallback->subdomain)) {
+                    $siteUrl = 'https://' . $fallback->subdomain;
+                }
+            }
             $host = $siteUrl ? (parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl) : '';
             $host = strtolower(preg_replace('#^www\.#', '', (string) $host));
 
@@ -1976,10 +1990,11 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             $platformHosts = ['staging.levelupgrowth.io', 'levelupgrowth.io', 'www.levelupgrowth.io', 'app.levelupgrowth.io'];
             if (in_array($host, $platformHosts, true)) {
                 return response()->json([
-                    'success' => true,
-                    'mode'    => 'platform_self',
-                    'host'    => $host,
-                    'message' => 'This is the LevelUp Growth platform admin URL, not a content site. Sitemaps are auto-generated for your tenant sites — switch to one in the site dropdown above to see its sitemap.',
+                    'success'     => true,
+                    'mode'        => 'platform_self',
+                    'host'        => $host,
+                    'sitemap_url' => 'https://' . $host . '/sitemap.xml',
+                    'message'     => 'This is the LevelUp Growth platform admin URL, not a content site. Sitemaps are auto-generated for your tenant sites — switch to one in the site dropdown above.',
                 ]);
             }
 
@@ -12411,16 +12426,30 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
     Route::get('/sitemap', function (\Illuminate\Http\Request $r) {
         $wsId = (int) $r->attributes->get('workspace_id');
         $siteUrl = (string) ($r->query('site_url') ?? '');
+        // Wave 32d — WP plugin context: fall back to workspace's primary published site.
+        if ($siteUrl === '') {
+            $fallback = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('workspace_id', $wsId)
+                ->where('status', 'published')
+                ->whereNotNull('subdomain')
+                ->whereNull('deleted_at')
+                ->orderByDesc('updated_at')
+                ->first();
+            if ($fallback && !empty($fallback->subdomain)) {
+                $siteUrl = 'https://' . $fallback->subdomain;
+            }
+        }
         $host = $siteUrl ? (parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl) : '';
         $host = strtolower(preg_replace('#^www\.#', '', (string) $host));
 
         $platformHosts = ['staging.levelupgrowth.io', 'levelupgrowth.io', 'www.levelupgrowth.io', 'app.levelupgrowth.io'];
         if (in_array($host, $platformHosts, true)) {
             return response()->json([
-                'success' => true,
-                'mode'    => 'platform_self',
-                'host'    => $host,
-                'message' => 'This is the LevelUp Growth platform admin URL, not a content site.',
+                'success'     => true,
+                'mode'        => 'platform_self',
+                'host'        => $host,
+                'sitemap_url' => 'https://' . $host . '/sitemap.xml',
+                'message'     => 'This is the LevelUp Growth platform admin URL, not a content site.',
             ]);
         }
 
