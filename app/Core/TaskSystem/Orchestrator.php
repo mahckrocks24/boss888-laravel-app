@@ -440,7 +440,7 @@ class Orchestrator
             'write/create_article'      => fn() => app(\App\Engines\Write\Services\WriteService::class)
                                             ->createArticle($wsId, $params),
             'write/write_article'       => fn() => app(\App\Engines\Write\Services\WriteService::class)
-                                            ->createArticle($wsId, $params),
+                                            ->writeArticle($wsId, $params),
             'write/improve_draft'       => fn() => app(\App\Engines\Write\Services\WriteService::class)
                                             ->improveDraft($wsId, $params),
             'write/generate_outline'    => fn() => app(\App\Engines\Write\Services\WriteService::class)

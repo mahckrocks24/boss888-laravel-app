@@ -643,7 +643,7 @@ class WriteService
     private function calculateReadability(string $html): float
     {
         $text = strip_tags($html);
-        $words = str_word_count($text);
+        $words = max(1, str_word_count($text));
         $sentences = max(1, preg_match_all('/[.!?]+/', $text));
         $syllables = max(1, (int) ($words * 1.5)); // Approximation
         // Flesch Reading Ease approximation

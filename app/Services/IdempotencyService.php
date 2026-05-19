@@ -22,7 +22,7 @@ class IdempotencyService
      */
     public function generateKey(int $workspaceId, string $action, array $payload): string
     {
-        $normalized = json_encode($payload, JSON_SORT_KEYS);
+        $normalized = json_encode(tap($payload, fn($p) => is_array($p) ? ksort($p) : null));
         return hash('sha256', "{$workspaceId}:{$action}:{$normalized}");
     }
 
