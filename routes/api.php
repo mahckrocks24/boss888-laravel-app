@@ -1914,6 +1914,107 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 'data'    => $res['items'] ?? [],
             ]);
         });
+
+        // 2026-05-19 (Wave 20e) — Position check for a single tracked keyword.
+        // POST /keywords/{id}/check accepts {country|location_code, site_url}.
+        // Mirrors TrackKeywordRanksCommand: resolve target domain, call SERP
+        // API, update seo_keywords with current/previous rank + delta.
+        Route::post('/keywords/{id}/check', function (\Illuminate\Http\Request $r, int $id) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+
+            $kw = \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('id', $id)
+                ->where('workspace_id', $wsId)
+                ->first();
+
+            if (!$kw) {
+                return response()->json(['success' => false, 'error' => 'Keyword not found.'], 404);
+            }
+
+            // Resolve target domain: keyword.target_url → request site_url →
+            // workspace's published website.
+            $domain = null;
+            if (!empty($kw->target_url)) {
+                $domain = parse_url($kw->target_url, PHP_URL_HOST);
+            }
+            if (!$domain) {
+                $siteUrl = (string) ($r->input('site_url') ?? $r->query('site_url') ?? '');
+                if ($siteUrl !== '') {
+                    $domain = parse_url($siteUrl, PHP_URL_HOST) ?: \App\Engines\SEO\Support\SiteScope::hostFromUrl($siteUrl);
+                }
+            }
+            if (!$domain) {
+                $site = \Illuminate\Support\Facades\DB::table('websites')
+                    ->where('workspace_id', $wsId)
+                    ->where('status', 'published')
+                    ->whereNotNull('subdomain')
+                    ->orderByDesc('updated_at')
+                    ->first();
+                if ($site && !empty($site->subdomain)) {
+                    $domain = $site->subdomain;
+                }
+            }
+            if (!$domain) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'No target website for this keyword. Set a target URL on the keyword or pick an active site at the top of SEO.',
+                ], 422);
+            }
+
+            // Resolve location code.
+            $locInput = $r->input('location_code') ?? $r->input('location') ?? $r->input('country');
+            $locCode  = is_numeric($locInput) ? (int) $locInput : 0;
+            if (!$locCode) {
+                $map = ['USA' => 2840, 'UK' => 2826, 'UAE' => 2784, 'United States' => 2840, 'United Kingdom' => 2826, 'United Arab Emirates' => 2784, 'AE' => 2784, 'US' => 2840, 'GB' => 2826];
+                $locCode = $map[(string) $locInput] ?? 2840;
+            }
+
+            $conn = new \App\Connectors\DataForSeoConnector();
+            if (!$conn->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'SERP provider not configured. Please contact support.',
+                ], 503);
+            }
+
+            $res = $conn->trackKeywordRank((string) $kw->keyword, (string) $domain, $locCode);
+            if (empty($res['success'])) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'Position check failed: ' . ($res['error'] ?? 'unknown'),
+                ], 200);
+            }
+
+            $newRank      = $res['position'] ?? null;  // null = not in top N
+            $previousRank = $kw->current_rank;
+            $rankChange   = null;
+            if ($newRank !== null && $previousRank !== null) {
+                $rankChange = (int) $previousRank - (int) $newRank;  // positive = improved
+            }
+
+            \Illuminate\Support\Facades\DB::table('seo_keywords')
+                ->where('id', $id)
+                ->update([
+                    'previous_rank'   => $previousRank,
+                    'current_rank'    => $newRank,
+                    'rank_change'     => $rankChange,
+                    'last_rank_check' => now(),
+                    'rank_url'        => $res['url'] ?? null,
+                    'updated_at'      => now(),
+                ]);
+
+            return response()->json([
+                'success'       => true,
+                'keyword'       => $kw->keyword,
+                'domain'        => $domain,
+                'position'      => $newRank,
+                'previous_rank' => $previousRank,
+                'rank_change'   => $rankChange,
+                'url'           => $res['url'] ?? null,
+                'title'         => $res['title'] ?? null,
+                'location_code' => $locCode,
+            ]);
+        });
         // 2026-05-13 — Keyword suggestions from indexed content. MUST register
         // BEFORE /keywords/{id} or Laravel matches "suggestions" as {id} and
         // routes to DELETE → 405. Derives from seo_content_index (title + h1)

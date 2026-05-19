@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.14.3-wave20d loaded — Suggestions tab: live volume + competition enrichment'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.14.4-wave20e loaded — POST /keywords/{id}/check wired up'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -2650,7 +2650,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         return;
       }
       return Promise.all(rows.map(function (kw) {
-        return api('POST', '/keywords/' + (kw.id || 0) + '/check', { country: country }).catch(function () {});
+        return api('POST', '/keywords/' + (kw.id || 0) + '/check', { location_code: country }).catch(function () {});
       }));
     }).then(function () {
       if (btn) { btn.disabled = false; btn.textContent = orig || 'Check all'; }
@@ -3033,7 +3033,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var orig = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
     var country = (typeof lgseGetKwCountry === 'function') ? lgseGetKwCountry() : 'AE';
-    api('POST', '/keywords/' + id + '/check', { country: country }).then(function (r) {
+    api('POST', '/keywords/' + id + '/check', { location_code: country }).then(function (r) {
       if (r && r.success) {
         if (btn) { btn.disabled = false; btn.textContent = orig || 'Check'; }
         loadKeywords();
