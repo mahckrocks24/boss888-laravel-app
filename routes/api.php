@@ -12407,6 +12407,121 @@ Route::prefix('public/news')->group(function () {
 // ════════════════════════════════════════════════════════════════════════════
 Route::middleware(['api.key'])->prefix('connector')->group(function () {
 
+    // 2026-05-19 (Wave 32c) — sitemap twins for WP plugin (API-key auth).
+    Route::get('/sitemap', function (\Illuminate\Http\Request $r) {
+        $wsId = (int) $r->attributes->get('workspace_id');
+        $siteUrl = (string) ($r->query('site_url') ?? '');
+        $host = $siteUrl ? (parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl) : '';
+        $host = strtolower(preg_replace('#^www\.#', '', (string) $host));
+
+        $platformHosts = ['staging.levelupgrowth.io', 'levelupgrowth.io', 'www.levelupgrowth.io', 'app.levelupgrowth.io'];
+        if (in_array($host, $platformHosts, true)) {
+            return response()->json([
+                'success' => true,
+                'mode'    => 'platform_self',
+                'host'    => $host,
+                'message' => 'This is the LevelUp Growth platform admin URL, not a content site.',
+            ]);
+        }
+
+        $site = null;
+        if ($host) {
+            $site = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('status', 'published')
+                ->where(function ($q) use ($host) {
+                    $q->where('subdomain', $host)->orWhere('domain', $host);
+                })
+                ->whereNull('deleted_at')
+                ->first();
+        }
+        if ($site) {
+            $sub = $site->subdomain ?: $host;
+            $pages = \Illuminate\Support\Facades\DB::table('pages')
+                ->where('website_id', $site->id)
+                ->where('status', 'published')
+                ->get(['slug', 'updated_at']);
+            return response()->json([
+                'success' => true,
+                'mode'    => 'laravel',
+                'sitemap_url' => "https://{$sub}/sitemap.xml",
+                'robots_url'  => "https://{$sub}/robots.txt",
+                'page_count'  => $pages->count(),
+                'last_updated' => $pages->max('updated_at'),
+            ]);
+        }
+
+        if (!$siteUrl) {
+            return response()->json(['success' => true, 'mode' => 'unknown', 'message' => 'No active site selected.']);
+        }
+
+        $base = rtrim($siteUrl, '/');
+        $candidates = [$base . '/sitemap.xml', $base . '/wp-sitemap.xml', $base . '/sitemap_index.xml'];
+        $found = null; $urls = [];
+        foreach ($candidates as $u) {
+            try {
+                $resp = \Illuminate\Support\Facades\Http::timeout(8)->get($u);
+                if ($resp->ok() && preg_match('/<urlset|<sitemapindex/i', $resp->body())) {
+                    $found = $u;
+                    if (preg_match_all('#<loc>\s*([^<\s]+)\s*</loc>#i', $resp->body(), $m)) {
+                        $urls = array_slice(array_unique($m[1]), 0, 5000);
+                    }
+                    break;
+                }
+            } catch (\Throwable $e) {}
+        }
+        if (!$found) {
+            return response()->json([
+                'success' => true,
+                'mode'    => 'external',
+                'found'   => false,
+                'host'    => $host,
+                'tried'   => $candidates,
+                'message' => 'No sitemap found at ' . $host . '. Tried /sitemap.xml, /wp-sitemap.xml, /sitemap_index.xml.',
+            ]);
+        }
+
+        $indexedUrls = \Illuminate\Support\Facades\DB::table('seo_content_index')
+            ->where('workspace_id', $wsId)
+            ->whereNull('deleted_at')
+            ->pluck('url')
+            ->map(fn ($u) => rtrim(strtolower((string) $u), '/'))
+            ->toArray();
+        $sitemapNorm = array_map(fn ($u) => rtrim(strtolower((string) $u), '/'), $urls);
+        $indexedCount = count(array_intersect($sitemapNorm, $indexedUrls));
+
+        return response()->json([
+            'success'         => true,
+            'mode'            => 'external',
+            'found'           => true,
+            'sitemap_url'     => $found,
+            'url_count'       => count($urls),
+            'indexed_count'   => $indexedCount,
+            'unindexed_count' => count($urls) - $indexedCount,
+            'sample_urls'     => array_slice($urls, 0, 10),
+        ]);
+    });
+
+    Route::post('/sitemap/ping', function (\Illuminate\Http\Request $r) {
+        $sitemapUrl = (string) $r->input('sitemap_url', '');
+        if ($sitemapUrl === '' || !preg_match('#^https?://#', $sitemapUrl)) {
+            return response()->json(['success' => false, 'error' => 'sitemap_url is required'], 422);
+        }
+        $results = [];
+        foreach ([
+            'google' => 'https://www.google.com/ping?sitemap=' . urlencode($sitemapUrl),
+            'bing'   => 'https://www.bing.com/ping?sitemap=' . urlencode($sitemapUrl),
+        ] as $engine => $pingUrl) {
+            try {
+                $resp = \Illuminate\Support\Facades\Http::timeout(8)->get($pingUrl);
+                $results[$engine] = ['ok' => $resp->ok(), 'status' => $resp->status()];
+            } catch (\Throwable $e) {
+                $results[$engine] = ['ok' => false, 'error' => $e->getMessage()];
+            }
+        }
+        return response()->json(['success' => true, 'sitemap' => $sitemapUrl, 'pings' => $results, 'message' => 'Sitemap submitted to Google + Bing.']);
+    });
+
+
     // ════════════════════════════════════════════════════════════════════
     // 2026-05-16 v1.1 sprint — content generation + pipeline + bulk meta
     // ════════════════════════════════════════════════════════════════════
