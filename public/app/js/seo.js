@@ -16,7 +16,79 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.16.0-wave22 loaded — Chat 0.1cr (10:1 batched); meeting 8cr; Wave 21 corrections (research 1cr, competitor 1cr)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.17.0-wave23 loaded — Chat counter widget; CapabilityMap realigned to canonical'); } catch(_e) {}
+
+// Wave 23 — Auto-inject the meter badge near any chat input.
+(function () {
+  if (window._lgseChatMeterAutoInject) return;
+  window._lgseChatMeterAutoInject = true;
+  function inject() {
+    var inputs = [
+      document.getElementById('lgse-chat-input'),
+      document.querySelector('#lu-msg-input'),
+      document.querySelector('[data-chat-input]'),
+    ].filter(Boolean);
+    inputs.forEach(function (inp) {
+      if (!inp || inp.dataset.lgseMeterAttached) return;
+      var holder = inp.parentElement;
+      if (!holder) return;
+      var meter = document.createElement('div');
+      meter.className = 'lgse-chat-meter';
+      meter.style.cssText = 'font-size:10px;color:#9CA3AF;text-align:right;padding:4px 6px;margin-top:2px';
+      meter.innerHTML = '<span style="opacity:0.55">10 chats = 1 credit (0.1 cr each)</span>';
+      // Append after the input's parent (so it sits below the row).
+      if (holder.parentElement) holder.parentElement.appendChild(meter);
+      else holder.appendChild(meter);
+      inp.dataset.lgseMeterAttached = '1';
+    });
+  }
+  if (document.readyState !== 'loading') inject();
+  document.addEventListener('DOMContentLoaded', inject);
+  // Re-run when chat panels open (they may render late).
+  setInterval(inject, 2000);
+})();
+
+// Wave 23 — Universal chat-meter renderer. Any element with class
+// .lgse-chat-meter gets refreshed by _lgseUpdateChatMeter(counter, debited).
+window._lgseUpdateChatMeter = function (counter, debited) {
+  var c = (counter === null || counter === undefined) ? null : parseInt(counter, 10);
+  var els = document.querySelectorAll('.lgse-chat-meter');
+  Array.prototype.forEach.call(els, function (el) {
+    if (debited) {
+      el.innerHTML = '<span style="color:#10B981">✓ 1 credit charged — next 10 chats free</span>';
+      setTimeout(function () { window._lgseUpdateChatMeter(0, false); }, 4000);
+      return;
+    }
+    if (c === null) {
+      el.innerHTML = '<span style="opacity:0.55">10 chats = 1 credit (0.1 cr each)</span>';
+      return;
+    }
+    el.innerHTML = '<span style="opacity:0.7">Chat counter: ' + c + ' / 10 toward next credit</span>';
+  });
+};
+// Wave 23 — Intercept fetch globally to read X-Chat-Meter-* headers from
+// any /assistant/message or /agents/.../messages response.
+(function () {
+  if (window._lgseChatMeterHooked) return;
+  window._lgseChatMeterHooked = true;
+  var origFetch = window.fetch;
+  if (typeof origFetch !== 'function') return;
+  window.fetch = function (url, init) {
+    return origFetch.apply(this, arguments).then(function (resp) {
+      try {
+        var u = (typeof url === 'string') ? url : (url && url.url);
+        if (u && /\/(assistant\/message|agents\/[^\/]+\/messages)(\?|$)/.test(u)) {
+          var c = resp.headers && resp.headers.get && resp.headers.get('X-Chat-Meter-Counter');
+          var d = resp.headers && resp.headers.get && resp.headers.get('X-Chat-Meter-Debited');
+          if (c !== null && c !== undefined) {
+            window._lgseUpdateChatMeter(c, d === '1');
+          }
+        }
+      } catch (_e) {}
+      return resp;
+    });
+  };
+})();
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):

@@ -20,18 +20,18 @@ class CapabilityMapService
         'score_lead'          => ['engine'=>'crm',       'connector'=>null,       'action'=>'score_lead',          'approval_mode'=>'auto',      'credit_cost'=>1],
 
         // ── SEO Engine (15 tools) ────────────────────────────────
-        'serp_analysis'       => ['engine'=>'seo',       'connector'=>null,       'action'=>'serp_analysis',       'approval_mode'=>'auto',      'credit_cost'=>5],
-        'ai_report'           => ['engine'=>'seo',       'connector'=>null,       'action'=>'ai_report',           'approval_mode'=>'auto',      'credit_cost'=>10],
-        'deep_audit'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'deep_audit',          'approval_mode'=>'auto',      'credit_cost'=>15],
-        'improve_draft'       => ['engine'=>'write',     'connector'=>null,       'action'=>'improve_draft',       'approval_mode'=>'review',    'credit_cost'=>5],
-        'write_article'       => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article',       'approval_mode'=>'review',    'credit_cost'=>10],
+        'serp_analysis'       => ['engine'=>'seo',       'connector'=>null,       'action'=>'serp_analysis',       'approval_mode'=>'auto',      'credit_cost'=>1],
+        'ai_report'           => ['engine'=>'seo',       'connector'=>null,       'action'=>'ai_report',           'approval_mode'=>'auto',      'credit_cost'=>2],
+        'deep_audit'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'deep_audit',          'approval_mode'=>'auto',      'credit_cost'=>3],
+        'improve_draft'       => ['engine'=>'write',     'connector'=>null,       'action'=>'improve_draft',       'approval_mode'=>'review',    'credit_cost'=>2],
+        'write_article'       => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article',       'approval_mode'=>'review',    'credit_cost'=>1],
         'ai_status'           => ['engine'=>'seo',       'connector'=>null,       'action'=>'ai_status',           'approval_mode'=>'auto',      'credit_cost'=>0],
-        'link_suggestions'    => ['engine'=>'seo',       'connector'=>null,       'action'=>'link_suggestions',    'approval_mode'=>'auto',      'credit_cost'=>3],
+        'link_suggestions'    => ['engine'=>'seo',       'connector'=>null,       'action'=>'link_suggestions',    'approval_mode'=>'auto',      'credit_cost'=>1],
         'insert_link'         => ['engine'=>'seo',       'connector'=>null,       'action'=>'insert_link',         'approval_mode'=>'review',    'credit_cost'=>2],
         'dismiss_link'        => ['engine'=>'seo',       'connector'=>null,       'action'=>'dismiss_link',        'approval_mode'=>'auto',      'credit_cost'=>0],
         'outbound_links'      => ['engine'=>'seo',       'connector'=>null,       'action'=>'outbound_links',      'approval_mode'=>'auto',      'credit_cost'=>2],
         'check_outbound'      => ['engine'=>'seo',       'connector'=>null,       'action'=>'check_outbound',      'approval_mode'=>'auto',      'credit_cost'=>2],
-        'autonomous_goal'     => ['engine'=>'seo',       'connector'=>null,       'action'=>'autonomous_goal',     'approval_mode'=>'protected', 'credit_cost'=>20],
+        'autonomous_goal'     => ['engine'=>'seo',       'connector'=>null,       'action'=>'autonomous_goal',     'approval_mode'=>'protected', 'credit_cost'=>5],
         'agent_status'        => ['engine'=>'seo',       'connector'=>null,       'action'=>'agent_status',        'approval_mode'=>'auto',      'credit_cost'=>0],
         'list_goals'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'list_goals',          'approval_mode'=>'auto',      'credit_cost'=>0],
         'pause_goal'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'pause_goal',          'approval_mode'=>'auto',      'credit_cost'=>0],
@@ -47,6 +47,22 @@ class CapabilityMapService
         'assistant_message'   => ['engine'=>'sarah',     'connector'=>null,       'action'=>'assistant_message',   'approval_mode'=>'auto',      'credit_cost'=>1],
         'agent_message'       => ['engine'=>'sarah',     'connector'=>null,       'action'=>'agent_message',       'approval_mode'=>'auto',      'credit_cost'=>1],
         'strategy_meeting'    => ['engine'=>'sarah',     'connector'=>null,       'action'=>'strategy_meeting',    'approval_mode'=>'auto',      'credit_cost'=>8],
+        // Wave 23 — Canonical realignment additions.
+        'write_article_image' => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article_image', 'approval_mode'=>'review',    'credit_cost'=>2],
+        'generate_image_mini' => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image_mini', 'approval_mode'=>'auto',      'credit_cost'=>1],
+        'generate_image_high' => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image_high', 'approval_mode'=>'auto',      'credit_cost'=>4],
+        'upscale_image'       => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'upscale_image',       'approval_mode'=>'auto',      'credit_cost'=>1],
+        'social_ai_post'      => ['engine'=>'social',    'connector'=>null,       'action'=>'social_ai_post',      'approval_mode'=>'review',    'credit_cost'=>1],
+        'social_image'        => ['engine'=>'social',    'connector'=>'creative', 'action'=>'social_image',        'approval_mode'=>'auto',      'credit_cost'=>1],
+        'hashtag_suggestions' => ['engine'=>'social',    'connector'=>null,       'action'=>'hashtag_suggestions', 'approval_mode'=>'auto',      'credit_cost'=>1],
+        'ai_followup_draft'   => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_followup_draft',   'approval_mode'=>'review',    'credit_cost'=>1],
+        'ai_reply_suggestion' => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_reply_suggestion', 'approval_mode'=>'auto',      'credit_cost'=>1],
+        'ai_lead_scoring'     => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_lead_scoring',     'approval_mode'=>'auto',      'credit_cost'=>1],
+        'ai_campaign_copy'    => ['engine'=>'marketing', 'connector'=>null,       'action'=>'ai_campaign_copy',    'approval_mode'=>'review',    'credit_cost'=>1],
+        'builder_page_copy'   => ['engine'=>'builder',   'connector'=>null,       'action'=>'builder_page_copy',   'approval_mode'=>'auto',      'credit_cost'=>1],
+        'builder_page_image'  => ['engine'=>'builder',   'connector'=>'creative', 'action'=>'builder_page_image',  'approval_mode'=>'auto',      'credit_cost'=>1],
+        'full_site_generation'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'full_site_generation','approval_mode'=>'review',    'credit_cost'=>10],
+        'chatbot_ai_session'  => ['engine'=>'chatbot',   'connector'=>null,       'action'=>'chatbot_ai_session',  'approval_mode'=>'auto',      'credit_cost'=>1],
 
         // ── Write / Content Engine ───────────────────────────────
         // PATCH 2026-04-19: create_article was called from WriteController::createArticle
@@ -54,13 +70,13 @@ class CapabilityMapService
         // causing "Unknown action: write/create_article" on every new-post click.
         // Auto-approved, zero-credit — creating an empty draft shouldn't charge anyone.
         'create_article'      => ['engine'=>'write',     'connector'=>null,       'action'=>'create_article',      'approval_mode'=>'auto',      'credit_cost'=>0],
-        'generate_outline'    => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_outline',    'approval_mode'=>'auto',      'credit_cost'=>3],
-        'generate_headlines'  => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_headlines',  'approval_mode'=>'auto',      'credit_cost'=>2],
-        'generate_meta'       => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_meta',       'approval_mode'=>'auto',      'credit_cost'=>2],
+        'generate_outline'    => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_outline',    'approval_mode'=>'auto',      'credit_cost'=>1],
+        'generate_headlines'  => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_headlines',  'approval_mode'=>'auto',      'credit_cost'=>1],
+        'generate_meta'       => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_meta',       'approval_mode'=>'auto',      'credit_cost'=>1],
 
         // ── Creative Engine (native AI) ──────────────────────────
-        'generate_image'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>10],
-        'generate_video'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_video',      'approval_mode'=>'review',    'credit_cost'=>25],
+        'generate_image'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>2],
+        'generate_video'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_video',      'approval_mode'=>'review',    'credit_cost'=>8],
         // Phase 2A: removed 6 unimplemented aspirational creative actions that had
         // registered capabilities but no CreativeService implementation. Leaving them
         // registered caused Sarah's planner to include them in plans, then
@@ -71,14 +87,14 @@ class CapabilityMapService
 
         // ── Builder Engine ───────────────────────────────────────
         'create_website'      => ['engine'=>'builder',   'connector'=>null,       'action'=>'create_website',      'approval_mode'=>'auto',      'credit_cost'=>0],
-        'generate_page'       => ['engine'=>'builder',   'connector'=>null,       'action'=>'generate_page',       'approval_mode'=>'auto',    'credit_cost'=>10],
+        'generate_page'       => ['engine'=>'builder',   'connector'=>null,       'action'=>'generate_page',       'approval_mode'=>'auto',    'credit_cost'=>1],
         'publish_website'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'publish_website',     'approval_mode'=>'auto', 'credit_cost'=>0],
         // PATCH v1.0.1: wizard_generate was missing — hit fallback (was zero-cost passthrough, now INVALID_ACTION)
         'wizard_generate'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'wizard_generate',     'approval_mode'=>'auto',      'credit_cost'=>1],
 
         // ── Marketing Engine ─────────────────────────────────────
-        'create_campaign'     => ['engine'=>'marketing', 'connector'=>null,       'action'=>'create_campaign',     'approval_mode'=>'review',    'credit_cost'=>5],
-        'send_campaign'       => ['engine'=>'marketing', 'connector'=>'email',    'action'=>'send_campaign',       'approval_mode'=>'protected', 'credit_cost'=>10],
+        'create_campaign'     => ['engine'=>'marketing', 'connector'=>null,       'action'=>'create_campaign',     'approval_mode'=>'review',    'credit_cost'=>1],
+        'send_campaign'       => ['engine'=>'marketing', 'connector'=>'email',    'action'=>'send_campaign',       'approval_mode'=>'protected', 'credit_cost'=>0],
         'schedule_campaign'   => ['engine'=>'marketing', 'connector'=>null,       'action'=>'schedule_campaign',   'approval_mode'=>'auto',      'credit_cost'=>5],  // FIX-7: runtime requires_approval:false → auto
         // Phase 3 fix: removed 'send_email' (1cr) — no MarketingService::sendEmail() method exists.
         // Re-add when single-email sending is implemented (separate from campaign sends).
