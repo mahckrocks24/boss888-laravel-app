@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.21.1-wave30 loaded — Legacy renderAssistant marked DEAD; drawer is the live surface'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.0-wave32 loaded — XML Sitemap card in Pages tab'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -3413,15 +3413,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   };
 
   function renderPages(el) {
-    // P-Dedup (2026-05-15): removed outer Scan Pages button. It carried
-    // duplicate id=lgse-scanpages-btn (collided with the toolbar one inside
-    // Indexed Content), persisted across all 4 sub-tabs (visible on Images
-    // tab too), and confused panel anchor resolution. Each sub-tab now
-    // owns its own scan trigger.
     el.innerHTML =
       '<div style="margin-bottom:14px">'
         + pageTitle('Pages', 'On-page optimization across content, images, and CTR opportunities.')
       + '</div>'
+      // Wave 32 — XML Sitemap card. Populated by lgseLoadSitemap() async.
+      + '<div id="lgse-sitemap-card" style="margin-bottom:14px"></div>'
       + '<div class="lgse-subtabs" id="lgse-pages-subtabs">'
         + '<div class="lgse-subtab active" data-sec="indexed">Indexed Content</div>'
         + '<div class="lgse-subtab" data-sec="images">Images</div>'
@@ -3443,6 +3440,8 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       t.addEventListener('click', function () { load(t.getAttribute('data-sec')); });
     });
     load('indexed');
+    // Wave 32 — Sitemap card auto-loads (non-blocking).
+    if (typeof window.lgseLoadSitemap === 'function') { setTimeout(window.lgseLoadSitemap, 100); }
   }
 
   // P0-1: inline meta-edit for the Pages > Indexed Content table.
@@ -8652,6 +8651,105 @@ window._lgseDrawerSend = function () {
     appendBot(text);
   }).catch(function () { appendErr('Connection error. Please try again.'); });
 };
+
+
+  // ─────────────────────────────────────────────────────────────────
+  // Wave 32 — XML Sitemap card (Pages tab). Free utility (0 cr).
+  // ─────────────────────────────────────────────────────────────────
+  window.lgseLoadSitemap = function () {
+    var card = document.getElementById('lgse-sitemap-card');
+    if (!card) return;
+    card.innerHTML = '<div style="padding:14px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;font-size:11.5px;color:var(--lgse-t3)">Loading sitemap status…</div>';
+    api('GET', '/sitemap').then(function (d) {
+      if (!d || !d.success) {
+        card.innerHTML = '';
+        return;
+      }
+      var html = '';
+      if (d.mode === 'laravel') {
+        var when = d.last_updated ? new Date(d.last_updated).toLocaleString() : '—';
+        html =
+          '<div style="background:linear-gradient(90deg,rgba(16,185,129,.06) 0%,transparent 100%);border-left:2px solid #10B981;border-radius:0 8px 8px 0;padding:12px 14px">'
+          +   '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+          +     '<div style="flex:1;min-width:240px">'
+          +       '<div style="font-size:9px;font-weight:600;color:#10B981;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">XML Sitemap · auto-generated</div>'
+          +       '<div style="font-size:12px;color:var(--lgse-t1);font-weight:500;word-break:break-all">'
+          +         '<a href="' + esc(d.sitemap_url) + '" target="_blank" style="color:#A78BFA;text-decoration:none">' + esc(d.sitemap_url) + ' ↗</a>'
+          +       '</div>'
+          +       '<div style="font-size:11px;color:var(--lgse-t3);margin-top:4px">'
+          +         d.page_count + ' URLs · last updated ' + esc(when)
+          +       '</div>'
+          +       '<div style="font-size:10.5px;color:var(--lgse-t3);margin-top:6px">'
+          +         'Robots: <a href="' + esc(d.robots_url) + '" target="_blank" style="color:#A78BFA;text-decoration:none">' + esc(d.robots_url) + ' ↗</a>'
+          +       '</div>'
+          +     '</div>'
+          +     '<div style="display:flex;gap:6px;flex-shrink:0">'
+          +       '<button class="lgse-btn-secondary" onclick="lgseCopyText(\'' + esc(d.sitemap_url).replace(/\x27/g, "\\\\\x27") + '\')" style="padding:6px 12px;font-size:11px">Copy URL</button>'
+          +       '<button class="lgse-btn-primary" onclick="lgsePingSitemap(this, \'' + esc(d.sitemap_url).replace(/\x27/g, "\\\\\x27") + '\')" style="padding:6px 12px;font-size:11px">Submit to Google + Bing</button>'
+          +     '</div>'
+          +   '</div>'
+          + '</div>';
+      } else if (d.mode === 'external' && d.found) {
+        html =
+          '<div style="background:linear-gradient(90deg,rgba(59,130,246,.06) 0%,transparent 100%);border-left:2px solid #3B82F6;border-radius:0 8px 8px 0;padding:12px 14px">'
+          +   '<div style="font-size:9px;font-weight:600;color:#3B82F6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">XML Sitemap · detected on your site</div>'
+          +   '<div style="font-size:12px;color:var(--lgse-t1);font-weight:500;word-break:break-all">'
+          +     '<a href="' + esc(d.sitemap_url) + '" target="_blank" style="color:#A78BFA;text-decoration:none">' + esc(d.sitemap_url) + ' ↗</a>'
+          +   '</div>'
+          +   '<div style="font-size:11px;color:var(--lgse-t3);margin-top:6px">'
+          +     d.url_count + ' URLs in sitemap · <span style="color:#10B981">' + d.indexed_count + ' indexed</span> · '
+          +     '<span style="color:#F59E0B">' + d.unindexed_count + ' unindexed</span>'
+          +   '</div>'
+          +   '<div style="margin-top:8px;display:flex;gap:6px">'
+          +     '<button class="lgse-btn-secondary" onclick="lgseLoadSitemap()" style="padding:6px 12px;font-size:11px">Re-check</button>'
+          +     '<button class="lgse-btn-primary" onclick="lgsePingSitemap(this, \'' + esc(d.sitemap_url).replace(/\x27/g, "\\\\\x27") + '\')" style="padding:6px 12px;font-size:11px">Submit to Google + Bing</button>'
+          +   '</div>'
+          + '</div>';
+      } else if (d.mode === 'external' && !d.found) {
+        html =
+          '<div style="background:rgba(245,158,11,.06);border-left:2px solid #F59E0B;border-radius:0 8px 8px 0;padding:12px 14px">'
+          +   '<div style="font-size:9px;font-weight:600;color:#F59E0B;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">XML Sitemap · not found</div>'
+          +   '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.6">'
+          +     'No sitemap was found at /sitemap.xml, /wp-sitemap.xml, or /sitemap_index.xml on your site. '
+          +     'Add one to improve search-engine discovery of your pages.'
+          +   '</div>'
+          + '</div>';
+      } else {
+        // mode unknown — hide quietly
+        card.innerHTML = '';
+        return;
+      }
+      card.innerHTML = html;
+    }).catch(function () {
+      card.innerHTML = '';
+    });
+  };
+
+  window.lgseCopyText = function (text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          if (typeof window.showToast === 'function') window.showToast('URL copied', 'info');
+        });
+      }
+    } catch (_e) {}
+  };
+
+  window.lgsePingSitemap = function (btn, url) {
+    var orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
+    api('POST', '/sitemap/ping', { sitemap_url: url }).then(function (d) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '✓ Submitted';
+        setTimeout(function () { btn.textContent = orig || 'Submit to Google + Bing'; }, 3000);
+      }
+      if (typeof window.showToast === 'function') window.showToast(d.message || 'Sitemap submitted.', 'info');
+    }).catch(function () {
+      if (btn) { btn.disabled = false; btn.textContent = orig || 'Submit to Google + Bing'; }
+      if (typeof window.showToast === 'function') window.showToast('Submission failed. Try again.', 'error');
+    });
+  };
 
 // ─────────────────────────────────────────────────────────────────────
 // 🪦 LEGACY TAB-MODE HELPERS — DEAD CODE. These exist solely as no-op

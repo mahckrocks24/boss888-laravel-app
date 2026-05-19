@@ -1962,8 +1962,130 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             }
         });
 
-        // 2026-05-19 (Wave 20e) — Position check for a single tracked keyword.
-        // POST /keywords/{id}/check accepts {country|location_code, site_url}.
+
+        // 2026-05-19 (Wave 32) — XML Sitemap status + ping. Free utility.
+        Route::get('/sitemap', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $siteUrl = (string) ($r->query('site_url') ?? '');
+            $host = $siteUrl ? (parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl) : '';
+            $host = strtolower(preg_replace('#^www\.#', '', (string) $host));
+
+            // Mode A — does the active site match a Laravel-hosted, published website?
+            $site = null;
+            if ($host) {
+                $site = \Illuminate\Support\Facades\DB::table('websites')
+                    ->where('workspace_id', $wsId)
+                    ->where('status', 'published')
+                    ->where(function ($q) use ($host) {
+                        $q->where('subdomain', $host)
+                          ->orWhere('subdomain', 'LIKE', "%.{$host}")
+                          ->orWhere('domain', $host);
+                    })
+                    ->first();
+            }
+
+            if ($site) {
+                $sub = $site->subdomain ?: $host;
+                $pages = \Illuminate\Support\Facades\DB::table('pages')
+                    ->where('website_id', $site->id)
+                    ->where('status', 'published')
+                    ->get(['slug', 'updated_at']);
+                $latest = $pages->max('updated_at');
+                return response()->json([
+                    'success'      => true,
+                    'mode'         => 'laravel',
+                    'sitemap_url'  => "https://{$sub}/sitemap.xml",
+                    'robots_url'   => "https://{$sub}/robots.txt",
+                    'page_count'   => $pages->count(),
+                    'last_updated' => $latest,
+                    'website_id'   => $site->id,
+                ]);
+            }
+
+            // Mode B — external site. Try to fetch the user's sitemap.xml.
+            if (!$siteUrl) {
+                return response()->json([
+                    'success' => true,
+                    'mode'    => 'unknown',
+                    'message' => 'No active site selected.',
+                ]);
+            }
+
+            $base = rtrim($siteUrl, '/');
+            $candidates = [$base . '/sitemap.xml', $base . '/wp-sitemap.xml', $base . '/sitemap_index.xml'];
+            $found = null;
+            $urls  = [];
+            foreach ($candidates as $u) {
+                try {
+                    $resp = \Illuminate\Support\Facades\Http::timeout(8)->get($u);
+                    if ($resp->ok() && preg_match('/<urlset|<sitemapindex/i', $resp->body())) {
+                        $found = $u;
+                        if (preg_match_all('#<loc>\s*([^<\s]+)\s*</loc>#i', $resp->body(), $m)) {
+                            $urls = array_slice(array_unique($m[1]), 0, 5000);
+                        }
+                        break;
+                    }
+                } catch (\Throwable $e) {}
+            }
+
+            if (!$found) {
+                return response()->json([
+                    'success' => true,
+                    'mode'    => 'external',
+                    'found'   => false,
+                    'tried'   => $candidates,
+                    'message' => 'No sitemap found at common locations. Add one to /sitemap.xml on your site.',
+                ]);
+            }
+
+            // Cross-reference with seo_content_index to see how many sitemap URLs we have indexed.
+            $indexedUrls = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->pluck('url')
+                ->map(fn ($u) => rtrim(strtolower((string) $u), '/'))
+                ->toArray();
+            $sitemapNorm = array_map(fn ($u) => rtrim(strtolower((string) $u), '/'), $urls);
+            $indexedCount = count(array_intersect($sitemapNorm, $indexedUrls));
+
+            return response()->json([
+                'success'         => true,
+                'mode'            => 'external',
+                'found'           => true,
+                'sitemap_url'     => $found,
+                'url_count'       => count($urls),
+                'indexed_count'   => $indexedCount,
+                'unindexed_count' => count($urls) - $indexedCount,
+                'sample_urls'     => array_slice($urls, 0, 10),
+            ]);
+        });
+
+        // POST /api/seo/sitemap/ping — notify Google + Bing of the sitemap.
+        Route::post('/sitemap/ping', function (\Illuminate\Http\Request $r) {
+            $sitemapUrl = (string) $r->input('sitemap_url', '');
+            if ($sitemapUrl === '' || !preg_match('#^https?://#', $sitemapUrl)) {
+                return response()->json(['success' => false, 'error' => 'sitemap_url is required'], 422);
+            }
+            $results = [];
+            foreach ([
+                'google' => 'https://www.google.com/ping?sitemap=' . urlencode($sitemapUrl),
+                'bing'   => 'https://www.bing.com/ping?sitemap=' . urlencode($sitemapUrl),
+            ] as $engine => $pingUrl) {
+                try {
+                    $resp = \Illuminate\Support\Facades\Http::timeout(8)->get($pingUrl);
+                    $results[$engine] = ['ok' => $resp->ok(), 'status' => $resp->status()];
+                } catch (\Throwable $e) {
+                    $results[$engine] = ['ok' => false, 'error' => $e->getMessage()];
+                }
+            }
+            return response()->json([
+                'success' => true,
+                'sitemap' => $sitemapUrl,
+                'pings'   => $results,
+                'message' => 'Sitemap submitted to Google + Bing.',
+            ]);
+        });
+                // 2026-05-19 (Wave 20e) — Position check for a single tracked keyword.// POST /keywords/{id}/check accepts {country|location_code, site_url}.
         // Mirrors TrackKeywordRanksCommand: resolve target domain, call SERP
         // API, update seo_keywords with current/previous rank + delta.
         Route::post('/keywords/{id}/check', function (\Illuminate\Http\Request $r, int $id) {
