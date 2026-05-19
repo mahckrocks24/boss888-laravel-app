@@ -5837,3 +5837,62 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
     if (typeof showToast === 'function') showToast('Error: ' + (e.message || e), 'error');
   }
 };
+
+
+// Wave 26 — Restore toggleActivityPanel that was lost when builder.js was
+// retired 2026-04-17. Two onclick handlers in index.html (lines 2830 + 2858)
+// still reference it. Minimal stub: open/close the slide-up panel + fetch
+// recent activity from /api/activity/feed.
+(function () {
+  var _open = false;
+  var _poller = null;
+
+  window.toggleActivityPanel = function () {
+    var panel = document.getElementById('ws-activity-panel');
+    if (!panel) return;
+    _open = !_open;
+    panel.style.transform = _open ? 'translateY(0)' : 'translateY(100%)';
+    var btn = document.getElementById('ct-activity');
+    if (btn) btn.style.background = _open ? 'rgba(124,58,237,0.18)' : '';
+    if (_open) {
+      _loadActivityFeed();
+      if (!_poller) _poller = setInterval(_loadActivityFeed, 5000);
+    } else if (_poller) {
+      clearInterval(_poller);
+      _poller = null;
+    }
+  };
+
+  function _loadActivityFeed() {
+    var feed = document.getElementById('ws-activity-feed');
+    if (!feed) return;
+    var t = localStorage.getItem('lu_token') || '';
+    fetch('/api/activity/feed?limit=30', {
+      headers: {
+        'Authorization': 'Bearer ' + t,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
+    }).then(function (r) { return r.ok ? r.json() : { feed: [] }; }).then(function (d) {
+      var events = (d && d.feed) || [];
+      var dot = document.getElementById('ws-activity-dot');
+      if (dot) dot.style.background = events.length ? '#10B981' : 'var(--t3)';
+      if (!events.length) {
+        feed.innerHTML = '<div style="font-size:11px;color:var(--t3);text-align:center;padding:16px">No activity yet.</div>';
+        return;
+      }
+      feed.innerHTML = events.map(function (ev) {
+        var when = ev.ts ? new Date(ev.ts * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '';
+        var title = (ev.data && ev.data.title) || ev.event || 'event';
+        var engine = (ev.data && ev.data.engine) || '';
+        var safe = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--s2);border-radius:6px;font-size:11.5px;color:var(--t1)">'
+             +   '<div><span style="color:var(--t3);margin-right:8px;font-size:10px">[' + safe(engine) + ']</span>' + safe(title) + '</div>'
+             +   '<div style="color:var(--t3);font-size:10px">' + when + '</div>'
+             + '</div>';
+      }).join('');
+    }).catch(function () {
+      feed.innerHTML = '<div style="font-size:11px;color:var(--t3);text-align:center;padding:16px">Activity feed unavailable.</div>';
+    });
+  }
+})();
