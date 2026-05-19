@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.18.0-wave24 loaded — Chat counter reads JSON; badge made visible; route headers unified'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.19.0-wave25 loaded — Badge placed as sibling below input row; diagnostics added'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -34,18 +34,23 @@ try { console.log('[LU SEO] seo.js v5.18.0-wave24 loaded — Chat counter reads 
       if (!holder) return;
       var meter = document.createElement('div');
       meter.className = 'lgse-chat-meter';
-      meter.style.cssText = 'font-size:11px;color:#A78BFA;text-align:right;padding:6px 10px;margin-top:4px;border-top:1px solid rgba(124,58,237,0.15);background:rgba(124,58,237,0.04)';
-      meter.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit (0.1 cr each)</span>';
-      // Append after the input's parent (so it sits below the row).
-      // Wave 24 — append directly to the input's parent for predictable placement.
-      holder.appendChild(meter);
+      meter.style.cssText = 'font-size:11px;color:#A78BFA;text-align:right;padding:8px 12px;margin-top:8px;border-radius:8px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2)';
+      meter.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit · responses metered at 0.1 cr each</span>';
+      // Wave 25 — Place AFTER the flex row (insertAdjacentElement afterend)
+      // so the badge becomes a sibling below the textarea+Send button row,
+      // not a child squashed inside the flex layout.
+      if (holder.insertAdjacentElement) holder.insertAdjacentElement('afterend', meter);
+      else if (holder.parentElement) holder.parentElement.appendChild(meter);
+      else holder.appendChild(meter);
       inp.dataset.lgseMeterAttached = '1';
+      try { console.log('[LU CHAT METER] badge attached to #' + inp.id); } catch (_e) {}
     });
   }
   if (document.readyState !== 'loading') inject();
   document.addEventListener('DOMContentLoaded', inject);
-  // Re-run when chat panels open (they may render late).
-  setInterval(inject, 2000);
+  // Wave 25 — poll 1s (chat panels render lazily on icon click).
+  setInterval(inject, 1000);
+  window._lgseChatMeterReinject = inject;
 })();
 
 // Wave 23 — Universal chat-meter renderer. Any element with class
