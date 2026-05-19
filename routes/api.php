@@ -8810,17 +8810,17 @@ HTMLSCRIPT;
             }
 
             // Recent tasks for this agent
-            $recentTasks = $isOrchestrator
+            $recentTasks = ($isOrchestrator
                 ? \App\Models\Task::where('workspace_id', $wsId)
                     ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')")
                     ->orderByDesc('created_at')
                     ->limit(10)
                     ->get()
                 : \App\Models\Task::where('workspace_id', $wsId)
-                ->whereRaw("JSON_CONTAINS(assigned_agents_json, ?)", ['"'.$slug.'"'])
-                ->orderByDesc('created_at')
-                ->limit(10)
-                ->get()
+                    ->whereRaw("JSON_CONTAINS(assigned_agents_json, ?)", ['"'.$slug.'"'])
+                    ->orderByDesc('created_at')
+                    ->limit(10)
+                    ->get())
                 ->map(function($t) use ($isOrchestrator) {
                     // Wave 38a — derive created_by from payload_json.created_via when present.
                     $payload = is_string($t->payload_json) ? json_decode($t->payload_json, true) : ($t->payload_json ?: []);
