@@ -2033,11 +2033,13 @@ async function loadAgentStats(){
     var agents = d.agents || [];
 
     agents.forEach(a => {
-      var ag = AGENTS[a.agent_id] || {};
-      // Update profile card stats
-      var ongoing = document.getElementById('av-ongoing-' + a.agent_id);
-      var upcoming = document.getElementById('av-upcoming-' + a.agent_id);
-      var completed = document.getElementById('av-completed-' + a.agent_id);
+      // Wave 38g — Sarah uses 'dmm' as DOM id alias (frontend convention) while
+      // the API returns 'sarah'. Map for DOM lookup.
+      var uiId = a.agent_id === 'sarah' ? 'dmm' : a.agent_id;
+      var ag = AGENTS[a.agent_id] || AGENTS[uiId] || {};
+      var ongoing = document.getElementById('av-ongoing-' + uiId);
+      var upcoming = document.getElementById('av-upcoming-' + uiId);
+      var completed = document.getElementById('av-completed-' + uiId);
       if (ongoing)   ongoing.textContent   = a.executing || 0;
       if (upcoming)  upcoming.textContent  = a.pending || 0;
       if (completed) completed.textContent = a.completed || 0;
@@ -2050,7 +2052,9 @@ async function loadAgentStats(){
 }
 
 function _renderAgentTaskBoard(agentId, allAgents) {
-  var data = allAgents.find(a => a.agent_id === agentId);
+  // Wave 38g — Sarah's drawer uses 'dmm' but API uses 'sarah'. Normalize.
+  var apiId = agentId === 'dmm' ? 'sarah' : agentId;
+  var data = allAgents.find(a => a.agent_id === apiId || a.agent_id === agentId);
   if (!data) return;
   var ag = AGENTS[agentId] || {};
   var board = document.getElementById('agent-task-board');
