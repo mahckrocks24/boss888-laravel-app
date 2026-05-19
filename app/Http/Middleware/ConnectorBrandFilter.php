@@ -8,9 +8,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Wave 36a — Apply AgentNameScrub to all JSON responses in the WP
- * connector group. In the WP context there is exactly one AI identity:
- * "AI SEO Assistant". No agent names leak through.
+ * Wave 36a (+36a.1) — Apply AgentNameScrub to JSON responses when the
+ * request is coming from a WP-plugin / connector context.
+ *
+ * Signal: presence of X-API-KEY header. The WP plugin always uses
+ * X-API-KEY auth; the Laravel app shell always uses JWT bearer. This
+ * lets us attach the middleware to BOTH route groups (connector and
+ * auth.jwt) safely — JWT-only callers keep seeing agent names, X-API-KEY
+ * callers get the unified "AI SEO Assistant" identity.
  */
 class ConnectorBrandFilter
 {
@@ -18,12 +23,16 @@ class ConnectorBrandFilter
     {
         $response = $next($request);
 
-        // Only touch JSON responses — leave file downloads, redirects, etc. alone.
+        // Only scrub WP-plugin requests (X-API-KEY auth).
+        if ($request->header('X-API-KEY') === null) {
+            return $response;
+        }
+
+        // Only touch JSON responses — leave file downloads, redirects alone.
         if ($response instanceof JsonResponse) {
             $data = $response->getData(true);
             if (is_array($data)) {
-                $data = AgentNameScrub::scrubArray($data);
-                $response->setData($data);
+                $response->setData(AgentNameScrub::scrubArray($data));
             } elseif (is_string($data)) {
                 $response->setData(AgentNameScrub::scrub($data));
             }

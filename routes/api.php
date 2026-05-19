@@ -322,7 +322,7 @@ Route::get('/social/oauth/facebook/callback', function (\Illuminate\Http\Request
 // ADDED 2026-04-12 (Phase 2J / doc 12): traffic.defense middleware applied to
 // the entire authenticated workspace surface. Wires TrafficDefenseService into
 // the request pipeline. Fails open on errors.
-Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
+Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(function () {
 
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
