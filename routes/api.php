@@ -2004,12 +2004,67 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 if (count($suggestions) >= 25) break;
             }
 
+            // Wave 20d — Enrich with live volume/competition via a single
+            // DataForSEO Keywords Data batch call. Falls back to null on
+            // any failure (the frontend renders "—" gracefully).
+            $locInput = $r->input('location_code') ?? $r->input('location');
+            $locCode  = is_numeric($locInput) ? (int) $locInput : 0;
+            if (!$locCode) {
+                $map = ['USA' => 2840, 'UK' => 2826, 'UAE' => 2784, 'United States' => 2840, 'United Kingdom' => 2826, 'United Arab Emirates' => 2784, 'AE' => 2784, 'US' => 2840, 'GB' => 2826];
+                $locCode = $map[(string) $locInput] ?? 2840;
+            }
+            $enrichmentNote = null;
+            if (!empty($suggestions)) {
+                try {
+                    $conn = new \App\Connectors\DataForSeoConnector();
+                    if ($conn->isConfigured()) {
+                        $kwList = array_map(fn ($s) => $s['keyword'], $suggestions);
+                        $kdRes  = $conn->keywordData($kwList, $locCode, 'en');
+                        if (!empty($kdRes['success']) && !empty($kdRes['keywords'])) {
+                            $byKw = [];
+                            foreach ($kdRes['keywords'] as $row) {
+                                if (!empty($row['keyword'])) {
+                                    $byKw[mb_strtolower($row['keyword'])] = $row;
+                                }
+                            }
+                            foreach ($suggestions as $i => $s) {
+                                $hit = $byKw[mb_strtolower($s['keyword'])] ?? null;
+                                if ($hit) {
+                                    $suggestions[$i]['volume']            = $hit['volume'] ?? null;
+                                    $suggestions[$i]['cpc']               = $hit['cpc'] ?? null;
+                                    $suggestions[$i]['competition']       = $hit['competition'] ?? null;
+                                    $suggestions[$i]['competition_index'] = $hit['competition_index'] ?? null;
+                                }
+                            }
+                            // Re-rank: live volume desc, then on-site frequency desc.
+                            usort($suggestions, function ($a, $b) {
+                                $va = (int) ($a['volume'] ?? 0);
+                                $vb = (int) ($b['volume'] ?? 0);
+                                if ($va !== $vb) return $vb <=> $va;
+                                return ($b['frequency'] ?? 0) <=> ($a['frequency'] ?? 0);
+                            });
+                        } else {
+                            $enrichmentNote = 'enrichment_failed';
+                        }
+                    } else {
+                        $enrichmentNote = 'serp_provider_not_configured';
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('keywords/suggestions enrichment failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+                    $enrichmentNote = 'enrichment_exception';
+                }
+            }
+
             return response()->json([
                 'success'     => true,
                 'suggestions' => $suggestions,
                 'total'       => count($suggestions),
                 'derived_from'=> 'seo_content_index',
-                'note'        => 'On-site signal only — volume/competition require keyword research (1 credit per keyword).',
+                'enrichment'  => $enrichmentNote ?: 'live',
+                'location_code' => $locCode,
+                'note'        => 'Candidates derived from your indexed content; volume + competition fetched live.',
             ]);
         });
         Route::delete('/keywords/{id}', [$c, 'deleteKeyword']);

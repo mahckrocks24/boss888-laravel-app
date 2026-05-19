@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.14.2-wave20c loaded — Suggestions tab: multi-select with Track + Copy bulk actions'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.14.3-wave20d loaded — Suggestions tab: live volume + competition enrichment'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -2686,7 +2686,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var btn = document.getElementById('lgse-suggest-btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Analyzing…'; }
     var country = lgseGetKwCountry();
-    api('GET', '/keywords/suggestions?location=' + encodeURIComponent(country)).then(function (d) {
+    api('GET', '/keywords/suggestions?location_code=' + encodeURIComponent(country)).then(function (d) {
       if (btn) { btn.disabled = false; btn.textContent = '✨ Analyze my content'; }
       var suggestions = (d && (d.data || d.suggestions)) || [];
       var list = document.getElementById('lgse-suggestions-list');
