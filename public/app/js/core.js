@@ -1950,6 +1950,12 @@ async function sendAgentMessage(quickAction, overrideMessage){
     var payload={from:'User',content:content||quickAction};
     if(quickAction) payload.quick_action=quickAction;
     var d=await post(API+'agents/'+currentAgent+'/messages',payload);
+    // Wave 31 — Update chat counter from response.
+    try {
+      if (d && d.chat_meter && typeof window._lgseUpdateChatMeter === 'function') {
+        window._lgseUpdateChatMeter(d.chat_meter.counter, !!d.chat_meter.debited);
+      }
+    } catch (_e) {}
 
     // Remove typing indicator
     var ti=document.getElementById('agent-typing-indicator');
@@ -3635,6 +3641,13 @@ async function sendAssistant() {
   try {
     var ctx = buildAiContext();
     var r = await post(API + 'assistant', { message, context: ctx, history: aiHistory.slice(-8) });
+    // Wave 31 — Update Aria's chat counter from response JSON.
+    try {
+      var cm = (r && r.chat_meter) || (r && r.data && r.data.chat_meter);
+      if (cm && typeof window._lgseUpdateChatMeter === 'function') {
+        window._lgseUpdateChatMeter(cm.counter, !!cm.debited);
+      }
+    } catch (_e) {}
     aiHideTyping();
 
     var resp = r.response || '';
@@ -5895,4 +5908,66 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
       feed.innerHTML = '<div style="font-size:11px;color:var(--t3);text-align:center;padding:16px">Activity feed unavailable.</div>';
     });
   }
+})();
+
+/* Wave 31 — Chat counter widget (global). Auto-injects a 💬 badge near
+   any known chat input. window._lgseUpdateChatMeter(counter, debited) is
+   called by each chat sender from its response handler. Effective price
+   0.1 cr per chat (10 chats = 1 credit), batched in CreditService::meterChat
+   via workspaces.chat_meter. */
+(function () {
+  if (window._lgseChatMeterAutoInject) return;
+  window._lgseChatMeterAutoInject = true;
+
+  window._lgseUpdateChatMeter = function (counter, debited) {
+    var c = (counter === null || counter === undefined) ? null : parseInt(counter, 10);
+    var els = document.querySelectorAll('.lgse-chat-meter');
+    Array.prototype.forEach.call(els, function (el) {
+      if (debited) {
+        el.innerHTML = '<span style="color:#10B981;font-weight:600">✓ 1 credit charged — next 10 chats free</span>';
+        setTimeout(function () { window._lgseUpdateChatMeter(0, false); }, 4000);
+        return;
+      }
+      if (c === null) {
+        el.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit · 0.1 cr each</span>';
+        return;
+      }
+      el.innerHTML = '<span style="font-weight:500">💬 ' + c + ' / 10 chats toward next credit</span>';
+    });
+  };
+
+  function inject() {
+    var inputs = [
+      // Laravel app shell — ARIA (canonical AI Assistant)
+      document.getElementById('ai-input'),
+      // Laravel app shell agent drawer
+      document.getElementById('agent-msg-input'),
+      // SEO engine slide-in AI Assistant drawer (also used by WP plugin embed)
+      document.getElementById('lgse-drawer-input'),
+      // Floating messages modal (messages-ui.js)
+      document.querySelector('#lu-msg-input'),
+      document.querySelector('[data-chat-input]'),
+    ].filter(Boolean);
+
+    inputs.forEach(function (inp) {
+      if (!inp || inp.dataset.lgseMeterAttached) return;
+      var row = inp.parentElement;
+      var wrapper = row ? row.parentElement : null;
+      if (!row) return;
+      var meter = document.createElement('div');
+      meter.className = 'lgse-chat-meter';
+      meter.style.cssText = 'font-size:11px;color:#A78BFA;text-align:right;padding:8px 12px;margin-top:8px;border-radius:8px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2)';
+      meter.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit · 0.1 cr each</span>';
+      if (wrapper) wrapper.appendChild(meter);
+      else if (row.insertAdjacentElement) row.insertAdjacentElement('afterend', meter);
+      else row.appendChild(meter);
+      inp.dataset.lgseMeterAttached = '1';
+      try { console.log('[LU CHAT METER] badge attached to #' + inp.id + ' (wrapper=' + (wrapper ? wrapper.tagName : 'none') + ')'); } catch (_e) {}
+    });
+  }
+
+  if (document.readyState !== 'loading') inject();
+  document.addEventListener('DOMContentLoaded', inject);
+  setInterval(inject, 1000);
+  window._lgseChatMeterReinject = inject;
 })();

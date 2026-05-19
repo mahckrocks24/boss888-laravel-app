@@ -8090,6 +8090,22 @@ HTMLSCRIPT;
         $context = $r->input('context', []);
         $history = $r->input('history', []);
 
+        // Wave 31 — 10-chat batched metering (0.1 cr effective per chat).
+        $_aria_meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'assistant_message');
+        if (!$_aria_meter['sufficient']) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Not enough credits — chat costs 0.1 credit (1 credit per 10 chats). Please top up.',
+                'required_credits' => 1,
+                'chat_meter' => [
+                    'counter'   => $_aria_meter['counter'] ?? 0,
+                    'debited'   => false,
+                    'threshold' => 10,
+                    'effective_cost' => '0.1 cr',
+                ],
+            ], 402);
+        }
+
         // ── Build workspace intelligence context ────────────────────
         $workspace_intelligence = '';
         try {
@@ -8342,6 +8358,7 @@ HTMLSCRIPT;
                     'response' => $replyText !== '' ? $replyText : 'I could not process that request.',
                     'agent_response' => false,
                     'is_action' => $isAction,
+                    'chat_meter' => ['counter' => $_aria_meter['counter'] ?? 0, 'debited' => $_aria_meter['debited'] ?? false, 'threshold' => 10, 'effective_cost' => '0.1 cr'],
                 ]);
             }
 
@@ -8350,6 +8367,7 @@ HTMLSCRIPT;
             return response()->json([
                 'response' => 'Sorry, I encountered an error: ' . $e->getMessage(),
                 'error' => true,
+                'chat_meter' => ['counter' => $_aria_meter['counter'] ?? 0, 'debited' => $_aria_meter['debited'] ?? false, 'threshold' => 10, 'effective_cost' => '0.1 cr'],
             ]);
         }
     });
