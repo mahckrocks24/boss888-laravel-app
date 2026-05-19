@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.17.0-wave23 loaded — Chat counter widget; CapabilityMap realigned to canonical'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.18.0-wave24 loaded — Chat counter reads JSON; badge made visible; route headers unified'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -34,11 +34,11 @@ try { console.log('[LU SEO] seo.js v5.17.0-wave23 loaded — Chat counter widget
       if (!holder) return;
       var meter = document.createElement('div');
       meter.className = 'lgse-chat-meter';
-      meter.style.cssText = 'font-size:10px;color:#9CA3AF;text-align:right;padding:4px 6px;margin-top:2px';
-      meter.innerHTML = '<span style="opacity:0.55">10 chats = 1 credit (0.1 cr each)</span>';
+      meter.style.cssText = 'font-size:11px;color:#A78BFA;text-align:right;padding:6px 10px;margin-top:4px;border-top:1px solid rgba(124,58,237,0.15);background:rgba(124,58,237,0.04)';
+      meter.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit (0.1 cr each)</span>';
       // Append after the input's parent (so it sits below the row).
-      if (holder.parentElement) holder.parentElement.appendChild(meter);
-      else holder.appendChild(meter);
+      // Wave 24 — append directly to the input's parent for predictable placement.
+      holder.appendChild(meter);
       inp.dataset.lgseMeterAttached = '1';
     });
   }
@@ -55,15 +55,15 @@ window._lgseUpdateChatMeter = function (counter, debited) {
   var els = document.querySelectorAll('.lgse-chat-meter');
   Array.prototype.forEach.call(els, function (el) {
     if (debited) {
-      el.innerHTML = '<span style="color:#10B981">✓ 1 credit charged — next 10 chats free</span>';
+      el.innerHTML = '<span style="color:#10B981;font-weight:600">✓ 1 credit charged — next 10 chats free</span>';
       setTimeout(function () { window._lgseUpdateChatMeter(0, false); }, 4000);
       return;
     }
     if (c === null) {
-      el.innerHTML = '<span style="opacity:0.55">10 chats = 1 credit (0.1 cr each)</span>';
+      el.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit (0.1 cr each)</span>';
       return;
     }
-    el.innerHTML = '<span style="opacity:0.7">Chat counter: ' + c + ' / 10 toward next credit</span>';
+    el.innerHTML = '<span style="font-weight:500">💬 ' + c + ' / 10 chats toward next credit</span>';
   });
 };
 // Wave 23 — Intercept fetch globally to read X-Chat-Meter-* headers from
@@ -8712,6 +8712,13 @@ window._lgseAssistantSend = function () {
 
   fetcher
     .then(function (d) {
+      // Wave 24 — Update chat counter badge from response JSON.
+      try {
+        var cm = (d && d.chat_meter) || (d && d.data && d.data.chat_meter);
+        if (cm && typeof window._lgseUpdateChatMeter === 'function') {
+          window._lgseUpdateChatMeter(cm.counter, !!cm.debited);
+        }
+      } catch (_e) {}
       // Wave 1 (2026-05-17) — disclaimer gate. If the assistant signals
       // disclaimer_required, show the acceptance modal instead of treating
       // it as a normal response, and re-send the original message after

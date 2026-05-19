@@ -143,7 +143,13 @@ window._msgSend=async function(){
 
   var uiSlug=_msg.agent==='sarah'?'dmm':_msg.agent;
   try{
-    await _msgApi('POST','/agents/'+uiSlug+'/messages',Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{}));
+    var _msgResp = await _msgApi('POST','/agents/'+uiSlug+'/messages',Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{}));
+    // Wave 24 — Update chat counter badge.
+    try {
+      if (_msgResp && _msgResp.chat_meter && typeof window._lgseUpdateChatMeter === 'function') {
+        window._lgseUpdateChatMeter(_msgResp.chat_meter.counter, !!_msgResp.chat_meter.debited);
+      }
+    } catch (_e) {}
     // Reload full thread to get both user message + agent reply from DB
     await _msgLoadThread(_msg.agent);
     // Mark current agent as read when modal opens
@@ -261,7 +267,13 @@ window._msgPageSend=async function(){
 
   var uiSlug=_msg.agent==='sarah'?'dmm':_msg.agent;
   try{
-    await _msgApi('POST','/agents/'+uiSlug+'/messages',Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{}));
+    var _msgResp = await _msgApi('POST','/agents/'+uiSlug+'/messages',Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{}));
+    // Wave 24 — Update chat counter badge.
+    try {
+      if (_msgResp && _msgResp.chat_meter && typeof window._lgseUpdateChatMeter === 'function') {
+        window._lgseUpdateChatMeter(_msgResp.chat_meter.counter, !!_msgResp.chat_meter.debited);
+      }
+    } catch (_e) {}
     await _msgLoadPageThread(_msg.agent);
     setTimeout(function(){if(window._msgPollUnread)window._msgPollUnread();},500);
   }catch(e){

@@ -618,10 +618,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
         // Wave 22 — 10-chat batched metering (0.1 cr effective per chat).
         $_meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'agent_message');
-        // Wave 23 — surface counter to client via response header (the route
-        // has many response paths; a header is the lowest-touch hook).
-        header('X-Chat-Meter-Counter: ' . (int) $_meter['counter']);
-        header('X-Chat-Meter-Debited: ' . (($_meter['debited'] ?? false) ? '1' : '0'));
+        // Wave 24 — surface counter via JSON only (raw header() unreliable).
         if (!$_meter['sufficient']) {
             return response()->json([
                 'success' => false,
@@ -1069,6 +1066,13 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             'agent_name' => $agent->name,
             'requires_sarah' => $requiresSarah,
             'sarah_context' => $sarahContext,
+            // Wave 24 — chat meter for client-side counter badge.
+            'chat_meter' => [
+                'counter'   => $_meter['counter'] ?? 0,
+                'debited'   => $_meter['debited'] ?? false,
+                'threshold' => 10,
+                'effective_cost' => '0.1 cr',
+            ],
         ]);
     });
 
@@ -13901,9 +13905,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         ]);
         // Wave 22 — 10-chat batched metering (0.1 cr effective per chat).
         $meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'assistant_message');
-        // Wave 23 — surface counter via response header.
-        header('X-Chat-Meter-Counter: ' . (int) $meter['counter']);
-        header('X-Chat-Meter-Debited: ' . (($meter['debited'] ?? false) ? '1' : '0'));
+        // Wave 24 — surface counter via JSON only (raw header() unreliable in route closures).
         if (!$meter['sufficient']) {
             return response()->json([
                 'success' => false,
