@@ -49,8 +49,8 @@ class CapabilityMapService
         'strategy_meeting'    => ['engine'=>'sarah',     'connector'=>null,       'action'=>'strategy_meeting',    'approval_mode'=>'auto',      'credit_cost'=>8],
         // Wave 23 — Canonical realignment additions.
         'write_article_image' => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article_image', 'approval_mode'=>'review',    'credit_cost'=>2],
-        'generate_image_mini' => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image_mini', 'approval_mode'=>'auto',      'credit_cost'=>1],
-        'generate_image_high' => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image_high', 'approval_mode'=>'auto',      'credit_cost'=>4],
+        'generate_image_mini' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_mini', 'approval_mode'=>'auto',      'credit_cost'=>1],
+        'generate_image_high' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_high', 'approval_mode'=>'auto',      'credit_cost'=>4],
         'upscale_image'       => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'upscale_image',       'approval_mode'=>'auto',      'credit_cost'=>1],
         'social_ai_post'      => ['engine'=>'social',    'connector'=>null,       'action'=>'social_ai_post',      'approval_mode'=>'review',    'credit_cost'=>1],
         'social_image'        => ['engine'=>'social',    'connector'=>'creative', 'action'=>'social_image',        'approval_mode'=>'auto',      'credit_cost'=>1],
