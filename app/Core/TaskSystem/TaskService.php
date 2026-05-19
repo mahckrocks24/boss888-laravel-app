@@ -53,6 +53,7 @@ class TaskService
 
         $task = Task::create([
             'workspace_id' => $workspaceId,
+            'parent_task_id' => $data['parent_task_id'] ?? null,
             'engine' => $data['engine'] ?? $this->resolveEngineSlug($action),
             'action' => $action,
             'payload_json' => $payload ?: null,

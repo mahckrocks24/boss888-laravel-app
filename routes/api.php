@@ -999,7 +999,10 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 }
 
                 if (true) {  // preserve indentation of original `if ($result['success'])` block
+                    $createdTaskIds = []; // Wave 35c — track by 1-based position for depends_on resolution
+                    $ctIndex = 0;
                     foreach ($createTasks as $createTask) {
+                    $ctIndex++;
                     if ($createTask && is_array($createTask) && !empty($createTask['agent'])) {
                         try {
                             $taskAgent = $createTask['agent'];
@@ -1007,23 +1010,42 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                             $taskAction = $createTask['action'] ?? 'manual_task';
                             $taskDesc = $createTask['description'] ?? $content;
 
-                            // PATCH (Intel Fix 2a) — was raw Task::create([... 'status'=>'pending' ...])
-                            // which bypassed TaskService and TaskDispatcher: the row landed in DB
-                            // but no queue job was ever pushed, leaving 12 stuck tasks. TaskService
-                            // is the canonical path — handles capability lookup, approval mode,
-                            // idempotency hash, audit log, and dispatch in one call.
+                            // Wave 35c — resolve depends_on into parent_task_id. Sarah's chain
+                            // recipe instructs her to set depends_on:[1] etc. referencing 1-based
+                            // positions in this create_tasks array. We map back to real DB ids.
+                            $parentId = null;
+                            $dependsOn = $createTask['depends_on'] ?? [];
+                            if (is_array($dependsOn) && !empty($dependsOn)) {
+                                foreach ($dependsOn as $d) {
+                                    $dPos = (int) $d;
+                                    if ($dPos > 0 && isset($createdTaskIds[$dPos])) {
+                                        $parentId = $createdTaskIds[$dPos];
+                                        break; // first resolved dep becomes parent_task_id
+                                    }
+                                }
+                            }
+
+                            // Wave 35c — pass through Sarah-supplied params (title, topic, keyword,
+                            // audience, tone, length, etc.) so they reach the engine service.
+                            $ctParams = (isset($createTask['params']) && is_array($createTask['params'])) ? $createTask['params'] : [];
+                            $payload = array_merge([
+                                'title'        => $taskDesc,
+                                'created_via'  => 'sarah_chat',
+                                'user_request' => $content,
+                            ], $ctParams);
+
+                            // PATCH (Intel Fix 2a) — TaskService is the canonical path.
                             $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, [
                                 'engine'          => $taskEngine,
                                 'action'          => $taskAction,
                                 'source'          => 'agent',
                                 'priority'        => 'normal',
                                 'assigned_agents' => [$taskAgent],
-                                'payload'         => [
-                                    'title'        => $taskDesc,
-                                    'created_via'  => 'sarah_chat',
-                                    'user_request' => $content,
-                                ],
+                                'parent_task_id'  => $parentId,
+                                'payload'         => $payload,
                             ]);
+                            // Record by position for downstream depends_on references.
+                            $createdTaskIds[$ctIndex] = $newTask->id;
                             // progress_message isn't in the TaskService whitelist — set after.
                             $newTask->update(['progress_message' => $taskDesc]);
 
