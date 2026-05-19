@@ -3221,15 +3221,21 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         };
 
         // POST /api/seo/competitors/analyze
-        // Body: { keyword: string, location?: string }
+        // Body: { keyword: string, location_code?: int, location?: string }
+        // Wave 19.1 — accepts the DataForSEO location_code directly from
+        // the frontend (cleaner than maintaining a name→code map). Falls
+        // back to the legacy `location` string for older clients.
         Route::post('/competitors/analyze', function (\Illuminate\Http\Request $r) use ($locationFromString) {
             $wsId = (int) $r->attributes->get('workspace_id');
             $data = $r->validate([
-                'keyword'  => 'required|string|max:200',
-                'location' => 'nullable|string|max:80',
+                'keyword'       => 'required|string|max:200',
+                'location'      => 'nullable|string|max:80',
+                'location_code' => 'nullable|integer|min:1000|max:99999',
             ]);
 
-            $locationCode = $locationFromString($data['location'] ?? '');
+            $locationCode = ! empty($data['location_code'])
+                ? (int) $data['location_code']
+                : $locationFromString($data['location'] ?? '');
 
             // Re-use SeoService::serpAnalysis which already handles DataForSEO,
             // graceful fallback, and persistence into seo_serp_results.

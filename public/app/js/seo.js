@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.12.1-wave18c-rich-summary-pdf loaded — confirm-on-download + real PDF + 5×5 KPI summary'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.13.0-wave19.1-all-countries loaded — Competitors dropdown now has all DataForSEO countries (location_code int values)'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -5568,30 +5568,147 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   // ── Tab 7 — Competitors ────────────────────────────────────────────────
   // Country list for the location selector — DataForSEO accepts these names.
+  // Wave 19.1 (2026-05-19). Full DataForSEO country location codes.
+  // `c` = DataForSEO location_code (sent to backend), `v` = display name,
+  // `l` = flag + label rendered in the <option>. Top group is the previous
+  // shortlist (regional + Western markets) for quick access; the rest is
+  // alphabetical. Backend now accepts `location_code` directly so the JS
+  // doesn't need to maintain a separate name→code mapping.
   var LGSE_CMP_COUNTRIES = [
-    { v: 'United Arab Emirates', l: '🇦🇪 UAE' },
-    { v: 'Saudi Arabia',          l: '🇸🇦 Saudi Arabia' },
-    { v: 'Qatar',                 l: '🇶🇦 Qatar' },
-    { v: 'Kuwait',                l: '🇰🇼 Kuwait' },
-    { v: 'Bahrain',               l: '🇧🇭 Bahrain' },
-    { v: 'Oman',                  l: '🇴🇲 Oman' },
-    { v: 'Egypt',                 l: '🇪🇬 Egypt' },
-    { v: 'Jordan',                l: '🇯🇴 Jordan' },
-    { v: 'Lebanon',               l: '🇱🇧 Lebanon' },
-    { v: 'United Kingdom',        l: '🇬🇧 UK' },
-    { v: 'Germany',               l: '🇩🇪 Germany' },
-    { v: 'France',                l: '🇫🇷 France' },
-    { v: 'Spain',                 l: '🇪🇸 Spain' },
-    { v: 'Italy',                 l: '🇮🇹 Italy' },
-    { v: 'Netherlands',           l: '🇳🇱 Netherlands' },
-    { v: 'Switzerland',           l: '🇨🇭 Switzerland' },
-    { v: 'Austria',               l: '🇦🇹 Austria' },
-    { v: 'United States',         l: '🇺🇸 United States' },
-    { v: 'Canada',                l: '🇨🇦 Canada' },
-    { v: 'Australia',             l: '🇦🇺 Australia' },
-    { v: 'Singapore',             l: '🇸🇬 Singapore' },
-    { v: 'India',                 l: '🇮🇳 India' },
-    { v: 'Pakistan',              l: '🇵🇰 Pakistan' }
+    // ─── Quick access (regional + most-used) ───
+    { c: 2784, v: 'United Arab Emirates', l: '🇦🇪 United Arab Emirates' },
+    { c: 2682, v: 'Saudi Arabia',         l: '🇸🇦 Saudi Arabia' },
+    { c: 2634, v: 'Qatar',                l: '🇶🇦 Qatar' },
+    { c: 2414, v: 'Kuwait',               l: '🇰🇼 Kuwait' },
+    { c: 2048, v: 'Bahrain',              l: '🇧🇭 Bahrain' },
+    { c: 2512, v: 'Oman',                 l: '🇴🇲 Oman' },
+    { c: 2818, v: 'Egypt',                l: '🇪🇬 Egypt' },
+    { c: 2400, v: 'Jordan',               l: '🇯🇴 Jordan' },
+    { c: 2422, v: 'Lebanon',              l: '🇱🇧 Lebanon' },
+    { c: 2840, v: 'United States',        l: '🇺🇸 United States' },
+    { c: 2826, v: 'United Kingdom',       l: '🇬🇧 United Kingdom' },
+    { c: 2124, v: 'Canada',               l: '🇨🇦 Canada' },
+    { c: 2036, v: 'Australia',            l: '🇦🇺 Australia' },
+    { c: 2276, v: 'Germany',              l: '🇩🇪 Germany' },
+    { c: 2250, v: 'France',               l: '🇫🇷 France' },
+    { c: 2724, v: 'Spain',                l: '🇪🇸 Spain' },
+    { c: 2380, v: 'Italy',                l: '🇮🇹 Italy' },
+    { c: 2528, v: 'Netherlands',          l: '🇳🇱 Netherlands' },
+    { c: 2756, v: 'Switzerland',          l: '🇨🇭 Switzerland' },
+    { c: 2040, v: 'Austria',              l: '🇦🇹 Austria' },
+    { c: 2356, v: 'India',                l: '🇮🇳 India' },
+    { c: 2586, v: 'Pakistan',             l: '🇵🇰 Pakistan' },
+    { c: 2702, v: 'Singapore',            l: '🇸🇬 Singapore' },
+    // ─── All other countries — alphabetical ───
+    { c: 2004, v: 'Afghanistan',           l: '🇦🇫 Afghanistan' },
+    { c: 2008, v: 'Albania',               l: '🇦🇱 Albania' },
+    { c: 2012, v: 'Algeria',               l: '🇩🇿 Algeria' },
+    { c: 2024, v: 'Angola',                l: '🇦🇴 Angola' },
+    { c: 2032, v: 'Argentina',             l: '🇦🇷 Argentina' },
+    { c: 2051, v: 'Armenia',               l: '🇦🇲 Armenia' },
+    { c: 2031, v: 'Azerbaijan',            l: '🇦🇿 Azerbaijan' },
+    { c: 2050, v: 'Bangladesh',            l: '🇧🇩 Bangladesh' },
+    { c: 2112, v: 'Belarus',               l: '🇧🇾 Belarus' },
+    { c: 2056, v: 'Belgium',               l: '🇧🇪 Belgium' },
+    { c: 2068, v: 'Bolivia',               l: '🇧🇴 Bolivia' },
+    { c: 2070, v: 'Bosnia and Herzegovina',l: '🇧🇦 Bosnia and Herzegovina' },
+    { c: 2076, v: 'Brazil',                l: '🇧🇷 Brazil' },
+    { c: 2096, v: 'Brunei',                l: '🇧🇳 Brunei' },
+    { c: 2100, v: 'Bulgaria',              l: '🇧🇬 Bulgaria' },
+    { c: 2854, v: 'Burkina Faso',          l: '🇧🇫 Burkina Faso' },
+    { c: 2116, v: 'Cambodia',              l: '🇰🇭 Cambodia' },
+    { c: 2120, v: 'Cameroon',              l: '🇨🇲 Cameroon' },
+    { c: 2152, v: 'Chile',                 l: '🇨🇱 Chile' },
+    { c: 2170, v: 'Colombia',              l: '🇨🇴 Colombia' },
+    { c: 2188, v: 'Costa Rica',            l: '🇨🇷 Costa Rica' },
+    { c: 2384, v: 'Côte d’Ivoire',    l: '🇨🇮 Côte d’Ivoire' },
+    { c: 2191, v: 'Croatia',               l: '🇭🇷 Croatia' },
+    { c: 2196, v: 'Cyprus',                l: '🇨🇾 Cyprus' },
+    { c: 2203, v: 'Czechia',               l: '🇨🇿 Czechia' },
+    { c: 2208, v: 'Denmark',               l: '🇩🇰 Denmark' },
+    { c: 2214, v: 'Dominican Republic',    l: '🇩🇴 Dominican Republic' },
+    { c: 2218, v: 'Ecuador',               l: '🇪🇨 Ecuador' },
+    { c: 2222, v: 'El Salvador',           l: '🇸🇻 El Salvador' },
+    { c: 2233, v: 'Estonia',               l: '🇪🇪 Estonia' },
+    { c: 2231, v: 'Ethiopia',              l: '🇪🇹 Ethiopia' },
+    { c: 2246, v: 'Finland',               l: '🇫🇮 Finland' },
+    { c: 2268, v: 'Georgia',               l: '🇬🇪 Georgia' },
+    { c: 2288, v: 'Ghana',                 l: '🇬🇭 Ghana' },
+    { c: 2300, v: 'Greece',                l: '🇬🇷 Greece' },
+    { c: 2320, v: 'Guatemala',             l: '🇬🇹 Guatemala' },
+    { c: 2340, v: 'Honduras',              l: '🇭🇳 Honduras' },
+    { c: 2344, v: 'Hong Kong',             l: '🇭🇰 Hong Kong' },
+    { c: 2348, v: 'Hungary',               l: '🇭🇺 Hungary' },
+    { c: 2352, v: 'Iceland',               l: '🇮🇸 Iceland' },
+    { c: 2360, v: 'Indonesia',             l: '🇮🇩 Indonesia' },
+    { c: 2364, v: 'Iran',                  l: '🇮🇷 Iran' },
+    { c: 2368, v: 'Iraq',                  l: '🇮🇶 Iraq' },
+    { c: 2372, v: 'Ireland',               l: '🇮🇪 Ireland' },
+    { c: 2376, v: 'Israel',                l: '🇮🇱 Israel' },
+    { c: 2388, v: 'Jamaica',               l: '🇯🇲 Jamaica' },
+    { c: 2392, v: 'Japan',                 l: '🇯🇵 Japan' },
+    { c: 2398, v: 'Kazakhstan',            l: '🇰🇿 Kazakhstan' },
+    { c: 2404, v: 'Kenya',                 l: '🇰🇪 Kenya' },
+    { c: 2417, v: 'Kyrgyzstan',            l: '🇰🇬 Kyrgyzstan' },
+    { c: 2418, v: 'Laos',                  l: '🇱🇦 Laos' },
+    { c: 2428, v: 'Latvia',                l: '🇱🇻 Latvia' },
+    { c: 2434, v: 'Libya',                 l: '🇱🇾 Libya' },
+    { c: 2440, v: 'Lithuania',             l: '🇱🇹 Lithuania' },
+    { c: 2442, v: 'Luxembourg',            l: '🇱🇺 Luxembourg' },
+    { c: 2807, v: 'North Macedonia',       l: '🇲🇰 North Macedonia' },
+    { c: 2450, v: 'Madagascar',            l: '🇲🇬 Madagascar' },
+    { c: 2454, v: 'Malawi',                l: '🇲🇼 Malawi' },
+    { c: 2458, v: 'Malaysia',              l: '🇲🇾 Malaysia' },
+    { c: 2466, v: 'Mali',                  l: '🇲🇱 Mali' },
+    { c: 2470, v: 'Malta',                 l: '🇲🇹 Malta' },
+    { c: 2480, v: 'Mauritius',             l: '🇲🇺 Mauritius' },
+    { c: 2484, v: 'Mexico',                l: '🇲🇽 Mexico' },
+    { c: 2498, v: 'Moldova',               l: '🇲🇩 Moldova' },
+    { c: 2496, v: 'Mongolia',              l: '🇲🇳 Mongolia' },
+    { c: 2499, v: 'Montenegro',            l: '🇲🇪 Montenegro' },
+    { c: 2504, v: 'Morocco',               l: '🇲🇦 Morocco' },
+    { c: 2508, v: 'Mozambique',            l: '🇲🇿 Mozambique' },
+    { c: 2104, v: 'Myanmar',               l: '🇲🇲 Myanmar' },
+    { c: 2516, v: 'Namibia',               l: '🇳🇦 Namibia' },
+    { c: 2524, v: 'Nepal',                 l: '🇳🇵 Nepal' },
+    { c: 2554, v: 'New Zealand',           l: '🇳🇿 New Zealand' },
+    { c: 2558, v: 'Nicaragua',             l: '🇳🇮 Nicaragua' },
+    { c: 2562, v: 'Niger',                 l: '🇳🇪 Niger' },
+    { c: 2566, v: 'Nigeria',               l: '🇳🇬 Nigeria' },
+    { c: 2578, v: 'Norway',                l: '🇳🇴 Norway' },
+    { c: 2591, v: 'Panama',                l: '🇵🇦 Panama' },
+    { c: 2598, v: 'Papua New Guinea',      l: '🇵🇬 Papua New Guinea' },
+    { c: 2600, v: 'Paraguay',              l: '🇵🇾 Paraguay' },
+    { c: 2604, v: 'Peru',                  l: '🇵🇪 Peru' },
+    { c: 2608, v: 'Philippines',           l: '🇵🇭 Philippines' },
+    { c: 2616, v: 'Poland',                l: '🇵🇱 Poland' },
+    { c: 2620, v: 'Portugal',              l: '🇵🇹 Portugal' },
+    { c: 2630, v: 'Puerto Rico',           l: '🇵🇷 Puerto Rico' },
+    { c: 2642, v: 'Romania',               l: '🇷🇴 Romania' },
+    { c: 2643, v: 'Russia',                l: '🇷🇺 Russia' },
+    { c: 2688, v: 'Serbia',                l: '🇷🇸 Serbia' },
+    { c: 2703, v: 'Slovakia',              l: '🇸🇰 Slovakia' },
+    { c: 2705, v: 'Slovenia',              l: '🇸🇮 Slovenia' },
+    { c: 2710, v: 'South Africa',          l: '🇿🇦 South Africa' },
+    { c: 2410, v: 'South Korea',           l: '🇰🇷 South Korea' },
+    { c: 2144, v: 'Sri Lanka',             l: '🇱🇰 Sri Lanka' },
+    { c: 2752, v: 'Sweden',                l: '🇸🇪 Sweden' },
+    { c: 2158, v: 'Taiwan',                l: '🇹🇼 Taiwan' },
+    { c: 2762, v: 'Tajikistan',            l: '🇹🇯 Tajikistan' },
+    { c: 2834, v: 'Tanzania',              l: '🇹🇿 Tanzania' },
+    { c: 2764, v: 'Thailand',              l: '🇹🇭 Thailand' },
+    { c: 2788, v: 'Tunisia',               l: '🇹🇳 Tunisia' },
+    { c: 2792, v: 'Turkey',                l: '🇹🇷 Turkey' },
+    { c: 2795, v: 'Turkmenistan',          l: '🇹🇲 Turkmenistan' },
+    { c: 2800, v: 'Uganda',                l: '🇺🇬 Uganda' },
+    { c: 2804, v: 'Ukraine',               l: '🇺🇦 Ukraine' },
+    { c: 2858, v: 'Uruguay',               l: '🇺🇾 Uruguay' },
+    { c: 2860, v: 'Uzbekistan',            l: '🇺🇿 Uzbekistan' },
+    { c: 2862, v: 'Venezuela',             l: '🇻🇪 Venezuela' },
+    { c: 2704, v: 'Vietnam',               l: '🇻🇳 Vietnam' },
+    { c: 2886, v: 'Yemen',                 l: '🇾🇪 Yemen' },
+    { c: 2887, v: 'Zambia',                l: '🇿🇲 Zambia' },
+    { c: 2716, v: 'Zimbabwe',              l: '🇿🇼 Zimbabwe' }
   ];
 
   // Module-level state for competitors tab — sort + last results + last keyword.
@@ -5609,9 +5726,16 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         + '</div>'
       + '</div>';
 
-    var savedCountry = localStorage.getItem('lgse_cmp_country') || 'United Arab Emirates';
+    // Wave 19.1 — value is now the DataForSEO location_code (integer).
+    // Stored country preference falls back across both old (name) + new (code) keys.
+    var savedCode = localStorage.getItem('lgse_cmp_country_code')
+                 || (function () {
+                      var oldName = localStorage.getItem('lgse_cmp_country');
+                      var match   = LGSE_CMP_COUNTRIES.find(function (x) { return x.v === oldName; });
+                      return match ? String(match.c) : '2840'; // default: United States
+                    })();
     var locOpts = LGSE_CMP_COUNTRIES.map(function (c) {
-      return '<option value="' + c.v + '"' + (c.v === savedCountry ? ' selected' : '') + '>' + c.l + '</option>';
+      return '<option value="' + c.c + '"' + (String(c.c) === String(savedCode) ? ' selected' : '') + '>' + c.l + '</option>';
     }).join('');
 
     el.innerHTML = pageTitle('Competitors', 'Top 10 SERP competitors per keyword + AI-driven content gap analysis.')
@@ -5621,7 +5745,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         + '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:10px">See who ranks in the top 10 for any search term in your target market.</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
           + '<input id="lgse-cmp-kw" type="text" placeholder="e.g. digital marketing dubai" style="flex:1;min-width:240px;background:var(--lgse-bg1);border:1px solid var(--lgse-border);color:var(--lgse-t1);padding:8px 12px;border-radius:7px;font-size:11.5px">'
-          + '<select id="lgse-cmp-loc" onchange="localStorage.setItem(\'lgse_cmp_country\', this.value)" style="min-width:200px;background:var(--lgse-bg1);border:1px solid var(--lgse-border);color:var(--lgse-t1);padding:8px 12px;border-radius:7px;font-size:11.5px;cursor:pointer">' + locOpts + '</select>'
+          + '<select id="lgse-cmp-loc" onchange="localStorage.setItem(\'lgse_cmp_country_code\', this.value)" style="min-width:220px;max-width:280px;background:var(--lgse-bg1);border:1px solid var(--lgse-border);color:var(--lgse-t1);padding:8px 12px;border-radius:7px;font-size:11.5px;cursor:pointer">' + locOpts + '</select>'
           + '<button class="lgse-btn-primary" onclick="lgseCmpAnalyze()">Analyze</button>'
         + '</div>'
         + '<div id="lgse-cmp-results" style="margin-top:14px"></div>'
@@ -5643,10 +5767,13 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var box = document.getElementById('lgse-cmp-results');
     if (!kw || !box || !kw.value.trim()) return;
     var keyword = kw.value.trim();
-    var location = (loc && loc.value) || 'United Arab Emirates';
-    if (loc && loc.value) localStorage.setItem('lgse_cmp_country', loc.value);
+    // Wave 19.1 — value of <option> is now the DataForSEO location_code (int).
+    var locCode = parseInt((loc && loc.value) || '2840', 10) || 2840;
+    if (loc && loc.value) localStorage.setItem('lgse_cmp_country_code', loc.value);
+    var match = LGSE_CMP_COUNTRIES.find(function (x) { return String(x.c) === String(locCode); });
+    var locLabel = match ? match.v : '';
     box.innerHTML = '<div style="padding:14px;color:var(--lgse-t3);font-size:11px">Analyzing…</div>';
-    api('POST', '/competitors/analyze', { keyword: keyword, location: location }).then(function (d) {
+    api('POST', '/competitors/analyze', { keyword: keyword, location_code: locCode, location: locLabel }).then(function (d) {
       var arr = (d && d.competitors) || [];
       if (arr.length === 0) { box.innerHTML = emptyState('·', 'No SERP data', 'DataForSEO may not be configured for this workspace.'); return; }
       // Persist results + keyword so the gap → Sarah flow can reference them.
