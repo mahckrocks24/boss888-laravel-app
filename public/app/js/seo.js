@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.20.0-wave28 loaded — AI Assistant badge placement via grandparent wrapper'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.21.0-wave29 loaded — Target #lgse-drawer-input (LIVE AI Assistant surface)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -24,8 +24,10 @@ try { console.log('[LU SEO] seo.js v5.20.0-wave28 loaded — AI Assistant badge 
   window._lgseChatMeterAutoInject = true;
   function inject() {
     var inputs = [
-      document.getElementById('lgse-chat-input'),
-      document.querySelector('#lu-msg-input'),
+      // Wave 29 — drawer chat is the LIVE AI Assistant surface.
+      document.getElementById('lgse-drawer-input'),
+      document.getElementById('lgse-chat-input'),     // legacy tab mode (dead-code)
+      document.querySelector('#lu-msg-input'),         // direct agent chat modal
       document.querySelector('[data-chat-input]'),
     ].filter(Boolean);
     inputs.forEach(function (inp) {
@@ -8621,6 +8623,13 @@ window._lgseDrawerSend = function () {
       }).then(function (r) { return r.json(); });
 
   fetcher.then(function (d) {
+    // Wave 29 — Update chat counter badge from response JSON.
+    try {
+      var cm = (d && d.chat_meter) || (d && d.data && d.data.chat_meter);
+      if (cm && typeof window._lgseUpdateChatMeter === 'function') {
+        window._lgseUpdateChatMeter(cm.counter, !!cm.debited);
+      }
+    } catch (_e) {}
     var text = (d && d.data && d.data.response) ? d.data.response
              : (d && d.response) ? d.response
              : (d && d.reply) ? d.reply
