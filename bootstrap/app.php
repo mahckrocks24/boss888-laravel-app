@@ -255,6 +255,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.jwt'        => \App\Http\Middleware\JwtAuthMiddleware::class,
             'api.key'         => \App\Http\Middleware\ApiKeyAuth::class,
+            'connector.brand' => \App\Http\Middleware\ConnectorBrandFilter::class,
             'runtime.secret'  => \App\Http\Middleware\RuntimeSecretMiddleware::class,
             'plan'            => \App\Http\Middleware\PlanMiddleware::class,
             'team.role'       => \App\Http\Middleware\TeamRoleMiddleware::class,

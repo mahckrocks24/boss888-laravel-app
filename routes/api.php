@@ -12430,7 +12430,7 @@ Route::prefix('public/news')->group(function () {
 // Auth: X-API-KEY header (or ?api_key= query). Scoped per workspace via api_keys.
 // Added 2026-05-11 to unblock the 5 SEO orphan tabs.
 // ════════════════════════════════════════════════════════════════════════════
-Route::middleware(['api.key'])->prefix('connector')->group(function () {
+Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(function () {
 
     // 2026-05-19 (Wave 32c) — sitemap twins for WP plugin (API-key auth).
     Route::get('/sitemap', function (\Illuminate\Http\Request $r) {
