@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.14.0-wave20 loaded — Keyword Research wired up; Keywords tab now has all countries; user-facing vendor scrub'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.14.1-wave20b loaded — Tracked keywords accepts comma-separated bulk input'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -2631,7 +2631,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     if (!content) return;
     content.innerHTML =
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
-      +   '<input id="lgse-add-kw" type="text" placeholder="Enter a keyword to track…" style="flex:1;min-width:200px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);color:var(--lgse-t1);padding:8px 12px;border-radius:7px;font-size:11.5px">'
+      +   '<input id="lgse-add-kw" type="text" placeholder="Enter keywords to track (comma-separated for bulk)…" onkeydown="if(event.key===\'Enter\'){lgseAddKw();}" style="flex:1;min-width:200px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);color:var(--lgse-t1);padding:8px 12px;border-radius:7px;font-size:11.5px">'
       +   '<button class="lgse-btn-primary" onclick="lgseAddKw()">+ Track</button>'
       +   '<button class="lgse-btn-secondary" onclick="lgseCheckAllKeywords(this)">Check all</button>'
       + '</div>'
@@ -2791,7 +2791,56 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   window.lgseAddKw = function () {
     var inp = document.getElementById('lgse-add-kw');
     if (!inp || !inp.value.trim()) return;
-    api('POST', '/keywords', { keyword: inp.value.trim(), country: lgseGetKwCountry() }).then(function () { inp.value = ''; loadKeywords(); }).catch(function () {});
+    // Wave 20b — accept comma-separated keywords for bulk add.
+    var raw = inp.value.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+    var seen = {}, kws = [];
+    raw.forEach(function (k) { var lo = k.toLowerCase(); if (!seen[lo]) { seen[lo] = true; kws.push(k); } });
+    if (kws.length === 0) return;
+    var country = lgseGetKwCountry();
+    var notify = function (msg) {
+      if (typeof window.showToast === 'function') { window.showToast(msg, 'info'); return; }
+      try { console.log('[LU SEO] ' + msg); } catch (_e) {}
+    };
+    if (kws.length === 1) {
+      api('POST', '/keywords', { keyword: kws[0], country: country })
+        .then(function () { inp.value = ''; loadKeywords(); notify('Keyword added.'); })
+        .catch(function (e) {
+          var em = (e && (e.message || e.error)) || '';
+          if (/already tracked/i.test(em)) notify('Already tracked.');
+          else if (/limit reached/i.test(em)) notify('Keyword limit reached on your plan.');
+          else notify('Could not add keyword.');
+        });
+      return;
+    }
+    // Bulk: sequential POSTs so plan-limit + duplicate checks fire per keyword.
+    var added = 0, skipped = 0, failed = 0, limitHit = false;
+    var btn = inp.parentElement ? inp.parentElement.querySelector('.lgse-btn-primary') : null;
+    var origLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Adding ' + kws.length + '…'; }
+    function step(i) {
+      if (i >= kws.length || limitHit) {
+        inp.value = '';
+        if (btn) { btn.disabled = false; btn.textContent = origLabel || '+ Track'; }
+        loadKeywords();
+        var parts = [];
+        if (added)   parts.push(added + ' added');
+        if (skipped) parts.push(skipped + ' already tracked');
+        if (failed)  parts.push(failed + ' failed');
+        if (limitHit) parts.push('plan limit reached');
+        notify(parts.length ? parts.join(', ') + '.' : 'Done.');
+        return;
+      }
+      api('POST', '/keywords', { keyword: kws[i], country: country })
+        .then(function () { added++; })
+        .catch(function (e) {
+          var em = (e && (e.message || e.error)) || '';
+          if (/already tracked/i.test(em))       skipped++;
+          else if (/limit reached/i.test(em))    { failed++; limitHit = true; }
+          else                                    failed++;
+        })
+        .finally(function () { step(i + 1); });
+    }
+    step(0);
   };
   function loadKeywords() {
     var body = document.getElementById('lgse-kw-body');
