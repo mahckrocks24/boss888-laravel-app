@@ -36,6 +36,12 @@ class CapabilityMapService
         'list_goals'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'list_goals',          'approval_mode'=>'auto',      'credit_cost'=>0],
         'pause_goal'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'pause_goal',          'approval_mode'=>'auto',      'credit_cost'=>0],
 'resume_goal'         => ['engine'=>'seo',       'connector'=>null,       'action'=>'resume_goal',         'approval_mode'=>'auto',      'credit_cost'=>0],        'add_keyword'         => ['engine'=>'seo',       'connector'=>null,       'action'=>'add_keyword',         'approval_mode'=>'auto',      'credit_cost'=>0],        'generate_links'      => ['engine'=>'seo',       'connector'=>null,       'action'=>'generate_links',      'approval_mode'=>'auto',      'credit_cost'=>3],
+        // Wave 21 — credit-charged SEO actions.
+        'keyword_research'    => ['engine'=>'seo',       'connector'=>null,       'action'=>'keyword_research',    'approval_mode'=>'auto',      'credit_cost'=>2],
+        'keywords_suggest'    => ['engine'=>'seo',       'connector'=>null,       'action'=>'keywords_suggest',    'approval_mode'=>'auto',      'credit_cost'=>1],
+        'keyword_check'       => ['engine'=>'seo',       'connector'=>null,       'action'=>'keyword_check',       'approval_mode'=>'auto',      'credit_cost'=>1],
+        'competitor_serp'     => ['engine'=>'seo',       'connector'=>null,       'action'=>'competitor_serp',     'approval_mode'=>'auto',      'credit_cost'=>2],
+        'competitor_gaps'     => ['engine'=>'seo',       'connector'=>null,       'action'=>'competitor_gaps',     'approval_mode'=>'auto',      'credit_cost'=>3],
 
         // ── Write / Content Engine ───────────────────────────────
         // PATCH 2026-04-19: create_article was called from WriteController::createArticle

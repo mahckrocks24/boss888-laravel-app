@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.14.4-wave20e loaded — POST /keywords/{id}/check wired up'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.15.0-wave21 loaded — Credit charging wired (research 2cr, suggest 1cr, check 1cr, competitor 2cr, gaps 3cr)'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -2641,18 +2641,20 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   window.lgseCheckAllKeywords = function (btn) {
     var orig = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking all…'; }
     var country = lgseGetKwCountry();
-    api('GET', '/keywords?location=' + encodeURIComponent(country)).then(function (d) {
+    // Wave 21 — confirm + show cost before running.
+    api('GET', '/keywords?location_code=' + encodeURIComponent(country)).then(function (d) {
       var rows = (d && (d.keywords || d.data)) || (Array.isArray(d) ? d : []);
-      if (!rows.length) {
-        if (btn) { btn.disabled = false; btn.textContent = orig || 'Check all'; }
-        return;
-      }
+      if (!rows.length) return null;
+      var totalCost = rows.length;  // 1 credit per check.
+      var msg = 'Check ' + rows.length + ' keyword position' + (rows.length === 1 ? '' : 's') + '?\n\nThis will use ' + totalCost + ' credit' + (totalCost === 1 ? '' : 's') + '.\n\nDaily auto-tracking runs free in the background — only press this for an on-demand refresh.';
+      if (!confirm(msg)) return null;
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking ' + rows.length + '…'; }
       return Promise.all(rows.map(function (kw) {
         return api('POST', '/keywords/' + (kw.id || 0) + '/check', { location_code: country }).catch(function () {});
       }));
-    }).then(function () {
+    }).then(function (r) {
+      if (r === null) return;
       if (btn) { btn.disabled = false; btn.textContent = orig || 'Check all'; }
       if (typeof loadKeywords === 'function') loadKeywords();
     }).catch(function () {
@@ -2669,7 +2671,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       +   '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.65">We analyze your indexed pages and extract the most important words and phrases. Then we check their search volume using LevelUpGrowth SEO. The result is a list of keywords your content is already targeting — ranked by how many people search for them each month.</div>'
       + '</div>'
       + '<div style="text-align:center;padding:16px 0">'
-      +   '<button id="lgse-suggest-btn" class="lgse-btn-primary" onclick="lgseFetchSuggestions()" style="padding:10px 24px;font-size:12px">✨ Analyze my content</button>'
+      +   '<button id="lgse-suggest-btn" class="lgse-btn-primary" onclick="lgseFetchSuggestions()" style="padding:10px 24px;font-size:12px">✨ Analyze my content <span style="opacity:0.85;font-weight:400;font-size:10px">(1 cr)</span></button>'
       + '</div>'
       // Wave 20c — bulk action bar (hidden until 1+ rows selected).
       + '<div id="lgse-suggest-actions" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:12px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:7px;flex-wrap:wrap">'
@@ -2874,7 +2876,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       + '</div>'
       + '<div style="display:flex;gap:8px;margin-bottom:16px">'
       +   '<input id="lgse-research-input" placeholder="e.g. private chef dubai" style="flex:1;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:7px;padding:10px 14px;font-size:12px;color:var(--lgse-t1)">'
-      +   '<button class="lgse-btn-primary" onclick="lgseRunResearch()" style="padding:10px 20px;font-size:12px">Research →</button>'
+      +   '<button class="lgse-btn-primary" onclick="lgseRunResearch()" style="padding:10px 20px;font-size:12px">Research → <span style="opacity:0.85;font-weight:400;font-size:10px">(2 cr)</span></button>'
       + '</div>'
       + '<div id="lgse-research-results"><div style="text-align:center;padding:40px;color:var(--lgse-t3);font-size:11.5px">Enter a keyword above to discover related search terms</div></div>';
     setTimeout(function () {
@@ -3018,7 +3020,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         h += '<td>' + (positions.length > 1 ? sparkline(positions, 60, 20) : '<span style="color:var(--lgse-t3);font-size:10px">—</span>') + '</td>';
         h += '<td class="mono">' + (vol > 0 ? '<span class="lgse-badge ' + volCls + '" style="margin-right:6px">' + volTier + '</span>' + vol.toLocaleString() : '<span style="color:var(--lgse-t3)">—</span>') + '</td>';
         h += '<td style="text-align:right;white-space:nowrap">'
-          + '<button class="lgse-btn-secondary" style="padding:3px 9px;font-size:10px;margin-right:4px" onclick="event.stopPropagation();lgseCheckKeyword(' + (kw.id || 0) + ',this)">Check</button>'
+          + '<button class="lgse-btn-secondary" style="padding:3px 9px;font-size:10px;margin-right:4px" title="Check current SERP position (1 credit)" onclick="event.stopPropagation();lgseCheckKeyword(' + (kw.id || 0) + ',this)">Check <span style="opacity:0.7;font-size:9px">(1cr)</span></button>'
           + '<button class="lgse-btn-secondary" style="padding:3px 9px;font-size:10px" onclick="event.stopPropagation();lgseDelKw(' + (kw.id || 0) + ')">Remove</button>'
         + '</td></tr>';
       });

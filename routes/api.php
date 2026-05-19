@@ -1898,21 +1898,37 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 $map = ['USA' => 2840, 'UK' => 2826, 'UAE' => 2784, 'United States' => 2840, 'United Kingdom' => 2826, 'United Arab Emirates' => 2784];
                 $locCode = $map[$locLabel] ?? 2840;
             }
-            $conn = new \App\Connectors\DataForSeoConnector();
-            $res  = $conn->relatedKeywords($kw, $locCode, 'en', 30);
-            if (empty($res['success'])) {
-                return response()->json([
-                    'success' => false,
-                    'error'   => 'Keyword research is temporarily unavailable. Please try again in a moment.',
-                    'ideas'   => [],
-                ], 200);
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $credits = app(\App\Core\Billing\CreditService::class);
+            $cost = 2;
+            if (!$credits->hasBalance($wsId, $cost)) {
+                return response()->json(['success' => false, 'error' => "Not enough credits — keyword research costs {$cost} credits.", 'required_credits' => $cost, 'ideas' => []], 402);
             }
-            return response()->json([
-                'success' => true,
-                'keyword' => $res['keyword'] ?? $kw,
-                'ideas'   => $res['items'] ?? [],
-                'data'    => $res['items'] ?? [],
-            ]);
+            $ref = $credits->reserve($wsId, $cost, 'seo/keyword_research');
+            try {
+                $conn = new \App\Connectors\DataForSeoConnector();
+                $res  = $conn->relatedKeywords($kw, $locCode, 'en', 30);
+                if (empty($res['success'])) {
+                    $credits->release($wsId, $ref);
+                    return response()->json([
+                        'success' => false,
+                        'error'   => 'Keyword research is temporarily unavailable. Please try again in a moment.',
+                        'ideas'   => [],
+                    ], 200);
+                }
+                $credits->commit($wsId, $ref, $cost);
+                return response()->json([
+                    'success'       => true,
+                    'keyword'       => $res['keyword'] ?? $kw,
+                    'ideas'         => $res['items'] ?? [],
+                    'data'          => $res['items'] ?? [],
+                    'credits_spent' => $cost,
+                ]);
+            } catch (\Throwable $e) {
+                $credits->release($wsId, $ref);
+                \Illuminate\Support\Facades\Log::warning('keywords/research failed', ['error' => $e->getMessage()]);
+                return response()->json(['success' => false, 'error' => 'Keyword research is temporarily unavailable. Please try again in a moment.', 'ideas' => []], 200);
+            }
         });
 
         // 2026-05-19 (Wave 20e) — Position check for a single tracked keyword.
@@ -1969,8 +1985,16 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 $locCode = $map[(string) $locInput] ?? 2840;
             }
 
+            $credits = app(\App\Core\Billing\CreditService::class);
+            $cost = 1;
+            if (!$credits->hasBalance($wsId, $cost)) {
+                return response()->json(['success' => false, 'error' => "Not enough credits — rank check costs {$cost} credit.", 'required_credits' => $cost], 402);
+            }
+            $ref = $credits->reserve($wsId, $cost, 'seo/keyword_check');
+
             $conn = new \App\Connectors\DataForSeoConnector();
             if (!$conn->isConfigured()) {
+                $credits->release($wsId, $ref);
                 return response()->json([
                     'success' => false,
                     'error'   => 'SERP provider not configured. Please contact support.',
@@ -1979,12 +2003,14 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
 
             $res = $conn->trackKeywordRank((string) $kw->keyword, (string) $domain, $locCode);
             if (empty($res['success'])) {
+                $credits->release($wsId, $ref);
                 return response()->json([
                     'success' => false,
                     'error'   => 'Position check failed: ' . ($res['error'] ?? 'unknown'),
                 ], 200);
             }
 
+            $credits->commit($wsId, $ref, $cost);
             $newRank      = $res['position'] ?? null;  // null = not in top N
             $previousRank = $kw->current_rank;
             $rankChange   = null;
@@ -2115,10 +2141,22 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 $locCode = $map[(string) $locInput] ?? 2840;
             }
             $enrichmentNote = null;
+            $creditsSpent = 0;
             if (!empty($suggestions)) {
                 try {
                     $conn = new \App\Connectors\DataForSeoConnector();
                     if ($conn->isConfigured()) {
+                        $credits = app(\App\Core\Billing\CreditService::class);
+                        $cost = 1;
+                        if (!$credits->hasBalance($wsId, $cost)) {
+                            return response()->json([
+                                'success' => false,
+                                'error'   => "Not enough credits — suggestion analysis costs {$cost} credit.",
+                                'required_credits' => $cost,
+                                'suggestions' => $suggestions,
+                            ], 402);
+                        }
+                        $ref = $credits->reserve($wsId, $cost, 'seo/keywords_suggest');
                         $kwList = array_map(fn ($s) => $s['keyword'], $suggestions);
                         $kdRes  = $conn->keywordData($kwList, $locCode, 'en');
                         if (!empty($kdRes['success']) && !empty($kdRes['keywords'])) {
@@ -2144,7 +2182,10 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                                 if ($va !== $vb) return $vb <=> $va;
                                 return ($b['frequency'] ?? 0) <=> ($a['frequency'] ?? 0);
                             });
+                            $credits->commit($wsId, $ref, $cost);
+                            $creditsSpent = $cost;
                         } else {
+                            $credits->release($wsId, $ref);
                             $enrichmentNote = 'enrichment_failed';
                         }
                     } else {
@@ -2159,13 +2200,14 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
             }
 
             return response()->json([
-                'success'     => true,
-                'suggestions' => $suggestions,
-                'total'       => count($suggestions),
-                'derived_from'=> 'seo_content_index',
-                'enrichment'  => $enrichmentNote ?: 'live',
+                'success'       => true,
+                'suggestions'   => $suggestions,
+                'total'         => count($suggestions),
+                'derived_from'  => 'seo_content_index',
+                'enrichment'    => $enrichmentNote ?: 'live',
                 'location_code' => $locCode,
-                'note'        => 'Candidates derived from your indexed content; volume + competition fetched live.',
+                'credits_spent' => $creditsSpent,
+                'note'          => 'Candidates derived from your indexed content; volume + competition fetched live.',
             ]);
         });
         Route::delete('/keywords/{id}', [$c, 'deleteKeyword']);
@@ -3413,6 +3455,13 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // back to the legacy `location` string for older clients.
         Route::post('/competitors/analyze', function (\Illuminate\Http\Request $r) use ($locationFromString) {
             $wsId = (int) $r->attributes->get('workspace_id');
+            $credits = app(\App\Core\Billing\CreditService::class);
+            $cost = 2;
+            if (!$credits->hasBalance($wsId, $cost)) {
+                return response()->json(['success' => false, 'error' => "Not enough credits — competitor analysis costs {$cost} credits.", 'required_credits' => $cost], 402);
+            }
+            $credits->debit($wsId, $cost, 'seo/competitor_serp');
+            $wsId = (int) $r->attributes->get('workspace_id');
             $data = $r->validate([
                 'keyword'       => 'required|string|max:200',
                 'location'      => 'nullable|string|max:80',
@@ -3485,6 +3534,13 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // appear in top-10 competitor titles/snippets but are missing from
         // the user's own ranking content.
         Route::post('/competitors/gaps', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $credits = app(\App\Core\Billing\CreditService::class);
+            $cost = 3;
+            if (!$credits->hasBalance($wsId, $cost)) {
+                return response()->json(['success' => false, 'error' => "Not enough credits — AI gap analysis costs {$cost} credits.", 'required_credits' => $cost], 402);
+            }
+            $credits->debit($wsId, $cost, 'seo/competitor_gaps');
             $wsId = (int) $r->attributes->get('workspace_id');
             $data = $r->validate(['keyword' => 'required|string|max:200']);
             $keyword = $data['keyword'];
@@ -3559,6 +3615,13 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // Body: { your_url: string, keyword: string }
         // Compares the user's page to the top-10 SERP for that keyword.
         Route::post('/competitors/compare', function (\Illuminate\Http\Request $r) use ($locationFromString) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $credits = app(\App\Core\Billing\CreditService::class);
+            $cost = 2;
+            if (!$credits->hasBalance($wsId, $cost)) {
+                return response()->json(['success' => false, 'error' => "Not enough credits — competitor compare costs {$cost} credits.", 'required_credits' => $cost], 402);
+            }
+            $credits->debit($wsId, $cost, 'seo/competitor_serp');
             $wsId = (int) $r->attributes->get('workspace_id');
             $data = $r->validate([
                 'your_url' => 'required|string|max:500',
