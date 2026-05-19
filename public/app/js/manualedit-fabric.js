@@ -634,7 +634,7 @@ window.meAiGenerate = async function() {
   const btn = document.getElementById('me-ai-gen-btn');
   const status = document.getElementById('me-ai-status');
   btn.disabled = true; btn.textContent = 'Generating...';
-  status.textContent = 'Calling DALL-E 3 — 10-30 seconds...';
+  status.textContent = 'Calling LevelUpGrowth Image 3 — 10-30 seconds...';
   try {
     const d = await api('POST', '/generate', { action:'generate_image', prompt }, CREATIVE_API);
     const url = d.data?.url || d.url;

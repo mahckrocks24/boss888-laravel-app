@@ -1770,7 +1770,7 @@ console.log('[LevelUp] marketing engine v2.1.0 loaded');
         };
         holder.appendChild(el);
       });
-      if (!res.subjects || res.subjects.length === 0) _ebToast('AI returned no options (check DeepSeek key)', 'warning');
+      if (!res.subjects || res.subjects.length === 0) _ebToast('AI returned no options (check LevelUpGrowth LLM key)', 'warning');
     } catch(e){ _ebToast('Subject generate failed: ' + e.message, 'error'); }
     btn.disabled = false; btn.textContent = prev;
   }

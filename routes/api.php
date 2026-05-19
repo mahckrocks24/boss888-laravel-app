@@ -1884,6 +1884,36 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
         // Keywords (3)
         Route::get('/keywords', [$c, 'listKeywords']);
         Route::post('/keywords', [$c, 'addKeyword']);
+
+        // 2026-05-19 (Wave 20a) — Keyword research: seed keyword in, related keywords + volume/CPC/difficulty out.
+        Route::post('/keywords/research', function (\Illuminate\Http\Request $r) {
+            $kw       = trim((string) $r->input('keyword', ''));
+            $locCode  = (int) $r->input('location_code', 0);
+            $locLabel = (string) $r->input('location', '');
+            if ($kw === '') {
+                return response()->json(['success' => false, 'error' => 'Keyword is required', 'ideas' => []], 422);
+            }
+            // Backwards-compat: accept either location_code (int) or location (name).
+            if (!$locCode) {
+                $map = ['USA' => 2840, 'UK' => 2826, 'UAE' => 2784, 'United States' => 2840, 'United Kingdom' => 2826, 'United Arab Emirates' => 2784];
+                $locCode = $map[$locLabel] ?? 2840;
+            }
+            $conn = new \App\Connectors\DataForSeoConnector();
+            $res  = $conn->relatedKeywords($kw, $locCode, 'en', 30);
+            if (empty($res['success'])) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'Keyword research is temporarily unavailable. Please try again in a moment.',
+                    'ideas'   => [],
+                ], 200);
+            }
+            return response()->json([
+                'success' => true,
+                'keyword' => $res['keyword'] ?? $kw,
+                'ideas'   => $res['items'] ?? [],
+                'data'    => $res['items'] ?? [],
+            ]);
+        });
         // 2026-05-13 — Keyword suggestions from indexed content. MUST register
         // BEFORE /keywords/{id} or Laravel matches "suggestions" as {id} and
         // routes to DELETE → 405. Derives from seo_content_index (title + h1)
@@ -3288,7 +3318,7 @@ Route::middleware(['auth.jwt', 'traffic.defense'])->group(function () {
                 'difficulty'      => $result['difficulty'] ?? null,
                 'source'          => $result['source'] ?? 'dataforseo',
                 'message'         => empty($competitors)
-                    ? 'No SERP data available right now — DataForSEO may be down or this keyword has no public results.'
+                    ? 'No SERP data available right now — our SEO data provider may be temporarily unavailable, or this keyword has no public results.'
                     : null,
             ]);
         });
@@ -7780,7 +7810,7 @@ HTMLSCRIPT;
         return response()->json([
             'workspace_id' => $wsId,
             'providers' => [
-                'image' => ['provider' => 'dall-e-3', 'configured' => true],
+                'image' => ['provider' => 'levelupgrowth_image', 'configured' => true],
                 'video' => ['provider' => 'mock', 'configured' => false],
             ],
         ]);
@@ -12077,7 +12107,7 @@ Route::middleware(['api.key'])->prefix('connector')->group(function () {
         if ($extra) { $prompt .= "EXTRA INSTRUCTIONS: {$extra}\n"; }
         $prompt .= "\nSEO CONTEXT (use to keep content relevant and non-duplicate):\n{$seoCtx}\n";
         $prompt .= "\nReturn ONLY valid JSON (no prose, no markdown fence):\n";
-        $prompt .= '{"title":"...","content":"...full HTML article body...","meta_title":"...","meta_description":"...","image_prompt":"...short DALL-E prompt for featured image..."}';
+        $prompt .= '{"title":"...","content":"...full HTML article body...","meta_title":"...","meta_description":"...","image_prompt":"...short image prompt for featured image..."}';
 
         $apiKey = config('services.deepseek.api_key') ?: env('DEEPSEEK_API_KEY');
         try {

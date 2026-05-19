@@ -1237,7 +1237,7 @@ function _crViewSettings() {
             '<div class="cr-field-group">' +
                 '<label class="cr-label">Video Engine API Key <span style="font-size:10px;background:rgba(0,229,168,.15);color:var(--ac);padding:2px 7px;border-radius:10px;font-weight:600">PRIMARY</span></label>' +
                 '<div class="cr-input-row">' +
-                    '<input id="cr-set-minimax-key" class="cr-input" type="password" placeholder="Enter MiniMax API key…" autocomplete="off">' +
+                    '<input id="cr-set-minimax-key" class="cr-input" type="password" placeholder="Enter Video AI key…" autocomplete="off">' +
                     '<button class="cr-btn cr-btn-sm" onclick="_crTestMiniMaxKey()">Test</button>' +
                 '</div>' +
                 '<div id="cr-test-result-minimax" style="margin-top:5px;font-size:11px;color:var(--t3)"></div>' +

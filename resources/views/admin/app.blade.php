@@ -2722,7 +2722,7 @@
     // ── Videos tab ──
     // Filters the media library to mime_type=video/*. The creative engine
     // dual-write in CreativeService::completeAsset() lands completed
-    // MiniMax / Runway generations here automatically. Still useful when
+    // LevelUpGrowth Video / Runway generations here automatically. Still useful when
     // empty — renders an explainer so admins know where new videos will
     // appear.
     async function _mediaLoadVideos() {
@@ -2732,13 +2732,13 @@
       var res = await api('/media?type=video&per_page=60');
       if (!res || !res.success) { body.innerHTML = '<div class="loading">Failed to load videos</div>'; return; }
       var items = res.data || [];
-      var note = '<div style="background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--p);padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--muted);border-radius:6px">Videos from the Creative engine (MiniMax, Runway, and future providers) appear here once generation completes. Every completed asset is dual-written into the <code>media</code> table, so new videos surface automatically \u2014 no backfill required.</div>';
+      var note = '<div style="background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--p);padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--muted);border-radius:6px">Videos from the Creative engine (LevelUpGrowth Video, Runway, and future providers) appear here once generation completes. Every completed asset is dual-written into the <code>media</code> table, so new videos surface automatically \u2014 no backfill required.</div>';
       if (!items.length) {
         body.innerHTML = note +
           '<div style="padding:56px 24px;text-align:center;color:var(--muted);background:var(--s1);border:1px dashed var(--border);border-radius:10px">' +
             '<div style="font-size:40px;margin-bottom:12px;opacity:.6">\u{1F3AC}</div>' +
             '<div style="font-weight:600;color:var(--text);font-size:15px;margin-bottom:8px">No videos yet</div>' +
-            '<div style="max-width:500px;margin:0 auto;line-height:1.65">No completed video generations in the <code>media</code> table yet. Videos will appear here after the Creative engine produces them via MiniMax or Runway. The dual-write hook is live \u2014 the next successful generation will land here automatically.</div>' +
+            '<div style="max-width:500px;margin:0 auto;line-height:1.65">No completed video generations in the <code>media</code> table yet. Videos will appear here after the Creative engine produces them via LevelUpGrowth Video or Runway. The dual-write hook is live \u2014 the next successful generation will land here automatically.</div>' +
           '</div>';
         return;
       }
@@ -2816,7 +2816,7 @@
       }
     };
 
-    // ── Generate modal (T3.8) — DALL-E 3 admin-side image generation ──
+    // ── Generate modal (T3.8) — LevelUpGrowth Image 3 admin-side image generation ──
     // Shape mirrors _mediaOpenUpload but submits JSON to /api/admin/media/generate.
     // T3.1D backend already inlines thumbnail generation, so the new image
     // appears in the grid with thumbnail on the post-success refresh.
@@ -2872,7 +2872,7 @@
         '<div id="mg-modal" data-busy="0" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target.id===\'mg-modal\' && event.currentTarget.dataset.busy!==\'1\')_mediaCloseGenerate()">' +
           '<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;width:520px;max-width:100%;max-height:90vh;overflow-y:auto">' +
             '<div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
-              '<div style="font-weight:600;font-size:15px">✦ Generate Image (DALL-E 3)</div>' +
+              '<div style="font-weight:600;font-size:15px">✦ Generate Image (LevelUpGrowth Image 3)</div>' +
               '<button type="button" onclick="_mediaCloseGenerate()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>' +
             '</div>' +
             '<form id="mg-form" onsubmit="_mediaSubmitGenerate(event)" style="padding:22px;display:flex;flex-direction:column;gap:14px">' +
@@ -3199,7 +3199,7 @@
         <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
           <select id="media-filter-source" style="background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:12px">
             <option value="">All Sources</option>
-            <option value="dalle">DALL-E</option>
+            <option value="dalle">LevelUpGrowth Image</option>
             <option value="upload">Upload</option>
             <option value="import">Import</option>
           </select>

@@ -381,6 +381,89 @@ class DataForSeoConnector
         ];
     }
 
+    /**
+     * Related keywords for a seed — used for the Keywords Research tool.
+     *
+     * Endpoint: POST /v3/dataforseo_labs/google/related_keywords/live
+     * Returns a list of semantically related keywords with their search volume,
+     * CPC, and competition_index (used to derive a difficulty label).
+     *
+     * Response shape (normalized):
+     *   - success bool
+     *   - keyword string (the seed)
+     *   - items  array of {keyword, volume, cpc, competition, difficulty}
+     */
+    public function relatedKeywords(string $keyword, int $locationCode = self::LOCATION_UAE, string $language = 'en', int $limit = 30): array
+    {
+        if (!$this->isConfigured()) {
+            return ['success' => false, 'error' => 'serp_provider_not_configured'];
+        }
+
+        $payload = [[
+            'keyword'       => $keyword,
+            'location_code' => $locationCode,
+            'language_code' => $language,
+            'depth'         => 1,
+            'limit'         => max(1, min(100, $limit)),
+            'include_seed_keyword' => true,
+        ]];
+
+        try {
+            $resp = $this->request('POST', '/v3/dataforseo_labs/google/related_keywords/live', $payload);
+        } catch (ConnectionException $e) {
+            Log::warning('DataForSeoConnector::relatedKeywords connection failed', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'connection_failed: ' . $e->getMessage()];
+        }
+
+        $body = $resp->json() ?? [];
+
+        if (!$resp->successful() || (isset($body['status_code']) && $body['status_code'] !== 20000)) {
+            $apiMessage = $body['status_message'] ?? null;
+            $apiCode    = $body['status_code'] ?? null;
+            return ['success' => false, 'error' => $apiMessage ? "serp_provider_{$apiCode}: {$apiMessage}" : 'http_' . $resp->status()];
+        }
+
+        $task = $body['tasks'][0] ?? null;
+        if (!$task || ($task['status_code'] ?? 0) !== 20000) {
+            return ['success' => false, 'error' => $task['status_message'] ?? 'task_failed'];
+        }
+
+        $result = $task['result'][0] ?? [];
+        $items  = $result['items'] ?? [];
+
+        $rows = [];
+        foreach ($items as $item) {
+            $kwData = $item['keyword_data'] ?? [];
+            $kw     = $kwData['keyword'] ?? null;
+            if (!$kw) continue;
+            $kwInfo = $kwData['keyword_info'] ?? [];
+            $volume = $kwInfo['search_volume'] ?? null;
+            $cpc    = isset($kwInfo['cpc']) ? round((float) $kwInfo['cpc'], 2) : null;
+            $compIdx = $kwInfo['competition_index'] ?? null;
+
+            // Derive difficulty label from competition_index (0-100).
+            $difficulty = null;
+            if ($compIdx !== null) {
+                $difficulty = $compIdx >= 67 ? 'hard' : ($compIdx >= 34 ? 'medium' : 'easy');
+            }
+
+            $rows[] = [
+                'keyword'           => $kw,
+                'volume'            => $volume,
+                'cpc'               => $cpc,
+                'competition'       => $kwInfo['competition'] ?? null,
+                'competition_index' => $compIdx,
+                'difficulty'        => $difficulty,
+            ];
+        }
+
+        return [
+            'success' => true,
+            'keyword' => $keyword,
+            'items'   => $rows,
+        ];
+    }
+
         /**
      * Internal HTTP wrapper — shared auth + headers + timeout.
      */

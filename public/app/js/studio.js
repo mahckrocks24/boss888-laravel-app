@@ -3504,7 +3504,7 @@
       chat.querySelectorAll('.ai-loading').forEach(function(n){ n.remove(); });
       if (!data.success) {
         var errMsg = data.error === 'api_key_missing'
-          ? 'AI requires a DeepSeek API key in .env.'
+          ? 'AI requires a LevelUpGrowth LLM API key in .env.'
           : ('Arthur failed: ' + (data.message || data.error || 'unknown'));
         _stAiBubble(errMsg, 'ai');
         return;

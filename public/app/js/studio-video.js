@@ -1318,7 +1318,7 @@
   // ── AI tab ────────────────────────────────────────────────
   function _renderAITab(body){
     body.innerHTML =
-      '<div class="sv-tab-head">Generate with AI (MiniMax)</div>' +
+      '<div class="sv-tab-head">Generate with AI (LevelUpGrowth Video)</div>' +
       '<div class="sv-field"><label>Prompt</label>' +
         '<textarea id="sv-ai-prompt" rows="4" placeholder="A cinematic close-up of a coffee being poured, warm light">A cinematic close-up of a coffee being poured, warm golden light</textarea></div>' +
       '<div class="sv-field"><label>Duration</label>' +
@@ -3870,7 +3870,7 @@
 
   function _svTabAi(h){
     h.innerHTML =
-      '<div class="sv-empty">MiniMax / Arthur AI video generation ships in Phase 4.</div>' +
+      '<div class="sv-empty">LevelUpGrowth Video / Arthur AI video generation ships in Phase 4.</div>' +
       '<textarea rows="3" class="sv-ai-prompt" placeholder="e.g. cinematic shot of a sunrise over mountains..." disabled></textarea>' +
       '<button class="sv-btn-wide" disabled>\u2726 Generate Video (Phase 4)</button>';
   }

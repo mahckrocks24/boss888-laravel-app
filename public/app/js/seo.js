@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.13.0-wave19.1-all-countries loaded — Competitors dropdown now has all DataForSEO countries (location_code int values)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.14.0-wave20 loaded — Keyword Research wired up; Keywords tab now has all countries; user-facing vendor scrub'); } catch(_e) {}
 
 var _seoApi = async (method, path, body) => {
   // Build headers with dual-mode auth (mirrors _luFetch contract):
@@ -2480,28 +2480,121 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // selection is forwarded as a query param so the data layer can adopt it
   // without a frontend change. SERP fetch + research panel require a
   // backend that doesn't exist on staging yet — surfaced honestly below.
+  // Wave 20a — Keywords tab uses the same all-countries list as Competitors.
+  // {c: location_code int (sent to backend), v: display name, l: flag-label}.
   var LGSE_KW_COUNTRIES = [
-    { v: 'AE', l: 'UAE' },     { v: 'SA', l: 'Saudi Arabia' },
-    { v: 'EG', l: 'Egypt' },   { v: 'DE', l: 'Germany' },
-    { v: 'AT', l: 'Austria' }, { v: 'CH', l: 'Switzerland' },
-    { v: 'IN', l: 'India' },   { v: 'SG', l: 'Singapore' },
-    { v: 'GB', l: 'UK' },      { v: 'US', l: 'USA' }
+    { c: 2840, v: 'United States',        l: '🇺🇸 USA' },
+    { c: 2826, v: 'United Kingdom',       l: '🇬🇧 UK' },
+    { c: 2784, v: 'United Arab Emirates', l: '🇦🇪 UAE' },
+    { c: 2682, v: 'Saudi Arabia',         l: '🇸🇦 Saudi Arabia' },
+    { c: 2818, v: 'Egypt',                l: '🇪🇬 Egypt' },
+    { c: 2276, v: 'Germany',              l: '🇩🇪 Germany' },
+    { c: 2040, v: 'Austria',              l: '🇦🇹 Austria' },
+    { c: 2756, v: 'Switzerland',          l: '🇨🇭 Switzerland' },
+    { c: 2356, v: 'India',                l: '🇮🇳 India' },
+    { c: 2702, v: 'Singapore',            l: '🇸🇬 Singapore' },
+    { c: 2124, v: 'Canada',               l: '🇨🇦 Canada' },
+    { c: 2036, v: 'Australia',            l: '🇦🇺 Australia' },
+    { c: 2250, v: 'France',               l: '🇫🇷 France' },
+    { c: 2380, v: 'Italy',                l: '🇮🇹 Italy' },
+    { c: 2724, v: 'Spain',                l: '🇪🇸 Spain' },
+    { c: 2528, v: 'Netherlands',          l: '🇳🇱 Netherlands' },
+    { c: 2076, v: 'Brazil',               l: '🇧🇷 Brazil' },
+    { c: 2484, v: 'Mexico',               l: '🇲🇽 Mexico' },
+    { c: 2392, v: 'Japan',                l: '🇯🇵 Japan' },
+    { c: 2410, v: 'South Korea',          l: '🇰🇷 South Korea' },
+    { c: 2008, v: 'Albania',              l: '🇦🇱 Albania' },
+    { c: 2012, v: 'Algeria',              l: '🇩🇿 Algeria' },
+    { c: 2032, v: 'Argentina',            l: '🇦🇷 Argentina' },
+    { c: 2051, v: 'Armenia',              l: '🇦🇲 Armenia' },
+    { c: 2031, v: 'Azerbaijan',           l: '🇦🇿 Azerbaijan' },
+    { c: 2048, v: 'Bahrain',              l: '🇧🇭 Bahrain' },
+    { c: 2050, v: 'Bangladesh',           l: '🇧🇩 Bangladesh' },
+    { c: 2056, v: 'Belgium',              l: '🇧🇪 Belgium' },
+    { c: 2068, v: 'Bolivia',              l: '🇧🇴 Bolivia' },
+    { c: 2100, v: 'Bulgaria',             l: '🇧🇬 Bulgaria' },
+    { c: 2152, v: 'Chile',                l: '🇨🇱 Chile' },
+    { c: 2170, v: 'Colombia',             l: '🇨🇴 Colombia' },
+    { c: 2188, v: 'Costa Rica',           l: '🇨🇷 Costa Rica' },
+    { c: 2191, v: 'Croatia',              l: '🇭🇷 Croatia' },
+    { c: 2196, v: 'Cyprus',               l: '🇨🇾 Cyprus' },
+    { c: 2203, v: 'Czechia',              l: '🇨🇿 Czechia' },
+    { c: 2208, v: 'Denmark',              l: '🇩🇰 Denmark' },
+    { c: 2218, v: 'Ecuador',              l: '🇪🇨 Ecuador' },
+    { c: 2222, v: 'El Salvador',          l: '🇸🇻 El Salvador' },
+    { c: 2233, v: 'Estonia',              l: '🇪🇪 Estonia' },
+    { c: 2246, v: 'Finland',              l: '🇫🇮 Finland' },
+    { c: 2268, v: 'Georgia',              l: '🇬🇪 Georgia' },
+    { c: 2300, v: 'Greece',               l: '🇬🇷 Greece' },
+    { c: 2320, v: 'Guatemala',            l: '🇬🇹 Guatemala' },
+    { c: 2340, v: 'Honduras',             l: '🇭🇳 Honduras' },
+    { c: 2344, v: 'Hong Kong',            l: '🇭🇰 Hong Kong' },
+    { c: 2348, v: 'Hungary',              l: '🇭🇺 Hungary' },
+    { c: 2352, v: 'Iceland',              l: '🇮🇸 Iceland' },
+    { c: 2360, v: 'Indonesia',            l: '🇮🇩 Indonesia' },
+    { c: 2368, v: 'Iraq',                 l: '🇮🇶 Iraq' },
+    { c: 2372, v: 'Ireland',              l: '🇮🇪 Ireland' },
+    { c: 2376, v: 'Israel',               l: '🇮🇱 Israel' },
+    { c: 2400, v: 'Jordan',               l: '🇯🇴 Jordan' },
+    { c: 2398, v: 'Kazakhstan',           l: '🇰🇿 Kazakhstan' },
+    { c: 2404, v: 'Kenya',                l: '🇰🇪 Kenya' },
+    { c: 2414, v: 'Kuwait',               l: '🇰🇼 Kuwait' },
+    { c: 2417, v: 'Kyrgyzstan',           l: '🇰🇬 Kyrgyzstan' },
+    { c: 2428, v: 'Latvia',               l: '🇱🇻 Latvia' },
+    { c: 2422, v: 'Lebanon',              l: '🇱🇧 Lebanon' },
+    { c: 2440, v: 'Lithuania',            l: '🇱🇹 Lithuania' },
+    { c: 2442, v: 'Luxembourg',           l: '🇱🇺 Luxembourg' },
+    { c: 2458, v: 'Malaysia',             l: '🇲🇾 Malaysia' },
+    { c: 2470, v: 'Malta',                l: '🇲🇹 Malta' },
+    { c: 2504, v: 'Morocco',              l: '🇲🇦 Morocco' },
+    { c: 2554, v: 'New Zealand',          l: '🇳🇿 New Zealand' },
+    { c: 2566, v: 'Nigeria',              l: '🇳🇬 Nigeria' },
+    { c: 2578, v: 'Norway',               l: '🇳🇴 Norway' },
+    { c: 2512, v: 'Oman',                 l: '🇴🇲 Oman' },
+    { c: 2586, v: 'Pakistan',             l: '🇵🇰 Pakistan' },
+    { c: 2591, v: 'Panama',               l: '🇵🇦 Panama' },
+    { c: 2604, v: 'Peru',                 l: '🇵🇪 Peru' },
+    { c: 2608, v: 'Philippines',          l: '🇵🇭 Philippines' },
+    { c: 2616, v: 'Poland',               l: '🇵🇱 Poland' },
+    { c: 2620, v: 'Portugal',             l: '🇵🇹 Portugal' },
+    { c: 2634, v: 'Qatar',                l: '🇶🇦 Qatar' },
+    { c: 2642, v: 'Romania',              l: '🇷🇴 Romania' },
+    { c: 2643, v: 'Russia',               l: '🇷🇺 Russia' },
+    { c: 2688, v: 'Serbia',               l: '🇷🇸 Serbia' },
+    { c: 2703, v: 'Slovakia',             l: '🇸🇰 Slovakia' },
+    { c: 2705, v: 'Slovenia',             l: '🇸🇮 Slovenia' },
+    { c: 2710, v: 'South Africa',         l: '🇿🇦 South Africa' },
+    { c: 2144, v: 'Sri Lanka',            l: '🇱🇰 Sri Lanka' },
+    { c: 2752, v: 'Sweden',               l: '🇸🇪 Sweden' },
+    { c: 2158, v: 'Taiwan',               l: '🇹🇼 Taiwan' },
+    { c: 2764, v: 'Thailand',             l: '🇹🇭 Thailand' },
+    { c: 2788, v: 'Tunisia',              l: '🇹🇳 Tunisia' },
+    { c: 2792, v: 'Turkey',               l: '🇹🇷 Turkey' },
+    { c: 2804, v: 'Ukraine',              l: '🇺🇦 Ukraine' },
+    { c: 2858, v: 'Uruguay',              l: '🇺🇾 Uruguay' },
+    { c: 2860, v: 'Uzbekistan',           l: '🇺🇿 Uzbekistan' },
+    { c: 2862, v: 'Venezuela',            l: '🇻🇪 Venezuela' },
+    { c: 2704, v: 'Vietnam',              l: '🇻🇳 Vietnam' },
+    { c: 2887, v: 'Yemen',                l: '🇾🇪 Yemen' }
   ];
 
   function lgseGetKwCountry() {
-    return localStorage.getItem('lgse_kw_country') || 'AE';
+    // Wave 20a — returns int location_code (DataForSEO compatible). Default 2840 = US.
+    var v = parseInt(localStorage.getItem('lgse_kw_country_code') || '0', 10);
+    return v > 0 ? v : 2840;
   }
 
   window.lgseSetKwCountry = function (v) {
     if (!v) return;
-    localStorage.setItem('lgse_kw_country', v);
+    localStorage.setItem('lgse_kw_country_code', String(parseInt(v, 10) || 2840));
     loadKeywords();
   };
 
   function renderKeywords(el) {
     var country = lgseGetKwCountry();
     var countryOpts = LGSE_KW_COUNTRIES.map(function (c) {
-      return '<option value="' + c.v + '"' + (c.v === country ? ' selected' : '') + '>' + esc(c.l) + '</option>';
+      var code = c.c || c.v;
+      return '<option value="' + code + '"' + (code === country ? ' selected' : '') + '>' + esc(c.l || c.v) + '</option>';
     }).join('');
     el.innerHTML = pageTitle('Keywords', 'Track positions, discover keywords from your content, and research new opportunities.')
       + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
@@ -2573,7 +2666,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     content.innerHTML =
         '<div style="background:linear-gradient(90deg,rgba(108,92,231,.08) 0%,transparent 100%);border-left:2px solid #6C5CE7;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px">'
       +   '<div style="font-size:9px;font-weight:600;color:#6C5CE7;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">How this works</div>'
-      +   '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.65">We analyze your indexed pages and extract the most important words and phrases. Then we check their search volume using DataForSEO. The result is a list of keywords your content is already targeting — ranked by how many people search for them each month.</div>'
+      +   '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.65">We analyze your indexed pages and extract the most important words and phrases. Then we check their search volume using LevelUpGrowth SEO. The result is a list of keywords your content is already targeting — ranked by how many people search for them each month.</div>'
       + '</div>'
       + '<div style="text-align:center;padding:16px 0">'
       +   '<button id="lgse-suggest-btn" class="lgse-btn-primary" onclick="lgseFetchSuggestions()" style="padding:10px 24px;font-size:12px">✨ Analyze my content</button>'
@@ -2620,7 +2713,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     }).catch(function () {
       if (btn) { btn.disabled = false; btn.textContent = '✨ Analyze my content'; }
       var list = document.getElementById('lgse-suggestions-list');
-      if (list) list.innerHTML = emptyState('⚠', 'Analysis failed', 'DataForSEO may be unavailable. Try again in a moment.');
+      if (list) list.innerHTML = emptyState('⚠', 'Analysis failed', 'Keyword data is temporarily unavailable. Try again in a moment.');
     });
   };
 
@@ -2659,7 +2752,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var results = document.getElementById('lgse-research-results');
     if (results) results.innerHTML = '<div style="text-align:center;padding:20px;color:var(--lgse-t3);font-size:11.5px">⏳ Researching "' + esc(kw) + '"…</div>';
     var country = lgseGetKwCountry();
-    api('POST', '/keywords/research', { keyword: kw, location: country }).then(function (d) {
+    var locLabel = '';
+    try {
+      var match = LGSE_KW_COUNTRIES.filter(function (c) { return (c.c || c.v) === country; })[0];
+      if (match) locLabel = match.v;
+    } catch (_e) {}
+    api('POST', '/keywords/research', { keyword: kw, location_code: country, location: locLabel }).then(function (d) {
       var items = (d && (d.data || d.ideas)) || [];
       if (!results) return;
       if (!items.length) {
@@ -2687,7 +2785,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       h += '</tbody></table>';
       results.innerHTML = h;
     }).catch(function () {
-      if (results) results.innerHTML = emptyState('⚠', 'Research failed', 'DataForSEO may be unavailable. Try again in a moment.');
+      if (results) results.innerHTML = emptyState('⚠', 'Research failed', 'Keyword data is temporarily unavailable. Try again in a moment.');
     });
   };
   window.lgseAddKw = function () {
@@ -5775,7 +5873,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     box.innerHTML = '<div style="padding:14px;color:var(--lgse-t3);font-size:11px">Analyzing…</div>';
     api('POST', '/competitors/analyze', { keyword: keyword, location_code: locCode, location: locLabel }).then(function (d) {
       var arr = (d && d.competitors) || [];
-      if (arr.length === 0) { box.innerHTML = emptyState('·', 'No SERP data', 'DataForSEO may not be configured for this workspace.'); return; }
+      if (arr.length === 0) { box.innerHTML = emptyState('·', 'No SERP data', 'LevelUpGrowth SEO is not configured for this workspace.'); return; }
       // Persist results + keyword so the gap → Sarah flow can reference them.
       window._lgseCmpState.results = arr;
       window._lgseCmpState.keyword = keyword;

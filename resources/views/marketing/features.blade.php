@@ -85,8 +85,8 @@
     <h2 style="font-size:clamp(24px,3vw,36px);font-weight:800;margin-bottom:14px">Images, videos, and brand consistency — automatically</h2>
     <p style="color:var(--muted);font-size:15px;margin-bottom:16px">Every creative output runs through your brand kit and creative blueprint before generation. "LevelUp AI" powers all visuals — no provider names leaked to users.</p>
     <div class="feature-list">
-      <div class="feature-row"><span class="feature-row-icon">✓</span>AI image generation (gpt-image-1)</div>
-      <div class="feature-row"><span class="feature-row-icon">✓</span>AI video generation — MiniMax Hailuo-02 (Pro+)</div>
+      <div class="feature-row"><span class="feature-row-icon">✓</span>AI image generation (LevelUpGrowth Image)</div>
+      <div class="feature-row"><span class="feature-row-icon">✓</span>AI video generation — LevelUpGrowth Video (Pro+)</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>Brand kit: colors, fonts, voice, visual style</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>Creative Intelligence Memory System (CIMS)</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>Blueprint strategy injected into every generation</div>

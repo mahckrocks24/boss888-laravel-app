@@ -59,7 +59,7 @@
     ['How does Sarah know what to do?', 'When you onboard (industry, goal, location, website URL), Sarah automatically runs research: keyword analysis, competitor audit, site health check. She then calls a strategy meeting with your team, where each specialist contributes their expert analysis. The result is a 30/60/90-day plan that she presents to you for approval.'],
     ['Can I choose which agents work on my account?', 'On Growth and above, you select which specialists join your team (up to your plan\'s agent limit). Sarah is always included and cannot be removed. You can switch specialists at any time.'],
     ['Are the agents real AI or just automated templates?', 'Real AI. Each agent\'s contribution to a strategy meeting is a genuine LLM call with that agent\'s specific system prompt, domain knowledge, and your workspace context. No pre-written templates.'],
-    ['What AI models power LevelUp?', 'LevelUp uses DeepSeek (primary text), OpenAI GPT-4o (vision + reasoning), gpt-image-1 (images), and MiniMax Hailuo-02 (video). All outputs are presented as "LevelUp AI" — no provider names are shown to you.'],
+    ['What AI models power LevelUp?', 'LevelUp uses LevelUpGrowth LLM (primary text), LevelUpGrowth LLM (vision + reasoning), LevelUpGrowth Image (images), and LevelUpGrowth Video (video). All outputs are presented as "LevelUp AI" — no provider names are shown to you.'],
   ] as $faq)
   <div class="faq-item" onclick="toggle(this)">
     <div class="faq-q">{{ $faq[0] }}<span class="faq-icon">+</span></div>
