@@ -370,7 +370,7 @@ class WriteService
         $topic   = $params['topic'] ?? $params['title'] ?? '';
         $type    = $params['type'] ?? 'blog_post';
         $tone    = $params['tone'] ?? 'professional';
-        $length  = $params['length'] ?? 1500;
+        $length  = $params['length'] ?? 1100;  // Wave 35b: house standard 1000-1200 words
         $keyword = $params['target_keyword'] ?? $params['keyword'] ?? '';
 
         // ── Creative blueprint (still routes through CreativeService for R5) ─

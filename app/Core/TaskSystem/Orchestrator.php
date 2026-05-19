@@ -491,6 +491,14 @@ class Orchestrator
             'beforeafter/create_design'  => fn() => app(\App\Engines\BeforeAfter\Services\BeforeAfterService::class)
                                              ->createDesign($wsId, $params),
 
+            // ── Creative (Wave 35b: previously had no async dispatch map entries) ──
+            'creative/generate_image'      => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
+                                             ->generateImage($wsId, $params),
+            'creative/generate_image_mini' => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
+                                             ->generateImage($wsId, array_merge($params, ['quality' => 'mini'])),
+            'creative/generate_image_high' => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
+                                             ->generateImage($wsId, array_merge($params, ['quality' => 'high'])),
+
             // ── ManualEdit ────────────────────────────────────────────────────
             'manualedit/create_canvas'   => fn() => app(\App\Engines\ManualEdit\Services\ManualEditService::class)
                                              ->createCanvas($wsId, $params),
@@ -499,6 +507,30 @@ class Orchestrator
             'traffic/create_rule'        => fn() => ['entity_id' => app(\App\Engines\TrafficDefense\Services\TrafficDefenseService::class)
                                              ->createRule($wsId, $params)],
         ];
+
+        // ── Wave 35b: parent_task_id passthrough ─────────────────────────────
+        // When a task has a parent (e.g., generate_meta is the child of a
+        // completed write_article task), pull the parent's result_json so
+        // article_id / site_url / etc. flow into the child's params.
+        if (!empty($task->parent_task_id)) {
+            try {
+                $parent = \Illuminate\Support\Facades\DB::table('tasks')
+                    ->where('id', $task->parent_task_id)
+                    ->where('status', 'completed')
+                    ->first(['result_json']);
+                if ($parent && $parent->result_json) {
+                    $parentResult = json_decode($parent->result_json, true);
+                    $inherit = $parentResult['data'] ?? $parentResult ?? [];
+                    foreach (['article_id', 'website_id', 'page_id', 'site_url', 'image_url', 'image_alt'] as $k) {
+                        if (!isset($params[$k]) && isset($inherit[$k])) {
+                            $params[$k] = $inherit[$k];
+                        }
+                    }
+                }
+            } catch (\Throwable $ptErr) {
+                \Illuminate\Support\Facades\Log::warning('[Orchestrator] parent_task_id resolution failed', ['task_id' => $task->id, 'error' => $ptErr->getMessage()]);
+            }
+        }
 
         // ── Lookup ────────────────────────────────────────────────────────────
         $key = "{$task->engine}/{$action}";
