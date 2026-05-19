@@ -8790,15 +8790,38 @@ HTMLSCRIPT;
                     default => null,
                 };
             }
-            $total = $completed + $failed;
-            $successRate = $total > 0 ? round(($completed / $total) * 100) : 0;
+            // Wave 38d — Sarah (and other DMMs) don't execute, they delegate.
+            // Her dashboard counts must reflect tasks SHE CREATED (delegated),
+            // not tasks where she's the assignee.
+            $isOrchestrator = ($slug === 'sarah' || $a->is_dmm ?? false);
+            if ($isOrchestrator) {
+                $delegatedQ = \App\Models\Task::where('workspace_id', $wsId)
+                    ->whereRaw("JSON_EXTRACT(payload_json, '$.created_via') IN ('\"sarah_chat\"', '\"sarah_proactive\"')");
+                // Wave 38d — replace per-agent stats with delegation rollup.
+                $pending = (clone $delegatedQ)->whereIn('status', ['pending','queued','awaiting_approval','blocked'])->count();
+                $executing = (clone $delegatedQ)->whereIn('status', ['running','verifying'])->count();
+                $completed = (clone $delegatedQ)->where('status', 'completed')->count();
+                $failed = (clone $delegatedQ)->whereIn('status', ['failed','cancelled','degraded'])->count();
+                $total = $completed + $failed;
+                $successRate = $total > 0 ? round(($completed / $total) * 100) : 0;
+            } else {
+                $total = $completed + $failed;
+                $successRate = $total > 0 ? round(($completed / $total) * 100) : 0;
+            }
+
             // Recent tasks for this agent
-            $recentTasks = \App\Models\Task::where('workspace_id', $wsId)
+            $recentTasks = $isOrchestrator
+                ? \App\Models\Task::where('workspace_id', $wsId)
+                    ->whereRaw("JSON_EXTRACT(payload_json, '$.created_via') IN ('\"sarah_chat\"', '\"sarah_proactive\"')")
+                    ->orderByDesc('created_at')
+                    ->limit(10)
+                    ->get()
+                : \App\Models\Task::where('workspace_id', $wsId)
                 ->whereRaw("JSON_CONTAINS(assigned_agents_json, ?)", ['"'.$slug.'"'])
                 ->orderByDesc('created_at')
                 ->limit(10)
                 ->get()
-                ->map(function($t) {
+                ->map(function($t) use ($isOrchestrator) {
                     // Wave 38a — derive created_by from payload_json.created_via when present.
                     $payload = is_string($t->payload_json) ? json_decode($t->payload_json, true) : ($t->payload_json ?: []);
                     $createdVia = is_array($payload) ? ($payload['created_via'] ?? null) : null;
@@ -8808,11 +8831,28 @@ HTMLSCRIPT;
                         null => $t->source === 'manual' ? 'user' : 'sarah',
                         default => 'sarah',
                     };
+
+                    // Wave 38d — When viewing Sarah's dashboard, surface the
+                    // delegate's name in the title so the UI reads
+                    // "Delegated to Priya: write_article" instead of just
+                    // "Executing step 1 of 1: write_article".
+                    $rawTitle = $t->progress_message ?? ucfirst(str_replace('_', ' ', $t->action));
+                    if ($isOrchestrator) {
+                        $assignees = is_string($t->assigned_agents_json)
+                            ? (json_decode($t->assigned_agents_json, true) ?: [])
+                            : (is_array($t->assigned_agents_json) ? $t->assigned_agents_json : []);
+                        $delegate = $assignees[0] ?? null;
+                        if ($delegate) {
+                            $rawTitle = 'Delegated to ' . ucfirst($delegate) . ': ' . ucfirst(str_replace('_', ' ', $t->action));
+                        }
+                    }
+
                     return [
                         'id' => $t->id,
-                        'title' => $t->progress_message ?? ucfirst(str_replace('_', ' ', $t->action)),
+                        'title' => $rawTitle,
                         'status' => $t->status, 'engine' => $t->engine, 'tools' => [$t->action],
                         'created_by' => $createdBy, 'duration_ms' => null,
+                        'delegated_to' => $isOrchestrator ? ($delegate ?? null) : null,
                         'created_at' => $t->created_at, 'started_at' => $t->started_at,
                         'acknowledged_at' => null, 'completed_at' => $t->completed_at,
                     ];
