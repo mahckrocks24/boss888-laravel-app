@@ -421,8 +421,56 @@ class Orchestrator
                                         ->writeArticle($wsId, $params),
             'seo/link_suggestions' => fn() => app(\App\Engines\SEO\Services\SeoService::class)
                                         ->generateLinkSuggestions($wsId, $params),
-            'seo/insert_link'      => fn() => ['inserted' => app(\App\Engines\SEO\Services\SeoService::class)
-                                        ->insertLink($wsId, $params['link_id'] ?? 0)],
+            'seo/insert_link'      => function () use ($wsId, $params) {
+                // Wave 38c — chain mode: when article_id is set (parent_task passthrough)
+                // and link_id is not, insert ALL pending seo_links suggestions for
+                // that articles source URL. Otherwise fall back to the manual
+                // single-link insertion (UI-driven flow).
+                $svc = app(\App\Engines\SEO\Services\SeoService::class);
+                if (!empty($params['link_id'])) {
+                    return ['inserted' => $svc->insertLink($wsId, (int) $params['link_id'])];
+                }
+                if (!empty($params['article_id'])) {
+                    $article = \Illuminate\Support\Facades\DB::table('articles')
+                        ->where('id', (int) $params['article_id'])
+                        ->where('workspace_id', $wsId)
+                        ->first(['slug', 'title']);
+                    if ($article) {
+                        $sourceUrl = null;
+                        $idx = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                            ->where('workspace_id', $wsId)
+                            ->where('url', 'like', '%/' . ($article->slug ?? '') . '%')
+                            ->first(['url']);
+                        if (!$idx && !empty($article->title)) {
+                            $idx = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                                ->where('workspace_id', $wsId)
+                                ->where('title', $article->title)
+                                ->first(['url']);
+                        }
+                        if ($idx) {
+                            $sourceUrl = $idx->url;
+                            $pending = \Illuminate\Support\Facades\DB::table('seo_links')
+                                ->where('workspace_id', $wsId)
+                                ->where('source_url', $sourceUrl)
+                                ->where('status', 'suggested')
+                                ->orderByDesc('priority_score')
+                                ->limit(5)
+                                ->pluck('id')
+                                ->toArray();
+                            $insertedCount = 0;
+                            foreach ($pending as $lid) {
+                                try {
+                                    if ($svc->insertLink($wsId, (int) $lid)) {
+                                        $insertedCount++;
+                                    }
+                                } catch (\Throwable $ie) { /* per-link failure non-fatal */ }
+                            }
+                            return ['inserted_count' => $insertedCount, 'article_id' => (int) $params['article_id']];
+                        }
+                    }
+                }
+                return ['inserted' => false, 'reason' => 'no link_id or resolvable article_id'];
+            },
             'seo/dismiss_link'     => fn() => ['dismissed' => app(\App\Engines\SEO\Services\SeoService::class)
                                         ->dismissLink($wsId, $params['link_id'] ?? 0)],
             'seo/check_outbound'   => fn() => app(\App\Engines\SEO\Services\SeoService::class)

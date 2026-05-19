@@ -537,11 +537,30 @@ class SeoService
 
     public function generateLinkSuggestions(int $wsId, array $params): array
     {
-        // 2026-05-14 Phase 2 — semantic link suggestions using Jaccard token
-        // overlap (title+h1+meta) weighted by authority_score. Replaces the
-        // earlier keyword-in-title pattern matcher (which produced 0 results
-        // for workspaces where keywords didn't appear verbatim in titles).
+        // Wave 38c — When called by Sarah's chain we get article_id (Wave 35b
+        // parent_task passthrough) instead of source_url. Resolve article_id
+        // → indexed URL so the Jaccard semantic matcher has a real source to
+        // compare against (otherwise we fall through to authority-only mode
+        // which returns 0 when all authority_scores are 0).
         $sourceUrl = $params['url'] ?? $params['source_url'] ?? '';
+        $articleId = isset($params['article_id']) ? (int) $params['article_id'] : null;
+        if (!$sourceUrl && $articleId) {
+            $article = DB::table('articles')->where('id', $articleId)->where('workspace_id', $wsId)->first(['slug', 'title']);
+            if ($article) {
+                // Look up the indexed URL by slug, OR by title match.
+                $idxRow = DB::table('seo_content_index')->where('workspace_id', $wsId)
+                    ->where('url', 'like', '%/' . ($article->slug ?? '') . '%')
+                    ->first(['url']);
+                if (!$idxRow && !empty($article->title)) {
+                    $idxRow = DB::table('seo_content_index')->where('workspace_id', $wsId)
+                        ->where('title', $article->title)
+                        ->first(['url']);
+                }
+                if ($idxRow) {
+                    $sourceUrl = $idxRow->url;
+                }
+            }
+        }
 
         $pages = DB::table('seo_content_index')
             ->where('workspace_id', $wsId)
