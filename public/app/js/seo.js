@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.22.7-wave32i loaded — local esc() so card renders outside main IIFE (fixes WP)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.22.8-wave32j loaded — Self-healing sitemap card + MutationObserver diagnostics'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -8791,7 +8791,44 @@ window._lgseDrawerSend = function () {
         card.innerHTML = '';
         return;
       }
-      card.innerHTML = html;
+      // Wave 32j — Cache the rendered HTML and install a one-shot
+      // MutationObserver so we can spot anything that wipes the card.
+      try {
+        card.dataset.lgseCachedHtml = html;
+        card.innerHTML = html;
+        if (!window._lgseSitemapObserverInstalled) {
+          window._lgseSitemapObserverInstalled = true;
+          var lastNonEmpty = html;
+          var obs = new MutationObserver(function (mutations) {
+            try {
+              var c = document.getElementById('lgse-sitemap-card');
+              if (!c) {
+                console.warn('[LU SITEMAP] card REMOVED from DOM — re-injecting');
+                // Card removed. Find Pages container and re-inject.
+                var pagesBody = document.getElementById('lgse-pages-body');
+                if (pagesBody && pagesBody.parentElement) {
+                  var fresh = document.createElement('div');
+                  fresh.id = 'lgse-sitemap-card';
+                  fresh.style.marginBottom = '14px';
+                  fresh.innerHTML = lastNonEmpty;
+                  pagesBody.parentElement.insertBefore(fresh, pagesBody);
+                }
+                return;
+              }
+              if (!c.innerHTML || c.innerHTML.length < 30) {
+                console.warn('[LU SITEMAP] card EMPTIED by external code — restoring');
+                c.innerHTML = lastNonEmpty;
+              } else if (c.innerHTML.length > 30 && c.innerHTML.indexOf('Loading') === -1) {
+                lastNonEmpty = c.innerHTML;
+              }
+            } catch (_e) {}
+          });
+          obs.observe(document.body, { childList: true, subtree: true });
+          window._lgseSitemapObserver = obs;
+        }
+      } catch (_e) {
+        card.innerHTML = html;
+      }
     }).catch(function (err) {
       // Wave 32i — log the error so future failures are debuggable rather
       // than silently wiping the card.
