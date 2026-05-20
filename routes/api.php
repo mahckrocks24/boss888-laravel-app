@@ -1050,7 +1050,26 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             // Wave 36c — auto-approve chain tasks when caller is the WP plugin
                             // (X-API-KEY context). Laravel app users still see the approval queue.
                             $autoApprove = ($r->header('X-API-KEY') !== null);
-                            $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, [
+
+                            // Wave 42 — bundle chain pricing to canonical 2cr.
+                            // Standalone CapabilityMap costs sum to 6cr per chain (write=1,
+                            // meta=1, image=1, links=1, insert=2). Locked pricing says a
+                            // fully-optimized article = 2cr. Charge 2cr on the parent
+                            // (write_article) only; zero out chain children.
+                            $bundlePrice = null; // null = let TaskService use CapabilityMap default
+                            $chainActions = ['write_article', 'generate_meta', 'generate_image_mini', 'generate_image_high', 'link_suggestions', 'insert_link'];
+                            $isChain = count($createTasks) > 1 && in_array($taskAction, $chainActions, true);
+                            if ($isChain) {
+                                if ($taskAction === 'write_article' && empty($parentId)) {
+                                    // The chain's parent (root) carries the full bundle price.
+                                    $bundlePrice = 2;
+                                } elseif (!empty($parentId)) {
+                                    // Children inherit zero — their cost is rolled into the parent's 2cr.
+                                    $bundlePrice = 0;
+                                }
+                            }
+
+                            $createPayload = [
                                 'engine'          => $taskEngine,
                                 'action'          => $taskAction,
                                 'source'          => 'agent',
@@ -1059,7 +1078,11 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                 'parent_task_id'  => $parentId,
                                 'auto_approve'    => $autoApprove,
                                 'payload'         => $payload,
-                            ]);
+                            ];
+                            if ($bundlePrice !== null) {
+                                $createPayload['credit_cost'] = $bundlePrice;
+                            }
+                            $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, $createPayload);
                             // Record by position for downstream depends_on references.
                             $createdTaskIds[$ctIndex] = $newTask->id;
                             // progress_message isn't in the TaskService whitelist — set after.

@@ -132,7 +132,10 @@ class Orchestrator
                 action: $task->action, message: 'Execution started');
 
             // ── 7. Credit reservation (reserve upfront for all steps) ────
-            $creditCost = $capability['credit_cost'] ?? $task->credit_cost;
+            // Wave 42b: task.credit_cost is the source of truth (locked in at
+            // TaskService::create time with chain-bundle override applied for
+            // Sarah chains). CapabilityMap is only a seed/fallback.
+            $creditCost = $task->credit_cost ?? ($capability['credit_cost'] ?? 0);
             if ($creditCost > 0) {
                 $reservation = $this->creditService->reserveCredits(
                     $task->workspace_id, $creditCost, 'Task', $task->id, "task_{$task->id}"
