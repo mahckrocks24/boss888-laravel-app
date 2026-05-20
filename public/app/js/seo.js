@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.28.1-wave49 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.28.2-wave52 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -3802,6 +3802,25 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       if (b) { b.disabled = false; b.innerText = orig || '⟳ Sync featured images'; }
       var em = (e && e.message) || 'network error';
       window.lgseAlert('Sync failed', em);
+    });
+  };
+
+  // Wave 52 — re-scan published builder pages into seo_content_index
+  window.lgseReindexBuilderPages = function () {
+    var btn = document.getElementById('lgse-reindex-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Re-scanning…'; }
+    api('POST', '/reindex-builder-pages', {}).then(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Re-scan site'; }
+      var msg = (r && r.message) || 'Re-scan complete';
+      if (typeof showToast === 'function') showToast(msg, r && r.pages_indexed > 0 ? 'success' : 'info');
+      // Refresh the Pages tab so freshly-indexed rows appear.
+      if (typeof renderPages === 'function') {
+        var content = document.getElementById('lgse-content');
+        if (content) renderPages(content);
+      }
+    }).catch(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Re-scan site'; }
+      if (typeof showToast === 'function') showToast('Re-scan failed', 'error');
     });
   };
 

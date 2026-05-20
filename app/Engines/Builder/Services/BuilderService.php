@@ -144,6 +144,22 @@ class BuilderService
         // Invalidate published site cache
         $this->invalidatePublishedCache($websiteId);
 
+        // Wave 52 — Index all newly-published pages into seo_content_index
+        // so the SEO Engine can see them. Fail open: indexing errors are
+        // logged but never fail the publish.
+        try {
+            $website = DB::table('websites')->where('id', $websiteId)
+                ->first(['id', 'workspace_id', 'subdomain', 'domain', 'name']);
+            if ($website && $website->workspace_id) {
+                app(\App\Engines\SEO\Services\BuilderPageIndexer::class)
+                    ->indexWebsite((int) $website->workspace_id, $website);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[BuilderService] post-publish index failed', [
+                'website_id' => $websiteId, 'error' => $e->getMessage(),
+            ]);
+        }
+
         return ['published' => true];
     }
 

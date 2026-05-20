@@ -75,6 +75,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('aeo:snapshot cron failed');
             });
 
+        // Wave 52 — daily catch-up reindex of builder pages.
+        $schedule->command('seo:reindex-builder-pages')
+            ->name('seo:reindex-builder-pages')
+            ->dailyAt('04:30')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
+
         // Wave 49c — daily aeo_traffic retention cleanup (90-day window).
         $schedule->command('aeo:cleanup-traffic')
             ->name('aeo:cleanup-traffic')

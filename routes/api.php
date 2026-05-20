@@ -2282,6 +2282,23 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ]);
         });
 
+        // ── Wave 52 — Re-scan builder pages into seo_content_index ────────
+
+        // POST /api/seo/reindex-builder-pages — on-demand refresh.
+        // Free for all tiers; no LLM cost.
+        Route::post('/reindex-builder-pages', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $count = app(\App\Engines\SEO\Services\BuilderPageIndexer::class)
+                ->indexWorkspace($wsId);
+            return response()->json([
+                'success' => true,
+                'pages_indexed' => $count,
+                'message' => $count > 0
+                    ? "Indexed {$count} published pages."
+                    : 'No published pages to index. Publish a website first.',
+            ]);
+        });
+
         // ── Wave 49b — AEO score evolution chart ──────────────────────────
 
         // GET /api/seo/aeo/score-history?days=90 — daily snapshots.
