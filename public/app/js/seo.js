@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.27.4-wave47g loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.28.0-wave48 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1868,6 +1868,11 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         + '<div style="padding:14px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading articles…</div>'
         + '</div>';
 
+      // Wave 48 — AEO traffic card (crawler hits + AI referrals last 30d)
+      h += '<div id="lgse-aeo-traffic" style="margin-bottom:18px">'
+        + '<div style="padding:14px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading AI traffic…</div>'
+        + '</div>';
+
       // Wave 46 — AI Crawlers + llms.txt control panel
       h += '<div id="lgse-aeo-settings" style="margin-bottom:18px">'
         + '<div style="padding:14px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading AEO settings…</div>'
@@ -1898,6 +1903,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       body.innerHTML = h;
       lgseLoadAeoArticles();
       lgseLoadAeoSettings();
+      lgseLoadAeoTraffic();
     }).catch(function (e) {
       var body = document.getElementById('lgse-aeo-body');
       if (body) body.innerHTML = emptyState('⚠', 'Audit fetch failed', 'Try refreshing.');
@@ -1983,6 +1989,70 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         var pre = document.getElementById('lgse-aeo-llms-preview');
         if (pre && lr && lr.content) pre.textContent = lr.content;
       });
+    });
+  }
+
+  function lgseLoadAeoTraffic() {
+    api('GET', '/aeo/traffic?days=30').then(function (r) {
+      var holder = document.getElementById('lgse-aeo-traffic');
+      if (!holder || !r || !r.success) return;
+      var d = r.data || {};
+      var crawlerTot = d.crawler_total || 0;
+      var refTot = d.referral_total || 0;
+
+      var h = '<div class="lgse-section-hdr"><span class="lgse-section-title">AI traffic (last 30 days)</span></div>';
+      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+
+      // Crawler card
+      h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px">';
+      h += '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">'
+        +   '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em">AI Crawler hits</div>'
+        +   '<div style="font-size:22px;font-weight:700;color:var(--lgse-purple);font-family:var(--lgse-mono)">' + crawlerTot.toLocaleString() + '</div>'
+        + '</div>';
+      h += '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:8px">Times an AI crawler fetched your pages.</div>';
+      if (d.crawler_by_source && d.crawler_by_source.length > 0) {
+        h += '<div style="font-family:var(--lgse-mono);font-size:10.5px;color:var(--lgse-t2);line-height:1.8">';
+        d.crawler_by_source.slice(0, 6).forEach(function (row) {
+          h += '<div style="display:flex;justify-content:space-between"><span>' + esc(row.source) + '</span><span style="color:var(--lgse-t1);font-weight:600">' + row.count.toLocaleString() + '</span></div>';
+        });
+        h += '</div>';
+      } else {
+        h += '<div style="font-size:10.5px;color:var(--lgse-t3);padding:8px 0">No AI crawler activity yet. After publishing content + waiting a few days, GPTBot/ClaudeBot/PerplexityBot should appear here.</div>';
+      }
+      h += '</div>';
+
+      // Referral card
+      h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px">';
+      h += '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">'
+        +   '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em">AI-referred visitors</div>'
+        +   '<div style="font-size:22px;font-weight:700;color:var(--lgse-teal);font-family:var(--lgse-mono)">' + refTot.toLocaleString() + '</div>'
+        + '</div>';
+      h += '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:8px">Users who clicked through from an AI answer.</div>';
+      if (d.referral_by_source && d.referral_by_source.length > 0) {
+        h += '<div style="font-family:var(--lgse-mono);font-size:10.5px;color:var(--lgse-t2);line-height:1.8">';
+        d.referral_by_source.slice(0, 6).forEach(function (row) {
+          h += '<div style="display:flex;justify-content:space-between"><span>' + esc(row.source) + '</span><span style="color:var(--lgse-t1);font-weight:600">' + row.count.toLocaleString() + '</span></div>';
+        });
+        h += '</div>';
+      } else {
+        h += '<div style="font-size:10.5px;color:var(--lgse-t3);padding:8px 0">No AI referrals yet. They appear when someone clicks through from ChatGPT, Perplexity, Claude.ai or similar to a page on your site.</div>';
+      }
+      h += '</div>';
+
+      h += '</div>';
+
+      // Top pages strip
+      if (d.top_pages && d.top_pages.length > 0) {
+        h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px;margin-top:12px">';
+        h += '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Top pages by AI traffic</div>';
+        h += '<div style="font-family:var(--lgse-mono);font-size:10.5px;line-height:1.8;color:var(--lgse-t2)">';
+        d.top_pages.slice(0, 5).forEach(function (row) {
+          h += '<div style="display:flex;justify-content:space-between;gap:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(row.url) + '</span><span style="color:var(--lgse-t1);font-weight:600;flex-shrink:0">' + row.count.toLocaleString() + '</span></div>';
+        });
+        h += '</div></div>';
+      }
+
+      holder.innerHTML = h;
     });
   }
 

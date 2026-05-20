@@ -2282,6 +2282,21 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ]);
         });
 
+        // ── Wave 48 — AEO traffic measurement (Stage 1) ────────────────────
+
+        // GET /api/seo/aeo/traffic — last-N-days crawler hits + AI referrals.
+        // Free for all plan tiers — read-only summary, no LLM calls.
+        Route::get('/aeo/traffic', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $days = (int) $r->query('days', 30);
+            $days = max(1, min(90, $days));
+            $svc = app(\App\Engines\SEO\Services\AeoTrafficLogger::class);
+            return response()->json([
+                'success' => true,
+                'data' => $svc->summary($wsId, $days),
+            ]);
+        });
+
         // ── Wave 46 — AEO Settings + llms.txt control ─────────────────────
 
         // GET /api/seo/aeo/settings — fetch current settings + crawler labels.

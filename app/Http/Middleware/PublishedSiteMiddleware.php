@@ -93,6 +93,19 @@ class PublishedSiteMiddleware
             ->where('status', 'published')
             ->first();
 
+        // Wave 48 — Log AI crawler / AI referrer traffic. Only when this is
+        // a real page request (not robots/sitemap/llms.txt/api/admin paths,
+        // already filtered above) and the workspace is resolvable.
+        if ($website && isset($website->workspace_id)) {
+            try {
+                $fullUrl = 'https://' . $request->getHost() . '/' . ltrim($slug ?? '', '/');
+                app(\App\Engines\SEO\Services\AeoTrafficLogger::class)
+                    ->log($request, (int) $website->workspace_id, $website->id ?? null, $fullUrl);
+            } catch (\Throwable $_aeoTrafErr) {
+                // never block render
+            }
+        }
+
         // T3.2 Phase 4 — Blog gating: Growth+ plans only.
         // Workspace 1 (platform's own LevelUp Growth content) is exempt.
         // Triggers on /blog or /blog/<anything>; if the workspace plan does
