@@ -1883,7 +1883,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       audits.forEach(function (a, idx) {
         var passed = (a.checks || []).filter(function (c) { return c.pass; }).length;
         var total = (a.checks || []).length;
-        var date = a.last_audited_at ? new Date(a.last_audited_at).toLocaleString('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
+        var date = a.last_audited_at ? window._luParseTs(a.last_audited_at).toLocaleString('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
         h += '<div id="lgse-aeo-row-' + a.id + '" style="border-bottom:1px solid var(--lgse-border)' + (idx === audits.length - 1 ? ';border-bottom:none' : '') + '">'
           + '<div style="display:flex;align-items:center;padding:12px 14px;cursor:pointer;gap:12px" onclick="lgseAeoToggleRow(' + a.id + ')">'
           +   '<div style="flex:0 0 60px;font-size:22px;font-weight:700;color:' + scoreColor(a.score) + ';text-align:center">' + a.score + '</div>'
@@ -6225,7 +6225,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         return '<tr>'
           + '<td class="lgse-url" title="' + esc(url) + '">' + esc(url) + '</td>'
           + '<td class="mono" style="color:var(--lgse-red)">' + (r.hit_count || r.hits || 1) + '</td>'
-          + '<td style="font-size:10px;color:var(--lgse-t3)">' + (r.last_seen || r.updated_at ? new Date(r.last_seen || r.updated_at).toLocaleDateString() : '—') + '</td>'
+          + '<td style="font-size:10px;color:var(--lgse-t3)">' + (r.last_seen || r.updated_at ? window._luParseTs(r.last_seen || r.updated_at).toLocaleDateString() : '—') + '</td>'
           + '<td class="lgse-url" style="font-size:10px;color:var(--lgse-t3)">' + esc(r.referrer || '—') + '</td>'
           + '<td><div style="display:flex;gap:4px">'
           +   '<button onclick="lgseConvert404(\'' + safeUrl + '\')" style="background:var(--lgse-purple);color:white;border:none;border-radius:4px;padding:2px 8px;font-size:9px;cursor:pointer">Fix →</button>'
@@ -7977,7 +7977,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         +   '<div>'
         +     '<div style="font-size:16px;font-weight:600;color:var(--lgse-t1);margin-bottom:3px">SEO report</div>'
         +     '<div style="font-size:10px;color:var(--lgse-t3);margin-bottom:2px">Historical audit data — see Overview for current live page health</div>'
-        +     '<div style="font-size:11px;color:var(--lgse-t3)">' + audits.length + ' audit' + (audits.length === 1 ? '' : 's') + ' · last run ' + (latest.created_at ? new Date(latest.created_at).toLocaleDateString() : '—') + '</div>'
+        +     '<div style="font-size:11px;color:var(--lgse-t3)">' + audits.length + ' audit' + (audits.length === 1 ? '' : 's') + ' · last run ' + (latest.created_at ? window._luParseTs(latest.created_at).toLocaleDateString() : '—') + '</div>'
         +   '</div>'
         +   '<div style="display:flex;gap:8px">'
         +     '<button class="lgse-btn-secondary" onclick="lgseDownloadReport(\'html\')" style="font-size:11px;padding:7px 14px">Export HTML</button>'
@@ -8011,7 +8011,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           var sc  = parseInt(a.score, 10) || 0;
           var pct = Math.round((sc / 100) * 80); // 0–80 px tall
           var col = sc >= 75 ? 'var(--lgse-teal)' : sc >= 50 ? 'var(--lgse-purple)' : 'var(--lgse-amber)';
-          var d   = a.created_at ? new Date(a.created_at) : null;
+          var d   = a.created_at ? window._luParseTs(a.created_at) : null;
           var dateLbl = d ? d.toLocaleDateString('en', { month: 'short', day: 'numeric' }) : '—';
           chartHtml += '<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:4px">'
             + '<div style="font-family:var(--lgse-mono);font-size:9px;color:var(--lgse-t3)">' + sc + '</div>'
@@ -8067,7 +8067,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       html += '<div class="lgse-section-hdr"><span class="lgse-section-title">Audit history</span><span style="font-size:10px;color:var(--lgse-t3)">' + audits.length + ' audit' + (audits.length === 1 ? '' : 's') + '</span></div>';
       html += '<table class="lgse-table"><thead><tr><th>Date</th><th>URL</th><th class="r">Score</th><th class="r">Issues</th><th>Status</th><th></th></tr></thead><tbody>';
       audits.forEach(function (a) {
-        var when = a.created_at ? new Date(a.created_at).toLocaleString() : '—';
+        var when = a.created_at ? window._luParseTs(a.created_at).toLocaleString() : '—';
         var totalIssues = parseInt(a.total_issues || a.errors || 0, 10) || 0;
         // Try to count issues from results_json if column missing.
         if (!totalIssues) {

@@ -58,6 +58,22 @@
   }
 })();
 
+// Wave 55 — Universal timestamp parser. Backend returns 'YYYY-MM-DD HH:MM:SS'
+// without a TZ marker; per ECMAScript spec the browser would parse those as
+// LOCAL time, so a UTC-stored value appears wrong by the device's UTC offset.
+// _luParseTs treats marker-less strings as UTC. ISO strings (with Z or
+// numeric offset) pass through unchanged. Numeric epochs also pass through.
+window._luParseTs = function (s) {
+  if (s === null || s === undefined) return null;
+  if (typeof s !== 'string') return new Date(s);
+  // Already has explicit TZ (Z, +HH:MM, -HH:MM after the time portion)
+  if (/(Z|[+-]\d\d:?\d\d)$/.test(s)) return new Date(s);
+  // ISO with T but no TZ — treat as UTC
+  if (s.indexOf('T') >= 0) return new Date(s + 'Z');
+  // SQL-style 'YYYY-MM-DD HH:MM:SS' — convert to ISO + Z
+  return new Date(s.replace(' ', 'T') + 'Z');
+};
+
 // 2026-05-12 — embed-mode nav visibility: show Pipeline + Write tabs
 // when ?lgsc_key&embed=1 is present in the URL (set by core.js's
 // _lgscDetectEmbed IIFE above), regardless of plan slug. In direct SPA
@@ -505,7 +521,7 @@ async function loadWorkerQueue() {
         var icon = statusIcons[t.status] || '\u26aa';
         var dur = '';
         if (t.started_at && t.completed_at) {
-          var ms = new Date(t.completed_at) - new Date(t.started_at);
+          var ms = window._luParseTs(t.completed_at) - window._luParseTs(t.started_at);
           dur = ms < 1000 ? ms + 'ms' : (ms/1000).toFixed(1) + 's';
         }
         var retryBtn = t.status === 'failed' ? '<button onclick="wqRetryTask(' + t.id + ')" style="background:none;border:1px solid var(--bd);color:var(--am);border-radius:5px;padding:3px 8px;font-size:10px;cursor:pointer">\u21bb Retry</button>' : (dur ? '<span style="color:var(--t3);font-size:10px">' + dur + '</span>' : '');
@@ -514,7 +530,7 @@ async function loadWorkerQueue() {
         h += '<td style="padding:9px 14px;color:var(--t2)">' + (t.engine||'—') + '</td>';
         h += '<td style="padding:9px 14px;color:var(--t1);font-family:monospace;font-size:11px">' + (t.action||'—') + '</td>';
         h += '<td style="padding:9px 14px;color:var(--t2)">' + (t.credit_cost||0) + '</td>';
-        h += '<td style="padding:9px 14px;color:var(--t3)">' + (t.created_at ? new Date(t.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—') + '</td>';
+        h += '<td style="padding:9px 14px;color:var(--t3)">' + (t.created_at ? window._luParseTs(t.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—') + '</td>';
         h += '<td style="padding:9px 14px;text-align:right">' + retryBtn + '</td>';
         h += '</tr>';
       });
@@ -976,7 +992,7 @@ function renderGovPending(actions){
   el.innerHTML = actions.map(a=>{
     var agentName  = AGENT_NAMES[a.agent_id] || a.agent_id;
     var agentColor = AGENT_COLORS[a.agent_id] || '#888';
-    var ts = new Date(a.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    var ts = window._luParseTs(a.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     return `<div class="gov-card" id="gov-${a.action_id}">
       <div class="gov-card-header">
         <div class="gov-agent-badge" style="background:${agentColor}20;color:${agentColor};border:1px solid ${agentColor}40">${agentName}</div>
@@ -1102,7 +1118,7 @@ async function renderPreviewCard(p) {
     <span style="font-size:22px">${agent.emoji}</span>
     <div style="flex:1">
       <div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(preview.summary || p.tool_id)}</div>
-      <div style="font-size:11px;color:var(--t3)">${agent.name} · ${preview.domain || ''} · ${new Date(p.created_at).toLocaleString()}</div>
+      <div style="font-size:11px;color:var(--t3)">${agent.name} · ${preview.domain || ''} · ${window._luParseTs(p.created_at).toLocaleString()}</div>
     </div>
     <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:${(riskColors[preview.risk]||'var(--t3)')}22;color:${riskColors[preview.risk]||'var(--t3)'}">${(preview.risk||'').toUpperCase()}</span>
     <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:${(statusColors[p.status]||'var(--t3)')}22;color:${statusColors[p.status]||'var(--t3)'}">${p.status.toUpperCase()}</span>
@@ -1946,7 +1962,7 @@ async function loadDrawerMessages(id){
     var ag=AGENTS[id]||{};
     feed.innerHTML=msgs.map(m=>{
       var isUser=m.from==='user'||m.from==='User';
-      return `<div class="${isUser?'msg-from-user':'msg-from-agent'}" style="align-self:${isUser?'flex-end':'flex-start'}"><div style="font-size:9px;font-weight:700;color:${isUser?'var(--pu)':ag.color||'var(--t2)'};margin-bottom:3px">${isUser?'You':ag.name||id}</div>${esc(m.content)}<div class="msg-ts">${new Date(m.ts).toLocaleTimeString()}</div></div>`;
+      return `<div class="${isUser?'msg-from-user':'msg-from-agent'}" style="align-self:${isUser?'flex-end':'flex-start'}"><div style="font-size:9px;font-weight:700;color:${isUser?'var(--pu)':ag.color||'var(--t2)'};margin-bottom:3px">${isUser?'You':ag.name||id}</div>${esc(m.content)}<div class="msg-ts">${window._luParseTs(m.ts).toLocaleTimeString()}</div></div>`;
     }).join('');
     feed.scrollTop=feed.scrollHeight;
   }catch(e){console.error('loadMsgs:',e);}
@@ -2042,7 +2058,7 @@ async function renderDocuments(id){
     var typeIcons={image:'🖼',video:'🎬',document:'📄',presentation:'📊',audio:'🎵'};
     list.innerHTML=items.map(d=>{
       var icon=typeIcons[d.type]||'📁';
-      var date=d.created_at?new Date(d.created_at).toLocaleDateString():'';
+      var date=d.created_at?window._luParseTs(d.created_at).toLocaleDateString():'';
       return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px">
         <span style="font-size:20px">${icon}</span>
         <div style="flex:1;min-width:0">
@@ -2122,10 +2138,10 @@ function _renderAgentTaskBoard(agentId, allAgents) {
       var tools = t.tools ? (typeof t.tools === 'string' ? JSON.parse(t.tools) : t.tools) : [];
       var creator = t.created_by ? (AGENTS[t.created_by]?.name || t.created_by) : 'Sarah';
       var timeline = [
-        t.created_at ? `${window.icon('more',14)} ${new Date(t.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
+        t.created_at ? `${window.icon('more',14)} ${window._luParseTs(t.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
         t.acknowledged_at ? `${window.icon('info',14)} ${new Date(t.acknowledged_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
-        t.started_at ? `${window.icon('edit',14)} ${new Date(t.started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
-        t.completed_at ? `${window.icon('check',14)} ${new Date(t.completed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
+        t.started_at ? `${window.icon('edit',14)} ${window._luParseTs(t.started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
+        t.completed_at ? `${window.icon('check',14)} ${window._luParseTs(t.completed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
       ].filter(Boolean).join(' → ');
       html += `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px">
         <span style="font-size:14px;margin-top:2px">${icon}</span>
@@ -2134,7 +2150,7 @@ function _renderAgentTaskBoard(agentId, allAgents) {
           <div style="font-size:10px;color:var(--t3)">Created by ${creator} · ${t.status} ${tools.length?'· '+tools.join(', '):''} ${t.duration_ms?'· '+t.duration_ms+'ms':''}</div>
           ${timeline?'<div style="font-size:9px;color:var(--t3);margin-top:2px">'+timeline+'</div>':''}
         </div>
-        <div style="font-size:10px;color:var(--t3)">${t.created_at?new Date(t.created_at).toLocaleDateString():''}</div>
+        <div style="font-size:10px;color:var(--t3)">${t.created_at?window._luParseTs(t.created_at).toLocaleDateString():''}</div>
       </div>`;
     });
     html += '</div>';
@@ -2479,7 +2495,7 @@ async function loadReports(){
       var rows=d.history||[];
       if(!rows.length){box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon">'+window.icon("ai",14)+'</div><div class="rv-empty-text">No executions recorded yet.</div></div>';return;}
       box.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+rows.map(r=>{
-        var ok=parseInt(r.success);var dt=new Date(r.created_at);
+        var ok=parseInt(r.success);var dt=window._luParseTs(r.created_at);
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
           <div style="font-size:16px">${ok?''+window.icon("check",14)+'':''+window.icon("close",14)+''}</div>
           <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.tool_id)}</div><div style="font-size:10px;color:var(--t3)">${esc(r.agent_id)} · ${r.duration_ms||0}ms · ${r.mode||'?'}</div>${r.rationale?'<div style="font-size:10px;color:var(--t2);margin-top:2px">'+esc(r.rationale.slice(0,100))+'</div>':''}</div>
@@ -2497,7 +2513,7 @@ async function loadReports(){
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${sc};min-width:60px">${st}</div>
           <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.title)}</div>${r.rationale?'<div style="font-size:10px;color:var(--t2);margin-top:2px">'+esc(r.rationale.slice(0,120))+'</div>':''}<div style="font-size:10px;color:var(--t3)">${esc(r.agent_id)} · ${r.decision_type}</div></div>
-          <div style="font-size:10px;color:var(--t3);white-space:nowrap">${new Date(r.created_at).toLocaleDateString()}</div>
+          <div style="font-size:10px;color:var(--t3);white-space:nowrap">${window._luParseTs(r.created_at).toLocaleDateString()}</div>
         </div>`;
       }).join('')+'</div>';
     }
@@ -2510,7 +2526,7 @@ async function loadReports(){
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${sc};min-width:70px">${st}</div>
           <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.title)}</div><div style="font-size:10px;color:var(--t3)">${esc(r.agent_id||'')} · ${r.duration_ms?r.duration_ms+'ms':''}</div></div>
-          <div style="font-size:10px;color:var(--t3);white-space:nowrap">${r.created_at?new Date(r.created_at).toLocaleDateString():''}</div>
+          <div style="font-size:10px;color:var(--t3);white-space:nowrap">${r.created_at?window._luParseTs(r.created_at).toLocaleDateString():''}</div>
         </div>`;
       }).join('')+'</div>';
     }
@@ -4798,7 +4814,7 @@ async function _openNotifications() {
               return '<div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid var(--bd);background:' + (unread?'rgba(108,92,231,.06)':'') + ';cursor:pointer" onclick="_markNotifRead(' + n.id + ',this)">'
                 + '<div style="width:8px;height:8px;border-radius:50%;background:' + (unread?'var(--p,#6C5CE7)':'transparent') + ';flex-shrink:0;margin-top:4px"></div>'
                 + '<div style="flex:1"><div style="font-size:13px;font-weight:' + (unread?'600':'400') + ';color:var(--t1)">' + _luEsc(n.title) + '</div>'
-                + '<div style="font-size:11px;color:var(--t3);margin-top:2px">' + new Date(n.created_at).toLocaleString() + '</div></div></div>';
+                + '<div style="font-size:11px;color:var(--t3);margin-top:2px">' + window._luParseTs(n.created_at).toLocaleString() + '</div></div></div>';
             }).join(''))
       + '</div></div>';
     document.body.appendChild(bd);
@@ -4976,7 +4992,7 @@ function _aqCardHtml(it) {
       '</div>';
   } else {
     // Read-only footer
-    var decidedAgo = it.decided_at ? ' · ' + _cmdcEsc(new Date(it.decided_at).toLocaleString()) : '';
+    var decidedAgo = it.decided_at ? ' · ' + _cmdcEsc(window._luParseTs(it.decided_at).toLocaleString()) : '';
     actions = '<div style="font-size:11.5px;color:var(--t3)">' + _cmdcEsc(it.status) + decidedAgo + '</div>';
   }
 
