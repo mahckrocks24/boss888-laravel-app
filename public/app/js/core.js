@@ -36,6 +36,21 @@
     if (_lgscWpOriginParam) {
       try { window._LGSC_EMBED.wp_origin = decodeURIComponent(_lgscWpOriginParam); } catch (_e) {}
     }
+
+    // Wave 47b — capture the WP install URL (lgsc_site or lgsc_origin) so
+    // features like the AEO audit can default to the user's own site.
+    var _lgscSiteParam = params.get('lgsc_site') || params.get('lgsc_origin');
+    if (!_lgscSiteParam) {
+      var _hs = window.location.hash || '';
+      var _qi = _hs.indexOf('?');
+      if (_qi >= 0) {
+        var _hp = new URLSearchParams(_hs.substring(_qi + 1));
+        _lgscSiteParam = _hp.get('lgsc_site') || _hp.get('lgsc_origin');
+      }
+    }
+    if (_lgscSiteParam) {
+      try { window._LGSC_EMBED.site_url = decodeURIComponent(_lgscSiteParam); } catch (_e) {}
+    }
     if (typeof document !== 'undefined' && document.documentElement) {
       document.documentElement.classList.add('lgsc-embed-mode');
     }

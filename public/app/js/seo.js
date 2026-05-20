@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.27.0-wave46 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.27.1-wave47b loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1770,6 +1770,15 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // Copilot). Free for all plan tiers as upsell hook; enrichment (Wave 45)
   // is the $69+ gated feature.
 
+  function lgseDefaultAuditUrl() {
+    // Wave 47b — when embedded in WP plugin, default to that site's URL.
+    // Otherwise leave blank (user types it).
+    if (window._LGSC_EMBED && window._LGSC_EMBED.site_url) {
+      return window._LGSC_EMBED.site_url;
+    }
+    return '';
+  }
+
   function renderAEO(el) {
     el.innerHTML = pageTitle('AEO — Answer Engine Optimization',
       'How well your pages get cited in ChatGPT, Perplexity, Claude, Google AI Overviews, and Bing Copilot.');
@@ -1809,7 +1818,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       h += '<div style="flex:1 1 280px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px">'
         + '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Audit a single URL</div>'
         + '<div style="display:flex;gap:8px">'
-        +   '<input type="text" id="lgse-aeo-url" placeholder="https://yoursite.com/page" class="lgse-input" style="flex:1;font-size:11.5px" />'
+        +   '<input type="text" id="lgse-aeo-url" value="' + esc(lgseDefaultAuditUrl()) + '" placeholder="https://yoursite.com/page" class="lgse-input" style="flex:1;font-size:11.5px" />'
         +   '<button class="lgse-btn-primary" onclick="lgseAeoAuditUrl()" style="font-size:11.5px;padding:8px 16px">Audit</button>'
         + '</div>'
         + '<div style="font-size:10px;color:var(--lgse-t3);margin-top:6px">Audits any public URL. Score updates in seconds. No credits charged.</div>'
