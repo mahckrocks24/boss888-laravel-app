@@ -109,7 +109,7 @@ class DashboardController
             return [
                 'engine'    => $engine,
                 'action'    => $action,
-                'label'     => $this->labelFor($engine, $action, $meta),
+                'label'     => $this->labelFor($engine, $action, $meta, $agent['name'] ?? null),
                 'agent'     => $agent,
                 'timestamp' => $log->created_at,
                 'time_ago'  => Carbon::parse($log->created_at)->diffForHumans(),
@@ -273,8 +273,26 @@ class DashboardController
     }
 
     /** Plain-English label for an engine.action event. */
-    private function labelFor(string $engine, string $action, ?array $meta): string
+    private function labelFor(string $engine, string $action, ?array $meta, ?string $agentName = null): string
     {
+        // Wave 41c — task.* events used to label as "Sarah created/executed a task"
+        // because the audit_log action is always task.created / task.executed
+        // regardless of which agent did the work. Use the real agent name +
+        // the underlying action stored in metadata_json.action.
+        if ($engine === 'task') {
+            $worker = $agentName ?: 'A specialist';
+            $innerAction = is_array($meta) && !empty($meta['action'])
+                ? ucfirst(str_replace('_', ' ', (string) $meta['action']))
+                : 'a task';
+            return match ($action) {
+                'created'           => "Sarah delegated " . lcfirst($innerAction) . " to {$worker}",
+                'executed'          => "{$worker} completed " . lcfirst($innerAction),
+                'execution_failed'  => "{$worker} failed at " . lcfirst($innerAction),
+                'cancelled'         => "{$worker} cancelled " . lcfirst($innerAction),
+                default             => "{$worker} {$action} " . lcfirst($innerAction),
+            };
+        }
+
         $map = [
             'seo.run_audit'            => 'James ran an SEO audit',
             'seo.deep_audit'           => 'Alex ran a technical SEO audit',
