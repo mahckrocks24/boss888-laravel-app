@@ -152,7 +152,6 @@ class PublishedSiteMiddleware
                 if (is_file($staticPath)) {
                     $html = file_get_contents($staticPath);
                     // Wave 63 — auto-inject DB articles into static blog index.
-                    // Only fires when the served path looks like a blog list page.
                     if (preg_match('#/blog/index\.html$|/blog\.html$#i', $staticPath)) {
                         $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0));
                     }
@@ -161,6 +160,26 @@ class PublishedSiteMiddleware
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=300, s-maxage=300')
                         ->header('X-Served-By', 'static-template');
+                }
+            }
+
+            // Wave 64 — no static file matched. If the path is /blog/{slug}
+            // and the slug corresponds to a published article in DB, render
+            // it dynamically using an existing article static file as the
+            // theme template (substituting title, image, body, meta).
+            if (preg_match('#^blog/([a-z0-9\-]+)/?$#i', $path, $bm)) {
+                $articleSlug = $bm[1];
+                $dynHtml = $this->renderDynamicArticlePage(
+                    (int) ($website->workspace_id ?? 0),
+                    (int) $website->id,
+                    $articleSlug
+                );
+                if ($dynHtml !== null) {
+                    $dynHtml = $this->injectChatbotWidget($dynHtml, (int) ($website->workspace_id ?? 0), (int) $website->id);
+                    return response($dynHtml, 200)
+                        ->header('Content-Type', 'text/html; charset=utf-8')
+                        ->header('Cache-Control', 'public, max-age=300, s-maxage=300')
+                        ->header('X-Served-By', 'dynamic-article');
                 }
             }
         }
@@ -348,6 +367,107 @@ class PublishedSiteMiddleware
         }
 
         return $card;
+    }
+
+    /**
+     * Wave 64 — Render a blog article page dynamically when no static
+     * file exists. Uses an EXISTING per-article static file as the theme
+     * template, then swaps title, image, body, meta to the requested
+     * article's data. Returns null if no template or no matching article.
+     */
+    private function renderDynamicArticlePage(int $workspaceId, int $websiteId, string $slug): ?string
+    {
+        if ($workspaceId <= 0 || $websiteId <= 0 || $slug === '') return null;
+
+        try {
+            $article = DB::table('articles')
+                ->where('workspace_id', $workspaceId)
+                ->where('slug', $slug)
+                ->where('status', 'published')
+                ->whereNull('deleted_at')
+                ->first(['id', 'title', 'slug', 'content', 'featured_image_url', 'featured_image_alt',
+                         'meta_title', 'meta_description', 'seo_json', 'jsonld_json',
+                         'blog_category', 'word_count', 'published_at', 'updated_at']);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        if (!$article) return null;
+
+        // Find any existing static article file to use as theme template.
+        $siteRoot = storage_path('app/public/sites/' . $websiteId . '/blog');
+        if (!is_dir($siteRoot)) return null;
+        $candidates = glob($siteRoot . '/*/index.html');
+        if (empty($candidates)) return null;
+        $tplPath = $candidates[0];
+        $tpl = @file_get_contents($tplPath);
+        if (!$tpl) return null;
+
+        $html = $tpl;
+        $title = $article->title ?: $slug;
+        $metaTitle = $article->meta_title ?: $title;
+        $metaDesc = $article->meta_description ?: '';
+        if (!$metaDesc && $article->seo_json) {
+            $seo = json_decode($article->seo_json, true);
+            if (is_array($seo)) {
+                $metaTitle = $metaTitle ?: ($seo['title'] ?? $title);
+                $metaDesc  = $seo['description'] ?? '';
+            }
+        }
+        $imgUrl = $article->featured_image_url ?: '';
+        $imgAlt = $article->featured_image_alt ?: $title;
+
+        // <title>
+        $html = preg_replace('#<title>.*?</title>#is', '<title>' . e($metaTitle) . '</title>', $html, 1);
+        // meta description
+        $html = preg_replace('#(<meta\s+name="description"\s+content=)"[^"]*"#i', '$1"' . e($metaDesc) . '"', $html, 1);
+        // canonical link if present
+        $canonical = 'https://' . (request()->getHost() ?: 'levelupgrowth.io') . '/blog/' . $slug;
+        $html = preg_replace('#(<link\s+rel="canonical"\s+href=)"[^"]*"#i', '$1"' . e($canonical) . '"', $html, 1);
+
+        // og: tags
+        $html = preg_replace('#(<meta\s+property="og:title"\s+content=)"[^"]*"#i', '$1"' . e($metaTitle) . '"', $html, 1);
+        $html = preg_replace('#(<meta\s+property="og:description"\s+content=)"[^"]*"#i', '$1"' . e($metaDesc) . '"', $html, 1);
+        if ($imgUrl) {
+            $html = preg_replace('#(<meta\s+property="og:image"\s+content=)"[^"]*"#i', '$1"' . e($imgUrl) . '"', $html, 1);
+        }
+
+        // Featured/hero image: <img class="post-hero-img">
+        if ($imgUrl) {
+            $html = preg_replace('#(<img[^>]*class="[^"]*post-hero-img[^"]*"[^>]*src=)"[^"]*"#i', '$1"' . e($imgUrl) . '"', $html, 1);
+            // Some templates put class after src — try the alt form.
+            $html = preg_replace('#(<img[^>]*src=)"[^"]*"([^>]*class="[^"]*post-hero-img[^"]*")#i', '$1"' . e($imgUrl) . '"$2', $html, 1);
+        }
+        $html = preg_replace('#(<img[^>]*class="[^"]*post-hero-img[^"]*"[^>]*\s)alt="[^"]*"#i', '$1alt="' . e($imgAlt) . '"', $html, 1);
+
+        // Article title <h1 class="post-page-title">
+        $html = preg_replace('#(<h1[^>]*class="[^"]*post-page-title[^"]*"[^>]*>).+?(</h1>)#is', '$1' . e($title) . '$2', $html, 1);
+        // Category <div class="post-page-cat">
+        $cat = $article->blog_category ?: '';
+        if ($cat !== '') {
+            $html = preg_replace('#(<div[^>]*class="[^"]*post-page-cat[^"]*"[^>]*>).+?(</div>)#is', '$1' . e($cat) . '$2', $html, 1);
+        } else {
+            $html = preg_replace('#<div[^>]*class="[^"]*post-page-cat[^"]*"[^>]*>.+?</div>#is', '', $html, 1);
+        }
+        // Date in <span class="post-date"> if present
+        if ($article->published_at) {
+            $when = \Carbon\Carbon::parse($article->published_at)->format('F j, Y');
+            $html = preg_replace('#(<span[^>]*class="[^"]*post-date[^"]*"[^>]*>).+?(</span>)#is', '$1' . e($when) . '$2', $html, 1);
+        }
+
+        // Article body — REPLACE everything inside <div class="post-page-body">.
+        // The template's body is hardcoded; we substitute the live article HTML.
+        $bodyContent = (string) $article->content;
+        $html = preg_replace('#(<div[^>]*class="[^"]*post-page-body[^"]*"[^>]*>).+?(</div>\s*</div>)#is',
+            '$1' . $bodyContent . '$2',
+            $html, 1);
+
+        // Inject AEO JSON-LD if present
+        if (!empty($article->jsonld_json)) {
+            $jsonldTag = '<script type="application/ld+json">' . $article->jsonld_json . '</script>';
+            $html = preg_replace('#</head>#i', $jsonldTag . "\n</head>", $html, 1);
+        }
+
+        return $html;
     }
 
     /**
