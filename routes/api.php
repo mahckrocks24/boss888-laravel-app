@@ -6346,6 +6346,61 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 ]);
             }
 
+            // Wave 51 — auto-enrich on publish for AI-generated articles
+            // (assigned_agent IS NOT NULL) when the workspace has AEO Mode
+            // on. Charges 1cr separately from publish. Failure here is
+            // logged but does NOT block the publish flow — graceful
+            // degradation, the WP post still ships with whatever content
+            // we have.
+            $aeoOn = (bool) \Illuminate\Support\Facades\DB::table('aeo_settings')
+                ->where('workspace_id', $wsId)
+                ->value('aeo_mode_enabled');
+            $isAiGenerated = !empty($article->assigned_agent);
+            $alreadyEnriched = !empty($article->aeo_enriched_at);
+
+            if ($aeoOn && $isAiGenerated && !$alreadyEnriched) {
+                $autoEnrichSvc = app(\App\Core\Billing\CreditService::class);
+                $autoBalance = (int) \Illuminate\Support\Facades\DB::table('credits')
+                    ->where('workspace_id', $wsId)->value('balance') ?: 0;
+                if ($autoBalance >= 1) {
+                    $autoResv = $autoEnrichSvc->reserveCredits($wsId, 1, 'Article', $articleId, 'auto_aeo_pub_' . uniqid());
+                    try {
+                        $aeoRes = app(\App\Engines\Write\Services\WriteService::class)
+                            ->aeoEnrich($wsId, ['article_id' => $articleId]);
+                        if (!empty($aeoRes['enriched'])) {
+                            $autoEnrichSvc->commit($wsId, $autoResv->reservation_reference, 1);
+                            \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+                                'workspace_id' => $wsId,
+                                'action' => 'write.aeo_enrich',
+                                'entity_type' => 'Article',
+                                'entity_id' => $articleId,
+                                'metadata_json' => json_encode([
+                                    'source' => 'auto_on_publish',
+                                    'faq_count' => $aeoRes['faq_count'] ?? 0,
+                                    'heading_rewrites' => $aeoRes['heading_rewrites'] ?? 0,
+                                    'credit_cost' => 1,
+                                ]),
+                                'created_at' => now(),
+                            ]);
+                            // Refresh $article so the WP push uses the enriched content.
+                            $article = \Illuminate\Support\Facades\DB::table('articles')
+                                ->where('id', $articleId)->first();
+                        } else {
+                            $autoEnrichSvc->release($wsId, $autoResv->reservation_reference);
+                        }
+                    } catch (\Throwable $aeoErr) {
+                        $autoEnrichSvc->release($wsId, $autoResv->reservation_reference);
+                        \Illuminate\Support\Facades\Log::warning('[AutoEnrichOnPublish] failed', [
+                            'article_id' => $articleId, 'error' => $aeoErr->getMessage(),
+                        ]);
+                    }
+                } else {
+                    \Illuminate\Support\Facades\Log::info('[AutoEnrichOnPublish] skipped — insufficient credits', [
+                        'article_id' => $articleId, 'balance' => $autoBalance,
+                    ]);
+                }
+            }
+
             // Step 1 — site config check (fail fast before mutating state)
             $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
                 ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
