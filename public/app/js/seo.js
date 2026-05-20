@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.28.0-wave48 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.28.1-wave49 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1926,16 +1926,20 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var h = '<div class="lgse-section-hdr"><span class="lgse-section-title">Workspace articles — AEO enrichment status (' + enrichedCount + ' of ' + total + ' enriched · ' + pct + '%)</span></div>';
       h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;overflow:hidden">';
       h += '<table class="lgse-table" style="margin:0">';
-      h += '<thead><tr><th style="width:60%">Article</th><th>Status</th><th>Words</th><th class="r">Action</th></tr></thead><tbody>';
+      h += '<thead><tr><th style="width:50%">Article</th><th>Status</th><th class="r">Words</th><th class="r" title="AI crawler hits last 30d">Crawled</th><th class="r" title="AI-referred visitors last 30d">AI refs</th><th class="r">Action</th></tr></thead><tbody>';
       articles.slice(0, 50).forEach(function (a) {
         var statusBadge = a.aeo_enriched
           ? '<span style="background:rgba(0,229,168,.15);color:#00E5A8;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">✓ Enriched</span>'
           : '<span style="background:rgba(245,158,11,.12);color:#F59E0B;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Not enriched</span>';
         var btnLabel = a.aeo_enriched ? 'Re-enrich' : 'Enrich (1cr)';
+        var cr = a.crawler_hits_30d || 0;
+        var rf = a.referrals_30d || 0;
         h += '<tr>'
           + '<td style="max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(a.title || '(untitled)') + '</td>'
           + '<td>' + statusBadge + '</td>'
-          + '<td class="mono">' + (a.word_count || 0) + '</td>'
+          + '<td class="r mono">' + (a.word_count || 0) + '</td>'
+          + '<td class="r mono" style="color:' + (cr > 0 ? 'var(--lgse-purple)' : 'var(--lgse-t3)') + '">' + cr + '</td>'
+          + '<td class="r mono" style="color:' + (rf > 0 ? 'var(--lgse-teal)' : 'var(--lgse-t3)') + '">' + rf + '</td>'
           + '<td class="r"><button class="lgse-btn-secondary" onclick="lgseAeoEnrichArticle(' + a.id + ', this)" style="font-size:10.5px;padding:5px 12px">' + btnLabel + '</button></td>'
           + '</tr>';
       });

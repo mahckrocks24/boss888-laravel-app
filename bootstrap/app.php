@@ -64,6 +64,25 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('seo:rank-track cron failed');
             });
 
+        // Wave 49b — daily AEO score snapshot.
+        $schedule->command('aeo:snapshot')
+            ->name('aeo:snapshot')
+            ->dailyAt('04:00')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('aeo:snapshot cron failed');
+            });
+
+        // Wave 49c — daily aeo_traffic retention cleanup (90-day window).
+        $schedule->command('aeo:cleanup-traffic')
+            ->name('aeo:cleanup-traffic')
+            ->dailyAt('04:15')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
+
         $schedule->command('seo:serp-refresh')
             ->name('seo:serp-refresh')
             ->dailyAt('03:30')

@@ -2282,6 +2282,31 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ]);
         });
 
+        // ── Wave 49b — AEO score evolution chart ──────────────────────────
+
+        // GET /api/seo/aeo/score-history?days=90 — daily snapshots.
+        Route::get('/aeo/score-history', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $days = max(7, min(180, (int) $r->query('days', 90)));
+            $rows = \Illuminate\Support\Facades\DB::table('aeo_score_snapshots')
+                ->where('workspace_id', $wsId)
+                ->where('captured_at', '>=', now()->subDays($days))
+                ->orderBy('captured_at')
+                ->get(['avg_score', 'audits_count', 'articles_total', 'articles_enriched', 'captured_at']);
+            return response()->json([
+                'success' => true,
+                'days' => $days,
+                'series' => $rows->map(fn($s) => [
+                    'date' => $s->captured_at,
+                    'score' => $s->avg_score,
+                    'audits' => $s->audits_count,
+                    'articles_total' => $s->articles_total,
+                    'articles_enriched' => $s->articles_enriched,
+                ]),
+                'point_count' => $rows->count(),
+            ]);
+        });
+
         // ── Wave 48 — AEO traffic measurement (Stage 1) ────────────────────
 
         // GET /api/seo/aeo/traffic — last-N-days crawler hits + AI referrals.
@@ -2394,8 +2419,32 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 ->orderByDesc('id')
                 ->limit(200)
                 ->get(['id', 'title', 'slug', 'status', 'jsonld_json', 'aeo_enriched_at', 'word_count', 'created_at']);
-            $rows = $articles->map(function ($a) {
+
+            // Wave 49a — fetch 30-day AI traffic counts per article URL.
+            // Match aeo_traffic.url by slug suffix to handle full-URL storage.
+            $since = now()->subDays(30);
+            $trafficByUrl = \Illuminate\Support\Facades\DB::table('aeo_traffic')
+                ->where('workspace_id', $wsId)
+                ->where('created_at', '>=', $since)
+                ->selectRaw('url, type, COUNT(*) as cnt')
+                ->groupBy('url', 'type')
+                ->get();
+            $trafficMap = [];
+            foreach ($trafficByUrl as $t) {
+                $trafficMap[$t->url] = $trafficMap[$t->url] ?? ['crawler' => 0, 'referral' => 0];
+                $trafficMap[$t->url][$t->type] = (int) $t->cnt;
+            }
+            $rows = $articles->map(function ($a) use ($trafficMap) {
                 $enriched = $a->aeo_enriched_at !== null && $a->jsonld_json !== null;
+                // Wave 49a — match aeo_traffic URLs that end with /blog/{slug}
+                // or /{slug}. Crude but works without joining via website_id.
+                $crawler = 0; $referral = 0;
+                foreach ($trafficMap as $url => $counts) {
+                    if ($a->slug && (str_ends_with($url, '/blog/' . $a->slug) || str_ends_with($url, '/' . $a->slug))) {
+                        $crawler += $counts['crawler'] ?? 0;
+                        $referral += $counts['referral'] ?? 0;
+                    }
+                }
                 return [
                     'id' => $a->id,
                     'title' => $a->title,
@@ -2405,6 +2454,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     'aeo_enriched' => $enriched,
                     'aeo_enriched_at' => $a->aeo_enriched_at,
                     'created_at' => $a->created_at,
+                    'crawler_hits_30d' => $crawler,
+                    'referrals_30d' => $referral,
                 ];
             })->values();
             return response()->json([
