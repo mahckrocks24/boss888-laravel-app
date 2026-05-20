@@ -415,15 +415,19 @@ class WriteService
         }
 
         // Create the article (now persists correctly thanks to Phase 0.16 schema fix)
+        // Wave 62 — default is_marketing_blog=1 for blog_post type so the
+        // public blog listing (BuilderRenderer.renderBlogList) actually
+        // shows AI-generated posts.
         $article = $this->createArticle($wsId, [
-            'title'          => $params['title'] ?? ucfirst($topic),
-            'content'        => $content,
-            'type'           => $type,
-            'target_keyword' => $keyword,
-            'audience'       => $params['audience'] ?? null,
-            'tone'           => $tone,
-            'assigned_agent' => 'priya',
-            'user_id'        => $params['user_id'] ?? null,
+            'title'             => $params['title'] ?? ucfirst($topic),
+            'content'           => $content,
+            'type'              => $type,
+            'target_keyword'    => $keyword,
+            'audience'          => $params['audience'] ?? null,
+            'tone'              => $tone,
+            'assigned_agent'    => 'priya',
+            'is_marketing_blog' => $params['is_marketing_blog'] ?? ($type === 'blog_post' || $type === 'blog_article'),
+            'user_id'           => $params['user_id'] ?? null,
         ]);
 
         $this->engineIntel->recordToolUsage('write', 'write_article', $result['success'] ? 0.8 : 0.3);
