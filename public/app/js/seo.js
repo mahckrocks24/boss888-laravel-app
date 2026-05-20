@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.24.1-wave44d loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.25.0-wave44e loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1570,6 +1570,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     { id: 'competitors', label: 'Competitors' },
     { id: 'insights',    label: 'Insights' },
     { id: 'reports',     label: 'Reports' },
+    { id: 'aeo',         label: 'AEO' },
     { id: 'write',       label: 'Write' },
     { id: 'pipeline',    label: 'Pipeline' },
   ];
@@ -1757,11 +1758,158 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       overview: renderOverview, audit: renderAudit, keywords: renderKeywords,
       pages: renderPages, links: renderLinks, topics: renderTopics,
       competitors: renderCompetitors, insights: renderInsights, reports: renderReports,
-      pipeline: renderPipeline, write: renderWrite,
+      pipeline: renderPipeline, write: renderWrite, aeo: renderAEO,
     };
     (renderers[id] || renderOverview)(content);
   }
   window.lgseSwitchTab = switchTab;
+
+  // ── Tab — AEO (Answer Engine Optimization) ───────────────────────────
+  // Wave 44 — read-only audit of how well pages will be cited by LLM-based
+  // search engines (ChatGPT, Perplexity, Claude, Google AI Overviews, Bing
+  // Copilot). Free for all plan tiers as upsell hook; enrichment (Wave 45)
+  // is the $69+ gated feature.
+
+  function renderAEO(el) {
+    el.innerHTML = pageTitle('AEO — Answer Engine Optimization',
+      'How well your pages get cited in ChatGPT, Perplexity, Claude, Google AI Overviews, and Bing Copilot.');
+
+    el.innerHTML += '<div id="lgse-aeo-body">'
+      + '<div style="padding:40px;color:var(--lgse-t3);text-align:center;font-size:11.5px">Loading audit data…</div>'
+      + '</div>';
+
+    lgseLoadAeoAudits();
+  }
+
+  function lgseLoadAeoAudits() {
+    api('GET', '/aeo/audit').then(function (r) {
+      var body = document.getElementById('lgse-aeo-body');
+      if (!body) return;
+      if (!r || !r.success) {
+        body.innerHTML = emptyState('!', 'Could not load AEO audits', 'Try refreshing.');
+        return;
+      }
+      var audits = r.audits || [];
+      var avg = r.workspace_avg_score;
+      var h = '';
+
+      // Header: workspace avg + recrawl + single-URL input
+      h += '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;margin-bottom:16px">';
+
+      // Avg score card
+      h += '<div style="flex:0 0 auto;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px 18px;min-width:160px">'
+        + '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Workspace AEO score</div>'
+        + '<div style="font-size:32px;font-weight:700;color:' + (avg !== null ? scoreColor(avg) : 'var(--lgse-t3)') + ';line-height:1">'
+        +   (avg !== null ? avg + ' <span style="font-size:14px;color:var(--lgse-t3);font-weight:500">/ 100</span>' : '—')
+        + '</div>'
+        + '<div style="font-size:10.5px;color:var(--lgse-t3);margin-top:4px">' + (r.count || 0) + ' pages audited</div>'
+        + '</div>';
+
+      // Single-URL audit
+      h += '<div style="flex:1 1 280px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px">'
+        + '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Audit a single URL</div>'
+        + '<div style="display:flex;gap:8px">'
+        +   '<input type="text" id="lgse-aeo-url" placeholder="https://yoursite.com/page" class="lgse-input" style="flex:1;font-size:11.5px" />'
+        +   '<button class="lgse-btn-primary" onclick="lgseAeoAuditUrl()" style="font-size:11.5px;padding:8px 16px">Audit</button>'
+        + '</div>'
+        + '<div style="font-size:10px;color:var(--lgse-t3);margin-top:6px">Audits any public URL. Score updates in seconds. No credits charged.</div>'
+        + '</div>';
+
+      // Recrawl card
+      h += '<div style="flex:0 0 auto;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px;min-width:180px">'
+        + '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Recrawl indexed pages</div>'
+        + '<button class="lgse-btn-secondary" onclick="lgseAeoRecrawlAll()" style="width:100%;font-size:11.5px;padding:8px 16px">Recrawl all</button>'
+        + '<div style="font-size:10px;color:var(--lgse-t3);margin-top:6px">Audits up to 100 indexed pages.</div>'
+        + '</div>';
+
+      h += '</div>';
+
+      // Empty state if no audits yet
+      if (audits.length === 0) {
+        h += emptyState('⊘', 'No pages audited yet',
+          'Click "Recrawl all" or paste a URL above to run your first AEO audit. No credits charged.');
+        body.innerHTML = h;
+        return;
+      }
+
+      // Table of audited pages
+      h += '<div class="lgse-section-hdr"><span class="lgse-section-title">Audited pages (' + audits.length + ')</span></div>';
+      h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;overflow:hidden">';
+      audits.forEach(function (a, idx) {
+        var passed = (a.checks || []).filter(function (c) { return c.pass; }).length;
+        var total = (a.checks || []).length;
+        var date = a.last_audited_at ? new Date(a.last_audited_at).toLocaleString('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
+        h += '<div id="lgse-aeo-row-' + a.id + '" style="border-bottom:1px solid var(--lgse-border)' + (idx === audits.length - 1 ? ';border-bottom:none' : '') + '">'
+          + '<div style="display:flex;align-items:center;padding:12px 14px;cursor:pointer;gap:12px" onclick="lgseAeoToggleRow(' + a.id + ')">'
+          +   '<div style="flex:0 0 60px;font-size:22px;font-weight:700;color:' + scoreColor(a.score) + ';text-align:center">' + a.score + '</div>'
+          +   '<div style="flex:1;min-width:0">'
+          +     '<div style="font-size:12px;color:var(--lgse-t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(a.url) + '</div>'
+          +     '<div style="font-size:10.5px;color:var(--lgse-t3);margin-top:2px">' + passed + ' of ' + total + ' checks passed · audited ' + date + '</div>'
+          +   '</div>'
+          +   '<div style="color:var(--lgse-t3);font-size:14px">▾</div>'
+          + '</div>'
+          + '<div id="lgse-aeo-detail-' + a.id + '" style="display:none;padding:0 14px 14px;background:var(--lgse-bg1)">'
+          +   lgseAeoChecksHtml(a.checks || [])
+          + '</div>'
+          + '</div>';
+      });
+      h += '</div>';
+
+      body.innerHTML = h;
+    }).catch(function (e) {
+      var body = document.getElementById('lgse-aeo-body');
+      if (body) body.innerHTML = emptyState('⚠', 'Audit fetch failed', 'Try refreshing.');
+    });
+  }
+
+  function lgseAeoChecksHtml(checks) {
+    var rows = checks.map(function (c) {
+      var icon = c.pass ? '<span style="color:#00E5A8;font-weight:700">✓</span>' : '<span style="color:#EF4444;font-weight:700">✗</span>';
+      var fix = (!c.pass && c.fix) ? '<div style="font-size:10.5px;color:var(--lgse-t3);margin-top:3px">' + esc(c.fix) + '</div>' : '';
+      return '<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--lgse-border)">'
+        + '<div style="flex:0 0 24px;text-align:center;font-size:13px">' + icon + '</div>'
+        + '<div style="flex:1">'
+        +   '<div style="font-size:11.5px;color:var(--lgse-t1)">' + esc(c.label) + '</div>'
+        +   fix
+        + '</div>'
+        + '<div style="flex:0 0 50px;text-align:right;font-size:10.5px;color:var(--lgse-t3);font-family:var(--lgse-mono)">' + c.weight + ' pts</div>'
+        + '</div>';
+    }).join('');
+    return '<div style="padding:8px 0">' + rows + '</div>';
+  }
+
+  window.lgseAeoToggleRow = function (id) {
+    var d = document.getElementById('lgse-aeo-detail-' + id);
+    if (!d) return;
+    d.style.display = d.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.lgseAeoAuditUrl = function () {
+    var inp = document.getElementById('lgse-aeo-url');
+    if (!inp) return;
+    var url = (inp.value || '').trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    inp.disabled = true;
+    api('POST', '/aeo/audit/url', { url: url }).then(function (r) {
+      inp.disabled = false;
+      inp.value = '';
+      if (r && r.success) {
+        lgseLoadAeoAudits();
+      }
+    }).catch(function () { inp.disabled = false; });
+  };
+
+  window.lgseAeoRecrawlAll = function () {
+    var btn = document.querySelector('button[onclick="lgseAeoRecrawlAll()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Auditing…'; }
+    api('POST', '/aeo/audit/recrawl', {}).then(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Recrawl all'; }
+      lgseLoadAeoAudits();
+    }).catch(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Recrawl all'; }
+    });
+  };
 
   // ── Tab — AI Assistant (James — SEO-focused chat) ────────────────────
   //
