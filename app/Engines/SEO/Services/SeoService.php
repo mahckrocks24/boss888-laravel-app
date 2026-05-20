@@ -339,6 +339,55 @@ class SeoService
     // TOOL 3: DEEP AUDIT
     // ═══════════════════════════════════════════════════════════
 
+
+    /**
+     * Wave 44c — Compute SERP dimension score from seo_keywords data.
+     *
+     * Returns null only when the workspace has zero tracked keywords (so the
+     * dashboard can show a "track keywords first" empty state). Otherwise
+     * returns 0-100 based on average position of tracked keywords:
+     *
+     *   contribution per ranked keyword = max(0, 105 - rank * 5)
+     *     rank 1  -> 100
+     *     rank 5  -> 80
+     *     rank 10 -> 55
+     *     rank 20 -> 5
+     *     rank 21+ -> 0
+     *   score = sum(contributions) / total_tracked
+     *     (untracked keywords drag down score, which is the honest signal)
+     *
+     * Prefers keywords specifically targeting $url; falls back to all
+     * workspace keywords when $url has no targeted keywords.
+     */
+    private function computeSerpScore(int $wsId, string $url): ?int
+    {
+        $rows = DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)
+            ->where('target_url', $url)
+            ->select('current_rank')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            $rows = DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)
+                ->select('current_rank')
+                ->get();
+        }
+        if ($rows->isEmpty()) {
+            return null; // No keywords tracked at all -> let UI show empty state
+        }
+
+        $total = $rows->count();
+        $sum = 0;
+        foreach ($rows as $r) {
+            $rank = $r->current_rank;
+            if ($rank === null) continue; // contributes 0
+            $contrib = max(0, 105 - ((int) $rank) * 5);
+            $sum += $contrib;
+        }
+        return (int) round($sum / $total);
+    }
+
     public function deepAudit(int $wsId, array $params): array
     {
         $url = $params['url'] ?? '';
@@ -405,12 +454,12 @@ class SeoService
             'tech_score'     => $techScore,
             'content_score'  => $contentScore,
             'internal_score' => null, // populated by knowledge endpoint (link_health)
-            'serp_score'     => null, // populated by GSC integration
+            'serp_score'     => $this->computeSerpScore($wsId, $url),
             // Nested form some UI paths use.
             'technical' => ['score' => $techScore],
             'content'   => ['score' => $contentScore],
             'internal'  => ['score' => null],
-            'serp'      => ['score' => null],
+            'serp'      => ['score' => $this->computeSerpScore($wsId, $url)],
         ];
 
         DB::table('seo_audits')->where('id', $auditId)->update([
