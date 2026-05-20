@@ -45,7 +45,7 @@ class DashboardController
                 if ($isOrchestrator) {
                     $tq = DB::table('tasks')
                         ->where('workspace_id', $wsId)
-                        ->whereRaw("JSON_EXTRACT(payload_json, '$.created_via') IN ('\"sarah_chat\"', '\"sarah_proactive\"')");
+                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')");
                 } else {
                     $tq = DB::table('tasks')
                         ->where('workspace_id', $wsId)
