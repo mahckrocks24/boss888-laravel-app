@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.23.0-wave33 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.24.0-wave44b loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1891,8 +1891,10 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     el.innerHTML =
       '<div style="display:grid;grid-template-columns:190px 1fr;gap:14px;margin-bottom:14px">'
         + '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center">'
+          + '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Live Page Health</div>'
           + '<div id="lgse-main-gauge">' + gauge(0, 120, true) + '</div>'
           + '<div id="lgse-tier" style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:10px;background:rgba(59,130,246,.12);color:#3b82f6;margin-top:10px">Loading…</div>'
+          + '<div style="font-size:9.5px;color:var(--lgse-t3);margin-top:6px;text-align:center;max-width:140px;line-height:1.4">Updates in real time as you edit meta tags and content</div>'
         + '</div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
           + dimCard('tech',  'Technical',     'HTTPS, speed, crawl',           '30%', '#EF4444')
@@ -7590,6 +7592,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap">'
         +   '<div>'
         +     '<div style="font-size:16px;font-weight:600;color:var(--lgse-t1);margin-bottom:3px">SEO report</div>'
+        +     '<div style="font-size:10px;color:var(--lgse-t3);margin-bottom:2px">Historical audit data — see Overview for current live page health</div>'
         +     '<div style="font-size:11px;color:var(--lgse-t3)">' + audits.length + ' audit' + (audits.length === 1 ? '' : 's') + ' · last run ' + (latest.created_at ? new Date(latest.created_at).toLocaleDateString() : '—') + '</div>'
         +   '</div>'
         +   '<div style="display:flex;gap:8px">'
@@ -7742,7 +7745,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
     var html = ''
       + section('Site health', [
-          kpi('Avg score',     siteHealth.avg_audit_score || 0),
+          kpi('Audit Average', (siteHealth.avg_audit_score || 0) + ' / 100'),
           kpi('Score change',  (siteHealth.score_change >= 0 ? '+' : '') + (siteHealth.score_change || 0), scCls(siteHealth.score_change || 0)),
           kpi('Audits run',    siteHealth.audits_run || 0),
           kpi('Open issues',   siteHealth.open_issues || 0, (siteHealth.open_issues > 0 ? 'lgse-dn' : '')),

@@ -2146,6 +2146,104 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ]);
         });
 
+        // ── Wave 44 — AEO Audit (Answer Engine Optimization) ───────────────
+        // Read-only audit of how well a workspace's published pages will be
+        // cited by LLM-based search (ChatGPT, Perplexity, Claude, Google AI
+        // Overviews, Bing Copilot). Available on ALL plan tiers as upsell hook
+        // (the enrichment that fixes the gaps is gated to $69+ in Wave 45).
+        // No credits charged — read-only HTTP fetch + HTML parse.
+
+        // GET /api/seo/aeo/audit — list audited pages with scores.
+        Route::get('/aeo/audit', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $rows = \Illuminate\Support\Facades\DB::table('aeo_audits')
+                ->where('workspace_id', $wsId)
+                ->orderByDesc('last_audited_at')
+                ->limit(200)
+                ->get(['id', 'url', 'score', 'checks_json', 'http_status', 'error_text', 'last_audited_at']);
+
+            $weights = [
+                'article_jsonld' => 12, 'faqpage_jsonld' => 12, 'tldr_at_top' => 12,
+                'ai_crawlers_allowed' => 10, 'llms_txt_present' => 8, 'date_modified' => 8,
+                'question_h2s' => 8, 'lists_tables' => 8, 'external_citation' => 6,
+                'images_with_alt' => 6, 'meta_description_len' => 5, 'title_length' => 5,
+            ];
+            $labels = [
+                'article_jsonld' => 'Article JSON-LD schema',
+                'faqpage_jsonld' => 'FAQPage JSON-LD schema',
+                'tldr_at_top' => 'TLDR / answer in first 300 chars',
+                'ai_crawlers_allowed' => 'robots.txt allows AI crawlers',
+                'llms_txt_present' => 'llms.txt available at site root',
+                'date_modified' => 'dateModified in JSON-LD',
+                'question_h2s' => 'At least 2 question-style H2s',
+                'lists_tables' => 'At least 2 lists or tables',
+                'external_citation' => 'At least 1 external citation link',
+                'images_with_alt' => 'All images have alt text',
+                'meta_description_len' => 'Meta description 120-160 chars',
+                'title_length' => 'Title 30-60 chars',
+            ];
+
+            $audits = $rows->map(function ($row) use ($weights, $labels) {
+                $checks = json_decode($row->checks_json ?? '[]', true) ?: [];
+                $enriched = [];
+                foreach ($weights as $key => $weight) {
+                    $check = $checks[$key] ?? ['pass' => false, 'fix' => 'Not yet audited'];
+                    $enriched[] = [
+                        'key' => $key,
+                        'label' => $labels[$key],
+                        'weight' => $weight,
+                        'pass' => (bool) ($check['pass'] ?? false),
+                        'fix' => $check['fix'] ?? null,
+                    ];
+                }
+                return [
+                    'id' => $row->id, 'url' => $row->url, 'score' => $row->score,
+                    'http_status' => $row->http_status, 'error_text' => $row->error_text,
+                    'last_audited_at' => $row->last_audited_at,
+                    'checks' => $enriched,
+                ];
+            })->values();
+
+            $avg = $audits->count() > 0
+                ? (int) round($audits->avg('score'))
+                : null;
+
+            return response()->json([
+                'success' => true,
+                'workspace_id' => $wsId,
+                'audits' => $audits,
+                'count' => $audits->count(),
+                'workspace_avg_score' => $avg,
+                'max_score' => 100,
+            ]);
+        });
+
+        // POST /api/seo/aeo/audit/recrawl — audit every indexed URL (synchronous, up to 100).
+        Route::post('/aeo/audit/recrawl', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $svc = app(\App\Engines\SEO\Services\AeoAuditService::class);
+            $count = $svc->auditAllIndexed($wsId);
+            return response()->json([
+                'success' => true,
+                'audited' => $count,
+                'message' => $count > 0
+                    ? "Audited {$count} pages. View results in the AEO tab."
+                    : 'No indexed pages found to audit. Add pages to your SEO index first.',
+            ]);
+        });
+
+        // POST /api/seo/aeo/audit/url — audit a single URL on demand.
+        Route::post('/aeo/audit/url', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $url = trim((string) $r->input('url', ''));
+            if (!preg_match('#^https?://#', $url)) {
+                return response()->json(['success' => false, 'error' => 'Valid http(s) URL required'], 422);
+            }
+            $svc = app(\App\Engines\SEO\Services\AeoAuditService::class);
+            $result = $svc->auditPage($wsId, $url);
+            return response()->json(['success' => true, 'audit' => $result]);
+        });
+
         // POST /api/seo/sitemap/ping — notify Google + Bing of the sitemap.
         Route::post('/sitemap/ping', function (\Illuminate\Http\Request $r) {
             $sitemapUrl = (string) $r->input('sitemap_url', '');
