@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.27.1-wave47b loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.27.2-wave47c loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1814,15 +1814,29 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         + '<div style="font-size:10.5px;color:var(--lgse-t3);margin-top:4px">' + (r.count || 0) + ' pages audited</div>'
         + '</div>';
 
-      // Single-URL audit
-      h += '<div style="flex:1 1 280px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px">'
-        + '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Audit a single URL</div>'
-        + '<div style="display:flex;gap:8px">'
-        +   '<input type="text" id="lgse-aeo-url" value="' + esc(lgseDefaultAuditUrl()) + '" placeholder="https://yoursite.com/page" class="lgse-input" style="flex:1;font-size:11.5px" />'
-        +   '<button class="lgse-btn-primary" onclick="lgseAeoAuditUrl()" style="font-size:11.5px;padding:8px 16px">Audit</button>'
-        + '</div>'
-        + '<div style="font-size:10px;color:var(--lgse-t3);margin-top:6px">Audits any public URL. Score updates in seconds. No credits charged.</div>'
-        + '</div>';
+      // Single-URL audit. In WP embed mode the URL is fixed to the WP
+      // install (no manual entry). Outside embed mode the input is editable.
+      var _wpEmbedded = !!(window._LGSC_EMBED && window._LGSC_EMBED.api_key && window._LGSC_EMBED.site_url);
+      var _defaultUrl = lgseDefaultAuditUrl();
+      h += '<div style="flex:1 1 280px;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px">';
+      if (_wpEmbedded) {
+        h += '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Audit your site</div>'
+          + '<div style="display:flex;gap:8px;align-items:center">'
+          +   '<div style="flex:1;font-size:11.5px;color:var(--lgse-t1);background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:6px;padding:8px 12px;font-family:var(--lgse-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(_defaultUrl) + '">' + esc(_defaultUrl) + '</div>'
+          +   '<input type="hidden" id="lgse-aeo-url" value="' + esc(_defaultUrl) + '" />'
+          +   '<button class="lgse-btn-primary" onclick="lgseAeoAuditUrl()" style="font-size:11.5px;padding:8px 16px;white-space:nowrap">Audit now</button>'
+          + '</div>'
+          + '<div style="font-size:10px;color:var(--lgse-t3);margin-top:6px">Audits the WordPress site where this plugin is installed.</div>'
+          + '</div>';
+      } else {
+        h += '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Audit a single URL</div>'
+          + '<div style="display:flex;gap:8px">'
+          +   '<input type="text" id="lgse-aeo-url" value="' + esc(_defaultUrl) + '" placeholder="https://yoursite.com/page" class="lgse-input" style="flex:1;font-size:11.5px" />'
+          +   '<button class="lgse-btn-primary" onclick="lgseAeoAuditUrl()" style="font-size:11.5px;padding:8px 16px">Audit</button>'
+          + '</div>'
+          + '<div style="font-size:10px;color:var(--lgse-t3);margin-top:6px">Audits any public URL. Score updates in seconds. No credits charged.</div>'
+          + '</div>';
+      }
 
       // Recrawl card
       h += '<div style="flex:0 0 auto;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px;min-width:180px">'
