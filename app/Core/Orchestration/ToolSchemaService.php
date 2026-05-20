@@ -231,7 +231,12 @@ class ToolSchemaService
         try {
             switch ($toolId) {
                 case 'platform.get_website_count':
-                    $count = DB::table('websites')->where('workspace_id', $wsId)->count();
+                    // Wave 54 — filter soft-deleted rows so the count reflects
+                    // the user's view (deletes from the UI only set deleted_at).
+                    $count = DB::table('websites')
+                        ->where('workspace_id', $wsId)
+                        ->whereNull('deleted_at')
+                        ->count();
                     return [
                         'success' => true,
                         'tool'    => $toolId,
@@ -243,6 +248,7 @@ class ToolSchemaService
                     $rows = DB::table('websites')
                         ->where('workspace_id', $wsId)
                         ->where('status', 'published')
+                        ->whereNull('deleted_at')
                         ->select('name', 'subdomain', 'custom_domain', 'published_at')
                         ->orderByDesc('published_at')
                         ->limit(50)
