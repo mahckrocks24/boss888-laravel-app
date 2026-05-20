@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.24.0-wave44b loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.24.1-wave44d loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -6463,7 +6463,18 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">';
       h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px"><div class="lgse-section-title" style="margin-bottom:8px">Key insights</div>';
       if ((s.insights || []).length === 0) h += '<div style="color:var(--lgse-t3);font-size:11px">Not enough data yet.</div>';
-      else h += '<ul style="margin:0;padding-left:18px;font-size:11.5px;color:var(--lgse-t2)">' + s.insights.map(function (i) { return '<li style="margin-bottom:6px">' + esc(i) + '</li>'; }).join('') + '</ul>';
+      else h += '<ul style="margin:0;padding-left:18px;font-size:11.5px;color:var(--lgse-t2);list-style:none;padding-left:0">' + s.insights.map(function (i) {
+        // Wave 44d — render insight objects {title, description, priority}
+        // instead of stringifying the whole object (was producing "[object Object]").
+        if (typeof i === 'string') return '<li style="margin-bottom:6px">' + esc(i) + '</li>';
+        var pColor = i.priority === 'critical' ? '#EF4444' : i.priority === 'warning' ? '#F59E0B' : '#00E5A8';
+        var pLabel = (i.priority || 'opportunity').toUpperCase();
+        return '<li style="margin-bottom:8px;display:flex;gap:8px;align-items:flex-start">'
+          + '<span style="font-size:9px;font-weight:700;color:' + pColor + ';background:' + pColor + '20;padding:2px 6px;border-radius:4px;letter-spacing:.04em;flex-shrink:0;margin-top:1px">' + esc(pLabel) + '</span>'
+          + '<div><div style="color:var(--lgse-t1);font-weight:500">' + esc(i.title || i.label || '') + '</div>'
+          + (i.description ? '<div style="color:var(--lgse-t3);font-size:10.5px;margin-top:2px">' + esc(i.description) + '</div>' : '')
+          + '</div></li>';
+      }).join('') + '</ul>';
       h += '</div>';
       h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px"><div class="lgse-section-title" style="margin-bottom:8px">Recommendations</div>';
       if ((s.recommendations || []).length === 0) h += '<div style="color:var(--lgse-t3);font-size:11px">No recommendations yet.</div>';
