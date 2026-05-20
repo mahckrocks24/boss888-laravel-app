@@ -330,11 +330,23 @@ class CreativeService
 
     public function createAsset(int $wsId, array $data): array
     {
+        // Wave 61b — assets.title and assets.prompt are VARCHAR(255).
+        // Enhanced prompts can exceed 255 chars. Use original_prompt
+        // for title when available (typically short); truncate both
+        // to 250 for safety. Full enhanced prompt still goes to the LLM.
+        $titleSrc = $data['title']
+            ?? ($data['metadata']['original_prompt'] ?? null)
+            ?? $data['prompt']
+            ?? 'Untitled';
+        $promptStored = $data['prompt'] ?? null;
+        $titleSafe = mb_substr((string) $titleSrc, 0, 250);
+        $promptSafe = $promptStored !== null ? mb_substr((string) $promptStored, 0, 250) : null;
+
         $id = DB::table('assets')->insertGetId([
             'workspace_id'  => $wsId,
             'type'          => $data['type'] ?? 'image',
-            'title'         => $data['title'] ?? $data['prompt'] ?? 'Untitled',
-            'prompt'        => $data['prompt'] ?? null,
+            'title'         => $titleSafe,
+            'prompt'        => $promptSafe,
             'provider'      => 'LevelUp AI',
             'model'         => 'LevelUp AI',
             'status'        => 'pending',
