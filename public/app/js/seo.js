@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.27.3-wave47d loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.27.4-wave47g loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1537,6 +1537,14 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       // 2026-05-12: surface backend errors (402 NO_CREDITS, 403 PLAN_GATED,
       // 422 validation, 5xx) instead of silently resolving with the error JSON.
       return r.json().then(function (d) {
+        // Wave 47g — if the response carries credits_remaining, update the
+        // sidebar widget without waiting for the 30s poll.
+        try {
+          var cr = (d && d.credits_remaining) || (d && d.result && d.result.credits_remaining);
+          if (cr !== undefined && cr !== null && typeof window.luSetCreditBalance === 'function') {
+            window.luSetCreditBalance(cr);
+          }
+        } catch (_e) {}
         if (!r.ok || (d && d.success === false)) {
           var err = new Error((d && (d.error || d.message)) || ('HTTP ' + r.status));
           err.code   = (d && d.code) || null;

@@ -4367,8 +4367,16 @@ function _appEnterDashboard() {
   if (authRoot) authRoot.style.display = 'none';
   var appShell = document.querySelector('.app');
   if (appShell) appShell.style.display = 'flex';
-  // Run trial check once
+  // Run trial check once + poll every 30s for credit refresh (Wave 47g).
   _checkTrialStatus();
+  if (!window._luCreditPollTimer) {
+    window._luCreditPollTimer = setInterval(function () {
+      // Only poll when the tab is visible to avoid burning quota in background.
+      if (document.visibilityState !== 'hidden') {
+        _checkTrialStatus();
+      }
+    }, 30000);
+  }
   // Start notification polling
   _notifStartPolling();
   // Signal that bootstrap is complete (consumers like the workspace canvas loader rely on this)
@@ -4645,6 +4653,26 @@ function _obComplete() {
   setTimeout(function(){ if (typeof nav === 'function') nav('command'); }, 300);
 }
 
+
+// Wave 47g — public credit-balance helpers so other modules can refresh
+// the sidebar widget after credit-spending actions.
+window.luRefreshCredits = function () {
+  if (typeof _checkTrialStatus === 'function') _checkTrialStatus();
+};
+window.luSetCreditBalance = function (n) {
+  var v = parseFloat(n);
+  if (isNaN(v)) return;
+  var valEl = document.getElementById('sb-credit-val');
+  if (valEl) valEl.textContent = Math.round(v);
+  // Update the bar width too, if we know the limit.
+  var barEl = document.getElementById('sb-credit-bar');
+  if (barEl && window._luCreditLimit) {
+    var pct = Math.min(100, (v / window._luCreditLimit) * 100);
+    barEl.style.width = pct + '%';
+    barEl.style.background = pct < 20 ? 'var(--rd)' : pct < 50 ? 'var(--am)' : 'var(--ac)';
+  }
+};
+
 // ── Trial credit warning ──────────────────────────────────────────────────────
 async function _checkTrialStatus() {
   try {
@@ -4653,6 +4681,7 @@ async function _checkTrialStatus() {
     var s = await r.json();
     var balance = s.credit_balance || 0;
     var limit = s.monthly_credit_limit || 0;
+    window._luCreditLimit = limit;
     var plan = (s.plan && s.plan.plan_slug) ? s.plan.plan_slug : 'free';
 
     // Show credit widget in sidebar
