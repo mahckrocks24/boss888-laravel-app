@@ -215,14 +215,23 @@ function _blRenderEditor(){
     +'<div style="background:var(--s2);border-radius:8px;padding:12px"><div style="'+_blLabelStyle()+'">Category</div><select id="bl-category" style="'+_blSelectStyle()+'width:100%"><option value="">None</option>'+catOptions+'</select></div>'
     // Excerpt
     +'<div style="background:var(--s2);border-radius:8px;padding:12px"><div style="'+_blLabelStyle()+'">Excerpt</div><textarea id="bl-excerpt" rows="3" style="'+_blInputStyle()+'font-size:12px;resize:vertical" oninput="_blMarkDirty()">'+_blE(a.excerpt||'')+'</textarea></div>'
-    // Featured Image — Phase 3 (2026-04-19): adds [${window.icon('image',14)} Choose from Library]
-    // button next to the URL input. The URL input stays as a manual fallback.
+    // Featured Image — Wave 50 (2026-05-20): adds AI generate button +
+    // always-visible preview with placeholder when no image set.
     +'<div style="background:var(--s2);border-radius:8px;padding:12px"><div style="'+_blLabelStyle()+'">Featured Image</div>'
-      +'<div style="display:flex;gap:6px;margin-bottom:8px">'
-        +'<input id="bl-featured-img" type="url" value="'+_blE(a.featured_image_url||'')+'" placeholder="https://..." style="'+_blInputStyle()+'font-size:12px;flex:1" oninput="_blMarkDirty();_blPreviewImg()">'
-        +'<button type="button" onclick="_blPickFeaturedImage()" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:6px;padding:0 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Choose from Media Library">\uD83D\uDCF7 Library</button>'
+      +'<div id="bl-img-preview" style="margin-bottom:10px;border-radius:8px;overflow:hidden;background:var(--s1,#0f1226);border:1px dashed var(--bd,#2a2f4a);min-height:140px;display:flex;align-items:center;justify-content:center;position:relative">'
+        +(a.featured_image_url
+          ? '<img src="'+_blE(a.featured_image_url)+'" style="width:100%;height:160px;object-fit:cover;display:block" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.bl-img-empty\').style.display=\'flex\'">'+
+            '<div class="bl-img-empty" style="display:none;flex-direction:column;align-items:center;gap:6px;color:var(--t3);font-size:11px"><div>Image failed to load</div></div>'
+          : '<div class="bl-img-empty" style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--t3);font-size:11px"><div style="font-size:24px;opacity:.4">\uD83C\uDF8B</div><div>No featured image yet</div><div style="font-size:10px;opacity:.7">Generate one with AI or pick from your Media Library</div></div>')
       +'</div>'
-      +'<div id="bl-img-preview" style="margin-top:8px;border-radius:6px;overflow:hidden">'+(a.featured_image_url?'<img src="'+_blE(a.featured_image_url)+'" style="width:100%;height:120px;object-fit:cover">':'')+'</div></div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:8px">'
+        +'<button type="button" id="bl-gen-img-btn" onclick="_blGenerateFeaturedImage()" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex:1" title="Generate a featured image with AI (1 credit)">✨ Generate with AI <span style="opacity:.7;font-weight:500">(1cr)</span></button>'
+        +'<button type="button" onclick="_blPickFeaturedImage()" style="background:var(--s1,#0f1226);color:var(--t1);border:1px solid var(--bd,#2a2f4a);border-radius:6px;padding:8px 12px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap" title="Choose from Media Library">\uD83D\uDCF7 Library</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px">'
+        +'<input id="bl-featured-img" type="url" value="'+_blE(a.featured_image_url||'')+'" placeholder="Or paste image URL\u2026" style="'+_blInputStyle()+'font-size:11.5px;flex:1" oninput="_blMarkDirty();_blPreviewImg()">'
+      +'</div>'
+    +'</div>'
     // SEO
     +'<div style="background:var(--s2);border-radius:8px;padding:12px"><div style="'+_blLabelStyle()+'">SEO Settings</div>'
       +'<div style="margin-bottom:8px"><label style="font-size:10px;color:var(--t3)">Meta title</label><input id="bl-meta-title" type="text" value="'+_blE(metaTitle)+'" style="'+_blInputStyle()+'font-size:12px;padding:6px 10px" oninput="_blMarkDirty()"><div style="font-size:10px;color:var(--t3);text-align:right" id="bl-meta-title-count">'+metaTitle.length+'/60</div></div>'
@@ -332,7 +341,45 @@ window._blUpdateWordCount=function(){
 window._blPreviewImg=function(){
   var url=(document.getElementById('bl-featured-img')||{}).value||'';
   var prev=document.getElementById('bl-img-preview');
-  if(prev)prev.innerHTML=url?'<img src="'+_blE(url)+'" style="width:100%;height:120px;object-fit:cover" onerror="this.style.display=\'none\'">':'';
+  if (!prev) return;
+  if (url) {
+    prev.innerHTML = '<img src="'+_blE(url)+'" style="width:100%;height:160px;object-fit:cover;display:block" onerror="this.style.display=\'none\';this.parentNode.querySelector(\'.bl-img-empty\').style.display=\'flex\'">'
+      + '<div class="bl-img-empty" style="display:none;flex-direction:column;align-items:center;gap:6px;color:var(--t3);font-size:11px"><div>Image failed to load</div></div>';
+  } else {
+    prev.innerHTML = '<div class="bl-img-empty" style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--t3);font-size:11px"><div style="font-size:24px;opacity:.4">\uD83C\uDF8B</div><div>No featured image yet</div><div style="font-size:10px;opacity:.7">Generate one with AI or pick from your Media Library</div></div>';
+  }
+};
+
+// Wave 50 — Generate featured image with AI for current article.
+window._blGenerateFeaturedImage = async function () {
+  if (!_bl.currentItem) {
+    if (typeof showToast === 'function') showToast('Save the article first', 'warning');
+    return;
+  }
+  var btn = document.getElementById('bl-gen-img-btn');
+  if (!btn) return;
+  var orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Generating\u2026';
+  try {
+    var resp = await _blApi('POST', '/articles/' + _bl.currentItem.id + '/generate-featured-image', {});
+    if (resp && resp.success && resp.image_url) {
+      var inp = document.getElementById('bl-featured-img');
+      if (inp) inp.value = resp.image_url;
+      _blMarkDirty();
+      _blPreviewImg();
+      if (resp.credits_remaining !== undefined && typeof window.luSetCreditBalance === 'function') {
+        window.luSetCreditBalance(resp.credits_remaining);
+      }
+      if (typeof showToast === 'function') showToast('Featured image generated', 'success');
+    } else {
+      if (typeof showToast === 'function') showToast('Image generation failed', 'error');
+    }
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Generation failed: ' + (e.message || 'unknown'), 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = orig;
 };
 
 window._blSaveDraft=async function(){

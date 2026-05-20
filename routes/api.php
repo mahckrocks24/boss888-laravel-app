@@ -6272,6 +6272,59 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // WordPress site. Orchestrates: (1) update status to 'published',
         // (2) push to WP via existing /connector/publish-post logic,
         // (3) persist wp_post_id, (4) post notification to Priya's chat
+        // Wave 50 — Generate AI featured image for an article (1cr).
+        Route::post('/articles/{id}/generate-featured-image', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $articleId = (int) $id;
+            $article = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('workspace_id', $wsId)->where('id', $articleId)->first(['id', 'title']);
+            if (!$article) {
+                return response()->json(['success' => false, 'error' => 'article_not_found'], 404);
+            }
+            $creditSvc = app(\App\Core\Billing\CreditService::class);
+            $balance = (int) \Illuminate\Support\Facades\DB::table('credits')
+                ->where('workspace_id', $wsId)->value('balance') ?: 0;
+            if ($balance < 1) {
+                return response()->json([
+                    'success' => false, 'error' => 'insufficient_credits',
+                    'required_credits' => 1, 'available' => $balance,
+                ], 402);
+            }
+            $reservation = $creditSvc->reserveCredits($wsId, 1, 'Article', $articleId, 'gen_img_' . uniqid());
+            $reservationRef = $reservation->reservation_reference;
+            try {
+                $result = app(\App\Engines\Creative\Services\CreativeService::class)
+                    ->generateImage($wsId, [
+                        'article_id' => $articleId,
+                        'quality' => 'mini',
+                        'user_id' => $r->user()?->id,
+                    ]);
+                $imgUrl = $result['url'] ?? $result['featured_image_url'] ?? null;
+                if ($imgUrl) {
+                    $creditSvc->commit($wsId, $reservationRef, 1);
+                    return response()->json([
+                        'success' => true,
+                        'image_url' => $imgUrl,
+                        'image_alt' => $result['featured_image_alt'] ?? null,
+                        'credits_used' => 1,
+                        'credits_remaining' => max(0, $balance - 1),
+                    ]);
+                }
+                $creditSvc->release($wsId, $reservationRef);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'generation_failed',
+                    'message' => 'Image generation did not return a URL.',
+                ], 502);
+            } catch (\Throwable $e) {
+                $creditSvc->release($wsId, $reservationRef);
+                \Illuminate\Support\Facades\Log::warning('[ArticleGenImage] failed', [
+                    'article_id' => $articleId, 'error' => $e->getMessage(),
+                ]);
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+        });
+
         // thread so the user sees the result in the unified messages
         // surfaces. Per AI Assistant Operating Rules: this fires only
         // on explicit user click (rule 5 — no auto-publish).
