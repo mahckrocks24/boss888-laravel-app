@@ -2232,6 +2232,56 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ]);
         });
 
+        // ── Wave 45 — AEO Enrichment endpoints ────────────────────────────
+
+        // GET /api/seo/aeo/articles — list workspace articles with AEO status.
+        Route::get('/aeo/articles', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $articles = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get(['id', 'title', 'slug', 'status', 'jsonld_json', 'aeo_enriched_at', 'word_count', 'created_at']);
+            $rows = $articles->map(function ($a) {
+                $enriched = $a->aeo_enriched_at !== null && $a->jsonld_json !== null;
+                return [
+                    'id' => $a->id,
+                    'title' => $a->title,
+                    'slug' => $a->slug,
+                    'status' => $a->status,
+                    'word_count' => $a->word_count,
+                    'aeo_enriched' => $enriched,
+                    'aeo_enriched_at' => $a->aeo_enriched_at,
+                    'created_at' => $a->created_at,
+                ];
+            })->values();
+            return response()->json([
+                'success' => true,
+                'articles' => $rows,
+                'total' => $rows->count(),
+                'enriched_count' => $rows->where('aeo_enriched', true)->count(),
+            ]);
+        });
+
+        // POST /api/seo/aeo/enrich — run aeoEnrich on a specific article.
+        // Cost: 1cr standalone (Wave 45 default). Will be 0 when bundled
+        // inside a Sarah chain after Wave 47 wires the chain integration.
+        Route::post('/aeo/enrich', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $articleId = (int) $r->input('article_id', 0);
+            if (!$articleId) {
+                return response()->json(['success' => false, 'error' => 'article_id required'], 422);
+            }
+            try {
+                $result = app(\App\Engines\Write\Services\WriteService::class)
+                    ->aeoEnrich($wsId, ['article_id' => $articleId]);
+                return response()->json(['success' => true, 'result' => $result]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+        });
+
         // POST /api/seo/aeo/audit/url — audit a single URL on demand.
         Route::post('/aeo/audit/url', function (\Illuminate\Http\Request $r) {
             $wsId = (int) $r->attributes->get('workspace_id');

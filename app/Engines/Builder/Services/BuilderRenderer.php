@@ -84,6 +84,9 @@ class BuilderRenderer
             'hero_image'       => $heroImage,
             'ga4_id'           => $settings['ga4_id'] ?? null,
             'gtm_id'           => $settings['gtm_id'] ?? null,
+            // Wave 45 — page-level AEO JSON-LD (Article + FAQPage schema)
+            // emitted alongside the existing LocalBusiness schema.
+            'jsonld_json'      => $page['jsonld_json'] ?? null,
         ];
 
         return $this->getFullHtml($content, $tokens, $website['name'] ?? 'Website', $page['title'] ?? 'Home', $seoContext, $website);
@@ -515,6 +518,19 @@ HTML;
         if ($desc) $schema['description'] = html_entity_decode($desc);
         $schemaJson = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         $metaHtml .= "    <script type=\"application/ld+json\">{$schemaJson}</script>\n";
+
+        // Wave 45 — page-level Article/FAQPage JSON-LD from aeo_enrich.
+        // Multiple JSON-LD blocks per page are valid; LLM retrievers parse
+        // all of them. Emit only when the page has been AEO-enriched.
+        $aeoJsonld = $seo['jsonld_json'] ?? null;
+        if ($aeoJsonld) {
+            // Validate it's parseable JSON before injecting.
+            $decoded = json_decode($aeoJsonld, true);
+            if (is_array($decoded)) {
+                $aeoOut = json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+                $metaHtml .= "    <script type=\"application/ld+json\">{$aeoOut}</script>\n";
+            }
+        }
 
         // Google Analytics / GTM
         $analyticsHtml = '';

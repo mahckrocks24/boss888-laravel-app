@@ -572,6 +572,283 @@ class WriteService
      * (`articles.seo_json`) is available — caller can pass `article_id` to
      * persist the meta directly.
      */
+
+    /**
+     * Wave 45 — AEO Enrichment.
+     *
+     * Reads an article's content and generates the AEO payload via runtime:
+     *   - TLDR: 50-100 word answer-style summary
+     *   - 3-5 FAQ Q&A pairs (extracted from article content, no fabrication)
+     *   - JSON-LD: Article + FAQPage + Organization (as author) + dateModified
+     *   - Heading rewrites: H2s rewritten as natural questions where applicable
+     *
+     * Persists:
+     *   - articles.content (rewritten with TLDR injected after H1 + FAQ section appended)
+     *   - articles.jsonld_json (the full JSON-LD blob, emitted on rendered pages)
+     *   - articles.aeo_enriched_at (timestamp)
+     *
+     * Cost: 1 credit standalone, 0 when bundled in a Sarah chain.
+     * No-op (returns existing state) if article was enriched in the last 5 minutes.
+     */
+    public function aeoEnrich(int $wsId, array $params): array
+    {
+        $articleId = (int) ($params['article_id'] ?? 0);
+        if (!$articleId) {
+            throw new \InvalidArgumentException('article_id required');
+        }
+
+        $article = \Illuminate\Support\Facades\DB::table('articles')
+            ->where('id', $articleId)
+            ->where('workspace_id', $wsId)
+            ->first(['id', 'title', 'content', 'focus_keyword', 'aeo_enriched_at', 'created_at', 'updated_at']);
+
+        if (!$article) {
+            throw new \RuntimeException("Article #{$articleId} not found in workspace");
+        }
+
+        // Idempotency: skip if enriched within the last 5 minutes (covers
+        // accidental double-clicks and chain retries).
+        if ($article->aeo_enriched_at && \Carbon\Carbon::parse($article->aeo_enriched_at)->gt(now()->subMinutes(5))) {
+            return [
+                'article_id' => $articleId,
+                'enriched' => false,
+                'reason' => 'recently_enriched',
+                'aeo_enriched_at' => $article->aeo_enriched_at,
+            ];
+        }
+
+        // Workspace context for the Organization JSON-LD (author/publisher).
+        $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['name', 'business_name']);
+        $businessName = $ws->business_name ?? $ws->name ?? 'LevelUp Growth';
+        $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+            ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value') ?: 'https://levelupgrowth.io';
+
+        $articleTitle = $article->title ?: ($article->focus_keyword ?: 'Article');
+        $articleContent = (string) $article->content;
+        $plainText = trim(preg_replace('/\s+/', ' ', strip_tags($articleContent)));
+        $firstNWords = implode(' ', array_slice(explode(' ', $plainText), 0, 1200));
+
+        // Folded prompt — request structured JSON output via the existing
+        // seo_content_generation task type (no runtime PR needed).
+        $userPrompt = "Given the article below, produce a JSON object that helps LLM-based "
+            . "search engines (ChatGPT, Perplexity, Claude, Google AI Overviews, Bing Copilot) "
+            . "cite this content accurately.\n\n"
+            . "ARTICLE TITLE: {$articleTitle}\n"
+            . "FOCUS KEYWORD: " . ($article->focus_keyword ?: '(none)') . "\n"
+            . "ARTICLE BODY (first ~1200 words):\n{$firstNWords}\n\n"
+            . "Output ONLY a JSON object with EXACTLY these three top-level keys (no other keys, "
+            . "no markdown, no prose):\n"
+            . "{\n"
+            . "  \"tldr\": \"50 to 100 word answer-style summary an LLM could quote verbatim\",\n"
+            . "  \"faqs\": [ { \"q\": \"question\", \"a\": \"answer\" }, ...3 to 5 pairs grounded in article content ],\n"
+            . "  \"heading_rewrites\": [ { \"from\": \"existing H2 text\", \"to\": \"H2 rewritten as a natural question\" }, ... ]\n"
+            . "}\n\n"
+            . "Rules:\n"
+            . "- Use the EXACT keys: tldr, faqs, heading_rewrites (lowercase)\n"
+            . "- Each FAQ uses keys q and a (single letters, lowercase)\n"
+            . "- Each heading_rewrite uses keys from and to (lowercase)\n"
+            . "- Do not invent facts; ground every FAQ answer in the article body";
+
+        // Wave 45 — empty context. Runtime appends context k=v lines into the
+        // prompt and the LLM would echo article_id/workspace_name into the
+        // output JSON. All routing info is already in the user prompt.
+        $context = [];
+
+        $systemPrompt = 'You are an Answer Engine Optimization (AEO) specialist. You produce '
+            . 'structured JSON output that helps LLM-based search engines cite content accurately. '
+            . 'You never fabricate facts. You ground every FAQ answer in the article text provided. '
+            . 'You output valid JSON only — no prose, no markdown fences.';
+
+        // chatJson lets us send a custom system prompt and get parsed JSON
+        // back. aiRun('seo_content_generation', ...) has a hardcoded meta-
+        // generation system prompt that overrides our AEO request.
+        $result = $this->runtime->chatJson($systemPrompt, $userPrompt, $context, 2000);
+        if (!($result['success'] ?? false)) {
+            \Illuminate\Support\Facades\Log::warning('[AeoEnrich] runtime failed', [
+                'article_id' => $articleId,
+                'error' => $result['error'] ?? 'unknown',
+            ]);
+            return [
+                'article_id' => $articleId,
+                'enriched' => false,
+                'reason' => 'runtime_failed',
+                'error' => $result['error'] ?? null,
+            ];
+        }
+
+        // chatJson already parses the JSON for us in $result['parsed'].
+        $parsed = $result['parsed'] ?? null;
+        if (!is_array($parsed) || !isset($parsed['tldr'])) {
+            // Fallback: try parsing $result['text'] in case parsed didn't populate.
+            $rawText = (string) ($result['text'] ?? '');
+            $rawText = preg_replace('/^```(?:json)?\s*/i', '', trim($rawText));
+            $rawText = preg_replace('/\s*```$/', '', $rawText);
+            $parsed = json_decode($rawText, true);
+        }
+
+        // Wave 45 — normalize LLM response variants. DeepSeek frequently
+        // omits tldr or uses {summary, abstract, overview} variants. Faqs
+        // can use {q,a}, {question,answer}, etc. Be tolerant: only fail
+        // when there's no usable payload at all.
+        if (!is_array($parsed)) {
+            \Illuminate\Support\Facades\Log::warning('[AeoEnrich] runtime returned non-JSON', [
+                'article_id' => $articleId,
+                'raw_head' => mb_substr($rawText ?? '', 0, 200),
+            ]);
+            return [
+                'article_id' => $articleId,
+                'enriched' => false,
+                'reason' => 'parse_failed',
+                'raw_head' => mb_substr($rawText ?? '', 0, 200),
+            ];
+        }
+
+        // Find tldr via any common synonym.
+        $tldr = null;
+        foreach (['tldr', 'summary', 'abstract', 'overview', 'description', 'meta_description'] as $k) {
+            if (isset($parsed[$k]) && is_string($parsed[$k]) && trim($parsed[$k]) !== '') {
+                $tldr = trim($parsed[$k]);
+                break;
+            }
+        }
+
+        // Fallback: synthesize tldr from the article's first ~80 words.
+        if (!$tldr) {
+            $words = preg_split('/\s+/', trim($plainText));
+            $tldr = implode(' ', array_slice($words, 0, 80));
+            if (count($words) > 80) $tldr .= '.';
+            \Illuminate\Support\Facades\Log::info('[AeoEnrich] LLM omitted tldr; synthesized from article body', ['article_id' => $articleId]);
+        }
+
+        // FAQ normalization — accept {q,a}, {question,answer}, {name,text}, etc.
+        $faqs = [];
+        $rawFaqs = is_array($parsed['faqs'] ?? null) ? $parsed['faqs']
+                : (is_array($parsed['faq'] ?? null) ? $parsed['faq']
+                : (is_array($parsed['questions'] ?? null) ? $parsed['questions'] : []));
+        foreach ($rawFaqs as $f) {
+            if (!is_array($f)) continue;
+            $q = $f['q'] ?? $f['question'] ?? $f['name'] ?? null;
+            $a = $f['a'] ?? $f['answer']   ?? $f['text'] ?? null;
+            if ($q && $a) {
+                $faqs[] = ['q' => trim((string) $q), 'a' => trim((string) $a)];
+            }
+        }
+
+        // Heading rewrites — accept {from,to}, {original,rewritten}, {old,new}
+        $headingRewrites = [];
+        $rawRewrites = is_array($parsed['heading_rewrites'] ?? null) ? $parsed['heading_rewrites']
+                    : (is_array($parsed['rewrites'] ?? null) ? $parsed['rewrites'] : []);
+        foreach ($rawRewrites as $rw) {
+            if (!is_array($rw)) continue;
+            $from = $rw['from'] ?? $rw['original'] ?? $rw['old'] ?? null;
+            $to   = $rw['to']   ?? $rw['rewritten'] ?? $rw['new'] ?? null;
+            if ($from && $to) {
+                $headingRewrites[] = ['from' => (string) $from, 'to' => (string) $to];
+            }
+        }
+
+        // ── 1. Mutate the article content ──────────────────────────────
+        $newContent = $articleContent;
+
+        // 1a. Inject TLDR right after the first <h1>...</h1> as an <aside>
+        if ($tldr && stripos($newContent, 'aeo-tldr') === false) {
+            $tldrBlock = '<aside class="aeo-tldr" style="background:#f0f7ff;border-left:4px solid #3B82F6;padding:14px 18px;margin:16px 0;border-radius:6px;font-size:15px;line-height:1.6;color:#1e3a5f"><strong style="display:block;margin-bottom:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#3B82F6">TLDR</strong>' . e($tldr) . '</aside>';
+            // Insert after the first </h1>; fall back to prepending if no H1.
+            $h1Pos = stripos($newContent, '</h1>');
+            if ($h1Pos !== false) {
+                $newContent = substr($newContent, 0, $h1Pos + 5) . "\n" . $tldrBlock . "\n" . substr($newContent, $h1Pos + 5);
+            } else {
+                $newContent = $tldrBlock . "\n" . $newContent;
+            }
+        }
+
+        // 1b. Apply heading rewrites — replace H2 inner text where matched.
+        foreach ($headingRewrites as $rw) {
+            $from = (string) ($rw['from'] ?? '');
+            $to   = (string) ($rw['to'] ?? '');
+            if ($from === '' || $to === '' || $from === $to) continue;
+            // Match <h2>...$from...</h2> exactly once.
+            $pattern = '#(<h2[^>]*>)\s*' . preg_quote($from, '#') . '\s*(</h2>)#i';
+            $newContent = preg_replace($pattern, '$1' . e($to) . '$2', $newContent, 1);
+        }
+
+        // 1c. Append FAQ section if we got Q&A pairs and one isn't already there.
+        if (!empty($faqs) && stripos($newContent, 'aeo-faq') === false) {
+            $faqHtml = '<section class="aeo-faq" style="margin-top:32px;padding-top:24px;border-top:1px solid #e2e8f0">'
+                . '<h2 style="font-size:22px;margin-bottom:16px">Frequently Asked Questions</h2>';
+            foreach ($faqs as $f) {
+                $faqHtml .= '<div style="margin-bottom:18px">'
+                    . '<h3 style="font-size:16px;font-weight:600;margin-bottom:6px;color:#1e293b">' . e($f['q']) . '</h3>'
+                    . '<p style="margin:0;color:#475569;line-height:1.6">' . e($f['a']) . '</p>'
+                    . '</div>';
+            }
+            $faqHtml .= '</section>';
+            $newContent .= "\n" . $faqHtml;
+        }
+
+        // ── 2. Build JSON-LD payload ──────────────────────────────────
+        $now = now()->toIso8601String();
+        $created = $article->created_at ? \Carbon\Carbon::parse($article->created_at)->toIso8601String() : $now;
+        $jsonld = [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                [
+                    '@type' => 'Article',
+                    'headline' => $articleTitle,
+                    'description' => $tldr,
+                    'datePublished' => $created,
+                    'dateModified' => $now,
+                    'author' => [
+                        '@type' => 'Organization',
+                        'name' => $businessName,
+                        'url' => $siteUrl,
+                    ],
+                    'publisher' => [
+                        '@type' => 'Organization',
+                        'name' => $businessName,
+                        'url' => $siteUrl,
+                    ],
+                ],
+            ],
+        ];
+        if (!empty($faqs)) {
+            $jsonld['@graph'][] = [
+                '@type' => 'FAQPage',
+                'mainEntity' => array_map(function ($f) {
+                    return [
+                        '@type' => 'Question',
+                        'name' => $f['q'],
+                        'acceptedAnswer' => [
+                            '@type' => 'Answer',
+                            'text' => $f['a'],
+                        ],
+                    ];
+                }, $faqs),
+            ];
+        }
+
+        // ── 3. Persist everything atomically ──────────────────────────
+        \Illuminate\Support\Facades\DB::table('articles')->where('id', $articleId)->update([
+            'content' => $newContent,
+            'jsonld_json' => json_encode($jsonld, JSON_UNESCAPED_SLASHES),
+            'aeo_enriched_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->engineIntel->recordToolUsage('write', 'aeo_enrich', 0.9);
+
+        return [
+            'article_id' => $articleId,
+            'enriched' => true,
+            'tldr' => $tldr,
+            'faq_count' => count($faqs),
+            'heading_rewrites' => count($headingRewrites),
+            'jsonld_persisted' => true,
+            'aeo_enriched_at' => $now,
+            'source' => 'runtime',
+        ];
+    }
+
     public function generateMeta(int $wsId, array $params): array
     {
         $title     = $params['title'] ?? '';

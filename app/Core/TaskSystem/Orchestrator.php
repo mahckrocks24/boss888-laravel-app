@@ -546,6 +546,9 @@ class Orchestrator
                                             ->generateHeadlines($wsId, $params),
             'write/generate_meta'       => fn() => app(\App\Engines\Write\Services\WriteService::class)
                                             ->generateMeta($wsId, $params),
+            // Wave 45 — AEO Enrichment dispatch.
+            'write/aeo_enrich'          => fn() => app(\App\Engines\Write\Services\WriteService::class)
+                                            ->aeoEnrich($wsId, $params),
 
             // ── Builder ───────────────────────────────────────────────────────
             'builder/create_website'    => fn() => app(\App\Engines\Builder\Services\BuilderService::class)

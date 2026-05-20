@@ -73,6 +73,9 @@ class CapabilityMapService
         'generate_outline'    => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_outline',    'approval_mode'=>'auto',      'credit_cost'=>1],
         'generate_headlines'  => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_headlines',  'approval_mode'=>'auto',      'credit_cost'=>1],
         'generate_meta'       => ['engine'=>'write',     'connector'=>null,       'action'=>'generate_meta',       'approval_mode'=>'auto',      'credit_cost'=>1],
+        // Wave 45 — Answer Engine Optimization enrichment. 1cr standalone;
+        // 0cr when bundled in a Sarah chain (Wave 42 chain-bundle logic).
+        'aeo_enrich'          => ['engine'=>'write',     'connector'=>null,       'action'=>'aeo_enrich',          'approval_mode'=>'auto',      'credit_cost'=>1],
 
         // ── Creative Engine (native AI) ──────────────────────────
         'generate_image'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>2],
