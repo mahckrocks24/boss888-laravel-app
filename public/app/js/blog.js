@@ -224,9 +224,9 @@ function _blRenderEditor(){
             '<div class="bl-img-empty" style="display:none;flex-direction:column;align-items:center;gap:6px;color:var(--t3);font-size:11px"><div>Image failed to load</div></div>'
           : '<div class="bl-img-empty" style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--t3);font-size:11px"><div style="font-size:24px;opacity:.4">\uD83C\uDF8B</div><div>No featured image yet</div><div style="font-size:10px;opacity:.7">Generate one with AI or pick from your Media Library</div></div>')
       +'</div>'
-      +'<div style="display:flex;gap:6px;margin-bottom:8px">'
-        +'<button type="button" id="bl-gen-img-btn" onclick="_blGenerateFeaturedImage()" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex:1" title="Generate a featured image with AI (1 credit)">✨ Generate with AI <span style="opacity:.7;font-weight:500">(1cr)</span></button>'
-        +'<button type="button" onclick="_blPickFeaturedImage()" style="background:var(--s1,#0f1226);color:var(--t1);border:1px solid var(--bd,#2a2f4a);border-radius:6px;padding:8px 12px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap" title="Choose from Media Library">\uD83D\uDCF7 Library</button>'
+      +'<div style="display:grid;grid-template-columns:1fr;gap:6px;margin-bottom:8px">'
+        +'<button type="button" id="bl-gen-img-btn" onclick="_blGenerateFeaturedImage()" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:11.5px;font-weight:600;cursor:pointer;width:100%;box-sizing:border-box" title="Generate a featured image with AI (1 credit)">✨ Generate with AI <span style="opacity:.7;font-weight:500">(1cr)</span></button>'
+        +'<button type="button" onclick="_blPickFeaturedImage()" style="background:var(--s1,#0f1226);color:var(--t1);border:1px solid var(--bd,#2a2f4a);border-radius:6px;padding:8px 12px;font-size:11.5px;font-weight:600;cursor:pointer;width:100%;box-sizing:border-box" title="Choose from Media Library">\uD83D\uDCF7 Choose from Library</button>'
       +'</div>'
       +'<div style="display:flex;gap:6px">'
         +'<input id="bl-featured-img" type="url" value="'+_blE(a.featured_image_url||'')+'" placeholder="Or paste image URL\u2026" style="'+_blInputStyle()+'font-size:11.5px;flex:1" oninput="_blMarkDirty();_blPreviewImg()">'
