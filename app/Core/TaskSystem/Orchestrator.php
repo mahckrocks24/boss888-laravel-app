@@ -418,7 +418,7 @@ class Orchestrator
                 $parent = \Illuminate\Support\Facades\DB::table('tasks')
                     ->where('id', $task->parent_task_id)
                     ->where('status', 'completed')
-                    ->first(['result_json']);
+                    ->first(['action', 'result_json']);
                 if ($parent && $parent->result_json) {
                     $parentResult = json_decode($parent->result_json, true);
                     $inherit = $parentResult['data'] ?? $parentResult ?? [];
@@ -426,6 +426,21 @@ class Orchestrator
                         if (!isset($params[$k]) && isset($inherit[$k])) {
                             $params[$k] = $inherit[$k];
                         }
+                    }
+                    // Wave 59c — defensive guard: chain children that need
+                    // article_id (meta/image/links/insert/aeo_enrich) should
+                    // inherit it from their parent. If they don't, the
+                    // depends_on wiring is broken (parent is wrong action).
+                    $needsArticleId = ['generate_meta', 'generate_image_mini', 'generate_image', 'generate_image_high',
+                                       'link_suggestions', 'insert_link', 'aeo_enrich'];
+                    if (in_array($task->action, $needsArticleId, true) && !isset($params['article_id'])) {
+                        \Illuminate\Support\Facades\Log::warning('[Orchestrator] chain wiring suspicious: child needs article_id but parent did not provide it', [
+                            'task_id' => $task->id,
+                            'task_action' => $task->action,
+                            'parent_task_id' => $task->parent_task_id,
+                            'parent_action' => $parent->action ?? 'unknown',
+                            'parent_result_keys' => is_array($inherit) ? array_keys($inherit) : 'non-array',
+                        ]);
                     }
                 }
             } catch (\Throwable $ptErr) {
