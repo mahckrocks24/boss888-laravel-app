@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.26.0-wave45 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.27.0-wave46 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -1838,6 +1838,11 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         + '<div style="padding:14px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading articles…</div>'
         + '</div>';
 
+      // Wave 46 — AI Crawlers + llms.txt control panel
+      h += '<div id="lgse-aeo-settings" style="margin-bottom:18px">'
+        + '<div style="padding:14px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading AEO settings…</div>'
+        + '</div>';
+
       h += '<div class="lgse-section-hdr"><span class="lgse-section-title">Audited pages (' + audits.length + ')</span></div>';
       h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;overflow:hidden">';
       audits.forEach(function (a, idx) {
@@ -1862,6 +1867,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
       body.innerHTML = h;
       lgseLoadAeoArticles();
+      lgseLoadAeoSettings();
     }).catch(function (e) {
       var body = document.getElementById('lgse-aeo-body');
       if (body) body.innerHTML = emptyState('⚠', 'Audit fetch failed', 'Try refreshing.');
@@ -1904,6 +1910,74 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       if (holder) holder.innerHTML = '';
     });
   }
+
+  function lgseLoadAeoSettings() {
+    api('GET', '/aeo/settings').then(function (r) {
+      var holder = document.getElementById('lgse-aeo-settings');
+      if (!holder || !r || !r.success) return;
+      var settings = r.settings || {};
+      var crawlers = r.crawlers || {};
+
+      var h = '<div class="lgse-section-hdr"><span class="lgse-section-title">AI Crawlers + llms.txt</span></div>';
+      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+
+      // Left: crawler toggles
+      h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px">';
+      h += '<div style="font-size:12px;font-weight:600;color:var(--lgse-t1);margin-bottom:4px">AI Crawlers</div>';
+      h += '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:12px">Control which LLM search engines can index your site. Saved instantly.</div>';
+      Object.keys(crawlers).forEach(function (key) {
+        var label = crawlers[key];
+        var checked = !!settings[key];
+        h += '<label style="display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--lgse-border)" onmouseover="this.style.background=\'rgba(108,92,231,.03)\'" onmouseout="this.style.background=\'\'">'
+          + '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="lgseAeoToggleCrawler(\'' + key + '\', this.checked)" style="cursor:pointer">'
+          + '<span style="font-size:11.5px;color:var(--lgse-t1);font-family:var(--lgse-mono)">' + esc(label) + '</span>'
+          + '</label>';
+      });
+      h += '</div>';
+
+      // Right: llms.txt panel
+      h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px;display:flex;flex-direction:column">';
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+        +   '<div style="font-size:12px;font-weight:600;color:var(--lgse-t1)">llms.txt</div>'
+        +   '<button class="lgse-btn-secondary" onclick="lgseAeoRegenLlmsTxt()" style="font-size:10.5px;padding:5px 12px">Regenerate</button>'
+        + '</div>';
+      h += '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:8px">Markdown index served at <code>https://&lt;site&gt;/llms.txt</code> for LLM-based search engines. Auto-regenerates daily.</div>';
+      h += '<div id="lgse-aeo-llms-preview" style="background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:6px;padding:10px;font-family:var(--lgse-mono);font-size:10.5px;color:var(--lgse-t2);max-height:240px;overflow-y:auto;white-space:pre-wrap;flex:1">Loading preview…</div>';
+      h += '</div>';
+
+      h += '</div>';
+      holder.innerHTML = h;
+
+      // Lazy-fetch the preview
+      api('GET', '/aeo/llms-txt').then(function (lr) {
+        var pre = document.getElementById('lgse-aeo-llms-preview');
+        if (pre && lr && lr.content) pre.textContent = lr.content;
+      });
+    });
+  }
+
+  window.lgseAeoToggleCrawler = function (key, enabled) {
+    var payload = {};
+    payload[key] = enabled;
+    api('POST', '/aeo/settings', payload).catch(function () { /* silent */ });
+  };
+
+  window.lgseAeoRegenLlmsTxt = function () {
+    var btn = document.querySelector('button[onclick="lgseAeoRegenLlmsTxt()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Regenerating…'; }
+    api('POST', '/aeo/llms-txt/regenerate', {}).then(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Regenerate'; }
+      if (r && r.success) {
+        // refresh preview
+        api('GET', '/aeo/llms-txt').then(function (lr) {
+          var pre = document.getElementById('lgse-aeo-llms-preview');
+          if (pre && lr && lr.content) pre.textContent = lr.content;
+        });
+      }
+    }).catch(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Regenerate'; }
+    });
+  };
 
   window.lgseAeoEnrichArticle = function (articleId, btn) {
     if (!btn) return;

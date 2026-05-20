@@ -2232,6 +2232,62 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ]);
         });
 
+        // ── Wave 46 — AEO Settings + llms.txt control ─────────────────────
+
+        // GET /api/seo/aeo/settings — fetch current settings + crawler labels.
+        Route::get('/aeo/settings', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
+            $settings = $svc->get($wsId);
+            return response()->json([
+                'success' => true,
+                'settings' => $settings,
+                'crawlers' => \App\Engines\SEO\Services\AeoSettingsService::crawlerLabels(),
+            ]);
+        });
+
+        // POST /api/seo/aeo/settings — update settings (any combo of fields).
+        Route::post('/aeo/settings', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
+            $changes = $r->only(array_merge(
+                ['aeo_mode_enabled'],
+                array_keys(\App\Engines\SEO\Services\AeoSettingsService::crawlerLabels())
+            ));
+            // Normalize booleans coming in as strings/ints from form submits.
+            foreach ($changes as $k => $v) {
+                if (is_string($v)) {
+                    $changes[$k] = filter_var($v, FILTER_VALIDATE_BOOLEAN);
+                }
+            }
+            $settings = $svc->update($wsId, $changes);
+            return response()->json(['success' => true, 'settings' => $settings]);
+        });
+
+        // POST /api/seo/aeo/llms-txt/regenerate — force-regen llms.txt now.
+        Route::post('/aeo/llms-txt/regenerate', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
+            $body = $svc->regenerateLlmsTxt($wsId);
+            return response()->json([
+                'success' => true,
+                'bytes' => strlen($body),
+                'preview' => mb_substr($body, 0, 600),
+            ]);
+        });
+
+        // GET /api/seo/aeo/llms-txt — preview current llms.txt content (no regen).
+        Route::get('/aeo/llms-txt', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
+            $body = $svc->getLlmsTxt($wsId);
+            return response()->json([
+                'success' => true,
+                'content' => $body,
+                'bytes' => strlen($body),
+            ]);
+        });
+
         // ── Wave 45 — AEO Enrichment endpoints ────────────────────────────
 
         // GET /api/seo/aeo/articles — list workspace articles with AEO status.

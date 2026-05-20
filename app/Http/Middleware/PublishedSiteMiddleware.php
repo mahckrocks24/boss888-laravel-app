@@ -70,6 +70,14 @@ class PublishedSiteMiddleware
             return $this->serveRobots($subdomain);
         }
 
+        // Wave 46 — Answer Engine Optimization: serve llms.txt per tenant.
+        // Convention: https://llmstxt.org — markdown index of canonical pages
+        // for LLM-based search engines. Auto-regenerated daily; cached in
+        // aeo_settings.llms_txt_cache.
+        if ($slug === 'llms.txt') {
+            return $this->serveLlmsTxt($subdomain);
+        }
+
                 // Pass through API/admin/app requests
         if (str_starts_with($slug, 'api/') || str_starts_with($slug, 'admin/') || str_starts_with($slug, 'app/')) {
             return $next($request);
@@ -276,10 +284,56 @@ HTML;
     private function serveRobots(string $subdomain): \Illuminate\Http\Response
     {
         $fullSub = $subdomain . '.levelupgrowth.io';
-        $content = "User-agent: *\nAllow: /\n\nSitemap: https://{$fullSub}/sitemap.xml\n";
+        $sitemapUrl = "https://{$fullSub}/sitemap.xml";
 
+        // Wave 46 — per-tenant AI-crawler directives via aeo_settings.
+        // Falls back to permissive default if workspace lookup fails.
+        try {
+            $website = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('subdomain', $fullSub)
+                ->where('status', 'published')
+                ->first(['workspace_id']);
+            if ($website) {
+                $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
+                $content = $svc->renderRobotsTxt((int) $website->workspace_id, $sitemapUrl);
+                return response($content, 200)
+                    ->header('Content-Type', 'text/plain; charset=utf-8')
+                    ->header('Cache-Control', 'public, max-age=86400');
+            }
+        } catch (\Throwable $e) {
+            // fall through to default
+        }
+
+        $content = "User-agent: *\nAllow: /\n\nSitemap: {$sitemapUrl}\n";
         return response($content, 200)
             ->header('Content-Type', 'text/plain; charset=utf-8')
             ->header('Cache-Control', 'public, max-age=86400');
+    }
+
+    /**
+     * Wave 46 — serve llms.txt for a tenant subdomain.
+     */
+    private function serveLlmsTxt(string $subdomain): \Illuminate\Http\Response
+    {
+        $fullSub = $subdomain . '.levelupgrowth.io';
+
+        try {
+            $website = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('subdomain', $fullSub)
+                ->where('status', 'published')
+                ->first(['workspace_id']);
+            if ($website) {
+                $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
+                $body = $svc->getLlmsTxt((int) $website->workspace_id);
+                return response($body, 200)
+                    ->header('Content-Type', 'text/markdown; charset=utf-8')
+                    ->header('Cache-Control', 'public, max-age=21600'); // 6h
+            }
+        } catch (\Throwable $e) {
+            // fall through
+        }
+
+        return response("# Site not found\n\nThis subdomain has no published content.\n", 404)
+            ->header('Content-Type', 'text/markdown; charset=utf-8');
     }
 }
