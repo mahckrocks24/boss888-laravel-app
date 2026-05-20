@@ -118,6 +118,18 @@ class CreativeService
         $bp             = $this->blueprint->getImageBlueprint($wsId, $prompt, $params);
         $enhancedPrompt = $bp['enhanced_prompt'];
 
+        // Wave 61 — Append a strong no-text directive. DALL-E / GPT Image
+        // routinely add garbled fake text unless explicitly told not to.
+        // Applied centrally so every caller (Sarah chain, WP connector,
+        // blog-editor button, AEO enrichment) inherits it.
+        $noTextRule = ' Strict rule: NO TEXT, NO WORDS, NO LETTERS, NO NUMBERS, '
+                    . 'NO LOGOS, NO WATERMARKS, NO CAPTIONS, NO TYPOGRAPHY of any kind. '
+                    . 'Pure visual composition only — no readable characters anywhere '
+                    . 'in the image.';
+        if (stripos($enhancedPrompt, 'no text') === false) {
+            $enhancedPrompt = rtrim($enhancedPrompt, '. ') . '.' . $noTextRule;
+        }
+
         $asset   = $this->createAsset($wsId, array_merge($params, [
             'type'     => 'image',
             'prompt'   => $enhancedPrompt,
