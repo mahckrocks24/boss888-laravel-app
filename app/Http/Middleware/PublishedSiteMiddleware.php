@@ -151,6 +151,11 @@ class PublishedSiteMiddleware
             foreach ($staticCandidates as $staticPath) {
                 if (is_file($staticPath)) {
                     $html = file_get_contents($staticPath);
+                    // Wave 63 — auto-inject DB articles into static blog index.
+                    // Only fires when the served path looks like a blog list page.
+                    if (preg_match('#/blog/index\.html$|/blog\.html$#i', $staticPath)) {
+                        $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0));
+                    }
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
@@ -182,6 +187,104 @@ class PublishedSiteMiddleware
         return response($html, 200)
             ->header('Content-Type', 'text/html; charset=utf-8')
             ->header('Cache-Control', 'public, max-age=300, s-maxage=300');
+    }
+
+    /**
+     * Wave 63 — Inject DB-tracked blog articles into a bespoke static blog
+     * index HTML. Theme-agnostic: detects the first existing post-card-style
+     * block and uses it as a template to clone for any article not already
+     * mentioned in the static file. CSS classes are preserved verbatim, so
+     * the tenant's custom theme is untouched.
+     *
+     * Fires only when the static path is /blog/index.html or /blog.html.
+     * Skips silently if the file's structure doesn't contain a recognizable
+     * card template.
+     */
+    private function injectDynamicBlogPosts(string $html, int $workspaceId): string
+    {
+        if ($workspaceId <= 0) return $html;
+
+        // Fetch all published marketing-blog articles for this workspace.
+        try {
+            $articles = DB::table('articles')
+                ->where('workspace_id', $workspaceId)
+                ->where('is_marketing_blog', 1)
+                ->where('status', 'published')
+                ->whereNull('deleted_at')
+                ->orderByDesc('published_at')
+                ->orderByDesc('id')
+                ->get(['title', 'slug', 'featured_image_url', 'meta_description', 'excerpt', 'blog_category', 'published_at']);
+        } catch (\Throwable $e) {
+            return $html;
+        }
+        if ($articles->isEmpty()) return $html;
+
+        // Find articles whose slug isn't already mentioned in the static.
+        $newOnes = $articles->filter(function ($a) use ($html) {
+            return $a->slug && stripos($html, '/blog/' . $a->slug) === false;
+        });
+        if ($newOnes->isEmpty()) return $html;
+
+        // Detect a card template — first <a ... href="/blog/..."> wrapping an <article>.
+        // The pattern is tolerant: matches the anchor opening, article block, and the
+        // closing </a> tag with up to a few lines of trailing whitespace.
+        if (!preg_match('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*>\s*<article\s[^>]*>.*?</article>\s*</a>)#is', $html, $m)) {
+            return $html; // No recognizable card template — bail.
+        }
+        $tpl = $m[1];
+
+        // Extract the first link href, image src, h2/h3 text and one paragraph from
+        // the template — those become the slots we substitute.
+        preg_match('#href="(/blog/[^"]+)"#i', $tpl, $hrefMatch);
+        $tplHref  = $hrefMatch[1] ?? '/blog/SLUG';
+        preg_match('#<img\s[^>]*src="([^"]+)"[^>]*>#i', $tpl, $imgMatch);
+        $tplImgSrc = $imgMatch[1] ?? '';
+        preg_match('#<h2[^>]*class="[^"]*"[^>]*>(.+?)</h2>|<h3[^>]*class="[^"]*"[^>]*>(.+?)</h3>#is', $tpl, $titleMatch);
+        $tplTitle = trim($titleMatch[1] ?? ($titleMatch[2] ?? ''));
+        preg_match('#<p[^>]*class="post-excerpt"[^>]*>(.+?)</p>#is', $tpl, $excerptMatch);
+        $tplExcerpt = trim($excerptMatch[1] ?? '');
+
+        // Build replacement cards.
+        $newCards = '';
+        foreach ($newOnes as $a) {
+            $card = $tpl;
+            // href
+            $card = preg_replace('#href="/blog/[^"]+"#i', 'href="/blog/' . e($a->slug) . '"', $card, 1);
+            // image src
+            if ($a->featured_image_url && $tplImgSrc) {
+                $card = str_replace($tplImgSrc, e($a->featured_image_url), $card);
+            }
+            // image alt
+            $card = preg_replace('#alt="[^"]*"#i', 'alt="' . e($a->title) . '"', $card, 1);
+            // title (h2 or h3)
+            if ($tplTitle !== '') {
+                // The match may contain inner HTML (e.g. <br>, <em>); replace plain-text strip.
+                $card = preg_replace_callback('#(<h2[^>]*>)(.+?)(</h2>)|(<h3[^>]*>)(.+?)(</h3>)#is',
+                    function ($mm) use ($a) {
+                        if (!empty($mm[1])) {
+                            return $mm[1] . e($a->title) . $mm[3];
+                        }
+                        return $mm[4] . e($a->title) . $mm[6];
+                    }, $card, 1);
+            }
+            // excerpt
+            $excerptText = $a->excerpt ?: $a->meta_description ?: '';
+            if ($excerptText && $tplExcerpt !== '') {
+                $card = preg_replace('#(<p[^>]*class="post-excerpt"[^>]*>).+?(</p>)#is', '$1' . e($excerptText) . '$2', $card, 1);
+            }
+            // date — replace the first .post-date span text with the publish month/year
+            if ($a->published_at) {
+                $when = \Carbon\Carbon::parse($a->published_at)->format('F Y');
+                $card = preg_replace('#(<span[^>]*class="post-date"[^>]*>).+?(</span>)#is', '$1' . e($when) . '$2', $card, 1);
+            }
+            $newCards .= $card . "\n";
+        }
+
+        // Inject newCards just BEFORE the first existing post-card so new ones
+        // surface at the top of the regular grid.
+        $injected = preg_replace('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*>\s*<article\s)#is', $newCards . '$1', $html, 1);
+
+        return $injected ?: $html;
     }
 
     /**
