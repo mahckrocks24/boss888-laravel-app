@@ -9,7 +9,7 @@ var _msg = { open: false, agent: 'sarah', conversations: [], messages: [], unrea
 var AGENT_COLORS = {sarah:'#F59E0B',james:'#3B82F6',alex:'#06B6D4',priya:'#7C3AED',marcus:'#EC4899',elena:'#00E5A8',diana:'#F97316',ryan:'#10B981',sofia:'#8B5CF6',leo:'#EF4444'};
 
 function _msgE(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function _msgAgo(ts){if(!ts)return'';var d=new Date(ts.replace(' ','T'));var m=Math.round((Date.now()-d)/60000);if(m<1)return'now';if(m<60)return m+'m ago';if(m<1440)return Math.floor(m/60)+'h ago';return Math.floor(m/1440)+'d ago';}
+function _msgAgo(ts){if(!ts)return'';var d=(typeof window!=='undefined'&&window._luParseTs)?window._luParseTs(ts):new Date(ts.replace(' ','T')+'Z');var m=Math.round((Date.now()-d)/60000);if(m<1)return'now';if(m<60)return m+'m ago';if(m<1440)return Math.floor(m/60)+'h ago';return Math.floor(m/1440)+'d ago';}
 function _msgApi(method,path,body){var t=localStorage.getItem('lu_token')||'';var o={method:method,headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':'Bearer '+t}};if(body)o.body=JSON.stringify(body);return fetch('/api'+path,o).then(function(r){return r.json();});}
 
 // ── Floater Button ─────────────────────────────────────────────────────────
