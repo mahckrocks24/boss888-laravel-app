@@ -395,19 +395,56 @@ class WriteService
             'brand_context' => $bpCtx ?: null,
         ], fn($v) => $v !== null && $v !== '');
 
-        $result = $this->runtime->writeDraft([
+        // Wave 65 — enforce target word count via explicit min/max/target
+        // params + post-validate. Runtime's length enum alone gives no
+        // guarantee (articles drift 800-1500 with 'long').
+        $minWords = max(300, (int) ($params['min_words'] ?? ($length - 100)));
+        $maxWords = max($minWords + 50, (int) ($params['max_words'] ?? ($length + 100)));
+        $targetWords = $length;
+
+        $draftParams = [
             'title'        => $params['title'] ?? ucfirst($topic),
-            'brief'        => $params['brief'] ?? "Write a {$type} about: {$topic}",
+            'brief'        => ($params['brief'] ?? "Write a {$type} about: {$topic}")
+                            . ". Target length: {$targetWords} words (strict minimum {$minWords}, maximum {$maxWords}). "
+                            . 'Use H2 subheadings to structure the article, write substantive paragraphs of 80-150 words each, and include a brief introduction and conclusion. Do not pad with filler.',
             'keywords'     => $keyword ? [$keyword] : [],
             'tone'         => $tone,
             'length'       => $lengthEnum,
+            'min_words'    => $minWords,
+            'max_words'    => $maxWords,
+            'target_words' => $targetWords,
             'content_type' => $type === 'blog_post' ? 'blog_article' : $type,
             'context'      => $context,
-        ]);
+        ];
+        $result = $this->runtime->writeDraft($draftParams);
 
         $content = $result['success']
             ? $result['content']
             : "<p>Article generation pending. Topic: {$topic}</p>";
+
+        // Wave 65 — if the draft came in short, retry ONCE with an explicit
+        // expand brief. Hard cap at 1 retry to keep cost predictable.
+        if ($result['success'] && !empty($content)) {
+            $actualWords = str_word_count(strip_tags($content));
+            if ($actualWords < $minWords) {
+                \Illuminate\Support\Facades\Log::info('[writeArticle] short draft, retrying with expand brief', [
+                    'workspace_id' => $wsId, 'topic' => $topic,
+                    'actual_words' => $actualWords, 'min_required' => $minWords,
+                ]);
+                $expandParams = $draftParams;
+                $expandParams['brief'] = "Expand the following article to between {$minWords} and {$maxWords} words "
+                    . "(currently {$actualWords}). Add substantive depth — examples, mini-case studies, specific tactics, "
+                    . "and a deeper FAQ-style section. Keep the same tone and structure. Existing draft:\n\n" . strip_tags($content);
+                $retry = $this->runtime->writeDraft($expandParams);
+                if (!empty($retry['success']) && !empty($retry['content'])) {
+                    $retryWords = str_word_count(strip_tags($retry['content']));
+                    if ($retryWords > $actualWords) {
+                        $content = $retry['content'];
+                        $result = $retry;
+                    }
+                }
+            }
+        }
 
         if ($content && !str_contains($content, '<h') && !str_contains($content, '<p>')) {
             $converter = new \League\CommonMark\CommonMarkConverter(['html_input' => 'strip']);
