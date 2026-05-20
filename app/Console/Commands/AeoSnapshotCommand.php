@@ -21,8 +21,7 @@ class AeoSnapshotCommand extends Command
         // Get all workspaces that have any AEO data
         $workspaces = DB::table('workspaces')
             ->when($wsIdFilter, fn($q) => $q->where('id', $wsIdFilter))
-            ->whereNull('deleted_at')
-            ->pluck('id');
+                        ->pluck('id');
 
         $count = 0;
         foreach ($workspaces as $wsId) {
@@ -34,8 +33,7 @@ class AeoSnapshotCommand extends Command
             $articleAgg = DB::table('articles')
                 ->where('workspace_id', $wsId)
                 ->where('status', 'published')
-                ->whereNull('deleted_at')
-                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN aeo_enriched_at IS NOT NULL THEN 1 ELSE 0 END) as enriched')
+                                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN aeo_enriched_at IS NOT NULL THEN 1 ELSE 0 END) as enriched')
                 ->first();
 
             // Skip workspaces with no AEO activity at all to keep table clean.
