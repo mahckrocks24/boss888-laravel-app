@@ -911,19 +911,92 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 $assistReply = $assist['response'] ?? null;
                 if ($assistReply) {
                     $reply = $assistReply;
-                    // Wave 56 — When Sarah obeys her prompt schema and returns
-                    // a JSON envelope (reply + create_tasks + tool_calls), the
-                    // runtime gives us the raw JSON string. The envelope
-                    // fields are parsed separately below; here we extract just
-                    // the human-readable reply for display/storage. Strip any
-                    // markdown fences first (DeepSeek occasionally wraps).
+
+                    // Wave 56/57 — Sarah's prompt asks for a JSON envelope
+                    // {reply, create_tasks, tool_calls}. The runtime returns
+                    // this as a raw string. Two shapes we handle:
+                    //   (a) Whole response is the envelope (Wave 56)
+                    //   (b) Prose opener + envelope embedded (Wave 57)
+                    // For both, extract the envelope, replace $reply with
+                    // the inner reply, and surface create_tasks/tool_calls so
+                    // the downstream loop actually runs.
+                    $embeddedEnvelope = null;
                     $candidate = trim($reply);
                     $candidate = preg_replace('/^```(?:json)?\s*/i', '', $candidate);
                     $candidate = preg_replace('/\s*```$/', '', $candidate);
+
+                    // Try the whole-string parse first (shape a).
                     if ($candidate !== '' && $candidate[0] === '{') {
-                        $envelope = json_decode($candidate, true);
-                        if (is_array($envelope) && isset($envelope['reply']) && is_string($envelope['reply'])) {
-                            $reply = trim($envelope['reply']);
+                        $tryEnv = json_decode($candidate, true);
+                        if (is_array($tryEnv) && (isset($tryEnv['reply']) || isset($tryEnv['create_tasks']))) {
+                            $embeddedEnvelope = $tryEnv;
+                        }
+                    }
+
+                    // If that didn't work, scan for an embedded {…} block
+                    // that has 'create_tasks' or 'tool_calls' or 'reply' (shape b).
+                    if (!$embeddedEnvelope) {
+                        // Walk the string finding balanced { … } blocks.
+                        $len = strlen($candidate);
+                        $i = 0;
+                        while ($i < $len) {
+                            $openIdx = strpos($candidate, '{', $i);
+                            if ($openIdx === false) break;
+                            $depth = 0;
+                            $j = $openIdx;
+                            $inStr = false;
+                            $escape = false;
+                            for (; $j < $len; $j++) {
+                                $ch = $candidate[$j];
+                                if ($escape) { $escape = false; continue; }
+                                if ($ch === '\\' && $inStr) { $escape = true; continue; }
+                                if ($ch === '"') { $inStr = !$inStr; continue; }
+                                if ($inStr) continue;
+                                if ($ch === '{') $depth++;
+                                elseif ($ch === '}') {
+                                    $depth--;
+                                    if ($depth === 0) {
+                                        $block = substr($candidate, $openIdx, $j - $openIdx + 1);
+                                        $tryEnv = json_decode($block, true);
+                                        if (is_array($tryEnv) && (
+                                            (isset($tryEnv['create_tasks']) && is_array($tryEnv['create_tasks']) && !empty($tryEnv['create_tasks']))
+                                            || (isset($tryEnv['tool_calls']) && is_array($tryEnv['tool_calls']) && !empty($tryEnv['tool_calls']))
+                                            || isset($tryEnv['reply'])
+                                        )) {
+                                            $embeddedEnvelope = $tryEnv;
+                                            // Strip the envelope from prose for display.
+                                            $prose = substr($candidate, 0, $openIdx) . substr($candidate, $j + 1);
+                                            $reply = trim($prose) ?: $reply;
+                                            break 2;
+                                        }
+                                        $i = $j + 1;
+                                        break;
+                                    }
+                                }
+                            }
+                            if ($depth !== 0) break;
+                        }
+                    }
+
+                    if ($embeddedEnvelope) {
+                        if (isset($embeddedEnvelope['reply']) && is_string($embeddedEnvelope['reply'])) {
+                            // Prefer inner reply when set; falls back to prose extracted above.
+                            $innerReply = trim($embeddedEnvelope['reply']);
+                            if ($innerReply !== '') $reply = $innerReply;
+                        }
+                        // Pre-populate $assist['create_tasks'] / ['tool_calls']
+                        // so the existing downstream extraction picks them up.
+                        if (isset($embeddedEnvelope['create_tasks']) && is_array($embeddedEnvelope['create_tasks'])) {
+                            $assist['create_tasks'] = $embeddedEnvelope['create_tasks'];
+                        }
+                        if (isset($embeddedEnvelope['tool_calls']) && is_array($embeddedEnvelope['tool_calls'])) {
+                            $assist['tool_calls'] = $embeddedEnvelope['tool_calls'];
+                        }
+                        if (isset($embeddedEnvelope['requires_sarah'])) {
+                            $assist['requires_sarah'] = (bool) $embeddedEnvelope['requires_sarah'];
+                        }
+                        if (isset($embeddedEnvelope['sarah_context'])) {
+                            $assist['sarah_context'] = $embeddedEnvelope['sarah_context'];
                         }
                     }
                 }
