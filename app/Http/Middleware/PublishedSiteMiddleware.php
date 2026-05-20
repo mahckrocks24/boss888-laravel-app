@@ -212,94 +212,142 @@ class PublishedSiteMiddleware
                 ->whereNull('deleted_at')
                 ->orderByDesc('published_at')
                 ->orderByDesc('id')
-                ->get(['title', 'slug', 'featured_image_url', 'meta_description', 'excerpt', 'blog_category', 'word_count', 'content', 'published_at']);
+                ->get(['id', 'title', 'slug', 'featured_image_url', 'meta_description', 'excerpt', 'blog_category', 'word_count', 'content', 'published_at']);
         } catch (\Throwable $e) {
             return $html;
         }
         if ($articles->isEmpty()) return $html;
 
-        // Filter to articles not already in static.
-        $newOnes = $articles->filter(function ($a) use ($html) {
-            return $a->slug && stripos($html, '/blog/' . $a->slug) === false;
-        });
-        if ($newOnes->isEmpty()) return $html;
+        $latest = $articles->first();
 
-        // Wave 63b — find a REGULAR post-card template (NOT post-featured).
-        // Required class: post-card. Skip post-featured matches.
-        if (!preg_match('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*class="post-card-link"[^>]*>\s*<article\s[^>]*class="post-card"[^>]*>.*?</article>\s*</a>)#is', $html, $m)) {
-            // Fall back to any <article class="post-card"> wrapper, even if the link class is different.
-            if (!preg_match('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*>\s*<article\s[^>]*class="[^"]*post-card[^"]*"[^>]*>.*?</article>\s*</a>)#is', $html, $m)) {
-                return $html;
+        // Detect post-card template (for grid injection).
+        $cardTpl = null;
+        if (preg_match('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*class="post-card-link"[^>]*>\s*<article\s[^>]*class="post-card"[^>]*>.*?</article>\s*</a>)#is', $html, $m)) {
+            $cardTpl = $m[1];
+        }
+
+        // Detect featured-card template + extract its current slug.
+        $featTpl = null;
+        $oldFeaturedSlug = null;
+        if (preg_match('#(<a\s[^>]*href="/blog/([^"/]+)/?"[^>]*class="post-featured-link"[^>]*>\s*<article\s[^>]*class="post-featured"[^>]*>.*?</article>\s*</a>)#is', $html, $fm)) {
+            $featTpl = $fm[1];
+            $oldFeaturedSlug = $fm[2];
+        }
+
+        // ── 1. Rotate the featured card to the latest article if needed ──
+        if ($featTpl && $latest && $latest->slug !== $oldFeaturedSlug) {
+            $newFeatured = $this->renderArticleIntoTemplate($featTpl, $latest);
+            $html = str_replace($featTpl, $newFeatured, $html);
+        }
+
+        if (!$cardTpl) return $html;
+
+        // ── 2. Determine which articles still need to appear in the grid ──
+        // Skip the now-featured latest. Inject every other DB article whose
+        // slug isn't already in the static grid.
+        // ALSO inject the OLD featured slug (the one we just demoted) so it
+        // doesn't vanish from the page.
+        $needToInject = [];
+        foreach ($articles as $a) {
+            if ($latest && $a->slug === $latest->slug) continue; // it's featured now
+            if ($a->slug && stripos($html, '/blog/' . $a->slug) === false) {
+                $needToInject[] = $a;
             }
         }
-        $tpl = $m[1];
 
-        // Build replacement cards.
+        // The OLD featured article — if we swapped, it needs to appear in grid.
+        // Look it up in DB to clone with full data.
+        if ($oldFeaturedSlug && $latest && $latest->slug !== $oldFeaturedSlug) {
+            $alreadyIn = false;
+            foreach ($needToInject as $a) { if ($a->slug === $oldFeaturedSlug) { $alreadyIn = true; break; } }
+            // Also skip if grid already has it (some sites duplicate-list).
+            if (!$alreadyIn && stripos($html, '/blog/' . $oldFeaturedSlug) === false) {
+                $oldRow = DB::table('articles')
+                    ->where('workspace_id', $workspaceId)
+                    ->where('slug', $oldFeaturedSlug)
+                    ->whereNull('deleted_at')
+                    ->first(['id', 'title', 'slug', 'featured_image_url', 'meta_description', 'excerpt', 'blog_category', 'word_count', 'content', 'published_at']);
+                if ($oldRow) {
+                    // Insert at the FRONT so the demoted featured shows just
+                    // after the new articles in the grid.
+                    array_unshift($needToInject, $oldRow);
+                }
+            }
+        }
+
+        if (empty($needToInject)) return $html;
+
+        // ── 3. Build grid cards ──
         $newCards = '';
-        foreach ($newOnes as $a) {
-            $card = $tpl;
-            // href
-            $card = preg_replace('#href="/blog/[^"]+"#i', 'href="/blog/' . e($a->slug) . '"', $card, 1);
-            // image src + alt
-            if ($a->featured_image_url) {
-                $card = preg_replace('#<img\s([^>]*)src="[^"]+"#i', '<img $1src="' . e($a->featured_image_url) . '"', $card, 1);
-            }
-            $card = preg_replace('#(<img[^>]*\s)alt="[^"]*"#i', '$1alt="' . e($a->title) . '"', $card, 1);
-
-            // title (any h2 or h3 inside the card)
-            $card = preg_replace_callback('#(<h2[^>]*>)(.+?)(</h2>)|(<h3[^>]*>)(.+?)(</h3>)#is',
-                function ($mm) use ($a) {
-                    if (!empty($mm[1])) return $mm[1] . e($a->title) . $mm[3];
-                    return $mm[4] . e($a->title) . $mm[6];
-                }, $card, 1);
-
-            // Wave 63b — clean excerpt extraction with fallback.
-            // Prefer explicit excerpt > meta_description > derived from content.
-            $excerpt = '';
-            if (!empty($a->excerpt))             $excerpt = $a->excerpt;
-            elseif (!empty($a->meta_description)) $excerpt = $a->meta_description;
-            elseif (!empty($a->content)) {
-                $text = trim(preg_replace('/\s+/', ' ', strip_tags($a->content)));
-                $excerpt = mb_substr($text, 0, 180);
-                if (mb_strlen($text) > 180) $excerpt = rtrim($excerpt, ',. !?:;') . '\u2026';
-            }
-            if ($excerpt !== '') {
-                // Replace ANY <p class="post-excerpt"> body; if multiple, just the first.
-                $card = preg_replace('#(<p[^>]*class="[^"]*excerpt[^"]*"[^>]*>).+?(</p>)#is', '$1' . e($excerpt) . '$2', $card, 1);
-            }
-
-            // Wave 63b — category. Use article.blog_category if set; else clear/hide.
-            $cat = $a->blog_category ?: '';
-            if ($cat !== '') {
-                $card = preg_replace('#(<div[^>]*class="[^"]*(?:post-cat|post-card-cat)[^"]*"[^>]*>).+?(</div>)#is', '$1' . e($cat) . '$2', $card, 1);
-            } else {
-                // Drop the category div entirely so the layout doesn\'t show a stale label.
-                $card = preg_replace('#<div[^>]*class="[^"]*(?:post-cat|post-card-cat)[^"]*"[^>]*>.+?</div>#is', '', $card, 1);
-            }
-
-            // date
-            if ($a->published_at) {
-                $when = \Carbon\Carbon::parse($a->published_at)->format('F Y');
-                $card = preg_replace('#(<span[^>]*class="[^"]*post-date[^"]*"[^>]*>).+?(</span>)#is', '$1' . e($when) . '$2', $card, 1);
-            }
-
-            // read time from word_count (200 wpm)
-            $wc = (int) ($a->word_count ?? 0);
-            if ($wc > 0) {
-                $rt = max(1, (int) round($wc / 200));
-                $card = preg_replace('#(<span[^>]*class="[^"]*post-read-time[^"]*"[^>]*>).+?(</span>)#is', '$1' . e($rt . ' min read') . '$2', $card, 1);
-            }
-
-            $newCards .= $card . "\n";
+        foreach ($needToInject as $a) {
+            $newCards .= $this->renderArticleIntoTemplate($cardTpl, $a) . "\n";
         }
 
-        // Inject before the FIRST post-card (not before post-featured).
+        // Inject before the FIRST existing post-card.
         $injected = preg_replace('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*class="post-card-link"[^>]*>\s*<article\s)#is', $newCards . '$1', $html, 1);
-        if (!$injected || $injected === $html) {
-            // Fallback: inject before any post-card article
-            $injected = preg_replace('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*>\s*<article\s[^>]*class="[^"]*post-card[^"]*")#is', $newCards . '$1', $html, 1);
-        }
         return $injected ?: $html;
+    }
+
+    /**
+     * Wave 63d helper — clone a template (post-card or post-featured) and
+     * substitute an article's data. Shared by featured-rotation and grid-injection.
+     */
+    private function renderArticleIntoTemplate(string $tpl, object $article): string
+    {
+        $card = $tpl;
+
+        // href
+        $card = preg_replace('#href="/blog/[^"]+"#i', 'href="/blog/' . e($article->slug) . '"', $card, 1);
+
+        // image src + alt
+        if (!empty($article->featured_image_url)) {
+            $card = preg_replace('#<img\s([^>]*)src="[^"]+"#i', '<img $1src="' . e($article->featured_image_url) . '"', $card, 1);
+        }
+        $card = preg_replace('#(<img[^>]*\s)alt="[^"]*"#i', '$1alt="' . e($article->title) . '"', $card, 1);
+
+        // title — any h2/h3 inside the card (handles featured uses h2, post-card uses h3)
+        $card = preg_replace_callback('#(<h2[^>]*>)(.+?)(</h2>)|(<h3[^>]*>)(.+?)(</h3>)#is',
+            function ($mm) use ($article) {
+                if (!empty($mm[1])) return $mm[1] . e($article->title) . $mm[3];
+                return $mm[4] . e($article->title) . $mm[6];
+            }, $card, 1);
+
+        // excerpt: prefer explicit > meta > derived from content
+        $excerpt = '';
+        if (!empty($article->excerpt))                    $excerpt = $article->excerpt;
+        elseif (!empty($article->meta_description))       $excerpt = $article->meta_description;
+        elseif (!empty($article->content)) {
+            $text = trim(preg_replace('/\s+/', ' ', strip_tags($article->content)));
+            $excerpt = mb_substr($text, 0, 200);
+            if (mb_strlen($text) > 200) $excerpt = rtrim($excerpt, ',. !?:;') . '\u2026';
+        }
+        if ($excerpt !== '') {
+            $card = preg_replace('#(<p[^>]*class="[^"]*excerpt[^"]*"[^>]*>).+?(</p>)#is', '$1' . e($excerpt) . '$2', $card, 1);
+        }
+
+        // category
+        $cat = $article->blog_category ?: '';
+        if ($cat !== '') {
+            $card = preg_replace('#(<div[^>]*class="[^"]*(?:post-cat|post-card-cat)[^"]*"[^>]*>).+?(</div>)#is', '$1' . e($cat) . '$2', $card, 1);
+        } else {
+            // Drop the category div entirely so no stale label.
+            $card = preg_replace('#<div[^>]*class="[^"]*(?:post-cat|post-card-cat)[^"]*"[^>]*>.+?</div>#is', '', $card, 1);
+        }
+
+        // date
+        if ($article->published_at) {
+            $when = \Carbon\Carbon::parse($article->published_at)->format('F Y');
+            $card = preg_replace('#(<span[^>]*class="[^"]*post-date[^"]*"[^>]*>).+?(</span>)#is', '$1' . e($when) . '$2', $card, 1);
+        }
+
+        // read time
+        $wc = (int) ($article->word_count ?? 0);
+        if ($wc > 0) {
+            $rt = max(1, (int) round($wc / 200));
+            $card = preg_replace('#(<span[^>]*class="[^"]*post-read-time[^"]*"[^>]*>).+?(</span>)#is', '$1' . e($rt . ' min read') . '$2', $card, 1);
+        }
+
+        return $card;
     }
 
     /**
