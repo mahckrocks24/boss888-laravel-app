@@ -2612,50 +2612,8 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   //      sub-page URLs that should not appear as separate "sites".
   //   2. Otherwise (no connected WP site), fall back to audit-history-derived
   //      dropdown for Laravel-only / multi-site workspaces.
-  function loadSiteList() {
-    if (window._lgseSites && window._lgseSites.length) return;
+  // loadSiteList — removed Wave 54, replaced by Wave-16 lgseLoadSites()
 
-    // Fetch /settings first. The result decides whether we even look at
-    // audit history. We chain rather than race to avoid the connected-site
-    // pill flickering through a junk-dominated dropdown.
-    var settingsPromise;
-    if (window._lgseSettingsFetched && window._lgseActiveSite) {
-      // Already fetched and we have a site — synthesize a resolved promise.
-      settingsPromise = Promise.resolve({ site_url: window._lgseActiveSite });
-    } else {
-      window._lgseSettingsFetched = true;
-      settingsPromise = api('GET', '/settings').catch(function () { return null; });
-    }
-
-    settingsPromise.then(function (s) {
-      var connectedSite = s && s.site_url ? String(s.site_url).trim() : '';
-      if (connectedSite) {
-        // WP-connected workspace — hard-lock to this one site.
-        window._lgseActiveSite = connectedSite;
-        window._lgseSites = [{ url: connectedSite, name: connectedSite }];
-        window._lgseSiteIsLocked = true;
-        try { console.log('[LGSE] Audit picker locked to connected WP site: ' + connectedSite); } catch (_) {}
-        return;
-      }
-      // No connected WP site — fall back to audit-history dropdown.
-      window._lgseSiteIsLocked = false;
-      api('GET', '/audits?limit=50').then(function (d) {
-        var rows = (d && (d.audits || d.data)) || (Array.isArray(d) ? d : []);
-        var seen = {};
-        var sites = [];
-        rows.forEach(function (a) {
-          var u = a && a.url;
-          // Reject obvious garbage: must look like an http(s) URL.
-          if (u && !seen[u] && /^https?:\/\//i.test(u)) {
-            seen[u] = 1;
-            sites.push({ url: u, name: u });
-          }
-        });
-        window._lgseSites = sites;
-        if (!window._lgseActiveSite && sites.length) window._lgseActiveSite = sites[0].url;
-      }).catch(function () { window._lgseSites = window._lgseSites || []; });
-    });
-  }
 
   // P0-AUD-FIX3: site-selector strip rendered above the audit list.
   function renderSiteSelector(selectedUrl) {
@@ -8792,7 +8750,6 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     inner.style.cssText = 'flex:1;overflow-y:auto;padding:20px';
     el.innerHTML = '';
     el.appendChild(inner);
-    loadSiteList(); // P0-AUD-FIX2 — populate window._lgseSites from audit history.
     buildShell(inner);
   };
 })();

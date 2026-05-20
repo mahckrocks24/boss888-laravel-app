@@ -1,0 +1,34 @@
+{
+  "name": "Restaurant Spotlight — Amber Circle Hero",
+  "version": "1.0.0",
+  "category": "restaurant",
+  "sub_category": "food_spotlight_promo",
+  "format": "square",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["restaurant", "food", "dining", "hospitality", "cafe"],
+  "demographic": "Fine-dining and full-service restaurants promoting signature dishes, tasting menus and reservations on Instagram / Facebook square feed with a warm, cinematic spotlight mood.",
+  "preview_image_url": null,
+  "thumbnail_url": null,
+  "variables": {
+    "logo_text":    { "type": "text",  "label": "Logo / brand name",   "default": "LOGO HERE" },
+    "tag_text":     { "type": "text",  "label": "Top-right pill tag",  "default": "Signature Menu" },
+    "ring_text":    { "type": "text",  "label": "Circular ring text",  "default": "✦ CHEF'S SELECTION  ✦ FARM TO TABLE  ✦ SEASONAL MENU  ✦ FINE DINING" },
+    "eyebrow":      { "type": "text",  "label": "Eyebrow / kicker",    "default": "Tonight's Special" },
+    "headline_1":   { "type": "text",  "label": "Headline line 1",     "default": "Taste the" },
+    "headline_2":   { "type": "text",  "label": "Headline line 2 (accent italic)", "default": "Extraordinary." },
+    "sub":          { "type": "text",  "label": "Subheadline",         "default": "Handcrafted dishes from locally sourced ingredients — a culinary journey you won't forget." },
+    "cta_text":     { "type": "text",  "label": "CTA button",          "default": "Reserve a Table" },
+    "price_label":  { "type": "text",  "label": "Price label",         "default": "From" },
+    "price_value":  { "type": "text",  "label": "Price value",         "default": "$85" },
+    "brand_url":    { "type": "text",  "label": "Brand website",       "default": "companyname.com" },
+    "image":        { "type": "image", "label": "Background food photo",    "default": "/storage/sites/gallery/gal_69e32781965e5.png" },
+    "hero_image":   { "type": "image", "label": "Hero circle food photo",   "default": "/storage/sites/gallery/gal_69e32781965e5.png" }
+  },
+  "css_variables": {
+    "primary": { "label": "Primary (Amber)",        "default": "#E8913A" },
+    "bg":      { "label": "Background (Espresso)",  "default": "#0B0905" },
+    "text":    { "label": "Text (Cream)",           "default": "#FAF0DC" },
+    "accent":  { "label": "Accent (Yellow)",        "default": "#FFD166" }
+  }
+}

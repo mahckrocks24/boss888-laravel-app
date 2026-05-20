@@ -1,0 +1,98 @@
+{
+  "name": "Restaurant Food Menu — Dark Charcoal & Orange",
+  "version": "1.0.0",
+  "category": "restaurant",
+  "sub_category": "food_menu_promo",
+  "format": "social_square",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["restaurant", "food", "delivery", "hospitality", "cafe", "fast_food"],
+  "demographic": "Restaurant owner-operators and food delivery brands promoting menu items, discounts and home delivery on Instagram / Facebook square feed.",
+  "preview_image_url": "/storage/media/platform/previews/restaurant-food-menu-preview.png",
+  "thumbnail_url": "/storage/media/platform/previews/restaurant-food-menu-thumb.png",
+  "variables": {
+    "restaurant_name": {
+      "type": "text",
+      "label": "Restaurant Name",
+      "default": "BELLA CUCINA"
+    },
+    "delivery_text": {
+      "type": "text",
+      "label": "Delivery Rotated Label",
+      "default": "FREE HOME DELIVERY"
+    },
+    "badge_top": {
+      "type": "text",
+      "label": "Badge Line 1",
+      "default": "Limited"
+    },
+    "badge_bottom": {
+      "type": "text",
+      "label": "Badge Line 2",
+      "default": "Offer"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline Line 1",
+      "default": "SUPER"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline Line 2 (accent)",
+      "default": "Delicious"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline Line 3",
+      "default": "FOOD MENU"
+    },
+    "image": {
+      "type": "image",
+      "label": "Hero Food Photo",
+      "default": "/storage/media/platform/bg_034_fine_dining_restaurant.jpg"
+    },
+    "discount_num": {
+      "type": "text",
+      "label": "Discount Number",
+      "default": "35%"
+    },
+    "discount_label": {
+      "type": "text",
+      "label": "Discount Label",
+      "default": "OFFER"
+    },
+    "cta_text": {
+      "type": "text",
+      "label": "CTA Button",
+      "default": "ORDER NOW"
+    },
+    "phone": {
+      "type": "text",
+      "label": "Phone Number",
+      "default": "+971 4 123 4567"
+    },
+    "website": {
+      "type": "text",
+      "label": "Website",
+      "default": "bellacucina.ae"
+    }
+  },
+  "css_variables": {
+    "primary": {
+      "label": "Primary (Orange)",
+      "default": "#FF6B00"
+    },
+    "bg": {
+      "label": "Background (Charcoal)",
+      "default": "#1A1A1A"
+    },
+    "text": {
+      "label": "Text (White)",
+      "default": "#FFFFFF"
+    },
+    "accent": {
+      "label": "Accent (Green)",
+      "default": "#16A34A"
+    }
+  }
+}

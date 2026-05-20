@@ -1,0 +1,40 @@
+{
+  "name": "Retro Playful — Food & Coffee",
+  "version": "1.0.0",
+  "category": "restaurant",
+  "sub_category": "food_coffee_retro",
+  "format": "square",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["cafe", "coffee", "food", "bakery", "restaurant", "artisan", "hospitality"],
+  "demographic": "Artisan cafés, specialty coffee roasters and food operators promoting hero items on Instagram / Facebook square feed with a warm retro-playful mood.",
+  "preview_image_url": null,
+  "thumbnail_url": null,
+  "variables": {
+    "ring_text":    { "type": "text",  "label": "Circular ring text",   "default": "✦ ARTISAN ROAST  ✦ SMALL BATCH  ✦ ETHICALLY SOURCED  ✦ HAND CRAFTED" },
+    "hero_badge":   { "type": "text",  "label": "Hero badge",           "default": "Specialty Grade" },
+    "stamp_top":    { "type": "text",  "label": "Stamp top",            "default": "Since" },
+    "stamp_value":  { "type": "text",  "label": "Stamp value",          "default": "98" },
+    "stamp_bottom": { "type": "text",  "label": "Stamp bottom",         "default": "Est." },
+    "eyebrow":      { "type": "text",  "label": "Eyebrow / category",   "default": "Daily Brew" },
+    "headline_1":   { "type": "text",  "label": "Headline line 1",      "default": "Wake Up" },
+    "headline_2":   { "type": "text",  "label": "Headline line 2",      "default": "& Taste." },
+    "subheadline":  { "type": "text",  "label": "Subheadline",          "default": "Single-origin beans, roasted in small batches every morning — because great coffee is never an accident. It's a ritual." },
+    "feature_1":    { "type": "text",  "label": "Feature tag 1",        "default": "Single Origin" },
+    "feature_2":    { "type": "text",  "label": "Feature tag 2",        "default": "Cold Brew" },
+    "feature_3":    { "type": "text",  "label": "Feature tag 3",        "default": "Seasonal Menu" },
+    "cta_text":     { "type": "text",  "label": "CTA button",           "default": "Order Now" },
+    "price_label":  { "type": "text",  "label": "Price label",          "default": "From" },
+    "price_value":  { "type": "text",  "label": "Price value",          "default": "$5.50" },
+    "brand_name":   { "type": "text",  "label": "Brand / logo text",    "default": "Logo Here" },
+    "brand_url":    { "type": "text",  "label": "Brand website",        "default": "companyname.com" },
+    "brand_handle": { "type": "text",  "label": "Social handle",        "default": "@handle" },
+    "image":        { "type": "image", "label": "Hero food photo",      "default": "/storage/sites/gallery/gal_69e32781965e5.png" }
+  },
+  "css_variables": {
+    "primary": { "label": "Primary (Amber)",      "default": "#E8823A" },
+    "bg":      { "label": "Background (Espresso)", "default": "#1A0D08" },
+    "text":    { "label": "Text (Cream)",         "default": "#FFF6E8" },
+    "accent":  { "label": "Accent (Light Amber)", "default": "#F5B04A" }
+  }
+}
