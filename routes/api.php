@@ -6582,17 +6582,60 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                         'updated_at'   => now(),
                     ]);
 
-                // Re-index the article into seo_content_index so the SEO
-                // Engine sees it immediately (Wave 52 normally handles this
-                // for builder pages; articles live in the articles table
-                // and need explicit re-indexing on publish).
                 try {
                     $host = $laravelSite->custom_domain ?: $laravelSite->domain ?: $laravelSite->subdomain ?: '';
                     if ($host) {
                         $host = strtolower(trim($host, ' /'));
-                        $articleSlug = \Illuminate\Support\Facades\DB::table('articles')
-                            ->where('id', $articleId)->value('slug');
-                        $publishedUrl = 'https://' . $host . '/blog/' . ltrim((string) $articleSlug, '/');
+                        $articleRow = \Illuminate\Support\Facades\DB::table('articles')
+                            ->where('id', $articleId)
+                            ->first(['slug', 'title', 'content', 'meta_title', 'meta_description', 'seo_json', 'featured_image_url', 'word_count', 'focus_keyword', 'readability_score']);
+                        $publishedUrl = 'https://' . $host . '/blog/' . ltrim((string) ($articleRow->slug ?? ''), '/');
+
+                        // Wave 66 — index into seo_content_index so SEO Engine
+                        // reports (Pages tab, audits, link suggestions, AEO
+                        // audit, keyword targeting) see the article.
+                        if ($articleRow && $articleRow->slug) {
+                            $seoJson = $articleRow->seo_json ? json_decode($articleRow->seo_json, true) : [];
+                            $metaTitle = $articleRow->meta_title ?: ($seoJson['title'] ?? $articleRow->title);
+                            $metaDesc  = $articleRow->meta_description ?: ($seoJson['description'] ?? null);
+                            $bodyText  = trim(preg_replace('/\s+/', ' ', strip_tags((string) $articleRow->content)));
+                            $imgCount  = preg_match_all('#<img\b#i', (string) $articleRow->content);
+                            $intLinks  = preg_match_all('#<a\b[^>]*href="/[^"]+"#i', (string) $articleRow->content);
+                            $extLinks  = preg_match_all('#<a\b[^>]*href="https?://[^"]+"#i', (string) $articleRow->content);
+
+                            $payload = [
+                                'workspace_id'        => $wsId,
+                                'title'               => $articleRow->title,
+                                'meta_title'          => $metaTitle,
+                                'meta_description'    => $metaDesc,
+                                'featured_image_url'  => $articleRow->featured_image_url,
+                                'has_featured_image'  => $articleRow->featured_image_url ? 1 : 0,
+                                'h1'                  => $articleRow->title,
+                                'h2_count'            => (int) preg_match_all('#<h2\b#i', (string) $articleRow->content),
+                                'word_count'          => (int) ($articleRow->word_count ?? str_word_count($bodyText)),
+                                'image_count'         => (int) $imgCount,
+                                'internal_link_count' => (int) $intLinks,
+                                'external_link_count' => (int) $extLinks,
+                                'inbound_links'       => 0,
+                                'inbound_weight'      => 0,
+                                'authority_score'     => 0,
+                                'readability_score'   => $articleRow->readability_score,
+                            ];
+
+                            // upsertContentIndex is a private SeoService method;
+                            // call via reflection (same pattern Wave 52 uses).
+                            try {
+                                $seoSvc = app(\App\Engines\SEO\Services\SeoService::class);
+                                $ref = new \ReflectionMethod($seoSvc, 'upsertContentIndex');
+                                $ref->setAccessible(true);
+                                $ref->invoke($seoSvc, $publishedUrl, $payload);
+                            } catch (\Throwable $idxErr) {
+                                \Illuminate\Support\Facades\Log::warning('[ArticlePublish] index upsert failed', [
+                                    'article_id' => $articleId, 'error' => $idxErr->getMessage(),
+                                ]);
+                            }
+                        }
+
                         \Illuminate\Support\Facades\Log::info('[ArticlePublish] Laravel-rendered publish', [
                             'article_id' => $articleId, 'url' => $publishedUrl,
                         ]);
