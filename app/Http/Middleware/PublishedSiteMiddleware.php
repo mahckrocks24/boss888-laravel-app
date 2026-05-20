@@ -204,7 +204,6 @@ class PublishedSiteMiddleware
     {
         if ($workspaceId <= 0) return $html;
 
-        // Fetch all published marketing-blog articles for this workspace.
         try {
             $articles = DB::table('articles')
                 ->where('workspace_id', $workspaceId)
@@ -213,36 +212,27 @@ class PublishedSiteMiddleware
                 ->whereNull('deleted_at')
                 ->orderByDesc('published_at')
                 ->orderByDesc('id')
-                ->get(['title', 'slug', 'featured_image_url', 'meta_description', 'excerpt', 'blog_category', 'published_at']);
+                ->get(['title', 'slug', 'featured_image_url', 'meta_description', 'excerpt', 'blog_category', 'word_count', 'content', 'published_at']);
         } catch (\Throwable $e) {
             return $html;
         }
         if ($articles->isEmpty()) return $html;
 
-        // Find articles whose slug isn't already mentioned in the static.
+        // Filter to articles not already in static.
         $newOnes = $articles->filter(function ($a) use ($html) {
             return $a->slug && stripos($html, '/blog/' . $a->slug) === false;
         });
         if ($newOnes->isEmpty()) return $html;
 
-        // Detect a card template — first <a ... href="/blog/..."> wrapping an <article>.
-        // The pattern is tolerant: matches the anchor opening, article block, and the
-        // closing </a> tag with up to a few lines of trailing whitespace.
-        if (!preg_match('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*>\s*<article\s[^>]*>.*?</article>\s*</a>)#is', $html, $m)) {
-            return $html; // No recognizable card template — bail.
+        // Wave 63b — find a REGULAR post-card template (NOT post-featured).
+        // Required class: post-card. Skip post-featured matches.
+        if (!preg_match('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*class="post-card-link"[^>]*>\s*<article\s[^>]*class="post-card"[^>]*>.*?</article>\s*</a>)#is', $html, $m)) {
+            // Fall back to any <article class="post-card"> wrapper, even if the link class is different.
+            if (!preg_match('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*>\s*<article\s[^>]*class="[^"]*post-card[^"]*"[^>]*>.*?</article>\s*</a>)#is', $html, $m)) {
+                return $html;
+            }
         }
         $tpl = $m[1];
-
-        // Extract the first link href, image src, h2/h3 text and one paragraph from
-        // the template — those become the slots we substitute.
-        preg_match('#href="(/blog/[^"]+)"#i', $tpl, $hrefMatch);
-        $tplHref  = $hrefMatch[1] ?? '/blog/SLUG';
-        preg_match('#<img\s[^>]*src="([^"]+)"[^>]*>#i', $tpl, $imgMatch);
-        $tplImgSrc = $imgMatch[1] ?? '';
-        preg_match('#<h2[^>]*class="[^"]*"[^>]*>(.+?)</h2>|<h3[^>]*class="[^"]*"[^>]*>(.+?)</h3>#is', $tpl, $titleMatch);
-        $tplTitle = trim($titleMatch[1] ?? ($titleMatch[2] ?? ''));
-        preg_match('#<p[^>]*class="post-excerpt"[^>]*>(.+?)</p>#is', $tpl, $excerptMatch);
-        $tplExcerpt = trim($excerptMatch[1] ?? '');
 
         // Build replacement cards.
         $newCards = '';
@@ -250,40 +240,65 @@ class PublishedSiteMiddleware
             $card = $tpl;
             // href
             $card = preg_replace('#href="/blog/[^"]+"#i', 'href="/blog/' . e($a->slug) . '"', $card, 1);
-            // image src
-            if ($a->featured_image_url && $tplImgSrc) {
-                $card = str_replace($tplImgSrc, e($a->featured_image_url), $card);
+            // image src + alt
+            if ($a->featured_image_url) {
+                $card = preg_replace('#<img\s([^>]*)src="[^"]+"#i', '<img $1src="' . e($a->featured_image_url) . '"', $card, 1);
             }
-            // image alt
-            $card = preg_replace('#alt="[^"]*"#i', 'alt="' . e($a->title) . '"', $card, 1);
-            // title (h2 or h3)
-            if ($tplTitle !== '') {
-                // The match may contain inner HTML (e.g. <br>, <em>); replace plain-text strip.
-                $card = preg_replace_callback('#(<h2[^>]*>)(.+?)(</h2>)|(<h3[^>]*>)(.+?)(</h3>)#is',
-                    function ($mm) use ($a) {
-                        if (!empty($mm[1])) {
-                            return $mm[1] . e($a->title) . $mm[3];
-                        }
-                        return $mm[4] . e($a->title) . $mm[6];
-                    }, $card, 1);
+            $card = preg_replace('#(<img[^>]*\s)alt="[^"]*"#i', '$1alt="' . e($a->title) . '"', $card, 1);
+
+            // title (any h2 or h3 inside the card)
+            $card = preg_replace_callback('#(<h2[^>]*>)(.+?)(</h2>)|(<h3[^>]*>)(.+?)(</h3>)#is',
+                function ($mm) use ($a) {
+                    if (!empty($mm[1])) return $mm[1] . e($a->title) . $mm[3];
+                    return $mm[4] . e($a->title) . $mm[6];
+                }, $card, 1);
+
+            // Wave 63b — clean excerpt extraction with fallback.
+            // Prefer explicit excerpt > meta_description > derived from content.
+            $excerpt = '';
+            if (!empty($a->excerpt))             $excerpt = $a->excerpt;
+            elseif (!empty($a->meta_description)) $excerpt = $a->meta_description;
+            elseif (!empty($a->content)) {
+                $text = trim(preg_replace('/\s+/', ' ', strip_tags($a->content)));
+                $excerpt = mb_substr($text, 0, 180);
+                if (mb_strlen($text) > 180) $excerpt = rtrim($excerpt, ',. !?:;') . '\u2026';
             }
-            // excerpt
-            $excerptText = $a->excerpt ?: $a->meta_description ?: '';
-            if ($excerptText && $tplExcerpt !== '') {
-                $card = preg_replace('#(<p[^>]*class="post-excerpt"[^>]*>).+?(</p>)#is', '$1' . e($excerptText) . '$2', $card, 1);
+            if ($excerpt !== '') {
+                // Replace ANY <p class="post-excerpt"> body; if multiple, just the first.
+                $card = preg_replace('#(<p[^>]*class="[^"]*excerpt[^"]*"[^>]*>).+?(</p>)#is', '$1' . e($excerpt) . '$2', $card, 1);
             }
-            // date — replace the first .post-date span text with the publish month/year
+
+            // Wave 63b — category. Use article.blog_category if set; else clear/hide.
+            $cat = $a->blog_category ?: '';
+            if ($cat !== '') {
+                $card = preg_replace('#(<div[^>]*class="[^"]*(?:post-cat|post-card-cat)[^"]*"[^>]*>).+?(</div>)#is', '$1' . e($cat) . '$2', $card, 1);
+            } else {
+                // Drop the category div entirely so the layout doesn\'t show a stale label.
+                $card = preg_replace('#<div[^>]*class="[^"]*(?:post-cat|post-card-cat)[^"]*"[^>]*>.+?</div>#is', '', $card, 1);
+            }
+
+            // date
             if ($a->published_at) {
                 $when = \Carbon\Carbon::parse($a->published_at)->format('F Y');
-                $card = preg_replace('#(<span[^>]*class="post-date"[^>]*>).+?(</span>)#is', '$1' . e($when) . '$2', $card, 1);
+                $card = preg_replace('#(<span[^>]*class="[^"]*post-date[^"]*"[^>]*>).+?(</span>)#is', '$1' . e($when) . '$2', $card, 1);
             }
+
+            // read time from word_count (200 wpm)
+            $wc = (int) ($a->word_count ?? 0);
+            if ($wc > 0) {
+                $rt = max(1, (int) round($wc / 200));
+                $card = preg_replace('#(<span[^>]*class="[^"]*post-read-time[^"]*"[^>]*>).+?(</span>)#is', '$1' . e($rt . ' min read') . '$2', $card, 1);
+            }
+
             $newCards .= $card . "\n";
         }
 
-        // Inject newCards just BEFORE the first existing post-card so new ones
-        // surface at the top of the regular grid.
-        $injected = preg_replace('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*>\s*<article\s)#is', $newCards . '$1', $html, 1);
-
+        // Inject before the FIRST post-card (not before post-featured).
+        $injected = preg_replace('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*class="post-card-link"[^>]*>\s*<article\s)#is', $newCards . '$1', $html, 1);
+        if (!$injected || $injected === $html) {
+            // Fallback: inject before any post-card article
+            $injected = preg_replace('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*>\s*<article\s[^>]*class="[^"]*post-card[^"]*")#is', $newCards . '$1', $html, 1);
+        }
         return $injected ?: $html;
     }
 
