@@ -16,7 +16,7 @@ var _seoTab = 'dashboard';
 var _seoEl = () => document.getElementById('seo-root');
 // Wave 15.1 (2026-05-18) — load marker so users can verify in DevTools
 // console that they're running the new code with CTAs.
-try { console.log('[LU SEO] seo.js v5.28.2-wave52 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
+try { console.log('[LU SEO] seo.js v5.28.3-wave53 loaded — Watchdog removed (real fix was 2-line SQL bug in Wave 32k forensic)'); } catch(_e) {}
 
 // Wave 23 — Auto-inject the meter badge near any chat input.
 (function () {
@@ -2659,7 +2659,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   // P0-AUD-FIX3: site-selector strip rendered above the audit list.
   function renderSiteSelector(selectedUrl) {
-    var sites = window._lgseSites || [];
+    var sites = (window._lgseSiteList && window._lgseSiteList.length) ? window._lgseSiteList : (window._lgseSites || []);
     if (sites.length === 0) return '';
     if (sites.length === 1) {
       return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
@@ -2693,7 +2693,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   // P0-AUD-FIX1: themed modal replaces the legacy native dialog.
   window.lgseRunAudit = function () {
-    var sites = window._lgseSites || [];
+    // Wave 53 — prefer _lgseSiteList (Wave 16, fed by /api/seo/sites and
+    // includes builder sites). Fall back to _lgseSites (legacy, audit-
+    // history derived) only when the modern list is empty.
+    var sites = (window._lgseSiteList && window._lgseSiteList.length)
+      ? window._lgseSiteList
+      : (window._lgseSites || []);
     var siteOptions;
     if (sites.length > 1) {
       siteOptions = '<select id="lgse-audit-url-select" style="width:100%;background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:7px;padding:8px 12px;font-size:11.5px;color:var(--lgse-t1);margin-bottom:8px;cursor:pointer">'
@@ -2752,7 +2757,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       if (typeof window.showToast === 'function') window.showToast('Audit started.', 'success');
       if (btn) { btn.disabled = false; btn.textContent = '+ Run new audit'; }
       // Add new URL to known sites if absent.
-      var sites = window._lgseSites || [];
+      var sites = (window._lgseSiteList && window._lgseSiteList.length) ? window._lgseSiteList : (window._lgseSites || []);
       var seen = false;
       for (var i = 0; i < sites.length; i++) { if (sites[i].url === url) { seen = true; break; } }
       if (!seen) {
@@ -2786,7 +2791,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   // P0-AUD-FIX4: Always-visible "Scan Website" button + simulated progress bar.
   window.lgseRunDeepScan = function () {
-    var sites = window._lgseSites || [];
+    var sites = (window._lgseSiteList && window._lgseSiteList.length) ? window._lgseSiteList : (window._lgseSites || []);
     var siteUrl = window._lgseActiveSite || (sites[0] && sites[0].url) || '';
     // 2026-05-12: fall back to the embed-passed site URL before prompting.
     if (!siteUrl && window._LGSC_SITE_URL) {
@@ -3562,7 +3567,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // If no active site URL is known (cold workspace), opens the audit modal so
   // the user can supply one — same modal as Run Audit, reused.
   window.lgseScanAndIndexPages = function () {
-    var sites = window._lgseSites || [];
+    var sites = (window._lgseSiteList && window._lgseSiteList.length) ? window._lgseSiteList : (window._lgseSites || []);
     var url = window._lgseActiveSite || (sites[0] && sites[0].url) || '';
     if (!url) {
       if (typeof window.lgseRunAudit === 'function') window.lgseRunAudit();
