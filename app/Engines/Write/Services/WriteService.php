@@ -579,6 +579,23 @@ class WriteService
         $keyword   = $params['keyword'] ?? $params['target_keyword'] ?? '';
         $articleId = $params['article_id'] ?? null;
 
+        // Wave 41 — when called from the chain we only get article_id, no
+        // title or content. Load them from the articles table so the LLM has
+        // real context to generate topic-specific meta. Without this, the
+        // prompt receives empty article_title + first_200 and the model
+        // returns a generic SEO-tutorial response.
+        if ($articleId && (!$title || !$content)) {
+            $art = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('id', $articleId)
+                ->where('workspace_id', $wsId)
+                ->first(['title', 'content', 'focus_keyword']);
+            if ($art) {
+                if (!$title)   $title   = $art->title ?? '';
+                if (!$content) $content = $art->content ?? '';
+                if (!$keyword) $keyword = $art->focus_keyword ?? '';
+            }
+        }
+
         $context = array_filter([
             'task'         => 'meta_generation',
             'article_title'=> $title,
