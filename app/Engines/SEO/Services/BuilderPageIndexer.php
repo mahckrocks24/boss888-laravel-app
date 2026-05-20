@@ -31,7 +31,7 @@ class BuilderPageIndexer
             ->where('workspace_id', $workspaceId)
             ->where('status', 'published')
             ->whereNull('deleted_at')
-            ->get(['id', 'subdomain', 'domain', 'name']);
+            ->get(['id', 'subdomain', 'domain', 'custom_domain', 'name']);
 
         $count = 0;
         foreach ($websites as $site) {
@@ -45,6 +45,11 @@ class BuilderPageIndexer
      */
     public function indexWebsite(int $workspaceId, object $website): int
     {
+        // Wave 52b — ensure custom_domain is on the row object for indexPage.
+        if (!property_exists($website, 'custom_domain')) {
+            $cd = DB::table('websites')->where('id', $website->id ?? 0)->value('custom_domain');
+            $website->custom_domain = $cd;
+        }
         $pages = DB::table('pages')
             ->where('website_id', $website->id)
             ->where('status', 'published')
@@ -75,8 +80,20 @@ class BuilderPageIndexer
      */
     public function indexPage(int $workspaceId, object $website, object $page): void
     {
-        $host = $website->domain ?: ($website->subdomain ?: '');
+        // Wave 52b — align with /api/seo/sites picker priority so the URL
+        // we write here is the same URL the user sees in the site dropdown.
+        // Without this, custom_domain workspaces saw a picker entry but no
+        // SEO data because the URL filter never matched.
+        $host = '';
+        if (!empty($website->custom_domain ?? null))  $host = $website->custom_domain;
+        elseif (!empty($website->domain ?? null))     $host = $website->domain;
+        elseif (!empty($website->subdomain ?? null)) {
+            $host = str_contains((string) $website->subdomain, '.')
+                ? (string) $website->subdomain
+                : $website->subdomain . '.levelupgrowth.io';
+        }
         if (!$host) return; // can't build a URL without a host
+        $host = strtolower(trim($host, ' /\t\n\r'));
 
         // Home page slug normalization — both "home" and is_homepage=1 render at /
         $slug = (string) ($page->slug ?? '');
