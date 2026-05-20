@@ -1141,29 +1141,61 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                 ->where('workspace_id', $wsId)
                                 ->value('aeo_mode_enabled');
                             if ($aeoOn) {
-                                // Find write_article's 1-based position to wire depends_on.
-                                $writePos = 0;
+                                // Wave 59 — handle multi-article chains correctly. Walk the
+                                // array; each time we see a write_article, inject an
+                                // aeo_enrich immediately after with depends_on pointing
+                                // to THIS write_article's new position. Then re-map
+                                // every subsequent task's depends_on indices to account
+                                // for the cumulative shift (each injection bumps later
+                                // original positions by +1).
+                                $newCreateTasks = [];
+                                $writePositions = [];      // ORIGINAL positions of write_article tasks
+                                $injectionPoints = [];     // ORIGINAL positions AFTER which we injected
                                 foreach (array_values($createTasks) as $i => $ct) {
+                                    $origPos = $i + 1; // 1-based
                                     if (is_array($ct) && ($ct['action'] ?? '') === 'write_article') {
-                                        $writePos = $i + 1;
-                                        break;
+                                        $writePositions[] = $origPos;
+                                        $injectionPoints[] = $origPos;
                                     }
                                 }
-                                $newCreateTasks = [];
+
+                                // Helper: given an original 1-based position, return its
+                                // new position after all injections.
+                                $shift = function (int $origPos) use ($injectionPoints): int {
+                                    $shifts = 0;
+                                    foreach ($injectionPoints as $p) {
+                                        if ($origPos > $p) $shifts++;
+                                    }
+                                    return $origPos + $shifts;
+                                };
+
                                 foreach (array_values($createTasks) as $i => $ct) {
+                                    $origPos = $i + 1;
+
+                                    // Re-map this task's depends_on through $shift.
+                                    if (is_array($ct) && !empty($ct['depends_on']) && is_array($ct['depends_on'])) {
+                                        $ct['depends_on'] = array_map($shift, $ct['depends_on']);
+                                    }
                                     $newCreateTasks[] = $ct;
+
+                                    // After each write_article, inject the aeo_enrich.
                                     if (is_array($ct) && ($ct['action'] ?? '') === 'write_article') {
                                         $newCreateTasks[] = [
                                             'agent'       => 'priya',
                                             'engine'      => 'write',
                                             'action'      => 'aeo_enrich',
                                             'description' => 'AEO enrichment: TLDR + FAQ + JSON-LD for AI search engines',
-                                            'depends_on'  => [$writePos],
+                                            // depends_on points at THIS write_article's NEW position
+                                            'depends_on'  => [$shift($origPos)],
                                         ];
                                     }
                                 }
                                 $createTasks = $newCreateTasks;
-                                \Illuminate\Support\Facades\Log::info('[SarahChat] auto-injected aeo_enrich step', ['workspace_id' => $wsId, 'after_position' => $writePos]);
+                                \Illuminate\Support\Facades\Log::info('[SarahChat] auto-injected aeo_enrich + re-mapped depends_on', [
+                                    'workspace_id' => $wsId,
+                                    'write_positions' => $writePositions,
+                                    'total_tasks_after_inject' => count($newCreateTasks),
+                                ]);
                             }
                         }
                     }
