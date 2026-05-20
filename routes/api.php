@@ -788,6 +788,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $systemPrompt = $conciseRule . $brandFactsBlock
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
+                . "HARD RULE — DELEGATION: When the user asks you to WRITE, CREATE, BUILD, GENERATE, "
+                . "PUBLISH, or START anything, you MUST emit a non-empty create_tasks array in your "
+                . "JSON output. Do NOT reply 'Already done', 'In progress', 'Priya is working on it', "
+                . "or anything similar unless the create_tasks array is populated in THIS reply. Past "
+                . "conversation history does not count — only this turn's create_tasks. If you cannot "
+                . "create the tasks (unclear request, missing info), ask a clarifying question instead "
+                . "of claiming delegation.\n"
                 . "Available agents and their expertise:\n"
                 . "- james: SEO Strategist (keyword research, SERP analysis, audits)\n"
                 . "- alex: Technical SEO (site audits, Core Web Vitals, schema)\n"
@@ -905,7 +912,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                         'agent_slug'    => $slug,
                         'agent_name'    => $agent->name,
                     ],
-                    "agent_chat_ws_{$wsId}_{$slug}_v3",
+                    "agent_chat_ws_{$wsId}_{$slug}_v4",
                     $slug === 'sarah' ? 'dmm' : $slug
                 );
                 $assistReply = $assist['response'] ?? null;
@@ -1019,6 +1026,22 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     !$assistReply
                     || preg_match('/\b(create|generate|run|publish|schedule|write|build|launch|start|assign|post|send|audit|analyze|how many|how much|list|show|count|status|balance|websites|leads|campaigns|tasks)\b/i', $userPrompt)
                 );
+
+                // Wave 58 — anti-hallucination: if Sarah's prose claims she
+                // delegated/created/started something but create_tasks is
+                // empty, force the re-extract regardless of user-message
+                // verbs. Catches replies like "Already done!", "Priya is
+                // writing them now", "kicking off all three articles".
+                if (!$needTaskExtract && empty($createTasks) && empty($toolCalls) && $assistReply) {
+                    $proseClaims = '/\b(kicking off|kicking it off|creating|created|delegated|delegating|on it|priya is writing|priya will write|james will|marcus will|elena will|in progress|queued up|already done|just created|all set|will handle|are queued|got it|will deliver|sent it to|i\'ll have|i have|getting started)\b/i';
+                    if (preg_match($proseClaims, $assistReply)) {
+                        $needTaskExtract = true;
+                        \Illuminate\Support\Facades\Log::info('[SarahChat] anti-hallucination re-extract triggered', [
+                            'ws' => $wsId,
+                            'reply_head' => mb_substr($assistReply, 0, 100),
+                        ]);
+                    }
+                }
                 if ($needTaskExtract) {
                     $cj = $runtime->chatJson($systemPrompt, $userPrompt, [
                         'agent_slug' => $slug, 'agent_name' => $agent->name,
