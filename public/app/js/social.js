@@ -540,7 +540,7 @@ window._svEsc = function(s){ if(s==null) return ''; return String(s).replace(/[&
 
 window._svTimeAgo = function(ts){
   if(!ts) return '';
-  var t = new Date(ts).getTime(); if(isNaN(t)) return '';
+  var t = ((typeof window!=='undefined'&&window._luParseTs)?window._luParseTs(ts):new Date(ts)).getTime(); if(isNaN(t)) return '';
   var s = Math.floor((Date.now() - t)/1000);
   if(s < 60) return s+' sec ago';
   var m = Math.floor(s/60); if(m < 60) return m+' min ago';
