@@ -236,6 +236,11 @@ return Application::configure(basePath: dirname(__DIR__))
         })->name('tasks:recover-orphans')->everyFifteenMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
+        // Wave 47 — AEO Plan Gate (\$69+ tiers only)
+        $middleware->alias([
+            'aeo.gate' => \App\Http\Middleware\AeoPlanGate::class,
+        ]);
+
 
         $middleware->prepend(\App\Http\Middleware\PublishedSiteMiddleware::class);
         // Run BEFORE PublishedSite so request()->ip() resolves to the real

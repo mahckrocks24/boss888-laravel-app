@@ -805,10 +805,11 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 . "\nCHAIN RECIPES — when the user asks for something composite, create the FULL chain in create_tasks (one create_tasks call, multiple objects). The orchestrator runs them in order using parent_task_id.\n"
                 . "  ▸ NEW BLOG ARTICLE (fully optimized, target 1000-1200 words): create these 5 tasks in order, all parented to task #1:\n"
                 . "     1. {agent:priya, engine:write, action:write_article, description:body draft, params:{title, topic, target_keyword, audience, tone, length:1100}}\n"
-                . "     2. {agent:priya, engine:write, action:generate_meta, description:meta title + description, depends_on:[1]}\n"
-                . "     3. {agent:priya, engine:creative, action:generate_image_mini, description:featured image with alt text, depends_on:[1]} (priya is the article owner; she commissions the hero image)\n"
-                . "     4. {agent:james, engine:seo, action:link_suggestions, description:find internal links, depends_on:[1]}\n"
-                . "     5. {agent:priya, engine:seo, action:insert_link, description:embed selected links into article body, depends_on:[1,4]}\n"
+                . "     2. {agent:priya, engine:write, action:aeo_enrich, description:TLDR + FAQ + JSON-LD schema for AI search engines, depends_on:[1]} (only when workspace AEO mode is enabled)\n"
+                . "     3. {agent:priya, engine:write, action:generate_meta, description:meta title + description, depends_on:[1,2]}\n"
+                . "     4. {agent:priya, engine:creative, action:generate_image_mini, description:featured image with alt text, depends_on:[1]}\n"
+                . "     5. {agent:james, engine:seo, action:link_suggestions, description:find internal links, depends_on:[1]}\n"
+                . "     6. {agent:priya, engine:seo, action:insert_link, description:embed selected links into article body, depends_on:[1,5]}\n"
                 . "  Each step's output (article_id, image_url, etc.) automatically flows to dependent steps via parent_task_id.\n"
                 . "Be decisive and action-oriented. Keep responses under 150 words.\n"
                 . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":false,\"create_tasks\":[],\"tool_calls\":[]}\n"
@@ -1011,6 +1012,50 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 }
 
                 if (true) {  // preserve indentation of original `if ($result['success'])` block
+                    // Wave 47 — auto-inject aeo_enrich as step 2 if the chain
+                    // includes write_article and the workspace has AEO Mode on.
+                    // LLMs frequently omit this step even when prompted; injection
+                    // makes it deterministic.
+                    if (is_array($createTasks) && count($createTasks) > 1) {
+                        $hasWriteArticle = false;
+                        $hasAeoEnrich = false;
+                        foreach ($createTasks as $ct) {
+                            if (is_array($ct)) {
+                                if (($ct['action'] ?? '') === 'write_article') $hasWriteArticle = true;
+                                if (($ct['action'] ?? '') === 'aeo_enrich')    $hasAeoEnrich = true;
+                            }
+                        }
+                        if ($hasWriteArticle && !$hasAeoEnrich) {
+                            $aeoOn = (bool) \Illuminate\Support\Facades\DB::table('aeo_settings')
+                                ->where('workspace_id', $wsId)
+                                ->value('aeo_mode_enabled');
+                            if ($aeoOn) {
+                                // Find write_article's 1-based position to wire depends_on.
+                                $writePos = 0;
+                                foreach (array_values($createTasks) as $i => $ct) {
+                                    if (is_array($ct) && ($ct['action'] ?? '') === 'write_article') {
+                                        $writePos = $i + 1;
+                                        break;
+                                    }
+                                }
+                                $newCreateTasks = [];
+                                foreach (array_values($createTasks) as $i => $ct) {
+                                    $newCreateTasks[] = $ct;
+                                    if (is_array($ct) && ($ct['action'] ?? '') === 'write_article') {
+                                        $newCreateTasks[] = [
+                                            'agent'       => 'priya',
+                                            'engine'      => 'write',
+                                            'action'      => 'aeo_enrich',
+                                            'description' => 'AEO enrichment: TLDR + FAQ + JSON-LD for AI search engines',
+                                            'depends_on'  => [$writePos],
+                                        ];
+                                    }
+                                }
+                                $createTasks = $newCreateTasks;
+                                \Illuminate\Support\Facades\Log::info('[SarahChat] auto-injected aeo_enrich step', ['workspace_id' => $wsId, 'after_position' => $writePos]);
+                            }
+                        }
+                    }
                     $createdTaskIds = []; // Wave 35c — track by 1-based position for depends_on resolution
                     $ctIndex = 0;
                     foreach ($createTasks as $createTask) {
@@ -1057,14 +1102,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             // fully-optimized article = 2cr. Charge 2cr on the parent
                             // (write_article) only; zero out chain children.
                             $bundlePrice = null; // null = let TaskService use CapabilityMap default
-                            $chainActions = ['write_article', 'generate_meta', 'generate_image_mini', 'generate_image_high', 'link_suggestions', 'insert_link'];
+                            $chainActions = ['write_article', 'aeo_enrich', 'generate_meta', 'generate_image_mini', 'generate_image_high', 'link_suggestions', 'insert_link'];
                             $isChain = count($createTasks) > 1 && in_array($taskAction, $chainActions, true);
                             if ($isChain) {
                                 if ($taskAction === 'write_article' && empty($parentId)) {
-                                    // The chain's parent (root) carries the full bundle price.
-                                    $bundlePrice = 2;
+                                    // Wave 47 — bundle price depends on AEO mode.
+                                    // 2cr base; 3cr when workspace has aeo_mode_enabled
+                                    // (covers the extra runtime call for aeo_enrich).
+                                    $aeoOn = (bool) \Illuminate\Support\Facades\DB::table('aeo_settings')
+                                        ->where('workspace_id', $wsId)
+                                        ->value('aeo_mode_enabled');
+                                    $bundlePrice = $aeoOn ? 3 : 2;
                                 } elseif (!empty($parentId)) {
-                                    // Children inherit zero — their cost is rolled into the parent's 2cr.
+                                    // Children inherit zero — their cost is rolled into the parent's bundle.
                                     $bundlePrice = 0;
                                 }
                             }
@@ -2248,6 +2298,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
         // POST /api/seo/aeo/settings — update settings (any combo of fields).
         Route::post('/aeo/settings', function (\Illuminate\Http\Request $r) {
+
+            // Wave 47 — AEO plan gate inline check.
+            $_ws = (int) $r->attributes->get('workspace_id');
+            $_planSlug = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws)['plan_slug'] ?? 'free';
+            $_price = (float) \Illuminate\Support\Facades\DB::table('plans')->where('slug', $_planSlug)->value('price') ?: 0.0;
+            if ($_price < 69.0) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'aeo_plan_required',
+                    'message' => 'AEO Mode requires WP Bundle ($69) or higher.',
+                    'current_plan_slug' => $_planSlug,
+                ], 402);
+            }
             $wsId = (int) $r->attributes->get('workspace_id');
             $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
             $changes = $r->only(array_merge(
@@ -2266,6 +2329,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
         // POST /api/seo/aeo/llms-txt/regenerate — force-regen llms.txt now.
         Route::post('/aeo/llms-txt/regenerate', function (\Illuminate\Http\Request $r) {
+
+            // Wave 47 — AEO plan gate inline check.
+            $_ws = (int) $r->attributes->get('workspace_id');
+            $_planSlug = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws)['plan_slug'] ?? 'free';
+            $_price = (float) \Illuminate\Support\Facades\DB::table('plans')->where('slug', $_planSlug)->value('price') ?: 0.0;
+            if ($_price < 69.0) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'aeo_plan_required',
+                    'message' => 'AEO Mode requires WP Bundle ($69) or higher.',
+                    'current_plan_slug' => $_planSlug,
+                ], 402);
+            }
             $wsId = (int) $r->attributes->get('workspace_id');
             $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
             $body = $svc->regenerateLlmsTxt($wsId);
@@ -2324,6 +2400,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // Cost: 1cr standalone (Wave 45 default). Will be 0 when bundled
         // inside a Sarah chain after Wave 47 wires the chain integration.
         Route::post('/aeo/enrich', function (\Illuminate\Http\Request $r) {
+
+            // Wave 47 — AEO plan gate inline check.
+            $_ws = (int) $r->attributes->get('workspace_id');
+            $_planSlug = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws)['plan_slug'] ?? 'free';
+            $_price = (float) \Illuminate\Support\Facades\DB::table('plans')->where('slug', $_planSlug)->value('price') ?: 0.0;
+            if ($_price < 69.0) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'aeo_plan_required',
+                    'message' => 'AEO Mode requires WP Bundle ($69) or higher.',
+                    'current_plan_slug' => $_planSlug,
+                ], 402);
+            }
             $wsId = (int) $r->attributes->get('workspace_id');
             $articleId = (int) $r->input('article_id', 0);
             if (!$articleId) {
@@ -12965,6 +13054,30 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             ]);
         }
 
+        // Wave 47 — auto-enrich if workspace has AEO Mode enabled (and is on
+        // a $69+ plan; the AeoPlanGate doesnt apply here because this is
+        // already a wp_connector flow, but the workspace toggle still gates
+        // the behavior). Adds ~5s and uses the parent bundle credits.
+        $aeoEnriched = false;
+        $aeoJsonld = null;
+        try {
+            $aeoOn = (bool) \Illuminate\Support\Facades\DB::table('aeo_settings')
+                ->where('workspace_id', $wsId)
+                ->value('aeo_mode_enabled');
+            if ($aeoOn) {
+                $aeoRes = $writeSvc->aeoEnrich($wsId, ['article_id' => $articleId, 'user_id' => $userId]);
+                $aeoEnriched = (bool) ($aeoRes['enriched'] ?? false);
+                if ($aeoEnriched) {
+                    $aeoJsonld = \Illuminate\Support\Facades\DB::table('articles')
+                        ->where('id', $articleId)->value('jsonld_json');
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[WP generate-article] aeo enrich skipped', [
+                'article_id' => $articleId, 'error' => $e->getMessage(),
+            ]);
+        }
+
         // ── 3. Featured image (free chain child — paid by parent bundle) ─
         $imageFailed = false;
         try {
@@ -12991,8 +13104,15 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
                 ->where('workspace_id', $wsId)->decrement('balance', 1);
             $creditsUsed = 1;
         } else {
+            // Wave 47 — bundle cost: 3cr when AEO enrichment ran, 2cr base.
+            $finalCost = $aeoEnriched ? 3 : 2;
+            // The reservation was for 2cr; if AEO ran, debit the extra 1cr.
+            if ($aeoEnriched) {
+                \Illuminate\Support\Facades\DB::table('credits')
+                    ->where('workspace_id', $wsId)->decrement('balance', 1);
+            }
             $creditSvc->commit($wsId, $reservationRef, 2);
-            $creditsUsed = 2;
+            $creditsUsed = $finalCost;
         }
         $remaining = max(0, $credits - $creditsUsed);
 
@@ -13020,6 +13140,12 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             'created_at' => now(),
         ]);
 
+        // Wave 47 — JSON-LD HTML block ready to embed inside the WP post body.
+        $jsonldHtml = '';
+        if ($aeoJsonld) {
+            $jsonldHtml = '<script type="application/ld+json">' . $aeoJsonld . '</script>';
+        }
+
         $resp = [
             'success'           => true,
             'article_id'        => $articleId,
@@ -13034,6 +13160,9 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             'credits_used'      => $creditsUsed,
             'credits_remaining' => $remaining,
             'source'            => 'sarah_chain_engine_services',
+            // Wave 47 — AEO payload for WP plugin to inject into post body.
+            'aeo_enriched'      => $aeoEnriched,
+            'jsonld_html'       => $jsonldHtml,
         ];
         if ($imageFailed) { $resp['image_failed'] = true; }
         return response()->json($resp);
