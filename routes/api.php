@@ -2369,11 +2369,15 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // GET /api/seo/aeo/articles — list workspace articles with AEO status.
         Route::get('/aeo/articles', function (\Illuminate\Http\Request $r) {
             $wsId = (int) $r->attributes->get('workspace_id');
+            // Wave 47f — published-only. Drafts aren't crawlable by LLMs so
+            // there's no AEO benefit to enriching them yet (the LLM-cite
+            // surface is the rendered public page).
             $articles = \Illuminate\Support\Facades\DB::table('articles')
                 ->where('workspace_id', $wsId)
+                ->where('status', 'published')
                 ->whereNull('deleted_at')
                 ->orderByDesc('id')
-                ->limit(100)
+                ->limit(200)
                 ->get(['id', 'title', 'slug', 'status', 'jsonld_json', 'aeo_enriched_at', 'word_count', 'created_at']);
             $rows = $articles->map(function ($a) {
                 $enriched = $a->aeo_enriched_at !== null && $a->jsonld_json !== null;
@@ -2418,11 +2422,52 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             if (!$articleId) {
                 return response()->json(['success' => false, 'error' => 'article_id required'], 422);
             }
+
+            // Wave 47e — reserve 1cr upfront. Release if aeoEnrich is a
+            // no-op (parse failure or recently_enriched cache). Commit only
+            // on a real enrichment.
+            $creditSvc = app(\App\Core\Billing\CreditService::class);
+            $balance = (int) \Illuminate\Support\Facades\DB::table('credits')
+                ->where('workspace_id', $wsId)->value('balance') ?: 0;
+            if ($balance < 1) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'insufficient_credits',
+                    'required_credits' => 1,
+                    'available' => $balance,
+                ], 402);
+            }
+            $reservation = $creditSvc->reserveCredits($wsId, 1, 'Article', $articleId, 'aeo_enrich_' . uniqid());
+            $reservationRef = $reservation->reservation_reference;
+
             try {
                 $result = app(\App\Engines\Write\Services\WriteService::class)
                     ->aeoEnrich($wsId, ['article_id' => $articleId]);
+
+                if (!empty($result['enriched'])) {
+                    $creditSvc->commit($wsId, $reservationRef, 1);
+                    \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+                        'workspace_id' => $wsId,
+                        'action' => 'write.aeo_enrich',
+                        'entity_type' => 'Article',
+                        'entity_id' => $articleId,
+                        'metadata_json' => json_encode([
+                            'source' => 'manual',
+                            'faq_count' => $result['faq_count'] ?? 0,
+                            'heading_rewrites' => $result['heading_rewrites'] ?? 0,
+                            'credit_cost' => 1,
+                        ]),
+                        'created_at' => now(),
+                    ]);
+                    $result['credits_used'] = 1;
+                } else {
+                    $creditSvc->release($wsId, $reservationRef);
+                    $result['credits_used'] = 0;
+                }
+                $result['credits_remaining'] = max(0, $balance - ($result['credits_used'] ?? 0));
                 return response()->json(['success' => true, 'result' => $result]);
             } catch (\Throwable $e) {
+                $creditSvc->release($wsId, $reservationRef);
                 return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
             }
         });
