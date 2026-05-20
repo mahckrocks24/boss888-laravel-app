@@ -911,6 +911,21 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 $assistReply = $assist['response'] ?? null;
                 if ($assistReply) {
                     $reply = $assistReply;
+                    // Wave 56 — When Sarah obeys her prompt schema and returns
+                    // a JSON envelope (reply + create_tasks + tool_calls), the
+                    // runtime gives us the raw JSON string. The envelope
+                    // fields are parsed separately below; here we extract just
+                    // the human-readable reply for display/storage. Strip any
+                    // markdown fences first (DeepSeek occasionally wraps).
+                    $candidate = trim($reply);
+                    $candidate = preg_replace('/^```(?:json)?\s*/i', '', $candidate);
+                    $candidate = preg_replace('/\s*```$/', '', $candidate);
+                    if ($candidate !== '' && $candidate[0] === '{') {
+                        $envelope = json_decode($candidate, true);
+                        if (is_array($envelope) && isset($envelope['reply']) && is_string($envelope['reply'])) {
+                            $reply = trim($envelope['reply']);
+                        }
+                    }
                 }
 
                 // Extract create_tasks: assistant may surface them via runtime
