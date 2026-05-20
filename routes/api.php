@@ -12684,13 +12684,14 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
     });
 
 
-    // P1.2 — Generate full SEO article + featured image. 2 credits (1 text + 1 image).
-    //         2026-05-12 sprint 2: 5cr → 2cr; reserve-before-execute; image gen
-    //         via CreativeConnector::execute('generate_image', quality=low).
-    //         If image fails after text succeeds: commit 1 (text), return
-    //         image_url=null + image_failed=true. If text itself fails: release.
+    // Wave 43 — /connector/generate-article now routes through Sarahs chain
+    //          engine services (write + meta + image), matching the Laravel
+    //          path. Replaces a direct DeepSeek POST that bypassed
+    //          RuntimeClient and skipped article/audit persistence.
+    //          Total cost: 2cr (canonical bundle) via Wave 42 chain pricing.
     Route::post('/generate-article', function (\Illuminate\Http\Request $r) {
-        $wsId = $r->attributes->get('workspace_id');
+        $wsId = (int) $r->attributes->get('workspace_id');
+        $userId = $r->attributes->get('user_id'); // set by api.key middleware if available
         $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
             ->where('workspace_id', $wsId)->value('balance') ?? 0);
         if ($credits < 2) {
@@ -12701,136 +12702,85 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
                 'pool'             => 'ai_credits',
             ], 402);
         }
-        $creditSvc = app(\App\Core\Billing\CreditService::class);
-        $reservationRef = $creditSvc->reserve($wsId, 2, 'generate-article (text+image)');
-
-        $keyword    = trim((string) $r->input('keyword', ''));
+        $keyword = trim((string) $r->input('keyword', ''));
         if (!$keyword) {
-            $creditSvc->release($wsId, $reservationRef);
             return response()->json(['success' => false, 'error' => 'keyword_required'], 422);
         }
         $tone       = (string) $r->input('tone', 'professional');
         $audience   = (string) $r->input('audience', '');
         $wordMin    = max(300, (int) $r->input('word_count_min', 800));
         $wordMax    = max($wordMin, (int) $r->input('word_count_max', 1200));
-        $faqCount   = min(10, max(0, (int) $r->input('faq_count', 3)));
-        $includeCta = (bool) $r->input('include_cta', true);
+        $length     = (int) (($wordMin + $wordMax) / 2);
         $location   = (string) $r->input('location', '');
         $language   = (string) $r->input('language', 'English');
-        $extra      = (string) $r->input('extra_context', '');
 
-        // Workspace SEO context — make content non-duplicate + on-brand.
-        $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
-            ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
-        $targetMarket = \Illuminate\Support\Facades\DB::table('seo_settings')
-            ->where('workspace_id', $wsId)->where('key', 'target_market')->value('value');
-        $topPages = \Illuminate\Support\Facades\DB::table('seo_content_index')
-            ->where('workspace_id', $wsId)
-            ->orderByDesc('authority_score')->limit(5)
-            ->pluck('title')->filter()->take(5)->toArray();
-        $competitors = \Illuminate\Support\Facades\DB::table('seo_serp_results')
-            ->where('workspace_id', $wsId)->whereNotNull('domain')
-            ->select('domain', \Illuminate\Support\Facades\DB::raw('COUNT(*) AS c'))
-            ->groupBy('domain')->orderByDesc('c')->limit(3)
-            ->pluck('domain')->toArray();
-        $existingKeywords = \Illuminate\Support\Facades\DB::table('seo_keywords')
-            ->where('workspace_id', $wsId)->pluck('keyword')->take(10)->toArray();
+        $creditSvc = app(\App\Core\Billing\CreditService::class);
+        $reservation = $creditSvc->reserveCredits($wsId, 2, 'Connector', 0, 'wp_generate_article_' . uniqid());
+        $reservationRef = $reservation->reservation_reference;
 
-        $seoCtx  = "Site: " . ($siteUrl ?? '(unknown)') . "\n";
-        $seoCtx .= "Target market: " . ($targetMarket ?? 'general') . "\n";
-        $seoCtx .= "Top performing pages: " . implode(', ', $topPages) . "\n";
-        $seoCtx .= "Known competitors: " . implode(', ', $competitors) . "\n";
-        $seoCtx .= "Already covering: " . implode(', ', $existingKeywords) . "\n";
-
-        $prompt  = "You are an expert SEO content writer. Generate a complete, publish-ready SEO article.\n\n";
-        $prompt .= "KEYWORD: {$keyword}\n";
-        $prompt .= "TONE: {$tone}\n";
-        if ($audience) { $prompt .= "AUDIENCE: {$audience}\n"; }
-        $prompt .= "WORD COUNT: {$wordMin}-{$wordMax} words\n";
-        $prompt .= "FAQ QUESTIONS: {$faqCount}\n";
-        $prompt .= "INCLUDE CTA: " . ($includeCta ? 'yes' : 'no') . "\n";
-        if ($location) { $prompt .= "LOCATION CONTEXT: {$location}\n"; }
-        $prompt .= "LANGUAGE: {$language}\n";
-        if ($extra) { $prompt .= "EXTRA INSTRUCTIONS: {$extra}\n"; }
-        $prompt .= "\nSEO CONTEXT (use to keep content relevant and non-duplicate):\n{$seoCtx}\n";
-        $prompt .= "\nReturn ONLY valid JSON (no prose, no markdown fence):\n";
-        $prompt .= '{"title":"...","content":"...full HTML article body...","meta_title":"...","meta_description":"...","image_prompt":"...short image prompt for featured image..."}';
-
-        $apiKey = config('services.deepseek.api_key') ?: env('DEEPSEEK_API_KEY');
+        $articleId = null;
         try {
-            $resp = \Illuminate\Support\Facades\Http::timeout(120)
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $apiKey,
-                    'Content-Type'  => 'application/json',
-                ])
-                ->post('https://api.deepseek.com/chat/completions', [
-                    'model'       => 'deepseek-chat',
-                    'max_tokens'  => 4000,
-                    'temperature' => 0.6,
-                    'messages'    => [['role' => 'user', 'content' => $prompt]],
-                ]);
+            // ── 1. Write article (routes through RuntimeClient) ──────────
+            $writeSvc = app(\App\Engines\Write\Services\WriteService::class);
+            $writeResult = $writeSvc->writeArticle($wsId, [
+                'topic'          => $keyword,
+                // Wave 43 — omit literal title so writeArticle falls back to
+                // ucfirst($topic). LLM-generated H1 inside the content is the
+                // real article title; meta_title comes from seo_json.
+                'tone'           => $tone,
+                'audience'       => $audience,
+                'length'         => $length,
+                'target_keyword' => $keyword,
+                'location'       => $location,
+                'language'       => $language,
+                'user_id'        => $userId,
+                'created_via'    => 'wp_connector',
+            ]);
+            $articleId = $writeResult['article_id'] ?? null;
+            if (!$articleId) {
+                throw new \RuntimeException('write_article returned no article_id');
+            }
         } catch (\Throwable $e) {
             $creditSvc->release($wsId, $reservationRef);
+            \Illuminate\Support\Facades\Log::warning('[WP generate-article] write_article failed', [
+                'workspace_id' => $wsId, 'error' => $e->getMessage(),
+            ]);
             return response()->json([
                 'success' => false,
-                'error'   => 'llm_error',
+                'error'   => 'write_failed',
                 'message' => $e->getMessage(),
             ], 502);
         }
 
-        $raw = (string) $resp->json('choices.0.message.content', '');
-        $raw = preg_replace('/^```(?:json)?\s*/i', '', trim($raw));
-        $raw = preg_replace('/\s*```$/', '', $raw);
-        $data = json_decode($raw, true);
-
-        if (!is_array($data) || empty($data['content'])) {
-            $creditSvc->release($wsId, $reservationRef);
-            return response()->json([
-                'success' => false,
-                'error'   => 'generation_failed',
-                'message' => 'AI returned empty content.',
-                'raw'     => mb_substr($raw, 0, 400),
-            ], 500);
+        // ── 2. Meta (free chain child — paid by parent bundle) ────────
+        try {
+            $writeSvc->generateMeta($wsId, ['article_id' => $articleId, 'user_id' => $userId]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[WP generate-article] meta failed (non-fatal)', [
+                'article_id' => $articleId, 'error' => $e->getMessage(),
+            ]);
         }
 
-        // Text generation succeeded. Now generate the featured image via
-        // CreativeConnector — routes through runtime (which owns OpenAI key)
-        // per the hands-vs-brain pattern. quality='low' is HARDCODED MINI.
-        $imageUrl = null;
+        // ── 3. Featured image (free chain child — paid by parent bundle) ─
         $imageFailed = false;
-        $rawImagePrompt = (string) ($data['image_prompt']
-            ?? "Professional photo for an article about {$keyword}");
-        $finalImagePrompt = "Professional high-quality featured blog image: "
-            . $rawImagePrompt
-            . ". Clean modern composition. No text or typography in image. "
-            . "Suitable for a professional business website.";
         try {
-            /** @var \App\Connectors\CreativeConnector $cc */
-            $cc = app(\App\Connectors\CreativeConnector::class);
-            $imgResult = $cc->execute('generate_image', [
-                'prompt'       => $finalImagePrompt,
-                'quality'      => 'low',         // HARDCODED — never standard
-                'aspect_ratio' => '1:1',
-                'style'        => 'professional photograph',
+            $creativeSvc = app(\App\Engines\Creative\Services\CreativeService::class);
+            $imgResult = $creativeSvc->generateImage($wsId, [
+                'article_id' => $articleId,
+                'quality'    => 'mini',
+                'user_id'    => $userId,
             ]);
-            if (($imgResult['success'] ?? false) && !empty($imgResult['data']['url'])) {
-                $imageUrl = (string) $imgResult['data']['url'];
-            } else {
+            if (empty($imgResult['url']) && empty($imgResult['featured_image_url'])) {
                 $imageFailed = true;
-                \Illuminate\Support\Facades\Log::warning('generate-article: image gen failed', [
-                    'workspace_id' => $wsId,
-                    'image_result' => $imgResult,
-                ]);
             }
         } catch (\Throwable $e) {
             $imageFailed = true;
-            \Illuminate\Support\Facades\Log::warning('generate-article: image gen exception', [
-                'workspace_id' => $wsId,
-                'error'        => $e->getMessage(),
+            \Illuminate\Support\Facades\Log::warning('[WP generate-article] image gen failed', [
+                'article_id' => $articleId, 'error' => $e->getMessage(),
             ]);
         }
 
-        // Commit credits. Reserved 2; refund 1 if image failed.
+        // ── 4. Commit credits: 2cr bundle if image succeeded, 1cr if not ─
         if ($imageFailed) {
             $creditSvc->release($wsId, $reservationRef);
             \Illuminate\Support\Facades\DB::table('credits')
@@ -12842,18 +12792,44 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         }
         $remaining = max(0, $credits - $creditsUsed);
 
+        // ── 5. Fetch final article state to build WP response ───────────
+        $article = \Illuminate\Support\Facades\DB::table('articles')
+            ->where('id', $articleId)
+            ->where('workspace_id', $wsId)
+            ->first(['id', 'title', 'content', 'seo_json', 'featured_image_url', 'featured_image_alt', 'word_count']);
+
+        $seo = $article && $article->seo_json
+            ? (json_decode($article->seo_json, true) ?: [])
+            : [];
+
+        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+            'workspace_id' => $wsId,
+            'action' => 'write.create_article',
+            'entity_type' => 'Article',
+            'entity_id' => $articleId,
+            'metadata_json' => json_encode([
+                'source' => 'wp_connector',
+                'keyword' => $keyword,
+                'image_failed' => $imageFailed,
+                'credits_used' => $creditsUsed,
+            ]),
+            'created_at' => now(),
+        ]);
+
         $resp = [
             'success'           => true,
-            'title'             => $data['title']            ?? $keyword,
-            'content'           => $data['content'],
-            'meta_title'        => $data['meta_title']       ?? ($data['title'] ?? $keyword),
-            'meta_description'  => $data['meta_description'] ?? '',
-            'image_url'         => $imageUrl,
-            'image_prompt'      => $rawImagePrompt,
+            'article_id'        => $articleId,
+            'title'             => $article->title ?? $keyword,
+            'content'           => $article->content ?? '',
+            'meta_title'        => $seo['title']       ?? ($article->title ?? $keyword),
+            'meta_description'  => $seo['description'] ?? '',
+            'image_url'         => $article->featured_image_url ?? null,
+            'image_alt'         => $article->featured_image_alt ?? null,
             'keyword'           => $keyword,
-            'word_count'        => str_word_count(strip_tags((string) $data['content'])),
+            'word_count'        => (int) ($article->word_count ?? str_word_count(strip_tags((string)($article->content ?? '')))),
             'credits_used'      => $creditsUsed,
             'credits_remaining' => $remaining,
+            'source'            => 'sarah_chain_engine_services',
         ];
         if ($imageFailed) { $resp['image_failed'] = true; }
         return response()->json($resp);
