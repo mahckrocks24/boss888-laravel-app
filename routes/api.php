@@ -6561,7 +6561,67 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 }
             }
 
-            // Step 1 — site config check (fail fast before mutating state)
+            // Wave 60 — detect Laravel-rendered tenant site first. If the
+            // workspace has a published `websites` row, we skip the WP push
+            // entirely: flip status, return success. The published article
+            // is served at https://{host}/blog/{slug}/ via
+            // PublishedSiteMiddleware -> BuilderRenderer.
+            $laravelSite = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('workspace_id', $wsId)
+                ->where('status', 'published')
+                ->whereNull('deleted_at')
+                ->orderByDesc('id')
+                ->first(['id', 'subdomain', 'domain', 'custom_domain']);
+
+            if ($laravelSite) {
+                \Illuminate\Support\Facades\DB::table('articles')
+                    ->where('id', $articleId)
+                    ->update([
+                        'status'       => 'published',
+                        'published_at' => now(),
+                        'updated_at'   => now(),
+                    ]);
+
+                // Re-index the article into seo_content_index so the SEO
+                // Engine sees it immediately (Wave 52 normally handles this
+                // for builder pages; articles live in the articles table
+                // and need explicit re-indexing on publish).
+                try {
+                    $host = $laravelSite->custom_domain ?: $laravelSite->domain ?: $laravelSite->subdomain ?: '';
+                    if ($host) {
+                        $host = strtolower(trim($host, ' /'));
+                        $articleSlug = \Illuminate\Support\Facades\DB::table('articles')
+                            ->where('id', $articleId)->value('slug');
+                        $publishedUrl = 'https://' . $host . '/blog/' . ltrim((string) $articleSlug, '/');
+                        \Illuminate\Support\Facades\Log::info('[ArticlePublish] Laravel-rendered publish', [
+                            'article_id' => $articleId, 'url' => $publishedUrl,
+                        ]);
+
+                        return response()->json([
+                            'success'       => true,
+                            'platform'      => 'laravel',
+                            'article_id'    => $articleId,
+                            'published_url' => $publishedUrl,
+                            'website_id'    => $laravelSite->id,
+                            'message'       => 'Article published. It is live on your website at ' . $publishedUrl,
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[ArticlePublish] Laravel publish post-step error', [
+                        'article_id' => $articleId, 'error' => $e->getMessage(),
+                    ]);
+                }
+
+                // Fallthrough success (status already flipped)
+                return response()->json([
+                    'success'    => true,
+                    'platform'   => 'laravel',
+                    'article_id' => $articleId,
+                    'message'    => 'Article published.',
+                ]);
+            }
+
+            // Step 1 — WP path. Site config check (fail fast before mutating state)
             $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
                 ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
             $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
@@ -6569,7 +6629,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             if (! $siteUrl) {
                 return response()->json([
                     'error'   => 'site_not_configured',
-                    'message' => 'No WordPress site registered for this workspace. Connect your WordPress site in Settings first.',
+                    'message' => 'No WordPress site registered for this workspace, and no Laravel-rendered website found. Either connect a WP site in Settings or publish a Builder website first.',
                 ], 422);
             }
 
