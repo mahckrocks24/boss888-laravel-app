@@ -905,7 +905,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                         'agent_slug'    => $slug,
                         'agent_name'    => $agent->name,
                     ],
-                    "agent_chat_ws_{$wsId}_{$slug}_v2",
+                    "agent_chat_ws_{$wsId}_{$slug}_v3",
                     $slug === 'sarah' ? 'dmm' : $slug
                 );
                 $assistReply = $assist['response'] ?? null;
