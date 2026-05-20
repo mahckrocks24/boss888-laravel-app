@@ -37,26 +37,24 @@ class DashboardController
                 'wa.created_at as assigned_at',
             ])
             ->map(function ($a) use ($wsId, $weekAgo) {
-                $engines = $this->enginesForCategory($a->category, $a->slug, (bool) $a->is_dmm);
-                $last = null;
-                $weeklyCount = 0;
-                if (!empty($engines)) {
-                    $where = function ($q) use ($engines) {
-                        foreach ($engines as $eng) {
-                            $q->orWhere('action', 'LIKE', $eng . '.%');
-                        }
-                    };
-                    $last = DB::table('audit_logs')
+                // Wave 40b — count tasks, not audit_logs.
+                // audit_logs use task.* prefix so any engine-prefix filter
+                // mis-credits Sarah for all task work. Read tasks table
+                // directly by who actually owns the work.
+                $isOrchestrator = ((bool) $a->is_dmm) || $a->slug === 'sarah';
+                if ($isOrchestrator) {
+                    $tq = DB::table('tasks')
                         ->where('workspace_id', $wsId)
-                        ->where($where)
-                        ->orderByDesc('created_at')
-                        ->value('created_at');
-                    $weeklyCount = DB::table('audit_logs')
+                        ->whereRaw("JSON_EXTRACT(payload_json, '$.created_via') IN ('\"sarah_chat\"', '\"sarah_proactive\"')");
+                } else {
+                    $tq = DB::table('tasks')
                         ->where('workspace_id', $wsId)
-                        ->where($where)
-                        ->where('created_at', '>=', $weekAgo)
-                        ->count();
+                        ->whereRaw('JSON_CONTAINS(assigned_agents_json, ?)', ['"' . $a->slug . '"']);
                 }
+                $weeklyCount = (clone $tq)->where('created_at', '>=', $weekAgo)->count();
+                $last = (clone $tq)
+                    ->orderByDesc(DB::raw('COALESCE(completed_at, started_at, created_at)'))
+                    ->value(DB::raw('COALESCE(completed_at, started_at, created_at)'));
                 return [
                     'slug'            => $a->slug,
                     'name'            => $a->name,
