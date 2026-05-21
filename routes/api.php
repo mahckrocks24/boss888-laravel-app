@@ -6634,6 +6634,41 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                     'article_id' => $articleId, 'error' => $idxErr->getMessage(),
                                 ]);
                             }
+
+                            // Wave 67 — also track the featured image in seo_images so
+                            // the SEO Engine Images tab surfaces it (alt-text audits,
+                            // optimization status, missing-alt detection).
+                            if ($articleRow->featured_image_url) {
+                                $imgUrl = (string) $articleRow->featured_image_url;
+                                $alt = (string) ($articleRow->title ?? '');
+                                $hasAlt = $alt !== '';
+                                try {
+                                    $existing = \Illuminate\Support\Facades\DB::table('seo_images')
+                                        ->where('workspace_id', $wsId)
+                                        ->where('image_url', $imgUrl)
+                                        ->first(['id']);
+                                    $row = [
+                                        'workspace_id'    => $wsId,
+                                        'page_url'        => $publishedUrl,
+                                        'image_url'       => $imgUrl,
+                                        'alt_text'        => $alt,
+                                        'missing_alt'    => $hasAlt ? 0 : 1,
+                                        'empty_alt'       => $hasAlt ? 0 : 1,
+                                        'optimization_status' => 'unoptimized',
+                                        'updated_at'      => now(),
+                                    ];
+                                    if ($existing) {
+                                        \Illuminate\Support\Facades\DB::table('seo_images')->where('id', $existing->id)->update($row);
+                                    } else {
+                                        $row['created_at'] = now();
+                                        \Illuminate\Support\Facades\DB::table('seo_images')->insert($row);
+                                    }
+                                } catch (\Throwable $imgErr) {
+                                    \Illuminate\Support\Facades\Log::warning('[ArticlePublish] seo_images upsert failed', [
+                                        'article_id' => $articleId, 'error' => $imgErr->getMessage(),
+                                    ]);
+                                }
+                            }
                         }
 
                         \Illuminate\Support\Facades\Log::info('[ArticlePublish] Laravel-rendered publish', [
