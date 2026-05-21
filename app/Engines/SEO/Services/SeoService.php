@@ -677,10 +677,22 @@ class SeoService
                         }
                     }
                     if ($bodyCache[$sourceUrl] !== '') {
+                        // Wave 78 — look up candidate's focus_keyword from articles
+                        // table (seo_content_index doesn't have it) to enforce topical
+                        // alignment in the anchor.
+                        $candFk = null;
+                        if (preg_match('#/blog/([^/]+)/?$#i', parse_url((string) $candidate->url, PHP_URL_PATH) ?: '', $cm)) {
+                            $candArt = DB::table('articles')
+                                ->where('workspace_id', $wsId)
+                                ->where('slug', $cm[1])
+                                ->first(['focus_keyword']);
+                            if ($candArt) $candFk = $candArt->focus_keyword;
+                        }
                         $naturalAnchor = $this->extractNaturalAnchor(
                             $bodyCache[$sourceUrl],
                             $candidate->title ?? '',
-                            $candidate->meta_description ?? null
+                            $candidate->meta_description ?? null,
+                            $candFk
                         );
                     }
                 }
@@ -780,15 +792,18 @@ class SeoService
     }
 
     /**
-     * Wave 77 — extract a NATURAL anchor phrase that exists verbatim in
-     * the source article body. Returns null if no suitable phrase exists.
+     * Wave 77+78 — extract a NATURAL anchor phrase that:
+     *   1. exists verbatim in the source article body
+     *   2. is NOT already inside an <a> tag in source
+     *   3. contains at least ONE significant content-word from the
+     *      target's topical signal (focus_keyword OR title)
      *
-     * Strategy: for each significant token from the candidate's title +
-     * meta_description, find an occurrence in the source body, then
-     * expand outward to capture a 2-6 word noun phrase. Skip occurrences
-     * already inside an <a> tag.
+     * Returns null if no phrase meets all 3 criteria.
+     *
+     * Wave 78 added the topical-overlap requirement so we never wrap
+     * generic phrases like "they use" or "in fact" as link anchors.
      */
-    private function extractNaturalAnchor(string $sourceBody, string $candidateTitle, ?string $candidateMeta = null): ?string
+    private function extractNaturalAnchor(string $sourceBody, string $candidateTitle, ?string $candidateMeta = null, ?string $candidateFocusKeyword = null): ?string
     {
         if ($sourceBody === '' || $candidateTitle === '') return null;
 
