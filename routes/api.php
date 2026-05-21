@@ -4258,10 +4258,75 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 if (count($mentions) >= 20) break;
             }
 
+            // Wave 72 — snapshot persistence. Upsert every live match into
+            // seo_unlinked_mention_snapshots so prior analysis survives
+            // between clicks. If the live scan found 0, fall back to the
+            // snapshot table so the user always sees something.
+            $tgtHash = $targetUrl !== '' ? hash('sha256', strtolower($targetUrl)) : null;
+            if ($tgtHash) {
+                // Prune entries that have since become real links.
+                if (!empty($alreadyLinking)) {
+                    $linkingHashes = array_map(function ($u) { return hash('sha256', strtolower($u)); }, $alreadyLinking);
+                    \Illuminate\Support\Facades\DB::table('seo_unlinked_mention_snapshots')
+                        ->where('workspace_id', $wsId)
+                        ->where('target_url_hash', $tgtHash)
+                        ->whereIn('source_url_hash', $linkingHashes)
+                        ->delete();
+                }
+                // Upsert live matches.
+                $now = now();
+                foreach ($mentions as $m) {
+                    if (empty($m['source_url'])) continue;
+                    $srcHash = hash('sha256', strtolower($m['source_url']));
+                    try {
+                        \Illuminate\Support\Facades\DB::table('seo_unlinked_mention_snapshots')->updateOrInsert(
+                            ['workspace_id' => $wsId, 'target_url_hash' => $tgtHash, 'source_url_hash' => $srcHash],
+                            [
+                                'target_url'   => $targetUrl,
+                                'source_url'   => $m['source_url'],
+                                'source_title' => $m['source_title'] ?? null,
+                                'matched_term' => $m['matched'] ?? null,
+                                'snippet'      => $m['snippet'] ?? null,
+                                'scanned_at'   => $now,
+                                'updated_at'   => $now,
+                                'created_at'   => $now,
+                            ]
+                        );
+                    } catch (\Throwable $ue) {
+                        // swallow — snapshot persistence must never block the live response
+                    }
+                }
+            }
+
+            $isCached = false;
+            if (empty($mentions) && $tgtHash) {
+                $prior = \Illuminate\Support\Facades\DB::table('seo_unlinked_mention_snapshots')
+                    ->where('workspace_id', $wsId)
+                    ->where('target_url_hash', $tgtHash)
+                    ->orderByDesc('scanned_at')
+                    ->limit(20)
+                    ->get();
+                if ($prior->count() > 0) {
+                    $isCached = true;
+                    foreach ($prior as $row) {
+                        $mentions[] = [
+                            'source_url'   => $row->source_url,
+                            'url'          => $row->source_url,
+                            'source_title' => $row->source_title,
+                            'title'        => $row->source_title,
+                            'matched'      => $row->matched_term,
+                            'snippet'      => $row->snippet,
+                            'scanned_at'   => $row->scanned_at,
+                        ];
+                    }
+                }
+            }
+
             return response()->json([
                 'success'  => true,
                 'mentions' => $mentions,
                 'count'    => count($mentions),
+                'cached'   => $isCached,
                 'terms'    => $terms,
                 'target'   => ['url' => $targetUrl, 'title' => $targetTitle, 'focus_keyword' => $focusKeyword],
             ]);

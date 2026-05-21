@@ -5029,7 +5029,8 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         listEl.innerHTML = '<div style="padding:14px;text-align:center;color:var(--lgse-t3);font-size:11px">No source pages mention this keyword without linking yet. Try writing new content that targets this topic.</div>';
         return;
       }
-      var inner = '';
+      var cachedNote = (r && r.cached) ? '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:8px;padding:6px 10px;background:var(--lgse-bg2);border-radius:6px;border:1px solid var(--lgse-border)">↻ Showing last saved analysis. Fresh scan returned no new candidates.</div>' : '';
+      var inner = cachedNote || '';
       list.slice(0, 10).forEach(function (m) {
         inner += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:8px;padding:10px 12px">'
           + '<div style="color:var(--lgse-t1);font-weight:500;font-size:12px;margin-bottom:3px">' + esc(m.title || m.source_title || '—') + '</div>'
