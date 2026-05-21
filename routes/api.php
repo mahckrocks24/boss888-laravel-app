@@ -6696,6 +6696,27 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                 ]);
                             }
 
+                            // Wave 70 — auto-generate seo_links suggestions if the
+                            // article has 0 internal links AND the workspace has no
+                            // suggestions for this article yet. Without this the
+                            // Apply UI returns nothing for articles whose Sarah-chain
+                            // link_suggestions step ran when the content index was empty.
+                            try {
+                                $hasSuggestions = \Illuminate\Support\Facades\DB::table('seo_links')
+                                    ->where('workspace_id', $wsId)
+                                    ->where('source_url', $publishedUrl)
+                                    ->exists();
+                                $hasInBody = preg_match('#<a\b[^>]*href=#i', (string) $articleRow->content);
+                                if (!$hasSuggestions && !$hasInBody) {
+                                    app(\App\Engines\SEO\Services\SeoService::class)
+                                        ->generateLinkSuggestions($wsId, ['article_id' => $articleId]);
+                                }
+                            } catch (\Throwable $lsErr) {
+                                \Illuminate\Support\Facades\Log::warning('[ArticlePublish] auto link_suggestions failed', [
+                                    'article_id' => $articleId, 'error' => $lsErr->getMessage(),
+                                ]);
+                            }
+
                             // Wave 67 — also track the featured image in seo_images so
                             // the SEO Engine Images tab surfaces it (alt-text audits,
                             // optimization status, missing-alt detection).
