@@ -6881,18 +6881,35 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
                             // Wave 70 — auto-generate seo_links suggestions if the
                             // article has 0 internal links AND the workspace has no
-                            // suggestions for this article yet. Without this the
-                            // Apply UI returns nothing for articles whose Sarah-chain
-                            // link_suggestions step ran when the content index was empty.
+                            // suggestions for this article yet.
+                            // Wave 73 — also AUTO-APPLY any 'suggested' rows so the
+                            // article actually gets the links in its body, not just
+                            // a list of unfired recommendations.
                             try {
+                                $seoSvc = app(\App\Engines\SEO\Services\SeoService::class);
                                 $hasSuggestions = \Illuminate\Support\Facades\DB::table('seo_links')
                                     ->where('workspace_id', $wsId)
                                     ->where('source_url', $publishedUrl)
                                     ->exists();
                                 $hasInBody = preg_match('#<a\b[^>]*href=#i', (string) $articleRow->content);
                                 if (!$hasSuggestions && !$hasInBody) {
-                                    app(\App\Engines\SEO\Services\SeoService::class)
-                                        ->generateLinkSuggestions($wsId, ['article_id' => $articleId]);
+                                    $seoSvc->generateLinkSuggestions($wsId, ['article_id' => $articleId]);
+                                }
+                                // Apply any pending suggestions for this source URL.
+                                $pending = \Illuminate\Support\Facades\DB::table('seo_links')
+                                    ->where('workspace_id', $wsId)
+                                    ->where('source_url', $publishedUrl)
+                                    ->where('status', 'suggested')
+                                    ->limit(10)
+                                    ->get(['id']);
+                                foreach ($pending as $row) {
+                                    try {
+                                        $seoSvc->insertLink($wsId, (int) $row->id);
+                                    } catch (\Throwable $insErr) {
+                                        \Illuminate\Support\Facades\Log::warning('[ArticlePublish] insertLink failed', [
+                                            'link_id' => $row->id, 'error' => $insErr->getMessage(),
+                                        ]);
+                                    }
                                 }
                             } catch (\Throwable $lsErr) {
                                 \Illuminate\Support\Facades\Log::warning('[ArticlePublish] auto link_suggestions failed', [

@@ -155,6 +155,11 @@ class PublishedSiteMiddleware
                     if (preg_match('#/blog/index\.html$|/blog\.html$#i', $staticPath)) {
                         $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0));
                     }
+                    // Wave 73b — guarantee related-articles internal links on every blog post.
+                    if (preg_match('#/blog/[^/]+/(?:index\.html)?$#i', $staticPath) && !preg_match('#/blog/(?:index\.html)?$#i', $staticPath)) {
+                        $html = $this->injectRelatedArticles($html, (int) ($website->workspace_id ?? 0), $staticPath);
+                    }
+                    $html = $this->injectBlogLinkStyling($html);
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
@@ -454,12 +459,47 @@ class PublishedSiteMiddleware
             $html = preg_replace('#(<span[^>]*class="[^"]*post-date[^"]*"[^>]*>).+?(</span>)#is', '$1' . e($when) . '$2', $html, 1);
         }
 
+        // Wave 73b — append "Related Reading" section before body injection
+        // so dynamic-rendered articles get guaranteed internal links too.
+        $bodyAppend = $this->buildRelatedArticlesHtml($workspaceId, $slug);
+        $article->content = ((string) $article->content) . $bodyAppend;
+
         // Article body — REPLACE everything inside <div class="post-page-body">.
-        // The template's body is hardcoded; we substitute the live article HTML.
+        // Wave 73 — the previous regex anchored on </div></div> failed for
+        // chef-red's structure which uses </div><a class="post-page-back">
+        // and other templates may vary. Anchor on either the post-page-back
+        // back-link OR the closing </article> tag instead, which are
+        // universally present in any blog-post template.
         $bodyContent = (string) $article->content;
-        $html = preg_replace('#(<div[^>]*class="[^"]*post-page-body[^"]*"[^>]*>).+?(</div>\s*</div>)#is',
-            '$1' . $bodyContent . '$2',
-            $html, 1);
+        $replaced = false;
+        // 1st attempt: anchor on post-page-back link.
+        $tmp = preg_replace_callback(
+            '#(<div[^>]*class="[^"]*post-page-body[^"]*"[^>]*>)(.+?)(</div>\s*<a[^>]*class="[^"]*post-page-back)#is',
+            function ($m) use ($bodyContent) { return $m[1] . $bodyContent . '</div><a' . substr($m[3], strpos($m[3], 'class=')); },
+            $html, 1, $count
+        );
+        if ($count > 0 && $tmp !== null) { $html = $tmp; $replaced = true; }
+        if (!$replaced) {
+            // 2nd attempt: anchor on </article>.
+            $tmp = preg_replace_callback(
+                '#(<div[^>]*class="[^"]*post-page-body[^"]*"[^>]*>)(.+?)(</article>)#is',
+                function ($m) use ($bodyContent) { return $m[1] . $bodyContent . '</div>' . $m[3]; },
+                $html, 1, $count
+            );
+            if ($count > 0 && $tmp !== null) { $html = $tmp; $replaced = true; }
+        }
+        if (!$replaced) {
+            // 3rd attempt: original anchor as last-ditch.
+            $tmp = preg_replace(
+                '#(<div[^>]*class="[^"]*post-page-body[^"]*"[^>]*>).+?(</div>\s*</div>)#is',
+                '$1' . $bodyContent . '$2',
+                $html, 1
+            );
+            if ($tmp !== null && $tmp !== $html) { $html = $tmp; $replaced = true; }
+        }
+        \Illuminate\Support\Facades\Log::info('[renderDynamicArticlePage] body inject', [
+            'slug' => $slug, 'replaced' => $replaced,
+        ]);
 
         // Inject AEO JSON-LD if present
         if (!empty($article->jsonld_json)) {
@@ -467,7 +507,88 @@ class PublishedSiteMiddleware
             $html = preg_replace('#</head>#i', $jsonldTag . "\n</head>", $html, 1);
         }
 
+        // Wave 73b — universal blog-link styling via the shared helper.
+        $html = $this->injectBlogLinkStyling($html);
+
         return $html;
+    }
+
+    /**
+     * Wave 73b — Build a "Related Reading" HTML block linking to 3 other
+     * published articles in the workspace. Returns empty string if there
+     * are fewer than 1 other articles to link to.
+     */
+    private function buildRelatedArticlesHtml(int $workspaceId, ?string $excludeSlug = null): string
+    {
+        if ($workspaceId <= 0) return '';
+        try {
+            $q = DB::table('articles')
+                ->where('workspace_id', $workspaceId)
+                ->where('status', 'published')
+                ->whereNull('deleted_at');
+            if ($excludeSlug) $q->where('slug', '!=', $excludeSlug);
+            $related = $q->orderByDesc('published_at')
+                ->orderByDesc('id')
+                ->limit(3)
+                ->get(['title', 'slug']);
+        } catch (\Throwable $e) {
+            return '';
+        }
+        if ($related->isEmpty()) return '';
+
+        $items = '';
+        foreach ($related as $r) {
+            if (empty($r->slug)) continue;
+            $items .= '<li style="margin:.4rem 0"><a href="/blog/' . e($r->slug) . '">' . e($r->title) . '</a></li>';
+        }
+        if ($items === '') return '';
+
+        return '<div class="post-related" style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.08)">'
+             . '<h3 style="font-size:1.1rem;margin-bottom:.8rem">Related Reading</h3>'
+             . '<ul style="list-style:none;padding:0;margin:0">' . $items . '</ul>'
+             . '</div>';
+    }
+
+    /**
+     * Wave 73b — Inject related-articles list into a static blog-post HTML
+     * file just before the closing </article> tag. Skips silently if no
+     * recognizable article structure or already injected.
+     */
+    private function injectRelatedArticles(string $html, int $workspaceId, string $staticPath): string
+    {
+        if ($workspaceId <= 0) return $html;
+        if (stripos($html, 'class="post-related"') !== false) return $html; // already injected
+        // Derive slug from path (e.g. .../blog/my-slug/index.html → my-slug).
+        $slug = null;
+        if (preg_match('#/blog/([^/]+)/(?:index\.html)?$#i', $staticPath, $m)) {
+            $slug = $m[1];
+        }
+        $related = $this->buildRelatedArticlesHtml($workspaceId, $slug);
+        if ($related === '') return $html;
+        // Inject before </article>; fall back to before </body>.
+        if (stripos($html, '</article>') !== false) {
+            return preg_replace('#</article>#i', $related . '</article>', $html, 1);
+        }
+        return preg_replace('#</body>#i', $related . '</body>', $html, 1);
+    }
+
+    /**
+     * Wave 73b — Inject CSS that underlines/accents body anchors so they
+     * are visible across every theme. Universal selectors target common
+     * blog body containers.
+     */
+    private function injectBlogLinkStyling(string $html): string
+    {
+        if (stripos($html, 'lu-blog-link-styling') !== false) return $html;
+        $css = '<style id="lu-blog-link-styling">'
+             . '.post-page-body a, .post-content a, article.post a, .post-body a, .post-related a, .post-page-inner a:not(.post-page-back):not(.post-tag) {'
+             . 'text-decoration:underline !important;text-underline-offset:3px;text-decoration-thickness:1px;'
+             . '} .post-page-body a:hover, .post-content a:hover, article.post a:hover, .post-related a:hover {opacity:.8;}'
+             . '</style>';
+        if (stripos($html, '</head>') !== false) {
+            return preg_replace('#</head>#i', $css . "\n</head>", $html, 1);
+        }
+        return $css . $html;
     }
 
     /**
