@@ -160,6 +160,7 @@ class PublishedSiteMiddleware
                         $html = $this->injectRelatedArticles($html, (int) ($website->workspace_id ?? 0), $staticPath);
                         $html = $this->stripDuplicateAeoFaq($html);
                         $html = $this->stripDuplicateBackLinks($html);
+                        $html = $this->normalizeFaqSections($html);
                     }
                     $html = $this->injectBlogLinkStyling($html);
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
@@ -527,6 +528,9 @@ class PublishedSiteMiddleware
         // Wave 75 — strip duplicate/malformed back-links.
         $html = $this->stripDuplicateBackLinks($html);
 
+        // Wave 76 — normalize FAQ markup into standard structure.
+        $html = $this->normalizeFaqSections($html);
+
         // Wave 73b — universal blog-link styling via the shared helper.
         $html = $this->injectBlogLinkStyling($html);
 
@@ -593,6 +597,90 @@ class PublishedSiteMiddleware
     }
 
     /**
+     * Wave 76 — Normalize FAQ markup into a single standard structure:
+     *   <section class="lu-faq">
+     *     <h2 class="lu-faq-title">Frequently Asked Questions</h2>
+     *     <div class="lu-faq-item">
+     *       <h3 class="lu-faq-q">Q</h3>
+     *       <p class="lu-faq-a">A</p>
+     *     </div>
+     *   </section>
+     * Strips inline styles. Converts inline <h2>FAQ</h2>+Q/A paragraphs to
+     * the same structure. Dedupes when both forms exist.
+     */
+    private function normalizeFaqSections(string $html): string
+    {
+        // 1) Strip inline styles from existing aeo-faq sections; replace
+        //    its outer class with lu-faq and inner classes too.
+        $html = preg_replace_callback(
+            '#<section[^>]*class="[^"]*aeo-faq[^"]*"[^>]*>(.*?)</section>#is',
+            function ($m) {
+                $inner = $m[1];
+                // h2 title
+                $inner = preg_replace('#<h2[^>]*>(.*?)</h2>#is', '<h2 class="lu-faq-title">$1</h2>', $inner, 1);
+                // each Q/A wrapper div
+                $inner = preg_replace('#<div[^>]*style="[^"]*"[^>]*>(.*?)</div>#is', '<div class="lu-faq-item">$1</div>', $inner);
+                // q and a
+                $inner = preg_replace('#<h3[^>]*>(.*?)</h3>#is', '<h3 class="lu-faq-q">$1</h3>', $inner);
+                $inner = preg_replace('#<p[^>]*>(.*?)</p>#is', '<p class="lu-faq-a">$1</p>', $inner);
+                return '<section class="lu-faq">' . $inner . '</section>';
+            },
+            $html
+        ) ?? $html;
+
+        // 2) Detect inline <h2>FAQ</h2> or <h2>Frequently Asked Questions</h2>
+        //    followed by Q/A paragraphs. If a lu-faq section already exists,
+        //    strip the inline block. Otherwise, convert it.
+        $hasNormalized = preg_match('#<section class="lu-faq">#i', $html);
+
+        // Inline FAQ pattern: <h2>FAQ</h2> ... up to next <h2> or </article>.
+        // Wave 76c — exclude h2 with class="lu-faq-title" so we don't match
+        // the just-converted lu-faq section's own title.
+        if (preg_match('#(<h2(?![^>]*class="[^"]*lu-faq)[^>]*>\s*(?:FAQ|Frequently Asked Questions?)\s*</h2>)(.+?)(?=<h2[^>]*>|</article>|<section\s+class="lu-faq")#is', $html, $m)) {
+            $inlineWhole = $m[0];
+            $afterHeading = $m[2];
+            if ($hasNormalized) {
+                // Strip inline block (duplicate).
+                $html = str_replace($inlineWhole, '', $html);
+            } else {
+                // Convert paragraphs to lu-faq items.
+                $items = '';
+                if (preg_match_all('#<p[^>]*>\s*<strong>\s*Q:\s*(.+?)\s*</strong>\s*A?:?\s*(.+?)</p>#is', $afterHeading, $pms, PREG_SET_ORDER)) {
+                    foreach ($pms as $pm) {
+                        $items .= '<div class="lu-faq-item"><h3 class="lu-faq-q">' . trim($pm[1]) . '</h3><p class="lu-faq-a">' . trim($pm[2]) . '</p></div>';
+                    }
+                } else {
+                    // Fallback A: each <p> becomes a Q+A pair split on ' A:'.
+                    if (preg_match_all('#<p[^>]*>(.+?)</p>#is', $afterHeading, $pms)) {
+                        foreach ($pms[1] as $para) {
+                            if (stripos($para, 'A:') !== false) {
+                                list($q, $a) = preg_split('#\bA:\s*#i', strip_tags($para), 2);
+                                $q = preg_replace('#^Q:\s*#i', '', trim($q));
+                                $items .= '<div class="lu-faq-item"><h3 class="lu-faq-q">' . e(trim($q)) . '</h3><p class="lu-faq-a">' . e(trim($a)) . '</p></div>';
+                            }
+                        }
+                    }
+                    // Fallback B: <h3>Q?</h3><p>A</p> sequences (Wave 76b).
+                    if ($items === '' && preg_match_all('#<h3[^>]*>(.+?)</h3>\s*<p[^>]*>(.+?)</p>#is', $afterHeading, $pms, PREG_SET_ORDER)) {
+                        foreach ($pms as $pm) {
+                            $q = trim(strip_tags($pm[1]));
+                            $a = trim(strip_tags($pm[2]));
+                            if ($q !== '' && $a !== '') {
+                                $items .= '<div class="lu-faq-item"><h3 class="lu-faq-q">' . e($q) . '</h3><p class="lu-faq-a">' . e($a) . '</p></div>';
+                            }
+                        }
+                    }
+                }
+                if ($items !== '') {
+                    $replacement = '<section class="lu-faq"><h2 class="lu-faq-title">Frequently Asked Questions</h2>' . $items . '</section>';
+                    $html = str_replace($inlineWhole, $replacement, $html);
+                }
+            }
+        }
+        return $html;
+    }
+
+    /**
      * Wave 75 — Dedupe <a class="post-page-back"> back-links: keep the
      * first valid one, strip everything else. Also removes malformed
      * <aclass="post-page-back"> (missing space) artifacts created by an
@@ -638,9 +726,17 @@ class PublishedSiteMiddleware
     {
         if (stripos($html, 'lu-blog-link-styling') !== false) return $html;
         $css = '<style id="lu-blog-link-styling">'
+             // Link styling (Wave 73b)
              . '.post-page-body a, .post-content a, article.post a, .post-body a, .post-related a, .post-page-inner a:not(.post-page-back):not(.post-tag) {'
              . 'text-decoration:underline !important;text-underline-offset:3px;text-decoration-thickness:1px;'
              . '} .post-page-body a:hover, .post-content a:hover, article.post a:hover, .post-related a:hover {opacity:.8;}'
+             // Standard FAQ block (Wave 76)
+             . '.lu-faq{margin:3rem 0;padding-top:2rem;border-top:1px solid rgba(255,255,255,.1)}'
+             . '.lu-faq-title{font-size:1.6rem;margin-bottom:1.5rem;font-weight:500}'
+             . '.lu-faq-item{margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid rgba(255,255,255,.06)}'
+             . '.lu-faq-item:last-child{border-bottom:none}'
+             . '.lu-faq-q{font-size:1.05rem;font-weight:500;margin:0 0 .6rem 0;line-height:1.4}'
+             . '.lu-faq-a{margin:0;line-height:1.7;opacity:.9}'
              . '</style>';
         if (stripos($html, '</head>') !== false) {
             return preg_replace('#</head>#i', $css . "\n</head>", $html, 1);

@@ -813,14 +813,20 @@ class WriteService
             $newContent = preg_replace($pattern, '$1' . e($to) . '$2', $newContent, 1);
         }
 
-        // 1c. Append FAQ section if we got Q&A pairs and one isn't already there.
-        if (!empty($faqs) && stripos($newContent, 'aeo-faq') === false) {
-            $faqHtml = '<section class="aeo-faq" style="margin-top:32px;padding-top:24px;border-top:1px solid #e2e8f0">'
-                . '<h2 style="font-size:22px;margin-bottom:16px">Frequently Asked Questions</h2>';
+        // 1c. Append FAQ section if we got Q&A pairs and there's no existing
+        // FAQ in ANY form. Wave 76 — class-based markup, no inline styles;
+        // also detects inline <h2>FAQ</h2> / <h2>Frequently Asked Questions</h2>
+        // so we don't duplicate.
+        $hasExistingFaq = stripos($newContent, 'aeo-faq') !== false
+            || stripos($newContent, 'lu-faq') !== false
+            || preg_match('#<h2[^>]*>\s*(?:FAQ|Frequently Asked Questions?)\s*</h2>#i', $newContent);
+        if (!empty($faqs) && !$hasExistingFaq) {
+            $faqHtml = '<section class="lu-faq">'
+                . '<h2 class="lu-faq-title">Frequently Asked Questions</h2>';
             foreach ($faqs as $f) {
-                $faqHtml .= '<div style="margin-bottom:18px">'
-                    . '<h3 style="font-size:16px;font-weight:600;margin-bottom:6px;color:#1e293b">' . e($f['q']) . '</h3>'
-                    . '<p style="margin:0;color:#475569;line-height:1.6">' . e($f['a']) . '</p>'
+                $faqHtml .= '<div class="lu-faq-item">'
+                    . '<h3 class="lu-faq-q">' . e($f['q']) . '</h3>'
+                    . '<p class="lu-faq-a">' . e($f['a']) . '</p>'
                     . '</div>';
             }
             $faqHtml .= '</section>';
