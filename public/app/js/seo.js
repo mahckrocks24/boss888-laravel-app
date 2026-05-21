@@ -5020,13 +5020,13 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       + '</div>';
     window.lgseShowModal('Generate internal links', html, null, { hideSave: true, cancelLabel: 'Close' });
 
-    api('GET', '/link-graph/unlinked-mentions?keyword=' + encodeURIComponent(keyword)).then(function (r) {
+    api('GET', '/link-graph/unlinked-mentions?keyword=' + encodeURIComponent(keyword) + '&target_url=' + encodeURIComponent(p.url || '')).then(function (r) {
       var list = (r && (r.mentions || r.data || r)) || [];
       if (!Array.isArray(list)) list = [];
       var listEl = document.getElementById('lgse-gap-mentions-list');
       if (!listEl) return;
       if (list.length === 0) {
-        listEl.innerHTML = '<div style="padding:14px;text-align:center;color:var(--lgse-t3);font-size:11px">No source pages mention this keyword without linking. Try writing new content.</div>';
+        listEl.innerHTML = '<div style="padding:14px;text-align:center;color:var(--lgse-t3);font-size:11px">No source pages mention this keyword without linking yet. Try writing new content that targets this topic.</div>';
         return;
       }
       var inner = '';

@@ -4139,13 +4139,131 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         });
 
         // Link graph — partial. Build is async/heavy, unlinked-mentions is content-scan.
+        // Wave 71 — real implementation. Scans articles + builder pages in the
+        // workspace for unlinked mentions of the target's focus_keyword.
         Route::get('/link-graph/unlinked-mentions', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            if (!$user) return response()->json(['success' => false, 'mentions' => [], 'error' => 'unauthenticated'], 401);
+            $wsId = (int) ($user->workspace_id ?? 0);
+            if ($wsId <= 0) return response()->json(['success' => true, 'mentions' => [], 'count' => 0]);
+
+            $rawKeyword = trim((string) $r->query('keyword', ''));
+            $targetUrl  = trim((string) $r->query('target_url', ''));
+
+            // Resolve target article (if the URL points to one) to extract focus_keyword.
+            $focusKeyword = null;
+            $targetTitle  = null;
+            $targetSlug   = null;
+            if ($targetUrl !== '') {
+                $tgtPath = parse_url($targetUrl, PHP_URL_PATH) ?: '';
+                if (preg_match('#/blog/([^/]+)/?$#i', $tgtPath, $sm)) {
+                    $targetSlug = $sm[1];
+                    $tgtArticle = \Illuminate\Support\Facades\DB::table('articles')
+                        ->where('workspace_id', $wsId)
+                        ->where('slug', $targetSlug)
+                        ->whereNull('deleted_at')
+                        ->first(['title', 'focus_keyword']);
+                    if ($tgtArticle) {
+                        $focusKeyword = $tgtArticle->focus_keyword;
+                        $targetTitle  = $tgtArticle->title;
+                    }
+                }
+            }
+
+            // Build a prioritized list of search terms.
+            $stopwords = ['the','a','an','and','or','but','of','for','to','in','on','at','by','with','what','does','is','are','how','your','my','i','it','this','that'];
+            $terms = [];
+            if ($focusKeyword) {
+                $terms[] = trim($focusKeyword);
+                // Also try the longest 2-word substring of the focus keyword.
+                $fkWords = preg_split('/\s+/', strtolower(trim($focusKeyword))) ?: [];
+                $fkWords = array_values(array_filter($fkWords, function ($w) use ($stopwords) {
+                    return strlen($w) > 2 && !in_array($w, $stopwords, true);
+                }));
+                for ($i = 0; $i < count($fkWords) - 1; $i++) {
+                    $terms[] = $fkWords[$i] . ' ' . $fkWords[$i+1];
+                }
+            }
+            if ($rawKeyword !== '') {
+                // Derive 2-word phrases from the title-style keyword too.
+                $kwClean = preg_replace('/[\?\!\.,;:|\-]/', ' ', $rawKeyword);
+                $kwWords = preg_split('/\s+/', strtolower(trim($kwClean))) ?: [];
+                $kwWords = array_values(array_filter($kwWords, function ($w) use ($stopwords) {
+                    return strlen($w) > 2 && !in_array($w, $stopwords, true);
+                }));
+                for ($i = 0; $i < count($kwWords) - 1; $i++) {
+                    $terms[] = $kwWords[$i] . ' ' . $kwWords[$i+1];
+                }
+                // Also try the single most significant word as a last resort.
+                if (count($kwWords) >= 1) $terms[] = $kwWords[0];
+            }
+            $terms = array_values(array_unique(array_filter($terms)));
+            if (empty($terms)) {
+                return response()->json(['success' => true, 'mentions' => [], 'count' => 0, 'reason' => 'no_keyword']);
+            }
+
+            // Pages already linking to the target — exclude.
+            $alreadyLinking = [];
+            if ($targetUrl !== '') {
+                $alreadyLinking = \Illuminate\Support\Facades\DB::table('seo_link_graph')
+                    ->where('workspace_id', $wsId)
+                    ->where('target_url', $targetUrl)
+                    ->pluck('source_url')->all();
+            }
+            $excludeUrls = array_map('strtolower', $alreadyLinking);
+            if ($targetUrl !== '') $excludeUrls[] = strtolower($targetUrl);
+
+            // Scan published articles in workspace for body mentions.
+            $articles = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->where('status', 'published')
+                ->whereNull('deleted_at')
+                ->when($targetSlug, function ($q) use ($targetSlug) { return $q->where('slug', '!=', $targetSlug); })
+                ->get(['id', 'title', 'slug', 'content']);
+
+            $mentions = [];
+            foreach ($articles as $a) {
+                $bodyText = strip_tags((string) $a->content);
+                $bodyLower = strtolower($bodyText);
+                // Already-link check via raw href scan on the source's body.
+                $sourceUrl = null;
+                if ($a->slug) {
+                    // Build the source URL using the same host pattern as the target.
+                    $host = $targetUrl ? (parse_url($targetUrl, PHP_URL_HOST) ?: '') : '';
+                    if ($host) $sourceUrl = 'https://' . $host . '/blog/' . $a->slug;
+                }
+                if ($sourceUrl && in_array(strtolower($sourceUrl), $excludeUrls, true)) continue;
+                if ($targetUrl !== '' && stripos((string) $a->content, $targetUrl) !== false) continue;
+                if ($targetSlug && stripos((string) $a->content, '/blog/' . $targetSlug) !== false) continue;
+
+                foreach ($terms as $term) {
+                    $termLower = strtolower($term);
+                    $pos = strpos($bodyLower, $termLower);
+                    if ($pos !== false) {
+                        $start = max(0, $pos - 50);
+                        $snippet = substr($bodyText, $start, 160);
+                        if ($start > 0) $snippet = '…' . $snippet;
+                        if (strlen($bodyText) > $start + 160) $snippet .= '…';
+                        $mentions[] = [
+                            'source_url'   => $sourceUrl,
+                            'url'          => $sourceUrl,
+                            'source_title' => $a->title,
+                            'title'        => $a->title,
+                            'matched'      => $term,
+                            'snippet'      => $snippet,
+                        ];
+                        break; // one match per article is enough
+                    }
+                }
+                if (count($mentions) >= 20) break;
+            }
+
             return response()->json([
-                'success'           => true,
-                'mentions'          => [],
-                'count'             => 0,
-                'feature_status'    => 'coming_soon',
-                'message'           => 'Unlinked-mentions discovery is on the roadmap. Use the Links tab to see existing internal links.',
+                'success'  => true,
+                'mentions' => $mentions,
+                'count'    => count($mentions),
+                'terms'    => $terms,
+                'target'   => ['url' => $targetUrl, 'title' => $targetTitle, 'focus_keyword' => $focusKeyword],
             ]);
         });
         Route::post('/link-graph/build', function (\Illuminate\Http\Request $r) {
