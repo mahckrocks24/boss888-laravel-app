@@ -205,7 +205,7 @@ async function _seoLinks(el) { try { console.warn('[LU SEO 15.3] dead path: _seo
 // Links tab top bar. Same handler is reused by the Pages-tab "Fix orphan"
 // chip with a target_url scope (see _seoFixOrphan below).
 async function _seoApplyTopLinks(limit) {
-  if (!confirm('Bulk-apply up to ' + limit + ' link suggestion(s)? You only pay for ones that successfully insert (skipped suggestions are free).')) return;
+  if (typeof window.lgseConfirm === 'function') { var ok1 = await window.lgseConfirm('Bulk-apply link suggestions', 'Apply up to ' + limit + ' link suggestion(s)? You only pay for ones that successfully insert (skipped suggestions are free).', 'Apply', 'Cancel'); if (!ok1) return; }
   var el = document.getElementById('seo-content');
   if (el) el.innerHTML = loadingCard(300);
   try {
@@ -394,7 +394,7 @@ window._seoFixAllOrphans = async function() {
       showToast('No orphan pages to fix. Either run a deep audit first or all pages already have inbound links.', 'info');
       return;
     }
-    if (!confirm('Apply queued link suggestions to ' + orphans.length + ' orphan page(s)? You only pay for ones that successfully insert.')) return;
+    if (typeof window.lgseConfirm === 'function') { var ok2 = await window.lgseConfirm('Fix orphan pages', 'Apply queued link suggestions to ' + orphans.length + ' orphan page(s)? You only pay for ones that successfully insert.', 'Apply', 'Cancel'); if (!ok2) return; }
     var d = await _seoApi('POST', '/links/apply-bulk', { mode: 'orphans_first', limit: Math.min(100, orphans.length * 3) });
     if (d.success === false) {
       if (d.error === 'insufficient_credits') {
@@ -415,7 +415,7 @@ window._seoFixAllOrphans = async function() {
 };
 
 window._seoRetryImage = async function(url) {
-  if (!confirm('Re-try featured image generation for this page?')) return;
+  if (typeof window.lgseConfirm === 'function') { var ok3 = await window.lgseConfirm('Retry image generation', 'Re-try featured image generation for this page?', 'Retry', 'Cancel'); if (!ok3) return; }
   try {
     var d = await _seoApi('POST', '/pages/retry-image', { url: url, force: true });
     if (d.success) {
@@ -8205,7 +8205,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       ? window._lgseActiveSiteUrl.replace(/^https?:\/\//, '')
       : 'all workspace sites';
     var label = (kind === 'pdf') ? 'PDF report' : 'HTML report';
-    if (! confirm('Download the ' + label + ' for ' + scopeLabel + '?')) return;
+    if (typeof window.lgseConfirm === 'function') { var okD = await window.lgseConfirm('Download report', 'Download the ' + label + ' for ' + scopeLabel + '?', 'Download', 'Cancel'); if (!okD) return; }
     try {
       var token = localStorage.getItem('lu_token') || '';
       var endpoint = (kind === 'pdf') ? '/api/seo/reports/audit/pdf' : '/api/seo/reports/audit/html';
@@ -8256,7 +8256,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var scope = window._lgseActiveSiteUrl
       ? (' for ' + (window._lgseActiveSiteUrl.replace(/^https?:\/\//, '')))
       : ' (all workspace sites)';
-    if (! confirm('Download the ' + label + ' CSV' + scope + '?')) return;
+    if (typeof window.lgseConfirm === 'function') { var okC = await window.lgseConfirm('Download CSV', 'Download the ' + label + ' CSV' + scope + '?', 'Download', 'Cancel'); if (!okC) return; }
     try {
       var token = localStorage.getItem('lu_token') || '';
       // Wave 18b — propagate active site so CSV matches the SPA's current scope.
@@ -9395,7 +9395,7 @@ window._lgseShowDisclaimerModal = function (text, onAccepted) {
       })
       .catch(function () {
         btn.disabled = false; btn.textContent = 'Accept & continue';
-        alert('Could not save your acceptance. Please retry.');
+        if (typeof window.showToast === 'function') window.showToast('Could not save your acceptance. Please retry.', 'error');
       });
   };
 };
