@@ -158,6 +158,7 @@ class PublishedSiteMiddleware
                     // Wave 73b — guarantee related-articles internal links on every blog post.
                     if (preg_match('#/blog/[^/]+/(?:index\.html)?$#i', $staticPath) && !preg_match('#/blog/(?:index\.html)?$#i', $staticPath)) {
                         $html = $this->injectRelatedArticles($html, (int) ($website->workspace_id ?? 0), $staticPath);
+                        $html = $this->stripDuplicateAeoFaq($html);
                     }
                     $html = $this->injectBlogLinkStyling($html);
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
@@ -507,6 +508,21 @@ class PublishedSiteMiddleware
             $html = preg_replace('#</head>#i', $jsonldTag . "\n</head>", $html, 1);
         }
 
+        // Wave 74c — strip TEMPLATE-leftover aeo-faq sections that appear
+        // AFTER the post-page-back link. Those are always wrong content
+        // from the original template article — the current article's
+        // FAQ (if any) is in the injected body BEFORE the back link.
+        $parts = preg_split('#(<a[^>]*class="[^"]*post-page-back)#i', $html, 2, PREG_SPLIT_DELIM_CAPTURE);
+        if (is_array($parts) && count($parts) >= 3) {
+            // parts[0] = head + body up to back link, parts[1] = back-link prefix, parts[2] = remainder
+            $remainder = $parts[1] . $parts[2];
+            $remainder = preg_replace('#<section[^>]*class="[^"]*aeo-faq[^"]*"[^>]*>.*?</section>#is', '', $remainder) ?? $remainder;
+            $html = $parts[0] . $remainder;
+        } else {
+            // No back-link found — fall back to keep-first dedupe.
+            $html = $this->stripDuplicateAeoFaq($html);
+        }
+
         // Wave 73b — universal blog-link styling via the shared helper.
         $html = $this->injectBlogLinkStyling($html);
 
@@ -570,6 +586,23 @@ class PublishedSiteMiddleware
             return preg_replace('#</article>#i', $related . '</article>', $html, 1);
         }
         return preg_replace('#</body>#i', $related . '</body>', $html, 1);
+    }
+
+    /**
+     * Wave 74b — Dedupe <section class="aeo-faq"> blocks: keep the FIRST
+     * one only and remove subsequent duplicates. The article's body
+     * content carries its own FAQ; subsequent occurrences are template
+     * leftovers from duplicate AEO enrichment runs.
+     */
+    private function stripDuplicateAeoFaq(string $html): string
+    {
+        $pattern = '#<section[^>]*class="[^"]*aeo-faq[^"]*"[^>]*>.*?</section>#is';
+        $count = 0;
+        $out = preg_replace_callback($pattern, function ($m) use (&$count) {
+            $count++;
+            return $count === 1 ? $m[0] : '';
+        }, $html);
+        return $out ?? $html;
     }
 
     /**
