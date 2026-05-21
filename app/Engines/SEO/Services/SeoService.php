@@ -663,7 +663,33 @@ class SeoService
             // purely on authority. Otherwise gate on Jaccard relevance.
             $meets = $authorityOnly ? ($auth > 0.2) : ($relevance > 0.05);
             if ($meets) {
-                $anchor = $this->suggestAnchor($candidate->title ?? '', $sourceTokens);
+                // Wave 77 — prefer a natural anchor that exists in source body.
+                // Only fall back to title-slice if we have no body to scan.
+                $naturalAnchor = null;
+                if ($sourceUrl) {
+                    static $bodyCache = [];
+                    if (!isset($bodyCache[$sourceUrl])) {
+                        // Load source article body once per call.
+                        $bodyCache[$sourceUrl] = '';
+                        if (preg_match('#/blog/([^/]+)/?$#i', parse_url($sourceUrl, PHP_URL_PATH) ?: '', $sm)) {
+                            $srcArt = DB::table('articles')->where('workspace_id', $wsId)->where('slug', $sm[1])->first(['content']);
+                            if ($srcArt) $bodyCache[$sourceUrl] = (string) $srcArt->content;
+                        }
+                    }
+                    if ($bodyCache[$sourceUrl] !== '') {
+                        $naturalAnchor = $this->extractNaturalAnchor(
+                            $bodyCache[$sourceUrl],
+                            $candidate->title ?? '',
+                            $candidate->meta_description ?? null
+                        );
+                    }
+                }
+                if ($naturalAnchor === null) {
+                    // No natural phrase in source body. Skip this suggestion —
+                    // we will not create a link with a fake anchor.
+                    continue;
+                }
+                $anchor = $naturalAnchor;
                 $suggestions[] = [
                     'target_url'       => $candidate->url,
                     'title'            => $candidate->title,
@@ -751,6 +777,60 @@ class SeoService
             }
         }
         return implode(' ', array_slice(explode(' ', $targetTitle), 0, 5));
+    }
+
+    /**
+     * Wave 77 — extract a NATURAL anchor phrase that exists verbatim in
+     * the source article body. Returns null if no suitable phrase exists.
+     *
+     * Strategy: for each significant token from the candidate's title +
+     * meta_description, find an occurrence in the source body, then
+     * expand outward to capture a 2-6 word noun phrase. Skip occurrences
+     * already inside an <a> tag.
+     */
+    private function extractNaturalAnchor(string $sourceBody, string $candidateTitle, ?string $candidateMeta = null): ?string
+    {
+        if ($sourceBody === '' || $candidateTitle === '') return null;
+
+        // Strip existing <a> regions so we never re-link the same target.
+        $bodyNoLinks = preg_replace('#<a\b[^>]*>.*?</a>#is', '', $sourceBody) ?? $sourceBody;
+        $plain = strip_tags($bodyNoLinks);
+        $plainLower = strtolower($plain);
+
+        $stopwords = ['the','a','an','and','or','but','of','for','to','in','on','at','by','with','as','is','are','was','were','be','been','it','this','that','your','my','our','their','from','about','what','how','why','can','will','more','most','some','any','all','one','two'];
+
+        // Build candidate phrases from title (and meta) — 2-4 word slices.
+        // Wave 77b — use TITLE only for phrase generation. Meta-description
+        // produced generic matches like they use, must, etc that werent topical.
+        $sources = [strtolower($candidateTitle)];
+
+        $phrases = [];
+        foreach ($sources as $src) {
+            $src = preg_replace('/[^a-z0-9\s\-]/i', ' ', $src);
+            $words = preg_split('/\s+/', trim($src));
+            $words = array_values(array_filter($words, function ($w) use ($stopwords) {
+                return strlen($w) >= 3 && !in_array($w, $stopwords, true);
+            }));
+            // 4-word, 3-word, 2-word phrases (longest first preferred).
+            for ($len = 4; $len >= 2; $len--) {
+                for ($i = 0; $i + $len <= count($words); $i++) {
+                    $phrases[] = implode(' ', array_slice($words, $i, $len));
+                }
+            }
+        }
+        $phrases = array_values(array_unique($phrases));
+
+        foreach ($phrases as $phrase) {
+            $pos = strpos($plainLower, $phrase);
+            if ($pos === false) continue;
+            // Pull the matched text (preserves case) and trim to word boundaries.
+            $match = substr($plain, $pos, strlen($phrase));
+            if (strlen(trim($match)) >= 8) {
+                return trim($match);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1162,31 +1242,15 @@ class SeoService
             }
         }
 
-        // No verbatim anchor found — pick the first eligible middle paragraph
-        // and append a "Read more" style link inside it.
-        for ($i = 1; $i < $total - 1; $i++) {
-            $p = $parts[$i];
-            if (stripos($p, '<a ') !== false) continue;
-            $textLen = mb_strlen(strip_tags($p));
-            if ($textLen < 60) continue; // too short to host a link cleanly
-
-            $appended = rtrim($p) . ' <a href="' . htmlspecialchars($target, ENT_QUOTES) . '">' . htmlspecialchars($anchor, ENT_QUOTES) . '</a>';
-            $modParts = $parts;
-            $modParts[$i] = $appended;
-            return [
-                'found'           => true,
-                'method'          => 'append',
-                'paragraph_index' => $i,
-                'before_snippet'  => mb_substr(strip_tags($p), 0, 220),
-                'after_snippet'   => mb_substr(strip_tags($appended), 0, 250),
-                '_modified_body'  => implode('</p>', $modParts),
-            ];
-        }
-
+        // Wave 77 — no verbatim anchor match. We DO NOT append a link
+        // at the end of a paragraph anymore — that produced garbage
+        // dangling anchors that read as nonsense. Return found=false so
+        // the caller skips this insertion. The link suggestion can be
+        // re-considered with a better anchor by generateLinkSuggestions.
         return [
             'found'   => false,
-            'reason'  => 'no_safe_paragraph',
-            'message' => 'Could not find a paragraph that is long enough and not already linked. The article may need expansion before more internal links can be added.',
+            'reason'  => 'no_natural_anchor_match',
+            'message' => "Anchor text \"{$anchor}\" does not appear verbatim in any unlinked paragraph of the source article. Skipping rather than appending to avoid garbage anchors.",
         ];
     }
 
