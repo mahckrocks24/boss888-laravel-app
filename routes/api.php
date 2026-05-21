@@ -6635,6 +6635,67 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                 ]);
                             }
 
+                            // Wave 68 — extract internal-link anchors from the article
+                            // body and populate seo_link_graph so the Anchors tab has
+                            // data. Also trigger analyzeAnchors() for each target seen
+                            // to refresh the seo_anchor_analysis cache.
+                            try {
+                                $hostOnly = parse_url($publishedUrl, PHP_URL_HOST) ?: '';
+                                $linkRows = [];
+                                if ($hostOnly && preg_match_all('#<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>#is', (string) $articleRow->content, $matches, PREG_SET_ORDER)) {
+                                    foreach ($matches as $m) {
+                                        $href = trim($m[1]);
+                                        $anchorText = trim(strip_tags($m[2]));
+                                        if ($anchorText === '' || strlen($anchorText) > 300) continue;
+                                        // Internal = same host OR relative path
+                                        $isInternal = false; $targetUrl = '';
+                                        if (str_starts_with($href, '/')) {
+                                            $targetUrl = 'https://' . $hostOnly . $href;
+                                            $isInternal = true;
+                                        } elseif (preg_match('#^https?://([^/]+)#i', $href, $hm)) {
+                                            $targetHost = strtolower($hm[1]);
+                                            if ($targetHost === $hostOnly) {
+                                                $targetUrl = $href;
+                                                $isInternal = true;
+                                            }
+                                        }
+                                        if (!$isInternal || !$targetUrl) continue;
+                                        $linkRows[] = [
+                                            'workspace_id' => $wsId,
+                                            'source_url'   => $publishedUrl,
+                                            'target_url'   => $targetUrl,
+                                            'anchor_text'  => mb_substr($anchorText, 0, 300),
+                                            'is_internal'  => 1,
+                                            'created_at'   => now(),
+                                            'updated_at'   => now(),
+                                        ];
+                                    }
+                                }
+                                if (!empty($linkRows)) {
+                                    // Delete prior rows for this source URL to keep the graph coherent.
+                                    \Illuminate\Support\Facades\DB::table('seo_link_graph')
+                                        ->where('workspace_id', $wsId)
+                                        ->where('source_url', $publishedUrl)
+                                        ->where('is_internal', 1)
+                                        ->delete();
+                                    \Illuminate\Support\Facades\DB::table('seo_link_graph')->insert($linkRows);
+
+                                    // Recompute anchor analysis for each target URL seen.
+                                    $targets = array_unique(array_column($linkRows, 'target_url'));
+                                    foreach ($targets as $t) {
+                                        try {
+                                            app(\App\Engines\SEO\Services\SeoService::class)->analyzeAnchors($wsId, $t);
+                                        } catch (\Throwable $aErr) {
+                                            // skip — non-fatal
+                                        }
+                                    }
+                                }
+                            } catch (\Throwable $lgErr) {
+                                \Illuminate\Support\Facades\Log::warning('[ArticlePublish] link_graph upsert failed', [
+                                    'article_id' => $articleId, 'error' => $lgErr->getMessage(),
+                                ]);
+                            }
+
                             // Wave 67 — also track the featured image in seo_images so
                             // the SEO Engine Images tab surfaces it (alt-text audits,
                             // optimization status, missing-alt detection).
