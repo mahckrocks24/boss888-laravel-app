@@ -159,6 +159,7 @@ class PublishedSiteMiddleware
                     if (preg_match('#/blog/[^/]+/(?:index\.html)?$#i', $staticPath) && !preg_match('#/blog/(?:index\.html)?$#i', $staticPath)) {
                         $html = $this->injectRelatedArticles($html, (int) ($website->workspace_id ?? 0), $staticPath);
                         $html = $this->stripDuplicateAeoFaq($html);
+                        $html = $this->stripDuplicateBackLinks($html);
                     }
                     $html = $this->injectBlogLinkStyling($html);
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
@@ -476,7 +477,7 @@ class PublishedSiteMiddleware
         // 1st attempt: anchor on post-page-back link.
         $tmp = preg_replace_callback(
             '#(<div[^>]*class="[^"]*post-page-body[^"]*"[^>]*>)(.+?)(</div>\s*<a[^>]*class="[^"]*post-page-back)#is',
-            function ($m) use ($bodyContent) { return $m[1] . $bodyContent . '</div><a' . substr($m[3], strpos($m[3], 'class=')); },
+            function ($m) use ($bodyContent) { return $m[1] . $bodyContent . '</div><a ' . substr($m[3], strpos($m[3], 'class=')); },
             $html, 1, $count
         );
         if ($count > 0 && $tmp !== null) { $html = $tmp; $replaced = true; }
@@ -522,6 +523,9 @@ class PublishedSiteMiddleware
             // No back-link found — fall back to keep-first dedupe.
             $html = $this->stripDuplicateAeoFaq($html);
         }
+
+        // Wave 75 — strip duplicate/malformed back-links.
+        $html = $this->stripDuplicateBackLinks($html);
 
         // Wave 73b — universal blog-link styling via the shared helper.
         $html = $this->injectBlogLinkStyling($html);
@@ -586,6 +590,26 @@ class PublishedSiteMiddleware
             return preg_replace('#</article>#i', $related . '</article>', $html, 1);
         }
         return preg_replace('#</body>#i', $related . '</body>', $html, 1);
+    }
+
+    /**
+     * Wave 75 — Dedupe <a class="post-page-back"> back-links: keep the
+     * first valid one, strip everything else. Also removes malformed
+     * <aclass="post-page-back"> (missing space) artifacts created by an
+     * earlier buggy body-injection regex.
+     */
+    private function stripDuplicateBackLinks(string $html): string
+    {
+        // Remove every malformed <aclass="...post-page-back...">...</a>.
+        $html = preg_replace('#<aclass="[^"]*post-page-back[^"]*"[^>]*>.*?</a>#is', '', $html) ?? $html;
+        // Dedupe valid <a class="post-page-back">: keep first only.
+        $count = 0;
+        $out = preg_replace_callback(
+            '#<a[^>]*class="[^"]*post-page-back[^"]*"[^>]*>.*?</a>#is',
+            function ($m) use (&$count) { $count++; return $count === 1 ? $m[0] : ''; },
+            $html
+        );
+        return $out ?? $html;
     }
 
     /**
