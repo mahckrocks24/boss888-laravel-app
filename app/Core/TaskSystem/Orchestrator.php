@@ -488,7 +488,7 @@ class Orchestrator
                                         ->writeArticle($wsId, $params),
             'seo/link_suggestions' => fn() => app(\App\Engines\SEO\Services\SeoService::class)
                                         ->generateLinkSuggestions($wsId, $params),
-            'seo/insert_link'      => function () use ($wsId, $params) {
+            'seo/insert_link'      => function () use ($wsId, $params, $task) {
                 // Wave 38c — chain mode: when article_id is set (parent_task passthrough)
                 // and link_id is not, insert ALL pending seo_links suggestions for
                 // that articles source URL. Otherwise fall back to the manual
@@ -496,6 +496,25 @@ class Orchestrator
                 $svc = app(\App\Engines\SEO\Services\SeoService::class);
                 if (!empty($params['link_id'])) {
                     return ['inserted' => $svc->insertLink($wsId, (int) $params['link_id'])];
+                }
+                // 2026-05-22 FIX 19a — article_id fallback. When auto-injected by FIX 2,
+                // insert_link has no params and relies on Wave 35b passthrough, which
+                // does NOT pick up article_id from write_article result_json. Look it
+                // up explicitly from the parent task.
+                if (empty($params['article_id']) && !empty($task) && !empty($task->parent_task_id)) {
+                    $parentResult = \Illuminate\Support\Facades\DB::table('tasks')
+                        ->where('id', $task->parent_task_id)
+                        ->value('result_json');
+                    if ($parentResult) {
+                        $pr = json_decode($parentResult, true);
+                        $aid = $pr['data']['article_id'] ?? null;
+                        if ($aid) {
+                            $params['article_id'] = (int) $aid;
+                            \Illuminate\Support\Facades\Log::info('[insert_link] article_id resolved from parent task', [
+                                'task_id' => $task->id, 'parent_task_id' => $task->parent_task_id, 'article_id' => $aid,
+                            ]);
+                        }
+                    }
                 }
                 if (!empty($params['article_id'])) {
                     $article = \Illuminate\Support\Facades\DB::table('articles')
