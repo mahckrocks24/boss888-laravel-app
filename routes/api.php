@@ -1145,6 +1145,42 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                         'agent_slug' => $slug, 'agent_name' => $agent->name,
                         'workspace'  => $workspace->business_name ?? '',
                     ], 4000);
+
+                    // 2026-05-22 FIX 16 — second-pass anti-hallucination. If
+                    // the re-extract came back empty AND the prose claims
+                    // action is already in progress / done / queued, force
+                    // ANOTHER chatJson with a stronger prompt that orders
+                    // Sarah to emit create_tasks regardless of history. This
+                    // covers the case where Sarah reads her own past
+                    // hallucinations in conversation history and refuses to
+                    // re-create tasks she claimed (falsely) to have done.
+                    $parsedFirst = (\is_array($cj['parsed'] ?? null)) ? $cj['parsed'] : [];
+                    $firstReply = (string) ($parsedFirst['reply'] ?? ($cj['text'] ?? ''));
+                    $firstTasks = (\is_array($parsedFirst['create_tasks'] ?? null)) ? $parsedFirst['create_tasks'] : [];
+                    $halluRe = '/\b(in progress|already done|already in progress|are queued|will deliver|on it|priya is writing|priya will write|james will|getting started|just created|all set|are working|working through)\b/i';
+                    if (empty($firstTasks) && preg_match($halluRe, $firstReply)) {
+                        \Illuminate\Support\Facades\Log::warning('[SarahChat] hallucination loop — second re-extract', [
+                            'ws' => $wsId, 'first_reply_head' => mb_substr($firstReply, 0, 120),
+                        ]);
+                        $forceSys = $systemPrompt
+                            . "\n\nCRITICAL OVERRIDE: The user has asked you to perform an action that you previously claimed to do but never actually did. Your past 'already in progress' / 'on it' replies were hallucinations — no tasks were created. THIS turn you MUST emit a populated create_tasks array. Do NOT claim it is already done or in progress. The conversation history is unreliable for past create_tasks; only this turn's create_tasks count. Output the full create_tasks array NOW.";
+                        $cj2 = $runtime->chatJson($forceSys, $userPrompt, [
+                            'agent_slug' => $slug, 'agent_name' => $agent->name,
+                            'workspace'  => $workspace->business_name ?? '',
+                        ], 4000);
+                        if (($cj2['success'] ?? false) && \is_array($cj2['parsed'] ?? null)) {
+                            $parsedSecond = $cj2['parsed'];
+                            $secondTasks = (\is_array($parsedSecond['create_tasks'] ?? null)) ? $parsedSecond['create_tasks'] : [];
+                            if (!empty($secondTasks)) {
+                                \Illuminate\Support\Facades\Log::info('[SarahChat] second-pass extract recovered create_tasks', [
+                                    'ws' => $wsId, 'tasks' => count($secondTasks),
+                                ]);
+                                // Replace the first cj with the second so the
+                                // downstream extraction picks it up.
+                                $cj = $cj2;
+                            }
+                        }
+                    }
                     if ($cj['success'] ?? false) {
                         $parsed = $cj['parsed'] ?? [];
                         if (!$assistReply) {
