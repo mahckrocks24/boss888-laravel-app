@@ -209,7 +209,9 @@ class SarahStrategicLayer
     // ═══════════════════════════════════════════════════════════
 
     /**
-     * Wave 89 — Router for goal-clarity assessment.
+     * Wave 89 — Goal-clarity assessment via runtime (canonical).
+     * On unreachable runtime, returns a goal-unclear default so Sarah
+     * escalates to the user instead of guessing.
      */
     private function assessGoalClarity(string $goal): array
     {
@@ -218,27 +220,15 @@ class SarahStrategicLayer
             $result = $rt->strategicAssessGoalClarity($goal);
             if ($result !== null) return $result;
         }
-        return $this->assessGoalClarity_local($goal);
+        // Wave 89 Phase D — runtime canonical. On unreachable runtime,
+        // return a goal-unclear default so Sarah asks the user to clarify.
+        return [
+            'score'  => 0.0,
+            'issues' => ['Strategic intelligence unavailable — please retry'],
+            'clear'  => false,
+        ];
     }
 
-    private function assessGoalClarity_local(string $goal): array
-    {
-        $words = str_word_count($goal);
-        $hasActionVerb = (bool) preg_match('/\b(create|build|launch|run|write|generate|improve|optimize|analyze|grow|increase)\b/i', $goal);
-        $hasTarget = (bool) preg_match('/\b(website|campaign|article|post|lead|seo|traffic|content|brand|social)\b/i', $goal);
-
-        $score = 0.3;
-        if ($words >= 5) $score += 0.2;
-        if ($hasActionVerb) $score += 0.25;
-        if ($hasTarget) $score += 0.25;
-
-        $issues = [];
-        if ($words < 3) $issues[] = 'Goal is too vague — please provide more detail';
-        if (!$hasActionVerb) $issues[] = 'No clear action — what should we DO?';
-        if (!$hasTarget) $issues[] = 'No clear target — what are we working on?';
-
-        return ['score' => round($score, 2), 'issues' => $issues, 'clear' => $score >= 0.7];
-    }
 
     private function assessBudgetFeasibility(int $estimated, array $balance): array
     {
@@ -256,7 +246,8 @@ class SarahStrategicLayer
     }
 
     /**
-     * Wave 89 — Router for engine-set risk assessment.
+     * Wave 89 — Engine-set risk assessment via runtime (canonical).
+     * On unreachable runtime, returns high-risk to force human review.
      */
     private function assessRisks(array $analysis, ?Workspace $workspace): array
     {
@@ -267,40 +258,24 @@ class SarahStrategicLayer
             $result = $rt->strategicAssessRisks($engines, $creditEst);
             if ($result !== null) return $result;
         }
-        return $this->assessRisks_local($analysis, $workspace);
+        // Wave 89 Phase D — runtime canonical. On unreachable runtime,
+        // return high-risk default to force human review of the plan.
+        return [
+            'level'       => 'high',
+            'risks'       => [[
+                'risk'       => 'Strategic intelligence unavailable',
+                'mitigation' => 'Retry when runtime is restored',
+                'severity'   => 'high',
+            ]],
+            'total_risks' => 1,
+        ];
     }
 
-    private function assessRisks_local(array $analysis, ?Workspace $workspace): array
-    {
-        $risks = [];
-        $riskLevel = 'low';
-
-        $engines = $analysis['engines_required'] ?? [];
-
-        if (in_array('social', $engines)) {
-            $risks[] = ['risk' => 'Social posting is public-facing — errors are visible', 'mitigation' => 'Require approval before publish', 'severity' => 'medium'];
-        }
-
-        if (in_array('marketing', $engines)) {
-            $risks[] = ['risk' => 'Email campaigns cannot be undone after sending', 'mitigation' => 'Test send before full deployment', 'severity' => 'high'];
-            $riskLevel = 'medium';
-        }
-
-        if (count($engines) > 3) {
-            $risks[] = ['risk' => 'Multi-engine plans have more failure points', 'mitigation' => 'Execute in phases with checkpoints', 'severity' => 'medium'];
-            $riskLevel = 'medium';
-        }
-
-        if ($analysis['credit_estimate'] > 20) {
-            $risks[] = ['risk' => 'High credit consumption', 'mitigation' => 'Monitor credit usage during execution', 'severity' => 'medium'];
-        }
-
-        return ['level' => $riskLevel, 'risks' => $risks, 'total_risks' => count($risks)];
-    }
 
     /**
-     * Wave 89 — Router for ROI estimation. DB query stays local;
-     * scoring goes through runtime.
+     * Wave 89 — ROI estimation via runtime (canonical). DB query for
+     * past-performance confidences stays local; scoring is runtime.
+     * On unreachable runtime, returns neutral speculative ROI.
      */
     private function estimateROI(array $analysis, ?string $industry): array
     {
@@ -315,30 +290,16 @@ class SarahStrategicLayer
             $result = $rt->strategicEstimateROI($confidences);
             if ($result !== null) return $result;
         }
-        return $this->estimateROI_local($analysis, $industry);
-    }
-
-    private function estimateROI_local(array $analysis, ?string $industry): array
-    {
-        // Check global knowledge for effectiveness data
-        $pastData = $this->globalKnowledge->query([
-            'category' => $analysis['engines_required'][0] ?? 'general',
-            'industry' => $industry,
-            'insight_type' => 'ab_result',
-        ], 5);
-
-        $avgEffectiveness = 0.5; // Default
-        if (!empty($pastData)) {
-            $avgEffectiveness = collect($pastData)->avg('confidence') ?? 0.5;
-        }
-
+        // Wave 89 Phase D — runtime canonical. On unreachable runtime,
+        // return a neutral speculative ROI so callers don't over-commit.
         return [
-            'estimated_effectiveness' => round($avgEffectiveness, 2),
-            'data_points' => count($pastData),
-            'confidence' => count($pastData) >= 3 ? 'reliable' : 'speculative',
-            'note' => count($pastData) < 3 ? 'Not enough historical data for reliable estimate' : 'Based on ' . count($pastData) . ' similar campaigns',
+            'estimated_effectiveness' => 0.5,
+            'data_points'             => 0,
+            'confidence'              => 'speculative',
+            'note'                    => 'Strategic intelligence unavailable',
         ];
     }
+
 
     private function suggestAlternatives(string $goal, array $analysis, ?string $industry): array
     {
@@ -418,7 +379,8 @@ class SarahStrategicLayer
     }
 
     /**
-     * Wave 89 — Router for plan-go recommendation.
+     * Wave 89 — Plan-go recommendation via runtime (canonical).
+     * On unreachable runtime, returns 'reconsider' to force human review.
      */
     private function generateRecommendation(array $assessment): array
     {
@@ -427,49 +389,20 @@ class SarahStrategicLayer
             $result = $rt->strategicGenerateRecommendation($assessment);
             if ($result !== null) return $result;
         }
-        return $this->generateRecommendation_local($assessment);
-    }
-
-    private function generateRecommendation_local(array $assessment): array
-    {
-        $goScore = 0;
-        $reasons = [];
-
-        // Goal clarity
-        if ($assessment['goal_clarity']['clear'] ?? false) { $goScore += 0.25; }
-        else { $reasons[] = 'Goal needs clarification'; }
-
-        // Budget
-        if ($assessment['budget_feasibility']['feasible'] ?? false) { $goScore += 0.25; }
-        else { $reasons[] = 'Insufficient credits'; }
-
-        // Risk
-        $riskLevel = $assessment['risk_assessment']['level'] ?? 'low';
-        if ($riskLevel === 'low') $goScore += 0.25;
-        elseif ($riskLevel === 'medium') $goScore += 0.15;
-        else { $reasons[] = 'High risk — proceed with caution'; }
-
-        // ROI
-        $roi = $assessment['roi_estimate']['estimated_effectiveness'] ?? 0.5;
-        if ($roi >= 0.5) $goScore += 0.25;
-        else { $reasons[] = 'Estimated ROI is below average'; }
-
-        $decision = $goScore >= 0.7 ? 'proceed' : ($goScore >= 0.4 ? 'proceed_with_caution' : 'reconsider');
-
+        // Wave 89 Phase D — runtime canonical. On unreachable runtime,
+        // return a 'reconsider' decision to force human review.
         return [
-            'decision' => $decision,
-            'confidence' => round($goScore, 2),
-            'reasons' => $reasons,
-            'message' => match ($decision) {
-                'proceed' => "This looks good. I'll create the plan and we can start.",
-                'proceed_with_caution' => "I have some concerns but we can proceed. I'll monitor closely.",
-                'reconsider' => "I'd recommend reconsidering this approach. Here's why: " . implode('. ', $reasons),
-            },
+            'decision'   => 'reconsider',
+            'confidence' => 0.0,
+            'reasons'    => ['Strategic intelligence unavailable'],
+            'message'    => "I can't make a recommendation right now — strategic services are unavailable. Please retry shortly.",
         ];
     }
 
+
     /**
-     * Wave 89 — Router for per-task ROI score.
+     * Wave 89 — Per-task ROI score via runtime (canonical).
+     * On unreachable runtime, returns neutral 0.5.
      */
     private function calculateTaskROI(array $task, ?string $industry): float
     {
@@ -483,36 +416,14 @@ class SarahStrategicLayer
             $result = $rt->strategicCalculateTaskROI($task['engine'] ?? '', $task['action'] ?? '', $hasData);
             if ($result !== null) return $result;
         }
-        return $this->calculateTaskROI_local($task, $industry);
+        // Wave 89 Phase D — runtime canonical. Neutral ROI on failure.
+        return 0.5;
     }
 
-    private function calculateTaskROI_local(array $task, ?string $industry): float
-    {
-        $engine = $task['engine'] ?? '';
-        $action = $task['action'] ?? '';
-
-        // Base ROI by action type
-        $baseROI = match (true) {
-            str_contains($action, 'audit') || str_contains($action, 'analysis') => 0.7, // Research has high indirect ROI
-            str_contains($action, 'write') || str_contains($action, 'article') => 0.8, // Content has lasting value
-            str_contains($action, 'campaign') => 0.6, // Campaigns are hit-or-miss
-            str_contains($action, 'social') => 0.5,   // Social is volume-dependent
-            str_contains($action, 'link') => 0.6,     // Links compound over time
-            str_contains($action, 'goal') => 0.7,     // Autonomous goals are strategic
-            default => 0.5,
-        };
-
-        // Boost if we have industry data
-        if ($industry) {
-            $knowledge = $this->globalKnowledge->query(['category' => $engine, 'industry' => $industry], 3);
-            if (count($knowledge) > 0) $baseROI += 0.1; // Data-backed = higher confidence
-        }
-
-        return min(1.0, $baseROI);
-    }
 
     /**
-     * Wave 89 — Router for per-task risk score.
+     * Wave 89 — Per-task risk score via runtime (canonical).
+     * On unreachable runtime, returns conservative 0.8.
      */
     private function calculateTaskRisk(array $task): float
     {
@@ -521,22 +432,10 @@ class SarahStrategicLayer
             $result = $rt->strategicCalculateTaskRisk($task['action'] ?? '');
             if ($result !== null) return $result;
         }
-        return $this->calculateTaskRisk_local($task);
+        // Wave 89 Phase D — runtime canonical. Conservative high risk on failure.
+        return 0.8;
     }
 
-    private function calculateTaskRisk_local(array $task): float
-    {
-        $action = $task['action'] ?? '';
-
-        return match (true) {
-            str_contains($action, 'publish') || str_contains($action, 'send') => 0.8, // External-facing
-            str_contains($action, 'campaign') => 0.6, // Campaigns affect reputation
-            str_contains($action, 'social') => 0.5,   // Public-facing
-            str_contains($action, 'delete') => 0.4,   // Destructive
-            str_contains($action, 'audit') || str_contains($action, 'analysis') => 0.1, // Read-only, low risk
-            default => 0.2,
-        };
-    }
 
     private function getSarahReasoning(string $goal, array $assessment, ?Workspace $workspace): string
     {
