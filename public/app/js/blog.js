@@ -122,14 +122,17 @@ function _blRenderDashboard(){
     +statsHtml
     +'<div style="margin:16px 0">'+filterHtml+'</div>'
     +'<div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden">'
-      +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--s2);border-bottom:1px solid var(--bd)">'
+      // 2026-05-22 FIX 3 — inner overflow-x:auto wrapper so Action column
+      // is reachable on mobile. Outer keeps rounded-corner clip.
+      +'<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
+      +'<table style="width:100%;min-width:680px;border-collapse:collapse"><thead><tr style="background:var(--s2);border-bottom:1px solid var(--bd)">'
         +'<th style="'+thStyle+'">Title</th>'
         +'<th style="'+thStyle+'">Category</th>'
         +'<th style="'+thStyle+'">Author</th>'
         +'<th style="'+thStyle+'">Date</th>'
         +'<th style="'+thStyle+'">Status</th>'
         +'<th style="'+thStyle+';text-align:right">Actions</th>'
-      +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

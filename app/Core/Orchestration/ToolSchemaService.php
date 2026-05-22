@@ -81,6 +81,36 @@ class ToolSchemaService
             'parameters'  => ['article_id' => 'int?'],
             'engine'      => 'seo', 'action' => 'link_suggestions', 'approval' => 'auto',
         ],
+        // 2026-05-22 FIX — keyword + link tools were missing from the catalog.
+        // Sarah needs these to plan keyword-driven article generation.
+        // REGRESSION GUARD: run `php artisan tools:audit` to verify ToolSchema
+        // stays in sync with CapabilityMapService (Wave 80 will replace this
+        // static map with dynamic discovery — until then, keep them aligned).
+        'seo.add_keyword' => [
+            'description' => 'Track a keyword for SEO monitoring on the workspace.',
+            'parameters'  => ['keyword' => 'string'],
+            'engine'      => 'seo', 'action' => 'add_keyword', 'approval' => 'auto',
+        ],
+        'seo.keyword_research' => [
+            'description' => 'Run full keyword research for a seed term (volume, difficulty, related).',
+            'parameters'  => ['keyword' => 'string', 'location' => 'string?'],
+            'engine'      => 'seo', 'action' => 'keyword_research', 'approval' => 'auto',
+        ],
+        'seo.keywords_suggest' => [
+            'description' => 'Suggest related keywords for a seed term or article topic.',
+            'parameters'  => ['keyword' => 'string?', 'topic' => 'string?', 'limit' => 'int?'],
+            'engine'      => 'seo', 'action' => 'keywords_suggest', 'approval' => 'auto',
+        ],
+        'seo.keyword_check' => [
+            'description' => 'Check ranking position + metadata for a tracked keyword.',
+            'parameters'  => ['keyword' => 'string'],
+            'engine'      => 'seo', 'action' => 'keyword_check', 'approval' => 'auto',
+        ],
+        'seo.generate_links' => [
+            'description' => 'Generate internal-linking opportunities across the site graph.',
+            'parameters'  => ['article_id' => 'int?', 'limit' => 'int?'],
+            'engine'      => 'seo', 'action' => 'generate_links', 'approval' => 'auto',
+        ],
 
         // ─── WRITE / CONTENT ─────────────────────────────────────────
         'write.write_article' => [

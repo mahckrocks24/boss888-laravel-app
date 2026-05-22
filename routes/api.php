@@ -1199,6 +1199,73 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             }
                         }
                     }
+                    // 2026-05-22 FIX 2 — auto-inject insert_link after every
+                    // link_suggestions that lacks a downstream insert_link.
+                    // LLMs drop step 6 (insert_link) from the article chain
+                    // ~50% of the time; this makes backlink insertion
+                    // deterministic. Mirrors Wave 47's aeo_enrich shift logic.
+                    if (is_array($createTasks) && count($createTasks) > 1) {
+                        $needsInjection = [];        // ORIGINAL 1-based positions of link_suggestions needing insert_link
+                        $linkSuggestionWriteAncestors = []; // ls_origPos => writeArticle_origPos (best-effort via depends_on[0])
+                        foreach (array_values($createTasks) as $i => $ct) {
+                            if (!is_array($ct) || ($ct['action'] ?? '') !== 'link_suggestions') continue;
+                            $lsPos = $i + 1;
+                            $hasInsert = false;
+                            foreach ($createTasks as $other) {
+                                if (is_array($other)
+                                    && ($other['action'] ?? '') === 'insert_link'
+                                    && is_array($other['depends_on'] ?? null)
+                                    && in_array($lsPos, $other['depends_on'])) {
+                                    $hasInsert = true;
+                                    break;
+                                }
+                            }
+                            if (!$hasInsert) {
+                                $needsInjection[] = $lsPos;
+                                $deps = $ct['depends_on'] ?? [];
+                                $linkSuggestionWriteAncestors[$lsPos] = (is_array($deps) && !empty($deps)) ? (int) $deps[0] : $lsPos;
+                            }
+                        }
+
+                        if (!empty($needsInjection)) {
+                            // Same shift pattern as Wave 47 — every injection bumps later original positions by +1.
+                            $injectionPoints = $needsInjection;
+                            $shift = function (int $origPos) use ($injectionPoints): int {
+                                $shifts = 0;
+                                foreach ($injectionPoints as $p) {
+                                    if ($origPos > $p) $shifts++;
+                                }
+                                return $origPos + $shifts;
+                            };
+
+                            $newCreateTasks = [];
+                            foreach (array_values($createTasks) as $i => $ct) {
+                                $origPos = $i + 1;
+                                if (is_array($ct) && !empty($ct['depends_on']) && is_array($ct['depends_on'])) {
+                                    $ct['depends_on'] = array_map($shift, $ct['depends_on']);
+                                }
+                                $newCreateTasks[] = $ct;
+
+                                if (in_array($origPos, $needsInjection)) {
+                                    $writeAncestor = $linkSuggestionWriteAncestors[$origPos] ?? $origPos;
+                                    $newCreateTasks[] = [
+                                        'agent'       => 'priya',
+                                        'engine'      => 'seo',
+                                        'action'      => 'insert_link',
+                                        'description' => 'Embed link suggestions into article body',
+                                        'depends_on'  => [$shift($writeAncestor), $shift($origPos)],
+                                    ];
+                                }
+                            }
+                            $createTasks = $newCreateTasks;
+                            \Illuminate\Support\Facades\Log::info('[SarahChat] auto-injected insert_link', [
+                                'workspace_id'        => $wsId,
+                                'injected_after_pos'  => $needsInjection,
+                                'total_tasks_after'   => count($newCreateTasks),
+                            ]);
+                        }
+                    }
+
                     $createdTaskIds = []; // Wave 35c — track by 1-based position for depends_on resolution
                     $ctIndex = 0;
                     foreach ($createTasks as $createTask) {
