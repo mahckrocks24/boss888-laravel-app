@@ -1090,6 +1090,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     }
                 }
 
+                // 2026-05-22 FIX 15 — final mask. If after all the envelope
+                // extraction attempts $reply STILL looks like raw JSON envelope
+                // (no balanced block found because of truncation), replace it
+                // with a friendly fallback. assistLooksLikeEnvelope was set
+                // earlier to detect this case before extraction.
+                if (preg_match('/^\s*\{[^{}]*"(reply|create_tasks|tool_calls)"/s', $reply)) {
+                    \Illuminate\Support\Facades\Log::warning('[AgentChat] reply still looks like raw envelope after extraction — masking', [
+                        'agent' => $slug,
+                        'reply_head' => mb_substr($reply, 0, 200),
+                    ]);
+                    $reply = 'Got it — I started planning that. The response got truncated though; try a smaller batch (5 articles at a time) for cleaner output.';
+                }
+
                 // Extract create_tasks: assistant may surface them via runtime
                 // tool router; if not, and the message is action-like, fall back
                 // to chatJson structured extraction so TaskService still fires.
@@ -1125,10 +1138,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     }
                 }
                 if ($needTaskExtract) {
+                    // 2026-05-22 FIX 15 — bumped 600 -> 4000. 600 truncated
+                    // Sarah's JSON mid-string on 11-article chains, leaking
+                    // raw envelope into chat. 4000 fits ~20 article chains.
                     $cj = $runtime->chatJson($systemPrompt, $userPrompt, [
                         'agent_slug' => $slug, 'agent_name' => $agent->name,
                         'workspace'  => $workspace->business_name ?? '',
-                    ], 600);
+                    ], 4000);
                     if ($cj['success'] ?? false) {
                         $parsed = $cj['parsed'] ?? [];
                         if (!$assistReply) {
