@@ -481,8 +481,10 @@ class ProactiveStrategyEngine
     }
 
     /**
-     * Wave 91 — Router for opportunity detection. DB queries that compute
-     * the feature vector stay local; rule logic goes through runtime.
+     * Wave 91 — Opportunity detection via runtime (canonical). DB queries
+     * that compute the feature vector stay local (workspace-scoped facts);
+     * rule logic goes through runtime. On unreachable runtime, returns []
+     * (better no nudge than a stale one).
      */
     private function findOpportunities(int $wsId, Workspace $workspace): array
     {
@@ -494,37 +496,9 @@ class ProactiveStrategyEngine
             $result = $rt->proactiveFindOpportunities((int) $articleCount, (bool) $hasAudit);
             if ($result !== null) return $result;
         }
-        return $this->findOpportunities_local($wsId, $workspace);
+        // Wave 91 Phase D — runtime canonical. Empty list on failure
+        // (better no nudge than a stale or wrong one).
+        return [];
     }
 
-    private function findOpportunities_local(int $wsId, Workspace $workspace): array
-    {
-        $opportunities = [];
-
-        // Check if no content published
-        $articleCount = DB::table('articles')->where('workspace_id', $wsId)->where('status', 'published')->count();
-        if ($articleCount === 0) {
-            $opportunities[] = [
-                'type' => 'first_content',
-                'title' => 'Publish your first article',
-                'description' => 'Publishing SEO-optimized content boosts your search visibility. Priya can write your first article.',
-                'cost_breakdown' => [['action' => 'write_article', 'agent' => 'priya', 'description' => 'AI-generated article', 'credits' => 3]],
-                'total_credits' => 3,
-            ];
-        }
-
-        // Check if no SEO audit done
-        $hasAudit = DB::table('seo_audits')->where('workspace_id', $wsId)->where('type', 'full')->exists();
-        if (!$hasAudit) {
-            $opportunities[] = [
-                'type' => 'seo_audit',
-                'title' => 'Run your first SEO audit',
-                'description' => 'A technical audit reveals quick wins for your website ranking.',
-                'cost_breakdown' => [['action' => 'deep_audit', 'agent' => 'james', 'description' => 'Full technical SEO audit', 'credits' => 3]],
-                'total_credits' => 3,
-            ];
-        }
-
-        return $opportunities;
-    }
 }
