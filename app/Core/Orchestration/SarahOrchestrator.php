@@ -495,7 +495,20 @@ class SarahOrchestrator
         ]);
     }
 
+    /**
+     * Wave 90 — Router for result quality scoring.
+     */
     private function assessQuality(array $result): float
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $score = $rt->orchestratorAssessQuality($result);
+            if ($score !== null) return $score;
+        }
+        return $this->assessQuality_local($result);
+    }
+
+    private function assessQuality_local(array $result): float
     {
         if (!($result['success'] ?? false)) return 0.0;
         $data = $result['data'] ?? [];
@@ -782,7 +795,20 @@ class SarahOrchestrator
     // PRIVATE — decision engine
     // ═══════════════════════════════════════════════════════════
 
+    /**
+     * Wave 90 — Router for engine identification.
+     */
     private function identifyEngines(string $goal): array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->orchestratorIdentifyEngines($goal);
+            if ($result !== null) return $result;
+        }
+        return $this->identifyEngines_local($goal);
+    }
+
+    private function identifyEngines_local(string $goal): array
     {
         $lower = strtolower($goal);
         $engines = [];
@@ -864,7 +890,20 @@ class SarahOrchestrator
         return $this->toolSelector->selectTools($wsId, $goal, $analysis);
     }
 
+    /**
+     * Wave 90 — Router for approval-required decision.
+     */
     private function requiresApproval(array $analysis): bool
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $needs = $rt->orchestratorRequiresApproval($analysis);
+            if ($needs !== null) return $needs;
+        }
+        return $this->requiresApproval_local($analysis);
+    }
+
+    private function requiresApproval_local(array $analysis): bool
     {
         // External-facing actions always need approval
         $externalEngines = ['social', 'marketing', 'builder'];
@@ -904,7 +943,20 @@ class SarahOrchestrator
         return $this->costCalc->estimate($taskSequence);
     }
 
+    /**
+     * Wave 90 — Router for task count heuristic.
+     */
     private function estimateTaskCount(array $engines, string $goal): int
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $count = $rt->orchestratorEstimateTaskCount($engines, $goal);
+            if ($count !== null) return $count;
+        }
+        return $this->estimateTaskCount_local($engines, $goal);
+    }
+
+    private function estimateTaskCount_local(array $engines, string $goal): int
     {
         return max(1, count($engines) * 2);
     }

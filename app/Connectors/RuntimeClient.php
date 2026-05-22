@@ -656,6 +656,74 @@ class RuntimeClient
      * algorithms through runtime endpoints instead of running them in PHP.
      * Default: false (existing local behavior).
      */
+    /**
+     * Wave 90 — Engine identification from goal text.
+     * Returns ['seo', 'write', ...] or null on runtime failure.
+     */
+    public function orchestratorIdentifyEngines(string $goal): ?array
+    {
+        try {
+            $r = $this->post('/internal/orchestrator/identify-engines', ['goal' => $goal]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['engines']) && is_array($body['engines']) ? $body['engines'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime orchestratorIdentifyEngines failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 90 — Result quality scoring.
+     */
+    public function orchestratorAssessQuality(array $result): ?float
+    {
+        try {
+            $r = $this->post('/internal/orchestrator/assess-quality', ['result' => $result]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['score']) ? (float) $body['score'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime orchestratorAssessQuality failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 90 — Approval-required decision for a plan analysis.
+     */
+    public function orchestratorRequiresApproval(array $analysis): ?bool
+    {
+        try {
+            $r = $this->post('/internal/orchestrator/requires-approval', ['analysis' => $analysis]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['requires_approval']) ? (bool) $body['requires_approval'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime orchestratorRequiresApproval failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 90 — Task count heuristic for a plan.
+     */
+    public function orchestratorEstimateTaskCount(array $engines, string $goal): ?int
+    {
+        try {
+            $r = $this->post('/internal/orchestrator/estimate-task-count', [
+                'engines' => $engines,
+                'goal'    => $goal,
+            ]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['count']) ? (int) $body['count'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime orchestratorEstimateTaskCount failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     public function isIntelligenceRuntimeEnabled(): bool
     {
         if (! $this->isConfigured()) return false;
