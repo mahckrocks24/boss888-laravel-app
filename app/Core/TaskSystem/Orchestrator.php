@@ -455,6 +455,9 @@ class Orchestrator
                                         ->createLead($wsId, $params)->toArray(),
             'crm/update_lead'      => fn() => app(\App\Engines\CRM\Services\CrmService::class)
                                         ->updateLead($params['lead_id'], $params, $params['user_id'] ?? null)->toArray(),
+            // 2026-05-22 FIX 17 — list_leads. Same pattern as FIX 13 list_keywords.
+            'crm/list_leads'       => fn() => app(\App\Engines\CRM\Services\CrmService::class)
+                                        ->listLeads($wsId, $params),
             'crm/score_lead'       => fn() => app(\App\Engines\CRM\Services\CrmService::class)
                                         ->scoreLead($params['lead_id'], $params['score'] ?? null)->toArray(),
             'crm/assign_lead'      => fn() => app(\App\Engines\CRM\Services\CrmService::class)
@@ -629,6 +632,10 @@ class Orchestrator
             // the dispatch wire. Returns the post list for the workspace.
             'social/list_posts'           => fn() => app(\App\Engines\Social\Services\SocialService::class)
                                               ->listPosts($wsId, $params),
+
+            // 2026-05-22 FIX 17 — marketing/list_campaigns.
+            'marketing/list_campaigns' => fn() => app(\App\Engines\Marketing\Services\MarketingService::class)
+                                        ->listCampaigns($wsId, $params),
 
             // ── Calendar ──────────────────────────────────────────────────────
             'calendar/create_event' => fn() => ['entity_id' => app(\App\Engines\Calendar\Services\CalendarService::class)

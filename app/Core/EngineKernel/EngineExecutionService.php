@@ -341,6 +341,8 @@ class EngineExecutionService
         $svc = app(\App\Engines\CRM\Services\CrmService::class);
         return match ($action) {
             'create_lead' => ['entity_type' => 'Lead', 'entity_id' => $svc->createLead($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null]))->id, 'action' => 'created'],
+            // 2026-05-22 FIX 17 — list_leads sync dispatch.
+            'list_leads' => $svc->listLeads($wsId, $params),
             'update_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->updateLead($params['lead_id'], $params, $ctx['user_id'] ?? null)],
             'delete_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'action' => 'deleted'] + (function() use ($svc, $params) { $svc->deleteLead($params['lead_id']); return []; })(),
             'score_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->scoreLead($params['lead_id'], $params['score'] ?? null)],
@@ -428,6 +430,10 @@ class EngineExecutionService
 
     private function executeMarketingAction(int $wsId, string $action, array $params, array $ctx): array
     {
+        // 2026-05-22 FIX 17 — list_campaigns sync dispatch (short-circuit).
+        if ($action === 'list_campaigns') {
+            return app(\App\Engines\Marketing\Services\MarketingService::class)->listCampaigns($wsId, $params);
+        }
         $svc = app(\App\Engines\Marketing\Services\MarketingService::class);
         return match ($action) {
             'create_campaign'   => $svc->createCampaign($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
