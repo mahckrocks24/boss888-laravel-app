@@ -385,51 +385,73 @@ window._blGenerateFeaturedImage = async function () {
   btn.innerHTML = orig;
 };
 
+
+// 2026-05-22 FIX 4 — fallback toast helper so silent failures leave at
+// least a console breadcrumb when core.js's showToast isn't loaded yet.
+function _blToast(msg, type){
+  try {
+    if (typeof showToast === 'function') { showToast(msg, type); return; }
+  } catch(e){}
+  try { console[type === 'error' ? 'error' : 'log']('[Blog] ' + msg); } catch(e){}
+}
+
 window._blSaveDraft=async function(){
   if(!_bl.currentItem||_bl.saving)return;
+  // 2026-05-22 FIX 4 — move saving=true + data gather INSIDE try/finally
+  // so a TipTap getHTML() throw can't leave saving stuck at true.
   _bl.saving=true;
-  var data=_blGatherEditorData();
-  data.status='draft';
   try{
+    var data=_blGatherEditorData();
+    data.status='draft';
     await _blApi('PUT','/articles/'+_bl.currentItem.id,data);
     Object.assign(_bl.currentItem,data);
     _bl.isDirty=false;
     var d=document.getElementById('bl-dirty');if(d)d.style.display='none';
-    if(typeof showToast==='function')showToast('Draft saved','success');
-  }catch(e){if(typeof showToast==='function')showToast('Save failed: '+e.message,'error');}
-  _bl.saving=false;
+    _blToast('Draft saved','success');
+  }catch(e){
+    _blToast('Save failed: '+(e&&e.message?e.message:e),'error');
+  } finally {
+    _bl.saving=false;
+  }
 };
 
 window._blPublish=async function(){
   if(!_bl.currentItem||_bl.saving)return;
+  // 2026-05-22 FIX 4 — move data gather INSIDE try/finally so a TipTap
+  // race (window._blEditor partially loaded then getHTML() throws) can't
+  // leave saving stuck and the button silently dead on every click after.
+  // Also use _blToast so feedback shows even when core.js showToast hasn't
+  // loaded yet.
   _bl.saving=true;
-  // Wave 7 (2026-05-18). Two-step publish:
-  //   1. Save the current edit (PUT /articles/{id}) — captures any
-  //      unsaved title/body/meta changes.
-  //   2. POST /articles/{id}/publish — server orchestrates: status
-  //      flip, WordPress push, wp_post_id persist, Priya notification.
-  var data=_blGatherEditorData();
   try{
+    var data=_blGatherEditorData();
     await _blApi('PUT','/articles/'+_bl.currentItem.id,data);
     var r=await _blApi('POST','/articles/'+_bl.currentItem.id+'/publish',{});
     if(r && r.success){
+      // The Laravel-rendered path returns r.published_url; the WP path
+      // returns r.public_url. Accept either.
+      var publicUrl = r.public_url || r.published_url || null;
       Object.assign(_bl.currentItem,{
         status:'published',
         published_at:new Date().toISOString().slice(0,19).replace('T',' '),
         wp_post_id:r.wp_post_id||null,
+        published_url:publicUrl,
       });
       _bl.isDirty=false;
       var msg='Article published!';
-      if(r.public_url){ msg='Published: '+r.public_url; }
+      if(publicUrl){ msg='Published: '+publicUrl; }
       else if(r.already){ msg='Already published — no changes pushed.'; }
-      if(typeof showToast==='function')showToast(msg,'success');
+      _blToast(msg,'success');
       _bl.view='dashboard';_bl.currentItem=null;_blFetch().then(_blRender);
     } else {
       var err=(r && (r.message||r.error)) || 'Unknown error';
-      if(typeof showToast==='function')showToast('Publish failed: '+err,'error');
+      _blToast('Publish failed: '+err,'error');
     }
-  }catch(e){if(typeof showToast==='function')showToast('Publish failed: '+e.message,'error');}
-  _bl.saving=false;
+  }catch(e){
+    _blToast('Publish failed: '+(e&&e.message?e.message:e),'error');
+  } finally {
+    _bl.saving=false;
+  }
 };
 
 function _blGatherEditorData(){
