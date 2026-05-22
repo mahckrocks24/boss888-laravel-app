@@ -123,7 +123,10 @@ async function _msgLoadThread(slug){
       var border=isUser?'none':'1px solid '+color+'30';
       return'<div style="display:flex;justify-content:'+align+';margin-bottom:8px"><div style="max-width:80%;padding:10px 14px;border-radius:12px;background:'+bg+';border:'+border+';color:'+tc+';font-size:13px;line-height:1.5"><div>'+(isUser?_msgE(m.content):(typeof fmt==='function'?fmt(m.content):_msgE(m.content)))+'</div><div style="font-size:9px;opacity:.6;margin-top:4px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
     }).join('');
-    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 2026-05-22 FIX 12 — was scrollIntoView({block:'start'}) which yanked
+    // the last message to the TOP of the feed (chat history shifted out of
+    // view). Scroll to bottom to match standard chat-app conventions.
+    feed.scrollTop = feed.scrollHeight;
   }catch(e){feed.innerHTML='<div style="color:var(--rd);padding:20px;font-size:12px">Failed to load messages</div>';}
 }
 
@@ -150,8 +153,24 @@ window._msgSend=async function(){
         window._lgseUpdateChatMeter(_msgResp.chat_meter.counter, !!_msgResp.chat_meter.debited);
       }
     } catch (_e) {}
-    // Reload full thread to get both user message + agent reply from DB
-    await _msgLoadThread(_msg.agent);
+    // 2026-05-22 FIX 12 — was: await _msgLoadThread(_msg.agent); which
+    // rebuilt the entire feed from the DB on every send, visually wiping
+    // the user's just-typed bubble + typing indicator and reconstructing
+    // the whole panel. User reported this as "chat refreshes the page".
+    // Now: remove typing, append the agent's reply directly from the
+    // response (same pattern Aria/sendAssistant uses).
+    var typing=document.getElementById('lu-msg-typing');if(typing)typing.remove();
+    if (feed && _msgResp && _msgResp.reply) {
+      var aname = (_msgResp.agent_name || _msg.agent || 'Agent');
+      var rendered = (typeof fmt === 'function') ? fmt(_msgResp.reply) : _msgE(_msgResp.reply);
+      feed.innerHTML += '<div style="display:flex;justify-content:flex-start;margin-bottom:8px">'
+                     +    '<div style="max-width:80%;padding:10px 14px;border-radius:12px;background:var(--s2);color:var(--t1);font-size:13px;line-height:1.5;border:1px solid var(--bd)">'
+                     +      '<div style="font-size:9px;font-weight:700;color:var(--t3);margin-bottom:3px">'+_msgE(aname)+'</div>'
+                     +      rendered
+                     +    '</div>'
+                     +  '</div>';
+      feed.scrollTop = feed.scrollHeight;
+    }
     // Mark current agent as read when modal opens
     _msgApi("POST","/messages/"+_msg.agent+"/read").catch(function(){});
     var _fb=document.getElementById("lu-messages-badge");if(_fb){_fb.classList.remove("visible");_fb.textContent="";}
@@ -249,7 +268,10 @@ async function _msgLoadPageThread(slug){
         +_msgE(m.content)
         +'<div style="font-size:10px;opacity:.5;margin-top:6px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
     }).join('');
-    if (feed.lastElementChild) feed.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 2026-05-22 FIX 12 — was scrollIntoView({block:'start'}) which yanked
+    // the last message to the TOP of the feed (chat history shifted out of
+    // view). Scroll to bottom to match standard chat-app conventions.
+    feed.scrollTop = feed.scrollHeight;
   }catch(e){feed.innerHTML='<div style="color:var(--rd);padding:20px">Failed to load</div>';}
 }
 
@@ -274,7 +296,20 @@ window._msgPageSend=async function(){
         window._lgseUpdateChatMeter(_msgResp.chat_meter.counter, !!_msgResp.chat_meter.debited);
       }
     } catch (_e) {}
-    await _msgLoadPageThread(_msg.agent);
+    // 2026-05-22 FIX 12 — same pattern as _msgSend: append agent reply
+    // directly from POST response instead of rebuilding the entire feed.
+    var typing=document.getElementById('lu-msg-page-typing');if(typing)typing.remove();
+    if (feed && _msgResp && _msgResp.reply) {
+      var aname = (_msgResp.agent_name || _msg.agent || 'Agent');
+      var rendered = (typeof fmt === 'function') ? fmt(_msgResp.reply) : _msgE(_msgResp.reply);
+      feed.innerHTML += '<div style="display:flex;justify-content:flex-start;margin-bottom:10px">'
+                     +    '<div style="max-width:70%;padding:12px 16px;border-radius:14px;background:var(--s2);color:var(--t1);font-size:14px;line-height:1.6;border:1px solid var(--bd)">'
+                     +      '<div style="font-size:10px;font-weight:600;margin-bottom:4px;opacity:.7">'+_msgE(aname)+'</div>'
+                     +      rendered
+                     +    '</div>'
+                     +  '</div>';
+      feed.scrollTop = feed.scrollHeight;
+    }
     setTimeout(function(){if(window._msgPollUnread)window._msgPollUnread();},500);
   }catch(e){
     var t=document.getElementById('lu-msg-page-typing');if(t)t.remove();
