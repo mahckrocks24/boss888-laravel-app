@@ -1218,7 +1218,17 @@ class SeoAssistantService
         if ($articleId) {
             try {
                 $nextProposal = $this->buildProposal($wsId, 'link_suggestions', '', $memory);
-                // Mark the chain origin so downstream logic can group / report
+                // 2026-05-22 FIX 20 (Gap A+D) — anchor link_suggestions to the article
+                // that was just written. Without this, params at line 617 default
+                // to workspace-wide url and the suggestions scan the whole site
+                // instead of the new article. SeoService::generateLinkSuggestions
+                // already routes article_id correctly via Wave 38c.
+                $nextProposal['params'] = ['article_id' => $articleId];
+                // 2026-05-22 FIX 20 (Gap B) — chain follow-up is bundled into the
+                // parent generate_article 2cr bundle. Without this override the
+                // user pays 2cr + 1cr separately for the same flow Sarah's chain
+                // charges 2cr for.
+                $nextProposal['cost'] = 0;
                 $nextProposal['chain_origin'] = [
                     'action'     => 'generate_article',
                     'article_id' => $articleId,
@@ -1538,6 +1548,10 @@ class SeoAssistantService
                 ->count();
             if ($count > 0 && $orphans > 0 && $totalSuggested > 0) {
                 $nextProposal = $this->buildProposal($wsId, 'apply_link_suggestions', '', $memory);
+                // 2026-05-22 FIX 20 (Gap B) — bundled with the parent's 2cr
+                // since this is the third step of an article-write chain that
+                // started with generate_article.
+                $nextProposal['cost'] = 0;
                 $nextProposal['chain_origin'] = ['action' => 'link_suggestions', 'generated' => $count];
             }
         } catch (\Throwable $e) {
