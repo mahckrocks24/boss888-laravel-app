@@ -2074,7 +2074,12 @@ async function sendAgentMessage(quickAction, overrideMessage){
       }
       agDiv.innerHTML=replyHtml;
       feed.appendChild(agDiv);
-      agDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // 2026-05-22 FIX 11 — was scrollIntoView({block:'start'}) which scrolled the
+      // agent bubble to the TOP of the feed, visually wiping the rest of the
+      // chat. User reported this as "chat refreshes after typing stops". Use
+      // feed.scrollTop=feed.scrollHeight (same pattern as user bubble + typing
+      // indicator above) to keep the conversation flow at the bottom.
+      feed.scrollTop = feed.scrollHeight;
     }
   }catch(e){
     var ti2=document.getElementById('agent-typing-indicator');
