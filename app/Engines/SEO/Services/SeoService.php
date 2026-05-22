@@ -677,9 +677,7 @@ class SeoService
                         }
                     }
                     if ($bodyCache[$sourceUrl] !== '') {
-                        // Wave 78 — look up candidate's focus_keyword from articles
-                        // table (seo_content_index doesn't have it) to enforce topical
-                        // alignment in the anchor.
+                        // Look up candidate's focus_keyword from articles table.
                         $candFk = null;
                         if (preg_match('#/blog/([^/]+)/?$#i', parse_url((string) $candidate->url, PHP_URL_PATH) ?: '', $cm)) {
                             $candArt = DB::table('articles')
@@ -688,12 +686,21 @@ class SeoService
                                 ->first(['focus_keyword']);
                             if ($candArt) $candFk = $candArt->focus_keyword;
                         }
+                        // Wave 79 — track anchors used so far for this source so
+                        // we propose DIVERSE anchors across the article rather
+                        // than repeating "Private Chef" 3x.
+                        static $usedPerSource = [];
+                        if (!isset($usedPerSource[$sourceUrl])) $usedPerSource[$sourceUrl] = [];
                         $naturalAnchor = $this->extractNaturalAnchor(
                             $bodyCache[$sourceUrl],
                             $candidate->title ?? '',
                             $candidate->meta_description ?? null,
-                            $candFk
+                            $candFk,
+                            $usedPerSource[$sourceUrl]
                         );
+                        if ($naturalAnchor !== null) {
+                            $usedPerSource[$sourceUrl][] = $naturalAnchor;
+                        }
                     }
                 }
                 if ($naturalAnchor === null) {
@@ -792,60 +799,96 @@ class SeoService
     }
 
     /**
-     * Wave 77+78 — extract a NATURAL anchor phrase that:
-     *   1. exists verbatim in the source article body
-     *   2. is NOT already inside an <a> tag in source
-     *   3. contains at least ONE significant content-word from the
-     *      target's topical signal (focus_keyword OR title)
+     * Wave 77+78+79 — extract a NATURAL anchor phrase that:
+     *   1. exists verbatim in the source article body (Wave 77)
+     *   2. is NOT already inside an <a> tag in source (Wave 77)
+     *   3. contains at least one significant content-word from the
+     *      target's topical signal (focus_keyword OR title) (Wave 78)
+     *   4. is NOT already used as an anchor in this source article (Wave 79)
      *
-     * Returns null if no phrase meets all 3 criteria.
+     * Wave 79 — body-first phrase extraction: instead of slicing the
+     * target title and hoping it exists in prose, we scan the source body
+     * for naturally-occurring n-grams (2-5 words) and filter by topical
+     * relevance. Yields diverse anchors like "private chef cost",
+     * "hire a chef", "chef services" rather than reusing the same fragment.
      *
-     * Wave 78 added the topical-overlap requirement so we never wrap
-     * generic phrases like "they use" or "in fact" as link anchors.
+     * Returns null if no phrase passes all 4 gates.
      */
-    private function extractNaturalAnchor(string $sourceBody, string $candidateTitle, ?string $candidateMeta = null, ?string $candidateFocusKeyword = null): ?string
+    private function extractNaturalAnchor(string $sourceBody, string $candidateTitle, ?string $candidateMeta = null, ?string $candidateFocusKeyword = null, array $usedAnchors = []): ?string
     {
         if ($sourceBody === '' || $candidateTitle === '') return null;
 
-        // Strip existing <a> regions so we never re-link the same target.
         $bodyNoLinks = preg_replace('#<a\b[^>]*>.*?</a>#is', '', $sourceBody) ?? $sourceBody;
-        $plain = strip_tags($bodyNoLinks);
+        // Wave 79h — strip <h1>...</h1> so phrases like the full article
+        // title (which lives only in h1) don't enter the phrase pool.
+        // wrap_match refuses to wrap inside h1 anyway, so picking such
+        // phrases would always SKIP. Drop them upfront.
+        $bodyNoLinks = preg_replace('#<h1\b[^>]*>.*?</h1>#is', '', $bodyNoLinks) ?? $bodyNoLinks;
+        // Wave 79c — replace tag boundaries with spaces so adjacent text
+        // doesn't get concatenated.
+        $plain = preg_replace('/<[^>]+>/', ' ', $bodyNoLinks);
+        $plain = html_entity_decode($plain, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $plain = trim(preg_replace('/\s+/', ' ', $plain));
         $plainLower = strtolower($plain);
 
-        $stopwords = ['the','a','an','and','or','but','of','for','to','in','on','at','by','with','as','is','are','was','were','be','been','it','this','that','your','my','our','their','from','about','what','how','why','can','will','more','most','some','any','all','one','two'];
+        $stopwords = ['the','a','an','and','or','but','of','for','to','in','on','at','by','with','as','is','are','was','were','be','been','it','this','that','your','my','our','their','from','about','what','how','why','can','will','more','most','some','any','all','one','two','they','use','say','get','make','have','has','had','do','does','did','should','would','could','must','may','also','very','just','than','then','when','while','where','here','there','only','even','still','well','off','out','up','down','into','over','under','through','between','i','we','you','its','if','so','no','not','too','very'];
 
-        // Build candidate phrases from title (and meta) — 2-4 word slices.
-        // Wave 77b — use TITLE only for phrase generation. Meta-description
-        // produced generic matches like they use, must, etc that werent topical.
-        $sources = [strtolower($candidateTitle)];
+        $topicalSource = trim(($candidateFocusKeyword ?? '') . ' ' . $candidateTitle);
+        $topicalSource = strtolower(preg_replace('/[^a-z0-9\s\-]/i', ' ', $topicalSource));
+        $topicalWords  = array_values(array_filter(preg_split('/\s+/', trim($topicalSource)), function ($w) use ($stopwords) {
+            return strlen($w) >= 4 && !in_array($w, $stopwords, true);
+        }));
+        if (empty($topicalWords)) return null;
 
-        $phrases = [];
-        foreach ($sources as $src) {
-            $src = preg_replace('/[^a-z0-9\s\-]/i', ' ', $src);
-            $words = preg_split('/\s+/', trim($src));
-            $words = array_values(array_filter($words, function ($w) use ($stopwords) {
-                return strlen($w) >= 3 && !in_array($w, $stopwords, true);
-            }));
-            // 4-word, 3-word, 2-word phrases (longest first preferred).
-            for ($len = 4; $len >= 2; $len--) {
-                for ($i = 0; $i + $len <= count($words); $i++) {
-                    $phrases[] = implode(' ', array_slice($words, $i, $len));
+        $usedLower = array_map('strtolower', $usedAnchors);
+
+        // Wave 79d — split body into SENTENCES, extract topical n-grams
+        // within each. Prevents phrases from spanning sentence boundaries.
+        $sentences = preg_split('/(?<=[.!?])\s+/', $plain);
+        $candidates = [];
+        $seen = [];
+        foreach ($sentences as $sentence) {
+            $sentenceClean = trim(preg_replace('/[.,;:!?]/', ' ', $sentence));
+            $sentenceClean = trim(preg_replace('/\s+/', ' ', $sentenceClean));
+            if ($sentenceClean === '') continue;
+            $sWords = preg_split('/\s+/', $sentenceClean);
+            for ($i = 0; $i < count($sWords); $i++) {
+                for ($len = 5; $len >= 2; $len--) {
+                    if ($i + $len > count($sWords)) continue;
+                    $slice = array_slice($sWords, $i, $len);
+                    // Clean edge punctuation just in case.
+                    $first = preg_replace('/^[^a-z0-9]+|[^a-z0-9]+$/i', '', $slice[0]);
+                    $last  = preg_replace('/^[^a-z0-9]+|[^a-z0-9]+$/i', '', $slice[count($slice)-1]);
+                    if ($first === '' || $last === '') continue;
+                    $slice[0] = $first;
+                    $slice[count($slice)-1] = $last;
+                    $phrase = implode(' ', $slice);
+                    $phraseLower = strtolower($phrase);
+                    if (isset($seen[$phraseLower])) continue;
+                    $seen[$phraseLower] = true;
+                    if (strlen($phrase) < 8) continue;
+                    if (in_array($phraseLower, $usedLower, true)) continue;
+                    if (preg_match('/\b(amp|lt|gt|nbsp|quot|tldr)\b/i', $phrase)) continue;
+                    $sliceLower = array_map('strtolower', $slice);
+                    if (in_array($sliceLower[0], $stopwords, true)) continue;
+                    if (in_array(end($sliceLower), $stopwords, true)) continue;
+                    $overlap = array_intersect($sliceLower, $topicalWords);
+                    if (empty($overlap)) continue;
+                    // Score: topical overlap weight + length bonus.
+                    $score = (count($overlap) * 2) + min(2, $len - 2);
+                    $candidates[] = ['phrase' => $phrase, 'score' => $score, 'len' => $len];
                 }
             }
         }
-        $phrases = array_values(array_unique($phrases));
 
-        foreach ($phrases as $phrase) {
-            $pos = strpos($plainLower, $phrase);
-            if ($pos === false) continue;
-            // Pull the matched text (preserves case) and trim to word boundaries.
-            $match = substr($plain, $pos, strlen($phrase));
-            if (strlen(trim($match)) >= 8) {
-                return trim($match);
-            }
-        }
+        if (empty($candidates)) return null;
 
-        return null;
+        usort($candidates, function ($a, $b) {
+            if ($a['score'] !== $b['score']) return $b['score'] - $a['score'];
+            return $b['len'] - $a['len'];
+        });
+
+        return $candidates[0]['phrase'];
     }
 
     /**
@@ -1214,35 +1257,68 @@ class SeoService
             return ['found' => false, 'reason' => 'already_linked', 'message' => 'This target URL is already linked elsewhere in the article.'];
         }
 
-        // Split by closing paragraph tag. Robust for typical article HTML
-        // (we generate articles with <p>…</p>). Leaves a trailing entry
-        // for content after the last </p>, which we keep for re-join.
-        $parts = preg_split('#</p>#i', $body);
+        // Wave 79g — split on </p>/</h1>/.../</h6> WITH separator capture
+        // so we can preserve which closing tag was at each boundary when
+        // we rejoin after wrapping (otherwise heading closes would become
+        // </p> on rejoin — corruption).
+        // PREG_SPLIT_DELIM_CAPTURE puts content at even indices and the
+        // matched separator at odd indices.
+        $parts = preg_split('#(</p>|</h[1-6]>)#i', $body, -1, PREG_SPLIT_DELIM_CAPTURE);
         if (! is_array($parts) || count($parts) < 4) {
             return ['found' => false, 'reason' => 'article_too_short', 'message' => 'Article has fewer than 3 paragraphs — not enough room to safely place an internal link.'];
         }
         $total = count($parts);
 
-        // Iterate middle paragraphs (skip first index 0 and the trailing tail at $total-1)
-        for ($i = 1; $i < $total - 1; $i++) {
+        // Wave 79g — even indices are content, odd indices are separators
+        // (from PREG_SPLIT_DELIM_CAPTURE). Iterate content parts only.
+        // Skip already-linked parts, parts containing <h1>/<h2> heading
+        // markup, and very short fragments.
+        for ($i = 0; $i < $total - 1; $i += 2) {
             $p = $parts[$i];
-            // Skip if paragraph already has a link
-            if (stripos($p, '<a ') !== false) {
-                continue;
-            }
+            if (stripos($p, '<a ') !== false) continue;
+            if (preg_match('/<h[12]\b/i', $p)) continue;
+            if (mb_strlen(strip_tags($p)) < 30) continue;
 
-            // Try to wrap an existing plain-text mention of the anchor
-            $anchorEsc = preg_quote($anchor, '/');
+            // Wave 79e — find anchor in plain-text view of the paragraph
+            // so inline tags (<strong>, <em>) don't block the match. Then
+            // map the position back to the raw HTML and wrap that range.
+            $anchorWords = preg_split('/\s+/', trim($anchor));
+            $anchorEscParts = array_map(function ($w) { return preg_quote($w, '/'); }, $anchorWords);
+            $anchorEsc = implode('\\s+', $anchorEscParts);
             $pattern = '/(?<![>\w])(' . $anchorEsc . ')(?![\w<])/iu';
-            $wrapped = preg_replace_callback(
-                $pattern,
-                function ($m) use ($target) {
-                    return '<a href="' . htmlspecialchars($target, ENT_QUOTES) . '">' . $m[1] . '</a>';
-                },
-                $p,
-                1,
-                $repCount
-            );
+            $repCount = 0;
+            // Build a stripped view of the paragraph + a position map so we
+            // can locate the start/end of a hit in the original HTML.
+            $stripped = '';
+            $map = []; // map[stripped_offset] = original_offset
+            $inTag = false;
+            for ($k = 0; $k < strlen($p); $k++) {
+                $c = $p[$k];
+                if ($c === '<') { $inTag = true; continue; }
+                if ($c === '>') { $inTag = false; continue; }
+                if ($inTag) continue;
+                $map[strlen($stripped)] = $k;
+                $stripped .= $c;
+            }
+            // Search the stripped view.
+            $wrapped = $p;
+            if (preg_match($pattern, $stripped, $sm, PREG_OFFSET_CAPTURE)) {
+                $matchedText = $sm[1][0];
+                $sOffset = $sm[1][1];
+                $sEnd    = $sOffset + strlen($matchedText);
+                if (isset($map[$sOffset]) && isset($map[$sEnd - 1])) {
+                    $origStart = $map[$sOffset];
+                    $origEnd   = $map[$sEnd - 1] + 1;
+                    $origMatch = substr($p, $origStart, $origEnd - $origStart);
+                    // Make sure we are not inside an existing <a>; the
+                    // earlier check (`stripos($p, '<a ') !== false`) skips
+                    // any paragraph with an existing link, so we're safe.
+                    $wrapped = substr($p, 0, $origStart)
+                             . '<a href="' . htmlspecialchars($target, ENT_QUOTES) . '">' . $origMatch . '</a>'
+                             . substr($p, $origEnd);
+                    $repCount = 1;
+                }
+            }
             if ($repCount > 0 && is_string($wrapped) && $wrapped !== $p) {
                 $modParts = $parts;
                 $modParts[$i] = $wrapped;
@@ -1252,7 +1328,7 @@ class SeoService
                     'paragraph_index' => $i,
                     'before_snippet'  => mb_substr(strip_tags($p), 0, 220),
                     'after_snippet'   => mb_substr(strip_tags($wrapped), 0, 250),
-                    '_modified_body'  => implode('</p>', $modParts),
+                    '_modified_body'  => implode('', $modParts), // Wave 79g — separator already in odd-index slots.
                 ];
             }
         }

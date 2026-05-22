@@ -727,8 +727,9 @@ class PublishedSiteMiddleware
         if (stripos($html, 'lu-blog-link-styling') !== false) return $html;
         $css = '<style id="lu-blog-link-styling">'
              // Link styling (Wave 73b)
+             // Wave 79c — underline only, no color override.
              . '.post-page-body a, .post-content a, article.post a, .post-body a, .post-related a, .post-page-inner a:not(.post-page-back):not(.post-tag) {'
-             . 'text-decoration:underline !important;text-underline-offset:3px;text-decoration-thickness:1px;'
+             . 'text-decoration:underline !important;text-underline-offset:3px;text-decoration-thickness:1px;color:inherit !important;'
              . '} .post-page-body a:hover, .post-content a:hover, article.post a:hover, .post-related a:hover {opacity:.8;}'
              // Standard FAQ block (Wave 76)
              . '.lu-faq{margin:3rem 0;padding-top:2rem;border-top:1px solid rgba(255,255,255,.1)}'
