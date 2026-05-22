@@ -1179,12 +1179,20 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                     $newCreateTasks[] = $ct;
 
                                     // After each write_article, inject the aeo_enrich.
+                                    // 2026-05-22 FIX 7 (Bug A) — include article number in
+                                    // description so multi-article chains don't collide on
+                                    // idempotency_key (previously every aeo_enrich payload
+                                    // was byte-identical → only article 1 got enrichment).
                                     if (is_array($ct) && ($ct['action'] ?? '') === 'write_article') {
+                                        $articleNum = count(array_filter(
+                                            $newCreateTasks,
+                                            fn($t) => is_array($t) && ($t['action'] ?? '') === 'write_article'
+                                        ));
                                         $newCreateTasks[] = [
                                             'agent'       => 'priya',
                                             'engine'      => 'write',
                                             'action'      => 'aeo_enrich',
-                                            'description' => 'AEO enrichment: TLDR + FAQ + JSON-LD for AI search engines',
+                                            'description' => "AEO enrichment for Article {$articleNum}: TLDR + FAQ + JSON-LD for AI search engines",
                                             // depends_on points at THIS write_article's NEW position
                                             'depends_on'  => [$shift($origPos)],
                                         ];
@@ -1267,6 +1275,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     }
 
                     $createdTaskIds = []; // Wave 35c — track by 1-based position for depends_on resolution
+                    // 2026-05-22 FIX 7 (Bug B) — buffer task creations into counters
+                    // instead of appending a chat line per task. Replaces 30+ near-identical
+                    // "Task #N created and assigned to Priya." lines with a single summary.
+                    $taskSummaryCreated = 0;
+                    $taskSummaryByAgent = [];   // agentSlug => count
+                    $taskSummaryFailed  = 0;
+                    $taskSummaryFailReasons = []; // dedupe failure reasons for transparency
                     $ctIndex = 0;
                     foreach ($createTasks as $createTask) {
                     $ctIndex++;
@@ -1348,8 +1363,11 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             // progress_message isn't in the TaskService whitelist — set after.
                             $newTask->update(['progress_message' => $taskDesc]);
 
-                            // Add task creation confirmation to reply
-                            $reply .= "\n\n✅ Task #{$newTask->id} created and assigned to " . ucfirst($taskAgent) . ".";
+                            // 2026-05-22 FIX 7 (Bug B) — count the creation instead of
+                            // posting a per-task line. Single summary emitted after loop.
+                            $taskSummaryCreated++;
+                            $agentKey = ucfirst($taskAgent);
+                            $taskSummaryByAgent[$agentKey] = ($taskSummaryByAgent[$agentKey] ?? 0) + 1;
 
                             \Illuminate\Support\Facades\Log::info("[SarahChat] Task created", [
                                 'task_id' => $newTask->id, 'agent' => $taskAgent,
@@ -1357,10 +1375,34 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             ]);
                         } catch (\Throwable $taskErr) {
                             \Illuminate\Support\Facades\Log::warning("[SarahChat] Task creation failed: " . $taskErr->getMessage());
-                            $reply .= "\n\n⚠️ I tried to create the task but encountered an issue. Please try using the Assign Task button instead.";
+                            // 2026-05-22 FIX 7 (Bug B) — count the failure; dedupe reason.
+                            $taskSummaryFailed++;
+                            $failMsg = $taskErr->getMessage();
+                            // Truncate long messages to keep the summary readable.
+                            $failShort = mb_substr($failMsg, 0, 80) . (mb_strlen($failMsg) > 80 ? '...' : '');
+                            $taskSummaryFailReasons[$failShort] = ($taskSummaryFailReasons[$failShort] ?? 0) + 1;
                         }
                     }
                     } // end foreach createTasks
+
+                    // 2026-05-22 FIX 7 (Bug B) — emit ONE summary line per batch.
+                    if ($taskSummaryCreated > 0 || $taskSummaryFailed > 0) {
+                        $byAgentParts = [];
+                        foreach ($taskSummaryByAgent as $agent => $n) {
+                            $byAgentParts[] = "$agent: $n";
+                        }
+                        $byAgentStr = !empty($byAgentParts) ? ' (' . implode(', ', $byAgentParts) . ')' : '';
+                        if ($taskSummaryFailed === 0) {
+                            $reply .= "\n\n✅ Queued {$taskSummaryCreated} tasks{$byAgentStr}.";
+                        } else {
+                            $total = $taskSummaryCreated + $taskSummaryFailed;
+                            $reply .= "\n\n✅ Queued {$taskSummaryCreated}/{$total} tasks{$byAgentStr}.";
+                            $reply .= "\n⚠️ {$taskSummaryFailed} task(s) failed to create:";
+                            foreach ($taskSummaryFailReasons as $reason => $count) {
+                                $reply .= "\n  • ({$count}x) {$reason}";
+                            }
+                        }
+                    }
                 }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning("[AgentChat] LLM failed for {$slug}: " . $e->getMessage());
