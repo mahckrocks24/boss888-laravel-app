@@ -418,9 +418,25 @@ class WriteService
         ];
         $result = $this->runtime->writeDraft($draftParams);
 
-        $content = $result['success']
-            ? $result['content']
-            : "<p>Article generation pending. Topic: {$topic}</p>";
+        // 2026-05-22 FIX 5 — runtime failure was being silently swallowed.
+        // The old code produced "<p>Article generation pending. Topic: ...</p>"
+        // and persisted that as a real article (e.g. chef-site #52), then
+        // returned success: true to the orchestrator. Downstream tasks
+        // (generate_meta, link_suggestions, insert_link) ran against the
+        // placeholder and the user saw a stub article they couldn't tell
+        // had failed. Throwing here causes the task to be marked failed
+        // and the article to never persist.
+        if (empty($result['success']) || empty($result['content'])) {
+            $errMsg = (string) ($result['error'] ?? $result['message'] ?? 'runtime returned no content');
+            \Illuminate\Support\Facades\Log::warning('[writeArticle] runtime failed — throwing instead of writing placeholder', [
+                'workspace_id' => $wsId,
+                'topic'        => $topic,
+                'error'        => $errMsg,
+                'meta'         => $result['meta'] ?? null,
+            ]);
+            throw new \RuntimeException('write_article runtime failure: ' . $errMsg);
+        }
+        $content = $result['content'];
 
         // Wave 65 — if the draft came in short, retry ONCE with an explicit
         // expand brief. Hard cap at 1 retry to keep cost predictable.
