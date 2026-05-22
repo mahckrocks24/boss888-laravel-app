@@ -21,19 +21,20 @@ use Illuminate\Support\Facades\Log;
  */
 class AeoAuditService
 {
+    // Wave 84 — labels only. Weight matrix moved to runtime (proprietary).
     private const CHECKS = [
-        'article_jsonld'        => ['weight' => 12, 'label' => 'Article JSON-LD schema'],
-        'faqpage_jsonld'        => ['weight' => 12, 'label' => 'FAQPage JSON-LD schema'],
-        'tldr_at_top'           => ['weight' => 12, 'label' => 'TLDR / answer in first 300 chars'],
-        'ai_crawlers_allowed'   => ['weight' => 10, 'label' => 'robots.txt allows AI crawlers'],
-        'llms_txt_present'      => ['weight' => 8,  'label' => 'llms.txt available at site root'],
-        'date_modified'         => ['weight' => 8,  'label' => 'dateModified in JSON-LD'],
-        'question_h2s'          => ['weight' => 8,  'label' => 'At least 2 question-style H2s'],
-        'lists_tables'          => ['weight' => 8,  'label' => 'At least 2 lists or tables'],
-        'external_citation'     => ['weight' => 6,  'label' => 'At least 1 external citation link'],
-        'images_with_alt'       => ['weight' => 6,  'label' => 'All images have alt text'],
-        'meta_description_len'  => ['weight' => 5,  'label' => 'Meta description 120-160 chars'],
-        'title_length'          => ['weight' => 5,  'label' => 'Title 30-60 chars'],
+        'article_jsonld'        => ['label' => 'Article JSON-LD schema'],
+        'faqpage_jsonld'        => ['label' => 'FAQPage JSON-LD schema'],
+        'tldr_at_top'           => ['label' => 'TLDR / answer in first 300 chars'],
+        'ai_crawlers_allowed'   => ['label' => 'robots.txt allows AI crawlers'],
+        'llms_txt_present'      => ['label' => 'llms.txt available at site root'],
+        'date_modified'         => ['label' => 'dateModified in JSON-LD'],
+        'question_h2s'          => ['label' => 'At least 2 question-style H2s'],
+        'lists_tables'          => ['label' => 'At least 2 lists or tables'],
+        'external_citation'     => ['label' => 'At least 1 external citation link'],
+        'images_with_alt'       => ['label' => 'All images have alt text'],
+        'meta_description_len' => ['label' => 'Meta description 120-160 chars'],
+        'title_length'          => ['label' => 'Title 30-60 chars'],
     ];
 
     /**
@@ -108,12 +109,9 @@ class AeoAuditService
      */
     private function computeScore(array $checks): int
     {
-        $rt = app(\App\Connectors\RuntimeClient::class);
-        if ($rt->isIntelligenceRuntimeEnabled()) {
-            $result = $rt->aeoComputeScore($checks);
-            if ($result !== null) return $result;
-        }
-        return $this->computeScore_local($checks);
+        // Wave 84 — runtime canonical. Safe default: 0 if runtime unreachable.
+        $result = app(\App\Connectors\RuntimeClient::class)->aeoComputeScore($checks);
+        return $result ?? 0;
     }
 
     /**
@@ -355,16 +353,6 @@ class AeoAuditService
 
     // ─── Helpers ──────────────────────────────────────────────────────
 
-    private function computeScore_local(array $checks): int
-    {
-        $total = 0;
-        foreach (self::CHECKS as $key => $cfg) {
-            if (!empty($checks[$key]['pass'])) {
-                $total += $cfg['weight'];
-            }
-        }
-        return min(100, $total);
-    }
 
     private function originOf(string $url): string
     {

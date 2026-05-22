@@ -233,14 +233,9 @@ class SeoAssistantService
      */
     private function detectCorrection(string $message): ?array
     {
-        $rt = app(\App\Connectors\RuntimeClient::class);
-        if ($rt->isIntelligenceRuntimeEnabled()) {
-            $result = $rt->detectCorrection($message);
-            if ($result !== null) return $result;
-            // Note: null could mean "no correction detected" OR runtime
-            // failure. Both cases route to _local for parity safety.
-        }
-        return $this->detectCorrection_local($message);
+        // Wave 84 — runtime canonical. null is the correct response for
+        // "no correction" so we just return runtime's answer directly.
+        return app(\App\Connectors\RuntimeClient::class)->detectCorrection($message);
     }
 
     /**
@@ -250,83 +245,6 @@ class SeoAssistantService
      * the next turn will repeat the original (wrong) claim, so we err on the
      * side of catching corrections.
      */
-    private function detectCorrection_local(string $message): ?array
-    {
-        $m = trim($message);
-        if ($m === '' || mb_strlen($m) < 10) return null;
-
-        // Anchor signals — one of these phrases must appear for us to treat
-        // the message as a correction. Keeps everyday questions from being
-        // mis-categorised.
-        $signals = [
-            "we don't",
-            "we do not",
-            "we aren't",
-            "we are not",
-            "not that",
-            "that's wrong",
-            "that is wrong",
-            "correction",
-            "i meant",
-            "i mean",
-            "actually",
-            "we are",
-            "we're a",
-            "we're an",
-            "we are a",
-            "we are an",
-            "our business is",
-            "our business does",
-            "our services are",
-            "we offer",
-            "we do ",
-            "we focus on",
-            "we specialise in",
-            "we specialize in",
-        ];
-        $lower = mb_strtolower($m);
-        $matched = false;
-        foreach ($signals as $sig) {
-            if (str_contains($lower, $sig)) { $matched = true; break; }
-        }
-        if (! $matched) return null;
-
-        // Try to pull the "we do X, Y, Z" / "we offer X, Y, Z" body.
-        $servicesText = null;
-        if (preg_match('/\bwe (?:do|offer|provide|focus on|specialise in|specialize in)\s+([^.!?]+)/i', $m, $matches)) {
-            $servicesText = $matches[1];
-        } elseif (preg_match('/\bour (?:services|business|focus|specialty|specialities)\s+(?:are|is)\s+([^.!?]+)/i', $m, $matches)) {
-            $servicesText = $matches[1];
-        }
-
-        $businessType = null;
-        if (preg_match('/\bwe (?:are|\'re)\s+(?:a |an )?([^.!?,]+?(?:business|company|agency|firm|provider|brand|specialist|specialists))/i', $m, $matches)) {
-            $businessType = trim($matches[1]);
-        }
-
-        // Wrong claim (what we should stop saying).
-        $wrong = null;
-        if (preg_match('/\bnot\s+(?:about|just|for|in|only)\s+([^.!?,]+)/i', $m, $matches)) {
-            $wrong = trim($matches[1]);
-        } elseif (preg_match('/\bwe (?:don\'t|do not|aren\'t|are not)\s+(?:sell|do|offer|deal in|focus on)\s+([^.!?,]+)/i', $m, $matches)) {
-            $wrong = trim($matches[1]);
-        }
-
-        $services = $servicesText !== null ? $this->splitServices($servicesText) : [];
-
-        // Need at least one of {services, business_type, wrong} to bother
-        // recording the correction.
-        if (empty($services) && $businessType === null && $wrong === null) {
-            return null;
-        }
-
-        return [
-            'wrong'         => $wrong,
-            'correct'       => $servicesText !== null ? trim($servicesText) : ($businessType ?? $m),
-            'services'      => $services,
-            'business_type' => $businessType ?? (count($services) >= 2 ? implode(', ', $services) : null),
-        ];
-    }
 
     /**
      * Split a free-form services list like
@@ -630,12 +548,9 @@ class SeoAssistantService
      */
     private function detectIntent(string $message, bool $pendingExists = false): array
     {
-        $rt = app(\App\Connectors\RuntimeClient::class);
-        if ($rt->isIntelligenceRuntimeEnabled()) {
-            $result = $rt->classifyIntent($message, $pendingExists);
-            if ($result !== null && isset($result['type'])) return $result;
-        }
-        return $this->detectIntent_local($message, $pendingExists);
+        // Wave 84 — runtime canonical. Safe default: conversation type on failure.
+        $result = app(\App\Connectors\RuntimeClient::class)->classifyIntent($message, $pendingExists);
+        return $result ?? ['type' => 'conversation', 'action' => null];
     }
 
     /**
@@ -646,98 +561,6 @@ class SeoAssistantService
      * The `pendingExists` arg lets us prefer 'confirmation' over a stray
      * execution-request match when the user is mid-confirmation flow.
      */
-    private function detectIntent_local(string $message, bool $pendingExists = false): array
-    {
-        $m = mb_strtolower(trim($message));
-        if ($m === '') return ['type' => 'conversation', 'action' => null];
-
-        $confirmations = [
-            'proceed', 'yes', 'go ahead', 'do it', 'confirm', 'run it',
-            'write it', 'execute it', 'ok', 'okay', 'sure', "let's do it",
-            'lets do it', 'go', 'yes please', 'do that', 'write them',
-            'run that', 'make it happen', 'go for it', 'yep', 'yeah',
-            'absolutely', 'do all of them', 'yes do all of them',
-            'do all', 'yes do them', 'all of them',
-        ];
-        $negations = [
-            'no', 'cancel', 'stop', "don't", 'do not', 'skip', 'not yet',
-            'wait', 'hold on', 'change', 'nevermind', 'never mind',
-            'nope', 'forget it', 'abort',
-        ];
-
-        // Strip trailing punctuation for cleaner equality matching.
-        $stripped = preg_replace('/[.!?,]+$/', '', $m) ?? $m;
-
-        // Confirmation — exact match or starts-with for short messages.
-        foreach ($confirmations as $c) {
-            if ($stripped === $c) {
-                return ['type' => 'confirmation', 'action' => null];
-            }
-            if (mb_strlen($stripped) <= 25 && (str_starts_with($stripped, $c . ' ') || str_starts_with($stripped, $c . ','))) {
-                return ['type' => 'confirmation', 'action' => null];
-            }
-        }
-        // Negation — same shape.
-        foreach ($negations as $n) {
-            if ($stripped === $n) {
-                return ['type' => 'negation', 'action' => null];
-            }
-            if (mb_strlen($stripped) <= 25 && (str_starts_with($stripped, $n . ' ') || str_starts_with($stripped, $n . ','))) {
-                return ['type' => 'negation', 'action' => null];
-            }
-        }
-
-        // If there's a pending action and the message is very short ("ok",
-        // "do it"), bias toward confirmation rather than re-parsing.
-        if ($pendingExists && mb_strlen($stripped) <= 25) {
-            foreach ($confirmations as $c) {
-                if (str_contains($stripped, $c)) {
-                    return ['type' => 'confirmation', 'action' => null];
-                }
-            }
-        }
-
-        // Wave 14 (2026-05-18). Regex preflight for apply_link_suggestions.
-        // Catches phrasings that the substring loop misses:
-        //   "fix my orphan pages"        — extra word between fix and orphan
-        //   "apply 30 link suggestions"  — number splits the phrase
-        //   "I have too many orphans"    — narrative phrasing
-        if (
-            preg_match('/\bfix\b.{0,15}\borphan/i', $m)
-            || preg_match('/\bapply\b.{0,15}\blink/i', $m)
-            || preg_match('/\b(too\s+many|many|reduce|kill|clear)\s+orphan/i', $m)
-        ) {
-            return ['type' => 'execution_request', 'action' => 'apply_link_suggestions'];
-        }
-
-        // Execution requests (most-specific first — earlier entries win
-        // when phrases overlap, so apply_link_suggestions appears BEFORE
-        // link_suggestions to catch "apply internal links" before
-        // "internal link" matches as a generate request).
-        $executions = [
-            'deep_audit'        => ['run audit', 'full audit', 'scan my site', 'site audit', 'audit my site', 'run a full audit', 'run deep audit', 'run a deep audit', 'run deep audit on', 'run full audit', 'do a deep audit', 'do an audit', 'do a site audit', 'audit my ', 'deep audit my'],
-            // Wave 14 (2026-05-18). Bulk apply of seo_links suggestions.
-            // Listed before link_suggestions so phrases like "apply
-            // internal links" / "fix orphans" win over the generic
-            // "internal link" generator match.
-            'apply_link_suggestions' => ['fix orphan', 'fix orphans', 'fix internal linking', 'apply link suggestion', 'apply link suggestions', 'apply the links', 'apply all links', 'apply the link suggestions', 'apply suggestions', 'add internal links', 'link the orphans', 'apply links to', 'apply internal link', 'apply internal links'],
-            'generate_article'  => ['write article', 'write a blog', 'write an article', 'generate article', 'generate an article', 'write me an article', 'write us an article', 'create article', 'plan article', 'plan articles', 'plan 6 articles'],
-            'serp_analysis'     => ['serp analysis', 'competitor analysis', 'check competitors', 'analyse competitors', 'analyze competitors'],
-            'add_keyword'       => ['add keyword', 'track keyword', 'add a keyword', 'start tracking'],
-            'generate_meta'     => ['generate meta', 'bulk generate meta', 'bulk meta', 'generate metas', 'meta titles'],
-            'ai_report'         => ['ai report', 'generate report', 'generate an ai report'],
-            'link_suggestions'  => ['link suggestions', 'internal link', 'generate links', 'find link opportunities'],
-        ];
-        foreach ($executions as $action => $phrases) {
-            foreach ($phrases as $p) {
-                if (str_contains($m, $p)) {
-                    return ['type' => 'execution_request', 'action' => $action];
-                }
-            }
-        }
-
-        return ['type' => 'conversation', 'action' => null];
-    }
 
     // ═══════════════════════════════════════════════════════════════
     // LAYER 4 — EXECUTION ENGINE

@@ -347,26 +347,22 @@ class SeoService
      */
     private function computeSerpScore(int $wsId, string $url): ?int
     {
-        $rt = app(\App\Connectors\RuntimeClient::class);
-        if ($rt->isIntelligenceRuntimeEnabled()) {
-            // Load ranks locally (DB), only the scoring math is proprietary.
+        // Wave 84 — runtime canonical. Load ranks locally (DB), runtime does
+        // the proprietary scoring math. Returns null on runtime failure (UI shows empty state).
+        $rows = DB::table('seo_keywords')
+            ->where('workspace_id', $wsId)
+            ->where('target_url', $url)
+            ->select('current_rank')
+            ->get();
+        if ($rows->isEmpty()) {
             $rows = DB::table('seo_keywords')
                 ->where('workspace_id', $wsId)
-                ->where('target_url', $url)
                 ->select('current_rank')
                 ->get();
-            if ($rows->isEmpty()) {
-                $rows = DB::table('seo_keywords')
-                    ->where('workspace_id', $wsId)
-                    ->select('current_rank')
-                    ->get();
-            }
-            if ($rows->isEmpty()) return null;
-            $ranks = $rows->map(fn($r) => $r->current_rank)->all();
-            $result = $rt->computeSerpScore($ranks);
-            if ($result !== null) return $result;
         }
-        return $this->computeSerpScore_local($wsId, $url);
+        if ($rows->isEmpty()) return null;
+        $ranks = $rows->map(fn($r) => $r->current_rank)->all();
+        return app(\App\Connectors\RuntimeClient::class)->computeSerpScore($ranks);
     }
 
     /**
@@ -388,34 +384,6 @@ class SeoService
      * Prefers keywords specifically targeting $url; falls back to all
      * workspace keywords when $url has no targeted keywords.
      */
-    private function computeSerpScore_local(int $wsId, string $url): ?int
-    {
-        $rows = DB::table('seo_keywords')
-            ->where('workspace_id', $wsId)
-            ->where('target_url', $url)
-            ->select('current_rank')
-            ->get();
-
-        if ($rows->isEmpty()) {
-            $rows = DB::table('seo_keywords')
-                ->where('workspace_id', $wsId)
-                ->select('current_rank')
-                ->get();
-        }
-        if ($rows->isEmpty()) {
-            return null; // No keywords tracked at all -> let UI show empty state
-        }
-
-        $total = $rows->count();
-        $sum = 0;
-        foreach ($rows as $r) {
-            $rank = $r->current_rank;
-            if ($rank === null) continue; // contributes 0
-            $contrib = max(0, 105 - ((int) $rank) * 5);
-            $sum += $contrib;
-        }
-        return (int) round($sum / $total);
-    }
 
     public function deepAudit(int $wsId, array $params): array
     {
@@ -829,8 +797,8 @@ class SeoService
 
     /**
      * Wave 81 — public router. Delegates to runtime when
-     * INTELLIGENCE_VIA_RUNTIME=true, otherwise to _local(). Signature
-     * preserved exactly for caller compatibility.
+     * Wave 84 — proprietary algorithm lives in runtime (proprietary IP
+     * hidden in Railway). Laravel only ships this thin call wrapper.
      */
     private function extractNaturalAnchor(
         string $sourceBody,
@@ -839,19 +807,10 @@ class SeoService
         ?string $candidateFocusKeyword = null,
         array $usedAnchors = []
     ): ?string {
-        $rt = app(\App\Connectors\RuntimeClient::class);
-        if ($rt->isIntelligenceRuntimeEnabled()) {
-            $result = $rt->extractAnchor(
-                $sourceBody,
-                $candidateTitle,
-                $candidateMeta,
-                $candidateFocusKeyword,
-                $usedAnchors
-            );
-            if ($result !== null) return $result;
-            // Runtime failed or returned null — fall through to local.
-        }
-        return $this->extractNaturalAnchor_local(
+        // Wave 84 — runtime is canonical. No PHP fallback (proprietary
+        // algorithm deleted). On runtime failure, return null — link
+        // insertion gracefully skips. Runtime endpoint is required.
+        return app(\App\Connectors\RuntimeClient::class)->extractAnchor(
             $sourceBody,
             $candidateTitle,
             $candidateMeta,
@@ -876,82 +835,6 @@ class SeoService
      *
      * Returns null if no phrase passes all 4 gates.
      */
-    private function extractNaturalAnchor_local(string $sourceBody, string $candidateTitle, ?string $candidateMeta = null, ?string $candidateFocusKeyword = null, array $usedAnchors = []): ?string
-    {
-        if ($sourceBody === '' || $candidateTitle === '') return null;
-
-        $bodyNoLinks = preg_replace('#<a\b[^>]*>.*?</a>#is', '', $sourceBody) ?? $sourceBody;
-        // Wave 79h — strip <h1>...</h1> so phrases like the full article
-        // title (which lives only in h1) don't enter the phrase pool.
-        // wrap_match refuses to wrap inside h1 anyway, so picking such
-        // phrases would always SKIP. Drop them upfront.
-        $bodyNoLinks = preg_replace('#<h1\b[^>]*>.*?</h1>#is', '', $bodyNoLinks) ?? $bodyNoLinks;
-        // Wave 79c — replace tag boundaries with spaces so adjacent text
-        // doesn't get concatenated.
-        $plain = preg_replace('/<[^>]+>/', ' ', $bodyNoLinks);
-        $plain = html_entity_decode($plain, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $plain = trim(preg_replace('/\s+/', ' ', $plain));
-        $plainLower = strtolower($plain);
-
-        $stopwords = ['the','a','an','and','or','but','of','for','to','in','on','at','by','with','as','is','are','was','were','be','been','it','this','that','your','my','our','their','from','about','what','how','why','can','will','more','most','some','any','all','one','two','they','use','say','get','make','have','has','had','do','does','did','should','would','could','must','may','also','very','just','than','then','when','while','where','here','there','only','even','still','well','off','out','up','down','into','over','under','through','between','i','we','you','its','if','so','no','not','too','very'];
-
-        $topicalSource = trim(($candidateFocusKeyword ?? '') . ' ' . $candidateTitle);
-        $topicalSource = strtolower(preg_replace('/[^a-z0-9\s\-]/i', ' ', $topicalSource));
-        $topicalWords  = array_values(array_filter(preg_split('/\s+/', trim($topicalSource)), function ($w) use ($stopwords) {
-            return strlen($w) >= 4 && !in_array($w, $stopwords, true);
-        }));
-        if (empty($topicalWords)) return null;
-
-        $usedLower = array_map('strtolower', $usedAnchors);
-
-        // Wave 79d — split body into SENTENCES, extract topical n-grams
-        // within each. Prevents phrases from spanning sentence boundaries.
-        $sentences = preg_split('/(?<=[.!?])\s+/', $plain);
-        $candidates = [];
-        $seen = [];
-        foreach ($sentences as $sentence) {
-            $sentenceClean = trim(preg_replace('/[.,;:!?]/', ' ', $sentence));
-            $sentenceClean = trim(preg_replace('/\s+/', ' ', $sentenceClean));
-            if ($sentenceClean === '') continue;
-            $sWords = preg_split('/\s+/', $sentenceClean);
-            for ($i = 0; $i < count($sWords); $i++) {
-                for ($len = 5; $len >= 2; $len--) {
-                    if ($i + $len > count($sWords)) continue;
-                    $slice = array_slice($sWords, $i, $len);
-                    // Clean edge punctuation just in case.
-                    $first = preg_replace('/^[^a-z0-9]+|[^a-z0-9]+$/i', '', $slice[0]);
-                    $last  = preg_replace('/^[^a-z0-9]+|[^a-z0-9]+$/i', '', $slice[count($slice)-1]);
-                    if ($first === '' || $last === '') continue;
-                    $slice[0] = $first;
-                    $slice[count($slice)-1] = $last;
-                    $phrase = implode(' ', $slice);
-                    $phraseLower = strtolower($phrase);
-                    if (isset($seen[$phraseLower])) continue;
-                    $seen[$phraseLower] = true;
-                    if (strlen($phrase) < 8) continue;
-                    if (in_array($phraseLower, $usedLower, true)) continue;
-                    if (preg_match('/\b(amp|lt|gt|nbsp|quot|tldr)\b/i', $phrase)) continue;
-                    $sliceLower = array_map('strtolower', $slice);
-                    if (in_array($sliceLower[0], $stopwords, true)) continue;
-                    if (in_array(end($sliceLower), $stopwords, true)) continue;
-                    $overlap = array_intersect($sliceLower, $topicalWords);
-                    if (empty($overlap)) continue;
-                    // Score: topical overlap weight + length bonus.
-                    $score = (count($overlap) * 2) + min(2, $len - 2);
-                    $candidates[] = ['phrase' => $phrase, 'score' => $score, 'len' => $len];
-                }
-            }
-        }
-
-        if (empty($candidates)) return null;
-
-        usort($candidates, function ($a, $b) {
-            if ($a['score'] !== $b['score']) return $b['score'] - $a['score'];
-            return $b['len'] - $a['len'];
-        });
-
-        return $candidates[0]['phrase'];
-    }
 
     /**
      * 2026-05-14 Phase 2 — anchor intelligence: how is THIS target URL being
@@ -3511,12 +3394,9 @@ class SeoService
      */
     private function scoreCtrPotential(array $data): array
     {
-        $rt = app(\App\Connectors\RuntimeClient::class);
-        if ($rt->isIntelligenceRuntimeEnabled()) {
-            $result = $rt->scoreCtr($data);
-            if ($result !== null) return $result;
-        }
-        return $this->scoreCtrPotential_local($data);
+        // Wave 84 — runtime canonical. Safe default on failure.
+        $result = app(\App\Connectors\RuntimeClient::class)->scoreCtr($data);
+        return $result ?? ['score' => 0, 'label' => 'Unknown', 'reasons' => []];
     }
 
     /**
@@ -3526,55 +3406,6 @@ class SeoService
      *
      * Returns {score, label, reasons}.
      */
-    private function scoreCtrPotential_local(array $data): array
-    {
-        $score   = 0;
-        $reasons = [];
-
-        // Intent alignment (30 pts) — commercial/transactional pages
-        // typically out-click informational ones in SERPs.
-        $intent = $data['intent'] ?? 'unknown';
-        if (in_array($intent, ['commercial', 'transactional'], true)) {
-            $score += 30; $reasons[] = 'High-intent page type';
-        } elseif ($intent === 'informational') {
-            $score += 20; $reasons[] = 'Informational intent';
-        } else {
-            $score += 10;
-        }
-
-        // Meta title length (25 pts)
-        $titleLen = mb_strlen((string) ($data['meta_title'] ?? $data['title'] ?? ''));
-        if ($titleLen >= 30 && $titleLen <= 60) {
-            $score += 25; $reasons[] = 'Optimal title length';
-        } elseif ($titleLen > 0) {
-            $score += 12; $reasons[] = 'Title present but suboptimal length';
-        }
-
-        // Meta description length (25 pts)
-        $descLen = mb_strlen((string) ($data['meta_description'] ?? ''));
-        if ($descLen >= 70 && $descLen <= 160) {
-            $score += 25; $reasons[] = 'Optimal description length';
-        } elseif ($descLen > 0) {
-            $score += 12;
-        }
-
-        // Schema markup (10 pts) — rich results = higher SERP CTR
-        if (!empty($data['has_schema'])) {
-            $score += 10; $reasons[] = 'Schema markup detected';
-        }
-
-        // URL clarity (10 pts) — short, readable slugs without long digit runs
-        $url  = (string) ($data['url'] ?? '');
-        $slug = basename(rtrim(parse_url($url, PHP_URL_PATH) ?? '', '/'));
-        if ($slug && mb_strlen($slug) <= 50 && !preg_match('/[0-9]{5,}/', $slug)) {
-            $score += 10; $reasons[] = 'Clean URL structure';
-        }
-
-        $score = min(100, $score);
-        $label = $score >= 80 ? 'High' : ($score >= 50 ? 'Medium' : 'Low');
-
-        return ['score' => $score, 'label' => $label, 'reasons' => $reasons];
-    }
 
     /**
      * Re-compute content_score for a row whose meta_title/meta_description/h1
