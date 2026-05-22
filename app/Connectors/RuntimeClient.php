@@ -724,6 +724,28 @@ class RuntimeClient
         }
     }
 
+    /**
+     * Wave 91 — Proactive opportunity detection.
+     * Takes the workspace feature vector and returns an array of
+     * opportunity templates the runtime thinks apply. Null on runtime
+     * failure -> caller falls back to local rules.
+     */
+    public function proactiveFindOpportunities(int $articleCount, bool $hasAudit): ?array
+    {
+        try {
+            $r = $this->post('/internal/proactive/find-opportunities', [
+                'article_count' => $articleCount,
+                'has_audit'     => $hasAudit,
+            ]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['opportunities']) && is_array($body['opportunities']) ? $body['opportunities'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime proactiveFindOpportunities failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     public function isIntelligenceRuntimeEnabled(): bool
     {
         if (! $this->isConfigured()) return false;

@@ -480,7 +480,24 @@ class ProactiveStrategyEngine
         return implode(' ', $parts);
     }
 
+    /**
+     * Wave 91 — Router for opportunity detection. DB queries that compute
+     * the feature vector stay local; rule logic goes through runtime.
+     */
     private function findOpportunities(int $wsId, Workspace $workspace): array
+    {
+        $articleCount = DB::table('articles')->where('workspace_id', $wsId)->where('status', 'published')->count();
+        $hasAudit = DB::table('seo_audits')->where('workspace_id', $wsId)->where('type', 'full')->exists();
+
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->proactiveFindOpportunities((int) $articleCount, (bool) $hasAudit);
+            if ($result !== null) return $result;
+        }
+        return $this->findOpportunities_local($wsId, $workspace);
+    }
+
+    private function findOpportunities_local(int $wsId, Workspace $workspace): array
     {
         $opportunities = [];
 
