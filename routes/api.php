@@ -1453,7 +1453,12 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             // PATCH (Intel Fix 2a) — TaskService is the canonical path.
                             // Wave 36c — auto-approve chain tasks when caller is the WP plugin
                             // (X-API-KEY context). Laravel app users still see the approval queue.
-                            $autoApprove = ($r->header('X-API-KEY') !== null);
+                            // 2026-05-22 FIX 18 — Sarah chat is user-initiated (user typed
+                            // a message asking for action). Auto-approve ALL tasks in
+                            // this code path. Proactive proposals from agents go through
+                            // a different path (strategy_proposals table + /api/sarah/
+                            // proposals/{id}/approve), so those still require approval.
+                            $autoApprove = true;
 
                             // Wave 42 — bundle chain pricing to canonical 2cr.
                             // Standalone CapabilityMap costs sum to 6cr per chain (write=1,
@@ -1479,14 +1484,18 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             }
 
                             $createPayload = [
-                                'engine'          => $taskEngine,
-                                'action'          => $taskAction,
-                                'source'          => 'agent',
-                                'priority'        => 'normal',
-                                'assigned_agents' => [$taskAgent],
-                                'parent_task_id'  => $parentId,
-                                'auto_approve'    => $autoApprove,
-                                'payload'         => $payload,
+                                'engine'           => $taskEngine,
+                                'action'           => $taskAction,
+                                'source'           => 'agent',
+                                'priority'         => 'normal',
+                                'assigned_agents'  => [$taskAgent],
+                                'parent_task_id'   => $parentId,
+                                'auto_approve'     => $autoApprove,
+                                // 2026-05-22 FIX 18 — override CapMap approval_mode for
+                                // user-initiated chains so write_article et al. do not
+                                // show the approval badge.
+                                'requires_approval' => false,
+                                'payload'          => $payload,
                             ];
                             if ($bundlePrice !== null) {
                                 $createPayload['credit_cost'] = $bundlePrice;
