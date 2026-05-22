@@ -766,6 +766,30 @@ class RuntimeClient
     }
 
     /**
+     * Wave 88 — compute confidence score for an (engine, action, payload, wsId)
+     * tuple. Replaces ConfidenceScorer::score governance algorithm.
+     * Returns {score: float, reason: string, approval_mode: string} or null.
+     */
+    public function computeConfidenceScore(string $engine, string $action, array $payload, int $wsId, int $workspaceHistoryCount = 0): ?array
+    {
+        try {
+            $r = $this->post('/internal/governance/confidence-score', [
+                'engine'                  => $engine,
+                'action'                  => $action,
+                'payload'                 => $payload,
+                'workspace_id'            => $wsId,
+                'workspace_history_count' => $workspaceHistoryCount,
+            ]);
+            if (! $r->ok()) return null;
+            $body = $r->json();
+            return isset($body['score']) ? $body : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime computeConfidenceScore failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+        /**
      * Wave 81 — classify intent from a user chat message.
      * Replaces SeoAssistantService::detectIntent regex/phrase classifier.
      * Returns ['type' => string, 'action' => ?string] or null on failure.

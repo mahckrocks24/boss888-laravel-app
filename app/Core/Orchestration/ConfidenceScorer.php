@@ -34,7 +34,36 @@ class ConfidenceScorer
         'publish_builder_page', 'publish_website',
     ];
 
+    /**
+     * Wave 88 — Public router. Routes to runtime when
+     * INTELLIGENCE_VIA_RUNTIME=true; falls back to _local on failure.
+     * Signature preserved.
+     */
     public function score(string $engine, string $action, array $payload, int $wsId): array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            // Workspace history count is the only external data point —
+            // load it here (DB read, not IP) and pass to runtime.
+            $completed = 0;
+            try {
+                $completed = (int) DB::table('tasks')
+                    ->where('workspace_id', $wsId)
+                    ->where('engine', $engine)
+                    ->where('status', 'completed')
+                    ->count();
+            } catch (\Throwable $e) { /* non-critical */ }
+            $result = $rt->computeConfidenceScore($engine, $action, $payload, $wsId, $completed);
+            if ($result !== null) return $result;
+        }
+        return $this->score_local($engine, $action, $payload, $wsId);
+    }
+
+    /**
+     * Wave 88 — original heuristic algorithm. Kept as _local fallback
+     * until Phase D cleanup. Body unchanged from pre-Wave 88.
+     */
+    public function score_local(string $engine, string $action, array $payload, int $wsId): array
     {
         $score = 0.70;
         $reasons = [];
