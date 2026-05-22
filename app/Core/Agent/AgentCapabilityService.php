@@ -55,7 +55,7 @@ class AgentCapabilityService
             // SEO
             'autonomous_goal', 'list_goals', 'agent_status', 'pause_goal', 'ai_status',
             // SEO — keyword + link tools (added 2026-05-22 fix)
-            'add_keyword', 'keyword_research', 'keywords_suggest', 'keyword_check', 'generate_links', 'link_suggestions', 'insert_link',
+            'add_keyword', 'list_keywords', 'keyword_research', 'keywords_suggest', 'keyword_check', 'generate_links', 'link_suggestions', 'insert_link',
             // CRM — full access including sequence discovery
             'create_lead', 'get_lead', 'update_lead', 'list_leads', 'move_lead', 'log_activity', 'add_note', 'enroll_sequence', 'list_sequences',
             // Marketing — full access including schedule + sequences
@@ -90,7 +90,7 @@ class AgentCapabilityService
             'serp_analysis', 'ai_report', 'deep_audit', 'ai_status', 'list_goals', 'agent_status', 'pause_goal',
             'link_suggestions', 'insert_link', 'outbound_links', 'check_outbound',
             // SEO — keyword tools (added 2026-05-22 fix)
-            'add_keyword', 'keyword_research', 'keywords_suggest', 'keyword_check', 'generate_links',
+            'add_keyword', 'list_keywords', 'keyword_research', 'keywords_suggest', 'keyword_check', 'generate_links',
             // CRM — read only
             'get_lead', 'list_leads',
             // Marketing — read only

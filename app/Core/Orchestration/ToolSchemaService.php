@@ -91,6 +91,11 @@ class ToolSchemaService
             'parameters'  => ['keyword' => 'string'],
             'engine'      => 'seo', 'action' => 'add_keyword', 'approval' => 'auto',
         ],
+        'seo.list_keywords' => [
+            'description' => 'List all keywords tracked for the workspace, with current rank, volume, difficulty, target URL. Use this to ANSWER list/show/which-keywords questions.',
+            'parameters'  => ['status' => 'string?', 'search' => 'string?'],
+            'engine'      => 'seo', 'action' => 'list_keywords', 'approval' => 'auto',
+        ],
         'seo.keyword_research' => [
             'description' => 'Run full keyword research for a seed term (volume, difficulty, related).',
             'parameters'  => ['keyword' => 'string', 'location' => 'string?'],

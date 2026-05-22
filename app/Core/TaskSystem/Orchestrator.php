@@ -547,6 +547,10 @@ class Orchestrator
                                         ->resumeGoal($wsId, $params['goal_id'] ?? 0)],
             'seo/add_keyword'      => fn() => ['entity_id' => app(\App\Engines\SEO\Services\SeoService::class)
                                         ->addKeyword($wsId, $params)],
+            // 2026-05-22 FIX 13 — Sarah needs a real list tool. SeoService::listKeywords
+            // already exists; just wire it. Returns {keywords, usage, scan}.
+            'seo/list_keywords'    => fn() => app(\App\Engines\SEO\Services\SeoService::class)
+                                        ->listKeywords($wsId, $params),
 
             // 2026-05-22 FIX 9 — stub handlers for SEO keyword/link actions
             // that FIX 1 exposed to Sarah's catalog but have no service impl.
