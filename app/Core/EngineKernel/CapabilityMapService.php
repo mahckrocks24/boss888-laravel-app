@@ -37,6 +37,7 @@ class CapabilityMapService
         'pause_goal'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'pause_goal',          'approval_mode'=>'auto',      'credit_cost'=>0],
 'resume_goal'         => ['engine'=>'seo',       'connector'=>null,       'action'=>'resume_goal',         'approval_mode'=>'auto',      'credit_cost'=>0],        'add_keyword'         => ['engine'=>'seo',       'connector'=>null,       'action'=>'add_keyword',         'approval_mode'=>'auto',      'credit_cost'=>0],        'generate_links'      => ['engine'=>'seo',       'connector'=>null,       'action'=>'generate_links',      'approval_mode'=>'auto',      'credit_cost'=>3],
         // Wave 21 — credit-charged SEO actions.
+        'list_keywords'       => ['engine'=>'seo',       'connector'=>null,       'action'=>'list_keywords',       'approval_mode'=>'auto',      'credit_cost'=>0],
         'keyword_research'    => ['engine'=>'seo',       'connector'=>null,       'action'=>'keyword_research',    'approval_mode'=>'auto',      'credit_cost'=>1],
         'keywords_suggest'    => ['engine'=>'seo',       'connector'=>null,       'action'=>'keywords_suggest',    'approval_mode'=>'auto',      'credit_cost'=>1],
         'keyword_check'       => ['engine'=>'seo',       'connector'=>null,       'action'=>'keyword_check',       'approval_mode'=>'auto',      'credit_cost'=>1],
