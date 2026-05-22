@@ -1399,6 +1399,38 @@ function drawCanvas(){
     }
   });
 
+  // Wave 85 — chain-aware coordination. Single-assignee chain tasks
+  // (Sarahs chain refactor Wave 41) leave the canvas blank because
+  // agents.length < 2 per task. Group by root parent_task_id and add
+  // Sarah(dmm) ↔ agent pairs so coordination is visible.
+  var chainGroups = {};
+  filtered.forEach(t => {
+    var rootId = t.parent_task_id || t.id;
+    if (!chainGroups[rootId]) chainGroups[rootId] = { tasks: [], agents: new Set() };
+    chainGroups[rootId].tasks.push(t);
+    (t.assignees || []).forEach(a => chainGroups[rootId].agents.add(a));
+    if (t.coordinator) chainGroups[rootId].agents.add(t.coordinator);
+  });
+  Object.values(chainGroups).forEach(chain => {
+    // A chain is a coordination event if Sarah delegated OR >=2 distinct agents are involved.
+    var sarahDelegated = chain.tasks.some(t => t.delegated_by === 'dmm');
+    if (!sarahDelegated && chain.agents.size < 2) return;
+    var agentList = [...chain.agents];
+    // Ensure Sarah is in the set when she delegated
+    if (sarahDelegated && !agentList.includes('dmm')) agentList.push('dmm');
+    if (agentList.length < 2) return;
+    // Build pairs — Sarah ↔ each delegated agent (the orchestrator view)
+    var sarah = 'dmm';
+    agentList.forEach(other => {
+      if (other === sarah) return;
+      var pair = [sarah, other].sort().join('-');
+      if (!connMap[pair]) connMap[pair] = [];
+      chain.tasks.forEach(t => {
+        if (!connMap[pair].find(x => x.id === t.id)) connMap[pair].push(t);
+      });
+    });
+  });
+
   var canvasEl=document.getElementById('canvas-agents');
   if(!canvasEl) return;
 
@@ -1428,6 +1460,8 @@ function drawCanvas(){
     path.setAttribute('stroke',color);path.setAttribute('stroke-width','2');
     path.setAttribute('stroke-dasharray','7,4');path.setAttribute('fill','none');
     path.setAttribute('opacity','0.65');path.style.pointerEvents='stroke';path.style.cursor='pointer';
+    // Wave 85 — add .canvas-line class + .active when chain has ongoing/in_progress
+    path.setAttribute('class', hasOngoing ? 'canvas-line active' : 'canvas-line');
     path.addEventListener('mouseenter',e=>showConnTooltip(e,a,b,tasks));
     path.addEventListener('mouseleave',hideConnTooltip);
     svg.appendChild(path);
@@ -1470,8 +1504,10 @@ function renderTaskNode(task, agents) {
   var priCls = task.priority==='high'?'high':task.priority==='low'?'low':'medium';
   var stLabel = task.status==='in_progress'?'In Progress':task.status==='ongoing'?'Active':task.status==='completed'?'Done':'Planned';
 
+  // Wave 85 — red-blink when the task is awaiting approval (requires_approval && approval_status is pending or null)
+  var awaiting = !!(task.requires_approval && (!task.approval_status || task.approval_status === 'pending'));
   var node = document.createElement('div');
-  node.className = 'task-node';
+  node.className = 'task-node' + (awaiting ? ' awaiting-approval' : '');
   node.id = 'tnode-'+task.id;
   node.style.left = cx+'px';
   node.style.top  = cy+'px';

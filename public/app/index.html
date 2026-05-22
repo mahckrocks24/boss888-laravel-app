@@ -384,6 +384,12 @@ textarea,input{font-family:var(--fb);outline:none}
 .tn-pri.medium{background:rgba(245,158,11,.12);color:var(--am);border:1px solid rgba(245,158,11,.2)}
 .tn-pri.low{background:rgba(139,151,176,.1);color:var(--t2);border:1px solid rgba(139,151,176,.18)}
 .tn-status{font-size:8px;color:var(--t3)}
+/* Wave 85 — strategy canvas animations */
+@keyframes lu-line-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-22}}
+@keyframes lu-approval-blink{0%,100%{border-color:var(--rd,#f87171);box-shadow:0 0 0 1px var(--rd,#f87171),0 0 14px rgba(248,113,113,.55),0 2px 12px rgba(0,0,0,.35)}50%{border-color:var(--rd,#f87171);box-shadow:0 0 0 2px var(--rd,#f87171),0 0 28px rgba(248,113,113,.85),0 2px 12px rgba(0,0,0,.35)}}
+.canvas-line.active{animation:lu-line-flow 1.1s linear infinite}
+.task-node.awaiting-approval{border-color:var(--rd,#f87171) !important;animation:lu-approval-blink 1.4s ease-in-out infinite}
+
 
 /* ══════════════ SELECTION TOOLBAR ══════════════ */
 .selection-toolbar{position:fixed;bottom:calc(56px + var(--safe-bottom));left:50%;transform:translateX(-50%);z-index:var(--z-sidebar);
@@ -4733,7 +4739,7 @@ window.LU_CFG = {
   bu:      'https://staging.levelupgrowth.io',
   restUrl: '/api/',
   pluginUrl: '/app/assets/',
-  version: '5.6.0-arthur-ai',
+  version: '5.7.0-wave85-canvas',
   engineUrls: {crm:'/app/js/crm.js',marketing:'/app/js/marketing.js?v=4.0.1-scroll-fix',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.29.1-wave69',write:'/app/js/write.js',creative:'/app/js/creative.js',manualedit:'/app/js/manualedit.js',blog:'/app/js/blog.js?v=1.0.4-wave55-utc',studio:'/app/js/studio.js?v=4.0.1-scroll-fix','studio-video':'/app/js/studio-video.js',pipeline:'/app/js/pipeline.js?v=1.0.1-visibility-fix'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
