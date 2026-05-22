@@ -367,6 +367,14 @@ class EngineExecutionService
             'improve_draft' => $svc->improveDraft($wsId, $params),
             'write_article' => $svc->writeArticle($wsId, $params),
             'add_keyword' => ['entity_type' => 'Keyword', 'entity_id' => $svc->addKeyword($wsId, $params)],
+            // 2026-05-22 FIX 13c — list_keywords + stub handlers for FIX 9
+            // keyword tools, so the SYNC execution path (Sarah chat ->
+            // ToolSchemaService::executeToolCall -> EngineExecutionService)
+            // works for them, not just the async Orchestrator dispatch.
+            'list_keywords' => $svc->listKeywords($wsId, $params),
+            'keyword_research' => ['success' => false, 'not_implemented' => true, 'message' => 'keyword_research is in the catalog but not yet wired to a service. Use add_keyword + serp_analysis as a workaround.'],
+            'keywords_suggest' => ['success' => false, 'not_implemented' => true, 'message' => 'keywords_suggest is in the catalog but not yet wired to a service.'],
+            'keyword_check' => ['success' => false, 'not_implemented' => true, 'message' => 'keyword_check is in the catalog but not yet wired to a service. Use serp_analysis for ranking lookups.'],
             'link_suggestions', 'generate_links' => $svc->generateLinkSuggestions($wsId, $params),
             'insert_link' => ['inserted' => $svc->insertLink($wsId, $params['link_id'] ?? 0)],
             'dismiss_link' => ['dismissed' => $svc->dismissLink($wsId, $params['link_id'] ?? 0)],
