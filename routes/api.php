@@ -593,12 +593,20 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // Get messages from agent_messages table if exists, otherwise build from delegations + audit
         $messages = [];
         try {
+            // 2026-05-22 FIX 14 — was orderBy(created_at)->limit(50) which returns
+            // the OLDEST 50 messages. For conversations longer than 50, the
+            // recent session messages get cut off and the drawer renders only
+            // ancient history. User saw this as "chat session got erased on
+            // refresh". orderByDesc + reverse returns newest 50 in chronological
+            // order.
             $rows = \Illuminate\Support\Facades\DB::table('agent_messages')
                 ->where('workspace_id', $wsId)
                 ->where('agent_slug', $slug)
-                ->orderBy('created_at')
+                ->orderByDesc('created_at')
                 ->limit(50)
-                ->get();
+                ->get()
+                ->reverse()
+                ->values();
             $messages = $rows->map(fn($m) => [
                 'from' => $m->sender,
                 'content' => $m->content,
