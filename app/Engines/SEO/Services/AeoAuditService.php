@@ -102,6 +102,21 @@ class AeoAuditService
     }
 
     /**
+     * Wave 81 — public router for AEO score computation. The 12-check
+     * weight matrix is proprietary IP and must route through runtime
+     * when INTELLIGENCE_VIA_RUNTIME is enabled.
+     */
+    private function computeScore(array $checks): int
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->aeoComputeScore($checks);
+            if ($result !== null) return $result;
+        }
+        return $this->computeScore_local($checks);
+    }
+
+    /**
      * Audit every URL in seo_content_index for the workspace.
      * Returns the count of pages audited. Intended to be called from
      * a queued job for large workspaces.
@@ -340,7 +355,7 @@ class AeoAuditService
 
     // ─── Helpers ──────────────────────────────────────────────────────
 
-    private function computeScore(array $checks): int
+    private function computeScore_local(array $checks): int
     {
         $total = 0;
         foreach (self::CHECKS as $key => $cfg) {

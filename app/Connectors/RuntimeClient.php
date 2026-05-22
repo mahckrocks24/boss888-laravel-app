@@ -643,6 +643,149 @@ class RuntimeClient
         ];
     }
 
+    // ─── Wave 81 — SEO intelligence migration to Runtime ─────────────────
+    // Each method posts a payload to a runtime endpoint and returns the
+    // proprietary algorithm's result. Returns null on any failure so the
+    // Laravel caller falls back to its _local() implementation cleanly.
+    // Until Wave 82 deploys the runtime endpoints, all of these will fail
+    // gracefully and the local code stays the source of truth.
+
+    /**
+     * Wave 81 — feature flag. When INTELLIGENCE_VIA_RUNTIME=true in .env
+     * AND the runtime is configured, SEO services route their proprietary
+     * algorithms through runtime endpoints instead of running them in PHP.
+     * Default: false (existing local behavior).
+     */
+    public function isIntelligenceRuntimeEnabled(): bool
+    {
+        if (! $this->isConfigured()) return false;
+        return filter_var(
+            env('INTELLIGENCE_VIA_RUNTIME', false),
+            FILTER_VALIDATE_BOOLEAN,
+            FILTER_NULL_ON_FAILURE
+        ) === true;
+    }
+
+    /**
+     * Wave 81 — extract a natural anchor phrase. Replaces the Wave 77-79
+     * SeoService::extractNaturalAnchor algorithm. Runtime returns the
+     * best phrase or null.
+     */
+    public function extractAnchor(
+        string $sourceBody,
+        string $candidateTitle,
+        ?string $candidateMeta = null,
+        ?string $candidateFocusKeyword = null,
+        array $usedAnchors = []
+    ): ?string {
+        try {
+            $r = $this->post('/internal/seo/extract-anchor', [
+                'source_body'             => $sourceBody,
+                'candidate_title'         => $candidateTitle,
+                'candidate_meta'          => $candidateMeta,
+                'candidate_focus_keyword' => $candidateFocusKeyword,
+                'used_anchors'            => $usedAnchors,
+            ]);
+            if (! $r->ok()) return null;
+            $body = $r->json();
+            $anchor = $body['anchor'] ?? null;
+            return is_string($anchor) && trim($anchor) !== '' ? $anchor : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime extractAnchor failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 81 — score CTR potential. Replaces SeoService::scoreCtrPotential.
+     * Returns ['score' => int, 'reasons' => array, 'label' => string].
+     */
+    public function scoreCtr(array $pageData): ?array
+    {
+        try {
+            $r = $this->post('/internal/seo/score-ctr', ['page_data' => $pageData]);
+            if (! $r->ok()) return null;
+            $body = $r->json();
+            return isset($body['score']) ? $body : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime scoreCtr failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 81 — compute SERP score from a list of keyword ranks.
+     * Replaces SeoService::computeSerpScore math formula.
+     */
+    public function computeSerpScore(array $keywordRanks): ?int
+    {
+        try {
+            $r = $this->post('/internal/seo/compute-serp-score', ['ranks' => $keywordRanks]);
+            if (! $r->ok()) return null;
+            $body = $r->json();
+            return isset($body['score']) ? (int) $body['score'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime computeSerpScore failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 81 — compute AEO score for a set of pass/fail checks.
+     * Replaces AeoAuditService::computeScore (the weights are IP).
+     */
+    public function aeoComputeScore(array $checks): ?int
+    {
+        try {
+            $r = $this->post('/internal/seo/aeo-score', ['checks' => $checks]);
+            if (! $r->ok()) return null;
+            $body = $r->json();
+            return isset($body['score']) ? (int) $body['score'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime aeoComputeScore failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 81 — detect a user correction in a chat message.
+     * Replaces SeoAssistantService::detectCorrection signal-matching logic.
+     */
+    public function detectCorrection(string $message): ?array
+    {
+        try {
+            $r = $this->post('/internal/seo/detect-correction', ['message' => $message]);
+            if (! $r->ok()) return null;
+            $body = $r->json();
+            // null result is a valid response (no correction detected)
+            return $body['correction'] ?? null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime detectCorrection failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 81 — classify intent from a user chat message.
+     * Replaces SeoAssistantService::detectIntent regex/phrase classifier.
+     * Returns ['type' => string, 'action' => ?string] or null on failure.
+     */
+    public function classifyIntent(string $message, bool $pendingExists = false): ?array
+    {
+        try {
+            $r = $this->post('/internal/seo/classify-intent', [
+                'message'         => $message,
+                'pending_exists'  => $pendingExists,
+            ]);
+            if (! $r->ok()) return null;
+            $body = $r->json();
+            return isset($body['type']) ? $body : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime classifyIntent failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     // ─── internal helpers ────────────────────────────────────────────────
 
     private function assertConfigured(): void

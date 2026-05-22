@@ -229,13 +229,28 @@ class SeoAssistantService
     }
 
     /**
+     * Wave 81 — public router for correction detection.
+     */
+    private function detectCorrection(string $message): ?array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->detectCorrection($message);
+            if ($result !== null) return $result;
+            // Note: null could mean "no correction detected" OR runtime
+            // failure. Both cases route to _local for parity safety.
+        }
+        return $this->detectCorrection_local($message);
+    }
+
+    /**
      * Detect a correction in the user's message. Returns null when no
      * correction pattern matches. Heuristic — false positives are tolerable,
      * they get stored as harmless context. False negatives are worse because
      * the next turn will repeat the original (wrong) claim, so we err on the
      * side of catching corrections.
      */
-    private function detectCorrection(string $message): ?array
+    private function detectCorrection_local(string $message): ?array
     {
         $m = trim($message);
         if ($m === '' || mb_strlen($m) < 10) return null;
@@ -610,6 +625,20 @@ class SeoAssistantService
     }
 
     /**
+     * Wave 81 — public router for intent classification. Phrase-to-action
+     * mapping table is proprietary IP and routes through runtime.
+     */
+    private function detectIntent(string $message, bool $pendingExists = false): array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->classifyIntent($message, $pendingExists);
+            if ($result !== null && isset($result['type'])) return $result;
+        }
+        return $this->detectIntent_local($message, $pendingExists);
+    }
+
+    /**
      * Keyword-based intent classifier. Returns:
      *   ['type' => 'confirmation'|'negation'|'execution_request'|'conversation',
      *    'action' => string|null]
@@ -617,7 +646,7 @@ class SeoAssistantService
      * The `pendingExists` arg lets us prefer 'confirmation' over a stray
      * execution-request match when the user is mid-confirmation flow.
      */
-    private function detectIntent(string $message, bool $pendingExists = false): array
+    private function detectIntent_local(string $message, bool $pendingExists = false): array
     {
         $m = mb_strtolower(trim($message));
         if ($m === '') return ['type' => 'conversation', 'action' => null];

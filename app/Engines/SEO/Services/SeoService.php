@@ -341,6 +341,35 @@ class SeoService
 
 
     /**
+     * Wave 81 — public router for SERP score. Note: this method loads
+     * keyword ranks from DB then computes the score. The DB query stays
+     * local (its just data); only the score formula goes to runtime.
+     */
+    private function computeSerpScore(int $wsId, string $url): ?int
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            // Load ranks locally (DB), only the scoring math is proprietary.
+            $rows = DB::table('seo_keywords')
+                ->where('workspace_id', $wsId)
+                ->where('target_url', $url)
+                ->select('current_rank')
+                ->get();
+            if ($rows->isEmpty()) {
+                $rows = DB::table('seo_keywords')
+                    ->where('workspace_id', $wsId)
+                    ->select('current_rank')
+                    ->get();
+            }
+            if ($rows->isEmpty()) return null;
+            $ranks = $rows->map(fn($r) => $r->current_rank)->all();
+            $result = $rt->computeSerpScore($ranks);
+            if ($result !== null) return $result;
+        }
+        return $this->computeSerpScore_local($wsId, $url);
+    }
+
+    /**
      * Wave 44c — Compute SERP dimension score from seo_keywords data.
      *
      * Returns null only when the workspace has zero tracked keywords (so the
@@ -359,7 +388,7 @@ class SeoService
      * Prefers keywords specifically targeting $url; falls back to all
      * workspace keywords when $url has no targeted keywords.
      */
-    private function computeSerpScore(int $wsId, string $url): ?int
+    private function computeSerpScore_local(int $wsId, string $url): ?int
     {
         $rows = DB::table('seo_keywords')
             ->where('workspace_id', $wsId)
@@ -799,6 +828,39 @@ class SeoService
     }
 
     /**
+     * Wave 81 — public router. Delegates to runtime when
+     * INTELLIGENCE_VIA_RUNTIME=true, otherwise to _local(). Signature
+     * preserved exactly for caller compatibility.
+     */
+    private function extractNaturalAnchor(
+        string $sourceBody,
+        string $candidateTitle,
+        ?string $candidateMeta = null,
+        ?string $candidateFocusKeyword = null,
+        array $usedAnchors = []
+    ): ?string {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->extractAnchor(
+                $sourceBody,
+                $candidateTitle,
+                $candidateMeta,
+                $candidateFocusKeyword,
+                $usedAnchors
+            );
+            if ($result !== null) return $result;
+            // Runtime failed or returned null — fall through to local.
+        }
+        return $this->extractNaturalAnchor_local(
+            $sourceBody,
+            $candidateTitle,
+            $candidateMeta,
+            $candidateFocusKeyword,
+            $usedAnchors
+        );
+    }
+
+    /**
      * Wave 77+78+79 — extract a NATURAL anchor phrase that:
      *   1. exists verbatim in the source article body (Wave 77)
      *   2. is NOT already inside an <a> tag in source (Wave 77)
@@ -814,7 +876,7 @@ class SeoService
      *
      * Returns null if no phrase passes all 4 gates.
      */
-    private function extractNaturalAnchor(string $sourceBody, string $candidateTitle, ?string $candidateMeta = null, ?string $candidateFocusKeyword = null, array $usedAnchors = []): ?string
+    private function extractNaturalAnchor_local(string $sourceBody, string $candidateTitle, ?string $candidateMeta = null, ?string $candidateFocusKeyword = null, array $usedAnchors = []): ?string
     {
         if ($sourceBody === '' || $candidateTitle === '') return null;
 
@@ -3445,13 +3507,26 @@ class SeoService
     }
 
     /**
+     * Wave 81 — public router for CTR scoring.
+     */
+    private function scoreCtrPotential(array $data): array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->scoreCtr($data);
+            if ($result !== null) return $result;
+        }
+        return $this->scoreCtrPotential_local($data);
+    }
+
+    /**
      * 2026-05-13 Phase 1 — compute CTR potential 0..100 for a page given
      * its meta/intent/schema signals. Heuristic; correlates with the
      * factors known to drive SERP click-through.
      *
      * Returns {score, label, reasons}.
      */
-    private function scoreCtrPotential(array $data): array
+    private function scoreCtrPotential_local(array $data): array
     {
         $score   = 0;
         $reasons = [];
