@@ -4570,7 +4570,7 @@ window.luSwipeToClose = luSwipeToClose;
         <button onclick="sendAgentMessage('whats_next')" style="background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:4px 12px;font-size:10px;color:var(--t2);cursor:pointer;font-weight:600">⏳ What's Next</button>
       </div>
       <div class="msgs-input-wrap" style="display:flex;gap:6px;align-items:flex-end">
-        <textarea id="agent-msg-input" rows="1" placeholder="Message this agent directly…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentMessage()}" style="flex:1"></textarea>
+        <textarea id="agent-msg-input" rows="1" placeholder="Message this agent directly…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();event.stopPropagation();sendAgentMessage()}" style="flex:1"></textarea>
         <button class="msgs-send" onclick="sendAgentMessage()" style="flex-shrink:0">↑</button>
       </div>
     </div>
@@ -4739,7 +4739,7 @@ window.LU_CFG = {
   bu:      'https://staging.levelupgrowth.io',
   restUrl: '/api/',
   pluginUrl: '/app/assets/',
-  version: '5.7.4-urgent-trio',
+  version: '5.7.5-drawer-chat-hardening',
   engineUrls: {crm:'/app/js/crm.js?v=1.0.0-mobile-scroll',marketing:'/app/js/marketing.js?v=4.0.2-mobile-scroll',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.29.1-wave69',write:'/app/js/write.js',creative:'/app/js/creative.js',manualedit:'/app/js/manualedit.js',blog:'/app/js/blog.js?v=1.0.7-btn-feedback',studio:'/app/js/studio.js?v=4.0.1-scroll-fix','studio-video':'/app/js/studio-video.js',pipeline:'/app/js/pipeline.js?v=1.0.1-visibility-fix'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────

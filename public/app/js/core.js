@@ -2008,11 +2008,21 @@ async function loadDrawerMessages(id){
   }catch(e){console.error('loadMsgs:',e);}
 }
 async function sendAgentMessage(quickAction, overrideMessage){
-  if(!currentAgent) return;
+  // 2026-05-22 FIX 10 — defensive: surface ANY failure in this function as a
+  // visible toast + console log instead of dying silently. Earlier the user
+  // reported "doesn't save my message, no response, just refreshes" — that
+  // signature is consistent with an uncaught exception before the fetch.
+  console.log('[sendAgentMessage] start', {currentAgent, quickAction, overrideMessage});
+  if(!currentAgent){ console.warn('[sendAgentMessage] no currentAgent — aborting'); return; }
   var ta=document.getElementById('agent-msg-input');
-  var content=overrideMessage||(!quickAction?ta.value.trim():'');
-  if(!content&&!quickAction) return;
+  if(!ta && !overrideMessage && !quickAction){
+    console.warn('[sendAgentMessage] no textarea AND no override/quickAction — aborting');
+    return;
+  }
+  var content=overrideMessage||(!quickAction?(ta?ta.value.trim():''):'');
+  if(!content&&!quickAction){ console.warn('[sendAgentMessage] empty content — aborting'); return; }
   if(ta){ta.value='';ta.style.height='auto';}
+  try {  // 2026-05-22 FIX 10 outer try — catch DOM/state errors before fetch
 
   var ag=AGENTS[currentAgent]||{};
   var feed=document.getElementById('msgs-feed-container');
@@ -2069,7 +2079,16 @@ async function sendAgentMessage(quickAction, overrideMessage){
   }catch(e){
     var ti2=document.getElementById('agent-typing-indicator');
     if(ti2) ti2.remove();
-    showToast('Error: '+e.message,'error');
+    console.error('[sendAgentMessage] POST failed', e);
+    if (typeof showToast === 'function') showToast('Error: '+e.message,'error');
+    else alert('Error: '+e.message);
+  }
+  } catch (outerErr) {
+    // 2026-05-22 FIX 10 — catch any pre-fetch DOM/state error so the user
+    // sees what went wrong instead of a silent failure.
+    console.error('[sendAgentMessage] uncaught error', outerErr);
+    if (typeof showToast === 'function') showToast('Chat error: ' + (outerErr && outerErr.message ? outerErr.message : outerErr), 'error');
+    else alert('Chat error: ' + (outerErr && outerErr.message ? outerErr.message : outerErr));
   }
 }
 
