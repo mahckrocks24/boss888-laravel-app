@@ -273,9 +273,29 @@ class ProactiveStrategyEngine
             $actions[] = ['type' => 'stale_tasks', 'count' => $staleTasks];
         }
 
+        // Wave 86 — supersede pending proposals older than 7 days BEFORE
+        // checking opportunities, so stale onboarding nudges dont keep
+        // accruing day after day.
+        DB::table('strategy_proposals')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'pending_approval')
+            ->where('created_at', '<', now()->subDays(7))
+            ->update(['status' => 'superseded', 'updated_at' => now()]);
+
         // Identify opportunities and propose them WITH cost estimates
         $opportunities = $this->findOpportunities($wsId, $workspace);
         foreach ($opportunities as $opp) {
+            // Wave 86 — dedup: skip if a pending proposal of the same type
+            // already exists for this workspace. Sarah will keep showing
+            // the existing one in the count; we dont need duplicates.
+            $alreadyExists = DB::table('strategy_proposals')
+                ->where('workspace_id', $wsId)
+                ->where('type', $opp['type'])
+                ->where('status', 'pending_approval')
+                ->exists();
+            if ($alreadyExists) {
+                continue;
+            }
             // Create a proposal with cost estimate
             DB::table('strategy_proposals')->insert([
                 'workspace_id' => $wsId,
