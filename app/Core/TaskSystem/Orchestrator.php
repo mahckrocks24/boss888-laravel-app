@@ -548,6 +548,31 @@ class Orchestrator
             'seo/add_keyword'      => fn() => ['entity_id' => app(\App\Engines\SEO\Services\SeoService::class)
                                         ->addKeyword($wsId, $params)],
 
+            // 2026-05-22 FIX 9 — stub handlers for SEO keyword/link actions
+            // that FIX 1 exposed to Sarah's catalog but have no service impl.
+            // These return a clear not-implemented payload so the task fails
+            // gracefully instead of crashing with "No async handler".
+            'seo/keyword_research' => fn() => [
+                'success' => false,
+                'not_implemented' => true,
+                'message' => 'keyword_research is in the catalog but not yet wired to a service. Use seo/add_keyword + seo/serp_analysis as a workaround.',
+            ],
+            'seo/keywords_suggest' => fn() => [
+                'success' => false,
+                'not_implemented' => true,
+                'message' => 'keywords_suggest is in the catalog but not yet wired to a service.',
+            ],
+            'seo/keyword_check' => fn() => [
+                'success' => false,
+                'not_implemented' => true,
+                'message' => 'keyword_check is in the catalog but not yet wired to a service. Use seo/serp_analysis for ranking lookups.',
+            ],
+            'seo/generate_links' => fn() => [
+                'success' => false,
+                'not_implemented' => true,
+                'message' => 'generate_links is in the catalog but not yet wired to a service. Use seo/link_suggestions instead.',
+            ],
+
             // ── Write / Content ───────────────────────────────────────────────
             'write/create_article'      => fn() => app(\App\Engines\Write\Services\WriteService::class)
                                             ->createArticle($wsId, $params),
@@ -595,6 +620,11 @@ class Orchestrator
                                               })(),
             'social/social_publish_post'  => fn() => app(\App\Engines\Social\Services\SocialService::class)
                                               ->publishPost($params['post_id']),
+            // 2026-05-22 FIX 9 — social/list_posts was missing from the map.
+            // SocialService::listPosts exists and is callable; just needed
+            // the dispatch wire. Returns the post list for the workspace.
+            'social/list_posts'           => fn() => app(\App\Engines\Social\Services\SocialService::class)
+                                              ->listPosts($wsId, $params),
 
             // ── Calendar ──────────────────────────────────────────────────────
             'calendar/create_event' => fn() => ['entity_id' => app(\App\Engines\Calendar\Services\CalendarService::class)
