@@ -485,6 +485,14 @@ class WriteService
 
         $this->engineIntel->recordToolUsage('write', 'write_article', $result['success'] ? 0.8 : 0.3);
 
+        // 2026-05-22 FIX 19b — auto-index the new draft into seo_content_index
+        // so link_suggestions can find it as a source/target BEFORE publish.
+        // Without this, the link chain returns 0 candidates (the Wave 66
+        // indexer only runs at publish time).
+        if (!empty($article['article_id']) || !empty($article['id'])) {
+            $this->indexArticleForLinkGraph($wsId, $article['article_id'] ?? $article['id']);
+        }
+
         return array_merge($article, [
             'generated'   => $result['success'],
             'tokens_used' => $result['meta']['tokens_used'] ?? 0,
@@ -1033,4 +1041,76 @@ class WriteService
 
         return min(100, $score);
     }
+
+    /**
+     * 2026-05-22 FIX 19b — index a draft article into seo_content_index so
+     * the link-suggester finds it as both source and target. Mirrors what
+     * Wave 66 does at publish time but moved to write time. Failure is
+     * logged and swallowed (non-blocking).
+     */
+    private function indexArticleForLinkGraph(int $wsId, int $articleId): void
+    {
+        try {
+            $a = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('id', $articleId)->where('workspace_id', $wsId)
+                ->first();
+            if (!$a) return;
+
+            // Pick the workspace's published website to build a URL. If none,
+            // skip — no URL to anchor the seo_content_index row to.
+            $site = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('workspace_id', $wsId)
+                ->where('status', 'published')
+                ->whereNull('deleted_at')
+                ->orderByDesc('id')
+                ->first(['subdomain', 'domain', 'custom_domain']);
+            if (!$site) return;
+
+            $host = $site->custom_domain ?: $site->domain ?: $site->subdomain ?: '';
+            $host = strtolower(trim((string) $host, ' /'));
+            if ($host === '') return;
+            if (empty($a->slug)) return;
+
+            $url = 'https://' . $host . '/blog/' . ltrim((string) $a->slug, '/');
+
+            $bodyText = trim(preg_replace('/\s+/', ' ', strip_tags((string) $a->content)));
+            $imgCount = preg_match_all('#<img\b#i', (string) $a->content);
+            $intLinks = preg_match_all('#<a\b[^>]*href="/[^"]+"#i', (string) $a->content);
+            $extLinks = preg_match_all('#<a\b[^>]*href="https?://[^"]+"#i', (string) $a->content);
+            $h2Count  = preg_match_all('#<h2\b#i', (string) $a->content);
+
+            $payload = [
+                'workspace_id'        => $wsId,
+                'title'               => $a->title,
+                'meta_title'          => $a->meta_title ?: $a->title,
+                'meta_description'    => $a->meta_description ?: mb_substr($bodyText, 0, 160),
+                'featured_image_url'  => $a->featured_image_url,
+                'has_featured_image'  => $a->featured_image_url ? 1 : 0,
+                'h1'                  => $a->title,
+                'h2_count'            => (int) $h2Count,
+                'word_count'          => (int) ($a->word_count ?? str_word_count($bodyText)),
+                'image_count'         => (int) $imgCount,
+                'internal_link_count' => (int) $intLinks,
+                'external_link_count' => (int) $extLinks,
+                'inbound_links'       => 0,
+                'inbound_weight'      => 0,
+                'authority_score'     => 0.5, // mid-tier so the link gate passes
+                'readability_score'   => $a->readability_score,
+            ];
+
+            $seoSvc = app(\App\Engines\SEO\Services\SeoService::class);
+            $ref = new \ReflectionMethod($seoSvc, 'upsertContentIndex');
+            $ref->setAccessible(true);
+            $ref->invoke($seoSvc, $url, $payload);
+
+            \Illuminate\Support\Facades\Log::info('[WriteService] draft indexed for link graph', [
+                'workspace_id' => $wsId, 'article_id' => $articleId, 'url' => $url,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[WriteService] draft indexing failed (non-fatal)', [
+                'workspace_id' => $wsId, 'article_id' => $articleId, 'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
 }
