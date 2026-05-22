@@ -458,6 +458,80 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::get('/tasks/{id}', [TaskController::class, 'show']);
     Route::get('/tasks/{id}/status', [TaskController::class, 'status']);
     Route::get('/tasks/{id}/events', [TaskController::class, 'events']);
+
+    // 2026-05-22 URGENT FIX A — POST /api/tasks/approve was deleted in a
+    // prior refactor but core.js still calls it from the Strategy Room
+    // approval modal (auto-approve safe tasks, manual-approve risky tasks,
+    // dismiss). Without this route Laravel matched the URL to GET
+    // api/tasks/{id} with id="approve" and the POST returned 405.
+    Route::post('/tasks/approve', function (\Illuminate\Http\Request $r) {
+        $wsId = (int) $r->attributes->get('workspace_id');
+        $approved = (array) $r->input('approved', []);
+        $tasks = (array) $r->input('tasks', []);
+        $meetingId = $r->input('meeting_id');
+
+        if (empty($approved)) {
+            if ($meetingId) {
+                \Illuminate\Support\Facades\Log::info('[TasksApprove] dismissed', [
+                    'workspace_id' => $wsId, 'meeting_id' => $meetingId,
+                ]);
+            }
+            return response()->json(['saved' => 0, 'tasks_imported' => 0, 'previews_created' => 0]);
+        }
+
+        $svc = app(\App\Core\TaskSystem\TaskService::class);
+        $imported = 0;
+        $previews = 0;
+        $failedReasons = [];
+
+        $byId = [];
+        foreach ($tasks as $t) {
+            if (is_array($t) && isset($t['id'])) $byId[(string) $t['id']] = $t;
+        }
+
+        foreach ($approved as $tid) {
+            $spec = $byId[(string) $tid] ?? null;
+            if (!is_array($spec)) continue;
+            try {
+                $payload = [
+                    'agent' => $spec['agent'] ?? 'sarah',
+                    'engine' => $spec['engine'] ?? 'marketing',
+                    'action' => $spec['action'] ?? 'manual_task',
+                    'description' => $spec['description'] ?? 'Approved from Strategy Room',
+                    'priority' => $spec['priority'] ?? 'normal',
+                    'source' => 'meeting',
+                    'created_via' => 'strategy_room_approval',
+                    'requires_approval' => false,
+                    'payload' => array_filter([
+                        'description' => $spec['description'] ?? null,
+                        'from_meeting' => $meetingId,
+                        'approved_at' => now()->toIso8601String(),
+                    ], fn($v) => $v !== null),
+                ];
+                $newTask = $svc->create($wsId, $payload);
+                $imported++;
+                $previewActions = ['write_article', 'create_post', 'create_campaign'];
+                if (in_array($payload['action'], $previewActions, true)) {
+                    $previews++;
+                }
+            } catch (\Throwable $e) {
+                $failedReasons[] = mb_substr($e->getMessage(), 0, 100);
+                \Illuminate\Support\Facades\Log::warning('[TasksApprove] task create failed', [
+                    'workspace_id' => $wsId,
+                    'spec' => $spec,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'saved' => $imported,
+            'tasks_imported' => $imported,
+            'previews_created' => $previews,
+            'failed' => count($failedReasons),
+            'failure_reasons' => array_values(array_unique($failedReasons)),
+        ]);
+    });
     // CRITICAL-03 FIX: user-accessible cancel (admin cancel is separate at /admin/tasks/{id}/cancel)
     Route::post('/tasks/{id}/cancel', function (\Illuminate\Http\Request $r, $id) {
         $wsId = $r->attributes->get('workspace_id');

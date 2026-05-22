@@ -1457,9 +1457,13 @@ function drawCanvas(){
 
     var path=document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d',`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-    path.setAttribute('stroke',color);path.setAttribute('stroke-width','2');
+    // 2026-05-22 URGENT FIX C — collaboration lines were invisible on dense
+    // canvases. Bumped stroke + opacity, added drop-shadow filter for contrast.
+    path.setAttribute('stroke',color);path.setAttribute('stroke-width','2.5');
     path.setAttribute('stroke-dasharray','7,4');path.setAttribute('fill','none');
-    path.setAttribute('opacity','0.65');path.style.pointerEvents='stroke';path.style.cursor='pointer';
+    path.setAttribute('opacity','0.95');
+    path.style.filter='drop-shadow(0 0 4px rgba(0,0,0,0.55))';
+    path.style.pointerEvents='stroke';path.style.cursor='pointer';
     // Wave 85 — add .canvas-line class + .active when chain has ongoing/in_progress
     path.setAttribute('class', hasOngoing ? 'canvas-line active' : 'canvas-line');
     path.addEventListener('mouseenter',e=>showConnTooltip(e,a,b,tasks));

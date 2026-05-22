@@ -3099,7 +3099,7 @@ window.luSwipeToClose = luSwipeToClose;
                 <div class="cmd-iw">
                   <button class="upload-btn" onclick="triggerUpload()" title="Upload image or file for team analysis" style="width:28px;height:28px;background:var(--s3);border:1px solid var(--bd);border-radius:6px;color:var(--t3);font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all var(--tr);margin-right:4px" onmouseover="this.style.borderColor='var(--p)';this.style.color='var(--pu)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--t3)'"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M15 8l-6.5 6.5a3 3 0 01-4.24-4.24l7.07-7.07a2 2 0 012.83 2.83L7.07 13.07a1 1 0 01-1.41-1.41L11 6.3"/></svg></button>
                   <input type="file" id="file-input" style="display:none" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="handleFileUpload(event)">
-                  <textarea id="cmd-input" rows="1" placeholder="Ask the team… @james, @priya, @everyone · <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M15 8l-6.5 6.5a3 3 0 01-4.24-4.24l7.07-7.07a2 2 0 012.83 2.83L7.07 13.07a1 1 0 01-1.41-1.41L11 6.3"/></svg> attach files" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+                  <textarea id="cmd-input" rows="1" placeholder="Ask the team… @james, @priya, @everyone · 📎 attach files" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
                   <button class="cmd-send" onclick="sendMessage()">↑</button>
                 </div>
                 <div id="upload-preview" style="display:none;align-items:center;gap:7px;padding:5px 8px;background:var(--ps);border:1px solid rgba(108,92,231,.2);border-radius:6px;margin-top:5px;font-size:10px;color:var(--pu)"></div>
@@ -4739,7 +4739,7 @@ window.LU_CFG = {
   bu:      'https://staging.levelupgrowth.io',
   restUrl: '/api/',
   pluginUrl: '/app/assets/',
-  version: '5.7.3-btn-feedback',
+  version: '5.7.4-urgent-trio',
   engineUrls: {crm:'/app/js/crm.js?v=1.0.0-mobile-scroll',marketing:'/app/js/marketing.js?v=4.0.2-mobile-scroll',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.29.1-wave69',write:'/app/js/write.js',creative:'/app/js/creative.js',manualedit:'/app/js/manualedit.js',blog:'/app/js/blog.js?v=1.0.7-btn-feedback',studio:'/app/js/studio.js?v=4.0.1-scroll-fix','studio-video':'/app/js/studio-video.js',pipeline:'/app/js/pipeline.js?v=1.0.1-visibility-fix'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
