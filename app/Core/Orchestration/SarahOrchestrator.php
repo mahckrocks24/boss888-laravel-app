@@ -496,7 +496,8 @@ class SarahOrchestrator
     }
 
     /**
-     * Wave 90 — Router for result quality scoring.
+     * Wave 90 — Result quality scoring via runtime (canonical).
+     * On unreachable runtime, returns neutral 0.5.
      */
     private function assessQuality(array $result): float
     {
@@ -505,24 +506,11 @@ class SarahOrchestrator
             $score = $rt->orchestratorAssessQuality($result);
             if ($score !== null) return $score;
         }
-        return $this->assessQuality_local($result);
+        // Wave 90 Phase D — runtime canonical. Neutral score on failure
+        // (neither passes nor fails downstream quality gates).
+        return 0.5;
     }
 
-    private function assessQuality_local(array $result): float
-    {
-        if (!($result['success'] ?? false)) return 0.0;
-        $data = $result['data'] ?? [];
-
-        $score = 0.6; // Base score for successful execution
-
-        // Boost for rich results
-        if (count($data) > 3) $score += 0.1;
-        if (isset($data['score']) && $data['score'] > 70) $score += 0.1;
-        if (!empty($data['recommendations'] ?? $data['items'] ?? $data['results'] ?? [])) $score += 0.1;
-        if (($result['credits_used'] ?? 0) <= 2) $score += 0.1; // efficient execution
-
-        return min(1.0, round($score, 2));
-    }
 
     // ═══════════════════════════════════════════════════════════
     // 8. HANDLE FAILURES — retry, reassign, escalate
@@ -796,7 +784,9 @@ class SarahOrchestrator
     // ═══════════════════════════════════════════════════════════
 
     /**
-     * Wave 90 — Router for engine identification.
+     * Wave 90 — Engine identification via runtime (canonical).
+     * On unreachable runtime, returns ['seo', 'write'] (mirrors
+     * runtime's own empty-goal fallback).
      */
     private function identifyEngines(string $goal): array
     {
@@ -805,34 +795,11 @@ class SarahOrchestrator
             $result = $rt->orchestratorIdentifyEngines($goal);
             if ($result !== null) return $result;
         }
-        return $this->identifyEngines_local($goal);
+        // Wave 90 Phase D — runtime canonical. Safe default mirrors
+        // the runtime's own empty-goal fallback.
+        return ['seo', 'write'];
     }
 
-    private function identifyEngines_local(string $goal): array
-    {
-        $lower = strtolower($goal);
-        $engines = [];
-
-        $patterns = [
-            'seo' => '/\b(seo|keyword|ranking|search|organic|audit|backlink)\b/',
-            'write' => '/\b(write|article|blog|content|copy|draft)\b/',
-            'creative' => '/\b(image|video|creative|design|photo|visual)\b/',
-            'social' => '/\b(social|instagram|facebook|twitter|linkedin|tiktok|post)\b/',
-            'marketing' => '/\b(campaign|email|newsletter|automation|marketing|nurture)\b/',
-            'crm' => '/\b(lead|crm|contact|deal|follow.?up|pipeline)\b/',
-            'builder' => '/\b(website|landing.?page|site|page|builder)\b/',
-            'beforeafter' => '/\b(interior|room|before.?after|transform|renovation)\b/',
-        ];
-
-        foreach ($patterns as $engine => $pattern) {
-            if (preg_match($pattern, $lower)) $engines[] = $engine;
-        }
-
-        // Default to SEO + content if unclear
-        if (empty($engines)) $engines = ['seo', 'write'];
-
-        return $engines;
-    }
 
     private function selectAgents(int $wsId, array $engines, ?string $industry): array
     {
@@ -891,7 +858,8 @@ class SarahOrchestrator
     }
 
     /**
-     * Wave 90 — Router for approval-required decision.
+     * Wave 90 — Approval-required decision via runtime (canonical).
+     * On unreachable runtime, requires human approval (true).
      */
     private function requiresApproval(array $analysis): bool
     {
@@ -900,25 +868,11 @@ class SarahOrchestrator
             $needs = $rt->orchestratorRequiresApproval($analysis);
             if ($needs !== null) return $needs;
         }
-        return $this->requiresApproval_local($analysis);
+        // Wave 90 Phase D — runtime canonical. Require human approval
+        // when in doubt rather than autonomously executing.
+        return true;
     }
 
-    private function requiresApproval_local(array $analysis): bool
-    {
-        // External-facing actions always need approval
-        $externalEngines = ['social', 'marketing', 'builder'];
-        foreach ($analysis['engines_required'] as $engine) {
-            if (in_array($engine, $externalEngines)) return true;
-        }
-
-        // High-credit operations need approval
-        if ($analysis['credit_estimate'] > 10) return true;
-
-        // Complex plans need approval
-        if ($analysis['complexity'] === 'high') return true;
-
-        return false;
-    }
 
     private function estimateCredits(array $engines): int
     {
@@ -944,7 +898,8 @@ class SarahOrchestrator
     }
 
     /**
-     * Wave 90 — Router for task count heuristic.
+     * Wave 90 — Task count heuristic via runtime (canonical).
+     * On unreachable runtime, returns safe minimum 2.
      */
     private function estimateTaskCount(array $engines, string $goal): int
     {
@@ -953,13 +908,10 @@ class SarahOrchestrator
             $count = $rt->orchestratorEstimateTaskCount($engines, $goal);
             if ($count !== null) return $count;
         }
-        return $this->estimateTaskCount_local($engines, $goal);
+        // Wave 90 Phase D — runtime canonical. Safe minimum count.
+        return 2;
     }
 
-    private function estimateTaskCount_local(array $engines, string $goal): int
-    {
-        return max(1, count($engines) * 2);
-    }
 
     private function generatePlanTitle(string $goal): string
     {
