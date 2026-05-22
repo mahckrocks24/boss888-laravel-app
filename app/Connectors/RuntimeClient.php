@@ -789,6 +789,113 @@ class RuntimeClient
         }
     }
 
+        // ─── Wave 89 — SarahStrategicLayer migration ────────────────────
+    /**
+     * Wave 89 — Goal clarity scoring. Replaces assessGoalClarity.
+     * Returns {score, issues:[], clear:bool} or null.
+     */
+    public function strategicAssessGoalClarity(string $goal): ?array
+    {
+        try {
+            $r = $this->post('/internal/strategy/assess-goal-clarity', ['goal' => $goal]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            if (!isset($body['score'])) return null;
+            $body['score'] = (float) $body['score'];
+            return $body;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime strategicAssessGoalClarity failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 89 — Engine-set risk assessment. Replaces assessRisks.
+     */
+    public function strategicAssessRisks(array $engines, int $creditEstimate): ?array
+    {
+        try {
+            $r = $this->post('/internal/strategy/assess-risks', [
+                'engines' => $engines, 'credit_estimate' => $creditEstimate,
+            ]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['level']) ? $body : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime strategicAssessRisks failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 89 — ROI estimation from past data + count. Replaces estimateROI scoring.
+     * (DB query for pastData stays in Laravel; this just scores the inputs.)
+     */
+    public function strategicEstimateROI(array $pastDataConfidences): ?array
+    {
+        try {
+            $r = $this->post('/internal/strategy/estimate-roi', [
+                'past_data_confidences' => $pastDataConfidences,
+            ]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['estimated_effectiveness']) ? $body : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime strategicEstimateROI failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 89 — Plan-go decision. Replaces generateRecommendation.
+     */
+    public function strategicGenerateRecommendation(array $assessment): ?array
+    {
+        try {
+            $r = $this->post('/internal/strategy/generate-recommendation', ['assessment' => $assessment]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['decision']) ? $body : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime strategicGenerateRecommendation failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 89 — Per-task ROI score. Replaces calculateTaskROI.
+     */
+    public function strategicCalculateTaskROI(string $engine, string $action, bool $hasIndustryData = false): ?float
+    {
+        try {
+            $r = $this->post('/internal/strategy/calculate-task-roi', [
+                'engine' => $engine, 'action' => $action, 'has_industry_data' => $hasIndustryData,
+            ]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['roi']) ? (float) $body['roi'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime strategicCalculateTaskROI failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Wave 89 — Per-task risk score. Replaces calculateTaskRisk.
+     */
+    public function strategicCalculateTaskRisk(string $action): ?float
+    {
+        try {
+            $r = $this->post('/internal/strategy/calculate-task-risk', ['action' => $action]);
+            if (!$r->ok()) return null;
+            $body = $r->json();
+            return isset($body['risk']) ? (float) $body['risk'] : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('runtime strategicCalculateTaskRisk failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
         /**
      * Wave 81 — classify intent from a user chat message.
      * Replaces SeoAssistantService::detectIntent regex/phrase classifier.

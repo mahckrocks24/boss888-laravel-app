@@ -208,7 +208,20 @@ class SarahStrategicLayer
     // PRIVATE — Assessment Methods
     // ═══════════════════════════════════════════════════════════
 
+    /**
+     * Wave 89 — Router for goal-clarity assessment.
+     */
     private function assessGoalClarity(string $goal): array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->strategicAssessGoalClarity($goal);
+            if ($result !== null) return $result;
+        }
+        return $this->assessGoalClarity_local($goal);
+    }
+
+    private function assessGoalClarity_local(string $goal): array
     {
         $words = str_word_count($goal);
         $hasActionVerb = (bool) preg_match('/\b(create|build|launch|run|write|generate|improve|optimize|analyze|grow|increase)\b/i', $goal);
@@ -242,7 +255,22 @@ class SarahStrategicLayer
         ];
     }
 
+    /**
+     * Wave 89 — Router for engine-set risk assessment.
+     */
     private function assessRisks(array $analysis, ?Workspace $workspace): array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $engines = $analysis['engines_required'] ?? [];
+            $creditEst = (int) ($analysis['credit_estimate'] ?? 0);
+            $result = $rt->strategicAssessRisks($engines, $creditEst);
+            if ($result !== null) return $result;
+        }
+        return $this->assessRisks_local($analysis, $workspace);
+    }
+
+    private function assessRisks_local(array $analysis, ?Workspace $workspace): array
     {
         $risks = [];
         $riskLevel = 'low';
@@ -270,7 +298,27 @@ class SarahStrategicLayer
         return ['level' => $riskLevel, 'risks' => $risks, 'total_risks' => count($risks)];
     }
 
+    /**
+     * Wave 89 — Router for ROI estimation. DB query stays local;
+     * scoring goes through runtime.
+     */
     private function estimateROI(array $analysis, ?string $industry): array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $pastData = $this->globalKnowledge->query([
+                'category' => $analysis['engines_required'][0] ?? 'general',
+                'industry' => $industry,
+                'insight_type' => 'ab_result',
+            ], 5);
+            $confidences = collect($pastData)->pluck('confidence')->filter()->values()->all();
+            $result = $rt->strategicEstimateROI($confidences);
+            if ($result !== null) return $result;
+        }
+        return $this->estimateROI_local($analysis, $industry);
+    }
+
+    private function estimateROI_local(array $analysis, ?string $industry): array
     {
         // Check global knowledge for effectiveness data
         $pastData = $this->globalKnowledge->query([
@@ -369,7 +417,20 @@ class SarahStrategicLayer
         return $readiness;
     }
 
+    /**
+     * Wave 89 — Router for plan-go recommendation.
+     */
     private function generateRecommendation(array $assessment): array
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->strategicGenerateRecommendation($assessment);
+            if ($result !== null) return $result;
+        }
+        return $this->generateRecommendation_local($assessment);
+    }
+
+    private function generateRecommendation_local(array $assessment): array
     {
         $goScore = 0;
         $reasons = [];
@@ -407,7 +468,25 @@ class SarahStrategicLayer
         ];
     }
 
+    /**
+     * Wave 89 — Router for per-task ROI score.
+     */
     private function calculateTaskROI(array $task, ?string $industry): float
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $hasData = false;
+            if ($industry) {
+                $knowledge = $this->globalKnowledge->query(['category' => $task['engine'] ?? '', 'industry' => $industry], 3);
+                $hasData = count($knowledge) > 0;
+            }
+            $result = $rt->strategicCalculateTaskROI($task['engine'] ?? '', $task['action'] ?? '', $hasData);
+            if ($result !== null) return $result;
+        }
+        return $this->calculateTaskROI_local($task, $industry);
+    }
+
+    private function calculateTaskROI_local(array $task, ?string $industry): float
     {
         $engine = $task['engine'] ?? '';
         $action = $task['action'] ?? '';
@@ -432,7 +511,20 @@ class SarahStrategicLayer
         return min(1.0, $baseROI);
     }
 
+    /**
+     * Wave 89 — Router for per-task risk score.
+     */
     private function calculateTaskRisk(array $task): float
+    {
+        $rt = app(\App\Connectors\RuntimeClient::class);
+        if ($rt->isIntelligenceRuntimeEnabled()) {
+            $result = $rt->strategicCalculateTaskRisk($task['action'] ?? '');
+            if ($result !== null) return $result;
+        }
+        return $this->calculateTaskRisk_local($task);
+    }
+
+    private function calculateTaskRisk_local(array $task): float
     {
         $action = $task['action'] ?? '';
 
