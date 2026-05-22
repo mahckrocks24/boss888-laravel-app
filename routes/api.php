@@ -1705,10 +1705,29 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $_credits->debit($_wsId, 8, 'sarah/strategy_meeting');
             $r->validate(['goal' => 'required|string']);
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
-            return response()->json($engine->startMeeting(
+            $result = $engine->startMeeting(
                 $r->attributes->get('workspace_id'), $r->user()->id,
                 $r->input('goal'), $r->input('agents', [])
-            ));
+            );
+
+            // Wave 87 — auto-advance after opening returns. App->terminating
+            // runs after the response is sent so opening surfaces fast (~5s)
+            // while contributions/debate/synthesis run in background. UI keeps
+            // polling /meeting/{id}/status — sees phases progress + final tasks.
+            if (!empty($result['meeting_id']) && empty($result['error'])) {
+                $meetingId = (int) $result['meeting_id'];
+                app()->terminating(function () use ($meetingId, $engine) {
+                    try {
+                        $engine->autoAdvanceMeeting($meetingId);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::error('[Meeting auto-advance] failed', [
+                            'meeting_id' => $meetingId, 'error' => $e->getMessage(),
+                        ]);
+                    }
+                });
+            }
+
+            return response()->json($result);
         });
 
         Route::post('/meeting/{id}/advance', function ($id) {

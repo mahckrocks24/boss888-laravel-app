@@ -725,10 +725,22 @@ class AgentMeetingEngine
         // MIGRATED 2026-04-13 (Phase 0.17b): switched from aiRun fold-pattern
         // to chatJson. Agent persona is the system prompt; the meeting prompt
         // is the user prompt. The LLM returns {"contribution":"<under 100 words>"}.
+        // Wave 87 — inject this agent's tool catalog so contributions are
+        // grounded in REAL platform capabilities (no hallucinated actions).
+        $toolCatalog = '';
+        try {
+            $toolSchemaSvc = app(\App\Core\Orchestration\ToolSchemaService::class);
+            $toolCatalog = $toolSchemaSvc->getToolSchemaPrompt($agent->slug);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('agentThink toolCatalog skipped: ' . $e->getMessage());
+        }
+
         $systemPrompt = "You are {$agent->name}, {$agent->title}. "
                       . "You have a distinct personality and expertise. Speak naturally, as yourself. "
                       . "Never break character. Never say 'as an AI'. You are a marketing professional in a team meeting. "
                       . "IMPORTANT: Keep your response under 100 words. Be concise and relevant only. "
+                      . "Ground your suggestions in REAL platform capabilities — only propose actions that exist in the tool catalog below.\n\n"
+                      . ($toolCatalog !== '' ? "YOUR AVAILABLE TOOLS:\n{$toolCatalog}\n\n" : '')
                       . "Output ONLY a valid JSON object of the form {\"contribution\":\"<your meeting input>\"}. "
                       . "No markdown, no commentary outside the JSON.";
 
@@ -981,18 +993,69 @@ class AgentMeetingEngine
      * JSON object (not a bare array), so the LLM is instructed to return
      * {"tasks":[...]} and we extract the tasks array on this side.
      */
+    /**
+     * Wave 87 — Run all remaining meeting phases until completion.
+     * Idempotent: safe to call on a meeting in any phase. No-op if
+     * already complete. Used by /meeting/start terminating callback
+     * and by the StaleeMeeting cleanup command.
+     */
+    public function autoAdvanceMeeting(int $meetingId): array
+    {
+        $meeting = Meeting::find($meetingId);
+        if (!$meeting) return ['error' => 'meeting_not_found'];
+        if ($meeting->status !== 'active') return ['ok' => true, 'note' => 'already_complete'];
+
+        // Run advance up to 4 times — anchored on the MAX_MEETING_ROUNDS const.
+        $iterations = 0;
+        while ($iterations < self::MAX_MEETING_ROUNDS && $meeting->fresh()->status === 'active') {
+            $iterations++;
+            try {
+                $this->advanceMeeting($meetingId);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[autoAdvanceMeeting] iteration failed', [
+                    'meeting_id' => $meetingId, 'iteration' => $iterations, 'error' => $e->getMessage(),
+                ]);
+                break;
+            }
+        }
+        return ['ok' => true, 'iterations' => $iterations, 'final_status' => $meeting->fresh()->status];
+    }
+
     private function extractPlanFromSynthesis(int $meetingId, Workspace $workspace, string $goal, array $agents, string $synthesis): ?array
     {
         if (!$this->runtime->isConfigured()) return null;
 
+        // Wave 87 — enumerate ALL valid engine+action pairs from
+        // CapabilityMapService so the LLM picks real, callable actions.
+        $validActionsLine = '';
+        try {
+            $caps = app(\App\Core\EngineKernel\CapabilityMapService::class)->getAllCapabilities();
+            $byEngine = [];
+            foreach ($caps as $action => $def) {
+                $eng = $def['engine'] ?? 'unknown';
+                if (!isset($byEngine[$eng])) $byEngine[$eng] = [];
+                $byEngine[$eng][] = $action;
+            }
+            ksort($byEngine);
+            $lines = [];
+            foreach ($byEngine as $eng => $actions) {
+                sort($actions);
+                $lines[] = "  - {$eng}: " . implode(', ', $actions);
+            }
+            $validActionsLine = "VALID engine+action pairs (do NOT invent others):\n" . implode("\n", $lines) . "\n\n";
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('extractPlan validActions skipped: ' . $e->getMessage());
+        }
+
         $systemPrompt = "Extract actionable tasks from a marketing plan. "
                       . "Output ONLY a valid JSON object of the form {\"tasks\":[...]}. "
                       . "Each task in the tasks array must have: "
-                      . "{\"engine\":\"seo|write|creative|social|marketing|crm|builder\","
-                      . "\"action\":\"specific_action\",\"agent\":\"agent_slug\","
+                      . "{\"engine\":\"<from list>\","
+                      . "\"action\":\"<from list>\",\"agent\":\"agent_slug\","
                       . "\"description\":\"what to do\",\"priority\":\"high|medium|low\","
                       . "\"requires_approval\":true|false}. "
-                      . "Available agents: " . implode(', ', $agents) . ". "
+                      . "Available agents: " . implode(', ', $agents) . ".\n\n"
+                      . $validActionsLine
                       . "No markdown, no commentary outside the JSON.";
 
         $userPrompt = "PLAN TO EXTRACT:\n{$synthesis}";
