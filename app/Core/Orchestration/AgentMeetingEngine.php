@@ -208,6 +208,13 @@ class AgentMeetingEngine
             'complete' => $this->completeMeeting($meeting),
         };
 
+        // Wave 87c — RELOAD meta from DB to pick up any in-phase writes
+        // (e.g. runSynthesis writes the plan into meta). Without this
+        // reload, we would overwrite the plan with the stale meta from
+        // the top of this method.
+        $meeting = Meeting::find($meeting->id);
+        $meta = json_decode($meeting->metadata_json ?? '{}', true) ?: [];
+
         // Update meeting phase
         $meta['phase'] = $nextPhase;
         $meta['rounds_completed'] = ($meta['rounds_completed'] ?? 0) + 1;
@@ -360,7 +367,7 @@ class AgentMeetingEngine
 
         return [
             'meeting_id' => $meetingId,
-            'status' => 'completed',
+            'status' => 'closed',
             'ended_by' => 'user',
             'tokens_used' => $meta['tokens_used'] ?? 0,
         ];
@@ -643,7 +650,7 @@ class AgentMeetingEngine
         }
 
         $meeting->update([
-            'status'             => 'completed',
+            'status'             => 'closed',
             'total_credits_used' => $creditCost,
         ]);
 
