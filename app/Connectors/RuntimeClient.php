@@ -782,7 +782,7 @@ class RuntimeClient
             ]);
             if (! $r->ok()) return null;
             $body = $r->json();
-            return isset($body['score']) ? $body : null;
+            if (!isset($body["score"])) return null; $body["score"] = (float) $body["score"]; return $body;
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::debug('runtime computeConfidenceScore failed: ' . $e->getMessage());
             return null;

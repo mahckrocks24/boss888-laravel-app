@@ -35,9 +35,9 @@ class ConfidenceScorer
     ];
 
     /**
-     * Wave 88 — Public router. Routes to runtime when
-     * INTELLIGENCE_VIA_RUNTIME=true; falls back to _local on failure.
-     * Signature preserved.
+     * Wave 88 — Public router. Routes to runtime where the governance
+     * scoring algorithm now lives. On failure, returns null (no local
+     * fallback — runtime is canonical).
      */
     public function score(string $engine, string $action, array $payload, int $wsId): array
     {
@@ -56,67 +56,13 @@ class ConfidenceScorer
             $result = $rt->computeConfidenceScore($engine, $action, $payload, $wsId, $completed);
             if ($result !== null) return $result;
         }
-        return $this->score_local($engine, $action, $payload, $wsId);
-    }
-
-    /**
-     * Wave 88 — original heuristic algorithm. Kept as _local fallback
-     * until Phase D cleanup. Body unchanged from pre-Wave 88.
-     */
-    public function score_local(string $engine, string $action, array $payload, int $wsId): array
-    {
-        $score = 0.70;
-        $reasons = [];
-
-        // Action class
-        if (in_array($action, self::READ_ONLY, true)) {
-            $score = 0.95;
-            $reasons[] = 'read-only';
-        } elseif (in_array($action, self::EXTERNAL_WRITES, true)) {
-            $score = 0.40;
-            $reasons[] = 'external-facing write';
-        }
-
-        // Workspace history with this engine — proven track record nudges up.
-        try {
-            $completed = DB::table('tasks')
-                ->where('workspace_id', $wsId)
-                ->where('engine', $engine)
-                ->where('status', 'completed')
-                ->count();
-            if ($completed >= 25) {
-                $score = min(1.0, $score + 0.10);
-                $reasons[] = "engine has {$completed} completed runs in this workspace";
-            } elseif ($completed >= 10) {
-                $score = min(1.0, $score + 0.05);
-                $reasons[] = "engine has {$completed} completed runs in this workspace";
-            }
-        } catch (\Throwable $e) {
-            // Non-critical — score without history bump.
-        }
-
-        // Bulk hint nudges down.
-        if (!empty($payload['bulk']) || (isset($payload['count']) && (int)$payload['count'] > 10)) {
-            $score = max(0.0, $score - 0.20);
-            $reasons[] = 'bulk operation';
-        }
-
-        // External recipient list nudges down further (email blast, mass post).
-        if (!empty($payload['recipients']) && is_array($payload['recipients']) && count($payload['recipients']) > 50) {
-            $score = max(0.0, $score - 0.15);
-            $reasons[] = 'large recipient list (' . count($payload['recipients']) . ')';
-        }
-
-        $approval = match (true) {
-            $score >= 0.90 => 'auto',
-            $score >= 0.60 => 'review',
-            default        => 'protected',
-        };
-
+        // Wave 88 Phase D — runtime is canonical. On unreachable runtime,
+        // return a safe-permissive default (review tier, score 0.70).
         return [
-            'score'         => round($score, 3),
-            'reason'        => implode('; ', $reasons) ?: 'baseline',
-            'approval_mode' => $approval,
+            score         => 0.70,
+            reason        => runtime_unavailable,
+            approval_mode => review,
         ];
     }
+
 }
