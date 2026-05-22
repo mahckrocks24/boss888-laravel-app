@@ -168,8 +168,8 @@ function _blRenderEditor(){
     +'<button onclick="_blBackToDash()" style="'+_blBtnStyle('secondary')+';padding:6px 12px;font-size:12px">\u2190 Back</button>'
     +'<div style="flex:1;font-size:14px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_blE(a.title||'Untitled')+'</div>'
     +'<span id="bl-dirty" style="font-size:11px;color:var(--am);display:none">Unsaved changes</span>'
-    +'<button onclick="_blSaveDraft()" style="'+_blBtnStyle('secondary')+'">Save Draft</button>'
-    +'<button onclick="_blPublish()" style="'+_blBtnStyle('primary')+'">Publish \u2192</button>'
+    +'<button id="bl-save-btn" onclick="_blSaveDraft()" style="'+_blBtnStyle('secondary')+'">Save Draft</button>'
+    +'<button id="bl-publish-btn" onclick="_blPublish()" style="'+_blBtnStyle('primary')+'">Publish \u2192</button>'
   +'</div>';
 
   // Editor area (left) + settings sidebar (right)
@@ -395,11 +395,51 @@ function _blToast(msg, type){
   try { console[type === 'error' ? 'error' : 'log']('[Blog] ' + msg); } catch(e){}
 }
 
+
+// 2026-05-22 FIX 4b — visual click feedback for publish/save buttons.
+// Old buttons had no :active state, no disabled state, no spinner. Users
+// clicked once, saw nothing, clicked 3-4 more times trying to provoke a
+// reaction. _blBusyBtn / _blResetBtn give immediate visual feedback the
+// instant the click is registered.
+function _blBusyBtn(id, busyLabel) {
+  var b = document.getElementById(id);
+  if (!b) return null;
+  if (!b.dataset.origHtml) b.dataset.origHtml = b.innerHTML;
+  b.disabled = true;
+  b.style.opacity = '0.6';
+  b.style.cursor = 'wait';
+  b.innerHTML = '<span style="display:inline-block;animation:spin 0.9s linear infinite;margin-right:6px">\u27F3</span>' + busyLabel;
+  return b;
+}
+function _blResetBtn(id) {
+  var b = document.getElementById(id);
+  if (!b) return;
+  b.disabled = false;
+  b.style.opacity = '';
+  b.style.cursor = '';
+  if (b.dataset.origHtml) { b.innerHTML = b.dataset.origHtml; delete b.dataset.origHtml; }
+}
+
+// Inject :active + :disabled CSS once, so clicks have visual feedback
+// even on buttons we don't manually handle.
+(function _blInjectBtnCss(){
+  if (document.getElementById('bl-btn-css')) return;
+  var s = document.createElement('style');
+  s.id = 'bl-btn-css';
+  s.textContent =
+    'button:active:not(:disabled){transform:scale(.97);filter:brightness(.92)}' +
+    'button:disabled{cursor:not-allowed!important;opacity:.6!important}' +
+    '@keyframes spin{to{transform:rotate(360deg)}}';
+  document.head.appendChild(s);
+})();
+
 window._blSaveDraft=async function(){
   if(!_bl.currentItem||_bl.saving)return;
   // 2026-05-22 FIX 4 — move saving=true + data gather INSIDE try/finally
   // so a TipTap getHTML() throw can't leave saving stuck at true.
+  // FIX 4b — give the button immediate visual feedback.
   _bl.saving=true;
+  _blBusyBtn('bl-save-btn','Saving...');
   try{
     var data=_blGatherEditorData();
     data.status='draft';
@@ -412,6 +452,7 @@ window._blSaveDraft=async function(){
     _blToast('Save failed: '+(e&&e.message?e.message:e),'error');
   } finally {
     _bl.saving=false;
+    _blResetBtn('bl-save-btn');
   }
 };
 
@@ -422,7 +463,11 @@ window._blPublish=async function(){
   // leave saving stuck and the button silently dead on every click after.
   // Also use _blToast so feedback shows even when core.js showToast hasn't
   // loaded yet.
+  // FIX 4b — give the button immediate visual feedback (disabled + spinner +
+  // label change) so the user doesn't click 4 more times thinking nothing
+  // happened.
   _bl.saving=true;
+  _blBusyBtn('bl-publish-btn','Publishing...');
   try{
     var data=_blGatherEditorData();
     await _blApi('PUT','/articles/'+_bl.currentItem.id,data);
@@ -451,6 +496,7 @@ window._blPublish=async function(){
     _blToast('Publish failed: '+(e&&e.message?e.message:e),'error');
   } finally {
     _bl.saving=false;
+    _blResetBtn('bl-publish-btn');
   }
 };
 
