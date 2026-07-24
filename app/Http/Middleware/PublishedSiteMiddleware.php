@@ -55,6 +55,54 @@ class PublishedSiteMiddleware
             return $next($request);
         }
 
+        // 2026-05-23 FIX 40 — auto-redirect tenant subdomain requests
+        // to the verified custom_domain so search engines see exactly
+        // ONE canonical URL per page. Without this we ran two public
+        // domains side-by-side (chef-red.levelupgrowth.io AND
+        // chefredraymundo.com) serving identical content with a
+        // canonical tag pointing at the custom domain — Google would
+        // eventually dedupe but the window is weeks and bookmarks /
+        // backlinks landing on the subdomain bypass the brand domain.
+        // A 301 forces the merge immediately and protects link equity.
+        //
+        // Applies AUTOMATICALLY to every workspace where:
+        //   websites.custom_domain IS NOT NULL
+        //   websites.domain_verified = true
+        //   websites.status = 'published'
+        //
+        // Admin tooling paths (/api, /admin, /app) are NEVER redirected
+        // so the SEO dashboard and login flows stay reachable via the
+        // subdomain (useful when a custom domain has a transient DNS
+        // problem and the user needs to reach the dashboard).
+        //
+        // Slug-restricted exemption: the IndexNow key file (a 32-char
+        // hex.txt) is hosted per origin and MUST remain reachable on
+        // both hosts during the redirect transition so search engines
+        // can verify ownership.
+        if (!$isCustomDomain) {
+            $reqPath = trim($request->getPathInfo(), '/');
+            $isAdminPath = str_starts_with($reqPath, 'api/')
+                        || str_starts_with($reqPath, 'admin/')
+                        || str_starts_with($reqPath, 'app/');
+            $isIndexNowKey = (bool) preg_match('/^[A-Fa-f0-9]{8,128}\.txt$/', $reqPath);
+            if (!$isAdminPath && !$isIndexNowKey) {
+                $w = DB::table('websites')
+                    ->where('subdomain', $subdomain . '.levelupgrowth.io')
+                    ->where('status', 'published')
+                    ->whereNull('deleted_at')
+                    ->first(['custom_domain', 'domain_verified']);
+                if ($w
+                    && !empty($w->custom_domain)
+                    && (bool) ($w->domain_verified ?? false)) {
+                    $cleanHost = strtolower(trim((string) $w->custom_domain, ' /'));
+                    $target = 'https://' . $cleanHost . $request->getRequestUri();
+                    return redirect($target, 301)
+                        ->header('Cache-Control', 'public, max-age=86400')
+                        ->header('X-Redirect-Reason', 'canonical-custom-domain');
+                }
+            }
+        }
+
         // Extract slug from path
         $path = trim($request->getPathInfo(), '/');
         $slug = $path ?: 'home';
@@ -68,6 +116,14 @@ class PublishedSiteMiddleware
         }
         if ($slug === 'robots.txt') {
             return $this->serveRobots($subdomain);
+        }
+
+        // 2026-05-23 FIX 25 — IndexNow key file. Search engines (Bing,
+        // Yandex, DuckDuckGo) verify ownership by GETting {host}/{key}.txt
+        // and expect the response body to equal the key. Without this we
+        // cannot submit URLs to IndexNow for platform-hosted tenants.
+        if (preg_match('/^([A-Fa-f0-9]{8,128})\.txt$/', $slug, $keyMatch)) {
+            return $this->serveIndexNowKey($subdomain, $keyMatch[1]);
         }
 
         // Wave 46 — Answer Engine Optimization: serve llms.txt per tenant.
@@ -166,7 +222,7 @@ class PublishedSiteMiddleware
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
-                        ->header('Cache-Control', 'public, max-age=300, s-maxage=300')
+                        ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
                         ->header('X-Served-By', 'static-template');
                 }
             }
@@ -182,11 +238,19 @@ class PublishedSiteMiddleware
                     (int) $website->id,
                     $articleSlug
                 );
+                // No static article template (builder/themed sites have none) →
+                // render the post through BuilderRenderer so it keeps the
+                // tenant's brand instead of falling through to the platform's
+                // LevelUp blog-post template.
+                if ($dynHtml === null) {
+                    $dynHtml = app(\App\Engines\Builder\Services\BuilderRenderer::class)
+                        ->renderArticle($subdomain, $articleSlug);
+                }
                 if ($dynHtml !== null) {
                     $dynHtml = $this->injectChatbotWidget($dynHtml, (int) ($website->workspace_id ?? 0), (int) $website->id);
                     return response($dynHtml, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
-                        ->header('Cache-Control', 'public, max-age=300, s-maxage=300')
+                        ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
                         ->header('X-Served-By', 'dynamic-article');
                 }
             }
@@ -213,7 +277,7 @@ class PublishedSiteMiddleware
 
         return response($html, 200)
             ->header('Content-Type', 'text/html; charset=utf-8')
-            ->header('Cache-Control', 'public, max-age=300, s-maxage=300');
+            ->header('Cache-Control', 'public, max-age=60, s-maxage=60');
     }
 
     /**
@@ -753,7 +817,10 @@ class PublishedSiteMiddleware
     private function injectChatbotWidget(string $html, int $workspaceId, int $websiteId): string
     {
         if ($workspaceId <= 0) return $html;
-        if (str_contains($html, 'chatbot.js?ws=')) return $html; // already injected
+        // Already has a chatbot widget? Don't add a second. Covers BOTH the
+        // dynamic loader (chatbot.js?ws=) and the static/baked widget
+        // (chatbot-widget.js) so static-served sites don't double up.
+        if (str_contains($html, 'chatbot.js?ws=') || str_contains($html, 'chatbot-widget.js')) return $html;
 
         // Cheap workspace-scoped lookup, cached 60s so we don't hit the DB
         // on every page render.
@@ -829,20 +896,50 @@ HTML;
                 ->header('Content-Type', 'application/xml');
         }
 
+        // 2026-05-23 FIX 26 — use the site's canonical public host. If the
+        // workspace has a custom_domain configured, the sitemap should
+        // advertise that as the canonical URL (matches seo_content_index
+        // entries written by the publish flow, and is the host the user
+        // actually wants Google to associate with their content). Falls
+        // back to the platform subdomain if no custom domain set.
+        $canonHost = !empty($website->custom_domain) ? strtolower(trim($website->custom_domain, ' /')) : $fullSub;
+
         $pages = DB::table('pages')
             ->where('website_id', $website->id)
             ->where('status', 'published')
             ->orderBy('position')
             ->get(['slug', 'updated_at']);
 
+        // 2026-05-23 FIX 25 — include published articles. Previously only the
+        // pages table was queried, so blog posts (which live in articles)
+        // never appeared in the per-tenant sitemap and were invisible to
+        // search engines. Chef-red had 32 articles in the DB but the sitemap
+        // listed only "/". Now we emit /blog/{slug} entries for every
+        // published article in this workspace.
+        $articles = DB::table('articles')
+            ->where('workspace_id', $website->workspace_id)
+            ->where('status', 'published')
+            ->whereNotNull('slug')
+            ->orderByDesc('published_at')
+            ->get(['slug', 'updated_at', 'published_at']);
+
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
         foreach ($pages as $page) {
-            $loc = "https://{$fullSub}/" . ($page->slug === 'home' ? '' : $page->slug);
+            $loc = "https://{$canonHost}/" . ($page->slug === 'home' ? '' : $page->slug);
             $lastmod = $page->updated_at ? date('Y-m-d', strtotime($page->updated_at)) : date('Y-m-d');
             $priority = $page->slug === 'home' ? '1.0' : '0.8';
             $xml .= "  <url>\n    <loc>{$loc}</loc>\n    <lastmod>{$lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>{$priority}</priority>\n  </url>\n";
+        }
+
+        foreach ($articles as $article) {
+            $slug = trim((string) $article->slug, '/');
+            if ($slug === '') continue;
+            $loc = "https://{$canonHost}/blog/" . $slug;
+            $ref = $article->published_at ?: $article->updated_at;
+            $lastmod = $ref ? date('Y-m-d', strtotime($ref)) : date('Y-m-d');
+            $xml .= "  <url>\n    <loc>{$loc}</loc>\n    <lastmod>{$lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n";
         }
 
         $xml .= '</urlset>';
@@ -853,20 +950,58 @@ HTML;
     }
 
     /**
+     * 2026-05-23 FIX 25 — serve the IndexNow key file at {host}/{key}.txt.
+     * IndexNow ownership verification: the key file body must equal the key.
+     * Reads the key from seo_settings.indexnow_key for this workspace; 404
+     * if no key configured OR the requested key doesn't match.
+     */
+    private function serveIndexNowKey(string $subdomain, string $requestedKey): \Illuminate\Http\Response
+    {
+        $fullSub = $subdomain . '.levelupgrowth.io';
+        $website = DB::table('websites')
+            ->where('subdomain', $fullSub)
+            ->where('status', 'published')
+            ->first(['workspace_id']);
+        if (!$website) {
+            return response('Not Found', 404)->header('Content-Type', 'text/plain');
+        }
+        $storedKey = DB::table('seo_settings')
+            ->where('workspace_id', $website->workspace_id)
+            ->where('key', 'indexnow_key')
+            ->value('value');
+        if (!$storedKey || !hash_equals((string) $storedKey, $requestedKey)) {
+            return response('Not Found', 404)->header('Content-Type', 'text/plain');
+        }
+        return response($storedKey, 200)
+            ->header('Content-Type', 'text/plain; charset=utf-8')
+            ->header('Cache-Control', 'public, max-age=86400');
+    }
+
+    /**
      * Serve robots.txt for a published website.
      */
     private function serveRobots(string $subdomain): \Illuminate\Http\Response
     {
         $fullSub = $subdomain . '.levelupgrowth.io';
-        $sitemapUrl = "https://{$fullSub}/sitemap.xml";
+
+        // 2026-06-11 — robots.txt must advertise the sitemap on the site's
+        // CANONICAL public host (the custom domain if set), NOT the internal
+        // *.levelupgrowth.io subdomain. Google IGNORES a Sitemap: directive on
+        // a different host than the site being crawled, so chef-red's
+        // chefredraymundo.com/robots.txt pointing at chef-red.levelupgrowth.io
+        // meant Google never used the sitemap. Mirrors FIX 26 in serveSitemap().
+        $website = \Illuminate\Support\Facades\DB::table('websites')
+            ->where('subdomain', $fullSub)
+            ->where('status', 'published')
+            ->first(['workspace_id', 'custom_domain']);
+        $canonHost = (!empty($website) && !empty($website->custom_domain))
+            ? strtolower(trim($website->custom_domain, ' /'))
+            : $fullSub;
+        $sitemapUrl = "https://{$canonHost}/sitemap.xml";
 
         // Wave 46 — per-tenant AI-crawler directives via aeo_settings.
         // Falls back to permissive default if workspace lookup fails.
         try {
-            $website = \Illuminate\Support\Facades\DB::table('websites')
-                ->where('subdomain', $fullSub)
-                ->where('status', 'published')
-                ->first(['workspace_id']);
             if ($website) {
                 $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
                 $content = $svc->renderRobotsTxt((int) $website->workspace_id, $sitemapUrl);

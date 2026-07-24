@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Motion Reel — SaaS / Tech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#04050F;--blue:#2563EB;--primary:#60A5FA;--indigo:#4F46E5;--white:#F8FAFF;--muted:rgba(248,250,255,.45);--accent:#10B981;--fh:'Unbounded',sans-serif;--fb:'Inter',sans-serif;--w:1080px;--h:1920px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#02030A}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:#020209}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.46);display:block;width:calc(var(--w)*.46);height:calc(var(--h)*.46)}}
+@media(max-width:780px){.sw{transform:scale(.33);display:block;width:calc(var(--w)*.33);height:calc(var(--h)*.33)}}
+@media(max-width:520px){.sw{transform:scale(.24);display:block;width:calc(var(--w)*.24);height:calc(var(--h)*.24)}}
+.reel{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--fb)}
+.layer-bg{position:absolute;inset:0;z-index:1;opacity:0;animation:fade-in 1s ease 0s both}
+.bg-base{position:absolute;inset:0;background:linear-gradient(160deg,#070A1C 0%,var(--bg) 55%,#060812 100%)}
+.bg-b{position:absolute;width:800px;height:700px;border-radius:50%;background:radial-gradient(ellipse,rgba(37,99,235,.20) 0%,transparent 65%);top:-120px;right:-80px;animation:float-slow 14s ease-in-out 1s infinite alternate}
+.bg-i{position:absolute;width:600px;height:500px;border-radius:50%;background:radial-gradient(ellipse,rgba(79,70,229,.14) 0%,transparent 65%);bottom:300px;left:-60px;animation:float-slow 10s ease-in-out 3s infinite alternate-reverse}
+.bg-grid{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(96,165,250,.05) 1px,transparent 1px);background-size:44px 44px}
+.bg-grain{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:160px;opacity:.022;mix-blend-mode:screen}
+.layer-shape{position:absolute;inset:0;z-index:2}
+.shape-top{position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--indigo),var(--primary));transform:scaleX(0);transform-origin:left;animation:scale-x 1s cubic-bezier(.16,1,.3,1) 0s both;box-shadow:0 0 16px rgba(37,99,235,.50)}
+.shape-scan{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(96,165,250,.60),transparent);top:-1px;animation:scan-down 2s cubic-bezier(.65,0,.35,1) .2s both}
+/* Product UI mockup frame */
+.ui-frame{position:absolute;z-index:3;top:300px;left:72px;right:72px;height:680px;background:rgba(255,255,255,.04);border:1px solid rgba(96,165,250,.18);border-radius:16px;overflow:hidden;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;animation:glass-materialise 1.0s cubic-bezier(.16,1,.3,1) .8s both}
+.ui-header{height:52px;background:rgba(37,99,235,.10);border-bottom:1px solid rgba(96,165,250,.12);display:flex;align-items:center;gap:10px;padding:0 24px}
+.ui-dot{width:12px;height:12px;border-radius:50%}
+.ui-dot-r{background:#FF5F57}.ui-dot-y{background:#FEBC2E}.ui-dot-g{background:#28C840}
+.ui-body{padding:28px 28px;display:flex;flex-direction:column;gap:16px}
+.ui-row{height:18px;background:rgba(255,255,255,.08);border-radius:4px}
+.ui-row-short{width:60%}
+.ui-row-mid{width:80%}
+.ui-card-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+.ui-card{height:120px;background:rgba(37,99,235,.10);border:1px solid rgba(96,165,250,.14);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.ui-card-val{font-family:var(--fh);font-size:28px;font-weight:700;color:var(--primary)}
+.ui-card-label{font-family:var(--fb);font-size:11px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+/* Live badge */
+.live-badge{position:absolute;z-index:5;top:312px;right:84px;display:flex;align-items:center;gap:8px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.28);padding:8px 18px;border-radius:20px;font-family:var(--fb);font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);opacity:0;animation:bounce-in .5s cubic-bezier(.34,1.56,.64,1) 1.2s both}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:live-pulse 1.5s ease-in-out 2s infinite}
+.layer-brand{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:80px 80px}
+.brand-logo{display:flex;align-items:center;gap:14px;opacity:0;animation:slide-down .7s cubic-bezier(.16,1,.3,1) .9s both}
+.brand-mark{width:44px;height:44px;background:linear-gradient(135deg,var(--blue),var(--indigo));border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-mark::after{content:'';width:14px;height:14px;border-radius:3px;background:rgba(255,255,255,.90)}
+.brand-name{font-family:var(--fh);font-size:18px;font-weight:700;letter-spacing:.08em;color:var(--white)}
+.brand-tag{font-family:var(--fb);font-size:20px;font-weight:500;letter-spacing:.20em;text-transform:uppercase;color:var(--primary);border:1px solid rgba(96,165,250,.25);padding:9px 20px;border-radius:4px;opacity:0;animation:slide-down .6s cubic-bezier(.16,1,.3,1) 1.05s both}
+.layer-text{position:absolute;z-index:6;top:1060px;left:80px;right:80px}
+.eyebrow{font-family:var(--fb);font-size:21px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--primary);display:flex;align-items:center;gap:12px;margin-bottom:36px;opacity:0;animation:wipe-right .7s cubic-bezier(.16,1,.3,1) 1.8s both}
+.eyebrow::before{content:'';width:22px;height:2px;background:var(--primary);flex-shrink:0}
+.headline{display:flex;flex-direction:column;gap:0;margin-bottom:40px}
+.hl{font-family:var(--fh);font-size:96px;font-weight:900;line-height:.88;letter-spacing:-.04em;color:var(--white);opacity:0;display:block}
+.hl-blue{background:linear-gradient(90deg,var(--primary),var(--indigo));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hl-1{animation:slam-up .55s cubic-bezier(.16,1,.3,1) 1.9s both}
+.hl-2{animation:slam-up .55s cubic-bezier(.16,1,.3,1) 2.2s both}
+.hl-3{animation:slam-up .55s cubic-bezier(.16,1,.3,1) 2.5s both}
+.rule{width:0;height:2px;background:linear-gradient(90deg,var(--blue),rgba(96,165,250,.25));margin-bottom:40px;border-radius:2px;animation:line-draw .8s cubic-bezier(.16,1,.3,1) 3.0s both}
+.subtext{font-family:var(--fb);font-size:26px;font-weight:300;line-height:1.68;color:var(--muted);margin-bottom:48px;opacity:0;transform:translateY(18px);animation:fade-rise .9s cubic-bezier(.16,1,.3,1) 3.4s both}
+.features{display:flex;flex-direction:column;gap:14px;margin-bottom:52px}
+.feat{display:flex;align-items:center;gap:16px;font-family:var(--fb);font-size:22px;font-weight:400;color:var(--white);opacity:0;transform:translateX(-16px);animation:slide-right .5s cubic-bezier(.34,1.56,.64,1) var(--d) both}
+.feat-check{width:36px;height:36px;border-radius:50%;background:rgba(37,99,235,.15);border:1px solid rgba(96,165,250,.25);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.feat:nth-child(1){--d:4.0s}.feat:nth-child(2){--d:4.2s}.feat:nth-child(3){--d:4.4s}
+.cta-wrap{opacity:0;animation:bounce-in .8s cubic-bezier(.34,1.56,.64,1) 5.0s both}
+.cta{display:flex;align-items:center;justify-content:center;gap:16px;font-family:var(--fh);font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--white);background:linear-gradient(135deg,var(--blue),var(--indigo));padding:36px 80px;text-decoration:none;width:100%;border-radius:8px;box-shadow:0 16px 48px rgba(37,99,235,.35);animation:cta-glow 2.5s ease-in-out 6s infinite}
+.cta-arrow{display:inline-block;animation:arrow-nudge 2.5s ease-in-out 6s infinite}
+.layer-footer{position:absolute;z-index:9;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:28px 80px 60px;border-top:1px solid rgba(96,165,250,.08);opacity:0;transform:translateY(16px);animation:fade-rise .7s ease 5.6s both}
+.footer-brand{font-family:var(--fh);font-size:16px;font-weight:700;letter-spacing:.10em;color:var(--white)}
+.footer-url{font-family:var(--fb);font-size:14px;font-weight:300;letter-spacing:.12em;color:var(--muted)}
+.footer-handle{font-family:var(--fb);font-size:21px;font-weight:500;letter-spacing:.10em;color:var(--primary)}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes fade-rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slide-down{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slide-right{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes bounce-in{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+@keyframes glass-materialise{from{opacity:0;transform:scale(.94) translateY(20px);filter:blur(6px)}to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}}
+@keyframes slam-up{0%{opacity:0;transform:translateY(70px);filter:blur(4px)}70%{filter:blur(0)}100%{opacity:1;transform:translateY(0)}}
+@keyframes wipe-right{from{opacity:0;transform:translateX(-20px);clip-path:inset(0 100% 0 0)}to{opacity:1;transform:translateX(0);clip-path:inset(0 0% 0 0)}}
+@keyframes line-draw{from{width:0;opacity:0}to{width:100%;opacity:1}}
+@keyframes scale-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes scan-down{0%{top:-1px;opacity:0}8%{opacity:1}92%{opacity:.7}100%{top:1921px;opacity:0}}
+@keyframes cta-glow{0%,100%{box-shadow:0 16px 48px rgba(37,99,235,.35)}50%{box-shadow:0 24px 64px rgba(37,99,235,.60)}}
+@keyframes arrow-nudge{0%,80%,100%{transform:translateX(0)}90%{transform:translateX(8px)}}
+@keyframes live-pulse{0%,100%{box-shadow:0 0 6px rgba(16,185,129,.80)}50%{box-shadow:0 0 14px rgba(16,185,129,1)}}
+@keyframes float-slow{from{transform:translate(0,0)}to{transform:translate(18px,-14px)}}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="sw"><div class="reel">
+  <div class="layer-bg"><div class="bg-base"></div><div class="bg-b"></div><div class="bg-i"></div><div class="bg-grid"></div><div class="bg-grain"></div></div>
+  <div class="layer-shape"><div class="shape-top"></div><div class="shape-scan"></div></div>
+  <!-- Product UI mockup -->
+  <div class="ui-frame">
+    <div class="ui-header"><div class="ui-dot ui-dot-r"></div><div class="ui-dot ui-dot-y"></div><div class="ui-dot ui-dot-g"></div></div>
+    <div class="ui-body">
+      <div class="ui-row ui-row-short"></div>
+      <div class="ui-row ui-row-mid"></div>
+      <div class="ui-card-row">
+        <div class="ui-card"><span class="ui-card-val">$124K</span><span class="ui-card-label">Revenue</span></div>
+        <div class="ui-card"><span class="ui-card-val" style="color:#10B981">+34%</span><span class="ui-card-label">Growth</span></div>
+      </div>
+      <div class="ui-row" style="margin-top:8px"></div>
+      <div class="ui-row ui-row-short"></div>
+    </div>
+  </div>
+  <div class="live-badge"><span class="live-dot"></span>Live Dashboard</div>
+  <div class="layer-brand">
+    <div class="brand-logo"><div class="brand-mark"></div><span class="brand-name" data-field="brand_name">{{brand_name}}</span></div>
+    <span class="brand-tag" data-field="brand_tag">{{brand_tag}}</span>
+  </div>
+  <div class="layer-text">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <div class="headline">
+      <span class="hl hl-1" data-field="headline_1">{{headline_1}}</span>
+      <span class="hl hl-2" data-field="headline_2">{{headline_2}}</span>
+      <span class="hl hl-3" data-field="headline_3">{{headline_3}}</span>
+    </div>
+    <div class="rule"></div>
+    <p class="subtext" data-field="subheading">{{subheading}}</p>
+    <div class="features">
+      <div class="feat"><div class="feat-check" data-field="check_1">{{check_1}}</div>AI Strategy Engine built-in</div>
+      <div class="feat"><div class="feat-check" data-field="check_2">{{check_2}}</div>No-code automation flows</div>
+      <div class="feat"><div class="feat-check" data-field="check_3">{{check_3}}</div>Real-time analytics dashboard</div>
+    </div>
+    <div class="cta-wrap"><a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a></div>
+  </div>
+  <div class="layer-footer"><span class="footer-brand" data-field="footer_brand">{{footer_brand}}</span><span class="footer-url" data-field="footer_url">{{footer_url}}</span><span class="footer-handle" data-field="footer_handle">{{footer_handle}}</span></div>
+</div></div></div>
+</body></html>

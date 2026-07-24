@@ -55,7 +55,9 @@ class AgentCapabilityService
             // SEO
             'autonomous_goal', 'list_goals', 'agent_status', 'pause_goal', 'ai_status',
             // SEO — keyword + link tools (added 2026-05-22 fix)
-            'add_keyword', 'list_keywords', 'keyword_research', 'keywords_suggest', 'keyword_check', 'generate_links', 'link_suggestions', 'insert_link',
+            'add_keyword', 'list_keywords', 'generate_links', 'link_suggestions', 'insert_link',
+            // SEO — competitive + analytical intelligence (v1.4.4, 2026-05-30 — DMM intelligence expansion)
+            'competitor_serp', 'competitor_gaps', 'serp_analysis', 'deep_audit', 'ai_report',
             // CRM — full access including sequence discovery
             'create_lead', 'get_lead', 'update_lead', 'list_leads', 'move_lead', 'log_activity', 'add_note', 'enroll_sequence', 'list_sequences',
             // Marketing — full access including schedule + sequences
@@ -67,8 +69,13 @@ class AgentCapabilityService
             'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post', 'get_queue', 'record_social_analytics',
             // Calendar
             'create_event', 'list_events', 'update_event', 'check_availability', 'create_booking_slot',
-            // Builder
-            'list_builder_pages', 'get_builder_page', 'ai_builder_action', 'generate_page_layout', 'publish_builder_page', 'import_html_page',
+            // Builder — page management + AI editing via Arthur
+            // v1.4.4 (2026-05-30): added 'update_page' (direct edit) so Sarah
+            // can rewrite page sections herself when no Arthur reasoning is
+            // needed (rare — most edits go through ai_builder_action).
+            'list_builder_pages', 'get_builder_page', 'update_page', 'ai_builder_action', 'generate_page_layout', 'publish_builder_page', 'import_html_page',
+            // v1.4.4 Phase D-1 (2026-05-30) — Sarah can add pages too
+            'generate_page', 'add_page_from_template',
             // Site intelligence
             'get_site_pages', 'get_site_page', 'search_site_content', 'scan_site_url',
             // Funnel intelligence
@@ -90,7 +97,9 @@ class AgentCapabilityService
             'serp_analysis', 'ai_report', 'deep_audit', 'ai_status', 'list_goals', 'agent_status', 'pause_goal',
             'link_suggestions', 'insert_link', 'outbound_links', 'check_outbound',
             // SEO — keyword tools (added 2026-05-22 fix)
-            'add_keyword', 'list_keywords', 'keyword_research', 'keywords_suggest', 'keyword_check', 'generate_links',
+            // b16 (2026-07-24): + keyword_research — routed to james by the
+            // planner and registered in CapabilityMapService, but unauthorized.
+            'add_keyword', 'list_keywords', 'generate_links', 'keyword_research',
             // CRM — read only
             'get_lead', 'list_leads',
             // Marketing — read only
@@ -111,6 +120,22 @@ class AgentCapabilityService
         'priya' => [
             // SEO
             'write_article', 'improve_draft', 'ai_report', 'ai_status', 'list_goals', 'agent_status',
+            // b16 (2026-07-24) — CONTENT PIPELINE. SarahDailyOrchestrator routes
+            // all of these to priya, and every one is a real registered write/
+            // creative action in CapabilityMapService — but none were in her map,
+            // so each delegation died with AGENT_NOT_AUTHORIZED. A "publish 2
+            // drafts every 5 minutes" plan lost 4 of its 7 tasks this way.
+            // Same class of drift as the 2026-05-09 14-specialist patch below.
+            'create_article', 'generate_outline', 'generate_headlines',
+            'generate_meta', 'aeo_enrich',
+            // Featured images for her own articles. generate_image* are creative
+            // engine; Sarah also holds them (she orchestrates), priya needs them
+            // because the planner delegates article imagery to her.
+            'write_article_image', 'generate_image', 'generate_image_mini', 'generate_image_high',
+            // publish_article is approval_mode=protected — granting the capability
+            // does NOT bypass PublishGateService or plan gating, it only lets the
+            // Content specialist be the one to carry out an approved publish.
+            'publish_article',
             // Marketing — content agents write and send campaigns
             'create_campaign', 'update_campaign', 'list_campaigns', 'schedule_campaign',
             'create_template', 'list_templates', 'create_automation',
@@ -342,6 +367,17 @@ class AgentCapabilityService
     {
         $key = self::SLUG_ALIASES[$agentSlug] ?? $agentSlug;
 
+        // LAUNCH SCOPE (2026-07-20) — authoritative short-circuit. A removed
+        // agent holds NO tools; a removed social/email tool is available to NO
+        // agent. This overrides BOTH the DB agent_capabilities grants AND the
+        // static CAPABILITY_MAP fallback below, so a half-seeded table or stale
+        // static map can never restore a removed grant.
+        if (\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($key)
+            || \App\Core\LaunchScope\LaunchScopePolicy::isRemovedTool($toolId)) {
+            return false;
+        }
+
+
         // Phase 2D — DB-first dynamic registry. Cached for 5 min so a hot
         // request path doesn't hammer MySQL. Static map remains as a runtime
         // safety net (used when agent_capabilities is empty / missing).
@@ -389,39 +425,69 @@ class AgentCapabilityService
     {
         $key = self::SLUG_ALIASES[$agentSlug] ?? $agentSlug;
 
+        // LAUNCH SCOPE (2026-07-20) — a removed agent exposes NO tools, whatever
+        // the DB or static map still holds.
+        if (\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($key)) return [];
+
+        $tools = null;
         if ($this->dbRegistryAvailable()) {
-            $tools = Cache::remember("agent_cap:v1:list:{$key}", 300, function () use ($key) {
+            $dbTools = Cache::remember("agent_cap:v1:list:{$key}", 300, function () use ($key) {
                 return DB::table('agent_capabilities')
                     ->where('agent_slug', $key)
                     ->where('is_active', true)
                     ->pluck('tool_id')
                     ->all();
             });
-            if (!empty($tools)) return $tools;
+            if (!empty($dbTools)) $tools = $dbTools;
         }
-        return self::CAPABILITY_MAP[$key] ?? [];
+        if ($tools === null) $tools = self::CAPABILITY_MAP[$key] ?? [];
+
+        // Strip any removed social/email tool defensively (static map still lists them).
+        return array_values(array_filter(
+            $tools,
+            fn($t) => !\App\Core\LaunchScope\LaunchScopePolicy::isRemovedTool($t)
+        ));
     }
 
     public function getAgentsForTool(string $toolId): array
     {
+        // LAUNCH SCOPE — a removed tool belongs to no agent.
+        if (\App\Core\LaunchScope\LaunchScopePolicy::isRemovedTool($toolId)) return [];
+
+        $agents = null;
         if ($this->dbRegistryAvailable()) {
             $rows = DB::table('agent_capabilities')
                 ->where('tool_id', $toolId)
                 ->where('is_active', true)
                 ->pluck('agent_slug')
                 ->all();
-            if (!empty($rows)) return $rows;
+            if (!empty($rows)) $agents = $rows;
         }
-        $agents = [];
-        foreach (self::CAPABILITY_MAP as $agentSlug => $tools) {
-            if (in_array($toolId, $tools, true)) $agents[] = $agentSlug;
+        if ($agents === null) {
+            $agents = [];
+            foreach (self::CAPABILITY_MAP as $agentSlug => $tools) {
+                if (in_array($toolId, $tools, true)) $agents[] = $agentSlug;
+            }
         }
-        return $agents;
+        // Never surface a removed agent as a tool owner.
+        return array_values(array_filter(
+            $agents,
+            fn($a) => !\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($a)
+        ));
     }
 
     public function getAllCapabilities(): array
     {
-        return self::CAPABILITY_MAP;
+        // LAUNCH SCOPE — hide removed agents and removed tools from the full map.
+        $out = [];
+        foreach (self::CAPABILITY_MAP as $agentSlug => $tools) {
+            if (\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($agentSlug)) continue;
+            $out[$agentSlug] = array_values(array_filter(
+                $tools,
+                fn($t) => !\App\Core\LaunchScope\LaunchScopePolicy::isRemovedTool($t)
+            ));
+        }
+        return $out;
     }
 
     public function getAgentSlugs(): array
@@ -433,9 +499,17 @@ class AgentCapabilityService
                 ->unique()
                 ->values()
                 ->all();
-            if (!empty($slugs)) return $slugs;
+            if (!empty($slugs)) {
+                return array_values(array_filter(
+                    $slugs,
+                    fn($a) => !\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($a)
+                ));
+            }
         }
-        return array_keys(self::CAPABILITY_MAP);
+        return array_values(array_filter(
+            array_keys(self::CAPABILITY_MAP),
+            fn($a) => !\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($a)
+        ));
     }
 
     /**
@@ -445,6 +519,18 @@ class AgentCapabilityService
     public function grant(string $agentSlug, string $toolId, ?string $grantedBy = null): bool
     {
         $key = self::SLUG_ALIASES[$agentSlug] ?? $agentSlug;
+
+        // LAUNCH SCOPE (2026-07-20) — refuse to (re)grant a removed agent or a
+        // removed social/email tool. This closes the recurrence vector: no sync,
+        // admin action, seeder or importer can reactivate a launch-excluded grant
+        // through this method. canUse() also short-circuits these, so even a grant
+        // that slipped in some other way is inert — this is belt-and-suspenders.
+        if (\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($key)
+            || \App\Core\LaunchScope\LaunchScopePolicy::isRemovedTool($toolId)) {
+            Log::warning("AgentCapability grant REFUSED (launch-scope): {$key} -> {$toolId}", ['by' => $grantedBy]);
+            return false;
+        }
+
         DB::table('agent_capabilities')->updateOrInsert(
             ['agent_slug' => $key, 'tool_id' => $toolId],
             [

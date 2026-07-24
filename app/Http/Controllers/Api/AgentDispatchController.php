@@ -51,10 +51,11 @@ class AgentDispatchController
      * GET /api/agent/conversation/{id}
      * Get single conversation with messages.
      */
-    public function conversation(Request $request, int $id): JsonResponse
+    public function conversation(Request $request, string $id): JsonResponse
     {
         $workspaceId = $request->attributes->get('workspace_id');
 
+        // v1.4.4 — $id is the agent slug (string), not a meeting id.
         $data = $this->service->getConversation($workspaceId, $id);
 
         return response()->json($data);

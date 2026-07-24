@@ -1,0 +1,75 @@
+{
+  "name": "Wellness Reel",
+  "slug": "b10-wellness",
+  "format": "reels",
+  "category": "wellness",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "wellness"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "Feel Better ✨"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Wellness Made Simple"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Small habits, big results. Your personalised wellness journey starts here — no overwhelm, just progress."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "brand_icon": {
+      "type": "text",
+      "label": "Brand Icon",
+      "default": "🌿"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Feel"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "amazing,"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "every day."
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "wellness"
+    ]
+  }
+}

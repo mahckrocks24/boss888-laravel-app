@@ -1,0 +1,85 @@
+{
+  "name": "Healthcare Reel",
+  "slug": "r07-healthcare",
+  "format": "reels",
+  "category": "healthcare",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "healthcare"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_cert": {
+      "type": "text",
+      "label": "Brand Cert",
+      "default": "Certified"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Healthcare"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Expert-led care with a personal touch — accessible, compassionate, and built around you."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Your Health,"
+    },
+    "headline_accent": {
+      "type": "text",
+      "label": "Headline Accent",
+      "default": "Our Priority."
+    },
+    "check_1": {
+      "type": "text",
+      "label": "Check 1",
+      "default": "✓"
+    },
+    "check_2": {
+      "type": "text",
+      "label": "Check 2",
+      "default": "✓"
+    },
+    "check_3": {
+      "type": "text",
+      "label": "Check 3",
+      "default": "✓"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Book Now"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "healthcare"
+    ]
+  }
+}

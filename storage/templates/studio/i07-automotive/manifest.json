@@ -1,0 +1,48 @@
+{
+  "name": "Performance Dark Mode — Automotive",
+  "slug": "i07-automotive",
+  "format": "portrait",
+  "category": "marketing",
+  "sub_category": "automotive",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["automotive", "performance", "luxury", "dealership", "auto"],
+  "variables": {
+    "hero_image":        { "type": "image", "label": "Hero image",       "default": "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=1080&q=85&fit=crop&crop=center" },
+    "corner_label":      { "type": "text",  "label": "Corner label",     "default": "NEW" },
+    "logo_name":         { "type": "text",  "label": "Logo name",        "default": "LOGO HERE" },
+    "logo_sub":          { "type": "text",  "label": "Logo subtitle",    "default": "Performance Division" },
+    "model_label":       { "type": "text",  "label": "Model label",      "default": "2025 Model" },
+    "headline_main":     { "type": "text",  "label": "Headline (main)",  "default": "BUILT TO" },
+    "headline_accent":   { "type": "text",  "label": "Headline (accent)","default": "DOMINATE." },
+    "subheading":        { "type": "text",  "label": "Subheading",       "default": "Zero to extraordinary in every dimension — engineered for those who refuse to compromise on performance." },
+    "spec_1_val":        { "type": "text",  "label": "Spec 1 value",     "default": "0–100" },
+    "spec_1_unit":       { "type": "text",  "label": "Spec 1 unit",      "default": "km/h" },
+    "spec_1_label":      { "type": "text",  "label": "Spec 1 label",     "default": "3.2 Seconds" },
+    "spec_2_val":        { "type": "text",  "label": "Spec 2 value",     "default": "480" },
+    "spec_2_unit":       { "type": "text",  "label": "Spec 2 unit",      "default": "HP" },
+    "spec_2_label":      { "type": "text",  "label": "Spec 2 label",     "default": "Peak Power" },
+    "spec_3_val":        { "type": "text",  "label": "Spec 3 value",     "default": "310" },
+    "spec_3_unit":       { "type": "text",  "label": "Spec 3 unit",      "default": "km/h" },
+    "spec_3_label":      { "type": "text",  "label": "Spec 3 label",     "default": "Top Speed" },
+    "spec_4_val":        { "type": "text",  "label": "Spec 4 value",     "default": "V8" },
+    "spec_4_unit":       { "type": "text",  "label": "Spec 4 unit",      "default": " " },
+    "spec_4_label":      { "type": "text",  "label": "Spec 4 label",     "default": "Engine" },
+    "cta_label":         { "type": "text",  "label": "CTA",              "default": "Test Drive" },
+    "cta_ghost_label":   { "type": "text",  "label": "Ghost CTA",        "default": "View Specs" },
+    "brand_b_name":      { "type": "text",  "label": "Bottom brand",     "default": "LOGO HERE" },
+    "brand_b_url":       { "type": "text",  "label": "Brand URL",        "default": "companyname.com" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#080808" },
+    "red":    { "label": "Primary",    "default": "#FF2D55" },
+    "silver": { "label": "Silver",     "default": "#B8BEC7" },
+    "white":  { "label": "Text",       "default": "#F5F5F5" }
+  },
+  "semantic": {
+    "mood": ["energetic", "bold"],
+    "color_temperature": "dark",
+    "composition": "product_dominant",
+    "best_for": ["automotive", "performance", "luxury", "dealership", "promotion"]
+  }
+}

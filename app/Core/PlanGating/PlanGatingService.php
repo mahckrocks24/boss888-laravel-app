@@ -109,7 +109,8 @@ class PlanGatingService
             'white_label' => (bool) $plan->white_label,
             'priority_processing' => (bool) $plan->priority_processing,
             'credit_limit' => $plan->credit_limit,
-            'features' => $plan->features_json ?? [],
+            // W6: never advertise a removed capability as a plan entitlement.
+            'features' => \App\Core\LaunchScope\LaunchScopePolicy::filterPlanFeatures($plan->features_json ?? []),
         ];
     }
 

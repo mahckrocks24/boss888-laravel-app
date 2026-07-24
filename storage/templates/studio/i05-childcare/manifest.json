@@ -1,0 +1,47 @@
+{
+  "name": "Playful Learning Grid — Childcare",
+  "slug": "i05-childcare",
+  "format": "square",
+  "category": "social",
+  "sub_category": "childcare",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["childcare", "preschool", "education", "family", "kids"],
+  "variables": {
+    "hero_image":   { "type": "image", "label": "Hero image",     "default": "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=220&q=85&fit=crop&crop=faces" },
+    "fun_tag":      { "type": "text",  "label": "Tag",            "default": "🌟 Childcare" },
+    "headline_1":   { "type": "text",  "label": "Headline line 1","default": "Little" },
+    "headline_2":   { "type": "text",  "label": "Headline line 2","default": "Minds," },
+    "headline_3":   { "type": "text",  "label": "Headline line 3","default": "Big" },
+    "headline_4":   { "type": "text",  "label": "Headline line 4","default": "Dreams." },
+    "subheading":   { "type": "text",  "label": "Subheading",     "default": "Where learning meets laughter every single day." },
+    "cb_emoji":     { "type": "text",  "label": "B card emoji",   "default": "🧒" },
+    "cb_title":     { "type": "text",  "label": "B card title",   "default": "Ages 1–6" },
+    "cb_sub":       { "type": "text",  "label": "B card sub",     "default": "Infant · Toddler · Pre-K programs designed for every stage of growth." },
+    "cc_emoji":     { "type": "text",  "label": "C card emoji",   "default": "🛡️" },
+    "cc_title":     { "type": "text",  "label": "C card title",   "default": "Certified & Safe" },
+    "cc_sub":       { "type": "text",  "label": "C card sub",     "default": "Licensed staff with first-aid training and secure facilities." },
+    "cd_emoji":     { "type": "text",  "label": "D card emoji",   "default": "📚" },
+    "cd_title":     { "type": "text",  "label": "D card title",   "default": "STEM + Play" },
+    "cd_sub":       { "type": "text",  "label": "D card sub",     "default": "Structured curriculum blending academics with creative play." },
+    "brand_name":   { "type": "text",  "label": "Brand name",     "default": "Logo Here" },
+    "brand_url":    { "type": "text",  "label": "Brand URL",      "default": "companyname.com" },
+    "stat_value":   { "type": "text",  "label": "Stat value",     "default": "200+" },
+    "stat_label":   { "type": "text",  "label": "Stat label",     "default": "Happy Families" },
+    "cta_label":    { "type": "text",  "label": "CTA",            "default": "Enrol Now" }
+  },
+  "css_variables": {
+    "bg":       { "label": "Background", "default": "#FFF9F5" },
+    "coral":    { "label": "Coral",      "default": "#FF8B6B" },
+    "yellow":   { "label": "Yellow",     "default": "#FFD166" },
+    "mint":     { "label": "Mint",       "default": "#A8E6CF" },
+    "lavender": { "label": "Lavender",   "default": "#C3B4F3" },
+    "sky":      { "label": "Sky",        "default": "#B3E5FC" }
+  },
+  "semantic": {
+    "mood": ["playful", "warm"],
+    "color_temperature": "vibrant",
+    "composition": "grid",
+    "best_for": ["childcare", "preschool", "education", "family", "kids"]
+  }
+}

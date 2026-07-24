@@ -91,11 +91,33 @@ class SarahOrchestrator
         }
 
         // Step 6: Determine if approval is needed
-        $needsApproval = $this->requiresApproval($analysis) || !($challenge['approved'] ?? true);
+        //
+        // b17 (2026-07-24) — DETERMINISTIC PUBLISH RAIL.
+        // requiresApproval() asks the runtime LLM, which judges the goal text
+        // and cannot see which actions were actually selected. TaskService
+        // already treats publish as a HARD override on the unified tasks
+        // pipeline, but plan_tasks execute through executeNextTasks() →
+        // EngineExecutionService, which performs NO approval check at all — so
+        // a plan containing publish_article would push content live with no
+        // human consent anywhere in the path. Protected actions now force
+        // human approval regardless of the LLM's opinion.
+        $protectedActions = $this->protectedActionsInPlan((int) $plan['id']);
+        $needsApproval = $this->requiresApproval($analysis)
+            || !($challenge['approved'] ?? true)
+            || !empty($protectedActions);
 
         if ($needsApproval) {
             DB::table('execution_plans')->where('id', $plan['id'])
                 ->update(['requires_approval' => true, 'status' => 'draft']);
+
+            $message = $assessment['recommendation']['message']
+                ?? "I've created a plan. Please review and approve.";
+
+            // Say plainly what goes live, and how many — this is the consent
+            // the customer is actually giving.
+            if (!empty($protectedActions)) {
+                $message = $this->describeProtectedWork($protectedActions) . ' ' . $message;
+            }
 
             return [
                 'plan_id' => $plan['id'],
@@ -105,7 +127,9 @@ class SarahOrchestrator
                 'challenges' => $challenge['challenges'] ?? [],
                 'suggestions' => $challenge['suggestions'] ?? [],
                 'sarah_reasoning' => $assessment['sarah_reasoning'] ?? null,
-                'message' => $assessment['recommendation']['message'] ?? "I've created a plan. Please review and approve.",
+                'requires_confirmation' => !empty($protectedActions),
+                'protected_actions' => $protectedActions,
+                'message' => $message,
             ];
         }
 
@@ -124,6 +148,12 @@ class SarahOrchestrator
     {
         $workspace = Workspace::find($wsId);
         $wsContext = $workspace ? PromptTemplates::workspaceContext($workspace->toArray()) : '';
+        // 2026-05-27 Phase 4 — append category mix so Sarah sees the
+        // workload balance when reasoning about delegation/strategy.
+        if ($workspace) {
+            $catLine = \App\Core\Orchestration\AgentMeetingEngine::categoryMixLine($workspace->id);
+            if ($catLine !== '') $wsContext .= "\n" . $catLine;
+        }
         $industry = $workspace?->industry;
         $region = $workspace?->location;
 
@@ -295,6 +325,60 @@ class SarahOrchestrator
         DB::table('execution_plans')->where('id', $planId)
             ->update(['total_tasks' => $taskCount]);
 
+        /* b12-scheduler-hook */
+        // If the caller supplied a schedule spec, plot the calendar BEFORE
+        // the approval click so the user sees the timeline concretely.
+        // (Sarah's mental model: "create the calendar items 1st, then the
+        // task group, single approval at top.")
+        $schedulePreview = null;
+        $scheduleError   = null;
+        $scheduleSpec    = $analysis['schedule'] ?? null;
+
+        /* b14-parser-hook */
+        // If no explicit schedule supplied, try to extract one from the goal
+        // text. "3 articles per day for 2 weeks" → {items_per_day:3, days:14}.
+        // Returns null when no schedule pattern is detected; in that case we
+        // fall through to non-scheduled plan creation as before.
+        if ($scheduleSpec === null) {
+            try {
+                $autoSpec = app(\App\Core\Strategy\ScheduleSpecParser::class)->parse($goal);
+                if (is_array($autoSpec)) {
+                    $scheduleSpec = $autoSpec;
+                    Log::info('[SarahOrchestrator] schedule auto-extracted from goal text', [
+                        'plan_id' => $planId, 'spec' => $autoSpec,
+                    ]);
+                }
+            } catch (\Throwable $pErr) {
+                Log::warning('[SarahOrchestrator] ScheduleSpecParser threw (non-fatal)', [
+                    'plan_id' => $planId, 'error' => $pErr->getMessage(),
+                ]);
+            }
+        }
+        if (is_array($scheduleSpec) && !empty($scheduleSpec)) {
+            try {
+                $plotRes = app(\App\Core\Strategy\PlanSchedulerService::class)
+                    ->plotSchedule($wsId, $planId, $scheduleSpec);
+                if (!empty($plotRes['success'])) {
+                    $schedulePreview = [
+                        'window'      => $plotRes['window'] ?? null,
+                        'scheduled'   => $plotRes['scheduled'] ?? 0,
+                        'unscheduled' => $plotRes['unscheduled'] ?? 0,
+                        'events'      => $plotRes['automation_events_created'] ?? 0,
+                    ];
+                } else {
+                    $scheduleError = $plotRes['error'] ?? 'unknown plot error';
+                    Log::warning('[SarahOrchestrator] plotSchedule failed (non-fatal)', [
+                        'plan_id' => $planId, 'error' => $scheduleError,
+                    ]);
+                }
+            } catch (\Throwable $schedErr) {
+                $scheduleError = $schedErr->getMessage();
+                Log::warning('[SarahOrchestrator] plotSchedule threw (non-fatal)', [
+                    'plan_id' => $planId, 'error' => $scheduleError,
+                ]);
+            }
+        }
+
         return [
             'id' => $planId,
             'title' => $this->generatePlanTitle($goal),
@@ -305,6 +389,8 @@ class SarahOrchestrator
             'cost_breakdown' => $costBreakdown,
             'selection_trace' => $selectionTrace,
             'confidence' => $selectionTrace['confidence'] ?? 0,
+            'schedule' => $schedulePreview,        /* b12 */
+            'schedule_error' => $scheduleError,    /* b12 */
         ];
     }
 
@@ -314,21 +400,117 @@ class SarahOrchestrator
 
     public function approvePlan(int $wsId, int $planId, int $userId): array
     {
-        DB::table('execution_plans')->where('id', $planId)->update([
+        // b18 (2026-07-24) — CAPTURED PUBLISH CONSENT.
+        //
+        // A plan containing protected actions can only reach this method through
+        // the human gate: receive() forces requires_approval when the sequence
+        // contains any, and shows exactly what goes live ("This will publish 42
+        // articles — that goes live publicly and cannot be undone"). Approving
+        // here IS that consent, given by a named user at a known time.
+        //
+        // Without recording it, every scheduled publish stopped for a SECOND
+        // per-article click, so "publish 2 every 5 minutes" queued review items
+        // on a cadence instead of publishing — Sarah not carrying out the
+        // instruction she was given. This is the same double-consent the
+        // 2026-07-23 decision removed from the chat path.
+        //
+        // Scope is deliberately narrow: consent covers ONLY the action names
+        // disclosed on THIS plan, and only when the plan actually went through
+        // the approval gate. It is not a blanket protected-action bypass.
+        // b21 (2026-07-24) — TENANCY. $wsId was accepted and then never used in
+        // a single query, so any authenticated caller could approve another
+        // workspace's plan by id. Post-b18 that is worse than a data leak: an
+        // approval captures publish consent, so a cross-tenant approve could
+        // push a different customer's articles live. Fail closed.
+        $plan = DB::table('execution_plans')
+            ->where('id', $planId)
+            ->where('workspace_id', $wsId)
+            ->first(['requires_approval', 'strategy_json']);
+
+        if (!$plan) {
+            return [
+                'plan_id' => $planId,
+                'status'  => 'not_found',
+                'message' => 'Plan not found.',
+            ];
+        }
+
+        $consentActions = [];
+        if ($plan && (int) $plan->requires_approval === 1) {
+            $consentActions = array_keys($this->protectedActionsInPlan($planId));
+        }
+
+        $update = [
             'status' => 'executing',
             'approved_at' => now(),
             'started_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
 
-        // Execute first batch of tasks (no dependencies)
+        if (!empty($consentActions)) {
+            $strategy = json_decode((string) ($plan->strategy_json ?? '{}'), true) ?: [];
+            $strategy['publish_consent'] = [
+                'actions'     => array_values($consentActions),
+                'approved_by' => $userId,
+                'approved_at' => now()->toDateTimeString(),
+                'scope'       => 'plan',
+            ];
+            $update['strategy_json'] = json_encode($strategy);
+
+            try {
+                app(\App\Core\Audit\AuditLogService::class)->log(
+                    $wsId, $userId, 'plan.publish_consent_captured',
+                    'execution_plan', $planId,
+                    ['actions' => array_values($consentActions)]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[Sarah] publish-consent audit log failed: ' . $e->getMessage());
+            }
+        }
+
+        DB::table('execution_plans')->where('id', $planId)->update($update);
+
+        // Execute first batch of tasks (no dependencies). Future-scheduled
+        // tasks are skipped here and fired later by `sarah:run-due-tasks`.
         $results = $this->executeNextTasks($wsId, $planId);
+
+        // b15 — report the plotted cadence so the user knows what was booked
+        // rather than being told everything "is starting now".
+        $scheduledCount = DB::table('plan_tasks')
+            ->where('plan_id', $planId)->whereNotNull('scheduled_for')->count();
+        $nextAt = DB::table('plan_tasks')
+            ->where('plan_id', $planId)->where('status', 'pending')
+            ->whereNotNull('scheduled_for')->min('scheduled_for');
+
+        $message = "Plan approved. I'm starting execution now. I'll report back as tasks complete.";
+        if ($scheduledCount > 0) {
+            $message = $nextAt
+                ? "Plan approved and added to your calendar — {$scheduledCount} scheduled task(s). Next one runs at {$nextAt}."
+                : "Plan approved — {$scheduledCount} task(s) are on your calendar.";
+        }
+
+        // b17/b18 — be exact about what happens next. Anything still parked for
+        // review is named as such; anything covered by the consent just captured
+        // will publish on its own schedule, and the customer is told so plainly
+        // rather than discovering content went live unannounced.
+        $awaitingApproval = DB::table('plan_tasks')
+            ->where('plan_id', $planId)->where('status', 'awaiting_approval')->count();
+        if ($awaitingApproval > 0) {
+            $message .= " {$awaitingApproval} item(s) are waiting in your review queue"
+                . " — publishing needs your OK before anything goes live.";
+        } elseif (!empty($consentActions) && $scheduledCount > 0) {
+            $message .= " These will go live automatically on that schedule"
+                . " — you approved the publish, so I won't ask again for each one.";
+        }
 
         return [
             'plan_id' => $planId,
             'status' => 'executing',
             'tasks_started' => count($results),
-            'message' => "Plan approved. I'm starting execution now. I'll report back as tasks complete.",
+            'scheduled_tasks' => $scheduledCount,
+            'next_run_at' => $nextAt,
+            'awaiting_approval' => $awaitingApproval,
+            'message' => $message,
         ];
     }
 
@@ -352,9 +534,22 @@ class SarahOrchestrator
 
         while ($iteration++ < $maxIterations) {
             // Re-fetch pending tasks each iteration (statuses change inside the loop)
+            //
+            // b15 (2026-07-24) — RESPECT THE SCHEDULE. A plan that carries a
+            // plotted schedule (plan_tasks.scheduled_for, e.g. "publish 2
+            // articles every 5 minutes") must NOT have its whole task list
+            // executed the instant it is approved — that defeated the
+            // calendar entirely. Tasks with a FUTURE scheduled_for are left
+            // pending and fired by `sarah:run-due-tasks` when they come due.
+            // Unscheduled tasks (scheduled_for IS NULL) behave exactly as
+            // before, so non-scheduled plans are unaffected.
             $pendingTasks = DB::table('plan_tasks')
                 ->where('plan_id', $planId)
                 ->where('status', 'pending')
+                ->where(function ($q) {
+                    $q->whereNull('scheduled_for')
+                      ->orWhere('scheduled_for', '<=', now());
+                })
                 ->orderBy('step_order')
                 ->get();
 
@@ -385,11 +580,54 @@ class SarahOrchestrator
                         ->update(['status' => 'executing', 'started_at' => now()]);
 
                     $params = json_decode($task->params_json ?? '{}', true);
+                    /* b8-plan */ // pass plan_id so EES can recognize this is autopilot inside an approved Task Group
                     $result = $this->executor->execute($wsId, $task->engine, $task->action, $params, [
-                        'user_id' => null,
+                        'user_id'  => null,
                         'agent_id' => $task->assigned_agent,
-                        'source' => 'orchestrator',
+                        'source'   => 'orchestrator',
+                        'plan_id'  => $planId,
                     ]);
+
+                    // b17 (2026-07-24) — AWAITING APPROVAL IS NOT DONE.
+                    //
+                    // EngineExecutionService returns success=true TOGETHER with
+                    // pending_approval=true when a 'protected' action (publish_*,
+                    // send_*, delete_*) is parked in the review queue — that is the
+                    // deliberate "pause on publishing for preview review" gate, and
+                    // a plan's single approval never bypasses it (see the b8-plan
+                    // block in EngineExecutionService).
+                    //
+                    // The old `if ($result['success'])` treated that as COMPLETED.
+                    // So 4 articles queued for review were reported to the customer
+                    // as published, completed_at was stamped, and the plan closed
+                    // clean while nothing had actually gone live. Record the real
+                    // state instead and keep the approval id for the review queue.
+                    if (!empty($result['pending_approval'])) {
+                        DB::table('plan_tasks')->where('id', $task->id)->update([
+                            'status'      => 'awaiting_approval',
+                            'result_json' => json_encode([
+                                'pending_approval' => true,
+                                'approval_id'      => $result['approval_id'] ?? null,
+                                'message'          => $result['message'] ?? 'Waiting for your approval',
+                            ]),
+                            'updated_at'  => now(),
+                        ]);
+
+                        Log::info('[Sarah] task parked for approval', [
+                            'plan_id' => $planId, 'task_id' => $task->id,
+                            'action'  => $task->action,
+                            'approval_id' => $result['approval_id'] ?? null,
+                        ]);
+
+                        $allResults[] = [
+                            'task_id'     => $task->id,
+                            'status'      => 'awaiting_approval',
+                            'approval_id' => $result['approval_id'] ?? null,
+                        ];
+                        $progress = true;   // state changed — don't spin
+                        unset($result, $params);
+                        continue;
+                    }
 
                     if ($result['success']) {
                         DB::table('plan_tasks')->where('id', $task->id)->update([
@@ -586,8 +824,61 @@ class SarahOrchestrator
         if (!$plan) return;
 
         $completed = DB::table('plan_tasks')->where('plan_id', $planId)->where('status', 'completed')->count();
-        $remaining = DB::table('plan_tasks')->where('plan_id', $planId)
-            ->whereIn('status', ['pending', 'executing', 'blocked'])->count();
+        $remainingRows = DB::table('plan_tasks')->where('plan_id', $planId)
+            // b17 — 'awaiting_approval' counts as OUTSTANDING work. Omitting it
+            // let a plan whose publishes were parked in the review queue close as
+            // 'completed', which is how 4 unpublished articles were reported done.
+            ->whereIn('status', ['pending', 'executing', 'blocked', 'awaiting_approval'])
+            ->get(['id', 'status', 'scheduled_for']);
+        $remaining = $remainingRows->count();
+
+        // Everything left is sitting in the review queue: the plan is not
+        // partial or failed, it is waiting on the customer. Don't stamp
+        // completed_at and don't fire the evaluation/learnings pass yet.
+        $awaitingApproval = $remaining > 0
+            && $remainingRows->every(fn ($t) => $t->status === 'awaiting_approval');
+
+        if ($awaitingApproval) {
+            DB::table('execution_plans')->where('id', $planId)->update([
+                'status'          => 'awaiting_approval',
+                'completed_tasks' => $completed,
+                'updated_at'      => now(),
+            ]);
+            Log::info('[Sarah] plan waiting on review queue', [
+                'plan_id' => $planId, 'ws_id' => $wsId,
+                'completed' => $completed, 'awaiting' => $remaining,
+            ]);
+            return;
+        }
+
+        // b15 (2026-07-24) — DO NOT finalize a plan that is merely WAITING on
+        // its calendar slots. When every remaining task is pending with a
+        // future scheduled_for, the plan isn't partially done, it's running.
+        // Finalizing here stamped completed_at, fired the evaluation +
+        // learnings against a plan that had done nothing, and — because it
+        // left status='partial' — dropped the plan out of the due-task
+        // runner's filter, so the remaining slots never fired at all.
+        $awaitingSchedule = $remaining > 0 && $remainingRows->every(
+            fn ($t) => $t->status === 'pending'
+                && $t->scheduled_for !== null
+                && strtotime((string) $t->scheduled_for) > time()
+        );
+
+        if ($awaitingSchedule) {
+            DB::table('execution_plans')->where('id', $planId)->update([
+                'status'          => 'executing',
+                'completed_tasks' => $completed,
+                'updated_at'      => now(),
+            ]);
+            Log::info('[Sarah] plan awaiting scheduled slots — not finalized', [
+                'plan_id'   => $planId,
+                'ws_id'     => $wsId,
+                'completed' => $completed,
+                'waiting'   => $remaining,
+                'next_slot' => $remainingRows->min('scheduled_for'),
+            ]);
+            return;
+        }
 
         // If anything is still pending after the iterative loop bailed, mark the
         // plan partial — this can happen when the safety cap is hit OR when no
@@ -744,9 +1035,23 @@ class SarahOrchestrator
 
     // ═══════════════════════════════════════════════════════════
 
-    public function getPlanStatus(int $planId): array
+    /**
+     * b21 (2026-07-24) — TENANCY. $wsId was absent entirely, so this returned
+     * ANY plan by id to ANY authenticated caller: goal text, every task, params
+     * and results belonging to another customer. Confirmed against live data —
+     * a workspace-2 token read workspace 990003's plan in full.
+     *
+     * Nullable so internal/system callers (which legitimately have no workspace
+     * context) keep working; every HTTP route now passes it and is scoped.
+     */
+    public function getPlanStatus(int $planId, ?int $wsId = null): array
     {
-        $plan = DB::table('execution_plans')->where('id', $planId)->first();
+        $plan = DB::table('execution_plans')
+            ->where('id', $planId)
+            ->when($wsId !== null, fn ($q) => $q->where('workspace_id', $wsId))
+            ->first();
+        // Same message whether it is missing or someone else's — never confirm
+        // that a plan id exists in another workspace.
         if (!$plan) return ['error' => 'Plan not found'];
 
         $tasks = DB::table('plan_tasks')->where('plan_id', $planId)->orderBy('step_order')->get();
@@ -772,11 +1077,55 @@ class SarahOrchestrator
         return $q->orderByDesc('created_at')->limit($filters['limit'] ?? 20)->get()->toArray();
     }
 
-    public function cancelPlan(int $planId): void
+    /**
+     * b21 (2026-07-24) — TENANCY + a loose end from the b17 status addition.
+     *
+     * 1. $wsId was absent, so any authenticated caller could cancel any
+     *    workspace's plan by guessing an id.
+     * 2. The task sweep only covered pending/blocked. Tasks parked as
+     *    'awaiting_approval' survived cancellation and stayed in the review
+     *    queue — approving one later would publish content from a plan the
+     *    customer had already cancelled. Their approval rows are withdrawn too,
+     *    so nothing is left clickable.
+     */
+    public function cancelPlan(int $planId, ?int $wsId = null): bool
     {
-        DB::table('execution_plans')->where('id', $planId)->update(['status' => 'cancelled', 'updated_at' => now()]);
-        DB::table('plan_tasks')->where('plan_id', $planId)->whereIn('status', ['pending', 'blocked'])
+        $affected = DB::table('execution_plans')
+            ->where('id', $planId)
+            ->when($wsId !== null, fn ($q) => $q->where('workspace_id', $wsId))
+            ->update(['status' => 'cancelled', 'updated_at' => now()]);
+
+        if ($affected === 0) {
+            return false;   // missing, or not this caller's plan
+        }
+
+        // Withdraw any review-queue entries this plan created, so a cancelled
+        // plan can never be resurrected by an approval click.
+        $taskIds = DB::table('plan_tasks')
+            ->where('plan_id', $planId)
+            ->where('status', 'awaiting_approval')
+            ->whereNotNull('task_id')
+            ->pluck('task_id')
+            ->all();
+
+        if ($taskIds) {
+            DB::table('approvals')
+                ->whereIn('task_id', $taskIds)
+                ->where('status', 'pending')
+                ->update([
+                    'status'        => 'expired',
+                    'decision_note' => 'Plan cancelled before approval.',
+                    'decided_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+        }
+
+        DB::table('plan_tasks')
+            ->where('plan_id', $planId)
+            ->whereIn('status', ['pending', 'blocked', 'awaiting_approval'])
             ->update(['status' => 'skipped', 'updated_at' => now()]);
+
+        return true;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -803,10 +1152,16 @@ class SarahOrchestrator
 
     private function selectAgents(int $wsId, array $engines, ?string $industry): array
     {
+        // LAUNCH SCOPE 2026-07-20 — 'social'=>marcus and 'marketing'=>elena removed:
+        // social automation + email marketing are out of the launch product and marcus
+        // is a removed agent. crm stays with elena (retained). Any residual social/
+        // marketing engine falls to Sarah as coordinator only (execution is denied at
+        // the kernel by LaunchScopePolicy), never re-executed by a substitute agent.
         $agentMap = [
             'seo' => 'james', 'write' => 'priya', 'creative' => 'sarah',
-            'social' => 'marcus', 'marketing' => 'elena', 'crm' => 'elena',
+            'crm' => 'elena',
             'builder' => 'sarah', 'beforeafter' => 'sarah', 'traffic' => 'alex',
+            'studio' => 'sarah',
         ];
 
         $agents = ['sarah']; // Sarah always coordinates
@@ -854,6 +1209,48 @@ class SarahOrchestrator
      */
     public function getSelectionTrace(int $wsId, string $goal, array $analysis): array
     {
+        // b17 (2026-07-24) — INTENT BEFORE RANKING.
+        //
+        // toolSelector is a cost/quality ranker, not a planner: it emits every
+        // blueprint tool for the identified engine and never reads the goal. So
+        // "publish 2 of my draft articles" produced the whole write-engine tool
+        // list and wrote a new article titled after the request, never touching
+        // the customer's drafts.
+        //
+        // GoalIntentService handles goals with an explicit operation over real,
+        // resolvable rows and binds actual entity IDs. It returns null for
+        // exploratory goals ("grow my traffic"), where the ranker's breadth is
+        // genuinely the right answer — so this is additive and the previous
+        // behaviour is untouched for everything it does not claim.
+        try {
+            $intent = app(\App\Core\Strategy\GoalIntentService::class)
+                ->resolve($wsId, $goal, $analysis);
+
+            if ($intent !== null && !empty($intent['sequence'])) {
+                Log::info('[Sarah] plan built from resolved intent', [
+                    'ws_id'  => $wsId,
+                    'goal'   => $goal,
+                    'intent' => $intent['intent'] ?? null,
+                    'tasks'  => count($intent['sequence']),
+                ]);
+                return $intent + ['dimensions_weights' => []];
+            }
+
+            // Intent understood but nothing to act on (e.g. zero drafts).
+            // Returning the empty sequence is correct — running the ranker here
+            // would silently substitute unrelated work for what was asked.
+            if ($intent !== null && ($intent['intent']['resolved'] ?? null) === 0) {
+                Log::info('[Sarah] intent resolved to no eligible entities', [
+                    'ws_id' => $wsId, 'goal' => $goal, 'intent' => $intent['intent'],
+                ]);
+                return $intent + ['dimensions_weights' => []];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Sarah] intent resolution errored, using ranker', [
+                'ws_id' => $wsId, 'error' => $e->getMessage(),
+            ]);
+        }
+
         return $this->toolSelector->selectTools($wsId, $goal, $analysis);
     }
 
@@ -861,6 +1258,56 @@ class SarahOrchestrator
      * Wave 90 — Approval-required decision via runtime (canonical).
      * On unreachable runtime, requires human approval (true).
      */
+    /**
+     * b17 — Protected (irreversible / public) actions in a plan's task list,
+     * grouped by action with a count. Protected is CapabilityMapService's
+     * strictest approval mode: publishing content live, deleting records,
+     * sending to real recipients.
+     *
+     * @return array<string,int> e.g. ['publish_article' => 42]
+     */
+    private function protectedActionsInPlan(int $planId): array
+    {
+        $cap = app(\App\Core\EngineKernel\CapabilityMapService::class);
+
+        $rows = DB::table('plan_tasks')->where('plan_id', $planId)->pluck('action');
+
+        $out = [];
+        foreach ($rows as $action) {
+            try {
+                if ($cap->getApprovalMode((string) $action) === 'protected') {
+                    $out[$action] = ($out[$action] ?? 0) + 1;
+                }
+            } catch (\Throwable $e) {
+                // Unknown action — err on the side of asking.
+                $out[$action] = ($out[$action] ?? 0) + 1;
+            }
+        }
+        return $out;
+    }
+
+    /** Plain-English summary of protected work, for the approval prompt. */
+    private function describeProtectedWork(array $protectedActions): string
+    {
+        $labels = [
+            'publish_article'      => ['publish', 'article', 'articles'],
+            'publish_website'      => ['publish', 'website', 'websites'],
+            'publish_builder_page' => ['publish', 'page', 'pages'],
+            'social_publish_post'  => ['publish', 'social post', 'social posts'],
+            'delete_article'       => ['permanently delete', 'article', 'articles'],
+        ];
+
+        $parts = [];
+        foreach ($protectedActions as $action => $count) {
+            [$verb, $one, $many] = $labels[$action]
+                ?? ['run', str_replace('_', ' ', $action), str_replace('_', ' ', $action)];
+            $parts[] = "{$verb} {$count} " . ($count === 1 ? $one : $many);
+        }
+
+        return 'This will ' . implode(' and ', $parts)
+            . ' — that goes live publicly and cannot be undone automatically.';
+    }
+
     private function requiresApproval(array $analysis): bool
     {
         $rt = app(\App\Connectors\RuntimeClient::class);
@@ -923,6 +1370,12 @@ class SarahOrchestrator
     {
         $workspace = Workspace::find($wsId);
         $wsContext = $workspace ? PromptTemplates::workspaceContext($workspace->toArray()) : '';
+        // 2026-05-27 Phase 4 — append category mix so Sarah sees the
+        // workload balance when reasoning about delegation/strategy.
+        if ($workspace) {
+            $catLine = \App\Core\Orchestration\AgentMeetingEngine::categoryMixLine($workspace->id);
+            if ($catLine !== '') $wsContext .= "\n" . $catLine;
+        }
         $knowledgeContext = $this->globalKnowledge->buildAgentContext('marketing', $workspace?->industry, $workspace?->location);
 
         // Build a per-engine intelligence briefing so the LLM knows what tools

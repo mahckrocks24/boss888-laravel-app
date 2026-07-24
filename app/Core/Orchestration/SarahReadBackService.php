@@ -49,10 +49,20 @@ class SarahReadBackService
             $agentSlug = $assignees[0] ?? 'agent';
             $agentName = $this->resolveAgentName($agentSlug);
 
+            // 2026-06-20 (forensic: Chef Red orphan loop) — a task can complete
+            // having changed nothing (fix_orphans applied:0, insert_link
+            // inserted_count:0). The envelope flags it via `no_change`; honor it
+            // so Sarah never narrates a no-op as "done".
+            $data = (array) ($result['data'] ?? []);
+            $noChange = ! empty($result['no_change'])
+                || (array_key_exists('changed', $data) && $data['changed'] === false)
+                || (array_key_exists('changed', $result) && $result['changed'] === false);
+
             $interpretation = $this->interpretResult(
                 $row->engine . '/' . $row->action,
                 $result,
-                $agentName
+                $agentName,
+                $noChange
             );
 
             $insights[] = [
@@ -63,6 +73,7 @@ class SarahReadBackService
                 'action'         => $row->action,
                 'completed_at'   => $row->completed_at,
                 'interpretation' => $interpretation,
+                'no_change'      => $noChange,
             ];
 
             // PATCH (Phase 2H, 2026-05-10) — push the interpreted result
@@ -106,7 +117,11 @@ class SarahReadBackService
         }
         $lines = ['COMPLETED SINCE LAST CHECK (acknowledge naturally if relevant to the user message):'];
         foreach ($insights as $i) {
-            $lines[] = "- {$i['agent_name']} finished {$i['engine']}/{$i['action']} (task #{$i['task_id']}): {$i['interpretation']}";
+            if (! empty($i['no_change'])) {
+                $lines[] = "- (!) {$i['agent_name']} ran {$i['engine']}/{$i['action']} (task #{$i['task_id']}) but it CHANGED NOTHING — do NOT tell the user it is fixed; be honest and offer the real next step: {$i['interpretation']}";
+            } else {
+                $lines[] = "- {$i['agent_name']} finished {$i['engine']}/{$i['action']} (task #{$i['task_id']}): {$i['interpretation']}";
+            }
         }
         $lines[] = '';
         return implode("\n", $lines);
@@ -122,11 +137,13 @@ class SarahReadBackService
      * One LLM round-trip per task. Falls back to a templated string if the
      * runtime is unreachable so the rest of the chat flow still works.
      */
-    private function interpretResult(string $taskKey, array $result, string $agentName): string
+    private function interpretResult(string $taskKey, array $result, string $agentName, bool $noChange = false): string
     {
         $runtime = app(RuntimeClient::class);
         if (!$runtime->isConfigured()) {
-            return "{$agentName} completed {$taskKey}.";
+            return $noChange
+                ? "{$agentName} ran {$taskKey} but it changed nothing — it needs a different approach."
+                : "{$agentName} completed {$taskKey}.";
         }
 
         $resultJson = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -134,8 +151,9 @@ class SarahReadBackService
             $resultJson = substr($resultJson, 0, 4000) . '... (truncated)';
         }
 
-        $system = "You are Sarah, the Digital Marketing Manager. Interpret an agent's task result in 2-3 sentences max. Be direct and actionable. Output JSON: {\"reply\":\"<2-3 sentences>\"}.";
-        $user = "Agent {$agentName} just completed task `{$taskKey}`. Result JSON:\n{$resultJson}\n\nWhat does this mean for the business and what should happen next?";
+        $system = "You are Sarah, the Digital Marketing Manager. Interpret an agent's task result in 2-3 sentences max. Be direct and actionable. NEVER claim something was done, fixed, or improved if the result shows no change (e.g. applied:0, inserted_count:0, changed:false) — in that case say plainly that it did NOT change anything, why, and the real next step. Output JSON: {\"reply\":\"<2-3 sentences>\"}.";
+        $statusLine = $noChange ? "IMPORTANT: this task RAN but CHANGED NOTHING — do not imply success." : "";
+        $user = "Agent {$agentName} just completed task `{$taskKey}`. {$statusLine} Result JSON:\n{$resultJson}\n\nWhat does this mean for the business and what should happen next?";
 
         try {
             $resp = $runtime->chatJson($system, $user, [], 400);
@@ -149,6 +167,8 @@ class SarahReadBackService
         } catch (\Throwable $e) {
             Log::warning("SarahReadBackService::interpretResult failed for {$taskKey}: " . $e->getMessage());
         }
-        return "{$agentName} completed {$taskKey}.";
+        return $noChange
+            ? "{$agentName} ran {$taskKey} but it changed nothing — it needs a different approach."
+            : "{$agentName} completed {$taskKey}.";
     }
 }

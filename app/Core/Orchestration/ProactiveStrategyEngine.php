@@ -8,6 +8,7 @@ use App\Core\Notifications\NotificationService;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Proactive Strategy Engine — Sarah initiates, user consents, agents execute.
@@ -104,7 +105,7 @@ class ProactiveStrategyEngine
         $this->agentMessages->postAsAgent($wsId, 'sarah', $proposalMsg, [
             'notification_type' => 'sarah_proposal',
             'proposal_id'       => $proposalId,
-            'action_link'       => '/app/?tab=strategy&proposal=' . $proposalId,
+            'action_link'       => '/app/strategy/' . $proposalId,
         ]);
 
         return [
@@ -117,8 +118,13 @@ class ProactiveStrategyEngine
     }
 
     /**
-     * User approves the initial strategy session.
-     * NOW credits are reserved and the meeting starts.
+     * User approves a proposal. Routes by proposal.type to the correct
+     * execution path (2026-05-24 FIX 55):
+     *   - discovery_strategy_meeting / monthly_30_day_plan → start a meeting
+     *   - daily_action_*                                   → create Task(s)
+     *   - goal_pivot / celebrate_goal_achieved / budget_*  → mark approved
+     *                                                        + chat ack
+     *                                                        (no execution)
      */
     public function approveProposal(int $wsId, int $userId, int $proposalId): array
     {
@@ -126,57 +132,280 @@ class ProactiveStrategyEngine
         if (!$proposal) throw new \RuntimeException('Proposal not found');
         if ($proposal->status !== 'pending_approval') throw new \RuntimeException('Proposal already processed');
 
-        $totalCredits = $proposal->total_credits;
+        $type = (string) $proposal->type;
 
-        // Reserve credits BEFORE doing anything
-        $hasCredits = $this->credits->hasBalance($wsId, $totalCredits);
-        if (!$hasCredits) {
+        // 2026-07-07 — publishing is the ONE human-gated action in the
+        // bounded-autonomy model. Approving a publish_ready proposal makes the
+        // workspace's ready drafts live (0 credits — generation was already paid).
+        if ($type === 'publish_ready') {
+            return $this->executePublishReady($wsId, $proposalId);
+        }
+
+        // Informational types: no credits, no execution. Just ack.
+        if (in_array($type, ['goal_pivot', 'celebrate_goal_achieved', 'budget_warning', 'budget_critical', 'budget_alert'], true)) {
+            DB::table('strategy_proposals')->where('id', $proposalId)->update([
+                'status'      => 'acknowledged',
+                'approved_at' => now(),
+                'updated_at'  => now(),
+            ]);
+            return [
+                'success'      => true,
+                'type'         => $type,
+                'credits_used' => 0,
+                'message'      => 'Acknowledged.',
+            ];
+        }
+
+        $totalCredits = (int) $proposal->total_credits;
+
+        // 2026-07-07 — FIX double-charge. daily_action_* / weekly_pivot_* proposals
+        // SPAWN Tasks that carry their own credit_cost and are committed ONCE by
+        // the Orchestrator when they run. Reserving+committing at the proposal
+        // level too billed the same work twice (traced: 6cr charged for a 3cr
+        // article). For these task-spawning types we ONLY pre-check balance and
+        // let the task be the single charge. Non-spawning types (strategy
+        // meetings) still reserve/commit here.
+        $spawnsTasks = str_starts_with($type, 'daily_action_') || str_starts_with($type, 'weekly_pivot_');
+
+        if ($totalCredits > 0 && ! $this->credits->hasBalance($wsId, $totalCredits)) {
             DB::table('strategy_proposals')->where('id', $proposalId)->update(['status' => 'insufficient_credits', 'updated_at' => now()]);
             return [
                 'success' => false,
-                'error' => "Insufficient credits. Required: {$totalCredits}, available: " . ($this->credits->getBalance($wsId)['available'] ?? 0),
-                'code' => 'NO_CREDITS',
+                'error'   => "Insufficient credits. Required: {$totalCredits}, available: " . ($this->credits->getBalance($wsId)['available'] ?? 0),
+                'code'    => 'NO_CREDITS',
             ];
         }
 
-        $reservationRef = $this->credits->reserve($wsId, $totalCredits, "strategy_session:proposal:{$proposalId}");
+        $reservationRef = (! $spawnsTasks && $totalCredits > 0)
+            ? $this->credits->reserve($wsId, $totalCredits, "proposal:{$proposalId}")
+            : null;
 
-        // Update proposal status
         DB::table('strategy_proposals')->where('id', $proposalId)->update([
-            'status' => 'approved',
-            'approved_at' => now(),
+            'status'          => 'approved',
+            'approved_at'     => now(),
             'reservation_ref' => $reservationRef,
-            'updated_at' => now(),
+            'updated_at'      => now(),
         ]);
 
-        // NOW start the meeting (credits reserved)
-        $workspace = Workspace::find($wsId);
-        $goal = $this->buildOnboardingGoal($workspace);
-
+        // Dispatch by type
         try {
+            if ($spawnsTasks) {
+                $taskIds = $this->dispatchDailyAction($wsId, $userId, $proposal);
+                // No proposal-level commit — the spawned tasks self-charge in the
+                // Orchestrator (single charge). $reservationRef is null here.
+                DB::table('strategy_proposals')->where('id', $proposalId)->update([
+                    'status'     => 'executing',
+                    'updated_at' => now(),
+                ]);
+                return [
+                    'success'      => true,
+                    'type'         => $type,
+                    'task_ids'     => $taskIds,
+                    'credits_used' => $totalCredits,
+                    'message'      => count($taskIds) === 1
+                        ? 'Task created — executing now.'
+                        : count($taskIds) . ' tasks created — executing now.',
+                ];
+            }
+
+            // Default: strategy meeting (covers discovery_strategy_meeting,
+            // monthly_30_day_plan, and any legacy/unknown type that should
+            // still trigger an agent meeting).
+            $workspace = Workspace::find($wsId);
+            $goal = $this->buildOnboardingGoal($workspace);
             $meeting = $this->meetings->startMeeting($wsId, $userId, $goal);
-
-            // Commit credits (meeting started successfully)
-            $this->credits->commit($wsId, $reservationRef, $totalCredits);
-
+            if ($reservationRef !== null) {
+                $this->credits->commit($wsId, $reservationRef, $totalCredits);
+            }
             DB::table('strategy_proposals')->where('id', $proposalId)->update([
-                'status' => 'executing',
+                'status'     => 'executing',
                 'meeting_id' => $meeting['meeting_id'] ?? null,
                 'updated_at' => now(),
             ]);
-
             return [
-                'success' => true,
-                'meeting_id' => $meeting['meeting_id'],
+                'success'      => true,
+                'type'         => $type,
+                'meeting_id'   => $meeting['meeting_id'] ?? null,
                 'credits_used' => $totalCredits,
-                'message' => 'Strategy session started. Your team is collaborating now.',
+                'message'      => 'Strategy session started. Your team is collaborating now.',
             ];
         } catch (\Throwable $e) {
-            // Release credits on failure
-            $this->credits->release($wsId, $reservationRef);
+            if ($reservationRef !== null) {
+                try { $this->credits->release($wsId, $reservationRef); } catch (\Throwable $ignored) {}
+            }
             DB::table('strategy_proposals')->where('id', $proposalId)->update(['status' => 'failed', 'updated_at' => now()]);
+            Log::error('[ProactiveStrategy] approve dispatch failed', [
+                'proposal_id' => $proposalId, 'type' => $type, 'error' => $e->getMessage(),
+            ]);
             throw $e;
         }
+    }
+
+    /**
+     * 2026-05-24 FIX 55 — create the Task(s) for a daily_action_* proposal.
+     * Mirrors the proven SeoAssistantService::execBatchArticles pattern.
+     * Returns the list of created task IDs (parent first).
+     */
+    /**
+     * 2026-07-07 — publish the workspace's ready drafts (own-blog only:
+     * wp_post_id NULL, reversible). Publishing is the single human-gated step in
+     * the bounded-autonomy model. Zero credits — the generation was already paid.
+     */
+    private function executePublishReady(int $wsId, int $proposalId): array
+    {
+        $drafts = DB::table('articles')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'draft')
+            ->whereNull('wp_post_id')
+            ->whereNull('deleted_at')
+            ->orderBy('created_at')
+            ->limit(50)
+            ->pluck('id');
+
+        $writeSvc = app(\App\Engines\Write\Services\WriteService::class);
+        $published = 0;
+        foreach ($drafts as $id) {
+            try {
+                $writeSvc->updateArticle((int) $id, ['status' => 'published']);
+                $published++;
+            } catch (\Throwable $e) {
+                Log::warning('[ProactiveStrategy] publish_ready failed for article', [
+                    'workspace_id' => $wsId, 'article_id' => $id, 'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        DB::table('strategy_proposals')->where('id', $proposalId)->update([
+            'status'      => 'executing',
+            'approved_at' => now(),
+            'updated_at'  => now(),
+        ]);
+
+        return [
+            'success'      => true,
+            'type'         => 'publish_ready',
+            'published'    => $published,
+            'credits_used' => 0,
+            'message'      => $published === 1 ? '1 article is now live.' : "{$published} articles are now live.",
+        ];
+    }
+
+    private function dispatchDailyAction(int $wsId, int $userId, object $proposal): array
+    {
+        $slug = preg_replace('/^(daily_action_|weekly_pivot_)/', '', (string) $proposal->type);
+        $title = (string) $proposal->title;
+        $taskSvc = app(\App\Core\TaskSystem\TaskService::class);
+        $ids = [];
+
+        // Article: parent write_article + 3 children (meta, link suggestions, insert).
+        // Image/AEO skipped here — proposals don't yet carry those flags.
+        if ($slug === 'write_article') {
+            $parent = $taskSvc->create($wsId, [
+                'engine'            => 'write',
+                'action'            => 'write_article',
+                'source'            => 'agent',
+                'priority'          => 'normal',
+                'assigned_agents'   => ['priya'],
+                'auto_approve'      => true,
+                'requires_approval' => false,
+                'credit_cost'       => (int) $proposal->total_credits,
+                'payload'           => [
+                    'title'        => $title,
+                    'topic'        => $title,
+                    'audience'     => 'small business owners',
+                    'tone'         => 'professional yet warm',
+                    'length'       => 1100,
+                    'created_via'  => 'sarah_proposal',
+                    'proposal_id'  => $proposal->id,
+                ],
+            ]);
+            $ids[] = (int) $parent->id;
+            $parent->update(['progress_message' => 'Sarah proposal — ' . mb_substr($title, 0, 60)]);
+
+            foreach (['generate_meta' => 'write', 'link_suggestions' => 'seo', 'insert_link' => 'seo'] as $action => $engine) {
+                $assignee = ($engine === 'seo') ? 'james' : 'priya';
+                $child = $taskSvc->create($wsId, [
+                    'engine'            => $engine,
+                    'action'            => $action,
+                    'source'            => 'agent',
+                    'priority'          => 'normal',
+                    'assigned_agents'   => [$assignee],
+                    'parent_task_id'    => (int) $parent->id,
+                    'auto_approve'      => true,
+                    'requires_approval' => false,
+                    'credit_cost'       => 0,
+                    'payload'           => [
+                        'title'       => "Sarah proposal: " . str_replace('_', ' ', $action),
+                        'created_via' => 'sarah_proposal',
+                        'proposal_id' => $proposal->id,
+                    ],
+                ]);
+                $ids[] = (int) $child->id;
+            }
+            return $ids;
+        }
+
+        // ── 2026-06-30 Phase 0 — proposal→executor translation map ───────────
+        // Proactive proposal slugs do NOT 1:1 match the Orchestrator's async
+        // execution whitelist ("engine/action", Orchestrator.php). Before this
+        // map, every non-SEO slug fell to the write/priya fallback and produced
+        // a task whose "engine/action" wasn't whitelisted → it failed in the
+        // worker ("Unknown … action"). So Sarah's multi-channel proposals
+        // (send_email, social, campaign, audit, keyword research, unstick) were
+        // dead on arrival. Each entry below maps a slug to a VERIFIED whitelisted
+        // engine/action. 'action' overrides the task action when the slug name
+        // differs from the real whitelisted action; otherwise the slug is used.
+        $singleMap = [
+            // already-correct SEO / content / image
+            'generate_meta'         => ['engine' => 'write',     'agent' => 'priya'],
+            'insert_link'           => ['engine' => 'seo',       'agent' => 'james'],
+            'link_suggestions'      => ['engine' => 'seo',       'agent' => 'james'],
+            'fix_orphans'           => ['engine' => 'seo',       'agent' => 'james'],
+            'generate_image'        => ['engine' => 'creative',  'agent' => 'priya'],
+            'improve_draft'         => ['engine' => 'write',     'agent' => 'priya'],
+            'deep_audit'            => ['engine' => 'seo',       'agent' => 'james'],
+            'generate_links'        => ['engine' => 'seo',       'agent' => 'james'],
+            'keyword_research'      => ['engine' => 'seo',       'agent' => 'james'],
+            // slug name ≠ whitelisted action → translate the action too
+            'refresh_stale'         => ['engine' => 'write',     'agent' => 'priya',  'action' => 'improve_draft'],
+            'expand_thin_pages'     => ['engine' => 'write',     'agent' => 'priya',  'action' => 'improve_draft'],
+            'apply_link_suggestions'=> ['engine' => 'seo',       'agent' => 'james',  'action' => 'link_suggestions'],
+            // LAUNCH SCOPE 2026-07-20 — removed capability executor mapping deleted (was: 'send_email'            => ['engine' => 'marketing', 'agent'...)
+            // LAUNCH SCOPE 2026-07-20 — removed capability executor mapping deleted (was: 'create_campaign'       => ['engine' => 'marketing', 'agent'...)
+            // LAUNCH SCOPE 2026-07-20 — removed capability executor mapping deleted (was: 'social_create_post'    => ['engine' => 'social',    'agent'...)
+            'unstick_tasks'         => ['engine' => 'tasks',     'agent' => 'sarah',  'action' => 'retry_blocked'],
+        ];
+
+        // Unmapped slugs (e.g. goal_pivot, strategy_meeting, weekly_review) have
+        // no async executor yet and still need their own wiring (GoalLifecycle /
+        // meeting controller). Keep the legacy write/priya fallback but make it
+        // OBSERVABLE so these surface in logs instead of silently failing.
+        $cfg = $singleMap[$slug] ?? null;
+        if ($cfg === null) {
+            Log::warning('[ProactiveStrategy] proposal slug not mapped to a verified executor — using write/priya fallback (likely to fail in worker; needs dedicated wiring)', [
+                'workspace_id' => $wsId, 'proposal_id' => $proposal->id, 'slug' => $slug,
+            ]);
+            $cfg = ['engine' => 'write', 'agent' => 'priya'];
+        }
+
+        $task = $taskSvc->create($wsId, [
+            'engine'            => $cfg['engine'],
+            'action'            => $cfg['action'] ?? $slug,
+            'source'            => 'agent',
+            'priority'          => 'normal',
+            'assigned_agents'   => [$cfg['agent']],
+            'auto_approve'      => true,
+            'requires_approval' => false,
+            'credit_cost'       => (int) $proposal->total_credits,
+            'payload'           => [
+                'title'        => $title,
+                'description'  => (string) $proposal->description,
+                'created_via'  => 'sarah_proposal',
+                'proposal_id'  => $proposal->id,
+            ],
+        ]);
+        $ids[] = (int) $task->id;
+        return $ids;
     }
 
     /**
@@ -188,6 +417,65 @@ class ProactiveStrategyEngine
             ->update(['status' => 'declined', 'updated_at' => now()]);
 
         return ['success' => true, 'credits_used' => 0, 'message' => 'Proposal declined. No credits were used.'];
+    }
+
+    /**
+     * 2026-05-24 FIX 55 — Batch approve. Loops the per-proposal logic.
+     * Each entry runs independently — one failing doesn't block the rest.
+     * Returns per-id results + aggregate summary.
+     */
+    public function batchApprove(int $wsId, int $userId, array $ids): array
+    {
+        $results = [];
+        $succeeded = 0; $failed = 0; $totalCredits = 0;
+        foreach ($ids as $id) {
+            $id = (int) $id;
+            try {
+                $r = $this->approveProposal($wsId, $userId, $id);
+                $results[$id] = $r;
+                if ($r['success'] ?? false) {
+                    $succeeded++;
+                    $totalCredits += (int) ($r['credits_used'] ?? 0);
+                } else {
+                    $failed++;
+                }
+            } catch (\Throwable $e) {
+                $failed++;
+                $results[$id] = ['success' => false, 'error' => $e->getMessage()];
+                Log::warning('[ProactiveStrategy] batchApprove item failed', [
+                    'workspace_id' => $wsId, 'proposal_id' => $id, 'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        return [
+            'success'       => $failed === 0,
+            'results'       => $results,
+            'summary'       => [
+                'total'         => count($ids),
+                'succeeded'     => $succeeded,
+                'failed'        => $failed,
+                'credits_used'  => $totalCredits,
+            ],
+        ];
+    }
+
+    /**
+     * 2026-05-24 FIX 55 — Batch decline. Bulk DB update, single round-trip.
+     */
+    public function batchDecline(int $wsId, array $ids): array
+    {
+        $ids = array_map('intval', $ids);
+        $count = DB::table('strategy_proposals')
+            ->where('workspace_id', $wsId)
+            ->whereIn('id', $ids)
+            ->where('status', 'pending_approval')
+            ->update(['status' => 'declined', 'updated_at' => now()]);
+
+        return [
+            'success'        => true,
+            'declined_count' => $count,
+            'message'        => "Declined {$count} proposal(s). No credits used.",
+        ];
     }
 
     /**
@@ -226,6 +514,116 @@ class ProactiveStrategyEngine
      * Daily proactive check — Sarah reviews workspace health.
      * Sends TEMPLATE notifications only — zero credits.
      */
+    /**
+     * SEO-DRAIN FIX (2026-07-18) — signal-aware supersede.
+     *
+     * Replaces a blind `created_at < now-7d` bulk wipe that was destroying
+     * valid SEO work (80/80 SEO proposal deaths on ws2 in 30 days came from
+     * it). A proposal is only killed when the gap it targets is actually gone.
+     *
+     * SEO slugs -> checked against live gap counts.
+     * Everything else -> original 7-day age-out, unchanged, but now with a
+     * recorded reason so a supersede is never unexplained again.
+     */
+    private function supersedeStaleProposals(int $wsId): void
+    {
+        $stale = DB::table('strategy_proposals')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'pending_approval')
+            ->where('created_at', '<', now()->subDays(7))
+            ->get(['id', 'type', 'title']);
+
+        if ($stale->isEmpty()) {
+            return;
+        }
+
+        $gaps = $this->currentSeoGaps($wsId);
+
+        foreach ($stale as $p) {
+            $slug = preg_replace('/^(daily_action_|weekly_pivot_)/', '', (string) $p->type);
+
+            if (array_key_exists($slug, $gaps)) {
+                // Signal still real -> the work is still worth doing. Leave it
+                // pending however old it is; the auto-executor will drain it.
+                if ($gaps[$slug] > 0) {
+                    continue;
+                }
+                $this->supersedeOne((int) $p->id, "signal_resolved:{$slug}", $wsId, (string) $p->title);
+                continue;
+            }
+
+            $this->supersedeOne((int) $p->id, 'aged_out_7d', $wsId, (string) $p->title);
+        }
+    }
+
+    /** Single supersede + reason. Reason column is additive; tolerate its absence. */
+    private function supersedeOne(int $id, string $reason, int $wsId, string $title): void
+    {
+        $update = ['status' => 'superseded', 'updated_at' => now()];
+        if (Schema::hasColumn('strategy_proposals', 'superseded_reason')) {
+            $update['superseded_reason'] = $reason;
+        }
+        DB::table('strategy_proposals')->where('id', $id)->update($update);
+
+        Log::info('[ProactiveStrategy] proposal superseded', [
+            'workspace_id' => $wsId,
+            'proposal_id'  => $id,
+            'reason'       => $reason,
+            'title'        => $title,
+        ]);
+    }
+
+    /**
+     * Live SEO gap counts, keyed by the proposal slug that targets each gap.
+     * A slug present here with value 0 means "this work is finished".
+     *
+     * write_article / improve_draft are intentionally ABSENT: content is never
+     * "done", so those keep the plain age-out rather than being kept alive
+     * forever.
+     *
+     * On any read failure we return [] — every proposal then falls through to
+     * the original 7-day age-out. That is the pre-existing behaviour, so a
+     * broken gap query degrades to exactly what shipped before, never to
+     * unbounded accumulation.
+     */
+    private function currentSeoGaps(int $wsId): array
+    {
+        try {
+            $idx = DB::table('seo_content_index')
+                ->where('workspace_id', $wsId)
+                ->selectRaw(
+                    'SUM(CASE WHEN inbound_links = 0 THEN 1 ELSE 0 END) AS orphans, '
+                    . 'SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin, '
+                    . 'SUM(CASE WHEN meta_description IS NULL OR meta_description = "" THEN 1 ELSE 0 END) AS missing_meta'
+                )
+                ->first();
+
+            $suggestedLinks = (int) DB::table('seo_links')
+                ->where('workspace_id', $wsId)
+                ->where('status', 'suggested')
+                ->count();
+
+            $orphans     = (int) ($idx->orphans ?? 0);
+            $thin        = (int) ($idx->thin ?? 0);
+            $missingMeta = (int) ($idx->missing_meta ?? 0);
+
+            return [
+                'fix_orphans'            => $orphans,
+                'insert_link'            => $suggestedLinks,
+                'link_suggestions'       => $suggestedLinks,
+                'apply_link_suggestions' => $suggestedLinks,
+                'expand_thin_pages'      => $thin,
+                'generate_meta'          => $missingMeta,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('[ProactiveStrategy] SEO gap read failed — falling back to age-out', [
+                'workspace_id' => $wsId,
+                'error'        => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
     public function dailyCheck(int $wsId): array
     {
         $workspace = Workspace::find($wsId);
@@ -257,7 +655,7 @@ class ProactiveStrategyEngine
             $this->agentMessages->postAsAgent($wsId, 'sarah', $reminderMsg, [
                 'notification_type' => 'sarah_reminder',
                 'pending_count'     => $total,
-                'action_link'       => '/app/?tab=strategy',
+                'action_link'       => '/app/strategy',
             ]);
         }
 
@@ -276,11 +674,20 @@ class ProactiveStrategyEngine
         // Wave 86 — supersede pending proposals older than 7 days BEFORE
         // checking opportunities, so stale onboarding nudges dont keep
         // accruing day after day.
-        DB::table('strategy_proposals')
-            ->where('workspace_id', $wsId)
-            ->where('status', 'pending_approval')
-            ->where('created_at', '<', now()->subDays(7))
-            ->update(['status' => 'superseded', 'updated_at' => now()]);
+        //
+        // SEO-DRAIN FIX (2026-07-18) — this blind age wipe was killing REAL,
+        // still-valid SEO work. Measured on ws2: ALL 80 SEO proposal deaths in
+        // 30 days came from this line (zero from the 15-min family dedup).
+        // insert_link 27 superseded / 0 completed (avg age 285h), write_article
+        // 22/4 (343h), generate_meta 3/0 (436h). They aged out here only
+        // because the auto-executor was budget-starved and never drained them
+        // (see SarahAutoExecuteCommand::spentToday) — so the work was valid the
+        // whole time and got thrown away anyway, then re-proposed tomorrow.
+        //
+        // Now: SEO proposals are superseded ONLY when the underlying signal is
+        // genuinely resolved (no orphans left, no thin pages left, etc).
+        // Everything else keeps the original 7-day age-out, unchanged.
+        $this->supersedeStaleProposals($wsId);
 
         // Identify opportunities and propose them WITH cost estimates
         $opportunities = $this->findOpportunities($wsId, $workspace);
@@ -357,7 +764,7 @@ class ProactiveStrategyEngine
             'tasks_completed'   => $tasksCompleted,
             'credits_used'      => $creditsUsed,
             'new_leads'         => $newLeads,
-            'action_link'       => '/app/?tab=strategy',
+            'action_link'       => '/app/strategy',
         ]);
 
         return ['tasks_completed' => $tasksCompleted, 'credits_used' => $creditsUsed, 'new_leads' => $newLeads];
@@ -399,7 +806,7 @@ class ProactiveStrategyEngine
             'notification_type' => 'sarah_monthly_proposal',
             'estimated_credits' => $estimate['total'],
             'balance'           => $balance['available'] ?? 0,
-            'action_link'       => '/app/?tab=strategy',
+            'action_link'       => '/app/strategy',
         ]);
 
         return ['proposal_id' => $proposalId, 'estimated_credits' => $estimate['total']];
@@ -421,7 +828,9 @@ class ProactiveStrategyEngine
 
     private function estimateInitialSessionCost(Workspace $workspace): array
     {
-        $agents = ['sarah', 'james', 'priya', 'marcus', 'elena'];
+        // LAUNCH SCOPE 2026-07-20 — 'marcus' (removed social agent) dropped from the
+        // strategy-meeting cost estimate; retained launch agents only.
+        $agents = ['sarah', 'james', 'priya', 'elena', 'max'];
         $breakdown = [];
 
         // Meeting costs
@@ -492,13 +901,113 @@ class ProactiveStrategyEngine
         $hasAudit = DB::table('seo_audits')->where('workspace_id', $wsId)->where('type', 'full')->exists();
 
         $rt = app(\App\Connectors\RuntimeClient::class);
+        $result = [];
         if ($rt->isIntelligenceRuntimeEnabled()) {
-            $result = $rt->proactiveFindOpportunities((int) $articleCount, (bool) $hasAudit);
-            if ($result !== null) return $result;
+            $runtimeResult = $rt->proactiveFindOpportunities((int) $articleCount, (bool) $hasAudit);
+            if ($runtimeResult !== null) $result = $runtimeResult;
         }
-        // Wave 91 Phase D — runtime canonical. Empty list on failure
-        // (better no nudge than a stale or wrong one).
-        return [];
+        // /* studio-stale-sweep-v1 */ — append visual refresh opportunities
+        // Surfaces Studio designs older than 90 days so Sarah can propose a
+        // regen via studio/generate_design. Recommendation only — never auto-acts.
+        try {
+            $staleCount = DB::table('studio_designs')
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->where('status', 'exported')
+                ->where('updated_at', '<', now()->subDays(90))
+                ->count();
+            if ($staleCount > 0) {
+                $result[] = [
+                    'type'         => 'studio_refresh',
+                    'severity'     => $staleCount >= 5 ? 'high' : 'medium',
+                    'count'        => $staleCount,
+                    'headline'     => $staleCount === 1
+                        ? '1 published design is over 90 days old'
+                        : $staleCount . ' published designs are over 90 days old',
+                    'recommendation' => 'Refresh stale visuals with studio/generate_design grounded in current brand kit.',
+                    'engine'       => 'studio',
+                    'action'       => 'generate_design',
+                    'priority'     => $staleCount >= 5 ? 8 : 5,
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Fail-silent — opportunity surfacing must not break the daily check.
+            \Illuminate\Support\Facades\Log::warning('studio-stale-sweep failed: ' . $e->getMessage());
+        }
+        // /* email-stale-sweep-v1 */ — surface stale email templates as refresh opportunities.
+        // Conditions: template updated >90 days ago AND owned by workspace (not system).
+        // Sarah's recommendation only — never auto-acts on the user's templates.
+        try {
+            $staleEmails = DB::table('email_templates')
+                ->where('workspace_id', $wsId)
+                ->where('is_system', 0)
+                ->where('is_active', 1)
+                ->where('updated_at', '<', now()->subDays(90))
+                ->count();
+            if ($staleEmails > 0) {
+                $result[] = [
+                    'type'         => 'email_refresh',
+                    'severity'     => $staleEmails >= 3 ? 'high' : 'medium',
+                    'count'        => $staleEmails,
+                    'headline'     => $staleEmails === 1
+                        ? '1 email template is over 90 days old'
+                        : $staleEmails . ' email templates are over 90 days old',
+                    'recommendation' => 'Refresh stale email templates with marketing/email_ai_generate grounded in current brand kit + recent performance.',
+                    'engine'       => 'marketing',
+                    'action'       => 'email_ai_generate',
+                    'priority'     => $staleEmails >= 3 ? 7 : 4,
+                ];
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('email-stale-sweep failed: ' . $e->getMessage());
+        }
+        // /* cross-engine-article-email-v1 */ — surface articles without companion email.
+        // Sarah recommends drafting an email campaign for any article published in the
+        // last 7 days that has no email_campaign_log linking to it.
+        try {
+            $recentArticles = DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->where('status', 'published')
+                ->where('published_at', '>=', now()->subDays(7))
+                ->select('id', 'title', 'slug', 'published_at')
+                ->get();
+            if ($recentArticles->isNotEmpty()) {
+                $unmatched = [];
+                foreach ($recentArticles as $art) {
+                    // Check if any campaign references this article (by URL or template name containing slug)
+                    $linked = DB::table('email_campaigns_log')
+                        ->where('workspace_id', $wsId)
+                        ->where(function ($q) use ($art) {
+                            $q->where('content', 'like', '%' . $art->slug . '%')
+                              ->orWhere('subject', 'like', '%' . $art->title . '%');
+                        })
+                        ->exists();
+                    if (!$linked) $unmatched[] = $art;
+                }
+                if (count($unmatched) > 0) {
+                    $first = $unmatched[0];
+                    $result[] = [
+                        'type'         => 'article_to_email',
+                        'severity'     => 'medium',
+                        'count'        => count($unmatched),
+                        'headline'     => count($unmatched) === 1
+                            ? 'Recent article "' . substr($first->title, 0, 50) . '" has no companion email'
+                            : count($unmatched) . ' recent articles have no companion email campaigns',
+                        'recommendation' => 'Draft an email campaign for each article to amplify reach. Sarah will pre-fill the subject + preview from the article title + meta.',
+                        'engine'       => 'marketing',
+                        'action'       => 'email_ai_generate',
+                        'priority'     => 6,
+                        'context'      => [
+                            'article_ids' => array_map(fn($a) => $a->id, $unmatched),
+                            'goal'        => 'announce',
+                        ],
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('cross-engine-article-email failed: ' . $e->getMessage());
+        }
+        return $result;
     }
 
 }

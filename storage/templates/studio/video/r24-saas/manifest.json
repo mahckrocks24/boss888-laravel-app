@@ -1,0 +1,90 @@
+{
+  "name": "Saas Reel",
+  "slug": "r24-saas",
+  "format": "reels",
+  "category": "saas",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "saas"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "SaaS Platform"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "AI-Powered Platform"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "The all-in-one operating system that replaces 12 tools — AI, CRM, analytics, and automation in one dashboard."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "One"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "Platform."
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "Infinite Scale."
+    },
+    "check_1": {
+      "type": "text",
+      "label": "Check 1",
+      "default": "✓"
+    },
+    "check_2": {
+      "type": "text",
+      "label": "Check 2",
+      "default": "✓"
+    },
+    "check_3": {
+      "type": "text",
+      "label": "Check 3",
+      "default": "✓"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Start Free Trial"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "saas"
+    ]
+  }
+}

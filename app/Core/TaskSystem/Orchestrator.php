@@ -42,6 +42,20 @@ class Orchestrator
     {
         $reservationRef = null;
 
+        // 2026-06-20 — bind the executing task's workspace into the container so
+        // queue/orchestrator-context callers that have no request header and no
+        // authenticated user can still resolve the workspace. Used as a
+        // last-resort fallback by RuntimeClient::imageGenerate to namespace
+        // featured images correctly (was landing in ai-images/0/). Scoped to
+        // this single execute() call; rebound on every task, never leaks across
+        // requests (request-context code paths resolve workspace on their own
+        // and never read this binding).
+        try {
+            app()->instance('lu.current_workspace_id', (int) $task->workspace_id);
+        } catch (\Throwable) {
+            // Container unavailable — non-fatal; image pathing falls back to 0.
+        }
+
         try {
             // ── 0. Idempotency check ─────────────────────────────────────
             $idemKey = $this->idempotency->ensureKey($task);
@@ -97,10 +111,21 @@ class Orchestrator
             $agentSlug = $this->extractAgentSlug($task);
             $rateCheck = $this->rateLimiter->check($task->workspace_id, $agentSlug, $connectorName ?? '');
             if (! $rateCheck['allowed']) {
-                $task->update(['status' => 'blocked', 'progress_message' => $rateCheck['reason']]);
-                $this->progress->recordEvent($task->id, 'rate_limited', 'blocked',
-                    message: $rateCheck['reason']);
+                // 2026-05-25 — auto-retry rate-limited tasks instead of leaving
+                // them permanently blocked. Forensic: 90+ orphan chain children
+                // accumulated because rate-limited tasks set status='blocked'
+                // with no retry path. Mirror the workspace-concurrency handler
+                // 10 lines below which already uses requeue().
+                $reason   = $rateCheck['reason'] ?? '';
+                $delaySec = 60; // default: 1 min
+                if (str_contains($reason, 'per_hour'))        $delaySec = 3630; // hour window + 30s buffer
+                elseif (str_contains($reason, 'per_day'))     $delaySec = 600;  // re-check every 10 min
+                elseif (str_contains($reason, 'per_minute'))  $delaySec = 65;   // minute + buffer
+                $task->update(['status' => 'queued', 'progress_message' => $reason . ' — auto-retry in ' . $delaySec . 's']);
+                $this->progress->recordEvent($task->id, 'rate_limited_retry', 'queued',
+                    message: $reason . ' — retry queued in ' . $delaySec . 's');
                 $this->idempotency->releaseLock($idemKey);
+                $this->taskService->requeue($task, $delaySec);
                 return;
             }
 
@@ -117,6 +142,23 @@ class Orchestrator
 
             // ── 5. Parameter resolution ──────────────────────────────────
             $payload = $task->payload_json ?? [];
+
+            // 2026-07-23 FIX — ORDERING BUG. The documented contract for the
+            // creative image actions is "article_id (required) OR explicit
+            // prompt", and ensureImagePrompt() exists to satisfy it. But it was
+            // only applied down in the dispatch map (step 7), while the
+            // parameter resolver here at step 5 hard-requires `prompt` — so a
+            // Sarah proposal/chat image task carrying only title/article_id was
+            // rejected as "Missing required parameters: prompt" and execution
+            // never reached the derivation that would have fixed it. Forensic:
+            // ws29 task 2205 (title present, no prompt) burned 3 retries, and
+            // repeated failures then tripped the creative connector's circuit
+            // breaker, degrading every later image task. Derive first, then
+            // validate. A caller that already supplies a prompt is untouched.
+            if (in_array($task->action, ['generate_image', 'generate_image_mini', 'generate_image_high'], true)) {
+                $payload = $this->ensureImagePrompt($task->workspace_id, $payload);
+            }
+
             $resolution = $this->parameterResolver->resolve($task->workspace_id, $task->action, $payload);
 
             if (! $resolution['resolved']) {
@@ -211,6 +253,223 @@ class Orchestrator
                 }
             } catch (\Throwable $wakeErr) {
                 \Illuminate\Support\Facades\Log::warning("Wave 41 wake-children failed for task {$task->id}: " . $wakeErr->getMessage());
+            }
+
+            // 2026-06-20 — self-orphaning fix (UNIVERSAL). Every article path
+            // (sarah_chat conversational, SEO-assistant batch, proactive) lands
+            // a completed write_article here. The per-article chain only inserts
+            // OUTBOUND links from the new article, so it is born with zero
+            // INBOUND links = an orphan. Enqueue ONE inbound orphan-rescue via
+            // the existing, wired, proven fix_orphans action — its anchor /
+            // relevance intelligence runs in the runtime, nothing new added here.
+            //
+            // Runs for ALL workspaces incl. WP-connected (owner directive
+            // 2026-06-20 — the WP SEO assistant must auto-link too). On WP the
+            // fix_orphans path delivers inbound links into the LIVE WordPress
+            // site via the WP-truthful path (records only on successful push).
+            // Deduped to a 10-minute window so a multi-article batch queues at
+            // most one rescue. app888 / WP assistant are transparent (task card).
+            try {
+                if ($task->action === 'write_article' && ($finalResult['success'] ?? true)) {
+                    $wsForRescue = (int) $task->workspace_id;
+                    $recentRescue = \Illuminate\Support\Facades\DB::table('tasks')
+                        ->where('workspace_id', $wsForRescue)
+                        ->where('action', 'fix_orphans')
+                        ->where('created_at', '>=', now()->subMinutes(10))
+                        ->exists();
+                    if (! $recentRescue) {
+                        $rescue = app(\App\Core\TaskSystem\TaskService::class)->create($wsForRescue, [
+                            'engine'            => 'seo',
+                            'action'            => 'fix_orphans',
+                            'source'            => 'agent',
+                            'priority'          => 'low',
+                            'assigned_agents'   => ['james'],
+                            'auto_approve'      => true,
+                            'requires_approval' => false,
+                            'credit_cost'       => 0,
+                            'payload'           => [
+                                'title'          => 'Link new articles into the site',
+                                'created_via'    => 'auto_orphan_rescue',
+                                // Unique per trigger so TaskService's payload-derived
+                                // idempotency key never collides with a prior rescue
+                                // (identical payloads hash to ONE key and the 2nd
+                                // insert hits tasks_idempotency_key_unique forever).
+                                // Batch spam is still bounded by the 10-min window above.
+                                'trigger_task_id' => (int) $task->id,
+                            ],
+                        ]);
+                        $rescue->update(['progress_message' => 'Linking new articles into the site']);
+                    }
+                }
+            } catch (\Throwable $rescueErr) {
+                \Illuminate\Support\Facades\Log::warning("[Orchestrator] orphan-rescue enqueue failed for task {$task->id}: " . $rescueErr->getMessage());
+            }
+
+            // 2026-06-20 — Fix 3: seo_content_index featured-image sync. The
+            // index row is written at write-time (before the image exists);
+            // generate_image_mini sets articles.featured_image_url but never
+            // refreshes the index, so the SEO health report / assistant under-
+            // count featured images. After an image task completes, copy the
+            // article's featured image into its index row.
+            //
+            // TARGETED update of ONLY the two image columns — deliberately does
+            // NOT touch inbound_links (a full re-index via indexArticleForLink-
+            // Graph writes inbound_links=0 and would RE-ORPHAN the article).
+            // Pure read-model correction: no intelligence, no generation logic,
+            // and no external side effect (does not push to WP), so it is safe
+            // for every workspace incl. ws7 and left ungated.
+            try {
+                if (in_array($task->action, ['generate_image_mini', 'generate_image', 'generate_image_high'], true)
+                    && ($finalResult['success'] ?? true)) {
+                    $aid = (int) ($params['article_id'] ?? 0);
+                    // 2026-07-06 — $params is not in scope in execute(), and
+                    // standalone image tasks (Sarah-chat / proposal, no parent)
+                    // carry article_id in their OWN payload. Resolve from there
+                    // first; without this $aid stayed 0 and the image never got
+                    // attached to the article.
+                    if ($aid === 0) {
+                        $pl = is_string($task->payload_json)
+                            ? (json_decode($task->payload_json, true) ?: [])
+                            : ((array) ($task->payload_json ?? []));
+                        $aid = (int) ($pl['article_id'] ?? 0);
+                    }
+                    // Chain children (write_article parent -> image child) carry
+                    // article_id only via the parent's result passthrough.
+                    if ($aid === 0 && ! empty($task->parent_task_id)) {
+                        $pr = \Illuminate\Support\Facades\DB::table('tasks')
+                            ->where('id', $task->parent_task_id)->value('result_json');
+                        if ($pr) {
+                            $pd = json_decode($pr, true);
+                            $aid = (int) ($pd['data']['article_id'] ?? $pd['article_id'] ?? 0);
+                        }
+                    }
+                    if ($aid > 0) {
+                        $art = \Illuminate\Support\Facades\DB::table('articles')
+                            ->where('id', $aid)
+                            ->where('workspace_id', (int) $task->workspace_id)
+                            ->first(['title', 'featured_image_url']);
+
+                        // 2026-07-06 — CreativeService (LOCKED) returns the image
+                        // in the task result but does not reliably write it back
+                        // to the article. Persist it here (plumbing, not creative
+                        // logic) so chat/proposal image tasks actually ATTACH the
+                        // image to the article — otherwise the work "completes"
+                        // but the article stays imageless.
+                        $imgUrl = $finalResult['data']['featured_image_url'] ?? $finalResult['data']['url']
+                                ?? $finalResult['featured_image_url'] ?? ($finalResult['url'] ?? null);
+                        $imgAlt = $finalResult['data']['featured_image_alt'] ?? ($finalResult['featured_image_alt'] ?? null);
+                        if ($art && empty($art->featured_image_url) && ! empty($imgUrl)) {
+                            \Illuminate\Support\Facades\DB::table('articles')
+                                ->where('id', $aid)
+                                ->update([
+                                    'featured_image_url' => $imgUrl,
+                                    'featured_image_alt' => $imgAlt,
+                                    'updated_at'         => now(),
+                                ]);
+                            $art->featured_image_url = $imgUrl;
+                        }
+
+                        if ($art && ! empty($art->featured_image_url) && ! empty($art->title)) {
+                            \Illuminate\Support\Facades\DB::table('seo_content_index')
+                                ->where('workspace_id', (int) $task->workspace_id)
+                                ->where('title', $art->title)
+                                ->update([
+                                    'featured_image_url' => $art->featured_image_url,
+                                    'has_featured_image' => 1,
+                                    'updated_at'         => now(),
+                                ]);
+                        }
+                    }
+                }
+            } catch (\Throwable $imgSyncErr) {
+                \Illuminate\Support\Facades\Log::warning("[Orchestrator] index featured-image sync failed for task {$task->id}: " . $imgSyncErr->getMessage());
+            }
+
+            // 2026-06-20 — PROACTIVE completion reporting (owner directive). Sarah
+            // (Laravel/app888) and the WP SEO assistant must announce finished work
+            // WITHOUT being asked. Forensic showed completions were only surfaced
+            // reactively on the next user message (read-back at routes/api.php) and
+            // chains that finished with no follow-up were never reported at all.
+            // When the LAST task of a user-requested chain completes, post ONE
+            // honest summary as the orchestrating agent (Sarah on Laravel, James on
+            // the WP connector assistant surface — same reporting intelligence).
+            // postAsAgent already fans the message out as push to web + app888.
+            // An atomic JSON_SET claim on the root prevents a double-post when
+            // sibling children finish concurrently across the worker pool. Phrasing
+            // reuses the root's already-honest result message (friendlyMessageFor +
+            // no_change), so no-op work is never mis-reported as done.
+            try {
+                $rootId = (int) ($task->parent_task_id ?: $task->id);
+                $chain  = \App\Models\Task::where('id', $rootId)
+                    ->orWhere('parent_task_id', $rootId)->get(['id', 'status']);
+                $pending = $chain->whereNotIn('status', ['completed', 'failed', 'cancelled'])->count();
+                if ($chain->isNotEmpty() && $pending === 0) {
+                    $claimed = \Illuminate\Support\Facades\DB::update(
+                        "UPDATE tasks SET payload_json = JSON_SET(COALESCE(payload_json, JSON_OBJECT()), '$.completion_reported', true) "
+                        . "WHERE id = ? AND COALESCE(JSON_EXTRACT(payload_json, '$.completion_reported'), false) = false",
+                        [$rootId]
+                    );
+                    if ($claimed === 1) {
+                        // Raw row (NOT the Eloquent model) — Task casts
+                        // payload_json/result_json to arrays, which would make the
+                        // json_decode() calls below throw on an array argument.
+                        $root = \Illuminate\Support\Facades\DB::table('tasks')->where('id', $rootId)->first();
+                        $rp   = $root ? (json_decode($root->payload_json ?? '{}', true) ?: []) : [];
+                        $skipVia = ['auto_orphan_rescue', 'sarah_proposal', 'sarah_daily',
+                                    'sarah_weekly', 'sarah_monthly', 'post_publish_coordinator',
+                                    'fill_missing_images', 'sarah_router', 'review_publish', 'proof_run'];
+                        // 2026-07-07 — a bulk image fill produces N standalone image
+                        // tasks, each posting an identical "Image generated." bubble
+                        // (44 seen in ws2). Suppress per-image completion chatter —
+                        // the image simply appears on its article.
+                        $isStandaloneImage = in_array(($root->action ?? ''), ['generate_image_mini', 'generate_image', 'generate_image_high'], true)
+                                             && empty($root->parent_task_id);
+                        if ($root && ! $isStandaloneImage && ! in_array(($rp['created_via'] ?? ''), $skipVia, true)
+                            && ($root->source ?? '') !== 'system') {
+                            $rr  = json_decode($root->result_json ?? '{}', true) ?: [];
+                            $msg = (string) ($rr['message'] ?? 'Your request is done.');
+                            if ($root->action === 'write_article') {
+                                $aid = (int) ($rr['data']['article_id'] ?? 0);
+                                if ($aid > 0) {
+                                    $art = \Illuminate\Support\Facades\DB::table('articles')
+                                        ->where('id', $aid)->first(['title']);
+                                    if ($art && ! empty($art->title)) {
+                                        $idx = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                                            ->where('workspace_id', (int) $root->workspace_id)
+                                            ->where('title', $art->title)
+                                            ->first(['has_featured_image', 'internal_link_count']);
+                                        $imgTxt  = ($idx && $idx->has_featured_image) ? 'with a featured image' : 'image still finishing';
+                                        $linkTxt = ($idx && $idx->internal_link_count !== null)
+                                            ? ((int) $idx->internal_link_count . ' internal links') : 'internal links added';
+                                        $msg = "Your article \"{$art->title}\" is ready — {$imgTxt}, {$linkTxt}. You'll find it in your drafts.";
+                                    }
+                                }
+                            }
+                            // WP connector surface has NO agents (owner directive):
+                            // the single SEO Assistant reports there (its own store).
+                            // Laravel/app888 reports as Sarah via agent_messages (+push).
+                            $seoAssistant = app(\App\Engines\SEO\Services\SeoAssistantService::class);
+                            if ($seoAssistant->isWpWorkspace((int) $root->workspace_id)) {
+                                $seoAssistant->pushAssistantNotice((int) $root->workspace_id, $msg);
+                            } else {
+                                app(\App\Core\Agents\AgentMessageService::class)->postAsAgent(
+                                    (int) $root->workspace_id, 'sarah', $msg,
+                                    ['completion_report' => true, 'root_task_id' => $rootId]
+                                );
+                            }
+                            // Mark the chain read so the reactive read-back layer does
+                            // not surface the same completion a second time.
+                            \Illuminate\Support\Facades\DB::table('tasks')
+                                ->where(function ($q) use ($rootId) {
+                                    $q->where('id', $rootId)->orWhere('parent_task_id', $rootId);
+                                })
+                                ->whereNull('sarah_read_at')
+                                ->update(['sarah_read_at' => now()]);
+                        }
+                    }
+                }
+            } catch (\Throwable $reportErr) {
+                \Illuminate\Support\Facades\Log::warning("[Orchestrator] completion report failed for task {$task->id}: " . $reportErr->getMessage());
             }
 
             // Record rate limit usage
@@ -356,6 +615,18 @@ class Orchestrator
 
                 return $result;
 
+            } catch (\InvalidArgumentException $e) {
+                // 2026-05-31 — Validation errors are deterministic: retrying
+                // won't help because the caller passed bad args. Fail fast.
+                // Previously these consumed 3 retry attempts before giving up
+                // (e.g. creative/generate_image_mini missing the prompt param
+                // burned ~1.5s of waste + retry credits per stuck call).
+                $lastError = $e->getMessage();
+                $this->progress->recordEvent($task->id, 'step_error', null,
+                    step: $stepIndex, action: $action,
+                    message: "Bad input — failing fast (no retry): {$lastError}");
+                return ['success' => false, 'data' => [], 'message' => "Bad input: {$lastError}"];
+
             } catch (\Throwable $e) {
                 $lastError = $e->getMessage();
                 $this->progress->recordEvent($task->id, 'step_error', null,
@@ -390,8 +661,111 @@ class Orchestrator
      * EES (EngineExecutionService) remains the synchronous/manual execution path.
      * Orchestrator owns async/agent execution. The two paths do NOT overlap.
      *
-     * To add a new action: add one entry to $dispatchMap below.
+     * To add a new action: add one entry to $dispatchMap below AND to
+     * Orchestrator::dispatchableActions() (the LLM-facing catalog).
      */
+
+    /**
+     * Canonical, machine-readable catalog of every action that the
+     * Orchestrator's $dispatchMap can actually execute. Two callers depend
+     * on this:
+     *   1. AgentMeetingEngine::extractPlanFromSynthesis() — feeds the list
+     *      to the LLM so it only picks dispatchable actions.
+     *   2. Future capability/dispatch consistency tests.
+     *
+     * Each entry is keyed by `<engine>/<action>` and carries a `params_hint`
+     * string that tells the LLM what fields the engine service needs in the
+     * task payload. Keep this in sync with the local $dispatchMap inside
+     * executeInternalAction() — if you add a dispatch entry without listing
+     * it here, the LLM can't see it; if you list it here without dispatch,
+     * the orchestrator throws when the task fires.
+     */
+    public static function dispatchableActions(): array
+    {
+        return [
+            // ── CRM ─────────────────────────────────────────────────
+            'crm/create_lead'        => ['params_hint' => 'first_name (required), last_name, email, phone, source, company'],
+            'crm/update_lead'        => ['params_hint' => 'lead_id (required), fields to update'],
+            'crm/list_leads'         => ['params_hint' => 'optional: status, limit, offset'],
+            'crm/score_lead'         => ['params_hint' => 'lead_id (required)'],
+            'crm/assign_lead'        => ['params_hint' => 'lead_id (required), user_id (required)'],
+            'crm/import_leads'       => ['params_hint' => 'leads (array, required)'],
+            'crm/create_contact'     => ['params_hint' => 'first_name, email (required)'],
+            'crm/create_deal'        => ['params_hint' => 'name, lead_id, value'],
+            'crm/update_deal_stage'  => ['params_hint' => 'deal_id (required), stage (required)'],
+            'crm/log_activity'       => ['params_hint' => 'lead_id or deal_id, type, notes'],
+            'crm/add_note'           => ['params_hint' => 'lead_id, text (required)'],
+            // ── SEO ─────────────────────────────────────────────────
+            'seo/serp_analysis'      => ['params_hint' => 'query (required) — search query to analyze'],
+            'seo/ai_report'          => ['params_hint' => 'url (required) — target page'],
+            'seo/deep_audit'         => ['params_hint' => 'url (required) — full URL to audit'],
+            'seo/improve_draft'      => ['params_hint' => 'article_id (required)'],
+            'seo/write_article'      => ['params_hint' => 'topic (required), keyword, word_count'],
+            'seo/link_suggestions'   => ['params_hint' => 'article_id or url (required)'],
+            'seo/fix_orphans'        => ['params_hint' => 'no params (optional limit) — links orphan pages, self-bills 2cr/insert'],
+            'seo/gsc_sync'           => ['params_hint' => 'no params (optional days, default 28) — pulls Search Console clicks/impressions/CTR/position into the workspace'],
+            'seo/check_outbound'     => ['params_hint' => 'article_id or url (required)'],
+            'seo/autonomous_goal'    => ['params_hint' => 'goal (required) — natural language objective'],
+            'seo/add_keyword'        => ['params_hint' => 'keyword (required)'],
+            'seo/list_keywords'      => ['params_hint' => 'optional: limit'],
+            'seo/keyword_research'   => ['params_hint' => 'seed_keyword (required), market (optional)'],
+            'seo/keywords_suggest'   => ['params_hint' => 'topic or seed (required)'],
+            'seo/keyword_check'      => ['params_hint' => 'keyword (required)'],
+            'seo/generate_links'     => ['params_hint' => 'article_id (required)'],
+            // ── Write ───────────────────────────────────────────────
+            'write/create_article'   => ['params_hint' => 'title (required), topic, keyword'],
+            'write/write_article'    => ['params_hint' => 'topic (required), keyword (optional), word_count (optional)'],
+            'write/improve_draft'    => ['params_hint' => 'article_id (required), instruction (optional)'],
+            'write/generate_outline' => ['params_hint' => 'topic (required)'],
+            'write/generate_headlines' => ['params_hint' => 'topic (required)'],
+            'write/generate_meta'    => ['params_hint' => 'article_id (auto-filled from parent task)'],
+            'write/aeo_enrich'       => ['params_hint' => 'article_id (auto-filled from parent task)'],
+            'write/publish_article'  => ['params_hint' => 'article_id (required)'],
+            'write/delete_article'   => ['params_hint' => 'article_id (required)'],
+            // ── Social ──────────────────────────────────────────────
+            'social/create_post'         => ['params_hint' => 'topic (required), platform (optional)'],
+            'social/social_create_post'  => ['params_hint' => 'topic (required), platform (optional)'],
+            'social/social_schedule_post' => ['params_hint' => 'post_id (required), scheduled_at (required)'],
+            'social/social_publish_post' => ['params_hint' => 'post_id (required)'],
+            'social/delete_post'         => ['params_hint' => 'post_id (required)'],
+            'social/list_posts'          => ['params_hint' => 'optional: platform, status'],
+            // ── Marketing ───────────────────────────────────────────
+            'marketing/create_campaign'   => ['params_hint' => 'name (required), audience, channel'],
+            'marketing/schedule_campaign' => ['params_hint' => 'campaign_id (required), scheduled_at'],
+            'marketing/create_automation' => ['params_hint' => 'name, trigger, actions'],
+            'marketing/list_campaigns'    => ['params_hint' => 'optional: status'],
+            // ── Builder ─────────────────────────────────────────────
+            'builder/create_website'   => ['params_hint' => 'name (required), industry'],
+            'builder/generate_page'    => ['params_hint' => 'website_id (required), section_brief'],
+            'builder/wizard_generate'  => ['params_hint' => 'website_id (required), prompt'],
+            'builder/publish_website'  => ['params_hint' => 'website_id (required)'],
+            // ── Calendar / Creative / Misc ──────────────────────────
+            'calendar/create_event'    => ['params_hint' => 'title, start_at, end_at (required)'],
+            'creative/generate_image'      => ['params_hint' => 'article_id (required, or explicit prompt), aspect (optional)'],
+            'creative/generate_image_mini' => ['params_hint' => 'article_id (required, or explicit prompt) — small/fast image'],
+            'creative/generate_image_high' => ['params_hint' => 'article_id (required, or explicit prompt) — hi-res image'],
+            // ── Studio ───────────────────────────────────────────────
+            'studio/generate_design'   => ['params_hint' => 'format (square|portrait|reel), industry, intent, headline_seed (all optional — Sarah grounds from brand kit + audit). Returns design draft.'],
+            'studio/generate_image'    => ['params_hint' => 'prompt (required), aspect (1:1|9:16|16:9), style (modern|minimal|bold). Returns image URL for use in a Studio design.'],
+            'studio/suggest_copy'      => ['params_hint' => 'context (required) — headline + sub + cta variants grounded in brand voice. Returns 3 copy options.'],
+            // ── Email Builder (Phase 1) ─────────────────────────────
+            'marketing/email_ai_generate'      => ['params_hint' => 'goal (sell|nurture|announce|onboard|reactivate), prompt (required). Brand kit auto-resolved from workspace. Returns AI-generated template with subject_a, subject_b, preview_text, blocks[]. Draft only — never sends.'],
+            'marketing/email_block_rewrite'    => ['params_hint' => 'template_id, block_id, instruction (required) — rewrites a single block in workspace brand voice. Returns updated content_json.'],
+            'marketing/email_subject_suggest'  => ['params_hint' => 'template_id, optional angle. Returns 5 subject-line variants for A/B testing, grounded in brand tone.'],
+            'marketing/email_spam_check'       => ['params_hint' => 'template_id, subject. Rule-based deliverability score 0-20 across 8 spam dimensions. Free — no LLM.'],
+            'marketing/email_preview_template' => ['params_hint' => 'template_id, variables (optional), format=desktop|mobile. Returns rendered HTML for inbox preview.'],
+            'marketing/email_send_test'        => ['params_hint' => 'template_id, to_email, variables (optional). Sends a single test email. Approval-gated.'],
+            'marketing/email_validate_campaign'=> ['params_hint' => 'campaign_id. Pre-flight check: missing variables, broken links, empty CTAs, spam score. Returns errors[] and warnings[].'],
+            'marketing/email_use_template'     => ['params_hint' => 'template_id (system template). Clones a system template into the workspace as an editable copy.'],
+            'marketing/email_template_picker'  => ['params_hint' => 'industry (optional), intent (optional), goal. AI ranks system templates by fit for the workspaces brand + use case. Returns top 5 with scores.'],
+            'beforeafter/ba_transform' => ['params_hint' => 'image_url (required), transformation'],
+            'beforeafter/create_design'=> ['params_hint' => 'prompt (required)'],
+            'manualedit/create_canvas' => ['params_hint' => 'name (required)'],
+            'traffic/create_rule'      => ['params_hint' => 'pattern (required), action'],
+            'tasks/retry_blocked'      => ['params_hint' => 'no params — retries all blocked tasks for workspace'],
+        ];
+    }
+
     private function executeInternalAction(Task $task, string $action, array $params): array
     {
         $wsId = $task->workspace_id;
@@ -449,19 +823,34 @@ class Orchestrator
         }
 
         $dispatchMap = [
+            // -- INFRA888 (2026-07-18) --------------------------------------
+            // Executes an APPROVED infrastructure operation on the queue.
+            // ProvisioningService is idempotent: a terminal operation returns
+            // its prior result instead of re-executing.
+            'infrastructure/provision_hosting' => function () use ($wsId, $params) {
+                return app(\App\Engines\Infrastructure\Services\ProvisioningService::class)
+                    ->execute($wsId, $params);
+            },
 
             // ── CRM ──────────────────────────────────────────────────────────
             'crm/create_lead'      => fn() => app(\App\Engines\CRM\Services\CrmService::class)
                                         ->createLead($wsId, $params)->toArray(),
             'crm/update_lead'      => fn() => app(\App\Engines\CRM\Services\CrmService::class)
-                                        ->updateLead($params['lead_id'], $params, $params['user_id'] ?? null)->toArray(),
+                                        ->updateLead($params['lead_id'], $params, $params['user_id'] ?? null, $wsId)->toArray(),
+            // 2026-07-14 — move_lead was capability-mapped but had NO dispatch
+            // executor (capability<->dispatch drift) -> died 'not supported'. It is a
+            // pipeline-status move, so route it to updateLead like update_lead.
+            'crm/move_lead'        => fn() => app(\App\Engines\CRM\Services\CrmService::class)
+                                        // normalise the target status: the LLM emits 'stage'/'to' for a move,
+                                        // but updateLead only reads 'status' (else it is a silent no-op).
+                                        ->updateLead((int) ($params['lead_id'] ?? 0), array_merge($params, ['status' => $params['status'] ?? $params['stage'] ?? $params['to'] ?? $params['pipeline_status'] ?? null]), $params['user_id'] ?? null, $wsId)->toArray(),
             // 2026-05-22 FIX 17 — list_leads. Same pattern as FIX 13 list_keywords.
             'crm/list_leads'       => fn() => app(\App\Engines\CRM\Services\CrmService::class)
                                         ->listLeads($wsId, $params),
             'crm/score_lead'       => fn() => app(\App\Engines\CRM\Services\CrmService::class)
-                                        ->scoreLead($params['lead_id'], $params['score'] ?? null)->toArray(),
+                                        ->scoreLead($params['lead_id'], $params['score'] ?? null, $wsId)->toArray(),
             'crm/assign_lead'      => fn() => app(\App\Engines\CRM\Services\CrmService::class)
-                                        ->assignLead($params['lead_id'], $params['assigned_to'] ?? null, $params['user_id'] ?? null)->toArray(),
+                                        ->assignLead($params['lead_id'], $params['assigned_to'] ?? null, $params['user_id'] ?? null, $wsId)->toArray(),
             'crm/import_leads'     => fn() => app(\App\Engines\CRM\Services\CrmService::class)
                                         ->importLeads($wsId, $params['rows'] ?? [], $params['user_id'] ?? null),
             'crm/create_contact'   => fn() => app(\App\Engines\CRM\Services\CrmService::class)
@@ -469,7 +858,7 @@ class Orchestrator
             'crm/create_deal'      => fn() => app(\App\Engines\CRM\Services\CrmService::class)
                                         ->createDeal($wsId, $params)->toArray(),
             'crm/update_deal_stage'=> fn() => app(\App\Engines\CRM\Services\CrmService::class)
-                                        ->updateDealStage($params['deal_id'], $params['stage'], $params['user_id'] ?? null)->toArray(),
+                                        ->updateDealStage($params['deal_id'], $params['stage'], $params['user_id'] ?? null, $wsId)->toArray(),
             'crm/log_activity'     => fn() => app(\App\Engines\CRM\Services\CrmService::class)
                                         ->logActivity($wsId, $params)->toArray(),
             'crm/add_note'         => fn() => app(\App\Engines\CRM\Services\CrmService::class)
@@ -488,6 +877,13 @@ class Orchestrator
                                         ->writeArticle($wsId, $params),
             'seo/link_suggestions' => fn() => app(\App\Engines\SEO\Services\SeoService::class)
                                         ->generateLinkSuggestions($wsId, $params),
+            // 2026-06-11 — first-class orphan fix (generate + apply orphan-first +
+            // self-bill exact applied count). Lets Sarah delegate "fix the orphans"
+            // as one credited task that runs through the keystone insert path.
+            'seo/fix_orphans'      => fn() => app(\App\Engines\SEO\Services\SeoService::class)
+                                        ->fixOrphans($wsId, $params),
+            'seo/gsc_sync'         => fn() => app(\App\Engines\SEO\Services\GscSyncService::class)
+                                        ->sync($wsId, $params),
             'seo/insert_link'      => function () use ($wsId, $params, $task) {
                 // Wave 38c — chain mode: when article_id is set (parent_task passthrough)
                 // and link_id is not, insert ALL pending seo_links suggestions for
@@ -626,6 +1022,45 @@ class Orchestrator
             'builder/publish_website'   => fn() => app(\App\Engines\Builder\Services\BuilderService::class)
                                             ->publishWebsite($params['website_id']),
 
+            // A1 (2026-06-23) — async handler for agent/approved Arthur page edits.
+            // EngineExecutionService::execute had this inline, but approved tasks
+            // run through the Orchestrator, which was MISSING it → Sarah-initiated
+            // builder edits failed ("no handler for [builder/ai_builder_action]").
+            // Routes to the SAME ArthurEditService as direct Arthur edits. Resolves
+            // the target page: explicit page_id → website_id's home → the workspace's
+            // most-recent website's home (best-effort, logged) — because agents
+            // often dispatch with page_id=null.
+            'builder/ai_builder_action' => fn() => (function () use ($params, $wsId) {
+                $pageId = (int) ($params['page_id'] ?? 0);
+                if ($pageId <= 0 && !empty($params['website_id'])) {
+                    $pageId = (int) (\Illuminate\Support\Facades\DB::table('pages')
+                        ->where('website_id', (int) $params['website_id'])
+                        ->orderByDesc('is_homepage')->orderBy('position')->orderBy('id')
+                        ->value('id') ?? 0);
+                }
+                if ($pageId <= 0) {
+                    $pageId = (int) (\Illuminate\Support\Facades\DB::table('pages')
+                        ->join('websites', 'websites.id', '=', 'pages.website_id')
+                        ->where('websites.workspace_id', $wsId)
+                        ->whereNull('websites.deleted_at')
+                        ->orderByDesc('pages.is_homepage')
+                        ->orderByDesc('websites.id')->orderBy('pages.position')
+                        ->value('pages.id') ?? 0);
+                    if ($pageId > 0) {
+                        \Illuminate\Support\Facades\Log::warning('[Orchestrator] ai_builder_action: no page_id/website_id in payload — resolved to workspace home page', ['workspace_id' => $wsId, 'resolved_page_id' => $pageId]);
+                    }
+                }
+                if ($pageId <= 0) {
+                    throw new \RuntimeException('ai_builder_action: could not resolve a target page (provide page_id or website_id)');
+                }
+                return app(\App\Engines\Builder\Services\ArthurEditService::class)->editPage(
+                    $pageId,
+                    (string) ($params['command'] ?? $params['message'] ?? ''),
+                    isset($params['section_index']) ? (int) $params['section_index'] : null,
+                    ['workspace_id' => $wsId, 'agent_slug' => $params['agent'] ?? $params['agent_slug'] ?? 'sarah']
+                );
+            })(),
+
             // ── Marketing ─────────────────────────────────────────────────────
             'marketing/create_campaign'   => fn() => app(\App\Engines\Marketing\Services\MarketingService::class)
                                               ->createCampaign($wsId, $params),
@@ -646,6 +1081,38 @@ class Orchestrator
                                               })(),
             'social/social_publish_post'  => fn() => app(\App\Engines\Social\Services\SocialService::class)
                                               ->publishPost($params['post_id']),
+
+            // 2026-05-25 — publish + delete dispatches. Both ALWAYS require
+            // approval (enforced at the chat-handler payload-build step so
+            // they never auto-execute). Tasks land in pending_approval and
+            // the user must click Approve before they run.
+            'write/publish_article'       => fn() => app(\App\Engines\Write\Services\WriteService::class)
+                                              ->updateArticle((int) $params['article_id'], [
+                                                  'status' => 'published',
+                                              ]),
+            'write/delete_article'        => fn() => (function () use ($params) {
+                                                app(\App\Engines\Write\Services\WriteService::class)
+                                                    ->deleteArticle((int) $params['article_id']);
+                                                return ['deleted' => true, 'article_id' => (int) $params['article_id']];
+                                              })(),
+            'social/delete_post'          => fn() => (function () use ($params) {
+                                                app(\App\Engines\Social\Services\SocialService::class)
+                                                    ->deletePost((int) $params['post_id']);
+                                                return ['deleted' => true, 'post_id' => (int) $params['post_id']];
+                                              })(),
+
+            // 2026-05-25 — Agent-triggered retry of blocked tasks. Runs
+            // through TaskRetryService::retryBlockedForWorkspace which
+            // applies the same idempotency check as the UI retry button.
+            // Params: task_ids (optional array — if omitted, retries ALL
+            // blocked for the workspace).
+            'tasks/retry_blocked'         => fn() => app(\App\Core\TaskSystem\TaskRetryService::class)
+                                              ->retryBlockedForWorkspace(
+                                                  $wsId,
+                                                  'agent:' . ($task->source ?? 'unknown'),
+                                                  $params['task_ids'] ?? null
+                                              ),
+
             // 2026-05-22 FIX 9 — social/list_posts was missing from the map.
             // SocialService::listPosts exists and is callable; just needed
             // the dispatch wire. Returns the post list for the workspace.
@@ -668,11 +1135,16 @@ class Orchestrator
 
             // ── Creative (Wave 35b: previously had no async dispatch map entries) ──
             'creative/generate_image'      => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
-                                             ->generateImage($wsId, $params),
+                                             ->generateImage($wsId, $this->ensureImagePrompt($wsId, $params)),
             'creative/generate_image_mini' => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
-                                             ->generateImage($wsId, array_merge($params, ['quality' => 'mini'])),
+                                             ->generateImage($wsId, array_merge($this->ensureImagePrompt($wsId, $params), ['quality' => 'mini'])),
             'creative/generate_image_high' => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
-                                             ->generateImage($wsId, array_merge($params, ['quality' => 'high'])),
+                                             ->generateImage($wsId, array_merge($this->ensureImagePrompt($wsId, $params), ['quality' => 'high'])),
+
+            // 2026-07-07 — BULK resolver: fan out featured-image tasks for every
+            // article missing one (backend finds the real ids — Sarah never guesses).
+            'write/fill_missing_images'    => fn() => app(\App\Engines\Write\Services\WriteService::class)
+                                             ->fillMissingImages($wsId, $params),
 
             // ── ManualEdit ────────────────────────────────────────────────────
             'manualedit/create_canvas'   => fn() => app(\App\Engines\ManualEdit\Services\ManualEditService::class)
@@ -681,21 +1153,94 @@ class Orchestrator
             // ── Traffic Defense ───────────────────────────────────────────────
             'traffic/create_rule'        => fn() => ['entity_id' => app(\App\Engines\TrafficDefense\Services\TrafficDefenseService::class)
                                              ->createRule($wsId, $params)],
+
+            /* b7-orchestrator */
+            // ── CRM AI (Batch 5) ──────────────────────────────────────────────
+            'crm/generate_outreach'   => fn() => app(\App\Engines\CRM\Services\CrmService::class)
+                                            ->generateOutreach($wsId, $params),
+            'crm/generate_followup'   => fn() => app(\App\Engines\CRM\Services\CrmService::class)
+                                            ->generateFollowUp($wsId, $params),
+            'crm/ai_followup_draft'   => fn() => app(\App\Engines\CRM\Services\CrmService::class)
+                                            ->generateFollowUp($wsId, $params),
+            'crm/ai_reply_suggestion' => fn() => app(\App\Engines\CRM\Services\CrmService::class)
+                                            ->aiReplySuggestion($wsId, $params),
+            'crm/ai_lead_scoring'     => fn() => app(\App\Engines\CRM\Services\CrmService::class)
+                                            ->aiLeadScoring($wsId, $params),
+
+            // ── Social AI (Batch 1) ───────────────────────────────────────────
+            'social/social_ai_post'      => fn() => app(\App\Engines\Social\Services\SocialService::class)
+                                              ->aiGeneratePost($wsId, $params),
+            'social/ai_generate_post'    => fn() => app(\App\Engines\Social\Services\SocialService::class)
+                                              ->aiGeneratePost($wsId, $params),
+            'social/hashtag_suggestions' => fn() => app(\App\Engines\Social\Services\SocialService::class)
+                                              ->generateHashtags($wsId, $params),
+            'social/generate_hashtags'   => fn() => app(\App\Engines\Social\Services\SocialService::class)
+                                              ->generateHashtags($wsId, $params),
+            'social/social_image'        => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
+                                              ->generateImage($wsId, array_merge(['style' => 'social_post', 'aspect' => '1:1'], $params)),
+
+            // ── Marketing AI (Email Phase 1) ──────────────────────────────────
+            'marketing/email_ai_generate' => fn() => app(\App\Engines\Marketing\Services\EmailBuilderService::class)
+                                                ->aiGenerate($wsId, $params),
+
+            // ── Studio AI (Studio Phase 1) ────────────────────────────────────
+            'studio/generate_design' => fn() => app(\App\Engines\Studio\Services\StudioAiService::class)
+                                            ->generateDesign($wsId, $params),
+            'studio/generate_image'  => fn() => app(\App\Engines\Studio\Services\StudioAiService::class)
+                                            ->generateImage($wsId, $params),
+            'studio/suggest_copy'    => fn() => app(\App\Engines\Studio\Services\StudioAiService::class)
+                                            ->suggestCopy($wsId, $params),
+
+            // ── ContentPack (Batch 3 — H1) ────────────────────────────────────
+            'content/create_pack'  => fn() => app(\App\Engines\Content\Services\ContentPackService::class)
+                                          ->createPack($wsId, $params),
+            'content/add_asset'    => fn() => app(\App\Engines\Content\Services\ContentPackService::class)
+                                          ->addAsset($wsId, $params),
+            'content/get_pack'     => fn() => app(\App\Engines\Content\Services\ContentPackService::class)
+                                          ->getPack($wsId, (int) ($params['pack_id'] ?? 0)),
+            'content/list_packs'   => fn() => app(\App\Engines\Content\Services\ContentPackService::class)
+                                          ->listPacks($wsId, $params),
+            'content/publish_pack' => fn() => app(\App\Engines\Content\Services\ContentPackService::class)
+                                          ->publishPack($wsId, $params),
+
+            // ── Sarah orchestrator (Batch 4) ──────────────────────────────────
+            'sarah/draft_campaign' => fn() => app(\App\Core\Orchestration\SarahCampaignOrchestrator::class)
+                                          ->draftCampaign($wsId, $params),
+
         ];
 
         // ── Lookup ────────────────────────────────────────────────────────────
         $key = "{$task->engine}/{$action}";
         $handler = $dispatchMap[$key] ?? null;
 
+        // 2026-07-23 — the LLM sometimes mislabels the engine (e.g.
+        // fill_missing_images under 'creative' instead of 'write'), which misses
+        // the dispatch key and fails as "not supported". Fall back to the
+        // capability map's CANONICAL engine for this action before giving up.
+        if ($handler === null) {
+            $__cap = $this->capabilityMap->resolve($action);
+            if ($__cap && !empty($__cap['engine']) && $__cap['engine'] !== $task->engine) {
+                $__altKey = "{$__cap['engine']}/{$action}";
+                if (isset($dispatchMap[$__altKey])) {
+                    $handler = $dispatchMap[$__altKey];
+                    Log::info("Orchestrator — engine normalized [{$key}] -> [{$__altKey}]", ['task_id' => $task->id]);
+                }
+            }
+        }
+
         if ($handler === null) {
             Log::warning("Orchestrator::executeInternalAction — no handler for [{$key}]", [
                 'task_id' => $task->id, 'engine' => $task->engine, 'action' => $action,
+                'category' => $task->category ?? null,  // 2026-05-27 — surface category in logs
             ]);
+            // 2026-05-30 — no_schema_leakage: the engine/action slug + the
+            // reference to dispatchMap is engineering-internal and used to
+            // surface to end users via the deliverable JSON. Friendly copy
+            // here; the technical details remain in the Log::warning above.
             return [
                 'success' => false,
                 'data'    => [],
-                'message' => "No async handler registered for action [{$key}]. " .
-                             "Add an entry to Orchestrator::\$dispatchMap to enable async execution.",
+                'message' => "This action isn't supported yet — please flag it so we can wire it up.",
             ];
         }
 
@@ -714,10 +1259,42 @@ class Orchestrator
                 $raw = ['result' => (string) $raw];
             }
 
+            // v1.4.4 (2026-05-30) — no_schema_leakage rule: never surface
+            // "Action [engine/action] completed" to end users. The friendly
+            // summary is rendered by DeliverableSummary::summaryHtmlFor()
+            // anyway; this message is internal telemetry only. Map known
+            // actions to conversational phrasing; fall back to a generic
+            // "Done." rather than leaking the slug.
+            // 2026-06-10 — STATUS ≠ TRUTH keystone fix. Some services RETURN a
+            // failure result instead of throwing — e.g. CreativeService::generateImage
+            // returns ['status'=>'failed','error'=>'Generation failed'] when the
+            // image provider fails. Previously that was wrapped as success:true and
+            // the task marked COMPLETED with no deliverable (the article-136
+            // ghost-completion), which then let Sarah report "done" for work that
+            // never happened. Detect a returned failure and propagate it so the
+            // task is marked FAILED, not completed.
+            $innerFailed = (isset($raw['success']) && $raw['success'] === false)
+                || (isset($raw['status']) && in_array(strtolower((string) $raw['status']), ['failed', 'error'], true));
+            if ($innerFailed) {
+                $reason = $raw['error'] ?? $raw['message'] ?? 'action reported failure';
+                return [
+                    'success'   => false,
+                    'data'      => $raw,
+                    'message'   => is_string($reason) && $reason !== '' ? $reason : 'action reported failure',
+                    'retryable' => false, // a returned (non-thrown) failure is usually deterministic
+                ];
+            }
+            // 2026-06-20 (forensic: Chef Red orphan loop) — a handler can
+            // return success while changing NOTHING (fix_orphans applied:0,
+            // insert_link inserted_count:0/inserted:false). Surfacing that as a
+            // plain success let Sarah report "done" for work that never
+            // happened. Flag it so the read-back + narration layers stay honest.
+            $noChange = self::resultChangedNothing($key, is_array($raw) ? $raw : []);
             return [
-                'success' => true,
-                'data'    => $raw,
-                'message' => "Action [{$key}] completed",
+                'success'   => true,
+                'data'      => $raw,
+                'message'   => self::friendlyMessageFor($key, is_array($raw) ? $raw : [], $noChange),
+                'no_change' => $noChange,
             ];
 
         } catch (\Throwable $e) {
@@ -767,5 +1344,147 @@ class Orchestrator
         });
 
         return $data;
+    }
+
+    /**
+     * 2026-07-06 — Derive a featured-image prompt from the article when a
+     * creative image task carries an article_id (or title) but no explicit
+     * prompt. CreativeService (LOCKED) hard-requires `prompt`; the documented
+     * contract for these actions is "article_id (required) OR explicit prompt",
+     * so building the prompt is the Orchestrator's job (plumbing, not creative
+     * logic). Without this, Sarah-chat / proposal image tasks that pass only
+     * article_id fail with "Prompt required". Any caller that already supplies
+     * a prompt is untouched.
+     */
+    private function ensureImagePrompt(int $wsId, array $params): array
+    {
+        if (!empty($params['prompt'])) return $params;
+
+        $title = $params['title'] ?? null;
+        $keyword = null;
+
+        $aid = $params['article_id'] ?? null;
+        if ($aid) {
+            $art = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->where('id', (int) $aid)
+                ->first(['title', 'focus_keyword', 'blog_category']);
+            if ($art) {
+                $title   = $art->title ?: $title;
+                $keyword = $art->focus_keyword ?: ($art->blog_category ?: null);
+            }
+        }
+
+        // Strip the "Featured image for " prefix the chat handler prepends.
+        if (is_string($title)) {
+            $title = trim(preg_replace('/^\s*Featured image for\s*/i', '', $title));
+        }
+
+        if (!empty($title)) {
+            $params['prompt'] = "Professional, photorealistic featured blog image for an article titled \"{$title}\"."
+                . ($keyword ? " Theme: {$keyword}." : '')
+                . " Clean, modern, editorial style. No text, no words, no logos in the image.";
+        }
+
+        return $params;
+    }
+
+    /**
+     * v1.4.4 (2026-05-30) — Map internal action keys to user-facing copy.
+     * Used by the deliverable envelope so no_schema_leakage rule is upheld
+     * (no "Action [creative/generate_image_mini] completed" surfaces).
+     */
+    /**
+     * 2026-06-20 (forensic: Chef Red orphan loop) — true when a handler
+     * succeeded but changed nothing, so the deliverable envelope can stay
+     * honest instead of reporting a no-op as a win.
+     */
+    private static function resultChangedNothing(string $key, array $raw): bool
+    {
+        switch ($key) {
+            case 'seo/fix_orphans':
+                return (int) ($raw['applied'] ?? 0) === 0
+                    && (int) ($raw['orphans_before'] ?? 0) > 0;
+            case 'seo/insert_link':
+                if (array_key_exists('inserted_count', $raw)) return (int) $raw['inserted_count'] === 0;
+                if (array_key_exists('inserted', $raw)) return $raw['inserted'] === false;
+                return false;
+            default:
+                if (array_key_exists('changed', $raw)) return $raw['changed'] === false;
+                return false;
+        }
+    }
+
+    /** No-op copy used when resultChangedNothing() is true. */
+    private const NOOP_MESSAGES = [
+        'seo/fix_orphans'    => 'I checked the orphan pages but found no internal links I could safely auto-insert — they need a manual link or a fresh piece of linking content. Want me to draft one?',
+        'seo/insert_link'    => 'No internal link was inserted — I could not find a suitable, natural placement.',
+        'seo/generate_links' => 'No new internal-link opportunities were found right now.',
+    ];
+
+    private static function friendlyMessageFor(string $key, array $raw = [], bool $noChange = false): string
+    {
+        if ($noChange) {
+            return self::NOOP_MESSAGES[$key] ?? 'Ran, but nothing needed changing.';
+        }
+        static $map = [
+            'creative/generate_image'      => 'Image generated.',
+            'studio/generate_design'      => 'Design draft created.',
+            'studio/generate_image'       => 'Studio image generated.',
+            'studio/suggest_copy'         => 'Copy options drafted.',
+            'marketing/email_ai_generate'      => 'Email draft created.',
+            'marketing/email_block_rewrite'    => 'Block rewritten.',
+            'marketing/email_subject_suggest'  => 'Subject lines drafted.',
+            'marketing/email_spam_check'       => 'Spam check complete.',
+            'marketing/email_preview_template' => 'Preview rendered.',
+            'marketing/email_send_test'        => 'Test email queued.',
+            'marketing/email_validate_campaign'=> 'Campaign validated.',
+            'marketing/email_use_template'     => 'Template copied to workspace.',
+            'marketing/email_template_picker'  => 'Template recommendations ready.',
+            'creative/generate_image_mini' => 'Image generated.',
+            'creative/generate_image_high' => 'High-quality image generated.',
+            'creative/generate_video'      => 'Video generated.',
+            'write/write_article'          => 'Article drafted.',
+            'write/improve_draft'          => 'Draft improved.',
+            'write/generate_meta'          => 'Meta title and description generated.',
+            'write/generate_outline'       => 'Article outline generated.',
+            'write/aeo_enrich'             => 'AI search optimization added.',
+            'write/publish_article'        => 'Article published.',
+            'write/delete_article'         => 'Article deleted.',
+            'seo/run_audit'                => 'SEO audit completed.',
+            'seo/deep_audit'               => 'Technical SEO audit completed.',
+            'seo/track_keywords'           => 'Keyword tracking refreshed.',
+            'seo/serp_analysis'            => 'SERP analysis completed.',
+            'seo/generate_article'         => 'Article queued for writing.',
+            'seo/generate_links'           => 'Internal link suggestions generated.',
+            'seo/insert_link'              => 'Internal link inserted.',
+            'seo/fix_orphans'              => 'Orphan pages linked into the site.',
+            'seo/gsc_sync'                 => 'Latest Google Search Console data pulled in.',
+            'social/create_post'           => 'Social post created.',
+            'social/update_post'           => 'Social post updated.',
+            'social/schedule_post'         => 'Social post scheduled.',
+            'social/publish_post'          => 'Social post published.',
+            'social/delete_post'           => 'Social post removed.',
+            'crm/create_lead'              => 'Lead added.',
+            'crm/create_contact'           => 'Contact added.',
+            'crm/update_lead'              => 'Lead updated.',
+            'crm/score_lead'               => 'Lead scored.',
+            'crm/generate_outreach'        => 'Outreach email drafted.',
+            'studio/export_design'         => 'Design exported.',
+            'studio/create_design'         => 'New design started.',
+            'studio/publish_social'        => 'Design published to social.',
+            'marketing/send_campaign'      => 'Email campaign sent.',
+            'marketing/schedule_campaign'  => 'Email campaign scheduled.',
+            'marketing/update_campaign'    => 'Email campaign updated.',
+            'builder/wizard_generate'      => 'Website generated.',
+            'builder/create_website'       => 'Website created.',
+            'builder/generate_page'        => 'Page generated.',
+            'builder/add_page_from_template' => 'New page added from template.',
+            'builder/update_page'          => 'Page updated.',
+            'builder/publish_website'      => 'Website published.',
+            'calendar/create_event'        => 'Event added to calendar.',
+            'tasks/retry_blocked'          => 'Blocked tasks retried.',
+        ];
+        return $map[$key] ?? 'Done.';
     }
 }

@@ -1,0 +1,48 @@
+{
+  "name": "Event Energy Poster",
+  "slug": "t09-event-energy-poster",
+  "format": "portrait",
+  "category": "marketing",
+  "sub_category": "event",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["event", "music", "festival", "concert", "promotion"],
+  "variables": {
+    "background_image":  { "type": "image", "label": "Background image",  "default": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1080&q=85&fit=crop" },
+    "date_venue":        { "type": "text",  "label": "Date + venue",      "default": "15–16 AUG 2025 · DUBAI" },
+    "logo_name":         { "type": "text",  "label": "Logo name",         "default": "Logo Here" },
+    "event_label":       { "type": "text",  "label": "Event label",       "default": "Annual Festival" },
+    "headline_main":     { "type": "text",  "label": "Headline 1",        "default": "PULSE" },
+    "headline_mag":      { "type": "text",  "label": "Headline 2 (mag)",  "default": "FEST" },
+    "headline_outline":  { "type": "text",  "label": "Headline 3 (outl)", "default": "2025" },
+    "section_label":     { "type": "text",  "label": "Section label",     "default": "Lineup" },
+    "artist_1_name":     { "type": "text",  "label": "Artist 1 name",     "default": "ARMIN" },
+    "artist_1_genre":    { "type": "text",  "label": "Artist 1 genre",    "default": "Trance / EDM" },
+    "artist_2_name":     { "type": "text",  "label": "Artist 2 name",     "default": "TIËSTO" },
+    "artist_2_genre":    { "type": "text",  "label": "Artist 2 genre",    "default": "Progressive" },
+    "artist_3_name":     { "type": "text",  "label": "Artist 3 name",     "default": "FISHER" },
+    "artist_3_genre":    { "type": "text",  "label": "Artist 3 genre",    "default": "Tech House" },
+    "artist_4_name":     { "type": "text",  "label": "Artist 4 name",     "default": "+20 MORE" },
+    "artist_4_genre":    { "type": "text",  "label": "Artist 4 genre",    "default": "All Genres" },
+    "ticket_1_label":    { "type": "text",  "label": "Ticket 1 label",    "default": "General" },
+    "ticket_1_price":    { "type": "text",  "label": "Ticket 1 price",    "default": "$149" },
+    "ticket_2_label":    { "type": "text",  "label": "Ticket 2 label",    "default": "VIP Access" },
+    "ticket_2_price":    { "type": "text",  "label": "Ticket 2 price",    "default": "$349" },
+    "cta_label":         { "type": "text",  "label": "CTA",               "default": "Get Tickets" },
+    "venue":             { "type": "text",  "label": "Venue",             "default": "Expo Arena · Gate 3" },
+    "brand_url":         { "type": "text",  "label": "Brand URL",         "default": "companyname.com" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#100018" },
+    "mag":    { "label": "Magenta",    "default": "#FF00FF" },
+    "cyan":   { "label": "Cyan",       "default": "#00F5E4" },
+    "yellow": { "label": "Yellow",     "default": "#FFE600" },
+    "white":  { "label": "White",      "default": "#F5F5FF" }
+  },
+  "semantic": {
+    "mood": ["energetic", "bold"],
+    "color_temperature": "vibrant",
+    "composition": "text_dominant",
+    "best_for": ["event", "music", "festival", "promotion", "concert"]
+  }
+}

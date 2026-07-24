@@ -28,8 +28,26 @@ class TaskController
         ]);
 
         $workspaceId = $request->attributes->get('workspace_id');
-        $task = $this->service->create($workspaceId, $data);
-        return response()->json(['task' => $task], 201);
+        try {
+            $task = $this->service->create($workspaceId, $data);
+            return response()->json(['task' => $task], 201);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // 2026-05-26 — duplicate idempotency_key. Return a friendly 409
+            // with the existing task instead of a generic 500.
+            $payload = $data['payload'] ?? [];
+            $payloadForHash = $payload;
+            if (is_array($payloadForHash)) ksort($payloadForHash);
+            $idemKey = $data['idempotency_key'] ?? hash('sha256',
+                "{$workspaceId}:{$data['action']}:" . json_encode($payloadForHash));
+            $existing = \App\Models\Task::where('workspace_id', $workspaceId)
+                ->where('idempotency_key', $idemKey)
+                ->first();
+            return response()->json([
+                'error'   => 'duplicate_task',
+                'message' => 'An identical task already exists. Returning the existing one.',
+                'task'    => $existing,
+            ], 409);
+        }
     }
 
     public function index(Request $request): JsonResponse

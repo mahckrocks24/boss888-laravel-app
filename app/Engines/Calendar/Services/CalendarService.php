@@ -27,25 +27,33 @@ class CalendarService
         return $id;
     }
 
-    public function updateEvent(int $eventId, array $data): void
+    public function updateEvent(int $eventId, array $data, ?int $wsId = null): void
     {
         $update = array_intersect_key($data, array_flip([
             'title', 'description', 'category', 'color', 'starts_at', 'ends_at', 'all_day', 'recurrence',
         ]));
         if (isset($data['recurrence_config'])) $update['recurrence_config_json'] = json_encode($data['recurrence_config']);
         $update['updated_at'] = now();
-        DB::table('calendar_events')->where('id', $eventId)->update($update);
+        $n = DB::table('calendar_events')->where('id', $eventId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update($update);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Event not found');
     }
 
-    public function deleteEvent(int $eventId): void
+    public function deleteEvent(int $eventId, ?int $wsId = null): void
     {
-        DB::table('calendar_events')->where('id', $eventId)->delete();
+        $n = DB::table('calendar_events')->where('id', $eventId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->delete();
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Event not found');
     }
 
-    public function getEvents(int $wsId, ?string $from, ?string $to, ?string $category = null): array
-    {
+    /* b21-phase5 */
+    public function getEvents(
+        int $wsId,
+        ?string $from,
+        ?string $to,
+        ?string $category = null,
+        ?int $userId = null
+    ): array {
         $from = $from ?: now()->startOfMonth()->toDateString();
-        $to = $to ?: now()->endOfMonth()->toDateString();
+        $to   = $to   ?: now()->endOfMonth()->toDateString();
 
         $q = DB::table('calendar_events')->where('workspace_id', $wsId)
             ->where(fn($q) => $q->whereBetween('starts_at', [$from, $to])
@@ -53,57 +61,159 @@ class CalendarService
 
         if ($category) $q->where('category', $category);
 
+        // W6 launch scope: Publisher and article-share rows are internal. They must
+        // never reach a customer calendar. Null-safe: user-created rows have no
+        // reference_type and must survive the filter.
+        $q->where(function ($sub) {
+            $sub->whereNull('reference_type')
+                ->orWhereNotIn('reference_type', ['publisher_post', 'article_share']);
+        });
+
         $events = $q->orderBy('starts_at')->get()->toArray();
 
-        // Expand recurring events within range
-        return $this->expandRecurring($events, $from, $to);
-    }
-
-    /**
-     * Cross-engine: auto-create calendar events from other engines.
-     * Called by EngineExecutionService after commits.
-     */
-    public function syncFromEngine(int $wsId, string $engine, string $action, array $data): void
-    {
-        $eventData = null;
-
-        if ($engine === 'social' && $action === 'social_schedule_post') {
-            $eventData = [
-                'title' => 'Social: ' . substr($data['content'] ?? 'Scheduled post', 0, 40),
-                'category' => 'social_post', 'engine' => 'social',
-                'starts_at' => $data['scheduled_at'], 'color' => '#EC4899',
-                'reference_id' => $data['post_id'] ?? null, 'reference_type' => 'social_post',
-            ];
-        } elseif ($engine === 'marketing' && $action === 'schedule_campaign') {
-            $eventData = [
-                'title' => 'Campaign: ' . ($data['name'] ?? 'Scheduled'),
-                'category' => 'campaign_launch', 'engine' => 'marketing',
-                'starts_at' => $data['scheduled_at'], 'color' => '#F59E0B',
-                'reference_id' => $data['campaign_id'] ?? null, 'reference_type' => 'campaign',
-            ];
-        } elseif ($engine === 'write' && $action === 'write_article') {
-            $eventData = [
-                'title' => 'Publish: ' . ($data['title'] ?? 'Article'),
-                'category' => 'content_publish', 'engine' => 'write',
-                'starts_at' => now()->addDays(3)->toDateString(), 'color' => '#A78BFA',
-                'reference_id' => $data['article_id'] ?? null, 'reference_type' => 'article',
-            ];
+        // Stamp each calendar_events row with source='calendar' + attendance='required'
+        // so the UI can render a consistent shape across both sources.
+        foreach ($events as $e) {
+            if (is_object($e)) {
+                $e->source     = 'calendar';
+                $e->attendance = 'required';
+            } else {
+                $events_arr = $e; // shouldn't hit but defensive
+            }
         }
 
-        if ($eventData) $this->createEvent($wsId, $eventData);
+        // Expand recurring calendar events within range
+        $expanded = $this->expandRecurring($events, $from, $to);
+
+        // ── Strategy Room visibility (B21 Phase 5) ─────────────────────
+        // When userId is supplied, surface meetings where the user is a
+        // participant. Meeting sources are tagged attendance='optional'
+        // because the user said "invited but not required." If category
+        // filter is set, we apply it to meetings too (category='meeting').
+        if ($userId !== null && ($category === null || $category === 'meeting')) {
+            $meetings = DB::table('meetings')
+                ->where('meetings.workspace_id', $wsId)
+                ->whereBetween('meetings.created_at', [$from, $to])
+                ->whereExists(function ($q) use ($userId) {
+                    $q->select(DB::raw(1))
+                      ->from('meeting_participants')
+                      ->whereColumn('meeting_participants.meeting_id', 'meetings.id')
+                      ->where('meeting_participants.participant_type', 'user')
+                      ->where('meeting_participants.participant_id', $userId);
+                })
+                ->select([
+                    'meetings.id',
+                    'meetings.workspace_id',
+                    'meetings.title',
+                    'meetings.type',
+                    'meetings.status',
+                    'meetings.created_at',
+                ])
+                ->orderBy('meetings.created_at')
+                ->get();
+
+            foreach ($meetings as $m) {
+                // Adapt the meeting row to the calendar event shape so the
+                // UI can render uniformly. starts_at = meetings.created_at.
+                $expanded[] = (object) [
+                    'id'             => 'meeting:' . $m->id,   // namespaced so it doesn't collide with calendar_events ids
+                    'workspace_id'   => $m->workspace_id,
+                    'title'          => $m->title,
+                    'description'    => 'Strategy Room — multi-agent meeting (optional)',
+                    'category'       => 'meeting',
+                    'engine'         => 'sarah',
+                    'reference_id'   => $m->id,
+                    'reference_type' => 'meeting',
+                    'color'          => '#A855F7',
+                    'starts_at'      => $m->created_at,
+                    'ends_at'        => null,
+                    'all_day'        => 0,
+                    'recurrence'     => null,
+                    'recurrence_config_json' => null,
+                    'created_at'     => $m->created_at,
+                    'updated_at'     => $m->created_at,
+                    'source'         => 'meeting',
+                    'attendance'     => 'optional',
+                    'meeting_status' => $m->status,
+                ];
+            }
+
+            // Re-sort the merged set by starts_at for chronological order
+            usort($expanded, function ($a, $b) {
+                $aTime = is_object($a) ? $a->starts_at : ($a['starts_at'] ?? '');
+                $bTime = is_object($b) ? $b->starts_at : ($b['starts_at'] ?? '');
+                return strcmp((string) $aTime, (string) $bTime);
+            });
+        }
+
+        return $expanded;
     }
 
-    public function getDashboard(int $wsId): array
+    /* b19-phase2-removed-syncFromEngine */
+    // CalendarService::syncFromEngine — REMOVED in B19 Phase 2.
+    // Was dead code (zero internal callers). Cross-engine sync logic for
+    // marketing + social scheduled items moved to EES::crossEngineSync
+    // routing to AutomationCalendarService (automation_events table)
+    // since those events belong to the agent timeline, not user calendar.
+
+    /* b22-dashboard-meetings */
+    public function getDashboard(int $wsId, ?int $userId = null): array
     {
         $today = now()->startOfDay();
         $weekEnd = now()->endOfWeek();
-        $events = DB::table('calendar_events')->where('workspace_id', $wsId);
+        $events = DB::table('calendar_events')->where('workspace_id', $wsId)
+            ->where(function ($sub) {   // W6 launch scope — see getEvents()
+                $sub->whereNull('reference_type')
+                    ->orWhereNotIn('reference_type', ['publisher_post', 'article_share']);
+            });
+
+        $todayList    = (clone $events)->whereDate('starts_at', $today)->orderBy('starts_at')->get()->toArray();
+        $thisWeekList = (clone $events)->whereBetween('starts_at', [$today, $weekEnd])->orderBy('starts_at')->get()->toArray();
+
+        // Phase 5 parity: surface Strategy Room invites for this user
+        if ($userId !== null) {
+            $mq = DB::table('meetings')
+                ->where('meetings.workspace_id', $wsId)
+                ->whereExists(function ($q) use ($userId) {
+                    $q->select(DB::raw(1))
+                      ->from('meeting_participants')
+                      ->whereColumn('meeting_participants.meeting_id', 'meetings.id')
+                      ->where('meeting_participants.participant_type', 'user')
+                      ->where('meeting_participants.participant_id', $userId);
+                });
+
+            $todayMeetings    = (clone $mq)->whereDate('created_at', $today)->get();
+            $thisWeekMeetings = (clone $mq)->whereBetween('created_at', [$today, $weekEnd])->get();
+
+            foreach ($todayMeetings as $m) {
+                $todayList[] = (object) [
+                    'id'         => 'meeting:' . $m->id,
+                    'title'      => $m->title,
+                    'category'   => 'meeting',
+                    'engine'     => 'sarah',
+                    'starts_at'  => $m->created_at,
+                    'source'     => 'meeting',
+                    'attendance' => 'optional',
+                ];
+            }
+            foreach ($thisWeekMeetings as $m) {
+                $thisWeekList[] = (object) [
+                    'id'         => 'meeting:' . $m->id,
+                    'title'      => $m->title,
+                    'category'   => 'meeting',
+                    'engine'     => 'sarah',
+                    'starts_at'  => $m->created_at,
+                    'source'     => 'meeting',
+                    'attendance' => 'optional',
+                ];
+            }
+        }
 
         return [
-            'today' => (clone $events)->whereDate('starts_at', $today)->orderBy('starts_at')->get()->toArray(),
-            'this_week' => (clone $events)->whereBetween('starts_at', [$today, $weekEnd])->orderBy('starts_at')->get()->toArray(),
+            'today'        => $todayList,
+            'this_week'    => $thisWeekList,
             'total_events' => (clone $events)->count(),
-            'by_category' => (clone $events)->selectRaw('category, COUNT(*) as count')->groupBy('category')->get()->toArray(),
+            'by_category'  => (clone $events)->selectRaw('category, COUNT(*) as count')->groupBy('category')->get()->toArray(),
         ];
     }
 
@@ -141,8 +251,8 @@ class CalendarService
     private function categoryColor(string $category): string
     {
         return match ($category) {
-            'meeting' => '#6C5CE7', 'task_deadline' => '#F87171', 'campaign_launch' => '#F59E0B',
-            'content_publish' => '#A78BFA', 'social_post' => '#EC4899', default => '#3B82F6',
+            'meeting' => '#6C5CE7', 'task_deadline' => '#F87171',
+            'content_publish' => '#A78BFA', default => '#3B82F6',
         };
     }
 }

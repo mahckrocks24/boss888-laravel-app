@@ -1,0 +1,38 @@
+{
+  "name": "Retro Playful Cafe",
+  "slug": "sp04-cafe-retro",
+  "format": "square",
+  "category": "food",
+  "sub_category": "cafe",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["cafe", "coffee", "food", "artisan", "retro"],
+  "variables": {
+    "hero_image":     { "type": "image", "label": "Hero image",   "default": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=520&q=85&fit=crop&crop=center" },
+    "ring_text":      { "type": "text",  "label": "Ring text",    "default": "✦ ARTISAN ROAST  ✦ SMALL BATCH  ✦ ETHICALLY SOURCED  ✦ HAND CRAFTED" },
+    "hero_badge":     { "type": "text",  "label": "Hero badge",   "default": "Specialty Grade" },
+    "stamp_top":      { "type": "text",  "label": "Stamp top",    "default": "Since" },
+    "stamp_val":      { "type": "text",  "label": "Stamp value",  "default": "98" },
+    "stamp_bot":      { "type": "text",  "label": "Stamp bottom", "default": "Est." },
+    "eyebrow":        { "type": "text",  "label": "Eyebrow",      "default": "Daily Brew" },
+    "headline_1":     { "type": "text",  "label": "Headline 1",   "default": "Wake Up" },
+    "headline_2":     { "type": "text",  "label": "Headline 2",   "default": "& Taste." },
+    "subheading":     { "type": "text",  "label": "Subheading",   "default": "Single-origin beans, roasted in small batches every morning — because great coffee is never an accident. It's a ritual." },
+    "feature_1":      { "type": "text",  "label": "Feature 1",    "default": "Single Origin" },
+    "feature_2":      { "type": "text",  "label": "Feature 2",    "default": "Cold Brew" },
+    "feature_3":      { "type": "text",  "label": "Feature 3",    "default": "Seasonal Menu" },
+    "cta_label":      { "type": "text",  "label": "CTA",          "default": "Order Now" },
+    "price_label":    { "type": "text",  "label": "Price label",  "default": "From" },
+    "price_val":      { "type": "text",  "label": "Price value",  "default": "$5.50" },
+    "brand_name":     { "type": "text",  "label": "Brand name",   "default": "Logo Here" },
+    "brand_url":      { "type": "text",  "label": "Brand URL",    "default": "companyname.com" },
+    "brand_handle":   { "type": "text",  "label": "Brand handle", "default": "@handle" }
+  },
+  "css_variables": {},
+  "semantic": {
+    "mood": ["playful", "warm"],
+    "color_temperature": "warm",
+    "composition": "product_hero",
+    "best_for": ["cafe", "coffee", "food", "artisan", "small business"]
+  }
+}

@@ -53,18 +53,15 @@ class AgentBridgeService
     public function buildWorkspaceContext(int $workspaceId): array
     {
         try {
-            // Get brand identity context
-            $brand = DB::table('creative_brand_identities')
-                ->where('workspace_id', $workspaceId)
-                ->first();
-
+            // /* h2-bridge */ brand context via single resolver (was direct creative_brand_identities read)
+            $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($workspaceId);
             $brandContext = [];
-            if ($brand) {
+            if (!$kit['is_neutral']) {
                 $brandContext = [
-                    'visual_style' => $brand->visual_style ?? '',
-                    'tone'         => $brand->tone ?? '',
-                    'industry'     => $brand->industry ?? '',
-                    'colors'       => json_decode($brand->colors_json ?? '[]', true) ?: [],
+                    'visual_style' => $kit['visual_style'] ?? '',
+                    'tone'         => $kit['tone'] ?? '',
+                    'industry'     => $kit['industry'] ?? '',
+                    'colors'       => $kit['colors_json'] ?? [],
                 ];
             }
 

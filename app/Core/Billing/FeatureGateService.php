@@ -99,8 +99,10 @@ class FeatureGateService
                     'video'    => $hasApp,      // Pro+ only
                     'blueprint'=> $hasFullAI,
                 ],
-                'marketing'    => ['manual' => true,  'ai' => $hasFullAI, 'agents' => $hasDMM],
-                'social'       => ['manual' => true,  'ai' => $hasFullAI, 'agents' => $hasDMM],
+                // W6 launch scope: marketing + social are not part of the product.
+                // Kept as explicit false so any legacy client reads "no", not "missing".
+                'marketing'    => ['manual' => false, 'ai' => false,      'agents' => false],
+                'social'       => ['manual' => false, 'ai' => false,      'agents' => false],
                 'builder'      => ['manual' => true,  'ai' => $hasFullAI, 'agents' => $hasDMM],
                 'calendar'     => ['manual' => true,  'ai' => false,      'agents' => false],
                 'beforeafter'  => ['manual' => true,  'ai' => $hasFullAI, 'agents' => false],
@@ -150,6 +152,11 @@ class FeatureGateService
                 'api_access'       => in_array($slug, ['pro', 'agency']),
                 'team_management'  => in_array($slug, ['starter', 'ai-lite', 'growth', 'pro', 'agency']),
                 'advanced_analytics'=> in_array($slug, ['pro', 'agency']),
+
+                // INFRA888 (2026-07-18) — drives the Infrastructure sidebar section
+                // via data-feature="infrastructure". Read from features_json so the
+                // commercial gate is a data decision, not a code deploy.
+                'infrastructure'   => $this->featureFlag($wsId, 'infrastructure', false),
             ],
 
             // SEO-only product mode 2026-05-01: surface workspace mode + raw
@@ -391,7 +398,9 @@ class FeatureGateService
      *
      * Three paths to YES:
      *   1. plans.features_json.chatbot_included === true (pro/agency/seo_only)
-     *   2. plans.price >= 199 (safety fallback if features_json missing the key)
+     *   2. plans.price >= 99 (safety fallback if features_json missing the key —
+     *      spec 2026-06-23: $69 WP + $99 Laravel+ have chatbot; the flag is the
+     *      source of truth, this just catches new plans missing the flag)
      *   3. subscriptions.chatbot_addon_item_id is non-null (add-on purchased)
      */
     public function canAccessChatbot(int $wsId): bool
@@ -404,7 +413,9 @@ class FeatureGateService
         if (! empty($features['chatbot_included'])) return true;
 
         // Path 2 — price-based safety net for new plans without the flag set
-        if ((float) $plan->price >= 199.0) return true;
+        // (2026-06-23 — lowered 199→99 per spec: $99 Laravel / $69 WP both have
+        // chatbot; $69 WP plans carry the explicit flag, caught by Path 1.)
+        if ((float) $plan->price >= 99.0) return true;
 
         // Path 3 — add-on purchased on the active subscription
         $sub = \App\Models\Subscription::where('workspace_id', $wsId)

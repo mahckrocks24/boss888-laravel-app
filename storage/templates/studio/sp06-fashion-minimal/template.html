@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Media Template — Minimal / Fashion / Square</title>
+
+  <!-- ============================================================
+       GOOGLE FONTS
+       Display: Big Shoulders Display — ultra condensed grotesque
+       Body:    Outfit              — clean geometric, sparing use
+  ============================================================ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@300;400;700;900&family=Outfit:wght@300;400;500&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ============================================================
+       TOKENS
+       Industry : Fashion · Streetwear · Apparel
+       Style    : Stark Editorial · Pure Minimal
+       Format   : Square 1080 × 1080
+       Palette  : Black + White + Blood Orange
+       Text     : ≤ 8 words total
+    ============================================================ */
+    :root{
+      --text:   #080808;
+      --bg:   #F5F5F5;
+      --primary:  #FF3D00;           /* blood orange — one pop of heat */
+      --clr-orange-dim: rgba(255,61,0,0.18);
+
+      --font-display: 'Big Shoulders Display', Impact, sans-serif;
+      --font-body:    'Outfit', sans-serif;
+
+      --post-w: 1080px;
+      --post-h: 1080px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; min-height: 100%; }
+
+    /* ============================================================
+       SCENE
+    ============================================================ */
+    .scene {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; padding: 48px 20px;
+      background:#030303;
+    }
+
+    .scale-wrap { transform-origin: top center; }
+
+    /* ============================================================
+       POST
+    ============================================================ */
+    .post {
+      width:  var(--post-w);
+      height: var(--post-h);
+      position: relative;
+      overflow: hidden;
+      background:var(--text);
+    }
+
+    /* ============================================================
+       FULL-BLEED IMAGE
+       Swap src for any portrait/square photo.
+       Fashion: https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1080&q=85
+       Model:   https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1080&q=85
+       Street:  https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1080&q=85
+       Studio:  https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=1080&q=85
+    ============================================================ */
+    .hero-img {
+      position: absolute; inset: 0; z-index: 1;
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center top;
+      display: block;
+      filter: contrast(1.06) saturate(0.85);
+    }
+
+    /* Gradient — heavy bottom fade to black for text legibility */
+    .img-overlay {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background:linear-gradient(180deg,
+          rgba(8,8,8,0.30) 0%,
+          transparent      25%,
+          transparent      45%,
+          rgba(8,8,8,0.55) 70%,
+          rgba(8,8,8,0.92) 100%
+        ),
+        linear-gradient(90deg,
+          rgba(8,8,8,0.25) 0%,
+          transparent 40%
+        );
+    }
+
+    /* Orange heat glow — bottom-left warmth */
+    .img-glow {
+      position: absolute; z-index: 3; pointer-events: none;
+      width: 500px; height: 300px;
+      background:radial-gradient(ellipse at bottom left, rgba(255,61,0,0.18) 0%, transparent 65%);
+      bottom: 0; left: 0;
+    }
+
+    /* ============================================================
+       THE WORD — only real piece of content
+       One massive condensed word is the entire headline
+    ============================================================ */
+    .word {
+      position: absolute;
+      z-index: 6;
+      bottom: 188px;
+      left: 48px;
+      right: 0;
+
+      font-family:    var(--font-display);
+      font-size:      240px;
+      font-weight:    900;
+      line-height:    0.86;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+
+      /* White with orange on the last letter via span */
+      color:var(--bg);
+
+      /* Subtle text shadow for depth */
+      text-shadow: 0 4px 80px rgba(8,8,8,0.60);
+    }
+
+    /* The orange accent letter */
+    .word__accent { color:var(--primary); }
+
+    /* ============================================================
+       BOTTOM BAR — 3 items: season label | CTA | brand
+    ============================================================ */
+    .bar {
+      position: absolute; z-index: 7;
+      bottom: 0; left: 0; right: 0;
+      height: 120px;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      border-top: 1px solid rgba(245,245,245,0.10);
+      background:rgba(8,8,8,0.72);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Season / collection label */
+    .bar__season {
+      font-family:    var(--font-body);
+      font-size:      13px;
+      font-weight:    300;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color:rgba(245,245,245,0.45);
+    }
+
+    /* CTA — just the word "Shop" + orange arrow */
+    .bar__cta {
+      display:     flex;
+      align-items: center;
+      gap:         12px;
+      font-family:    var(--font-display);
+      font-size:      22px;
+      font-weight:    700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color:var(--bg);
+      text-decoration: none;
+      transition:     gap 0.22s ease;
+    }
+
+    .bar__cta:hover { gap: 20px; }
+
+    .bar__cta-arrow {
+      width:         36px;
+      height:        36px;
+      border-radius: 50%;
+      background:var(--primary);
+      display:       flex;
+      align-items:   center;
+      justify-content: center;
+      font-size:     16px;
+      color:var(--bg);
+      flex-shrink:   0;
+      transition:    transform 0.22s ease;
+    }
+
+    .bar__cta:hover .bar__cta-arrow { transform: translateX(4px); }
+
+    /* Brand name */
+    .bar__brand {
+      font-family:    var(--font-display);
+      font-size:      16px;
+      font-weight:    700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color:var(--bg);
+      text-align:     right;
+    }
+
+    .bar__brand-url {
+      display:        block;
+      font-family:    var(--font-body);
+      font-size:      10px;
+      font-weight:    300;
+      letter-spacing: 0.14em;
+      color:rgba(245,245,245,0.35);
+      margin-top:     3px;
+    }
+
+    /* ============================================================
+       DECORATIVE — bare minimum
+    ============================================================ */
+
+    /* Orange top stripe — 3px */
+    .stripe-top {
+      position: absolute; z-index: 8;
+      top: 0; left: 0; right: 0; height: 3px;
+      background:var(--primary);
+      pointer-events: none;
+    }
+
+    /* Edition label — top right, rotated, ghost */
+    .edition {
+      position: absolute; z-index: 6;
+      top: 52px; right: 48px;
+      font-family:    var(--font-body);
+      font-size:      11px;
+      font-weight:    300;
+      letter-spacing: 0.30em;
+      text-transform: uppercase;
+      color:rgba(245,245,245,0.28);
+      writing-mode:   vertical-rl;
+      text-orientation: mixed;
+    }
+
+    /* Thin vertical orange rule — left edge accent */
+    .rule-left {
+      position: absolute; z-index: 6;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background:linear-gradient(180deg,
+        var(--primary) 0%,
+        rgba(255,61,0,0.10) 50%,
+        transparent 100%
+      );
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       PREVIEW
+    ============================================================ */
+    .preview-note {
+      text-align: center; margin-top: 20px;
+      font-family: 'Outfit', sans-serif; font-size: 11px;
+      color:rgba(245,245,245,0.16); letter-spacing: 0.18em;
+    }
+
+    /* ============================================================
+       RESPONSIVE SCALING — CSS only, no JS
+    ============================================================ */
+    @media (max-width: 1180px) {
+      .scale-wrap { transform: scale(0.80); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.80); height: calc(1080px * 0.80); }
+    }
+    @media (max-width: 960px) {
+      .scale-wrap { transform: scale(0.62); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.62); height: calc(1080px * 0.62); }
+    }
+    @media (max-width: 740px) {
+      .scale-wrap { transform: scale(0.44); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.44); height: calc(1080px * 0.44); }
+    }
+    @media (max-width: 520px) {
+      .scale-wrap { transform: scale(0.30); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.30); height: calc(1080px * 0.30); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scene">
+    <div>
+      <div class="scale-wrap">
+
+        <div class="post" id="post">
+
+          <!-- ── ACCENTS ────────────────────────────────── -->
+          <div class="stripe-top"></div>
+          <div class="rule-left"></div>
+
+          <!-- ── IMAGE ─────────────────────────────────── -->
+          <!--
+            SWAP IMAGE — any 1080×1080 portrait or editorial photo:
+            Fashion:  https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1080&q=85
+            Studio:   https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=1080&q=85
+            Street:   https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1080&q=85
+            Model:    https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1080&q=85
+          -->
+          <img
+            class="hero-img"
+            data-field="hero_image"
+            src="{{hero_image}}"
+            alt="Hero"
+            loading="eager"
+          />
+          <div class="img-overlay"></div>
+          <div class="img-glow"></div>
+
+          <!-- ── THE WORD ───────────────────────────────── -->
+          <div class="word" aria-label="Bold">
+            <span data-field="word_main">{{word_main}}</span><span class="word__accent" data-field="word_accent">{{word_accent}}</span>
+          </div>
+
+          <!-- ── EDITION LABEL ─────────────────────────── -->
+          <div class="edition" data-field="edition">{{edition}}</div>
+
+          <!-- ── BOTTOM BAR ────────────────────────────── -->
+          <div class="bar">
+
+            <span class="bar__season" data-field="season">{{season}}</span>
+
+            <a class="bar__cta" href="#">
+              <span data-field="cta_label">{{cta_label}}</span>
+              <span class="bar__cta-arrow">&rarr;</span>
+            </a>
+
+            <div class="bar__brand">
+              <span data-field="brand_name">{{brand_name}}</span>
+              <span class="bar__brand-url" data-field="brand_url">{{brand_url}}</span>
+            </div>
+
+          </div>
+
+        </div>
+        <!-- end .post -->
+      </div>
+
+      <p class="preview-note">1080 × 1080 px &nbsp;·&nbsp; Square 1:1 &nbsp;·&nbsp; Minimal / Fashion — ≤8 words</p>
+    </div>
+  </div>
+
+</body>
+</html>

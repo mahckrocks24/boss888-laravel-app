@@ -1,0 +1,46 @@
+{
+  "name": "Pet Care Friendly Pop — Pet Services",
+  "slug": "i06-pet-services",
+  "format": "square",
+  "category": "social",
+  "sub_category": "pets",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["pets", "veterinary", "grooming", "daycare", "boarding"],
+  "variables": {
+    "hero_image":      { "type": "image", "label": "Hero image",   "default": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=500&q=85&fit=crop&crop=center" },
+    "brand_name":      { "type": "text",  "label": "Brand name",   "default": "Logo Here" },
+    "badge":           { "type": "text",  "label": "Badge",        "default": "Vet Approved" },
+    "fc_a_emoji":      { "type": "text",  "label": "Card A emoji", "default": "✂️" },
+    "fc_a_text":       { "type": "text",  "label": "Card A text",  "default": "Grooming" },
+    "fc_a_sub":        { "type": "text",  "label": "Card A sub",   "default": "All breeds" },
+    "fc_b_emoji":      { "type": "text",  "label": "Card B emoji", "default": "🏠" },
+    "fc_b_text":       { "type": "text",  "label": "Card B text",  "default": "Boarding" },
+    "fc_b_sub":        { "type": "text",  "label": "Card B sub",   "default": "24/7 care" },
+    "rating_val":      { "type": "text",  "label": "Rating",       "default": "4.9" },
+    "rating_stars":    { "type": "text",  "label": "Stars",        "default": "★★★★★" },
+    "rating_label":    { "type": "text",  "label": "Rating label", "default": "2000+ Reviews" },
+    "eyebrow":         { "type": "text",  "label": "Eyebrow",      "default": "Pet Care Services" },
+    "headline_1":      { "type": "text",  "label": "Headline 1",   "default": "Your Pet" },
+    "headline_2":      { "type": "text",  "label": "Headline 2",   "default": "Deserves" },
+    "headline_accent": { "type": "text",  "label": "Headline accent","default": "the Best." },
+    "subheading":      { "type": "text",  "label": "Subheading",   "default": "Professional grooming, daycare, and training — because your furry family member deserves 5-star care." },
+    "service_1":       { "type": "text",  "label": "Service 1",    "default": "Full-service grooming salon" },
+    "service_2":       { "type": "text",  "label": "Service 2",    "default": "Dog daycare & boarding" },
+    "service_3":       { "type": "text",  "label": "Service 3",    "default": "Certified dog training" },
+    "cta_label":       { "type": "text",  "label": "CTA",          "default": "Book Now" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",    "default": "companyname.com · @handle" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#FFF8F0" },
+    "orange": { "label": "Primary",    "default": "#FF9B50" },
+    "coral":  { "label": "Coral",      "default": "#FF6B6B" },
+    "green":  { "label": "Status",     "default": "#52D68A" }
+  },
+  "semantic": {
+    "mood": ["playful", "warm"],
+    "color_temperature": "vibrant",
+    "composition": "product_hero",
+    "best_for": ["pets", "vet", "grooming", "daycare", "B2C"]
+  }
+}

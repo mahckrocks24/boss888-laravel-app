@@ -1,0 +1,45 @@
+{
+  "name": "Architecture Reel",
+  "slug": "v09-architecture",
+  "format": "reels",
+  "category": "architecture",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "architecture"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Form follows"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "vision."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "View Portfolio"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1080&q=85&fit=crop&crop=center"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "architecture"
+    ]
+  }
+}

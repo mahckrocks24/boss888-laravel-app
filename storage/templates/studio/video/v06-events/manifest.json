@@ -1,0 +1,50 @@
+{
+  "name": "Events Reel",
+  "slug": "v06-events",
+  "format": "reels",
+  "category": "events",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "events"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "LOGO HERE"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "City Arena · Doors 7PM · 20 Artists"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "THE"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "NIGHT."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "GET TICKETS"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1080&q=85&fit=crop&crop=center"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "events"
+    ]
+  }
+}

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Engines\Builder\Services\TemplateService;
+use App\Engines\Builder\Services\ArthurService;
 
 /**
  * Admin surface for template library management.
@@ -314,5 +315,48 @@ class AdminTemplatesController
     private function manifestPath(string $industry): string
     {
         return storage_path(self::TEMPLATE_ROOT . '/' . $industry . '/manifest.json');
+    }
+
+    /**
+     * v1.4.4 (2026-05-30) — Page Templates tab.
+     *
+     * Mirrors index() but for Arthur's page-template catalogue (the 17
+     * code-defined templates in ArthurService::PAGE_TEMPLATE_CATALOGUE).
+     * Read-only — page templates are code, not filesystem assets, so
+     * there is no toggle / clone / upload.
+     */
+    public function pageTemplates(Request $request)
+    {
+        try {
+            $arthur = app(ArthurService::class);
+            $all    = $arthur->listPageTemplates();
+
+            $categories = [];
+            foreach ($all as $t) {
+                $cat = $t['category'] ?? 'other';
+                $categories[$cat] = ($categories[$cat] ?? 0) + 1;
+            }
+
+            $stats = [
+                'total_templates'  => count($all),
+                'total_categories' => count($categories),
+                'category_counts'  => $categories,
+            ];
+
+            return response()->json([
+                'success'   => true,
+                'templates' => $all,
+                'stats'     => $stats,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('admin.page_templates.failed', [
+                'msg'   => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'error'   => 'Failed to load page templates: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

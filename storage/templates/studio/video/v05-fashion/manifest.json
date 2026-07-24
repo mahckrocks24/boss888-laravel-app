@@ -1,0 +1,55 @@
+{
+  "name": "Fashion Reel",
+  "slug": "v05-fashion",
+  "format": "reels",
+  "category": "fashion",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "fashion"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Luxury Collection"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Handcrafted for those who see beauty as a ritual"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Beauty"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "Beyond Ordinary."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Explore Collection"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1080&q=85&fit=crop&crop=top"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "fashion"
+    ]
+  }
+}

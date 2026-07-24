@@ -6,14 +6,103 @@ use App\Models\Notification;
 
 class NotificationService
 {
+    /**
+     * Sender label for SYSTEM notifications (task events, etc.). Agent CHAT
+     * replies keep the agent's OWN name (handled in PushDispatcherService) —
+     * only non-conversational system notifications use the platform brand.
+     */
+    public const SYSTEM_SENDER = 'LevelUp Growth';
+
     public function send(int $workspaceId, string $channel, string $type, array $data = []): Notification
     {
+        // 2026-06-11 — legacy send() stored ONLY type+data_json, so task.completed/
+        // failed notifications rendered BLANK in the bell ("no traces"). Populate a
+        // human title/body: sender = "LevelUp Growth" (system events are from the
+        // platform, not the agent persona), body = a no-schema-leakage summary.
         return Notification::create([
             'workspace_id' => $workspaceId,
-            'channel' => $channel,
-            'type' => $type,
-            'data_json' => $data,
+            'channel'      => $channel,
+            'type'         => $type,
+            'title'        => self::deriveSender($type),
+            'body'         => self::deriveBody($type, $data),
+            'data_json'    => $data,
         ]);
+    }
+
+    /**
+     * Sender label. An agent's OWN proactive outreach (sarah_proposal / reminder
+     * / weekly / monthly) keeps the AGENT's name; everything else is a system
+     * event and uses the platform brand "LevelUp Growth".
+     */
+    public static function deriveSender(string $type): string
+    {
+        if (preg_match('/^([a-z]+)_(proposal|reminder|weekly|monthly|monthly_proposal|message|suggestion|checkin)/', $type, $m)) {
+            // W6: never surface a removed agent as sender of a live notification.
+            if (\App\Core\LaunchScope\AgentDirectory::isRemoved($m[1])) return self::SYSTEM_SENDER;
+            $row = \Illuminate\Support\Facades\DB::table('agents')->where('slug', $m[1])->value('name');
+            return $row ?: ucfirst($m[1]);
+        }
+        return self::SYSTEM_SENDER;
+    }
+
+    /** Human, no-schema-leakage body for a system notification (type + data). */
+    public static function deriveBody(string $type, array $data): string
+    {
+        $action = isset($data['action']) ? self::humanizeAction((string) $data['action']) : null;
+        switch ($type) {
+            case 'task.completed':
+                return $action ? ucfirst($action) . ' is done.' : 'A task finished successfully.';
+            case 'task.failed':
+                $reason = self::humanizeError((string) ($data['error'] ?? ''));
+                return ($action ? ucfirst($action) . ' didn\'t finish' : 'A task didn\'t finish')
+                    . ($reason !== '' ? ' — ' . $reason . '.' : '.');
+            case 'task.approval_required':
+                return 'A task is waiting for your approval.';
+            case 'approval.approved':
+                return 'An approved task has been started.';
+            case 'subscription.upgraded':
+                return 'Your subscription has been upgraded.';
+            case 'sarah_proposal':
+            case 'sarah_monthly_proposal':
+                return 'I have a growth proposal ready for you to review.';
+            case 'sarah_reminder':
+                return 'A quick reminder on your marketing plan.';
+            case 'sarah_weekly':
+                return 'Your weekly growth summary is ready.';
+            default:
+                return 'You have a new update.';
+        }
+    }
+
+    /** Map an internal action slug to plain English. Never surfaces raw slugs. */
+    public static function humanizeAction(string $slug): string
+    {
+        $map = [
+            'write_article' => 'writing your article', 'generate_meta' => 'the meta description',
+            'generate_image_mini' => 'the featured image', 'generate_image' => 'the featured image',
+            'generate_image_high' => 'the featured image', 'aeo_enrich' => 'the AI-search optimisation',
+            'link_suggestions' => 'finding internal links', 'insert_link' => 'adding an internal link',
+            'fix_orphans' => 'linking your orphan pages', 'deep_audit' => 'the SEO audit',
+            'serp_analysis' => 'the SERP analysis', 'competitor_serp' => 'the competitor analysis',
+            'competitor_keywords' => 'the keyword research', 'social_create_post' => 'your social post',
+            'create_lead' => 'adding a lead', 'create_campaign' => 'your campaign',
+            'email_ai_generate' => 'your email', 'publish_article' => 'publishing your article',
+            'improve_draft' => 'improving your draft', 'generate_article' => 'writing your article',
+        ];
+        if (isset($map[$slug])) return $map[$slug];
+        $words = trim(str_replace('_', ' ', $slug));
+        return $words !== '' ? $words : 'a task';
+    }
+
+    /** Reduce a raw error to a short, safe phrase — never leaks the raw error/stack. */
+    public static function humanizeError(string $err): string
+    {
+        $e = strtolower($err);
+        if (str_contains($e, 'not supported') || str_contains($e, 'no capability') || str_contains($e, 'no handler')) return 'that step isn\'t available yet';
+        if (str_contains($e, 'prompt') && str_contains($e, 'required')) return 'it was missing some details';
+        if (str_contains($e, 'url required')) return 'it was missing a URL';
+        if (str_contains($e, 'credit') || str_contains($e, 'insufficient')) return 'there weren\'t enough credits';
+        return '';
     }
 
     public function listForWorkspace(int $workspaceId, bool $unreadOnly = false): \Illuminate\Database\Eloquent\Collection

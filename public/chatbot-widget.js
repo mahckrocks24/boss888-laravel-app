@@ -139,6 +139,22 @@
   }
 
   // --- API flow ---
+  // 2026-05-28 — Re-paint the widget when /config returns a primary_color
+  // that differs from the script-tag/default. The bubble + header + send
+  // button + outgoing-message background and input focus border all use
+  // the brand color; .cb888-msg.user uses a class selector so an inline
+  // style on the element won't override it — append a small <style> with
+  // !important so the override beats the original rule from line 53+.
+  function applyColor(c) {
+    if (!c || c === COLOR) return;
+    var s = document.createElement('style');
+    s.textContent =
+      '#cb888-bubble,#cb888-header,#cb888-send,.cb888-msg.user{background:' + c + ' !important}' +
+      '#cb888-input:focus{border-color:' + c + ' !important}';
+    document.head.appendChild(s);
+    COLOR = c;
+  }
+
   function loadConfig() {
     return api('GET', '/config').then(function (res) {
       if (!res.ok) {
@@ -147,6 +163,7 @@
       }
       var d = (res.body && res.body.data) || {};
       if (d.greeting) addMsg('assistant', d.greeting);
+      if (d.primary_color) applyColor(d.primary_color);
       return d;
     }).catch(function (e) {
       console.warn('[CHATBOT888] config network error', e);
@@ -209,6 +226,13 @@
     });
   }
 
+  // 2026-05-28 — Fire /config immediately at script load (memoised) so the
+  // bubble re-paints to the brand color BEFORE the visitor clicks it. The
+  // greeting is appended into the hidden panel; visitor sees it on first
+  // open, same as before. open() reuses the memoised promise to avoid a
+  // second /config call.
+  var configPromise = loadConfig();
+
   // --- Open/close ---
   function open() {
     if (isOpen) return;
@@ -216,7 +240,7 @@
     panel.style.display = 'flex';
     bubble.style.display = 'none';
     if (!sessionId) {
-      loadConfig().then(function () { return startSession(); });
+      configPromise.then(function () { return startSession(); });
     }
     setTimeout(function () { $('cb888-input').focus(); }, 60);
   }

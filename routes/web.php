@@ -42,24 +42,23 @@ Route::get('/sitemap.xml', function (\Illuminate\Http\Request $r) {
     $base = $r->getSchemeAndHttpHost();  // e.g. https://staging.levelupgrowth.io
     $today = date('Y-m-d');
     $pages = [
-        ['loc' => '/',              'priority' => '1.0', 'changefreq' => 'weekly'],
-        ['loc' => '/pricing',       'priority' => '0.9', 'changefreq' => 'monthly'],
-        ['loc' => '/features',      'priority' => '0.9', 'changefreq' => 'monthly'],
-        ['loc' => '/specialists',   'priority' => '0.8', 'changefreq' => 'monthly'],
-        ['loc' => '/how-it-works',  'priority' => '0.8', 'changefreq' => 'monthly'],
-        ['loc' => '/faq',           'priority' => '0.8', 'changefreq' => 'monthly'],
-        ['loc' => '/ai-agents',     'priority' => '0.7', 'changefreq' => 'monthly'],
-        ['loc' => '/ai-assistant',  'priority' => '0.7', 'changefreq' => 'monthly'],
-        ['loc' => '/comparison',    'priority' => '0.7', 'changefreq' => 'monthly'],
-        ['loc' => '/use-cases',     'priority' => '0.7', 'changefreq' => 'monthly'],
-        ['loc' => '/results',       'priority' => '0.7', 'changefreq' => 'monthly'],
-        ['loc' => '/calendar',      'priority' => '0.6', 'changefreq' => 'monthly'],
-        ['loc' => '/creative',      'priority' => '0.6', 'changefreq' => 'monthly'],
-        ['loc' => '/crm',           'priority' => '0.6', 'changefreq' => 'monthly'],
-        ['loc' => '/email',         'priority' => '0.6', 'changefreq' => 'monthly'],
-        ['loc' => '/video',         'priority' => '0.6', 'changefreq' => 'monthly'],
-        ['loc' => '/blog',          'priority' => '0.7', 'changefreq' => 'weekly'],
-        ['loc' => '/sign-up',       'priority' => '0.8', 'changefreq' => 'yearly'],
+        ['loc' => '/',                       'priority' => '1.0', 'changefreq' => 'weekly'],
+        ['loc' => '/pages/why-levelup/',     'priority' => '0.9', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/pricing/',         'priority' => '0.9', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/builder/',         'priority' => '0.9', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/seo/',             'priority' => '0.8', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/automation/',      'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/crm/',             'priority' => '0.8', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/ai-agents/',       'priority' => '0.8', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/creative/',        'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/video/',           'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/calendar/',        'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/how-it-works/',    'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/use-cases/',       'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/comparison/',      'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/faq/',             'priority' => '0.7', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/results/',         'priority' => '0.5', 'changefreq' => 'monthly'],
+        ['loc' => '/blog/',                  'priority' => '0.7', 'changefreq' => 'weekly'],
     ];
     $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "
 ";
@@ -89,8 +88,10 @@ Route::get('/robots.txt', function (\Illuminate\Http\Request $r) {
     $base = $r->getSchemeAndHttpHost();
     $content = "User-agent: *
 Allow: /
+Disallow: /app
+Disallow: /app/
 
-Sitemap: {$base}/sitemap.xml
+Sitemap: https://levelupgrowth.io/sitemap.xml
 ";
     return response($content, 200)->header('Content-Type', 'text/plain');
 });
@@ -109,7 +110,8 @@ Route::get('/features', function () {
 })->name('features');
 
 Route::get('/specialists', function () {
-    return response()->file(public_path('marketing/pages/specialists.html'));
+    // MW-1b P4 - AI Workforce consolidation
+    return redirect('/pages/ai-agents/', 301);
 })->name('specialists');
 
 Route::get('/faq', function () {
@@ -135,7 +137,8 @@ Route::get('/ai-agents', function () {
 })->name('ai-agents');
 
 Route::get('/ai-assistant', function () {
-    return response()->file(public_path('marketing/pages/ai-assistant.html'));
+    // MW-1b P4 - AI Workforce consolidation
+    return redirect('/pages/ai-agents/', 301);
 })->name('ai-assistant');
 
 Route::get('/builder', function () {
@@ -159,7 +162,7 @@ Route::get('/crm', function () {
 })->name('crm');
 
 Route::get('/email', function () {
-    return response()->file(public_path('marketing/pages/email.html'));
+    return redirect('/pages/crm/', 301);
 })->name('email');
 
 Route::get('/results', function () {
@@ -175,11 +178,18 @@ Route::get('/video', function () {
 })->name('video');
 
 Route::get('/assistant', function () {
-    return response()->file(public_path('marketing/pages/assistant.html'));
+    // MW-1b P4 - AI Workforce consolidation
+    return redirect('/pages/ai-agents/', 301);
 })->name('assistant');
 
 // Pages catch-all (handles /pages/pricing/, /pages/how-it-works/ etc. from nav links)
 Route::get('/pages/{slug}', function (string $slug) {
+    // MW-1b P4 - AI Workforce consolidation: 301 legacy AI pages to the hub.
+    $consolidated = ['ai-assistant' => '/pages/ai-agents/', 'assistant' => '/pages/ai-agents/', 'specialists' => '/pages/ai-agents/',
+        // Email Marketing removed from launch scope 2026-07-24; CRM now owns the
+        // approved one-to-one and workflow-triggered email capability.
+        'email' => '/pages/crm/'];
+    if (isset($consolidated[$slug])) { return redirect($consolidated[$slug], 301); }
     $file = public_path('marketing/pages/' . basename($slug) . '.html');
     if (file_exists($file)) {
         return response()->file($file);
@@ -560,6 +570,153 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; c
   </div>
   <div class="lu-bar-right">
     <a class="lu-close" href="/app/">Close</a>
+    <a class="lu-use" href="' . htmlspecialchars($useUrl) . '">Use This Template →</a>
+  </div>
+</div>
+<div class="lu-stage" id="luStage" data-dev="desktop"><iframe class="lu-frame" id="luFrame" src="' . htmlspecialchars($rawUrl) . '"></iframe></div>
+<script>
+function luDev(mode) {
+  document.getElementById("luStage").setAttribute("data-dev", mode);
+  document.querySelectorAll(".lu-dev").forEach(function(b){ b.classList.toggle("active", b.dataset.dev === mode); });
+}
+</script>
+</body></html>';
+    });
+
+    return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
+});
+
+
+// ── v1.4.4 (2026-05-30) — Public page-template preview ──────────────
+// Mirrors /templates/{industry}/preview but for Arthur's code-defined
+// page templates (booking, events, listing_browser, …). Renders the
+// section stack with sample data via BuilderRenderer and wraps the
+// output in the same desktop/mobile chrome bar.
+Route::get('/page-templates/{slug}/preview', function (string $slug) {
+    if (!preg_match('/^[a-z0-9_\-]+$/', $slug)) abort(404);
+
+    $catalogue = \App\Engines\Builder\Services\ArthurService::PAGE_TEMPLATE_CATALOGUE;
+    if (!isset($catalogue[$slug])) abort(404);
+
+    $raw = (bool) request()->query('raw', false);
+    $industryOverride = (string) request()->query('industry', '');
+    $cacheKey = "page_tpl_preview:{$slug}:" . ($raw ? 'raw' : 'wrap') . ':' . ($industryOverride ?: '_');
+
+    $html = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($slug, $raw, $catalogue, $industryOverride) {
+        $meta     = $catalogue[$slug];
+        $arthur   = app(\App\Engines\Builder\Services\ArthurService::class);
+        $renderer = app(\App\Engines\Builder\Services\BuilderRenderer::class);
+
+        // Pick a representative industry from the template's recommended set
+        // so the preview reads like a real tenant (e.g. listing_browser →
+        // "Browse our properties" rather than "Browse our listings").
+        $industry = $industryOverride !== '' ? $industryOverride
+                 : (($meta['industries'][0] ?? '*') !== '*' ? $meta['industries'][0] : 'consulting');
+
+        $sampleByIndustry = [
+            'real_estate_agency' => ['business_name' => 'Marina Prime Realty',  'core_service' => 'sales and rentals',          'services' => ['Sales', 'Rentals', 'Off-plan', 'Property management'], 'location' => 'Dubai Marina'],
+            'short_term_rental'  => ['business_name' => 'Marina Stays',          'core_service' => 'holiday rentals',             'services' => ['Studio', 'One-bedroom', 'Two-bedroom', 'Penthouse'],      'location' => 'Dubai Marina'],
+            'ecommerce'          => ['business_name' => 'Aurora Style',          'core_service' => 'curated fashion',             'services' => ['New arrivals', 'Best sellers', 'On sale', 'Accessories'], 'location' => 'Dubai'],
+            'retail_shop'        => ['business_name' => 'Aurora Style',          'core_service' => 'curated fashion',             'services' => ['New arrivals', 'Best sellers', 'On sale', 'Accessories'], 'location' => 'Dubai'],
+            'hotel'              => ['business_name' => 'The Marina Hotel',      'core_service' => 'boutique hospitality',        'services' => ['Deluxe room', 'Suite', 'Junior suite', 'Penthouse'],      'location' => 'Dubai Marina'],
+            'resort'             => ['business_name' => 'Palm Cove Resort',      'core_service' => 'beachfront escapes',          'services' => ['Beach villa', 'Garden villa', 'Pool villa', 'Family suite'], 'location' => 'Ras Al Khaimah'],
+            'restaurant'         => ['business_name' => 'Mira',                  'core_service' => 'modern Levantine cuisine',    'services' => ['Mezze', 'Mains', 'Desserts', 'Wine pairings'],            'location' => 'Dubai DIFC'],
+            'cafe'               => ['business_name' => 'Mira',                  'core_service' => 'specialty coffee + brunch',   'services' => ['Espresso', 'Filter', 'Brunch', 'Pastries'],               'location' => 'Dubai DIFC'],
+            'aesthetic_clinic'   => ['business_name' => 'Bella Aesthetic Clinic','core_service' => 'aesthetic skin treatments',   'services' => ['Botox', 'Fillers', 'Laser', 'Skin booster'],              'location' => 'Dubai Marina'],
+            'dental'             => ['business_name' => 'Smile Dental Studio',   'core_service' => 'cosmetic and family dentistry','services' => ['Hygiene', 'Whitening', 'Veneers', 'Implants'],            'location' => 'Dubai JLT'],
+            'beauty_salon'       => ['business_name' => 'Lumen Salon',           'core_service' => 'hair colour and styling',     'services' => ['Cut', 'Colour', 'Treatment', 'Bridal'],                  'location' => 'Dubai Marina'],
+            'barbershop'         => ['business_name' => 'Bond & Sons',           'core_service' => 'classic barbering',           'services' => ['Cut', 'Shave', 'Beard', 'Hot towel'],                    'location' => 'Dubai JLT'],
+            'gym'                => ['business_name' => 'Iron + Sky',            'core_service' => 'strength + conditioning',     'services' => ['Strength', 'Conditioning', 'Mobility', 'PT'],            'location' => 'Dubai Marina'],
+            'event_venue'        => ['business_name' => 'The Marina Hall',       'core_service' => 'event hire',                  'services' => ['Weddings', 'Corporate', 'Private', 'Pop-up'],            'location' => 'Dubai Marina'],
+            'training_center'    => ['business_name' => 'Skillstation Academy',  'core_service' => 'professional courses',        'services' => ['Leadership', 'Sales', 'Tech', 'Communication'],          'location' => 'Dubai Knowledge Park'],
+            'online_courses'     => ['business_name' => 'Skillstation Academy',  'core_service' => 'self-paced online learning',  'services' => ['Foundations', 'Advanced', 'Certification', 'Coaching'],  'location' => 'Online'],
+            'tutoring'           => ['business_name' => 'Bright Path Tutors',    'core_service' => 'one-on-one tutoring',         'services' => ['Maths', 'Science', 'English', 'Exam prep'],              'location' => 'Dubai'],
+            'automotive'         => ['business_name' => 'Apex Auto',             'core_service' => 'vehicle sales and service',   'services' => ['Sedan', 'SUV', 'Electric', 'Service'],                   'location' => 'Dubai SZR'],
+            'architecture'       => ['business_name' => 'Form & Frame Studio',   'core_service' => 'residential architecture',    'services' => ['Concept', 'Schematic', 'Detailed design', 'Site supervision'], 'location' => 'Dubai'],
+            'interior_design'    => ['business_name' => 'Form & Frame Studio',   'core_service' => 'interior design',             'services' => ['Concept', 'Procurement', 'Styling', 'Project management'], 'location' => 'Dubai'],
+            'marketing_agency'   => ['business_name' => 'Northwind Marketing',   'core_service' => 'growth marketing',            'services' => ['Brand', 'SEO', 'Performance', 'Content'],                'location' => 'Dubai Internet City'],
+            'consulting'         => ['business_name' => 'Pinnacle Consulting',   'core_service' => 'strategy consulting',         'services' => ['Strategy', 'Operations', 'Org design', 'Coaching'],      'location' => 'Dubai DIFC'],
+            'it_services'        => ['business_name' => 'BlueByte IT',           'core_service' => 'managed IT services',         'services' => ['Cloud', 'Security', 'Helpdesk', 'Networking'],           'location' => 'Dubai Silicon Oasis'],
+            'home_services'      => ['business_name' => 'HomePros',              'core_service' => 'home maintenance',            'services' => ['Cleaning', 'Plumbing', 'Electrical', 'HVAC'],            'location' => 'Dubai'],
+            'construction'       => ['business_name' => 'Steelcraft Build',      'core_service' => 'residential construction',    'services' => ['New build', 'Renovation', 'Extension', 'Fit-out'],       'location' => 'Dubai'],
+            'catering'           => ['business_name' => 'Hosted by Mira',        'core_service' => 'event catering',              'services' => ['Canapés', 'Buffets', 'Plated dinners', 'Drinks'],        'location' => 'Dubai'],
+            'medical_clinic'     => ['business_name' => 'Cedar Medical',         'core_service' => 'family medicine',             'services' => ['GP', 'Paediatrics', 'Women\'s health', 'Wellness checks'], 'location' => 'Dubai JLT'],
+            'news_channel'       => ['business_name' => 'Daily Beacon',          'core_service' => 'independent news',            'services' => ['News', 'Opinion', 'Features', 'Podcast'],                'location' => 'Online'],
+            'pet_services'       => ['business_name' => 'Paws & Co',             'core_service' => 'pet care services',           'services' => ['Grooming', 'Boarding', 'Walking', 'Training'],           'location' => 'Dubai'],
+            'travel_agency'      => ['business_name' => 'Lattitude Travel',      'core_service' => 'bespoke travel planning',     'services' => ['Honeymoons', 'Family', 'Adventure', 'Business'],         'location' => 'Dubai DIFC'],
+            'childcare'          => ['business_name' => 'Little Acorns',         'core_service' => 'early-years childcare',       'services' => ['Nursery', 'Pre-school', 'After-school', 'Holiday camp'], 'location' => 'Dubai'],
+        ];
+
+        $sample = ($sampleByIndustry[$industry] ?? [
+            'business_name' => 'Sample Business',
+            'core_service'  => 'our core service',
+            'services'      => ['Service one', 'Service two', 'Service three', 'Service four'],
+            'location'      => 'Dubai',
+        ]) + ['industry' => $industry];
+
+        $sections = $arthur->buildDefaultSectionsForPage($slug, $sample);
+        $brand = [
+            'primary'       => '#6C5CE7',
+            'primary_color' => '#6C5CE7',
+            'secondary'     => '#3D34A0',
+            'accent'        => '#F4F7FB',
+            'font_heading'  => 'Syne',
+            'font_body'     => 'DM Sans',
+        ];
+
+        $allPages = [
+            ['slug' => 'home',     'title' => 'Home'],
+            ['slug' => 'about',    'title' => 'About'],
+            ['slug' => 'services', 'title' => 'Services'],
+            ['slug' => 'contact',  'title' => 'Contact'],
+        ];
+
+        $body = '';
+        foreach ($sections as $sec) {
+            $body .= $renderer->renderSection($sec, $brand, ['name' => $sample['business_name']], $allPages, $slug);
+        }
+
+        $rendered = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . htmlspecialchars($meta['label']) . ' — preview</title>'
+            . '<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">'
+            . '<style>html,body{margin:0;padding:0;font-family:\'DM Sans\',system-ui,-apple-system,sans-serif;background:#fff;color:#111}h1,h2,h3{font-family:\'Syne\',sans-serif}</style>'
+            . '</head><body>' . $body . '</body></html>';
+
+        if ($raw) return $rendered;
+
+        $tplName = $meta['label'] ?? ucfirst($slug);
+        $rawUrl  = '/page-templates/' . $slug . '/preview?raw=1' . ($industryOverride ? '&industry=' . urlencode($industryOverride) : '');
+        $useUrl  = '/app/?page_template=' . urlencode($slug);
+
+        return '<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preview · ' . htmlspecialchars($tplName) . '</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #fff; overflow: hidden; height: 100vh; }
+.lu-bar { position: fixed; top: 0; left: 0; right: 0; height: 52px; background: #0f172a; border-bottom: 1px solid rgba(255,255,255,.08); z-index: 99999; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 13px; }
+.lu-bar-left { display: flex; align-items: center; gap: 12px; }
+.lu-bar-title { font-weight: 600; letter-spacing: 0.01em; }
+.lu-bar-badge { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; background: rgba(108,92,231,.85); padding: 4px 8px; border-radius: 3px; font-weight: 600; }
+.lu-bar-center { display: flex; gap: 4px; background: rgba(255,255,255,.06); padding: 4px; border-radius: 7px; }
+.lu-dev { background: transparent; border: none; color: #c3c7d0; padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 500; cursor: pointer; letter-spacing: 0.02em; }
+.lu-dev.active { background: rgba(255,255,255,.12); color: #fff; }
+.lu-bar-right { display: flex; align-items: center; gap: 10px; }
+.lu-use { background: #6C5CE7; border: none; color: #fff; padding: 9px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; text-decoration: none; transition: background .2s; }
+.lu-use:hover { background: #5A4BD3; }
+.lu-close { background: transparent; border: 1px solid rgba(255,255,255,.15); color: #c3c7d0; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; text-decoration: none; }
+.lu-stage { position: absolute; top: 52px; left: 0; right: 0; bottom: 0; background: #0f172a; display: flex; align-items: flex-start; justify-content: center; padding: 0; overflow: auto; }
+.lu-frame { width: 100%; max-width: none; height: 100%; border: none; background: #fff; transition: max-width .35s cubic-bezier(.2,.8,.2,1); display: block; }
+.lu-stage[data-dev="mobile"] .lu-frame { max-width: 420px; box-shadow: 0 12px 48px rgba(0,0,0,.5); margin-top: 20px; height: calc(100vh - 92px); border-radius: 16px; }
+.lu-stage[data-dev="mobile"] { padding: 0 24px; }
+</style></head>
+<body>
+<div class="lu-bar">
+  <div class="lu-bar-left"><span class="lu-bar-title">' . htmlspecialchars($tplName) . '</span><span class="lu-bar-badge">page template</span></div>
+  <div class="lu-bar-center">
+    <button class="lu-dev active" data-dev="desktop" onclick="luDev(\'desktop\')">Desktop</button>
+    <button class="lu-dev" data-dev="mobile" onclick="luDev(\'mobile\')">Mobile</button>
+  </div>
+  <div class="lu-bar-right">
+    <a class="lu-close" href="/admin/">Close</a>
     <a class="lu-use" href="' . htmlspecialchars($useUrl) . '">Use This Template →</a>
   </div>
 </div>

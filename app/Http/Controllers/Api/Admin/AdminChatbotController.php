@@ -102,6 +102,7 @@ class AdminChatbotController
         $r->validate([
             'file'  => 'required|file|max:10240',  // 10 MB
             'label' => 'nullable|string|max:255',
+            'website_id' => 'nullable|integer',    // 2026-07-02 — per-website KB tagging
         ]);
 
         // Per-workspace doc cap.
@@ -117,7 +118,7 @@ class AdminChatbotController
         }
 
         try {
-            $sourceId = $this->kb->ingestFile($wsId, $r->file('file'), $r->input('label'));
+            $sourceId = $this->kb->ingestFile($wsId, $r->file('file'), $r->input('label'), $r->input('website_id') !== null ? (int) $r->input('website_id') : null);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'error' => 'VALIDATION', 'message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
@@ -138,8 +139,9 @@ class AdminChatbotController
         $data = $r->validate([
             'label' => 'required|string|max:255',
             'text'  => 'required|string|max:200000',
+            'website_id' => 'nullable|integer',    // 2026-07-02 — per-website KB tagging
         ]);
-        $sourceId = $this->kb->ingestText($wsId, $data['label'], $data['text']);
+        $sourceId = $this->kb->ingestText($wsId, $data['label'], $data['text'], isset($data['website_id']) ? (int) $data['website_id'] : null);
         return response()->json([
             'success' => true,
             'data'    => DB::table('chatbot_knowledge_sources')->where('id', $sourceId)->first(),
@@ -298,6 +300,46 @@ class AdminChatbotController
         $this->bustPublishedSiteCache($wsId, $row->website_id ?? null);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * 2026-05-28 — Dispatch a website crawl for this workspace. Async via
+     * CrawlChatbotKnowledgeJob; returns 202 immediately. Refuses overlap.
+     */
+    public function crawlSite(Request $r): JsonResponse
+    {
+        $wsId = $this->wsId($r);
+        if ($denial = $this->planDeny($wsId)) return $denial;
+
+        $data = $r->validate([
+            'max_pages' => 'nullable|integer|min:1|max:200',
+        ]);
+        $maxPages = (int) ($data['max_pages'] ?? \App\Engines\Chatbot\Services\ChatbotWebsiteCrawler::DEFAULT_MAX_PAGES);
+
+        if (\App\Jobs\CrawlChatbotKnowledgeJob::isRunning($wsId)) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'ALREADY_RUNNING',
+                'message' => 'A crawl is already in progress for this workspace.',
+                'status'  => Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId)),
+            ], 409);
+        }
+
+        \App\Jobs\CrawlChatbotKnowledgeJob::dispatch($wsId, $maxPages);
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Crawl queued — pages will appear in the knowledge base shortly.',
+            'max_pages' => $maxPages,
+        ], 202);
+    }
+
+    public function crawlStatus(Request $r): JsonResponse
+    {
+        $wsId = $this->wsId($r);
+        if ($denial = $this->planDeny($wsId)) return $denial;
+        $status = Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId));
+        return response()->json(['success' => true, 'status' => $status]);
     }
 
     // ── Private helpers ──────────────────────────────────────

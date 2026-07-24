@@ -1,0 +1,38 @@
+{
+  "name": "Minimal Editorial Beauty",
+  "slug": "sp03-beauty-editorial",
+  "format": "portrait",
+  "category": "beauty",
+  "sub_category": "skincare",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["beauty", "skincare", "wellness", "editorial", "minimal"],
+  "variables": {
+    "hero_image":       { "type": "image", "label": "Hero image",      "default": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1080&q=85&fit=crop&crop=top" },
+    "hero_pill":        { "type": "text",  "label": "Hero pill",       "default": "Skincare" },
+    "hero_edition":     { "type": "text",  "label": "Hero edition",    "default": "New Formula" },
+    "eyebrow_label":    { "type": "text",  "label": "Eyebrow label",   "default": "Skin Ritual Collection" },
+    "eyebrow_number":   { "type": "text",  "label": "Eyebrow number",  "default": "No. 04 / 2025" },
+    "headline_main":    { "type": "text",  "label": "Headline (main)", "default": "Your Skin," },
+    "headline_accent":  { "type": "text",  "label": "Headline (accent)","default": "Reimagined." },
+    "subheading":       { "type": "text",  "label": "Subheading",      "default": "A weightless daily ritual powered by botanical actives — clinically proven to restore radiance and rebuild skin's natural barrier." },
+    "tag_1":            { "type": "text",  "label": "Tag 1",           "default": "Retinol 0.3%" },
+    "tag_2":            { "type": "text",  "label": "Tag 2",           "default": "Niacinamide" },
+    "tag_3":            { "type": "text",  "label": "Tag 3",           "default": "Hyaluronic Acid" },
+    "tag_4":            { "type": "text",  "label": "Tag 4",           "default": "Cruelty-Free" },
+    "cta_label":        { "type": "text",  "label": "CTA",             "default": "Shop Now" },
+    "cta_ghost_label":  { "type": "text",  "label": "Ghost CTA",       "default": "Learn More" },
+    "brand_name":       { "type": "text",  "label": "Brand name",      "default": "Logo Here" },
+    "brand_url":        { "type": "text",  "label": "Brand URL",       "default": "companyname.com" },
+    "price_label":      { "type": "text",  "label": "Price label",     "default": "From" },
+    "price_val":        { "type": "text",  "label": "Price value",     "default": "$48" },
+    "brand_handle":     { "type": "text",  "label": "Brand handle",    "default": "@handle" }
+  },
+  "css_variables": {},
+  "semantic": {
+    "mood": ["elegant", "minimal"],
+    "color_temperature": "warm",
+    "composition": "image_top",
+    "best_for": ["beauty", "skincare", "editorial", "wellness", "premium"]
+  }
+}

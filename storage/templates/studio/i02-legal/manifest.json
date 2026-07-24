@@ -1,0 +1,41 @@
+{
+  "name": "Luxury Law Editorial — Legal",
+  "slug": "i02-legal",
+  "format": "portrait",
+  "category": "corporate",
+  "sub_category": "legal",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["legal", "law", "attorney", "corporate", "professional"],
+  "variables": {
+    "hero_image":        { "type": "image", "label": "Hero image",       "default": "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=1080&q=85&fit=crop&crop=center" },
+    "num_overlay":       { "type": "text",  "label": "Numeral overlay",  "default": "XII" },
+    "logo_name":         { "type": "text",  "label": "Logo name",        "default": "LOGO HERE" },
+    "est_tag":           { "type": "text",  "label": "Est. tag",         "default": "Est. 1990" },
+    "eyebrow":           { "type": "text",  "label": "Eyebrow",          "default": "Attorneys at Law" },
+    "headline_main":     { "type": "text",  "label": "Headline (main)",  "default": "Justice." },
+    "headline_accent":   { "type": "text",  "label": "Headline (accent)","default": "Delivered." },
+    "subheading":        { "type": "text",  "label": "Subheading",       "default": "Elite legal representation for corporations, high-net-worth individuals, and complex international matters. <strong>We don't just practice law — we command it.</strong>" },
+    "area_1_name":       { "type": "text",  "label": "Area 1 name",      "default": "Corporate" },
+    "area_1_desc":       { "type": "text",  "label": "Area 1 desc",      "default": "M&amp;A · Compliance" },
+    "area_2_name":       { "type": "text",  "label": "Area 2 name",      "default": "Litigation" },
+    "area_2_desc":       { "type": "text",  "label": "Area 2 desc",      "default": "Civil · Criminal" },
+    "area_3_name":       { "type": "text",  "label": "Area 3 name",      "default": "Real Estate" },
+    "area_3_desc":       { "type": "text",  "label": "Area 3 desc",      "default": "Property · Contracts" },
+    "cta_label":         { "type": "text",  "label": "CTA",              "default": "Book a Consultation" },
+    "cta_ghost_label":   { "type": "text",  "label": "Ghost CTA",        "default": "Our Practice" },
+    "brand_bottom":      { "type": "text",  "label": "Brand bottom",     "default": "companyname.com" }
+  },
+  "css_variables": {
+    "bg":      { "label": "Background", "default": "#0A0E1A" },
+    "gold":    { "label": "Gold",       "default": "#C9A96E" },
+    "gold-l":  { "label": "Gold light", "default": "#E8CFA0" },
+    "white":   { "label": "Text",       "default": "#EEF0F8" }
+  },
+  "semantic": {
+    "mood": ["luxury", "professional"],
+    "color_temperature": "dark",
+    "composition": "image_top",
+    "best_for": ["legal", "law firm", "attorney", "corporate", "professional services"]
+  }
+}

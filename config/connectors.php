@@ -45,4 +45,26 @@ return [
         'mock_mode' => env('SOCIAL_MOCK_MODE', true),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Search Console (platform OAuth app — "model B")
+    |--------------------------------------------------------------------------
+    | ONE LevelUp-owned OAuth client brokers the sign-in for every workspace.
+    | Each workspace connects its OWN Google account / property; only the
+    | tokens + data are per-workspace (tables: gsc_connections / gsc_metrics).
+    | The client_id/secret here are shared platform infrastructure (the
+    | "front door"), NOT a customer's account.
+    |
+    | redirect_uri MUST exactly match an Authorized redirect URI registered
+    | on the OAuth client in Google Cloud Console.
+    */
+    'gsc' => [
+        'client_id'     => env('GSC_CLIENT_ID', ''),
+        'client_secret' => env('GSC_CLIENT_SECRET', ''),
+        'redirect_uri'  => env('GSC_REDIRECT_URI', rtrim((string) env('APP_URL', ''), '/') . '/api/seo/gsc/oauth/callback'),
+        'timeout'       => (int) env('GSC_TIMEOUT', 15),
+        // State signature TTL (seconds) — guards the header-less callback.
+        'state_ttl'     => (int) env('GSC_STATE_TTL', 600),
+    ],
+
 ];

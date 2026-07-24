@@ -58,37 +58,43 @@ class SequenceService
         return $seq;
     }
 
-    public function updateSequence(int $id, array $data): array
+    public function updateSequence(int $id, array $data, ?int $wsId = null): array
     {
         $update = array_intersect_key($data, array_flip(['name', 'status', 'trigger_type']));
         if (isset($data['trigger_config'])) {
             $update['trigger_config_json'] = json_encode($data['trigger_config']);
         }
         $update['updated_at'] = now();
-        DB::table('sequences')->where('id', $id)->update($update);
+        $n = DB::table('sequences')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update($update);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Sequence not found');
         return ['updated' => true];
     }
 
-    public function deleteSequence(int $id): bool
+    public function deleteSequence(int $id, ?int $wsId = null): bool
     {
-        DB::table('sequences')->where('id', $id)->update(['deleted_at' => now()]);
+        $n = DB::table('sequences')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update(['deleted_at' => now()]);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Sequence not found');
         return true;
     }
 
-    public function toggleSequence(int $id, string $status): array
+    public function toggleSequence(int $id, string $status, ?int $wsId = null): array
     {
         $allowed = ['draft', 'active', 'paused', 'archived'];
         if (!in_array($status, $allowed, true)) {
             return ['toggled' => false, 'error' => 'invalid_status'];
         }
-        DB::table('sequences')->where('id', $id)->update([
+        $n = DB::table('sequences')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update([
             'status' => $status, 'updated_at' => now(),
         ]);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Sequence not found');
         return ['toggled' => true, 'status' => $status];
     }
 
-    public function addStep(int $sequenceId, array $data): array
+    public function addStep(int $sequenceId, array $data, ?int $wsId = null): array
     {
+        if ($wsId !== null && !DB::table('sequences')->where('id', $sequenceId)->where('workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException('Sequence not found');
+        }
         $nextOrder = (int) DB::table('sequence_steps')->where('sequence_id', $sequenceId)->max('step_order') + 1;
 
         $stepId = DB::table('sequence_steps')->insertGetId([
@@ -107,8 +113,11 @@ class SequenceService
         return ['step_id' => $stepId];
     }
 
-    public function removeStep(int $sequenceId, int $stepId): bool
+    public function removeStep(int $sequenceId, int $stepId, ?int $wsId = null): bool
     {
+        if ($wsId !== null && !DB::table('sequences')->where('id', $sequenceId)->where('workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException('Sequence not found');
+        }
         DB::table('sequence_steps')
             ->where('sequence_id', $sequenceId)
             ->where('id', $stepId)

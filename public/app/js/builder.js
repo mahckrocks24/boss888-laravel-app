@@ -1208,13 +1208,10 @@ async function _t3ArthurSend(websiteId) {
       }
     }
     if (!triedCanonical || (r && r.status === 422 && d && d.legacy === true)) {
-      // Legacy fallback — works for static-HTML sites (Chef Red era)
-      r = await fetch('/api/builder/websites/' + websiteId + '/arthur-edit', {
-        method: 'POST',
-        headers: {'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: JSON.stringify({message: msg, block_id: window._t3SelectedBlock || null, element_key: window._t3SelectedElement || null})
-      });
-      d = await r.json();
+      // Legacy static-HTML edit path REMOVED 2026-07-02 — manual/legacy editing is
+      // dead; only structured Arthur vibe editing is supported. A static-HTML page
+      // (e.g. the old Chef Red layout) must be rebuilt as structured sections to edit.
+      d = { error: 'This page is a legacy static layout — rebuild it as a structured page to edit it with Arthur.' };
     }
 
     var typing = document.getElementById('t3-typing');
@@ -1416,6 +1413,14 @@ async function wsOpenSite(siteId){
   // External websites — no editor
   if (site.type === 'external' || site.external_url) { return; }
 
+  // v5.7.21 (2026-05-31) — Phase 2 URL: push /app/builder/{siteId} so
+  // refresh / bookmark / share all work.
+  try {
+    if (window._luRouter && window._luRouter.enabled()) {
+      window._luRouter.pushView('websites', String(siteId));
+    }
+  } catch (_e) {}
+
   document.getElementById('ws-site-list').style.display = 'none';
   document.getElementById('ws-site-pages').style.display = 'block';
   document.getElementById('ws-site-title').textContent = site.title + ' — Pages';
@@ -1444,7 +1449,18 @@ function wsCloseSite() {
   wsCurrentSite = null;
   document.getElementById('ws-site-pages').style.display = 'none';
   document.getElementById('ws-site-list').style.display = 'block';
+  // v5.7.21 (2026-05-31) — Phase 2 URL: drop the tail when returning to
+  // the site list.
+  try {
+    if (window._luRouter && window._luRouter.enabled()) {
+      window._luRouter.pushView('websites');
+    }
+  } catch (_e) {}
 }
+// v5.7.21 (2026-05-31) — expose for router deep links: /app/builder/{siteId}
+// dispatches to nav('builder', {tail: id}) which calls this after the
+// builder engine mounts. wsOpenSite is already top-level so it's global.
+window.wsOpenSite = wsOpenSite;
 
 function wsRenderSitePages(pages, siteId) {
   var grid = document.getElementById('ws-pages-grid');
@@ -2322,7 +2338,12 @@ var _bldBuildPreviewHtml = function() {
 // ═══════════════════════════════════════════════════════════════════════════
 // BUILDER AI — TYPE REGISTRIES + COMPONENT SCHEMAS
 // ═══════════════════════════════════════════════════════════════════════════
-var _BLD_ALLOWED_SECTION_TYPES = ['header','navigation','footer','banner','sidebar','hero','features','cta','text_block','testimonials','service_grid','faq','contact_form','pricing','custom','about','team','gallery','stats','logos','newsletter'];
+// W6 product decision: a signup section on the CUSTOMER'S OWN website is a
+// retained lead-capture feature, not LevelUp Growth Email Marketing. The
+// legacy 'newsletter' key is kept so existing sections_json keeps rendering;
+// 'email_signup' and 'lead_capture' are the unambiguous names to use going
+// forward. Nothing here sends mail, broadcasts, or manages campaigns.
+var _BLD_ALLOWED_SECTION_TYPES = ['header','navigation','footer','banner','sidebar','hero','features','cta','text_block','testimonials','service_grid','faq','contact_form','pricing','custom','about','team','gallery','stats','logos','newsletter','email_signup','lead_capture'];
 var _BLD_ALLOWED_COMPONENT_TYPES = ['heading','text','button','cards','form','image','divider','spacer','list'];
 var _BLD_ALLOWED_ACTIONS = ['create_section','update_section','update_page','create_page','update_component','update_header','update_footer','update_navigation','create_website'];
 
@@ -2572,7 +2593,10 @@ document.addEventListener('keydown', function(e) {
   }
 
   // ── Inline policy badge for any tool ───────────────────────────────
-  const _PROTECTED = new Set(['publish_post','send_campaign','create_campaign','update_campaign','export_website','export_page','publish_builder_page','create_lead','enroll_sequence','create_booking_slot']);
+  // 2026-05-30 — extended set after the approval-system audit: added
+  // delete_lead, publish_website. Backend cap-map + Sarah's destructive
+  // list were updated in lockstep so all three layers agree.
+  const _PROTECTED = new Set(['publish_post','send_campaign','create_campaign','update_campaign','export_website','export_page','publish_builder_page','publish_website','create_lead','delete_lead','enroll_sequence','create_booking_slot']);
   window.policyBadge = function(toolId) {
     if (_PROTECTED.has(toolId)) return '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:rgba(248,113,113,.12);color:var(--rd);margin-left:4px">'+window.icon("lock",14)+' PROTECTED</span>';
     if (_policyAutoOk(toolId)) return '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:rgba(0,229,168,.12);color:var(--ac);margin-left:4px">'+window.icon("ai",14)+' AUTO</span>';
@@ -2586,7 +2610,7 @@ document.addEventListener('keydown', function(e) {
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease';
       const paramStr = Object.entries(params||{}).filter(([k,v])=>v).map(([k,v])=>`<div style="font-size:11px;color:var(--t3)"><strong>${k}:</strong> ${typeof v==='object'?JSON.stringify(v):v}</div>`).join('');
       const isSafe = EXEC_SAFE && EXEC_SAFE.has(toolId);
-      const isProtected = ['publish_post','send_campaign','create_campaign','update_campaign','export_website','export_page','publish_builder_page','create_lead','enroll_sequence','create_booking_slot'].includes(toolId);
+      const isProtected = ['publish_post','send_campaign','create_campaign','update_campaign','export_website','export_page','publish_builder_page','publish_website','create_lead','delete_lead','enroll_sequence','create_booking_slot'].includes(toolId);
       overlay.innerHTML = `<div style="background:var(--s2);border:1px solid var(--bd2);border-radius:16px;padding:28px 32px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
         <div style="font-size:32px;text-align:center;margin-bottom:12px">${isProtected?''+window.icon("lock",14)+'':isSafe?''+window.icon("search",14)+'':''+window.icon("warning",14)+''}</div>
         <div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1);text-align:center;margin-bottom:6px">Confirm Action</div>

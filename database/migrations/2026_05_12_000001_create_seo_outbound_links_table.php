@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
@@ -21,8 +22,18 @@ return new class extends Migration {
             $table->timestamp('last_checked_at')->nullable();
             $table->timestamps();
             $table->index(['workspace_id', 'source_url']);
-            $table->unique(['workspace_id', 'source_url', 'target_url'], 'unique_outbound_link');
         });
+
+        // 2026-07-18 CLEAN-INSTALL REPAIR (INFRA888 Phase 1D §8) — identical
+        // defect to seo_images. 8 + 2000 + 2000 = 4008 bytes exceeds InnoDB's
+        // 3072-byte key limit, aborting the chain on a FRESH database. Existing
+        // environments never hit it because the hasTable guard above returns
+        // early, which also means the constraint was never actually created.
+        // Prefix lengths: 8 + (255*4) + (255*4) = 2048 bytes.
+        DB::statement(
+            'ALTER TABLE `seo_outbound_links` ADD UNIQUE INDEX `unique_outbound_link` '
+            . '(`workspace_id`, `source_url`(255), `target_url`(255))'
+        );
     }
     public function down(): void { Schema::dropIfExists('seo_outbound_links'); }
 };

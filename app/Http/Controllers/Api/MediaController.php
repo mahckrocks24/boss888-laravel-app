@@ -23,38 +23,94 @@ class MediaController
 {
     /**
      * POST /api/media/upload — workspace-scoped single file. Writes to
-     * storage/app/public/uploads/ and returns url/size/mime. Now ALSO
+     * storage/app/public/uploads/ and returns url/size/mime. Also
      * registers a row in the `media` table so the picker's "My Uploads"
      * tab sees it immediately.
+     *
+     * v1.4.4 — accepts video, validates per-kind size caps:
+     *   images / audio:  100 MB
+     *   video:           200 MB
+     *   documents:        50 MB
      */
     public function upload(Request $request): JsonResponse
     {
+        // ── v1.4.4 — per-kind size cap. Validation runs in two passes:
+        // first an upper bound (200 MB — the largest cap), then the
+        // mime-aware cap once we know the type.
         $request->validate([
-            'file' => 'required|file|max:102400', // 100 MB
+            'file' => 'required|file|max:204800', // 200 MB upper bound (video cap)
+            'kind' => 'nullable|string|in:image,video,document,audio',
         ]);
 
-        $file = $request->file('file');
+        $file       = $request->file('file');
+        $mimeUpload = $file->getClientMimeType();
+
+        // Resolve effective kind, preferring an explicit hint from the
+        // mobile companion (which knows what the user picked).
+        $kindHint   = $request->input('kind');
+        $effective  = $kindHint ?: $this->kindFromMime($mimeUpload);
+
+        // Per-kind size enforcement (kilobytes for the validator).
+        $perKindCap = match ($effective) {
+            'image', 'audio' => 102400,  // 100 MB
+            'video'          => 204800,  // 200 MB
+            'document'       =>  51200,  //  50 MB
+            default          => 102400,
+        };
+        $request->validate([
+            'file' => 'file|max:' . $perKindCap,
+        ]);
+
+        // ── v1.4.4 — explicit allow-list for chat attachments. Anything
+        // not on the list is rejected up front so an oversized PDF or a
+        // disallowed type can't sneak in through extension confusion.
+        $allowedMimes = [
+            // images
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif',
+            // video
+            'video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/3gpp',
+            // audio
+            'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/wav', 'audio/webm',
+            // docs
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/csv', 'text/plain', 'application/zip', 'application/json',
+        ];
+        if (! in_array($mimeUpload, $allowedMimes, true)) {
+            return response()->json([
+                'success' => false,
+                'error'   => "Sorry — we don't support {$mimeUpload} attachments yet.",
+            ], 422);
+        }
+
         $name = Str::random(16) . '.' . $file->getClientOriginalExtension();
         $path = $file->storeAs('uploads', $name, 'public');
 
-        $wsId = (int) ($request->attributes->get('workspace_id') ?? 0) ?: null;
+        $wsId    = (int) ($request->attributes->get('workspace_id') ?? 0) ?: null;
+        $mediaId = null;
 
         try {
-            $abs = storage_path('app/public/' . $path);
-            $mime = is_file($abs) ? (mime_content_type($abs) ?: $file->getClientMimeType()) : $file->getClientMimeType();
+            $abs  = storage_path('app/public/' . $path);
+            $mime = is_file($abs) ? (mime_content_type($abs) ?: $mimeUpload) : $mimeUpload;
             $size = is_file($abs) ? filesize($abs) : $file->getSize();
-            $assetType = 'document';
-            if (str_starts_with($mime, 'image/'))      $assetType = 'image';
-            elseif (str_starts_with($mime, 'video/'))  $assetType = 'video';
-            elseif (str_starts_with($mime, 'audio/'))  $assetType = 'audio';
 
-            $width = null; $height = null;
+            $assetType = $this->kindFromMime($mime);
+            if ($kindHint && in_array($kindHint, ['image', 'video', 'document', 'audio'], true)) {
+                $assetType = $kindHint; // mobile companion's user-chosen kind wins
+            }
+
+            $width = null; $height = null; $durationSeconds = null;
             if ($assetType === 'image' && is_file($abs)) {
                 $info = @getimagesize($abs);
                 if ($info) { $width = $info[0]; $height = $info[1]; }
             }
 
-            DB::table('media')->insert([
+            $mediaId = (int) DB::table('media')->insertGetId([
                 'workspace_id'      => $wsId,
                 'filename'          => $file->getClientOriginalName() ?: $name,
                 'path'              => '/uploads/' . $name,
@@ -65,6 +121,7 @@ class MediaController
                 'size_bytes'        => $size,
                 'width'             => $width,
                 'height'            => $height,
+                'duration_seconds'  => $durationSeconds,
                 'source'            => 'upload',
                 'is_platform_asset' => 0,
                 'is_public'         => 0,
@@ -75,13 +132,38 @@ class MediaController
             Log::warning('[MediaController] upload register failed: ' . $e->getMessage());
         }
 
+        // ── v1.4.4 — shape the response so the mobile companion's
+        // UploadedMedia DTO can consume it without parsing twice.
+        $url = Storage::url($path);
         return response()->json([
-            'success'   => true,
-            'url'       => Storage::url($path),
+            'success' => true,
+            'media'   => [
+                'id'           => $mediaId,
+                'kind'         => $this->kindFromMime($mimeUpload),
+                'name'         => $file->getClientOriginalName(),
+                'size'         => $file->getSize(),
+                'mime'         => $mimeUpload,
+                'preview_url'  => $url,        // for images this IS the preview
+                'original_url' => $url,
+            ],
+            // Backwards-compatible fields for any caller still on the v1.3 shape:
+            'url'       => $url,
             'name'      => $file->getClientOriginalName(),
             'size'      => $file->getSize(),
-            'mime_type' => $file->getMimeType(),
+            'mime_type' => $mimeUpload,
         ], 201);
+    }
+
+    /**
+     * v1.4.4 — classify an uploaded file into the four `asset_type` enum
+     * values used by the `media` table.
+     */
+    private function kindFromMime(string $mime): string
+    {
+        if (str_starts_with($mime, 'image/')) return 'image';
+        if (str_starts_with($mime, 'video/')) return 'video';
+        if (str_starts_with($mime, 'audio/')) return 'audio';
+        return 'document';
     }
 
     /**

@@ -1,0 +1,75 @@
+{
+  "name": "Spa Wellness Reel",
+  "slug": "r25-spa-wellness",
+  "format": "reels",
+  "category": "spa wellness",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "spa wellness"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_sub": {
+      "type": "text",
+      "label": "Brand Sub",
+      "default": "Urban Spa & Wellness"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Restore · Renew · Revive"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "A sanctuary of calm — where expert therapists and ancient rituals restore your body, mind, and spirit."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Find Your"
+    },
+    "headline_accent": {
+      "type": "text",
+      "label": "Headline Accent",
+      "default": "Stillness"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "Within."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Book Your Escape"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "spa wellness"
+    ]
+  }
+}

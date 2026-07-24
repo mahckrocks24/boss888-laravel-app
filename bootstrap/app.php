@@ -18,14 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
 
-        $schedule->command('sarah:proactive --type=daily')
-            ->name('sarah:daily')
-            ->dailyAt('08:00')
-            ->withoutOverlapping()
-            ->runInBackground()
-            ->onFailure(function () {
-                \Illuminate\Support\Facades\Log::error('Sarah daily proactive check failed');
-            });
+        // 2026-05-24 FIX 53C — removed legacy `sarah:proactive --type=daily`
+        // cron entry. It was a lightweight pending-approval reminder at
+        // 08:00 UTC that duplicated the new TZ-gated sarah:morning-brief.
+        // The underlying ProactiveStrategyEngine::dailyCheck() method
+        // remains callable via API + tests.
 
         $schedule->call(function () {
             $count = app(\App\Core\Billing\TrialService::class)->processExpiredTrials();
@@ -38,10 +35,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('Trial expiry cron failed');
             });
 
-        // SEO keyword rank tracking — daily 3am UAE (23:00 UTC)
+        // DFS-F1 (2026-06-21) — rank tracking moved daily→WEEKLY (Mon 02:00 UTC,
+        // ahead of the week's sarah:weekly-review). seo:track-ranks is the SINGLE
+        // consolidated rank-position command (depth 20, see TrackKeywordRanksCommand).
         $schedule->command('seo:track-ranks')
             ->name('seo:track-ranks')
-            ->dailyAt('23:00')
+            ->weeklyOn(1, '02:00')
             ->withoutOverlapping()
             ->onOneServer()
             ->runInBackground()
@@ -49,19 +48,36 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('SEO rank tracking cron failed');
             });
 
-        // 2026-05-13 — Daily DataForSEO refresh for stale keywords:
-        //   seo:rank-track   — vol/diff/cpc + current_rank for keywords
-        //                      stale > 24h (cap 100/run)
-        //   seo:serp-refresh — top-20 SERP results for top-10 keywords
-        //                      per workspace (stale > 24h)
-        $schedule->command('seo:rank-track')
-            ->name('seo:rank-track')
-            ->dailyAt('03:00')
+        // DFS-F1 (2026-06-21) — seo:rank-track UNSCHEDULED. It duplicated
+        // seo:track-ranks' rank check AND called keywordData per-keyword DAILY
+        // ($0.05/call) — the dominant DataForSEO cost leak. Rank position now
+        // comes from seo:track-ranks (weekly); search volume/difficulty/cpc now
+        // comes from seo:refresh-volume (monthly, batched — one call/workspace).
+        // The command file is retained for manual runs.
+        $schedule->command('seo:refresh-volume')
+            ->name('seo:refresh-volume')
+            ->monthlyOn(1, '02:15')
             ->withoutOverlapping()
             ->onOneServer()
             ->runInBackground()
             ->onFailure(function () {
-                \Illuminate\Support\Facades\Log::error('seo:rank-track cron failed');
+                \Illuminate\Support\Facades\Log::error('seo:refresh-volume cron failed');
+            });
+
+        // AGENT VOICE (2026-07-19) — the delegated agents report their own
+        // completed work. Before this, 17 of 20 agents had NEVER posted a
+        // message while `tasks.assigned_agents_json` showed priya alone owning
+        // 900 tasks in ws2. Completions only, every agent except Sarah, always
+        // batched and framed as work Sarah delegated. Runs :20 past the hour so
+        // it lands after sarah:auto-execute (:00) has finished spawning work.
+        $schedule->command('agents:report-completions')
+            ->name('agents:report-completions')
+            ->hourlyAt(20)
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('agents:report-completions cron failed');
             });
 
         // Wave 49b — daily AEO score snapshot.
@@ -73,6 +89,31 @@ return Application::configure(basePath: dirname(__DIR__))
             ->runInBackground()
             ->onFailure(function () {
                 \Illuminate\Support\Facades\Log::error('aeo:snapshot cron failed');
+            });
+
+        // GSC Phase 2 — daily Search Console sync for every connected workspace
+        // (trailing 28d; idempotent upsert into gsc_metrics). Runs after the
+        // GSC data-finalisation lag window.
+        $schedule->command('gsc:sync-all')
+            ->name('gsc:sync-all')
+            ->dailyAt('05:00')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('gsc:sync-all cron failed');
+            });
+
+        // 2026-07-01 — sync real GSC positions into seo_keywords.current_rank so
+        // Sarah's gatherer / opportunity-zone rule / goal tracking read TRUE ranks
+        // (DataForSEO seo:track-ranks has been failing). Runs AFTER gsc:sync-all.
+        $schedule->command('seo:sync-gsc-ranks')
+            ->name('seo:sync-gsc-ranks')
+            ->dailyAt('05:20')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('seo:sync-gsc-ranks cron failed');
             });
 
         // Wave 52 — daily catch-up reindex of builder pages.
@@ -91,9 +132,10 @@ return Application::configure(basePath: dirname(__DIR__))
             ->onOneServer()
             ->runInBackground();
 
+        // DFS-F1 (2026-06-21) — SERP context refresh moved daily→WEEKLY (Mon 02:30).
         $schedule->command('seo:serp-refresh')
             ->name('seo:serp-refresh')
-            ->dailyAt('03:30')
+            ->weeklyOn(1, '02:30')
             ->withoutOverlapping()
             ->onOneServer()
             ->runInBackground()
@@ -115,7 +157,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $schedule->command('seo:authority-score')
             ->name('seo:authority-score')
-            ->dailyAt('03:00')
+            ->dailyAt('03:02')
             ->withoutOverlapping()
             ->onOneServer()
             ->runInBackground()
@@ -127,7 +169,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // chat history, per AI Assistant Operating Rules.
         $schedule->command('seo:purge-chat-history')
             ->name('seo:purge-chat-history')
-            ->dailyAt('04:00')
+            ->dailyAt('04:02')
             ->withoutOverlapping()
             ->onOneServer()
             ->onFailure(function () {
@@ -172,28 +214,67 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('House account proactive check failed');
             });
 
-        $schedule->command('sarah:proactive --type=weekly')
-            ->name('sarah:weekly')
-            ->weeklyOn(1, '09:00')
+        // 2026-05-24 FIX 53C — removed legacy `sarah:proactive --type=weekly`
+        // and `--type=monthly` cron entries. They were redundant with the
+        // new TZ-gated sarah:weekly-review (richer LLM-synthesized retro
+        // + pivot proposals) and sarah:monthly-strategy (multi-agent
+        // strategy meeting). Underlying ProactiveStrategyEngine methods
+        // (weeklyReview, monthlyStrategy) remain callable via API.
+
+        // 2026-05-24 FIX 46 — Sarah's daily morning brief. Runs the
+        // full cross-engine orchestration cycle: gather state from all
+        // 13 engines + tier + goals + pipeline, send to runtime for
+        // synthesis, persist proposed actions, post composite brief
+        // to chat. One message per workspace, one approval batch.
+        // 2026-05-24 FIX 53 — hourly + per-workspace TZ-gated. The
+        // command itself filters by Carbon::now($ws->timezone)->hour===8
+        // and uses workspace_memory for idempotency so the hourly cron
+        // doesn't double-post.
+        $schedule->command('sarah:morning-brief')
+            ->name('sarah:morning-brief')
+            ->hourly()
             ->withoutOverlapping()
             ->runInBackground()
             ->onFailure(function () {
-                \Illuminate\Support\Facades\Log::error('Sarah weekly proactive review failed');
+                \Illuminate\Support\Facades\Log::error('Sarah morning brief failed');
             });
 
-        $schedule->command('sarah:proactive --type=monthly')
-            ->name('sarah:monthly')
-            ->monthlyOn(1, '10:00')
+        // 2026-05-24 FIX 47 — Sarah's weekly retrospective. Reads past
+        // 7 days outcomes across all engines, posts wins/losses + pivot
+        // proposals every Monday at 09:00 UTC.
+        // 2026-05-24 FIX 53B — hourly + per-workspace TZ-gated.
+        // Command filters to Mon 09:00 in each workspace's local time
+        // with workspace-local-week idempotency.
+        $schedule->command('sarah:weekly-review')
+            ->name('sarah:weekly-review')
+            ->hourly()
             ->withoutOverlapping()
             ->runInBackground()
             ->onFailure(function () {
-                \Illuminate\Support\Facades\Log::error('Sarah monthly strategy check failed');
+                \Illuminate\Support\Facades\Log::error('Sarah weekly review failed');
+            });
+
+        // 2026-05-24 FIX 47 — Sarah's monthly strategy meeting. Runs
+        // 1st of every month at 10:00 UTC. Reads 30-day outcomes,
+        // facilitates multi-agent strategy meeting (Sarah + James +
+        // Priya + Marcus + Vera + Elena via runtime), posts refreshed
+        // 30-day plan. Costs 8cr (canonical strategy meeting price).
+        // 2026-05-24 FIX 53B — hourly + per-workspace TZ-gated.
+        // Command filters to 1st-of-month 10:00 in each workspace's
+        // local time with workspace-local-month idempotency.
+        $schedule->command('sarah:monthly-strategy')
+            ->name('sarah:monthly-strategy')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('Sarah monthly strategy failed');
             });
 
         // Notification system retention — purge notifications older than 90 days
         $schedule->command('lu:notifications:purge')
             ->name('lu:notifications:purge')
-            ->daily()
+            ->dailyAt('00:05')
             ->withoutOverlapping()
             ->onFailure(function () {
                 \Illuminate\Support\Facades\Log::error('Notifications purge cron failed');
@@ -202,13 +283,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // PATCH 7 (2026-05-08) — email-sequence runner.
         // Fires every 15 minutes; finds due steps for active enrollments
         // and sends through the existing Postmark mailer.
-        $schedule->command('lu:sequences:run')
-            ->name('lu:sequences:run')
-            ->everyFifteenMinutes()
-            ->withoutOverlapping()
-            ->onFailure(function () {
-                \Illuminate\Support\Facades\Log::error('Sequence runner failed');
-            });
+        // LAUNCH SCOPE (2026-07-20) — email-sequence drip cron DISABLED (email
+        // marketing removed from launch). RunSequences::handle() also refuses
+        // internally. Restore both to re-enable.
+        // $schedule->command('lu:sequences:run')->everyFifteenMinutes()...(disabled)
 
         // PATCH 8 (2026-05-08) — prune builder snapshot history weekly
         // (30-day retention). ManualEdit canvas states (page_id IS NULL)
@@ -245,7 +323,16 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($released > 0) {
                 \Illuminate\Support\Facades\Log::info("credits:reap-orphans released {$released} orphan reservation(s)");
             }
+        
         })->name('credits:reap-orphans')->hourly()->withoutOverlapping();
+
+        /* B34: mention:scan-daily */
+        // Hourly tick. Internal logic handles per-plan daily caps and the
+        // 24h cooldown per watchlist row, so running every hour is safe and
+        // necessary (workspaces span timezones; daily UTC fire would skew).
+        // LAUNCH SCOPE (2026-07-20) — social-listening cron DISABLED (mentions
+        // removed). MentionScanService::scanWatchlist() also refuses internally.
+        // $schedule->command('mention:scan-daily')->hourly()...(disabled)
 
         // PATCH (Phase 2C, 2026-05-10) — task orphan reaper. Tasks stuck in
         // running / queued > 30 min usually mean a worker crashed or Redis
@@ -261,6 +348,87 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::warning('tasks:recover-orphans failed: ' . $e->getMessage());
             }
         })->name('tasks:recover-orphans')->everyFifteenMinutes()->withoutOverlapping();
+
+        // 2026-06-30 — surface Sarah's approvable proposals into the approvals queue.
+        $schedule->command('proposals:sync-approvals')->everyFifteenMinutes()->withoutOverlapping();
+
+        // 2026-07-02 — video-render safety net: fail exports stuck in
+        // pending/processing past the timeout so the editor never shows a render
+        // "processing forever" (worker death / killed ffmpeg).
+        // INFRA888 - recover stuck infrastructure operations (same reaper
+        // pattern as credits:reap-orphans / tasks:recover-orphans).
+        $schedule->command('infra:reap-operations')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // INFRA888 Phase 2B-CERT - credential expiry sweep.
+        // HOURLY, not sub-hourly: expiry is measured in days, so a finer
+        // cadence adds load and log noise without detecting anything sooner.
+        // Contacts no provider; reads stored expiry timestamps only. Idempotent,
+        // so an overlapping or repeated run emits no duplicate events.
+        $schedule->command('infra:sweep-credential-expiry')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Phase 3A — infrastructure monitoring (real HTTP GETs, read-only, no
+        // customer mutation). Every 5 min, each check in its own tenant context.
+        $schedule->command('infra:run-monitor-checks')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Phase 3B — daily monitor rollup (retention/archival). Hourly with a
+        // trailing window so the current day stays current; idempotent.
+        $schedule->command('infra:rollup-monitor-daily')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        $schedule->command('studio:reap-stuck-renders')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
+
+        // 2026-07-06 — Sarah bounded autonomous execution lane. Hourly tick,
+        // per-workspace TZ-gated + once-per-local-day (mirrors sarah:morning-brief).
+        // Drains safe pending proposals within a per-day tier credit cap so Sarah
+        // ACTS instead of only proposing. External/irreversible actions stay
+        // human-gated. Per-workspace switch: settings_json->sarah_autonomy.
+        $schedule->command("sarah:auto-execute")
+            ->name("sarah:auto-execute")
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error("Sarah auto-execute failed");
+            });
+
+        // b15 (2026-07-24) — CALENDAR-DRIVEN EXECUTION.
+        // PlanSchedulerService stamps plan_tasks.scheduled_for and writes the
+        // automation_events calendar row, but nothing read that back, so a
+        // scheduled plan ("publish 2 articles every 5 minutes") appeared on the
+        // calendar and never fired. This drains tasks whose slot has arrived.
+        // Every minute so a 5-minute cadence lands on time.
+        // b20 (2026-07-24) — sweep push registrations whose sign-in has ended.
+        // Stale-token accumulation is what let a signed-out phone keep getting
+        // notifications, and what made the problem reappear on its own after it
+        // looked fixed. Daily is ample; the session binding does the real work.
+        $schedule->command("sarah:prune-device-tokens")
+            ->name("sarah:prune-device-tokens")
+            ->dailyAt("03:20")
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        $schedule->command("sarah:run-due-tasks")
+            ->name("sarah:run-due-tasks")
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error("Sarah run-due-tasks failed");
+            });
+
     })
     ->withMiddleware(function (Middleware $middleware) {
         // Wave 47 — AEO Plan Gate (\$69+ tiers only)
@@ -277,6 +445,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(\App\Http\Middleware\TrustProxies::class);
         $middleware->append(\App\Http\Middleware\CorsMiddleware::class);
         $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
+        // MW-1a — SEO isolation: noindex header on staging/IP hosts only.
+        $middleware->append(\App\Http\Middleware\StagingNoindex::class);
+
+        // W4 (2026-07-21) - launch-scope route guard. Returns 404 "not in
+        // product" for social / email-marketing / mentions route surfaces.
+        // Runs inside CORS so the browser can still read the response.
+        // Reads the same LaunchScopePolicy the kernel and agent layers read,
+        // so the route boundary cannot drift from the execution boundary.
+        $middleware->append(\App\Http\Middleware\LaunchScopeRoutes::class);
 
         // Public form-submit endpoints (cross-origin, no CSRF token possible).
         $middleware->validateCsrfTokens(except: [
@@ -286,6 +463,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'auth.jwt'        => \App\Http\Middleware\JwtAuthMiddleware::class,
+            // Phase 2B-R2 — MFA step-up for privileged control-plane ops. Self-
+            // disables below the two-MFA-admin governance bar (fail-safe, not fail-open).
+            'mfa.stepup'      => \App\Http\Middleware\RequireMfaStepUp::class,
             'api.key'         => \App\Http\Middleware\ApiKeyAuth::class,
             'connector.brand' => \App\Http\Middleware\ConnectorBrandFilter::class,
             'runtime.secret'  => \App\Http\Middleware\RuntimeSecretMiddleware::class,

@@ -1,0 +1,40 @@
+{
+  "name": "Restaurant Motion Reel",
+  "slug": "r04-restaurant",
+  "format": "reels",
+  "category": "food",
+  "sub_category": "fine_dining",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": ["restaurant", "food", "fine dining", "menu", "hospitality"],
+  "variables": {
+    "brand_name":      { "type": "text", "label": "Brand name",     "default": "Logo Here" },
+    "brand_sub":       { "type": "text", "label": "Brand sub",      "default": "Fine Dining · Est. 2010" },
+    "brand_tag":       { "type": "text", "label": "Brand tag",      "default": "★★★★★" },
+    "eyebrow":         { "type": "text", "label": "Eyebrow",        "default": "Tonight's Menu" },
+    "headline_1":      { "type": "text", "label": "Headline 1",     "default": "Taste the" },
+    "headline_2":      { "type": "text", "label": "Headline 2",     "default": "Extraordinary" },
+    "headline_accent": { "type": "text", "label": "Headline accent","default": "Tonight." },
+    "ornament":        { "type": "text", "label": "Ornament",       "default": "✦" },
+    "subheading":      { "type": "text", "label": "Subheading",     "default": "Handcrafted seasonal dishes from locally sourced ingredients — a culinary experience you'll never forget." },
+    "menu_1_name":     { "type": "text", "label": "Menu 1 name",    "default": "Wagyu Tenderloin" },
+    "menu_1_price":    { "type": "text", "label": "Menu 1 price",   "default": "$88" },
+    "menu_2_name":     { "type": "text", "label": "Menu 2 name",    "default": "Lobster Tagliolini" },
+    "menu_2_price":    { "type": "text", "label": "Menu 2 price",   "default": "$56" },
+    "menu_3_name":     { "type": "text", "label": "Menu 3 name",    "default": "Truffle Risotto" },
+    "menu_3_price":    { "type": "text", "label": "Menu 3 price",   "default": "$38" },
+    "menu_4_name":     { "type": "text", "label": "Menu 4 name",    "default": "Valrhona Fondant" },
+    "menu_4_price":    { "type": "text", "label": "Menu 4 price",   "default": "$18" },
+    "cta_label":       { "type": "text", "label": "CTA",            "default": "Reserve a Table" },
+    "footer_brand":    { "type": "text", "label": "Footer brand",   "default": "Logo Here" },
+    "footer_url":      { "type": "text", "label": "Footer URL",     "default": "companyname.com" },
+    "footer_handle":   { "type": "text", "label": "Footer handle",  "default": "@handle" }
+  },
+  "semantic": {
+    "mood": ["elegant", "warm"],
+    "color_temperature": "warm",
+    "best_for": ["restaurant", "food", "menu", "fine dining", "hospitality"]
+  }
+}

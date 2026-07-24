@@ -53,6 +53,13 @@ Route::get('/public/workspace-count', function () {
     return response()->json(['count' => $count]);
 })->name('public.workspace.count');
 
+// ── Public intake (markraymundo.com application forms) ───────────────────
+// Only unauthenticated write path into the leads table. Workspace is pinned server-side.
+// Route throttle is a coarse flood backstop; precise per-IP limiting lives in the controller.
+Route::middleware('throttle:60,1')
+    ->post('/public/intake', [\App\Http\Controllers\Api\PublicIntakeController::class, 'store'])
+    ->name('public.intake');
+
 use App\Http\Controllers\Api\MeetingController;
 use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\ManualExecutionController;
@@ -98,9 +105,15 @@ Route::post('/admin/auth', function (\Illuminate\Http\Request $r) {
     }
 
     // Generate JWT via the same service the login endpoint uses.
+    // INFRA888 (2026-07-18): tag the provenance. This token is NOT individually
+    // attributable (it always resolves to user 1), so infrastructure routes
+    // refuse it - see App\Http\Middleware\DenyApiKeyAuth.
     $refreshService = app(\App\Core\Auth\RefreshTokenService::class);
     $workspace = $admin->workspaces()->first();
-    $tokens = $refreshService->issueTokenPair($admin, $workspace);
+    // Phase 1D: provenance is now established on the SESSION, so it survives
+    // refresh-token rotation. Both the access token and every future refreshed
+    // token remain tagged 'shared_admin_token' and stay denied on INFRA888.
+    $tokens = $refreshService->issueTokenPair($admin, $workspace, null, null, 'shared_admin_token');
 
     return response()->json([
         'token' => $tokens['access_token'],
@@ -239,6 +252,72 @@ Route::middleware(['auth.jwt', 'admin'])->prefix('admin/agents')->group(function
     });
 });
 
+// ══════════════════════════════════════════════════════════════════════════
+// 2026-05-24 — Admin god-mode: AgentBrowser activity (cross-workspace)
+// ══════════════════════════════════════════════════════════════════════════
+Route::middleware(['auth.jwt', 'admin'])->prefix('admin')->group(function () {
+
+    Route::get('/web-activity', function (\Illuminate\Http\Request $r) {
+        $q = \Illuminate\Support\Facades\DB::table('agent_web_activity')
+            ->leftJoin('workspaces', 'workspaces.id', '=', 'agent_web_activity.workspace_id');
+
+        if ($wsId = (int) $r->input('workspace_id', 0)) $q->where('agent_web_activity.workspace_id', $wsId);
+        if ($agent = $r->input('agent'))                $q->where('agent_web_activity.agent_slug', $agent);
+        if ($action = $r->input('action'))              $q->where('agent_web_activity.action', $action);
+        if ($status = $r->input('status'))              $q->where('agent_web_activity.status', $status);
+        if ($since  = $r->input('since'))               $q->where('agent_web_activity.created_at', '>=', $since);
+
+        $rows = $q->orderByDesc('agent_web_activity.id')
+            ->limit(min((int) $r->input('limit', 200), 1000))
+            ->get([
+                'agent_web_activity.id',
+                'agent_web_activity.workspace_id',
+                'workspaces.name as workspace_name',
+                'agent_web_activity.agent_slug',
+                'agent_web_activity.user_id',
+                'agent_web_activity.action',
+                'agent_web_activity.url_or_query',
+                'agent_web_activity.status',
+                'agent_web_activity.title',
+                'agent_web_activity.response_preview',
+                'agent_web_activity.content_length',
+                'agent_web_activity.duration_ms',
+                'agent_web_activity.cost_credits',
+                'agent_web_activity.error',
+                'agent_web_activity.created_at',
+            ]);
+
+        // Aggregate stats for the dashboard header
+        $today = \Illuminate\Support\Facades\DB::table('agent_web_activity')
+            ->where('created_at', '>=', now()->startOfDay())
+            ->selectRaw('COUNT(*) as total, COALESCE(SUM(cost_credits),0) as credits, COUNT(DISTINCT workspace_id) as workspaces, COUNT(DISTINCT agent_slug) as agents')
+            ->first();
+
+        $byStatus = \Illuminate\Support\Facades\DB::table('agent_web_activity')
+            ->where('created_at', '>=', now()->subDays(7))
+            ->select('status', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
+            ->groupBy('status')
+            ->get();
+
+        return response()->json([
+            'rows'      => $rows,
+            'total_returned' => $rows->count(),
+            'today'     => $today,
+            'by_status_7d' => $byStatus,
+        ]);
+    });
+
+    // Convenience: distinct agent slugs that have activity (for filter dropdown)
+    Route::get('/web-activity/agents', function () {
+        $agents = \Illuminate\Support\Facades\DB::table('agent_web_activity')
+            ->select('agent_slug', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
+            ->groupBy('agent_slug')
+            ->orderByDesc('count')
+            ->get();
+        return response()->json(['agents' => $agents]);
+    });
+});
+
 // ── Public OAuth Callbacks ────────────────────────────────────────────────
 // OAuth callbacks are hit by platform redirects (browser → Facebook → callback URL).
 // The browser won't have a JWT at this point, so these MUST be outside auth.jwt.
@@ -318,6 +397,192 @@ Route::get('/social/oauth/facebook/callback', function (\Illuminate\Http\Request
     ]);
 });
 
+/* b16-linkedin-callback */
+// LinkedIn OAuth callback. Public (same reason as FB: browser redirect, no JWT).
+Route::get('/social/oauth/linkedin/callback', function (\Illuminate\Http\Request $r) {
+    $code  = $r->query('code');
+    $state = $r->query('state', '');
+    $error = $r->query('error');
+    $errDesc = $r->query('error_description');
+
+    if ($error) {
+        return response()->view('social.oauth-callback', [
+            'success'        => false,
+            'platform'       => 'linkedin',
+            'account_name'   => null,
+            'accounts_count' => 0,
+            'error_message'  => (string) ($errDesc ?: $error),
+        ]);
+    }
+
+    if (! $code) {
+        return response()->view('social.oauth-callback', [
+            'success'        => false,
+            'platform'       => 'linkedin',
+            'account_name'   => null,
+            'accounts_count' => 0,
+            'error_message'  => 'No authorization code received from LinkedIn.',
+        ]);
+    }
+
+    $wsId = (int) (explode('_', $state)[0] ?? 0);
+    if ($wsId <= 0) $wsId = 1;
+
+    $connector = app(\App\Connectors\SocialConnector::class);
+    $result = $connector->handleLinkedInCallback($code, $state, $wsId);
+
+    if (! ($result['success'] ?? false)) {
+        return response()->view('social.oauth-callback', [
+            'success'        => false,
+            'platform'       => 'linkedin',
+            'account_name'   => null,
+            'accounts_count' => 0,
+            'error_message'  => (string) ($result['error'] ?? 'Unknown error'),
+        ]);
+    }
+
+    $accounts = $result['accounts'] ?? [];
+    $first = $accounts[0] ?? null;
+    return response()->view('social.oauth-callback', [
+        'success'        => true,
+        'platform'       => 'linkedin',
+        'account_name'   => $first['account_name'] ?? 'LinkedIn',
+        'accounts_count' => (int) ($result['stored'] ?? count($accounts)),
+        'error_message'  => null,
+    ]);
+});
+
+/* b17-twitter-callback */
+// Twitter/X OAuth callback. Public (same reason as FB/LinkedIn: browser
+// redirect from twitter.com, no JWT available at this point).
+Route::get('/social/oauth/twitter/callback', function (\Illuminate\Http\Request $r) {
+    $code  = $r->query('code');
+    $state = $r->query('state', '');
+    $error = $r->query('error');
+    $errDesc = $r->query('error_description');
+
+    if ($error) {
+        return response()->view('social.oauth-callback', [
+            'success'        => false,
+            'platform'       => 'twitter',
+            'account_name'   => null,
+            'accounts_count' => 0,
+            'error_message'  => (string) ($errDesc ?: $error),
+        ]);
+    }
+
+    if (! $code) {
+        return response()->view('social.oauth-callback', [
+            'success'        => false,
+            'platform'       => 'twitter',
+            'account_name'   => null,
+            'accounts_count' => 0,
+            'error_message'  => 'No authorization code received from Twitter.',
+        ]);
+    }
+
+    $wsId = (int) (explode('_', $state)[0] ?? 0);
+    if ($wsId <= 0) $wsId = 1;
+
+    $connector = app(\App\Connectors\SocialConnector::class);
+    $result = $connector->handleTwitterCallback($code, $state, $wsId);
+
+    if (! ($result['success'] ?? false)) {
+        return response()->view('social.oauth-callback', [
+            'success'        => false,
+            'platform'       => 'twitter',
+            'account_name'   => null,
+            'accounts_count' => 0,
+            'error_message'  => (string) ($result['error'] ?? 'Unknown error'),
+        ]);
+    }
+
+    $accounts = $result['accounts'] ?? [];
+    $first = $accounts[0] ?? null;
+    return response()->view('social.oauth-callback', [
+        'success'        => true,
+        'platform'       => 'twitter',
+        'account_name'   => $first['account_name'] ?? 'X/Twitter',
+        'accounts_count' => (int) ($result['stored'] ?? count($accounts)),
+        'error_message'  => null,
+    ]);
+});
+
+// Google Search Console OAuth callback. Public (browser redirect from
+// accounts.google.com — no JWT/X-API-KEY available). Workspace identity
+// travels in the SIGNED `state` (Crypt) and is verified server-side, the
+// same pattern the social callbacks use. Stores the workspace's own tokens;
+// the user then picks which property to sync from inside the app.
+Route::get('/seo/gsc/oauth/callback', function (\Illuminate\Http\Request $r) {
+    $gsc   = app(\App\Engines\SEO\Services\GscClient::class);
+    $code  = $r->query('code');
+    $state = (string) $r->query('state', '');
+    $error = $r->query('error');
+
+    $fail = fn (string $msg) => response()->view('gsc.oauth-callback', [
+        'success' => false, 'site_url' => null, 'email' => null, 'error_message' => $msg,
+    ]);
+
+    if ($error) {
+        return $fail($error === 'access_denied'
+            ? 'You declined the Google permission request.'
+            : (string) ($r->query('error_description') ?: $error));
+    }
+    if (! $code) {
+        return $fail('No authorization code received from Google.');
+    }
+
+    $wsId = $gsc->decodeState($state);
+    if ($wsId === null || $wsId <= 0) {
+        return $fail('This connection link is invalid or expired. Please start the connection again.');
+    }
+
+    $selectedSite = null;
+    try {
+        $tokens = $gsc->exchangeCode((string) $code);
+        $gsc->storeTokens($wsId, $tokens);
+        // Auto-select a property so the connection COMPLETES without a separate
+        // picker UI (connected stays false until a site is chosen). Prefer a
+        // domain-property / sc-domain match, else take the first one the account
+        // owns. The user can change it later once the picker ships.
+        try {
+            $sites = $gsc->listSites($wsId);
+            if (! empty($sites)) {
+                $owner = array_values(array_filter($sites, fn ($s) => ($s['permissionLevel'] ?? '') === 'siteOwner'));
+                $pick = $owner[0]['siteUrl'] ?? $sites[0]['siteUrl'];
+                if (! empty($pick)) {
+                    $gsc->setSite($wsId, $pick);
+                    $selectedSite = $pick;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Most common cause: the Search Console API isn't enabled on the
+            // project yet. Tokens are stored; the in-app "Sync now" / picker
+            // can complete selection once the API is on.
+            \Illuminate\Support\Facades\Log::warning('[GSC] auto-select site failed: ' . $e->getMessage());
+        }
+        // Auto-select a GA4 property ONLY if one tracks this workspace's own
+        // site — never auto-pick an unrelated property the account happens to
+        // have access to. If nothing matches, leave it for the user to choose.
+        try {
+            $ga = app(\App\Engines\SEO\Services\GaClient::class);
+            $sp = $ga->scopedProperties($wsId);
+            if (! empty($sp['matched'])) {
+                $ga->setProperty($wsId, $sp['matched'][0]['id'], $sp['matched'][0]['name']);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[GA] auto-select property failed: ' . $e->getMessage());
+        }
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::warning('[GSC] callback exchange failed: ' . $e->getMessage());
+        return $fail($e->getMessage());
+    }
+
+    return response()->view('gsc.oauth-callback', [
+        'success' => true, 'site_url' => $selectedSite, 'email' => null, 'error_message' => null,
+    ]);
+});
+
 // ── Protected Routes ─────────────────────────────────────────────────────
 // ADDED 2026-04-12 (Phase 2J / doc 12): traffic.defense middleware applied to
 // the entire authenticated workspace surface. Wires TrafficDefenseService into
@@ -328,19 +593,115 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
 
+    // 2026-05-28 — Per-user preferences (sidebar visibility mode, etc.).
+    // Whitelisted keys only so users.preferences_json doesn't become a
+    // junk drawer. Read happens via /auth/me which already returns the
+    // preferences bag — this endpoint is write-only.
+    Route::put('/user/preferences', function (\Illuminate\Http\Request $r) {
+        $user = $r->user();
+        $userId = $user ? (int) $user->id : 0;
+        if (! $userId) {
+            return response()->json(['success' => false, 'error' => 'NO_USER'], 401);
+        }
+        $data = $r->validate([
+            'visibility_mode' => 'sometimes|string|in:basic,advanced',
+        ]);
+
+        $row = \Illuminate\Support\Facades\DB::table('users')->where('id', $userId)->first(['id','preferences_json']);
+        if (! $row) {
+            return response()->json(['success' => false, 'error' => 'NOT_FOUND'], 404);
+        }
+        $current = is_string($row->preferences_json) ? (json_decode($row->preferences_json, true) ?: []) : [];
+        if (! is_array($current)) $current = [];
+
+        $allowed = ['visibility_mode'];
+        foreach ($allowed as $k) {
+            if (array_key_exists($k, $data)) {
+                $current[$k] = $data[$k];
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::table('users')->where('id', $userId)->update([
+            'preferences_json' => json_encode($current),
+            'updated_at'       => now(),
+        ]);
+
+        return response()->json([
+            'success'     => true,
+            'preferences' => $current,
+        ]);
+    });
+
     // 2026-05-16 v1.1 — WP plugin token mint (auth.jwt group; user logged in).
     Route::post('/plugin/connect', function (\Illuminate\Http\Request $r) {
         $user = $r->user();
-        $wsId = (int) ($r->input('workspace_id')
+        $siteUrl  = trim((string) ($r->input('site_url') ?: ''));
+        $siteHost = $siteUrl !== '' ? (parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl) : '';
+
+        $primaryWs = (int) ($r->input('workspace_id')
             ?? \Illuminate\Support\Facades\DB::table('workspace_users')
                 ->where('user_id', $user->id)
                 ->orderBy('created_at')
                 ->value('workspace_id'));
-        if (!$wsId) {
+        if (!$primaryWs) {
             return response()->json(['success' => false, 'error' => 'no_workspace'], 422);
         }
 
-        // Revoke prior plugin_user keys for this (user, workspace).
+        // 2026-06-26 — WEBSITE=WORKSPACE: each WP site lives in its OWN workspace
+        // (isolated SEO/CRM/data), so a user/agency can mix WP + Laravel sites.
+        // Resolve the target workspace by site_url.
+        $billingWs = (int) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $primaryWs)->value('billing_workspace_id') ?: $primaryWs);
+        $userWsIds = \Illuminate\Support\Facades\DB::table('workspaces')->where('billing_workspace_id', $billingWs)->pluck('id')->all();
+        if (empty($userWsIds)) $userWsIds = [$billingWs];
+
+        $wsId = $primaryWs;
+        if ($siteHost !== '') {
+            // (a) Already connected? reuse its workspace (idempotent re-connect).
+            $existing = (int) (\Illuminate\Support\Facades\DB::table('websites')
+                ->whereIn('workspace_id', $userWsIds)
+                ->where(function ($q) use ($siteUrl, $siteHost) {
+                    $q->where('external_url', $siteUrl)->orWhere('external_url', 'like', '%' . $siteHost . '%');
+                })->value('workspace_id') ?? 0);
+            if ($existing > 0) {
+                $wsId = $existing;
+            } else {
+                // (b) Primary empty → use it; else provision a dedicated workspace.
+                $primaryHasSite = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $primaryWs)->whereNull('deleted_at')->exists();
+                if ($primaryHasSite) {
+                    $planRow = \App\Models\Plan::find(\App\Models\Subscription::where('workspace_id', $billingWs)->whereIn('status', ['active', 'trialing'])->latest()->value('plan_id')) ?? \App\Models\Plan::where('slug', 'free')->first();
+                    $maxW  = (int) ($planRow->max_websites ?? 1);
+                    $total = (int) \Illuminate\Support\Facades\DB::table('websites')->whereIn('workspace_id', $userWsIds)->whereNull('deleted_at')->count();
+                    if ($total >= $maxW) {
+                        return response()->json(['success' => false, 'error' => 'limit_reached', 'message' => "Website limit reached ({$maxW} on the " . ($planRow->name ?? 'Free') . " plan).", 'limit_reached' => true], 402);
+                    }
+                    try {
+                        $wsId = app(\App\Engines\Builder\Services\ArthurService::class)
+                            ->provisionWebsiteWorkspace($primaryWs, (int) $user->id, $billingWs, $siteHost);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('[plugin/connect] provisioning failed: ' . $e->getMessage());
+                        $wsId = $primaryWs;
+                    }
+                }
+                // First-class websites row for the WP site in the target workspace.
+                try {
+                    \Illuminate\Support\Facades\DB::table('websites')->insert([
+                        'workspace_id'     => $wsId,
+                        'name'             => $siteHost,
+                        'domain'           => $siteHost,
+                        'type'             => 'external',
+                        'platform'         => 'wordpress',
+                        'external_url'     => $siteUrl,
+                        'connector_status' => 'connected',
+                        'status'           => 'connected',
+                        'created_by'       => (int) $user->id,
+                        'created_at'       => now(),
+                        'updated_at'       => now(),
+                    ]);
+                } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[plugin/connect] website row failed: ' . $e->getMessage()); }
+            }
+        }
+
+        // Revoke prior plugin_user keys for THIS site's (user, workspace).
         \Illuminate\Support\Facades\DB::table('api_keys')
             ->where('workspace_id', $wsId)
             ->where('user_id', $user->id)
@@ -459,6 +820,33 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     Route::get('/tasks/{id}/status', [TaskController::class, 'status']);
     Route::get('/tasks/{id}/events', [TaskController::class, 'events']);
 
+    // 2026-05-25 — Retry blocked tasks (idempotency-checked). Single-task
+    // endpoint hit from Pipeline UI retry button; batch endpoint for
+    // "retry all blocked" affordances in drawer + agent chat.
+    Route::post('/tasks/{id}/retry', function (\Illuminate\Http\Request $r, $id) {
+        $svc = app(\App\Core\TaskSystem\TaskRetryService::class);
+        $userId = $r->user()?->id;
+        $triggeredBy = $userId ? "user:{$userId}" : 'unknown';
+        // Verify the task belongs to the caller's workspace
+        $t = \App\Models\Task::find((int) $id);
+        $callerWs = (int) $r->attributes->get('workspace_id');
+        if (!$t || (int) $t->workspace_id !== $callerWs) {
+            return response()->json(['success' => false, 'error' => 'not_found_or_not_yours'], 404);
+        }
+        $result = $svc->retryOne((int) $id, $triggeredBy);
+        return response()->json(['success' => $result['action'] !== 'error', 'result' => $result]);
+    });
+
+    Route::post('/tasks/retry-blocked', function (\Illuminate\Http\Request $r) {
+        $r->validate(['ids' => 'sometimes|array', 'ids.*' => 'integer']);
+        $svc = app(\App\Core\TaskSystem\TaskRetryService::class);
+        $userId = $r->user()?->id;
+        $triggeredBy = $userId ? "user:{$userId}" : 'unknown';
+        $wsId = (int) $r->attributes->get('workspace_id');
+        $result = $svc->retryBlockedForWorkspace($wsId, $triggeredBy, $r->input('ids'));
+        return response()->json($result);
+    });
+
     // 2026-05-22 URGENT FIX A — POST /api/tasks/approve was deleted in a
     // prior refactor but core.js still calls it from the Strategy Room
     // approval modal (auto-approve safe tasks, manual-approve risky tasks,
@@ -572,11 +960,16 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     // Design Tokens
     Route::get('/design-tokens', [DesignTokenController::class, 'index']);
 
-    // Meetings
-    Route::post('/meetings', [MeetingController::class, 'store']);
-    Route::get('/meetings', [MeetingController::class, 'index']);
-    Route::get('/meetings/{id}', [MeetingController::class, 'show']);
-    Route::post('/meetings/{id}/messages', [MeetingController::class, 'addMessage']);
+    // ── DEPRECATED 2026-05-27 — MeetingController is CRUD-only and was
+    //    never wired into the UI. The Strategy Room uses /api/meeting/*
+    //    (AgentMeetingEngine path) defined further down in this file.
+    //    Routes kept commented-out for one release as a safety net;
+    //    delete along with App\Http\Controllers\Api\MeetingController
+    //    and App\Core\Meetings\MeetingService after 2026-06-15.
+    // Route::post('/meetings', [MeetingController::class, 'store']);
+    // Route::get('/meetings', [MeetingController::class, 'index']);
+    // Route::get('/meetings/{id}', [MeetingController::class, 'show']);
+    // Route::post('/meetings/{id}/messages', [MeetingController::class, 'addMessage']);
 
     // Agents
     Route::get('/agents', [AgentController::class, 'index']);
@@ -603,15 +996,32 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 ->where('workspace_id', $wsId)
                 ->where('agent_slug', $slug)
                 ->orderByDesc('created_at')
-                ->limit(50)
+                ->limit(100) // 2026-06-10 fix-all L8: 50→100 wider display window (proper fix is pagination)
                 ->get()
                 ->reverse()
                 ->values();
-            $messages = $rows->map(fn($m) => [
-                'from' => $m->sender,
-                'content' => $m->content,
-                'ts' => $m->created_at,
-            ])->toArray();
+            // v1.4.4 (2026-05-30) — surface row id, role, and is_ack/phase
+            // from metadata_json so the SPA's two-phase poll loop can
+            // identify ack vs final messages. Additive — old fields kept.
+            $messages = $rows->map(function ($m) {
+                $meta = [];
+                if (!empty($m->metadata_json)) {
+                    $decoded = is_string($m->metadata_json) ? json_decode($m->metadata_json, true) : $m->metadata_json;
+                    if (is_array($decoded)) $meta = $decoded;
+                }
+                return [
+                    'id'      => (int) $m->id,
+                    // W6: a message a removed agent wrote stays attributed to them,
+                    // but is labelled historical so nothing reads as current.
+                    'from'    => \App\Core\LaunchScope\AgentDirectory::resolveSender($m->sender),
+                    'role'    => $m->role,
+                    'content' => \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $m->content),
+                    'ts'      => $m->created_at,
+                    'is_ack'  => !empty($meta['is_ack']) || (($meta['phase'] ?? '') === 'ack'),
+                    'phase'   => $meta['phase'] ?? null,
+                    'error'   => !empty($meta['error']),
+                ];
+            })->toArray();
         } catch (\Throwable $e) {
             // agent_messages table may not exist — build from delegations + audit_logs
             $delegations = \Illuminate\Support\Facades\DB::table('agent_delegations')
@@ -697,6 +1107,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $from = $r->input('from', 'User');
         $quickAction = $r->input('quick_action'); // my_tasks, recent_completions, whats_next
         $image = $r->input('image'); // base64 image for vision
+        // 2026-06-08 — captured once so they're in scope for the push dispatch
+        // and the user-requested timed follow-up at the end of this handler.
+        $userId = (int) ($r->user()?->id ?? 0);
+        $scheduleFollowup = null;
 
         // Wave 22 — 10-chat batched metering (0.1 cr effective per chat).
         $_meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'agent_message');
@@ -737,19 +1151,150 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ]);
         } catch (\Throwable $e) { /* table may not exist yet */ }
 
+        // ── v1.4.4 (2026-05-30) — Two-phase response (ChatGPT-style ack) ──
+        // Generate an instant heuristic acknowledgment ("Got it — pulling
+        // that up.") from the user's intent, persist it as Sarah's first
+        // bubble, ship it to the client immediately via
+        // fastcgi_finish_request(), then continue the heavy LLM pipeline
+        // in this same FPM worker. The SPA renders the ack in <1s and
+        // polls /agents/{slug}/messages every 2.5s for the final reply.
+        //
+        // Skipped when: image vision is in flight (vision payloads are
+        // already chunky and the ack would feel out-of-place), or quick
+        // actions that produce deterministic output anyway.
+        $earlyAckMessageId = null;
+        $earlyAckText      = null;
+        $useTwoPhase       = empty($image) && empty($quickAction) && function_exists('fastcgi_finish_request');
+        if ($useTwoPhase) {
+            try {
+                $ackSvc = app(\App\Core\Agent\AckGeneratorService::class);
+                $earlyAckText = $ackSvc->generate($content, $slug, $agent->name);
+                $insertedId = \Illuminate\Support\Facades\DB::table('agent_messages')->insertGetId([
+                    'workspace_id' => $wsId,
+                    'agent_slug'   => $slug,
+                    'sender'       => $agent->name,
+                    'content'      => $earlyAckText,
+                    'role'         => 'agent',
+                    'metadata_json'=> json_encode(['is_ack' => true, 'phase' => 'ack']),
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+                $earlyAckMessageId = (int) $insertedId;
+                $ackResponse = [
+                    'sent'             => true,
+                    'pending'          => true,
+                    'ack'              => $earlyAckText,
+                    'ack_message_id'   => $earlyAckMessageId,
+                    'agent_name'       => $agent->name,
+                    'chat_meter'       => [
+                        'counter'        => $_meter['counter']   ?? 0,
+                        'debited'        => $_meter['debited']   ?? false,
+                        'threshold'      => 10,
+                        'effective_cost' => '0.1 cr',
+                    ],
+                    'expected_seconds' => 15,
+                    'poll_url'         => "/agents/{$slug}/messages",
+                    'poll_interval_ms' => 2500,
+                    'poll_after_id'    => $earlyAckMessageId,
+                ];
+                // Ship the response to the client. PHP-FPM closes the
+                // connection but keeps this worker running so the heavy
+                // pipeline below still executes and persists the final
+                // reply to agent_messages.
+                if (ob_get_level() > 0) { @ob_end_clean(); }
+                $ackJson = json_encode($ackResponse);
+                @header('X-Accel-Buffering: no');
+                @header('Connection: close');
+                @header('Content-Length: ' . strlen($ackJson));
+                echo $ackJson;
+                if (function_exists('session_write_close')) { @session_write_close(); }
+                @fastcgi_finish_request();
+                // Defensive: ignore client disconnect so the long LLM
+                // call doesn't get aborted by the kernel.
+                @ignore_user_abort(true);
+                @set_time_limit(115);
+
+                // Safety net: if the LLM pipeline crashes after we shipped
+                // the ack, the SPA will poll forever. Register a shutdown
+                // function that checks if a 'final' row was written;
+                // if not, insert an error row so the SPA's poll terminates
+                // with a visible error instead of silent timeout.
+                register_shutdown_function(function () use ($wsId, $slug, $agent, $earlyAckMessageId) {
+                    try {
+                        $finalRow = \Illuminate\Support\Facades\DB::table('agent_messages')
+                            ->where('workspace_id', $wsId)
+                            ->where('agent_slug', $slug)
+                            ->where('role', 'agent')
+                            ->where('id', '>', $earlyAckMessageId)
+                            ->orderByDesc('id')
+                            ->first(['id', 'metadata_json']);
+                        $hasFinal = false;
+                        if ($finalRow) {
+                            $meta = is_string($finalRow->metadata_json) ? json_decode($finalRow->metadata_json, true) : ($finalRow->metadata_json ?? []);
+                            if (is_array($meta) && ($meta['phase'] ?? '') === 'final') $hasFinal = true;
+                        }
+                        if (!$hasFinal) {
+                            $lastErr = error_get_last();
+                            $errMsg = ($lastErr && in_array($lastErr['type'] ?? 0, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true))
+                                ? "Hit a snag while working on that — please try again. (error: {$lastErr['message']})"
+                                : "Hit a snag while working on that — please try again.";
+                            \Illuminate\Support\Facades\DB::table('agent_messages')->insert([
+                                'workspace_id'  => $wsId,
+                                'agent_slug'    => $slug,
+                                'sender'        => $agent->name,
+                                'content'       => $errMsg,
+                                'role'          => 'agent',
+                                'metadata_json' => json_encode(['phase' => 'final', 'error' => true, 'ack_message_id' => $earlyAckMessageId]),
+                                'created_at'    => now(),
+                                'updated_at'    => now(),
+                            ]);
+                            \Illuminate\Support\Facades\Log::error('[AgentChat] two-phase pipeline crashed, error row persisted', [
+                                'ws' => $wsId, 'slug' => $slug, 'last_php_error' => $lastErr,
+                            ]);
+                        }
+                    } catch (\Throwable $shutErr) {
+                        \Illuminate\Support\Facades\Log::critical('[AgentChat] shutdown safety net itself crashed', [
+                            'ws' => $wsId, 'err' => $shutErr->getMessage(),
+                        ]);
+                    }
+                });
+            } catch (\Throwable $ackErr) {
+                \Illuminate\Support\Facades\Log::warning('[AgentChat] early-ack failed, falling back to synchronous mode', [
+                    'ws'  => $wsId,
+                    'err' => $ackErr->getMessage(),
+                ]);
+                $earlyAckMessageId = null;
+                $earlyAckText      = null;
+                $useTwoPhase       = false;
+            }
+        }
+
         // ── Build agent context ──
         $workspace = \App\Models\Workspace::find($wsId);
+        // 2026-06-08 — only GENUINELY ACTIVE tasks count as "current". Previously
+        // this pulled the newest 10 tasks regardless of status and surfaced the
+        // stale "Executing step N of M" progress_message (dropping the real
+        // status), so completed/failed work was fed to the agent as "Current
+        // tasks" — the root of the phantom "pending tasks" narrative. Now: active
+        // tasks with their REAL status, plus a count of recent completions so the
+        // agent can speak to finished work WITHOUT calling it pending.
         $recentTasks = \App\Models\Task::where('workspace_id', $wsId)
             ->whereRaw("JSON_CONTAINS(assigned_agents_json, ?)", ['"'.$slug.'"'])
+            ->whereNotIn('status', ['completed', 'failed', 'cancelled'])
             ->orderByDesc('created_at')->limit(10)->get()
-            ->map(fn($t) => $t->progress_message ?? ucfirst(str_replace('_', ' ', $t->action)) . ' (' . $t->status . ')')->implode("\n- ");
+            ->map(fn($t) => ucfirst(str_replace('_', ' ', (string) $t->action)) . ' — ' . $t->status)->implode("\n- ");
+        $recentDoneCount = \App\Models\Task::where('workspace_id', $wsId)
+            ->whereRaw("JSON_CONTAINS(assigned_agents_json, ?)", ['"'.$slug.'"'])
+            ->where('status', 'completed')
+            ->where('completed_at', '>=', now()->subDay())
+            ->count();
 
-        // ── Conversation history (last 10 messages) ──
+        // ── Conversation history (last 20 messages) ──  2026-06-10 fix-all L1/L8: 10→20 so Sarah can reconcile against more of what she said earlier
         $history = \Illuminate\Support\Facades\DB::table('audit_logs')
             ->where('workspace_id', $wsId)
             ->where('action', 'agent.direct_message')
             ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.agent_slug')) = ?", [$slug])
-            ->orderByDesc('created_at')->limit(10)->get()->reverse()
+            ->orderByDesc('created_at')->limit(20)->get()->reverse()
             ->map(function($row) {
                 $meta = json_decode($row->metadata_json, true);
                 return ($meta['from'] ?? 'User') . ': ' . ($meta['content'] ?? '');
@@ -783,7 +1328,9 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
         // ── Detect confirmation replies ("yes", "go ahead", etc.) ──
         $confirmPhrases = ['yes','proceed','go ahead','do it','confirm','ok','okay','sure','go','yes please','yep','yeah','approved','approve'];
-        $isConfirmation = in_array(strtolower(trim($content)), $confirmPhrases);
+        $normConfirm = trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]+/', '', strtolower(trim($content)))));
+        $isConfirmation = in_array($normConfirm, $confirmPhrases, true)
+            || (mb_strlen($normConfirm) <= 22 && (bool) preg_match('/^(yes|yeah|yep|ok|okay|sure|confirm|approved?|proceed|go ahead|go for it|do it|please do)\b/', $normConfirm));
 
         // If confirming, tell Sarah to execute the pending task from conversation history
         if ($isConfirmation && $isSarah) {
@@ -795,6 +1342,137 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         if ($isTaskBrief && $isSarah) {
             $content = str_replace('TASK BRIEF:', '', $content);
         }
+
+        // 2026-07-07 — DETERMINISTIC COMMAND ROUTER. The chat LLM too often
+        // answers conversationally instead of acting (audit: 36% reliable). For a
+        // few UNAMBIGUOUS orders, bypass the LLM: do the work + post the final
+        // reply directly, then end. High-precision matching ONLY — anything
+        // ambiguous falls through to the full LLM pipeline. Two-phase only (the
+        // ack response is already shipped, so we just persist the final row).
+        if ($isSarah && $useTwoPhase && ! $isConfirmation && ! $isTaskBrief) {
+            $routerReply = null;
+            $c = strtolower(trim($content));
+            try {
+                $countMissingImgs = (int) DB::table('articles')->where('workspace_id', $wsId)
+                    ->whereIn('status', ['published', 'draft'])
+                    ->where(function ($w) { $w->whereNull('featured_image_url')->orWhere('featured_image_url', ''); })->count();
+
+                // (1) COUNT / "how many articles" -> answer with REAL numbers
+                if (preg_match('/\b(how many|number of|count of|how much)\b.*\b(article|articles|post|posts|blog|content|page|pages|published|drafts?)\b/', $c)) {
+                    $pub = (int) DB::table('articles')->where('workspace_id', $wsId)->where('status', 'published')->count();
+                    $drf = (int) DB::table('articles')->where('workspace_id', $wsId)->where('status', 'draft')->count();
+                    $routerReply = "You have {$pub} published article" . ($pub === 1 ? '' : 's')
+                        . ($drf > 0 ? " and {$drf} draft" . ($drf === 1 ? '' : 's') : '') . ". "
+                        . ($countMissingImgs > 0
+                            ? "{$countMissingImgs} of them still need a featured image — just say \"add the missing images\" and I'll generate them."
+                            : "Every one has a featured image.");
+                }
+                // (1b) COUNT keywords -> REAL number. 2026-07-15: was falling
+                // through to the LLM, which answered "0 keywords" despite tracked
+                // ones (live-battery FAIL). Mirrors the article-count branch.
+                elseif (preg_match('/\bkeywords?\b/', $c)
+                        && preg_match('/\b(how many|number of|count of|how much|count|total|tracking|am i tracking|do i track)\b/', $c)
+                        && ! preg_match('/\b(rank|ranking|position|serp|add|create|research|suggest)\b/', $c)) {
+                    $__kw = (int) DB::table('seo_keywords')->where('workspace_id', $wsId)->count();
+                    $routerReply = $__kw > 0
+                        ? "You're tracking {$__kw} keyword" . ($__kw === 1 ? '' : 's') . ". Say \"show my keywords\" to see them with volume and rank."
+                        : "You're not tracking any keywords yet. Tell me which ones and I'll add them.";
+                }
+                // (2) "how many / which are missing featured images"
+                elseif (preg_match('/\b(missing|without|no|need|needs)\b/', $c) && preg_match('/\bfeatured image|\bimages?\b/', $c)
+                        && preg_match('/\b(how many|which|list|count|any)\b/', $c)) {
+                    $routerReply = $countMissingImgs > 0
+                        ? "{$countMissingImgs} article" . ($countMissingImgs === 1 ? ' is' : 's are') . " missing a featured image. Want me to generate them? Just say \"add the missing images\"."
+                        : "Good news — every article already has a featured image.";
+                }
+                // (3) ADD / GENERATE the missing featured images (bulk, real ids via backend)
+                elseif (preg_match('/\b(add|generate|create|fill|fix|make|give|put)\b/', $c)
+                        && preg_match('/\bfeatured image|\bimages?\b/', $c)
+                        && preg_match('/\b(missing|all|every|without|the ones|that (are|need)|need|dont have|do not have|no image)\b/', $c)) {
+                    $r = app(\App\Engines\Write\Services\WriteService::class)->fillMissingImages($wsId, ['limit' => 15]);
+                    $routerReply = ((int) ($r['created'] ?? 0) > 0)
+                        ? "On it — I'm generating featured images for the {$r['created']} article" . (((int) $r['created']) === 1 ? '' : 's') . " that were missing one. They'll attach to each article as they finish."
+                        : ($r['message'] ?? 'Every article already has a featured image — nothing to do.');
+                }
+                // (4) FIX ORPHAN pages
+                elseif (preg_match('/\bfix|\blink|\bresolve|\bsort/', $c) && preg_match('/\borphan/', $c)) {
+                    app(\App\Core\TaskSystem\TaskService::class)->create($wsId, [
+                        'engine' => 'seo', 'action' => 'fix_orphans', 'source' => 'agent', 'assigned_agents' => ['james'],
+                        'auto_approve' => true, 'requires_approval' => false, 'credit_cost' => 0,
+                        'payload' => ['created_via' => 'sarah_router', 'user_request' => $content],
+                    ]);
+                    $routerReply = "On it — James is linking the orphan pages into the site now. I'll fold the result into your next update.";
+                }
+                // (5) RANKINGS / Search Console questions -> REAL stored ranks +
+                // HONEST connection status (the LLM path fabricates 'GSC connected'
+                // + invented positions; this answers from seo_keywords truthfully).
+                elseif ((preg_match('/\b(rank|ranking|rankings|position|serp)\b/', $c) || preg_match('/search console|\bgsc\b/', $c) || (preg_match('/\bgoogle\b/', $c) && preg_match('/\brank|\bposition|\bkeyword/', $c)))
+                        && preg_match('/\b(how|what|where|show|list|top|my|are we|am i|doing|status)\b/', $c)
+                        && ! preg_match('/\b(add|create|write|generate|make|fix|build|plan)\b/', $c)) {
+                    $__gscOk = \Illuminate\Support\Facades\DB::table('gsc_connections')->where('workspace_id', $wsId)->where('connected', 1)->exists();
+                    $__rk = \Illuminate\Support\Facades\DB::table('seo_keywords')->where('workspace_id', $wsId)->where('current_rank', '>', 0)->orderBy('current_rank')->limit(8)->get(['keyword', 'current_rank']);
+                    if ($__rk->isEmpty()) {
+                        $routerReply = ($__gscOk ? '' : "Google Search Console isn't connected yet, so I don't have live ranking data. ") . "I don't have any tracked keyword rankings on file. Add keywords to track and I'll monitor their positions.";
+                    } else {
+                        $__lines = []; $__lowConf = false;
+                        foreach ($__rk as $__k) {
+                            $__imp = (int) \Illuminate\Support\Facades\DB::table('gsc_metrics')->where('workspace_id', $wsId)->whereRaw('LOWER(query) = ?', [mb_strtolower($__k->keyword)])->sum('impressions');
+                            if ($__imp < 10) { $__lowConf = true; $__note = ' — but only ' . $__imp . ' impression' . ($__imp === 1 ? '' : 's') . ' (barely any visibility, not a real rank)'; }
+                            else { $__note = ' (' . $__imp . ' impressions)'; }
+                            $__lines[] = '  - "' . $__k->keyword . '" — avg position ' . (int) $__k->current_rank . $__note;
+                        }
+                        $routerReply = "These are Google Search Console AVERAGE positions (where your pages have appeared in results), NOT live SERP ranks — live rank tracking is unreliable right now, so treat these as directional:\n" . implode("\n", $__lines);
+                        if ($__lowConf) $routerReply .= "\n\nHeads up: the low-impression keywords have almost no search visibility yet — don't read those as 'ranking #N in Google'.";
+                    }
+                }
+                // (6) FAILURES / "what failed" -> REAL recent failed tasks.
+                // 2026-07-15: the LLM confabulated this (live-battery Case 7 —
+                // described a COMPLETED fix_orphans as 'the failure'). Answer
+                // deterministically from the tasks table, plain-English.
+                elseif (preg_match('/\b(fail|failed|failing|failure|error|errors|went wrong|not working|broke|broken|didn.?t work|any problems?)\b/', $c)
+                        && ! preg_match('/\b(fix|retry|rerun|resolve|why did|make sure)\b/', $c)) {
+                    $__actMap = [
+                        'create_automation' => 'an automation setup', 'write_article' => 'writing an article',
+                        'generate_image_mini' => 'a featured image', 'generate_image' => 'a featured image',
+                        'generate_image_high' => 'a featured image', 'fix_orphans' => 'fixing orphan pages',
+                        'insert_link' => 'inserting an internal link', 'deep_audit' => 'an SEO audit',
+                        'generate_meta' => 'generating meta tags', 'aeo_enrich' => 'AI-search enrichment',
+                        'link_suggestions' => 'finding internal links', 'improve_draft' => 'improving a draft',
+                    ];
+                    $__fails = DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'failed')
+                        ->where('created_at', '>', now()->subDays(7))->orderByDesc('id')->limit(5)->get(['action', 'error_text']);
+                    if ($__fails->isEmpty()) {
+                        $routerReply = "Good news \u{2014} nothing has failed in the last 7 days. Everything I've run completed cleanly.";
+                    } else {
+                        $__lines = [];
+                        foreach ($__fails as $__f) {
+                            $__h = $__actMap[$__f->action] ?? str_replace('_', ' ', (string) $__f->action);
+                            $__reason = trim((string) ($__f->error_text ?? ''));
+                            $__reason = preg_replace('/\b(Step \d+ \([a-z_]+\) failed:|Failed after \d+ attempts?:)\s*/i', '', $__reason);
+                            $__reason = trim(preg_replace('/\s+/', ' ', preg_replace('/\([a-z_]+\)/', '', (string) $__reason)));
+                            if ($__reason === '') $__reason = 'no error detail was recorded';
+                            $__lines[] = '  - ' . $__h . " \u{2014} " . mb_substr($__reason, 0, 160);
+                        }
+                        $__n = count($__lines);
+                        $routerReply = "Yes \u{2014} {$__n} task" . ($__n === 1 ? '' : 's') . " failed in the last 7 days:\n" . implode("\n", $__lines) . "\n\nWant me to retry any of these?";
+                    }
+                }
+            } catch (\Throwable $rtErr) {
+                \Illuminate\Support\Facades\Log::warning('[SarahRouter] failed: ' . $rtErr->getMessage(), ['ws' => $wsId]);
+                $routerReply = null; // any error -> fall through to the LLM pipeline
+            }
+
+            if ($routerReply !== null) {
+                DB::table('agent_messages')->insert([
+                    'workspace_id'  => $wsId, 'agent_slug' => $slug, 'sender' => $agent->name,
+                    'content'       => \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $routerReply), /* W6 truthfulness guard */ 'role' => 'agent',
+                    'metadata_json' => json_encode(['phase' => 'final', 'router' => true]),
+                    'created_at'    => now(), 'updated_at' => now(),
+                ]);
+                return;
+            }
+        }
+
 
         // PATCH (Sarah brand context, 2026-05-09) — Pull workspace_memory
         // facts and inject as AUTHORITATIVE GROUND TRUTH at the top of
@@ -815,6 +1493,17 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         if (! empty($brandFacts['industry'])) $brandFactsBlock .= "- Industry: " . $brandFacts['industry'] . "\n";
         elseif (! empty($workspace->industry)) $brandFactsBlock .= "- Industry: " . $workspace->industry . "\n";
         if (! empty($brandFacts['location'])) $brandFactsBlock .= "- Location: " . $brandFacts['location'] . "\n";
+        // DISCONNECTED ENGINES (2026-07-19) — brandFacts loads EVERY memory key
+        // but this block only rendered a hardcoded few, so a new key never reached
+        // the model. Render it explicitly and as a HARD constraint: Sarah was
+        // proposing email/social work for a workspace that has no email service and
+        // zero connected social accounts, filling the approval queue with items that
+        // can never execute.
+        if (! empty($brandFacts['disconnected_engines'])) {
+            $brandFactsBlock .= "- DISCONNECTED ENGINES (HARD CONSTRAINT): " . $brandFacts['disconnected_engines'] . "\n"
+                . "  Never propose, queue, or delegate work for a disconnected engine. Do not ask the owner to approve it.\n"
+                . "  If they ask for it, say plainly that the channel is not connected yet and offer the SEO/content equivalent instead.\n";
+        }
         elseif (! empty($workspace->location)) $brandFactsBlock .= "- Location: " . $workspace->location . "\n";
         // Wave 16b (2026-05-19) — inject the user's currently-selected
         // website so Sarah (and every agent) tailors strategy + delegations
@@ -863,20 +1552,295 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
         // PATCH (concise-persona, 2026-05-10) — prepend a sharp/conversational
         // rule to every agent's DM system prompt. Overrides the professor tone.
-        $conciseRule = "You are a sharp, direct AI specialist. Keep all responses SHORT and CONVERSATIONAL — maximum 3 sentences unless the user explicitly asks for a plan, report, or detailed breakdown. No bullet frameworks, no numbered action plans, no headers unless asked. Talk like a smart colleague in a Slack message, not a consultant writing a strategy document. If the user asks a simple question, give a simple answer.\n\n";
+        $conciseRule = "You are a sharp, direct AI specialist. Keep all responses SHORT and CONVERSATIONAL — maximum 3 sentences unless the user explicitly asks for a plan, report, or detailed breakdown. No bullet frameworks, no numbered action plans, no headers unless asked. Talk like a smart colleague in a Slack message, not a consultant writing a strategy document. If the user asks a simple question, give a simple answer.\n\n"
+            // 2026-06-10 — TRUTH & HONESTY rules (forensic fix-all). These override the urge to sound helpful.
+            . "TRUTH RULES (these override sounding helpful):\n"
+            . "1. NEVER say something is done / generated / completed / assigned / fixed unless it ACTUALLY happened — a task that COMPLETED and whose real output exists. If you only QUEUED or STARTED it, say 'queued' or 'started', never 'done'. If you did not create or run it, say so. NEVER invent a result, image, file, count, score, or article id. A task marked completed with no visible output is NOT a success — flag it as needing a check.\n"
+            . "2. RECONCILE with what you said earlier in this conversation. If a number now differs from one you gave before (task counts, image counts, audit scores, keyword counts), acknowledge it changed and why — do not silently contradict yourself. If two of your own tool results disagree, say which you trust and why.\n"
+            . "3. SURFACE FAILURES PROACTIVELY and the FIRST time. If any task failed, lead with it. Never say 'everything is running smoothly' or 'all done' when something failed.\n"
+            . "4. Distinguish QUEUED vs RUNNING vs COMPLETED vs FAILED precisely and out loud.\n"
+            . "5. Be honest about capability limits (e.g. you cannot build a brand-new website from scratch; you cannot message on a timer unless you actually schedule it).\n"
+            . "6. Before creating tasks, check what is already running/queued for this workspace; do NOT re-queue duplicates.\n\n";
+
+        // 2026-05-23 FIX 24 (B) — workspace-wide active queue summary for
+        // Sarah only. Without this Sarah is blind to what's already running
+        // and re-issues batches on ambiguous messages. Today's "Hi Sarah"
+        // duplicated the 11-article batch because the LLM saw the user
+        // begging for articles in history but no Sarah confirmation
+        // (variable-shadowing crash had silenced her reply).
+        $activeQueueBlock = '';
+        if ($isSarah) {
+            try {
+                $cutoff = now()->subHours(24);
+                $inFlight = \Illuminate\Support\Facades\DB::table('tasks')
+                    ->where('workspace_id', $wsId)
+                    ->where('created_at', '>=', $cutoff)
+                    ->whereIn('status', ['queued','running','pending','dispatched','blocked','approved'])
+                    ->select('action', \Illuminate\Support\Facades\DB::raw('COUNT(*) as n'))
+                    ->groupBy('action')
+                    ->get();
+                $recentDone = \Illuminate\Support\Facades\DB::table('tasks')
+                    ->where('workspace_id', $wsId)
+                    ->where('completed_at', '>=', now()->subHours(6))
+                    ->where('status', 'completed')
+                    ->select('action', \Illuminate\Support\Facades\DB::raw('COUNT(*) as n'))
+                    ->groupBy('action')
+                    ->get();
+                $recentWrites = \Illuminate\Support\Facades\DB::table('tasks')
+                    ->where('workspace_id', $wsId)
+                    ->where('action', 'write_article')
+                    ->where('created_at', '>=', now()->subHours(24))
+                    ->whereNotIn('status', ['failed','cancelled'])
+                    ->orderByDesc('id')
+                    ->limit(15)
+                    ->get(['payload_json']);
+                $writeTitles = [];
+                foreach ($recentWrites as $rw) {
+                    $p = json_decode($rw->payload_json ?? '{}', true);
+                    $t = $p['title'] ?? $p['topic'] ?? $p['keyword'] ?? null;
+                    if ($t) $writeTitles[] = $t;
+                }
+                if ($inFlight->count() || $recentDone->count() || $writeTitles) {
+                    $activeQueueBlock = "\nACTIVE TASK QUEUE (DO NOT RE-ISSUE — this work is already in flight or just completed):\n";
+                    if ($inFlight->count()) {
+                        $activeQueueBlock .= "In progress / queued (last 24h):\n";
+                        foreach ($inFlight as $r) {
+                            $activeQueueBlock .= "  - {$r->n}x {$r->action}\n";
+                        }
+                    }
+                    if ($recentDone->count()) {
+                        $activeQueueBlock .= "Recently completed (last 6h):\n";
+                        foreach ($recentDone as $r) {
+                            $activeQueueBlock .= "  - {$r->n}x {$r->action}\n";
+                        }
+                    }
+                    if ($writeTitles) {
+                        $activeQueueBlock .= "Recent write_article titles already queued/written:\n";
+                        foreach (array_slice($writeTitles, 0, 12) as $t) {
+                            $activeQueueBlock .= "  - " . mb_substr($t, 0, 90) . "\n";
+                        }
+                    }
+                    $activeQueueBlock .= "RULE: If the user asks for work that overlaps with the above, DO NOT include it in create_tasks. Tell the user it's already in progress or just finished. Only create NEW work that is not in this list.\n\n";
+                }
+            } catch (\Throwable $qErr) {
+                \Illuminate\Support\Facades\Log::warning('[SarahChat] active-queue block failed: ' . $qErr->getMessage());
+            }
+        }
+
+        // 2026-06-10 — deterministic 7-day task-activity snapshot. Sarah kept
+        // answering "how many tasks completed" by counting the ≤30-row sample
+        // platform.list_tasks returns (undercount) or quoting an ever-growing
+        // all-time total. Prompt rules alone didn't reliably steer tool choice,
+        // so inject the AUTHORITATIVE windowed numbers straight into context:
+        // finished work = last 7 days, open work = live. She no longer needs a
+        // tool for the common question, and the numbers are always truthful.
+        $taskActivityBlock = '';
+        if ($isSarah) {
+            try {
+                $done7 = DB::table('tasks')->where('workspace_id', $wsId)
+                    ->where('created_at', '>=', now()->subDays(7))
+                    ->whereIn('status', ['completed', 'failed', 'cancelled'])
+                    ->select('status', DB::raw('COUNT(*) as n'))->groupBy('status')->pluck('n', 'status');
+                $open = DB::table('tasks')->where('workspace_id', $wsId)
+                    ->whereIn('status', ['pending', 'queued', 'running'])
+                    ->select('status', DB::raw('COUNT(*) as n'))->groupBy('status')->pluck('n', 'status');
+                $c = (int) ($done7['completed'] ?? 0);
+                $f = (int) ($done7['failed'] ?? 0);
+                $x = (int) ($done7['cancelled'] ?? 0);
+                $openTotal = (int) $open->sum();
+                $openDetail = $openTotal ? ' (' . $open->map(fn($n, $s) => "{$n} {$s}")->implode(', ') . ')' : '';
+                $taskActivityBlock = "\nTASK ACTIVITY (AUTHORITATIVE — use THESE exact numbers for any \"how many tasks\" question; do NOT count platform.list_tasks rows, that is only a sample and undercounts):\n"
+                    . "Last 7 days: {$c} completed, {$f} failed" . ($x ? ", {$x} cancelled" : '') . ".\n"
+                    . "Currently open right now: {$openTotal}{$openDetail}.\n"
+                    . "RULE: If the user asks \"how many tasks (completed/failed/done)\" WITHOUT naming a longer period, your FIRST sentence must directly state the last-7-days numbers and the words \"in the last 7 days\" — e.g. \"In the last 7 days we've completed {$c} tasks ({$f} failed).\" Answer the count FIRST, before any recommendation or strategy. Do NOT dodge the question with article/keyword talk.\n"
+                    . "RULE: Only if the user EXPLICITLY names a longer period (\"this month\", \"since the beginning\", \"all time\", \"in total ever\") do you give that span instead — call get_task_status with window=\"30d\" or \"all\" and report THAT number. Never volunteer the all-time total unprompted.\n\n";
+            } catch (\Throwable $taErr) {
+                \Illuminate\Support\Facades\Log::warning('[SarahChat] task-activity block failed: ' . $taErr->getMessage());
+            }
+        }
 
         // ── Build system prompt ──
         if ($isSarah) {
-            $systemPrompt = $conciseRule . $brandFactsBlock
+            // 2026-05-23 FIX 43 — content rules at Sarah's planning level.
+            // WriteService::writeArticle enforces these at body-generation
+            // time too (every article path), but Sarah should also know
+            // them when proposing topics so she doesn't suggest "Tips for
+            // 2025" or batches built around named competitors.
+            $sarahCurrentYear = (int) date('Y');
+            $sarahContentRules = "CONTENT RULES (enforce in every article you propose or delegate):\n"
+                . "1. NEVER name specific competitor companies, brands, or service providers. "
+                . "If the topic is comparative ('options to consider', 'alternatives'), describe "
+                . "categories generically — never name a real competitor brand.\n"
+                . "2. Current year is {$sarahCurrentYear}. NEVER propose article titles with prior "
+                . "years (no 'Tips for " . ($sarahCurrentYear - 1) . "', no 'Trends for "
+                . ($sarahCurrentYear - 2) . "'). Use {$sarahCurrentYear} or no year at all.\n";
+
+            // 2026-05-24 FIX 45 — strategy tier framework injection.
+            // Gives Sarah the locked tier definitions + per-asset costs +
+            // recommendation rules so she can intelligently respond to
+            // ambitious goals ("rank #1 for 10 keywords") with the right
+            // tier proposal + top-up math + disclaimers.
+            $sarahTierBlock = '';
+            try {
+                $planCreditLimit = (int) (DB::table('subscriptions')
+                    ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
+                    ->where('subscriptions.workspace_id', $wsId)
+                    ->whereIn('subscriptions.status', ['active', 'trialing'])
+                    ->orderByDesc('subscriptions.id')
+                    ->value('plans.credit_limit') ?? 300);
+                $sarahTierBlock = \App\Core\Strategy\StrategyTierService::buildPromptBlock($wsId, $planCreditLimit);
+            } catch (\Throwable $tierErr) {
+                \Illuminate\Support\Facades\Log::warning('[SarahChat] tier block failed: ' . $tierErr->getMessage());
+            }
+
+            // 2026-07-14 GROUNDING — inject REAL entity ids into the task-extraction
+            // context so the LLM stops FABRICATING them (lead_id:0, ws1 article ids).
+            // Leads are few — list them all with real ids; steer bulk image fills to the tool.
+            $groundingBlock = '';
+            try {
+                $__leads = \Illuminate\Support\Facades\DB::table('leads')->where('workspace_id', $wsId)->orderByDesc('id')->limit(30)->get(['id', 'name', 'email', 'status']);
+                if ($__leads->isNotEmpty()) {
+                    $groundingBlock .= "\nREAL LEAD IDS (use these EXACT ids for ANY lead action — update/move/assign/follow-up. NEVER invent a lead_id or use 0; if the lead you need is not listed, tell the user you don't see it):\n";
+                    foreach ($__leads as $__l) { $groundingBlock .= '  - lead_id=' . $__l->id . ': ' . ($__l->name ?: ($__l->email ?: 'lead')) . ' (status: ' . $__l->status . ")\n"; }
+                }
+                $__miss = (int) \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)->whereIn('status', ['published', 'draft'])->where(function ($w) { $w->whereNull('featured_image_url')->orWhere('featured_image_url', ''); })->count();
+                if ($__miss > 0) {
+                    // 2026-07-23 — give the FULL breakdown so Sarah stops flip-flopping
+                    // between "drafts missing" (subset) and "all missing" (total).
+                    $__missDrf = (int) \Illuminate\Support\Facades\DB::table('articles')
+                        ->where('workspace_id', $wsId)->where('status', 'draft')->whereNull('deleted_at')
+                        ->where(function ($w) { $w->whereNull('featured_image_url')->orWhere('featured_image_url', ''); })->count();
+                    $__missPub = $__miss - $__missDrf;
+                    $groundingBlock .= "\nFEATURED IMAGES (authoritative — use THESE exact numbers and do NOT recompute or contradict them across turns): {$__miss} article(s) are missing a featured image in total — {$__missDrf} of them drafts and {$__missPub} published. If the user asks specifically about DRAFTS missing an image, the answer is {$__missDrf}; about ALL articles, it is {$__miss}. To add them, emit ONE fill_missing_images task IMMEDIATELY (engine=write, action=fill_missing_images, no article ids — the backend finds them). When the user says 'generate the missing images', 'add them', 'all', 'go', 'do it' or similar, DO NOT ask which ones, DO NOT list them, DO NOT ask for confirmation again — just emit that single task. NEVER invent article ids for a bulk image fill.\n";
+                }
+                // 2026-07-14 — authoritative content counts (kill the cross-turn
+                // inconsistency: 155 vs 6 vs 145) + GSC honesty (stop fabricating
+                // 'Search Console connected' + invented rankings when it is NOT).
+                $__pub = (int) \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)->where('status', 'published')->count();
+                $__drf = (int) \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)->where('status', 'draft')->count();
+                $__tot = (int) \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)->count();
+                $groundingBlock .= "\nAUTHORITATIVE CONTENT COUNTS (use THESE EXACT numbers for any content question and NEVER contradict them across turns; 'indexed pages' from an SEO tool is a DIFFERENT metric, do not report it as the article count): published articles = {$__pub}, drafts = {$__drf}, total articles = {$__tot}.\n";
+                $__gscOk = \Illuminate\Support\Facades\DB::table('gsc_connections')->where('workspace_id', $wsId)->where('connected', 1)->exists();
+                if (! $__gscOk) {
+                    $groundingBlock .= "GOOGLE SEARCH CONSOLE + ANALYTICS: NOT connected for this workspace — you have ZERO ranking/position/impression/click/traffic data. HARD RULE: never say Search Console or Analytics is connected, never state a keyword is at 'position N', never quote clicks/impressions/traffic, never invent rankings. If asked about rankings/traffic, say Search Console must be connected first to see that data.\n";
+                } else {
+                    // GSC connected — inject the REAL tracked ranks so the LLM stops
+                    // inventing positions (e.g. 'position 9' when the truth is #3).
+                    $__ranks = \Illuminate\Support\Facades\DB::table('seo_keywords')->where('workspace_id', $wsId)->where('current_rank', '>', 0)->orderBy('current_rank')->limit(10)->get(['keyword', 'current_rank', 'volume']);
+                    // 2026-07-16 Phase-B numerical-integrity mitigation: inject REAL
+                    // impressions/clicks/volume + a symmetric anti-fabrication guardrail.
+                    $__since = now()->subDays(28)->toDateString();
+                    $__gm = \Illuminate\Support\Facades\DB::table('gsc_metrics')->where('workspace_id', $wsId)->where('date', '>=', $__since)->selectRaw('LOWER(query) q, SUM(impressions) i, SUM(clicks) c')->groupBy('q')->get()->keyBy('q');
+                    $__ti = (int) $__gm->sum('i'); $__tc = (int) $__gm->sum('c');
+                    $__tctr = $__ti > 0 ? round($__tc / $__ti * 100, 2) : 0;
+                    if ($__ranks->isNotEmpty()) {
+                        $__rp = [];
+                        foreach ($__ranks as $__r) {
+                            $__row = $__gm[mb_strtolower($__r->keyword)] ?? null;
+                            $__im = $__row ? (int) $__row->i : 0; $__cl = $__row ? (int) $__row->c : 0;
+                            $__vol = $__r->volume !== null ? ', search volume ' . (int) $__r->volume . '/mo' : '';
+                            $__rp[] = '"' . $__r->keyword . '" avg position ' . (int) $__r->current_rank . ', ' . $__im . ' impressions, ' . $__cl . ' clicks (28d)' . $__vol;
+                        }
+                        $groundingBlock .= "GOOGLE SEARCH CONSOLE: connected. Workspace 28-day totals: {$__ti} impressions, {$__tc} clicks, {$__tctr}% CTR. Per-keyword VERIFIED metrics (the ONLY real GSC numbers you have; present positions as 'average position N in Search Console', not 'rank #N'):\n  - " . implode("\n  - ", $__rp) . "\nHARD RULE — NUMERICAL INTEGRITY: The impressions, clicks, CTR, volume and positions above are the ONLY verified metrics you have. NEVER quote, estimate, round, extrapolate, or invent ANY impression, click, CTR, traffic, session, visitor, search-volume, ROI, revenue, dollar, CAC, LTV, conversion-rate, growth-rate, or forecast number that is not explicitly listed above. If asked for a metric you were not given, say 'I don't have verified data for that' — never guess.\n";
+                    } else {
+                        $groundingBlock .= "GOOGLE SEARCH CONSOLE: connected, but no keyword has a tracked position yet — do not invent ranking numbers.\n";
+                    }
+                }
+            } catch (\Throwable $__ge) {}
+
+            // IDENTITY FIX (2026-07-19) — Sarah replied "Hi Sarah!" to the owner's
+            // "Hi Sarah". The prompt named HER and the BUSINESS but never the OWNER,
+            // so the only name in context was her own and the model mirrored it back.
+            // Resolve who she is actually talking to.
+            $__ownerName = '';
+            try {
+                $__u = $r->user();
+                $__ownerName = trim((string) ($__u->name ?? ''));
+                if ($__ownerName === '' && $workspace) {
+                    $__ownerName = trim((string) (DB::table('users')->where('id', $workspace->created_by)->value('name') ?? ''));
+                }
+            } catch (\Throwable $__ne) { $__ownerName = ''; }
+            $__firstName = $__ownerName !== '' ? preg_split('/\s+/', $__ownerName)[0] : '';
+
+            $identityBlock = "WHO YOU ARE TALKING TO: "
+                . ($__ownerName !== ''
+                    ? "the business owner, {$__ownerName}" . ($__firstName !== '' && $__firstName !== $__ownerName ? " (call them {$__firstName})" : "") . ".\n"
+                    : "the business owner. You do not know their name — do NOT guess it.\n")
+                . "HARD RULE — NAMES: \"Sarah\" is YOUR name, never theirs. When they greet you "
+                . "(\"Hi Sarah\"), they are addressing YOU — do not echo it back at them. Never "
+                . "address the owner by your own name or by any specialist agent's name.\n\n";
+
+            $identityBlock .= "" 
+                . "LAUNCH SCOPE — CAPABILITIES NOT IN THIS PRODUCT (HARD RULE): The current "
+                . "product does NOT include social-media management or email marketing. You must "
+                . "NEVER propose, plan, promise, assign, or create a task for any of these — they "
+                . "will be refused by the system and you would be lying to say you can:\n"
+                . "  - social media campaigns, standalone social posts, social content calendars, "
+                . "post scheduling as a social product, hashtags, social images/videos as automation, "
+                . "engagement/replies/comments, social listening, sentiment, competitor social monitoring;\n"
+                . "  - email campaigns, newsletters, email sequences/drips, email automation, "
+                . "subject-line or email-copy generation, list-building as an email-marketing workflow;\n"
+                . "  - the specialists Marcus, Maya, Zara, Tyler, Zoe, Jordan (social) and Vera, Kai "
+                . "(email) and Chris, Leo — they are NOT available; never mention them as active or "
+                . "assign them work.\n"
+                . "If the owner asks for any of the above, say plainly it is not part of the current "
+                . "product, and redirect ONLY to what IS supported: publish a blog article and share "
+                . "its link, create an image or video directly in Studio, write a blog article, run "
+                . "SEO work, or manage a CRM follow-up task. Do NOT imply you can execute the excluded "
+                . "request. Your team is: SEO (James, Alex, Diana, Ryan, Sofia), content/blog (Priya, "
+                . "Nora), CRM (Elena, Max) — and you.\n\n"
+                . "HARD RULE — YOU DELEGATE, THE OWNER DOES NOT: You are the manager. When "
+                . "the owner names a PROBLEM rather than giving a command ('CTR is low', "
+                . "'rankings dropped', 'you better improve the metadata'), that IS the "
+                . "instruction — queue the work and emit create_tasks THIS turn. Never reply "
+                . "with advice aimed at them ('focus on...', 'revise your titles...', 'you "
+                . "should...'); if you catch yourself writing that, rewrite it as work you "
+                . "have queued and to whom. Never dismiss their point ('noted') and never "
+                . "argue a metric is fine using unrelated numbers such as task counts.\n\n"
+            ;
+            $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $activeQueueBlock . $taskActivityBlock . $groundingBlock . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
                 . "HARD RULE — DELEGATION: When the user asks you to WRITE, CREATE, BUILD, GENERATE, "
-                . "PUBLISH, or START anything, you MUST emit a non-empty create_tasks array in your "
+                . "PUBLISH, FIX, START, or do any concrete action (e.g. 'fix the orphan pages' → emit a "
+                . "fix_orphans task; 'fix my SEO' / 'fix internal linking' → fix_orphans), you MUST emit a non-empty create_tasks array in your "
                 . "JSON output. Do NOT reply 'Already done', 'In progress', 'Priya is working on it', "
                 . "or anything similar unless the create_tasks array is populated in THIS reply. Past "
                 . "conversation history does not count — only this turn's create_tasks. If you cannot "
                 . "create the tasks (unclear request, missing info), ask a clarifying question instead "
                 . "of claiming delegation.\n"
+                // DELEGATE, DON'T INSTRUCT (2026-07-19) — the owner said "when CTR is
+                // low, you better improve your metadata" and Sarah replied "focus on
+                // optimizing your metadata... revise your titles", handing the work BACK
+                // to him. He called it out: "you are the one who needs to do that not me."
+                // The two existing rules covered explicit commands and pure questions; a
+                // PROBLEM STATEMENT fell between them and defaulted to advice.
+                . "HARD RULE — DELEGATE, NEVER INSTRUCT THE OWNER: You are the manager; the "
+                . "owner is not your assistant. When they NAME A PROBLEM or a weakness rather "
+                . "than giving an explicit command — 'CTR is low', 'rankings dropped', "
+                . "'traffic is flat', 'nobody is clicking', 'you better improve the metadata', "
+                . "'this page is thin' — treat it as an INSTRUCTION TO FIX IT and emit a "
+                . "non-empty create_tasks array in THIS reply.\n"
+                . "  NEVER tell the owner to do the work themselves. Second-person work "
+                . "instructions aimed at them are FORBIDDEN: 'focus on optimizing...', "
+                . "'revise your titles...', 'you should update...', 'make sure you add...', "
+                . "'consider rewriting...'. If those words are aimed at the owner, you have "
+                . "failed this rule — rewrite the reply as work YOU are queueing.\n"
+                . "  Correct shape: name the cause in one line, then say what you queued and "
+                . "to whom. e.g. 'CTR is 0% on 276 impressions — the titles aren't earning the "
+                . "click. I've queued Priya to rewrite meta for the 5 highest-impression "
+                . "zero-click pages.'\n"
+                . "  The ONLY things you may ask the owner for: a decision, an approval, or "
+                . "access/credentials you genuinely cannot obtain. Never execution.\n"
+                . "HARD RULE — A QUESTION IS NOT A COMMAND: If the user is ASKING for information — "
+                . "\"how many tasks completed?\", \"what's pending?\", \"which keywords?\", \"what's our "
+                . "traffic?\", \"how are things going?\" — ANSWER the question and emit an EMPTY "
+                . "create_tasks array. Do NOT queue any work for a pure question. Only create tasks when "
+                . "the user gives an explicit instruction to DO something (write/create/build/generate/"
+                . "publish/start/run/fix/proceed/go ahead/do it). When in doubt, answer first and ASK "
+                . "'want me to queue that?' rather than queuing unrequested work.\n"
+                . "HARD RULE — OPEN MANDATE = ACT, DON'T INTERROGATE: When the user hands you an open or frustrated mandate — 'do what you need to do', 'you're the expert', 'handle it', 'just do it', 'go', 'sort them out', 'fix everything', 'make it better', or profanity aimed at your passivity — do NOT reply with a data dump plus a clarifying question. Look at the workspace state you were given, pick the 1-3 highest-value NON-destructive actions that clearly need doing, and EMIT them in create_tasks THIS turn. Concrete mapping from common gaps: articles missing a featured image -> generate_image for those articles; missing or weak meta -> generate_meta; thin/short pages -> improve_draft; orphan pages -> fix_orphans; no internal links -> link_suggestions + insert_link; no recent content -> write_article on an opportunity keyword. In your reply, state plainly what you're doing (e.g. 'On it — generating the 23 missing featured images and tightening their meta now.'), not what you found. Only ask a clarifying question if there is genuinely NO obvious high-value action to take. Publishing and deleting still require the two-turn confirm below — everything else, just do it.\n"
+                . "HARD RULE — NEVER INVENT IDs: When your create_tasks act on specific articles/pages/leads, use ONLY real ids that appear in the workspace state you were given or in a tool_call result you ran THIS turn. NEVER guess or make up an article_id / page_id / lead_id — a task with a guessed id silently targets the WRONG workspace's data or nothing at all. If you need ids you don't have (e.g. 'the articles missing a featured image'), FIRST emit a tool_call to look them up, then act on the real ids in a follow-up. When unsure, look it up — never fabricate.\n"
                 . "Available agents and their expertise:\n"
                 . "- james: SEO Strategist (keyword research, SERP analysis, audits)\n"
                 . "- alex: Technical SEO (site audits, Core Web Vitals, schema)\n"
@@ -886,11 +1850,21 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 // PATCH (Sam removal, 2026-05-09) — Sam is no longer in
                 // the canonical 21-agent roster. Email marketing is
                 // covered by the marketing engine via vera.
-                . ($recentTasks ? "Current tasks:\n- {$recentTasks}\n" : "No active tasks.\n")
+                . ($recentTasks ? "Tasks in progress right now:\n- {$recentTasks}\n" : "No tasks are in progress right now.\n")
+                . ($recentDoneCount > 0 ? "({$recentDoneCount} task" . ($recentDoneCount === 1 ? '' : 's') . " finished in the last 24h — those are DONE, not pending. Do NOT describe finished work as in-progress.)\n" : "")
                 . "When the user asks you to create/assign/run tasks, include a create_tasks ARRAY in your JSON. You can include MULTIPLE tasks.\n"
                 . "Each task in create_tasks must have: agent (slug), engine, action, and description.\n"
                 . "Engine mapping: james/alex/diana/ryan/sofia=seo, priya/leo/maya/chris/nora=write, priya/chris/leo/zara=creative (the assigned writer or social agent generates images for their own piece), marcus/zara/tyler/zoe/jordan=social, elena/kai/max=crm, vera=marketing\n"
-                . "Action examples: serp_analysis, deep_audit, write_article, generate_meta, generate_image_mini, link_suggestions, insert_link, social_create_post, create_lead, create_campaign\n"
+                . "Action examples: serp_analysis, deep_audit, write_article, generate_meta, generate_image_mini, link_suggestions, insert_link, fix_orphans (seo engine, agent james, no params — links ALL orphan pages into the site and charges ~2cr per link; use when the user wants orphan pages fixed), social_create_post, create_lead, create_campaign, publish_article (write engine, params: article_id), delete_article (write engine, params: article_id), delete_post (social engine, params: post_id), retry_blocked (tasks engine, params: task_ids? — retries blocked tasks for this workspace with idempotency check; omit task_ids to retry all blocked)\n"
+                . "\n--- DESTRUCTIVE ACTIONS RULE ---\n"
+                . "publish_article, delete_article, delete_post, delete_lead, publish_website, and publish_builder_page are DESTRUCTIVE — they change live state irreversibly (publishing pushes content public, deleting removes data with no undo). RULE: when the user asks to publish or delete, you must CONFIRM in this turn before emitting the create_tasks block. Two-turn protocol:\n"
+                . "  Turn 1 (THIS turn, if you haven't confirmed yet): respond with a confirmation question naming the exact entity (article id / title), and emit create_tasks: []. DO NOT include the destructive action in create_tasks yet.\n"
+                . "  Turn 2 (after the user says 'yes', 'confirm', 'go ahead', 'proceed', etc.): you MUST emit the actual create_tasks block with the destructive action IN THIS TURN. Do not merely describe it, promise it, or defer it — if you do not emit the task, nothing happens and the user is left waiting.\n"
+                . "  For publish_article the task object MUST be exactly {\"agent\":\"priya\",\"engine\":\"write\",\"action\":\"publish_article\",\"description\":\"Publish article\",\"params\":{\"article_id\":<the real numeric id>}}.\n"
+                . "PUBLISHING (2026-07-23): once the user has confirmed, publish_article executes immediately. There is NO second approval-queue step for publishing, so never tell the user to expect a Confirm/Cancel prompt in the approval queue for a publish — say you are publishing it now, then report the outcome and the live URL.\n"
+                . "Deletions (delete_article, delete_post, delete_lead) and site publishes (publish_website, publish_builder_page) DO still land in the approval queue with requires_approval=true — that gate remains, and for those you should tell the user to expect it.\n"
+                . "If the user message in THIS turn already says 'yes do it', 'confirm', 'I'm sure', etc. AND references a prior turn where you proposed the destructive action, skip directly to Turn 2.\n"
+                . "----------------------------------\n"
                 . "\nCHAIN RECIPES — when the user asks for something composite, create the FULL chain in create_tasks (one create_tasks call, multiple objects). The orchestrator runs them in order using parent_task_id.\n"
                 . "  ▸ NEW BLOG ARTICLE (fully optimized, target 1000-1200 words): create these 5 tasks in order, all parented to task #1:\n"
                 . "     1. {agent:priya, engine:write, action:write_article, description:body draft, params:{title, topic, target_keyword, audience, tone, length:1100}}\n"
@@ -901,11 +1875,14 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 . "     6. {agent:priya, engine:seo, action:insert_link, description:embed selected links into article body, depends_on:[1,5]}\n"
                 . "  Each step's output (article_id, image_url, etc.) automatically flows to dependent steps via parent_task_id.\n"
                 . "Be decisive and action-oriented. Keep responses under 150 words.\n"
-                . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":false,\"create_tasks\":[],\"tool_calls\":[]}\n"
+                . "\nCRITICAL OUTPUT FORMAT — read carefully:\n"
+                . "Your ENTIRE response MUST be a single JSON object. The FIRST character of your output MUST be `{`. The LAST character MUST be `}`. Do NOT prefix the JSON with prose. Do NOT append text after the closing brace. Do NOT wrap in markdown code fences. If you have something to say to the user, put it INSIDE the \"reply\" field of the JSON. Any prose outside the JSON object leaks to the chat as raw text and breaks the UI.\n\n"
+                . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":false,\"create_tasks\":[],\"tool_calls\":[],\"cadence_overrides\":null,\"goal_proposals\":[],\"strategy_change\":null,\"schedule_followup\":null}\n"
                 . "  - create_tasks: array of task objects. Each task is a JSON object with these top-level keys:\n"
                 . "      agent (string), engine (string), action (string), description (string),\n"
                 . "      depends_on (array of 1-based positions of earlier tasks in this array, optional),\n"
                 . "      params (object with task parameters like length, target_keyword, audience, optional)\n"
+                . "    IMAGE RULE: generate_image_mini / generate_image / generate_image_high need a SPECIFIC target. As a chain child (depends_on a write_article step) the article_id flows automatically — fine. But as a STANDALONE task (e.g. fixing the featured image of an EXISTING article) you MUST include params:{\"article_id\": <the real article id>}. NEVER use article_id:null and never rely on the title alone — a null/absent article_id makes image generation fail with 'Prompt required'. To fix images for MULTIPLE articles, emit ONE generate_image_mini task PER article, each with that article's article_id (do not try to cover many articles with a single task).\n"
                 . "    EXAMPLE for a blog-article chain (always emit depends_on like this — as a top-level field, NOT inside the description):\n"
                 . "      [\n"
                 . "        {\"agent\":\"priya\",\"engine\":\"write\",\"action\":\"write_article\",\"description\":\"Body draft\",\"params\":{\"title\":\"...\",\"target_keyword\":\"...\",\"length\":1100}},\n"
@@ -916,7 +1893,29 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 . "      ]\n"
                 . "    depends_on MUST be a top-level array field on the task object so children wait for their parent. Do NOT write depends_on into the description string.\n"
                 . "  - tool_calls: array of {tool, params, reason} when you need to LOOK SOMETHING UP yourself (use this for platform info questions like 'how many websites' — do NOT delegate these to agents)\n"
-                . "Include multiple objects in create_tasks for multiple assignments. Both arrays default to [] when not needed.\n"
+                . "  - cadence_overrides: OBJECT or null. Emit ONLY when the user explicitly commits to a custom cadence using language like 'I want N per X', 'remember', 'save', 'lock in', 'set my'. Each override must be a field that maps to the tier framework:\n"
+                . "      articles_per_month, standalone_socials_per_month, videos_per_month, emails_per_month, audits_per_month, strategy_meetings_per_month, retargeting_campaigns_per_month\n"
+                . "    e.g. user says 'lock 16 articles a month and only 1 video a week' -> cadence_overrides: {\"articles_per_month\":16,\"videos_per_month\":4}\n"
+                . "    Conservative rule: if the user is brainstorming or asking 'what if', emit null. Only emit when they've committed.\n"
+                . "    When you emit cadence_overrides, ALWAYS narrate in your reply what you locked in (so the user can correct mistakes).\n"
+                . "  - goal_proposals: ARRAY (default []). Emit when the user states a measurable goal with commit language. Each proposal is:\n"
+                . "      {\"type\":\"keyword_rank_target|traffic_growth|lead_volume|email_subscribers|social_followers|revenue_attribution\",\n"
+                . "       \"title\":\"Short human-readable goal\",\n"
+                . "       \"target\":{\"keywords\":[...],\"target_rank\":10,\"target_count\":N,\"...\"},\n"
+                . "       \"deadline\":\"YYYY-MM-DD or null\"}\n"
+                . "    e.g. user says 'I want to rank top 10 for these 10 keywords by August' -> emit one goal_proposal with type=keyword_rank_target.\n"
+                . "    Same conservative rule: only emit when the user has committed, not when they're exploring.\n"
+                . "    When you emit a goal_proposal, narrate it in your reply for confirmation.\n"
+                . "  - strategy_change: OBJECT or null. Emit ONLY when the user explicitly asks to switch tiers using language like 'move to', 'switch to', 'upgrade to', 'lock in [X] tier', 'go [X]'.\n"
+                . "      Allowed values: {\"tier\":\"normal|aggressive|super\"}\n"
+                . "      e.g. user says 'switch to aggressive' -> strategy_change: {\"tier\":\"aggressive\"}\n"
+                . "      Same conservative rule: only emit when the user commits, not when discussing options.\n"
+                . "      When you emit strategy_change, ALWAYS confirm the new tier + its monthly allowance in your reply.\n"
+                . "  - schedule_followup: OBJECT or null. Emit when the user asks you to message / update / remind them after a delay (e.g. 'message me Hi in 5 minutes', 'message me hi in 30 seconds', 'remind me to call John in an hour'). Shape: {\"delay_seconds\": S, \"delay_minutes\": N, \"message\": \"exact text to send\", \"note\": \"what to check (status mode only)\"}. TIMING: use delay_seconds for sub-minute requests (30 seconds -> delay_seconds:30) and delay_minutes otherwise (5 minutes -> delay_minutes:5). Allowed range 10 seconds to 1440 minutes (24h); if the user asks for less than 10s, use 10. YOU MUST include a delay — without one nothing is scheduled. TWO MODES — choose by what the user actually asked for:\n"
+                . "      LITERAL (default when they want specific words delivered): for 'message me Hi' or 'remind me to call John', put the EXACT words in the message field (message:\"Hi\" or message:\"Reminder: call John\"). It is delivered VERBATIM at the due time — NEVER turn it into a status report. Leave note empty.\n"
+                . "      STATUS (only when they want a fresh update on ongoing work): for 'check the article in 5 min and update me', leave message EMPTY and put what to check in note — the system queries the live status at that time and reports it.\n"
+                . "    Whatever the user literally asked to receive is what must arrive — match their instruction exactly. HONESTY RULE: ONLY promise a timed / later / follow-up message when you actually emit schedule_followup in THIS reply. If you are NOT emitting it, do NOT say you'll 'check back', 'message you in N minutes', or 'follow up later' — instead tell them to ask you anytime. Never claim a timer you didn't set.\n"
+                . "Include multiple objects in create_tasks for multiple assignments. All arrays default to [] when not needed. cadence_overrides and strategy_change default to null.\n"
                 . "IMPORTANT: When the user sends a TASK BRIEF with Title/Description/Assign to, respond with a confirmation plan:\n"
                 . "- Acknowledge the task\n"
                 . "- List who you'll assign and what engine/action you'll use\n"
@@ -929,13 +1928,86 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
                 . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
         } else {
-            $systemPrompt = $conciseRule . $brandFactsBlock
+            // ── SHARED AGENT CORE (2026-07-19) ────────────────────────────
+            // Every context block above (identity, grounding, honesty, tier)
+            // was built INSIDE the isSarah branch, so the other 19 agents ran
+            // on a ~10-line prompt with no owner identity, no anti-fabrication
+            // rule and no statement of what they can actually do. Observed
+            // consequences on 2026-07-19:
+            //   - James: "I've already identified the 4 orphan pages and queued
+            //     the fix for myself — it's in progress now." No such task ever
+            //     existed, and non-Sarah agents cannot create tasks at all.
+            //   - Priya: "I've already flagged the stuck lead deletion to Sarah."
+            //     She had asked permission 30s earlier, was told yes, then
+            //     claimed it was done without doing it.
+            //   - Priya: "5790 minutes old", "deleting lead 28" — raw duration
+            //     and an internal record id shown to the owner.
+            // This block gives every agent the same footing as Sarah, scoped to
+            // their own role.
+            $__aOwner = '';
+            try {
+                $__au = $r->user();
+                $__aOwner = trim((string) ($__au->name ?? ''));
+                if ($__aOwner === '' && $workspace) {
+                    $__aOwner = trim((string) (DB::table('users')->where('id', $workspace->created_by)->value('name') ?? ''));
+                }
+            } catch (\Throwable $__ae) { $__aOwner = ''; }
+            $__aFirst = $__aOwner !== '' ? preg_split('/\s+/', $__aOwner)[0] : '';
+
+            $agentCore = "WHO YOU ARE TALKING TO: "
+                . ($__aOwner !== ''
+                    ? "the business owner, {$__aOwner}" . ($__aFirst !== '' && $__aFirst !== $__aOwner ? " (call them {$__aFirst})" : "") . ".\n"
+                    : "the business owner. You do not know their name — do NOT guess it.\n")
+                . "HARD RULE — NAMES: your own name is {$agent->name}. That is YOUR name, never theirs. "
+                . "When they greet you by it they are addressing YOU — never echo it back at them, and never "
+                . "address them by any agent's name.\n\n"
+
+                . "HARD RULE — NEVER CLAIM WORK YOU HAVE NOT DONE: Do not use the past tense for anything "
+                . "that did not actually happen in THIS conversation turn. Forbidden unless it is literally "
+                . "true right now: \"I've already...\", \"I've queued...\", \"it's in progress\", \"I've "
+                . "flagged that to...\", \"I'll update you when it's done\". If you have not done it, say what "
+                . "you WILL do, or say plainly that it needs Sarah. A false status claim is worse than saying "
+                . "you cannot help.\n\n"
+
+                . "HARD RULE — WHAT YOU CAN AND CANNOT DO: You are a specialist, not the manager. You CANNOT "
+                . "create, queue, assign or schedule tasks — only Sarah can. Never say you have queued or "
+                . "assigned anything, including \"for myself\". When the owner asks for NEW work outside what "
+                . "is already in progress, say it needs Sarah to assign it and set requires_sarah=true with "
+                . "the context in sarah_context. What you CAN do: answer about your own work and expertise "
+                . "(" . implode(', ', $skills) . "), read and explain the data you have been given, and give "
+                . "your specialist opinion.\n\n"
+
+                . "HARD RULE — PLAIN LANGUAGE: Never show internal identifiers or raw system values to the "
+                . "owner. No record ids (\"lead 28\", \"task 1890\", \"article 241\"), no raw durations in "
+                . "minutes (\"5790 minutes\" -> \"about 4 days\"), no status enums, no engine or action slugs. "
+                . "Name things the way the owner would: the lead's name, the article's title.\n\n"
+
+                . "HARD RULE — ESCALATE, DON'T INTERROGATE: When the owner tells you to DO something you "
+                . "cannot do yourself, the answer is to route it to Sarah — not to ask them for details. "
+                . "Never ask the owner to supply data you or the system already have (page lists, urls, ids, "
+                . "counts, metrics). If you just cited a finding, you have the data. Correct shape: state "
+                . "what you found in the owner's language, then say Sarah needs to assign it and set "
+                . "requires_sarah=true with the specifics in sarah_context. e.g. \"Four pages have no "
+                . "internal links pointing at them. I can't queue that myself — I'm passing it to Sarah to "
+                . "assign.\" Asking the owner to go fetch a list is never the right answer.\n\n"
+                . "HARD RULE — DO NOT REPEAT YOURSELF: If you have already reported a finding in this "
+                . "conversation, do not restate it. Move it forward or ask what they want next.\n\n";
+
+            if (! empty($brandFacts['disconnected_engines'])) {
+                $agentCore .= "DISCONNECTED ENGINES (HARD CONSTRAINT): " . $brandFacts['disconnected_engines'] . "\n"
+                    . "Never propose or promise work on a disconnected channel. If asked, say plainly it is not "
+                    . "connected yet and offer what IS available instead.\n\n";
+            }
+
+            $systemPrompt = $conciseRule . $agentCore . $brandFactsBlock
                 . "You are {$agent->name}, {$agent->title} for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "Your expertise: " . implode(', ', $skills) . "\n"
-                . ($recentTasks ? "Your recent tasks:\n- {$recentTasks}\n" : "No recent tasks.\n")
+                . ($recentTasks ? "Your tasks in progress right now:\n- {$recentTasks}\n" : "You have no tasks in progress right now.\n")
+                . ($recentDoneCount > 0 ? "({$recentDoneCount} of your task" . ($recentDoneCount === 1 ? '' : 's') . " finished in the last 24h — those are DONE, not pending.)\n" : "")
                 . "Answer questions about your work directly. Be helpful and specific.\n"
                 . "For NEW task requests beyond your current scope, say you'll need Sarah to assign it officially.\n"
                 . "Keep responses under 120 words.\n"
+                . "\nCRITICAL OUTPUT FORMAT: Your ENTIRE response MUST be a single JSON object. FIRST character `{`, LAST character `}`. No prose outside the JSON, no markdown fences. Put anything you'd say to the user INSIDE the \"reply\" field.\n\n"
                 . "Output JSON: {\"reply\":\"your response\",\"requires_sarah\":true/false,\"sarah_context\":\"context if redirecting\",\"tool_calls\":[]}\n"
                 . "  - tool_calls: array of {tool, params, reason} when you need to look something up. Empty [] otherwise.\n"
                 . "\n" . $sharedKnowledgeBlock
@@ -994,7 +2066,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                         'agent_slug'    => $slug,
                         'agent_name'    => $agent->name,
                     ],
-                    "agent_chat_ws_{$wsId}_{$slug}_v4",
+                    "agent_chat_ws_{$wsId}_{$slug}_v7",
                     $slug === 'sarah' ? 'dmm' : $slug
                 );
                 $assistReply = $assist['response'] ?? null;
@@ -1067,6 +2139,89 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                         }
                     }
 
+                    // 2026-05-25 FIX A — truncation-resilient salvage. If the brace-walk
+                    // failed because the LLM ran out of tokens mid-string (very common
+                    // with large create_tasks arrays — leaves the output as raw JSON
+                    // starting `{"reply":"..."` with no closing brace), DO NOT show the
+                    // raw envelope to the user.
+                    //
+                    // 2026-05-25 FIX A-2 — handle the "prose + truncated envelope" case
+                    // where the LLM emits a natural-language reply FOLLOWED by a JSON
+                    // envelope (instead of pure JSON). The envelope gets truncated
+                    // mid-task-array, the brace-walk gives up (depth never reaches 0),
+                    // and the raw concatenated text leaks to chat. Three rules:
+                    //   1. Find the position of `{"reply":` (or `{ "reply":`) anywhere
+                    //      in the candidate, not just at the start.
+                    //   2. Use the prose BEFORE that position as the displayed reply
+                    //      (the LLM already formatted it nicely).
+                    //   3. Walk the truncated envelope's create_tasks array, recovering
+                    //      each balanced `{...}` object up to the truncation point.
+                    if (!$embeddedEnvelope && $candidate !== '') {
+                        $envStartRegex = '/\{\s*"reply"\s*:\s*"/i';
+                        if (preg_match($envStartRegex, $candidate, $envMatch, PREG_OFFSET_CAPTURE)) {
+                            $envStart = (int) $envMatch[0][1];
+                            // 1. Prose prefix = everything before the envelope.
+                            $prosePrefix = trim(substr($candidate, 0, $envStart));
+                            // Strip a dangling "Let me ..." trailing sentence that
+                            // tends to introduce the JSON. Keep prose if non-empty.
+                            if ($prosePrefix !== '') {
+                                $reply = $prosePrefix;
+                            } else {
+                                // 1b. No prose — fall back to regex-extracting the reply field.
+                                if (preg_match('/"reply"\s*:\s*"((?:\\\\.|[^"\\\\])*)"/s', $candidate, $rm)) {
+                                    $salvaged = $rm[1];
+                                    $salvaged = str_replace(['\\n', '\\r', '\\t', '\\"', '\\\\'], ["\n", "\r", "\t", '"', '\\'], $salvaged);
+                                    $reply = trim($salvaged) ?: $reply;
+                                }
+                            }
+                            // 2. Try to recover create_tasks from the truncated envelope.
+                            //    Look for `"create_tasks":[` after envStart, then scan
+                            //    for balanced top-level `{...}` objects until we hit a
+                            //    malformed one (truncation point).
+                            $recoveredTasks = [];
+                            if (preg_match('/"create_tasks"\s*:\s*\[/i', $candidate, $cm, PREG_OFFSET_CAPTURE, $envStart)) {
+                                $scanFrom = (int) $cm[0][1] + strlen($cm[0][0]);
+                                $cLen = strlen($candidate);
+                                $k = $scanFrom;
+                                while ($k < $cLen) {
+                                    // Skip whitespace and commas
+                                    while ($k < $cLen && (ctype_space($candidate[$k]) || $candidate[$k] === ',')) $k++;
+                                    if ($k >= $cLen || $candidate[$k] === ']') break;
+                                    if ($candidate[$k] !== '{') break;
+                                    // Walk a balanced object starting at $k
+                                    $depth = 0; $inStr = false; $esc = false; $end = -1;
+                                    for ($m = $k; $m < $cLen; $m++) {
+                                        $ch = $candidate[$m];
+                                        if ($esc) { $esc = false; continue; }
+                                        if ($ch === '\\' && $inStr) { $esc = true; continue; }
+                                        if ($ch === '"') { $inStr = !$inStr; continue; }
+                                        if ($inStr) continue;
+                                        if ($ch === '{') $depth++;
+                                        elseif ($ch === '}') {
+                                            $depth--;
+                                            if ($depth === 0) { $end = $m; break; }
+                                        }
+                                    }
+                                    if ($end === -1) break; // truncated mid-object — stop
+                                    $taskJson = substr($candidate, $k, $end - $k + 1);
+                                    $taskObj = json_decode($taskJson, true);
+                                    if (is_array($taskObj)) $recoveredTasks[] = $taskObj;
+                                    $k = $end + 1;
+                                }
+                            }
+                            if (!empty($recoveredTasks)) {
+                                $assist['create_tasks'] = $recoveredTasks;
+                            }
+                            \Illuminate\Support\Facades\Log::warning('[SarahChat] envelope truncated — salvaged via FIX A-2', [
+                                'workspace_id'       => $wsId,
+                                'candidate_len'      => strlen($candidate),
+                                'env_starts_at'      => $envStart,
+                                'prose_prefix_len'   => strlen($prosePrefix),
+                                'recovered_tasks'    => count($recoveredTasks),
+                            ]);
+                        }
+                    }
+
                     if ($embeddedEnvelope) {
                         if (isset($embeddedEnvelope['reply']) && is_string($embeddedEnvelope['reply'])) {
                             // Prefer inner reply when set; falls back to prose extracted above.
@@ -1109,7 +2264,16 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 $createTasks = $assist['create_tasks'] ?? [];
                 $toolCalls   = $assist['tool_calls'] ?? [];
                 $requiresSarah = (bool) ($assist['requires_sarah'] ?? false);
+                $scheduleFollowup = $assist['schedule_followup'] ?? $scheduleFollowup;
                 $sarahContext  = $assist['sarah_context'] ?? '';
+                // 2026-05-24 FIX 49 — Sarah's persistent memory: capture
+                // user cadence preferences + goals from chat. Sarah's
+                // prompt instructs her to emit these ONLY when the user
+                // used commit language ('I want', 'save', 'lock in',
+                // 'remember', 'set my'). Handler trusts the LLM's
+                // judgement and persists immediately.
+                $cadenceOverrides = $assist['cadence_overrides'] ?? null;
+                $goalProposals    = $assist['goal_proposals'] ?? [];
 
                 // PATCH (Phase 2 — tool schema, 2026-05-10) — extended the
                 // re-extract trigger to include info-query verbs so platform
@@ -1190,9 +2354,14 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                         $sarahContext  = $sarahContext  ?: ($parsed['sarah_context'] ?? '');
                         $createTasks   = $parsed['create_tasks'] ?? $createTasks;
                         $toolCalls     = $parsed['tool_calls']   ?? $toolCalls;
+                        $scheduleFollowup = $parsed['schedule_followup'] ?? $scheduleFollowup;
                         if (empty($createTasks) && !empty($parsed['create_task'])) {
                             $createTasks = [$parsed['create_task']];
                         }
+                        // 2026-05-24 FIX 49 — extract Sarah's persistent
+                        // memory fields from the chatJson fallback path too.
+                        $cadenceOverrides = $parsed['cadence_overrides'] ?? $cadenceOverrides;
+                        $goalProposals    = $parsed['goal_proposals']    ?? $goalProposals;
                     }
                 }
 
@@ -1242,6 +2411,11 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             if (($follow['success'] ?? false)) {
                                 $finalReply = $follow['parsed']['reply'] ?? $follow['text'] ?? '';
                                 if ($finalReply) {
+                                    $finalReply = trim($finalReply);
+                                    if (preg_match('/^\s*\{.*"reply"\s*:/s', $finalReply)) {
+                                        $dec = json_decode($finalReply, true);
+                                        if (is_array($dec) && isset($dec['reply']) && is_string($dec['reply'])) $finalReply = $dec['reply'];
+                                    }
                                     $reply = trim($finalReply);
                                 } else {
                                     $reply = ($reply ? $reply . "\n\n" : '') . implode("\n", $resultsForFallback);
@@ -1416,6 +2590,110 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     $taskSummaryByAgent = [];   // agentSlug => count
                     $taskSummaryFailed  = 0;
                     $taskSummaryFailReasons = []; // dedupe failure reasons for transparency
+                    // 2026-05-23 FIX 24 (A) — track tasks the dedup gate blocked so we
+                    // can surface the count in the chat summary.
+                    $taskSummaryDeduped = 0;
+                    $taskSummaryDedupedTitles = [];
+
+                    // 2026-06-10 — NEVER surface a raw exception / SQL string to the
+                    // user. Two helpers:
+                    //  (a) $taskFailIsDuplicate — a unique-key collision (1062 /
+                    //      integrity violation) means the exact task is ALREADY
+                    //      queued; route it to the graceful "already in progress"
+                    //      bucket, not "failed to create" with a raw SQLSTATE.
+                    //  (b) $humanizeTaskFail — map any other failure to a short,
+                    //      plain-English reason. Default is generic; raw DB/stack
+                    //      text is never returned.
+                    $taskFailIsDuplicate = function (\Throwable $e): bool {
+                        $code = ($e instanceof \Illuminate\Database\QueryException)
+                            ? (string) ($e->errorInfo[1] ?? '') : '';
+                        $msg = $e->getMessage();
+                        return $code === '1062'
+                            || stripos($msg, 'Duplicate entry') !== false
+                            || stripos($msg, 'Integrity constraint violation') !== false;
+                    };
+                    $humanizeTaskFail = function (\Throwable $e): string {
+                        $m = strtolower($e->getMessage());
+                        if (str_contains($m, 'no capability') || str_contains($m, 'not supported') || str_contains($m, 'no handler')) {
+                            return "that action isn't available yet";
+                        }
+                        if (str_contains($m, 'missing required') || str_contains($m, 'required param') || str_contains($m, 'invalidargument')) {
+                            return 'it was missing some details';
+                        }
+                        if (str_contains($m, 'credit') || str_contains($m, 'insufficient') || str_contains($m, 'balance')) {
+                            return 'there were not enough credits';
+                        }
+                        if (str_contains($m, 'plan') && (str_contains($m, 'gat') || str_contains($m, 'allow') || str_contains($m, 'upgrade'))) {
+                            return "your current plan doesn't include that";
+                        }
+                        if (str_contains($m, 'cadence') || str_contains($m, 'cap')) {
+                            return "it would exceed this month's plan limit";
+                        }
+                        // Default — never leak the raw error. It is logged above for the team.
+                        return 'a temporary system issue (logged for the team)';
+                    };
+
+                    // v1.4.4 (2026-05-30) — batched approvals. Pre-compute one
+                    // batch_id per distinct action that appears in this
+                    // create_tasks set. When Sarah emits 10 write_article + 10
+                    // insert_link, articles get one batch_id and links get a
+                    // different one. TaskService folds approvals so only the
+                    // first task of each batch creates an approval row; the
+                    // Command Center renders a single "Approve all N" card.
+                    // 2026-07-23 DETERMINISTIC BACKSTOP — guarantee the bulk image fill.
+                    // The LLM is inconsistent about emitting fill_missing_images; when the
+                    // user's intent is clear and images are genuinely missing, emit it here
+                    // rather than trust the model. Sarah still owns and runs the task.
+                    try {
+                        $__ct = strtolower(trim((string) $content));
+                        $__wantsFill = (bool) preg_match('/\bmissing\b[^.?!]{0,40}\b(featured\s*)?(image|images|thumbnail|thumbnails)\b/i', (string) $content)
+                            || (bool) preg_match('/\b(featured\s*)?(image|images|thumbnail|thumbnails)\b[^.?!]{0,25}\bmissing\b/i', (string) $content)
+                            || (bool) preg_match('/\ball\b[^.?!]{0,30}\b(featured\s*)?(image|images|thumbnails)\b/i', (string) $content);
+                        if (!$__wantsFill && preg_match('/^\s*(all|all of them|yes|yep|yeah|ya|go|go ahead|do it|proceed|please do|sure|generate them|add them|make them)\b/i', $__ct)) {
+                            $__prev = \Illuminate\Support\Facades\DB::table('agent_messages')
+                                ->where('workspace_id', $wsId)->where('role', 'agent')
+                                ->orderByDesc('id')->limit(4)->pluck('content');
+                            foreach ($__prev as $__pm) {
+                                if (stripos((string) $__pm, 'featured image') !== false || stripos((string) $__pm, 'missing image') !== false) { $__wantsFill = true; break; }
+                            }
+                        }
+                        if ($__wantsFill) {
+                            $__missNow = (int) \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)
+                                ->whereIn('status', ['published', 'draft'])->whereNull('deleted_at')
+                                ->where(function ($w) { $w->whereNull('featured_image_url')->orWhere('featured_image_url', ''); })->count();
+                            if ($__missNow > 0) {
+                                // BULK image request: strip orphan individual image tasks the LLM
+                                // emits with article_id=0 (they generate images that attach to
+                                // nothing and waste credits), then guarantee ONE reliable
+                                // fill_missing_images (engine=write; the backend finds the ids).
+                                $createTasks = array_values(array_filter($createTasks, function ($__c) use ($wsId) {
+                                    if (!is_array($__c)) return true;
+                                    $__a = strtolower((string) ($__c['action'] ?? ''));
+                                    if (!str_contains($__a, 'generate_image')) return true;
+                                    $__aid = (int) ($__c['params']['article_id'] ?? 0);
+                                    return $__aid > 0 && \Illuminate\Support\Facades\DB::table('articles')->where('id', $__aid)->where('workspace_id', $wsId)->exists();
+                                }));
+                                $__hasFill = false;
+                                foreach ($createTasks as $__c) { if (is_array($__c) && strtolower((string) ($__c['action'] ?? '')) === 'fill_missing_images') { $__hasFill = true; break; } }
+                                if (!$__hasFill) {
+                                    $createTasks[] = ['agent' => 'priya', 'engine' => 'write', 'action' => 'fill_missing_images',
+                                                      'description' => 'Generate featured images for articles missing one', 'params' => ['limit' => 25]];
+                                    \Illuminate\Support\Facades\Log::info('[SarahChat] backstop injected fill_missing_images', ['workspace_id' => $wsId, 'missing' => $__missNow]);
+                                }
+                            }
+                        }
+                    } catch (\Throwable $__bkErr) { /* non-fatal */ }
+
+                    $batchIdByAction = [];
+                    foreach ($createTasks as $_ct) {
+                        if (!is_array($_ct)) continue;
+                        $_act = $_ct['action'] ?? null;
+                        if (!$_act) continue;
+                        if (!isset($batchIdByAction[$_act])) {
+                            $batchIdByAction[$_act] = \Illuminate\Support\Str::orderedUuid()->toString();
+                        }
+                    }
+
                     $ctIndex = 0;
                     foreach ($createTasks as $createTask) {
                     $ctIndex++;
@@ -1424,7 +2702,65 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             $taskAgent = $createTask['agent'];
                             $taskEngine = $createTask['engine'] ?? 'marketing';
                             $taskAction = $createTask['action'] ?? 'manual_task';
-                            $taskDesc = $createTask['description'] ?? $content;
+                            $taskDesc = $createTask['description']
+                                ?? ($createTask['params']['title'] ?? $createTask['params']['topic'] ?? null)
+                                ?? ucfirst(str_replace('_', ' ', $taskAction));
+
+                            // 2026-05-23 FIX 24 (A) — dedup gate. Block write_article
+                            // duplicates before they hit the DB. Today's incident: a
+                            // "Hi Sarah" message re-issued the same 11-article batch
+                            // (root cause was the variable-shadowing crash in FIX 23,
+                            // but this gate is belt-and-suspenders so the LLM cannot
+                            // queue duplicates even if its context is muddy).
+                            // Match logic: same workspace, same action=write_article,
+                            // last 24h, status not in (failed, cancelled), and title
+                            // matches (case-insensitive exact OR substring after
+                            // normalisation). Skip if found.
+                            if ($taskAction === 'write_article') {
+                                $candidateTitleRaw = (isset($createTask['params']['title']) && is_string($createTask['params']['title']))
+                                    ? $createTask['params']['title']
+                                    : $taskDesc;
+                                $candTitle = trim(mb_strtolower((string) $candidateTitleRaw));
+                                $candTitleStripped = preg_replace('/[^a-z0-9 ]/u', '', $candTitle);
+                                $candTitleStripped = trim(preg_replace('/\s+/', ' ', $candTitleStripped));
+
+                                if ($candTitleStripped !== '') {
+                                    $recent = \Illuminate\Support\Facades\DB::table('tasks')
+                                        ->where('workspace_id', $wsId)
+                                        ->where('action', 'write_article')
+                                        ->where('created_at', '>=', now()->subHours(24))
+                                        ->whereNotIn('status', ['failed','cancelled'])
+                                        ->get(['id', 'payload_json']);
+                                    $matchedTaskId = null;
+                                    foreach ($recent as $rt) {
+                                        $rp = json_decode($rt->payload_json ?? '{}', true);
+                                        $rtTitle = trim(mb_strtolower((string) ($rp['title'] ?? $rp['topic'] ?? '')));
+                                        $rtTitleStripped = preg_replace('/[^a-z0-9 ]/u', '', $rtTitle);
+                                        $rtTitleStripped = trim(preg_replace('/\s+/', ' ', $rtTitleStripped));
+                                        if ($rtTitleStripped === '') continue;
+                                        if ($rtTitleStripped === $candTitleStripped
+                                            || (mb_strlen($rtTitleStripped) > 15 && mb_strlen($candTitleStripped) > 15
+                                                && (str_contains($rtTitleStripped, $candTitleStripped)
+                                                    || str_contains($candTitleStripped, $rtTitleStripped)))) {
+                                            $matchedTaskId = (int) $rt->id;
+                                            break;
+                                        }
+                                    }
+                                    if ($matchedTaskId) {
+                                        $taskSummaryDeduped++;
+                                        $taskSummaryDedupedTitles[] = mb_substr($candidateTitleRaw, 0, 70);
+                                        \Illuminate\Support\Facades\Log::info('[SarahChat] dedup gate blocked write_article', [
+                                            'workspace_id'   => $wsId,
+                                            'candidate'      => $candidateTitleRaw,
+                                            'matched_task'   => $matchedTaskId,
+                                        ]);
+                                        // Map this position to the EXISTING task id so any
+                                        // child task referencing depends_on:[N] still resolves.
+                                        $createdTaskIds[$ctIndex] = $matchedTaskId;
+                                        continue;
+                                    }
+                                }
+                            }
 
                             // Wave 35c — resolve depends_on into parent_task_id. Sarah's chain
                             // recipe instructs her to set depends_on:[1] etc. referencing 1-based
@@ -1444,6 +2780,106 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             // Wave 35c — pass through Sarah-supplied params (title, topic, keyword,
                             // audience, tone, length, etc.) so they reach the engine service.
                             $ctParams = (isset($createTask['params']) && is_array($createTask['params'])) ? $createTask['params'] : [];
+
+                            // 2026-07-07 CRITICAL (extended 2026-07-13) — drop any task whose
+                            // target entity id is out-of-workspace, or missing/zero for an action
+                            // that requires one. The chat LLM fabricates ids (ws2 tasks pointing at
+                            // ws1 articles; update_lead with lead_id:0) which mutate the wrong data
+                            // or fail after 3 retries. Belt-and-suspenders behind the prompt rule.
+                            // 2026-07-23 FIX — RESOLVE THE TARGET ARTICLE SERVER-SIDE.
+                            // Sarah has no reliable way to know a real article_id, and the LLM
+                            // invents one (ws2 2026-07-22: six publish_article tasks dropped as
+                            // "article_id=385..390 not in this workspace"; QA: article_id=1).
+                            // The drop guard below then discarded the task with only a log line,
+                            // so the user was told "publishing now" and nothing happened.
+                            // Resolve by title against THIS workspace's own drafts; only fall
+                            // through to the guard when a single target cannot be identified.
+                            if ($taskAction === 'publish_article') {
+                                $__aid = (int) ($ctParams['article_id'] ?? 0);
+                                $__valid = $__aid > 0 && \Illuminate\Support\Facades\DB::table('articles')
+                                    ->where('id', $__aid)->where('workspace_id', $wsId)->exists();
+                                if (! $__valid) {
+                                    // 2026-07-23 — the destructive two-turn flow puts the
+                                    // title in turn 1 ("Publish the draft 'X'") and the
+                                    // confirmation in turn 2 ("yes, publish it"), which has NO
+                                    // title. Include the recent user messages so the confirm
+                                    // turn recovers the title from turn 1 instead of dropping.
+                                    $__recentUser = \Illuminate\Support\Facades\DB::table('agent_messages')
+                                        ->where('workspace_id', $wsId)->where('role', 'user')
+                                        ->orderByDesc('id')->limit(5)->pluck('content')->toArray();
+                                    $__cands = array_filter(array_merge([
+                                        $ctParams['title'] ?? null,
+                                        $createTask['description'] ?? null,
+                                        $content,
+                                    ], $__recentUser));
+                                    $__match = null;
+                                    foreach ($__cands as $__c) {
+                                        $__c = trim((string) $__c);
+                                        if ($__c === '') continue;
+                                        // Prefer the longest quoted phrase, else the raw string.
+                                        if (preg_match_all('/["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]{6,})["\x{201C}\x{201D}]/u', $__c, $__m) && !empty($__m[1])) {
+                                            usort($__m[1], fn($x, $y) => mb_strlen($y) - mb_strlen($x));
+                                            $__needle = $__m[1][0];
+                                        } else {
+                                            $__needle = $__c;
+                                        }
+                                        if (mb_strlen($__needle) < 6) continue;
+                                        $__rows = \Illuminate\Support\Facades\DB::table('articles')
+                                            ->where('workspace_id', $wsId)
+                                            ->whereNull('deleted_at')
+                                            ->where('status', 'draft')
+                                            ->where('title', 'like', '%' . $__needle . '%')
+                                            ->limit(2)->get(['id', 'title']);
+                                        if (count($__rows) === 1) { $__match = $__rows[0]; break; }
+                                    }
+                                    // Single-draft workspace: unambiguous by definition.
+                                    if (! $__match) {
+                                        $__drafts = \Illuminate\Support\Facades\DB::table('articles')
+                                            ->where('workspace_id', $wsId)->whereNull('deleted_at')
+                                            ->where('status', 'draft')->limit(2)->get(['id', 'title']);
+                                        if (count($__drafts) === 1) $__match = $__drafts[0];
+                                    }
+                                    if ($__match) {
+                                        $ctParams['article_id'] = (int) $__match->id;
+                                        \Illuminate\Support\Facades\Log::info('[SarahChat] resolved publish_article target server-side', [
+                                            'workspace_id' => $wsId,
+                                            'claimed_id'   => $__aid ?: null,
+                                            'resolved_id'  => (int) $__match->id,
+                                            'title'        => $__match->title,
+                                        ]);
+                                    } else {
+                                        \Illuminate\Support\Facades\Log::warning('[SarahChat] publish_article target could not be resolved', [
+                                            'workspace_id' => $wsId, 'claimed_id' => $__aid ?: null,
+                                        ]);
+                                    }
+                                }
+                            }
+
+                            $__drop = null;
+                            foreach (['article_id' => 'articles', 'lead_id' => 'leads'] as $__k => $__tbl) {
+                                if (isset($ctParams[$__k]) && (int) $ctParams[$__k] > 0
+                                    && ! \Illuminate\Support\Facades\DB::table($__tbl)->where('id', (int) $ctParams[$__k])->where('workspace_id', $wsId)->exists()) {
+                                    $__drop = "{$__k}={$ctParams[$__k]} not in this workspace";
+                                }
+                            }
+                            // Pattern-based: ANY action touching a lead (update_lead,
+                            // move_lead, assign_lead, ai_followup_draft, ...) must carry a real
+                            // workspace lead id — the LLM invents lead_id:0 under many action
+                            // names. create_lead / list_leads are exempt (they don't target one).
+                            if ($__drop === null && str_contains($taskAction, 'lead')
+                                && ! in_array($taskAction, ['create_lead', 'list_leads', 'list_lead'], true)) {
+                                $__lid = (int) ($ctParams['lead_id'] ?? 0);
+                                if ($__lid <= 0 || ! \Illuminate\Support\Facades\DB::table('leads')->where('id', $__lid)->where('workspace_id', $wsId)->exists()) {
+                                    $__drop = "{$taskAction}: no valid workspace lead_id ({$__lid})";
+                                }
+                            }
+                            if ($__drop === null && in_array($taskAction, ['publish_article', 'delete_article'], true) && (int) ($ctParams['article_id'] ?? 0) <= 0) {
+                                $__drop = "{$taskAction} with no valid article_id";
+                            }
+                            if ($__drop !== null) {
+                                \Illuminate\Support\Facades\Log::warning('[SarahChat] dropped task with bad target id', ['workspace_id' => $wsId, 'action' => $taskAction, 'reason' => $__drop]);
+                                continue;
+                            }
                             $payload = array_merge([
                                 'title'        => $taskDesc,
                                 'created_via'  => 'sarah_chat',
@@ -1483,6 +2919,41 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                 }
                             }
 
+                            // 2026-05-25 — destructive actions ALWAYS require approval,
+                            // overriding the FIX 18 auto-approve default. Sarah's prompt
+                            // tells her to confirm with the user in chat first, BUT we
+                            // enforce here as defense-in-depth: even if she skips that,
+                            // the task lands in pending_approval and the user sees a
+                            // Confirm/Cancel prompt before publish/delete runs.
+                            // 2026-05-30 — extended to cover the cap-map audit findings.
+                            // delete_lead/publish_website/publish_builder_page were
+                            // previously auto-approved at the backend, leaving the
+                            // agent-driven path with zero gate. Now they're treated
+                            // as destructive at this layer too.
+                            // 2026-07-23 (Boss decision) — `publish_article` removed from
+                            // this list. This code path is Sarah CHAT, which is by
+                            // definition user-initiated, and her prompt already runs the
+                            // two-turn confirm protocol for destructive actions: she asks,
+                            // the user explicitly says go, and only then is the task
+                            // emitted. Holding it a second time in the approval queue asked
+                            // for the same consent twice and left articles sitting unpublished.
+                            // Publishing is also reversible (an article can be unpublished);
+                            // the genuinely irreversible actions below stay gated.
+                            $destructiveActions = ['delete_article', 'delete_post',
+                                                   'delete_lead', 'publish_website', 'publish_builder_page'];
+                            $isDestructive = in_array($taskAction, $destructiveActions, true);
+
+                            // 2026-07-23 — Detect the user's explicit go-ahead from THIS turn's
+                            // message, server-side. Deterministic on purpose: the two-turn confirm
+                            // protocol lives in Sarah's prompt and a prompt is probabilistic, so
+                            // the consent that actually unlocks publishing is matched here, from
+                            // the user's own words, not from the model's claim that it happened.
+                            $__userConfirmed = $taskAction === 'publish_article'
+                                && (bool) preg_match(
+                                    '/\b(yes|yeah|yep|yup|confirm|confirmed|confirming|go ahead|proceed|do it|publish it|push it live|make it live|approved?)\b/i',
+                                    (string) $content
+                                );
+
                             $createPayload = [
                                 'engine'           => $taskEngine,
                                 'action'           => $taskAction,
@@ -1490,15 +2961,44 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                                 'priority'         => 'normal',
                                 'assigned_agents'  => [$taskAgent],
                                 'parent_task_id'   => $parentId,
-                                'auto_approve'     => $autoApprove,
+                                'user_confirmed'   => $__userConfirmed,
+                                'auto_approve'     => $__userConfirmed ? true : ($isDestructive ? false : $autoApprove),
                                 // 2026-05-22 FIX 18 — override CapMap approval_mode for
                                 // user-initiated chains so write_article et al. do not
                                 // show the approval badge.
-                                'requires_approval' => false,
+                                // 2026-05-25 — publish + delete MUST be user-approved.
+                                'requires_approval' => $isDestructive,
                                 'payload'          => $payload,
+                                // v1.4.4 (2026-05-30) — batch tag for approval folding
+                                'batch_id'         => $batchIdByAction[$taskAction] ?? null,
                             ];
                             if ($bundlePrice !== null) {
                                 $createPayload['credit_cost'] = $bundlePrice;
+                            }
+                            // 2026-05-24 FIX 48 — cadence enforcement. Block
+                            // task creation if it would exceed the workspace's
+                            // chosen tier monthly cap. Skip silently for
+                            // chain-child tasks (parent_task_id set) — only
+                            // count PARENT actions against the cap.
+                            if (empty($createPayload['parent_task_id'])) {
+                                try {
+                                    $cadenceCheck = app(\App\Core\Strategy\CadenceGuardService::class)
+                                        ->check($wsId, $taskAction);
+                                    if (!$cadenceCheck['allowed']) {
+                                        $taskSummaryFailed++;
+                                        // 2026-06-10 — friendly, no internal "cadence cap:" wording.
+                                        $failFriendly = "it would exceed this month's plan limit";
+                                        $taskSummaryFailReasons[$failFriendly] = ($taskSummaryFailReasons[$failFriendly] ?? 0) + 1;
+                                        \Illuminate\Support\Facades\Log::info('[SarahChat] cadence guard blocked task', [
+                                            'workspace_id' => $wsId, 'action' => $taskAction,
+                                            'current' => $cadenceCheck['current'], 'cap' => $cadenceCheck['cap'],
+                                        ]);
+                                        continue;
+                                    }
+                                } catch (\Throwable $cadenceErr) {
+                                    // Non-fatal — log and continue (don't block on a guard failure)
+                                    \Illuminate\Support\Facades\Log::warning('[SarahChat] cadence guard failed (allowing): ' . $cadenceErr->getMessage());
+                                }
                             }
                             $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, $createPayload);
                             // Record by position for downstream depends_on references.
@@ -1518,31 +3018,196 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             ]);
                         } catch (\Throwable $taskErr) {
                             \Illuminate\Support\Facades\Log::warning("[SarahChat] Task creation failed: " . $taskErr->getMessage());
-                            // 2026-05-22 FIX 7 (Bug B) — count the failure; dedupe reason.
-                            $taskSummaryFailed++;
-                            $failMsg = $taskErr->getMessage();
-                            // Truncate long messages to keep the summary readable.
-                            $failShort = mb_substr($failMsg, 0, 80) . (mb_strlen($failMsg) > 80 ? '...' : '');
-                            $taskSummaryFailReasons[$failShort] = ($taskSummaryFailReasons[$failShort] ?? 0) + 1;
+                            // 2026-06-10 — a unique-constraint collision means this
+                            // exact task is already queued/running. Treat as a
+                            // graceful dedupe, NOT a raw-SQL "failed to create".
+                            if ($taskFailIsDuplicate($taskErr)) {
+                                $taskSummaryDeduped++;
+                                $taskSummaryDedupedTitles[] = mb_substr(
+                                    $taskDesc ?? $candidateTitleRaw ?? ($taskAction ?? 'task'), 0, 70);
+                            } else {
+                                // Count the failure with a friendly reason — never raw SQL/stack text.
+                                $taskSummaryFailed++;
+                                $friendly = $humanizeTaskFail($taskErr);
+                                $taskSummaryFailReasons[$friendly] = ($taskSummaryFailReasons[$friendly] ?? 0) + 1;
+                            }
                         }
                     }
                     } // end foreach createTasks
 
+                    // 2026-05-24 FIX 49 — persist user-stated cadence preferences.
+                    // Sarah's prompt only emits these when user used commit
+                    // language. Validates fields against tier framework keys,
+                    // ignores unknown fields, narrates what was locked.
+                    $persistedCadence = [];
+                    if (is_array($cadenceOverrides) && !empty($cadenceOverrides)) {
+                        $allowedFields = [
+                            'articles_per_month',
+                            'standalone_socials_per_month',
+                            'videos_per_month',
+                            'emails_per_month',
+                            'audits_per_month',
+                            'strategy_meetings_per_month',
+                            'retargeting_campaigns_per_month',
+                        ];
+                        $cleaned = [];
+                        foreach ($cadenceOverrides as $k => $v) {
+                            if (!in_array($k, $allowedFields, true)) continue;
+                            if (!is_numeric($v) || (int) $v < 0 || (int) $v > 500) continue;
+                            $cleaned['cadence_' . $k] = (int) $v;
+                        }
+                        if (!empty($cleaned)) {
+                            try {
+                                $current = \App\Core\Strategy\StrategyTierService::getActiveStrategy($wsId);
+                                \App\Core\Strategy\StrategyTierService::setActiveStrategy(
+                                    $wsId,
+                                    $current['tier'] ?? 'normal',
+                                    $cleaned,
+                                    null
+                                );
+                                $persistedCadence = $cleaned;
+                                \Illuminate\Support\Facades\Log::info('[SarahChat] cadence overrides persisted', [
+                                    'workspace_id' => $wsId,
+                                    'overrides'    => $cleaned,
+                                ]);
+                            } catch (\Throwable $eCad) {
+                                \Illuminate\Support\Facades\Log::warning('[SarahChat] cadence persist failed: ' . $eCad->getMessage());
+                            }
+                        }
+                    }
+
+                    // 2026-05-25 FIX C — persist user-confirmed tier switch.
+                    // When the LLM detected "switch to aggressive/super/normal"
+                    // and emitted strategy_change in the envelope, setActiveStrategy
+                    // here so CadenceGuard (and the morning brief) read the new
+                    // tier_name + cadence numbers next call.
+                    $strategyChange = $assist['strategy_change']
+                        ?? ($embeddedEnvelope['strategy_change'] ?? null)
+                        ?? ($parsed['strategy_change'] ?? null);
+                    $persistedTier = null;
+                    if (is_array($strategyChange) && !empty($strategyChange['tier'])) {
+                        $newTier = strtolower(trim((string) $strategyChange['tier']));
+                        if (in_array($newTier, ['normal', 'aggressive', 'super'], true)) {
+                            try {
+                                \App\Core\Strategy\StrategyTierService::setActiveStrategy(
+                                    $wsId,
+                                    $newTier,
+                                    [],
+                                    null
+                                );
+                                $persistedTier = $newTier;
+                                \Illuminate\Support\Facades\Log::info('[SarahChat] tier switched', [
+                                    'workspace_id' => $wsId,
+                                    'new_tier'     => $newTier,
+                                ]);
+                            } catch (\Throwable $eTier) {
+                                \Illuminate\Support\Facades\Log::warning('[SarahChat] tier switch failed: ' . $eTier->getMessage());
+                            }
+                        } else {
+                            \Illuminate\Support\Facades\Log::warning('[SarahChat] strategy_change ignored — invalid tier', [
+                                'workspace_id' => $wsId,
+                                'received_tier' => $newTier,
+                            ]);
+                        }
+                    }
+
+                    // 2026-05-24 FIX 49 — persist user-stated goals into
+                    // workspace_goals (FIX 46 table). Allowed types come
+                    // from the StrategyTierService spec — anything else
+                    // ignored. Each goal goes in with status='active'.
+                    $persistedGoals = [];
+                    if (is_array($goalProposals) && !empty($goalProposals)) {
+                        $allowedTypes = [
+                            'keyword_rank_target',
+                            'traffic_growth',
+                            'lead_volume',
+                            'email_subscribers',
+                            'social_followers',
+                            'revenue_attribution',
+                        ];
+                        foreach ($goalProposals as $g) {
+                            if (!is_array($g)) continue;
+                            $type = (string) ($g['type'] ?? '');
+                            if (!in_array($type, $allowedTypes, true)) continue;
+                            $title = trim((string) ($g['title'] ?? ''));
+                            if ($title === '') continue;
+                            try {
+                                $id = \Illuminate\Support\Facades\DB::table('workspace_goals')->insertGetId([
+                                    'workspace_id'        => $wsId,
+                                    'created_by_user_id'  => optional($r->user())->id,
+                                    'goal_type'           => $type,
+                                    'title'               => mb_substr($title, 0, 255),
+                                    'description'         => mb_substr((string) ($g['description'] ?? ''), 0, 65535),
+                                    'target_json'         => json_encode($g['target'] ?? null),
+                                    'current_state_json'  => null,
+                                    'target_deadline'     => isset($g['deadline']) && $g['deadline']
+                                        ? date('Y-m-d', strtotime((string) $g['deadline'])) : null,
+                                    'started_at'          => now()->toDateString(),
+                                    'status'              => 'active',
+                                    'priority'            => 50,
+                                    'created_at'          => now(),
+                                    'updated_at'          => now(),
+                                ]);
+                                $persistedGoals[] = ['id' => $id, 'type' => $type, 'title' => $title];
+                                \Illuminate\Support\Facades\Log::info('[SarahChat] goal persisted', [
+                                    'workspace_id' => $wsId, 'goal_id' => $id, 'type' => $type, 'title' => $title,
+                                ]);
+                            } catch (\Throwable $eGoal) {
+                                \Illuminate\Support\Facades\Log::warning('[SarahChat] goal persist failed: ' . $eGoal->getMessage());
+                            }
+                        }
+                    }
+
+                    // Surface confirmations in the reply if anything was persisted.
+                    if (!empty($persistedCadence) || !empty($persistedGoals)) {
+                        $reply .= "\n\n";
+                        if (!empty($persistedCadence)) {
+                            $reply .= "🔒 Locked in your cadence preferences:";
+                            foreach ($persistedCadence as $k => $v) {
+                                $label = str_replace(['cadence_', '_'], ['', ' '], $k);
+                                $reply .= "\n  • {$label}: {$v}/month";
+                            }
+                            $reply .= "\n";
+                        }
+                        if (!empty($persistedGoals)) {
+                            $reply .= "🎯 Saved " . count($persistedGoals) . " goal(s):";
+                            foreach ($persistedGoals as $g) {
+                                $reply .= "\n  • [{$g['type']}] {$g['title']}";
+                            }
+                        }
+                    }
+
                     // 2026-05-22 FIX 7 (Bug B) — emit ONE summary line per batch.
-                    if ($taskSummaryCreated > 0 || $taskSummaryFailed > 0) {
+                    if ($taskSummaryCreated > 0 || $taskSummaryFailed > 0 || $taskSummaryDeduped > 0) {
                         $byAgentParts = [];
-                        foreach ($taskSummaryByAgent as $agent => $n) {
-                            $byAgentParts[] = "$agent: $n";
+                        // 2026-05-23 FIX 23 — was `as $agent => $n` which shadowed
+                        // the outer $agent Agent model (it carried the slug string
+                        // forward), causing $agent->name to crash later in this
+                        // route. Renamed loop key to $agentSlug.
+                        foreach ($taskSummaryByAgent as $agentSlug => $n) {
+                            $byAgentParts[] = "$agentSlug: $n";
                         }
                         $byAgentStr = !empty($byAgentParts) ? ' (' . implode(', ', $byAgentParts) . ')' : '';
-                        if ($taskSummaryFailed === 0) {
+                        if ($taskSummaryCreated > 0 && $taskSummaryFailed === 0) {
                             $reply .= "\n\n✅ Queued {$taskSummaryCreated} tasks{$byAgentStr}.";
-                        } else {
+                        } elseif ($taskSummaryCreated > 0) {
                             $total = $taskSummaryCreated + $taskSummaryFailed;
                             $reply .= "\n\n✅ Queued {$taskSummaryCreated}/{$total} tasks{$byAgentStr}.";
                             $reply .= "\n⚠️ {$taskSummaryFailed} task(s) failed to create:";
                             foreach ($taskSummaryFailReasons as $reason => $count) {
                                 $reply .= "\n  • ({$count}x) {$reason}";
+                            }
+                        }
+                        // 2026-05-23 FIX 24 (A) — surface deduped tasks honestly.
+                        // Tells the user the work is already in progress so they
+                        // do not think Sarah ignored their request.
+                        if ($taskSummaryDeduped > 0) {
+                            $reply .= "\n\nℹ️ Skipped {$taskSummaryDeduped} duplicate task(s) — already in progress from a recent request:";
+                            foreach (array_slice($taskSummaryDedupedTitles, 0, 5) as $dupTitle) {
+                                $reply .= "\n  • " . $dupTitle;
+                            }
+                            if (count($taskSummaryDedupedTitles) > 5) {
+                                $reply .= "\n  • …and " . (count($taskSummaryDedupedTitles) - 5) . " more.";
                             }
                         }
                     }
@@ -1561,18 +3226,124 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             'created_at' => now(),
         ]);
 
-        // Store agent response in agent_messages for the unified messaging UI
+        // ── CLAIM VALIDATOR (2026-07-19) ─────────────────────────────────
+        // Deterministic backstop against agents claiming work they did not do
+        // (James "queued the fix for myself", Priya "already flagged it to
+        // Sarah" — both false, both after four prompt rules failed to stop it).
+        // Specialists can NEVER queue, so they are always checked; Sarah is
+        // checked only when this turn produced no tasks. `didQueue` is derived
+        // from a fresh scoped count because $taskSummaryCreated is not in scope
+        // here (it lives in a deeper block that has already closed).
+        try {
+            $__didQueue = false;
+            if (in_array($slug, ['sarah', 'dmm'], true)) {
+                $__didQueue = DB::table('tasks')
+                    ->where('workspace_id', $wsId)
+                    ->where('created_at', '>=', now()->subSeconds(25))
+                    ->exists();
+            }
+            $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue);
+            $reply = $__cv['reply'];
+            // W6 — truthfulness guard on the agent bubble. The launch-scope rule lives in
+            // Sarah's prompt, but a prompt is probabilistic: she still told a user
+            // "social media isn't connected here - Marcus can't publish there", which frames
+            // a REMOVED product as a DISCONNECTED integration and names a removed specialist.
+            // This corrects that deterministically. Retained integrations (Search Console,
+            // Google Analytics, WordPress) keep their genuine "not connected" wording.
+            $reply = \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $reply);
+        } catch (\Throwable $__cve) {
+            \Illuminate\Support\Facades\Log::warning('[AgentClaim] validator threw: ' . $__cve->getMessage());
+        }
+        // Store agent response in agent_messages for the unified messaging UI.
+        // v1.4.4 (2026-05-30) — two-phase mode tags this row as the FINAL phase
+        // so the SPA's poll loop can distinguish it from the earlier ack row
+        // (which has metadata_json.phase = 'ack'). Same row shape otherwise.
         try {
             \Illuminate\Support\Facades\DB::table('agent_messages')->insert([
-                'workspace_id' => $wsId,
-                'agent_slug' => $slug,
-                'sender' => $agent->name,
-                'content' => $reply,
-                'role' => 'agent',
+                'workspace_id'  => $wsId,
+                'agent_slug'    => $slug,
+                'sender'        => $agent->name,
+                'content'       => $reply,
+                'role'          => 'agent',
+                'metadata_json' => json_encode([
+                    'phase'             => 'final',
+                    'requires_sarah'    => $requiresSarah,
+                    'sarah_context'     => $sarahContext,
+                    'ack_message_id'    => $earlyAckMessageId,
+                ]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-        } catch (\Throwable $e) { /* non-critical */ }
+        } catch (\Throwable $e) {
+            // 2026-07-15 — was silently swallowed ("non-critical"), which MASKED
+            // the real cause of the two-phase "hit a snag" (final row never
+            // written -> shutdown net fires). Log it with reply diagnostics.
+            \Illuminate\Support\Facades\Log::error('[SarahChat] FINAL row insert failed: ' . $e->getMessage(), [
+                'ws' => $wsId, 'slug' => $slug,
+                'reply_type' => gettype($reply),
+                'reply_len'  => is_string($reply) ? strlen($reply) : -1,
+                'reply_head' => is_string($reply) ? substr($reply, 0, 120) : json_encode($reply),
+            ]);
+        }
+
+        // 2026-06-08 — Push the FINAL agent reply to the user's device(s).
+        // The two-phase handler is the path mobile + web actually use; the
+        // legacy AgentDispatchService push never fired here, so agent replies
+        // produced no notifications. Best-effort: the dispatcher swallows its
+        // own errors (no devices, expired tokens, Expo down) and we guard too.
+        if ($userId > 0 && is_string($reply) && trim($reply) !== '') {
+            try {
+                app(\App\Core\Notifications\PushDispatcherService::class)->dispatchAgentReply(
+                    $userId, (int) $wsId, $slug, $reply, $slug
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[SarahChat] push dispatch failed: ' . $e->getMessage());
+            }
+        }
+
+        // 2026-06-08 — User-requested one-shot timed follow-up ("message me in
+        // 5 minutes" / "message me hi in 30 seconds"). Sarah emits
+        // schedule_followup {delay_minutes|delay_seconds, message, note}; we
+        // enqueue a delayed job that delivers the literal message (or a live
+        // status snapshot) + push at the due time. User-DIRECTED, not autonomous.
+        if (is_array($scheduleFollowup) && $userId > 0) {
+            // Accept delay_seconds, or delay_minutes (which may be fractional —
+            // 0.5 = 30s). Floor 10s, ceiling 24h, so sub-minute timers work.
+            $delaySec = 0;
+            if (isset($scheduleFollowup['delay_seconds']) && is_numeric($scheduleFollowup['delay_seconds'])) {
+                $delaySec = (int) round((float) $scheduleFollowup['delay_seconds']);
+            } elseif (isset($scheduleFollowup['delay_minutes']) && is_numeric($scheduleFollowup['delay_minutes'])) {
+                $delaySec = (int) round(((float) $scheduleFollowup['delay_minutes']) * 60);
+            }
+            \Illuminate\Support\Facades\Log::info('[SarahChat] schedule_followup parsed', [
+                'ws' => $wsId, 'delay_sec' => $delaySec,
+                'has_message' => isset($scheduleFollowup['message']) && trim((string) $scheduleFollowup['message']) !== '',
+                'raw' => $scheduleFollowup,
+            ]);
+            if ($delaySec >= 10 && $delaySec <= 86400) {
+                try {
+                    \App\Jobs\ScheduledFollowupJob::dispatch(
+                        (int) $wsId, $userId, $slug,
+                        (string) ($scheduleFollowup['note'] ?? ''),
+                        (string) ($scheduleFollowup['message'] ?? '')
+                    )->delay(now()->addSeconds($delaySec));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[SarahChat] schedule_followup dispatch failed: ' . $e->getMessage());
+                }
+            } else {
+                \Illuminate\Support\Facades\Log::warning('[SarahChat] schedule_followup skipped (delay out of 10s..24h bounds)', ['delay_sec' => $delaySec]);
+            }
+        }
+
+        // v1.4.4 (2026-05-30) — In two-phase mode the response was already
+        // shipped via fastcgi_finish_request() at the top of this handler.
+        // The SPA is polling for the new agent_messages row above. Return
+        // null here so PHP exits cleanly (the return value goes nowhere —
+        // the connection is closed). For non-two-phase paths (vision /
+        // quick action / FPM unavailable), continue to return JSON.
+        if ($useTwoPhase) {
+            return null;
+        }
 
         return response()->json([
             'sent' => true,
@@ -1686,6 +3457,9 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         return response()->json(['saved' => true]);
     });
 
+    /* WORKSPACE V2 — single consolidated state endpoint (added 2026-05-26) */
+    Route::get('/workspace/state', [\App\Http\Controllers\Api\WorkspaceStateController::class, 'show']);
+
         // GET /workspace/agents — agents currently on the workspace's team
     Route::get('/workspace/agents', function (\Illuminate\Http\Request $r) {
 
@@ -1745,6 +3519,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ->join('workspace_agents', 'agents.id', '=', 'workspace_agents.agent_id')
             ->where('workspace_agents.workspace_id', $wsId)
             ->where('workspace_agents.enabled', true)
+            ->whereNotIn('agents.slug', \App\Core\LaunchScope\LaunchScopePolicy::REMOVED_AGENTS) // LAUNCH SCOPE 2026-07-20
             ->select('agents.slug', 'agents.name', 'agents.title', 'agents.color')
             ->get();
 
@@ -1903,6 +3678,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     Route::post('/media/use',     [\App\Http\Controllers\Api\MediaController::class, 'use_']);
     Route::delete('/media/{id}',  [\App\Http\Controllers\Api\MediaController::class, 'delete'])->where('id', '[0-9]+');
 
+    // ── Device tokens (v1.4.4 — push notifications) ──
+    Route::post('/devices/register', [\App\Http\Controllers\Api\DeviceTokenController::class, 'register']);
+    Route::delete('/devices/{token}', [\App\Http\Controllers\Api\DeviceTokenController::class, 'unregister'])->where('token', '.+');
+
     // Validation Report (Phase 4)
     Route::get('/system/validation-report', [\App\Http\Controllers\Api\Debug\DebugScenarioController::class, 'validationReport'])->middleware(\App\Http\Middleware\AdminMiddleware::class);
 
@@ -1925,20 +3704,36 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // Approve a plan
         Route::post('/plans/{id}/approve', function (\Illuminate\Http\Request $r, $id) {
             $sarah = app(\App\Core\Orchestration\SarahOrchestrator::class);
-            return response()->json($sarah->approvePlan($r->attributes->get('workspace_id'), $id, $r->user()->id));
+            $res = $sarah->approvePlan((int) $r->attributes->get('workspace_id'), (int) $id, $r->user()->id);
+            // b21 — a plan in another workspace must answer 404, not a 200 whose
+            // body happens to say not_found.
+            if (($res['status'] ?? null) === 'not_found') {
+                return response()->json(['error' => 'Plan not found'], 404);
+            }
+            return response()->json($res);
         });
 
         // Cancel a plan
+        // b21 (2026-07-24) — pass the caller's workspace; cancelPlan() previously
+        // took an id alone and would cancel ANY workspace's plan.
         Route::post('/plans/{id}/cancel', function (\Illuminate\Http\Request $r, $id) {
             $sarah = app(\App\Core\Orchestration\SarahOrchestrator::class);
-            $sarah->cancelPlan($id);
+            $ok = $sarah->cancelPlan((int) $id, (int) $r->attributes->get('workspace_id'));
+            if (! $ok) {
+                return response()->json(['error' => 'Plan not found'], 404);
+            }
             return response()->json(['cancelled' => true]);
         });
 
         // Get plan status (for polling)
-        Route::get('/plans/{id}', function ($id) {
+        // b21 — was unscoped: any authenticated caller could read any plan by id.
+        Route::get('/plans/{id}', function (\Illuminate\Http\Request $r, $id) {
             $sarah = app(\App\Core\Orchestration\SarahOrchestrator::class);
-            return response()->json($sarah->getPlanStatus($id));
+            $res = $sarah->getPlanStatus((int) $id, (int) $r->attributes->get('workspace_id'));
+            if (isset($res['error'])) {
+                return response()->json($res, 404);
+            }
+            return response()->json($res);
         });
 
         // List plans
@@ -2041,6 +3836,26 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             return response()->json($proactive->declineProposal($r->attributes->get('workspace_id'), $id));
         });
 
+        // 2026-05-24 FIX 55 — batch approve/decline. Accepts {"ids":[...]}.
+        Route::post('/proposals/batch-approve', function (\Illuminate\Http\Request $r) {
+            $r->validate(['ids' => 'required|array|min:1|max:50', 'ids.*' => 'integer']);
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->batchApprove(
+                $r->attributes->get('workspace_id'),
+                $r->user()->id,
+                $r->input('ids', [])
+            ));
+        });
+
+        Route::post('/proposals/batch-decline', function (\Illuminate\Http\Request $r) {
+            $r->validate(['ids' => 'required|array|min:1|max:50', 'ids.*' => 'integer']);
+            $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
+            return response()->json($proactive->batchDecline(
+                $r->attributes->get('workspace_id'),
+                $r->input('ids', [])
+            ));
+        });
+
         // Cost estimate for any plan
         Route::post('/estimate-cost', function (\Illuminate\Http\Request $r) {
             $r->validate(['tasks' => 'required|array']);
@@ -2066,6 +3881,52 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::post('/proactive/monthly-strategy', function (\Illuminate\Http\Request $r) {
             $proactive = app(\App\Core\Orchestration\ProactiveStrategyEngine::class);
             return response()->json($proactive->monthlyStrategy($r->attributes->get('workspace_id'), $r->user()->id));
+        });
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // 2026-05-24 — AgentBrowser transparency layer
+    //
+    // Every external-web touch by any agent (or user-on-behalf-of-agent)
+    // goes through WebActivityService and lands in agent_web_activity.
+    // The GET /activity endpoint surfaces the full log for transparency.
+    // ══════════════════════════════════════════════════════════════
+    Route::prefix('web')->group(function () {
+        Route::post('/fetch', function (\Illuminate\Http\Request $r) {
+            $r->validate(['url' => 'required|url|max:2048', 'agent' => 'required|string|max:64']);
+            $svc = app(\App\Engines\Web\Services\WebActivityService::class);
+            return response()->json($svc->fetch(
+                (int) $r->attributes->get('workspace_id'),
+                (string) $r->input('agent'),
+                (int) ($r->user()->id ?? 0) ?: null,
+                (string) $r->input('url'),
+                (int) $r->input('task_id') ?: null,
+            ));
+        });
+
+        Route::post('/search', function (\Illuminate\Http\Request $r) {
+            $r->validate(['query' => 'required|string|min:1|max:512', 'agent' => 'required|string|max:64']);
+            $svc = app(\App\Engines\Web\Services\WebActivityService::class);
+            return response()->json($svc->search(
+                (int) $r->attributes->get('workspace_id'),
+                (string) $r->input('agent'),
+                (int) ($r->user()->id ?? 0) ?: null,
+                (string) $r->input('query'),
+                (int) $r->input('task_id') ?: null,
+            ));
+        });
+
+        Route::get('/activity', function (\Illuminate\Http\Request $r) {
+            $svc = app(\App\Engines\Web\Services\WebActivityService::class);
+            return response()->json([
+                'activity' => $svc->listActivity(
+                    (int) $r->attributes->get('workspace_id'),
+                    $r->input('agent'),
+                    $r->input('since'),
+                    (int) $r->input('limit', 100),
+                    (int) $r->input('task_id') ?: null,
+                ),
+            ]);
         });
     });
 
@@ -2328,27 +4189,52 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             return response()->json(['appointments' => $events]);
         });
         Route::post('/appointments', function (\Illuminate\Http\Request $r) {
-            $wsId = $r->attributes->get('workspace_id');
+            // SECURITY/SCHEMA 2026-07-23: `type` is not a column on calendar_events.
+            // The real column is `category` (varchar(30), default 'general').
+            // workspace_id comes from the auth middleware only — never the payload.
+            $wsId  = (int) $r->attributes->get('workspace_id');
+            $title = trim((string) $r->input('title'));
+            $start = $r->input('start_at');
+            if ($title === '' || empty($start)) {
+                return response()->json(['error' => 'title and start_at are required'], 422);
+            }
             $id = \Illuminate\Support\Facades\DB::table('calendar_events')->insertGetId([
                 'workspace_id' => $wsId,
-                'title' => $r->input('title'),
+                'title' => $title,
                 'description' => $r->input('description'),
-                'starts_at' => $r->input('start_at'),
+                'starts_at' => $start,
                 'ends_at' => $r->input('end_at'),
-                'type' => 'appointment',
+                'category' => 'appointment',
+                'engine' => 'crm',
                 'created_at' => now(), 'updated_at' => now(),
             ]);
             return response()->json(['id' => $id], 201);
         });
         Route::put('/appointments/{id}', function (\Illuminate\Http\Request $r, $id) {
-            \Illuminate\Support\Facades\DB::table('calendar_events')->where('id', $id)->update(array_filter([
+            // SECURITY 2026-07-23 (IDOR): this update was scoped by id ALONE, so any
+            // authenticated user could mutate any workspace's calendar event by global
+            // id. Now scoped to the active workspace from the auth middleware.
+            // SCHEMA: `status` is not a column on calendar_events — removed. There is no
+            // status concept in this domain model, so no column was added to preserve it.
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $update = array_filter([
                 'title' => $r->input('title'),
                 'description' => $r->input('description'),
                 'starts_at' => $r->input('start_at'),
                 'ends_at' => $r->input('end_at'),
-                'status' => $r->input('status'),
-                'updated_at' => now(),
-            ]));
+            ], fn($v) => $v !== null && $v !== '');
+            $update['updated_at'] = now();
+
+            $n = \Illuminate\Support\Facades\DB::table('calendar_events')
+                ->where('id', (int) $id)
+                ->where('workspace_id', $wsId)
+                ->update($update);
+
+            // Identical response whether the event is missing, foreign, or otherwise
+            // inaccessible — event existence must not leak across workspaces.
+            if ($n === 0) {
+                return response()->json(['error' => 'Event not found'], 404);
+            }
             return response()->json(['updated' => true]);
         });
 
@@ -2522,13 +4408,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
             // Mode A — match any Laravel-hosted published site by host.
             // Wave 32b — dropped workspace_id filter; sitemap is public info.
+            // 2026-05-23 FIX 26 — also match on custom_domain. Without this
+            // a tenant connected via custom domain (e.g. chefredraymundo.com
+            // → chef-red.levelupgrowth.io) falls through to external Mode B
+            // and the indexed/unindexed counts compare URLs with mismatched
+            // hosts (sitemap uses subdomain, content_index uses custom_domain).
             $site = null;
             if ($host) {
                 $site = \Illuminate\Support\Facades\DB::table('websites')
                     ->where('status', 'published')
                     ->where(function ($q) use ($host) {
                         $q->where('subdomain', $host)
-                          ->orWhere('domain', $host);
+                          ->orWhere('domain', $host)
+                          ->orWhere('custom_domain', $host);
                     })
                     ->whereNull('deleted_at')
                     ->first();
@@ -2536,19 +4428,57 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
             if ($site) {
                 $sub = $site->subdomain ?: $host;
+                $canonHost = !empty($site->custom_domain) ? strtolower(trim($site->custom_domain, ' /')) : $sub;
+                $wsForSite = (int) ($site->workspace_id ?? $wsId);
+
                 $pages = \Illuminate\Support\Facades\DB::table('pages')
                     ->where('website_id', $site->id)
                     ->where('status', 'published')
                     ->get(['slug', 'updated_at']);
-                $latest = $pages->max('updated_at');
+                $articles = \Illuminate\Support\Facades\DB::table('articles')
+                    ->where('workspace_id', $wsForSite)
+                    ->where('status', 'published')
+                    ->whereNotNull('slug')
+                    ->get(['slug', 'updated_at', 'published_at']);
+
+                // 2026-05-23 FIX 26 — build the canonical URL list the sitemap
+                // would emit, then cross-reference against seo_content_index
+                // to compute indexed/unindexed counts (Mode A used to skip
+                // this and the UI showed "0 indexed / N unindexed" for
+                // every Laravel site).
+                $sitemapUrls = [];
+                foreach ($pages as $p) {
+                    $slugSeg = ($p->slug === 'home' || $p->slug === '') ? '' : $p->slug;
+                    $sitemapUrls[] = 'https://' . $canonHost . '/' . $slugSeg;
+                }
+                foreach ($articles as $a) {
+                    $slugSeg = trim((string) $a->slug, '/');
+                    if ($slugSeg === '') continue;
+                    $sitemapUrls[] = 'https://' . $canonHost . '/blog/' . $slugSeg;
+                }
+                $sitemapNorm = array_map(fn ($u) => rtrim(strtolower($u), '/'), $sitemapUrls);
+                $indexedUrls = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                    ->where('workspace_id', $wsForSite)
+                    ->pluck('url')
+                    ->map(fn ($u) => rtrim(strtolower((string) $u), '/'))
+                    ->toArray();
+                $indexedCount = count(array_intersect($sitemapNorm, $indexedUrls));
+                $urlCount = count($sitemapUrls);
+
+                $latest = max((string) ($pages->max('updated_at') ?? ''), (string) ($articles->max('updated_at') ?? '')) ?: null;
                 return response()->json([
-                    'success'      => true,
-                    'mode'         => 'laravel',
-                    'sitemap_url'  => "https://{$sub}/sitemap.xml",
-                    'robots_url'   => "https://{$sub}/robots.txt",
-                    'page_count'   => $pages->count(),
-                    'last_updated' => $latest,
-                    'website_id'   => $site->id,
+                    'success'         => true,
+                    'mode'            => 'laravel',
+                    'sitemap_url'     => "https://{$canonHost}/sitemap.xml",
+                    'robots_url'     => "https://{$canonHost}/robots.txt",
+                    'url_count'       => $urlCount,
+                    'page_count'      => $pages->count(),
+                    'article_count'   => $articles->count(),
+                    'indexed_count'   => $indexedCount,
+                    'unindexed_count' => max(0, $urlCount - $indexedCount),
+                    'last_updated'    => $latest,
+                    'website_id'      => $site->id,
+                    'sample_urls'     => array_slice($sitemapUrls, 0, 10),
                 ]);
             }
 
@@ -2567,10 +4497,38 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $urls  = [];
             foreach ($candidates as $u) {
                 try {
-                    $resp = \Illuminate\Support\Facades\Http::timeout(8)->get($u);
+                    $resp = \Illuminate\Support\Facades\Http::timeout(10)->get($u);
                     if ($resp->ok() && preg_match('/<urlset|<sitemapindex/i', $resp->body())) {
                         $found = $u;
-                        if (preg_match_all('#<loc>\s*([^<\s]+)\s*</loc>#i', $resp->body(), $m)) {
+                        $body = $resp->body();
+                        // 2026-05-23 FIX 26 — if the sitemap is an index (WP
+                        // standard wp-sitemap.xml + Yoast sitemap_index.xml),
+                        // recurse one level: fetch each sub-sitemap and
+                        // collect the actual page URLs from their <loc>
+                        // entries. Without this we counted sub-sitemap URLs
+                        // (e.g. 7 sub-sitemaps on shukran) as "URLs in
+                        // sitemap" and the indexed cross-reference was
+                        // guaranteed to be 0.
+                        if (preg_match('/<sitemapindex/i', $body)) {
+                            $subSitemaps = [];
+                            if (preg_match_all('#<loc>\s*([^<\s]+)\s*</loc>#i', $body, $sm)) {
+                                $subSitemaps = array_slice(array_unique($sm[1]), 0, 20);
+                            }
+                            foreach ($subSitemaps as $subUrl) {
+                                try {
+                                    $sub = \Illuminate\Support\Facades\Http::timeout(10)->get($subUrl);
+                                    if ($sub->ok() && preg_match_all('#<loc>\s*([^<\s]+)\s*</loc>#i', $sub->body(), $subM)) {
+                                        foreach ($subM[1] as $childUrl) {
+                                            $urls[] = $childUrl;
+                                            if (count($urls) >= 5000) break 2;
+                                        }
+                                    }
+                                } catch (\Throwable $eSub) {
+                                    // skip this sub-sitemap, keep walking the rest
+                                }
+                            }
+                            $urls = array_values(array_unique($urls));
+                        } elseif (preg_match_all('#<loc>\s*([^<\s]+)\s*</loc>#i', $body, $m)) {
                             $urls = array_slice(array_unique($m[1]), 0, 5000);
                         }
                         break;
@@ -2889,11 +4847,480 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     'referrals_30d' => $referral,
                 ];
             })->values();
+
+            // 2026-05-28 — WP-synced pages from seo_content_index. For
+            // workspaces backed by WP (or any site whose canonical content
+            // lives outside Laravel's articles table), Wave-45 enrichment
+            // needs a different surface. The chatbot website crawler stores
+            // raw_text for each crawled page in chatbot_knowledge_sources;
+            // if that exists, the page is known-live and substantive — use
+            // it as the AEO list. Falls back to seo_content_index pages
+            // with word_count >= 200 so unindexed-but-crawled-by-WP pages
+            // also surface.
+            $wpRows = collect();
+            try {
+                $crawled = \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')
+                    ->where('workspace_id', $wsId)
+                    ->where('source_type', 'website_crawl')
+                    ->where('chunk_count', '>', 0)
+                    ->pluck('source_url')
+                    ->filter()
+                    ->all();
+
+                $q = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                    ->where('workspace_id', $wsId)
+                    ->whereNotNull('url')
+                    ->where('url', '!=', '');
+                if (! empty($crawled)) {
+                    $q->whereIn('url', $crawled);
+                } else {
+                    $q->where('word_count', '>=', 200);
+                }
+
+                $wpRows = $q->orderByDesc('word_count')
+                    ->limit(50)
+                    ->get(['id', 'url', 'title', 'meta_description', 'word_count', 'aeo_enriched_at', 'aeo_jsonld_json', 'created_at'])
+                    ->map(function ($p) {
+                        $enriched = $p->aeo_enriched_at !== null && $p->aeo_jsonld_json !== null;
+                        return [
+                            'id'              => 'wp:' . $p->id,
+                            'seo_index_id'    => (int) $p->id,
+                            'title'           => $p->title ?: $p->url,
+                            'slug'            => $p->url,
+                            'url'             => $p->url,
+                            'status'          => 'published',
+                            'word_count'      => (int) ($p->word_count ?? 0),
+                            'aeo_enriched'    => $enriched,
+                            'aeo_enriched_at' => $p->aeo_enriched_at,
+                            'created_at'      => $p->created_at,
+                            'crawler_hits_30d'=> 0,
+                            'referrals_30d'   => 0,
+                            'source'          => 'wp_synced',
+                        ];
+                    });
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[aeo/articles] wp_synced pull failed', ['err' => $e->getMessage()]);
+            }
+
+            $merged = $rows->merge($wpRows)->values();
+
             return response()->json([
                 'success' => true,
-                'articles' => $rows,
-                'total' => $rows->count(),
-                'enriched_count' => $rows->where('aeo_enriched', true)->count(),
+                'articles' => $merged,
+                'total' => $merged->count(),
+                'enriched_count' => $merged->where('aeo_enriched', true)->count(),
+                'laravel_count' => $rows->count(),
+                'wp_synced_count' => $wpRows->count(),
+            ]);
+        });
+
+        // 2026-05-28 — POST /api/seo/aeo/enrich-wp
+        // Enrichment for WP-synced pages. Same JSON shape as a Wave-45
+        // Article-side aeoEnrich payload (jsonld + tldr + faq) but the
+        // source data comes from chatbot_knowledge_sources.raw_text
+        // (cheap — already crawled) instead of articles.content, and the
+        // result is stored on seo_content_index columns. The admin SPA
+        // shows the generated blocks in a modal for paste into WordPress
+        // (auto-push to WP is a future v1.4 / v1.5 sprint).
+        //
+        // Cost: 1cr per page (matches the Article-side cost).
+        Route::post('/aeo/enrich-wp', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            if (! $wsId) {
+                return response()->json(['success' => false, 'error' => 'NO_WORKSPACE'], 400);
+            }
+            $data = $r->validate([
+                'seo_index_id' => 'required|integer',
+            ]);
+
+            $page = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('id', (int) $data['seo_index_id'])
+                ->where('workspace_id', $wsId)
+                ->first();
+            if (! $page) {
+                return response()->json(['success' => false, 'error' => 'PAGE_NOT_FOUND'], 404);
+            }
+
+            // Reuse the chatbot crawler's raw_text where possible — no extra
+            // HTTP fetch. Falls back to a fresh fetch if the page wasn't
+            // crawled (admin clicked Enrich on a non-crawled URL).
+            $rawText = \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')
+                ->where('workspace_id', $wsId)
+                ->where('source_url', $page->url)
+                ->where('source_type', 'website_crawl')
+                ->value('raw_text');
+
+            if (! $rawText) {
+                try {
+                    $crawler = app(\App\Engines\Chatbot\Services\ChatbotWebsiteCrawler::class);
+                    // Best-effort one-page crawl to get content into the KB
+                    // (also stores chunks for the chatbot — side benefit).
+                    $crawler->crawlOne($wsId, (string) $page->url);
+                    $rawText = \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')
+                        ->where('workspace_id', $wsId)
+                        ->where('source_url', $page->url)
+                        ->value('raw_text');
+                } catch (\Throwable $e) {
+                    return response()->json([
+                        'success' => false,
+                        'error'   => 'PAGE_FETCH_FAILED',
+                        'message' => 'Could not fetch the page content: ' . $e->getMessage(),
+                    ], 422);
+                }
+            }
+
+            if (! $rawText || mb_strlen($rawText) < 200) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'PAGE_TOO_THIN',
+                    'message' => 'Page content is too thin to enrich. Make sure the URL is reachable and has substantive text.',
+                ], 422);
+            }
+
+            // Reserve 1cr before the LLM call.
+            $reservationRef = null;
+            try {
+                $rsv = app(\App\Core\Billing\CreditService::class)->reserveCredits(
+                    $wsId, 1, 'aeo_enrich_wp', (int) $page->id
+                );
+                $reservationRef = $rsv->reservation_reference;
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                if ($e->getStatusCode() === 402) {
+                    return response()->json([
+                        'success' => false,
+                        'error'   => 'INSUFFICIENT_CREDITS',
+                        'message' => 'Top up to enrich more pages.',
+                    ], 402);
+                }
+                throw $e;
+            }
+
+            $title = (string) ($page->meta_title ?: $page->title ?: '');
+            $url   = (string) $page->url;
+            $h1    = (string) ($page->h1 ?: '');
+            $excerpt = mb_substr($rawText, 0, 8000);
+
+            // 2026-05-28 — Pull canonical author + dates so the LLM doesn't
+            // hallucinate ("Shukran UAE" vs the actual "Shukran Group", made-up
+            // datePublished, etc.).
+            $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['business_name', 'name']);
+            $brandName = (string) ($ws->business_name ?: $ws->name ?: 'Site');
+            $publishedAt = $page->created_at
+                ? \Carbon\Carbon::parse($page->created_at)->toDateString()
+                : now()->toDateString();
+            $modifiedAt  = $page->updated_at
+                ? \Carbon\Carbon::parse($page->updated_at)->toDateString()
+                : $publishedAt;
+
+            $system = "You are an Answer-Engine-Optimization (AEO) author. Given a page's text, produce three artifacts that make it cite-worthy for LLM-based search (ChatGPT, Perplexity, Claude, etc.):\n"
+                . "  1. jsonld — a complete schema.org Article JSON-LD object with @context, @type='Article', headline, description, author, datePublished, dateModified, mainEntityOfPage.\n"
+                . "  2. tldr — a 2-3 sentence summary that answers the page's core question directly. Goes at the top of the article in the visible HTML.\n"
+                . "  3. faq — an array of 3-5 {question, answer} objects derived from the page. The questions should be ones a real visitor might ask.\n"
+                . "\n"
+                . "AUTHORITATIVE VALUES — use these EXACTLY in the jsonld, do not invent or change them:\n"
+                . "  - author.@type = 'Organization'\n"
+                . "  - author.name  = '{$brandName}'\n"
+                . "  - datePublished = '{$publishedAt}'\n"
+                . "  - dateModified  = '{$modifiedAt}'\n"
+                . "  - mainEntityOfPage.@id = '{$url}'\n"
+                . "\n"
+                . "Respond ONLY with valid JSON in this exact shape:\n"
+                . '{ "jsonld": <object>, "tldr": "...", "faq": [ { "question": "...", "answer": "..." }, ... ] }';
+
+            $user = "URL: {$url}\nTitle: {$title}\nH1: {$h1}\nBrand: {$brandName}\n\nPAGE TEXT (truncated to 8000 chars):\n{$excerpt}";
+
+            try {
+                $resp = app(\App\Connectors\RuntimeClient::class)->chatJson($system, $user, [
+                    'task' => 'aeo_enrich_wp',
+                    'workspace_id' => $wsId,
+                    'seo_index_id' => (int) $page->id,
+                ], 1500);
+            } catch (\Throwable $e) {
+                app(\App\Core\Billing\CreditService::class)->releaseReservedCredits($reservationRef);
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'RUNTIME_FAILED',
+                    'message' => 'AEO generation failed: ' . $e->getMessage(),
+                ], 502);
+            }
+
+            $parsed = $resp['parsed'] ?? null;
+            if (! ($resp['success'] ?? false) || ! is_array($parsed) || empty($parsed['jsonld']) || empty($parsed['tldr']) || empty($parsed['faq'])) {
+                app(\App\Core\Billing\CreditService::class)->releaseReservedCredits($reservationRef);
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'BAD_LLM_OUTPUT',
+                    'message' => 'The AEO generator returned an incomplete response. Try again in a moment.',
+                ], 502);
+            }
+
+            // Persist on the seo_content_index row.
+            \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('id', $page->id)
+                ->update([
+                    'aeo_enriched_at' => now(),
+                    'aeo_jsonld_json' => json_encode(\App\Engines\SEO\Services\AeoAuditService::buildJsonLd((array) $parsed['jsonld'], (array) ($parsed['faq'] ?? [])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                    'aeo_tldr'        => (string) $parsed['tldr'],
+                    'aeo_faq_json'    => json_encode($parsed['faq'], JSON_UNESCAPED_UNICODE),
+                    'updated_at'      => now(),
+                ]);
+
+            app(\App\Core\Billing\CreditService::class)->commitReservedCredits($reservationRef);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'seo_index_id' => (int) $page->id,
+                    'url'          => $url,
+                    'title'        => $title,
+                    'jsonld'       => $parsed['jsonld'],
+                    'tldr'         => (string) $parsed['tldr'],
+                    'faq'          => $parsed['faq'],
+                    'enriched_at'  => now()->toIso8601String(),
+                ],
+                'credits_used' => 1,
+            ]);
+        });
+
+        // 2026-06-22 — POST /api/seo/aeo/bulk-enrich
+        // Bulk version of /aeo/enrich-wp. Enriches up to a safe chunk (max 8,
+        // PHP-FPM 120s-safe) of the workspace's UNENRICHED, already-crawled
+        // pages per call; the dashboard calls it repeatedly until `remaining`
+        // is 0 (and stops if a chunk makes no progress). Per-page 1cr
+        // reservation — a page that can't be enriched is skipped, never fails
+        // the whole batch. Does NOT crawl in bulk (only pages that already have
+        // crawled raw_text) and does NOT auto-push to WP (generation only;
+        // review + push stays explicit). Mirrors enrich-wp — keep in sync.
+        Route::post('/aeo/bulk-enrich', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            if (! $wsId) {
+                return response()->json(['success' => false, 'error' => 'NO_WORKSPACE'], 400);
+            }
+            $data = $r->validate([
+                'seo_index_ids'   => 'nullable|array',
+                'seo_index_ids.*' => 'integer',
+                'limit'           => 'nullable|integer',
+            ]);
+            $chunk = max(1, min(8, (int) ($data['limit'] ?? 8)));
+
+            $buildQuery = function () use ($wsId, $data) {
+                $q = \Illuminate\Support\Facades\DB::table('seo_content_index as sci')
+                    ->join('chatbot_knowledge_sources as ks', function ($j) use ($wsId) {
+                        $j->on('ks.source_url', '=', 'sci.url')
+                          ->where('ks.source_type', '=', 'website_crawl')
+                          ->where('ks.workspace_id', '=', $wsId);
+                    })
+                    ->where('sci.workspace_id', $wsId)
+                    ->whereNull('sci.aeo_enriched_at')
+                    ->whereRaw('CHAR_LENGTH(ks.raw_text) >= 200');
+                if (! empty($data['seo_index_ids']) && is_array($data['seo_index_ids'])) {
+                    $q->whereIn('sci.id', $data['seo_index_ids']);
+                }
+                return $q;
+            };
+
+            $remainingTotal = $buildQuery()->count();
+            $targets = $buildQuery()->orderBy('sci.id')->limit($chunk)
+                ->get(['sci.id', 'sci.url', 'sci.title', 'sci.meta_title', 'sci.h1', 'sci.created_at', 'sci.updated_at', 'ks.raw_text']);
+
+            if ($targets->isEmpty()) {
+                return response()->json([
+                    'success' => true, 'results' => [], 'enriched' => 0, 'failed' => 0,
+                    'skipped' => 0, 'remaining' => 0, 'credits_used' => 0,
+                    'message' => 'No crawled, unenriched pages left to enrich.',
+                ]);
+            }
+
+            $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['business_name', 'name']);
+            $brandName = (string) ($ws->business_name ?: $ws->name ?: 'Site');
+            $runtime = app(\App\Connectors\RuntimeClient::class);
+            $credits = app(\App\Core\Billing\CreditService::class);
+
+            $results = []; $enriched = 0; $failed = 0; $skipped = 0; $creditsUsed = 0;
+
+            foreach ($targets as $page) {
+                $rawText = (string) $page->raw_text;
+                if (mb_strlen($rawText) < 200) {
+                    $results[] = ['id' => (int) $page->id, 'status' => 'skipped', 'reason' => 'thin'];
+                    $skipped++; continue;
+                }
+
+                $reservationRef = null;
+                try {
+                    $rsv = $credits->reserveCredits($wsId, 1, 'aeo_enrich_wp', (int) $page->id);
+                    $reservationRef = $rsv->reservation_reference;
+                } catch (\Throwable $e) {
+                    $results[] = ['id' => (int) $page->id, 'status' => 'skipped', 'reason' => 'insufficient_credits'];
+                    $skipped++; continue;
+                }
+
+                $title   = (string) ($page->meta_title ?: $page->title ?: '');
+                $url     = (string) $page->url;
+                $h1      = (string) ($page->h1 ?: '');
+                $excerpt = mb_substr($rawText, 0, 8000);
+                $publishedAt = $page->created_at ? \Carbon\Carbon::parse($page->created_at)->toDateString() : now()->toDateString();
+                $modifiedAt  = $page->updated_at ? \Carbon\Carbon::parse($page->updated_at)->toDateString() : $publishedAt;
+
+                $system = "You are an Answer-Engine-Optimization (AEO) author. Given a page's text, produce three artifacts that make it cite-worthy for LLM-based search (ChatGPT, Perplexity, Claude, etc.):\n"
+                    . "  1. jsonld — a complete schema.org Article JSON-LD object with @context, @type='Article', headline, description, author, datePublished, dateModified, mainEntityOfPage.\n"
+                    . "  2. tldr — a 2-3 sentence summary that answers the page's core question directly.\n"
+                    . "  3. faq — an array of 3-5 {question, answer} objects derived from the page.\n"
+                    . "\nAUTHORITATIVE VALUES — use these EXACTLY in the jsonld, do not invent or change them:\n"
+                    . "  - author.@type = 'Organization'\n"
+                    . "  - author.name  = '{$brandName}'\n"
+                    . "  - datePublished = '{$publishedAt}'\n"
+                    . "  - dateModified  = '{$modifiedAt}'\n"
+                    . "  - mainEntityOfPage.@id = '{$url}'\n"
+                    . "\nRespond ONLY with valid JSON in this exact shape:\n"
+                    . '{ "jsonld": <object>, "tldr": "...", "faq": [ { "question": "...", "answer": "..." }, ... ] }';
+                $user = "URL: {$url}\nTitle: {$title}\nH1: {$h1}\nBrand: {$brandName}\n\nPAGE TEXT (truncated to 8000 chars):\n{$excerpt}";
+
+                try {
+                    $resp = $runtime->chatJson($system, $user, [
+                        'task' => 'aeo_enrich_wp', 'workspace_id' => $wsId, 'seo_index_id' => (int) $page->id,
+                    ], 1500);
+                } catch (\Throwable $e) {
+                    $credits->releaseReservedCredits($reservationRef);
+                    $results[] = ['id' => (int) $page->id, 'status' => 'failed', 'reason' => 'runtime'];
+                    $failed++; continue;
+                }
+
+                $parsed = $resp['parsed'] ?? null;
+                if (! ($resp['success'] ?? false) || ! is_array($parsed) || empty($parsed['jsonld']) || empty($parsed['tldr']) || empty($parsed['faq'])) {
+                    $credits->releaseReservedCredits($reservationRef);
+                    $results[] = ['id' => (int) $page->id, 'status' => 'failed', 'reason' => 'bad_output'];
+                    $failed++; continue;
+                }
+
+                \Illuminate\Support\Facades\DB::table('seo_content_index')->where('id', $page->id)->update([
+                    'aeo_enriched_at' => now(),
+                    'aeo_jsonld_json' => json_encode(\App\Engines\SEO\Services\AeoAuditService::buildJsonLd((array) $parsed['jsonld'], (array) ($parsed['faq'] ?? [])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                    'aeo_tldr'        => (string) $parsed['tldr'],
+                    'aeo_faq_json'    => json_encode($parsed['faq'], JSON_UNESCAPED_UNICODE),
+                    'updated_at'      => now(),
+                ]);
+                $credits->commitReservedCredits($reservationRef);
+                $results[] = ['id' => (int) $page->id, 'status' => 'enriched'];
+                $enriched++; $creditsUsed++;
+            }
+
+            return response()->json([
+                'success'      => true,
+                'results'      => $results,
+                'enriched'     => $enriched,
+                'failed'       => $failed,
+                'skipped'      => $skipped,
+                'remaining'    => max(0, $remainingTotal - $enriched),
+                'credits_used' => $creditsUsed,
+            ]);
+        });
+
+        // 2026-05-28 — POST /api/seo/aeo/push-to-wp
+        // Take a previously-generated enrichment (from /aeo/enrich-wp,
+        // persisted on seo_content_index) and push it into WordPress via
+        // the WP plugin's new /wp-json/lgsc/v1/aeo-enrich-post REST route.
+        // WP stores the blocks as post meta + renders them via wp_head
+        // (JSON-LD) and the_content (TLDR + FAQ) — original post_content
+        // is never modified.
+        //
+        // Auth: Laravel sends the workspace's plaintext connector api_key
+        // (lgs_*) in the X-LGSC-API-KEY header. The plugin compares against
+        // its own copy of the same value (option 'lgsc_api_key') with
+        // hash_equals — same secret in both directions.
+        Route::post('/aeo/push-to-wp', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            if (! $wsId) {
+                return response()->json(['success' => false, 'error' => 'NO_WORKSPACE'], 400);
+            }
+            $data = $r->validate([
+                'seo_index_id' => 'required|integer',
+            ]);
+
+            $page = \Illuminate\Support\Facades\DB::table('seo_content_index')
+                ->where('id', (int) $data['seo_index_id'])
+                ->where('workspace_id', $wsId)
+                ->first();
+            if (! $page) {
+                return response()->json(['success' => false, 'error' => 'PAGE_NOT_FOUND'], 404);
+            }
+            if (! $page->aeo_enriched_at || ! $page->aeo_jsonld_json) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'NOT_ENRICHED',
+                    'message' => 'Run AEO enrichment first.',
+                ], 409);
+            }
+
+            $key = \Illuminate\Support\Facades\DB::table('api_keys')
+                ->where('workspace_id', $wsId)
+                ->where('type', 'connector')
+                ->where('is_active', true)
+                ->orderByDesc('id')
+                ->value('key');
+            if (! $key) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'NO_CONNECTOR_KEY',
+                    'message' => 'No active connector API key for this workspace. Reconnect the WordPress plugin first.',
+                ], 409);
+            }
+
+            $wsSettings = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('settings_json');
+            $wsSettings = is_string($wsSettings) ? (json_decode($wsSettings, true) ?: []) : (array) $wsSettings;
+            $wpBase = (string) ($wsSettings['website_url'] ?? '');
+            if (! $wpBase) {
+                $parts = parse_url((string) $page->url);
+                if (! empty($parts['scheme']) && ! empty($parts['host'])) {
+                    $wpBase = $parts['scheme'] . '://' . $parts['host'];
+                }
+            }
+            if (! $wpBase) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'NO_WP_URL',
+                    'message' => 'Could not determine the WordPress site URL for this workspace.',
+                ], 409);
+            }
+
+            $payload = [
+                'post_url' => (string) $page->url,
+                'jsonld'   => json_decode((string) $page->aeo_jsonld_json, true) ?: null,
+                'tldr'     => (string) ($page->aeo_tldr ?? ''),
+                'faq'      => json_decode((string) ($page->aeo_faq_json ?? '[]'), true) ?: [],
+            ];
+
+            $endpoint = rtrim($wpBase, '/') . '/wp-json/lgsc/v1/aeo-enrich-post';
+
+            try {
+                $resp = \Illuminate\Support\Facades\Http::timeout(15)
+                    ->withHeaders([
+                        'X-LGSC-API-KEY' => $key,
+                        'Accept'         => 'application/json',
+                    ])
+                    ->post($endpoint, $payload);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'WP_UNREACHABLE',
+                    'message' => 'Could not reach WordPress: ' . $e->getMessage(),
+                ], 502);
+            }
+
+            if (! $resp->successful()) {
+                $body = $resp->json();
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'WP_REJECTED',
+                    'status'  => $resp->status(),
+                    'message' => is_array($body) ? ($body['message'] ?? ('HTTP ' . $resp->status())) : ('HTTP ' . $resp->status()),
+                    'wp_response' => $body,
+                ], 502);
+            }
+
+            return response()->json([
+                'success'    => true,
+                'wp_response'=> $resp->json(),
+                'endpoint'   => $endpoint,
             ]);
         });
 
@@ -3329,7 +5756,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $wsId = (int) $r->attributes->get('workspace_id');
             $q = \Illuminate\Support\Facades\DB::table('seo_content_index')
                 ->where('workspace_id', $wsId)
-                ->where('inbound_links', 0);
+                ->where('inbound_links', 0)
+                ->where('word_count', '>', 100);
             // Wave 16 — site filter (URL-based, since SCI is workspace-scoped only).
             if ($host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r)) {
                 $q->where('url', 'like', '%//' . $host . '%');
@@ -3701,7 +6129,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $sci = $sciQ->selectRaw('
                 COUNT(*) AS total,
                 AVG(content_score) AS avg_sc,
-                SUM(CASE WHEN inbound_links=0 THEN 1 ELSE 0 END) AS orphans,
+                SUM(CASE WHEN inbound_links=0 AND word_count>100 THEN 1 ELSE 0 END) AS orphans,
                 SUM(CASE WHEN inbound_links BETWEEN 1 AND 2 THEN 1 ELSE 0 END) AS weak,
                 SUM(CASE WHEN (meta_description IS NULL OR meta_description="") THEN 1 ELSE 0 END) AS no_meta,
                 SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin,
@@ -3937,7 +6365,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $sci = $sciQ->selectRaw('
                 COUNT(*) AS total,
                 AVG(content_score) AS avg_sc,
-                SUM(CASE WHEN inbound_links=0 THEN 1 ELSE 0 END) AS orphans,
+                SUM(CASE WHEN inbound_links=0 AND word_count>100 THEN 1 ELSE 0 END) AS orphans,
                 SUM(CASE WHEN inbound_links BETWEEN 1 AND 2 THEN 1 ELSE 0 END) AS weak,
                 SUM(CASE WHEN (meta_description IS NULL OR meta_description="") THEN 1 ELSE 0 END) AS no_meta,
                 SUM(CASE WHEN word_count < 300 THEN 1 ELSE 0 END) AS thin,
@@ -4105,7 +6533,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $host = \App\Engines\SEO\Support\SiteScope::hostFromRequest($r);
             $q = \Illuminate\Support\Facades\DB::table('seo_content_index')
                 ->where('workspace_id', $wsId)
-                ->where('inbound_links', 0);
+                ->where('inbound_links', 0)
+                ->where('word_count', '>', 100);
             if ($host !== '') { $q->where('url', 'like', '%//' . $host . '%'); }
             $rows = $q->orderByDesc('content_score')->get(['url', 'title', 'content_score', 'word_count', 'authority_score', 'updated_at']);
             $fname = 'seo-orphans-' . ($host ?: 'all') . '-' . date('Ymd') . '.csv';
@@ -4392,21 +6821,273 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // what each UI consumer expects.
 
         // GSC integration — Phase 5 on the roadmap.
-        Route::get('/gsc/queries', function (\Illuminate\Http\Request $r) {
-            return response()->json([
-                'success'   => true,
-                'connected' => false,
-                'queries'   => [],
-                'message'   => 'Google Search Console is not connected for this workspace yet. Connect GSC in Settings to see search queries here.',
-            ]);
+        // ── Google Search Console (model B — platform OAuth app) ──────────
+        // Phase 1: OAuth core. Each workspace connects its OWN Google account
+        // + property; tokens are stored per workspace_id (gsc_connections).
+        // These routes live in the dual-auth /seo group, so they work both in
+        // the standalone app (JWT) and the embedded connector (X-API-KEY) —
+        // workspace_id is set by JwtAuthMiddleware for both. Response shapes
+        // are SUPERSETS of the old stubs (success/connected/site/queries kept)
+        // so no existing UI consumer breaks.
+
+        // Start the connect flow — returns the Google consent URL the button
+        // opens in a new tab. window.open(r.url) is already wired in seo.js.
+        Route::get('/gsc/auth-url', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $gsc  = app(\App\Engines\SEO\Services\GscClient::class);
+            if (! $gsc->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'not_configured',
+                    'message' => 'Google Search Console is not set up on this server yet. Please try again shortly.',
+                ], 503);
+            }
+            return response()->json(['success' => true, 'url' => $gsc->getAuthUrl($wsId)]);
         });
+
         Route::get('/gsc/status', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $gsc  = app(\App\Engines\SEO\Services\GscClient::class);
+            $conn = $gsc->getConnection($wsId);
+            $connected = $conn !== null && (bool) $conn->connected && ! empty($conn->refresh_token_enc);
             return response()->json([
                 'success'    => true,
-                'connected'  => false,
-                'site'       => null,
-                'message'    => 'GSC integration coming soon.',
+                'connected'  => $connected,
+                'site'       => $conn->site_url ?? null,
+                'email'      => $conn->connected_email ?? null,
+                'last_sync'  => optional($conn?->last_sync_at)->toIso8601String(),
+                'message'    => $connected ? null : 'Connect Google Search Console to sync ranking data.',
             ]);
+        });
+
+        // After consent, list the GSC properties the account can access so the
+        // user can map one to this workspace.
+        Route::get('/gsc/sites', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $gsc  = app(\App\Engines\SEO\Services\GscClient::class);
+            try {
+                return response()->json(['success' => true, 'sites' => $gsc->listSites($wsId)]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'sites' => [], 'message' => $e->getMessage()], 400);
+            }
+        });
+
+        // Persist the chosen property + flip the connection to "connected".
+        Route::post('/gsc/select-site', function (\Illuminate\Http\Request $r) {
+            $wsId    = (int) $r->attributes->get('workspace_id');
+            $siteUrl = trim((string) $r->input('site_url', ''));
+            if ($siteUrl === '') {
+                return response()->json(['success' => false, 'message' => 'Please choose a Search Console property.'], 422);
+            }
+            $gsc = app(\App\Engines\SEO\Services\GscClient::class);
+            if (! $gsc->getConnection($wsId)) {
+                return response()->json(['success' => false, 'message' => 'Connect Google Search Console first.'], 409);
+            }
+            // Guard: only allow a property the account actually owns.
+            try {
+                $owned = array_column($gsc->listSites($wsId), 'siteUrl');
+            } catch (\Throwable $e) {
+                $owned = [];
+            }
+            if (! empty($owned) && ! in_array($siteUrl, $owned, true)) {
+                return response()->json(['success' => false, 'message' => 'That property is not available on the connected account.'], 422);
+            }
+            $gsc->setSite($wsId, $siteUrl);
+            return response()->json(['success' => true, 'site' => $siteUrl]);
+        });
+
+        Route::post('/gsc/disconnect', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            app(\App\Engines\SEO\Services\GscClient::class)->disconnect($wsId);
+            return response()->json(['success' => true, 'connected' => false]);
+        });
+
+        // Pull this workspace's Search Console data into gsc_metrics (idempotent
+        // upsert). Cost 0 — it is a data pull, not generation. Also registered
+        // in CapabilityMap + Orchestrator as gsc_sync so agents (James/Sarah)
+        // can trigger a refresh as a first-class action.
+        Route::post('/gsc/sync', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            try {
+                $res = app(\App\Engines\SEO\Services\GscSyncService::class)->sync($wsId, [
+                    'days' => (int) $r->input('days', 28),
+                ]);
+                return response()->json($res, $res['success'] ? 200 : 409);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'rows_synced' => 0, 'message' => $e->getMessage()], 400);
+            }
+        });
+
+        // Reads persisted rows (populated by the Phase 2 sync). Until the first
+        // sync runs this returns an empty set with connected state — same shape
+        // the UI already handles.
+        Route::get('/gsc/queries', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $gsc  = app(\App\Engines\SEO\Services\GscClient::class);
+            $connected = $gsc->isConnected($wsId);
+            if (! $connected) {
+                return response()->json([
+                    'success' => true, 'connected' => false, 'queries' => [],
+                    'message' => 'Google Search Console is not connected for this workspace yet.',
+                ]);
+            }
+            $rows = \Illuminate\Support\Facades\DB::table('gsc_metrics')
+                ->where('workspace_id', $wsId)
+                ->selectRaw('`query`, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
+                ->groupBy('query')
+                ->orderByDesc('clicks')
+                ->limit(200)
+                ->get()
+                ->map(fn ($x) => [
+                    'query'       => $x->query,
+                    'clicks'      => (int) $x->clicks,
+                    'impressions' => (int) $x->impressions,
+                    'ctr'         => $x->impressions > 0 ? round($x->clicks / $x->impressions, 4) : 0,
+                    'position'    => round((float) $x->position, 1),
+                ]);
+            return response()->json(['success' => true, 'connected' => true, 'queries' => $rows]);
+        });
+
+        // Comprehensive Search Console report for the visual dashboard
+        // (trend, top queries/pages, devices, countries, position buckets).
+        Route::get('/gsc/report', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $gsc  = app(\App\Engines\SEO\Services\GscClient::class);
+            if (! $gsc->isConnected($wsId)) {
+                return response()->json(['success' => true, 'connected' => false, 'report' => null,
+                    'message' => 'Connect Google Search Console to see search reports.']);
+            }
+            try {
+                $days = max(1, min((int) $r->query('days', 28), 90));
+                return response()->json(['success' => true, 'connected' => true, 'report' => $gsc->report($wsId, $days)]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'connected' => true, 'report' => null, 'message' => $e->getMessage()], 502);
+            }
+        });
+
+        // GSC INTELLIGENCE (Phase 3) — ranked opportunities. Laravel reads the
+        // latest persisted snapshot (+ the previous one for decline detection)
+        // and hands the RAW rows to the runtime, which does ALL scoring/ranking
+        // (striking-distance, CTR-gap, cannibalization, decline). No analysis
+        // happens in Laravel. Degrades gracefully if the runtime is unreachable.
+        Route::get('/gsc/insights', function (\Illuminate\Http\Request $r) {
+            // 2026-06-12 — logic extracted to GscInsightsService so the SEO
+            // Assistant live-context shares the SAME cached runtime analysis.
+            // Response shape is unchanged; '_http' carries the 502 status hint.
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $out  = app(\App\Engines\SEO\Services\GscInsightsService::class)->insights($wsId);
+            $status = $out['_http'] ?? 200;
+            unset($out['_http']);
+            return response()->json($out, $status);
+        });
+
+        // ── Google Analytics (GA4) — website-visitor reports ──────────────
+        // Shares the same Google connection as GSC (same tokens + auth modes).
+        // GET /ga/status   → is a GA4 property linked + which one
+        // GET /ga/report   → visitors / sessions / top pages / channels /
+        //                    devices / countries for the trailing window
+        // GET /ga/properties + POST /ga/select-property → manual picker
+        Route::get('/ga/status', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $conn = app(\App\Engines\SEO\Services\GscClient::class)->getConnection($wsId);
+            $googleConnected = $conn !== null && ! empty($conn->refresh_token_enc);
+            $propertySelected = $conn !== null && ! empty($conn->ga_property_id);
+            return response()->json([
+                'success'          => true,
+                'google_connected' => $googleConnected,   // the Google account is linked
+                'connected'        => $propertySelected,  // a GA4 property is chosen → ready to report
+                'property'         => $conn->ga_property_id ?? null,
+                'name'             => $conn->ga_property_name ?? null,
+            ]);
+        });
+
+        Route::get('/ga/report', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $ga   = app(\App\Engines\SEO\Services\GaClient::class);
+            if (! $ga->isConnected($wsId)) {
+                return response()->json([
+                    'success' => true, 'connected' => false, 'report' => null,
+                    'message' => 'Connect Google to see website-visitor analytics.',
+                ]);
+            }
+            try {
+                $days = max(1, min((int) $r->query('days', 28), 90));
+                return response()->json(['success' => true, 'connected' => true, 'report' => $ga->visitorReport($wsId, $days)]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'connected' => true, 'report' => null, 'message' => $e->getMessage()], 502);
+            }
+        });
+
+        Route::get('/ga/properties', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            try {
+                $s = app(\App\Engines\SEO\Services\GaClient::class)->scopedProperties($wsId);
+                return response()->json([
+                    'success'          => true,
+                    'properties'       => $s['matched'],   // only those tracking THIS workspace's site
+                    'all'              => $s['all'],        // every property (manual override)
+                    'matched'          => ! empty($s['matched']),
+                    'workspace_domain' => $s['workspace_domain'],
+                ]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'properties' => [], 'all' => [], 'message' => $e->getMessage()], 400);
+            }
+        });
+
+        Route::post('/ga/select-property', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $pid  = trim((string) $r->input('property_id', ''));
+            if ($pid === '') {
+                return response()->json(['success' => false, 'message' => 'Choose a property.'], 422);
+            }
+            app(\App\Engines\SEO\Services\GaClient::class)->setProperty($wsId, $pid, (string) $r->input('name', ''));
+            return response()->json(['success' => true, 'property' => str_replace('properties/', '', $pid)]);
+        });
+
+        // ── Website tracking (GA4 tag on the published site) ──────────────
+        // Reading GA data (above) is OAuth. COLLECTING data needs the GA4 tag
+        // on the site's pages. The platform auto-detects the Measurement ID
+        // from the connected property so the user rarely types anything; a
+        // manual field is the fallback. Installing = website.seo_json.ga4_id,
+        // which BuilderRenderer injects into every page's <head>.
+        Route::get('/ga/tracking', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $website = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('workspace_id', $wsId)->whereNull('deleted_at')
+                ->orderByRaw("status = 'published' desc")->orderByDesc('id')->first();
+            $installed = null;
+            if ($website) {
+                $seo = json_decode($website->seo_json ?: '{}', true) ?: [];
+                $installed = $seo['ga4_id'] ?? null;
+            }
+            $detected = null;
+            try { $detected = app(\App\Engines\SEO\Services\GaClient::class)->detectedMeasurementId($wsId); } catch (\Throwable $e) {}
+            return response()->json([
+                'success'   => true,
+                'has_site'  => (bool) $website,
+                'domain'    => $website ? ($website->custom_domain ?: $website->domain) : null,
+                'installed' => $installed,
+                'detected'  => $detected,
+            ]);
+        });
+
+        Route::post('/ga/tracking', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $id   = strtoupper(trim((string) $r->input('measurement_id', '')));
+            if (! preg_match('/^G-[A-Z0-9]{6,}$/', $id)) {
+                return response()->json(['success' => false, 'message' => 'Enter a valid Measurement ID — it looks like G-XXXXXXXXXX.'], 422);
+            }
+            $website = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('workspace_id', $wsId)->whereNull('deleted_at')
+                ->orderByRaw("status = 'published' desc")->orderByDesc('id')->first();
+            if (! $website) {
+                return response()->json(['success' => false, 'message' => 'No website is set up for this workspace yet.'], 404);
+            }
+            $seo = json_decode($website->seo_json ?: '{}', true) ?: [];
+            $seo['ga4_id'] = $id;
+            \Illuminate\Support\Facades\DB::table('websites')->where('id', $website->id)
+                ->update(['seo_json' => json_encode($seo), 'updated_at' => now()]);
+            return response()->json(['success' => true, 'installed' => $id]);
         });
 
         // Link graph — partial. Build is async/heavy, unlinked-mentions is content-scan.
@@ -4633,6 +7314,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
             $orphans = (clone $base)
                 ->where('inbound_links', 0)
+                ->where('word_count', '>', 100)
                 ->orderByDesc('content_score')
                 ->limit(100)
                 ->get(['url', 'title', 'word_count', 'content_score'])
@@ -4652,7 +7334,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 })
                 ->toArray();
 
-            $orphanCount = (clone $base)->where('inbound_links', 0)->count();
+            $orphanCount = (clone $base)->where('inbound_links', 0)->where('word_count', '>', 100)->count();
             $weakCount   = (clone $base)->whereBetween('inbound_links', [1, 2])->count();
 
             return response()->json([
@@ -5362,7 +8044,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             if ($filter === 'missing_meta') { $query->whereNull('sci.meta_description'); }
             if ($filter === 'thin_content') { $query->where('sci.word_count', '<', 300); }
             if ($filter === 'no_h1')        { $query->whereNull('sci.h1'); }
-            if ($filter === 'orphans')      { $query->where('sci.inbound_links', 0); }
+            if ($filter === 'orphans')      { $query->where('sci.inbound_links', 0)->where('sci.word_count', '>', 100); }
             if ($filter === 'image_failed') { $query->whereNotNull('a.featured_image_error'); }
             if ($q) {
                 $query->where(function ($x) use ($q) {
@@ -6946,6 +9628,72 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $wsId = (int) $r->attributes->get('workspace_id');
             $articleId = (int) $id;
 
+            // 2026-05-23 FIX 25 — search-engine submission helper. Fires
+            // IndexNow (Bing + Yandex + DuckDuckGo) and Bing legacy ping
+            // after a successful publish. Non-blocking — logs and returns
+            // on any failure. Auto-generates + stores the IndexNow key in
+            // seo_settings on first use. Works for Laravel-platform sites
+            // because PublishedSiteMiddleware now serves /{key}.txt; for
+            // WP-only sites IndexNow may fail ownership verification
+            // (the WP plugin would need to serve the key file), but the
+            // Bing ping still nudges the WP sitemap.
+            $submitToSearchEngines = function (int $submitWsId, ?string $submitUrl, string $platform) {
+                if (!$submitUrl || !preg_match('#^https?://#', $submitUrl)) {
+                    return;
+                }
+                try {
+                    $host = strtolower(parse_url($submitUrl, PHP_URL_HOST) ?: '');
+                    if ($host === '') return;
+                    // Resolve sitemap URL for this host. Platform sites
+                    // self-serve /sitemap.xml; WP sites use /wp-sitemap.xml
+                    // or /sitemap.xml depending on plugin.
+                    $sitemapUrl = ($platform === 'wp')
+                        ? 'https://' . $host . '/wp-sitemap.xml'
+                        : 'https://' . $host . '/sitemap.xml';
+                    // Bing legacy ping — still functional, no key needed.
+                    try {
+                        \Illuminate\Support\Facades\Http::timeout(8)
+                            ->withHeaders(['User-Agent' => 'LevelUpSEO/1.0'])
+                            ->get('https://www.bing.com/ping', ['sitemap' => $sitemapUrl]);
+                    } catch (\Throwable $eBing) {
+                        \Illuminate\Support\Facades\Log::info('[SearchSubmit] Bing ping failed (non-fatal): ' . $eBing->getMessage());
+                    }
+                    // IndexNow submission.
+                    $key = \Illuminate\Support\Facades\DB::table('seo_settings')
+                        ->where('workspace_id', $submitWsId)
+                        ->where('key', 'indexnow_key')
+                        ->value('value');
+                    if (!$key) {
+                        $key = bin2hex(random_bytes(16));
+                        \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
+                            ['workspace_id' => $submitWsId, 'key' => 'indexnow_key'],
+                            ['value' => $key, 'updated_at' => now(), 'created_at' => now()]
+                        );
+                    }
+                    $body = [
+                        'host'        => $host,
+                        'key'         => $key,
+                        'keyLocation' => 'https://' . $host . '/' . $key . '.txt',
+                        'urlList'     => [$submitUrl],
+                    ];
+                    try {
+                        $resp = \Illuminate\Support\Facades\Http::timeout(8)
+                            ->withHeaders(['Content-Type' => 'application/json; charset=utf-8'])
+                            ->post('https://api.indexnow.org/IndexNow', $body);
+                        \Illuminate\Support\Facades\Log::info('[SearchSubmit] IndexNow submitted', [
+                            'ws_id'   => $submitWsId,
+                            'url'     => $submitUrl,
+                            'platform'=> $platform,
+                            'http'    => $resp->status(),
+                        ]);
+                    } catch (\Throwable $eIN) {
+                        \Illuminate\Support\Facades\Log::info('[SearchSubmit] IndexNow failed (non-fatal): ' . $eIN->getMessage());
+                    }
+                } catch (\Throwable $eOuter) {
+                    \Illuminate\Support\Facades\Log::warning('[SearchSubmit] submit failed (non-fatal): ' . $eOuter->getMessage());
+                }
+            };
+
             $article = \Illuminate\Support\Facades\DB::table('articles')
                 ->where('workspace_id', $wsId)->where('id', $articleId)->first();
             if (! $article) {
@@ -7033,6 +9781,12 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     ->update([
                         'status'       => 'published',
                         'published_at' => now(),
+                        // BUGFIX (2026-07-24) — BuilderRenderer::renderArticle and the
+                        // blog-index injection both require is_marketing_blog=1 to show
+                        // an article on the tenant's Builder site. The pipeline sets it,
+                        // but this raw publish endpoint didn't, so articles published
+                        // here rendered "Article Not Found" on the live blog.
+                        'is_marketing_blog' => 1,
                         'updated_at'   => now(),
                     ]);
 
@@ -7228,6 +9982,21 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                             'article_id' => $articleId, 'url' => $publishedUrl,
                         ]);
 
+                        // 2026-05-23 FIX 25 — submit to search engines.
+                        $submitToSearchEngines($wsId, $publishedUrl, 'laravel');
+
+                        // 2026-05-24 FIX 47 — cross-engine post-publish
+                        // coordination. Queues auto-share social posts
+                        // for every connected platform + marks article
+                        // for next newsletter feature + AEO ping. Non-
+                        // fatal — failures are logged, not raised.
+                        try {
+                            app(\App\Core\Strategy\PostPublishCoordinator::class)
+                                ->onArticlePublished($wsId, $articleId);
+                        } catch (\Throwable $eCoord) {
+                            \Illuminate\Support\Facades\Log::warning('[ArticlePublish] PostPublishCoordinator failed (non-fatal): ' . $eCoord->getMessage());
+                        }
+
                         return response()->json([
                             'success'       => true,
                             'platform'      => 'laravel',
@@ -7405,6 +10174,22 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 }
             }
 
+            // 2026-05-23 FIX 25 — submit to search engines (WP path).
+            // IndexNow ownership may fail unless the LGSC plugin serves
+            // the key file at {wp_host}/{key}.txt; Bing legacy ping still
+            // nudges the WP sitemap regardless.
+            $submitToSearchEngines($wsId, $publicUrl, 'wp');
+
+            // 2026-05-24 FIX 47 — cross-engine post-publish coordination
+            // (WP path). Same auto-share + newsletter feature flow as the
+            // Laravel-platform branch above. Non-fatal on failure.
+            try {
+                app(\App\Core\Strategy\PostPublishCoordinator::class)
+                    ->onArticlePublished($wsId, $articleId);
+            } catch (\Throwable $eCoord) {
+                \Illuminate\Support\Facades\Log::warning('[ArticlePublish WP] PostPublishCoordinator failed (non-fatal): ' . $eCoord->getMessage());
+            }
+
             return response()->json([
                 'success'    => true,
                 'wp_post_id' => $wpPostId,
@@ -7466,7 +10251,12 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // Asset CRUD
         Route::get('/assets', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAssets($r->attributes->get('workspace_id'), $r->all())));
         Route::get('/assets/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getAsset($r->attributes->get('workspace_id'), (int) $id)));
-        Route::delete('/assets/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => app($s)->deleteAsset((int) $id)]));
+        Route::delete('/assets/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            if ((int) \Illuminate\Support\Facades\DB::table('assets')->where('id', (int) $id)->value('workspace_id') !== (int) $r->attributes->get('workspace_id')) {
+                return response()->json(['deleted' => false, 'error' => 'not_found'], 404);
+            }
+            return response()->json(['deleted' => app($s)->deleteAsset((int) $id)]);
+        });
 
         // ── Video job status (creative-engine.js polls this path) ──
         Route::get('/video/jobs/{id}/status', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->pollVideoJob((int) $id)));
@@ -7542,7 +10332,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // one was masking the closure entirely.
         // Route::post('/websites/{id}/publish', ...) — removed
         Route::post('/websites/{wid}/pages', fn(\Illuminate\Http\Request $r, $wid) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'generate_page', array_merge($r->all(), ['website_id' => $wid]), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
-        Route::put('/pages/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updatePage($id, $r->all()));
+        Route::put('/pages/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updatePage($id, $r->all(), (int)$r->attributes->get('workspace_id')));
 
         // PATCH 8 (2026-05-08) — Architecture Lock Tier 1: snapshot/restore for sections_json edits.
         Route::get('/pages/{pageId}/history', [\App\Http\Controllers\Api\BuilderSnapshotController::class, 'history'])
@@ -7609,7 +10399,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::post("/delete/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => app($s)->deletePage((int)$id)]));
         Route::post("/clone", fn(\Illuminate\Http\Request $r) => response()->json(["cloned" => true, "message" => "Clone not yet implemented"]));
         Route::post("/ai", fn() => response()->json(["reply" => "The AI builder assistant has been retired. Use the Strategy Room instead.", "status" => "deprecated"]));
-        Route::delete("/websites/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => app($s)->deleteWebsite((int)$id)]));
+        Route::delete("/websites/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => app($s)->deleteWebsite((int)$id, (int)$r->attributes->get("workspace_id"))]));
         Route::get("/stats", function(\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get("workspace_id");
             return response()->json([
@@ -7704,6 +10494,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     return response()->json([
                         'type'          => 'complete',
                         'website_id'    => $built['website_id']  ?? null,
+                        'workspace_id'  => $built['workspace_id'] ?? null, // P2a — the (possibly new) workspace the site landed in; FE switches to it
                         'website_url'   => $built['website_url'] ?? null,
                         'build_outcome' => $built['type'] ?? 'website_created',
                         'build_error'   => (($built['type'] ?? '') === 'error') ? ($built['message'] ?? 'website build failed') : null,
@@ -7993,7 +10784,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                         'canvas_width'  => (int)($mf['canvas_width']  ?? 1080),
                         'canvas_height' => (int)($mf['canvas_height'] ?? 1080),
                         'industry_tags' => $mf['industry_tags'] ?? [],
-                        'preview_url'   => '/storage/studio-previews/' . $slug . '.html',
+                        'preview_url'   => '/storage/studio-previews/' . $slug . '.html?v=' . (@filemtime(storage_path('app/public/studio-previews/' . $slug . '.html')) ?: time()),
+                        'thumbnail_url' => '/storage/studio-thumbs/' . $slug . '.png?v=' . (@filemtime(storage_path('app/public/studio-thumbs/' . $slug . '.png')) ?: time()),
                     ];
                 }
             }
@@ -8062,11 +10854,23 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 // HTML-template path (new)
                 $slug = preg_replace('/[^a-z0-9-]/', '', strtolower($slug));
                 if (!$slug) return response()->json(['success' => false, 'error' => 'invalid_slug'], 422);
+                // Image templates live in templates/studio/{slug}/
+                // Video (html_animated) templates live in templates/studio/video/{slug}/
+                // Try image dir first, fall back to video dir.
+                $isVideo = false;
                 $dir = storage_path('templates/studio/' . $slug);
                 $tpl = $dir . '/template.html';
                 $mfp = $dir . '/manifest.json';
                 if (!is_file($tpl) || !is_file($mfp)) {
-                    return response()->json(['success' => false, 'error' => 'template_not_found'], 404);
+                    $dirV = storage_path('templates/studio/video/' . $slug);
+                    if (is_file($dirV . '/template.html') && is_file($dirV . '/manifest.json')) {
+                        $dir = $dirV;
+                        $tpl = $dirV . '/template.html';
+                        $mfp = $dirV . '/manifest.json';
+                        $isVideo = true;
+                    } else {
+                        return response()->json(['success' => false, 'error' => 'template_not_found'], 404);
+                    }
                 }
                 $mf = json_decode(file_get_contents($mfp), true) ?: [];
                 $format = $mf['format'] ?? 'square';
@@ -8080,7 +10884,12 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 foreach (($mf['css_variables'] ?? []) as $k => $v) $vars[$k] = $v['default'] ?? '';
                 foreach ($vars as $k => $v) { $html = str_replace('{{' . $k . '}}', (string)$v, $html); }
                 $contentHtml = $html;
-                $layersJson  = json_encode(['template_slug' => $slug, 'source' => 'html']);
+                $layersJson  = json_encode(['template_slug' => $slug, 'source' => $isVideo ? 'html_animated' : 'html']);
+                if ($isVideo) {
+                    $designType = 'video';
+                    $duration   = (int)($mf['duration_seconds'] ?? 15);
+                }
+                /* video-template-fallback */
             } elseif ($tplId) {
                 // Legacy DB-template path (layers_json)
                 $tpl = \Illuminate\Support\Facades\DB::table('studio_templates')->where('id', (int)$tplId)->first();
@@ -8092,7 +10901,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 return response()->json(['success' => false, 'error' => 'template_required'], 422);
             }
 
-            $id = \Illuminate\Support\Facades\DB::table('studio_designs')->insertGetId([
+            $insertData = [
                 'workspace_id'  => $wsId,
                 'template_id'   => $tplId ? (int)$tplId : null,
                 'name'          => mb_substr($name, 0, 120),
@@ -8103,7 +10912,16 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 'content_html'  => $contentHtml,
                 'status'        => 'draft',
                 'created_at'    => now(), 'updated_at' => now(),
-            ]);
+            ];
+            if (!empty($designType)) $insertData['design_type'] = $designType;
+            if (!empty($duration))   $insertData['duration_seconds'] = $duration;
+            $id = \Illuminate\Support\Facades\DB::table('studio_designs')->insertGetId($insertData);
+            // Auto-generate thumbnail (sync; ~2-3s puppeteer render). The
+            // gallery's "My Designs" section pulls thumbnail_url, so freshly
+            // created designs need a thumb immediately.
+            /* auto-thumb-on-create */
+            try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail($id); }
+            catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('thumb gen on create failed: '.$e->getMessage()); }
             return response()->json(['success' => true, 'design_id' => $id], 201);
         });
 
@@ -8120,7 +10938,24 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 $update['layers_json'] = is_string($lj) ? $lj : json_encode($lj);
             }
             if ($r->filled('thumbnail_url')) $update['thumbnail_url'] = (string)$r->input('thumbnail_url');
+            // 2026-07-03 (#4) — persist background + canvas-size edits from the
+            // element editor (were silently dropped by this PUT → lost on reload).
+            foreach (['background_type', 'background_value'] as $c) {
+                if ($r->filled($c)) $update[$c] = (string) $r->input($c);
+            }
+            foreach (['canvas_width', 'canvas_height'] as $c) {
+                if ($r->filled($c)) $update[$c] = (int) $r->input($c);
+            }
             \Illuminate\Support\Facades\DB::table('studio_designs')->where('id', (int)$id)->update($update);
+            // Fire-and-forget async thumbnail regen — save returns instantly,
+            // thumb refreshes within a few seconds via the registered shutdown
+            // function. Using register_shutdown_function so the queue worker
+            // doesn't need to be running (acceptable for low-volume use).
+            /* auto-thumb-on-save */
+            register_shutdown_function(function() use ($id) {
+                try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail((int)$id); }
+                catch (\Throwable $e) {}
+            });
             return response()->json(['success' => true]);
         });
 
@@ -8208,14 +11043,121 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
       _enterEdit(el);
     }
   }
+  function _hexToHsl(c){
+    c = String(c||'').trim();
+    if (!c) return null;
+    var r,g,b,a=1;
+    if (c.charAt(0)==='#') {
+      if (c.length===4){r=parseInt(c[1]+c[1],16);g=parseInt(c[2]+c[2],16);b=parseInt(c[3]+c[3],16);}
+      else if (c.length===7){r=parseInt(c.slice(1,3),16);g=parseInt(c.slice(3,5),16);b=parseInt(c.slice(5,7),16);}
+      else return null;
+    } else {
+      var m = c.match(/rgba?\(([^)]+)\)/i);
+      if (!m) return null;
+      var p = m[1].split(',').map(function(x){return parseFloat(x.trim());});
+      r=p[0]||0;g=p[1]||0;b=p[2]||0;a=(p[3]==null?1:p[3]);
+    }
+    var rr=r/255,gg=g/255,bb=b/255;
+    var mx=Math.max(rr,gg,bb),mn=Math.min(rr,gg,bb);
+    var h=0,s=0,l=(mx+mn)/2;
+    if (mx!==mn){
+      var d=mx-mn;
+      s = l>0.5 ? d/(2-mx-mn) : d/(mx+mn);
+      if (mx===rr) h=(gg-bb)/d+(gg<bb?6:0);
+      else if (mx===gg) h=(bb-rr)/d+2;
+      else h=(rr-gg)/d+4;
+      h*=60;
+    }
+    return {h:h,s:s,l:l,a:a};
+  }
+  function _readRootVars() {
+    var out = {};
+    var sheets = document.styleSheets;
+    for (var i=0;i<sheets.length;i++){
+      try {
+        var rules = sheets[i].cssRules || sheets[i].rules || [];
+        for (var j=0;j<rules.length;j++){
+          var r = rules[j];
+          if (!r || !r.selectorText) continue;
+          if (r.selectorText.split(',').map(function(x){return x.trim();}).indexOf(':root')===-1) continue;
+          var st = r.style;
+          for (var k=0;k<st.length;k++){
+            var p = st[k];
+            if (p && p.indexOf('--')===0) out[p] = st.getPropertyValue(p).trim();
+          }
+        }
+      } catch(_e) {}
+    }
+    return out;
+  }
   function _applyPalette(vars) {
     var root = document.documentElement;
     if (!vars || typeof vars !== 'object') return;
+    // 1. Always set the palette's literal names (works for any template that
+    //    happens to use --primary / --bg / --text / --accent directly).
     Object.keys(vars).forEach(function(k){
       if (!k) return;
       var prop = (k.charAt(0) === '-') ? k : ('--' + k);
       root.style.setProperty(prop, String(vars[k]));
     });
+    // 2. Smart-map: read the template's own :root vars and remap them by
+    //    name + brightness/saturation so 'text', 'primary', 'accent' actually
+    //    take effect on templates that use --ink / --coral / --champ etc.
+    var pBg      = vars['--bg']      || vars['bg'];
+    var pText    = vars['--text']    || vars['text'];
+    var pPrimary = vars['--primary'] || vars['primary'];
+    var pAccent  = vars['--accent']  || vars['accent'];
+    var rootVars = _readRootVars();
+    var names = Object.keys(rootVars);
+    var colorVars = [];
+    names.forEach(function(n){
+      var v = rootVars[n];
+      var hsl = _hexToHsl(v);
+      if (!hsl) return;
+      colorVars.push({name:n, val:v, hsl:hsl, low:n.toLowerCase()});
+    });
+    // Name-based mapping first (covers --bg, --ink, --primary, --accent etc.)
+    var consumed = {};
+    colorVars.forEach(function(cv){
+      var nm = cv.low;
+      if (pBg && /^--(bg|background|backdrop|surface)$/.test(nm)) {
+        root.style.setProperty(cv.name, pBg); consumed[cv.name] = 1;
+      } else if (pText && /^--(text|ink|fg|foreground|dark|body)$/.test(nm)) {
+        root.style.setProperty(cv.name, pText); consumed[cv.name] = 1;
+      } else if (pPrimary && /^--(primary|main|brand|hero|accent-1)$/.test(nm)) {
+        root.style.setProperty(cv.name, pPrimary); consumed[cv.name] = 1;
+      } else if (pAccent && /^--(accent|accent-2|secondary|highlight|hl)$/.test(nm)) {
+        root.style.setProperty(cv.name, pAccent); consumed[cv.name] = 1;
+      }
+    });
+    // Heuristic mapping for remaining color vars by HSL classification
+    var remaining = colorVars.filter(function(c){ return !consumed[c.name]; });
+    // muted / cream / white / sand / off-white → leave alone (decorative neutrals)
+    var chromatic = remaining.filter(function(c){
+      // Skip near-grey and pure light/dark neutrals
+      if (c.hsl.s < 0.18) return false;
+      // Skip vars that are clearly muted/alpha-baked utilities
+      if (/^--(muted|shadow|overlay|ring|stroke|border|line|divider)/.test(c.low)) return false;
+      return true;
+    });
+    // Sort by saturation descending — most vivid first
+    chromatic.sort(function(a,b){ return b.hsl.s - a.hsl.s; });
+    // Assign palette primary to most-saturated, accent to second-most
+    var assigned = 0;
+    chromatic.forEach(function(cv){
+      if (assigned === 0 && pPrimary) { root.style.setProperty(cv.name, pPrimary); assigned++; }
+      else if (assigned === 1 && pAccent) { root.style.setProperty(cv.name, pAccent); assigned++; }
+    });
+    // Also catch text-like vars by lightness (very dark non-bg)
+    if (pText) {
+      remaining.forEach(function(cv){
+        if (consumed[cv.name]) return;
+        // dark color that's NOT the bg → likely a text/ink var
+        if (cv.hsl.l < 0.28 && !/^--(bg|background)/.test(cv.low)) {
+          root.style.setProperty(cv.name, pText);
+        }
+      });
+    }
   }
   function _updateImage(field, url) {
     var el = document.querySelector('[data-field="' + field + '"]');
@@ -8331,12 +11273,30 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 </script>
 HTMLSCRIPT;
 
+            // Inject viewport-fit CSS into <head> so the source HTML's
+            // @media(max-width:1160px){.sw{transform:scale(.46)}} (which fires
+            // at the iframe viewport width) doesn't shrink the design.
+            // The freeze on .scene padding + .sw transform makes .post/.reel
+            // fill the iframe at native canvas dims.
+            $viewportCss = '<style>'
+                . '.scene{padding:0!important;min-height:0!important;background:transparent!important}'
+                . '.sw{transform:none!important;display:block!important;width:auto!important;height:auto!important;transform-origin:0 0!important}'
+                . '.scale-wrap{transform:none!important;display:block!important;width:auto!important;height:auto!important;transform-origin:0 0!important}'
+                . 'html,body{background:transparent!important}'
+                . '*,*::before,*::after{animation-delay:-99s!important;animation-duration:0.001s!important;animation-iteration-count:1!important;animation-fill-mode:forwards!important;transition:none!important}'
+                . '</style>';
+            if (stripos($html, '</head>') !== false) {
+                $html = preg_replace('#</head>#i', $viewportCss . '</head>', $html, 1);
+            } else {
+                $html = $viewportCss . $html;
+            }
             // Inject script before </body> if possible, otherwise append.
             if (stripos($html, '</body>') !== false) {
                 $html = preg_replace('#</body>#i', $editScript . '</body>', $html, 1);
             } else {
                 $html .= $editScript;
             }
+            /* viewport-fit-css-preview */
 
             return response($html)->header('Content-Type', 'text/html; charset=UTF-8')
                 ->header('X-Frame-Options', 'SAMEORIGIN')
@@ -8661,6 +11621,13 @@ HTMLSCRIPT;
                 'id','slug','name','category','format','canvas_width','canvas_height',
                 'duration_seconds','thumbnail_url','template_type','template_html_path'
             ]);
+            foreach ($rows as $row) {
+                if ($row->thumbnail_url && strpos($row->thumbnail_url, '?') === false) {
+                    $slug = basename($row->thumbnail_url, '.png');
+                    $mt = @filemtime(storage_path('app/public/studio-thumbs/' . $slug . '.png'));
+                    $row->thumbnail_url .= '?v=' . ($mt ?: time());
+                }
+            }
             return response()->json(['success' => true, 'templates' => $rows]);
         });
 
@@ -8898,6 +11865,27 @@ HTMLSCRIPT;
         });
 
         // POST /api/studio/video/upload-clip — multipart video upload
+        // GET /api/studio/video/export-policy — plan-based export quality cap +
+        // watermark, so the editor shows ACCURATE options (server still enforces
+        // in RenderStudioVideoJob::resolveVideoPolicy). 2026-07-03.
+        Route::get('/video/export-policy', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $p = \App\Jobs\RenderStudioVideoJob::resolveVideoPolicy($wsId);
+            $order  = ['720', '1080', '4k'];
+            $labels = ['720' => '720p', '1080' => '1080p HD', '4k' => '4K Ultra'];
+            $cap = array_search($p['max_quality'], $order, true);
+            $tiers = [];
+            foreach ($order as $i => $q) {
+                $tiers[] = ['value' => $q, 'label' => $labels[$q], 'allowed' => ($i <= $cap)];
+            }
+            return response()->json([
+                'success'     => true,
+                'max_quality' => $p['max_quality'],
+                'watermark'   => (bool) $p['watermark'],
+                'tiers'       => $tiers,
+            ]);
+        });
+
         Route::post('/video/upload-clip', function (\Illuminate\Http\Request $r) {
             $wsId = (int) $r->attributes->get('workspace_id');
             if (!$r->hasFile('file')) return response()->json(['success'=>false,'error'=>'no_file'], 422);
@@ -9011,93 +11999,80 @@ HTMLSCRIPT;
             ]);
         });
 
-        // POST /api/studio/video/generate-minimax — AI video generation
+        // POST /api/studio/video/generate-minimax — AI video generation (ASYNC create)
+        // 2026-07-03 (#3) — was a 180s SYNCHRONOUS long-poll that 504s behind the
+        // 100s Cloudflare / 120s PHP-FPM caps. Now returns task_id immediately;
+        // the client polls GET /video/minimax-status. Stateless (task_id = MiniMax handle).
         Route::post('/video/generate-minimax', function (\Illuminate\Http\Request $r) {
-            $wsId = (int) $r->attributes->get('workspace_id');
-            $prompt = trim((string)$r->input('prompt',''));
+            $prompt = trim((string) $r->input('prompt', ''));
             if ($prompt === '') return response()->json(['success'=>false,'error'=>'missing_prompt'], 422);
-
             $key = env('MINIMAX_API_KEY');
-            $group = env('MINIMAX_GROUP_ID');
-            if (!$key) {
-                return response()->json([
-                    'success' => false,
-                    'error'   => 'MiniMax API key not configured. Add MINIMAX_API_KEY to .env',
-                ], 503);
-            }
+            if (!$key) return response()->json(['success'=>false,'error'=>'MiniMax AI video is not configured yet (missing MINIMAX_API_KEY).'], 503);
 
-            $model = 'MiniMax-Hailuo-02';
-            $resp = \Illuminate\Support\Facades\Http::withToken($key)
-                ->timeout(30)
+            $resp = \Illuminate\Support\Facades\Http::withToken($key)->timeout(30)
                 ->post('https://api.minimax.chat/v1/video_generation', [
-                    'model'       => $model,
-                    'prompt'      => $prompt,
-                    'duration'    => (int) min(10, max(5, $r->input('duration_seconds', 6))),
-                    'resolution'  => $r->input('resolution', '1080P'),
+                    'model'      => 'MiniMax-Hailuo-02',
+                    'prompt'     => $prompt,
+                    'duration'   => (int) min(10, max(5, $r->input('duration_seconds', 6))),
+                    'resolution' => $r->input('resolution', '1080P'),
                 ]);
-            if (!$resp->ok()) {
-                return response()->json(['success'=>false,'error'=>'minimax_create_failed','detail'=>mb_substr($resp->body(),0,400)], 502);
-            }
+            if (!$resp->ok()) return response()->json(['success'=>false,'error'=>'minimax_create_failed','detail'=>mb_substr($resp->body(),0,400)], 502);
             $taskId = $resp->json('task_id');
             if (!$taskId) return response()->json(['success'=>false,'error'=>'no_task_id','detail'=>mb_substr($resp->body(),0,400)], 502);
 
-            // Poll: up to 3 min (generation takes 45-120s typically).
-            $deadline = time() + 180;
-            $fileId = null;
-            $lastStatus = null;
-            while (time() < $deadline) {
-                sleep(5);
-                $poll = \Illuminate\Support\Facades\Http::withToken($key)
-                    ->timeout(15)
-                    ->get('https://api.minimax.chat/v1/query/video_generation', ['task_id' => $taskId]);
-                if (!$poll->ok()) continue;
-                $lastStatus = $poll->json('status');
-                if ($lastStatus === 'Success') { $fileId = $poll->json('file_id'); break; }
-                if (in_array($lastStatus, ['Fail', 'Failed', 'fail'], true)) {
-                    return response()->json(['success'=>false,'error'=>'minimax_failed','detail'=>$poll->json('base_resp.status_msg')], 502);
-                }
+            return response()->json(['success'=>true,'status'=>'processing','task_id'=>$taskId]);
+        });
+
+        // GET /api/studio/video/minimax-status?task_id=X — poll MiniMax; on success
+        // retrieve + download + persist the clip. Idempotent (hashed by task_id+file_id).
+        Route::get('/video/minimax-status', function (\Illuminate\Http\Request $r) {
+            $wsId   = (int) $r->attributes->get('workspace_id');
+            $taskId = trim((string) $r->input('task_id', ''));
+            if ($taskId === '') return response()->json(['success'=>false,'error'=>'missing_task_id'], 422);
+            $key   = env('MINIMAX_API_KEY');
+            $group = env('MINIMAX_GROUP_ID');
+            if (!$key) return response()->json(['success'=>false,'error'=>'MiniMax not configured.'], 503);
+
+            $poll = \Illuminate\Support\Facades\Http::withToken($key)->timeout(15)
+                ->get('https://api.minimax.chat/v1/query/video_generation', ['task_id' => $taskId]);
+            if (!$poll->ok()) return response()->json(['success'=>true,'status'=>'processing']); // transient — keep polling
+            $st = $poll->json('status');
+            if (in_array($st, ['Fail','Failed','fail'], true)) {
+                return response()->json(['success'=>false,'status'=>'failed','error'=>$poll->json('base_resp.status_msg') ?: 'minimax_failed'], 200);
             }
-            if (!$fileId) return response()->json(['success'=>false,'error'=>'minimax_timeout','last_status'=>$lastStatus], 504);
+            if ($st !== 'Success') return response()->json(['success'=>true,'status'=>'processing']);
+            $fileId = $poll->json('file_id');
+            if (!$fileId) return response()->json(['success'=>true,'status'=>'processing']);
 
-            // Retrieve the generated file download URL
-            $fileResp = \Illuminate\Support\Facades\Http::withToken($key)
-                ->timeout(15)
-                ->get('https://api.minimax.chat/v1/files/retrieve', array_filter(['file_id' => $fileId, 'GroupId' => $group]));
-            $downloadUrl = $fileResp->json('file.download_url');
-            if (!$downloadUrl) return response()->json(['success'=>false,'error'=>'minimax_no_download','detail'=>mb_substr($fileResp->body(),0,400)], 502);
-
-            // Download locally + persist
-            $dir = storage_path('app/public/video-clips/minimax');
+            $dir  = storage_path('app/public/video-clips/minimax');
             if (!is_dir($dir)) @mkdir($dir, 0775, true);
             $hash = substr(hash('sha256', $taskId . $fileId), 0, 16);
             $dest = $dir . '/' . $hash . '.mp4';
-            $bin = @file_get_contents($downloadUrl);
-            if ($bin === false || strlen($bin) < 10_000) return response()->json(['success'=>false,'error'=>'minimax_dl_failed'], 502);
-            file_put_contents($dest, $bin);
             $publicUrl = '/storage/video-clips/minimax/' . $hash . '.mp4';
-
-            // Probe duration
+            if (!is_file($dest)) {
+                $fileResp = \Illuminate\Support\Facades\Http::withToken($key)->timeout(15)
+                    ->get('https://api.minimax.chat/v1/files/retrieve', array_filter(['file_id'=>$fileId,'GroupId'=>$group]));
+                $downloadUrl = $fileResp->json('file.download_url');
+                if (!$downloadUrl) return response()->json(['success'=>false,'status'=>'failed','error'=>'minimax_no_download'], 200);
+                $bin = @file_get_contents($downloadUrl);
+                if ($bin === false || strlen($bin) < 10000) return response()->json(['success'=>false,'status'=>'failed','error'=>'minimax_dl_failed'], 200);
+                file_put_contents($dest, $bin);
+                try {
+                    \Illuminate\Support\Facades\DB::table('media')->insert([
+                        'workspace_id'=>$wsId,'url'=>$publicUrl,'mime_type'=>'video/mp4',
+                        'source'=>'minimax','is_platform_asset'=>0,
+                        'created_at'=>now(),'updated_at'=>now(),
+                    ]);
+                } catch (\Throwable $_e) {}
+            }
             $probe = [];
             @exec('/usr/bin/ffprobe -v error -select_streams v:0 -show_entries stream=width,height,duration -of json ' . escapeshellarg($dest), $probe);
             $s = (json_decode(implode('', $probe), true)['streams'][0] ?? []);
-            try {
-                \Illuminate\Support\Facades\DB::table('media')->insert([
-                    'workspace_id' => $wsId, 'url' => $publicUrl, 'mime_type' => 'video/mp4',
-                    'source' => 'minimax', 'is_platform_asset' => 0, 'prompt' => $prompt,
-                    'created_at' => now(), 'updated_at' => now(),
-                ]);
-            } catch (\Throwable $_e) {}
-
             return response()->json([
-                'success'  => true,
-                'clip_url' => $publicUrl,
-                'width'    => (int)($s['width']  ?? 0),
-                'height'   => (int)($s['height'] ?? 0),
-                'duration' => (float)($s['duration'] ?? 0),
-                'task_id'  => $taskId,
+                'success'=>true,'status'=>'done','clip_url'=>$publicUrl,
+                'width'=>(int)($s['width']??0),'height'=>(int)($s['height']??0),'duration'=>(float)($s['duration']??0),
             ]);
         });
-
         // DELETE /api/studio/video/designs/{id} — soft delete
         Route::delete('/video/designs/{id}', function (\Illuminate\Http\Request $r, $id) {
             $wsId = (int) $r->attributes->get('workspace_id');
@@ -9115,14 +12090,14 @@ HTMLSCRIPT;
         // Element CRUD
         Route::get('/designs/{id}/elements',             fn(\Illuminate\Http\Request $r, $id)      => response()->json(['elements' => app($studio)->getElements((int) $id)]));
         Route::post('/designs/{id}/elements',            fn(\Illuminate\Http\Request $r, $id)      => response()->json(app($studio)->saveElement($r->attributes->get('workspace_id'), (int) $id, $r->all()), 201));
-        Route::put('/designs/{id}/elements/{eid}',       fn(\Illuminate\Http\Request $r, $id, $eid) => response()->json(app($studio)->updateElement((int) $eid, $r->all())));
-        Route::delete('/designs/{id}/elements/{eid}',    fn(\Illuminate\Http\Request $r, $id, $eid) => response()->json(['deleted' => app($studio)->deleteElement((int) $eid)]));
-        Route::post('/designs/{id}/elements/reorder',    fn(\Illuminate\Http\Request $r, $id)       => response()->json(['reordered' => app($studio)->reorderElements((int) $id, (array) $r->input('element_ids', []))]));
+        Route::put('/designs/{id}/elements/{eid}',       fn(\Illuminate\Http\Request $r, $id, $eid) => response()->json(app($studio)->updateElement((int) $eid, $r->all(), (int) $r->attributes->get('workspace_id'))));
+        Route::delete('/designs/{id}/elements/{eid}',    fn(\Illuminate\Http\Request $r, $id, $eid) => response()->json(['deleted' => app($studio)->deleteElement((int) $eid, (int) $r->attributes->get('workspace_id'))]));
+        Route::post('/designs/{id}/elements/reorder',    fn(\Illuminate\Http\Request $r, $id)       => response()->json(['reordered' => app($studio)->reorderElements((int) $id, (array) $r->input('element_ids', []), (int) $r->attributes->get('workspace_id'))]));
 
         // Design-level Phase 1 additions
         Route::post('/designs/{id}/duplicate',           fn(\Illuminate\Http\Request $r, $id)       => response()->json(app($studio)->duplicateDesign((int) $id, (int) $r->attributes->get('workspace_id'))));
-        Route::post('/designs/{id}/thumbnail',           fn(\Illuminate\Http\Request $r, $id)       => response()->json(app($studio)->generateThumbnail((int) $id)));
-        Route::post('/designs/{id}/history',             fn(\Illuminate\Http\Request $r, $id)       => response()->json(app($studio)->saveHistory((int) $id, (array) $r->input('snapshot', []))));
+        Route::post('/designs/{id}/thumbnail',           fn(\Illuminate\Http\Request $r, $id)       => response()->json(app($studio)->generateThumbnail((int) $id, (int) $r->attributes->get('workspace_id'))));
+        Route::post('/designs/{id}/history',             fn(\Illuminate\Http\Request $r, $id)       => response()->json(app($studio)->saveHistory((int) $id, (array) $r->input('snapshot', []), (int) $r->attributes->get('workspace_id'))));
         Route::get('/designs/{id}/history',              fn(\Illuminate\Http\Request $r, $id)       => response()->json(app($studio)->getHistory((int) $id)));
 
         // Brand kit (per workspace)
@@ -9179,7 +12154,7 @@ HTMLSCRIPT;
 
         // Phase 5 — publish + thumbnail + resize
         Route::post('/designs/{id}/publish-social', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($studio)->publishToSocial((int) $id, (int) $r->attributes->get('workspace_id'), $r->all())));
-        Route::post('/designs/{id}/resize',         fn(\Illuminate\Http\Request $r, $id) => response()->json(app($studio)->resizeDesign((int) $id, (int) $r->input('width'), (int) $r->input('height'))));
+        Route::post('/designs/{id}/resize',         fn(\Illuminate\Http\Request $r, $id) => response()->json(app($studio)->resizeDesign((int) $id, (int) $r->input('width'), (int) $r->input('height'), (int) $r->attributes->get('workspace_id'))));
         Route::post('/designs/{id}/save-to-media',  fn(\Illuminate\Http\Request $r, $id) => response()->json(app($studio)->saveExportToMedia((int) $id, (int) $r->attributes->get('workspace_id'))));
 
     });
@@ -9195,10 +12170,10 @@ HTMLSCRIPT;
         Route::get('/campaigns/{id}',     fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getCampaign($r->attributes->get('workspace_id'), $id)));
         Route::post('/campaigns',         fn(\Illuminate\Http\Request $r)      => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'marketing', 'create_campaign', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         Route::put('/campaigns/{id}',     function (\Illuminate\Http\Request $r, $id) use ($s) {
-            $result = app($s)->updateCampaign((int) $id, $r->all());
+            $result = app($s)->updateCampaign((int) $id, $r->all(), (int) $r->attributes->get('workspace_id'));
             return response()->json($result);
         });
-        Route::delete('/campaigns/{id}',  fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => app($s)->deleteCampaign((int) $id) ?? true]));
+        Route::delete('/campaigns/{id}',  fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => app($s)->deleteCampaign((int) $id, (int) $r->attributes->get('workspace_id')) ?? true]));
         Route::post('/campaigns/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'marketing', 'schedule_campaign', ['campaign_id' => $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/campaigns/{id}/send',     fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'marketing', 'send_campaign', array_merge($r->all(), ['campaign_id' => $id]), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
 
@@ -9226,14 +12201,14 @@ HTMLSCRIPT;
         Route::post('/sequences',         fn(\Illuminate\Http\Request $r)      => response()->json(app($seq)->createSequence($r->attributes->get('workspace_id'), array_merge($r->all(), ['user_id' => $r->user()?->id])), 201));
         Route::get('/sequences/{id}',     fn(\Illuminate\Http\Request $r, $id) => response()->json(app($seq)->getSequence($r->attributes->get('workspace_id'), (int) $id)));
         Route::put('/sequences/{id}',     function (\Illuminate\Http\Request $r, $id) use ($seq) {
-            return response()->json(app($seq)->updateSequence((int) $id, $r->all()));
+            return response()->json(app($seq)->updateSequence((int) $id, $r->all(), (int) $r->attributes->get('workspace_id')));
         });
-        Route::delete('/sequences/{id}',  fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => app($seq)->deleteSequence((int) $id)]));
+        Route::delete('/sequences/{id}',  fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => app($seq)->deleteSequence((int) $id, (int) $r->attributes->get('workspace_id'))]));
         Route::post('/sequences/{id}/toggle', function (\Illuminate\Http\Request $r, $id) use ($seq) {
-            return response()->json(app($seq)->toggleSequence((int) $id, (string) $r->input('status', 'active')));
+            return response()->json(app($seq)->toggleSequence((int) $id, (string) $r->input('status', 'active'), (int) $r->attributes->get('workspace_id')));
         });
-        Route::post('/sequences/{id}/steps',            fn(\Illuminate\Http\Request $r, $id)          => response()->json(app($seq)->addStep((int) $id, $r->all()), 201));
-        Route::delete('/sequences/{id}/steps/{stepId}', fn(\Illuminate\Http\Request $r, $id, $stepId) => response()->json(['deleted' => app($seq)->removeStep((int) $id, (int) $stepId)]));
+        Route::post('/sequences/{id}/steps',            fn(\Illuminate\Http\Request $r, $id)          => response()->json(app($seq)->addStep((int) $id, $r->all(), (int) $r->attributes->get('workspace_id')), 201));
+        Route::delete('/sequences/{id}/steps/{stepId}', fn(\Illuminate\Http\Request $r, $id, $stepId) => response()->json(['deleted' => app($seq)->removeStep((int) $id, (int) $stepId, (int) $r->attributes->get('workspace_id'))]));
 
         // ── Email settings + test ────────────────────────────────
         Route::get('/email/settings',  fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getEmailSettings()));
@@ -9295,6 +12270,10 @@ HTMLSCRIPT;
         Route::get('/calendar', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getCalendarPosts($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'))));
         // Writes through pipeline
         Route::post('/posts', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'create_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        // Sarah × Social Phase 1 — AI surface routes
+        Route::post('/ai/generate', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_ai_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/ai/hashtags', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'hashtag_suggestions', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/ai/image', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_image', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/posts/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(['account_id' => app($s)->addAccount($r->attributes->get('workspace_id'), $r->all())], 201));
@@ -9315,6 +12294,9 @@ HTMLSCRIPT;
             return response()->json(["redirect_url" => $url, "message" => "Redirect the user to this URL to connect Facebook + Instagram."]);
         });
 
+
+
+
         // Facebook callback is now a PUBLIC route (outside auth.jwt) because
         // Facebook redirects the browser directly — no JWT in the redirect.
         // See the Route::get('/social/oauth/facebook/callback', ...) above line 79.
@@ -9330,9 +12312,29 @@ HTMLSCRIPT;
             return response()->json(["redirect_url" => $url, "message" => "Redirect to Facebook login — Instagram accounts will be auto-discovered from linked Pages."]);
         });
 
-        Route::get("/oauth/linkedin/connect", fn(\Illuminate\Http\Request $r) => response()->json(["error" => "LinkedIn OAuth not yet configured. Add your Client ID in Settings first."], 400));
+        /* b16-linkedin-connect */
+        Route::get("/oauth/linkedin/connect", function (\Illuminate\Http\Request $r) {
+            $connector = app(\App\Connectors\SocialConnector::class);
+            if (! $connector->isLinkedInOAuthConfigured()) {
+                return response()->json(["error" => "LinkedIn OAuth not configured. Set LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, LINKEDIN_REDIRECT_URI in .env."], 400);
+            }
+            $wsId = $r->attributes->get('workspace_id', 1);
+            $url = $connector->getAuthUrl('linkedin', $wsId);
+            return response()->json(["redirect_url" => $url, "message" => "Redirect the user to this URL to connect their LinkedIn account."]);
+        });
+
+        /* b17-twitter-connect */
+        Route::get("/oauth/twitter/connect", function (\Illuminate\Http\Request $r) {
+            $connector = app(\App\Connectors\SocialConnector::class);
+            if (! $connector->isTwitterOAuthConfigured()) {
+                return response()->json(["error" => "Twitter OAuth not configured. Set TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET, TWITTER_REDIRECT_URI in .env."], 400);
+            }
+            $wsId = $r->attributes->get('workspace_id', 1);
+            $url = $connector->getAuthUrl('twitter', $wsId);
+            return response()->json(["redirect_url" => $url, "message" => "Redirect the user to this URL to connect their X/Twitter account."]);
+        });
         // Delete post
-        Route::delete("/posts/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => true]) && app($s)->deletePost($id));
+        Route::delete("/posts/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => true]) && app($s)->deletePost($id, (int)$r->attributes->get("workspace_id")));
         // Disconnect a social account (removes OAuth tokens, DELETE /api/social/accounts/{id})
         Route::delete("/accounts/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["disconnected" => (bool) app($s)->disconnectAccount((int) $r->attributes->get("workspace_id"), (int) $id)]));
         // TikTok — explicit not-yet-supported response so UI can show Coming Soon
@@ -9343,10 +12345,29 @@ HTMLSCRIPT;
     Route::prefix('calendar')->group(function () {
         $s = \App\Engines\Calendar\Services\CalendarService::class;
         $exec = \App\Core\EngineKernel\EngineExecutionService::class;
-        Route::get('/events', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getEvents($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'), $r->input('category'))));
+        /* b21-phase5-route */
+        // Pass auth user_id so getEvents can surface Strategy Room invites for THIS user.
+        Route::get('/events', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getEvents($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'), $r->input('category'), $r->user()?->id)));
         Route::post('/events', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'calendar', 'create_event', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
-        Route::put('/events/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['updated' => true]) && app($s)->updateEvent($id, $r->all()));
-        Route::delete('/events/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => true]) && app($s)->deleteEvent($id));
+        // SECURITY 2026-07-23: these were already workspace-scoped, but the `&&` chain
+        // discarded the JsonResponse and a cross-workspace/missing id surfaced as a 500.
+        // Same safe denial (404) for missing, foreign, and otherwise inaccessible ids.
+        Route::put('/events/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            try {
+                app($s)->updateEvent((int) $id, $r->all(), (int) $r->attributes->get('workspace_id'));
+            } catch (\RuntimeException $e) {
+                return response()->json(['error' => 'Event not found'], 404);
+            }
+            return response()->json(['updated' => true]);
+        });
+        Route::delete('/events/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            try {
+                app($s)->deleteEvent((int) $id, (int) $r->attributes->get('workspace_id'));
+            } catch (\RuntimeException $e) {
+                return response()->json(['error' => 'Event not found'], 404);
+            }
+            return response()->json(['deleted' => true]);
+        });
     });
 
     // ── BeforeAfter Engine ───────────────────────────────────────
@@ -9471,9 +12492,7 @@ HTMLSCRIPT;
             'created_at'     => $t->created_at,
             'result_json'    => $t->result_json,
             // Deliverable — from result_json if completed
-            'deliverable'    => $t->status === 'completed' && $t->result_json
-                ? ['summary' => is_array($t->result_json) ? ($t->result_json['summary'] ?? json_encode($t->result_json)) : $t->result_json, 'deliverable' => $t->result_json]
-                : null,
+            'deliverable'    => \App\Support\DeliverableSummary::for($t),
             // Notes — from payload_json.notes or result_json.notes
             'notes'          => (function() use ($t, $payload) {
                 $notes = $payload['notes'] ?? [];
@@ -9500,6 +12519,12 @@ HTMLSCRIPT;
                 ],
             // Meeting reference
             'meeting_id'     => $payload['from_meeting'] ?? null,
+            // 2026-05-27 Phase 3 — surface every web fetch/search this task
+            // triggered. Drawer's Web Activity tab renders these for
+            // category=research tasks. Empty array for non-research work.
+            'web_activity'   => ($t->category === 'research')
+                ? app(\App\Engines\Web\Services\WebActivityService::class)->forTask($t->id, 50)
+                : [],
         ]);
     });
     Route::post("/projects/tasks/{id}/note", function (\Illuminate\Http\Request $r, $id) {
@@ -9721,6 +12746,7 @@ HTMLSCRIPT;
             // implicit: all 21 agents are online unless the platform
             // takes them down.
             $agents = \Illuminate\Support\Facades\DB::table('agents')
+                ->whereNotIn('slug', \App\Core\LaunchScope\LaunchScopePolicy::REMOVED_AGENTS) // LAUNCH SCOPE 2026-07-20
                 ->orderBy('id')
                 ->get(['slug', 'name', 'title']);
             if (count($agents) > 0) {
@@ -10139,6 +13165,14 @@ HTMLSCRIPT;
             ->toArray();
         $agents = \App\Models\Agent::select('id','slug','name','title','description')->get();
         // Get task stats grouped by engine (proxy for agent assignment)
+        // 2026-05-27 — per-agent category breakdown for the drawer + dashboard
+        $catRows = \App\Models\Task::where('workspace_id', $wsId)
+            ->selectRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(assigned_agents_json, '$[0]')), engine) as agent_key, category, count(*) as cnt")
+            ->whereNotNull('category')
+            ->groupBy('agent_key', 'category')
+            ->get()
+            ->groupBy('agent_key');
+        $catSvc = app(\App\Core\TaskSystem\TaskCategoryService::class);
         $taskStats = \App\Models\Task::where('workspace_id', $wsId)
             ->selectRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(assigned_agents_json, '$[0]')), engine) as agent_key, status, count(*) as cnt, sum(credit_cost) as credits")
             ->groupBy('agent_key', 'status')
@@ -10165,11 +13199,16 @@ HTMLSCRIPT;
             // Check tasks assigned to this agent or tasks in this agent's engine
             $stats = $taskStats->get($slug, collect());
             $delegations = $delegationStats->get($a->id, collect());
-            $pending = 0; $executing = 0; $completed = 0; $failed = 0; $degraded = 0; $totalCredits = 0;
+            $pending = 0; $executing = 0; $completed = 0; $failed = 0; $degraded = 0; $blocked = 0; $totalCredits = 0;
             foreach ($stats as $s) {
                 $totalCredits += (int)$s->credits;
                 match($s->status) {
-                    'pending','queued','awaiting_approval','blocked' => $pending += $s->cnt,
+                    // 2026-05-25 — 'blocked' is now its OWN bucket. Was previously
+                    // bundled into 'pending' which over-counted upcoming work on
+                    // cards (blocked = waiting on external dependency / rate limit,
+                    // NOT the same as queued-to-run). User-facing distinction matters.
+                    'pending','queued','awaiting_approval' => $pending += $s->cnt,
+                    'blocked' => $blocked += $s->cnt,
                     'running','verifying' => $executing += $s->cnt,
                     'completed' => $completed += $s->cnt,
                     'failed','cancelled' => $failed += $s->cnt,
@@ -10196,7 +13235,9 @@ HTMLSCRIPT;
                 $delegatedQ = \App\Models\Task::where('workspace_id', $wsId)
                     ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')");
                 // Wave 38d — replace per-agent stats with delegation rollup.
-                $pending = (clone $delegatedQ)->whereIn('status', ['pending','queued','awaiting_approval','blocked'])->count();
+                // 2026-05-25 — split blocked out of pending (separate bucket).
+                $pending = (clone $delegatedQ)->whereIn('status', ['pending','queued','awaiting_approval'])->count();
+                $blocked = (clone $delegatedQ)->where('status', 'blocked')->count();
                 $executing = (clone $delegatedQ)->whereIn('status', ['running','verifying'])->count();
                 $completed = (clone $delegatedQ)->where('status', 'completed')->count();
                 $failed = (clone $delegatedQ)->whereIn('status', ['failed','cancelled','degraded'])->count();
@@ -10253,6 +13294,9 @@ HTMLSCRIPT;
                         'delegated_to' => $isOrchestrator ? ($delegate ?? null) : null,
                         'created_at' => $t->created_at, 'started_at' => $t->started_at,
                         'acknowledged_at' => null, 'completed_at' => $t->completed_at,
+                        // v1.4.4 (2026-05-30) — surface for client-side batch grouping
+                        'batch_id' => $t->batch_id,
+                        'action'   => $t->action,
                     ];
                 })->toArray();
 
@@ -10281,6 +13325,7 @@ HTMLSCRIPT;
                 'enabled' => in_array($slug, $enabledSlugs ?? [], true),
                 'is_orchestrator' => isset($isOrchestrator) ? (bool) $isOrchestrator : false,
                 'pending' => $pending,
+                'blocked' => $blocked,
                 'executing' => $executing,
                 'completed' => $completed,
                 'failed' => $failed,
@@ -10359,6 +13404,9 @@ HTMLSCRIPT;
         $bs = app(\App\Engines\Builder\Services\BuilderService::class);
         $website = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int)$id)->first();
         if (!$website) {
+            return response()->json(['success' => false, 'error' => 'Website not found'], 404);
+        }
+        if ((int)$website->workspace_id !== (int)$r->attributes->get('workspace_id')) {
             return response()->json(['success' => false, 'error' => 'Website not found'], 404);
         }
         // Count pages before delete
@@ -10614,6 +13662,53 @@ HTMLSCRIPT;
         return response()->json($stripe->cancel($r->attributes->get('workspace_id')));
     });
 
+    // 2026-06-24 — Agency billing: shared credit pool, usage broken down PER
+    // website-workspace, with optional per-workspace allocation caps.
+    Route::get('/billing/workspace-usage', function (\Illuminate\Http\Request $r) {
+        $wsId = (int) $r->attributes->get('workspace_id');
+        $cs = app(\App\Core\Billing\CreditService::class);
+        $usage = $cs->usageByWorkspace($wsId); // [workspace_id => used] this cycle
+        $poolWs = (int) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('billing_workspace_id') ?: $wsId);
+        $rows = \Illuminate\Support\Facades\DB::table('workspaces')
+            ->where('billing_workspace_id', $poolWs)
+            ->get(['id', 'name', 'credit_allocation']);
+        $pool = $cs->getBalance($poolWs);
+        return response()->json([
+            'pool_workspace_id' => $poolWs,
+            'pool_balance'      => $pool['balance'] ?? 0,
+            'pool_available'    => $pool['available'] ?? 0,
+            'cycle_start'       => now()->startOfMonth()->toDateString(),
+            'workspaces'        => $rows->map(fn ($w) => [
+                'workspace_id'      => (int) $w->id,
+                'name'              => $w->name,
+                'used_this_cycle'   => (int) ($usage[$w->id] ?? 0),
+                'allocation'        => $w->credit_allocation !== null ? (int) $w->credit_allocation : null,
+                'allocation_remaining' => $w->credit_allocation !== null ? max(0, (int) $w->credit_allocation - (int) ($usage[$w->id] ?? 0)) : null,
+            ])->values(),
+        ]);
+    });
+
+    // Set/clear a website-workspace's monthly allocation cap (owner only).
+    Route::post('/workspaces/{id}/allocation', function (\Illuminate\Http\Request $r, $id) {
+        $actingWs = (int) $r->attributes->get('workspace_id');
+        $userId   = (int) ($r->user()?->id ?? 0);
+        $targetId = (int) $id;
+        $v = $r->validate(['credit_allocation' => 'nullable|integer|min:0']);
+        // Authorize: caller must OWN the target workspace AND it must share the
+        // caller's billing pool (same agency account).
+        $isOwner = \Illuminate\Support\Facades\DB::table('workspace_users')
+            ->where('workspace_id', $targetId)->where('user_id', $userId)->where('role', 'owner')->exists();
+        $samePool = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $targetId)->value('billing_workspace_id')
+            === \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $actingWs)->value('billing_workspace_id');
+        if (! $isOwner || ! $samePool) {
+            return response()->json(['error' => 'Not authorized for this workspace'], 403);
+        }
+        $alloc = $v['credit_allocation'] ?? null;
+        \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $targetId)
+            ->update(['credit_allocation' => ($alloc !== null && $alloc > 0) ? $alloc : null, 'updated_at' => now()]);
+        return response()->json(['ok' => true, 'workspace_id' => $targetId, 'credit_allocation' => ($alloc && $alloc > 0) ? (int) $alloc : null]);
+    });
+
     Route::post('/billing/add-agent', function (\Illuminate\Http\Request $r) {
         $r->validate(['agent_slug' => 'required|string']);
         $stripe = app(\App\Core\Billing\StripeService::class);
@@ -10623,7 +13718,14 @@ HTMLSCRIPT;
     });
 
     Route::get('/billing/plans', function () {
-        return response()->json(['plans' => \App\Models\Plan::orderBy('price')->get()]);
+        // W6: the Plan model has no $hidden, so features_json shipped raw. Filter
+    // removed capability keys out of every customer-facing plan payload.
+    $plans = \App\Models\Plan::orderBy('price')->get()->map(function ($p) {
+        $arr = $p->toArray();
+        $arr['features_json'] = \App\Core\LaunchScope\LaunchScopePolicy::filterPlanFeatures($p->features_json ?? []);
+        return $arr;
+    });
+    return response()->json(['plans' => $plans]);
     });
 
     // ── Analytics / Insights ─────────────────────────────────────
@@ -10633,8 +13735,7 @@ HTMLSCRIPT;
         return response()->json([
             'tasks_completed_today' => \App\Models\Task::where('workspace_id', $wsId)->where('status', 'completed')->where('completed_at', '>=', $today)->count(),
             'credits_used_today' => abs(\App\Models\CreditTransaction::where('workspace_id', $wsId)->where('type', 'commit')->where('created_at', '>=', $today)->sum('amount')),
-            'campaigns_sent_week' => \Illuminate\Support\Facades\DB::table('campaigns')->where('workspace_id', $wsId)->where('status', 'sent')->where('sent_at', '>=', now()->subWeek())->count(),
-            'posts_published_week' => \Illuminate\Support\Facades\DB::table('social_posts')->where('workspace_id', $wsId)->where('status', 'published')->where('published_at', '>=', now()->subWeek())->count(),
+            // W6 launch scope: campaigns_sent_week / posts_published_week removed.
             'write_items_total' => \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
             'avg_seo_score' => \Illuminate\Support\Facades\DB::table('seo_audits')->where('workspace_id', $wsId)->where('status', 'completed')->avg('score'),
         ]);
@@ -10656,6 +13757,10 @@ HTMLSCRIPT;
         Route::get   ('/widget-tokens',             [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'listWidgetTokens']);
         Route::post  ('/widget-tokens',             [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'mintWidgetToken']);
         Route::post  ('/widget-tokens/{id}/revoke', [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'revokeWidgetToken']);
+        // 2026-05-28 — website crawl: fills chatbot KB with chunked plaintext
+        // from every page in seo_content_index. Async via CrawlChatbotKnowledgeJob.
+        Route::post  ('/knowledge/crawl-site',      [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'crawlSite']);
+        Route::get   ('/knowledge/crawl-status',    [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'crawlStatus']);
     });
 
     // ── Chatbot888 billing endpoints (Recovery 2026-05-05 / §4 May-2 chatbot) ─
@@ -10939,7 +14044,10 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])
             ->where('industry', '[a-z0-9_]+');
         Route::post('/templates/{industry}/clone', [$tc, 'clone'])
             ->where('industry', '[a-z0-9_]+');
-        Route::post('/templates/upload', [$tc, 'upload']);
+        Route::post("/templates/upload", [$tc, "upload"]);
+
+        // v1.4.4 (2026-05-30) — Page Templates tab
+        Route::get("/page-templates", [$tc, "pageTemplates"]);
 
         // ── Phase 3: Intelligence & Memory (AdminIntelligenceController) ─
         $ic = \App\Http\Controllers\Api\Admin\AdminIntelligenceController::class;
@@ -11056,6 +14164,149 @@ Route::prefix('internal')->group(function () {
 
         // Runtime health ping
         Route::get('/ping', fn() => response()->json(['status' => 'ok', 'ts' => now()->toISOString()]));
+
+        // 2026-05-25 — AgentBrowser runtime callback. Called by the runtime
+        // when an agent's LLM emits <assistant_tool>{ "tool": "web_search" |
+        // "web_fetch", ... }. Goes through WebActivityService so the call
+        // is audited in agent_web_activity + admin Agent Web Activity panel.
+        Route::post('/web/search', function (\Illuminate\Http\Request $r) {
+            $r->validate([
+                'workspace_id' => 'required|integer',
+                'agent_slug'   => 'required|string|max:64',
+                'query'        => 'required|string|min:1|max:512',
+            ]);
+            $svc = app(\App\Engines\Web\Services\WebActivityService::class);
+            return response()->json($svc->search(
+                (int) $r->input('workspace_id'),
+                (string) $r->input('agent_slug'),
+                $r->input('user_id') ? (int) $r->input('user_id') : null,
+                (string) $r->input('query'),
+                $r->input('task_id') ? (int) $r->input('task_id') : null,
+            ));
+        });
+
+        Route::post('/web/fetch', function (\Illuminate\Http\Request $r) {
+            $r->validate([
+                'workspace_id' => 'required|integer',
+                'agent_slug'   => 'required|string|max:64',
+                'url'          => 'required|url|max:2048',
+            ]);
+            $svc = app(\App\Engines\Web\Services\WebActivityService::class);
+            return response()->json($svc->fetch(
+                (int) $r->input('workspace_id'),
+                (string) $r->input('agent_slug'),
+                $r->input('user_id') ? (int) $r->input('user_id') : null,
+                (string) $r->input('url'),
+                $r->input('task_id') ? (int) $r->input('task_id') : null,
+            ));
+        });
+
+        // 2026-05-25 — Edit dispatch. Called by the runtime when an agent's
+        // LLM emits <assistant_tool>{ "tool": "improve_draft" | "update_post"
+        // | "ai_builder_action", ... }. Bypasses the dead WP-bound
+        // registry.execute() path. Every call audit-logs to audit_logs so
+        // we can see who edited what.
+        Route::post('/edit/dispatch', function (\Illuminate\Http\Request $r) {
+            $r->validate([
+                'workspace_id' => 'required|integer',
+                'agent_slug'   => 'required|string|max:64',
+                'tool'         => 'required|string|in:improve_draft,update_post,ai_builder_action,fill_missing_images',
+                'params'       => 'nullable|array',
+            ]);
+            $wsId   = (int) $r->input('workspace_id');
+            $agent  = (string) $r->input('agent_slug');
+            $tool   = (string) $r->input('tool');
+            $params = (array)  $r->input('params');
+
+            $auditId = \Illuminate\Support\Facades\DB::table('audit_logs')->insertGetId([
+                'workspace_id'   => $wsId,
+                'user_id'        => $r->input('user_id') ? (int) $r->input('user_id') : null,
+                'action'         => 'agent.edit.' . $tool,
+                'entity_type'    => match ($tool) {
+                    'improve_draft'     => 'Article',
+                    'update_post'       => 'SocialPost',
+                    'ai_builder_action' => 'BuilderPage',
+                    'fill_missing_images' => 'Article',
+                    default             => 'Unknown',
+                },
+                'entity_id'      => (int) ($params['article_id'] ?? $params['id'] ?? $params['post_id'] ?? $params['page_id'] ?? 0),
+                'metadata_json'  => json_encode([
+                    'agent_slug' => $agent,
+                    'tool'       => $tool,
+                    'params'     => $params,
+                    'started_at' => now()->toIso8601String(),
+                ]),
+                'created_at'     => now(),
+            ]);
+
+            $t0 = microtime(true);
+            try {
+                $result = match ($tool) {
+                    'improve_draft' => app(\App\Engines\Write\Services\WriteService::class)
+                        ->improveDraft($wsId, $params),
+
+                    'update_post'   => app(\App\Engines\Social\Services\SocialService::class)
+                        ->updatePost((int) ($params['id'] ?? $params['post_id'] ?? 0), array_diff_key($params, ['id' => 1, 'post_id' => 1])),
+
+                    'ai_builder_action' => app(\App\Engines\Builder\Services\ArthurEditService::class)
+                        ->editPage(
+                            (int) ($params['page_id'] ?? 0),
+                            (string) ($params['command'] ?? ''),
+                            $params['section_index'] ?? null,
+                            ['workspace_id' => $wsId, 'agent_slug' => $agent]
+                        ),
+
+                    // 2026-07-07 — bulk resolver: backend finds the ws articles
+                    // missing a featured image and fans out image tasks (no ids from LLM).
+                    'fill_missing_images' => app(\App\Engines\Write\Services\WriteService::class)
+                        ->fillMissingImages($wsId, $params),
+
+                    default => throw new \RuntimeException("Unsupported tool: {$tool}"),
+                };
+
+                $duration = (int) round((microtime(true) - $t0) * 1000);
+                \Illuminate\Support\Facades\DB::table('audit_logs')->where('id', $auditId)->update([
+                    'metadata_json' => json_encode([
+                        'agent_slug'  => $agent,
+                        'tool'        => $tool,
+                        'params'      => $params,
+                        'duration_ms' => $duration,
+                        'status'      => 'ok',
+                        'result_keys' => is_array($result) ? array_keys($result) : [],
+                    ]),
+                ]);
+
+                return response()->json([
+                    'success'    => true,
+                    'tool'       => $tool,
+                    'audit_id'   => $auditId,
+                    'duration_ms'=> $duration,
+                    'data'       => $result,
+                ]);
+            } catch (\Throwable $e) {
+                $duration = (int) round((microtime(true) - $t0) * 1000);
+                \Illuminate\Support\Facades\DB::table('audit_logs')->where('id', $auditId)->update([
+                    'metadata_json' => json_encode([
+                        'agent_slug'  => $agent,
+                        'tool'        => $tool,
+                        'params'      => $params,
+                        'duration_ms' => $duration,
+                        'status'      => 'error',
+                        'error'       => $e->getMessage(),
+                    ]),
+                ]);
+                \Illuminate\Support\Facades\Log::warning('[EditDispatch] failed', [
+                    'workspace_id' => $wsId, 'agent' => $agent, 'tool' => $tool,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json([
+                    'success'  => false,
+                    'tool'     => $tool,
+                    'audit_id' => $auditId,
+                    'error'    => $e->getMessage(),
+                ], 502);
+            }
+        });
 
         // ─────────────────────────────────────────────────────────────────────
         // RUNTIME CALLBACK STUBS — added 2026-04-12 (Phase 0.6b / doc 04 + 11)
@@ -11237,17 +14488,32 @@ Route::post('/builder/websites/connect-existing', function (\Illuminate\Http\Req
         return response()->json(['success' => false, 'error' => 'Please enter a valid URL.'], 400);
     }
 
-    // Plan limit check
-    $currentCount = \Illuminate\Support\Facades\DB::table('websites')
-        ->where('workspace_id', $wsId)->whereNull('deleted_at')->count();
+    // 2026-06-26 — WEBSITE=WORKSPACE: quota counts across the user's pool-family,
+    // and each connected site gets its OWN workspace so WP + Laravel sites stay
+    // isolated (a user/agency can mix site types up to their plan's max_websites).
+    $billingWs = (int) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('billing_workspace_id') ?: $wsId);
+    $ownerUserId = (int) (\Illuminate\Support\Facades\DB::table('workspace_users')->where('workspace_id', $wsId)->where('role', 'owner')->value('user_id')
+        ?: \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('created_by') ?: 0);
     $plan = \App\Models\Plan::find(
-        \App\Models\Subscription::where('workspace_id', $wsId)
+        \App\Models\Subscription::where('workspace_id', $billingWs)
             ->where('status', 'active')->latest()->value('plan_id')
     ) ?? \App\Models\Plan::where('slug', 'free')->first();
     $max = (int) ($plan->max_websites ?? 1);
+    $userWsIds = \Illuminate\Support\Facades\DB::table('workspaces')->where('billing_workspace_id', $billingWs)->pluck('id')->all();
+    if (empty($userWsIds)) $userWsIds = [$billingWs];
+    $currentCount = (int) \Illuminate\Support\Facades\DB::table('websites')->whereIn('workspace_id', $userWsIds)->whereNull('deleted_at')->count();
     if ($currentCount >= $max) {
         return response()->json(['success' => false, 'error' => "Website limit reached ({$max}). Upgrade to add more.", 'limit_reached' => true]);
     }
+    // Dedicated workspace if the current one already has a site.
+    try {
+        $curHasSite = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->exists();
+        if ($curHasSite && $ownerUserId > 0) {
+            $newWs = app(\App\Engines\Builder\Services\ArthurService::class)
+                ->provisionWebsiteWorkspace($wsId, $ownerUserId, $billingWs, (parse_url($url, PHP_URL_HOST) ?: 'Connected Site'));
+            if ($newWs > 0) { $wsId = $newWs; }
+        }
+    } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[connect-existing] provisioning failed: ' . $e->getMessage()); }
 
     // Fetch URL
     try {
@@ -11365,16 +14631,22 @@ Route::post('/builder/websites/{id}/unpublish', function (\Illuminate\Http\Reque
 // ═══ Custom Domain Management ═══
 Route::post('/builder/websites/{id}/custom-domain', function (\Illuminate\Http\Request $request, $id) {
     $request->validate(['domain' => 'required|string|max:255']);
+    $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
+    if ($__ow !== (int) $request->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
     $service = new \App\Services\CustomDomainService();
     return response()->json($service->connect((int) $id, $request->input('domain')));
 })->middleware('auth.jwt');
 
 Route::get('/builder/websites/{id}/custom-domain/verify', function (\Illuminate\Http\Request $request, $id) {
+    $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
+    if ($__ow !== (int) $request->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
     $service = new \App\Services\CustomDomainService();
     return response()->json($service->verify((int) $id));
 })->middleware('auth.jwt');
 
 Route::delete('/builder/websites/{id}/custom-domain', function (\Illuminate\Http\Request $request, $id) {
+    $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
+    if ($__ow !== (int) $request->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
     $service = new \App\Services\CustomDomainService();
     return response()->json($service->disconnect((int) $id));
 })->middleware('auth.jwt');
@@ -11514,6 +14786,14 @@ Route::prefix("blog")->group(function () {
 
 // ── T3.2 Public contact form submission (no auth, rate-limited) ─────
 Route::middleware(['throttle:10,1'])->group(function () {
+    // 2026-05-28 — Host-resolved contact endpoint. Custom-domain sites
+    // whose template can't hardcode a subdomain hit this; the controller
+    // resolves the right website by Origin/Referer/Host headers.
+    Route::post(
+        '/public/contact/by-host',
+        [\App\Http\Controllers\Api\PublicContactController::class, 'submitByHost']
+    );
+
     Route::post(
         '/public/contact/{subdomain}',
         [\App\Http\Controllers\Api\PublicContactController::class, 'submit']
@@ -12026,24 +15306,25 @@ document.addEventListener("DOMContentLoaded",function(){
 
 Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\Request $r, $id, $field) {
     $value = $r->input('value', '');
+    $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
+    if ($__ow !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
     $ts = new \App\Engines\Builder\Services\TemplateService();
+    // updateField now patches text AND image fields SURGICALLY in the deployed
+    // index.html (src / background-image), so we no longer full-re-render for
+    // image edits — a full render would drop the post-processed sections
+    // (archetype governance + injected menu/catalog/units blocks + scrubbed
+    // names) that can't be regenerated without the original build_data.
     $result = $ts->updateField((int)$id, $field, $value);
     $website = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int)$id)->first();
     if ($website && $website->template_variables) {
         $vars = json_decode($website->template_variables, true) ?: [];
         $vars[$field] = $value;
         \Illuminate\Support\Facades\DB::table('websites')->where('id', (int)$id)->update(['template_variables' => json_encode($vars), 'updated_at' => now()]);
-        // Image-typed fields require full re-render: DOM textContent swap doesn't update src/srcset.
-        $isImage = ($field === 'logo_url') || str_ends_with($field, '_image') || str_contains($field, 'image_');
-        if ($isImage && !empty($website->template_industry)) {
-            try {
-                $html = $ts->render($website->template_industry, $vars);
-                $ts->deploy((int)$id, $html);
-            } catch (\Throwable $e) { /* swallow — the value is saved, render can retry */ }
-        }
     }
+    // Bust the published-site cache so the edit is visible immediately.
+    try { \App\Http\Controllers\PublishedSiteController::invalidateCache((int)$id); } catch (\Throwable $e) {}
     return response()->json(['saved' => $result, 'field' => $field]);
-});
+})->middleware('auth.jwt');
 
 // Logo upload — multipart/form-data with optional `logo` file.
 // Empty / missing file = clear (also reachable via PUT /fields/logo_url with value='').
@@ -12051,6 +15332,7 @@ Route::post('/builder/websites/{id}/logo', function (\Illuminate\Http\Request $r
     $id = (int)$id;
     $website = \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->first();
     if (!$website) return response()->json(['success' => false, 'error' => 'Website not found'], 404);
+    if ((int) $website->workspace_id !== (int) $r->attributes->get('workspace_id')) return response()->json(['success' => false, 'error' => 'Website not found'], 404);
 
     $vars = json_decode($website->template_variables ?? '{}', true) ?: [];
     $remove = $r->input('remove') === '1' || $r->input('remove') === 1;
@@ -12082,17 +15364,17 @@ Route::post('/builder/websites/{id}/logo', function (\Illuminate\Http\Request $r
         'updated_at' => now(),
     ]);
 
+    // Patch the logo SURGICALLY in the deployed HTML (preserves the post-processed
+    // sections) instead of a full re-render which would drop injected blocks.
     try {
-        $industry = $website->template_industry ?: 'restaurant';
-        $ts = new \App\Engines\Builder\Services\TemplateService();
-        $html = $ts->render($industry, $vars);
-        $ts->deploy($id, $html);
+        (new \App\Engines\Builder\Services\TemplateService())->updateField((int) $id, 'logo_url', $logoUrl);
     } catch (\Throwable $e) {
         return response()->json(['success' => false, 'error' => 'Render failed: ' . $e->getMessage()], 500);
     }
+    try { \App\Http\Controllers\PublishedSiteController::invalidateCache((int)$id); } catch (\Throwable $e) {}
 
     return response()->json(['success' => true, 'logo_url' => $logoUrl]);
-});
+})->middleware('auth.jwt');
 
 
 // T4: Arthur block editor — CSS injection for styling, full edit for structure
@@ -13271,522 +16553,25 @@ if (!function_exists('_t4_populatePageWithAI')) {
 }
 
 
-// LEGACY: T3.4 — this 750-line static-HTML regex closure is the pre-Patch-8
-// edit path for sites that still render from /storage/app/public/sites/{id}/index.html
-// (Chef Red is the only one). Once Chef Red is migrated to sections_json
-// per T3.4 / Patch 8.5, this entire closure is retired and Arthur edits flow
-// through BuilderService::updatePage() which already snapshots + invalidates cache.
-Route::post('/builder/websites/{id}/arthur-edit', function (\Illuminate\Http\Request $r, $id) {
-    $wsId = $r->attributes->get('workspace_id');
-    if (!$wsId) {
-        $token = str_replace('Bearer ', '', $r->header('Authorization', ''));
-        if ($token) {
-            try {
-                $payload = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key(env('JWT_SECRET'), 'HS256'));
-                $wsId = $payload->ws ?? null;
-                if (!$wsId && ($payload->sub ?? null)) {
-                    $wsRow = \Illuminate\Support\Facades\DB::table('workspace_users')->where('user_id', (int)$payload->sub)->first();
-                    if ($wsRow) $wsId = $wsRow->workspace_id;
-                }
-            } catch (\Throwable $e) {}
-        }
-    }
-    if (!$wsId) return response()->json(['error' => 'Auth required'], 401);
-
-    $message = $r->input('message', '');
-    $blockId = $r->input('block_id');
-    $elementKey = $r->input('element_key');
-    if (empty($message)) return response()->json(['error' => 'Message required'], 400);
-
-    $htmlPath = storage_path('app/public/sites/' . (int)$id . '/index.html');
-    if (!file_exists($htmlPath)) return response()->json(['error' => 'Website not found'], 404);
-
-    $lowerMsg = strtolower($message);
-
-    // BUG 3 FIX — hoist website + industry once at the top of the route.
-    // Every downstream branch (chat, Tier 1–4, CSS/HTML prompts) reads from
-    // $industry instead of re-querying with inconsistent fallbacks.
-    $website  = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int)$id)->first();
-    $industry = $website->template_industry ?? ($website->industry ?? 'default');
-    $industry = strtolower(preg_replace('/[^a-z0-9_]/i', '', (string)$industry) ?: 'default');
-
-    $credits = \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->first();
-
-
-    $runtime = app(\App\Connectors\RuntimeClient::class);
-    if (!$runtime->isConfigured()) return response()->json(['error' => 'AI not configured']);
-
-    // ── T4-A: Tier 4 intent classifier (runs before chat-first gate) ──
-    $tier4Patterns = [
-        // Pages (existing + PART 4 extended)
-        '/(add|create|new|make|build|generate)\s+(a\s+)?(full|complete|new)?\s*(\w+\s+)?(page|tab)/i',
-        '/(delete|remove)\s+(the\s+)?\w+\s+page/i',
-        '/(duplicate|copy)\s+(this\s+)?page/i',
-        '/(rename)\s+(this\s+)?page/i',
-        // Sections/blocks (existing + PART 4 extended)
-        '/(add|insert|create|build)\s+(a\s+new\s+)?\w+\s+(block|section)/i',
-        '/(remove|delete)\s+(the\s+)?\w+\s+(section|block)/i',
-        '/(move)\s+(the\s+)?\w+\s+(section|block)/i',
-        // Booking shortcut (existing)
-        '/(add|insert|create)\s+(a\s+)?(booking|appointment|reservation|scheduling)/i',
-        '/book\s+a\s+(table|class|consultation|viewing|appointment|demo|slot)/i',
-        // PART 4 (2026-04-20) — element addition ("add another service card",
-        // "add a 7th team member", "I need more testimonials").
-        '/(add|insert|create)\s+(another|a\s+new|one\s+more)\s+\w+/i',
-        '/(i\s+need|add)\s+more\s+\w+/i',
-        '/(add|create)\s+a\s+(new\s+)?\w+\s+card/i',
-    ];
-    $isTier4 = false;
-    foreach ($tier4Patterns as $_p) { if (preg_match($_p, $message)) { $isTier4 = true; break; } }
-    if ($isTier4) {
-        return response()->json(handleTier4($message, (int)$id, $blockId, (int)$wsId));
-    }
-
-    // ── CHAT-FIRST GATE — chat is the default, edit is the exception ──
-    // Edit fires only when a block is selected AND the message has clear
-    // action-word phrasing. Everything else routes to conversational chat.
-    $actionWords = ['make','change','set','add','remove','turn','update','edit','move','resize','replace','delete','put','use','apply','give','shift','swap','convert','adjust','rewrite','recolor','increase','decrease','fix'];
-    $adjEdits    = ['bigger','smaller','darker','lighter','brighter','bolder','wider','narrower','taller','shorter','thinner','thicker'];
-    $politeLeads = ['can you','could you','would you','please','pls','plz'];
-
-    $msgTrim   = trim($message);
-    $firstWord = strtolower(explode(' ', $msgTrim)[0] ?? '');
-    $isEditIntent = false;
-
-    // Element-scope-wins: if the client clicked an element, treat as edit.
-    if (!empty($elementKey)) {
-        $isEditIntent = true;
-    }
-
-    if (!empty($blockId)) {
-        // Direct action: "make the hero blue", "rewrite this", "change colour"
-        if (in_array($firstWord, $actionWords, true)) {
-            $isEditIntent = true;
-        }
-        // Standalone adjective: "bigger", "darker", "smaller"
-        if (in_array($firstWord, $adjEdits, true)) {
-            $isEditIntent = true;
-        }
-        // Polite lead: "can you make ...", "please change ..."
-        foreach ($politeLeads as $lead) {
-            if (stripos($msgTrim, $lead) === 0) {
-                $rest = trim(substr($msgTrim, strlen($lead)));
-                $restFirst = strtolower(explode(' ', $rest)[0] ?? '');
-                if (in_array($restFirst, $actionWords, true) || in_array($restFirst, $adjEdits, true)) {
-                    $isEditIntent = true;
-                }
-                break;
-            }
-        }
-    }
-
-    // Chat is the default: anything not flagged as explicit edit is a chat turn.
-    $isQuestion = !$isEditIntent;
-
-    if ($isQuestion) {
-        if (($credits->balance ?? 0) < 1) {
-            return response()->json(['error' => 'Need 1 credit. You have ' . ($credits->balance ?? 0) . '.']);
-        }
-
-        $fullHtml = file_get_contents($htmlPath);
-
-        // Build block list for context
-        preg_match_all('/data-block="([^"]+)"/', $fullHtml, $_blocks);
-        $blockList = array_unique($_blocks[1] ?? []);
-        $blockListStr = implode(', ', $blockList);
-
-        // Get target block HTML if selected
-        $blockContext = '';
-        if ($blockId) {
-            if (preg_match('/<[^>]+data-block="' . preg_quote($blockId) . '"[^>]*>.*?(?=<[^>]+data-block="|<footer|$)/s', $fullHtml, $_bm)) {
-                $blockContext = mb_substr(strip_tags($_bm[0]), 0, 2000);
-            }
-        }
-
-        $arthurSystem = "You are Arthur, the AI editor for a {$industry} business website. Answer the user's question about the page or section, keeping the {$industry} context in mind. "
-            . "You can: change colors, backgrounds, gradients, fonts, spacing, alignment, text size, borders, shadows, button styles, layout, and rewrite any text content. You edit one section at a time. You cannot add new sections or upload images. "
-            . "Be conversational, helpful, and concise. Do NOT make any changes. Just answer.";
-        $arthurUser = "Page sections: {$blockListStr}\n"
-            . ($blockId ? "Currently selected block: {$blockId}\nBlock content: {$blockContext}\n" : "No block selected.\n")
-            . "User question: {$message}";
-
-        try {
-            $chatResult = $runtime->chatJson(
-                $arthurSystem . " Return JSON with the word json: {\"reply\": \"your answer here\"}",
-                $arthurUser,
-                ['task' => 'arthur_css'],
-                600
-            );
-
-            $reply = $chatResult['parsed']['reply'] ?? null;
-            if ($reply) {
-                \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->decrement('balance', 1);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => $reply,
-                    'method' => 'chat',
-                    'credits_used' => 1,
-                    'credits_remaining' => ($credits->balance ?? 0) - 1,
-                    'reload_preview' => false,
-                ]);
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[Arthur Chat] ' . $e->getMessage());
-        }
-
-        // PATCH 4 (2026-05-08): DeepSeek direct fallback removed.
-        // Runtime is the only LLM path now (hands-vs-brain enforcement).
-        // If the primary $runtime->chatJson above already returned empty,
-        // we surface a chat-shaped graceful error.
-        return response()->json([
-            'success' => false,
-            'message' => "I couldn't reach the AI just now. Try again in a moment.",
-            'method' => 'chat',
-            'credits_used' => 0,
-            'credits_remaining' => ($credits->balance ?? 0),
-            'reload_preview' => false,
-        ]);
-    }
-
-
-    // ── Scope classification: GLOBAL vs BLOCK vs AUTO ──
-    $globalKeywords = ['theme', 'color scheme', 'primary color', 'secondary color', 'site-wide', 'entire site', 'all sections', 'whole site', 'whole page', 'every section', 'overall'];
-    $blockKeywords = ['this section', 'this block', 'this part', 'the hero', 'the nav', 'the about', 'the footer', 'the contact', 'the stats', 'the services', 'the blog', 'the testimonial', 'the process', 'make this', 'change this', 'edit this'];
-    $scope = 'auto';
-    foreach ($globalKeywords as $_gk) {
-        if (stripos($message, $_gk) !== false) { $scope = 'global'; break; }
-    }
-    if ($scope === 'auto') {
-        foreach ($blockKeywords as $_bk) {
-            if (stripos($message, $_bk) !== false) { $scope = 'block'; break; }
-        }
-    }
-    // AUTO resolution: blockId set → block, blockId null → global
-    if ($scope === 'auto') {
-        $scope = $blockId ? 'block' : 'global';
-    }
-
-    // ── FIX 2: element-aware selector override ────────────────────────
-    // Load this block's element map from the template manifest. If the
-    // user's message names a specific element (button, heading, etc.),
-    // narrow $cssSelector to that element inside the block so downstream
-    // tiers target it directly.
-    $blockElements = [];
-    $resolvedElementSelector = null;
-    if ($blockId) {
-        try {
-            // BUG 3 FIX — uses hoisted $industry (no extra DB query, no 'restaurant' fallback).
-            $manifestPath = storage_path('templates/' . $industry . '/manifest.json');
-            if (is_file($manifestPath)) {
-                $manifest = json_decode(file_get_contents($manifestPath), true);
-                foreach (($manifest['blocks'] ?? []) as $_b) {
-                    if (($_b['id'] ?? null) === $blockId) {
-                        $blockElements = $_b['elements'] ?? [];
-                        break;
-                    }
-                }
-            }
-        } catch (\Throwable $_e) { /* no manifest → fall back to block-level selector */ }
-
-        if (!empty($blockElements)) {
-            // Explicit element_key from the iframe click wins over keyword matching.
-            if ($elementKey && !empty($blockElements[$elementKey])) {
-                $resolvedElementSelector = '[data-block="' . $blockId . '"] ' . $blockElements[$elementKey];
-            }
-            // Keywords ordered specific-first so "primary button" wins over "button".
-            $elementKeywords = [
-                'primary button'   => ['primary_button'],
-                'cta button'       => ['primary_button'],
-                'main button'      => ['primary_button'],
-                'secondary button' => ['secondary_button'],
-                'submit button'    => ['primary_button'],
-                'button'           => ['primary_button', 'secondary_button'],
-                'cta'              => ['primary_button'],
-                'subheading'       => ['subheading'],
-                'subtitle'         => ['subheading'],
-                'heading'          => ['heading'],
-                'title'            => ['heading'],
-                'tagline'          => ['tagline'],
-                'eyebrow'          => ['tagline', 'eyebrow'],
-                'image'            => ['image'],
-                'photo'            => ['image'],
-                'picture'          => ['image'],
-                'logo'             => ['logo'],
-                'quote'            => ['quote'],
-                'author'           => ['author'],
-                'form'             => ['form'],
-                'submit'           => ['primary_button'],
-            ];
-            if (!$resolvedElementSelector) foreach ($elementKeywords as $kw => $elemKeys) {
-                if (stripos($lowerMsg, $kw) !== false) {
-                    $matched = [];
-                    foreach ($elemKeys as $ek) {
-                        if (!empty($blockElements[$ek])) {
-                            $matched[] = '[data-block="' . $blockId . '"] ' . $blockElements[$ek];
-                        }
-                    }
-                    if ($matched) {
-                        $resolvedElementSelector = implode(', ', array_unique($matched));
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    // Effective selector for CSS tiers — narrowed if an element keyword matched.
-    $cssSelector = $resolvedElementSelector
-        ?? (($scope === 'global' || !$blockId) ? 'body' : '[data-block="' . $blockId . '"]');
-    // Always-block selector, used by Tier 1 button patterns that must target
-    // both buttons regardless of element narrowing.
-    $blockSel = $blockId ? '[data-block="' . $blockId . '"]' : 'body';
-
-    // ── Credit cost for edit operations (after chat intent is handled) ──
-    $creditCost = 2;
-    if (preg_match('/color|theme|font|translate|arabic|language/', $lowerMsg)) $creditCost = 3;
-    elseif (preg_match('/add|new section|insert|whatsapp|map/', $lowerMsg)) $creditCost = 5;
-
-    if (($credits->balance ?? 0) < $creditCost) {
-        return response()->json(['error' => "Need {$creditCost} credits. You have " . ($credits->balance ?? 0) . "."]);
-    }
-
-
-    // ── Compound keyword check: skip Tier 1 for gradient/shadow/animation etc ──
-    $compoundKeywords = ['gradient', 'shadow', 'animation', 'blur', 'transition', 'glow', 'overlay', 'fade', 'radial', 'linear', 'opacity'];
-    $skipTier1 = false;
-    foreach ($compoundKeywords as $kw) {
-        if (stripos($message, $kw) !== false) { $skipTier1 = true; break; }
-    }
-    // ── INSTANT CSS map (0ms, no API call) ──
-    {
-        $sel = $cssSelector;
-        $instantMap = [
-            '/background.*red/i'           => "{$sel} { background: #8B0000 !important; }",
-            '/background.*blue/i'          => "{$sel} { background: #1a3a6b !important; }",
-            '/background.*green/i'         => "{$sel} { background: #1B4332 !important; }",
-            '/background.*black/i'         => "{$sel} { background: #000000 !important; }",
-            '/background.*white/i'         => "{$sel} { background: #ffffff !important; }",
-            '/background.*gold/i'          => "{$sel} { background: #D4AF37 !important; }",
-            '/background.*dark$/i'         => "{$sel} { background: #0a0a0a !important; }",
-            '/background.*light$/i'        => "{$sel} { background: #f8f8f8 !important; }",
-            '/gradient.*(red.*black|black.*red)/i' => "{$sel} { background: linear-gradient(135deg, #000, #8B0000) !important; }",
-            '/gradient.*(blue.*black|black.*blue)/i' => "{$sel} { background: linear-gradient(135deg, #000, #1a3a6b) !important; }",
-            '/gradient.*(green.*black|black.*green)/i' => "{$sel} { background: linear-gradient(135deg, #000, #1B4332) !important; }",
-            '/gradient.*gold/i'            => "{$sel} { background: linear-gradient(135deg, #1a1a1a, #D4AF37) !important; }",
-            '/gradient.*purple/i'          => "{$sel} { background: linear-gradient(135deg, #0F1117, #6C5CE7) !important; }",
-            '/gradient.*red/i'             => "{$sel} { background: linear-gradient(135deg, #1a0000, #8B0000) !important; }",
-            '/(darker|dim)/i'              => "{$sel} { filter: brightness(0.7) !important; }",
-            '/(lighter|brighter)/i'        => "{$sel} { filter: brightness(1.3) !important; }",
-            '/(bigger|larger).*text/i'     => "{$sel} h1, {$sel} h2 { font-size: 120% !important; }",
-            '/(smaller).*text/i'           => "{$sel} h1, {$sel} h2 { font-size: 80% !important; }",
-            '/(taller|full.*screen|full.*height)/i' => "{$sel} { min-height: 100vh !important; }",
-            '/(shorter|compact)/i'         => "{$sel} { min-height: 50vh !important; padding: 60px 0 !important; }",
-            '/(more.*padding|more.*space)/i' => "{$sel} { padding: 120px 0 !important; }",
-            '/(less.*padding|less.*space)/i' => "{$sel} { padding: 40px 0 !important; }",
-            '/add.*border/i'               => "{$sel} { border: 2px solid #D4AF37 !important; }",
-            '/remove.*border/i'            => "{$sel} { border: none !important; }",
-            '/rounded/i'                   => "{$sel} { border-radius: 16px !important; overflow: hidden !important; }",
-            '/(dark.*overlay|overlay.*dark)/i' => "{$sel} { position:relative; } {$sel}::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,0.5); z-index:1; pointer-events:none; }",
-            '/text.*white|white.*text/i'   => "{$sel}, {$sel} * { color: #fff !important; }",
-            '/text.*gold|gold.*text/i'     => "{$sel} h1, {$sel} h2, {$sel} h3 { color: #D4AF37 !important; }",
-            '/(number|01|02|03).*gold/i'   => "{$sel} .expertise-num { color: #FFD700 !important; }",
-            '/(number|01|02|03).*white/i'  => "{$sel} .expertise-num { color: #fff !important; }",
-            '/(number|01|02|03).*(bright|lighter)/i' => "{$sel} .expertise-num { color: #FFD700 !important; }",
-            '/hide.*section|hide$/i'       => "{$sel} { display: none !important; }",
-            '/show.*section|show$/i'       => "{$sel} { display: block !important; }",
-            '/(bold|bolder)/i'             => "{$sel} p, {$sel} span { font-weight: 700 !important; }",
-            '/font.*bigger/i'              => "{$sel} { font-size: 110% !important; }",
-            '/center.*text|text.*center/i' => "{$sel} { text-align: center !important; }",
-            // ── FIX 4: button-specific instant patterns ──
-            '/button.*gold|gold.*button/i'     => "{$blockSel} a.btn-primary, {$blockSel} a.btn-ghost, {$blockSel} button.form-submit, {$blockSel} a.nav-cta { background: #C9943A !important; color: #fff !important; border-color: #C9943A !important; }",
-            '/button.*red|red.*button/i'       => "{$blockSel} a.btn-primary, {$blockSel} a.btn-ghost, {$blockSel} button.form-submit, {$blockSel} a.nav-cta { background: #b91c1c !important; color: #fff !important; border-color: #b91c1c !important; }",
-            '/button.*white|white.*button/i'   => "{$blockSel} a.btn-primary, {$blockSel} a.btn-ghost, {$blockSel} button.form-submit, {$blockSel} a.nav-cta { background: #ffffff !important; color: #000 !important; border-color: #ffffff !important; }",
-            '/button.*black|black.*button/i'   => "{$blockSel} a.btn-primary, {$blockSel} a.btn-ghost, {$blockSel} button.form-submit, {$blockSel} a.nav-cta { background: #000 !important; color: #fff !important; border-color: #000 !important; }",
-            '/button.*(charcoal|dark|carbon|graphite)|(charcoal|dark|carbon|graphite).*button/i' => "{\} a.btn-primary, {\} a.btn-ghost, {\} button.form-submit, {\} a.nav-cta { background: #1B1B1B !important; color: #ffffff !important; border-color: #1B1B1B !important; }",
-            '/button.*(bronze|brass|copper)|(bronze|brass|copper).*button/i' => "{\} a.btn-primary, {\} a.btn-ghost, {\} button.form-submit, {\} a.nav-cta { background: #8B6F3E !important; color: #ffffff !important; border-color: #8B6F3E !important; }",
-            '/button.*(cream|chalk|ivory)|(cream|chalk|ivory).*button/i' => "{\} a.btn-primary, {\} a.btn-ghost, {\} button.form-submit, {\} a.nav-cta { background: #FAF7F2 !important; color: #1B1B1B !important; border-color: #FAF7F2 !important; }",
-            '/button.*blue|blue.*button/i'     => "{$blockSel} a.btn-primary, {$blockSel} a.btn-ghost, {$blockSel} button.form-submit, {$blockSel} a.nav-cta { background: #1a3a6b !important; color: #fff !important; border-color: #1a3a6b !important; }",
-        ];
-
-if (!$skipTier1)
-        foreach ($instantMap as $pattern => $css) {
-            if (preg_match($pattern, $message)) {
-                $html = file_get_contents($htmlPath);
-                // Accumulate in single arthur-edits style tag
-                preg_match('/<style id="arthur-edits">(.*?)<\/style>/s', $html, $_ae);
-                $_existCss = $_ae[1] ?? '';
-                $_newCss = $_existCss . "\n/* instant: {$blockId} */ " . $css;
-                if (strpos($html, 'id="arthur-edits"') !== false) {
-                    $html = preg_replace('/<style id="arthur-edits">.*?<\/style>/s', '<style id="arthur-edits">' . $_newCss . '</style>', $html);
-                } else {
-                    $html = str_replace('</head>', '<style id="arthur-edits">' . $_newCss . '</style></head>', $html);
-                }
-                file_put_contents($htmlPath, $html);
-
-                \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->decrement('balance', 1);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => "Done.",
-                    'method' => 'instant',
-                    'credits_used' => 1,
-                    'credits_remaining' => ($credits->balance ?? 0) - 1,
-                    'reload_preview' => true,
-                ]);
-            }
-        }
-    }
-
-    // ── CSS-only path for styling changes (fast, no timeout risk) ──
-    $cssKeywords = ['background','color','gradient','font','padding','margin','border','shadow','opacity','darker','lighter','bigger','smaller','taller','wider','brighter','dimmer','spacing','rounded','align','center'];
-    $isCssChange = false;
-    foreach ($cssKeywords as $kw) {
-        if (strpos($lowerMsg, $kw) !== false) { $isCssChange = true; break; }
-    }
-
-    if ($isCssChange) {
-        try {
-            $_elementList = '';
-            if (!empty($blockElements)) {
-                $_parts = [];
-                foreach ($blockElements as $_k => $_s) {
-                    $_parts[] = '[data-block="' . $blockId . '"] ' . $_s . ' (' . $_k . ')';
-                }
-                $_elementList = implode(', ', $_parts);
-            }
-            $cssResult = $runtime->chatJson(
-                "You are a CSS expert editing the website of a {$industry} business. "
-                . "Return JSON with the word json. One key: 'css' containing CSS rules. Execute the full request exactly as stated. If the user says gradient, write a gradient. If they name two colors, use both. "
-                . (!empty($blockElements)
-                    ? "This block contains these child elements and their EXACT CSS selectors (as JSON): " . json_encode($blockElements) . ". "
-                      . "Use ONLY these selectors when targeting child elements. Never guess class names. "
-                    : "")
-                . "Target using the CSS selector: {$cssSelector}. "
-                . "Example: {\"css\": \"body { background: linear-gradient(135deg, #000, #8B0000) !important; }\"} "
-                . "Use !important on all rules. No HTML. No explanation.",
-                "Industry: {$industry}\nRequest: {$message}\nScope: {$scope}\nSelector: {$cssSelector}"
-                . (!empty($_elementList) ? "\nAvailable selectors in this block: {$_elementList}" : ""),
-                ['task' => 'arthur_css'],
-                600
-            );
-
-            $css = $cssResult['parsed']['css'] ?? null;
-            if ($css && strlen($css) > 5) {
-                $html = file_get_contents($htmlPath);
-                $styleTag = '';
-                // Accumulate in arthur-edits tag
-                preg_match('/<style id="arthur-edits">(.*?)<\/style>/s', $html, $_ae2);
-                $_existCss2 = $_ae2[1] ?? '';
-                $_newCss2 = $_existCss2 . "\n/* css: " . substr($message, 0, 30) . " */ " . $css;
-                if (strpos($html, 'id="arthur-edits"') !== false) {
-                    $html = preg_replace('/<style id="arthur-edits">.*?<\/style>/s', '<style id="arthur-edits">' . $_newCss2 . '</style>', $html);
-                } else {
-                    $html = str_replace('</head>', '<style id="arthur-edits">' . $_newCss2 . '</style></head>', $html);
-                }
-                file_put_contents($htmlPath, $html);
-
-                \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->decrement('balance', $creditCost);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => "Done.",
-                    'method' => 'css',
-                    'credits_used' => $creditCost,
-                    'credits_remaining' => ($credits->balance ?? 0) - $creditCost,
-                    'reload_preview' => true,
-                ]);
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[Arthur CSS] ' . $e->getMessage());
-        }
-        // CSS failed — fall through to full edit
-    }
-
-    // ── Full HTML edit path (structural changes) ──
-    // BUG 3 FIX — use the $website hoisted at the top of the route.
-    $fullHtml = file_get_contents($htmlPath);
-    $vars = json_decode($website->template_variables ?? '{}', true);
-
-    // Extract target block if specified
-    $isBlockEdit = false;
-    $contextHtml = $fullHtml;
-    if ($blockId) {
-        if (preg_match('/<[^>]+data-block="' . preg_quote($blockId) . '"[^>]*>.*?(?=<[^>]+data-block="|<footer|$)/s', $fullHtml, $m)) {
-            $contextHtml = $m[0];
-            $isBlockEdit = true;
-        }
-    }
-
-    // Minify for LLM
-    $minified = preg_replace('/<!--(?!\s*(?:BLOCK|END BLOCK)).*?-->/s', '', $contextHtml);
-    $minified = preg_replace('/\s+/', ' ', $minified);
-    $minified = preg_replace('/>\s+</', '><', $minified);
-
-    try {
-        $result = $runtime->chatJson(
-            "You are Arthur, an expert web developer editing the website of a {$industry} business. "
-            . ($isBlockEdit ? "Edit ONLY this HTML block." : "Edit this website HTML. Apply the change globally across the page.") . " "
-            . "Return JSON with the word json: {\"html\": \"<modified HTML>\"} "
-            . "Keep data-block and data-field attributes. Keep the tone and copy appropriate for a {$industry} business. "
-            . "CSS vars: --gold:" . ($vars['primary_color'] ?? '#C9943A') . " --ink:" . ($vars['bg_color'] ?? '#0A0806') . ". "
-            . "No explanation. Just the JSON.",
-            "Industry: {$industry}\nHTML:\n" . $minified . "\n\nRequest: " . $message,
-            ['task' => 'arthur_edit'],
-            8000
-        );
-
-        if (!($result['success'] ?? false)) {
-            return response()->json(['error' => "I couldn't process that. Try selecting a specific section and making a simpler change."]);
-        }
-
-        $newHtml = $result['parsed']['html'] ?? null;
-        if (!$newHtml || strlen($newHtml) < 50) {
-            return response()->json(['error' => "That change was too complex. Try one thing at a time."]);
-        }
-
-        if ($isBlockEdit && $blockId) {
-            $pattern = '/<[^>]+data-block="' . preg_quote($blockId) . '"[^>]*>.*?(?=<[^>]+data-block="|<footer|$)/s';
-            $updatedFull = preg_replace($pattern, $newHtml, $fullHtml, 1);
-            file_put_contents($htmlPath, $updatedFull);
-        } else {
-            if (stripos($newHtml, '<!DOCTYPE') !== false || stripos($newHtml, '<html') !== false) {
-                file_put_contents($htmlPath, $newHtml);
-            } else {
-                return response()->json(['error' => 'For big changes, try selecting a section first.']);
-            }
-        }
-
-        \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->decrement('balance', $creditCost);
-
-        return response()->json([
-            'success' => true,
-            'message' => "Done.",
-            'method' => 'html',
-            'credits_used' => $creditCost,
-            'credits_remaining' => ($credits->balance ?? 0) - $creditCost,
-            'reload_preview' => true,
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json(['error' => "Arthur timed out. Try a simpler change like: 'Change the color to red'"]);
-    }
-});
 
 Route::post('/builder/websites/{id}/tier4-confirm', function (\Illuminate\Http\Request $r, $id) {
     $action = $r->input('confirm_action');
     $data = $r->input('confirm_data', []);
     $htmlPath = storage_path('app/public/sites/' . (int)$id . '/index.html');
     $svc = app(\App\Engines\Builder\Services\BuilderService::class);
+    $__wsId = (int) $r->attributes->get('workspace_id');
+    if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', (int)$id)->where('workspace_id', $__wsId)->exists()) return response()->json(['error' => 'website not found'], 404);
 
     if ($action === 'delete_page') {
         $pageId = (int)($data['page_id'] ?? 0);
         if (!$pageId) return response()->json(['error' => 'page_id required'], 400);
-        $svc->deletePage($pageId);
+        $svc->deletePage($pageId, $__wsId);
         return response()->json(['success' => true, 'method' => 'action', 'message' => 'Page deleted.', 'action' => 'page_deleted']);
     }
     if ($action === 'duplicate_page') {
         $src = \Illuminate\Support\Facades\DB::table('pages')->where('id', (int)($data['page_id'] ?? 0))->first();
         if (!$src) return response()->json(['error' => 'source page not found'], 404);
+        if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', $src->website_id)->where('workspace_id', $__wsId)->exists()) return response()->json(['error' => 'source page not found'], 404);
         $newTitle = ($src->title ?? 'Page') . ' Copy';
         $newSlug = \Illuminate\Support\Str::slug($newTitle) . '-' . substr(uniqid(), -4);
         $res = $svc->createPage((int)$src->website_id, [
@@ -13807,7 +16592,7 @@ Route::post('/builder/websites/{id}/tier4-confirm', function (\Illuminate\Http\R
         return response()->json(['success' => true, 'method' => 'action', 'message' => 'Removed ' . $blockId . ' section.', 'action' => 'block_removed', 'block_id' => $blockId, 'reload_preview' => true]);
     }
     return response()->json(['error' => 'unknown action'], 400);
-});
+})->middleware('auth.jwt');
 
 
 
@@ -14098,6 +16883,11 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
                 'language'       => $language,
                 'user_id'        => $userId,
                 'created_via'    => 'wp_connector',
+                // 2026-06-13 — generate the bundle featured image inside
+                // writeArticle, BEFORE its WordPress auto-push, so the pushed
+                // draft carries the image. Step 3 below becomes idempotent
+                // (skips when the row already has an image) — no double-gen.
+                'auto_featured_image' => true,
             ]);
             $articleId = $writeResult['article_id'] ?? null;
             if (!$articleId) {
@@ -14149,22 +16939,35 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         }
 
         // ── 3. Featured image (free chain child — paid by parent bundle) ─
+        // 2026-06-13 — writeArticle now generates this image BEFORE its
+        // WordPress push (auto_featured_image), so the pushed draft already
+        // carries it. This step is therefore IDEMPOTENT: if the row already
+        // has an image we skip regeneration (no double-generate, no wasted
+        // compute); we only generate here as a fallback when writeArticle's
+        // attempt came back empty. The credit logic below is unchanged.
         $imageFailed = false;
-        try {
-            $creativeSvc = app(\App\Engines\Creative\Services\CreativeService::class);
-            $imgResult = $creativeSvc->generateImage($wsId, [
-                'article_id' => $articleId,
-                'quality'    => 'mini',
-                'user_id'    => $userId,
-            ]);
-            if (empty($imgResult['url']) && empty($imgResult['featured_image_url'])) {
+        $existingImage = \Illuminate\Support\Facades\DB::table('articles')
+            ->where('id', $articleId)->value('featured_image_url');
+        if (! empty($existingImage)) {
+            // writeArticle already produced + pushed the image — nothing to do.
+            $imageFailed = false;
+        } else {
+            try {
+                $creativeSvc = app(\App\Engines\Creative\Services\CreativeService::class);
+                $imgResult = $creativeSvc->generateImage($wsId, [
+                    'article_id' => $articleId,
+                    'quality'    => 'mini',
+                    'user_id'    => $userId,
+                ]);
+                if (empty($imgResult['url']) && empty($imgResult['featured_image_url'])) {
+                    $imageFailed = true;
+                }
+            } catch (\Throwable $e) {
                 $imageFailed = true;
+                \Illuminate\Support\Facades\Log::warning('[WP generate-article] image gen failed', [
+                    'article_id' => $articleId, 'error' => $e->getMessage(),
+                ]);
             }
-        } catch (\Throwable $e) {
-            $imageFailed = true;
-            \Illuminate\Support\Facades\Log::warning('[WP generate-article] image gen failed', [
-                'article_id' => $articleId, 'error' => $e->getMessage(),
-            ]);
         }
 
         // ── 4. Commit credits: 2cr bundle if image succeeded, 1cr if not ─
@@ -14305,6 +17108,10 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
     Route::get('/content/pipeline', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         // SEO-scope task actions across the engines we care about.
+        // 2026-05-23 FIX 29 — added aeo_enrich, generate_image_mini,
+        // insert_link, apply_link_suggestions so the full chain (Sarah's
+        // recipe + SEO Assistant batch) is visible in the pipeline UI.
+        // Without these the user sees only 3 of 6 chain steps per article.
         $seoActions = [
             'write_article', 'improve_draft', 'generate_outline',
             'generate_headlines', 'generate_meta',
@@ -14312,13 +17119,17 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             'link_suggestions', 'autonomous_goal', 'agent_goal',
             'keyword_research', 'generate_image', 'generate_article',
             'optimize_article',
+            'aeo_enrich', 'generate_image_mini', 'insert_link', 'apply_link_suggestions',
         ];
         $rows = \Illuminate\Support\Facades\DB::table('tasks')
             ->where('workspace_id', $wsId)
             ->whereIn('action', $seoActions)
             ->orderByDesc('id')->limit(200)->get();
 
-        $buckets = ['queued' => [], 'running' => [], 'completed' => [], 'failed' => [], 'cancelled' => []];
+        // 2026-05-25 — added 'blocked' bucket. Previously blocked tasks were
+        // folded into 'failed', which mislabeled waiting-on-external work as
+        // failure. Blocked tasks now have their own tab + retry affordance.
+        $buckets = ['queued' => [], 'running' => [], 'blocked' => [], 'completed' => [], 'failed' => [], 'cancelled' => []];
         foreach ($rows as $t) {
             $payload = json_decode($t->payload_json ?? '{}', true) ?: [];
             $result  = json_decode($t->result_json  ?? '{}', true) ?: [];
@@ -14332,10 +17143,17 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
                 $progress = (int) min(100, round(($t->current_step / max(1, $t->total_steps)) * 100));
             } elseif (in_array($t->status, ['completed'])) { $progress = 100; }
             elseif (in_array($t->status, ['running','verifying'])) { $progress = 50; }
+            // 2026-05-27 — category surfaced for Pipeline column + filter
+            $catSvc = app(\App\Core\TaskSystem\TaskCategoryService::class);
+            $cat = $t->category ?: $catSvc->for((string) $t->engine, (string) $t->action);
+            $catMeta = $catSvc->metadata($cat);
             $item = [
                 'id'             => (int) $t->id,
                 'task_type'      => (string) $t->action,
                 'engine'         => (string) $t->engine,
+                'category'       => $cat,
+                'category_label' => $catMeta['label'],
+                'category_color' => $catMeta['color'],
                 'status'         => (string) $t->status,
                 'progress'       => $progress,
                 'payload'        => $payload,
@@ -14346,9 +17164,18 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             $bucket = $t->status;
             if (in_array($bucket, ['pending','awaiting_approval','queued'], true))      { $buckets['queued'][]    = $item; }
             elseif (in_array($bucket, ['running','verifying'], true))                    { $buckets['running'][]   = $item; }
+            elseif ($bucket === 'blocked')                                                { $buckets['blocked'][]   = $item; }
             elseif ($bucket === 'completed')                                              { $buckets['completed'][] = $item; }
-            elseif (in_array($bucket, ['failed','degraded','blocked'], true))            { $buckets['failed'][]    = $item; }
+            elseif (in_array($bucket, ['failed','degraded'], true))                       { $buckets['failed'][]    = $item; }
             elseif ($bucket === 'cancelled')                                              { $buckets['cancelled'][] = $item; }
+        }
+        // 2026-05-27 — counts grouped by category for the Pipeline filter pills
+        $byCategory = [];
+        foreach ($buckets as $bucket) {
+            foreach ($bucket as $item) {
+                $c = $item['category'] ?? 'operations';
+                $byCategory[$c] = ($byCategory[$c] ?? 0) + 1;
+            }
         }
         return response()->json([
             'success'  => true,
@@ -14356,11 +17183,13 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             'counts'   => [
                 'queued'    => count($buckets['queued']),
                 'running'   => count($buckets['running']),
+                'blocked'   => count($buckets['blocked']),
                 'completed' => count($buckets['completed']),
                 'failed'    => count($buckets['failed']),
                 'cancelled' => count($buckets['cancelled']),
                 'total'     => array_sum(array_map('count', $buckets)),
             ],
+            'counts_by_category' => $byCategory,
         ]);
     });
 
@@ -14417,11 +17246,16 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         }
 
         // Pipeline tasks (SEO-scope) in the month
+        // 2026-05-23 FIX 29 — same expansion as /content/pipeline so the
+        // calendar shows the full chain (aeo_enrich, generate_image_mini,
+        // insert_link, apply_link_suggestions). Without this the calendar
+        // view was missing 3 of every 6 chain steps.
         $seoActions = [
             'write_article','improve_draft','deep_audit','serp_analysis',
             'bulk_generate_meta','generate_image','generate_article',
             'optimize_article','keyword_research','link_suggestions',
             'autonomous_goal','agent_goal','generate_outline','generate_headlines',
+            'generate_meta','aeo_enrich','generate_image_mini','insert_link','apply_link_suggestions',
         ];
         $tasks = \Illuminate\Support\Facades\DB::table('tasks')
             ->where('workspace_id', $wsId)
@@ -14825,12 +17659,17 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
     Route::prefix('pipeline')->group(function () {
         Route::get('/goals', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
+            // W6: the WordPress plugin is SEO-only. /content/pipeline already
+            // allowlists SEO actions; this endpoint did not, so a legacy
+            // social/marketing row was emitted verbatim. Same guard applied.
             $goals = \Illuminate\Support\Facades\DB::table('tasks')
                 ->where('workspace_id', $wsId)
                 ->whereIn('status', ['pending', 'queued', 'running', 'completed', 'failed', 'cancelled'])
                 ->orderByDesc('created_at')
-                ->limit(20)
-                ->get(['id', 'engine', 'action', 'status', 'payload_json', 'created_at', 'completed_at']);
+                ->limit(60)
+                ->get(['id', 'engine', 'action', 'status', 'payload_json', 'created_at', 'completed_at'])
+                ->reject(fn($g) => \App\Core\LaunchScope\AgentDirectory::isLegacyTask($g->engine, $g->action, null))
+                ->take(20)->values();
             return response()->json(['success' => true, 'goals' => $goals]);
         });
 
@@ -15749,6 +18588,41 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         ]);
     });
 
+    // 2026-05-28 — PUT /chatbot/settings — narrow write surface so the
+    // WP plugin can change brand color from wp-admin without bouncing the
+    // user to the SPA. Single field for now (primary_color); extend with
+    // greeting / theme when those get pickers in WP too. Mirrors what the
+    // SPA's AdminChatbotController::updateSettings does for this one field.
+    Route::put('/chatbot/settings', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $data = $r->validate([
+            'primary_color' => ['required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ]);
+        $existing = \Illuminate\Support\Facades\DB::table('chatbot_settings')
+            ->where('workspace_id', $wsId)->first();
+        if ($existing) {
+            \Illuminate\Support\Facades\DB::table('chatbot_settings')
+                ->where('workspace_id', $wsId)
+                ->update(['primary_color' => $data['primary_color'], 'updated_at' => now()]);
+        } else {
+            \Illuminate\Support\Facades\DB::table('chatbot_settings')->insert([
+                'workspace_id'  => $wsId,
+                'primary_color' => $data['primary_color'],
+                'enabled'       => false,
+                'theme'         => 'auto',
+                'timezone'      => 'UTC',
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+        }
+        return response()->json([
+            'success' => true,
+            'data'    => \Illuminate\Support\Facades\DB::table('chatbot_settings')
+                ->where('workspace_id', $wsId)
+                ->first(['enabled', 'greeting', 'primary_color', 'theme']),
+        ]);
+    });
+
     Route::post('/chatbot/widget-token', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         $data = $r->validate([
@@ -15855,6 +18729,40 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             return response()->json(['success' => false, 'error' => 'NOT_FOUND'], 404);
         }
         return response()->json(['success' => true]);
+    });
+
+    // 2026-05-28 — Website crawl over the connector (WP plugin entry point).
+    // Same job as the SPA route — workspace is resolved from the X-API-KEY.
+    Route::post('/chatbot/knowledge/crawl-site', function (\Illuminate\Http\Request $r) {
+        $wsId = (int) $r->attributes->get('workspace_id');
+        if (! $wsId) {
+            return response()->json(['success' => false, 'error' => 'NO_WORKSPACE'], 400);
+        }
+        $data = $r->validate([
+            'max_pages' => 'nullable|integer|min:1|max:200',
+        ]);
+        $maxPages = (int) ($data['max_pages'] ?? \App\Engines\Chatbot\Services\ChatbotWebsiteCrawler::DEFAULT_MAX_PAGES);
+
+        if (\App\Jobs\CrawlChatbotKnowledgeJob::isRunning($wsId)) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'ALREADY_RUNNING',
+                'message' => 'A crawl is already in progress for this workspace.',
+                'status'  => \Illuminate\Support\Facades\Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId)),
+            ], 409);
+        }
+        \App\Jobs\CrawlChatbotKnowledgeJob::dispatch($wsId, $maxPages);
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Crawl queued — pages will appear in the knowledge base shortly.',
+            'max_pages' => $maxPages,
+        ], 202);
+    });
+
+    Route::get('/chatbot/knowledge/crawl-status', function (\Illuminate\Http\Request $r) {
+        $wsId = (int) $r->attributes->get('workspace_id');
+        $status = \Illuminate\Support\Facades\Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId));
+        return response()->json(['success' => true, 'status' => $status]);
     });
 });
 
@@ -15967,3 +18875,489 @@ Route::middleware(['auth.jwt'])->prefix('settings')->group(function () {
         });
     });
 });
+
+// ── Content Pack routes (H1 — cross-engine campaign orchestrator) /* h1-batch3-routes */
+Route::middleware(['auth.jwt'])->prefix('content-packs')->group(function () {
+    Route::post('/',             [\App\Engines\Content\Controllers\ContentPackController::class, 'create']);
+    Route::get('/',              [\App\Engines\Content\Controllers\ContentPackController::class, 'list']);
+    Route::get('/{id}',          [\App\Engines\Content\Controllers\ContentPackController::class, 'get']);
+    Route::post('/{id}/assets',  [\App\Engines\Content\Controllers\ContentPackController::class, 'addAsset']);
+    Route::post('/{id}/publish', [\App\Engines\Content\Controllers\ContentPackController::class, 'publish']);
+});
+
+
+// ── Sarah cross-engine campaign drafting (Batch 4) /* b4-sarah-route */
+Route::middleware(['auth.jwt'])->post('/sarah/draft-campaign', function (\Illuminate\Http\Request $r) {
+    $kernel = app(\App\Core\EngineKernel\EngineExecutionService::class);
+    return response()->json($kernel->execute(
+        (int) $r->attributes->get('workspace_id'),
+        'sarah',
+        'draft_campaign',
+        $r->all(),
+        ['source' => 'manual', 'user_id' => $r->user()?->id]
+    ));
+});
+
+
+// ── Publish Queue routes (Batch 9 — per-asset preview review inside Plans) /* b9-publish-routes */
+Route::middleware(['auth.jwt'])->prefix('publish-queue')->group(function () {
+    Route::get('/',                  [\App\Http\Controllers\PublishQueueController::class, 'index']);
+    Route::get('/plan/{planId}',     [\App\Http\Controllers\PublishQueueController::class, 'listForPlan']);
+    Route::post('/bulk-approve',     [\App\Http\Controllers\PublishQueueController::class, 'bulkApprove']);
+    Route::post('/{id}/approve',     [\App\Http\Controllers\PublishQueueController::class, 'approve']);
+    Route::post('/{id}/reject',      [\App\Http\Controllers\PublishQueueController::class, 'reject']);
+});
+
+
+// ── Plan Command Center (Batch 15 — aggregated read for UI) /* b15-command-center */
+Route::middleware(['auth.jwt'])->prefix('plans')->group(function () {
+    Route::get('/{id}/command-center', [\App\Http\Controllers\PlanCommandCenterController::class, 'show']);
+    Route::get('/{id}/summary',        [\App\Http\Controllers\PlanCommandCenterController::class, 'summary']);
+});
+
+
+// ── Automation calendar surfaces (Phase 4) /* b20-phase4-routes */
+// /api/automation/calendar       — Main Automation Cal aggregated view
+// /api/email-marketing/calendar  — Email Marketing per-engine convenience view
+// Both read from automation_events ONLY (never user's calendar_events).
+Route::middleware(['auth.jwt'])->group(function () {
+    Route::get('/automation/calendar', [\App\Http\Controllers\AutomationCalendarController::class, 'main']);
+    Route::get('/email-marketing/calendar', [\App\Http\Controllers\AutomationCalendarController::class, 'emailMarketing']);
+});
+
+
+    /* B27: projects-phase3-meeting-handoff */
+    Route::middleware(['auth.jwt'])->group(function () {
+        Route::post('/projects/from-meeting/{meetingId}/ratify', function (\Illuminate\Http\Request $r, $meetingId) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $userId = (int) $user->id;
+            $opts = $r->only(['duration_days','budget_credits','channels','kpi_count','milestone_count','name_override','goal_override']);
+            $svc = app(\App\Core\Projects\ProjectFromMeetingService::class);
+            $res = $svc->ratify($wsId, $userId, (int) $meetingId, $opts);
+            $code = !empty($res['success']) ? 200 : (isset($res['project_id']) ? 409 : 422);
+            return response()->json($res, $code);
+        });
+        Route::post('/projects/{id}/persist-proposal', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $kpis = $r->input('kpis', []);
+            $milestones = $r->input('milestones', []);
+            if (!is_array($kpis) || !is_array($milestones)) {
+                return response()->json(['success' => false, 'error' => 'kpis and milestones must be arrays'], 422);
+            }
+            $svc = app(\App\Core\Projects\ProjectFromMeetingService::class);
+            $res = $svc->persistProposal($wsId, (int) $id, $kpis, $milestones);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+    });
+
+    /* B28: projects-phase4-disposition */
+    Route::middleware(['auth.jwt'])->group(function () {
+        Route::post('/projects/{id}/dispose', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $userId = (int) $user->id;
+            $outcome = (string) $r->input('outcome', '');
+            $opts = $r->only(['weights', 'evidence', 'skip_narrative', 'replace']);
+            $svc = app(\App\Core\Projects\ProjectDispositionService::class);
+            $res = $svc->disposeProject($wsId, (int) $id, $outcome, $userId, $opts);
+            $code = !empty($res['success']) ? 200 : (isset($res['outcome_id']) ? 409 : 422);
+            return response()->json($res, $code);
+        });
+        Route::get('/projects/{id}/outcome', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Core\Projects\ProjectDispositionService::class);
+            $res = $svc->get($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 404);
+        });
+    });
+
+    /* B29: projects-phase5a-reads */
+    Route::middleware(['auth.jwt'])->group(function () {
+        Route::get('/projects', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Core\Projects\ProjectReadService::class);
+            $opts = $r->only(['status','source_type','owner_user_id','q','sort','dir','page','per_page']);
+            return response()->json($svc->list($wsId, $opts));
+        });
+        Route::get('/projects/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Core\Projects\ProjectReadService::class);
+            $res = $svc->single($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 404);
+        });
+        Route::get('/projects/{id}/milestones', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $status = $r->query('status');
+            $ms = app(\App\Core\Projects\MilestoneService::class);
+            return response()->json($ms->listForProject($wsId, (int) $id, $status));
+        });
+        Route::get('/projects/{id}/kpis', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $ks = app(\App\Core\Projects\KpiService::class);
+            return response()->json($ks->listForProject($wsId, (int) $id));
+        });
+        Route::get('/projects/{id}/timeline', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Core\Projects\ProjectReadService::class);
+            $res = $svc->timeline($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 404);
+        });
+        Route::get('/projects/{id}/publish-queue', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Core\Projects\ProjectReadService::class);
+            $res = $svc->publishQueue($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 404);
+        });
+    });
+
+    /* B31: projects-phase5b2-mutations */
+    Route::middleware(['auth.jwt'])->group(function () {
+        // ── Project create / update ───────────────────────────
+        Route::post('/projects', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $data = $r->only(['name','goal','description','source_type','source_meeting_id',
+                'planned_start_at','planned_end_at','budget_credits','metadata']);
+            // Direct creation: stamp owner + default to source_type='direct'
+            $data['owner_user_id'] = $data['owner_user_id'] ?? (int) $user->id;
+            if (empty($data['source_type'])) $data['source_type'] = 'direct';
+            $res = app(\App\Core\Projects\ProjectService::class)->create($wsId, $data);
+            return response()->json($res, !empty($res['success']) ? 201 : 422);
+        });
+        Route::patch('/projects/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $data = $r->only(['name','goal','description','planned_start_at','planned_end_at',
+                'budget_credits','metadata']);
+            $res = app(\App\Core\Projects\ProjectService::class)->update($wsId, (int) $id, $data);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+
+        // ── Milestones ────────────────────────────────────────
+        Route::post('/projects/{id}/milestones', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $data = $r->only(['title','description','target_date','order_index',
+                'success_criteria','notes']);
+            $res = app(\App\Core\Projects\MilestoneService::class)
+                ->create($wsId, (int) $id, $data);
+            return response()->json($res, !empty($res['success']) ? 201 : 422);
+        });
+        Route::patch('/projects/{id}/milestones/{mid}', function (\Illuminate\Http\Request $r, $id, $mid) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $data = $r->only(['title','description','target_date','order_index',
+                'success_criteria','notes']);
+            $res = app(\App\Core\Projects\MilestoneService::class)
+                ->update($wsId, (int) $mid, $data);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+        Route::post('/projects/{id}/milestones/{mid}/achieve', function (\Illuminate\Http\Request $r, $id, $mid) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $evidence = $r->input('evidence', []);
+            if (!is_array($evidence)) $evidence = ['notes' => (string) $evidence];
+            $res = app(\App\Core\Projects\MilestoneService::class)
+                ->markAchieved($wsId, (int) $mid, $evidence);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+
+        // ── KPIs ──────────────────────────────────────────────
+        Route::post('/projects/{id}/kpis', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $data = $r->only(['name','description','target_value','current_value',
+                'unit','direction','measurement_source','order_index','metadata']);
+            $res = app(\App\Core\Projects\KpiService::class)
+                ->create($wsId, (int) $id, $data);
+            return response()->json($res, !empty($res['success']) ? 201 : 422);
+        });
+        Route::post('/projects/{id}/kpis/{kid}/measure', function (\Illuminate\Http\Request $r, $id, $kid) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $value = $r->input('value');
+            if (!is_numeric($value)) {
+                return response()->json(['success' => false, 'error' => 'value must be numeric'], 422);
+            }
+            $res = app(\App\Core\Projects\KpiService::class)
+                ->recordValue($wsId, (int) $kid, (float) $value);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+    });
+
+
+    /* B33: mention-phase2-scan */
+    Route::middleware(['auth.jwt'])->group(function () {
+        Route::post('/mentions/scan-now/{watchlistId}', function (\Illuminate\Http\Request $r, $watchlistId) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $opts = $r->only(['max_results', 'skip_sentiment', 'agent_slug']);
+            $opts['user_id']   = (int) $user->id;
+            $opts['scan_type'] = 'manual';
+            $svc = app(\App\Engines\Mention\Services\MentionScanService::class);
+            $res = $svc->scanWatchlist($wsId, (int) $watchlistId, $opts);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+    });
+
+    /* B35: mention-phase4-reads */
+    Route::middleware(['auth.jwt'])->group(function () {
+        Route::get('/mentions/stats', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
+            $opts = $r->only(['trend_days']);
+            return response()->json($svc->stats($wsId, $opts));
+        });
+        Route::get('/mentions/scan-runs', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
+            $opts = $r->only(['watchlist_id','scan_type','since','page','per_page']);
+            return response()->json($svc->listScanRuns($wsId, $opts));
+        });
+        Route::get('/mentions/watchlist', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
+            $opts = $r->only(['is_active','scope','q']);
+            return response()->json($svc->listWatchlist($wsId, $opts));
+        });
+        Route::get('/mentions/watchlist/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
+            $res = $svc->singleWatchlist($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 404);
+        });
+        Route::get('/mentions', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
+            $opts = $r->only(['status','sentiment','priority','source_type','source_domain','watchlist_id','q','since','sort','dir','page','per_page']);
+            return response()->json($svc->list($wsId, $opts));
+        });
+        Route::get('/mentions/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
+            $res = $svc->single($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 404);
+        });
+    });
+
+    /* B36: mention-phase5-mutations */
+    Route::middleware(['auth.jwt'])->group(function () {
+        // Mention triage
+        Route::patch('/mentions/{id}/status', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $svc = app(\App\Engines\Mention\Services\MentionTriageService::class);
+            $status = (string) $r->input('status', '');
+            $notes  = $r->input('notes');
+            $res = $svc->transition($wsId, (int) $id, $status, (int) $user->id, $notes);
+            $code = !empty($res['success']) ? 200 : (str_contains($res['error'] ?? '', 'not found') ? 404 : 422);
+            return response()->json($res, $code);
+        });
+        // Watchlist mutations
+        Route::post('/mentions/watchlist', function (\Illuminate\Http\Request $r) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $limits = app(\App\Engines\Mention\Services\MentionPlanLimits::class);
+            $wls    = app(\App\Engines\Mention\Services\WatchlistService::class);
+            $cap = $limits->watchlistCapFor($wsId);
+            $currentActive = $wls->countActive($wsId);
+            if ($currentActive >= $cap) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'plan_cap_reached',
+                    'cap'     => $cap,
+                    'current' => $currentActive,
+                    'plan'    => $limits->planSlugFor($wsId),
+                    'message' => "Your current plan allows up to {$cap} active brand terms. Deactivate one or upgrade to add more.",
+                ], 402);
+            }
+            $data = $r->only(['term','label','scope','priority','variants','negative_keywords','metadata']);
+            $res = $wls->create($wsId, $data, (int) $user->id);
+            return response()->json($res, !empty($res['success']) ? 201 : 422);
+        });
+        Route::patch('/mentions/watchlist/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $wls = app(\App\Engines\Mention\Services\WatchlistService::class);
+            $data = $r->only(['term','label','scope','priority','variants','negative_keywords','metadata']);
+            $res = $wls->update($wsId, (int) $id, $data);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+        Route::post('/mentions/watchlist/{id}/activate', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $limits = app(\App\Engines\Mention\Services\MentionPlanLimits::class);
+            $wls    = app(\App\Engines\Mention\Services\WatchlistService::class);
+            // Re-activating an existing row must respect the active-term cap
+            $row = $wls->get($wsId, (int) $id);
+            if (empty($row['success'])) return response()->json($row, 404);
+            if (empty($row['data']['is_active'])) {
+                $cap = $limits->watchlistCapFor($wsId);
+                $cur = $wls->countActive($wsId);
+                if ($cur >= $cap) {
+                    return response()->json([
+                        'success'=>false,'error'=>'plan_cap_reached',
+                        'cap'=>$cap,'current'=>$cur,'plan'=>$limits->planSlugFor($wsId),
+                    ], 402);
+                }
+            }
+            $res = $wls->activate($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+        Route::post('/mentions/watchlist/{id}/deactivate', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $res = app(\App\Engines\Mention\Services\WatchlistService::class)
+                ->deactivate($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 422);
+        });
+        Route::delete('/mentions/watchlist/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $user = $r->user();
+            $wsId = (int) ($user->workspace_id ?? 1);
+            $res = app(\App\Engines\Mention\Services\WatchlistService::class)
+                ->delete($wsId, (int) $id);
+            return response()->json($res, !empty($res['success']) ? 200 : 404);
+        });
+    });
+
+/*
+|--------------------------------------------------------------------------
+| INFRA888 — Infrastructure engine (Phase 1A)
+|--------------------------------------------------------------------------
+| READ-ONLY. No write endpoints exist yet: provisioning is destructive and must
+| ship together with approval wiring and a proven provider connector.
+|
+| auth.jwt only — api.key must never reach infrastructure (control C6).
+| NOTE: JwtAuthMiddleware also accepts X-API-KEY and escalates an unbound key to
+| the first workspace member (Phase 0 audit §7). That is a shared-auth defect
+| tracked separately; it is NOT fixed here.
+*/
+Route::middleware(['auth.jwt', \App\Http\Middleware\DenyApiKeyAuth::class])->prefix('infrastructure')->group(function () {
+    $infraCtl = \App\Engines\Infrastructure\Http\Controllers\InfrastructureController::class;
+    Route::get('/overview',     [$infraCtl, 'overview']);
+    Route::get('/activity',     [$infraCtl, 'activity']);
+    Route::get('/hosting',      [$infraCtl, 'hostingIndex']);
+    Route::get('/hosting/{id}', [$infraCtl, 'hostingShow'])->whereNumber('id');
+    Route::get('/domains',      [$infraCtl, 'domainsIndex']);
+    Route::get('/email',        [$infraCtl, 'emailIndex']);
+    Route::get('/operations',      [$infraCtl, 'operationsIndex']);
+    Route::get('/operations/{id}', [$infraCtl, 'operationShow'])->whereNumber('id');
+    Route::get('/operations/{id}/timeline', [$infraCtl, 'operationTimeline'])->whereNumber('id');
+
+    // INFRA888 Phase 3B — executive infrastructure intelligence (read-only,
+    // tenant-scoped). The canonical asset graph, incidents, blast radius and
+    // reliability. Mutates nothing.
+    $iiCtl = \App\Engines\Infrastructure\Http\Controllers\InfrastructureIntelligenceController::class;
+    Route::get('/intelligence/dashboard',              [$iiCtl, 'dashboard']);
+    Route::get('/intelligence/assets',                 [$iiCtl, 'assets']);
+    Route::get('/intelligence/assets/{id}',            [$iiCtl, 'asset'])->whereNumber('id');
+    Route::get('/intelligence/assets/{id}/blast-radius', [$iiCtl, 'blastRadius'])->whereNumber('id');
+    Route::get('/intelligence/incidents',              [$iiCtl, 'incidents']);
+    Route::get('/intelligence/reliability',            [$iiCtl, 'reliability']);
+
+    // Phase 1B — the ONLY write endpoint. Protected capability: returns 202
+    // AWAITING_APPROVAL and executes on the queue after human approval.
+    Route::post('/hosting',        [$infraCtl, 'hostingStore']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| INFRA888 Phase 2A-1 — internal commercial catalog (READ-ONLY)
+|--------------------------------------------------------------------------
+| Platform-admin only, and DenyApiKeyAuth blocks both API keys and the shared
+| admin token. No write endpoints: product/plan authoring is Phase 2A-2 and
+| needs its own approval governance. Not a customer surface.
+*/
+Route::middleware(['auth.jwt', 'admin', \App\Http\Middleware\DenyApiKeyAuth::class])
+    ->prefix('admin/infrastructure/catalog')->group(function () {
+        $cat = \App\Engines\Infrastructure\Http\Controllers\InfrastructureCatalogController::class;
+        Route::get('/products',                 [$cat, 'products']);
+        Route::get('/plans',                    [$cat, 'plans']);
+        Route::get('/plans/{id}',               [$cat, 'plan'])->whereNumber('id');
+        Route::get('/entitlement-definitions',  [$cat, 'entitlementDefinitions']);
+        Route::get('/subscriptions/{id}/entitlements', [$cat, 'subscriptionEntitlements'])->whereNumber('id');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| INFRA888 Phase 2B-G — provider control plane (internal admin only)
+|--------------------------------------------------------------------------
+| Platform administrators only. DenyApiKeyAuth blocks API keys AND the shared
+| admin token, so no machine identity can reach any of this. Not a customer
+| surface: there is no tenant-facing provider API and there must never be one.
+|
+| Governance per endpoint:
+|   DRAFT     self-service   — cannot become operational (create/declare/testing)
+|   PROTECTED separation of duties — request/* then approve/* by a DIFFERENT admin
+|   INCIDENT  unilateral     — revoke/disable, immediate, reason required
+|
+| Secrets are accepted on POST only and NEVER returned by any endpoint.
+*/
+Route::middleware(['auth.jwt', 'admin', \App\Http\Middleware\DenyApiKeyAuth::class])
+    ->prefix('admin/infrastructure/providers')->group(function () {
+        $pcp = \App\Engines\Infrastructure\Http\Controllers\ProviderControlPlaneController::class;
+
+        // ---- read ----------------------------------------------------------
+        Route::get('/',                 [$pcp, 'index']);
+        Route::get('/health',           [$pcp, 'healthIndex']);
+        Route::get('/credentials',      [$pcp, 'credentials']);
+        Route::get('/events',           [$pcp, 'events']);
+        Route::get('/resolution',       [$pcp, 'resolutionDiagnostic']);
+        Route::get('/{id}',             [$pcp, 'show'])->whereNumber('id');
+
+        // ---- draft (self-service) -----------------------------------------
+        Route::post('/',                          [$pcp, 'store']);
+        Route::post('/{id}/capabilities',         [$pcp, 'declareCapability'])->whereNumber('id');
+        Route::post('/{id}/testing',              [$pcp, 'moveToTesting'])->whereNumber('id');
+        Route::post('/{id}/credentials',          [$pcp, 'storeCredential'])->whereNumber('id');
+        Route::post('/credentials/{cid}/verify',  [$pcp, 'verifyCredential'])->whereNumber('cid');
+
+        // ---- protected (separation of duties) ------------------------------
+        Route::post('/{id}/request-activation',   [$pcp, 'requestActivateProvider'])->whereNumber('id');
+        Route::post('/{id}/request-capability',   [$pcp, 'requestEnableCapability'])->whereNumber('id');
+        Route::post('/credentials/{cid}/request-activation', [$pcp, 'requestActivateCredential'])->whereNumber('cid');
+        Route::post('/credentials/{cid}/request-rotation',   [$pcp, 'requestRotateCredential'])->whereNumber('cid');
+        // mfa.stepup self-disables until two MFA admins exist, so wiring it now
+        // is safe and becomes live automatically once the governance bar is met.
+        Route::post('/approvals/{aid}/approve',   [$pcp, 'approve'])
+            ->middleware('mfa.stepup')->whereNumber('aid');
+
+        // ---- incident (immediate, unilateral) ------------------------------
+        Route::post('/credentials/{cid}/revoke',  [$pcp, 'revokeCredential'])->whereNumber('cid');
+        Route::post('/{id}/disable',              [$pcp, 'disableProvider'])->whereNumber('id');
+        Route::post('/{id}/disable-capability',   [$pcp, 'disableCapability'])->whereNumber('id');
+
+        // ---- read-only probe ------------------------------------------------
+        Route::post('/{id}/probe',                [$pcp, 'probe'])->whereNumber('id');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| INFRA888 Phase 2B-R2 — MFA enrolment + step-up (individual humans only)
+|--------------------------------------------------------------------------
+| auth.jwt + DenyApiKeyAuth: a machine identity has no second factor and can
+| never reach these. The TOTP seed leaves the server only in the enrol response.
+*/
+Route::middleware(['auth.jwt', \App\Http\Middleware\DenyApiKeyAuth::class])
+    ->prefix('admin/mfa')->group(function () {
+        $mfa = \App\Http\Controllers\Auth\MfaController::class;
+        Route::post('/enrol',            [$mfa, 'enrol']);
+        Route::post('/confirm',          [$mfa, 'confirm']);
+        Route::post('/verify',           [$mfa, 'verify']);
+        Route::post('/recovery-codes',   [$mfa, 'regenerateRecoveryCodes']);
+    });

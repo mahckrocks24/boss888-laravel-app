@@ -211,8 +211,14 @@ class ToolSelectorService
         if (!$wsId) return self::NEUTRAL_PRIOR;
 
         try {
-            $row = DB::table('lu_tasks')
-                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN state = "completed" THEN 1 ELSE 0 END) as completed')
+            // b21 (2026-07-24) — this dimension had NEVER produced a signal.
+            // The table is `tasks`, not `lu_tasks`, and the column is `status`,
+            // not `state`. Both were wrong, the query threw every time, and the
+            // catch below quietly returned the neutral prior — so "past success"
+            // scored identically for every tool since the ranker was written and
+            // Sarah never learned anything from real outcomes.
+            $row = DB::table('tasks')
+                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed')
                 ->where('workspace_id', $wsId)
                 ->where('action', $toolKey)
                 ->first();
@@ -263,7 +269,11 @@ class ToolSelectorService
 
     /**
      * Suggest the agent best matched to this tool.
-     * Matches the permanent agent team: james/priya/marcus/elena/alex/sarah.
+     * Matches the permanent launch agent team: james/priya/elena/alex/sarah.
+     * LAUNCH SCOPE 2026-07-20 — 'social'=>marcus and 'marketing'=>elena removed
+     * (social automation + email marketing are out of the launch product; marcus is
+     * a removed agent). crm stays with elena. Residual engines default to Sarah as
+     * coordinator; execution of removed actions is denied at the kernel regardless.
      */
     private function suggestAgent(string $engine, string $action): string
     {
@@ -271,14 +281,13 @@ class ToolSelectorService
             'seo' => 'james',
             'write' => 'priya',
             'creative' => 'sarah',
-            'social' => 'marcus',
-            'marketing' => 'elena',
             'crm' => 'elena',
             'builder' => 'sarah',
             'calendar' => 'sarah',
             'beforeafter' => 'sarah',
             'traffic' => 'alex',
             'manualedit' => 'sarah',
+            'studio' => 'sarah',
         ];
         return $map[$engine] ?? 'sarah';
     }

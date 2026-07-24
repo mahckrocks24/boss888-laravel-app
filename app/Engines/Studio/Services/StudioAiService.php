@@ -34,6 +34,7 @@ class StudioAiService
 
     public function generateDesign(int $wsId, array $params): array
     {
+        // /* h2-studio-generate */ resolver is sole brand source (H2 consolidated)
         if (!$this->runtime->isConfigured()) {
             return ['success' => false, 'error' => 'runtime_unavailable', 'message' => 'RUNTIME_URL / RUNTIME_SECRET not configured'];
         }
@@ -41,7 +42,7 @@ class StudioAiService
         $prompt    = (string) ($params['prompt']    ?? 'Modern social media post');
         $format    = (string) ($params['format']    ?? 'square');
         $style     = (string) ($params['style']     ?? 'bold');
-        $brand     = $this->studio->getBrandKit($wsId);
+        $brand     = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
 
         // Resolve canvas dims from format if not given explicitly
         $formats = StudioService::FORMATS;
@@ -163,6 +164,7 @@ class StudioAiService
             // calling DALL-E directly. Runtime handles provider auth, key
             // rotation, retry/backoff, and provider-name redaction.
             $imgResult = $this->runtime->imageGenerate($fullPrompt, [
+                'workspace_id' => $wsId,   // 2026-07-03 (#5) — else runtime falls back to ws 0 (wrong-tenant storage path)
                 'style'   => $style,
                 'size'    => '1024x1024',
                 'quality' => 'standard',
@@ -171,21 +173,35 @@ class StudioAiService
                 Log::warning('runtime imageGenerate failed', ['result' => $imgResult]);
                 return ['success' => false, 'error' => 'image_generation_failed', 'message' => $imgResult['error'] ?? 'unknown'];
             }
-            $url = $imgResult['url'];
+            $url = $imgResult['url'] ?? null;
+            $storagePath = $imgResult['storage_path'] ?? null;
 
-            $dir = storage_path('app/public/ai-generated/' . $wsId);
-            if (!is_dir($dir)) @mkdir($dir, 0775, true);
-            $hash = substr(md5($fullPrompt . microtime(true)), 0, 12);
-            $path = $dir . '/' . $hash . '.png';
-            $png  = Http::timeout(60)->get($url);
-            if (!$png->successful()) return ['success' => false, 'error' => 'download_failed'];
-            file_put_contents($path, $png->body());
-            $publicUrl = '/storage/ai-generated/' . $wsId . '/' . $hash . '.png';
+            // 2026-07-03 (#5) — the runtime ALREADY stored the generated image
+            // (storage_path). The old code re-downloaded that same file over HTTP
+            // (Http::timeout(60)->get) and double-stored it under ai-generated/ — a
+            // self-request that added latency and risked the 100s CF / 120s FPM
+            // request timeout. Use the runtime's stored path directly; only fall
+            // back to a one-shot download for the legacy remote-url path.
+            if ($storagePath) {
+                $publicUrl = '/storage/' . ltrim($storagePath, '/');
+            } else {
+                if (!$url) return ['success' => false, 'error' => 'no_image'];
+                $dir = storage_path('app/public/ai-generated/' . $wsId);
+                if (!is_dir($dir)) @mkdir($dir, 0775, true);
+                $hash = substr(md5($fullPrompt . microtime(true)), 0, 12);
+                $path = $dir . '/' . $hash . '.png';
+                $png  = Http::timeout(60)->get($url);
+                if (!$png->successful()) return ['success' => false, 'error' => 'download_failed'];
+                file_put_contents($path, $png->body());
+                $publicUrl = '/storage/ai-generated/' . $wsId . '/' . $hash . '.png';
+            }
 
             // Insert into media library if table exists
             if (\Schema::hasTable('media')) {
                 $mediaCols = [
                     'workspace_id' => $wsId,
+                    'filename'     => basename($publicUrl),   // 2026-07-03 (#5) — was omitted → NOT NULL insert failed → studio-ai images never reached the media library
+                    'path'         => $publicUrl,
                     'url'          => $publicUrl,
                     'asset_type'   => 'image',
                     'mime_type'    => 'image/png',
@@ -219,8 +235,9 @@ class StudioAiService
         }
         $context    = (string) ($params['context']    ?? '');
         $fieldType  = (string) ($params['field_type'] ?? 'headline');
-        $brand      = $this->studio->getBrandKit($wsId);
-        $brandName  = (string) ($params['brand_name'] ?? $brand['brand_name'] ?? 'Your Brand');
+        // /* h2-studio-suggestcopy */ resolver — never "Your Brand" placeholder
+        $brand      = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+        $brandName  = (string) ($params['brand_name'] ?? $brand['brand_name']);
         $industry   = (string) ($params['industry']   ?? 'general');
         $tone       = (string) ($params['tone']       ?? 'professional');
 
@@ -252,7 +269,8 @@ class StudioAiService
         $selected   = $params['selected_element_id'] ?? null;
         $state      = $params['current_design_state'] ?? [];
 
-        $brand = $this->studio->getBrandKit($wsId);
+        // /* h2-studio-chat */ resolver (was StudioService::getBrandKit)
+        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
 
         $system = "You are Arthur, an AI design assistant. When the user asks you to change a design, "
                 . "return JSON with an `actions` array and a friendly `reply` string. "

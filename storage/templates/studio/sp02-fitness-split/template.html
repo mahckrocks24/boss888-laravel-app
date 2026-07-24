@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Media Template — Bold Dark / Fitness / Split</title>
+
+  <!-- ============================================================
+       GOOGLE FONTS
+       Display: Bebas Neue     — brutalist condensed punch
+       Body:    Barlow          — clean industrial sans
+       Accent:  Space Mono      — raw monospace badge text
+  ============================================================ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,300;0,400;0,600;0,700;1,300;1,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================================================
+       CSS DESIGN TOKENS
+       Industry:  Fitness / Performance
+       Style:     Bold · Dark · Neon
+       Layout:    Split (image left | content right)
+       Format:    Square 1080 × 1080
+    ============================================================ */
+    :root{
+      /* --- Core Palette --- */
+      --text:           #0D0D0D;
+      --clr-panel:        #111111;
+      --clr-card:         #161616;
+      --primary:         #C8FF00;        /* primary neon accent */
+      --accent:     #8AB300;        /* muted lime */
+      --clr-lime-glow:    rgba(200,255,0,0.18);
+      --bg:        #F5F5F5;
+      --clr-off-white:    #B8B8B8;
+      --clr-muted:        #555555;
+      --clr-border:       rgba(200,255,0,0.14);
+      --clr-border-subtle: rgba(255,255,255,0.07);
+
+      /* --- Typography --- */
+      --font-display:  'Bebas Neue', Impact, sans-serif;
+      --font-body:     'Barlow', sans-serif;
+      --font-mono:     'Space Mono', monospace;
+
+      /* --- Spacing --- */
+      --sp-xs:   8px;
+      --sp-sm:  16px;
+      --sp-md:  28px;
+      --sp-lg:  48px;
+
+      /* --- Dimensions --- */
+      --post-w: 1080px;
+      --post-h: 1080px;
+
+      /* ============================================================
+         SWAP VARIABLES — edit these to change industry / copy
+      ============================================================ */
+      --swap-eyebrow:   "FITNESS · PERFORMANCE";
+      --swap-cta:       "Start Today";
+    }
+
+    /* ============================================================
+       RESET
+    ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      background:#060606;
+    }
+
+    /* ============================================================
+       SCENE — browser preview wrapper
+    ============================================================ */
+    .scene {
+      display:         flex;
+      flex-direction:  column;
+      align-items:     center;
+      justify-content: center;
+      min-height:      100vh;
+      padding:         40px 20px;
+      background:radial-gradient(ellipse 55% 50% at 15% 50%, rgba(200,255,0,0.04) 0%, transparent 70%),
+        #060606;
+    }
+
+    /* Scale wrapper — keeps post visible in any viewport */
+    .scale-wrap {
+      transform-origin: top center;
+      position: relative;
+    }
+
+    /* ============================================================
+       POST CANVAS — 1080 × 1080 social media frame
+    ============================================================ */
+    .post {
+      width:    var(--post-w);
+      height:   var(--post-h);
+      position: relative;
+      overflow: hidden;
+      background:var(--text);
+      display:  grid;
+      /* Split layout: left image panel 46% | right content 54% */
+      grid-template-columns: 46% 54%;
+      grid-template-rows:    1fr;
+      font-family: var(--font-body);
+      color:var(--bg);
+    }
+
+    /* ============================================================
+       NOISE GRAIN TEXTURE — top-layer atmosphere
+    ============================================================ */
+    .post::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      background-image:
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      opacity: 0.032;
+      mix-blend-mode: screen;
+    }
+
+    /* ============================================================
+       LEFT PANEL — IMAGE DOMINANT
+    ============================================================ */
+    .panel-image {
+      position: relative;
+      overflow: hidden;
+      grid-column: 1;
+      grid-row:    1;
+    }
+
+    /* Hero image
+       Swap src for any 540×1080 portrait photo.
+       Unsplash fitness: https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=540&q=85
+    */
+    .panel-image__img {
+      width:   100%;
+      height:  100%;
+      display: block;
+      object-fit:      cover;
+      object-position: center 20%;
+      filter: saturate(0.8) contrast(1.08);
+    }
+
+    /* Gradient overlay: dark right edge so it bleeds into content panel */
+    .panel-image::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background:linear-gradient(90deg, transparent 45%, var(--text) 100%),
+        linear-gradient(180deg, rgba(13,13,13,0.55) 0%, transparent 30%, transparent 60%, rgba(13,13,13,0.72) 100%);
+    }
+
+    /* Lime color tint bleed on the image right edge */
+    .panel-image::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      background:linear-gradient(90deg, transparent 60%, rgba(200,255,0,0.06) 100%);
+    }
+
+    /* Floating counter badge — bottom-left of image */
+    .img-badge {
+      position:  absolute;
+      z-index:   5;
+      bottom:    var(--sp-lg);
+      left:      var(--sp-md);
+      display:   flex;
+      flex-direction: column;
+      gap: 2px;
+      padding:   12px 18px;
+      background:rgba(13,13,13,0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-left: 2px solid var(--primary);
+    }
+
+    .img-badge__num {
+      font-family: var(--font-display);
+      font-size:   38px;
+      line-height: 1;
+      color:var(--primary);
+    }
+
+    .img-badge__label {
+      font-family: var(--font-mono);
+      font-size:   10px;
+      letter-spacing: 0.2em;
+      color:var(--clr-off-white);
+      text-transform: uppercase;
+    }
+
+    /* Vertical rotated label on the left image edge */
+    .img-vert-label {
+      position:  absolute;
+      z-index:   5;
+      top:       50%;
+      left:      18px;
+      transform: translateY(-50%) rotate(-90deg);
+      font-family:    var(--font-mono);
+      font-size:      10px;
+      letter-spacing: 0.32em;
+      color:var(--clr-muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ============================================================
+       DECORATIVE ELEMENTS — circles, lines, shapes
+    ============================================================ */
+
+    /* Large faint circle — bleeds from right panel */
+    .deco-circle-outer {
+      position: absolute;
+      z-index:  4;
+      width:    560px;
+      height:   560px;
+      border-radius: 50%;
+      border: 1px solid rgba(200,255,0,0.07);
+      right:  -160px;
+      top:    50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .deco-circle-inner {
+      position: absolute;
+      z-index:  4;
+      width:    360px;
+      height:   360px;
+      border-radius: 50%;
+      border: 1px solid rgba(200,255,0,0.10);
+      right:  -60px;
+      top:    50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    /* Horizontal deco lines — right panel top area */
+    .deco-lines {
+      position: absolute;
+      z-index:  4;
+      top:      var(--sp-lg);
+      right:    var(--sp-lg);
+      display:  flex;
+      flex-direction: column;
+      gap: 7px;
+      pointer-events: none;
+    }
+
+    .deco-lines span {
+      display: block;
+      height:  1px;
+      background:var(--primary);
+    }
+
+    .deco-lines span:nth-child(1) { width: 42px; opacity: 0.9; }
+    .deco-lines span:nth-child(2) { width: 28px; opacity: 0.55; }
+    .deco-lines span:nth-child(3) { width: 16px; opacity: 0.30; }
+
+    /* Lime glow smear behind headline */
+    .deco-glow {
+      position:  absolute;
+      z-index:   3;
+      width:     320px;
+      height:    280px;
+      background:radial-gradient(ellipse at center, rgba(200,255,0,0.10) 0%, transparent 70%);
+      top:        180px;
+      right:      40px;
+      pointer-events: none;
+    }
+
+    /* Corner bracket accent — top-left of right panel */
+    .deco-bracket {
+      position: absolute;
+      z-index:  5;
+      top:      var(--sp-md);
+      left:     var(--sp-md);
+      width:    22px;
+      height:   22px;
+      border-top:  2px solid var(--primary);
+      border-left: 2px solid var(--primary);
+      pointer-events: none;
+    }
+
+    /* Dot cluster — bottom-right */
+    .deco-dots {
+      position: absolute;
+      z-index:  4;
+      bottom:   var(--sp-md);
+      right:    var(--sp-md);
+      width:    80px;
+      height:   80px;
+      background-image: radial-gradient(circle, rgba(200,255,0,0.35) 1.2px, transparent 1.2px);
+      background-size: 11px 11px;
+      mask-image: radial-gradient(ellipse at bottom right, black 20%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse at bottom right, black 20%, transparent 80%);
+      pointer-events: none;
+    }
+
+    /* Diagonal slash accent — mid-panel divider feel */
+    .deco-slash {
+      position: absolute;
+      z-index:  4;
+      width:    1px;
+      height:   180px;
+      background:linear-gradient(180deg, transparent, var(--accent), transparent);
+      left:     46%;          /* sits on the split seam */
+      top:      50%;
+      transform: translateY(-50%) rotate(12deg);
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       RIGHT PANEL — CONTENT
+    ============================================================ */
+    .panel-content {
+      position: relative;
+      z-index:  5;
+      grid-column: 2;
+      grid-row:    1;
+      display:     flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: var(--sp-lg) var(--sp-lg) var(--sp-lg) var(--sp-md);
+      background:linear-gradient(135deg, #111111 0%, var(--text) 100%);
+    }
+
+    /* ── Eyebrow ──────────────────────────────────────────────── */
+    .eyebrow {
+      display:     flex;
+      align-items: center;
+      gap:         12px;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow__pill {
+      font-family:    var(--font-mono);
+      font-size:17px;
+      letter-spacing: 0.28em;
+      color:var(--text);
+      background:var(--primary);
+      padding:        5px 12px;
+      text-transform: uppercase;
+    }
+
+    .eyebrow__line {
+      flex: 1;
+      height: 1px;
+      background:linear-gradient(90deg, var(--accent), transparent);
+    }
+
+    /* ── Headline ─────────────────────────────────────────────── */
+    .headline {
+      font-family:    var(--font-display);
+      font-size:      108px;
+      line-height:    0.90;
+      letter-spacing: 0.01em;
+      color:var(--bg);
+      text-transform: uppercase;
+      margin-bottom:  20px;
+    }
+
+    /* Highlighted word in lime */
+    .headline mark {
+      background:none;
+      color:var(--primary);
+      position:   relative;
+    }
+
+    /* Underline stroke on the marked word */
+    .headline mark::after {
+      content:  '';
+      position: absolute;
+      left:     0;
+      bottom:   4px;
+      width:    100%;
+      height:   3px;
+      background:var(--primary);
+      opacity:  0.4;
+    }
+
+    /* ── Subheadline ──────────────────────────────────────────── */
+    .subheadline {
+      font-family: var(--font-body);
+      font-size:17px;
+      font-weight: 300;
+      line-height: 1.65;
+      color:var(--clr-off-white);
+      max-width:   420px;
+      margin-bottom: var(--sp-md);
+    }
+
+    /* ── Feature pills row ───────────────────────────────────── */
+    .features {
+      display:   flex;
+      flex-wrap: wrap;
+      gap:       10px;
+      margin-bottom: var(--sp-md);
+    }
+
+    .feature-pill {
+      font-family:    var(--font-mono);
+      font-size:17px;
+      letter-spacing: 0.18em;
+      color:var(--clr-off-white);
+      border:         1px solid var(--clr-border-subtle);
+      padding:        7px 14px;
+      text-transform: uppercase;
+      display:        flex;
+      align-items:    center;
+      gap:            7px;
+    }
+
+    /* Dot indicator before each pill */
+    .feature-pill::before {
+      content:       '';
+      display:       block;
+      width:         5px;
+      height:        5px;
+      border-radius: 50%;
+      background:var(--primary);
+      flex-shrink:   0;
+    }
+
+    /* ── Divider ─────────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background:linear-gradient(90deg, var(--clr-border), transparent);
+      margin-bottom: var(--sp-md);
+    }
+
+    /* ── CTA + Badge row ─────────────────────────────────────── */
+    .cta-row {
+      display:     flex;
+      align-items: center;
+      gap:         var(--sp-sm);
+      margin-bottom: var(--sp-md);
+    }
+
+    /* Primary CTA button */
+    .cta-btn {
+      display:        inline-flex;
+      align-items:    center;
+      gap:            12px;
+      font-family:    var(--font-body);
+      font-size:      14px;
+      font-weight:    700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color:var(--text);
+      background:var(--primary);
+      border:         none;
+      padding:        16px 32px;
+      cursor:         pointer;
+      text-decoration: none;
+      position:       relative;
+      overflow:       hidden;
+      transition:     transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+      white-space:    nowrap;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+
+    /* Hover shimmer */
+    .cta-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60px; height: 100%;
+      background:linear-gradient(120deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.4s ease;
+    }
+
+    .cta-btn:hover {
+      transform:   translateY(-2px);
+      box-shadow:  0 0 40px rgba(200,255,0,0.40), 0 8px 24px rgba(0,0,0,0.5);
+      background:#D8FF20;
+    }
+
+    .cta-btn:hover::before {
+      left: 150%;
+    }
+
+    /* Arrow icon in CTA */
+    .cta-btn__icon {
+      display:         inline-block;
+      font-style:      normal;
+      font-size:       16px;
+      transition:      transform 0.22s ease;
+    }
+
+    .cta-btn:hover .cta-btn__icon {
+      transform: translateX(4px);
+    }
+
+    /* Offer badge */
+    .offer-badge {
+      display:        flex;
+      flex-direction: column;
+      gap:            3px;
+      padding:        12px 18px;
+      border:         1px solid var(--clr-border);
+      background:var(--clr-lime-glow);
+    }
+
+    .offer-badge__tag {
+      font-family:    var(--font-mono);
+      font-size:      9px;
+      letter-spacing: 0.24em;
+      color:var(--accent);
+      text-transform: uppercase;
+    }
+
+    .offer-badge__value {
+      font-family: var(--font-display);
+      font-size:28px;
+      line-height: 1;
+      color:var(--primary);
+    }
+
+    /* ── Brand bar ───────────────────────────────────────────── */
+    .brand-bar {
+      display:         flex;
+      align-items:     center;
+      justify-content: space-between;
+      padding-top: var(--sp-sm);
+      border-top: 1px solid var(--clr-border-subtle);
+    }
+
+    .brand-bar__logo {
+      display:     flex;
+      align-items: center;
+      gap:         10px;
+    }
+
+    /* Logo mark placeholder */
+    .brand-mark {
+      width:  36px;
+      height: 36px;
+      background:var(--primary);
+      display:    grid;
+      place-items: center;
+      position:   relative;
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    }
+
+    .brand-mark::after {
+      content: '';
+      position: absolute;
+      inset:    6px;
+      background:var(--text);
+      clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px));
+    }
+
+    .brand-bar__name {
+      display:        flex;
+      flex-direction: column;
+      gap:            1px;
+    }
+
+    .brand-bar__primary {
+      font-family:    var(--font-body);
+      font-size:      14px;
+      font-weight:    700;
+      letter-spacing: 0.12em;
+      color:var(--bg);
+      text-transform: uppercase;
+    }
+
+    .brand-bar__url {
+      font-family:    var(--font-mono);
+      font-size:      9px;
+      letter-spacing: 0.14em;
+      color:var(--clr-muted);
+    }
+
+    /* Social handle */
+    .brand-bar__handle {
+      font-family:    var(--font-mono);
+      font-size:      10px;
+      letter-spacing: 0.14em;
+      color:var(--clr-muted);
+    }
+
+    /* ── Stats row (inside content panel, above CTA) ─────────── */
+    .stats-row {
+      display:       flex;
+      gap:           0;
+      margin-bottom: var(--sp-md);
+    }
+
+    .stat-item {
+      flex: 1;
+      padding: var(--sp-sm) 0;
+      border-right: 1px solid var(--clr-border-subtle);
+    }
+
+    .stat-item:last-child {
+      border-right: none;
+    }
+
+    .stat-item:not(:first-child) {
+      padding-left: var(--sp-sm);
+    }
+
+    .stat-item__val {
+      font-family: var(--font-display);
+      font-size:   36px;
+      line-height: 1;
+      color:var(--primary);
+    }
+
+    .stat-item__label {
+      font-family:    var(--font-mono);
+      font-size:      9px;
+      letter-spacing: 0.18em;
+      color:var(--clr-muted);
+      text-transform: uppercase;
+      margin-top:     4px;
+    }
+
+    /* ── Top navigation strip ────────────────────────────────── */
+    .topstrip {
+      position: absolute;
+      z-index:  6;
+      top:      0;
+      left:     0;
+      right:    0;
+      height:   4px;
+      background:linear-gradient(90deg, var(--primary) 0%, var(--accent) 46%, transparent 46%);
+    }
+
+    /* ============================================================
+       PREVIEW LABEL — not part of the export
+    ============================================================ */
+    .preview-note {
+      text-align:   center;
+      margin-top:   20px;
+      font-family:  'Space Mono', monospace;
+      font-size:    11px;
+      color:rgba(255,255,255,0.18);
+      letter-spacing: 0.2em;
+    }
+  
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+
+  <!-- BROWSER PREVIEW SCENE -->
+  <div class="scene">
+    <div>
+      <div class="scale-wrap" id="scaleWrap">
+
+        <!-- ======================================================
+             POST CANVAS — 1080 × 1080 export frame
+             To export: screenshot this element at 1:1 scale,
+             or use Puppeteer / browser print-to-image.
+        ====================================================== -->
+        <div class="post" id="post">
+
+          <!-- Top accent strip — spans full width -->
+          <div class="topstrip"></div>
+
+          <!-- ── LEFT PANEL: IMAGE ──────────────────────────── -->
+          <div class="panel-image">
+
+            <!--
+              SWAP THIS IMAGE — any 540×1080 portrait photo:
+              Fitness:      https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=540&q=85
+              Beauty:       https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=540&q=85
+              Corporate:    https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=540&q=85
+              Food:         https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=540&q=85
+            -->
+            <img
+              class="panel-image__img"
+              data-field="hero_image"
+              src="{{hero_image}}"
+              alt="Hero"
+              loading="eager"
+            />
+
+            <!-- Vertical label on image left edge -->
+            <div class="img-vert-label" data-field="vert_label">{{vert_label}}</div>
+
+            <!-- Stat badge bottom-left -->
+            <div class="img-badge">
+              <span class="img-badge__num" data-field="img_badge_num">{{img_badge_num}}</span>
+              <span class="img-badge__label" data-field="img_badge_label">{{img_badge_label}}</span>
+            </div>
+
+          </div>
+          <!-- end .panel-image -->
+
+          <!-- ── DECORATIVE GEOMETRY ───────────────────────── -->
+          <div class="deco-glow"></div>
+          <div class="deco-circle-outer"></div>
+          <div class="deco-circle-inner"></div>
+          <div class="deco-slash"></div>
+
+          <!-- ── RIGHT PANEL: CONTENT ─────────────────────── -->
+          <div class="panel-content">
+
+            <!-- Corner bracket accent -->
+            <div class="deco-bracket"></div>
+
+            <!-- Line accents top-right -->
+            <div class="deco-lines">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+
+            <!-- Dot cluster bottom-right -->
+            <div class="deco-dots"></div>
+
+            <!-- Eyebrow -->
+            <div class="eyebrow">
+              <span class="eyebrow__pill" data-field="eyebrow_pill">{{eyebrow_pill}}</span>
+              <div class="eyebrow__line"></div>
+            </div>
+
+            <!-- ── HEADLINE ─────────────────────────────── -->
+            <h1 class="headline">
+              <span data-field="headline_1">{{headline_1}}</span><br>
+              <span data-field="headline_2">{{headline_2}}</span><br>
+              <mark data-field="headline_accent">{{headline_accent}}</mark>
+            </h1>
+
+            <!-- ── SUBHEADLINE ──────────────────────────── -->
+            <p class="subheadline" data-field="subheading">
+              {{subheading}}
+            </p>
+
+            <!-- Feature pills -->
+            <div class="features">
+              <span class="feature-pill" data-field="feature_1">{{feature_1}}</span>
+              <span class="feature-pill" data-field="feature_2">{{feature_2}}</span>
+              <span class="feature-pill" data-field="feature_3">{{feature_3}}</span>
+            </div>
+
+            <!-- Divider -->
+            <div class="divider"></div>
+
+            <!-- Stats row -->
+            <div class="stats-row">
+              <div class="stat-item">
+                <div class="stat-item__val" data-field="stat_1_val">{{stat_1_val}}</div>
+                <div class="stat-item__label" data-field="stat_1_label">{{stat_1_label}}</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-item__val" data-field="stat_2_val">{{stat_2_val}}</div>
+                <div class="stat-item__label" data-field="stat_2_label">{{stat_2_label}}</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-item__val" data-field="stat_3_val">{{stat_3_val}}</div>
+                <div class="stat-item__label" data-field="stat_3_label">{{stat_3_label}}</div>
+              </div>
+            </div>
+
+            <!-- ── CTA + BADGE ──────────────────────────── -->
+            <div class="cta-row">
+              <a class="cta-btn" href="#">
+                <span data-field="cta_label">{{cta_label}}</span>
+                <i class="cta-btn__icon">&rarr;</i>
+              </a>
+              <div class="offer-badge">
+                <span class="offer-badge__tag" data-field="offer_tag">{{offer_tag}}</span>
+                <span class="offer-badge__value" data-field="offer_value">{{offer_value}}</span>
+              </div>
+            </div>
+
+            <!-- ── BRAND BAR ────────────────────────────── -->
+            <div class="brand-bar">
+              <div class="brand-bar__logo">
+                <div class="brand-mark"></div>
+                <div class="brand-bar__name">
+                  <span class="brand-bar__primary" data-field="brand_primary">{{brand_primary}}</span>
+                  <span class="brand-bar__url" data-field="brand_url">{{brand_url}}</span>
+                </div>
+              </div>
+              <span class="brand-bar__handle" data-field="brand_handle">{{brand_handle}}</span>
+            </div>
+
+          </div>
+          <!-- end .panel-content -->
+
+        </div>
+        <!-- end .post -->
+
+      </div>
+      <!-- end .scale-wrap -->
+
+      <p class="preview-note">1080 × 1080 px &nbsp;·&nbsp; Square 1:1 &nbsp;·&nbsp; Bold Dark / Fitness / Split Layout</p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       PREVIEW SCALE — CSS-only equivalent of JS scaler.
+       No JavaScript — uses a fixed scale in a <style> block.
+       For exact pixel preview, open in a 1080px-wide viewport.
+  ============================================================ -->
+  <style>
+    /*
+      Scale the post to fit smaller screens while keeping the
+      1080×1080 physical dimensions intact for the export element.
+      The transform-origin is top-center so the top of the post
+      stays anchored when scaling down.
+    */
+    @media (max-width: 1180px) {
+      .scale-wrap { transform: scale(0.82); }
+      .scale-wrap { width: calc(1080px * 0.82); height: calc(1080px * 0.82); }
+    }
+    @media (max-width: 960px) {
+      .scale-wrap { transform: scale(0.65); }
+      .scale-wrap { width: calc(1080px * 0.65); height: calc(1080px * 0.65); }
+    }
+    @media (max-width: 760px) {
+      .scale-wrap { transform: scale(0.48); }
+      .scale-wrap { width: calc(1080px * 0.48); height: calc(1080px * 0.48); }
+    }
+    @media (max-width: 560px) {
+      .scale-wrap { transform: scale(0.32); }
+      .scale-wrap { width: calc(1080px * 0.32); height: calc(1080px * 0.32); }
+    }
+  
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+
+</body>
+</html>

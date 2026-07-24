@@ -96,6 +96,7 @@ abstract class BaseEngineController
             $code = match ($result['code'] ?? 'UNKNOWN') {
                 'PLAN_GATED' => 403,
                 'NO_CREDITS' => 402,
+                'NOT_FOUND' => 404,
                 'AWAITING_APPROVAL' => 202,
                 'INVALID_ACTION' => 400,
                 'EXECUTION_FAILED' => 500,

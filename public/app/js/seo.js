@@ -945,7 +945,11 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // ── Compose: Pipeline tab — Queue + Calendar sub-tabs ─────────────────
   // 2026-05-12 — moved from standalone sidebar engine into the SEO tab
   // strip per spec. Queue (task list, auto-poll 8s) + Calendar (month grid).
-  var _lgsePipe = { sub: 'queue', month: null, pipeline: null, calendar: null, pollT: null };
+  // 2026-05-23 FIX 30 — added view ('month'|'week'|'day') + cursor
+  // (YYYY-MM-DD anchor) for the day/week calendar views. daysCache
+  // accumulates entries across multiple month fetches so a week
+  // spanning two months still renders correctly.
+  var _lgsePipe = { sub: 'queue', view: 'month', cursor: null, month: null, pipeline: null, calendar: null, daysCache: {}, monthsLoaded: {}, pollT: null };
 
   function _lgsePipeEsc(s) {
     return (s == null ? '' : String(s))
@@ -1005,6 +1009,44 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     } catch (e) { return { success: false, error: 'fetch_failed' }; }
   }
 
+  // 2026-05-23 FIX 30 — fetch a month and merge its days into the shared
+  // daysCache so day + week views can read across month boundaries
+  // without re-fetching. Idempotent: subsequent calls for the same month
+  // skip the network round-trip unless force=true.
+  async function _lgsePipeEnsureMonth(month, force) {
+    if (!force && _lgsePipe.monthsLoaded[month]) return;
+    var resp = await _lgsePipeFetchCal(month);
+    if (resp && resp.success && resp.days) {
+      Object.keys(resp.days).forEach(function (k) {
+        _lgsePipe.daysCache[k] = resp.days[k];
+      });
+      _lgsePipe.monthsLoaded[month] = true;
+      // Keep the legacy month-view cache aligned with the most recent fetch
+      // so the month grid render does not regress.
+      if (month === _lgsePipe.month) _lgsePipe.calendar = resp;
+    }
+  }
+
+  // YYYY-MM-DD helpers (pure, no Date timezone surprises).
+  function _lgsePipeIsoDay(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function _lgsePipeIsoMonth(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  }
+  function _lgsePipeAddDays(iso, n) {
+    var p = iso.split('-');
+    var d = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+    d.setDate(d.getDate() + n);
+    return _lgsePipeIsoDay(d);
+  }
+  function _lgsePipeWeekStart(iso) {
+    var p = iso.split('-');
+    var d = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+    d.setDate(d.getDate() - d.getDay()); // back to Sunday
+    return _lgsePipeIsoDay(d);
+  }
+
   function _lgsePipeRenderQueue() {
     var p = _lgsePipe.pipeline;
     if (!p) { return '<div style="padding:32px;text-align:center;color:var(--t3)">Loading queue…</div>'; }
@@ -1053,33 +1095,126 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     return h;
   }
 
-  function _lgsePipeRenderCal() {
-    var cal = _lgsePipe.calendar;
-    if (!cal) { return '<div style="padding:32px;text-align:center;color:var(--t3)">Loading calendar…</div>'; }
-    if (!cal.success) { return '<div style="padding:32px;text-align:center;color:#EF4444">Failed to load calendar.</div>'; }
-    var month = cal.month || _lgsePipe.month;
+  // 2026-05-23 FIX 30 — shared legend + view-switcher chrome used by all
+  // three calendar views (day/week/month).
+  function _lgsePipeCalLegend() {
+    return '<div style="display:flex;gap:14px;margin-bottom:14px;font-size:11px;color:var(--t3);flex-wrap:wrap">'
+       + '<span><span style="background:#10B981;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Completed</span>'
+       + '<span><span style="background:#3B82F6;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Running</span>'
+       + '<span><span style="background:#F59E0B;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Queued</span>'
+       + '<span><span style="background:#7C3AED;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Article</span>'
+       + '</div>';
+  }
+  function _lgsePipeCalViewSwitcher() {
+    var v = _lgsePipe.view;
+    var btn = function (key, label) {
+      var active = v === key;
+      return '<button onclick="window._lgsePipeSetView(\''+key+'\')" '
+        + 'style="background:'+(active?'var(--p)':'var(--s2)')+';border:1px solid '+(active?'var(--p)':'var(--bd)')+';color:'+(active?'#fff':'var(--t1)')+';padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:'+(active?'600':'500')+'">'+label+'</button>';
+    };
+    return '<div style="display:flex;gap:6px;align-items:center">'
+         + btn('day','Day') + btn('week','Week') + btn('month','Month')
+         + '<button onclick="window._lgsePipeGoToday()" style="margin-left:8px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px">Today</button>'
+         + '</div>';
+  }
+  function _lgsePipeCalNavBar(label) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">'
+         + '<div style="display:flex;align-items:center;gap:8px">'
+         +   '<button onclick="window._lgsePipeNavCal(-1)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">←</button>'
+         +   '<h2 style="margin:0;font-size:17px;font-weight:700">'+_lgsePipeEsc(label)+'</h2>'
+         +   '<button onclick="window._lgsePipeNavCal(1)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">→</button>'
+         + '</div>'
+         + _lgsePipeCalViewSwitcher()
+         + '</div>';
+  }
+
+  // Render one item card consistently across day/week/month views.
+  function _lgsePipeItemCard(it, compact) {
+    var col = it.type === 'article' ? '#7C3AED' : _lgsePipeStatusCol(it.status);
+    var title = String(it.title || '');
+    var clip = compact ? 22 : 60;
+    var tt = title.slice(0, clip) + (title.length > clip ? '…' : '');
+    var meta = it.type === 'article'
+      ? ('article · ' + (it.status || ''))
+      : ((it.task_type || it.engine || 'task') + ' · ' + (it.status || ''));
+    if (compact) {
+      return '<div style="background:'+col+'20;color:'+col+';padding:2px 5px;border-radius:3px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+_lgsePipeEsc(title)+'">'+_lgsePipeEsc(tt)+'</div>';
+    }
+    return '<div style="background:'+col+'15;border-left:3px solid '+col+';padding:8px 10px;border-radius:4px;margin-bottom:6px">'
+         + '<div style="font-size:12px;font-weight:500;color:var(--t1);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+_lgsePipeEsc(title)+'">'+_lgsePipeEsc(tt)+'</div>'
+         + '<div style="font-size:10px;color:'+col+';text-transform:uppercase;letter-spacing:.3px">'+_lgsePipeEsc(meta)+'</div>'
+         + '</div>';
+  }
+
+  // ── 2026-05-23 FIX 30 — DAY view ────────────────────────────────────
+  function _lgsePipeRenderCalDay() {
+    var cursor = _lgsePipe.cursor;
+    var p = cursor.split('-');
+    var dateObj = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+    var label = dateObj.toLocaleDateString('default', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+    var items = _lgsePipe.daysCache[cursor] || [];
+    var h = _lgsePipeCalNavBar(label) + _lgsePipeCalLegend();
+    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;min-height:200px">';
+    if (items.length === 0) {
+      h += '<div style="text-align:center;color:var(--t3);font-size:13px;padding:40px 0">Nothing scheduled for this day.</div>';
+    } else {
+      h += '<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;font-weight:600">'+items.length+' item'+(items.length===1?'':'s')+'</div>';
+      items.forEach(function (it) { h += _lgsePipeItemCard(it, false); });
+    }
+    h += '</div>';
+    return h;
+  }
+
+  // ── 2026-05-23 FIX 30 — WEEK view ───────────────────────────────────
+  function _lgsePipeRenderCalWeek() {
+    var weekStart = _lgsePipeWeekStart(_lgsePipe.cursor);
+    var p = weekStart.split('-');
+    var startObj = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+    var endObj = new Date(startObj); endObj.setDate(endObj.getDate()+6);
+    var sameMonth = startObj.getMonth() === endObj.getMonth();
+    var label = sameMonth
+      ? (startObj.toLocaleDateString('default', {month:'short',day:'numeric'}) + ' – ' + endObj.toLocaleDateString('default', {day:'numeric',year:'numeric'}))
+      : (startObj.toLocaleDateString('default', {month:'short',day:'numeric'}) + ' – ' + endObj.toLocaleDateString('default', {month:'short',day:'numeric',year:'numeric'}));
+    var h = _lgsePipeCalNavBar('Week of ' + label) + _lgsePipeCalLegend();
+    h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden">';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--s2);font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">';
+    var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    for (var i=0;i<7;i++) {
+      var di = new Date(startObj); di.setDate(di.getDate()+i);
+      var hdr = dayNames[i] + ' ' + di.getDate();
+      h += '<div style="padding:8px 6px;border-right:1px solid var(--bd);text-align:center">'+hdr+'</div>';
+    }
+    h += '</div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr)">';
+    var today = _lgsePipeIsoDay(new Date());
+    for (var i=0;i<7;i++) {
+      var iso = _lgsePipeAddDays(weekStart, i);
+      var items = _lgsePipe.daysCache[iso] || [];
+      var isToday = iso === today;
+      h += '<div style="min-height:240px;background:var(--s1);border-right:1px solid var(--bd);border-top:1px solid var(--bd);padding:8px 8px;font-size:11px"' + (isToday?' data-today="1"':'') +'>';
+      if (items.length === 0) {
+        h += '<div style="color:var(--t3);opacity:.6;text-align:center;padding-top:24px;font-size:11px">—</div>';
+      } else {
+        var max=8;
+        for (var j=0; j<Math.min(items.length, max); j++) h += _lgsePipeItemCard(items[j], true);
+        if (items.length > max) h += '<div style="color:var(--t3);font-size:10px">+'+(items.length-max)+' more</div>';
+      }
+      h += '</div>';
+    }
+    h += '</div></div>';
+    return h;
+  }
+
+  // ── MONTH view (legacy; preserved behaviour, just wrapped in shared nav) ──
+  function _lgsePipeRenderCalMonth() {
+    var month = _lgsePipe.month;
     var parts = month.split('-');
     var year = parseInt(parts[0], 10);
     var mo = parseInt(parts[1], 10);
     var label = new Date(year, mo-1, 1).toLocaleString('default', { month:'long', year:'numeric' });
     var firstDow = new Date(year, mo-1, 1).getDay();
     var lastDay = new Date(year, mo, 0).getDate();
-    var prevM=mo-1,prevY=year; if(prevM<1){prevM=12;prevY--;}
-    var nextM=mo+1,nextY=year; if(nextM>12){nextM=1;nextY++;}
-    var pM = prevY+'-'+String(prevM).padStart(2,'0');
-    var nM = nextY+'-'+String(nextM).padStart(2,'0');
-    var h = '';
-    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
-    h += '<button onclick="window._lgsePipeSetMonth(\''+pM+'\')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">← Prev</button>';
-    h += '<h2 style="margin:0;font-size:18px;font-weight:700">'+_lgsePipeEsc(label)+'</h2>';
-    h += '<button onclick="window._lgsePipeSetMonth(\''+nM+'\')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">Next →</button>';
-    h += '</div>';
-    h += '<div style="display:flex;gap:14px;margin-bottom:14px;font-size:11px;color:var(--t3)">'
-       + '<span><span style="background:#10B981;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Completed</span>'
-       + '<span><span style="background:#3B82F6;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Running</span>'
-       + '<span><span style="background:#F59E0B;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Queued</span>'
-       + '<span><span style="background:#7C3AED;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Article</span>'
-       + '</div>';
+    var h = _lgsePipeCalNavBar(label) + _lgsePipeCalLegend();
     h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden">';
     h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--s2);font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">';
     ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d){
@@ -1090,19 +1225,13 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     for (var i=0;i<firstDow;i++) {
       h += '<div style="min-height:80px;background:var(--s1);border-right:1px solid var(--bd);border-top:1px solid var(--bd)"></div>';
     }
-    var days = cal.days || {};
     for (var d=1; d<=lastDay; d++) {
       var key = year+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-      var items = days[key] || [];
-      h += '<div style="min-height:80px;background:var(--s1);border-right:1px solid var(--bd);border-top:1px solid var(--bd);padding:6px 8px;font-size:11px">';
+      var items = _lgsePipe.daysCache[key] || [];
+      h += '<div style="min-height:80px;background:var(--s1);border-right:1px solid var(--bd);border-top:1px solid var(--bd);padding:6px 8px;font-size:11px;cursor:pointer" onclick="window._lgsePipeJumpDay(\''+key+'\')">';
       h += '<div style="color:var(--t3);font-weight:600;margin-bottom:4px">'+d+'</div>';
       var maxShow=3;
-      for (var j=0; j<Math.min(items.length, maxShow); j++) {
-        var it = items[j];
-        var col = it.type === 'article' ? '#7C3AED' : _lgsePipeStatusCol(it.status);
-        var tt = String(it.title || '').slice(0,22)+(String(it.title||'').length>22?'…':'');
-        h += '<div style="background:'+col+'20;color:'+col+';padding:2px 5px;border-radius:3px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+_lgsePipeEsc(it.title||'')+'">'+_lgsePipeEsc(tt)+'</div>';
-      }
+      for (var j=0; j<Math.min(items.length, maxShow); j++) h += _lgsePipeItemCard(items[j], true);
       if (items.length > maxShow) {
         h += '<div style="color:var(--t3);font-size:10px">+'+(items.length-maxShow)+' more</div>';
       }
@@ -1110,6 +1239,19 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     }
     h += '</div></div>';
     return h;
+  }
+
+  // Dispatch by current view.
+  function _lgsePipeRenderCal() {
+    if (_lgsePipe.calendar === null && _lgsePipe.view === 'month' && Object.keys(_lgsePipe.daysCache).length === 0) {
+      return '<div style="padding:32px;text-align:center;color:var(--t3)">Loading calendar…</div>';
+    }
+    if (_lgsePipe.calendar && _lgsePipe.calendar.success === false) {
+      return '<div style="padding:32px;text-align:center;color:#EF4444">Failed to load calendar.</div>';
+    }
+    if (_lgsePipe.view === 'day')  return _lgsePipeRenderCalDay();
+    if (_lgsePipe.view === 'week') return _lgsePipeRenderCalWeek();
+    return _lgsePipeRenderCalMonth();
   }
 
   function _lgsePipeRender() {
@@ -1129,16 +1271,102 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   window._lgsePipeSetSub = function (s) {
     _lgsePipe.sub = s;
+    // 2026-05-23 FIX 30 — initialise cursor + month from "today" on first
+    // open so the calendar lands on the current date by default.
+    if (s === 'calendar') {
+      if (!_lgsePipe.cursor) _lgsePipe.cursor = _lgsePipeIsoDay(new Date());
+      if (!_lgsePipe.month)  _lgsePipe.month  = _lgsePipeIsoMonth(new Date());
+    }
     _lgsePipeRender();
-    if (s === 'calendar' && !_lgsePipe.calendar) {
-      _lgsePipeFetchCal(_lgsePipe.month).then(function (d) {
-        _lgsePipe.calendar = d; _lgsePipeRender();
-      });
+    if (s === 'calendar') {
+      _lgsePipeEnsureCalDataForView().then(function () { _lgsePipeRender(); });
     }
   };
+
+  // 2026-05-23 FIX 30 — ensure the months containing the visible date
+  // range are loaded into daysCache. Day view needs the cursor's month.
+  // Week view needs the month(s) of the 7-day window. Month view needs
+  // the current month.
+  function _lgsePipeEnsureCalDataForView() {
+    var months = {};
+    if (_lgsePipe.view === 'day') {
+      months[_lgsePipeIsoMonth(_lgsePipeParseDate(_lgsePipe.cursor))] = true;
+    } else if (_lgsePipe.view === 'week') {
+      var weekStart = _lgsePipeWeekStart(_lgsePipe.cursor);
+      months[_lgsePipeIsoMonth(_lgsePipeParseDate(weekStart))] = true;
+      months[_lgsePipeIsoMonth(_lgsePipeParseDate(_lgsePipeAddDays(weekStart, 6)))] = true;
+    } else {
+      months[_lgsePipe.month] = true;
+    }
+    var keys = Object.keys(months);
+    return Promise.all(keys.map(function (m) { return _lgsePipeEnsureMonth(m, false); }));
+  }
+  function _lgsePipeParseDate(iso) {
+    var p = iso.split('-');
+    return new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+  }
+
+  // 2026-05-23 FIX 30 — view switcher. Updates the active view, syncs
+  // cursor/month for consistency, ensures backing data, re-renders.
+  window._lgsePipeSetView = function (v) {
+    if (v !== 'day' && v !== 'week' && v !== 'month') return;
+    _lgsePipe.view = v;
+    if (!_lgsePipe.cursor) _lgsePipe.cursor = _lgsePipeIsoDay(new Date());
+    // For month view, keep month aligned to the cursor's month so navigation
+    // remains continuous after switching views.
+    _lgsePipe.month = _lgsePipeIsoMonth(_lgsePipeParseDate(_lgsePipe.cursor));
+    _lgsePipeRender();
+    _lgsePipeEnsureCalDataForView().then(function () { _lgsePipeRender(); });
+  };
+
+  // 2026-05-23 FIX 30 — context-aware nav: ±1 day / week / month based
+  // on current view. Cursor + month stay in sync so view switches feel
+  // continuous.
+  window._lgsePipeNavCal = function (direction) {
+    direction = parseInt(direction, 10) || 0;
+    if (_lgsePipe.view === 'day') {
+      _lgsePipe.cursor = _lgsePipeAddDays(_lgsePipe.cursor, direction);
+    } else if (_lgsePipe.view === 'week') {
+      _lgsePipe.cursor = _lgsePipeAddDays(_lgsePipe.cursor, 7 * direction);
+    } else {
+      // month
+      var p = _lgsePipe.month.split('-');
+      var y = parseInt(p[0],10), m = parseInt(p[1],10);
+      m += direction;
+      while (m < 1)  { m += 12; y -= 1; }
+      while (m > 12) { m -= 12; y += 1; }
+      _lgsePipe.month = y + '-' + String(m).padStart(2,'0');
+      _lgsePipe.cursor = _lgsePipe.month + '-01';
+    }
+    _lgsePipe.month = _lgsePipeIsoMonth(_lgsePipeParseDate(_lgsePipe.cursor));
+    _lgsePipeRender();
+    _lgsePipeEnsureCalDataForView().then(function () { _lgsePipeRender(); });
+  };
+
+  window._lgsePipeGoToday = function () {
+    var today = _lgsePipeIsoDay(new Date());
+    _lgsePipe.cursor = today;
+    _lgsePipe.month  = _lgsePipeIsoMonth(new Date());
+    _lgsePipeRender();
+    _lgsePipeEnsureCalDataForView().then(function () { _lgsePipeRender(); });
+  };
+
+  // Click a day cell in month view → jump to day view for that date.
+  window._lgsePipeJumpDay = function (iso) {
+    _lgsePipe.cursor = iso;
+    _lgsePipe.view = 'day';
+    _lgsePipe.month = _lgsePipeIsoMonth(_lgsePipeParseDate(iso));
+    _lgsePipeRender();
+    _lgsePipeEnsureCalDataForView().then(function () { _lgsePipeRender(); });
+  };
+
+  // Legacy alias — month-grid prev/next still call this from older code paths.
   window._lgsePipeSetMonth = function (m) {
-    _lgsePipe.month = m; _lgsePipe.calendar = null; _lgsePipeRender();
-    _lgsePipeFetchCal(m).then(function (d) { _lgsePipe.calendar = d; _lgsePipeRender(); });
+    _lgsePipe.month = m;
+    _lgsePipe.cursor = m + '-01';
+    _lgsePipe.view = 'month';
+    _lgsePipeRender();
+    _lgsePipeEnsureMonth(m, true).then(function () { _lgsePipeRender(); });
   };
 
   function _lgsePipeStartPoll() {
@@ -1299,12 +1527,11 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   };
   window._lgseAgentLabel = function (agentSlug) {
     if (window._lgseIsEmbed()) return 'SEO AI Assistant';
+    // W6: retained roster only. A removed agent must not resolve to a name.
     var names = {
-      james:'James', sarah:'Sarah', priya:'Priya', marcus:'Marcus',
-      elena:'Elena', leo:'Leo', alex:'Alex', diana:'Diana',
-      ryan:'Ryan', sofia:'Sofia', chris:'Chris', jordan:'Jordan',
-      kai:'Kai', max:'Max', maya:'Maya', nora:'Nora',
-      tyler:'Tyler', vera:'Vera', zara:'Zara', zoe:'Zoe'
+      james:'James', sarah:'Sarah', priya:'Priya', elena:'Elena',
+      alex:'Alex', diana:'Diana', ryan:'Ryan', sofia:'Sofia',
+      max:'Max', nora:'Nora'
     };
     return names[String(agentSlug || '').toLowerCase()] || 'James';
   };
@@ -1425,52 +1652,47 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
     // Direct fetch — bypass the api() wrapper since _withSiteScope is a chicken-and-egg here.
     var token = localStorage.getItem('lu_token') || '';
-    fetch(window.location.origin + '/api/seo/sites', {
+    // 2026-06-24 — website=workspace: this bar is now a WORKSPACE SWITCHER.
+    // Each website is its own workspace (isolated SEO/CRM/blog/data); switching
+    // mints a new token for that workspace and reloads the app.
+    fetch(window.location.origin + '/api/workspaces', {
       method: 'GET',
       headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
       cache: 'no-store',
     }).then(function (r) { return r.json(); }).then(function (d) {
-      if (!d || !d.success) {
-        bar.innerHTML = '<span style="color:#F87171;font-size:11px">Could not load site list</span>';
+      var list = (d && d.workspaces) || [];
+      window._lgseWorkspaceList = list;
+      if (list.length === 0) {
+        bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">No workspaces.</span>';
         return;
       }
-      var sites = d.sites || [];
-      window._lgseSiteList = sites;
-
-      // Resolve active site: restored localStorage > backend default > first
-      var stored = _restoreActiveSite();
-      var validStored = stored && sites.some(function (s) { return s.url === stored; });
-      var activeUrl = validStored ? stored : (d.default_url || (sites[0] && sites[0].url) || '');
-      window._lgseActiveSiteUrl = activeUrl;
-      _persistActiveSite(activeUrl);
-
       lgseRenderSiteBar();
     }).catch(function () {
-      bar.innerHTML = '<span style="color:#F87171;font-size:11px">Site picker failed to load</span>';
+      bar.innerHTML = '<span style="color:#F87171;font-size:11px">Workspace picker failed to load</span>';
     });
   }
 
   window.lgseRenderSiteBar = function () {
     var bar = document.getElementById('lgse-site-bar');
     if (!bar) return;
-    var sites = window._lgseSiteList || [];
-    if (sites.length === 0) {
-      bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">No websites yet — register one in the Build engine to get started.</span>';
+    var list = window._lgseWorkspaceList || [];
+    if (list.length === 0) {
+      bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">No workspaces yet — build a website to get started.</span>';
       return;
     }
-    var active = window._lgseActiveSiteUrl || '';
-    var opts = sites.map(function (s) {
-      var sel = (s.url === active) ? ' selected' : '';
-      // Wave 16d-v2 — no kind-tag; we can't reliably tell HTML vs WP from the
-      // data, so we just show the site name and let the user disambiguate.
-      var label = (s.name || s.host || s.url);
-      return '<option value="' + esc(s.url) + '"' + sel + '>' + esc(label) + '</option>';
+    var current = (window.LU_CFG && window.LU_CFG.workspace_id)
+      || (function(){ try { return localStorage.getItem('lu_workspace_id'); } catch(_) { return 0; } })()
+      || 0;
+    var opts = list.map(function (w) {
+      var sel = (String(w.id) === String(current)) ? ' selected' : '';
+      var label = (w.name || ('Workspace ' + w.id)) + (w.plan ? ' · ' + w.plan : '');
+      return '<option value="' + w.id + '"' + sel + '>' + esc(label) + '</option>';
     }).join('');
     bar.innerHTML =
-        '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Site</span>'
-      + '<select onchange="lgseSwitchSite(this.value)" style="background:var(--lgse-bg,#0F1117);color:var(--lgse-t1,#E5E7EB);border:1px solid var(--lgse-border,#1f2937);border-radius:6px;padding:6px 10px;font-size:12px;min-width:240px;cursor:pointer">' + opts + '</select>'
+        '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Website</span>'
+      + '<select onchange="lgseSwitchWorkspace(this.value)" style="background:var(--lgse-bg,#0F1117);color:var(--lgse-t1,#E5E7EB);border:1px solid var(--lgse-border,#1f2937);border-radius:6px;padding:6px 10px;font-size:12px;min-width:240px;cursor:pointer">' + opts + '</select>'
       + '<span id="lgse-site-bar-meta" style="color:var(--lgse-t3,#9CA3AF);font-size:11px;margin-left:auto">'
-      +    'Scoping every tab to this site. ' + sites.length + ' site' + (sites.length === 1 ? '' : 's') + ' total.'
+      +    list.length + ' workspace' + (list.length === 1 ? '' : 's') + ' · each its own website + data'
       + '</span>';
   };
 
@@ -1486,6 +1708,35 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var tabId = activeTab ? activeTab.getAttribute('data-tab-id') : 'overview';
     if (typeof switchTab === 'function') switchTab(tabId);
     setTimeout(function () { lgseRenderSiteBar(); }, 50);
+  };
+
+  // 2026-06-24 — WORKSPACE SWITCHER. Switches the whole app to another website-
+  // workspace: mints a fresh token for it and reloads so every engine rebinds.
+  window.lgseSwitchWorkspace = function (wsId) {
+    wsId = parseInt(wsId, 10);
+    if (!wsId) return;
+    var cur = (window.LU_CFG && window.LU_CFG.workspace_id) || 0;
+    if (String(wsId) === String(cur)) return;
+    var meta = document.getElementById('lgse-site-bar-meta');
+    if (meta) meta.textContent = 'Switching workspace…';
+    var token = localStorage.getItem('lu_token') || '';
+    fetch(window.location.origin + '/api/auth/switch-workspace', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ workspace_id: wsId }),
+      cache: 'no-store',
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.access_token) {
+        localStorage.setItem('lu_token', d.access_token);
+        if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token);
+        try { localStorage.setItem('lu_workspace_id', String(d.current_workspace_id || wsId)); } catch (_e) {}
+        window.location.reload();
+      } else if (meta) {
+        meta.textContent = 'Switch failed — please retry.';
+      }
+    }).catch(function () {
+      if (meta) meta.textContent = 'Switch failed — please retry.';
+    });
   };
 
   // Wave 16 (2026-05-19). Global site filter — propagated to every api()
@@ -1922,8 +2173,15 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var enrichedCount = r.enriched_count || 0;
       var total = r.total || articles.length;
       var pct = total > 0 ? Math.round((enrichedCount / total) * 100) : 0;
+      var unenriched = Math.max(0, total - enrichedCount);
 
-      var h = '<div class="lgse-section-hdr"><span class="lgse-section-title">Workspace articles — AEO enrichment status (' + enrichedCount + ' of ' + total + ' enriched · ' + pct + '%)</span></div>';
+      // 2026-06-22 — Bulk enrich: one click enriches all unenriched, crawled
+      // pages (server processes safe chunks; this loops until done). Generation
+      // only — review + push to WP stays per-page/explicit.
+      var bulkBtn = unenriched > 0
+        ? '<button class="lgse-btn-secondary" id="lgse-aeo-bulk-btn" onclick="lgseAeoBulkEnrich(this)" style="font-size:11px;padding:6px 14px;margin-left:auto;white-space:nowrap">Enrich all unenriched (' + unenriched + ' · up to ' + unenriched + 'cr)</button>'
+        : '';
+      var h = '<div class="lgse-section-hdr" style="display:flex;align-items:center;gap:10px"><span class="lgse-section-title">Workspace articles — AEO enrichment status (' + enrichedCount + ' of ' + total + ' enriched · ' + pct + '%)</span>' + bulkBtn + '</div>';
       h += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;overflow:hidden">';
       h += '<table class="lgse-table" style="margin:0">';
       h += '<thead><tr><th style="width:50%">Article</th><th>Status</th><th class="r">Words</th><th class="r" title="AI crawler hits last 30d">Crawled</th><th class="r" title="AI-referred visitors last 30d">AI refs</th><th class="r">Action</th></tr></thead><tbody>';
@@ -1934,13 +2192,21 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         var btnLabel = a.aeo_enriched ? 'Re-enrich' : 'Enrich (1cr)';
         var cr = a.crawler_hits_30d || 0;
         var rf = a.referrals_30d || 0;
+        // 2026-05-28 — clickable title. WP-synced rows carry an absolute URL
+        // on a.url; Laravel articles have just a slug, so we leave them as
+        // plain text unless a URL can be derived. Always opens in a new tab.
+        var aUrl = (typeof a.url === 'string' && /^https?:\/\//i.test(a.url)) ? a.url
+                 : (typeof a.slug === 'string' && /^https?:\/\//i.test(a.slug) ? a.slug : '');
+        var titleCell = aUrl
+          ? '<a href="' + esc(aUrl) + '" target="_blank" rel="noopener noreferrer" style="color:var(--lgse-t1);text-decoration:none;border-bottom:1px dashed var(--lgse-border)" title="' + esc(aUrl) + '">' + esc(a.title || '(untitled)') + '</a>'
+          : esc(a.title || '(untitled)');
         h += '<tr>'
-          + '<td style="max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(a.title || '(untitled)') + '</td>'
+          + '<td style="max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + titleCell + '</td>'
           + '<td>' + statusBadge + '</td>'
           + '<td class="r mono">' + (a.word_count || 0) + '</td>'
           + '<td class="r mono" style="color:' + (cr > 0 ? 'var(--lgse-purple)' : 'var(--lgse-t3)') + '">' + cr + '</td>'
           + '<td class="r mono" style="color:' + (rf > 0 ? 'var(--lgse-teal)' : 'var(--lgse-t3)') + '">' + rf + '</td>'
-          + '<td class="r"><button class="lgse-btn-secondary" onclick="lgseAeoEnrichArticle(' + a.id + ', this)" style="font-size:10.5px;padding:5px 12px">' + btnLabel + '</button></td>'
+          + '<td class="r"><button class="lgse-btn-secondary" onclick="lgseAeoEnrichArticle(\'' + a.id + '\', this)" style="font-size:10.5px;padding:5px 12px">' + btnLabel + '</button></td>'
           + '</tr>';
       });
       h += '</tbody></table></div>';
@@ -1950,6 +2216,42 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       if (holder) holder.innerHTML = '';
     });
   }
+
+  // 2026-06-22 — Bulk AEO enrich. Calls /aeo/bulk-enrich repeatedly (the server
+  // processes a safe chunk per call), accumulating progress, and stops when no
+  // pages remain OR a chunk makes no progress (guards against a stuck page
+  // looping forever). Generation only — does not push to WP.
+  window.lgseAeoBulkEnrich = function (btn) {
+    if (!confirm('Enrich all unenriched, crawled pages? Each enriched page costs 1 credit. This generates the AEO data (TL;DR, FAQ, JSON-LD) — you can review and push to WordPress afterwards.')) return;
+    var origLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+    var totEnriched = 0, totSkipped = 0, totFailed = 0;
+    function finish(msg) {
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = origLabel; }
+      if (msg) alert(msg);
+      if (typeof lgseLoadAeoArticles === 'function') lgseLoadAeoArticles();
+    }
+    function runChunk() {
+      if (btn) btn.textContent = 'Enriching… (' + totEnriched + ' done)';
+      api('POST', '/aeo/bulk-enrich', {}).then(function (r) {
+        if (!r || !r.success) { finish('Bulk enrich failed — please try again.'); return; }
+        totEnriched += (r.enriched || 0);
+        totSkipped  += (r.skipped || 0);
+        totFailed   += (r.failed || 0);
+        if ((r.enriched || 0) > 0 && (r.remaining || 0) > 0) {
+          runChunk(); // keep going while making progress
+        } else {
+          var msg = 'Done. Enriched ' + totEnriched + ' page(s)';
+          if (totSkipped) msg += ', skipped ' + totSkipped;
+          if (totFailed)  msg += ', failed ' + totFailed;
+          msg += '. Credits used: ' + totEnriched + '.';
+          if (totEnriched === 0 && (totSkipped + totFailed) === 0) msg = 'Nothing to enrich — no crawled, unenriched pages.';
+          finish(msg);
+        }
+      }).catch(function () { finish('Bulk enrich error — please try again.'); });
+    }
+    runChunk();
+  };
 
   function lgseLoadAeoSettings() {
     api('GET', '/aeo/settings').then(function (r) {
@@ -2083,11 +2385,44 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     });
   };
 
+  // 2026-05-28 — Two enrichment paths now:
+  //   - Laravel articles: id is a numeric string like "42" → POST /aeo/enrich
+  //     (existing behaviour, persists into articles row, no modal).
+  //   - WP-synced pages: id is "wp:<seo_index_id>" → POST /aeo/enrich-wp
+  //     (new), which returns the generated JSON-LD + TLDR + FAQ blocks;
+  //     we open a modal with one Copy button per block so the admin can
+  //     paste them into the WordPress post.
   window.lgseAeoEnrichArticle = function (articleId, btn) {
     if (!btn) return;
     var orig = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Enriching…';
+
+    var isWp = typeof articleId === 'string' && articleId.indexOf('wp:') === 0;
+    if (isWp) {
+      var seoIndexId = parseInt(articleId.slice(3), 10);
+      api('POST', '/aeo/enrich-wp', { seo_index_id: seoIndexId }).then(function (r) {
+        btn.disabled = false;
+        if (r && r.success && r.data) {
+          btn.textContent = '✓ Done';
+          btn.style.background = 'rgba(0,229,168,.15)';
+          btn.style.color = '#00E5A8';
+          lgseAeoShowEnrichmentModal(r.data);
+          setTimeout(function () { lgseLoadAeoArticles(); }, 800);
+        } else {
+          btn.textContent = orig;
+          var msg = (r && (r.message || r.error)) || 'Failed';
+          btn.title = msg;
+          alert('Enrichment failed: ' + msg);
+        }
+      }).catch(function (e) {
+        btn.disabled = false;
+        btn.textContent = orig;
+        alert('Enrichment network error — please retry.');
+      });
+      return;
+    }
+
     api('POST', '/aeo/enrich', { article_id: articleId }).then(function (r) {
       btn.disabled = false;
       if (r && r.success && r.result && r.result.enriched) {
@@ -2103,6 +2438,143 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       btn.disabled = false;
       btn.textContent = orig;
     });
+  };
+
+  // 2026-05-28 — modal for WP-synced enrichment output. Three sections:
+  //   1. JSON-LD (Article schema) — paste into <head> via Yoast/Rank Math
+  //      "Schema Output" or a header script block.
+  //   2. TLDR — paste at the top of the post body.
+  //   3. FAQ — render as <h2>/<h3> Q + <p> A or paste the JSON into Rank
+  //      Math's FAQ block.
+  // Each block has a Copy button + a hint about where it goes.
+  window.lgseAeoShowEnrichmentModal = function (data) {
+    var existing = document.getElementById('lgse-aeo-enrich-modal');
+    if (existing) existing.remove();
+
+    var jsonldStr = JSON.stringify(data.jsonld, null, 2);
+    var faqStr = JSON.stringify(data.faq, null, 2);
+    var tldrStr = String(data.tldr || '');
+
+    var faqHtml = '';
+    if (Array.isArray(data.faq)) {
+      data.faq.forEach(function (q) {
+        faqHtml += '<div style="margin-bottom:10px"><div style="font-weight:600;color:var(--lgse-t1);font-size:12px">Q: ' + esc(q.question || '') + '</div>'
+          + '<div style="color:var(--lgse-t2);font-size:11.5px;margin-top:4px">A: ' + esc(q.answer || '') + '</div></div>';
+      });
+    }
+
+    var modal = document.createElement('div');
+    modal.id = 'lgse-aeo-enrich-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+    modal.innerHTML =
+      '<div style="background:var(--lgse-bg1);border:1px solid var(--lgse-border);border-radius:14px;width:min(900px,100%);max-height:90vh;overflow:auto;padding:24px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+      +   '<h2 style="font-size:16px;font-weight:700;color:var(--lgse-t1);margin:0">AEO enrichment ready</h2>'
+      +   '<button onclick="document.getElementById(\'lgse-aeo-enrich-modal\').remove()" style="background:transparent;border:none;color:var(--lgse-t3);font-size:22px;cursor:pointer;line-height:1;padding:0 4px">×</button>'
+      + '</div>'
+      + '<div style="font-size:11.5px;color:var(--lgse-t3);margin-bottom:18px">Paste each block into your WordPress post in the marked location. Charged 1cr.</div>'
+      + '<div style="font-size:11.5px;color:var(--lgse-t2);margin-bottom:18px">' + esc(data.title || data.url || '') + '</div>'
+
+      // Block 1: JSON-LD
+      + '<div style="margin-bottom:18px">'
+      +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      +     '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--lgse-t1)">1. Article JSON-LD schema</div>'
+      +     '<button class="lgse-btn-secondary" onclick="lgseAeoCopyBlock(this,\'lgse-aeo-block-jsonld\')" style="font-size:10.5px;padding:5px 12px">Copy</button>'
+      +   '</div>'
+      +   '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:6px">Paste inside &lt;head&gt; — or into Yoast / Rank Math &quot;Schema Output&quot; as a custom block.</div>'
+      +   '<pre id="lgse-aeo-block-jsonld" style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:6px;padding:10px;font-family:var(--lgse-mono);font-size:10.5px;color:var(--lgse-t1);max-height:240px;overflow:auto;white-space:pre-wrap">' + esc('<script type="application/ld+json">\n' + jsonldStr + '\n</script>') + '</pre>'
+      + '</div>'
+
+      // Block 2: TLDR
+      + '<div style="margin-bottom:18px">'
+      +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      +     '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--lgse-t1)">2. TLDR (paste at top of post body)</div>'
+      +     '<button class="lgse-btn-secondary" onclick="lgseAeoCopyBlock(this,\'lgse-aeo-block-tldr\')" style="font-size:10.5px;padding:5px 12px">Copy</button>'
+      +   '</div>'
+      +   '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:6px">Adds an &quot;in-first-300-chars summary&quot;, which LLM search engines extract verbatim.</div>'
+      +   '<pre id="lgse-aeo-block-tldr" style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:6px;padding:10px;font-family:var(--lgse-mono);font-size:11.5px;color:var(--lgse-t1);max-height:160px;overflow:auto;white-space:pre-wrap">' + esc(tldrStr) + '</pre>'
+      + '</div>'
+
+      // Block 3: FAQ
+      + '<div style="margin-bottom:8px">'
+      +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      +     '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--lgse-t1)">3. FAQ block (preview)</div>'
+      +     '<button class="lgse-btn-secondary" onclick="lgseAeoCopyBlock(this,\'lgse-aeo-block-faq\')" style="font-size:10.5px;padding:5px 12px">Copy JSON</button>'
+      +   '</div>'
+      +   '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:6px">Paste the JSON into Rank Math &quot;FAQ Block&quot; or render manually as H3 questions / paragraphs.</div>'
+      +   '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:6px;padding:10px;max-height:300px;overflow:auto">' + faqHtml + '</div>'
+      +   '<pre id="lgse-aeo-block-faq" style="display:none">' + esc(faqStr) + '</pre>'
+      + '</div>'
+
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:18px;flex-wrap:wrap">'
+      +   '<div id="lgse-aeo-push-status" style="font-size:11.5px;color:var(--lgse-t3);min-width:0;flex:1"></div>'
+      +   '<div style="display:flex;gap:8px">'
+      +     '<button class="lgse-btn-secondary" onclick="document.getElementById(\'lgse-aeo-enrich-modal\').remove()" style="padding:8px 18px">Close</button>'
+      +     '<button id="lgse-aeo-push-btn" class="lgse-btn-primary" onclick="lgseAeoPushToWp(' + (data.seo_index_id || 0) + ', this)" style="padding:8px 18px">Push to WordPress</button>'
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+
+    document.body.appendChild(modal);
+  };
+
+  // 2026-05-28 — push the (already-generated, already-persisted on
+  // seo_content_index) enrichment into WordPress via the v1.3.5 plugin's
+  // /wp-json/lgsc/v1/aeo-enrich-post endpoint. Server-to-server, no
+  // visitor-side cookies, no plugin token in the browser.
+  window.lgseAeoPushToWp = function (seoIndexId, btn) {
+    if (!seoIndexId || !btn) return;
+    var status = document.getElementById('lgse-aeo-push-status');
+    var orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Pushing…';
+    if (status) { status.textContent = ''; status.style.color = 'var(--lgse-t3)'; }
+    api('POST', '/aeo/push-to-wp', { seo_index_id: seoIndexId }).then(function (r) {
+      if (r && r.success) {
+        btn.textContent = '✓ Pushed to WordPress';
+        btn.style.background = 'rgba(0,229,168,.15)';
+        btn.style.color = '#00E5A8';
+        if (status) {
+          status.textContent = 'Live now — visit the WP post to verify the TL;DR + FAQ + JSON-LD are rendered.';
+          status.style.color = '#00E5A8';
+        }
+      } else {
+        btn.disabled = false;
+        btn.textContent = orig;
+        var msg = (r && (r.message || r.error)) || 'Push failed';
+        if (status) { status.textContent = msg; status.style.color = '#EF4444'; }
+      }
+    }).catch(function (e) {
+      btn.disabled = false;
+      btn.textContent = orig;
+      if (status) { status.textContent = 'Network error — please retry.'; status.style.color = '#EF4444'; }
+    });
+  };
+
+  window.lgseAeoCopyBlock = function (btn, blockId) {
+    var pre = document.getElementById(blockId);
+    if (!pre) return;
+    var text = pre.textContent || pre.innerText || '';
+    var done = function () {
+      var orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      setTimeout(function () { btn.textContent = orig; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () {
+        // Fallback to textarea select
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        ta.remove();
+      });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      ta.remove();
+    }
   };
 
   function lgseAeoChecksHtml(checks) {
@@ -2133,14 +2605,24 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var url = (inp.value || '').trim();
     if (!url) return;
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    // 2026-05-28 — disable + relabel the button so the click is visibly
+    // acknowledged. Previously only the hidden <input> was disabled, which
+    // gave the visitor no feedback that the request was in flight.
+    var btn = document.querySelector('button[onclick="lgseAeoAuditUrl()"]');
+    var origText = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Auditing…'; }
     inp.disabled = true;
-    api('POST', '/aeo/audit/url', { url: url }).then(function (r) {
+    var restore = function () {
       inp.disabled = false;
+      if (btn) { btn.disabled = false; btn.textContent = origText || 'Audit now'; }
+    };
+    api('POST', '/aeo/audit/url', { url: url }).then(function (r) {
+      restore();
       inp.value = '';
       if (r && r.success) {
         lgseLoadAeoAudits();
       }
-    }).catch(function () { inp.disabled = false; });
+    }).catch(function () { restore(); });
   };
 
   window.lgseAeoRecrawlAll = function () {
@@ -4182,9 +4664,14 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var url = p.url || '';
       var score = parseInt(p.content_score || p.score || 0, 10) || 0;
       var words = parseInt(p.word_count || 0, 10) || 0;
-      var ilIn  = parseInt(p.internal_link_count || 0, 10) || 0;
+      // 2026-06-22 — orphan = NO INBOUND links. Read inbound_links (the field the
+      // fixer + every backend counter use), NOT internal_link_count (outbound/
+      // unpopulated) which falsely flagged 57 linked chef-red pages as orphans.
+      var ilIn  = parseInt(p.inbound_links || 0, 10) || 0;
       var ilOut = parseInt(p.external_link_count || 0, 10) || 0;
-      var orphan = ilIn === 0;
+      // Canonical orphan def (matches backend linkHealth/assistant/AI context):
+      // no inbound links AND actionable (>100 words; excludes thin/homepage).
+      var orphan = ilIn === 0 && (parseInt(p.word_count || 0, 10) || 0) > 100;
       var pid = parseInt(p.id, 10) || 0;
       // Bare hostnames (e.g. "chef-red.levelupgrowth.io") get treated as
       // relative paths by the browser if used in href. Force absolute.
@@ -6804,6 +7291,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       + '<div class="lgse-subtabs" id="lgse-ins-subtabs">'
         + '<div class="lgse-subtab active" data-sec="traffic">Traffic Insights</div>'
         + '<div class="lgse-subtab" data-sec="gsc">Search Console</div>'
+        + '<div class="lgse-subtab" data-sec="visitors">Google Analytics</div>'
       + '</div>'
       + '<div id="lgse-ins-body"></div>';
     var body = document.getElementById('lgse-ins-body');
@@ -6813,10 +7301,148 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       body.innerHTML = '<div style="padding:24px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading…</div>';
       if (sec === 'traffic') return loadTraffic(body);
       if (sec === 'gsc') return loadGsc(body);
+      if (sec === 'visitors') return loadGaVisitors(body);
     }
     Array.prototype.forEach.call(subtabs.children, function (t) { t.addEventListener('click', function () { load(t.getAttribute('data-sec')); }); });
     load('traffic');
   }
+
+  // Switch which GA4 property the Visitors tab reads, then re-render.
+  window._gaSelectProp = function (pid) {
+    if (!pid) return;
+    api('POST', '/ga/select-property', { property_id: pid }).then(function () {
+      var active = document.querySelector('#lgse-ins-subtabs .lgse-subtab.active');
+      if (active) active.click();
+    }).catch(function () { alert('Could not switch property. Try again.'); });
+  };
+
+  function _gaPropSelect(list, current, allowEmpty) {
+    var s = '<select onchange="_gaSelectProp(this.value)" style="background:var(--lgse-bg2);color:var(--lgse-t1);border:1px solid var(--lgse-border);border-radius:7px;padding:5px 9px;font-size:11.5px">';
+    if (allowEmpty) s += '<option value="">Use another property…</option>';
+    (list || []).forEach(function (p) {
+      var sel = String(p.id) === String(current) ? ' selected' : '';
+      s += '<option value="' + esc(p.id) + '"' + sel + '>' + esc(p.name) + (p.domain ? ' (' + esc(p.domain) + ')' : '') + '</option>';
+    });
+    return s + '</select>';
+  }
+
+  // GA4 website-visitor report (shares the Google connection with GSC).
+  // Only properties that track THIS workspace's own site are shown by default;
+  // unrelated properties on the account are hidden (manual override available).
+  // Install/confirm the GA4 tracking tag on the published site.
+  window._gaInstallTracking = function (id) {
+    var mid = id || (document.getElementById('ga-mid') && document.getElementById('ga-mid').value) || '';
+    mid = (mid || '').trim();
+    if (!mid) { alert('Enter your Measurement ID (G-XXXXXXXXXX).'); return; }
+    api('POST', '/ga/tracking', { measurement_id: mid }).then(function () {
+      var el = document.getElementById('ga-track'); if (el) _gaTrackingCard(el);
+    }).catch(function (e) { alert((e && e.body && e.body.message) || 'Could not save the tracking ID.'); });
+  };
+
+  // "Website tracking" card — install status + auto-detected ID + manual
+  // field + step-by-step instructions. This is how ANY user turns on visitor
+  // tracking for their own site; the ID is auto-detected from their Google
+  // connection, so they usually just click "Turn on tracking".
+  function _gaTrackingCard(el) {
+    if (!el) return;
+    api('GET', '/ga/tracking').then(function (tr) {
+      var instr = '<details style="margin-top:10px"><summary style="cursor:pointer;color:var(--lgse-am,#F5A623);font-size:11.5px">How do I set up Google Analytics?</summary>'
+        + '<ol style="margin:8px 0 0;padding-left:18px;color:var(--lgse-t2);font-size:11.5px;line-height:1.7">'
+        + '<li>Open <a href="https://analytics.google.com" target="_blank" style="color:var(--lgse-am,#F5A623)">analytics.google.com</a> → <b>Admin</b> → <b>Create Property</b>.</li>'
+        + '<li>Add a <b>Web</b> data stream for your site' + (tr && tr.domain ? ' (<b>' + esc(tr.domain) + '</b>)' : '') + '.</li>'
+        + '<li>Copy the <b>Measurement ID</b> (looks like <code>G-XXXXXXXXXX</code>).</li>'
+        + '<li>Click <b>Connect with Google</b> above — we detect it automatically — or paste it below.</li>'
+        + '</ol></details>';
+      var h = '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px">';
+      h += '<div class="lgse-section-title" style="margin-bottom:8px">Website tracking</div>';
+      if (tr && tr.installed) {
+        h += '<div style="font-size:12px;color:var(--lgse-t1)"><span class="lgse-badge lgse-b-teal">● Active</span> Visitor tracking is live on <b>' + esc(tr.domain || 'your site') + '</b> <span class="mono" style="color:var(--lgse-t3)">(' + esc(tr.installed) + ')</span>.</div>';
+      } else if (tr && tr.detected) {
+        h += '<div style="font-size:12px;color:var(--lgse-t2);margin-bottom:8px">We detected your tracking ID <span class="mono">' + esc(tr.detected) + '</span>' + (tr.domain ? ' for <b>' + esc(tr.domain) + '</b>' : '') + '. Turn it on to start collecting visitor data.</div>';
+        h += '<button class="lgse-btn-primary" onclick="_gaInstallTracking(\'' + esc(tr.detected) + '\')">Turn on tracking</button>';
+      } else {
+        h += '<div style="font-size:12px;color:var(--lgse-t2);margin-bottom:8px">Add your Google Analytics Measurement ID to start collecting visitor data on <b>' + esc((tr && tr.domain) || 'your site') + '</b>.</div>';
+        h += '<div style="display:flex;gap:8px"><input id="ga-mid" placeholder="G-XXXXXXXXXX" style="flex:0 0 200px;background:var(--lgse-bg);color:var(--lgse-t1);border:1px solid var(--lgse-border);border-radius:7px;padding:6px 10px;font-size:12px" /><button class="lgse-btn-primary" onclick="_gaInstallTracking()">Install</button></div>';
+      }
+      h += instr + '</div>';
+      el.innerHTML = h;
+    }).catch(function () { el.innerHTML = ''; });
+  }
+
+  function loadGaVisitors(body) {
+    api('GET', '/ga/status').then(function (st) {
+      if (!(st && st.google_connected)) {
+        body.innerHTML = emptyState('👥', 'Connect Google Analytics', 'See your website visitors, top pages, traffic sources, devices, and countries.', 'Connect with Google', '_gscConnect()');
+        return;
+      }
+      body.innerHTML = '<div id="ga-track" style="margin-bottom:14px"></div><div id="ga-report"></div>';
+      _gaTrackingCard(document.getElementById('ga-track'));
+      _gaRenderReport(document.getElementById('ga-report'), st);
+    }).catch(function () { body.innerHTML = emptyState('⚠', 'Analytics unavailable', 'Try refreshing.'); });
+  }
+
+  // Renders the visitor report (KPIs + tables + property picker) into `body`.
+  function _gaRenderReport(body, st) {
+      api('GET', '/ga/properties').then(function (pr) {
+        var matched = (pr && pr.properties) || [];
+        var all = (pr && pr.all) || [];
+        var dom = (pr && pr.workspace_domain) || 'this site';
+
+        // No property chosen yet.
+        if (!st.connected) {
+          if (matched.length) { _gaSelectProp(matched[0].id); return; } // exactly the site's property → auto-pick
+          var nh = '<div style="margin-bottom:12px"><span class="lgse-badge lgse-b-teal">● Google connected</span></div>';
+          nh += emptyState('∿', 'No Analytics for ' + esc(dom), 'This site has no Google Analytics (GA4) property yet. Once GA4 is installed on ' + esc(dom) + ', its visitor data shows up here automatically.');
+          body.innerHTML = nh;
+          return;
+        }
+
+        // A property is selected → render the report. The picker only ever
+        // lists properties that track THIS site — never other properties the
+        // signed-in Google account happens to have access to.
+        var pickList = matched;
+        api('GET', '/ga/report?days=28').then(function (resp) {
+          var picker = (pickList.length > 1) ? _gaPropSelect(pickList, st.property, false)
+            : '<span style="color:var(--lgse-t2);font-size:12px">' + esc(st.name || '') + '</span>';
+          var bar = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px"><span class="lgse-badge lgse-b-teal">● Analytics</span>' + picker + '</div>';
+          if (!resp || !resp.report) {
+            body.innerHTML = bar + emptyState('∿', 'No visitor data', (resp && resp.message) || 'This property has no data in the last 28 days.');
+            return;
+          }
+          var rep = resp.report, t = rep.totals || {};
+          function fmt(n) { return (n || 0).toLocaleString(); }
+          function dur(s) { s = Math.round(s || 0); return Math.floor(s / 60) + 'm ' + (s % 60) + 's'; }
+          function listTable(title, rows) {
+            var x = '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:10px;padding:14px"><div class="lgse-section-title" style="margin-bottom:8px">' + esc(title) + '</div>';
+            if (!rows || !rows.length) { x += '<div style="color:var(--lgse-t3);font-size:11px">No data.</div>'; }
+            else {
+              x += '<table class="lgse-table" style="width:100%"><tbody>';
+              rows.forEach(function (r) { x += '<tr><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--lgse-t1)">' + esc(r.label || '—') + '</td><td class="mono r">' + (r.value || 0).toLocaleString() + '</td></tr>'; });
+              x += '</tbody></table>';
+            }
+            return x + '</div>';
+          }
+          function grp(title) { return '<div style="margin:18px 0 8px;font-size:11px;color:var(--lgse-t2);text-transform:uppercase;letter-spacing:.05em;font-weight:700">' + esc(title) + '</div>'; }
+          function tables(arr) { var s = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'; arr.forEach(function (x) { s += x; }); return s + '</div>'; }
+          function kpi(label, val, small) { return '<div class="lgse-kpi-card"><div class="lgse-kpi-label">' + label + '</div><div class="lgse-kpi-val"' + (small ? ' style="font-size:18px"' : '') + '>' + val + '</div></div>'; }
+          var h = bar;
+          h += '<div style="text-align:right;color:var(--lgse-t3);font-size:11px;margin-top:-6px;margin-bottom:10px">' + esc((rep.window && rep.window.start) || '') + ' → ' + esc((rep.window && rep.window.end) || '') + '</div>';
+          h += '<div class="lgse-kpi-grid" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">';
+          h += kpi('Visitors', fmt(t.users)) + kpi('New visitors', fmt(t.new_users)) + kpi('Sessions', fmt(t.sessions)) + kpi('Pageviews', fmt(t.pageviews));
+          h += '</div><div class="lgse-kpi-grid" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px">';
+          h += kpi('Avg. session', dur(t.avg_session_s), true) + kpi('Engagement', (t.engagement || 0) + '%', true) + kpi('Bounce rate', (t.bounce || 0) + '%', true) + kpi('Events', fmt(t.events));
+          h += '</div>';
+          h += grp('Acquisition') + tables([listTable('Channels', rep.channels), listTable('Sources / mediums', rep.sources)]);
+          h += grp('Content') + tables([listTable('Top pages', rep.top_pages), listTable('Landing pages', rep.landing_pages)]);
+          h += grp('Technology') + tables([listTable('Devices', rep.devices), listTable('Browsers', rep.browsers), listTable('Operating systems', rep.os), listTable('New vs returning', rep.new_returning)]);
+          h += grp('Geography') + tables([listTable('Countries', rep.countries), listTable('Cities', rep.cities), listTable('Languages', rep.languages)]);
+          h += grp('Demographics') + tables([listTable('Age', rep.age), listTable('Gender', rep.gender)]);
+          h += grp('Events') + tables([listTable('Top events', rep.events)]);
+          body.innerHTML = h;
+        }).catch(function () { body.innerHTML = emptyState('⚠', 'Could not load analytics', 'Try refreshing.'); });
+      }).catch(function () { body.innerHTML = emptyState('⚠', 'Could not load properties', 'Try refreshing.'); });
+  }
+
   function loadTraffic(body) {
     Promise.all([
       api('GET', '/insights/traffic?days=28').catch(function () { return null; }),
@@ -7892,13 +8518,75 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   };
 
   // ── End P1-G ──────────────────────────────────────────────────────────
+
+  // GSC connect handler. Defined as ONE named global so the button onclick is
+  // trivial (no fragile inline-JS-in-an-HTML-attribute). The pop-up is opened
+  // SYNCHRONOUSLY inside the click gesture so the browser does not block it,
+  // THEN redirected to Google once the auth URL arrives (the URL fetch is
+  // async — calling window.open() after it resolves is what was being blocked).
+  window._gscConnect = function () {
+    var popup = window.open('about:blank', 'gsc_oauth', 'width=520,height=640');
+    function handle(d) {
+      if (d && d.url) {
+        if (popup && !popup.closed) { popup.location.href = d.url; }
+        else { alert('Please allow pop-ups for this site, then click Connect again.'); }
+      } else {
+        if (popup && !popup.closed) popup.close();
+        alert((d && d.message) || 'Google Search Console is not set up on the server yet. Please try again shortly.');
+      }
+    }
+    api('GET', '/gsc/auth-url')
+      .then(handle)
+      .catch(function (e) {
+        // api() rejects on non-2xx OR success:false but ATTACHES the parsed
+        // body as e.body — so a "not configured" 503 still carries its message.
+        if (e && e.body) { handle(e.body); }
+        else {
+          if (popup && !popup.closed) popup.close();
+          alert('Could not reach the server. Please try again.');
+        }
+      });
+    // Bulletproof refresh: poll for the popup to close (OAuth finished +
+    // callback stored everything server-side), then re-render whatever panel
+    // the user is on — no postMessage / opener gymnastics needed.
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries++;
+      var closed = false;
+      try { closed = !popup || popup.closed; } catch (err) { closed = false; }
+      if (closed) {
+        clearInterval(iv);
+        setTimeout(function () {
+          var active = document.querySelector('#lgse-ins-subtabs .lgse-subtab.active');
+          if (active) { active.click(); }
+          else if (window._lgseActiveBody) { try { loadGsc(window._lgseActiveBody); } catch (e2) {} }
+        }, 900);
+      } else if (tries > 180) { clearInterval(iv); } // ~6 min cap
+    }, 2000);
+  };
+
+  // When the OAuth pop-up reports success, refresh the panel so the user does
+  // not have to reload manually.
+  if (!window._gscMsgWired) {
+    window._gscMsgWired = true;
+    window.addEventListener('message', function (e) {
+      if (e && e.data && e.data.type === 'gsc_connected' && window._lgseActiveBody) {
+        try { loadGsc(window._lgseActiveBody); } catch (err) {}
+      }
+    });
+  }
+
   function loadGsc(body) {
+    window._lgseActiveBody = body;
     api('GET', '/gsc/status').then(function (status) {
       var connected = !!(status && (status.connected || status.is_connected));
       if (!connected) {
-        body.innerHTML = emptyState('🔗', 'Connect Google Search Console', 'Sync clicks, impressions, CTR, and position data into your workspace.', 'Connect with Google', 'api(\'GET\',\'/gsc/auth-url\').then(function(r){if(r&&r.url)window.open(r.url,\'_blank\')})');
+        body.innerHTML = emptyState('🔗', 'Connect Google Search Console', 'Sync clicks, impressions, CTR, and position data into your workspace.', 'Connect with Google', '_gscConnect()');
         return;
       }
+      // First connect (nothing synced yet) → pull the data automatically so the
+      // user lands on results instead of an empty "Sync now" screen.
+      var renderQueries = function () {
       api('GET', '/gsc/queries').then(function (qResp) {
         var queries = (qResp && (qResp.queries || qResp.data)) || [];
         var maxCtr = 0;
@@ -7921,6 +8609,13 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         }
         body.innerHTML = h;
       }).catch(function () { body.innerHTML = emptyState('⚠', 'Could not load queries', 'Try refreshing.'); });
+      }; // end renderQueries
+      if (!(status && status.last_sync)) {
+        body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--lgse-t2,#9CA3AF)">Loading your Search Console data…</div>';
+        api('POST', '/gsc/sync', {}).then(renderQueries).catch(renderQueries);
+      } else {
+        renderQueries();
+      }
     }).catch(function () { body.innerHTML = emptyState('⚠', 'GSC status unavailable', 'Try refreshing.'); });
   }
 
@@ -7929,10 +8624,261 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // trend SVG, CSV export grid, per-row "View →" → drills into the Audit
   // tab's detail view via window.lgseShowAuditDetail(id).
 
-  function renderReports(el) {
-    el.innerHTML = pageTitle('Reports', 'Audit history, score trend, and CSV exports.')
-      + '<div id="lgse-reports-body">Loading…</div>';
+  // ── CSV export helpers (Search Console + Google Analytics) ────────────
+  // Build CSV client-side from the same authenticated endpoints the dashboard
+  // uses, then trigger a browser download (a plain link can't carry the embed
+  // X-API-KEY header, so we fetch-then-Blob).
+  window._dlCsv = function (filename, rows) {
+    var csv = rows.map(function (r) {
+      return r.map(function (c) {
+        c = (c == null ? '' : String(c));
+        return /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c;
+      }).join(',');
+    }).join('\r\n');
+    var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 120);
+  };
+  function _todayStr() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return 'export'; } }
+
+  // Auth headers mirroring the app (embed X-API-KEY, else Bearer token).
+  function _authHeaders() {
+    var h = { Accept: 'text/csv,application/json,*/*' };
+    if (window._LGSC_EMBED && window._LGSC_EMBED.api_key) { h['X-API-KEY'] = window._LGSC_EMBED.api_key; h['X-Workspace-ID'] = String(window._LGSC_EMBED.workspace_id || ''); }
+    else { var tok = localStorage.getItem('lu_token') || ''; if (tok) h['Authorization'] = 'Bearer ' + tok; }
+    return h;
+  }
+  // Download a server CSV endpoint (the /reports/export/* family return CSV text).
+  window._dlEndpointCsv = function (path, filename, btn) {
+    var orig = btn ? btn.innerHTML : ''; if (btn) btn.innerHTML = '…';
+    fetch(window.location.origin + '/api/seo' + path, { headers: _authHeaders(), cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (txt) {
+        if (!txt || txt.replace(/\s/g, '').length < 2 || txt.charAt(0) === '{') { alert('No data available for this export yet.'); if (btn) btn.innerHTML = orig; return; }
+        var blob = new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 120);
+        if (btn) btn.innerHTML = orig;
+      }).catch(function () { alert('Could not export — please try again.'); if (btn) btn.innerHTML = orig; });
+  };
+
+  window._exportGscCsv = function (btn) {
+    var orig = btn ? btn.innerHTML : ''; if (btn) btn.innerHTML = 'Preparing…';
+    api('GET', '/gsc/queries').then(function (r) {
+      var q = (r && r.queries) || [];
+      if (!q.length) { alert('No Search Console data to export yet. Connect Search Console and run a sync first.'); if (btn) btn.innerHTML = orig; return; }
+      var rows = [['Query', 'Clicks', 'Impressions', 'CTR (%)', 'Avg position']];
+      q.forEach(function (x) { rows.push([x.query, x.clicks, x.impressions, ((x.ctr || 0) * 100).toFixed(2), x.position || 0]); });
+      _dlCsv('search-console-' + _todayStr() + '.csv', rows);
+      if (btn) btn.innerHTML = orig;
+    }).catch(function (e) { alert((e && e.body && e.body.message) || 'Could not export Search Console data.'); if (btn) btn.innerHTML = orig; });
+  };
+
+  window._exportGaCsv = function (btn) {
+    var orig = btn ? btn.innerHTML : ''; if (btn) btn.innerHTML = 'Preparing…';
+    api('GET', '/ga/report?days=28').then(function (r) {
+      var rep = r && r.report;
+      if (!rep) { alert((r && r.message) || 'No Analytics data to export yet.'); if (btn) btn.innerHTML = orig; return; }
+      var t = rep.totals || {};
+      var rows = [['Section', 'Item', 'Value']];
+      rows.push(['Totals', 'Visitors', t.users], ['Totals', 'New visitors', t.new_users], ['Totals', 'Sessions', t.sessions],
+        ['Totals', 'Pageviews', t.pageviews], ['Totals', 'Avg session (sec)', t.avg_session_s], ['Totals', 'Engagement %', t.engagement],
+        ['Totals', 'Bounce rate %', t.bounce], ['Totals', 'Events', t.events]);
+      [['Channels', 'channels'], ['Sources / mediums', 'sources'], ['Top pages', 'top_pages'], ['Landing pages', 'landing_pages'],
+       ['Devices', 'devices'], ['Browsers', 'browsers'], ['Operating systems', 'os'], ['Countries', 'countries'],
+       ['Cities', 'cities'], ['Languages', 'languages'], ['Age', 'age'], ['Gender', 'gender'],
+       ['New vs returning', 'new_returning'], ['Top events', 'events']].forEach(function (sec) {
+        (rep[sec[1]] || []).forEach(function (x) { rows.push([sec[0], x.label, x.value]); });
+      });
+      _dlCsv('google-analytics-' + _todayStr() + '.csv', rows);
+      if (btn) btn.innerHTML = orig;
+    }).catch(function (e) { alert((e && e.body && e.body.message) || 'Could not export Analytics data.'); if (btn) btn.innerHTML = orig; });
+  };
+
+  // ── Charting (Chart.js, lazy-loaded, themed to the design system) ─────
+  var _LU_PAL = ['#6C5CE7', '#00E5A8', '#3B82F6', '#F59E0B', '#EF4444', '#A78BFA', '#22D3EE', '#F472B6', '#34D399', '#FBBF24'];
+  var _luCharts = {};
+  function _ensureCharts(cb) {
+    if (window.Chart) { cb(); return; }
+    if (window._luChartQ) { window._luChartQ.push(cb); return; }
+    window._luChartQ = [cb];
+    var s = document.createElement('script');
+    s.src = '/app/js/vendor/chart.min.js?v=4.4.1';
+    s.onload = function () { var q = window._luChartQ || []; window._luChartQ = null; q.forEach(function (f) { try { f(); } catch (e) {} }); };
+    s.onerror = function () { window._luChartQ = null; var b = document.getElementById('lgse-rep-body'); if (b) b.innerHTML = emptyState('⚠', 'Charts failed to load', 'Refresh the page and try again.'); };
+    document.head.appendChild(s);
+  }
+  function _luDestroy(id) { if (_luCharts[id]) { try { _luCharts[id].destroy(); } catch (e) {} delete _luCharts[id]; } }
+  function _luAxis() { return { ticks: { color: '#555a72', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.045)' } }; }
+  function _luLine(id, labels, datasets, reverseY) {
+    _luDestroy(id); var c = document.getElementById(id); if (!c || !window.Chart) return;
+    var ds = datasets.map(function (d, i) {
+      var col = d.color || _LU_PAL[i % _LU_PAL.length];
+      return { label: d.label, data: d.data, borderColor: col, backgroundColor: col + '22', fill: true, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 };
+    });
+    var yAxis = Object.assign({ beginAtZero: !reverseY }, _luAxis());
+    if (reverseY) { yAxis.reverse = true; yAxis.min = 1; } // position: 1 at top = best
+    _luCharts[id] = new Chart(c.getContext('2d'), { type: 'line', data: { labels: labels, datasets: ds }, options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { color: '#8b90a7', font: { size: 11 }, boxWidth: 12, padding: 12 } }, tooltip: { backgroundColor: '#1a1d27', borderColor: '#2a2f42', borderWidth: 1, titleColor: '#f0f2ff', bodyColor: '#8b90a7' } },
+      scales: { x: _luAxis(), y: yAxis }
+    } });
+  }
+  function _luBar(id, labels, data, horizontal) {
+    _luDestroy(id); var c = document.getElementById(id); if (!c || !window.Chart) return;
+    var opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a1d27' } }, scales: { x: _luAxis(), y: _luAxis() } };
+    if (horizontal) opts.indexAxis = 'y';
+    _luCharts[id] = new Chart(c.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ data: data, backgroundColor: '#6C5CE7', borderRadius: 5, maxBarThickness: 20 }] }, options: opts });
+  }
+  function _luDonut(id, labels, data) {
+    _luDestroy(id); var c = document.getElementById(id); if (!c || !window.Chart) return;
+    _luCharts[id] = new Chart(c.getContext('2d'), { type: 'doughnut', data: { labels: labels, datasets: [{ data: data, backgroundColor: _LU_PAL, borderColor: '#13161e', borderWidth: 2 }] }, options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: { legend: { position: 'right', labels: { color: '#8b90a7', font: { size: 10 }, boxWidth: 10, padding: 8 } }, tooltip: { backgroundColor: '#1a1d27' } }
+    } });
+  }
+  function _luKpi(label, value, sub) {
+    return '<div style="background:linear-gradient(135deg,var(--lgse-bg2),var(--lgse-bg1));border:1px solid var(--lgse-border);border-radius:12px;padding:13px 15px">'
+      + '<div style="font-size:10px;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">' + esc(label) + '</div>'
+      + '<div style="font-size:23px;font-weight:700;color:var(--lgse-t1);line-height:1">' + value + '</div>'
+      + (sub ? '<div style="font-size:10.5px;color:var(--lgse-t2);margin-top:5px">' + sub + '</div>' : '') + '</div>';
+  }
+  function _luCanvas(title, id, hgt) {
+    return '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px">'
+      + '<div class="lgse-section-title" style="margin-bottom:10px">' + esc(title) + '</div>'
+      + '<div style="position:relative;height:' + (hgt || 220) + 'px"><canvas id="' + id + '"></canvas></div></div>';
+  }
+  function _gaDur(s) { s = Math.round(s || 0); return Math.floor(s / 60) + 'm ' + (s % 60) + 's'; }
+
+  // ── Visual reports (Search Console + Analytics blocks) ──
+  function _vrHead(icon, title, sub) {
+    return '<div style="display:flex;align-items:center;gap:8px;margin:0 0 12px"><span style="font-size:15px">' + icon + '</span><span style="font-size:14px;font-weight:700;color:var(--lgse-t1)">' + esc(title) + '</span>' + (sub ? '<span style="font-size:11px;color:var(--lgse-t3);margin-left:auto;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(sub) + '</span>' : '') + '</div>';
+  }
+  function _vrNotConnected(icon, title, where) {
+    return _vrHead(icon, title) + '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:22px;text-align:center;color:var(--lgse-t3);font-size:12px">Not connected — open the <b>Insights → ' + esc(where) + '</b> tab to connect.</div>';
+  }
+  var _vrTrunc = function (s) { return (s || '').length > 30 ? s.slice(0, 30) + '…' : (s || ''); };
+
+  function _renderVisualReports(body) {
+    body.innerHTML = '<div style="padding:36px;text-align:center;color:var(--lgse-t3);font-size:11px">Loading visual reports…</div>';
+    _ensureCharts(function () {
+      if (!window.Chart) { body.innerHTML = emptyState('⚠', 'Charts failed to load', 'Refresh and try again.'); return; }
+      body.innerHTML = '<div id="vr-seo" style="margin-bottom:26px"></div><div id="vr-gsc" style="margin-bottom:26px"></div><div id="vr-ga"></div>';
+      _vrSeoHealth(document.getElementById('vr-seo'));
+      _vrSearchConsole(document.getElementById('vr-gsc'));
+      _vrAnalytics(document.getElementById('vr-ga'));
+    });
+  }
+
+  function _vrSeoHealth(el) {
+    if (!el) return;
+    api('GET', '/audits?limit=24').then(function (d) {
+      var audits = (d && (d.audits || d.data)) || (Array.isArray(d) ? d : []);
+      if (!audits.length) { el.innerHTML = _vrHead('🩺', 'SEO health') + '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:22px;text-align:center;color:var(--lgse-t3);font-size:12px">No audits yet — run an audit to start tracking your SEO score.</div>'; return; }
+      audits.sort(function (a, b) { return (new Date(a.created_at || 0)).getTime() - (new Date(b.created_at || 0)).getTime(); });
+      var scores = audits.map(function (a) { return parseInt(a.score, 10) || 0; });
+      var labels = audits.map(function (a) { try { return new Date(a.created_at).toISOString().slice(5, 10); } catch (e) { return ''; } });
+      var cur = scores[scores.length - 1], first = scores[0], change = cur - first;
+      var avg = Math.round(scores.reduce(function (s, x) { return s + x; }, 0) / scores.length);
+      var h = _vrHead('🩺', 'SEO health');
+      h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'
+        + _luKpi('Current score', cur, (change >= 0 ? '▲ +' : '▼ ') + change + ' since first audit')
+        + _luKpi('Average score', avg) + _luKpi('Audits run', audits.length) + '</div>';
+      h += _luCanvas('SEO score over time', 'seo-score', 200);
+      el.innerHTML = h;
+      _luLine('seo-score', labels, [{ label: 'SEO score', data: scores, color: '#00E5A8' }]);
+    }).catch(function () { el.innerHTML = ''; });
+  }
+
+  function _vrSearchConsole(el) {
+    if (!el) return;
+    el.innerHTML = '<div style="padding:18px;text-align:center;color:var(--lgse-t3);font-size:11px">Loading Search Console…</div>';
+    api('GET', '/gsc/status').then(function (st) {
+      if (!st || !st.connected) { el.innerHTML = _vrNotConnected('🔍', 'Search Console', 'Search Console'); return; }
+      api('GET', '/gsc/report?days=28').then(function (r) {
+        var rep = r && r.report;
+        if (!rep) { el.innerHTML = _vrHead('🔍', 'Search Console') + emptyState('🔍', 'No search data yet', (r && r.message) || 'Data appears as Google records impressions.'); return; }
+        var t = rep.totals || {}; var fmt = function (n) { return (n || 0).toLocaleString(); };
+        var h = _vrHead('🔍', 'Search Console', rep.site || '');
+        h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'
+          + _luKpi('Clicks', fmt(t.clicks)) + _luKpi('Impressions', fmt(t.impressions)) + _luKpi('Avg. CTR', (t.ctr || 0) + '%') + _luKpi('Avg. position', (t.position || 0)) + '</div>';
+        h += '<div style="margin-bottom:14px">' + _luCanvas('Clicks & impressions over time', 'gsc-trend', 240) + '</div>';
+        h += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px">' + _luCanvas('Average position (lower is better)', 'gsc-pos', 220) + _luCanvas('Position distribution', 'gsc-dist', 220) + '</div>';
+        h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' + _luCanvas('Top queries', 'gsc-q', 280) + _luCanvas('Top pages', 'gsc-pg', 280) + '</div>';
+        h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' + _luCanvas('Clicks by device', 'gsc-dev', 210) + _luCanvas('Clicks by country', 'gsc-cty', 210) + '</div>';
+        el.innerHTML = h;
+        var tr = rep.trend || [];
+        _luLine('gsc-trend', tr.map(function (x) { return (x.date || '').slice(5); }), [
+          { label: 'Clicks', data: tr.map(function (x) { return x.clicks; }), color: '#6C5CE7' },
+          { label: 'Impressions', data: tr.map(function (x) { return x.impressions; }), color: '#3B82F6' }]);
+        _luLine('gsc-pos', tr.map(function (x) { return (x.date || '').slice(5); }), [{ label: 'Avg position', data: tr.map(function (x) { return x.position; }), color: '#F59E0B' }], true);
+        _luDonut('gsc-dist', (rep.position_buckets || []).map(function (x) { return x.label; }), (rep.position_buckets || []).map(function (x) { return x.value; }));
+        var tq = (rep.top_queries || []).slice(0, 8); _luBar('gsc-q', tq.map(function (x) { return _vrTrunc(x.label); }), tq.map(function (x) { return x.clicks; }), true);
+        var sp = (rep.top_pages || []).slice(0, 8); _luBar('gsc-pg', sp.map(function (x) { return _vrTrunc(x.label); }), sp.map(function (x) { return x.clicks; }), true);
+        _luDonut('gsc-dev', (rep.devices || []).map(function (x) { return x.label; }), (rep.devices || []).map(function (x) { return x.value; }));
+        _luBar('gsc-cty', (rep.countries || []).slice(0, 8).map(function (x) { return x.label; }), (rep.countries || []).slice(0, 8).map(function (x) { return x.value; }), true);
+      }).catch(function () { el.innerHTML = _vrHead('🔍', 'Search Console') + emptyState('⚠', 'Could not load Search Console', 'Try refreshing.'); });
+    }).catch(function () { el.innerHTML = ''; });
+  }
+
+  function _vrAnalytics(el) {
+    if (!el) return;
+    el.innerHTML = '<div style="padding:18px;text-align:center;color:var(--lgse-t3);font-size:11px">Loading Analytics…</div>';
+    api('GET', '/ga/status').then(function (st) {
+      if (!st || !st.connected) { el.innerHTML = _vrNotConnected('📊', 'Google Analytics', 'Google Analytics'); return; }
+      api('GET', '/ga/report?days=28').then(function (r) {
+        var rep = r && r.report;
+        if (!rep) { el.innerHTML = _vrHead('📊', 'Google Analytics') + emptyState('📊', 'No analytics data yet', (r && r.message) || 'Charts populate as visitors arrive.'); return; }
+        var t = rep.totals || {}; var fmt = function (n) { return (n || 0).toLocaleString(); };
+        var h = _vrHead('📊', 'Google Analytics', rep.name || '');
+        h += '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px">'
+          + _luKpi('Visitors', fmt(t.users)) + _luKpi('Sessions', fmt(t.sessions)) + _luKpi('Pageviews', fmt(t.pageviews))
+          + _luKpi('Avg. session', _gaDur(t.avg_session_s)) + _luKpi('Engagement', (t.engagement || 0) + '%') + _luKpi('Bounce', (t.bounce || 0) + '%') + '</div>';
+        h += '<div style="margin-bottom:14px">' + _luCanvas('Visitors & sessions over time', 'ga-trend', 250) + '</div>';
+        h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">' + _luCanvas('Channels', 'ga-channels', 210) + _luCanvas('Devices', 'ga-devices', 210) + _luCanvas('New vs returning', 'ga-newret', 210) + '</div>';
+        h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' + _luCanvas('Top pages', 'ga-pages', 270) + _luCanvas('Top countries', 'ga-countries', 270) + '</div>';
+        el.innerHTML = h;
+        var tr = rep.trend || [];
+        _luLine('ga-trend', tr.map(function (x) { return (x.date || '').slice(5); }), [
+          { label: 'Visitors', data: tr.map(function (x) { return x.users; }), color: '#6C5CE7' },
+          { label: 'Sessions', data: tr.map(function (x) { return x.sessions; }), color: '#00E5A8' }]);
+        var lab = function (a) { return (a || []).map(function (x) { return x.label; }); };
+        var val = function (a) { return (a || []).map(function (x) { return x.value; }); };
+        _luDonut('ga-channels', lab(rep.channels), val(rep.channels));
+        _luDonut('ga-devices', lab(rep.devices), val(rep.devices));
+        _luDonut('ga-newret', lab(rep.new_returning), val(rep.new_returning));
+        var tp = (rep.top_pages || []).slice(0, 8);
+        _luBar('ga-pages', tp.map(function (x) { return (x.label || '').length > 28 ? x.label.slice(0, 28) + '…' : x.label; }), tp.map(function (x) { return x.value; }), true);
+        var co = (rep.countries || []).slice(0, 8);
+        _luBar('ga-countries', co.map(function (x) { return x.label; }), co.map(function (x) { return x.value; }), true);
+      }).catch(function () { el.innerHTML = _vrHead('📊', 'Google Analytics') + emptyState('⚠', 'Could not load Analytics', 'Try refreshing.'); });
+    }).catch(function () { el.innerHTML = ''; });
+  }
+
+  // Downloads = the existing audit/report + export view (no regression).
+  function _renderDownloads(body) {
+    body.innerHTML = '<div id="lgse-reports-body">Loading…</div>';
     window.lgseLoadReports();
+  }
+
+  function renderReports(el) {
+    el.innerHTML = pageTitle('Reports', 'Visual dashboards + downloadable exports — Search Console, Analytics & SEO.')
+      + '<div class="lgse-subtabs" id="lgse-rep-subtabs">'
+      +   '<div class="lgse-subtab active" data-sec="visual">Visual reports</div>'
+      +   '<div class="lgse-subtab" data-sec="downloads">Downloads</div>'
+      + '</div><div id="lgse-rep-body"></div>';
+    var subtabs = document.getElementById('lgse-rep-subtabs');
+    var body = document.getElementById('lgse-rep-body');
+    function load(sec) {
+      Array.prototype.forEach.call(subtabs.children, function (t) { t.classList.toggle('active', t.getAttribute('data-sec') === sec); });
+      if (sec === 'downloads') return _renderDownloads(body);
+      return _renderVisualReports(body);
+    }
+    Array.prototype.forEach.call(subtabs.children, function (t) { t.addEventListener('click', function () { load(t.getAttribute('data-sec')); }); });
+    load('visual');
   }
 
   window.lgseLoadReports = function () {
@@ -7985,6 +8931,29 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         +     '<button class="lgse-btn-primary"   onclick="lgseDownloadReport(\'pdf\')"  style="font-size:11.5px;padding:7px 14px">Print → PDF</button>'
         +   '</div>'
         + '</div>';
+
+      // ── Export library (grouped, downloadable) ──
+      var _xb = function (label, onclick) { return '<button class="lgse-btn-secondary" onclick="' + onclick + '" style="font-size:11px;padding:6px 12px">' + label + '</button>'; };
+      var _xgroup = function (title, desc, btns) {
+        return '<div style="border:1px solid var(--lgse-border);border-radius:10px;padding:12px;background:var(--lgse-bg1)">'
+          + '<div style="font-size:12px;font-weight:600;color:var(--lgse-t1);margin-bottom:2px">' + title + '</div>'
+          + '<div style="font-size:10.5px;color:var(--lgse-t3);margin-bottom:9px">' + desc + '</div>'
+          + '<div style="display:flex;gap:7px;flex-wrap:wrap">' + btns + '</div></div>';
+      };
+      html += '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:14px;margin-bottom:16px">'
+        + '<div class="lgse-section-title" style="margin-bottom:10px">Export library</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+        +   _xgroup('Search Console', 'Search queries — clicks, impressions, CTR, position.', _xb('⬇ Queries (CSV)', '_exportGscCsv(this)'))
+        +   _xgroup('Google Analytics', 'Full visitor report — traffic, sources, devices, geography, demographics.', _xb('⬇ Full report (CSV)', '_exportGaCsv(this)'))
+        +   _xgroup('SEO data', 'Detailed exports from your latest audit.',
+              _xb('Keywords', "_dlEndpointCsv('/reports/export/keywords','keywords.csv',this)")
+            + _xb('Pages', "_dlEndpointCsv('/reports/export/pages','pages.csv',this)")
+            + _xb('Links', "_dlEndpointCsv('/reports/export/links','links.csv',this)")
+            + _xb('Images', "_dlEndpointCsv('/reports/export/images','images.csv',this)")
+            + _xb('Orphans', "_dlEndpointCsv('/reports/export/orphans','orphan-pages.csv',this)")
+            + _xb('Quick wins', "_dlEndpointCsv('/reports/export/quick-wins','quick-wins.csv',this)"))
+        +   _xgroup('Documents', 'Audit report as a shareable document.', _xb('Audit (HTML)', "lgseDownloadReport('html')") + _xb('Audit (PDF)', "lgseDownloadReport('pdf')"))
+        + '</div></div>';
 
       // Date-range pills (visual only — backend doesn't yet take a date filter on /audits).
       html += '<div style="display:flex;gap:6px;margin-bottom:14px">'
@@ -8380,6 +9349,51 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       return String(s).slice(0, 10);
     }
 
+    // 2026-05-23 FIX 35 — backend timestamps are UTC (server + MySQL +
+    // Laravel app.timezone all UTC). FIX 34 parsed the bare string as
+    // local time which displayed UTC values labeled as local — wrong for
+    // any non-UTC user. Now we append "Z" so JS treats the string as UTC,
+    // then output using getHours/getMinutes which auto-convert to the
+    // browser's local timezone.
+    function _toUtcDate(s) {
+      if (!s) return null;
+      var raw = String(s).replace(' ', 'T');
+      if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(raw)) raw += 'Z';
+      var d = new Date(raw);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function fmtDateTime(s) {
+      var d = _toUtcDate(s);
+      if (!d) return String(s || '').slice(0, 16);
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var mm = months[d.getMonth()];
+      var dd = d.getDate();
+      var hh = String(d.getHours()).padStart(2, '0');
+      var mi = String(d.getMinutes()).padStart(2, '0');
+      return mm + ' ' + dd + ', ' + hh + ':' + mi;
+    }
+    function fmtTimeOnly(s) {
+      var d = _toUtcDate(s);
+      if (!d) return '';
+      var hh = String(d.getHours()).padStart(2, '0');
+      var mi = String(d.getMinutes()).padStart(2, '0');
+      return hh + ':' + mi;
+    }
+    // Browser-local timezone label for the calendar header so the user
+    // knows which timezone they are viewing.
+    function _localTzLabel() {
+      try {
+        var tz = '';
+        try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e1) {}
+        var offsetMin = -new Date().getTimezoneOffset();
+        var sign = offsetMin >= 0 ? '+' : '-';
+        var abs = Math.abs(offsetMin);
+        var oh = Math.floor(abs / 60), om = abs % 60;
+        var off = 'UTC' + sign + String(oh).padStart(2,'0') + (om ? ':' + String(om).padStart(2,'0') : '');
+        return tz ? (tz + ' · ' + off) : off;
+      } catch (e) { return ''; }
+    }
+
     function shiftMonth(ym, delta) {
       var p = ym.split('-'); var yr = parseInt(p[0], 10); var mo = parseInt(p[1], 10) + delta;
       if (mo < 1)  { mo = 12; yr--; }
@@ -8438,15 +9452,22 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
                 +   '<tr style="color:#64748b;border-bottom:1px solid #1e293b">'
                 +     '<th style="text-align:left;padding:8px">Type</th>'
                 +     '<th style="text-align:left;padding:8px">Status</th>'
+                +     '<th style="text-align:left;padding:8px">Title</th>'
                 +     '<th style="text-align:left;padding:8px">Created</th>'
+                +     '<th style="text-align:left;padding:8px">Updated</th>'
                 +   '</tr>';
           all.forEach(function (t) {
             var c = typeC[t.task_type] || '#64748b';
+            var titleRaw = (t.result_summary || (t.payload && (t.payload.title || t.payload.topic || t.payload.keyword)) || '');
+            var titleEsc = String(titleRaw || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            var titleClip = titleEsc.length > 60 ? titleEsc.slice(0,60) + '…' : titleEsc;
             html += '<tr style="border-bottom:1px solid #1e293b">'
                   +   '<td style="padding:8px"><span style="background:' + c + '22;color:' + c
                   +     ';padding:2px 8px;border-radius:4px;font-size:11px">' + (t.task_type || 'task') + '</span></td>'
                   +   '<td style="padding:8px;color:#94a3b8">' + (t.status || '') + '</td>'
-                  +   '<td style="padding:8px;color:#64748b">' + fmtDate(t.created_at) + '</td>'
+                  +   '<td style="padding:8px;color:#cbd5e1;font-size:12px" title="' + titleEsc + '">' + titleClip + '</td>'
+                  +   '<td style="padding:8px;color:#64748b;font-size:11px;white-space:nowrap" title="' + fmtDateTime(t.created_at) + '">' + fmtDateTime(t.created_at) + '</td>'
+                  +   '<td style="padding:8px;color:#64748b;font-size:11px;white-space:nowrap">' + (t.updated_at && t.updated_at !== t.created_at ? fmtDateTime(t.updated_at) : '—') + '</td>'
                   + '</tr>';
           });
           html += '</table>';
@@ -8464,54 +9485,238 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         body.innerHTML = '<p style="color:#ef4444">Pipeline fetch failed.</p>';
       });
     } else {
-      pipFetch('/connector/content/calendar?month=' + window._lgsePipeMonth).then(function (r) {
-        if (!r || !r.success) { body.innerHTML = '<p>Could not load calendar.</p>'; return; }
-        var days = r.days || {};
-        var parts = window._lgsePipeMonth.split('-');
-        var yr = parseInt(parts[0], 10);
-        var mo = parseInt(parts[1], 10) - 1;
-        var firstDay = new Date(yr, mo, 1).getDay();
-        var daysInMonth = new Date(yr, mo + 1, 0).getDate();
-        var monthNames = ['January','February','March','April','May','June',
-                          'July','August','September','October','November','December'];
-        var html = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
-                 +   '<button onclick="window._lgsePipeNav(null, \'' + shiftMonth(window._lgsePipeMonth, -1) + '\')" '
-                 +     'style="background:#1e293b;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer">←</button>'
-                 +   '<strong style="color:#fff">' + monthNames[mo] + ' ' + yr + '</strong>'
-                 +   '<button onclick="window._lgsePipeNav(null, \'' + shiftMonth(window._lgsePipeMonth, +1) + '\')" '
-                 +     'style="background:#1e293b;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer">→</button>'
-                 + '</div>';
-        html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
-        ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function (d) {
-          html += '<div style="text-align:center;font-size:11px;color:#64748b;padding:4px">' + d + '</div>';
-        });
-        var startOffset = (firstDay + 6) % 7;
-        for (var i = 0; i < startOffset; i++) {
-          html += '<div style="min-height:60px"></div>';
-        }
-        for (var d = 1; d <= daysInMonth; d++) {
-          var key = yr + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-          var items = days[key] || [];
-          var cellHtml = '<div style="background:#1e293b;border-radius:6px;padding:6px;min-height:60px">'
-                       +   '<div style="font-size:11px;color:#64748b;margin-bottom:4px">' + d + '</div>';
-          items.slice(0, 3).forEach(function (item) {
-            var col = item.status === 'completed' ? '#10b981'
-                    : item.type === 'task'        ? '#3B82F6'
-                    :                                '#F59E0B';
-            var title = (item.title || 'Task');
-            var safeTitle = String(title).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-            cellHtml += '<div style="background:' + col + '22;color:' + col
-                      + ';font-size:10px;padding:2px 4px;border-radius:3px;margin-bottom:2px;'
-                      + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + safeTitle + '">'
-                      + safeTitle.slice(0, 20) + '</div>';
-          });
-          if (items.length > 3) {
-            cellHtml += '<div style="font-size:10px;color:#64748b">+' + (items.length - 3) + ' more</div>';
+      // 2026-05-23 FIX 30 — view-aware calendar (Day / Week / Month).
+      // Defaults: month view, cursor = today. Cache the merged days[]
+      // across multiple month fetches so a week spanning two months
+      // renders correctly.
+      if (!window._lgsePipeView)   window._lgsePipeView   = 'month';
+      if (!window._lgsePipeCursor) {
+        var _td = new Date();
+        window._lgsePipeCursor = _td.getFullYear() + '-' + String(_td.getMonth()+1).padStart(2,'0') + '-' + String(_td.getDate()).padStart(2,'0');
+      }
+      if (!window._lgsePipeCalCache) window._lgsePipeCalCache = { days: {}, monthsLoaded: {} };
+
+      function _iso(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+      function _parseIso(s) { var p = s.split('-'); return new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10)); }
+      function _addDays(iso, n) { var d = _parseIso(iso); d.setDate(d.getDate()+n); return _iso(d); }
+      function _weekStart(iso) { var d = _parseIso(iso); d.setDate(d.getDate() - d.getDay()); return _iso(d); }
+      function _ym(iso) { return iso.slice(0,7); }
+      function _esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+      function _itemCol(it) {
+        if (it.type === 'article') return '#7C3AED';
+        return it.status === 'completed' ? '#10b981'
+             : it.status === 'running'   ? '#3B82F6'
+             : it.status === 'failed'    ? '#ef4444'
+             :                             '#F59E0B';
+      }
+
+      // Months we need cached for the current view.
+      var view = window._lgsePipeView;
+      var cursor = window._lgsePipeCursor;
+      var monthsNeeded = {};
+      if (view === 'day') {
+        monthsNeeded[_ym(cursor)] = true;
+      } else if (view === 'week') {
+        var ws = _weekStart(cursor);
+        monthsNeeded[_ym(ws)] = true;
+        monthsNeeded[_ym(_addDays(ws,6))] = true;
+      } else {
+        monthsNeeded[window._lgsePipeMonth] = true;
+      }
+
+      // Fetch any missing months.
+      var toFetch = Object.keys(monthsNeeded).filter(function (m) { return !window._lgsePipeCalCache.monthsLoaded[m]; });
+      Promise.all(toFetch.map(function (m) {
+        return pipFetch('/connector/content/calendar?month=' + m).then(function (r) {
+          if (r && r.success && r.days) {
+            Object.keys(r.days).forEach(function (k) {
+              window._lgsePipeCalCache.days[k] = r.days[k];
+            });
+            window._lgsePipeCalCache.monthsLoaded[m] = true;
           }
-          cellHtml += '</div>';
-          html += cellHtml;
+        }).catch(function () {});
+      })).then(function () {
+        var days = window._lgsePipeCalCache.days;
+
+        // Shared chrome — view switcher + Today button + nav row.
+        function viewBtn(key, label) {
+          var active = window._lgsePipeView === key;
+          return '<button onclick="window._lgsePipeNav(null, null, \'' + key + '\')" '
+            + 'style="background:' + (active ? '#7C3AED' : '#1e293b') + ';border:1px solid '
+            + (active ? '#7C3AED' : '#334155') + ';color:#fff;padding:6px 12px;border-radius:6px;'
+            + 'cursor:pointer;font-size:12px;font-weight:' + (active ? '600' : '500') + '">' + label + '</button>';
         }
-        html += '</div>';
+        var viewSwitcher = '<div style="display:flex;gap:6px;align-items:center">'
+          + viewBtn('day','Day') + viewBtn('week','Week') + viewBtn('month','Month')
+          + '<button onclick="window._lgsePipeNavToday()" style="margin-left:8px;background:#1e293b;border:1px solid #334155;color:#fff;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px">Today</button>'
+          + '</div>';
+
+        // Compute label + nav-arrow targets per view.
+        var label = '', prevCmd = '', nextCmd = '';
+        if (view === 'day') {
+          var dObj = _parseIso(cursor);
+          label = dObj.toLocaleDateString('default', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+          prevCmd = "window._lgsePipeNavCursor(-1)";
+          nextCmd = "window._lgsePipeNavCursor(1)";
+        } else if (view === 'week') {
+          var ws2 = _weekStart(cursor);
+          var we2 = _addDays(ws2, 6);
+          var wsObj = _parseIso(ws2), weObj = _parseIso(we2);
+          var sameMonth = wsObj.getMonth() === weObj.getMonth();
+          label = sameMonth
+            ? (wsObj.toLocaleDateString('default',{month:'short',day:'numeric'}) + ' – ' + weObj.toLocaleDateString('default',{day:'numeric',year:'numeric'}))
+            : (wsObj.toLocaleDateString('default',{month:'short',day:'numeric'}) + ' – ' + weObj.toLocaleDateString('default',{month:'short',day:'numeric',year:'numeric'}));
+          label = 'Week of ' + label;
+          prevCmd = "window._lgsePipeNavCursor(-7)";
+          nextCmd = "window._lgsePipeNavCursor(7)";
+        } else {
+          var mparts = window._lgsePipeMonth.split('-');
+          var myr = parseInt(mparts[0],10), mmo = parseInt(mparts[1],10) - 1;
+          var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+          label = monthNames[mmo] + ' ' + myr;
+          prevCmd = "window._lgsePipeNav(null, '" + shiftMonth(window._lgsePipeMonth, -1) + "')";
+          nextCmd = "window._lgsePipeNav(null, '" + shiftMonth(window._lgsePipeMonth, +1) + "')";
+        }
+
+        var navRow = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">'
+          + '<div style="display:flex;align-items:center;gap:8px">'
+          +   '<button onclick="' + prevCmd + '" style="background:#1e293b;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer">←</button>'
+          +   '<strong style="color:#fff;font-size:15px">' + _esc(label) + '</strong>'
+          +   '<button onclick="' + nextCmd + '" style="background:#1e293b;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer">→</button>'
+          + '</div>'
+          + viewSwitcher
+          + '</div>';
+
+        // Legend + timezone label.
+        // 2026-05-23 FIX 35 — show timezone so users understand the time
+        // values are in their local browser TZ (converted from UTC).
+        var tzLabel = _localTzLabel();
+        var legend = '<div style="display:flex;gap:14px;margin-bottom:14px;font-size:11px;color:#64748b;flex-wrap:wrap;align-items:center">'
+          + '<span><span style="background:#10b981;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Completed</span>'
+          + '<span><span style="background:#3B82F6;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Running</span>'
+          + '<span><span style="background:#F59E0B;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Queued</span>'
+          + '<span><span style="background:#7C3AED;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Article</span>'
+          + (tzLabel ? '<span style="margin-left:auto;font-size:10px;color:#475569;font-variant-numeric:tabular-nums" title="All times shown in your local timezone, converted from server UTC">Times: ' + tzLabel + '</span>' : '')
+          + '</div>';
+
+        var html = navRow + legend;
+
+        if (view === 'day') {
+          var items = days[cursor] || [];
+          // 2026-05-23 FIX 34 — sort items by created_at ascending so the
+          // day's timeline reads top-to-bottom in chronological order.
+          items = items.slice().sort(function (a, b) {
+            return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+          });
+          html += '<div style="background:#1e293b;border-radius:8px;padding:14px;min-height:200px">';
+          if (items.length === 0) {
+            html += '<div style="text-align:center;color:#64748b;font-size:13px;padding:40px 0">Nothing scheduled for this day.</div>';
+          } else {
+            html += '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;font-weight:600">' + items.length + ' item' + (items.length===1?'':'s') + '</div>';
+            items.forEach(function (it) {
+              var col = _itemCol(it);
+              var safe = _esc(it.title || 'Task');
+              var meta = (it.type === 'article' ? 'article' : (it.task_type || it.engine || 'task')) + ' · ' + _esc(it.status || '');
+              // 2026-05-23 FIX 34 — show timestamp on each card.
+              var ts = fmtTimeOnly(it.created_at);
+              html += '<div style="background:' + col + '15;border-left:3px solid ' + col + ';padding:8px 10px;border-radius:4px;margin-bottom:6px">'
+                + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">'
+                +   '<div style="font-size:12px;font-weight:500;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + safe + '">' + safe + '</div>'
+                +   (ts ? '<div style="font-size:11px;color:#94a3b8;font-variant-numeric:tabular-nums;flex-shrink:0">' + ts + '</div>' : '')
+                + '</div>'
+                + '<div style="font-size:10px;color:' + col + ';text-transform:uppercase;letter-spacing:.3px;margin-top:2px">' + meta + '</div>'
+                + '</div>';
+            });
+          }
+          html += '</div>';
+        } else if (view === 'week') {
+          var ws3 = _weekStart(cursor);
+          html += '<div style="background:#1e293b;border-radius:8px;overflow:hidden">';
+          html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);background:#0f172a;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">';
+          var dn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          for (var i=0;i<7;i++) {
+            var dd = _parseIso(_addDays(ws3, i));
+            html += '<div style="padding:8px 6px;border-right:1px solid #334155;text-align:center">' + dn[i] + ' ' + dd.getDate() + '</div>';
+          }
+          html += '</div>';
+          html += '<div style="display:grid;grid-template-columns:repeat(7,1fr)">';
+          var todayIso = _iso(new Date());
+          for (var i=0;i<7;i++) {
+            var iso = _addDays(ws3, i);
+            var items2 = days[iso] || [];
+            var isToday = iso === todayIso;
+            html += '<div style="min-height:240px;background:' + (isToday ? '#1e293b' : '#0f172a') + ';border-right:1px solid #334155;border-top:1px solid #334155;padding:8px 6px;font-size:11px">';
+            if (items2.length === 0) {
+              html += '<div style="color:#64748b;opacity:.5;text-align:center;padding-top:24px;font-size:11px">—</div>';
+            } else {
+              // 2026-05-23 FIX 34 — sort by created_at so week-cell items
+              // read top-to-bottom in chronological order.
+              items2 = items2.slice().sort(function (a, b) {
+                return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+              });
+              var max = 8;
+              for (var j=0; j<Math.min(items2.length, max); j++) {
+                var it2 = items2[j];
+                var c2 = _itemCol(it2);
+                var t2 = _esc(it2.title || 'Task');
+                var clip2 = t2.length > 18 ? t2.slice(0,18) + '…' : t2;
+                // 2026-05-23 FIX 34 — show HH:MM prefix on each compact cell.
+                var ts2 = fmtTimeOnly(it2.created_at);
+                html += '<div style="background:' + c2 + '22;color:' + c2 + ';font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (ts2 ? ts2 + ' · ' : '') + t2 + '">'
+                  + (ts2 ? '<span style="opacity:.7;font-variant-numeric:tabular-nums">' + ts2 + '</span> ' : '')
+                  + clip2 + '</div>';
+              }
+              if (items2.length > max) html += '<div style="color:#64748b;font-size:10px">+' + (items2.length - max) + ' more</div>';
+            }
+            html += '</div>';
+          }
+          html += '</div></div>';
+        } else {
+          // Month view (existing logic preserved, using cached days)
+          var mparts2 = window._lgsePipeMonth.split('-');
+          var yr = parseInt(mparts2[0], 10);
+          var mo = parseInt(mparts2[1], 10) - 1;
+          var firstDay = new Date(yr, mo, 1).getDay();
+          var daysInMonth = new Date(yr, mo + 1, 0).getDate();
+          html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+          ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function (d) {
+            html += '<div style="text-align:center;font-size:11px;color:#64748b;padding:4px">' + d + '</div>';
+          });
+          var startOffset = (firstDay + 6) % 7;
+          for (var i = 0; i < startOffset; i++) {
+            html += '<div style="min-height:60px"></div>';
+          }
+          for (var d2 = 1; d2 <= daysInMonth; d2++) {
+            var key2 = yr + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d2).padStart(2, '0');
+            var items3 = days[key2] || [];
+            // 2026-05-23 FIX 34 — sort by created_at so the month-cell
+            // items show in chronological order.
+            items3 = items3.slice().sort(function (a, b) {
+              return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+            });
+            var cellHtml = '<div style="background:#1e293b;border-radius:6px;padding:6px;min-height:60px;cursor:pointer" onclick="window._lgsePipeJumpDay(\'' + key2 + '\')">'
+                         +   '<div style="font-size:11px;color:#64748b;margin-bottom:4px">' + d2 + '</div>';
+            items3.slice(0, 3).forEach(function (item) {
+              var col3 = _itemCol(item);
+              var safeTitle = _esc(item.title || 'Task');
+              var clip3 = safeTitle.length > 16 ? safeTitle.slice(0,16) + '…' : safeTitle;
+              // 2026-05-23 FIX 34 — HH:MM prefix on each item.
+              var ts3 = fmtTimeOnly(item.created_at);
+              cellHtml += '<div style="background:' + col3 + '22;color:' + col3
+                        + ';font-size:10px;padding:2px 4px;border-radius:3px;margin-bottom:2px;'
+                        + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (ts3 ? ts3 + ' · ' : '') + safeTitle + '">'
+                        + (ts3 ? '<span style="opacity:.7;font-variant-numeric:tabular-nums">' + ts3 + '</span> ' : '')
+                        + clip3 + '</div>';
+            });
+            if (items3.length > 3) {
+              cellHtml += '<div style="font-size:10px;color:#64748b">+' + (items3.length - 3) + ' more</div>';
+            }
+            cellHtml += '</div>';
+            html += cellHtml;
+          }
+          html += '</div>';
+        }
+
         body.innerHTML = html;
       }).catch(function () {
         body.innerHTML = '<p style="color:#ef4444">Calendar fetch failed.</p>';
@@ -8736,9 +9941,54 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   // Global trampoline so the injected onclick handlers (global scope) can
   // re-enter the IIFE-private renderPipeline.
-  window._lgsePipeNav = function (tab, month) {
+  // 2026-05-23 FIX 30 — extended signature: (tab, month, view) so the
+  // view switcher buttons can change the active view in one call.
+  window._lgsePipeNav = function (tab, month, view) {
     if (tab)   window._lgsePipeTab   = tab;
     if (month) window._lgsePipeMonth = month;
+    if (view)  {
+      window._lgsePipeView = view;
+      // Sync month to cursor when entering month view so prev/next stays continuous.
+      if (view === 'month' && window._lgsePipeCursor) {
+        window._lgsePipeMonth = window._lgsePipeCursor.slice(0,7);
+      }
+    }
+    var c = document.getElementById('lgse-content');
+    if (c) renderPipeline(c);
+  };
+
+  // 2026-05-23 FIX 30 — cursor nav (day ±1, week ±7). Updates the YYYY-MM-DD
+  // cursor by N days and re-renders. Also keeps _lgsePipeMonth aligned so
+  // the cached fetch window stays right.
+  window._lgsePipeNavCursor = function (deltaDays) {
+    if (!window._lgsePipeCursor) {
+      var t = new Date();
+      window._lgsePipeCursor = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+    }
+    var p = window._lgsePipeCursor.split('-');
+    var d = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+    d.setDate(d.getDate() + (parseInt(deltaDays,10) || 0));
+    window._lgsePipeCursor = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    window._lgsePipeMonth  = window._lgsePipeCursor.slice(0,7);
+    var c = document.getElementById('lgse-content');
+    if (c) renderPipeline(c);
+  };
+
+  // Jump to today in the current view.
+  window._lgsePipeNavToday = function () {
+    var t = new Date();
+    window._lgsePipeCursor = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+    window._lgsePipeMonth  = window._lgsePipeCursor.slice(0,7);
+    var c = document.getElementById('lgse-content');
+    if (c) renderPipeline(c);
+  };
+
+  // Click a day cell in month view → jump to day view for that date.
+  window._lgsePipeJumpDay = function (iso) {
+    if (!iso) return;
+    window._lgsePipeCursor = iso;
+    window._lgsePipeView   = 'day';
+    window._lgsePipeMonth  = iso.slice(0,7);
     var c = document.getElementById('lgse-content');
     if (c) renderPipeline(c);
   };
@@ -9111,8 +10361,11 @@ window._lgseDrawerSend = function () {
           +         '<a href="' + esc(d.sitemap_url) + '" target="_blank" style="color:#A78BFA;text-decoration:none">' + esc(d.sitemap_url) + ' ↗</a>'
           +       '</div>'
           +       '<div style="font-size:11px;color:var(--lgse-t3);margin-top:4px">'
-          +         d.page_count + ' URLs · last updated ' + esc(when)
+          +         (d.url_count != null ? d.url_count : (d.page_count || 0)) + ' URLs in sitemap · '
+          +         '<span style="color:#10B981">' + (d.indexed_count != null ? d.indexed_count : 0) + ' indexed</span> · '
+          +         '<span style="color:#F59E0B">' + (d.unindexed_count != null ? d.unindexed_count : 0) + ' unindexed</span>'
           +       '</div>'
+          +       (d.last_updated ? '<div style="font-size:10.5px;color:var(--lgse-t3);margin-top:2px">last updated ' + esc(when) + '</div>' : '')
           +       '<div style="font-size:10.5px;color:var(--lgse-t3);margin-top:6px">'
           +         'Robots: <a href="' + esc(d.robots_url) + '" target="_blank" style="color:#A78BFA;text-decoration:none">' + esc(d.robots_url) + ' ↗</a>'
           +       '</div>'

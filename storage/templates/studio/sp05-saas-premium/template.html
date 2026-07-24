@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Media Template — Premium Tech / SaaS / Portrait</title>
+
+  <!-- ============================================================
+       GOOGLE FONTS
+       Display: Unbounded    — ultra-wide geometric, startup authority
+       Body:    Figtree      — clean, approachable modern sans
+       Accent:  Cutive Mono  — terminal / data aesthetic
+  ============================================================ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;700;900&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Cutive+Mono&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ============================================================
+       DESIGN TOKENS
+       Industry : SaaS · Tech · Growth Platform
+       Style    : Premium Minimal-Dark · Refined · Data-led
+       Layout   : Portrait 1080 × 1350 — typographic hero, no photo
+       Palette  : Midnight Navy + Electric Lime + Warm White
+    ============================================================ */
+    :root{
+      /* --- Palette --- */
+      --text:          #070B1A;
+      --clr-surface:     #0D1229;
+      --clr-card:        #111830;
+      --primary:        #C8FF57;        /* electric lime — sharper, less garish than pure yellow */
+      --clr-lime-dim:    #8AB83A;
+      --clr-lime-glow:   rgba(200,255,87,0.10);
+      --accent:    #4F7CFF;        /* secondary accent */
+      --bg:       #EEF2FF;
+      --clr-white-70:    rgba(238,242,255,0.70);
+      --clr-white-40:    rgba(238,242,255,0.40);
+      --clr-white-15:    rgba(238,242,255,0.15);
+      --clr-white-07:    rgba(238,242,255,0.07);
+      --clr-border:      rgba(200,255,87,0.14);
+      --clr-border-soft: rgba(238,242,255,0.08);
+
+      /* --- Typography --- */
+      --font-display: 'Unbounded', sans-serif;
+      --font-body:    'Figtree', sans-serif;
+      --font-mono:    'Cutive Mono', monospace;
+
+      /* --- Spacing --- */
+      --sp-sm: 20px;
+      --sp-md: 36px;
+      --sp-lg: 60px;
+
+      /* --- Dimensions --- */
+      --post-w: 1080px;
+      --post-h: 1350px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; min-height: 100%; }
+
+    /* ============================================================
+       SCENE
+    ============================================================ */
+    .scene {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; padding: 48px 20px;
+      background:#030508;
+    }
+
+    .scale-wrap { transform-origin: top center; }
+
+    /* ============================================================
+       POST CANVAS
+    ============================================================ */
+    .post {
+      width: var(--post-w);
+      height: var(--post-h);
+      position: relative;
+      overflow: hidden;
+      background:var(--text);
+      font-family: var(--font-body);
+      color:var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ============================================================
+       ATMOSPHERE
+    ============================================================ */
+
+    /* Subtle dot grid */
+    .bg-grid {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background-image: radial-gradient(circle, rgba(238,242,255,0.055) 1px, transparent 1px);
+      background-size: 52px 52px;
+    }
+
+    /* Lime glow — upper third */
+    .bg-glow-top {
+      position: absolute; z-index: 1; pointer-events: none;
+      width: 800px; height: 600px;
+      background:radial-gradient(ellipse at 60% 30%, rgba(200,255,87,0.07) 0%, transparent 60%);
+      top: -100px; left: -100px;
+    }
+
+    /* Blue accent glow — lower right */
+    .bg-glow-bot {
+      position: absolute; z-index: 1; pointer-events: none;
+      width: 700px; height: 500px;
+      background:radial-gradient(ellipse at center, rgba(79,124,255,0.08) 0%, transparent 60%);
+      bottom: 80px; right: -100px;
+    }
+
+    /* ============================================================
+       TOP BAR
+    ============================================================ */
+    .topbar {
+      position: relative; z-index: 10; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 22pxvar(--sp-lg);
+    }
+
+    .topbar__logo { display: flex; align-items: center; gap: 14px; }
+
+    /* Simple square mark with lime dot */
+    .logo-mark {
+      width: 36px; height: 36px;
+      border: 1.5px solid var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .logo-mark::after {
+      content: '';
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background:var(--primary);
+    }
+
+    .logo-name {
+      font-family: var(--font-display);
+      font-size:21px; font-weight: 700;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color:var(--bg);
+    }
+
+    .topbar__meta {
+      font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.16em;
+      color:var(--clr-white-40);
+    }
+
+    /* ============================================================
+       HERO — the centrepiece: a huge typographic number
+       rendered as a clean, single focal point
+    ============================================================ */
+    .hero {
+      position: relative; z-index: 5; flex-shrink: 0;
+      padding: 40pxvar(--sp-lg) 0;
+    }
+
+    /* Mono category label + rule */
+    .hero__eyebrow {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 36px;
+    }
+
+    .hero__eyebrow-text {
+      font-family: var(--font-mono);
+      font-size: 12px; letter-spacing: 0.26em; text-transform: uppercase;
+      color:var(--primary);
+    }
+
+    .hero__eyebrow-rule {
+      flex: 1; height: 1px;
+      background:linear-gradient(90deg, var(--clr-lime-dim), transparent);
+      opacity: 0.4;
+    }
+
+    /* The big number — clean, standalone, no unit collision */
+    .hero__number-wrap {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .hero__number {
+      font-family: var(--font-display);
+      font-size: 210px; font-weight: 900;
+      line-height: 0.85; letter-spacing: -0.06em;
+      /* Lime → white vertical gradient fill */
+      background:linear-gradient(160deg, #FFFFFF 0%, var(--primary) 40%, rgba(200,255,87,0.6) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color:transparent;
+      background-clip: text;
+      display: block;
+      position: relative; z-index: 2;
+    }
+
+    /* Unit — placed as a separate element, top-right of number, no overlap */
+    .hero__unit {
+      position: absolute;
+      top: 16px; right: -8px;
+      font-family: var(--font-display);
+      font-size: 52px; font-weight: 300;
+      letter-spacing: -0.02em;
+      color:var(--primary);
+      line-height: 1;
+    }
+
+    /* Faint ghost of the number — depth layer */
+    .hero__number-ghost {
+      position: absolute;
+      top: 8px; left: 6px; z-index: 1;
+      font-family: var(--font-display);
+      font-size: 210px; font-weight: 900;
+      line-height: 0.85; letter-spacing: -0.06em;
+      color:transparent;
+      -webkit-text-stroke:1px rgba(200,255,87,0.06);
+      display: block;
+      user-select: none; pointer-events: none;
+    }
+
+    /* Stat description line */
+    .hero__caption {
+      display: flex; align-items: center; gap: 14px;
+      margin-top: 24px;
+    }
+
+    .hero__caption-line {
+      width: 36px; height: 1px;
+      background:var(--clr-lime-dim);
+      flex-shrink: 0;
+    }
+
+    .hero__caption-text {
+      font-family: var(--font-mono);
+      font-size:20px; letter-spacing: 0.18em; text-transform: uppercase;
+      color:var(--clr-white-40);
+    }
+
+    /* ============================================================
+       DIVIDER BAND — thin full-width rule between hero and content
+    ============================================================ */
+    .divider-band {
+      position: relative; z-index: 5; flex-shrink: 0;
+      margin: 52px var(--sp-lg) 0;
+      height: 1px;
+      background:linear-gradient(90deg, transparent, var(--clr-border), transparent);
+    }
+
+    /* ============================================================
+       HEADLINE BLOCK
+    ============================================================ */
+    .headline-block {
+      position: relative; z-index: 5; flex-shrink: 0;
+      padding: 48px var(--sp-lg) 0;
+    }
+
+    .headline {
+      font-family: var(--font-display);
+      font-size: 80px; font-weight: 900;
+      line-height: 0.94; letter-spacing: -0.04em;
+      text-transform: uppercase;
+      color:var(--bg);
+      margin-bottom: var(--sp-md);
+    }
+
+    /* The one lime word — restraint makes it hit harder */
+    .hl-lime {
+      color:var(--primary);
+      display: block;
+    }
+
+    .hl-white { display: block; }
+
+    .subheadline {
+      font-family: var(--font-body);
+      font-size:19px; font-weight: 300; line-height: 1.68;
+      color:var(--clr-white-70);
+      max-width: 680px;
+    }
+
+    /* ============================================================
+       METRICS STRIP — 3 clean KPI cards
+    ============================================================ */
+    .metrics {
+      position: relative; z-index: 5; flex-shrink: 0;
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 1px;
+      margin: 48px var(--sp-lg) 0;
+      background:var(--clr-border-soft); /* gap color */
+    }
+
+    .metric-card {
+      background:var(--clr-surface);
+      padding: 28px 24px 24px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    .metric-card:first-child { background:var(--clr-card); }
+
+    .metric-card__val {
+      font-family: var(--font-display);
+      font-size: 44px; font-weight: 700;
+      letter-spacing: -0.04em; line-height: 1;
+      color:var(--bg);
+    }
+
+    /* Highlight the first card's value in lime */
+    .metric-card:first-child .metric-card__val {
+      color:var(--primary);
+    }
+
+    .metric-card__delta {
+      font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.10em;
+      color:#5EE89A; /* positive green */
+      display: inline-flex; align-items: center; gap: 4px;
+      vertical-align: baseline; margin-left: 6px;
+      font-size: 12px;
+    }
+
+    .metric-card__label {
+      font-family: var(--font-mono);
+      font-size: 10px; letter-spacing: 0.20em; text-transform: uppercase;
+      color:var(--clr-white-40);
+      margin-top: 4px;
+    }
+
+    /* ============================================================
+       FEATURE TAGS ROW
+    ============================================================ */
+    .tags {
+      position: relative; z-index: 5; flex-shrink: 0;
+      display: flex; gap: 12px; flex-wrap: wrap;
+      padding: 36px var(--sp-lg) 0;
+    }
+
+    .tag {
+      font-family: var(--font-mono);
+      font-size:18px; letter-spacing: 0.16em; text-transform: uppercase;
+      color:var(--clr-white-70);
+      border: 1px solid var(--clr-border-soft);
+      padding: 10px 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .tag::before {
+      content: '';
+      width: 5px; height: 5px; border-radius: 50%;
+      background:var(--primary); flex-shrink: 0;
+    }
+
+    /* ============================================================
+       CTA ROW
+    ============================================================ */
+    .cta-row {
+      position: relative; z-index: 5; flex-shrink: 0;
+      display: flex; align-items: stretch; gap: 14px;
+      padding: 40px var(--sp-lg) 0;
+      margin-top: auto;
+    }
+
+    /* Primary — solid lime button */
+    .cta-primary {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      font-family: var(--font-display);
+      font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color:var(--text);         /* dark on lime — max contrast */
+      background:var(--primary);
+      padding: 24px 40px;
+      text-decoration: none; cursor: pointer; border: none;
+      position: relative; overflow: hidden;
+      transition: box-shadow 0.24s ease, transform 0.24s ease;
+    }
+
+    .cta-primary::before {
+      content: '';
+      position: absolute; top: 0; left: -100%; width: 55%; height: 100%;
+      background:linear-gradient(120deg, transparent, rgba(255,255,255,0.22), transparent);
+      transition: left 0.42s ease;
+    }
+
+    .cta-primary:hover { transform: translateY(-2px); box-shadow: 0 0 48px rgba(200,255,87,0.28); }
+    .cta-primary:hover::before { left: 160%; }
+
+    .cta-arrow { display: inline-block; transition: transform 0.22s ease; font-size: 18px; }
+    .cta-primary:hover .cta-arrow { transform: translateX(5px); }
+
+    /* Ghost secondary */
+    .cta-secondary {
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-size: 13px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase;
+      color:var(--clr-white-70);
+      border: 1px solid var(--clr-border-soft);
+      padding: 24px 36px;
+      text-decoration: none; cursor: pointer;
+      transition: border-color 0.22s, color 0.22s;
+      flex-shrink: 0;
+    }
+
+    .cta-secondary:hover { border-color:var(--clr-border); color:var(--primary); }
+
+    /* ============================================================
+       FOOTER BAR
+    ============================================================ */
+    .footer {
+      position: relative; z-index: 10; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20pxvar(--sp-lg);
+      margin-top: 36px;
+      border-top: 1px solid var(--clr-border-soft);
+    }
+
+    .footer__brand { display: flex; align-items: center; gap: 14px; }
+
+    .footer-mark {
+      width: 28px; height: 28px;
+      border: 1.5px solid rgba(200,255,87,0.50);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .footer-mark::after {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background:var(--primary);
+      opacity: 0.7;
+    }
+
+    .footer__name {
+      font-family: var(--font-display);
+      font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      color:var(--bg);
+    }
+
+    .footer__url {
+      font-family: var(--font-mono);
+      font-size: 10px; letter-spacing: 0.12em;
+      color:var(--clr-white-40);
+      margin-top: 2px;
+    }
+
+    .footer__right { display: flex; align-items: center; gap: 20px; }
+
+    .footer__handle {
+      font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.12em;
+      color:var(--clr-white-40);
+    }
+
+    /* Live status indicator */
+    .live-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+      color:var(--primary);
+      border: 1px solid rgba(200,255,87,0.20);
+      padding: 7px 14px;
+    }
+
+    .live-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background:var(--primary);
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+       DECORATIVE ACCENTS — restrained
+    ============================================================ */
+
+    /* 3px top accent stripe */
+    .accent-top {
+      position: absolute; z-index: 12;
+      top: 0; left: 0; right: 0; height: 3px;
+      background:linear-gradient(90deg,
+        var(--primary) 0%,
+        var(--accent) 55%,
+        transparent 100%
+      );
+    }
+
+    /* Corner brackets */
+    .corner {
+      position: absolute; z-index: 8;
+      width: 18px; height: 18px;
+      pointer-events: none;
+    }
+
+    .corner--tl { top: 22px; left: var(--sp-lg);
+      border-top: 1.5px solid rgba(200,255,87,0.25);
+      border-left: 1.5px solid rgba(200,255,87,0.25); }
+
+    .corner--br { bottom: 80px; right: var(--sp-lg);
+      border-bottom: 1.5px solid rgba(200,255,87,0.15);
+      border-right: 1.5px solid rgba(200,255,87,0.15); }
+
+    /* Vertical mono tag — far right edge */
+    .side-text {
+      position: absolute; z-index: 8;
+      right: 22px; top: 50%; transform: translateY(-50%) rotate(90deg);
+      font-family: var(--font-mono); font-size: 9px;
+      letter-spacing: 0.26em; text-transform: uppercase;
+      color:var(--clr-white-15);
+      white-space: nowrap; pointer-events: none;
+    }
+
+    /* ============================================================
+       RESPONSIVE SCALING — static CSS, no JS
+    ============================================================ */
+    @media (max-width: 1220px) {
+      .scale-wrap { transform: scale(0.78); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.78); height: calc(1350px * 0.78); }
+    }
+    @media (max-width: 980px) {
+      .scale-wrap { transform: scale(0.60); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.60); height: calc(1350px * 0.60); }
+    }
+    @media (max-width: 760px) {
+      .scale-wrap { transform: scale(0.43); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.43); height: calc(1350px * 0.43); }
+    }
+    @media (max-width: 520px) {
+      .scale-wrap { transform: scale(0.29); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.29); height: calc(1350px * 0.29); }
+    }
+
+    /* ============================================================
+       PREVIEW NOTE
+    ============================================================ */
+    .preview-note {
+      text-align: center; margin-top: 20px;
+      font-family: 'Figtree', sans-serif; font-size: 11px;
+      color:rgba(238,242,255,0.18); letter-spacing: 0.18em;
+    }
+  
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+
+  <div class="scene">
+    <div>
+      <div class="scale-wrap">
+
+        <div class="post" id="post">
+
+          <!-- ── BACKGROUND ───────────────────────────────── -->
+          <div class="bg-grid"></div>
+          <div class="bg-glow-top"></div>
+          <div class="bg-glow-bot"></div>
+
+          <!-- ── DECORATIVE ────────────────────────────────── -->
+          <div class="accent-top"></div>
+          <div class="corner corner--tl"></div>
+          <div class="corner corner--br"></div>
+          <div class="side-text" data-field="side_text">{{side_text}}</div>
+
+          <!-- ── TOP BAR ───────────────────────────────────── -->
+          <div class="topbar">
+            <div class="topbar__logo">
+              <div class="logo-mark"></div>
+              <span class="logo-name" data-field="logo_name">{{logo_name}}</span>
+            </div>
+            <span class="topbar__meta" data-field="topbar_meta">{{topbar_meta}}</span>
+          </div>
+
+          <!-- ── HERO NUMBER ───────────────────────────────── -->
+          <div class="hero">
+
+            <div class="hero__eyebrow">
+              <span class="hero__eyebrow-text" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+              <div class="hero__eyebrow-rule"></div>
+            </div>
+
+            <div class="hero__number-wrap">
+              <!-- Ghost layer -->
+              <span class="hero__number-ghost" aria-hidden="true" data-field="hero_number_ghost">{{hero_number_ghost}}</span>
+              <!-- Main number -->
+              <span class="hero__number" data-field="hero_number">{{hero_number}}</span>
+              <!-- Unit — sits top-right, separate element, no collision -->
+              <span class="hero__unit" data-field="hero_unit">{{hero_unit}}</span>
+            </div>
+
+            <div class="hero__caption">
+              <div class="hero__caption-line"></div>
+              <span class="hero__caption-text" data-field="hero_caption">{{hero_caption}}</span>
+            </div>
+
+          </div>
+
+          <!-- ── DIVIDER ───────────────────────────────────── -->
+          <div class="divider-band"></div>
+
+          <!-- ── HEADLINE ──────────────────────────────────── -->
+          <div class="headline-block">
+            <h1 class="headline">
+              <span class="hl-white" data-field="headline_main">{{headline_main}}</span>
+              <span class="hl-lime" data-field="headline_accent">{{headline_accent}}</span>
+            </h1>
+            <p class="subheadline" data-field="subheading">
+              {{subheading}}
+            </p>
+          </div>
+
+          <!-- ── METRICS ───────────────────────────────────── -->
+          <div class="metrics">
+            <div class="metric-card">
+              <div class="metric-card__val">
+                <span data-field="metric_1_val">{{metric_1_val}}</span>
+                <span class="metric-card__delta" data-field="metric_1_delta">{{metric_1_delta}}</span>
+              </div>
+              <div class="metric-card__label" data-field="metric_1_label">{{metric_1_label}}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-card__val" data-field="metric_2_val">{{metric_2_val}}</div>
+              <div class="metric-card__label" data-field="metric_2_label">{{metric_2_label}}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-card__val" data-field="metric_3_val">{{metric_3_val}}</div>
+              <div class="metric-card__label" data-field="metric_3_label">{{metric_3_label}}</div>
+            </div>
+          </div>
+
+          <!-- ── TAGS ──────────────────────────────────────── -->
+          <div class="tags">
+            <span class="tag" data-field="tag_1">{{tag_1}}</span>
+            <span class="tag" data-field="tag_2">{{tag_2}}</span>
+            <span class="tag" data-field="tag_3">{{tag_3}}</span>
+            <span class="tag" data-field="tag_4">{{tag_4}}</span>
+          </div>
+
+          <!-- ── CTA ───────────────────────────────────────── -->
+          <div class="cta-row">
+            <a class="cta-primary" href="#">
+              <span data-field="cta_primary_label">{{cta_primary_label}}</span>
+              <span class="cta-arrow">&rarr;</span>
+            </a>
+            <a class="cta-secondary" href="#" data-field="cta_secondary_label">{{cta_secondary_label}}</a>
+          </div>
+
+          <!-- ── FOOTER ────────────────────────────────────── -->
+          <div class="footer">
+            <div class="footer__brand">
+              <div class="footer-mark"></div>
+              <div>
+                <div class="footer__name" data-field="footer_name">{{footer_name}}</div>
+                <div class="footer__url" data-field="footer_url">{{footer_url}}</div>
+              </div>
+            </div>
+            <div class="footer__right">
+              <span class="footer__handle" data-field="footer_handle">{{footer_handle}}</span>
+              <div class="live-badge">
+                <div class="live-dot"></div>
+                <span data-field="live_label">{{live_label}}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- end .post -->
+      </div>
+
+      <p class="preview-note">1080 × 1350 px &nbsp;·&nbsp; Portrait 4:5 &nbsp;·&nbsp; Premium Tech / SaaS — v2</p>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -38,7 +38,7 @@ var _cr = {
 
 function _crUrl(p) {
     var b = (window.LU_API_BASE || '/api');
-    return b + '/api/creative' + p;
+    return '/api/creative' + p;
 }
 function _crNonce() { return (window.LU_CFG && '') || ''; }
 function _crHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')}; }
@@ -641,7 +641,7 @@ async function _crGenerateVideo() {
         setProgress(15, '\uD83E\uDDE0 CIMS check\u2026');
 
         var crBase = (window.LU_API_BASE || '/api');
-        var apiUrl = crBase + '/api/creative/video/generate';
+        var apiUrl = '/api/creative/video/generate';
 
         setProgress(30, '\uD83C\uDFA6 Submitting to Creative Engine\u2026 (AI render: 1\u20134 min)');
 
@@ -692,7 +692,7 @@ async function _crGenerateVideo() {
 
                 var pollRes;
                 try {
-                    pollRes = await fetch(crBase + '/api/creative/video/jobs/' + jobId + '/status', { headers: _crHeaders() });
+                    pollRes = await fetch('/api/creative/video/jobs/' + jobId + '/status', { headers: _crHeaders() });
                 } catch(netErr) {
                     // Transient network error — keep trying
                     console.warn('[LuCreative] Poll network error:', netErr);
@@ -1319,7 +1319,7 @@ function _crBindSettings() {
         if (enf) enf.value = r.enforcement || 'on';
     }).catch(function(){});
 
-    fetch((window.LU_CFG ? (window.LU_API_BASE || '/api') : (window.LU_API_BASE || '/api')) + '/api/credits/settings', {
+    fetch('/api/credits/settings', {
         headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')}
     }).then(function(r){ return r.json(); }).then(function(d) {
         var f = function(id, val) { var el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
@@ -1346,7 +1346,7 @@ function _crBindSettings() {
     }).catch(function(){});
 
     // Load cost map
-    fetch((window.LU_CFG ? (window.LU_API_BASE || '/api') : (window.LU_API_BASE || '/api')) + '/api/credits/cost-map', {
+    fetch('/api/credits/cost-map', {
         headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')}
     }).then(function(r){ return r.json(); }).then(function(d) {
         var map = d.cost_map || {};
@@ -1377,7 +1377,7 @@ async function _crSaveCreditSettings() {
     if (g('cr-cap-agent'))      payload.max_per_agent     = parseInt(g('cr-cap-agent'));
     try {
         var res = await fetch(
-            (window.LU_CFG ? (window.LU_API_BASE || '/api') : (window.LU_API_BASE || '/api')) + '/api/credits/settings',
+            '/api/credits/settings',
             { method:'PUT', headers:_crHeaders(), body: JSON.stringify(payload) }
         );
         var data = await res.json();
@@ -1394,7 +1394,7 @@ async function _crAddTestCredits() {
         _crToast('Use WP Admin → Credit Service to add credits in production', 'info');
         // For dev: directly update via a test endpoint if available
         var res = await fetch(
-            (window.LU_CFG ? (window.LU_API_BASE || '/api') : (window.LU_API_BASE || '/api')) + '/api/credits/add-test',
+            '/api/credits/add-test',
             { method:'POST', headers:_crHeaders(), body: JSON.stringify({ amount: 100, reason: 'test_grant' }) }
         );
         if (res.ok) {
@@ -2387,7 +2387,7 @@ async function _crSetKillSwitch(active, scope) {
     var reason = active ? (prompt('Reason for ' + (scope === 'all' ? 'full' : scope) + ' shutdown (optional):') || '') : '';
     try {
         var luBase = (window.LU_CFG ? (window.LU_API_BASE || '/api') : (window.LU_API_BASE || '/api'));
-        var res = await fetch(luBase + '/api/credits/kill-switch', {
+        var res = await fetch('/api/credits/kill-switch', {
             method: 'POST', headers: _crHeaders(),
             body: JSON.stringify({ active: active, scope: scope, reason: reason })
         });
@@ -2411,7 +2411,7 @@ _crBindSettings = function() {
     _crOrigBindSettings();
     // Check kill switch status
     var luBase = (window.LU_CFG ? (window.LU_API_BASE || '/api') : (window.LU_API_BASE || '/api'));
-    fetch(luBase + '/api/credits/kill-switch', { headers: _crHeaders() })
+    fetch('/api/credits/kill-switch', { headers: _crHeaders() })
         .then(function(r){ return r.json(); })
         .then(function(ks) {
             var banner = document.getElementById('cr-killswitch-banner');
@@ -2486,7 +2486,7 @@ window.luHandleDecisionChoice = function(option, context) {
     var luBase = (window.LU_CFG ? (window.LU_API_BASE || '/api') : (window.LU_API_BASE || '/api'));
 
     // ④ Post outcome telemetry
-    fetch(luBase + '/api/tools/decide/outcome', {
+    fetch('/api/tools/decide/outcome', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},
         body: JSON.stringify({
@@ -2534,7 +2534,7 @@ window.luPreflightToolDecision = async function(toolId, params, agentId) {
     agentId = agentId || 'user';
     try {
         var luBase = (window.LU_CFG ? (window.LU_API_BASE || '/api') : (window.LU_API_BASE || '/api'));
-        var res = await fetch(luBase + '/api/tools/decide', {
+        var res = await fetch('/api/tools/decide', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},
             body: JSON.stringify({ tool_id: toolId, params: params, agent_id: agentId })
@@ -2571,7 +2571,7 @@ function _crScanWebsite() {
         : ((window.LU_API_BASE || '/api'));
     var nonce = (window.LU_CFG && '') ? '' : '';
 
-    fetch(apiBase + '/api/creative/scan-url', {
+    fetch('/api/creative/scan-url', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},
         body:    JSON.stringify({ url: url }),

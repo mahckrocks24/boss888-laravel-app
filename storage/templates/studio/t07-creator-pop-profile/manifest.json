@@ -1,0 +1,44 @@
+{
+  "name": "Creator Pop Profile — Personal Brand",
+  "slug": "t07-creator-pop-profile",
+  "format": "square",
+  "category": "social",
+  "sub_category": "personal_brand",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["creator", "personal brand", "social", "coaching", "influencer"],
+  "variables": {
+    "avatar":          { "type": "image", "label": "Avatar",            "default": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=360&q=85&fit=crop&crop=face" },
+    "handle":          { "type": "text",  "label": "Social handle",     "default": "yourhandle" },
+    "left_sub":        { "type": "text",  "label": "Tagline (left)",    "default": "Content Creator · Speaker · Coach" },
+    "stat_1_val":      { "type": "text",  "label": "Stat 1 value",      "default": "120K" },
+    "stat_1_label":    { "type": "text",  "label": "Stat 1 label",      "default": "Followers" },
+    "stat_2_val":      { "type": "text",  "label": "Stat 2 value",      "default": "8.4%" },
+    "stat_2_label":    { "type": "text",  "label": "Stat 2 label",      "default": "Engage" },
+    "name_tag":        { "type": "text",  "label": "Name tag",          "default": "Creator Profile" },
+    "headline_main":   { "type": "text",  "label": "Headline (main)",   "default": "Make" },
+    "headline_accent": { "type": "text",  "label": "Headline (accent)", "default": "Impact." },
+    "subheading":      { "type": "text",  "label": "Subheading",        "default": "Teaching creators how to build authentic brands and turn their passion into a thriving business." },
+    "topic_1":         { "type": "text",  "label": "Topic 1 (filled)",  "default": "Branding" },
+    "topic_2":         { "type": "text",  "label": "Topic 2 (yellow)",  "default": "Content" },
+    "topic_3":         { "type": "text",  "label": "Topic 3",           "default": "Growth" },
+    "topic_4":         { "type": "text",  "label": "Topic 4",           "default": "Mindset" },
+    "cta_label":       { "type": "text",  "label": "CTA",               "default": "Work With Me" },
+    "brand_name":      { "type": "text",  "label": "Brand name",        "default": "Logo Here" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",         "default": "companyname.com" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#FFFFFF" },
+    "purple": { "label": "Primary",    "default": "#6C5CE7" },
+    "pink":   { "label": "Pink",       "default": "#FD79A8" },
+    "yellow": { "label": "Yellow",     "default": "#FDCB6E" },
+    "mint":   { "label": "Mint",       "default": "#00CEC9" },
+    "dark":   { "label": "Dark",       "default": "#2D3436" }
+  },
+  "semantic": {
+    "mood": ["playful", "energetic"],
+    "color_temperature": "vibrant",
+    "composition": "person_left",
+    "best_for": ["personal branding", "social", "engagement", "coaching", "creator"]
+  }
+}

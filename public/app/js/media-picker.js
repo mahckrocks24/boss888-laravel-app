@@ -429,7 +429,7 @@
              '<div class="lu-mp-locked">' +
                '<div class="lu-mp-lockIcon">\uD83D\uDD12</div>' +
                '<div class="lu-mp-lockTitle">Platform Media Library</div>' +
-               '<div class="lu-mp-lockSub">Access 500+ professional images, photos and videos for your website, blog, social posts and emails.</div>' +
+               '<div class="lu-mp-lockSub">Access 500+ professional images, photos and videos for your website, blog and articles.</div>' +
                '<div class="lu-mp-lockPlanLine">Available on ' + _mpEsc(up) + ' plan and above.</div>' +
                '<button class="lu-mp-btn-primary" onclick="window._mpOpenBilling()">View Plans</button>' +
                '<div class="lu-mp-lockHint">Your own uploads are always free \u2014 switch to the <strong>My Uploads</strong> tab.</div>' +

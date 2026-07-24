@@ -1,9 +1,18 @@
+@php
+  // MW-1a launch gate — pre-launch on a production host, hero CTAs must not enter the app.
+  $mktLocked = ! config('marketing.public_launched', false)
+      && in_array(request()->getHost(), config('marketing.production_hosts', []), true);
+  $mktGatedHref = config('marketing.gated_cta_href', 'mailto:hello@levelupgrowth.io');
+  $mktNoindex = in_array(request()->getHost(), config('marketing.noindex_hosts', []), true);
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LevelUpGrowth — Build, Launch &amp; Grow with AI</title>
+<link rel="canonical" href="https://levelupgrowth.io{{ request()->getPathInfo() }}">
+@if($mktNoindex)<meta name="robots" content="noindex, nofollow">@endif
 <link rel="stylesheet" href="/marketing/css/site.css">
 <link rel="stylesheet" href="/marketing/css/orb.css">
 <style>
@@ -99,7 +108,7 @@
       <h1>Build, Launch, and Grow Your Business —<br/><span class="g-text2">Powered by AI</span></h1>
       <p style="color:var(--muted);font-size:18px;line-height:1.72;max-width:520px;margin-top:16px">Website, SEO, Content, CRM, and Marketing — all handled for you by a team of specialized AI agents working 24/7.</p>
       <div class="hero-ctas" style="margin-top:32px">
-        <a href="/app/#signup" class="btn btn-primary btn-lg">Start Free →</a>
+        <a href="{{ $mktLocked ? $mktGatedHref : '/app/#signup' }}" class="btn btn-primary btn-lg">{{ $mktLocked ? 'Get notified →' : 'Start Free →' }}</a>
         <button class="btn btn-ghost btn-lg" onclick="document.getElementById('simulation').scrollIntoView({behavior:'smooth'})">Watch AI Work ▶</button>
       </div>
       <div class="trust-row">
@@ -223,7 +232,7 @@
         </div>
       </div>
     </div>
-    <div style="text-align:center;margin-top:28px"><a href="/app/#signup" class="btn btn-primary btn-lg">Try It For Real — Free</a></div>
+    <div style="text-align:center;margin-top:28px"><a href="{{ $mktLocked ? $mktGatedHref : '/app/#signup' }}" class="btn btn-primary btn-lg">{{ $mktLocked ? 'Get notified' : 'Try It For Real — Free' }}</a></div>
   </div>
 </section>
 
@@ -330,7 +339,7 @@
     <h2>Your AI Marketing Team<br/><span class="g-text2">Is Ready to Work</span></h2>
     <p style="color:var(--muted);font-size:17px;max-width:440px;margin:16px auto 36px;line-height:1.7">Launch your website, create content, and grow your business — fully automated by AI.</p>
     <div class="hero-ctas" style="justify-content:center">
-      <a href="/app/#signup" class="btn btn-primary btn-lg">Start Free Today →</a>
+      <a href="{{ $mktLocked ? $mktGatedHref : '/app/#signup' }}" class="btn btn-primary btn-lg">{{ $mktLocked ? 'Get notified →' : 'Start Free Today →' }}</a>
       <a href="/pages/how-it-works/" class="btn btn-ghost btn-lg">See How It Works</a>
     </div>
   </div>

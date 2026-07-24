@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Architecture — Architect Minimal Grid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,200;0,300;0,400;0,600;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#FAFAFA;--text:#0A0A0A;--grey:#888888;--light:#F0F0F0;
+  --accent:#1A1A1A;--primary:#CC0000;
+  --fh:'Jost',sans-serif;--fb:'Jost',sans-serif;
+  --w:1080px;--h:1350px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#E5E5E5}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1200px){.sw{transform:scale(.78);display:block;width:calc(var(--w)*.78);height:calc(var(--h)*.78)}}
+@media(max-width:960px){.sw{transform:scale(.60);display:block;width:calc(var(--w)*.60);height:calc(var(--h)*.60)}}
+@media(max-width:720px){.sw{transform:scale(.43);display:block;width:calc(var(--w)*.43);height:calc(var(--h)*.43)}}
+@media(max-width:500px){.sw{transform:scale(.29);display:block;width:calc(var(--w)*.29);height:calc(var(--h)*.29)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);
+  font-family:var(--fh);display:flex;flex-direction:column}
+
+/* Ultra-precise grid lines */
+.grid-h{position:absolute;z-index:1;left:0;right:0;height:1px;background:rgba(10,10,10,.06);pointer-events:none}
+.grid-v{position:absolute;z-index:1;top:0;bottom:0;width:1px;background:rgba(10,10,10,.06);pointer-events:none}
+.g1{top:120px} .g2{top:460px} .g3{top:800px} .g4{top:1080px} .g5{top:1230px}
+.gv1{left:56px} .gv2{left:50%} .gv3{right:56px}
+
+/* Single red accent dot */
+.red-dot{position:absolute;z-index:5;width:8px;height:8px;border-radius:50%;background:var(--primary);top:120px;left:56px}
+
+/* TOP BAR */
+.topbar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:36px 48px;flex-shrink:0;border-bottom:1px solid rgba(10,10,10,.08)}
+.brand-name{font-size:20px;font-weight:600;letter-spacing:.26em;text-transform:uppercase;color:var(--text)}
+.brand-url{font-size:18px;font-weight:300;letter-spacing:.16em;color:var(--grey)}
+.project-tag{font-size:11px;font-weight:300;letter-spacing:.22em;text-transform:uppercase;color:var(--grey);
+  border:1px solid rgba(10,10,10,.12);padding:8px 20px}
+
+/* MAIN IMAGE — full width, precise proportions */
+.img-block{position:relative;z-index:3;flex-shrink:0;height:530px;overflow:hidden;margin:0 56px;
+  border:1px solid rgba(10,10,10,.08)}
+.img-block img{width:100%;height:100%;object-fit:cover;object-position:center 40%;
+  filter:saturate(.85) contrast(1.05)}
+/* Minimal overlay */
+.img-block::after{content:'';position:absolute;inset:0;background:rgba(10,10,10,.08)}
+/* Image caption overlay — bottom-right, white label */
+.img-caption{position:absolute;z-index:2;bottom:0;right:0;
+  background:var(--bg);padding:12px 20px;
+  font-size:11px;font-weight:300;letter-spacing:.16em;color:var(--grey)}
+
+/* CONTENT SECTION */
+.section-row{display:flex;align-items:stretch;padding:0 56px;
+  border-bottom:1px solid rgba(10,10,10,.06);flex-shrink:0}
+
+/* Row 1: eyebrow + number */
+.sec-a{display:flex;align-items:center;justify-content:space-between;
+  padding:32px 56px;border-bottom:1px solid rgba(10,10,10,.06);flex-shrink:0}
+.eyebrow{font-size:18px;font-weight:400;letter-spacing:.32em;text-transform:uppercase;color:var(--grey)}
+.seq-num{font-size:11px;font-weight:200;letter-spacing:.18em;color:rgba(10,10,10,.20)}
+
+/* Headline section */
+.headline-section{padding:40px 56px;border-bottom:1px solid rgba(10,10,10,.06);flex-shrink:0}
+.headline{font-size:96px;font-weight:200;line-height:.90;letter-spacing:-.04em;color:var(--text)}
+.headline em{font-style:italic;font-weight:200;color:var(--grey)}
+
+/* Sub section — two columns */
+.sub-section{display:grid;grid-template-columns:1fr 1fr;flex-shrink:0;
+  border-bottom:1px solid rgba(10,10,10,.06)}
+.sub-col{padding:32px 56px}
+.sub-col:first-child{border-right:1px solid rgba(10,10,10,.06)}
+.sub-text{font-size:21px;font-weight:300;line-height:1.75;color:var(--grey)}
+.sub-list{display:flex;flex-direction:column;gap:10px}
+.sub-list-item{font-size:20px;font-weight:400;letter-spacing:.06em;color:var(--accent);
+  display:flex;align-items:center;gap:12px}
+.sub-list-item::before{content:'—';color:var(--grey);font-weight:200}
+
+/* BOTTOM — CTA + brand */
+.bottom{display:flex;align-items:center;justify-content:space-between;
+  padding:32px 56px;flex-shrink:0;margin-top:auto}
+.cta{display:inline-flex;align-items:center;gap:12px;font-size:12px;
+  font-weight:600;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--bg);background:var(--text);padding:18px 44px;
+  border:none;cursor:pointer;text-decoration:none;
+  transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(10,10,10,.20)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+.bottom-right{text-align:right}
+.bottom-handle{font-size:18px;font-weight:300;letter-spacing:.16em;color:var(--grey)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body><div class="scene"><div class="sw"><div class="post">
+  <!-- Precise grid -->
+  <div class="grid-h g1"></div><div class="grid-h g2"></div>
+  <div class="grid-h g3"></div><div class="grid-h g4"></div><div class="grid-h g5"></div>
+  <div class="grid-v gv1"></div><div class="grid-v gv2"></div><div class="grid-v gv3"></div>
+  <div class="red-dot"></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div><div class="brand-name" data-field="brand_name">{{brand_name}}</div><div class="brand-url" data-field="brand_url">{{brand_url}}</div></div>
+    <div class="project-tag" data-field="project_tag">{{project_tag}}</div>
+  </div>
+
+  <!-- Image -->
+  <div style="height:24px;flex-shrink:0"></div>
+  <div class="img-block">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+    <div class="img-caption" data-field="img_caption">{{img_caption}}</div>
+  </div>
+  <div style="height:24px;flex-shrink:0"></div>
+
+  <!-- Eyebrow row -->
+  <div class="sec-a">
+    <span class="eyebrow" data-field="eyebrow">{{eyebrow}}</span>
+    <span class="seq-num" data-field="seq_num">{{seq_num}}</span>
+  </div>
+
+  <!-- Headline -->
+  <div class="headline-section">
+    <h1 class="headline"><span data-field="headline_1">{{headline_1}}</span><br><span data-field="headline_2">{{headline_2}}</span><br><em data-field="headline_accent">{{headline_accent}}</em></h1>
+  </div>
+
+  <!-- Sub -->
+  <div class="sub-section">
+    <div class="sub-col">
+      <p class="sub-text" data-field="sub_text">{{sub_text}}</p>
+    </div>
+    <div class="sub-col">
+      <div class="sub-list">
+        <div class="sub-list-item" data-field="service_1">{{service_1}}</div>
+        <div class="sub-list-item" data-field="service_2">{{service_2}}</div>
+        <div class="sub-list-item" data-field="service_3">{{service_3}}</div>
+        <div class="sub-list-item" data-field="service_4">{{service_4}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom">
+    <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+    <div class="bottom-right">
+      <div class="bottom-handle" data-field="bottom_handle">{{bottom_handle}}</div>
+    </div>
+  </div>
+</div></div></div></body></html>

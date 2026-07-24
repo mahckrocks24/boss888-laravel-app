@@ -1,0 +1,40 @@
+{
+  "name": "Industrial Bold Grid — Construction",
+  "slug": "i01-construction",
+  "format": "square",
+  "category": "corporate",
+  "sub_category": "construction",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["construction", "contractor", "industrial", "building", "trades"],
+  "variables": {
+    "hero_image":       { "type": "image", "label": "Hero image",       "default": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=560&q=85&fit=crop" },
+    "img_stat_val":     { "type": "text",  "label": "Image stat value", "default": "25+" },
+    "img_stat_label":   { "type": "text",  "label": "Image stat label", "default": "Years Built" },
+    "logo_name":        { "type": "text",  "label": "Logo name",        "default": "LOGO HERE" },
+    "tag":              { "type": "text",  "label": "Top-right tag",    "default": "Est. 1998" },
+    "eyebrow":          { "type": "text",  "label": "Eyebrow",          "default": "General Contractor" },
+    "headline_1":       { "type": "text",  "label": "Headline line 1",  "default": "WE" },
+    "headline_2":       { "type": "text",  "label": "Headline line 2",  "default": "BUILD" },
+    "headline_accent":  { "type": "text",  "label": "Headline accent",  "default": "BOLD." },
+    "subheading":       { "type": "text",  "label": "Subheading",       "default": "From foundations to skylines — engineered to last, built to impress. Industrial-grade quality on every project." },
+    "stat_1_val":       { "type": "text",  "label": "Stat 1 value",     "default": "500+" },
+    "stat_1_label":     { "type": "text",  "label": "Stat 1 label",     "default": "Projects" },
+    "stat_2_val":       { "type": "text",  "label": "Stat 2 value",     "default": "98%" },
+    "stat_2_label":     { "type": "text",  "label": "Stat 2 label",     "default": "On Time" },
+    "cta_label":        { "type": "text",  "label": "CTA",              "default": "Get a Quote" },
+    "brand_bottom":     { "type": "text",  "label": "Brand bottom",     "default": "companyname.com &nbsp;·&nbsp; @handle" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#111111" },
+    "yellow": { "label": "Primary",    "default": "#FFD60A" },
+    "orange": { "label": "Accent",     "default": "#FF6B35" },
+    "white":  { "label": "Text",       "default": "#F5F5F5" }
+  },
+  "semantic": {
+    "mood": ["bold", "professional"],
+    "color_temperature": "dark",
+    "composition": "split",
+    "best_for": ["construction", "contractor", "industrial", "trades", "building"]
+  }
+}

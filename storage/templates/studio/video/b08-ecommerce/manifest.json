@@ -1,0 +1,95 @@
+{
+  "name": "Ecommerce Reel",
+  "slug": "b08-ecommerce",
+  "format": "reels",
+  "category": "ecommerce",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "ecommerce"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "⚡ Flash Sale"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Today Only — 4 Hours Left!"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Thousands of products slashed. Free shipping. No code needed. Just shop."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "brand_icon": {
+      "type": "text",
+      "label": "Brand Icon",
+      "default": "🛍️"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "MEGA"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "SALE"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "is on."
+    },
+    "pill_1": {
+      "type": "text",
+      "label": "Pill 1",
+      "default": "📱 Electronics"
+    },
+    "pill_2": {
+      "type": "text",
+      "label": "Pill 2",
+      "default": "👗 Fashion"
+    },
+    "pill_3": {
+      "type": "text",
+      "label": "Pill 3",
+      "default": "🏠 Home"
+    },
+    "pill_4": {
+      "type": "text",
+      "label": "Pill 4",
+      "default": "💄 Beauty"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "ecommerce"
+    ]
+  }
+}

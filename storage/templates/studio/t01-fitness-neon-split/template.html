@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>T01 — Neon Power Split</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:       #080808;
+  --primary:     #00F5D4;
+  --accent:     #FF006E;
+  --white:    #F5F5F5;
+  --muted:    #888888;
+  --font-h:   'Anton', Impact, sans-serif;
+  --font-b:   'Barlow', sans-serif;
+  --w: 1080px; --h: 1080px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#030303}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.scale-wrap{transform-origin:top center}
+@media(max-width:1160px){.scale-wrap{transform:scale(.80);display:block;width:calc(var(--w)*.80);height:calc(var(--h)*.80)}}
+@media(max-width:940px){.scale-wrap{transform:scale(.62);display:block;width:calc(var(--w)*.62);height:calc(var(--h)*.62)}}
+@media(max-width:720px){.scale-wrap{transform:scale(.44);display:block;width:calc(var(--w)*.44);height:calc(var(--h)*.44)}}
+@media(max-width:500px){.scale-wrap{transform:scale(.30);display:block;width:calc(var(--w)*.30);height:calc(var(--h)*.30)}}
+
+/* POST */
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);display:grid;grid-template-columns:46% 54%}
+
+/* BG FX */
+.glow-cyan{position:absolute;z-index:1;width:400px;height:400px;border-radius:50%;background:radial-gradient(ellipse,rgba(0,245,212,.18) 0%,transparent 70%);top:-60px;left:-60px;pointer-events:none}
+.glow-pink{position:absolute;z-index:1;width:350px;height:350px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,0,110,.16) 0%,transparent 70%);bottom:40px;right:60px;pointer-events:none}
+.grain{position:absolute;inset:0;z-index:2;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:160px 160px;opacity:.025;mix-blend-mode:screen;pointer-events:none}
+
+/* LEFT — image panel */
+.panel-img{position:relative;overflow:hidden;z-index:3}
+.panel-img img{width:100%;height:100%;object-fit:cover;object-position:center top;filter:saturate(.85) brightness(.78)}
+.panel-img::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 55%,var(--bg) 100%),linear-gradient(180deg,rgba(8,8,8,.55) 0%,transparent 25%,transparent 70%,rgba(8,8,8,.70) 100%)}
+/* Neon border on image */
+.panel-img::before{content:'';position:absolute;inset:0;z-index:2;box-shadow:inset 0 0 0 2px rgba(0,245,212,.22);pointer-events:none}
+
+/* Floating badge top-left of image */
+.img-badge{position:absolute;z-index:4;top:32px;left:28px;font-family:var(--font-b);font-size:11px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--bg);background:var(--primary);padding:8px 18px}
+
+/* Vertical neon rule — seam between panels */
+.seam{position:absolute;z-index:5;left:46%;top:0;bottom:0;width:2px;background:linear-gradient(180deg,transparent,var(--primary),var(--accent),transparent);pointer-events:none}
+
+/* Neon line decoration left panel bottom */
+.stat-wrap{position:absolute;z-index:4;bottom:36px;left:28px}
+.stat-val{font-family:var(--font-h);font-size:52px;line-height:1;color:var(--primary);letter-spacing:-.02em}
+.stat-val .stat-unit{font-size:40px;opacity:.7}
+.stat-label{font-family:var(--font-b);font-size:18px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-top:4px}
+
+/* RIGHT — content panel */
+.panel-content{position:relative;z-index:3;display:flex;flex-direction:column;justify-content:center;padding:48px 44px 48px 32px}
+
+.eyebrow{font-family:var(--font-b);font-size:18px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.eyebrow::before{content:'';width:24px;height:2px;background:var(--accent);flex-shrink:0}
+
+.headline{font-family:var(--font-h);font-size:96px;line-height:.90;letter-spacing:.01em;text-transform:uppercase;color:var(--white);margin-bottom:10px}
+.headline .h-accent{color:var(--primary);display:block;-webkit-text-stroke:0px}
+
+.sub{font-family:var(--font-b);font-size:17px;font-weight:300;line-height:1.65;color:var(--muted);margin-bottom:36px;max-width:340px}
+
+/* Feature pills */
+.pills{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:40px}
+.pill{font-family:var(--font-b);font-size:17px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--white);border:1px solid rgba(245,245,245,.15);padding:8px 16px;display:flex;align-items:center;gap:7px}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--primary);flex-shrink:0}
+
+/* CTA */
+.cta{display:inline-flex;align-items:center;gap:14px;font-family:var(--font-b);font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--bg);background:var(--primary);border:none;padding:18px 40px;cursor:pointer;text-decoration:none;transition:box-shadow .22s,transform .22s;position:relative;overflow:hidden}
+.cta:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(0,245,212,.40)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(5px)}
+
+/* Brand bar */
+.brand-bar{position:absolute;z-index:4;bottom:36px;left:40px;right:52px;display:flex;align-items:center;justify-content:space-between;padding-top:20px;border-top:1px solid rgba(245,245,245,.08)}
+.brand-mark{width:30px;height:30px;border:1.5px solid var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-mark::after{content:'';width:8px;height:8px;background:var(--primary)}
+.brand-name{font-family:var(--font-b);font-size:20px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--white);margin-left:10px}
+.brand-url{font-family:var(--font-b);font-size:17px;letter-spacing:.14em;color:var(--muted)}
+
+/* deco lines top-right */
+.deco-lines{position:absolute;z-index:4;top:40px;right:52px;display:flex;flex-direction:column;gap:7px}
+.deco-lines span{display:block;height:1.5px;background:var(--primary)}
+.deco-lines span:nth-child(1){width:38px;opacity:.9}
+.deco-lines span:nth-child(2){width:24px;opacity:.55}
+.deco-lines span:nth-child(3){width:14px;opacity:.30}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="scale-wrap">
+<div class="post">
+  <div class="glow-cyan"></div><div class="glow-pink"></div><div class="grain"></div>
+  <div class="seam"></div>
+
+  <!-- LEFT -->
+  <div class="panel-img">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+    <div class="img-badge" data-field="badge">{{badge}}</div>
+    <div class="stat-wrap">
+      <div class="stat-val"><span data-field="stat_value">{{stat_value}}</span><span class="stat-unit" data-field="stat_unit">{{stat_unit}}</span></div>
+      <div class="stat-label" data-field="stat_label">{{stat_label}}</div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel-content">
+    <div class="deco-lines"><span></span><span></span><span></span></div>
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <h1 class="headline"><span data-field="headline_main">{{headline_main}}</span><span class="h-accent" data-field="headline_accent">{{headline_accent}}</span></h1>
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="pills">
+      <span class="pill" data-field="pill_1">{{pill_1}}</span>
+      <span class="pill" data-field="pill_2">{{pill_2}}</span>
+      <span class="pill" data-field="pill_3">{{pill_3}}</span>
+    </div>
+    <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+    <div class="brand-bar">
+      <div style="display:flex;align-items:center">
+        <div class="brand-mark"></div>
+        <span class="brand-name" data-field="brand_name" style="margin-left:10px">{{brand_name}}</span>
+      </div>
+      <span class="brand-url" data-field="brand_url">{{brand_url}}</span>
+    </div>
+  </div>
+</div>
+</div></div>
+</body></html>

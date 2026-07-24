@@ -423,6 +423,12 @@
             _designId = Number(id);
             _designName = c.getAttribute('data-name');
             _mountEditor();
+            // v5.7.22 (2026-05-31) — Phase 2 URL: /app/studio/{id}
+            try {
+              if (window._luRouter && window._luRouter.enabled()) {
+                window._luRouter.pushView('studio', String(id));
+              }
+            } catch (_e) {}
           };
         });
         holder.querySelectorAll('.st2-dots').forEach(function(dots){
@@ -501,8 +507,21 @@
       catch(e){ _toast(e.message, 'error'); } return;
     }
     if (act === 'download'){
-      // Download goes through the existing export route (kept intact)
-      window.open('/api/studio/designs/' + id + '/render-png', '_blank');
+      // 2026-07-03 (#2) — render-png is POST-only + returns a raw PNG binary;
+      // window.open issued a GET → 405. Fetch POST → blob → download (renders
+      // from the stored design when no body is sent).
+      _toast('Rendering PNG…', 'info');
+      fetch(_apiBase() + '/studio/designs/' + id + '/render-png', {
+        method:'POST', headers:{ 'Authorization':'Bearer '+_tok(), 'Accept':'image/png' }
+      }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
+        .then(function(blob){
+          if(!blob || blob.size < 100) throw new Error('empty response');
+          var u = URL.createObjectURL(blob);
+          var a = document.createElement('a'); a.href=u; a.download=(name||'design')+'.png';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function(){ URL.revokeObjectURL(u); }, 5000);
+          _toast('Download ready','success');
+        }).catch(function(e){ _toast('Export failed: '+e.message,'error'); });
       return;
     }
     if (act === 'publish'){
@@ -577,9 +596,11 @@
     holder.innerHTML = tpls.map(function(t){
       return '<div class="st2-card st2-tpl-card" data-slug="' + _esc(t.slug) + '" data-name="' + _esc(t.name) + '">' +
                '<div class="st2-thumb">' +
-                 (t.kind === 'video'
-                   ? '<img src="' + _esc(t.preview_url) + '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>'
-                   : '<iframe src="' + _esc(t.preview_url) + '" scrolling="no" loading="lazy"></iframe>') +
+                 (t.thumbnail_url
+                   ? '<img src="' + _esc(t.thumbnail_url) + '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>'
+                   : (t.kind === 'video'
+                       ? '<img src="' + _esc(t.preview_url) + '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>'
+                       : '<iframe src="' + _esc(t.preview_url) + '" scrolling="no" loading="lazy"></iframe>')) +
                  '<div class="st2-badge">' + _esc((t.format || '').toUpperCase()) + '</div>' +
                '</div>' +
                '<div class="st2-card-meta">' +
@@ -691,7 +712,7 @@
       '.st2-card{position:relative;background:var(--s2,#171b23);border:1px solid var(--bd,#2a2f3a);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .15s}',
       '.st2-card:hover{border-color:var(--p,#6C5CE7);transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,0,0,.3)}',
       '.st2-thumb{aspect-ratio:1/1;background:var(--s3,#1e2230);position:relative;overflow:hidden}',
-      '.st2-thumb iframe{border:0;width:100%;height:100%;transform:scale(.4);transform-origin:top left;width:250%;height:250%;pointer-events:none}',
+      '.st2-thumb iframe{border:0;width:100%;height:100%;transform:scale(.4);transform-origin:top left;width:250%;height:250%;pointer-events:none}.st2-thumb img{display:block;width:100%;height:100%;object-fit:cover}/* thumb-png-pref */',
       '.st2-thumb-fallback{display:flex;align-items:center;justify-content:center;height:100%;color:var(--t3,#64748B);font-size:11px;text-transform:uppercase;letter-spacing:.1em}',
       '.st2-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:.06em}',
       '.st2-card-meta{padding:10px 12px}',
@@ -765,6 +786,10 @@
   // SCREEN 2 — EDITOR
   // ═══════════════════════════════════════════════════════════════
   function _mountEditor() {
+    // 2026-07-03 — CONSOLIDATION REVERTED for image: visual testing proved the
+    // element editor (IIFE2) is broken — it references _fetchJson which is only
+    // defined in IIFE1, so it throws "ReferenceError: _fetchJson is not defined"
+    // on load. The srcdoc editor below is the WORKING one → it stays canonical.
     var host = _getOrCreateHost();
     host.innerHTML =
       '<div class="st-topbar">' +
@@ -854,9 +879,25 @@
     var cw = 1080, ch = 1080;
     try {
       var doc = iframe.contentDocument;
-      var el = doc && (doc.querySelector('.canvas') || doc.body);
-      if (el) { cw = el.offsetWidth || cw; ch = el.offsetHeight || ch; }
+      // Look for the design root element. New templates use .post or #post;
+      // legacy DB-layered designs used .canvas. Fall back to reading the
+      // canvas dims from CSS custom props (--w/--h or --post-w/--post-h)
+      // before giving up on doc.body (which would be the viewport, not the
+      // template canvas, so always wrong).
+      var el = doc && (doc.querySelector('.post') || doc.querySelector('#post') || doc.querySelector('.reel') || doc.querySelector('.canvas'));
+      if (el) {
+        cw = el.offsetWidth || cw; ch = el.offsetHeight || ch;
+      } else if (doc && doc.documentElement) {
+        var s = getComputedStyle(doc.documentElement);
+        var w1 = parseInt(s.getPropertyValue('--w'), 10);
+        var w2 = parseInt(s.getPropertyValue('--post-w'), 10);
+        var h1 = parseInt(s.getPropertyValue('--h'), 10);
+        var h2 = parseInt(s.getPropertyValue('--post-h'), 10);
+        if (w1) cw = w1; else if (w2) cw = w2;
+        if (h1) ch = h1; else if (h2) ch = h2;
+      }
     } catch(_e) {}
+    /* canvas-measure-post */
     _cw = cw; _ch = ch;
     iframe.style.width  = cw + 'px';
     iframe.style.height = ch + 'px';
@@ -870,9 +911,16 @@
     if (!w) return;
     var ww = Math.max(200, w.clientWidth  - 120);
     var wh = Math.max(200, w.clientHeight - 120);
-    _zoom = Math.min(ww / _cw, wh / _ch, 1);
+    // Fit-to-WIDTH: text inside the design stays readable at the highest
+    // zoom that still shows the full canvas width. Vertical can overflow
+    // — user pans/scrolls. Old fit-to-MIN gave ~20-35% zoom on
+    // portrait/reels which made 12-16px text unreadable (3-5px on screen).
+    var zw = ww / _cw;
+    var zh = wh / _ch;
+    _zoom = Math.min(zw, 1);
+    if (zh >= zw) _zoom = Math.min(zw, zh, 1);  // landscape: original behavior
     _panX = (w.clientWidth  - _cw * _zoom) / 2;
-    _panY = (w.clientHeight - _ch * _zoom) / 2;
+    _panY = (_cw * _zoom <= ww) ? Math.max(20, (w.clientHeight - _ch * _zoom) / 2) : 20;
     _applyTransform();
   }
 
@@ -966,7 +1014,41 @@
       if (!ok) return;
       window.removeEventListener('resize', _measureAndFit);
       _mountGallery();
+      // v5.7.22 (2026-05-31) — Phase 2 URL: drop tail when returning to gallery
+      try {
+        if (window._luRouter && window._luRouter.enabled()) {
+          window._luRouter.pushView('studio');
+        }
+      } catch (_e) {}
     });
+  };
+
+  // v5.7.22 (2026-05-31) — Phase 2 deep link: /app/studio/{id} → fetch the
+  // design and mount the editor. Exposes a clean entry point for the
+  // router so it doesn't need to poke closure-bound vars. silentPush
+  // controls whether to push URL (false during initial-URL nav to avoid
+  // an immediate re-push of the URL we just landed on).
+  window.studioOpenDesign = async function(id, silentPush) {
+    var nid = Number(id);
+    if (!Number.isFinite(nid) || nid <= 0) return;
+    try {
+      var res = await _fetchJson('/studio/designs/' + nid);
+      var d = res && (res.design || res);
+      if (!d) { _toast && _toast('Design not found', 'error'); return; }
+      _designId = nid;
+      _designName = (d.name || d.title || ('Design #' + nid));
+      _mountEditor();
+      if (!silentPush) {
+        try {
+          if (window._luRouter && window._luRouter.enabled()) {
+            window._luRouter.pushView('studio', String(nid));
+          }
+        } catch (_e) {}
+      }
+    } catch (e) {
+      console.warn('[Studio] open design failed:', e);
+      _toast && _toast('Could not open design: ' + (e.message || 'unknown'), 'error');
+    }
   };
 
   // ── Tab switching ────────────────────────────────────────────
@@ -3430,16 +3512,17 @@
     _stAutoSave(true).then(function(){
       var url = '/api/studio/designs/' + EDT.design.id + '/render-png' + (format === 'jpg' ? '?format=jpg&quality=90' : '');
       // Use a fetch so we can wait for ready then open
-      fetch(url, { method:'POST', headers:{ 'Authorization': 'Bearer ' + _tok() } })
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          if (d.success && d.png_url) {
-            var a = document.createElement('a'); a.href = d.png_url; a.download = (EDT.design.name || 'design') + '.' + format;
-            document.body.appendChild(a); a.click(); a.remove();
-            _toast('Download ready', 'success');
-          } else {
-            _toast('Export failed: ' + (d.error || 'unknown'), 'error');
-          }
+      // 2026-07-03 (#3) — render-png returns a raw PNG/JPG binary, not JSON. Read
+      // the blob + download it (was r.json() → d.png_url → always "Export failed").
+      fetch(url, { method:'POST', headers:{ 'Authorization': 'Bearer ' + _tok(), 'Accept':'image/'+(format==='jpg'?'jpeg':'png') } })
+        .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error('HTTP '+r.status+(t?': '+t.slice(0,200):'')); }); return r.blob(); })
+        .then(function(blob){
+          if(!blob || blob.size < 100) throw new Error('empty response');
+          var u = URL.createObjectURL(blob);
+          var a = document.createElement('a'); a.href = u; a.download = (EDT.design.name || 'design') + '.' + format;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function(){ URL.revokeObjectURL(u); }, 5000);
+          _toast('Download ready', 'success');
         }).catch(function(e){ _toast('Export failed: ' + e.message, 'error'); });
     });
   }

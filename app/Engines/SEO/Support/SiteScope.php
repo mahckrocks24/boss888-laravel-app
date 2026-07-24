@@ -24,15 +24,15 @@ class SiteScope
 {
     public static function hostFromRequest(Request $request): string
     {
-        $candidate = trim((string) (
-            $request->query('site_url')
-            ?? $request->input('site_url')
-            ?? ''
-        ));
-        if ($candidate === '') {
-            return '';
-        }
-        return self::hostFromUrl($candidate);
+        // 2026-06-24 — NO-OP under the website=workspace architecture. The
+        // WORKSPACE is now the hard separation boundary (each website is its own
+        // workspace with isolated SEO/CRM/blog/tasks), so in-workspace host
+        // filtering is obsolete and would wrongly hide data. Returning '' makes
+        // every caller fall back to full workspace scope (its single site).
+        // Kept as a no-op (not deleted) so the 29 call-sites keep compiling;
+        // site selection is now the workspace switcher. hostFromUrl() remains
+        // for any explicit host parsing needs.
+        return '';
     }
 
     public static function hostFromUrl(string $url): string

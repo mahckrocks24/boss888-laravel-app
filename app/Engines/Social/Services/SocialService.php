@@ -102,26 +102,28 @@ class SocialService
         return ['posts' => $q->orderByDesc('created_at')->limit($filters['limit'] ?? 50)->get(), 'total' => $total];
     }
 
-    public function updatePost(int $id, array $data): array
+    public function updatePost(int $id, array $data, ?int $wsId = null): array
     {
         $update = array_intersect_key($data, array_flip(['content', 'platform']));
         if (isset($data['media'])) $update['media_json'] = json_encode($data['media']);
         if (isset($data['hashtags'])) $update['hashtags_json'] = json_encode($data['hashtags']);
         $update['updated_at'] = now();
-        DB::table('social_posts')->where('id', $id)->update($update);
+        $n = DB::table('social_posts')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update($update);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Post not found');
         return ['updated' => true];
     }
 
-    public function schedulePost(int $postId, string $scheduledAt): void
+    public function schedulePost(int $postId, string $scheduledAt, ?int $wsId = null): void
     {
-        DB::table('social_posts')->where('id', $postId)->update([
+        $n = DB::table('social_posts')->where('id', $postId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update([
             'status' => 'scheduled', 'scheduled_at' => $scheduledAt, 'updated_at' => now(),
         ]);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Post not found');
     }
 
-    public function publishPost(int $postId): array
+    public function publishPost(int $postId, ?int $wsId = null): array
     {
-        $post = DB::table('social_posts')->where('id', $postId)->first();
+        $post = DB::table('social_posts')->where('id', $postId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->first();
         if (!$post) throw new \RuntimeException("Post not found");
 
         try {
@@ -130,24 +132,36 @@ class SocialService
                 'media' => json_decode($post->media_json ?? '[]', true),
                 'account_id' => $post->social_account_id,
             ]);
-
-            DB::table('social_posts')->where('id', $postId)->update([
-                'status' => 'published', 'published_at' => now(),
-                'external_post_id' => $result['external_id'] ?? null,
-                'updated_at' => now(),
-            ]);
-
-            $this->engineIntel->recordToolUsage('social', 'social_publish_post', 0.9);
-            return ['published' => true, 'external_id' => $result['external_id'] ?? null];
         } catch (\Throwable $e) {
             DB::table('social_posts')->where('id', $postId)->update(['status' => 'failed', 'updated_at' => now()]);
-            return ['published' => false, 'error' => $e->getMessage()];
+            \Illuminate\Support\Facades\Log::warning("Social publish exception for post {$postId} ({$post->platform})", ['error' => $e->getMessage()]);
+            throw new \RuntimeException("The post wasn't published to {$post->platform} — social publishing isn't connected for this workspace yet. Connect your {$post->platform} account in Settings to publish for real.");
         }
+
+        // HONESTY GUARD (2026-07-15): only mark published on a REAL provider success.
+        // A mock result, a false success flag, or a missing external id means it did
+        // NOT actually reach the platform — never report those as published.
+        $reallyPublished = ($result['success'] ?? false) && !empty($result['external_id']) && empty($result['mock']);
+        if (!$reallyPublished) {
+            DB::table('social_posts')->where('id', $postId)->update(['status' => 'failed', 'updated_at' => now()]);
+            \Illuminate\Support\Facades\Log::warning("Social publish not confirmed for post {$postId} ({$post->platform})", ['error' => $result['error'] ?? 'unknown', 'mock' => $result['mock'] ?? false]);
+            throw new \RuntimeException("The post wasn't published to {$post->platform} — social publishing isn't connected for this workspace yet. Connect your {$post->platform} account in Settings to publish for real.");
+        }
+
+        DB::table('social_posts')->where('id', $postId)->update([
+            'status' => 'published', 'published_at' => now(),
+            'external_post_id' => $result['external_id'],
+            'updated_at' => now(),
+        ]);
+
+        $this->engineIntel->recordToolUsage('social', 'social_publish_post', 0.9);
+        return ['published' => true, 'external_id' => $result['external_id']];
     }
 
-    public function deletePost(int $id): void
+    public function deletePost(int $id, ?int $wsId = null): void
     {
-        DB::table('social_posts')->where('id', $id)->update(['deleted_at' => now()]);
+        $n = DB::table('social_posts')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update(['deleted_at' => now()]);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Post not found');
     }
 
     // ═══════════════════════════════════════════════════════
@@ -164,11 +178,17 @@ class SocialService
      */
     public function aiGeneratePost(int $wsId, array $params): array
     {
+        // /* phase1-brand-aware */ — resolve workspace brand kit; params override
+        $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)
+            ->resolveWithOverrides($wsId, $params);
+
         $platform = $params['platform'] ?? 'instagram';
         $topic    = $params['topic'] ?? '';
-        $tone     = $params['tone'] ?? 'professional';
+        // tone resolved from workspace brand; param can still override
+        $tone     = $params['tone'] ?? $kit['tone'];
 
-        // ── Creative blueprint (still routes through CreativeService for R5) ─
+        // ── Creative blueprint (kept for industry context, but brand voice/colors
+        // now come from WorkspaceBrandKitResolver — white-label enforced) ──
         $bp    = $this->blueprint($wsId, 'post', [
             'platform' => $platform,
             'goal'     => "Engaging {$platform} post about {$topic}",
@@ -179,7 +199,13 @@ class SocialService
         $context = array_filter([
             'platform'      => $platform,
             'tone'          => $tone,
-            'brand_voice'   => 'Marcus — social media specialist',
+            // Workspace-grounded brand voice (NEVER "Marcus — social media specialist")
+            'brand_name'    => $kit['brand_name'],
+            'brand_voice'   => $kit['voice'],
+            'brand_primary' => $kit['primary_color'],
+            'brand_secondary' => $kit['secondary_color'],
+            'industry'      => $kit['industry'],
+            'audience'      => $kit['target_audience'],
             'brand_context' => $bpCtx ?: null,
             'business'      => !empty($params['context']) ? json_encode($params['context']) : null,
         ], fn($v) => $v !== null && $v !== '');
@@ -332,6 +358,30 @@ class SocialService
                   ->orWhereBetween('published_at', [$from, $to]);
             })
             ->orderBy('scheduled_at')->get()->toArray();
+    }
+
+    /**
+     * Queue a post for publishing. Called by Studio's publishToSocial bridge
+     * after a design has been exported. Creates a social_posts row + ties it
+     * to the design id; downstream publishPost() handles actual platform send.
+     *
+     * Phase 1 implementation: creates draft post row. Phase 2+ will add
+     * platform routing + scheduled queue.
+     */
+    public function queuePost(int $wsId, array $data): array
+    {
+        $post = $this->createPost($wsId, array_merge([
+            'status'    => 'draft',
+            'source'    => 'studio',
+            'platform'  => $data['platform'] ?? 'instagram',
+            'content'   => $data['caption'] ?? '',
+        ], $data));
+        return [
+            'success'   => true,
+            'post_id'   => $post['post_id'] ?? null,
+            'status'    => 'queued',
+            'message'   => 'Post queued from Studio — visible in calendar for review/scheduling.',
+        ];
     }
 
     public function getDashboard(int $wsId): array

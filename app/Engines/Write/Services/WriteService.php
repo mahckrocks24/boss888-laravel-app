@@ -139,6 +139,10 @@ class WriteService
             'is_marketing_blog' => !empty($data['is_marketing_blog']),
             'featured_image_url'=> $data['featured_image_url'] ?? null,
             'status'            => 'draft',
+            // 2026-06-10 — honour a caller-supplied scheduled_at (single OR batch
+            // article path). The Pipeline/Calendar tab reads articles.scheduled_at;
+            // before this, batch fan-out queued everything with no calendar date.
+            'scheduled_at'      => $data['scheduled_at'] ?? null,
             'seo_json'          => !empty($seoJson)   ? json_encode($seoJson)   : null,
             'brief_json'        => !empty($briefJson) ? json_encode($briefJson) : null,
             'word_count'        => str_word_count(strip_tags($content)),
@@ -169,9 +173,11 @@ class WriteService
         return ['article_id' => $id, 'status' => 'draft'];
     }
 
-    public function updateArticle(int $articleId, array $data): array
+    public function updateArticle(int $articleId, array $data, ?int $wsId = null): array
     {
-        $article = DB::table('articles')->where('id', $articleId)->first();
+        $article = DB::table('articles')->where('id', $articleId)
+            ->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))
+            ->first();
         if (!$article) throw new \RuntimeException("Article not found: {$articleId}");
 
         $update = [];
@@ -299,30 +305,39 @@ class WriteService
         return ['articles' => $articles, 'total' => $total];
     }
 
-    public function deleteArticle(int $articleId): void
+    public function deleteArticle(int $articleId, ?int $wsId = null): void
     {
-        DB::table('articles')->where('id', $articleId)->delete();
+        $deleted = DB::table('articles')->where('id', $articleId)
+            ->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))
+            ->delete();
+        if ($wsId !== null && $deleted === 0) throw new \RuntimeException("Article not found: {$articleId}");
     }
 
     // ═══════════════════════════════════════════════════════
     // VERSION HISTORY
     // ═══════════════════════════════════════════════════════
 
-    public function getVersions(int $articleId): array
+    public function getVersions(int $articleId, ?int $wsId = null): array
     {
+        if ($wsId !== null && !DB::table('articles')->where('id', $articleId)->where('workspace_id', $wsId)->exists()) {
+            return [];
+        }
         return DB::table('article_versions')->where('article_id', $articleId)
             ->orderByDesc('version_number')->get()->toArray();
     }
 
-    public function restoreVersion(int $articleId, int $versionId): array
+    public function restoreVersion(int $articleId, int $versionId, ?int $wsId = null): array
     {
-        $version = DB::table('article_versions')->where('id', $versionId)->first();
+        if ($wsId !== null && !DB::table('articles')->where('id', $articleId)->where('workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException("Article not found: {$articleId}");
+        }
+        $version = DB::table('article_versions')->where('id', $versionId)->where('article_id', $articleId)->first();
         if (!$version) throw new \RuntimeException("Version not found");
         // Schema has $version->content (not body)
         return $this->updateArticle($articleId, [
             'content'      => $version->content,
             'version_note' => "Restored from v{$version->version_number}",
-        ]);
+        ], $wsId);
     }
 
     /**
@@ -391,7 +406,8 @@ class WriteService
             'topic'         => $topic,
             'audience'      => $params['audience'] ?? null,
             'funnel_stage'  => $params['funnel_stage'] ?? null,
-            'brand_voice'   => 'Priya — a professional content writer',
+            // /* phase1-brand-aware */ — workspace voice (not Priya persona)
+            'brand_voice'   => (app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId))['voice'],
             'brand_context' => $bpCtx ?: null,
         ], fn($v) => $v !== null && $v !== '');
 
@@ -402,19 +418,81 @@ class WriteService
         $maxWords = max($minWords + 50, (int) ($params['max_words'] ?? ($length + 100)));
         $targetWords = $length;
 
+        // 2026-05-23 FIX 43 — content rules (Sarah intelligence v1).
+        // These are appended to the brief for every article path that
+        // goes through WriteService::writeArticle (Sarah chain, SEO
+        // Assistant batch, WP plugin direct, batch tasks). Two rules:
+        //   1) Never name competitors. Generic — the LLM should write
+        //      about products/services/categories without naming
+        //      specific competing brands. Prevents accidental promotion
+        //      and avoids competitor SEO juice.
+        //   2) Year-currency. Earlier articles ran while runtime had
+        //      stale year context and produced "tips for 2025" titles
+        //      when today is 2026. Inject the current year and tell
+        //      the LLM to never include prior years in evergreen
+        //      content unless the user explicitly asked for a year
+        //      retrospective.
+        $currentYear = (int) date('Y');
+        $contentRules = "\n\n══ Content rules (strict — do not break) ══\n"
+            . "1. NEVER mention, name, or promote specific competitor companies, brands, agencies, "
+            . "or service providers by name. Write about categories, approaches, and the workspace's "
+            . "own brand only. If discussing 'options' or 'alternatives', describe them generically "
+            . "(e.g., 'a national catering chain', 'a meal-delivery service') — never a real brand.\n"
+            . "2. The current year is {$currentYear}. NEVER include a year prior to {$currentYear} in "
+            . "the title, H1, H2, or meta unless the article is explicitly a year-in-review or "
+            . "historical retrospective. 'Tips for " . ($currentYear - 1) . "' style headings are forbidden — "
+            . "use 'Tips for {$currentYear}' or no year at all. Same rule applies to pricing data, "
+            . "trend predictions, and statistics — anchor them to {$currentYear} or 'this year', "
+            . "never an outdated year.";
+
+        // 2026-06-11 — DUPLICATE-CONTENT GUARD (feeds the runtime's uniqueness rule).
+        // Root cause of the chef-red doorway problem: 33 county pages generated as
+        // generic 'blog_article' with only the county name varying → ~90% identical.
+        // Fix: (a) route location/service-area pages to the runtime's differentiation-
+        // structured 'location_page' template; (b) pass the titles + opening lines of
+        // SIBLING articles so the model is forced to diverge from them.
+        $titleForType = (string) ($params['title'] ?? $topic);
+        $isLocationPage = (bool) preg_match('/\bcounty\b|\bservice area\b|\bnear me\b/i', $titleForType)
+            || (bool) preg_match('/\bin\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*,\s*[A-Z]{2}\b/', $titleForType);
+        $siblingPages = [];
+        try {
+            $kwSeed = $keyword ?: implode(' ', array_slice(array_filter(explode(' ',
+                trim(preg_replace('/\b(in|near|around|the|a|an|services?|service|of|for|your|our)\b/i', ' ', strtolower($titleForType))))), 0, 3));
+            if ($kwSeed !== '') {
+                $sibs = DB::table('articles')->where('workspace_id', $wsId)
+                    ->where('title', 'like', '%' . $kwSeed . '%')
+                    ->orderByDesc('id')->limit(6)->get(['title', 'content']);
+                foreach ($sibs as $s) {
+                    if (($s->title ?? '') === ($params['title'] ?? '')) continue;
+                    $open = trim(mb_substr(preg_replace('/\s+/', ' ', strip_tags((string) ($s->content ?? ''))), 0, 180));
+                    $siblingPages[] = '• ' . $s->title . ($open !== '' ? ' — opens: "' . $open . '…"' : '');
+                }
+            }
+        } catch (\Throwable $e) { /* non-fatal — differentiation context is best-effort */ }
+
         $draftParams = [
             'title'        => $params['title'] ?? ucfirst($topic),
             'brief'        => ($params['brief'] ?? "Write a {$type} about: {$topic}")
                             . ". Target length: {$targetWords} words (strict minimum {$minWords}, maximum {$maxWords}). "
-                            . 'Use H2 subheadings to structure the article, write substantive paragraphs of 80-150 words each, and include a brief introduction and conclusion. Do not pad with filler.',
+                            . 'Use H2 subheadings to structure the article, write substantive paragraphs of 80-150 words each, and include a brief introduction and conclusion. Do not pad with filler.'
+                            . $contentRules,
             'keywords'     => $keyword ? [$keyword] : [],
             'tone'         => $tone,
             'length'       => $lengthEnum,
             'min_words'    => $minWords,
             'max_words'    => $maxWords,
             'target_words' => $targetWords,
-            'content_type' => $type === 'blog_post' ? 'blog_article' : $type,
-            'context'      => $context,
+            'content_type' => $isLocationPage ? 'location_page' : ($type === 'blog_post' ? 'blog_article' : $type),
+            'context'      => array_merge($context, array_filter([
+                'current_year'   => (string) $currentYear,
+                'content_rules'  => 'no_competitor_names,no_prior_year',
+                'existing_pages' => !empty($siblingPages)
+                    ? ('This workspace ALREADY has these similar pages — your output MUST be materially different from them (different opening, examples, section order, and local specifics), NOT a templated clone: ' . implode('  ', $siblingPages))
+                    : null,
+                'differentiate'  => $isLocationPage
+                    ? 'This is a location/service-area page. Use genuinely local specifics for THIS exact area (real neighbourhoods, towns, landmarks, local context). Do NOT reuse boilerplate from other area pages with the place name swapped.'
+                    : null,
+            ])),
         ];
         $result = $this->runtime->writeDraft($draftParams);
 
@@ -481,6 +559,7 @@ class WriteService
             'assigned_agent'    => 'priya',
             'is_marketing_blog' => $params['is_marketing_blog'] ?? ($type === 'blog_post' || $type === 'blog_article'),
             'user_id'           => $params['user_id'] ?? null,
+            'scheduled_at'      => $params['scheduled_at'] ?? null, // 2026-06-10 — batch calendar spread
         ]);
 
         $this->engineIntel->recordToolUsage('write', 'write_article', $result['success'] ? 0.8 : 0.3);
@@ -491,6 +570,48 @@ class WriteService
         // indexer only runs at publish time).
         if (!empty($article['article_id']) || !empty($article['id'])) {
             $this->indexArticleForLinkGraph($wsId, $article['article_id'] ?? $article['id']);
+        }
+
+        // 2026-06-13 — FEATURED IMAGE *before* the WordPress push. The
+        // "fully-optimized article" bundle (2cr) includes a featured image, but
+        // this method only persisted text; the auto-push below then sent a
+        // draft with NO image to WordPress (and batch/task articles never got
+        // an image at all). Root cause of imageless WP drafts. Generate it HERE
+        // — after the row exists, BEFORE the push — when the caller opted into
+        // the bundle image (auto_featured_image) and the row has none yet.
+        // CREATIVE888 is only CALLED: generateImage() sets featured_image_url +
+        // alt on the article row in place; no Creative/* logic is touched.
+        // Best-effort + creditless: the 2cr bundle the caller already reserved
+        // covers it, and a failure leaves a text-only draft exactly as before
+        // (no regression, no double-charge, no double-generation — the single
+        // /connector/generate-article path stays idempotent because it checks
+        // for an existing featured_image_url before its own image step).
+        $newArticleId = $article['article_id'] ?? $article['id'] ?? null;
+        if ($newArticleId && ! empty($params['auto_featured_image'])) {
+            $alreadyHasImage = DB::table('articles')->where('id', $newArticleId)->value('featured_image_url');
+            if (empty($alreadyHasImage)) {
+                try {
+                    app(\App\Engines\Creative\Services\CreativeService::class)->generateImage($wsId, [
+                        'article_id' => (int) $newArticleId,
+                        'quality'    => 'mini',
+                        'user_id'    => $params['user_id'] ?? null,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::warning('[Write] auto featured-image generation failed (text-only draft kept): ' . $e->getMessage());
+                }
+            }
+        }
+
+        // 2026-05-23 FIX 28 (Part A) — auto-push to WordPress as a draft for
+        // any workspace with WP credentials. Previously this only fired in
+        // SeoAssistantService::execGenerateArticle (FIX 21), so the single-
+        // article chat path worked but batch tasks created via Sarah's
+        // chain (or the new SEO Assistant batch path) never reached WP.
+        // Idempotent via wp_post_id check inside the helper. Non-fatal on
+        // failure — the article still lives in Laravel. (Featured image is now
+        // generated just above, so the pushed draft carries it.)
+        if (!empty($article['article_id']) || !empty($article['id'])) {
+            $this->pushDraftToWordPressIfConnected($wsId, $article['article_id'] ?? $article['id']);
         }
 
         return array_merge($article, [
@@ -515,9 +636,55 @@ class WriteService
         $content   = $params['content'] ?? $params['body'] ?? '';
 
         if ($articleId) {
-            $article = DB::table('articles')->where('id', $articleId)->first();
+            // IDOR FIX (2026-07-18) — this lookup was UNSCOPED
+            // (`where('id',$articleId)` only), the exact cross-tenant pattern
+            // swept on 2026-07-15. A caller passing another tenant's article_id
+            // would have had its content read and overwritten.
+            $article = DB::table('articles')
+                ->where('id', $articleId)
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->first();
             // Schema is `content`, not `body`
             $content = $article->content ?? $content;
+
+            // Not ours (or gone) — do not silently fall through to a self-resolved
+            // target, which would improve a DIFFERENT article than was asked for.
+            if (! $article) {
+                throw new \InvalidArgumentException("Article {$articleId} not found in this workspace");
+            }
+        }
+
+        // BULK-PROPOSAL FIX (2026-07-18) — Sarah's daily proposals spawn
+        // improve_draft tasks carrying only {title, description, proposal_id}:
+        // no article_id, no content. Orchestrator.php:701 documents article_id
+        // as REQUIRED, so every proposal-generated run threw "No content to
+        // improve" — 9 of 10 improve_draft tasks failed, every day, across
+        // ws2/ws7/ws26 (tasks 1900/1918/1948/1961/1987/1995).
+        //
+        // Self-resolve a target the way fix_orphans already does
+        // (Orchestrator.php:688 — "no params (optional limit)"): take this
+        // workspace's SHORTEST non-empty draft, which is what "expand thin
+        // pages" means in practice. Deterministic SQL, no scoring or ranking
+        // heuristic, so it stays on the Laravel side of hands-vs-brain.
+        if (empty($content) && ! $articleId) {
+            $article = DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->where('status', 'draft')
+                ->whereNull('deleted_at')
+                ->whereNotNull('content')
+                ->where('content', '!=', '')
+                ->orderByRaw('CHAR_LENGTH(content) ASC')
+                ->first();
+            if ($article) {
+                $articleId = (int) $article->id;
+                $content   = (string) $article->content;
+                \Illuminate\Support\Facades\Log::info('[WriteService] improve_draft self-resolved a target', [
+                    'workspace_id' => $wsId,
+                    'article_id'   => $articleId,
+                    'reason'       => 'no article_id/content in params (bulk proposal)',
+                ]);
+            }
         }
 
         if (empty($content)) throw new \InvalidArgumentException('No content to improve');
@@ -655,6 +822,56 @@ class WriteService
      * Cost: 1 credit standalone, 0 when bundled in a Sarah chain.
      * No-op (returns existing state) if article was enriched in the last 5 minutes.
      */
+    /**
+     * 2026-07-07 — BULK resolver: generate featured images for EVERY article in
+     * the workspace that is missing one. The BACKEND finds the real articles (by
+     * workspace_id + empty featured_image_url) and fans out one image task per
+     * real article_id. This is the fix for "add images to all the missing ones":
+     * Sarah emits ONE intent and never has to guess article ids (the root of the
+     * cross-workspace id-fabrication bug). Bounded by `limit` (default 10, max 25).
+     */
+    public function fillMissingImages(int $wsId, array $params): array
+    {
+        $limit = min(max((int) ($params['limit'] ?? 10), 1), 25);
+
+        $articles = \Illuminate\Support\Facades\DB::table('articles')
+            ->where('workspace_id', $wsId)
+            ->whereIn('status', ['published', 'draft'])
+            ->whereNull('deleted_at')
+            ->where(function ($w) {
+                $w->whereNull('featured_image_url')->orWhere('featured_image_url', '');
+            })
+            ->orderByDesc('updated_at')
+            ->limit($limit)
+            ->get(['id', 'title']);
+
+        if ($articles->isEmpty()) {
+            return ['success' => true, 'created' => 0, 'changed' => false,
+                    'message' => 'Every article already has a featured image — nothing to do.'];
+        }
+
+        $taskSvc = app(\App\Core\TaskSystem\TaskService::class);
+        $taskIds = [];
+        foreach ($articles as $a) {
+            $t = $taskSvc->create($wsId, [
+                'engine' => 'creative', 'action' => 'generate_image_mini', 'source' => 'agent',
+                'assigned_agents' => ['priya'], 'auto_approve' => true, 'requires_approval' => false,
+                'credit_cost' => 2,
+                'payload' => ['article_id' => (int) $a->id, 'title' => 'Featured image for ' . $a->title, 'created_via' => 'fill_missing_images'],
+            ]);
+            $taskIds[] = (int) $t->id;
+        }
+
+        return [
+            'success'     => true,
+            'created'     => count($taskIds),
+            'article_ids' => $articles->pluck('id')->all(),
+            'task_ids'    => $taskIds,
+            'message'     => count($taskIds) . ' featured image' . (count($taskIds) === 1 ? '' : 's')
+                             . ' are being generated for the articles that were missing them.',
+        ];
+    }
+
     public function aeoEnrich(int $wsId, array $params): array
     {
         $articleId = (int) ($params['article_id'] ?? 0);
@@ -928,10 +1145,9 @@ class WriteService
         $articleId = $params['article_id'] ?? null;
 
         // Wave 41 — when called from the chain we only get article_id, no
-        // title or content. Load them from the articles table so the LLM has
-        // real context to generate topic-specific meta. Without this, the
-        // prompt receives empty article_title + first_200 and the model
-        // returns a generic SEO-tutorial response.
+        // title or content. Load from articles table so the LLM has real
+        // context (without this the prompt receives empty article_title +
+        // empty body and the model returns a generic SEO-tutorial reply).
         if ($articleId && (!$title || !$content)) {
             $art = \Illuminate\Support\Facades\DB::table('articles')
                 ->where('id', $articleId)
@@ -944,43 +1160,197 @@ class WriteService
             }
         }
 
+        // 2026-05-23 FIX 38 — when called from the chain, the task payload
+        // title is something like "Article 1: generate meta", NOT the
+        // actual article title. If that string sneaks into $title we end
+        // up writing it as the article's meta_title (FIX 36 incident).
+        // Heuristic: if $title looks like a task-payload string and we
+        // have an articleId, prefer the article's real title from DB.
+        if ($articleId && $title !== '' && preg_match('/^(Article\s+\d+|Meta\s+title|generate\s+meta)/i', $title)) {
+            $dbTitle = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('id', $articleId)->where('workspace_id', $wsId)
+                ->value('title');
+            if ($dbTitle) $title = $dbTitle;
+        }
+
+        $bodyText = trim(preg_replace('/\s+/', ' ', strip_tags((string) $content)));
+        $excerpt = mb_substr($bodyText, 0, 900);
+
         $context = array_filter([
-            'task'         => 'meta_generation',
-            'article_title'=> $title,
-            'keyword'      => $keyword,
-            'first_200'    => substr(strip_tags($content), 0, 200),
+            'workspace_id'  => $wsId,
+            'article_id'    => $articleId,
+            'task'          => 'meta_generation',
+            'article_title' => $title,
+            'keyword'       => $keyword,
         ], fn($v) => $v !== null && $v !== '');
 
-        $userPrompt = "Generate SEO meta title (50-60 chars) and meta description (150-160 chars). "
-                    . "Include the keyword naturally. "
-                    . "Output as JSON: {\"title\":\"...\",\"description\":\"...\"}";
+        // 2026-05-23 FIX 38 — strict prompt + JSON-only output. Same shape
+        // FIX 37 used for the backfill (worked 39/39 with zero failures).
+        // 2026-05-23 FIX 43 — content rules: no competitor names, no
+        // outdated years. Applied here so meta_title/meta_description
+        // never include "Pricing Guide 2025" when today is 2026.
+        $currentYear = (int) date('Y');
+        $userPrompt = "You are writing SEO meta for a published blog post.\n\n"
+                    . "Article title: " . $title . "\n"
+                    . ($keyword !== '' ? "Focus keyword: $keyword\n" : "")
+                    . "Article opening: $excerpt\n\n"
+                    . "Write a meta title (50-60 characters, includes the focus keyword if provided, click-worthy, sentence case)\n"
+                    . "and meta description (150-160 characters, includes the keyword, summarises the article, ends with a clear value or CTA).\n\n"
+                    . "STRICT RULES:\n"
+                    . "1. Never name competitor companies, brands, or service providers. Stay generic.\n"
+                    . "2. Current year is {$currentYear}. NEVER include a year prior to {$currentYear} in meta_title or meta_description. If a year reference is useful, use {$currentYear} or omit the year.\n\n"
+                    . "Return ONLY this JSON, no preamble, no code fences, no commentary:\n"
+                    . "{\"meta_title\":\"...\",\"meta_description\":\"...\"}";
 
-        $result = $this->runtime->aiRun('seo_content_generation', $userPrompt, $context, 250);
+        $meta = null;
+        $lastError = null;
 
-        $meta = ['title' => $title, 'description' => substr(strip_tags($content), 0, 155)];
-        if ($result['success'] && !empty($result['text'])) {
-            $parsed = json_decode($result['text'], true);
-            if (is_array($parsed) && isset($parsed['title'], $parsed['description'])) {
-                $meta = $parsed;
+        // 2026-05-23 FIX 38 — two attempts before giving up. Pre-FIX 38
+        // a single transient runtime hiccup wrote garbage permanently.
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                // 2026-05-24 FIX 56 — max_tokens 60→200. Meta title (60 chars)
+                // + description (160 chars) + JSON wrapping is ~250 chars ≈
+                // 60 tokens *exactly*. The runtime was truncating mid-JSON
+                // and parse failed on every retry. 200 gives ~4× headroom
+                // without burning extra credits — the LLM stops on the
+                // closing brace.
+                $result = $this->runtime->aiRun('seo_content_generation', $userPrompt, $context, 200);
+            } catch (\Throwable $e) {
+                $lastError = 'runtime exception: ' . $e->getMessage();
+                continue;
+            }
+            if (empty($result['success']) || empty($result['text'])) {
+                $lastError = 'runtime returned empty';
+                continue;
+            }
+            $candidate = $this->parseGeneratedMetaJson((string) $result['text']);
+            if ($candidate && $this->metaLengthOk($candidate)) {
+                $meta = $candidate;
+                break;
+            }
+            $lastError = 'invalid JSON or length out of range';
+        }
+
+        // 2026-05-23 FIX 38 — NO GARBAGE FALLBACK. Old code wrote
+        // $params['title'] (the task payload string) + first 155 body
+        // chars when the LLM failed. That corrupted 17 articles in the
+        // FIX 36 incident. Now: on failure, return success=false and
+        // DO NOT touch the article. Chain orchestrator can retry later.
+        if (!$meta) {
+            \Illuminate\Support\Facades\Log::warning('[WriteService::generateMeta] giving up — leaving article meta untouched', [
+                'workspace_id' => $wsId,
+                'article_id'   => $articleId,
+                'reason'       => $lastError,
+            ]);
+            return [
+                'success'    => false,
+                'error'      => $lastError ?? 'unknown',
+                'article_id' => $articleId,
+                'persisted'  => false,
+                'source'     => 'runtime',
+            ];
+        }
+
+        // 2026-05-23 FIX 38 — persist directly to articles.meta_title +
+        // articles.meta_description. The previous code went through
+        // updateArticle() with seo_title/seo_description keys, relying
+        // on column-name translation that may be misbehaving (22
+        // articles came back with empty fields in FIX 36 — suggests
+        // the translation silently dropped values).
+        if ($articleId) {
+            \Illuminate\Support\Facades\DB::table('articles')
+                ->where('id', $articleId)
+                ->where('workspace_id', $wsId)
+                ->update([
+                    'meta_title'       => $meta['title'],
+                    'meta_description' => $meta['description'],
+                    'updated_at'       => now(),
+                ]);
+
+            // 2026-06-22 — re-sync the SEO content index so the Pages view
+            // reflects the new meta immediately. Without this, generate_meta
+            // updated the article but left seo_content_index.meta_description
+            // stale, so the page was falsely flagged "missing meta".
+            // syncFromArticle carries meta_title/meta_description and does NOT
+            // touch inbound_links (verified) — so it won't re-orphan the page.
+            try {
+                $fresh = \Illuminate\Support\Facades\DB::table('articles')->find($articleId);
+                if ($fresh) {
+                    app(\App\Engines\SEO\Services\SeoService::class)
+                        ->syncFromArticle((int) $fresh->workspace_id, $fresh);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[Write] generateMeta SEO index sync failed: ' . $e->getMessage());
             }
         }
 
-        // PHASE 2C-W5 PERSISTENCE: if article_id is supplied, fold into seo_json
-        if ($articleId) {
-            $this->updateArticle($articleId, [
-                'seo_title'       => $meta['title'],
-                'seo_description' => $meta['description'],
-                'target_keyword'  => $keyword,
-                'user_id'         => $params['user_id'] ?? null,
-            ]);
-        }
-
         return [
+            'success'    => true,
             'meta'       => $meta,
             'article_id' => $articleId,
             'persisted'  => (bool) $articleId,
             'source'     => 'runtime',
         ];
+    }
+
+    /**
+     * 2026-05-23 FIX 38 — defensive JSON parser for LLM meta output.
+     * Handles three patterns the model emits:
+     *   1. Clean JSON: {"meta_title": "...", "meta_description": "..."}
+     *   2. Code-fenced JSON: ```json\n{...}\n```
+     *   3. Prose around JSON: "Here is your meta: {...} Hope this helps."
+     * Returns ['title' => ..., 'description' => ...] or null.
+     */
+    private function parseGeneratedMetaJson(string $text): ?array
+    {
+        // Strip markdown code fences.
+        $text = preg_replace('/^\s*```(?:json)?\s*/i', '', $text);
+        $text = preg_replace('/\s*```\s*$/', '', $text);
+        $text = trim($text);
+
+        // 2026-05-24 FIX 56 — normalize typographic quotes that LLMs
+        // occasionally emit. " " → ", ' ' → '. json_decode rejects
+        // these silently.
+        $text = strtr($text, [
+            "\xE2\x80\x9C" => '"', "\xE2\x80\x9D" => '"',
+            "\xE2\x80\x98" => "'", "\xE2\x80\x99" => "'",
+        ]);
+
+        // 2026-05-24 FIX 56 — strip trailing commas before closing
+        // braces/brackets. LLMs sometimes emit {"a": 1,} which is
+        // invalid JSON but easy to recover.
+        $text = preg_replace('/,(\s*[}\]])/', '$1', $text);
+
+        $parsed = json_decode($text, true);
+        if (!is_array($parsed)) {
+            if (preg_match('/\{[^{}]*\}/s', $text, $m)) {
+                $parsed = json_decode($m[0], true);
+            }
+        }
+        if (!is_array($parsed)) return null;
+
+        $title = trim((string) ($parsed['meta_title'] ?? $parsed['title'] ?? ''));
+        $desc  = trim((string) ($parsed['meta_description'] ?? $parsed['description'] ?? ''));
+        $title = trim($title, "\"'\t\n ");
+        $desc  = trim($desc, "\"'\t\n ");
+        if ($title === '' || $desc === '') return null;
+        return ['title' => $title, 'description' => $desc];
+    }
+
+    /**
+     * 2026-05-23 FIX 38 — length validation. Google snippets cap meta
+     * title around 60 chars and meta description around 160. Range is
+     * generous on either side because some niches benefit from longer
+     * titles (e.g. long-tail keywords) and some descriptions read
+     * better at 130. Outside these bounds we ask the model again
+     * rather than write a result that will get truncated in SERPs.
+     */
+    private function metaLengthOk(array $m): bool
+    {
+        $tl = mb_strlen($m['title']);
+        $dl = mb_strlen($m['description']);
+        return $tl >= 25 && $tl <= 75 && $dl >= 90 && $dl <= 200;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -1110,6 +1480,98 @@ class WriteService
             \Illuminate\Support\Facades\Log::warning('[WriteService] draft indexing failed (non-fatal)', [
                 'workspace_id' => $wsId, 'article_id' => $articleId, 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * 2026-05-23 FIX 28 (Part A) — push a newly-written draft to WordPress
+     * as a wp_draft post for workspaces with seo_settings.site_url +
+     * webhook_secret configured. Lifted from SeoAssistantService's FIX 21
+     * helper so EVERY write path benefits (single SEO Assistant chat, batch
+     * task chain, Sarah's chain via /agents/sarah/messages, and direct WP
+     * plugin calls to /connector/generate-article).
+     *
+     * Idempotent: bails out if wp_post_id is already set on the article.
+     * Non-fatal on any failure (HTTP error, plugin down, secret rotated,
+     * site not configured) — logs a warning and returns null. The article
+     * stays in Laravel and can be re-pushed later via the publish flow.
+     */
+    private function pushDraftToWordPressIfConnected(int $wsId, int $articleId): ?int
+    {
+        try {
+            $a = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('id', $articleId)
+                ->where('workspace_id', $wsId)
+                ->first(['id', 'title', 'content', 'meta_title', 'meta_description', 'featured_image_url', 'wp_post_id']);
+            if (!$a) return null;
+
+            // Idempotency — already pushed once, do not duplicate.
+            if (!empty($a->wp_post_id)) {
+                return (int) $a->wp_post_id;
+            }
+
+            $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)
+                ->where('key', 'site_url')
+                ->value('value');
+            $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)
+                ->where('key', 'webhook_secret')
+                ->value('value');
+
+            // No WP connection configured — Laravel-platform site or unconnected
+            // workspace. Skip silently (no log noise).
+            if (!$siteUrl || !$webhookSecret) {
+                return null;
+            }
+
+            $payload = [
+                'title'              => $a->title,
+                'content'            => $a->content,
+                'status'             => 'draft',
+                'meta_title'         => $a->meta_title ?: $a->title,
+                'meta_description'   => $a->meta_description ?: '',
+                'featured_image_url' => $a->featured_image_url ?: null,
+                'levelup_article_id' => $articleId,
+                'secret'             => $webhookSecret,
+            ];
+            $wpUrl = rtrim((string) $siteUrl, '/') . '/wp-json/lgsc/v1/create-post';
+
+            $r = \Illuminate\Support\Facades\Http::withHeaders([
+                    'Content-Type'  => 'application/json',
+                    'X-LGSC-Secret' => $webhookSecret,
+                ])
+                ->timeout(30)
+                ->post($wpUrl, $payload);
+
+            if (!$r->successful()) {
+                \Illuminate\Support\Facades\Log::warning('[WriteService] WP draft push HTTP error', [
+                    'workspace_id' => $wsId,
+                    'article_id'   => $articleId,
+                    'http'         => $r->status(),
+                    'body'         => mb_substr((string) $r->body(), 0, 400),
+                ]);
+                return null;
+            }
+
+            $body = $r->json() ?: [];
+            $wpPostId = isset($body['post_id']) && is_numeric($body['post_id'])
+                ? (int) $body['post_id'] : null;
+            if (!$wpPostId) return null;
+
+            \Illuminate\Support\Facades\DB::table('articles')->where('id', $articleId)->update([
+                'wp_post_id' => $wpPostId,
+                'updated_at' => now(),
+            ]);
+            \Illuminate\Support\Facades\Log::info('[WriteService] WP draft pushed', [
+                'workspace_id' => $wsId, 'article_id' => $articleId, 'wp_post_id' => $wpPostId,
+            ]);
+            return $wpPostId;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[WriteService] WP draft push failed (non-fatal)', [
+                'workspace_id' => $wsId, 'article_id' => $articleId, 'error' => $e->getMessage(),
+            ]);
+            return null;
         }
     }
 

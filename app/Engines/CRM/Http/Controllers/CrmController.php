@@ -118,7 +118,7 @@ class CrmController extends BaseEngineController
     public function restoreLead(Request $r, int $id): JsonResponse
     {
         // Restore is a direct operation (no credits needed)
-        return $this->readJson($this->crm->restoreLead($id));
+        return $this->readJson($this->crm->restoreLead($id, $this->wsId($r)));
     }
 
     public function scoreLead(Request $r, int $id): JsonResponse
@@ -146,12 +146,12 @@ class CrmController extends BaseEngineController
     public function updateContact(Request $r, int $id): JsonResponse
     {
         // Direct update (no credits)
-        return $this->readJson($this->crm->updateContact($id, $r->all()));
+        return $this->readJson($this->crm->updateContact($id, $r->all(), $this->wsId($r)));
     }
 
     public function deleteContact(Request $r, int $id): JsonResponse
     {
-        $this->crm->deleteContact($id);
+        $this->crm->deleteContact($id, $this->wsId($r));
         return $this->readJson(['success' => true]);
     }
 
@@ -170,7 +170,7 @@ class CrmController extends BaseEngineController
     public function updateDeal(Request $r, int $id): JsonResponse
     {
         // Direct update (no credits for field changes)
-        return $this->readJson($this->crm->updateDeal($id, $r->all(), $this->userId($r)));
+        return $this->readJson($this->crm->updateDeal($id, $r->all(), $this->userId($r), $this->wsId($r)));
     }
 
     public function updateDealStage(Request $r, int $id): JsonResponse
@@ -189,13 +189,13 @@ class CrmController extends BaseEngineController
 
     public function updateStage(Request $r, int $id): JsonResponse
     {
-        $this->crm->updateStage($id, $r->all());
+        $this->crm->updateStage($id, $r->all(), $this->wsId($r));
         return $this->readJson(['success' => true]);
     }
 
-    public function deleteStage(int $id): JsonResponse
+    public function deleteStage(Request $r, int $id): JsonResponse
     {
-        $this->crm->deleteStage($id);
+        $this->crm->deleteStage($id, $this->wsId($r));
         return $this->readJson(['success' => true]);
     }
 
@@ -214,7 +214,7 @@ class CrmController extends BaseEngineController
 
     public function completeActivity(Request $r, int $id): JsonResponse
     {
-        return $this->readJson($this->crm->completeActivity($id));
+        return $this->readJson($this->crm->completeActivity($id, $this->wsId($r)));
     }
 
     public function addNote(Request $r): JsonResponse
@@ -223,9 +223,9 @@ class CrmController extends BaseEngineController
         return $this->executeAction($r, 'add_note', $r->all());
     }
 
-    public function deleteNote(int $id): JsonResponse
+    public function deleteNote(Request $r, int $id): JsonResponse
     {
-        $this->crm->deleteNote($id);
+        $this->crm->deleteNote($id, $this->wsId($r));
         return $this->readJson(['success' => true]);
     }
 }

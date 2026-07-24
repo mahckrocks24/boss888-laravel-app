@@ -72,7 +72,16 @@ class ApprovalService
             'decided_at' => now(),
         ]);
 
+        // b21 (2026-07-24) — approve()/reject() and both bulk paths guard for a
+        // null task; revise() was the one that did not, so revising one of the
+        // task-less approval rows dereferenced null. Fail with a clear message
+        // instead of a 500 the caller has to decode.
         $task = $approval->task;
+        if (! $task) {
+            throw new \RuntimeException(
+                'This approval has no attached task and cannot be revised — reject or expire it instead.'
+            );
+        }
         $task->update(['approval_status' => 'revised', 'status' => 'pending']);
 
         // Create new pending approval for revised task

@@ -1,0 +1,80 @@
+{
+  "name": "Catering Reel",
+  "slug": "r23-catering",
+  "format": "reels",
+  "category": "catering",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "catering"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_sub": {
+      "type": "text",
+      "label": "Brand Sub",
+      "default": "Premium Catering"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "★★★★★"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Corporate & Events Catering"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Handcrafted menus for weddings, corporate events, and private gatherings — from 20 to 2,000 guests."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Food That"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "Makes Every"
+    },
+    "headline_accent": {
+      "type": "text",
+      "label": "Headline Accent",
+      "default": "Moment."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Get a Quote"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "catering"
+    ]
+  }
+}

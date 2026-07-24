@@ -1,0 +1,39 @@
+{
+  "name": "Bento Wellness Aurora",
+  "slug": "sp07-wellness-bento",
+  "format": "square",
+  "category": "social",
+  "sub_category": "wellness",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["wellness", "yoga", "mindfulness", "meditation", "lifestyle"],
+  "variables": {
+    "hero_image":      { "type": "image", "label": "Hero image",     "default": "https://images.unsplash.com/photo-1545389336-cf090694435e?w=660&q=85&fit=crop&crop=center" },
+    "badge_label":     { "type": "text",  "label": "Badge label",    "default": "New Program" },
+    "stat_val":        { "type": "text",  "label": "Stat value",     "default": "30" },
+    "stat_unit":       { "type": "text",  "label": "Stat unit",      "default": "days" },
+    "stat_label":      { "type": "text",  "label": "Stat label",     "default": "Transform your mindset" },
+    "brand_name":      { "type": "text",  "label": "Brand name",     "default": "Logo Here" },
+    "headline_1":      { "type": "text",  "label": "Headline 1",     "default": "Find Your" },
+    "headline_accent": { "type": "text",  "label": "Headline accent","default": "Inner" },
+    "headline_2":      { "type": "text",  "label": "Headline 2",     "default": "Calm." },
+    "subheading":      { "type": "text",  "label": "Subheading",     "default": "A guided journey to stillness, strength, and clarity." },
+    "card_c_deco":     { "type": "text",  "label": "C deco",         "default": "∞" },
+    "card_c_tag":      { "type": "text",  "label": "C tag",          "default": "Mindfulness" },
+    "quote_1":         { "type": "text",  "label": "Quote 1",        "default": "Breathe" },
+    "quote_accent":    { "type": "text",  "label": "Quote accent",   "default": "deeply," },
+    "quote_2":         { "type": "text",  "label": "Quote 2",        "default": "live fully." },
+    "card_d_label":    { "type": "text",  "label": "D label",        "default": "Start Today" },
+    "cta_text_1":      { "type": "text",  "label": "CTA text 1",     "default": "Begin" },
+    "cta_text_2":      { "type": "text",  "label": "CTA text 2",     "default": "Free." },
+    "cta_label":       { "type": "text",  "label": "CTA",            "default": "Join Now" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",      "default": "companyname.com" }
+  },
+  "css_variables": {},
+  "semantic": {
+    "mood": ["calm", "minimal"],
+    "color_temperature": "light",
+    "composition": "grid",
+    "best_for": ["wellness", "yoga", "mindfulness", "healthcare", "meditation"]
+  }
+}

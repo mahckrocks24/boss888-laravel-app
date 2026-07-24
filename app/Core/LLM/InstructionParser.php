@@ -57,14 +57,25 @@ class InstructionParser
 
         $parsed = $result['parsed'];
 
+        // v1.4.4 — when the LLM can't pin an intent, do NOT default to
+        // create_lead. A chat with no recognised action must NOT spawn a
+        // task. Otherwise greetings like "Hi Sarah" silently become CRM
+        // leads named "Sarah" (real bug observed in workspace 2,
+        // 2026-05-29). Callers must treat action===null as "just chat,
+        // no task" (AgentDispatchService::dispatch already guards on
+        // !empty($parsed['action']) but we strengthen the contract here).
+        $resolvedAction = $parsed['action'] ?? null;
+        $resolvedEngine = $parsed['engine'] ?? null;
         return [
-            'engine' => $parsed['engine'] ?? 'crm',
-            'action' => $parsed['action'] ?? 'create_lead',
+            'engine' => $resolvedEngine,
+            'action' => $resolvedAction,
             'params' => $parsed['params'] ?? ['instruction' => $instruction],
-            'requires_agent' => $parsed['requires_agent'] ?? true,
-            'agent_id' => $parsed['agent_id'] ?? 'sarah',
+            'requires_agent' => $parsed['requires_agent'] ?? false,
+            'agent_id' => $parsed['agent_id'] ?? null,
             'priority' => $parsed['priority'] ?? 'normal',
-            'confidence' => $parsed['confidence'] ?? 50,
+            // If no action was parsed, force confidence to 0 so any
+            // downstream "confidence >= 40" check fails closed.
+            'confidence' => $resolvedAction ? ($parsed['confidence'] ?? 50) : 0,
             'clarification_needed' => $parsed['clarification_needed'] ?? null,
             'source' => 'runtime',
         ];
@@ -76,9 +87,15 @@ class InstructionParser
     private function keywordFallback(string $instruction): array
     {
         $lower = strtolower($instruction);
-        $engine = 'crm';
-        $action = 'create_lead';
-        $agent = 'sarah';
+        // v1.4.4 — start with NO action. The keyword cascade below sets
+        // engine/action/agent ONLY when a clear keyword matches. If
+        // nothing matches we return action=null and confidence=0 so the
+        // dispatcher treats the message as a plain chat (no task spawned).
+        // Previous default ($action = 'create_lead') turned every
+        // unrecognised greeting into a CRM lead.
+        $engine = null;
+        $action = null;
+        $agent = null;
 
         // Engine detection
         if (preg_match('/\b(seo|keyword|serp|audit|ranking|backlink)\b/', $lower)) {
@@ -93,12 +110,14 @@ class InstructionParser
         } elseif (preg_match('/\b(website|page|builder|landing|site)\b/', $lower)) {
             $engine = 'builder'; $agent = 'sarah';
             $action = str_contains($lower, 'page') ? 'generate_page' : 'create_website';
-        } elseif (preg_match('/\b(campaign|email|newsletter|marketing|automation)\b/', $lower)) {
-            $engine = 'marketing'; $agent = 'elena';
-            $action = str_contains($lower, 'automat') ? 'create_automation' : 'create_campaign';
-        } elseif (preg_match('/\b(social|post|instagram|facebook|twitter|linkedin|tiktok)\b/', $lower)) {
-            $engine = 'social'; $agent = 'marcus';
-            $action = 'social_create_post';
+        // LAUNCH SCOPE 2026-07-20 — email-marketing and standalone-social NL
+        // branches REMOVED. Instructions like "create a campaign", "send a
+        // newsletter", "make a facebook post" no longer resolve to an executable
+        // engine/action here; they fall through unmatched → action=null →
+        // confidence 0 → the dispatcher's >=40 gate fails closed and NO task is
+        // queued. This is intentional: these capabilities are not in the launch
+        // product (see LaunchScopePolicy). The kernel would refuse them anyway;
+        // failing to match here means we never even propose a removed action.
         } elseif (preg_match('/\b(lead|crm|contact|deal|pipeline|follow.?up)\b/', $lower)) {
             $engine = 'crm'; $agent = 'elena';
             if (str_contains($lower, 'deal')) $action = 'create_deal';
@@ -113,10 +132,13 @@ class InstructionParser
             'engine' => $engine,
             'action' => $action,
             'params' => ['instruction' => $instruction],
-            'requires_agent' => true,
+            // requires_agent only when we matched something concrete.
+            'requires_agent' => $action !== null,
             'agent_id' => $agent,
             'priority' => 'normal',
-            'confidence' => 60,
+            // No match → confidence 0 so the dispatcher's >= 40 gate
+            // fails closed and no task is queued.
+            'confidence' => $action !== null ? 60 : 0,
             'clarification_needed' => null,
             'source' => 'keyword_fallback',
         ];

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>T09 — Event Energy Poster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;1,400;1,700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:     #100018;
+  --primary:    #FF00FF;
+  --accent:   #00F5E4;
+  --yellow: #FFE600;
+  --white:  #F5F5FF;
+  --muted:  rgba(245,245,255,.45);
+  --font-h: 'Bebas Neue', Impact, sans-serif;
+  --font-b: 'Barlow Condensed', sans-serif;
+  --w:1080px;--h:1350px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#080010}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.scale-wrap{transform-origin:top center}
+@media(max-width:1200px){.scale-wrap{transform:scale(.78);display:block;width:calc(var(--w)*.78);height:calc(var(--h)*.78)}}
+@media(max-width:960px){.scale-wrap{transform:scale(.60);display:block;width:calc(var(--w)*.60);height:calc(var(--h)*.60)}}
+@media(max-width:720px){.scale-wrap{transform:scale(.43);display:block;width:calc(var(--w)*.43);height:calc(var(--h)*.43)}}
+@media(max-width:500px){.scale-wrap{transform:scale(.29);display:block;width:calc(var(--w)*.29);height:calc(var(--h)*.29)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--font-b)}
+
+/* BG — aurora neon glow */
+.glow-a{position:absolute;z-index:1;width:800px;height:600px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,0,255,.22) 0%,transparent 60%);top:-200px;left:-150px;pointer-events:none}
+.glow-b{position:absolute;z-index:1;width:600px;height:500px;border-radius:50%;background:radial-gradient(ellipse,rgba(0,245,228,.18) 0%,transparent 60%);bottom:-100px;right:-100px;pointer-events:none}
+.glow-c{position:absolute;z-index:1;width:400px;height:300px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,230,0,.12) 0%,transparent 65%);top:400px;right:100px;pointer-events:none}
+.grain{position:absolute;inset:0;z-index:2;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:160px 160px;opacity:.030;mix-blend-mode:screen;pointer-events:none}
+
+/* Horizontal neon lines */
+.h-line{position:absolute;z-index:3;left:0;right:0;height:1px;pointer-events:none}
+.h-line-1{top:280px;background:linear-gradient(90deg,transparent,var(--primary),transparent);opacity:.40}
+.h-line-2{top:950px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.35}
+
+/* Full background image — very dark */
+.bg-img{position:absolute;inset:0;z-index:1}
+.bg-img img{width:100%;height:100%;object-fit:cover;filter:brightness(.18) saturate(.50)}
+
+/* TOP SECTION — date/venue band */
+.top-band{position:absolute;z-index:5;top:0;left:0;right:0;height:90px;background:var(--primary);display:flex;align-items:center;justify-content:space-between;padding:0 52px}
+.top-band-text{font-family:var(--font-h);font-size:22px;letter-spacing:.12em;color:var(--bg)}
+.top-band-logo{font-family:var(--font-h);font-size:26px;letter-spacing:.08em;color:var(--bg)}
+
+/* MAIN HEADLINE block */
+.headline-block{position:absolute;z-index:5;top:110px;left:0;right:0;padding:52px 52px 0}
+
+.event-label{font-family:var(--font-b);font-size:14px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.event-label::before{content:'';width:28px;height:2px;background:var(--accent);flex-shrink:0}
+
+.headline-main{font-family:var(--font-h);font-size:170px;line-height:.85;letter-spacing:.01em;color:var(--white);display:block}
+.headline-sub-word{font-family:var(--font-h);font-size:170px;line-height:.85;letter-spacing:.01em;display:block}
+.headline-sub-word--mag{color:var(--primary);-webkit-text-stroke:1px var(--primary)}
+.headline-sub-word--outline{-webkit-text-stroke:2px var(--white);-webkit-text-fill-color:transparent;color:transparent}
+
+/* ARTISTS / LINEUP section */
+.lineup{position:absolute;z-index:5;top:640px;left:0;right:0;padding:0 52px}
+
+.section-label{font-family:var(--font-b);font-size:12px;font-weight:700;letter-spacing:.30em;text-transform:uppercase;color:var(--yellow);margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,230,0,.40),transparent)}
+
+.lineup-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid rgba(255,255,255,.10);border-radius:4px;overflow:hidden}
+.artist{padding:22px 28px;border-right:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:4px}
+.artist:nth-child(even){border-right:none}
+.artist:nth-child(3),.artist:nth-child(4){border-bottom:none}
+.artist-name{font-family:var(--font-h);font-size:34px;letter-spacing:.04em;color:var(--white)}
+.artist-genre{font-family:var(--font-b);font-size:11px;font-weight:600;letter-spacing:.20em;text-transform:uppercase;color:var(--muted)}
+
+/* TICKET section — bottom */
+.ticket-section{position:absolute;z-index:5;bottom:0;left:0;right:0;padding:40px 52px;background:linear-gradient(180deg,transparent 0%,rgba(16,0,24,.92) 40%)}
+
+.ticket-row{display:flex;align-items:center;gap:24px;margin-bottom:36px}
+.ticket-type{display:flex;flex-direction:column;gap:4px;padding:20px 28px;border:1px solid rgba(255,255,255,.12);flex:1}
+.ticket-type-label{font-family:var(--font-b);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.ticket-type-price{font-family:var(--font-h);font-size:36px;color:var(--white);line-height:1}
+.ticket-type-price.vip{color:var(--yellow)}
+
+.cta{display:flex;align-items:center;justify-content:center;gap:14px;font-family:var(--font-h);font-size:28px;letter-spacing:.08em;text-transform:uppercase;color:var(--bg);background:var(--accent);padding:24px;width:100%;border:none;cursor:pointer;text-decoration:none;transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 12px 48px rgba(0,245,228,.35)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(6px)}
+
+.bottom-info{display:flex;align-items:center;justify-content:space-between;margin-top:16px}
+.venue{font-family:var(--font-b);font-size:13px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.handle{font-family:var(--font-b);font-size:20px;font-weight:400;letter-spacing:.14em;color:var(--muted)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="scale-wrap">
+<div class="post">
+  <div class="bg-img"><img data-field="background_image" src="{{background_image}}" alt="Background"/></div>
+  <div class="glow-a"></div><div class="glow-b"></div><div class="glow-c"></div>
+  <div class="grain"></div>
+  <div class="h-line h-line-1"></div>
+  <div class="h-line h-line-2"></div>
+
+  <!-- Top band -->
+  <div class="top-band">
+    <span class="top-band-text" data-field="date_venue">{{date_venue}}</span>
+    <span class="top-band-logo" data-field="logo_name">{{logo_name}}</span>
+  </div>
+
+  <!-- Headline -->
+  <div class="headline-block">
+    <div class="event-label" data-field="event_label">{{event_label}}</div>
+    <span class="headline-main" data-field="headline_main">{{headline_main}}</span>
+    <span class="headline-sub-word headline-sub-word--mag" data-field="headline_mag">{{headline_mag}}</span>
+    <span class="headline-sub-word headline-sub-word--outline" data-field="headline_outline">{{headline_outline}}</span>
+  </div>
+
+  <!-- Lineup -->
+  <div class="lineup">
+    <div class="section-label" data-field="section_label">{{section_label}}</div>
+    <div class="lineup-grid">
+      <div class="artist"><span class="artist-name" data-field="artist_1_name">{{artist_1_name}}</span><span class="artist-genre" data-field="artist_1_genre">{{artist_1_genre}}</span></div>
+      <div class="artist"><span class="artist-name" data-field="artist_2_name">{{artist_2_name}}</span><span class="artist-genre" data-field="artist_2_genre">{{artist_2_genre}}</span></div>
+      <div class="artist"><span class="artist-name" data-field="artist_3_name">{{artist_3_name}}</span><span class="artist-genre" data-field="artist_3_genre">{{artist_3_genre}}</span></div>
+      <div class="artist"><span class="artist-name" data-field="artist_4_name">{{artist_4_name}}</span><span class="artist-genre" data-field="artist_4_genre">{{artist_4_genre}}</span></div>
+    </div>
+  </div>
+
+  <!-- Ticket section -->
+  <div class="ticket-section">
+    <div class="ticket-row">
+      <div class="ticket-type">
+        <span class="ticket-type-label" data-field="ticket_1_label">{{ticket_1_label}}</span>
+        <span class="ticket-type-price" data-field="ticket_1_price">{{ticket_1_price}}</span>
+      </div>
+      <div class="ticket-type">
+        <span class="ticket-type-label" data-field="ticket_2_label">{{ticket_2_label}}</span>
+        <span class="ticket-type-price vip" data-field="ticket_2_price">{{ticket_2_price}}</span>
+      </div>
+    </div>
+    <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+    <div class="bottom-info">
+      <span class="venue" data-field="venue">{{venue}}</span>
+      <span class="handle" data-field="brand_url">{{brand_url}}</span>
+    </div>
+  </div>
+</div>
+</div></div>
+</body></html>

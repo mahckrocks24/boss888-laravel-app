@@ -1,0 +1,55 @@
+{
+  "name": "Travel Reel",
+  "slug": "v03-travel",
+  "format": "reels",
+  "category": "travel",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "travel"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_sub": {
+      "type": "text",
+      "label": "Brand Sub",
+      "default": "Travel & Escapes"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Curated journeys from $899 · All-inclusive"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Wander further,"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "dream deeper."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Explore Destinations"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1080&q=85&fit=crop&crop=center"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "travel"
+    ]
+  }
+}

@@ -38,7 +38,24 @@ class AgentSeeder extends Seeder
         ];
 
         foreach ($agents as $data) {
-            Agent::updateOrCreate(['slug' => $data['slug']], array_merge($data, ['status' => 'active']));
+            // LAUNCH SCOPE (2026-07-20, corrected 2026-07-23) — removed social/email
+            // agents are kept in source for historical attribution but must NEVER be
+            // seeded active. The original value 'dormant' is NOT a member of
+            // agents.status enum('active','disabled'); under STRICT_TRANS_TABLES every
+            // reseed therefore aborted with "Data truncated for column 'status'".
+            // 'disabled' is an existing enum member with the same meaning, so no
+            // migration and no destructive change is required. Historical rows are
+            // preserved — they are deactivated, never deleted. We bypass the Agent
+            // model's
+            // launch_scope global scope here: that scope hides removed agents from
+            // normal queries, which would make updateOrCreate fail to find the
+            // existing row and attempt a duplicate insert. Attribution/seed writes
+            // legitimately need to see the full roster.
+            $status = \App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($data['slug'])
+                ? 'disabled'   // never 'active'; see note above
+                : 'active';
+            Agent::withRemovedAgents()
+                ->updateOrCreate(['slug' => $data['slug']], array_merge($data, ['status' => $status]));
         }
     }
 }

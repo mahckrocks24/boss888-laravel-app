@@ -408,10 +408,19 @@ class EmailBuilderService
             $inner  .= EmailBlockLibrary::render($b->block_type, $content, (int) $b->id) . "\n";
         }
 
+        // Read body_bg + max_width from variables_json so rich JSX templates set their own design shell
+        $bodyBg = '#F2F4F8';
+        if (!empty($tpl->variables_json)) {
+            $vj = json_decode($tpl->variables_json, true);
+            if (is_array($vj) && !empty($vj['bg_color'])) {
+                $bodyBg = (string) $vj['bg_color'];
+            }
+        }
         $html = EmailBlockLibrary::wrap($inner, [
             'brand_color'  => $tpl->brand_color ?? '#5B5BD6',
             'preview_text' => $tpl->preview_text ?? '',
             'title'        => $tpl->subject ?? $tpl->name ?? 'Email',
+            'body_bg'      => $bodyBg,
         ]);
         // Part 6 — inject template's font_family, replacing the default Inter stack
         $fontStack = (string) ($tpl->font_family ?? 'Inter, Arial, Helvetica');
@@ -432,6 +441,21 @@ class EmailBuilderService
     public function renderWithVariables(int $templateId, array $vars = [], ?object $contact = null, ?int $logId = null): string
     {
         $html = $this->render($templateId);
+
+        // Merge saved template variables_json as fallback defaults so the
+        // editor's saved user values fill tokens at preview AND send time.
+        $row = DB::table('email_templates')->where('id', $templateId)->first();
+        if ($row && !empty($row->variables_json)) {
+            $savedVars = json_decode($row->variables_json, true);
+            if (is_array($savedVars)) {
+                foreach ($savedVars as $k => $v) {
+                    if (is_int($k)) continue;
+                    if (!isset($vars[$k]) && (is_scalar($v) || $v === null)) {
+                        $vars[$k] = $v;
+                    }
+                }
+            }
+        }
 
         // Default vars
         $vars['current_year']    = (string) ($vars['current_year']    ?? date('Y'));
@@ -616,7 +640,8 @@ JS;
 
         $htmlPath  = $dir . "/tpl-{$templateId}.html";
         $outPath   = $dir . "/tpl-{$templateId}.png";
-        file_put_contents($htmlPath, $this->render($templateId));
+        // Use renderWithVariables so variables_json defaults fill tokens in the thumbnail.
+        file_put_contents($htmlPath, $this->renderWithVariables($templateId, []));
 
         $toolPath = base_path('tools/bake-email-thumbnail.cjs');
         if (!file_exists($toolPath)) {
@@ -625,7 +650,7 @@ JS;
             return ['error' => 'thumbnailer_missing'];
         }
 
-        $cmd = escapeshellcmd('node ' . $toolPath . ' ' . escapeshellarg($htmlPath) . ' ' . escapeshellarg($outPath));
+        $cmd = 'HOME=/tmp PUPPETEER_CACHE_DIR=/var/www/levelup-staging/.puppeteer-cache node ' . escapeshellarg($toolPath) . ' ' . escapeshellarg($htmlPath) . ' ' . escapeshellarg($outPath);
         exec($cmd . ' 2>&1', $output, $rc);
         if ($rc !== 0 || !file_exists($outPath)) {
             Log::warning('email-thumbnail render failed', ['rc' => $rc, 'output' => $output]);
@@ -645,13 +670,17 @@ JS;
 
     public function aiGenerate(int $wsId, array $params): array
     {
-        $goal     = (string) ($params['goal']       ?? 'announce');
-        $tone     = (string) ($params['tone']       ?? 'professional');
-        $industry = (string) ($params['industry']   ?? '');
-        $brand    = (string) ($params['brand_name'] ?? 'your brand');
-        $prompt   = (string) ($params['prompt']     ?? '');
+        // phase1-brand-aware — pull brand kit from workspace; params override
+        $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)
+            ->resolveWithOverrides($wsId, $params);
+        $goal     = (string) ($params['goal']     ?? 'announce');
+        $tone     = $kit['tone'];
+        $industry = (string) ($kit['industry']     ?? '');
+        $brand    = (string) ($kit['brand_name']);
+        $prompt   = (string) ($params['prompt']    ?? '');
 
-        $system = "You are a world-class email copywriter with 15 years experience writing high-converting marketing emails for SaaS, ecommerce, and service businesses. You write with clarity, urgency, and empathy. You know what subject lines get opened and what CTAs get clicked. Always return valid JSON only.";
+        $brandBlock = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->toPromptBlock($kit);
+        $system = "You are a world-class email copywriter with 15 years experience writing high-converting marketing emails. You write with clarity, urgency, and empathy. Ground EVERY color reference and copy choice in the brand context below. NEVER mention 'LevelUp' or any platform name. Always return valid JSON only.\n\n=== BRAND CONTEXT ===\n" . $brandBlock;
 
         $user = "Write a complete marketing email for:\n"
               . "Business: {$brand}\n"
@@ -688,7 +717,7 @@ JS;
             'category'     => $params['category']    ?? 'ai_generated',
             'subject'      => $parsed['subject_a']    ?? '',
             'preview_text' => $parsed['preview_text'] ?? '',
-            'brand_color'  => $params['brand_color']  ?? '#5B5BD6',
+            'brand_color'  => $kit['primary_color'], // workspace-grounded, not platform default
             'source'       => 'empty',
         ]);
         $templateId = $tpl['template']['id'];
@@ -717,6 +746,10 @@ JS;
 
     public function aiRewriteBlock(int $templateId, int $blockId, string $instruction): array
     {
+        // phase1-brand-aware — pull brand for tone/voice grounding
+        $wsId = (int) ($content['workspace_id'] ?? 0);
+        $kit = $wsId > 0 ? app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId) : null;
+        $brandCtx = $kit ? ("Brand: {$kit['brand_name']} (voice: {$kit['voice']}, tone: {$kit['tone']})") : '';
         $block = DB::table('email_blocks')
             ->where('id', $blockId)->where('template_id', $templateId)->first();
         if (!$block) return ['error' => 'block_not_found'];
@@ -741,6 +774,9 @@ JS;
 
     public function aiSuggestSubjects(int $templateId, array $params): array
     {
+        // phase1-brand-aware
+        $wsId = (int) ($params['workspace_id'] ?? 0);
+        $kit = $wsId > 0 ? app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId) : null;
         $tpl     = DB::table('email_templates')->where('id', $templateId)->first();
         $goal    = (string) ($params['goal']        ?? 'engage');
         $tone    = (string) ($params['tone']        ?? 'professional');
@@ -896,6 +932,9 @@ JS;
     /** Part 2 — dispatch the queue job after validation. */
     public function queueSendCampaign(int $campaignId): array
     {
+        // LAUNCH SCOPE (2026-07-20) — removed capability execution hard-stop.
+        \Illuminate\Support\Facades\Log::info('[LaunchScope] queueSendCampaign refused', ['campaign' => $campaignId]);
+        return ['success' => false, 'error' => 'Email marketing is not available in the current plan.', 'code' => 'LAUNCH_SCOPE_REMOVED_ACTION'];
         $validation = $this->validateCampaign($campaignId);
         if (!$validation['valid']) {
             return ['queued' => false, 'errors' => $validation['errors']];

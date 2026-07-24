@@ -1,0 +1,90 @@
+{
+  "name": "Automotive Reel",
+  "slug": "r08-automotive",
+  "format": "reels",
+  "category": "automotive",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "automotive"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "LOGO HERE"
+    },
+    "brand_sub": {
+      "type": "text",
+      "label": "Brand Sub",
+      "default": "Performance Division"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Zero to extraordinary in every dimension — engineered for those who refuse to compromise."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "LOGO HERE"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "BUILT"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "TO"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "DOMINATE."
+    },
+    "spec_label_1": {
+      "type": "text",
+      "label": "Spec Label 1",
+      "default": "3.2 Sec"
+    },
+    "spec_label_2": {
+      "type": "text",
+      "label": "Spec Label 2",
+      "default": "Peak Power"
+    },
+    "spec_label_3": {
+      "type": "text",
+      "label": "Spec Label 3",
+      "default": "Top Speed"
+    },
+    "spec_label_4": {
+      "type": "text",
+      "label": "Spec Label 4",
+      "default": "Engine"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Test Drive"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "automotive"
+    ]
+  }
+}

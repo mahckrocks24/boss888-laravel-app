@@ -388,6 +388,24 @@ class SeoService
     public function deepAudit(int $wsId, array $params): array
     {
         $url = $params['url'] ?? '';
+        if (empty($url)) {
+            // 2026-07-23 — the runtime LLM rarely supplies a URL for a whole-site
+            // audit. Resolve the workspace's own site deterministically:
+            // WP-connected tenants -> seo_settings.site_url; Laravel-rendered
+            // tenants -> their published websites row. Same "backend resolves,
+            // Sarah never guesses" pattern as ensureImagePrompt / the publish resolver.
+            $url = (string) (DB::table('seo_settings')->where('workspace_id', $wsId)
+                        ->where('key', 'site_url')->value('value') ?: '');
+            if ($url === '') {
+                $__site = DB::table('websites')->where('workspace_id', $wsId)
+                    ->where('status', 'published')->whereNull('deleted_at')
+                    ->orderByDesc('id')->first(['custom_domain', 'domain', 'subdomain']);
+                if ($__site) {
+                    $__host = $__site->custom_domain ?: $__site->domain ?: $__site->subdomain ?: '';
+                    if ($__host) $url = 'https://' . ltrim(preg_replace('#^https?://#', '', $__host), '/');
+                }
+            }
+        }
         if (empty($url)) throw new \InvalidArgumentException('URL required');
 
         $auditId = DB::table('seo_audits')->insertGetId([
@@ -589,6 +607,10 @@ class SeoService
         // compare against (otherwise we fall through to authority-only mode
         // which returns 0 when all authority_scores are 0).
         $sourceUrl = $params['url'] ?? $params['source_url'] ?? '';
+        // 2026-06-20 (forensic) — when called to rescue orphans, the caller
+        // passes the orphan target URLs so we can relax the relevance gate
+        // for THOSE targets only (de-orphaning beats a marginally-low score).
+        $orphanTargets = array_map('strval', (array) ($params['orphan_targets'] ?? []));
         $articleId = isset($params['article_id']) ? (int) $params['article_id'] : null;
         if (!$sourceUrl && $articleId) {
             $article = DB::table('articles')->where('id', $articleId)->where('workspace_id', $wsId)->first(['slug', 'title']);
@@ -658,7 +680,10 @@ class SeoService
 
             // 2026-05-15 hotfix — when authority-only (no source tokens), gate
             // purely on authority. Otherwise gate on Jaccard relevance.
-            $meets = $authorityOnly ? ($auth > 0.2) : ($relevance > 0.05);
+            $isOrphanTarget = in_array($candidate->url, $orphanTargets, true);
+            $meets = $isOrphanTarget
+                ? true                                                  // orphan rescue: gate on body placeability (below), not title-Jaccard
+                : ($authorityOnly ? ($auth > 0.2) : ($relevance > 0.05));
             if ($meets) {
                 // Wave 77 — prefer a natural anchor that exists in source body.
                 // Only fall back to title-slice if we have no body to scan.
@@ -670,7 +695,7 @@ class SeoService
                         $bodyCache[$sourceUrl] = '';
                         if (preg_match('#/blog/([^/]+)/?$#i', parse_url($sourceUrl, PHP_URL_PATH) ?: '', $sm)) {
                             $srcArt = DB::table('articles')->where('workspace_id', $wsId)->where('slug', $sm[1])->first(['content']);
-                            if ($srcArt) $bodyCache[$sourceUrl] = (string) $srcArt->content;
+                            if ($srcArt) $bodyCache[$sourceUrl] = $this->stripNonBodyForAnchor((string) $srcArt->content);
                         }
                     }
                     if ($bodyCache[$sourceUrl] !== '') {
@@ -700,16 +725,32 @@ class SeoService
                         }
                     }
                 }
-                if ($naturalAnchor === null) {
-                    // No natural phrase in source body. Skip this suggestion —
-                    // we will not create a link with a fake anchor.
-                    continue;
+                // 2026-06-20 (forensic: Chef Red orphan loop) — choose a
+                // PLACEABLE anchor. Prefer the runtime's topical phrase; if it
+                // is null OR unplaceable, fall back to the target's own keyword /
+                // title phrase (verbatim in real source paragraphs). Only skip
+                // when NOTHING places. Pure string validation (no runtime),
+                // reusing the applier's own matcher so the two sides cannot
+                // disagree — the root cause of the orphan no-op loop.
+                if (! $sourceUrl || empty($bodyCache[$sourceUrl])) {
+                    continue; // no source body to place a link into
                 }
-                $anchor = $naturalAnchor;
+                $titleWords = array_values(array_filter(
+                    preg_split('/\s+/', preg_replace('/[^a-z0-9 ]/i', ' ', (string) ($candidate->title ?? ''))),
+                    fn ($w) => strlen($w) >= 3
+                ));
+                $anchorCandidates = [];
+                if ($naturalAnchor !== null) { $anchorCandidates[] = $naturalAnchor; }
+                $anchorCandidates[] = (string) ($candFk ?? '');
+                if (count($titleWords) >= 3) { $anchorCandidates[] = $titleWords[0] . ' ' . $titleWords[1] . ' ' . $titleWords[2]; }
+                if (count($titleWords) >= 2) { $anchorCandidates[] = $titleWords[0] . ' ' . $titleWords[1]; }
+                $placeable = $this->_pickPlaceableAnchor($bodyCache[$sourceUrl], (string) $candidate->url, $anchorCandidates);
+                if ($placeable === null) { continue; }
+                $anchor = $placeable;
                 $suggestions[] = [
                     'target_url'       => $candidate->url,
                     'title'            => $candidate->title,
-                    'relevance_score'  => round($relevance, 3),
+                    'relevance_score'  => round($isOrphanTarget ? max($relevance, 0.9) : $relevance, 3), // 2026-06-20 forensic: orphan-rescue targets must survive the top-15 relevance cap
                     'authority_score'  => round($auth, 3),
                     'suggested_anchor' => $anchor,
                     'word_count'       => (int) $candidate->word_count,
@@ -800,6 +841,40 @@ class SeoService
      * Wave 84 — proprietary algorithm lives in runtime (proprietary IP
      * hidden in Railway). Laravel only ships this thin call wrapper.
      */
+    /**
+     * 2026-06-20 (forensic: Chef Red orphan loop) — content cleaning before
+     * anchor extraction. The runtime extractor strips <a>/<h1> but not <aside>,
+     * so it mined the aeo-tldr summary and returned anchors that live only in
+     * the TL;DR — which the applier cannot place in a real <p> (the true cause
+     * of the orphan no-op loop). Remove <aside> blocks so the runtime only
+     * proposes anchors from real paragraphs. Cleaning only — no scoring.
+     */
+    /**
+     * 2026-06-20 (forensic) — return the first candidate anchor the applier can
+     * actually place in $body (verbatim, in a real paragraph), or null. Free
+     * string validation reusing the applier's own _findLinkInsertionPoint, so
+     * generation and application can never disagree about an anchor.
+     */
+    private function _pickPlaceableAnchor(string $body, string $targetUrl, array $candidates): ?string
+    {
+        $tried = [];
+        foreach ($candidates as $c) {
+            $c = trim((string) $c);
+            if ($c === '' || mb_strlen($c) < 6) continue;
+            $key = strtolower($c);
+            if (isset($tried[$key])) continue;
+            $tried[$key] = true;
+            $pt = $this->_findLinkInsertionPoint($body, $c, $targetUrl);
+            if (! empty($pt['found'])) return $c;
+        }
+        return null;
+    }
+
+    private function stripNonBodyForAnchor(string $html): string
+    {
+        return preg_replace('#<aside\b[^>]*>.*?</aside>#is', ' ', $html) ?? $html;
+    }
+
     private function extractNaturalAnchor(
         string $sourceBody,
         string $candidateTitle,
@@ -990,6 +1065,187 @@ class SeoService
     }
 
     /**
+     * 2026-06-14 — Deliver an internal-link edit into the LIVE WordPress post.
+     * Pushes ONLY the updated post_content to lgsc/v1/update-post (the connector's
+     * handle_update_post is a partial update — it leaves post_status / title /
+     * meta / thumbnail untouched when those fields are omitted, verified against
+     * connector v1.3.8), so we add the link without disturbing anything else on
+     * the live post. Connection (site_url + webhook_secret) resolves from
+     * seo_settings exactly as WriteService::pushDraftToWordPressIfConnected and
+     * the /connector/update-post route do. Returns true only on a 2xx + success
+     * envelope. Fully defensive: any missing config / transport / HTTP error
+     * returns false so the caller skips the fix honestly (never throws).
+     */
+    private function pushLinkUpdateToWordPress(int $wsId, int $wpPostId, string $content): bool
+    {
+        try {
+            $siteUrl = DB::table('seo_settings')->where('workspace_id', $wsId)
+                ->where('key', 'site_url')->value('value');
+            $secret  = DB::table('seo_settings')->where('workspace_id', $wsId)
+                ->where('key', 'webhook_secret')->value('value');
+            if (! $siteUrl || ! $secret) {
+                // wp_post_id is set but no connector creds — we can't reach the
+                // live post, so we must NOT claim the fix.
+                Log::warning('[SEO] WP link-update skipped: wp_post_id set but no connector creds', [
+                    'workspace_id' => $wsId, 'wp_post_id' => $wpPostId,
+                ]);
+                return false;
+            }
+            $wpUrl = rtrim((string) $siteUrl, '/') . '/wp-json/lgsc/v1/update-post';
+            $r = \Illuminate\Support\Facades\Http::withHeaders([
+                    'Content-Type'  => 'application/json',
+                    'X-LGSC-Secret' => $secret,
+                ])
+                ->timeout(30)
+                ->post($wpUrl, [
+                    'post_id' => $wpPostId,
+                    'content' => $content,
+                    'secret'  => $secret,
+                ]);
+            if (! $r->successful()) {
+                Log::warning('[SEO] WP link-update push HTTP error', [
+                    'workspace_id' => $wsId, 'wp_post_id' => $wpPostId,
+                    'http' => $r->status(), 'body' => mb_substr((string) $r->body(), 0, 300),
+                ]);
+                return false;
+            }
+            $body = $r->json() ?: [];
+            return (bool) ($body['success'] ?? false);
+        } catch (\Throwable $e) {
+            Log::warning('[SEO] WP link-update push failed (non-fatal): ' . $e->getMessage(), [
+                'workspace_id' => $wsId, 'wp_post_id' => $wpPostId,
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * 2026-06-11 — FIRST-CLASS, CREDITED orphan fix so Sarah can delegate
+     * "fix the orphans" as ONE orchestrator task (engine=seo/action=fix_orphans)
+     * instead of the fix only being reachable from the James SEO-chat surface.
+     * Generates internal-link suggestions from a bounded set of editable sources,
+     * applies them ORPHAN-FIRST via aiApplyLinkInsertion (which now writes the
+     * link graph + recomputes inbound — the keystone), and self-bills the EXACT
+     * applied count (2cr/insert) through the atomic reserve+commit pipeline — the
+     * same CreditService the orchestrator uses. Bounded (≤25 inserts, ≤2/orphan)
+     * so the spend is capped. Returns a summary incl. credits_charged.
+     */
+    public function fixOrphans(int $wsId, array $params = []): array
+    {
+        $limit = max(1, min(50, (int) ($params['limit'] ?? 25)));
+        $orphanQ = fn() => DB::table('seo_content_index')->where('workspace_id', $wsId)
+            ->where('inbound_links', 0)->where('word_count', '>', 100);
+        $before = (clone $orphanQ())->count();
+        $orphanUrls = (clone $orphanQ())->pluck('url')->toArray();
+        if (empty($orphanUrls)) {
+            return ['success' => true, 'orphans_before' => 0, 'orphans_after' => 0, 'applied' => 0,
+                    'credits_charged' => 0, 'message' => 'No orphan pages to fix — internal linking is healthy.'];
+        }
+
+        // ───────────────────────────────────────────────────────────────────
+        // 2026-06-20 (forensic: Chef Red orphan loop) — INTEGRATED, RELIABLE
+        // generate-and-place loop. The old design (a) sampled only 8 random
+        // sources of ~85 and (b) generated a batch then applied ONCE. In
+        // practice most stored anchors were unplaceable at insert time (the
+        // runtime extracts an anchor from a normalized body — including the
+        // aeo-tldr aside — that `_findLinkInsertionPoint` then cannot wrap
+        // verbatim), so a one-shot apply almost always no-op'd and orphans were
+        // only ever cleared by luck. We now walk a TARGETED, deterministic
+        // source pool (sources whose body actually contains an orphan's focus
+        // phrase — cheap LIKE retrieval, NOT scoring) and, per source,
+        // immediately TRY TO PLACE a link into each still-orphaned page via the
+        // real insertLink (which validates placement and skips unplaceable
+        // anchors). We stop for an orphan the moment a link actually lands (one
+        // inbound link de-orphans it), and stop the whole loop when every orphan
+        // is linked, no recent source made progress, the pool is exhausted, or a
+        // 60s wall-clock guard trips (under the PHP-FPM 120s / CF 100s ceilings).
+        $orphanSlugs = [];
+        foreach ($orphanUrls as $ou) {
+            if (preg_match('#/blog/([^/]+)/?$#', parse_url($ou, PHP_URL_PATH) ?: '', $om)) {
+                $orphanSlugs[] = $om[1];
+            }
+        }
+        $phrases = DB::table('articles')->where('workspace_id', $wsId)
+            ->whereIn('slug', $orphanSlugs)->whereNotNull('focus_keyword')
+            ->pluck('focus_keyword')->map(fn ($p) => trim((string) $p))
+            ->filter(fn ($p) => strlen($p) >= 4)->unique()->values()->all();
+
+        // Editable, deliverable sources (status=published covers Laravel sites;
+        // wp_post_id covers WP-pushed posts — matches nothing off WordPress).
+        $srcQ = DB::table('articles')->where('workspace_id', $wsId)
+            ->where(function ($q) {
+                $q->where('status', 'published')->orWhereNotNull('wp_post_id');
+            })
+            ->whereNotNull('content');
+        if (! empty($phrases)) {
+            $srcQ->where(function ($q) use ($phrases) {
+                foreach ($phrases as $p) { $q->orWhere('content', 'like', '%' . $p . '%'); }
+            });
+            $srcIds = $srcQ->orderBy('id')->limit(60)->pluck('id')->all(); // targeted + deterministic
+        } else {
+            $srcIds = $srcQ->inRandomOrder()->limit(25)->pluck('id')->all(); // legacy fallback
+        }
+
+        $applied = 0; $per = [];
+        $remaining     = array_values($orphanUrls); // urls still orphaned
+        $triedLinkIds  = [];                          // never retry a known-bad suggestion
+        $sinceProgress = 0;                           // sources processed since the last successful place
+        $loopStart     = microtime(true);
+        foreach ($srcIds as $sid) {
+            if (empty($remaining) || $applied >= $limit) break;
+            if ($sinceProgress >= 6) break;                  // stubborn orphans: stop wasting calls
+            if (microtime(true) - $loopStart > 30) break;     // wall-clock guard
+            try { $this->generateLinkSuggestions($wsId, ['article_id' => (int) $sid, 'orphan_targets' => $remaining]); } catch (\Throwable $e) {}
+            $placedThisSource = false;
+            $cand = DB::table('seo_links')->where('workspace_id', $wsId)->where('status', 'suggested')
+                ->whereIn('target_url', $remaining)
+                ->when(! empty($triedLinkIds), fn ($q) => $q->whereNotIn('id', $triedLinkIds))
+                ->orderByDesc('priority_score')->get(['id', 'source_url', 'target_url']);
+            foreach ($cand as $s) {
+                if ($applied >= $limit) break;
+                if ($s->source_url === $s->target_url) continue;
+                if (! in_array($s->target_url, $remaining, true)) continue; // already linked this pass
+                $triedLinkIds[] = (int) $s->id;
+                try {
+                    if ($this->insertLink($wsId, (int) $s->id)) {
+                        $applied++;
+                        $per[$s->target_url] = 1;
+                        $remaining = array_values(array_diff($remaining, [$s->target_url])); // de-orphaned
+                        $placedThisSource = true;
+                    }
+                } catch (\Throwable $e) {}
+            }
+            $sinceProgress = $placedThisSource ? 0 : $sinceProgress + 1;
+        }
+        // 3. Self-bill the EXACT applied count (2cr/insert) via the atomic pipeline.
+        $creditsCharged = 0;
+        if ($applied > 0) {
+            $cost = $applied * 2;
+            try {
+                $cs = app(\App\Core\Billing\CreditService::class);
+                $ref = 'fix_orphans_' . $wsId . '_' . substr(md5($wsId . $applied . now()->timestamp), 0, 10);
+                $resv = $cs->reserveCredits($wsId, $cost, 'SeoFixOrphans', 0, $ref);
+                $cs->commitReservedCredits($resv->reservation_reference);
+                $creditsCharged = $cost;
+            } catch (\Throwable $e) {
+                Log::warning('[fixOrphans] credit charge failed (links applied): ' . $e->getMessage());
+            }
+        }
+
+        $after = (clone $orphanQ())->count();
+        return [
+            'success'         => true,
+            'orphans_before'  => $before,
+            'orphans_after'   => $after,
+            'applied'         => $applied,
+            'credits_charged' => $creditsCharged,
+            'message'         => $applied > 0
+                ? "Inserted {$applied} internal link(s) to orphan pages — orphans {$before} → {$after}. {$creditsCharged} credits used."
+                : "No insertable internal links were found for the current orphan pages (sources may already link them or aren't editable). 0 credits used.",
+        ];
+    }
+
+    /**
      * Wave 3 — R7 (2026-05-17). Preview of where a link suggestion will
      * be inserted, WITHOUT mutating the article body. Returns the
      * proposed before/after snippet and the paragraph index, or a
@@ -1093,6 +1349,35 @@ class SeoService
         $articleId    = (int) $preview['article_id'];
         $modifiedBody = (string) $preview['_modified_body'];
 
+        // 2026-06-14 — WP TRUTHFULNESS GATE. On a WordPress-hosted page the live
+        // content lives in WP, NOT in articles.content. The keystone below writes
+        // a seo_link_graph edge + drops the target's inbound_links (the orphan
+        // count) at insert time. If the source article was pushed to a live WP
+        // post (articles.wp_post_id set) we MUST deliver the link into that live
+        // post FIRST — otherwise we'd record a "fix" that doesn't exist on the
+        // live site, and the next re-crawl (which reads the real WP HTML) would
+        // flap the orphan straight back. So: push the modified body to the live
+        // post via lgsc/v1/update-post; only proceed when WP confirms success.
+        // Skip HONESTLY (no body write, no inserted-status, no graph edge, no
+        // inbound drop, no credit) on push failure. Laravel-managed articles
+        // (wp_post_id NULL) are UNCHANGED — articles.content IS their live page.
+        // Gating on wp_post_id (per-article ground truth) — not the workspace's
+        // seo_settings WP connection, which is also set on Laravel-served sites.
+        $wpPostId = (int) (DB::table('articles')
+            ->where('id', $articleId)->where('workspace_id', $wsId)
+            ->value('wp_post_id') ?? 0);
+        if ($wpPostId > 0) {
+            if (! $this->pushLinkUpdateToWordPress($wsId, $wpPostId, $modifiedBody)) {
+                return [
+                    'success'    => false,
+                    'error'      => 'wp_push_failed',
+                    'message'    => 'I couldn\'t update the live WordPress post just now, so I didn\'t record the link and you weren\'t charged. I\'ll retry on the next run.',
+                    'article_id' => $articleId,
+                    'wp_post_id' => $wpPostId,
+                ];
+            }
+        }
+
         try {
             DB::transaction(function () use ($articleId, $modifiedBody, $linkId) {
                 DB::table('articles')->where('id', $articleId)->update([
@@ -1123,6 +1408,74 @@ class SeoService
             Log::debug('post-insert syncFromArticle skipped: ' . $e->getMessage());
         }
 
+        // 2026-06-10 — CLOSE THE INSERT→GRAPH→SCORE LOOP. Previously this method
+        // updated the article body + the SOURCE's outbound internal_link_count,
+        // but NEVER wrote seo_link_graph. inbound_links (which defines an orphan
+        // page) is only synced from seo_link_graph by the nightly seo:authority-
+        // score cron, so the link target's inbound_links never incremented — the
+        // page stayed flagged as an orphan and the report/link_health never
+        // reflected the fix until an unrelated full re-crawl happened to run.
+        // Write the graph edge now (dedup-safe, mirroring indexUrl's delete-then-
+        // insert per source_url) and recompute the target's inbound_links using
+        // the SAME formula as SeoAuthorityScoreCommand, so the orphan count and
+        // link_health update immediately. Non-fatal — never break the insert.
+        try {
+            $linkRow = DB::table('seo_links')->where('id', $linkId)->first(['source_url', 'target_url', 'anchor_text']);
+            if ($linkRow && !empty($linkRow->source_url) && !empty($linkRow->target_url)) {
+                // Normalise both URLs the SAME way extractInternalLinksWithAnchors
+                // does (strip trailing slash, preserve query+fragment) so the
+                // graph edge + the inbound recompute match seo_content_index.url
+                // exactly. Without this a suggestion URL with a trailing slash
+                // would write a row that the COUNT/match never finds.
+                $normUrl = function ($u) {
+                    $hp = parse_url((string) $u);
+                    if (!$hp || !isset($hp['scheme'], $hp['host'])) return (string) $u;
+                    $clean = $hp['scheme'] . '://' . $hp['host'] . (isset($hp['path']) ? rtrim($hp['path'], '/') : '');
+                    if (!empty($hp['query']))    { $clean .= '?' . $hp['query']; }
+                    if (!empty($hp['fragment'])) { $clean .= '#' . $hp['fragment']; }
+                    return $clean;
+                };
+                $srcUrl = $normUrl($linkRow->source_url);
+                $tgtUrl = $normUrl($linkRow->target_url);
+                // Host-match: only a same-host edge is genuinely "internal" and may
+                // count toward the target's inbound_links (mirrors the crawler's
+                // host gate; prevents a cross-host suggestion from faking inbound).
+                $isInternal = parse_url($srcUrl, PHP_URL_HOST)
+                    && parse_url($srcUrl, PHP_URL_HOST) === parse_url($tgtUrl, PHP_URL_HOST);
+
+                // Dedup: drop any prior edge for this (workspace, source, target).
+                DB::table('seo_link_graph')
+                    ->where('workspace_id', $wsId)
+                    ->where('source_url', $srcUrl)
+                    ->where('target_url', $tgtUrl)
+                    ->delete();
+                DB::table('seo_link_graph')->insert([
+                    'workspace_id' => $wsId,
+                    'source_url'   => $srcUrl,
+                    'target_url'   => $tgtUrl,
+                    'anchor_text'  => $linkRow->anchor_text ?? ($preview['anchor'] ?? null),
+                    'is_internal'  => $isInternal,
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+                // Recompute the target's inbound_links EXACTLY as the nightly cron
+                // does: COUNT of internal graph rows pointing at this target_url.
+                if ($isInternal) {
+                    $cnt = (int) DB::table('seo_link_graph')
+                        ->where('workspace_id', $wsId)
+                        ->where('is_internal', true)
+                        ->where('target_url', $tgtUrl)
+                        ->count();
+                    DB::table('seo_content_index')
+                        ->where('workspace_id', $wsId)
+                        ->where('url', $tgtUrl)
+                        ->update(['inbound_links' => $cnt, 'updated_at' => now()]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[SEO] post-insert link-graph sync failed: ' . $e->getMessage(), ['link_id' => $linkId]);
+        }
+
         // Wave 5 (2026-05-18). Notify via the platform agent-messaging
         // infrastructure so the unified messages floater badge updates
         // and the message is visible from all 3 surfaces (floater, agent
@@ -1132,14 +1485,26 @@ class SeoService
             $articleTitle = $article->title ?? "article #{$articleId}";
             $chatMsg = "Internal link added to \"{$articleTitle}\""
                 . "\n\nI inserted a link to '{$preview['anchor']}' pointing at {$preview['target']} (paragraph {$preview['paragraph_index']}).";
-            app(\App\Core\Agents\AgentMessageService::class)
-                ->postAsAgent($wsId, 'james', $chatMsg, [
-                    'notification_type' => 'link_inserted',
-                    'article_id'        => $articleId,
-                    'link_id'           => $linkId,
-                    'paragraph_index'   => $preview['paragraph_index'],
-                    'action_link'       => "/app/?tab=write&article={$articleId}",
-                ]);
+            // 2026-06-21 — WP connector surface has NO agents (owner directive):
+            // post link-insert notices as the single SEO Assistant for WP-connected
+            // workspaces, never as the James agent. Laravel platform keeps James.
+            $seoAssistant = app(\App\Engines\SEO\Services\SeoAssistantService::class);
+            if ($seoAssistant->isWpWorkspace($wsId)) {
+                $seoAssistant->pushAssistantNotice($wsId, $chatMsg);
+            } else {
+                app(\App\Core\Agents\AgentMessageService::class)
+                    ->postAsAgent($wsId, 'james', $chatMsg, [
+                        'notification_type' => 'link_inserted',
+                        'article_id'        => $articleId,
+                        'link_id'           => $linkId,
+                        'paragraph_index'   => $preview['paragraph_index'],
+                        'action_link'       => "/app/write/{$articleId}",
+                        // 2026-06-15 — no push: a bulk orphan-fix inserts many links
+                        // and would spam one notification per insert. The chat row +
+                        // the cross-engine NotificationService below still record it.
+                        'push'              => false,
+                    ]);
+            }
 
             // Cross-engine notification surface, only when user is known.
             $uid = optional(request()->user())->id;
@@ -1155,7 +1520,7 @@ class SeoService
                         'article_id'        => $articleId,
                         'link_id'           => $linkId,
                     ],
-                    "/app/?tab=write&article={$articleId}",
+                    "/app/write/{$articleId}",
                     'success',
                     '🔗'
                 );
@@ -1220,8 +1585,19 @@ class SeoService
         // markup, and very short fragments.
         for ($i = 0; $i < $total - 1; $i += 2) {
             $p = $parts[$i];
-            if (stripos($p, '<a ') !== false) continue;
+            // 2026-06-20 (forensic: Chef Red orphan loop) — do NOT skip a whole
+            // paragraph just because it already contains a link. Many real
+            // anchors (e.g. the site's main keyword) only occur in paragraphs
+            // that also carry a CTA link. Record existing <a>…</a> ranges and
+            // refuse only a match that OVERLAPS one (prevents nested anchors),
+            // so we can still place into the link-free text of the paragraph.
+            $linkRanges = [];
+            if (preg_match_all('#<a\b[^>]*>.*?</a>#is', $p, $lm, PREG_OFFSET_CAPTURE)) {
+                foreach ($lm[0] as $lr) { $linkRanges[] = [$lr[1], $lr[1] + strlen($lr[0])]; }
+            }
             if (preg_match('/<h[12]\b/i', $p)) continue;
+            // 2026-06-20 forensic: the aeo-tldr <aside> summary is not real body — never link from it.
+            if (stripos($p, 'aeo-tldr') !== false || stripos($p, '<aside') !== false) continue;
             if (mb_strlen(strip_tags($p)) < 30) continue;
 
             // Wave 79e — find anchor in plain-text view of the paragraph
@@ -1229,7 +1605,7 @@ class SeoService
             // map the position back to the raw HTML and wrap that range.
             $anchorWords = preg_split('/\s+/', trim($anchor));
             $anchorEscParts = array_map(function ($w) { return preg_quote($w, '/'); }, $anchorWords);
-            $anchorEsc = implode('\\s+', $anchorEscParts);
+            $anchorEsc = implode('[\\s\\p{P}]+', $anchorEscParts); // 2026-06-20 forensic: allow punctuation between anchor words (runtime normalizes .,;:!? to spaces) — fixes apply-time no_natural_anchor_match
             $pattern = '/(?<![>\w])(' . $anchorEsc . ')(?![\w<])/iu';
             $repCount = 0;
             // Build a stripped view of the paragraph + a position map so we
@@ -1254,12 +1630,20 @@ class SeoService
                 if (isset($map[$sOffset]) && isset($map[$sEnd - 1])) {
                     $origStart = $map[$sOffset];
                     $origEnd   = $map[$sEnd - 1] + 1;
+                    $insideLink = false;
+                    foreach ($linkRanges as $lr) {
+                        if ($origStart < $lr[1] && $origEnd > $lr[0]) { $insideLink = true; break; }
+                    }
+                    if ($insideLink) { continue; } // would nest inside an existing <a> — try another paragraph
                     $origMatch = substr($p, $origStart, $origEnd - $origStart);
                     // Make sure we are not inside an existing <a>; the
                     // earlier check (`stripos($p, '<a ') !== false`) skips
                     // any paragraph with an existing link, so we're safe.
+                    // 2026-05-23 FIX 22 — inline underline so the link is
+                    // visible regardless of WP theme. Themes that strip
+                    // text-decoration on a tags still honour inline style.
                     $wrapped = substr($p, 0, $origStart)
-                             . '<a href="' . htmlspecialchars($target, ENT_QUOTES) . '">' . $origMatch . '</a>'
+                             . '<a href="' . htmlspecialchars($target, ENT_QUOTES) . '" style="text-decoration: underline;">' . $origMatch . '</a>'
                              . substr($p, $origEnd);
                     $repCount = 1;
                 }
@@ -1572,7 +1956,7 @@ class SeoService
         })->count();
         $below50      = (clone $sci)->where('content_score', '<', 50)->whereNotNull('content_score')->count();
         $internalSum  = (int) (clone $sci)->sum('internal_link_count');
-        $orphans      = (clone $sci)->where('inbound_links', 0)->count();
+        $orphans      = (clone $sci)->where('inbound_links', 0)->where('word_count', '>', 100)->count(); // 2026-06-20 forensic: actionable orphans only (exclude homepage/thin)
 
         $healthScore  = $scoredAvg !== null ? (int) round($scoredAvg) : null;
         $linkScore    = $totalPages > 0 ? (int) round((($totalPages - $orphans) / max(1, $totalPages)) * 100) : null;
@@ -2593,8 +2977,8 @@ class SeoService
                 'top_competitors' => [],
                 'content_gaps' => [],
                 'opportunities' => [],
-                'source' => 'fallback_dataforseo_unavailable',
-                'error' => $serp['error'] ?? $kwd['error'] ?? 'unknown',
+                'source' => 'live_data_unavailable',
+                'error' => 'Live keyword and competitor data is temporarily unavailable. The rankings you already track and your Search Console data are unaffected.',
             ];
         }
 
@@ -3879,6 +4263,7 @@ class SeoService
      * NOTE: SEOContextProvider only exposes get(); the LLM call goes via
      * RuntimeClient::assistant() — the same path agent DMs use.
      */
+    /** W6: replies pass through LaunchScopeLanguageGuard - see wrapper below. */
     public function assistantMessage(int $wsId, string $message, array $context = []): array
     {
         // 2026-05-13 — full rebuild moved to SeoAssistantService.
@@ -3886,8 +4271,16 @@ class SeoService
         // history (Redis, 24h, _v2 key), pending-action store (Redis, 5min),
         // a keyword intent classifier, and an execution engine that fires
         // audits / articles / SERP / reports / links / metas / keyword tracking.
-        return app(\App\Engines\SEO\Services\SeoAssistantService::class)
+        // W6: the WordPress connector assistant had no launch-scope guard at
+        // all. Every reply now passes through the same control the SPA uses.
+        $result = app(\App\Engines\SEO\Services\SeoAssistantService::class)
             ->handle($wsId, $message, $context);
+        foreach (['response', 'message', 'reply', 'text'] as $k) {
+            if (!empty($result[$k]) && is_string($result[$k])) {
+                $result[$k] = \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply($result[$k]);
+            }
+        }
+        return $result;
     }
 
     private function upsertContentIndex(string $url, array $data): void
@@ -4083,6 +4476,104 @@ class SeoService
             'last_scan_date_formatted' => $lastScanDate?->format('l, F j, Y'),
             'next_scan_date' => $frequency !== 'never' ? $nextMonday->toDateString() : null,
             'next_scan_date_formatted' => $frequency !== 'never' ? $nextMonday->format('l, F j, Y') : null,
+        ];
+    }
+
+    /**
+     * v1.4.4 (2026-05-30) — Competitor SERP lookup.
+     * Returns top-10 competitor positions for a keyword from
+     * seo_serp_results (one row per SERP position, populated by serpAnalysis).
+     */
+    public function competitorSerp(int $wsId, array $params): array
+    {
+        $keyword = trim((string) ($params['keyword'] ?? ''));
+        if ($keyword === '') {
+            return ['success' => false, 'error' => 'keyword is required'];
+        }
+        $items = DB::table('seo_serp_results')
+            ->where('workspace_id', $wsId)
+            ->where('keyword', $keyword)
+            ->orderBy('position')
+            ->limit(10)
+            ->get(['position', 'rank', 'domain', 'url', 'title', 'snippet', 'checked_at']);
+
+        if ($items->isEmpty()) {
+            return [
+                'success' => false,
+                'tracked' => false,
+                'message' => "No cached SERP data for '{$keyword}' in this workspace. Call seo.add_keyword to track it, then seo.serp_analysis to populate the SERP.",
+            ];
+        }
+        $asOf = $items->first()->checked_at ?? null;
+        return [
+            'success' => true,
+            'keyword' => $keyword,
+            'top_competitors' => $items->toArray(),
+            'as_of' => $asOf,
+            'result' => $items->count() . " competitor positions cached for '{$keyword}'.",
+        ];
+    }
+
+    /**
+     * v1.4.4 (2026-05-30) — Competitor gap analysis.
+     * Returns keywords where competitors rank in top 10 but the workspace's
+     * own domain doesn't appear. Workspace domain detected from any published
+     * website row or workspace_memory.domain.
+     */
+    public function competitorGaps(int $wsId, array $params): array
+    {
+        $limit = max(1, min((int) ($params['limit'] ?? 25), 100));
+        $filterDomain = trim((string) ($params['competitor_domain'] ?? ''));
+
+        $own = '';
+        try {
+            $w = DB::table('websites')->where('workspace_id', $wsId)->where('status', 'published')->value('custom_domain');
+            if ($w) $own = strtolower(parse_url('https://' . $w, PHP_URL_HOST) ?? $w);
+            if ($own === '') {
+                $mem = DB::table('workspace_memory')->where('workspace_id', $wsId)->where('key', 'domain')->value('value_json');
+                if ($mem) $own = strtolower(trim($mem, '" '));
+            }
+        } catch (\Throwable $e) {}
+
+        // Pull every SERP result, grouped by keyword in PHP.
+        $rows = DB::table('seo_serp_results')
+            ->where('workspace_id', $wsId)
+            ->select(['keyword', 'position', 'domain'])
+            ->orderBy('keyword')->orderBy('position')
+            ->limit(5000)
+            ->get();
+
+        $byKw = [];
+        foreach ($rows as $r) {
+            $byKw[$r->keyword][] = $r;
+        }
+
+        $gaps = [];
+        foreach ($byKw as $kw => $entries) {
+            $domains = [];
+            $ownRanked = false;
+            foreach ($entries as $e) {
+                $pos = (int) $e->position;
+                if ($pos < 1 || $pos > 10) continue;
+                $d = strtolower((string) ($e->domain ?? ''));
+                if ($d === '') continue;
+                if ($own !== '' && (str_contains($d, $own) || str_contains($own, $d))) $ownRanked = true;
+                if ($filterDomain !== '' && stripos($d, $filterDomain) === false) continue;
+                $domains[] = $d;
+            }
+            if ($ownRanked) continue;
+            if (empty($domains)) continue;
+            $gaps[] = [
+                'keyword'                => $kw,
+                'top_competitor_domains' => array_values(array_unique($domains)),
+            ];
+            if (count($gaps) >= $limit) break;
+        }
+        return [
+            'success'    => true,
+            'own_domain' => $own ?: '(unknown — set workspace_memory.domain to enable filtering)',
+            'gaps'       => $gaps,
+            'result'     => count($gaps) . ' keyword gaps found' . ($own ? " for '{$own}'" : '') . '.',
         ];
     }
 

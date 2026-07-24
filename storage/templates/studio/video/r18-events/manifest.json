@@ -1,0 +1,70 @@
+{
+  "name": "Events Reel",
+  "slug": "r18-events",
+  "format": "reels",
+  "category": "events",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "events"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "LOGO HERE"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Annual Event"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "One night. 5,000 people. 20 headlining artists. The event of the year — don't miss it."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "LOGO HERE"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "THE"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "BIGGEST"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "NIGHT."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "GET TICKETS"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "events"
+    ]
+  }
+}

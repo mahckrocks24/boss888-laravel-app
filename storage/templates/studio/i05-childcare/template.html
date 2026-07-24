@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Childcare — Playful Learning Grid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#FFF9F5;--primary:#FF8B6B;--accent:#FFD166;--mint:#A8E6CF;
+  --lavender:#C3B4F3;--sky:#B3E5FC;--text:#2D2D2D;--muted:rgba(45,45,45,.50);
+  --fh:'Baloo 2',sans-serif;--fb:'Quicksand',sans-serif;
+  --r:20px;--gap:14px;--pad:14px;
+  --w:1080px;--h:1080px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#FFE8D6}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.80);display:block;width:calc(var(--w)*.80);height:calc(var(--h)*.80)}}
+@media(max-width:940px){.sw{transform:scale(.62);display:block;width:calc(var(--w)*.62);height:calc(var(--h)*.62)}}
+@media(max-width:700px){.sw{transform:scale(.44);display:block;width:calc(var(--w)*.44);height:calc(var(--h)*.44)}}
+@media(max-width:500px){.sw{transform:scale(.30);display:block;width:calc(var(--w)*.30);height:calc(var(--h)*.30)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg)}
+
+/* Wavy bg pattern */
+.bg-wave{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background-image:radial-gradient(circle,rgba(255,139,107,.07) 2px,transparent 2px);
+  background-size:28px 28px}
+/* Big soft blobs */
+.bg-blob{position:absolute;z-index:1;border-radius:50%;pointer-events:none}
+.bg-blob-a{width:380px;height:380px;background:rgba(255,209,102,.12);top:-80px;right:80px}
+.bg-blob-b{width:240px;height:240px;background:rgba(168,230,207,.14);bottom:-40px;left:160px}
+
+/* Top accent — rainbow dots */
+.top-rainbow{position:absolute;z-index:5;top:0;left:0;right:0;height:6px;
+  background:linear-gradient(90deg,var(--primary),var(--accent),var(--mint),var(--lavender),var(--sky),var(--primary))}
+
+/* BENTO GRID */
+.bento{position:absolute;inset:0;z-index:3;display:grid;
+  grid-template-columns:1.3fr 1fr 1fr;
+  grid-template-rows:1.4fr 1fr;
+  gap:var(--gap);padding:var(--pad)}
+.card{border-radius:var(--r);overflow:hidden;position:relative}
+
+/* A — hero card (col1, row1-2) */
+.ca{grid-column:1;grid-row:1/3;background:var(--primary);padding:28px 26px;
+  display:flex;flex-direction:column;justify-content:space-between}
+/* Wavy top decoration */
+.ca::before{content:'';position:absolute;top:0;left:0;right:0;height:12px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.20) 0px,rgba(255,255,255,.20) 8px,transparent 8px,transparent 16px)}
+.ca-fun-tag{font-family:var(--fb);font-size:18px;font-weight:700;letter-spacing:.20em;
+  text-transform:uppercase;color:rgba(45,45,45,.60);background:rgba(255,255,255,.35);
+  padding:8px 18px;border-radius:30px;align-self:flex-start;position:relative;z-index:2}
+.ca-headline{font-family:var(--fh);font-size:70px;font-weight:800;line-height:.90;
+  color:white;text-shadow:3px 3px 0 rgba(45,45,45,.15);position:relative;z-index:2}
+.ca-img{width:220px;height:220px;border-radius:50%;overflow:hidden;
+  border:5px solid white;box-shadow:4px 4px 0 rgba(45,45,45,.20);
+  align-self:center;position:relative;z-index:2;flex-shrink:0}
+.ca-img img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.ca-sub{font-family:var(--fb);font-size:21px;font-weight:600;line-height:1.60;
+  color:rgba(255,255,255,.90);position:relative;z-index:2}
+
+/* B — yellow feature */
+.cb{grid-column:2;grid-row:1;background:var(--accent);padding:22px 22px;
+  display:flex;flex-direction:column;justify-content:space-between}
+.cb::before{content:'';position:absolute;top:16px;right:16px;font-size:40px;line-height:1}
+.card-emoji{font-size:44px;line-height:1;margin-bottom:8px}
+.card-title{font-family:var(--fh);font-size:26px;font-weight:800;color:var(--text);line-height:1.10}
+.card-sub{font-family:var(--fb);font-size:20px;font-weight:500;color:var(--muted)}
+
+/* C — mint */
+.cc{grid-column:3;grid-row:1;background:var(--mint);padding:22px 22px;
+  display:flex;flex-direction:column;justify-content:space-between}
+
+/* D — lavender */
+.cd{grid-column:2;grid-row:2;background:var(--lavender);padding:22px 22px;
+  display:flex;flex-direction:column;justify-content:space-between}
+
+/* E — CTA/white */
+.ce{grid-column:3;grid-row:2;background:white;padding:22px 22px;
+  border:2px solid rgba(255,139,107,.25);display:flex;flex-direction:column;justify-content:space-between}
+.cta{display:inline-flex;align-items:center;gap:10px;font-family:var(--fh);
+  font-size:15px;font-weight:800;
+  color:white;background:var(--primary);padding:14px 28px;border-radius:30px;
+  border:none;cursor:pointer;text-decoration:none;
+  box-shadow:3px 3px 0 rgba(45,45,45,.20);
+  transition:transform .15s,box-shadow .15s}
+.cta:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(45,45,45,.30)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+.brand-area{display:flex;flex-direction:column;gap:2px}
+.brand-name{font-family:var(--fh);font-size:16px;font-weight:800;color:var(--primary)}
+.brand-url{font-family:var(--fb);font-size:17px;font-weight:500;letter-spacing:.10em;color:var(--muted)}
+.stat-big{font-family:var(--fh);font-size:36px;font-weight:800;color:var(--text);line-height:1}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body><div class="scene"><div class="sw"><div class="post">
+  <div class="bg-wave"></div><div class="bg-blob bg-blob-a"></div><div class="bg-blob bg-blob-b"></div>
+  <div class="top-rainbow"></div>
+  <div class="bento">
+
+    <!-- A: Hero -->
+    <div class="card ca">
+      <span class="ca-fun-tag" data-field="fun_tag">{{fun_tag}}</span>
+      <div class="ca-img"><img data-field="hero_image" src="{{hero_image}}" alt="Hero"/></div>
+      <h1 class="ca-headline"><span data-field="headline_1">{{headline_1}}</span><br><span data-field="headline_2">{{headline_2}}</span><br><span data-field="headline_3">{{headline_3}}</span><br><span data-field="headline_4">{{headline_4}}</span></h1>
+      <p class="ca-sub" data-field="subheading">{{subheading}}</p>
+    </div>
+
+    <!-- B: Ages -->
+    <div class="card cb">
+      <div class="card-emoji" data-field="cb_emoji">{{cb_emoji}}</div>
+      <div class="card-title" data-field="cb_title">{{cb_title}}</div>
+      <div class="card-sub" data-field="cb_sub">{{cb_sub}}</div>
+    </div>
+
+    <!-- C: Safety -->
+    <div class="card cc">
+      <div class="card-emoji" data-field="cc_emoji">{{cc_emoji}}</div>
+      <div class="card-title" data-field="cc_title">{{cc_title}}</div>
+      <div class="card-sub" data-field="cc_sub">{{cc_sub}}</div>
+    </div>
+
+    <!-- D: Learning -->
+    <div class="card cd">
+      <div class="card-emoji" data-field="cd_emoji">{{cd_emoji}}</div>
+      <div class="card-title" data-field="cd_title">{{cd_title}}</div>
+      <div class="card-sub" data-field="cd_sub">{{cd_sub}}</div>
+    </div>
+
+    <!-- E: Brand/CTA -->
+    <div class="card ce">
+      <div class="brand-area">
+        <span class="brand-name" data-field="brand_name">{{brand_name}}</span>
+        <span class="brand-url" data-field="brand_url">{{brand_url}}</span>
+      </div>
+      <div class="stat-big"><span data-field="stat_value">{{stat_value}}</span><br><span style="font-size:14px;font-weight:500;color:var(--muted)" data-field="stat_label">{{stat_label}}</span></div>
+      <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+    </div>
+
+  </div>
+</div></div></div></body></html>

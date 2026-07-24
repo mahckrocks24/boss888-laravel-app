@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Motion Reel — Pet Services</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#FFF8F0; --primary:#FF9B50; --orange-d:#E07820; --accent:#FF6B6B;
+  --green:#52D68A; --cream:#FFF3E0; --sand:#F5E6C8;
+  --text:#2C1810; --muted:rgba(44,24,16,.48); --white:#FFFFFF;
+  --fh:'Fredoka One',Impact,cursive; --fb:'Nunito',sans-serif;
+  --w:1080px; --h:1920px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#FFE0C0}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:#FFD8B0}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.46);display:block;width:calc(var(--w)*.46);height:calc(var(--h)*.46)}}
+@media(max-width:780px){.sw{transform:scale(.33);display:block;width:calc(var(--w)*.33);height:calc(var(--h)*.33)}}
+@media(max-width:520px){.sw{transform:scale(.24);display:block;width:calc(var(--w)*.24);height:calc(var(--h)*.24)}}
+.reel{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--fb)}
+
+.layer-bg{position:absolute;inset:0;z-index:1;opacity:0;animation:fade-in 1s ease 0s both}
+.bg-base{position:absolute;inset:0;background:linear-gradient(160deg,#FFF5E8 0%,var(--bg) 55%,#FFF3E8 100%)}
+.bg-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,155,80,.10) 2px,transparent 2px);background-size:38px 38px}
+.bg-blob1{position:absolute;width:700px;height:600px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,155,80,.14) 0%,transparent 70%);top:-150px;right:-100px;animation:float-slow 12s ease-in-out 1s infinite alternate}
+.bg-blob2{position:absolute;width:500px;height:400px;border-radius:50%;background:rgba(82,214,138,.08);bottom:-60px;left:200px;animation:float-slow 14s ease-in-out 3s infinite alternate-reverse}
+
+.layer-shape{position:absolute;inset:0;z-index:2}
+/* Rainbow top stripe */
+.shape-top{position:absolute;top:0;left:0;right:0;height:8px;background:linear-gradient(90deg,var(--primary),var(--accent),var(--primary),var(--green),var(--primary));transform:scaleX(0);transform-origin:left;animation:scale-x .9s cubic-bezier(.16,1,.3,1) 0s both}
+.shape-bot{position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--primary),var(--green));transform:scaleX(0);transform-origin:right;animation:scale-x .8s cubic-bezier(.16,1,.3,1) .2s both}
+/* Floating paw prints */
+.shape-paw{position:absolute;font-size:52px;opacity:0;animation:paw-bounce .5s cubic-bezier(.34,1.56,.64,1) var(--d) both}
+.p1{top:340px;right:72px;--d:1.2s}.p2{top:1080px;left:80px;--d:4.2s}.p3{bottom:340px;right:80px;--d:5.1s}
+/* Wavy divider using border-radius */
+.shape-wave{position:absolute;left:-5%;right:-5%;height:100px;background:var(--sand);top:420px;border-radius:50% 50% 0 0/30px;opacity:0;animation:wave-in .8s cubic-bezier(.16,1,.3,1) .5s both}
+/* Star accents */
+.shape-star{position:absolute;font-size:40px;opacity:0;animation:pop-in .4s cubic-bezier(.34,1.56,.64,1) var(--d) both;color:var(--primary)}
+.s1{top:500px;left:76px;--d:1.6s}.s2{top:1240px;right:76px;--d:4.8s}
+
+.layer-brand{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:84px 80px}
+.brand-logo{display:flex;align-items:center;gap:18px;opacity:0;animation:bounce-in .7s cubic-bezier(.34,1.56,.64,1) .9s both}
+.brand-icon{width:56px;height:56px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:3px 3px 0 rgba(44,24,16,.18)}
+.brand-name{font-family:var(--fh);font-size:28px;letter-spacing:.04em;color:var(--text)}
+.brand-tag{font-family:var(--fb);font-size:21px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--white);background:var(--green);padding:12px 24px;border-radius:30px;opacity:0;animation:bounce-in .6s cubic-bezier(.34,1.56,.64,1) 1.05s both;box-shadow:3px 3px 0 rgba(44,24,16,.14)}
+
+.layer-text{position:absolute;z-index:6;top:540px;left:80px;right:80px}
+.eyebrow{font-family:var(--fb);font-size:20px;font-weight:800;letter-spacing:.20em;text-transform:uppercase;color:var(--orange-d);display:flex;align-items:center;gap:14px;margin-bottom:40px;opacity:0;animation:wipe-right .7s cubic-bezier(.16,1,.3,1) 1.4s both}
+.eyebrow::before{content:'🐾';font-size:24px}
+
+.headline{display:flex;flex-direction:column;gap:0;margin-bottom:44px}
+.hl{font-family:var(--fh);font-size:148px;line-height:.84;letter-spacing:.01em;color:var(--text);opacity:0;display:block}
+.hl-orange{color:var(--primary)}
+.hl-1{animation:bounce-slam .6s cubic-bezier(.34,1.56,.64,1) 1.9s both}
+.hl-2{animation:bounce-slam .6s cubic-bezier(.34,1.56,.64,1) 2.2s both}
+.hl-3{animation:bounce-slam .6s cubic-bezier(.34,1.56,.64,1) 2.5s both}
+
+.wavy-rule{width:0;height:4px;background:linear-gradient(90deg,var(--primary),var(--accent),var(--green));border-radius:4px;margin-bottom:44px;animation:line-draw .8s cubic-bezier(.16,1,.3,1) 3.0s both}
+.subtext{font-family:var(--fb);font-size:30px;font-weight:400;line-height:1.68;color:var(--muted);margin-bottom:56px;opacity:0;transform:translateY(20px);animation:fade-rise .9s cubic-bezier(.16,1,.3,1) 3.5s both}
+
+/* Service cards */
+.services{display:flex;flex-direction:column;gap:16px;margin-bottom:64px}
+.svc{display:flex;align-items:center;gap:24px;padding:28px 32px;border-radius:18px;opacity:0;transform:translateX(-24px);animation:slide-right .55s cubic-bezier(.34,1.56,.64,1) var(--d) both;box-shadow:4px 4px 0 rgba(44,24,16,.10)}
+.svc--orange{background:var(--primary);--d:4.1s}
+.svc--cream{background:var(--cream);border:2px solid rgba(255,155,80,.30);--d:4.3s}
+.svc--green{background:var(--green);--d:4.5s}
+.svc-emoji{font-size:44px;flex-shrink:0}
+.svc-body{}
+.svc-name{font-family:var(--fh);font-size:30px;letter-spacing:.02em}
+.svc-name--white{color:var(--white)}
+.svc-name--ink{color:var(--text)}
+.svc-desc{font-family:var(--fb);font-size:18px;font-weight:400}
+.svc-desc--dim{color:rgba(255,255,255,.70)}
+.svc-desc--muted{color:var(--muted)}
+
+/* Rating */
+.rating-row{display:flex;align-items:center;gap:24px;margin-bottom:60px;opacity:0;animation:bounce-in .6s cubic-bezier(.34,1.56,.64,1) 4.8s both}
+.rating-badge{background:var(--primary);color:var(--white);border-radius:16px;padding:24px 36px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:4px 4px 0 rgba(44,24,16,.18)}
+.rating-val{font-family:var(--fh);font-size:56px;line-height:1;color:var(--white)}
+.rating-stars{font-size:22px;letter-spacing:4px;color:rgba(255,255,255,.90)}
+.rating-label{font-family:var(--fb);font-size:21px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.70)}
+.review-count{font-family:var(--fb);font-size:26px;font-weight:700;color:var(--text)}
+.review-sub{font-family:var(--fb);font-size:18px;font-weight:400;color:var(--muted)}
+
+.cta-wrap{opacity:0;animation:bounce-in .8s cubic-bezier(.34,1.56,.64,1) 5.0s both}
+.cta{display:flex;align-items:center;justify-content:center;gap:18px;font-family:var(--fh);font-size:30px;letter-spacing:.04em;color:var(--white);background:var(--primary);padding:38px 80px;text-decoration:none;width:100%;border-radius:50px;box-shadow:5px 5px 0 rgba(44,24,16,.18);animation:cta-wag 3s ease-in-out 6s infinite}
+.cta-emoji{font-size:32px;animation:wag 3s ease-in-out 6s infinite}
+
+.layer-footer{position:absolute;z-index:9;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:32px 80px 72px;border-top:2px dashed rgba(255,155,80,.25);opacity:0;transform:translateY(20px);animation:fade-rise .7s cubic-bezier(.16,1,.3,1) 5.6s both;background:rgba(255,248,240,.85)}
+.footer-brand{font-family:var(--fh);font-size:22px;letter-spacing:.04em;color:var(--primary)}
+.footer-url{font-family:var(--fb);font-size:18px;font-weight:400;letter-spacing:.10em;color:var(--muted)}
+.footer-handle{font-family:var(--fb);font-size:18px;font-weight:700;letter-spacing:.10em;color:var(--orange-d)}
+
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes fade-rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce-in{from{opacity:0;transform:scale(.75) translateY(-10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes bounce-slam{0%{opacity:0;transform:translateY(90px) scale(.90)}55%{transform:translateY(-8px) scale(1.03)}80%{transform:translateY(3px)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes slide-right{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pop-in{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}
+@keyframes paw-bounce{from{opacity:0;transform:scale(0) rotate(-20deg)}to{opacity:1;transform:scale(1) rotate(0deg)}}
+@keyframes wipe-right{from{opacity:0;transform:translateX(-20px);clip-path:inset(0 100% 0 0)}to{opacity:1;transform:translateX(0);clip-path:inset(0 0% 0 0)}}
+@keyframes line-draw{from{width:0;opacity:0}to{width:100%;opacity:1}}
+@keyframes scale-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes wave-in{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)}}
+@keyframes cta-wag{0%,100%{transform:scale(1)}20%{transform:scale(1.03) rotate(-1deg)}40%{transform:scale(1.03) rotate(1deg)}60%{transform:scale(1)}}
+@keyframes wag{0%,100%{transform:rotate(0)}20%{transform:rotate(-15deg)}40%{transform:rotate(15deg)}60%{transform:rotate(0)}}
+@keyframes float-slow{from{transform:translate(0,0)}to{transform:translate(20px,-16px)}}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="sw"><div class="reel">
+  <div class="layer-bg">
+    <div class="bg-base"></div><div class="bg-dots"></div>
+    <div class="bg-blob1"></div><div class="bg-blob2"></div>
+  </div>
+  <div class="layer-shape">
+    <div class="shape-top"></div><div class="shape-bot"></div>
+    <div class="shape-paw p1">🐾</div><div class="shape-paw p2">🐾</div><div class="shape-paw p3">🐾</div>
+    <div class="shape-star s1">✦</div><div class="shape-star s2">✦</div>
+  </div>
+  <div class="layer-brand">
+    <div class="brand-logo"><div class="brand-icon">🐾</div><span class="brand-name" data-field="brand_name">{{brand_name}}</span></div>
+    <span class="brand-tag" data-field="brand_tag">{{brand_tag}}</span>
+  </div>
+  <div class="layer-text">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <div class="headline">
+      <span class="hl hl-1" data-field="headline_1">{{headline_1}}</span>
+      <span class="hl hl-2" data-field="headline_2">{{headline_2}}</span>
+      <span class="hl hl-3" data-field="headline_3">{{headline_3}}</span>
+    </div>
+    <div class="wavy-rule"></div>
+    <p class="subtext" data-field="subheading">{{subheading}}</p>
+    <div class="services">
+      <div class="svc svc--orange">
+        <span class="svc-emoji">✂️</span>
+        <div class="svc-body"><div class="svc-name svc-name--white">Full Grooming</div><div class="svc-desc svc-desc--dim">All breeds · Premium products</div></div>
+      </div>
+      <div class="svc svc--cream">
+        <span class="svc-emoji">🏠</span>
+        <div class="svc-body"><div class="svc-name svc-name--ink">Dog Boarding</div><div class="svc-desc svc-desc--muted">24/7 care · Safe & loving</div></div>
+      </div>
+      <div class="svc svc--green">
+        <span class="svc-emoji">🎓</span>
+        <div class="svc-body"><div class="svc-name svc-name--white">Certified Training</div><div class="svc-desc svc-desc--dim">Expert trainers · All ages</div></div>
+      </div>
+    </div>
+    <div class="rating-row">
+      <div class="rating-badge">
+        <span class="rating-val">4.9</span>
+        <span class="rating-stars">★★★★★</span>
+        <span class="rating-label">Rating</span>
+      </div>
+      <div>
+        <div class="review-count">2,000+</div>
+        <div class="review-sub" data-field="subheading">{{subheading}}</div>
+        <div class="review-sub" style="margin-top:4px">across the city</div>
+      </div>
+    </div>
+    <div class="cta-wrap"><a class="cta" href="#">Book Now <span class="cta-emoji">🐶</span></a></div>
+  </div>
+  <div class="layer-footer">
+    <span class="footer-brand" data-field="footer_brand">{{footer_brand}}</span>
+    <span class="footer-url" data-field="footer_url">{{footer_url}}</span>
+    <span class="footer-handle" data-field="footer_handle">{{footer_handle}}</span>
+  </div>
+</div></div></div>
+</body></html>

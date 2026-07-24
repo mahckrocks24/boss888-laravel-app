@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Bubbly Reel — SaaS Base</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ═══ TOKENS ═══ */
+:root{
+  --bg:#FAF8FF;
+  --primary:#FF5757;    --accent:#FF8A8A;
+  --lime:#B8FF4A;     --lime-d:#7DC920;
+  --blue:#3B00E0;     --blue-l:#7B5BFF;
+  --sun:#FFE14D;
+  --text:#1A0A2E;
+  --fh:'Syne',sans-serif;
+  --fb:'Space Grotesk',sans-serif;
+  --w:1080px; --h:1920px;
+
+  /* Bounce easing — used everywhere */
+  --bounce: cubic-bezier(.34,1.56,.64,1);
+  --snap:   cubic-bezier(.16,1,.3,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#E8E0FF}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.46);display:block;width:calc(var(--w)*.46);height:calc(var(--h)*.46)}}
+@media(max-width:780px) {.sw{transform:scale(.33);display:block;width:calc(var(--w)*.33);height:calc(var(--h)*.33)}}
+@media(max-width:520px) {.sw{transform:scale(.24);display:block;width:calc(var(--w)*.24);height:calc(var(--h)*.24)}}
+
+/* ═══ CANVAS ═══ */
+.reel{
+  width:var(--w);height:var(--h);
+  position:relative;overflow:hidden;
+  background:var(--bg);font-family:var(--fb);
+}
+
+/* ═══ BLOB BACKGROUND ═══ */
+.blobs{position:absolute;inset:0;z-index:1}
+.blob{position:absolute;border-radius:50%;filter:blur(1px)}
+/* Coral blob — upper right */
+.blob-1{
+  width:680px;height:620px;
+  background:radial-gradient(ellipse,var(--primary) 0%,rgba(255,87,87,.65) 50%,transparent 75%);
+  top:-160px;right:-140px;
+  animation:blob-drift 8s ease-in-out 0s both,blob-float 12s ease-in-out 1s infinite alternate;
+  transform-origin:center;
+}
+/* Lime blob — lower left */
+.blob-2{
+  width:600px;height:560px;
+  background:radial-gradient(ellipse,var(--lime) 0%,rgba(184,255,74,.60) 50%,transparent 75%);
+  bottom:-120px;left:-120px;
+  animation:blob-drift 1.1s ease-in-out .15s both,blob-float 14s ease-in-out 3s infinite alternate-reverse;
+}
+/* Blue accent — mid left */
+.blob-3{
+  width:360px;height:340px;
+  background:radial-gradient(ellipse,var(--blue-l) 0%,rgba(123,91,255,.50) 50%,transparent 75%);
+  top:720px;left:-80px;
+  animation:blob-drift .9s ease-in-out .3s both,blob-float 10s ease-in-out 2s infinite alternate;
+}
+/* Sun yellow — center top */
+.blob-4{
+  width:280px;height:260px;
+  background:radial-gradient(ellipse,var(--sun) 0%,rgba(255,225,77,.55) 50%,transparent 75%);
+  top:380px;left:50%;transform:translateX(-50%);
+  animation:blob-drift .8s ease-in-out .4s both,blob-float 9s ease-in-out 0.5s infinite alternate-reverse;
+}
+
+/* ═══ SQUIGGLES — SVG decorative lines ═══ */
+.squiggles{position:absolute;inset:0;z-index:2;pointer-events:none}
+
+/* ═══ TOPBAR ═══ */
+.topbar{
+  position:absolute;z-index:8;top:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:44px 52px;
+}
+.brand{display:flex;align-items:center;gap:14px;opacity:0;animation:pop-in .7s var(--bounce) .6s both}
+.brand-icon{
+  width:52px;height:52px;border-radius:14px;
+  background:var(--blue);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;flex-shrink:0;
+  box-shadow:4px 4px 0 var(--text);
+}
+.brand-name{font-family:var(--fh);font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+.brand-pill{
+  font-family:var(--fb);font-size:14px;font-weight:700;letter-spacing:.08em;
+  color:var(--text);background:var(--lime);
+  padding:12px 24px;border-radius:50px;
+  border:2px solid var(--text);
+  box-shadow:3px 3px 0 var(--text);
+  opacity:0;animation:pop-in .6s var(--bounce) .8s both;
+  transform:rotate(2deg);
+}
+
+/* ═══ HERO ═══ */
+.hero{
+  position:absolute;z-index:5;
+  top:460px;left:60px;right:60px;
+}
+
+.eyebrow-wrap{
+  display:flex;gap:12px;align-items:center;margin-bottom:24px;
+  opacity:0;animation:bounce-from-left .7s var(--bounce) 1.2s both;
+}
+.eyebrow-emoji{font-size:36px}
+.eyebrow{
+  font-family:var(--fb);font-size:18px;font-weight:700;letter-spacing:.06em;
+  color:var(--text);
+  background:var(--sun);
+  padding:10px 22px;border-radius:50px;
+  border:2px solid var(--text);
+  box-shadow:3px 3px 0 var(--text);
+  transform:rotate(-1.5deg);display:inline-block;
+}
+
+/* HEADLINE — big mixed weight type */
+.headline{margin-bottom:28px}
+.hl-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 16px;line-height:1}
+.hl-big{
+  font-family:var(--fh);font-size:148px;font-weight:800;
+  letter-spacing:-.04em;line-height:.90;
+  color:var(--text);display:block;
+  opacity:0;
+}
+.hl-light{
+  font-family:var(--fh);font-size:148px;font-weight:400;
+  letter-spacing:-.04em;line-height:.90;
+  color:var(--text);display:block;
+  opacity:0;font-style:italic;
+}
+.hl-outlined{
+  font-family:var(--fh);font-size:148px;font-weight:800;
+  letter-spacing:-.04em;line-height:.90;
+  -webkit-text-stroke:3px var(--text);color:transparent;
+  display:block;opacity:0;
+}
+.hl-colored{color:var(--primary);-webkit-text-fill-color:var(--primary);}
+
+.hl-1{animation:bounce-up .65s var(--bounce) 1.4s both;transform:rotate(-.5deg)}
+.hl-2{animation:bounce-up .65s var(--bounce) 1.65s both;transform:rotate(.5deg)}
+.hl-3{animation:bounce-up .65s var(--bounce) 1.90s both;transform:rotate(-.3deg)}
+
+/* Wobbly underline on headline */
+.hl-underline-wrap{position:relative;display:inline-block;opacity:0;animation:bounce-up .6s var(--bounce) 2.0s both}
+.hl-underline-wrap svg{position:absolute;bottom:-8px;left:-4px;right:-4px;width:calc(100% + 8px);height:20px}
+
+/* SUBTEXT */
+.subtext{
+  font-family:var(--fb);font-size:28px;font-weight:400;line-height:1.65;
+  color:rgba(26,10,46,.65);
+  max-width:860px;margin-bottom:48px;
+  opacity:0;transform:translateY(20px);
+  animation:pop-up .8s var(--snap) 2.4s both;
+}
+
+/* FEATURE BLOBS — pill badges scattered */
+.features{
+  display:flex;flex-wrap:wrap;gap:14px;margin-bottom:52px;
+  opacity:0;animation:pop-in .7s var(--bounce) 2.8s both;
+}
+.feat{
+  font-family:var(--fb);font-size:20px;font-weight:600;
+  color:var(--text);
+  padding:14px 28px;border-radius:50px;
+  border:2.5px solid var(--text);
+  box-shadow:4px 4px 0 var(--text);
+  display:flex;align-items:center;gap:10px;
+}
+.feat-a{background:var(--lime)}
+.feat-b{background:var(--accent);transform:rotate(-1deg)}
+.feat-c{background:var(--sun);transform:rotate(1.5deg)}
+
+/* CTA */
+.cta-row{
+  display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  opacity:0;animation:pop-in .8s var(--bounce) 3.2s both;
+}
+.cta-primary{
+  display:inline-flex;align-items:center;gap:16px;
+  font-family:var(--fh);font-size:26px;font-weight:800;letter-spacing:-.01em;
+  color:var(--bg);background:var(--blue);
+  padding:28px 60px;border-radius:50px;
+  border:3px solid var(--text);
+  box-shadow:5px 5px 0 var(--text);
+  text-decoration:none;
+  transform:rotate(-.5deg);
+  animation:cta-bounce 3s ease-in-out 4s infinite;
+}
+.cta-arrow{display:inline-block;animation:arrow-wiggle 3s ease-in-out 4s infinite}
+.cta-ghost{
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:var(--fb);font-size:20px;font-weight:600;
+  color:var(--text);
+  text-decoration:underline;text-underline-offset:4px;
+  transform:rotate(.5deg);
+}
+
+/* ═══ STATS — tilted cards ═══ */
+.stats-row{
+  position:absolute;z-index:5;
+  top:1440px;left:60px;right:60px;
+  display:flex;gap:18px;
+}
+.stat-card{
+  flex:1;
+  padding:24px 20px;border-radius:24px;
+  border:2.5px solid var(--text);
+  display:flex;flex-direction:column;gap:6px;
+  opacity:0;animation:pop-in .6s var(--bounce) var(--d) both;
+}
+.sc-coral{background:var(--primary);transform:rotate(-1.5deg);box-shadow:5px 5px 0 var(--text)}
+.sc-lime {background:var(--lime); transform:rotate(1.5deg); box-shadow:5px 5px 0 var(--text)}
+.sc-blue {background:var(--blue); transform:rotate(-.8deg);box-shadow:5px 5px 0 var(--text)}
+.stat-val{font-family:var(--fh);font-size:64px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--text)}
+.sc-blue .stat-val{color:var(--lime)}
+.stat-label{font-family:var(--fb);font-size:16px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:rgba(26,10,46,.65)}
+.sc-blue .stat-label{color:rgba(184,255,74,.80)}
+.stat-card:nth-child(1){--d:3.6s}
+.stat-card:nth-child(2){--d:3.8s}
+.stat-card:nth-child(3){--d:4.0s}
+
+/* ═══ FLOATING BADGES ═══ */
+.float-badge{
+  position:absolute;z-index:7;
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--fb);font-size:16px;font-weight:700;
+  color:var(--text);
+  background:white;
+  padding:14px 22px;border-radius:50px;
+  border:2.5px solid var(--text);
+  box-shadow:4px 4px 0 var(--text);
+  opacity:0;animation:pop-in .6s var(--bounce) var(--d) both;
+  white-space:nowrap;
+}
+.fb-1{top:390px;right:72px;transform:rotate(3deg);--d:1.0s}
+.fb-2{top:1100px;right:68px;transform:rotate(-2.5deg);--d:3.5s}
+.fb-3{top:1230px;left:68px;transform:rotate(2deg);--d:4.2s}
+.fb-live-dot{width:10px;height:10px;border-radius:50%;background:var(--primary);animation:live-pulse 1.5s ease-in-out 2s infinite}
+.fb-green-dot{width:10px;height:10px;border-radius:50%;background:#22C55E;animation:live-pulse 1.5s ease-in-out 2s infinite}
+
+/* ═══ FOOTER ═══ */
+.footer{
+  position:absolute;z-index:8;bottom:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:26px 52px 52px;
+  opacity:0;animation:pop-up .7s var(--snap) 4.4s both;
+}
+.footer-brand{font-family:var(--fh);font-size:20px;font-weight:800;letter-spacing:-.01em;color:var(--text)}
+.footer-url{font-family:var(--fb);font-size:18px;font-weight:400;color:rgba(26,10,46,.55)}
+.footer-handle{font-family:var(--fb);font-size:18px;font-weight:700;color:var(--blue-l)}
+
+/* ═══ KEYFRAMES ═══ */
+@keyframes blob-drift{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes blob-float{from{transform:translate(0,0) scale(1)}to{transform:translate(20px,-18px) scale(1.04)}}
+@keyframes pop-in{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes pop-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce-up{
+  0%  {opacity:0;transform:translateY(90px) rotate(-3deg) scale(.85);filter:blur(4px)}
+  60% {filter:blur(0)}
+  75% {transform:translateY(-8px) rotate(.5deg) scale(1.02)}
+  90% {transform:translateY(4px) rotate(0) scale(1.00)}
+  100%{opacity:1;transform:translateY(0) rotate(0) scale(1)}
+}
+@keyframes bounce-from-left{
+  0%  {opacity:0;transform:translateX(-60px) rotate(-4deg)}
+  70% {transform:translateX(6px) rotate(1.5deg)}
+  100%{opacity:1;transform:translateX(0) rotate(-1.5deg)}
+}
+@keyframes cta-bounce{
+  0%,100%{box-shadow:5px 5px 0 var(--text);transform:rotate(-.5deg) translateY(0)}
+  50%    {box-shadow:8px 8px 0 var(--text);transform:rotate(-.5deg) translateY(-5px)}
+}
+@keyframes arrow-wiggle{0%,80%,100%{transform:translateX(0) rotate(0)}90%{transform:translateX(8px) rotate(8deg)}}
+@keyframes live-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.7}}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="sw"><div class="reel">
+
+  <!-- BLOBS -->
+  <div class="blobs">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+  </div>
+
+  <!-- SQUIGGLES SVG -->
+  <div class="squiggles">
+    <svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;opacity:0;animation:pop-in .8s ease 1.0s both">
+      <!-- Squiggly line upper area -->
+      <path d="M 80 280 C 120 250 150 310 190 280 C 230 250 260 310 300 280" stroke="#1A0A2E" stroke-width="4" fill="none" stroke-linecap="round" opacity=".35"/>
+      <!-- Stars -->
+      <text x="940" y="300" font-size="32" fill="#1A0A2E" opacity=".25" transform="rotate(-15 940 300)">✦</text>
+      <text x="100" y="700" font-size="24" fill="#1A0A2E" opacity=".20" transform="rotate(10 100 700)">✦</text>
+      <text x="960" y="940" font-size="40" fill="#3B00E0" opacity=".18" transform="rotate(-8 960 940)">✶</text>
+      <!-- Zigzag -->
+      <path d="M 840 600 L 860 580 L 880 600 L 900 580 L 920 600 L 940 580 L 960 600" stroke="#1A0A2E" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".22"/>
+      <!-- Dots -->
+      <circle cx="72" cy="1100" r="8" fill="#FF5757" opacity=".50"/>
+      <circle cx="96" cy="1100" r="8" fill="#FF5757" opacity=".35"/>
+      <circle cx="120" cy="1100" r="8" fill="#FF5757" opacity=".20"/>
+      <!-- Arrow doodle -->
+      <path d="M 880 1360 C 900 1340 920 1360 920 1340" stroke="#1A0A2E" stroke-width="3" fill="none" stroke-linecap="round" opacity=".25"/>
+      <path d="M 915 1335 L 920 1340 L 914 1345" stroke="#1A0A2E" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".25"/>
+      <!-- Wavy bottom line -->
+      <path d="M 60 1760 C 100 1745 130 1775 170 1760 C 210 1745 240 1775 280 1760 C 320 1745 350 1775 390 1760 C 430 1745 460 1775 500 1760 C 540 1745 570 1775 610 1760 C 650 1745 680 1775 720 1760" stroke="rgba(26,10,46,.18)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <!-- FLOATING BADGES -->
+  <div class="float-badge fb-1">🚀 Just launched!</div>
+  <div class="float-badge fb-2"><span class="fb-live-dot"></span> 4,200 online now</div>
+  <div class="float-badge fb-3">⚡ No credit card needed</div>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <span class="brand-name" data-field="brand_name">{{brand_name}}</span>
+    </div>
+    <span class="brand-pill" data-field="pill_1">{{pill_1}}</span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="eyebrow-wrap">
+      <span class="eyebrow-emoji" data-field="eyebrow">{{eyebrow}}</span>
+      <span class="eyebrow">AI-Powered Platform</span>
+    </div>
+
+    <div class="headline">
+      <span class="hl hl-1" data-field="headline_1">{{headline_1}}</span>
+      <span class="hl hl-2" data-field="headline_2">{{headline_2}}</span>
+      <div class="hl-underline-wrap hl-3">
+        <span class="hl-big hl-colored">not harder.</span>
+        <svg viewBox="0 0 640 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 4 12 C 60 4 120 18 180 10 C 240 2 300 18 360 10 C 420 2 480 18 540 10 C 580 4 620 14 636 10" stroke="#FF5757" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <p class="subtext" data-field="subheading">{{subheading}}</p>
+
+    <div class="features">
+      <span class="feat feat-a">✅ AI Strategy</span>
+      <span class="feat feat-b">📊 Analytics</span>
+      <span class="feat feat-c">🔗 Integrations</span>
+    </div>
+
+    <div class="cta-row">
+      <a class="cta-primary" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+      <span class="cta-ghost">See how it works ↓</span>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card sc-coral">
+      <span class="stat-val" data-field="stat_val_1">{{stat_val_1}}</span>
+      <span class="stat-label" data-field="stat_label_1">{{stat_label_1}}</span>
+    </div>
+    <div class="stat-card sc-lime">
+      <span class="stat-val" data-field="stat_val_2">{{stat_val_2}}</span>
+      <span class="stat-label" data-field="stat_label_2">{{stat_label_2}}</span>
+    </div>
+    <div class="stat-card sc-blue">
+      <span class="stat-val" data-field="stat_val_3">{{stat_val_3}}</span>
+      <span class="stat-label" data-field="stat_label_3">{{stat_label_3}}</span>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span class="footer-brand" data-field="footer_brand">{{footer_brand}}</span>
+    <span class="footer-url" data-field="footer_url">{{footer_url}}</span>
+    <span class="footer-handle" data-field="footer_handle">{{footer_handle}}</span>
+  </div>
+
+</div></div></div>
+</body></html>

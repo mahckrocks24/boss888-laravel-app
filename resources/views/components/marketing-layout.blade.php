@@ -1,3 +1,11 @@
+@php
+  // MW-1a launch gate — while pre-launch on a production host, no marketing CTA
+  // may enter the app. `noindex_hosts` (staging/IP) are also kept out of search.
+  $mktLocked = ! config('marketing.public_launched', false)
+      && in_array(request()->getHost(), config('marketing.production_hosts', []), true);
+  $mktGatedHref = config('marketing.gated_cta_href', 'mailto:hello@levelupgrowth.io');
+  $mktNoindex = in_array(request()->getHost(), config('marketing.noindex_hosts', []), true);
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +13,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ $title ?? 'LevelUp Growth Platform' }} — AI Marketing OS for SMBs</title>
   <meta name="description" content="{{ $description ?? 'Hire AI agents instead of a marketing agency. Sarah and your team research, strategize, and execute — you stay in control.' }}">
+  <link rel="canonical" href="https://levelupgrowth.io{{ request()->getPathInfo() }}">
+  @if($mktNoindex)<meta name="robots" content="noindex, nofollow">@endif
   <meta property="og:title" content="{{ $title ?? 'LevelUp Growth Platform' }}">
   <meta property="og:description" content="{{ $description ?? 'AI marketing OS for SMBs in MENA, DACH and SEA.' }}">
   <meta property="og:url" content="https://levelupgrowth.io">
@@ -99,8 +109,12 @@
       <a href="/specialists">AI Team</a>
       <a href="/pricing">Pricing</a>
       <a href="/faq">FAQ</a>
+      @if($mktLocked)
+      <a href="{{ $mktGatedHref }}" class="nav-cta">Get notified</a>
+      @else
       <a href="/app" style="color:var(--muted)">Sign in</a>
       <a href="/sign-up" class="nav-cta">Start free trial</a>
+      @endif
     </div>
   </div>
 </nav>
@@ -131,7 +145,7 @@
       </div>
       <div class="footer-col">
         <h4>Company</h4>
-        <a href="/sign-up">Get started</a>
+        <a href="{{ $mktLocked ? $mktGatedHref : '/sign-up' }}">{{ $mktLocked ? 'Get notified' : 'Get started' }}</a>
         <a href="mailto:hello@levelupgrowth.io">Contact</a>
       </div>
     </div>

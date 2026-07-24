@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Media Template — Retro Playful / Food & Coffee / Square</title>
+
+  <!-- ============================================================
+       GOOGLE FONTS
+       Display: Fraunces       — quirky optical variable serif
+       Body:    Plus Jakarta Sans — geometric humanist sans
+       Label:   Josefin Sans   — retro geometric caps
+  ============================================================ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,300;1,9..144,700&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Josefin+Sans:wght@300;400;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ============================================================
+       DESIGN TOKENS
+       Industry : Food · Coffee · Artisan Café
+       Style    : Retro-Playful · Warm · Tactile
+       Layout   : Asymmetric — circle image left, content right
+       Format   : Square 1080 × 1080
+       v2       : All contrast issues fixed — every text element
+                  is readable on the dark espresso background.
+                  No text relies on the decorative cream stripe.
+                  No CSS animations — fully static.
+    ============================================================ */
+    :root{
+      /* --- Palette --- */
+      --text:     #1A0D08;
+      --clr-amber:        #E8823A;
+      --accent:  #F5B07A;
+      --primary:   #FAD4B0;
+      --bg:        #FFF6E8;
+      --clr-cream-dim:    #C8B89A;
+      --clr-sage-light:   #A8C5AC;
+      --clr-text-primary: #FFF6E8;    /* cream — guaranteed readable on dark */
+      --clr-text-muted:   #C8B89A;    /* muted cream — secondary text       */
+      --clr-text-ghost:   #7A6555;    /* very faint — purely decorative      */
+      --clr-border-amber: rgba(232,130,58,0.28);
+      --clr-border-cream: rgba(255,246,232,0.10);
+
+      /* --- Typography --- */
+      --font-display: 'Fraunces', Georgia, serif;
+      --font-body:    'Plus Jakarta Sans', sans-serif;
+      --font-label:   'Josefin Sans', sans-serif;
+
+      /* --- Spacing --- */
+      --sp-xs:  8px;
+      --sp-sm: 16px;
+      --sp-md: 28px;
+      --sp-lg: 52px;
+
+      /* --- Dimensions --- */
+      --post-w: 1080px;
+      --post-h: 1080px;
+    }
+
+    /* ============================================================
+       RESET
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; min-height: 100%; }
+
+    /* ============================================================
+       SCENE — browser preview wrapper
+    ============================================================ */
+    .scene {
+      display:         flex;
+      flex-direction:  column;
+      align-items:     center;
+      justify-content: center;
+      min-height:      100vh;
+      padding:         48px 20px;
+      background:radial-gradient(ellipse 60% 50% at 50% 50%, rgba(232,130,58,0.06) 0%, transparent 70%),
+        #0F0805;
+    }
+
+    .scale-wrap { transform-origin: top center; }
+
+    /* ============================================================
+       POST CANVAS — 1080 × 1080
+    ============================================================ */
+    .post {
+      width:    var(--post-w);
+      height:   var(--post-h);
+      position: relative;
+      overflow: hidden;
+      background:var(--text);
+      font-family: var(--font-body);
+      color:var(--clr-text-primary);
+    }
+
+    /* ============================================================
+       BACKGROUND LAYERS
+    ============================================================ */
+
+    /* Warm radial glow */
+    .bg-glow {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background:radial-gradient(ellipse 65% 60% at 32% 58%, rgba(232,130,58,0.13) 0%, transparent 65%),
+        radial-gradient(ellipse 40% 35% at 80% 18%, rgba(122,158,126,0.06) 0%, transparent 55%);
+    }
+
+    /* Fine grain noise */
+    .bg-grain {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 180px 180px;
+      opacity: 0.036;
+      mix-blend-mode: screen;
+    }
+
+    /* Decorative angled tint at bottom — purely visual, NO text sits here */
+    .bg-stripe {
+      position: absolute; z-index: 1; pointer-events: none;
+      width: 200%; height: 120px;
+      background:linear-gradient(180deg, transparent, rgba(232,130,58,0.06));
+      bottom: 0; left: -50%;
+      transform: rotate(-4deg);
+      transform-origin: bottom center;
+    }
+
+    /* ============================================================
+       DECORATIVE GEOMETRY
+    ============================================================ */
+
+    .deco-arc {
+      position: absolute; z-index: 3; pointer-events: none;
+      width: 420px; height: 420px; border-radius: 50%;
+      border: 2px dashed rgba(232,130,58,0.16);
+      top: -130px; right: -90px;
+    }
+
+    .deco-arc-2 {
+      position: absolute; z-index: 3; pointer-events: none;
+      width: 260px; height: 260px; border-radius: 50%;
+      border: 1px solid rgba(232,130,58,0.09);
+      top: -50px; right: -20px;
+    }
+
+    /* Left-edge stitch lines */
+    .deco-stitches {
+      position: absolute; z-index: 3; pointer-events: none;
+      left: var(--sp-lg); top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .deco-stitches span {
+      display: block; height: 1.5px; background:rgba(255,246,232,0.11);
+    }
+
+    .deco-stitches span:nth-child(1) { width: 30px; }
+    .deco-stitches span:nth-child(2) { width: 18px; }
+    .deco-stitches span:nth-child(3) { width: 26px; }
+    .deco-stitches span:nth-child(4) { width: 14px; }
+    .deco-stitches span:nth-child(5) { width: 22px; }
+
+    /* Dot accents — sized via inline style */
+    .deco-dot {
+      position: absolute; z-index: 3; border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .deco-star {
+      position: absolute; z-index: 3; line-height: 1;
+      user-select: none; pointer-events: none;
+    }
+
+    /* ============================================================
+       HERO CIRCLE IMAGE — left side anchor
+    ============================================================ */
+    .hero-circle {
+      position:      absolute;
+      z-index:       5;
+      width:         504px;
+      height:        504px;
+      border-radius: 50%;
+      overflow:      hidden;
+      top:           50%;
+      left:          68px;
+      transform:     translateY(-50%);
+      box-shadow:
+        0 0 0 3px var(--clr-amber),
+        0 0 0 15px rgba(232,130,58,0.11),
+        0 48px 96px rgba(0,0,0,0.60);
+    }
+
+    /*
+      SWAP IMAGE:
+      Coffee:     https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=520&q=85
+      Food:       https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=520&q=85
+      Bakery:     https://images.unsplash.com/photo-1509440159596-0249088772ff?w=520&q=85
+      Brunch:     https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=520&q=85
+      Restaurant: https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=520&q=85
+    */
+    .hero-circle__img {
+      width: 100%; height: 100%; display: block;
+      object-fit: cover; object-position: center 30%;
+      filter: saturate(1.08) contrast(1.04);
+    }
+
+    /* Static circular text around image ring */
+    .hero-label-svg {
+      position:  absolute;
+      z-index:   6;
+      width:     552px;
+      height:    552px;
+      top:       50%;
+      left:      44px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    /* "Specialty Grade" pill at bottom of circle */
+    .hero-badge {
+      position:    absolute;
+      z-index:     7;
+      bottom:      calc(50% - 252px - 18px);
+      left:        calc(68px + 252px - 80px);
+      background:var(--clr-amber);
+      color:var(--text);      /* ✓ dark on amber */
+      font-family:    var(--font-label);
+      font-size:      11px;
+      font-weight:    600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      padding:        10px 22px;
+      white-space:    nowrap;
+      box-shadow:     0 4px 24px rgba(232,130,58,0.50);
+    }
+
+    /* ============================================================
+       RETRO STAMP — top-right, tilted
+    ============================================================ */
+    .stamp {
+      position:  absolute; z-index: 7;
+      top:       var(--sp-lg); right: var(--sp-lg);
+      width:     96px; height: 96px;
+      border-radius: 50%;
+      border:    2px dashed rgba(232,130,58,0.38);
+      display:   grid; place-items: center;
+      text-align: center;
+      transform: rotate(12deg);
+    }
+
+    .stamp__inner { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+
+    .stamp__top {
+      font-family: var(--font-label); font-size: 8px; letter-spacing: 0.22em;
+      color:var(--clr-amber); text-transform: uppercase;           /* ✓ amber on dark */
+    }
+
+    .stamp__val {
+      font-family: var(--font-display); font-size: 30px; font-weight: 700; line-height: 1;
+      color:var(--clr-amber);                                       /* ✓ amber on dark */
+    }
+
+    .stamp__bot {
+      font-family: var(--font-label); font-size: 8px; letter-spacing: 0.14em;
+      color:var(--accent); text-transform: uppercase;     /* ✓ pale amber on dark */
+    }
+
+    /* ============================================================
+       CONTENT PANEL — right column
+       CONTRAST GUARANTEE: every text uses cream or amber.
+       Background is always the dark espresso. Never any light bg.
+    ============================================================ */
+    .content {
+      position:  absolute; z-index: 6;
+      right: 0; top: 0; width: 526px; height: 100%;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: var(--sp-lg) var(--sp-lg) var(--sp-lg) var(--sp-sm);
+    }
+
+    /* ── Eyebrow ─────────────────────────────────────────────── */
+    .eyebrow {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow__text {
+      font-family: var(--font-label); font-size:18px; font-weight: 600;
+      letter-spacing: 0.30em; text-transform: uppercase;
+      color:var(--clr-sage-light);                /* ✓ sage-light on dark */
+    }
+
+    .eyebrow__dash {
+      flex: 1; height: 1px;
+      background:linear-gradient(90deg, rgba(168,197,172,0.38), transparent);
+    }
+
+    /* ── Headline ────────────────────────────────────────────── */
+    .headline {
+      font-family: var(--font-display); font-size: 86px; font-weight: 900;
+      line-height: 0.92; margin-bottom: 6px;
+    }
+
+    /* Line 1 — warm cream */
+    .headline__line-1 {
+      color:var(--bg);             /* ✓ cream on dark */
+      display: block;
+    }
+
+    /* Line 2 — pale amber italic; still high contrast on dark */
+    .headline__line-2 {
+      color:var(--accent);    /* ✓ pale amber on dark */
+      font-style: italic;
+      font-weight: 300;
+      display:    block;
+    }
+
+    .wave-svg { display: block; margin: 8px 0; }
+
+    /* ── Subheadline ─────────────────────────────────────────── */
+    .subheadline {
+      font-family: var(--font-body); font-size:16px; font-weight: 300;
+      line-height: 1.72; max-width: 380px;
+      color:var(--clr-text-muted);          /* ✓ muted cream on dark */
+      margin-bottom: var(--sp-md);
+    }
+
+    /* ── Feature tags ────────────────────────────────────────── */
+    .features {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      margin-bottom: var(--sp-md);
+    }
+
+    .feature-tag {
+      font-family: var(--font-label); font-size:17px; font-weight: 400;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color:var(--primary);     /* ✓ pale amber on dark bg */
+      border:     1px solid var(--clr-border-amber);
+      background:rgba(232,130,58,0.08);
+      padding:    8px 16px;
+    }
+
+    /* ── CTA row ─────────────────────────────────────────────── */
+    .cta-row {
+      display: flex; align-items: center; gap: var(--sp-sm);
+      margin-bottom: var(--sp-md);
+    }
+
+    .cta-btn {
+      display:      inline-flex; align-items: center; gap: 12px;
+      font-family:  var(--font-label); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.20em; text-transform: uppercase;
+      color:var(--text);      /* ✓ dark on amber button */
+      background:var(--clr-amber);
+      border:      none; padding: 17px 36px;
+      cursor:      pointer; text-decoration: none;
+      position:    relative; overflow: hidden;
+      transition:  transform 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .cta-btn::before {
+      content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+      background:linear-gradient(120deg, transparent, rgba(255,255,255,0.18), transparent);
+      transition: left 0.42s ease;
+    }
+
+    .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(232,130,58,0.45); }
+    .cta-btn:hover::before { left: 160%; }
+
+    .cta-btn__arrow { display: inline-block; transition: transform 0.22s ease; }
+    .cta-btn:hover .cta-btn__arrow { transform: translateX(4px); }
+
+    /* Price badge — dark with amber border */
+    .price-badge {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 13px 20px;
+      border:      1px solid var(--clr-border-amber);
+      background:rgba(232,130,58,0.08);
+    }
+
+    .price-badge__label {
+      font-family: var(--font-label); font-size: 9px; letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color:var(--clr-cream-dim);           /* ✓ muted cream on dark */
+    }
+
+    .price-badge__value {
+      font-family: var(--font-display); font-size: 28px; font-weight: 700; line-height: 1;
+      color:var(--bg);               /* ✓ cream on dark */
+    }
+
+    /* ── Brand bar ───────────────────────────────────────────── */
+    .brand-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,246,232,0.09);
+    }
+
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+      border: 1.5px solid var(--clr-amber);
+      display: grid; place-items: center;
+    }
+
+    .brand-mark::before {
+      content: ''; display: block;
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 1.5px solid var(--accent);
+    }
+
+    .brand-bar__text { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+
+    .brand-bar__name {
+      font-family: var(--font-label); font-size: 14px; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color:var(--bg);               /* ✓ cream on dark */
+    }
+
+    .brand-bar__url {
+      font-family: var(--font-body); font-size: 11px; font-weight: 300;
+      letter-spacing: 0.08em;
+      color:var(--clr-text-muted);          /* ✓ muted cream on dark */
+    }
+
+    .brand-bar__handle {
+      font-family: var(--font-body); font-size: 11px; font-weight: 300;
+      letter-spacing: 0.10em;
+      color:var(--clr-text-ghost);          /* faint — decorative only */
+    }
+
+    /* ============================================================
+       PREVIEW LABEL
+    ============================================================ */
+    .preview-note {
+      text-align: center; margin-top: 20px;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px;
+      color:rgba(255,246,232,0.20); letter-spacing: 0.18em;
+    }
+
+    /* ============================================================
+       RESPONSIVE PREVIEW SCALING — CSS-only, no JS
+    ============================================================ */
+    @media (max-width: 1180px) {
+      .scale-wrap { transform: scale(0.80); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.80); height: calc(1080px * 0.80); }
+    }
+    @media (max-width: 960px) {
+      .scale-wrap { transform: scale(0.62); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.62); height: calc(1080px * 0.62); }
+    }
+    @media (max-width: 740px) {
+      .scale-wrap { transform: scale(0.44); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.44); height: calc(1080px * 0.44); }
+    }
+    @media (max-width: 520px) {
+      .scale-wrap { transform: scale(0.30); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.30); height: calc(1080px * 0.30); }
+    }
+  
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+
+  <div class="scene">
+    <div>
+      <div class="scale-wrap">
+
+        <!-- POST CANVAS — 1080 × 1080 -->
+        <div class="post" id="post">
+
+          <!-- ── BACKGROUND ────────────────────────────────── -->
+          <div class="bg-glow"></div>
+          <div class="bg-grain"></div>
+          <div class="bg-stripe"></div>
+
+          <!-- ── DECORATIVE GEOMETRY ───────────────────────── -->
+          <div class="deco-arc"></div>
+          <div class="deco-arc-2"></div>
+
+          <div class="deco-stitches">
+            <span></span><span></span><span></span>
+            <span></span><span></span>
+          </div>
+
+          <!-- Dot accents -->
+          <div class="deco-dot" style="width:11px;height:11px;background:var(--clr-amber);opacity:0.65;top:90px;left:434px;"></div>
+          <div class="deco-dot" style="width:7px;height:7px;background:var(--clr-sage-light);opacity:0.55;top:314px;left:616px;"></div>
+          <div class="deco-dot" style="width:5px;height:5px;background:var(--clr-cream);opacity:0.22;top:488px;left:598px;"></div>
+          <div class="deco-dot" style="width:9px;height:9px;background:var(--clr-amber-light);opacity:0.30;top:724px;left:548px;"></div>
+
+          <!-- Star accents -->
+          <div class="deco-star" style="font-size:20px;color:var(--clr-amber);opacity:0.48;top:52px;left:468px;">✦</div>
+          <div class="deco-star" style="font-size:13px;color:var(--clr-cream);opacity:0.18;top:752px;left:550px;">✦</div>
+
+          <!-- ── HERO CIRCLE IMAGE ──────────────────────────── -->
+          <div class="hero-circle">
+            <img
+              class="hero-circle__img"
+              data-field="hero_image"
+              src="{{hero_image}}"
+              alt="Hero"
+              loading="eager"
+            />
+          </div>
+
+          <!-- Static circular text around image -->
+          <svg class="hero-label-svg" viewBox="0 0 552 552" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <path id="cpath" d="M 276,276 m -234,0 a 234,234 0 1,1 468,0 a 234,234 0 1,1 -468,0"/>
+            </defs>
+            <text font-family="'Josefin Sans', sans-serif" font-size="11.5" font-weight="400"
+                  letter-spacing="6.8" fill="rgba(232,130,58,0.45)">
+              <textPath href="#cpath">
+                {{ring_text}}
+              </textPath>
+            </text>
+          </svg>
+
+          <!-- Badge at circle bottom -->
+          <div class="hero-badge" data-field="hero_badge">{{hero_badge}}</div>
+
+          <!-- ── RETRO STAMP ────────────────────────────────── -->
+          <div class="stamp">
+            <div class="stamp__inner">
+              <span class="stamp__top" data-field="stamp_top">{{stamp_top}}</span>
+              <span class="stamp__val" data-field="stamp_val">{{stamp_val}}</span>
+              <span class="stamp__bot" data-field="stamp_bot">{{stamp_bot}}</span>
+            </div>
+          </div>
+
+          <!-- ── CONTENT PANEL ─────────────────────────────── -->
+          <div class="content">
+
+            <!-- Eyebrow -->
+            <div class="eyebrow">
+              <span class="eyebrow__text" data-field="eyebrow">{{eyebrow}}</span>
+              <div class="eyebrow__dash"></div>
+            </div>
+
+            <!-- Headline — both lines readable on dark espresso -->
+            <h1 class="headline">
+              <span class="headline__line-1" data-field="headline_1">{{headline_1}}</span>
+              <svg class="wave-svg" height="14" viewBox="0 0 340 14" fill="none"
+                   xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M 0,7 Q 30,1 60,7 Q 90,13 120,7 Q 150,1 180,7 Q 210,13 240,7 Q 270,1 300,7 Q 322,11 340,7"
+                  stroke="#E8823A" stroke-width="2.5" stroke-linecap="round" opacity="0.60"
+                />
+              </svg>
+              <span class="headline__line-2" data-field="headline_2">{{headline_2}}</span>
+            </h1>
+
+            <!-- Subheadline -->
+            <p class="subheadline" data-field="subheading">
+              {{subheading}}
+            </p>
+
+            <!-- Feature tags -->
+            <div class="features">
+              <span class="feature-tag" data-field="feature_1">{{feature_1}}</span>
+              <span class="feature-tag" data-field="feature_2">{{feature_2}}</span>
+              <span class="feature-tag" data-field="feature_3">{{feature_3}}</span>
+            </div>
+
+            <!-- CTA + price -->
+            <div class="cta-row">
+              <a class="cta-btn" href="#">
+                <span data-field="cta_label">{{cta_label}}</span>
+                <span class="cta-btn__arrow">&rarr;</span>
+              </a>
+              <div class="price-badge">
+                <span class="price-badge__label" data-field="price_label">{{price_label}}</span>
+                <span class="price-badge__value" data-field="price_val">{{price_val}}</span>
+              </div>
+            </div>
+
+            <!-- Brand bar -->
+            <div class="brand-bar">
+              <div class="brand-mark"></div>
+              <div class="brand-bar__text">
+                <span class="brand-bar__name" data-field="brand_name">{{brand_name}}</span>
+                <span class="brand-bar__url" data-field="brand_url">{{brand_url}}</span>
+              </div>
+              <span class="brand-bar__handle" data-field="brand_handle">{{brand_handle}}</span>
+            </div>
+
+          </div>
+          <!-- end .content -->
+
+        </div>
+        <!-- end .post -->
+      </div>
+
+      <p class="preview-note">1080 × 1080 px &nbsp;·&nbsp; Square 1:1 &nbsp;·&nbsp; Retro-Playful / Food &amp; Coffee — v2 contrast fixed · static</p>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>T10 — Health Clean Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;1,300&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,600;0,8..60,700;1,8..60,300;1,8..60,600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:     #F4F9FF;
+  --text:   #03045E;
+  --primary:   #0077B6;
+  --accent:    #00B4D8;
+  --teal:   #48CAE4;
+  --mint:   #ADE8F4;
+  --white:  #FFFFFF;
+  --muted:  rgba(3,4,94,.45);
+  --font-h: 'Source Serif 4', Georgia, serif;
+  --font-b: 'Lato', sans-serif;
+  --w:1080px;--h:1080px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#E5F2FA}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.scale-wrap{transform-origin:top center}
+@media(max-width:1160px){.scale-wrap{transform:scale(.80);display:block;width:calc(var(--w)*.80);height:calc(var(--h)*.80)}}
+@media(max-width:940px){.scale-wrap{transform:scale(.62);display:block;width:calc(var(--w)*.62);height:calc(var(--h)*.62)}}
+@media(max-width:720px){.scale-wrap{transform:scale(.44);display:block;width:calc(var(--w)*.44);height:calc(var(--h)*.44)}}
+@media(max-width:500px){.scale-wrap{transform:scale(.30);display:block;width:calc(var(--w)*.30);height:calc(var(--h)*.30)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--font-b)}
+
+/* Subtle dot grid */
+.bg-dots{position:absolute;inset:0;z-index:1;background-image:radial-gradient(circle,rgba(0,119,182,.07) 1px,transparent 1px);background-size:36px 36px;pointer-events:none}
+
+/* Top-right teal arc shape */
+.arc{position:absolute;z-index:2;width:560px;height:560px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--teal));top:-200px;right:-140px;pointer-events:none;opacity:.18}
+
+/* Bottom-left mint blob */
+.blob{position:absolute;z-index:2;width:340px;height:340px;border-radius:50% 40% 60% 30% / 40% 50% 50% 60%;background:var(--mint);bottom:-80px;left:-60px;pointer-events:none;opacity:.25}
+
+/* HERO IMAGE — right side, rounded frame */
+.hero-frame{position:absolute;z-index:4;top:60px;right:56px;width:440px;height:440px;border-radius:240px 240px 200px 200px;overflow:hidden;box-shadow:0 24px 80px rgba(0,119,182,.18),0 0 0 4px rgba(0,180,216,.20)}
+.hero-frame img{width:100%;height:100%;object-fit:cover;object-position:center top}
+/* Subtle overlay on image */
+.hero-frame::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(3,4,94,.08) 100%)}
+
+/* Floating stat card on image */
+.stat-float{position:absolute;z-index:5;top:340px;right:52px;background:var(--white);border-radius:16px;padding:20px 20px;box-shadow:0 8px 32px rgba(0,119,182,.14);display:flex;align-items:center;gap:16px;border:1px solid rgba(0,180,216,.15)}
+.stat-float-icon{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--teal));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.stat-float-val{font-family:var(--font-h);font-size:26px;font-weight:700;color:var(--text);line-height:1}
+.stat-float-label{font-family:var(--font-b);font-size:18px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+
+/* Trust badge top-right of image */
+.trust-badge{position:absolute;z-index:5;top:56px;right:60px;background:var(--text);border-radius:8px;padding:10px 18px;display:flex;align-items:center;gap:8px}
+.trust-badge-text{font-family:var(--font-b);font-size:18px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--white)}
+.trust-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+/* CONTENT — left side */
+.content{position:absolute;z-index:5;top:0;left:0;width:540px;height:100%;display:flex;flex-direction:column;justify-content:center;padding:52px0 60px 60px}
+
+/* Topbar */
+.topbar{position:absolute;z-index:6;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:28px 48px}
+.brand-logo{display:flex;align-items:center;gap:12px}
+.brand-ring{width:34px;height:34px;border-radius:50%;border:2px solid var(--primary);display:flex;align-items:center;justify-content:center}
+.brand-ring::after{content:'';width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.brand-name{font-family:var(--font-b);font-size:21px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text)}
+.brand-url{font-family:var(--font-b);font-size:17px;letter-spacing:.14em;color:var(--muted)}
+
+.eyebrow{font-family:var(--font-b);font-size:18px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.eyebrow::before{content:'';width:22px;height:2px;background:var(--accent);flex-shrink:0}
+
+.headline{font-family:var(--font-h);font-size:66px;font-weight:700;line-height:1.02;letter-spacing:-.02em;color:var(--text);margin-bottom:14px}
+.headline em{font-style:italic;font-weight:300;color:var(--primary);display:block}
+
+.rule{width:44px;height:2px;background:linear-gradient(90deg,var(--accent),transparent);margin:20px 0}
+
+.sub{font-family:var(--font-b);font-size:16px;font-weight:300;line-height:1.72;color:var(--muted);margin-bottom:32px;max-width:400px}
+
+/* Feature checks */
+.checks{display:flex;flex-direction:column;gap:12px;margin-bottom:40px}
+.check-item{display:flex;align-items:center;gap:12px;font-family:var(--font-b);font-size:21px;font-weight:400;color:rgba(3,4,94,.70)}
+.check-icon{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--primary));display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;font-weight:700}
+
+/* CTA row */
+.cta-row{display:flex;align-items:center;gap:16px}
+.cta{display:inline-flex;align-items:center;gap:12px;font-family:var(--font-b);font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--white);background:linear-gradient(135deg,var(--primary),var(--accent));padding:18px 44px;border:none;border-radius:4px;cursor:pointer;text-decoration:none;transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(0,119,182,.30)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+.cta-ghost{font-family:var(--font-b);font-size:20px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--primary);border-bottom:1.5px solid rgba(0,119,182,.30);padding-bottom:2px;text-decoration:none;transition:border-color .20s}
+.cta-ghost:hover{border-color:var(--primary)}
+
+/* Bottom footer */
+.footer{position:absolute;z-index:5;bottom:0;left:0;right:0;height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 56px;background:rgba(255,255,255,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(0,119,182,.10)}
+.footer-left{display:flex;align-items:center;gap:12px}
+.footer-mark{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.footer-text{font-family:var(--font-b);font-size:20px;font-weight:400;letter-spacing:.12em;color:var(--muted)}
+.footer-handle{font-family:var(--font-b);font-size:20px;letter-spacing:.12em;color:var(--muted)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="scale-wrap">
+<div class="post">
+  <div class="bg-dots"></div>
+  <div class="arc"></div>
+  <div class="blob"></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand-logo">
+      <div class="brand-ring"></div>
+      <span class="brand-name" data-field="brand_name">{{brand_name}}</span>
+    </div>
+    <span class="brand-url" data-field="brand_url">{{brand_url}}</span>
+  </div>
+
+  <!-- Hero image (right) -->
+  <div class="hero-frame">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+  </div>
+
+  <!-- Trust badge -->
+  <div class="trust-badge">
+    <span class="trust-dot"></span>
+    <span class="trust-badge-text" data-field="trust_badge">{{trust_badge}}</span>
+  </div>
+
+  <!-- Floating stat -->
+  <div class="stat-float">
+    <div class="stat-float-icon" data-field="stat_icon">{{stat_icon}}</div>
+    <div>
+      <div class="stat-float-val" data-field="stat_val">{{stat_val}}</div>
+      <div class="stat-float-label" data-field="stat_label">{{stat_label}}</div>
+    </div>
+  </div>
+
+  <!-- Content left -->
+  <div class="content">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <h1 class="headline"><span data-field="headline_main">{{headline_main}}</span><em data-field="headline_accent">{{headline_accent}}</em></h1>
+    <div class="rule"></div>
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="checks">
+      <div class="check-item"><div class="check-icon">&check;</div><span data-field="check_1">{{check_1}}</span></div>
+      <div class="check-item"><div class="check-icon">&check;</div><span data-field="check_2">{{check_2}}</span></div>
+      <div class="check-item"><div class="check-icon">&check;</div><span data-field="check_3">{{check_3}}</span></div>
+    </div>
+    <div class="cta-row">
+      <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+      <a class="cta-ghost" href="#" data-field="cta_ghost_label">{{cta_ghost_label}}</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left">
+      <div class="footer-mark"></div>
+      <span class="footer-text" data-field="footer_text">{{footer_text}}</span>
+    </div>
+    <span class="footer-handle" data-field="footer_handle">{{footer_handle}}</span>
+  </div>
+
+</div>
+</div></div>
+</body></html>

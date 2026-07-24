@@ -1,0 +1,43 @@
+{
+  "name": "Bold Offer Blast — Ecommerce",
+  "slug": "t04-ecom-bold-blast",
+  "format": "square",
+  "category": "ecommerce",
+  "sub_category": "promotion",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["ecommerce", "retail", "promotion", "sale", "flash"],
+  "variables": {
+    "hero_image":         { "type": "image", "label": "Hero image",       "default": "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1080&q=85&fit=crop" },
+    "logo_name":          { "type": "text",  "label": "Logo name",        "default": "Logo Here" },
+    "tag":                { "type": "text",  "label": "Top-right tag",    "default": "Flash Sale" },
+    "sale_off":           { "type": "text",  "label": "Sale percentage",  "default": "50%" },
+    "sale_label":         { "type": "text",  "label": "Sale label",       "default": "OFF" },
+    "content_label":      { "type": "text",  "label": "Eyebrow",          "default": "Limited Time" },
+    "headline_red":       { "type": "text",  "label": "Headline (red)",   "default": "Shop" },
+    "headline_yellow":    { "type": "text",  "label": "Headline (yellow)","default": "Big." },
+    "subheading":         { "type": "text",  "label": "Subheading",       "default": "Exclusive deals on premium collections — today only. Don't miss out." },
+    "price_now":          { "type": "text",  "label": "Price now",        "default": "$49" },
+    "price_was":          { "type": "text",  "label": "Price was",        "default": "$99" },
+    "cta_label":          { "type": "text",  "label": "CTA",              "default": "Shop Now" },
+    "timer_hours":        { "type": "text",  "label": "Timer hours",      "default": "08" },
+    "timer_hours_label":  { "type": "text",  "label": "Hours label",      "default": "Hours" },
+    "timer_mins":         { "type": "text",  "label": "Timer mins",       "default": "34" },
+    "timer_mins_label":   { "type": "text",  "label": "Mins label",       "default": "Mins" },
+    "timer_secs":         { "type": "text",  "label": "Timer secs",       "default": "12" },
+    "timer_secs_label":   { "type": "text",  "label": "Secs label",       "default": "Secs" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#0F0F0F" },
+    "red":    { "label": "Red",        "default": "#FF2D55" },
+    "yellow": { "label": "Yellow",     "default": "#FFD60A" },
+    "white":  { "label": "White",      "default": "#F5F5F5" },
+    "muted":  { "label": "Muted",      "default": "#666666" }
+  },
+  "semantic": {
+    "mood": ["energetic", "bold"],
+    "color_temperature": "vibrant",
+    "composition": "product_dominant",
+    "best_for": ["ecommerce", "promotion", "sale", "flash deal", "retail"]
+  }
+}

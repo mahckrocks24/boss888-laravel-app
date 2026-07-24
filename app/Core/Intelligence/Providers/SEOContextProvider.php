@@ -63,10 +63,14 @@ class SEOContextProvider
             ->where('http_status', '>=', 400)
             ->count();
 
-        // Orphan pages — no internal links pointing in/out
+        // Orphan pages — no INBOUND internal links (actionable only: >100 words).
+        // 2026-06-22 — was internal_link_count (outbound/unpopulated) which fed
+        // the agents a hugely inflated orphan count (57 vs 1 on chef-red). Now
+        // matches the canonical def used by linkHealth + SeoAssistantService.
         $orphanPages = (int) DB::table('seo_content_index')
             ->where('workspace_id', $workspaceId)
-            ->where('internal_link_count', 0)
+            ->where('inbound_links', 0)
+            ->where('word_count', '>', 100)
             ->count();
 
         // Recent activity (last 3 SEO actions)

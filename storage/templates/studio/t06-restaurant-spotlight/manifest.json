@@ -1,0 +1,38 @@
+{
+  "name": "Food Spotlight Circle — Restaurant",
+  "slug": "t06-restaurant-spotlight",
+  "format": "square",
+  "category": "food",
+  "sub_category": "fine_dining",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["restaurant", "food", "dining", "menu", "hospitality"],
+  "variables": {
+    "background_image": { "type": "image", "label": "Background image",   "default": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1080&q=85&fit=crop" },
+    "hero_image":       { "type": "image", "label": "Hero dish (circle)", "default": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=520&q=85&fit=crop&crop=center" },
+    "logo_name":        { "type": "text",  "label": "Logo name",          "default": "Logo Here" },
+    "tag":              { "type": "text",  "label": "Top-right tag",      "default": "Signature Menu" },
+    "ring_text":        { "type": "text",  "label": "Ring text",          "default": "✦ CHEF'S SELECTION  ✦ FARM TO TABLE  ✦ SEASONAL MENU  ✦ FINE DINING" },
+    "eyebrow":          { "type": "text",  "label": "Eyebrow",            "default": "Tonight's Special" },
+    "headline_main":    { "type": "text",  "label": "Headline (main)",    "default": "Taste the" },
+    "headline_accent":  { "type": "text",  "label": "Headline (accent)",  "default": "Extraordinary." },
+    "subheading":       { "type": "text",  "label": "Subheading",         "default": "Handcrafted dishes from locally sourced ingredients — a culinary journey you won't forget." },
+    "cta_label":        { "type": "text",  "label": "CTA",                "default": "Reserve a Table" },
+    "price_prefix":     { "type": "text",  "label": "Price prefix",       "default": "From" },
+    "price_value":      { "type": "text",  "label": "Price",              "default": "$85" },
+    "brand_url":        { "type": "text",  "label": "Brand URL",          "default": "companyname.com" }
+  },
+  "css_variables": {
+    "bg":       { "label": "Background", "default": "#0B0905" },
+    "amber":    { "label": "Amber",      "default": "#E8913A" },
+    "amber-l":  { "label": "Amber light","default": "#F5B870" },
+    "yellow":   { "label": "Yellow",     "default": "#FFD166" },
+    "cream":    { "label": "Cream",      "default": "#FAF0DC" }
+  },
+  "semantic": {
+    "mood": ["warm", "elegant"],
+    "color_temperature": "warm",
+    "composition": "product_hero",
+    "best_for": ["restaurant", "food", "menu", "hospitality", "fine dining"]
+  }
+}

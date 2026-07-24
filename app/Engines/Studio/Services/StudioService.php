@@ -141,7 +141,7 @@ class StudioService
 
     public function duplicateDesign(int $id, int $wsId): array
     {
-        $src = DB::table('studio_designs')->where('id', $id)->whereNull('deleted_at')->first();
+        $src = DB::table('studio_designs')->where('id', $id)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
         if (!$src) return ['error' => 'not_found'];
 
         $newId = DB::table('studio_designs')->insertGetId([
@@ -207,6 +207,9 @@ class StudioService
 
     public function saveElement(int $wsId, int $designId, array $data): array
     {
+        if (!DB::table('studio_designs')->where('id', $designId)->where('workspace_id', $wsId)->exists()) {
+            return ['error' => 'design_not_found'];
+        }
         $type = (string) ($data['element_type'] ?? 'text');
         $order = isset($data['layer_order'])
             ? (int) $data['layer_order']
@@ -224,7 +227,7 @@ class StudioService
         return ['element_id' => $id, 'layer_order' => $order];
     }
 
-    public function updateElement(int $elementId, array $data): array
+    public function updateElement(int $elementId, array $data, ?int $wsId = null): array
     {
         $up = [];
         if (array_key_exists('properties_json', $data)) {
@@ -237,18 +240,23 @@ class StudioService
             $up['element_type'] = (string) $data['element_type'];
         }
         $up['updated_at'] = now();
-        DB::table('studio_elements')->where('id', $elementId)->update($up);
+        $n = DB::table('studio_elements')->where('id', $elementId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update($up);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Element not found');
         return ['updated' => true];
     }
 
-    public function deleteElement(int $elementId): bool
+    public function deleteElement(int $elementId, ?int $wsId = null): bool
     {
-        DB::table('studio_elements')->where('id', $elementId)->delete();
+        $n = DB::table('studio_elements')->where('id', $elementId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->delete();
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Element not found');
         return true;
     }
 
-    public function reorderElements(int $designId, array $elementIds): bool
+    public function reorderElements(int $designId, array $elementIds, ?int $wsId = null): bool
     {
+        if ($wsId !== null && !DB::table('studio_designs')->where('id', $designId)->where('workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException('Design not found');
+        }
         foreach (array_values($elementIds) as $i => $eid) {
             DB::table('studio_elements')
                 ->where('design_id', $designId)
@@ -296,8 +304,11 @@ class StudioService
     // HISTORY (undo/redo snapshots)
     // ═══════════════════════════════════════════════════════════════════
 
-    public function saveHistory(int $designId, array $snapshot): array
+    public function saveHistory(int $designId, array $snapshot, ?int $wsId = null): array
     {
+        if ($wsId !== null && !DB::table('studio_designs')->where('id', $designId)->where('workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException('Design not found');
+        }
         DB::table('studio_design_history')->insert([
             'design_id'    => $designId,
             'snapshot_json'=> json_encode($snapshot),
@@ -342,9 +353,9 @@ class StudioService
      *
      * Returns: ['thumbnail_url' => '/storage/studio-thumbs/<id>.png']
      */
-    public function generateThumbnail(int $designId): array
+    public function generateThumbnail(int $designId, ?int $wsId = null): array
     {
-        $design = DB::table('studio_designs')->where('id', $designId)->first();
+        $design = DB::table('studio_designs')->where('id', $designId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->first();
         if (!$design) return ['error' => 'design_not_found'];
 
         $dir = storage_path('app/public/studio-thumbs');
@@ -357,6 +368,20 @@ class StudioService
         $html = $this->renderDesignHtml($design);
         if (!$html) return ['thumbnail_url' => null, 'error' => 'no_renderable_html'];
 
+        // Inject animation-freeze + viewport-fit CSS so video designs
+        // are captured at their final keyframe state (not t=0 invisible).
+        $freezeCss = '<style>'
+            . '*,*::before,*::after{animation-delay:-99s!important;animation-duration:0.001s!important;animation-iteration-count:1!important;animation-fill-mode:forwards!important;transition:none!important}'
+            . '.scene{padding:0!important;min-height:0!important;background:transparent!important}'
+            . '.sw{transform:none!important;display:block!important;width:auto!important;height:auto!important;transform-origin:0 0!important}'
+            . '.scale-wrap{transform:none!important;display:block!important;width:auto!important;height:auto!important;transform-origin:0 0!important}'
+            . '</style>';
+        if (stripos($html, '</head>') !== false) {
+            $html = preg_replace('#</head>#i', $freezeCss . '</head>', $html, 1);
+        } else {
+            $html = $freezeCss . $html;
+        }
+        /* thumb-freeze-css */
         $tmpHtml = '/tmp/st-thumb-' . $designId . '-' . substr(md5(uniqid('', true)), 0, 6) . '.html';
         file_put_contents($tmpHtml, $html);
 
@@ -364,7 +389,7 @@ class StudioService
         $vpH = (int) ($design->canvas_height ?: 1080);
 
         // studio-render.cjs signature: <html-file> <width> <height> <out-png>
-        $cmd = 'node ' . escapeshellarg($tool) . ' '
+        $cmd = 'HOME=/tmp PUPPETEER_CACHE_DIR=/var/www/levelup-staging/.puppeteer-cache node ' . escapeshellarg($tool) . ' '
              . escapeshellarg($tmpHtml) . ' '
              . $vpW . ' ' . $vpH . ' '
              . escapeshellarg($outPath) . ' 2>&1';
@@ -577,7 +602,7 @@ class StudioService
 
     public function publishToSocial(int $designId, int $wsId, array $data): array
     {
-        $design = DB::table('studio_designs')->where('id', $designId)->first();
+        $design = DB::table('studio_designs')->where('id', $designId)->where('workspace_id', $wsId)->first();
         if (!$design) return ['success' => false, 'error' => 'not_found'];
 
         $platforms = (array) ($data['platforms'] ?? ['instagram']);
@@ -611,12 +636,12 @@ class StudioService
     }
 
     /** Rescale all elements proportionally to a new canvas size. */
-    public function resizeDesign(int $designId, int $width, int $height): array
+    public function resizeDesign(int $designId, int $width, int $height, ?int $wsId = null): array
     {
         if ($width < 50 || $width > 8000 || $height < 50 || $height > 8000) {
             return ['success' => false, 'error' => 'invalid_dimensions'];
         }
-        $design = DB::table('studio_designs')->where('id', $designId)->first();
+        $design = DB::table('studio_designs')->where('id', $designId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->first();
         if (!$design) return ['success' => false, 'error' => 'not_found'];
 
         $oldW = (int) $design->canvas_width;
@@ -650,7 +675,7 @@ class StudioService
     /** Insert the design's latest export (PNG or MP4) into the workspace media library. */
     public function saveExportToMedia(int $designId, int $wsId): array
     {
-        $design = DB::table('studio_designs')->where('id', $designId)->first();
+        $design = DB::table('studio_designs')->where('id', $designId)->where('workspace_id', $wsId)->first();
         if (!$design) return ['success' => false, 'error' => 'not_found'];
         $url = $design->exported_video_url ?: $design->exported_url ?: null;
         if (!$url) return ['success' => false, 'error' => 'no_export', 'message' => 'Export the design first'];
@@ -675,6 +700,14 @@ class StudioService
         $existing = \Schema::getColumnListing('media');
         $insert   = array_intersect_key($cols, array_flip($existing));
         try {
+            // 2026-07-02 — idempotent: a re-export replaces its prior media row
+            // instead of piling up duplicates. Keyed on source_id (this design)
+            // where available, else the export filename prefix ("{designId}-...").
+            if (in_array('source_id', $existing, true)) {
+                DB::table('media')->where('source', 'studio')->where('source_id', $designId)->delete();
+            } elseif (in_array('filename', $existing, true)) {
+                DB::table('media')->where('source', 'studio')->where('filename', 'like', $designId . '-%')->delete();
+            }
             $id = DB::table('media')->insertGetId($insert);
             return ['success' => true, 'media_id' => $id];
         } catch (\Throwable $e) {

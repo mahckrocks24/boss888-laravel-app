@@ -60,12 +60,53 @@ class AgentMessageService
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
+            // 2026-06-15 — push proactive agent messages. The interactive
+            // two-phase chat reply (routes/api.php) direct-inserts + pushes
+            // itself, so it does NOT route through here → no double-push.
+            // Every proactive/orchestrator message (weekly/daily/monthly
+            // retrospectives, proposals, reminders, discovery runs, James SEO
+            // replies) DOES go through postAsAgent and previously pushed
+            // NOTHING — that is exactly why Sarah's self-initiated messages
+            // never produced a notification. Push to each workspace member's
+            // devices (dispatchAgentReply no-ops when a user has no tokens).
+            // Opt-out via metadata['push'] === false for bulk / low-value
+            // notifications (e.g. per-link insert notices in a bulk run).
+            if (($metadata['push'] ?? true) !== false) {
+                $this->pushToWorkspace($wsId, $agentSlug, $content, (int) $id);
+            }
             return (int) $id;
         } catch (\Throwable $e) {
             Log::warning('AgentMessageService::postAsAgent — insert failed', [
                 'workspace_id' => $wsId, 'slug' => $agentSlug, 'error' => $e->getMessage(),
             ]);
             return null;
+        }
+    }
+
+    /**
+     * 2026-06-15 — Fan a proactive agent message out as a push notification
+     * to every member of the workspace. Non-fatal: a missing push service,
+     * empty roster, or per-device send error never breaks the chat write.
+     * Mirrors the conversation_id contract used by the interactive reply
+     * (conversation_id == agent slug == the per-agent thread).
+     */
+    private function pushToWorkspace(int $wsId, string $agentSlug, string $content, int $messageId): void
+    {
+        try {
+            $userIds = DB::table('workspace_users')
+                ->where('workspace_id', $wsId)
+                ->pluck('user_id');
+            if ($userIds->isEmpty()) {
+                return;
+            }
+            $push = app(\App\Core\Notifications\PushDispatcherService::class);
+            foreach ($userIds as $uid) {
+                $push->dispatchAgentReply((int) $uid, $wsId, $agentSlug, $content, $agentSlug, $messageId);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('AgentMessageService::pushToWorkspace failed: ' . $e->getMessage(), [
+                'workspace_id' => $wsId, 'slug' => $agentSlug,
+            ]);
         }
     }
 

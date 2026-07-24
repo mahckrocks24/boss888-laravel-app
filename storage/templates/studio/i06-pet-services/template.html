@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Pet Services — Pet Care Friendly Pop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#FFF8F0;--primary:#FF9B50;--orange-d:#E07820;--accent:#FF6B6B;
+  --cream:#FFF3E0;--sand:#F5E6C8;--green:#52D68A;
+  --text:#2C1810;--muted:rgba(44,24,16,.45);
+  --fh:'Fredoka One',Impact,cursive;--fb:'Nunito',sans-serif;
+  --w:1080px;--h:1080px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#FFE0C0}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.80);display:block;width:calc(var(--w)*.80);height:calc(var(--h)*.80)}}
+@media(max-width:940px){.sw{transform:scale(.62);display:block;width:calc(var(--w)*.62);height:calc(var(--h)*.62)}}
+@media(max-width:700px){.sw{transform:scale(.44);display:block;width:calc(var(--w)*.44);height:calc(var(--h)*.44)}}
+@media(max-width:500px){.sw{transform:scale(.30);display:block;width:calc(var(--w)*.30);height:calc(var(--h)*.30)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg)}
+
+/* Soft background */
+.bg-blob-a{position:absolute;z-index:1;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(255,155,80,.12) 0%,transparent 70%);
+  top:-120px;right:-100px;pointer-events:none}
+.bg-blob-b{position:absolute;z-index:1;width:350px;height:350px;border-radius:50%;
+  background:rgba(82,214,138,.08);bottom:-60px;left:200px;pointer-events:none}
+/* Paw print dots */
+.paw-dots{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background-image:radial-gradient(circle,rgba(255,155,80,.08) 2px,transparent 2px);
+  background-size:44px 44px}
+
+/* Orange top stripe */
+.top-stripe{position:absolute;z-index:5;top:0;left:0;right:0;height:6px;
+  background:linear-gradient(90deg,var(--primary),var(--accent),var(--primary))}
+
+/* Topbar */
+.topbar{position:absolute;z-index:6;top:20px;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;padding:0 52px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-icon{width:40px;height:40px;border-radius:50%;background:var(--primary);
+  display:flex;align-items:center;justify-content:center;font-size:20px}
+.brand-name{font-family:var(--fh);font-size:22px;letter-spacing:.04em;color:var(--text)}
+.badge{font-family:var(--fb);font-size:18px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:white;background:var(--green);padding:9px 20px;border-radius:30px}
+
+/* BIG CIRCLE IMAGE — center-left */
+.circle-img{position:absolute;z-index:4;width:500px;height:500px;border-radius:50%;overflow:hidden;
+  top:50%;left:52px;transform:translateY(-50%);
+  box-shadow:0 0 0 5px var(--primary),0 0 0 16px rgba(255,155,80,.18),0 40px 80px rgba(44,24,16,.18)}
+.circle-img img{width:100%;height:100%;object-fit:cover;object-position:center}
+
+/* Floating service tag cards around circle */
+.float-card{position:absolute;z-index:5;background:white;border-radius:16px;
+  padding:14px 20px;box-shadow:0 6px 24px rgba(44,24,16,.10);
+  display:flex;align-items:center;gap:10px;border:2px solid rgba(255,155,80,.20)}
+.float-card-emoji{font-size:24px;line-height:1;flex-shrink:0}
+.float-card-text{font-family:var(--fb);font-size:21px;font-weight:700;color:var(--text)}
+.float-card-sub{font-family:var(--fb);font-size:18px;font-weight:400;color:var(--muted)}
+
+.fc-a{top:160px;left:82px}
+.fc-b{bottom:190px;left:48px}
+.fc-c{top:50%;right:80px;transform:translateY(-50%)}
+
+/* Rating card top-right of circle */
+.rating-card{position:absolute;z-index:5;top:120px;right:80px;
+  background:var(--primary);border-radius:20px;padding:20px 22px;
+  box-shadow:4px 4px 0 rgba(44,24,16,.20)}
+.rating-val{font-family:var(--fh);font-size:48px;color:white;line-height:1}
+.rating-stars{color:rgba(255,255,255,.90);font-size:16px;letter-spacing:2px}
+.rating-label{font-family:var(--fb);font-size:18px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-top:4px}
+
+/* Content — right side */
+.content{position:absolute;z-index:5;right:0;top:0;width:420px;height:100%;
+  display:flex;flex-direction:column;justify-content:center;padding:72px 44px 72px 20px}
+
+.eyebrow{font-family:var(--fb);font-size:18px;font-weight:700;letter-spacing:.26em;
+  text-transform:uppercase;color:var(--orange-d);margin-bottom:14px;
+  display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:'🐾';font-size:16px}
+
+.headline{font-family:var(--fh);font-size:72px;line-height:.90;color:var(--text);margin-bottom:18px;letter-spacing:.01em}
+.headline .h-accent{color:var(--primary)}
+
+.sub{font-family:var(--fb);font-size:16px;font-weight:400;line-height:1.70;
+  color:var(--muted);margin-bottom:32px}
+
+/* Services */
+.services{display:flex;flex-direction:column;gap:12px;margin-bottom:36px}
+.service-item{display:flex;align-items:center;gap:12px;
+  font-family:var(--fb);font-size:21px;font-weight:600;color:var(--text)}
+.service-dot{width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0}
+
+/* CTA */
+.cta{display:inline-flex;align-items:center;gap:12px;font-family:var(--fh);font-size:20px;
+  letter-spacing:.04em;color:white;background:var(--primary);
+  padding:18px 44px;border-radius:50px;border:none;cursor:pointer;text-decoration:none;
+  box-shadow:4px 4px 0 rgba(44,24,16,.20);transition:transform .15s,box-shadow .15s;margin-bottom:20px}
+.cta:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(44,24,16,.25)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(5px)}
+
+.brand-url{font-family:var(--fb);font-size:18px;font-weight:500;letter-spacing:.10em;color:var(--muted)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body><div class="scene"><div class="sw"><div class="post">
+  <div class="bg-blob-a"></div><div class="bg-blob-b"></div><div class="paw-dots"></div>
+  <div class="top-stripe"></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand"><div class="brand-icon">🐾</div><span class="brand-name" data-field="brand_name">{{brand_name}}</span></div>
+    <div class="badge" data-field="badge">{{badge}}</div>
+  </div>
+
+  <!-- Circle image -->
+  <div class="circle-img">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+  </div>
+
+  <!-- Float cards -->
+  <div class="float-card fc-a">
+    <span class="float-card-emoji" data-field="fc_a_emoji">{{fc_a_emoji}}</span>
+    <div><div class="float-card-text" data-field="fc_a_text">{{fc_a_text}}</div><div class="float-card-sub" data-field="fc_a_sub">{{fc_a_sub}}</div></div>
+  </div>
+  <div class="float-card fc-b">
+    <span class="float-card-emoji" data-field="fc_b_emoji">{{fc_b_emoji}}</span>
+    <div><div class="float-card-text" data-field="fc_b_text">{{fc_b_text}}</div><div class="float-card-sub" data-field="fc_b_sub">{{fc_b_sub}}</div></div>
+  </div>
+
+  <!-- Rating card -->
+  <div class="rating-card">
+    <div class="rating-val" data-field="rating_val">{{rating_val}}</div>
+    <div class="rating-stars" data-field="rating_stars">{{rating_stars}}</div>
+    <div class="rating-label" data-field="rating_label">{{rating_label}}</div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <h1 class="headline"><span data-field="headline_1">{{headline_1}}</span><br><span data-field="headline_2">{{headline_2}}</span><br><span class="h-accent" data-field="headline_accent">{{headline_accent}}</span></h1>
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="services">
+      <div class="service-item"><div class="service-dot"></div><span data-field="service_1">{{service_1}}</span></div>
+      <div class="service-item"><div class="service-dot"></div><span data-field="service_2">{{service_2}}</span></div>
+      <div class="service-item"><div class="service-dot"></div><span data-field="service_3">{{service_3}}</span></div>
+    </div>
+    <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+    <span class="brand-url" data-field="brand_url">{{brand_url}}</span>
+  </div>
+</div></div></div></body></html>

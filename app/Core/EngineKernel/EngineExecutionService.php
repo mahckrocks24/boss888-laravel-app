@@ -81,6 +81,26 @@ class EngineExecutionService
             return ['success' => false, 'error' => "Unknown action: {$engine}/{$action}", 'code' => 'INVALID_ACTION'];
         }
 
+        // ─── Step 1a: LAUNCH SCOPE POLICY (2026-07-20) ───────
+        // Authoritative launch-boundary gate. Runs BEFORE agent-cap, plan,
+        // credits, approval and dispatch, so a removed capability can never
+        // reserve credits, call a provider, create a job/record, or notify —
+        // regardless of how it was reached (API closure, agent, approval click,
+        // automation step). The retained blog-article-share sliver is permitted
+        // only in article-share context. See App\Core\LaunchScope\LaunchScopePolicy.
+        $__scopeDenied = \App\Core\LaunchScope\LaunchScopePolicy::deniedReason($engine, $action, $params, $context);
+        if ($__scopeDenied !== null) {
+            Log::info('[LaunchScope] blocked removed capability', [
+                'ws' => $wsId, 'engine' => $engine, 'action' => $action, 'reason' => $__scopeDenied,
+                'agent' => $agentId ?? null,
+            ]);
+            return [
+                'success' => false,
+                'error'   => 'This capability is not available in the current plan.',
+                'code'    => $__scopeDenied,
+            ];
+        }
+
         // ─── Step 1b: Check agent capability (FIX-3) ─────────
         // If the execution context includes an agent_id, verify
         // the agent is permitted to use this tool via the runtime
@@ -126,9 +146,184 @@ class EngineExecutionService
 
         // ─── Step 4: Check approval requirements ─────────────
         $approvalLevel = $capability['approval_level'] ?? 'auto';
+
+        /* b8-plan */
+        // Plan-aware downgrade — when a task runs as part of an approved
+        // execution_plan (status=executing), 'review' level actions are
+        // pre-authorized via the plan's single approval. 'protected' actions
+        // (publish_*, send_*, publish_pack, publish_website) are NEVER bypassed
+        // — they're the publishing second-gate per the user's design:
+        //   "single approval for the Task Group, autopilot generation,
+        //    pause on publishing for preview review"
+        $planAuthorized = false;
+        $planIdInCtx    = (int) ($context['plan_id'] ?? 0);
+
+        // b18 (2026-07-24) — CAPTURED PUBLISH CONSENT (narrows the rule above).
+        //
+        // A 'protected' action is still never bypassed by the mere existence of
+        // a plan. But when the user gave an EXPLICIT publish instruction, Sarah
+        // answered with a confirmation naming exactly what would go live, and
+        // the user approved that plan, the approval IS the publish click. Asking
+        // again per article is the same double-consent removed from the chat
+        // path on 2026-07-23 — and on a recurring plan ("publish 2 every 5
+        // minutes") it meant Sarah queued review items on a cadence instead of
+        // carrying out the instruction.
+        //
+        // Consent is recorded by SarahOrchestrator::approvePlan ONLY for plans
+        // that actually passed through the human approval gate, and lists the
+        // exact action names disclosed. An action not on that list is untouched
+        // by this and still stops for review.
+        $consentAuthorized = false;
+        if ($planIdInCtx > 0 && $approvalLevel === 'protected') {
+            $consentPlan = DB::table('execution_plans')
+                ->where('id', $planIdInCtx)
+                ->where('workspace_id', $wsId)
+                ->where('status', 'executing')
+                ->whereNotNull('approved_at')
+                ->first(['id', 'strategy_json']);
+
+            if ($consentPlan) {
+                $consent = json_decode((string) $consentPlan->strategy_json, true)['publish_consent'] ?? null;
+                if (is_array($consent) && in_array($action, $consent['actions'] ?? [], true)) {
+                    $consentAuthorized = true;
+                    $approvalLevel     = 'auto';
+                    Log::info('[EES] executing under captured plan publish-consent', [
+                        'plan_id' => $planIdInCtx, 'engine' => $engine, 'action' => $action,
+                        'workspace_id' => $wsId, 'agent' => $agentId,
+                        'approved_by' => $consent['approved_by'] ?? null,
+                        'approved_at' => $consent['approved_at'] ?? null,
+                    ]);
+                    try {
+                        app(\App\Core\Audit\AuditLogService::class)
+                            ->log($wsId, $consent['approved_by'] ?? null, 'plan.publish_consent_used',
+                                  'execution_plan', $planIdInCtx,
+                                  ['engine' => $engine, 'action' => $action, 'params' => $params]);
+                    } catch (\Throwable $auditErr) {
+                        Log::warning('[EES] publish-consent audit log failed: ' . $auditErr->getMessage());
+                    }
+                }
+            }
+        }
+
+        if ($planIdInCtx > 0 && $approvalLevel === 'review') {
+            $plan = DB::table('execution_plans')
+                ->where('id', $planIdInCtx)
+                ->where('workspace_id', $wsId)
+                ->where('status', 'executing')
+                ->first(['id', 'status', 'approved_at']);
+            if ($plan) {
+                $planAuthorized = true;
+                $approvalLevel  = 'auto';
+                Log::info('[EES] plan-authorized auto-approval', [
+                    'plan_id' => $planIdInCtx, 'engine' => $engine, 'action' => $action,
+                    'workspace_id' => $wsId, 'agent' => $agentId,
+                ]);
+                // Audit log every plan-authorized auto-approval so admins can
+                // trace what ran under the plan's umbrella.
+                try {
+                    app(\App\Core\Audit\AuditLogService::class)
+                        ->log($wsId, $userId, 'plan.auto_approved',
+                              'execution_plan', $planIdInCtx,
+                              ['engine' => $engine, 'action' => $action]);
+                } catch (\Throwable $auditErr) {
+                    Log::warning('[EES] plan-auth audit log failed: ' . $auditErr->getMessage());
+                }
+            }
+        }
+
         if ($approvalLevel !== 'auto') {
-            $approval = $this->approvalService->requestIfNeeded($wsId, $engine, $action, $approvalLevel, $params);
-            if ($approval && $approval['status'] === 'pending') {
+            /* b10-orphan-fix */
+            // Use TaskService::create instead of ApprovalService::requestIfNeeded.
+            // requestIfNeeded creates orphan approvals (task_id=NULL) which then
+            // crash ApprovalService::approve() at $approval->task->update().
+            // TaskService::create is the canonical creator: it makes a Task row
+            // AND a linked Approval row in one call (see ManualExecutionController
+            // line 82 for the established pattern).
+            $createdTask = null;
+            $approval = null;
+            try {
+                $createdTask = $this->taskService->create($wsId, [
+                    'engine'          => $engine,
+                    'action'          => $action,
+                    'payload'         => $params,
+                    'source'          => $source,
+                    'priority'        => $priority,
+                    'assigned_agents' => $agentId ? [$agentId] : null,
+                    // INFRA888 Phase 1D — carry the REQUESTER through so the
+                    // approval layer can enforce separation of duties. Without
+                    // it, protected capabilities fail closed on approval.
+                    'user_id'         => $context['user_id'] ?? null,
+                    'agent_id'        => $agentId,
+                ]);
+                if ($createdTask && $createdTask->requires_approval) {
+                    $approval = \App\Models\Approval::where('task_id', $createdTask->id)
+                        ->where('status', 'pending')
+                        ->orderByDesc('id')
+                        ->first();
+                    // Defensive: if TaskService batch-folded into an existing
+                    // approval (same workspace+batch_id+action), look that up.
+                    if (!$approval && $createdTask->batch_id) {
+                        $approval = \App\Models\Approval::where('workspace_id', $wsId)
+                            ->where('batch_id', $createdTask->batch_id)
+                            ->where('action', $action)
+                            ->where('status', 'pending')
+                            ->first();
+                    }
+                }
+            } catch (\Throwable $createErr) {
+                /* b10b-idempotency */
+                // Most common cause of throw: idempotency_key UNIQUE conflict
+                // (same action+params already pending). Look up the existing
+                // task + its approval rather than creating an orphan via the
+                // legacy fallback.
+                $payload = $params;
+                if (is_array($payload)) ksort($payload);
+                $idemKey = hash('sha256', "{$wsId}:{$action}:" . json_encode($payload));
+                $existingTask = \App\Models\Task::where('workspace_id', $wsId)
+                    ->where('idempotency_key', $idemKey)
+                    ->orderByDesc('id')
+                    ->first();
+                if ($existingTask) {
+                    $approval = \App\Models\Approval::where('task_id', $existingTask->id)
+                        ->where('status', 'pending')
+                        ->orderByDesc('id')
+                        ->first();
+                    Log::info('[EES] TaskService.create dedupe — reusing existing task', [
+                        'task_id' => $existingTask->id, 'approval_id' => $approval?->id,
+                    ]);
+                } else {
+                    Log::warning('[EES] TaskService.create failed (no existing task to reuse), falling back to requestIfNeeded', [
+                        'engine' => $engine, 'action' => $action, 'err' => $createErr->getMessage(),
+                    ]);
+                    $approval = $this->approvalService->requestIfNeeded($wsId, $engine, $action, $approvalLevel, $params);
+                }
+            }
+            if ($approval && ($approval['status'] ?? 'pending') === 'pending') {
+                /* b9-publish */
+                // When a PROTECTED action is gated inside an EXECUTING plan,
+                // also enqueue a rich-preview row for the user-facing publish
+                // queue. The actual gate is still the approvals row above;
+                // PublishGate is the preview-aware view ON TOP of it.
+                // Plan must be in status='executing' — draft / completed /
+                // other states do not qualify (matches B8 semantics).
+                if ($approvalLevel === 'protected' && $planIdInCtx > 0) {
+                    $planStatusForB9 = DB::table('execution_plans')
+                        ->where('id', $planIdInCtx)
+                        ->where('workspace_id', $wsId)
+                        ->value('status');
+                    if ($planStatusForB9 === 'executing') {
+                        try {
+                            $approvalId = is_object($approval) ? ($approval->id ?? 0)
+                                         : (is_array($approval) ? ($approval['id'] ?? 0) : 0);
+                            if ($approvalId > 0) {
+                                app(\App\Core\Orchestration\PublishGateService::class)
+                                    ->enqueue($wsId, $planIdInCtx, (int) $approvalId, $engine, $action, $params);
+                            }
+                        } catch (\Throwable $pgErr) {
+                            Log::warning('[EES] PublishGate enqueue failed: ' . $pgErr->getMessage());
+                        }
+                    }
+                }
                 // Release reserved credits — will re-reserve on approval
                 if (isset($reservationId)) $this->creditService->release($wsId, $reservationId);
 
@@ -148,6 +343,9 @@ class EngineExecutionService
         // ─── Step 5: Execute the actual engine action ────────
         try {
             $result = $this->dispatchToEngine($wsId, $engine, $action, $params, $context);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            if (isset($reservationId)) $this->creditService->release($wsId, $reservationId);
+            return ['success' => false, 'error' => 'Resource not found', 'code' => 'NOT_FOUND'];
         } catch (\Throwable $e) {
             // Release credits on failure
             if (isset($reservationId)) $this->creditService->release($wsId, $reservationId);
@@ -330,10 +528,60 @@ class EngineExecutionService
             // so once cap-map rows are added, no second patch is required.
             'chatbot' => $this->executeChatbotAction($wsId, $action, $params, $context),
             'studio'  => $this->executeStudioAction($wsId, $action, $params, $context),
+            'content' => $this->executeContentAction($wsId, $action, $params, $context), /* h1-batch3-arm */
+            'sarah'   => $this->executeSarahAction($wsId, $action, $params, $context), /* b4-sarah-arm */
+            'infrastructure' => $this->executeInfrastructureAction($wsId, $action, $params, $context), /* INFRA888 */
             default => throw new \RuntimeException("Unknown engine: {$engine}"),
         };
 
         return is_array($result) ? $result : ['result' => $result];
+    }
+
+    /**
+     * INFRA888 (2026-07-18) — infrastructure operation dispatch.
+     *
+     * Fails closed: an action absent from InfrastructureCapabilityRegistry throws
+     * rather than silently no-opping, so capability/handler drift is a hard error.
+     */
+    private function executeInfrastructureAction(int $wsId, string $action, array $params, array $ctx): array
+    {
+        if (!\App\Engines\Infrastructure\Registry\InfrastructureCapabilityRegistry::has($action)) {
+            throw new \RuntimeException("Unknown infrastructure action: {$action}");
+        }
+
+        $svc = app(\App\Engines\Infrastructure\Services\ProvisioningService::class);
+
+        $catalog = app(\App\Engines\Infrastructure\Services\CatalogAuthoringService::class);
+        $migrations = app(\App\Engines\Infrastructure\Services\SubscriberMigrationPlanner::class);
+        $actor = $ctx['user_id'] ?? null;
+
+        return match ($action) {
+            'provision_hosting' => $svc->execute($wsId, $params),
+
+            // Phase 2A-2 catalog authoring. Platform-level commercial changes:
+            // no provider mutation, no workspace resource, but they determine
+            // what every customer can buy.
+            'publish_product' => ['success' => true, 'data' => $catalog
+                ->publishProduct((int) ($params['product_id'] ?? 0), $actor)->toArray()],
+            'deprecate_product' => ['success' => true, 'data' => $catalog
+                ->deprecateProduct((int) ($params['product_id'] ?? 0), $actor)->toArray()],
+            'retire_product' => ['success' => true, 'data' => $catalog
+                ->retireProduct((int) ($params['product_id'] ?? 0), $params['successor_product_id'] ?? null, $actor)->toArray()],
+            'publish_plan' => ['success' => true, 'data' => $catalog
+                ->publishPlan((int) ($params['plan_id'] ?? 0), $actor)->toArray()],
+            'withdraw_plan' => ['success' => true, 'data' => $catalog
+                ->withdrawPlan((int) ($params['plan_id'] ?? 0), $params['successor_plan_id'] ?? null, $actor)->toArray()],
+            'plan_subscriber_migration' => ['success' => true, 'data' => $migrations
+                ->plan(
+                    (int) ($params['from_plan_id'] ?? 0),
+                    (int) ($params['to_plan_id'] ?? 0),
+                    (string) ($params['strategy'] ?? 'at_renewal'),
+                    $params['reason'] ?? null,
+                    $actor
+                )->toArray()],
+
+            default => throw new \RuntimeException("No handler for infrastructure action: {$action}"),
+        };
     }
 
     private function executeCrmAction(int $wsId, string $action, array $params, array $ctx): array
@@ -343,17 +591,26 @@ class EngineExecutionService
             'create_lead' => ['entity_type' => 'Lead', 'entity_id' => $svc->createLead($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null]))->id, 'action' => 'created'],
             // 2026-05-22 FIX 17 — list_leads sync dispatch.
             'list_leads' => $svc->listLeads($wsId, $params),
-            'update_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->updateLead($params['lead_id'], $params, $ctx['user_id'] ?? null)],
-            'delete_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'action' => 'deleted'] + (function() use ($svc, $params) { $svc->deleteLead($params['lead_id']); return []; })(),
-            'score_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->scoreLead($params['lead_id'], $params['score'] ?? null)],
-            'assign_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->assignLead($params['lead_id'], $params['assigned_to'] ?? null, $ctx['user_id'] ?? null)],
+            'update_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->updateLead($params['lead_id'], $params, $ctx['user_id'] ?? null, $wsId)],
+            'delete_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'action' => 'deleted'] + (function() use ($svc, $params, $wsId) { $svc->deleteLead($params['lead_id'], $wsId); return []; })(),
+            'score_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->scoreLead($params['lead_id'], $params['score'] ?? null, $wsId)],
+            'assign_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->assignLead($params['lead_id'], $params['assigned_to'] ?? null, $ctx['user_id'] ?? null, $wsId)],
             'import_leads' => $svc->importLeads($wsId, $params['rows'] ?? [], $ctx['user_id'] ?? null),
             'create_contact' => ['entity_type' => 'Contact', 'entity_id' => $svc->createContact($wsId, $params)->id],
             'merge_contacts' => ['entity_type' => 'Contact', 'data' => $svc->mergeContacts($wsId, $params['keep_id'], $params['merge_id'])],
             'create_deal' => ['entity_type' => 'Deal', 'entity_id' => $svc->createDeal($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null]))->id],
-            'update_deal_stage' => ['entity_type' => 'Deal', 'entity_id' => $params['deal_id'], 'data' => $svc->updateDealStage($params['deal_id'], $params['stage'], $ctx['user_id'] ?? null)],
+            'update_deal_stage' => ['entity_type' => 'Deal', 'entity_id' => $params['deal_id'], 'data' => $svc->updateDealStage($params['deal_id'], $params['stage'], $ctx['user_id'] ?? null, $wsId)],
             'log_activity' => ['entity_type' => 'Activity', 'entity_id' => $svc->logActivity($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null]))->id],
             'add_note' => ['entity_type' => 'Note', 'entity_id' => $svc->addNote($wsId, $params['entity_type'], $params['entity_id'], $params['body'], $ctx['user_id'] ?? null)->id],
+            // Sarah × CRM Phase 1 — AI surface kernel-reachable /* b5-crm-arms */
+            'generate_outreach'   => $svc->generateOutreach($wsId, $params),
+            'generate_followup'   => $svc->generateFollowUp($wsId, $params),
+            'ai_followup_draft'   => $svc->generateFollowUp($wsId, $params),
+            'ai_reply_suggestion' => $svc->aiReplySuggestion($wsId, $params),
+            'ai_lead_scoring'     => $svc->aiLeadScoring($wsId, $params),
+            // v1.4.4 (2026-05-30) — Phase B wiring
+            'move_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'] ?? 0, 'data' => $svc->updateLead((int) ($params['lead_id'] ?? 0), ['status' => (string) ($params['stage'] ?? '')], $ctx['user_id'] ?? null, $wsId)],
+            'list_sequences' => app(\App\Engines\Marketing\Services\SequenceService::class)->listSequences($wsId),
             default => throw new \RuntimeException("Unknown CRM action: {$action}"),
         };
     }
@@ -384,6 +641,9 @@ class EngineExecutionService
             'create_goal', 'autonomous_goal' => $svc->createGoal($wsId, $params),
             'pause_goal' => ['paused' => $svc->pauseGoal($wsId, $params['goal_id'] ?? 0)],
             'resume_goal' => ['resumed' => $svc->resumeGoal($wsId, $params['goal_id'] ?? 0)],
+            // v1.4.4 (2026-05-30) — Phase B competitive intelligence
+            'competitor_serp' => $svc->competitorSerp($wsId, $params),
+            'competitor_gaps' => $svc->competitorGaps($wsId, $params),
             default => throw new \RuntimeException("Unknown SEO action: {$action}"),
         };
     }
@@ -393,11 +653,29 @@ class EngineExecutionService
         $svc = app(\App\Engines\Write\Services\WriteService::class);
         return match ($action) {
             'create_article', 'write_article' => $svc->createArticle($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
-            'update_article' => $svc->updateArticle($params['article_id'], $params),
+            'update_article' => $svc->updateArticle($params['article_id'], $params, $wsId),
             'improve_draft' => $svc->improveDraft($wsId, $params),
             'generate_outline' => $svc->generateOutline($wsId, $params),
             'generate_headlines' => $svc->generateHeadlines($wsId, $params),
             'generate_meta' => $svc->generateMeta($wsId, $params),
+            // b17 (2026-07-24) — both of these are registered in
+            // CapabilityMapService and have real WriteService implementations,
+            // but neither was reachable from a Sarah plan: this match() threw
+            // "Unknown Write action" for them. publish_article was only wired
+            // into the async chat path (TaskSystem\Orchestrator), so a plan
+            // could never publish anything.
+            'aeo_enrich' => $svc->aeoEnrich($wsId, $params),
+            'fill_missing_images' => $svc->fillMissingImages($wsId, $params),
+            // Canonical publish, matching the chat path and the API endpoint:
+            // status=published (updateArticle stamps published_at on first
+            // publish and re-syncs the SEO index) plus is_marketing_blog, which
+            // BuilderRenderer::renderArticle requires or the live URL 404s.
+            // approval_mode=protected still gates whether this runs at all.
+            'publish_article' => $svc->updateArticle(
+                (int) ($params['article_id'] ?? 0),
+                ['status' => 'published', 'is_marketing_blog' => 1],
+                $wsId
+            ),
             default => throw new \RuntimeException("Unknown Write action: {$action}"),
         };
     }
@@ -421,9 +699,30 @@ class EngineExecutionService
         $svc = app(\App\Engines\Builder\Services\BuilderService::class);
         return match ($action) {
             'create_website' => $svc->createWebsite($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
-            'generate_page' => $svc->createPage($params['website_id'], $params),
+            'generate_page' => (function() use ($svc, $params, $wsId) { if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) throw new \RuntimeException('Website not found'); return $svc->createPage($params['website_id'], $params); })(),
             'wizard_generate' => $svc->wizardGenerate($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
             'publish_website' => ['action' => 'published'] + (function() use ($svc, $params) { $svc->publishWebsite($params['website_id']); return []; })(),
+            // v1.4.4 (2026-05-30) — Phase B landing-page visibility
+            'list_builder_pages' => $svc->listWorkspacePages($wsId, $params),
+            'get_builder_page' => $svc->getPage((int) ($params['page_id'] ?? 0)) ?? ['success' => false, 'error' => 'Page not found'],
+            // v1.4.4 (2026-05-30) — page editing.
+            //   update_page → direct mutation via BuilderService (auto-snapshots).
+            //   ai_builder_action → hands off to Arthur, who proposes structured
+            //   actions on sections_json and applies them atomically. This is
+            //   Sarah's coordination path with Arthur.
+            'update_page' => (function () use ($svc, $params, $wsId) {
+                $svc->updatePage((int) ($params['page_id'] ?? 0), $params, $wsId);
+                return ['entity_type' => 'Page', 'entity_id' => (int) ($params['page_id'] ?? 0), 'action' => 'updated'];
+            })(),
+            'ai_builder_action' => app(\App\Engines\Builder\Services\ArthurEditService::class)
+                ->editPage(
+                    (int) ($params['page_id'] ?? 0),
+                    (string) ($params['command'] ?? ''),
+                    isset($params['section_index']) ? (int) $params['section_index'] : null,
+                    array_merge(['workspace_id' => $wsId, 'agent_slug' => $ctx['agent_slug'] ?? 'sarah'], $params['context'] ?? [])
+                ),
+            // v1.4.4 Phase D-1 (2026-05-30) — add new page from universal template.
+            'add_page_from_template' => $svc->addPageFromTemplate($wsId, $params),
             default => throw new \RuntimeException("Unknown Builder action: {$action}"),
         };
     }
@@ -435,11 +734,25 @@ class EngineExecutionService
             return app(\App\Engines\Marketing\Services\MarketingService::class)->listCampaigns($wsId, $params);
         }
         $svc = app(\App\Engines\Marketing\Services\MarketingService::class);
+        $eb = app(\App\Engines\Marketing\Services\EmailBuilderService::class);
         return match ($action) {
             'create_campaign'   => $svc->createCampaign($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
             'create_automation' => ['entity_type' => 'Automation', 'entity_id' => $svc->createAutomation($wsId, $params)],
-            'schedule_campaign' => $svc->scheduleCampaign($params['campaign_id'] ?? 0, $params['scheduled_at'] ?? ''),
+            'schedule_campaign' => $svc->scheduleCampaign($params['campaign_id'] ?? 0, $params['scheduled_at'] ?? '', $wsId),
             'send_campaign'     => $svc->sendCampaign($wsId, $params['campaign_id'] ?? 0),  // Phase 3: was missing → credits reserved then released on RuntimeException
+            // v1.4.4 (2026-05-30) — Phase B marketing ops
+            'list_templates' => $svc->listTemplates($wsId),
+            'create_template' => ['entity_type' => 'Template', 'entity_id' => $svc->createTemplate($wsId, $params)],
+                        // Email Builder Phase 1 arms — wire EmailBuilderService methods
+            'email_ai_generate'      => $eb->aiGenerate($wsId, $params),
+            'email_block_rewrite'    => $eb->aiRewriteBlock((int) ($params['template_id'] ?? 0), (int) ($params['block_id'] ?? 0), (string) ($params['instruction'] ?? 'rewrite')),
+            'email_subject_suggest'  => $eb->aiSuggestSubjects((int) ($params['template_id'] ?? 0), array_merge($params, ['workspace_id' => $wsId])),
+            'email_spam_check'       => $eb->aiSpamCheck((int) ($params['template_id'] ?? 0), (string) ($params['subject'] ?? '')),
+            'email_preview_template' => ['success' => true, 'html' => $eb->previewTemplate((int) ($params['template_id'] ?? 0), (array) ($params['variables'] ?? []), (string) ($params['format'] ?? 'desktop'))],
+            'email_send_test'        => $eb->sendTest((int) ($params['template_id'] ?? $params['campaign_id'] ?? 0), (string) ($params['to_email'] ?? ''), (array) ($params['variables'] ?? [])),
+            'email_validate_campaign'=> $eb->validateCampaign((int) ($params['campaign_id'] ?? 0)),
+            'email_use_template'     => $eb->useSystemTemplate($wsId, (int) ($params['template_id'] ?? 0)),
+            'email_template_picker'  => $this->emailTemplatePicker($wsId, $eb, $params),
             default => throw new \RuntimeException("Unknown Marketing action: {$action}"),
         };
     }
@@ -449,8 +762,15 @@ class EngineExecutionService
         $svc = app(\App\Engines\Social\Services\SocialService::class);
         return match ($action) {
             'social_create_post', 'create_post' => $svc->createPost($wsId, $params),
-            'social_schedule_post'              => ['scheduled' => true] + (function() use ($svc, $params) { $svc->schedulePost($params['post_id'], $params['scheduled_at']); return []; })(),
-            'social_publish_post'               => $svc->publishPost($params['post_id']),   // PATCH v1.0.1: was missing → RuntimeException
+            'social_schedule_post'              => ['scheduled' => true] + (function() use ($svc, $params, $wsId) { $svc->schedulePost($params['post_id'], $params['scheduled_at'], $wsId); return []; })(),
+            'social_publish_post'               => $svc->publishPost($params['post_id'], $wsId),   // PATCH v1.0.1: was missing → RuntimeException
+            // v1.4.4 (2026-05-30) — Phase B social queue visibility
+            'get_queue' => $svc->getCalendarPosts($wsId, $params['from'] ?? null, $params['to'] ?? null),
+            // Sarah × Social Phase 1 — close half-built AI bridge
+            'social_ai_post', 'ai_generate_post' => $svc->aiGeneratePost($wsId, $params),
+            'hashtag_suggestions', 'generate_hashtags' => $svc->generateHashtags($wsId, $params),
+            'social_image' => app(\App\Engines\Creative\Services\CreativeService::class)
+                ->generateImage($wsId, array_merge(['style' => 'social_post', 'aspect' => '1:1'], $params)),
             default => throw new \RuntimeException("Unknown Social action: {$action}"),
         };
     }
@@ -460,6 +780,8 @@ class EngineExecutionService
         $svc = app(\App\Engines\Calendar\Services\CalendarService::class);
         return match ($action) {
             'create_event' => ['entity_type' => 'Event', 'entity_id' => $svc->createEvent($wsId, $params)],
+            // v1.4.4 (2026-05-30) — Phase B calendar visibility
+            'list_events' => $svc->getEvents($wsId, $params['from'] ?? null, $params['to'] ?? null, $params['category'] ?? null),
             default => throw new \RuntimeException("Unknown Calendar action: {$action}"),
         };
     }
@@ -496,7 +818,39 @@ class EngineExecutionService
     // Real public methods on StudioAiService: generateImage, generateDesign,
     // suggestCopy, chat. Wiring them so once CapabilityMapService gets
     // matching rows, an agent / UI can trigger them through the kernel.
-    private function executeStudioAction(int $wsId, string $action, array $params, array $ctx): array
+        /**
+     * Email template picker — ranks system templates by fit for the workspace.
+     * Sarah × Email Phase 1: takes workspace brand kit + industry + intent,
+     * scores all is_system=1 templates, returns top 5.
+     */
+    private function emailTemplatePicker(int $wsId, \App\Engines\Marketing\Services\EmailBuilderService $eb, array $params): array
+    {
+        $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+        $industry = (string) ($params['industry'] ?? $kit['industry'] ?? '');
+        $intent   = (string) ($params['intent']   ?? $params['goal'] ?? 'announce');
+        $templates = \Illuminate\Support\Facades\DB::table('email_templates')
+            ->where('is_system', 1)
+            ->where('is_active', 1)
+            ->get(['id', 'name', 'category', 'thumbnail_url']);
+        // Score: category match counts double, name keyword match counts single
+        $scored = [];
+        $intentLower = strtolower($intent);
+        $industryLower = strtolower($industry);
+        foreach ($templates as $t) {
+            $score = 0.0;
+            $catLower = strtolower($t->category ?? '');
+            $nameLower = strtolower($t->name ?? '');
+            if ($intentLower && (str_contains($catLower, $intentLower) || str_contains($nameLower, $intentLower))) $score += 2.0;
+            if ($industryLower && (str_contains($nameLower, $industryLower) || str_contains($catLower, $industryLower))) $score += 2.0;
+            // Bonus for industry-tagged templates from earlier seeding
+            if ($industryLower && str_contains($nameLower, '·')) $score += 1.0;
+            $scored[] = ['id' => $t->id, 'name' => $t->name, 'category' => $t->category, 'thumbnail_url' => $t->thumbnail_url, 'score' => $score];
+        }
+        usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
+        return ['success' => true, 'ranked' => array_slice($scored, 0, 5), 'industry' => $industry, 'intent' => $intent, 'brand_grounded' => !$kit['is_neutral']];
+    }
+
+private function executeStudioAction(int $wsId, string $action, array $params, array $ctx): array
     {
         $svc = app(\App\Engines\Studio\Services\StudioAiService::class);
         return match ($action) {
@@ -539,9 +893,14 @@ class EngineExecutionService
             'crm.update_deal_stage' => 'deal_stage_changed',
             'crm.create_deal' => 'deal_created',
             'crm.assign_lead' => 'lead_assigned',
+            // Sarah × CRM Phase 1 — close lead→testimonial and lead→reactivation chains /* b5-crm-triggers */
+            'crm.generate_outreach' => 'outreach_drafted',
+            'crm.ai_followup_draft' => 'followup_drafted',
+            'crm.generate_followup' => 'followup_drafted',
             'marketing.create_campaign' => 'campaign_created',
             'social.create_post' => 'post_created',
             'write.create_article' => 'article_created',
+            'write.write_article' => 'article_created', // G5 — Sarah-driven article writes now fire the trigger
             'builder.publish_website' => 'website_published',
         ];
 
@@ -622,25 +981,32 @@ class EngineExecutionService
                 ]);
             }
 
-            // Marketing → Calendar: scheduled campaign
+            /* b19-phase2-sync */
+            // Marketing → AutomationCal: Sarah-driven email send (Email Mktg Cal)
             if ($engine === 'marketing' && $action === 'schedule_campaign' && !empty($params['scheduled_at'])) {
-                app(\App\Engines\Calendar\Services\CalendarService::class)->createEvent($wsId, [
+                app(\App\Core\Strategy\AutomationCalendarService::class)->createEvent($wsId, [
                     'title' => "Campaign: " . ($params['name'] ?? 'Untitled'),
                     'starts_at' => $params['scheduled_at'],
-                    'category' => 'campaign_launch',
+                    'category' => 'scheduled_email',
                     'engine' => 'marketing',
+                    'reference_id' => $result['entity_id'] ?? ($params['campaign_id'] ?? null),
+                    'reference_type' => 'campaign',
                     'color' => '#F59E0B',
+                    'status' => 'scheduled',
                 ]);
             }
 
-            // Social → Calendar: scheduled post
+            // Social → AutomationCal: scheduled post (system publishes, not user)
             if ($engine === 'social' && in_array($action, ['social_schedule_post', 'create_post']) && !empty($params['scheduled_at'])) {
-                app(\App\Engines\Calendar\Services\CalendarService::class)->createEvent($wsId, [
+                app(\App\Core\Strategy\AutomationCalendarService::class)->createEvent($wsId, [
                     'title' => "Post: " . substr($params['content'] ?? '', 0, 40),
                     'starts_at' => $params['scheduled_at'],
-                    'category' => 'social_post',
+                    'category' => 'scheduled_post',
                     'engine' => 'social',
+                    'reference_id' => $result['entity_id'] ?? ($params['post_id'] ?? null),
+                    'reference_type' => 'social_post',
                     'color' => '#EC4899',
+                    'status' => 'scheduled',
                 ]);
             }
 
@@ -732,6 +1098,42 @@ class EngineExecutionService
         Log::info("handleRuntimeCallback: task {$taskId} → {$status}", [
             'engine' => $task->engine, 'action' => $task->action, 'ws' => $task->workspace_id,
         ]);
+
+        // ── Strategy learning — Sarah's outcomes journal (2026-06-30) ──────────
+        // Best-effort: record a strategy_outcomes row for proposal/strategy-origin
+        // tasks so StrategyLearningService::getLearnings() can inform future
+        // proposals (closes the learning-loop WRITE path). Keyed by raw action
+        // slug so the read side can match per ProactiveRuleSet candidate. Runs
+        // AFTER the task is already in a terminal state, fully guarded — a
+        // failure here can never affect task completion or credit finalisation.
+        try {
+            $createdVia = $payload['created_via'] ?? null;
+            if (in_array($createdVia, ['sarah_proposal', 'auto_orphan_rescue'], true)) {
+                $resData = (is_array($result) && isset($result['data']) && is_array($result['data']))
+                    ? $result['data']
+                    : (is_array($result) ? $result : []);
+                app(\App\Core\Intelligence\StrategyLearningService::class)->recordOutcome(
+                    $task->workspace_id,
+                    (string) $task->action,
+                    [
+                        'action'      => $task->action,
+                        'engine'      => $task->engine,
+                        'title'       => $payload['title'] ?? null,
+                        'created_via' => $createdVia,
+                        'task_id'     => $task->id,
+                    ],
+                    [
+                        'status'  => $status,
+                        'success' => $status === 'completed',
+                        'applied' => $resData['applied'] ?? null,
+                        'credits' => $payload['_credit_cost'] ?? null,
+                        'summary' => $resData['message'] ?? ($result['summary'] ?? null),
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning("handleRuntimeCallback: strategy outcome recording failed for task {$taskId}: {$e->getMessage()}");
+        }
     }
 
     /**
@@ -767,4 +1169,32 @@ class EngineExecutionService
             Log::warning("notifyTaskEvent failed: {$type}", ['error' => $e->getMessage()]);
         }
     }
+    /* h1-batch3-method */
+    private function executeContentAction(int $wsId, string $action, array $params, array $ctx): array
+    {
+        $svc = app(\App\Engines\Content\Services\ContentPackService::class);
+        return match ($action) {
+            'create_pack'  => $svc->createPack($wsId, $params),
+            'add_asset'    => $svc->addAsset($wsId, $params),
+            'get_pack'     => $svc->getPack($wsId, (int) ($params['pack_id'] ?? 0)),
+            'list_packs'   => $svc->listPacks($wsId, $params),
+            'publish_pack' => $svc->publishPack($wsId, $params),
+            default        => throw new \RuntimeException("Unknown content action: $action"),
+        };
+    }
+
+    /* b4-sarah-method */
+    private function executeSarahAction(int $wsId, string $action, array $params, array $ctx): array
+    {
+        return match ($action) {
+            'draft_campaign' => app(\App\Core\Orchestration\SarahCampaignOrchestrator::class)
+                ->draftCampaign($wsId, $params + ['source' => $ctx['source'] ?? 'sarah', 'user_id' => $ctx['user_id'] ?? null]),
+            // Existing cap-map sarah actions (assistant_message, agent_message,
+            // strategy_meeting) are dispatched via their own controller paths
+            // upstream of EngineExecutionService::execute() — they don't need
+            // an arm here. Throw on any other unknown sarah action.
+            default => throw new \RuntimeException("Unknown sarah action: $action"),
+        };
+    }
+
 }

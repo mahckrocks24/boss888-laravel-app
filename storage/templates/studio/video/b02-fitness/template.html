@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Bubbly Reel — Fitness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#FFFDF5;--primary:#FF2D6B;--accent:#FF80A8;--yellow:#FFE600;--text:#0A0A0A;--fh:'Syne',sans-serif;--fb:'Space Grotesk',sans-serif;--bounce:cubic-bezier(.34,1.56,.64,1);--snap:cubic-bezier(.16,1,.3,1);--w:1080px;--h:1920px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#FFD0DC}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.46);display:block;width:calc(var(--w)*.46);height:calc(var(--h)*.46)}}
+@media(max-width:780px) {.sw{transform:scale(.33);display:block;width:calc(var(--w)*.33);height:calc(var(--h)*.33)}}
+@media(max-width:520px) {.sw{transform:scale(.24);display:block;width:calc(var(--w)*.24);height:calc(var(--h)*.24)}}
+.reel{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--fb)}
+
+/* BLOBS */
+.blob-1{position:absolute;width:720px;height:680px;border-radius:50%;background:radial-gradient(ellipse,var(--primary) 0%,rgba(255,45,107,.55) 50%,transparent 75%);top:-180px;right:-160px;animation:blob-in .9s var(--bounce) 0s both,blob-f 11s ease-in-out 1s infinite alternate}
+.blob-2{position:absolute;width:580px;height:540px;border-radius:50%;background:radial-gradient(ellipse,var(--yellow) 0%,rgba(255,230,0,.55) 50%,transparent 75%);bottom:-100px;left:-100px;animation:blob-in 1.1s var(--bounce) .15s both,blob-f 13s ease-in-out 3s infinite alternate-reverse}
+.blob-3{position:absolute;width:320px;height:300px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,45,107,.60) 0%,transparent 70%);top:800px;left:-60px;animation:blob-in .8s var(--bounce) .3s both,blob-f 9s ease-in-out 2s infinite alternate}
+
+/* DECO ELEMENTS */
+.deco{position:absolute;z-index:3;pointer-events:none}
+.deco-x{font-family:var(--fh);font-size:80px;font-weight:800;color:rgba(10,10,10,.08);line-height:1;opacity:0;animation:pop-in .5s ease var(--d) both}
+.dx1{top:380px;right:72px;transform:rotate(15deg);--d:.8s}
+.dx2{top:1120px;left:68px;transform:rotate(-10deg);--d:3.5s}
+/* Lightning bolts */
+.bolt{font-size:52px;opacity:0;animation:pop-in .5s var(--bounce) var(--d) both}
+.b1{top:360px;left:78px;transform:rotate(-15deg);--d:.9s}
+.b2{top:1080px;right:80px;transform:rotate(10deg);--d:3.8s}
+/* Squiggles */
+.squig{position:absolute;z-index:2;pointer-events:none;opacity:0;animation:pop-in .6s ease 1.0s both}
+
+/* TOPBAR */
+.topbar{position:absolute;z-index:8;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:44px 52px}
+.brand{display:flex;align-items:center;gap:14px;opacity:0;animation:pop-in .7s var(--bounce) .6s both}
+.brand-icon{width:52px;height:52px;border-radius:50%;background:var(--text);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:3px solid var(--text)}
+.brand-name{font-family:var(--fh);font-size:22px;font-weight:800;color:var(--text)}
+.brand-pill{font-family:var(--fb);font-size:14px;font-weight:700;color:var(--bg);background:var(--primary);padding:12px 24px;border-radius:50px;border:2.5px solid var(--text);box-shadow:3px 3px 0 var(--text);opacity:0;animation:pop-in .6s var(--bounce) .8s both;transform:rotate(2deg)}
+
+/* HERO */
+.hero{position:absolute;z-index:5;top:440px;left:60px;right:60px}
+.eyebrow-wrap{display:flex;gap:12px;align-items:center;margin-bottom:20px;opacity:0;animation:bounce-left .7s var(--bounce) 1.2s both}
+.eyebrow{font-family:var(--fb);font-size:18px;font-weight:700;color:var(--text);background:var(--yellow);padding:10px 24px;border-radius:50px;border:2.5px solid var(--text);box-shadow:3px 3px 0 var(--text);transform:rotate(-2deg);display:inline-block}
+
+.headline{margin-bottom:24px;display:flex;flex-direction:column;gap:0}
+.hl{font-family:var(--fh);line-height:.84;letter-spacing:-.04em;color:var(--text);display:block;opacity:0}
+.hl-solid{font-size:160px;font-weight:800}
+.hl-outline{font-size:160px;font-weight:800;-webkit-text-stroke:3.5px var(--text);color:transparent}
+.hl-pink{color:var(--primary);-webkit-text-fill-color:var(--primary)}
+.hl-1{animation:slam-rotate .60s var(--bounce) 1.4s both}
+.hl-2{animation:slam-rotate .60s var(--bounce) 1.65s both}
+.hl-3{animation:slam-rotate .60s var(--bounce) 1.90s both}
+
+.subtext{font-size:27px;font-weight:400;line-height:1.62;color:rgba(10,10,10,.62);margin-bottom:44px;opacity:0;animation:pop-up .8s var(--snap) 2.3s both}
+
+/* FEATURE PILLS */
+.pills{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:48px;opacity:0;animation:pop-in .7s var(--bounce) 2.7s both}
+.pill{font-family:var(--fb);font-size:20px;font-weight:700;padding:14px 28px;border-radius:50px;border:2.5px solid var(--text);display:flex;align-items:center;gap:10px}
+.p-a{background:var(--yellow);transform:rotate(-1deg);box-shadow:3px 3px 0 var(--text)}
+.p-b{background:var(--primary);color:white;transform:rotate(1.5deg);box-shadow:3px 3px 0 var(--text)}
+.p-c{background:white;transform:rotate(-1.2deg);box-shadow:3px 3px 0 var(--text)}
+
+/* CTA */
+.cta-wrap{opacity:0;animation:pop-in .8s var(--bounce) 3.1s both}
+.cta{display:inline-flex;align-items:center;gap:16px;font-family:var(--fh);font-size:28px;font-weight:800;letter-spacing:-.01em;color:var(--text);background:var(--yellow);padding:28px 64px;border-radius:50px;border:3px solid var(--text);box-shadow:6px 6px 0 var(--text);text-decoration:none;transform:rotate(-.8deg);animation:cta-b 3s ease-in-out 4s infinite}
+.cta-arrow{display:inline-block;animation:arrow-w 3s ease-in-out 4s infinite}
+
+/* STAT CARDS */
+.stats{position:absolute;z-index:5;top:1400px;left:60px;right:60px;display:flex;gap:16px}
+.sc{flex:1;padding:28px 22px;border-radius:22px;border:2.5px solid var(--text);display:flex;flex-direction:column;gap:5px;opacity:0;animation:pop-in .6s var(--bounce) var(--d) both}
+.sc-1{background:var(--primary);transform:rotate(-2deg);box-shadow:5px 5px 0 var(--text);--d:3.6s}
+.sc-2{background:var(--yellow);transform:rotate(1.8deg);box-shadow:5px 5px 0 var(--text);--d:3.8s}
+.sc-3{background:var(--text);transform:rotate(-.8deg);box-shadow:5px 5px 0 var(--primary);--d:4.0s}
+.sc-val{font-family:var(--fh);font-size:60px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--text)}
+.sc-3 .sc-val{color:var(--yellow)}
+.sc-label{font-family:var(--fb);font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:rgba(10,10,10,.60)}
+.sc-3 .sc-label{color:rgba(255,230,0,.65)}
+
+/* FLOATING BADGES */
+.fb{position:absolute;z-index:7;display:flex;align-items:center;gap:10px;font-family:var(--fb);font-size:16px;font-weight:700;color:var(--text);background:white;padding:14px 22px;border-radius:50px;border:2.5px solid var(--text);box-shadow:4px 4px 0 var(--text);opacity:0;animation:pop-in .6s var(--bounce) var(--d) both;white-space:nowrap}
+.fb1{top:380px;right:68px;transform:rotate(3.5deg);--d:1.0s}
+.fb2{top:1160px;right:68px;transform:rotate(-2.5deg);--d:3.4s}
+
+/* FOOTER */
+.footer{position:absolute;z-index:8;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:26px 52px 52px;opacity:0;animation:pop-up .7s var(--snap) 4.4s both}
+.footer-brand{font-family:var(--fh);font-size:20px;font-weight:800;color:var(--text)}
+.footer-url{font-family:var(--fb);font-size:16px;color:rgba(10,10,10,.50)}
+.footer-handle{font-family:var(--fb);font-size:16px;font-weight:700;color:var(--primary)}
+
+@keyframes blob-in{from{opacity:0;transform:scale(.55)}to{opacity:1;transform:scale(1)}}
+@keyframes blob-f{from{transform:translate(0,0)}to{transform:translate(18px,-16px)}}
+@keyframes pop-in{from{opacity:0;transform:scale(.60)}to{opacity:1;transform:scale(1)}}
+@keyframes pop-up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce-left{from{opacity:0;transform:translateX(-50px) rotate(-4deg)}70%{transform:translateX(6px) rotate(1deg)}100%{opacity:1;transform:translateX(0) rotate(-2deg)}}
+@keyframes slam-rotate{0%{opacity:0;transform:translateY(100px) rotate(-4deg) scale(.85)}65%{transform:translateY(-6px) rotate(.5deg)}85%{transform:translateY(3px)}100%{opacity:1;transform:translateY(0) rotate(0)}}
+@keyframes cta-b{0%,100%{box-shadow:6px 6px 0 var(--text);transform:rotate(-.8deg) translateY(0)}50%{box-shadow:9px 9px 0 var(--text);transform:rotate(-.8deg) translateY(-5px)}}
+@keyframes arrow-w{0%,80%,100%{transform:translateX(0)}90%{transform:translateX(10px)}}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="sw"><div class="reel">
+  <div class="blob-1"></div><div class="blob-2"></div><div class="blob-3"></div>
+  <div class="deco deco-x dx1">✕</div><div class="deco deco-x dx2">✕</div>
+  <div class="deco bolt b1">⚡</div><div class="deco bolt b2">💪</div>
+  <div class="squig">
+    <svg style="position:absolute;top:260px;left:80px" width="200" height="40" viewBox="0 0 200 40">
+      <path d="M4 20 C24 4 44 36 64 20 C84 4 104 36 124 20 C144 4 164 36 184 20" stroke="rgba(10,10,10,.25)" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </svg>
+    <svg style="position:absolute;top:1300px;right:60px" width="120" height="30">
+      <path d="M4 15 C20 3 36 27 52 15 C68 3 84 27 100 15 C108 9 116 20 116 15" stroke="rgba(255,45,107,.35)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="fb fb1">🔥 1,200 workouts today</div>
+  <div class="fb fb2" data-field="footer_brand">{{footer_brand}}</div>
+  <div class="topbar">
+    <div class="brand"><div class="brand-icon">🏋️</div><span class="brand-name" data-field="brand_name">{{brand_name}}</span></div>
+    <span class="brand-pill" data-field="pill_1">{{pill_1}}</span>
+  </div>
+  <div class="hero">
+    <div class="eyebrow-wrap"><span>💥</span><span class="eyebrow" data-field="eyebrow">{{eyebrow}}</span></div>
+    <div class="headline">
+      <span class="hl hl-1" data-field="headline_1">{{headline_1}}</span>
+      <span class="hl hl-2" data-field="headline_2">{{headline_2}}</span>
+      <span class="hl hl-3" data-field="headline_3">{{headline_3}}</span>
+    </div>
+    <p class="subtext" data-field="subheading">{{subheading}}</p>
+    <div class="pills">
+      <span class="pill p-a" data-field="pill_2">{{pill_2}}</span>
+      <span class="pill p-b" data-field="pill_3">{{pill_3}}</span>
+      <span class="pill p-c" data-field="pill_4">{{pill_4}}</span>
+    </div>
+    <div class="cta-wrap"><a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a></div>
+  </div>
+  <div class="stats">
+    <div class="sc sc-1"><span class="sc-val">12W</span><span class="sc-label">Program</span></div>
+    <div class="sc sc-2"><span class="sc-val">4K+</span><span class="sc-label">Members</span></div>
+    <div class="sc sc-3"><span class="sc-val">98%</span><span class="sc-label">Results</span></div>
+  </div>
+  <div class="footer"><span class="footer-brand" data-field="footer_brand">{{footer_brand}}</span><span class="footer-url" data-field="footer_url">{{footer_url}}</span><span class="footer-handle" data-field="footer_handle">{{footer_handle}}</span></div>
+</div></div></div>
+</body></html>

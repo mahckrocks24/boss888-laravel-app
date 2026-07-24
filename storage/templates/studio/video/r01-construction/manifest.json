@@ -1,0 +1,39 @@
+{
+  "name": "Construction Reel",
+  "slug": "r01-construction",
+  "format": "reels",
+  "category": "construction",
+  "sub_category": "industrial",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": ["construction", "contractor", "industrial", "trades", "building"],
+  "variables": {
+    "brand_name":      { "type": "text", "label": "Brand name",        "default": "Logo Here" },
+    "tag":             { "type": "text", "label": "Top-right tag",     "default": "Est. 1998" },
+    "eyebrow":         { "type": "text", "label": "Eyebrow",           "default": "General Contractors" },
+    "headline_1":      { "type": "text", "label": "Headline 1",        "default": "WE" },
+    "headline_2":      { "type": "text", "label": "Headline 2",        "default": "BUILD" },
+    "headline_accent": { "type": "text", "label": "Headline accent",   "default": "BOLD." },
+    "subheading":      { "type": "text", "label": "Subheading",        "default": "Industrial-grade construction delivered on time, on budget — every project, every time." },
+    "pill_1":          { "type": "text", "label": "Pill 1",            "default": "Commercial" },
+    "pill_2":          { "type": "text", "label": "Pill 2",            "default": "Residential" },
+    "pill_3":          { "type": "text", "label": "Pill 3",            "default": "Industrial" },
+    "cta_label":       { "type": "text", "label": "CTA",               "default": "Get a Quote" },
+    "stat_1_val":      { "type": "text", "label": "Stat 1 value",      "default": "500+" },
+    "stat_1_label":    { "type": "text", "label": "Stat 1 label",      "default": "Projects" },
+    "stat_2_val":      { "type": "text", "label": "Stat 2 value",      "default": "25yr" },
+    "stat_2_label":    { "type": "text", "label": "Stat 2 label",      "default": "Experience" },
+    "stat_3_val":      { "type": "text", "label": "Stat 3 value",      "default": "98%" },
+    "stat_3_label":    { "type": "text", "label": "Stat 3 label",      "default": "On Time" },
+    "footer_brand":    { "type": "text", "label": "Footer brand",      "default": "Logo Here" },
+    "footer_url":      { "type": "text", "label": "Footer URL",        "default": "companyname.com" },
+    "footer_handle":   { "type": "text", "label": "Footer handle",     "default": "@handle" }
+  },
+  "semantic": {
+    "mood": ["bold", "professional"],
+    "color_temperature": "dark",
+    "best_for": ["construction", "contractor", "industrial", "trades"]
+  }
+}

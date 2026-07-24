@@ -38,6 +38,44 @@ class AeoAuditService
     ];
 
     /**
+     * 2026-06-22 — Build the COMPLETE AEO JSON-LD blob (Article + FAQPage) in
+     * Laravel (the brain). The WP connector only echoes this — it never
+     * assembles schema. Returns a schema.org @graph array ready to json_encode
+     * and store on seo_content_index.aeo_jsonld_json / push to the connector.
+     *
+     * @param array $article The LLM-produced Article JSON-LD object.
+     * @param array $faq     Array of {question, answer} pairs.
+     */
+    public static function buildJsonLd(array $article, array $faq): array
+    {
+        // Article node — drop any nested @context; we set it once at the top.
+        unset($article['@context']);
+        $graph = [$article];
+
+        $entities = [];
+        foreach ($faq as $f) {
+            if (! is_array($f)) {
+                continue;
+            }
+            $q = isset($f['question']) ? trim((string) $f['question']) : '';
+            $a = isset($f['answer']) ? trim((string) $f['answer']) : '';
+            if ($q === '' || $a === '') {
+                continue;
+            }
+            $entities[] = [
+                '@type'          => 'Question',
+                'name'           => $q,
+                'acceptedAnswer' => ['@type' => 'Answer', 'text' => $a],
+            ];
+        }
+        if (! empty($entities)) {
+            $graph[] = ['@type' => 'FAQPage', 'mainEntity' => $entities];
+        }
+
+        return ['@context' => 'https://schema.org', '@graph' => $graph];
+    }
+
+    /**
      * Audit a single URL and persist the result. Returns the audit row
      * as an array (score, checks, errors).
      */

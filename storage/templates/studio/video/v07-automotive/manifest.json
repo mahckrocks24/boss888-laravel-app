@@ -1,0 +1,55 @@
+{
+  "name": "Automotive Reel",
+  "slug": "v07-automotive",
+  "format": "reels",
+  "category": "automotive",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "automotive"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "LOGO HERE"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Built to Dominate"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "0–100 in 3.2s · 480HP · V8"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "BUILT TO"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "DOMINATE."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Book a Test Drive"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=1080&q=85&fit=crop&crop=center"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "automotive"
+    ]
+  }
+}

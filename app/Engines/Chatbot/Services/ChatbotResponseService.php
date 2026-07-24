@@ -133,9 +133,24 @@ class ChatbotResponseService
             // Step 3: build context
             $ctx = $this->ctxBuilder->build($sessionId, $userMessage);
 
-            // Step 4: classify (rule-first)
+            // Step 4: classify intent (regex fast-path) + LLM-augmented
+            // field extraction for fuzzy fields.
             $fsmState = $this->fsm->read($sessionId);
             $classified = $this->classifier->classify($userMessage, $fsmState['captured']);
+
+            // 2026-05-28 — Intelligence belongs in runtime. Regex was looping
+            // the bot forever asking for name when visitors answered with bare
+            // names ("John"). For fuzzy fields (name, service, ambiguous
+            // date/time), call the runtime LLM to extract. This bypasses the
+            // brittle string-pattern parsing in ChatbotIntentClassifier and
+            // gives a real natural-language understanding step.
+            $expectingField = $this->lastAskedField($sessionId);
+            if ($expectingField && empty($classified['captured_fields'][$expectingField])) {
+                $extracted = $this->extractFieldViaLLM($userMessage, $expectingField, $fsmState['captured'] ?? []);
+                if ($extracted !== null) {
+                    $classified['captured_fields'][$expectingField] = $extracted;
+                }
+            }
 
             // Step 5: state transition
             $merged = $classified['captured_fields'];  // already merged with $fsmState['captured']
@@ -220,6 +235,96 @@ class ChatbotResponseService
      * the LLM gently suggests a next step on this reply. NO new LLM
      * call — just enriches the existing one.
      */
+
+    /**
+     * 2026-05-28 — Look at the last assistant message we sent and figure
+     * out which field (if any) the bot asked the visitor for. Used to
+     * give the LLM-extraction step contextual hints so a bare "John"
+     * after "What's your name?" gets recognised as a name.
+     */
+    private function lastAskedField(int $sessionId): ?string
+    {
+        $row = DB::table('chatbot_messages')
+            ->where('session_id', $sessionId)
+            ->where('role', 'assistant')
+            ->orderByDesc('id')
+            ->limit(1)
+            ->first(['meta_json']);
+        if (!$row || empty($row->meta_json)) return null;
+        $meta = json_decode($row->meta_json, true);
+        return is_array($meta) ? ($meta['next_field'] ?? null) : null;
+    }
+
+    /**
+     * 2026-05-28 — Intelligence-belongs-in-runtime fix. The regex
+     * classifier ONLY matched volunteering phrasings like "my name is X",
+     * which meant bare-name answers ("John") never registered and the
+     * bot looped. This calls the runtime LLM to extract a single field
+     * from a free-form user message with proper natural-language
+     * understanding.
+     *
+     * Returns the extracted value as a string, or null if the visitor
+     * refused / asked another question / clearly didn't answer.
+     */
+    private function extractFieldViaLLM(string $userMessage, string $field, array $alreadyCaptured): ?string
+    {
+        if (!$this->runtime->isConfigured()) return null;
+
+        $fieldDescriptions = [
+            'name'    => "the visitor's personal name (first name, full name, or how they'd like to be addressed)",
+            'email'   => "the visitor's email address",
+            'phone'   => "the visitor's phone number",
+            'service' => "the service / product the visitor is asking about",
+            'date'    => "a calendar date the visitor proposed (ISO YYYY-MM-DD)",
+            'time'    => "a time-of-day the visitor proposed (HH:MM 24h)",
+        ];
+        $desc = $fieldDescriptions[$field] ?? "the value for '{$field}'";
+
+        $alreadyText = '';
+        if (!empty($alreadyCaptured)) {
+            $known = array_filter(array_map(
+                fn($k, $v) => $v ? "$k=$v" : null,
+                array_keys($alreadyCaptured),
+                array_values($alreadyCaptured)
+            ));
+            if ($known) $alreadyText = "Already captured: " . implode(', ', $known) . ". ";
+        }
+
+        $system = "You extract a single structured field from a website chatbot visitor's message.\n"
+                . "The visitor was just asked for {$desc}.\n"
+                . "{$alreadyText}\n"
+                . "Return ONLY this JSON: {\"value\": \"<extracted>\" or null, \"confident\": true|false}\n"
+                . "Rules:\n"
+                . "1. If the message clearly answers the question (even bare — \"John\" after \"What's your name?\"), extract the value.\n"
+                . "2. If the visitor is asking another question, refusing, or saying \"idk/maybe/later\", return null.\n"
+                . "3. If the value is mixed in (\"hey it's John btw\"), extract just the value (\"John\").\n"
+                . "4. For names: trim, preserve original casing, allow Unicode (Müller, Akpan, José, Mary-Jane).\n"
+                . "5. For dates/times: normalise to ISO format if clearly stated.\n"
+                . "6. No markdown, no commentary, ONLY the JSON object.";
+
+        $user = "Visitor message: \"{$userMessage}\"";
+
+        try {
+            $result = $this->runtime->chatJson($system, $user, [
+                'task'  => 'chatbot_field_extract',
+                'field' => $field,
+            ], 100);
+            if (!($result['success'] ?? false)) return null;
+            $parsed = $result['parsed'] ?? null;
+            if (!is_array($parsed)) return null;
+            $value = $parsed['value'] ?? null;
+            if ($value === null || $value === '' || (is_string($value) && trim($value) === '')) return null;
+            // Defensive: never accept "null" string
+            if (is_string($value) && strtolower(trim($value)) === 'null') return null;
+            return is_string($value) ? trim($value) : (string) $value;
+        } catch (\Throwable $e) {
+            Log::warning('[chatbot] extractFieldViaLLM failed', [
+                'field' => $field, 'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
     private function actionAnswer(array $ctx, string $userMessage, array $classified, array $captured): array
     {
         // Trigger nudge when 2+ user turns deep in pure-FAQ territory

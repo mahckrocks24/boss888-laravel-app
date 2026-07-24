@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Legal — Luxury Law Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Raleway:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0A0E1A;--surface:#0F1424;--text:#111827;
+  --accent:#C9A96E;--primary:#E8CFA0;--gold-d:rgba(201,169,110,.18);
+  --white:#EEF0F8;--muted:rgba(238,240,248,.45);
+  --fh:'Cinzel',Georgia,serif;--fb:'Raleway',sans-serif;
+  --w:1080px;--h:1350px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#050710}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1200px){.sw{transform:scale(.78);display:block;width:calc(var(--w)*.78);height:calc(var(--h)*.78)}}
+@media(max-width:960px){.sw{transform:scale(.60);display:block;width:calc(var(--w)*.60);height:calc(var(--h)*.60)}}
+@media(max-width:720px){.sw{transform:scale(.43);display:block;width:calc(var(--w)*.43);height:calc(var(--h)*.43)}}
+@media(max-width:500px){.sw{transform:scale(.29);display:block;width:calc(var(--w)*.29);height:calc(var(--h)*.29)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg)}
+
+/* Subtle radial bg */
+.bg-glow{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 70% 55% at 30% 25%,rgba(201,169,110,.08) 0%,transparent 65%),
+  radial-gradient(ellipse 50% 40% at 80% 80%,rgba(17,24,39,.80) 0%,transparent 60%)}
+.bg-dots{position:absolute;inset:0;z-index:1;
+  background-image:radial-gradient(circle,rgba(201,169,110,.05) 1px,transparent 1px);
+  background-size:48px 48px;pointer-events:none}
+
+/* HERO IMAGE — top 52% */
+.hero{position:absolute;top:0;left:0;right:0;height:700px;z-index:2;overflow:hidden}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center 30%;
+  filter:brightness(.30) saturate(.40) contrast(1.10)}
+.hero::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(10,14,26,.55) 0%,transparent 30%,rgba(10,14,26,.55) 70%,var(--bg) 100%),
+  linear-gradient(90deg,rgba(10,14,26,.45) 0%,transparent 50%)}
+
+/* Gold rules */
+.gold-rule-top{position:absolute;z-index:4;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.gold-rule-mid{position:absolute;z-index:4;top:696px;left:56px;right:56px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.40}
+
+/* Topbar */
+.topbar{position:absolute;z-index:6;top:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;padding:32px 52px}
+.logo-area{display:flex;align-items:center;gap:14px}
+.logo-circle{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--accent);
+  display:flex;align-items:center;justify-content:center}
+.logo-circle::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--accent);opacity:.75}
+.logo-name{font-family:var(--fh);font-size:21px;letter-spacing:.16em;color:var(--white)}
+.est-tag{font-family:var(--fb);font-size:10px;font-weight:500;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--accent);border:1px solid rgba(201,169,110,.28);padding:8px 18px;border-radius:2px}
+
+/* Large Roman numeral / number overlay on image */
+.num-overlay{position:absolute;z-index:3;top:80px;right:52px;
+  font-family:var(--fh);font-size:200px;font-weight:700;letter-spacing:-.05em;
+  color:rgba(201,169,110,.06);line-height:1;user-select:none;pointer-events:none}
+
+/* Image headline — on guaranteed dark area */
+.img-headline{position:absolute;z-index:5;bottom:360px;left:60px;right:60px}
+.eyebrow{font-family:var(--fb);font-size:18px;font-weight:500;letter-spacing:.32em;
+  text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.eyebrow::before{content:'';width:28px;height:1px;background:var(--accent);flex-shrink:0}
+.headline{font-family:var(--fh);font-size:80px;font-weight:400;line-height:.96;letter-spacing:.02em;
+  color:var(--white);text-shadow:0 4px 60px rgba(10,14,26,.60)}
+.headline em{font-style:italic;font-weight:400;color:var(--primary);display:block}
+
+/* Content zone — below image */
+.content{position:absolute;z-index:5;bottom:0;left:0;right:0;height:650px;
+  display:flex;flex-direction:column;justify-content:center;padding:32px 52px}
+
+.gold-divider{width:52px;height:1.5px;background:linear-gradient(90deg,var(--accent),transparent);margin-bottom:28px}
+
+.sub{font-family:var(--fb);font-size:17px;font-weight:300;line-height:1.75;
+  color:var(--muted);max-width:720px;margin-bottom:44px}
+.sub strong{color:rgba(238,240,248,.75);font-weight:400}
+
+/* Practice areas */
+.areas{display:flex;gap:0;margin-bottom:44px}
+.area{flex:1;padding:20px 24px;border-right:1px solid rgba(201,169,110,.12);
+  display:flex;flex-direction:column;gap:8px}
+.area:last-child{border-right:none}
+.area-name{font-family:var(--fh);font-size:21px;letter-spacing:.08em;color:var(--white)}
+.area-desc{font-family:var(--fb);font-size:20px;font-weight:300;letter-spacing:.06em;color:var(--muted)}
+
+/* CTA */
+.cta-row{display:flex;align-items:center;gap:24px}
+.cta{display:inline-flex;align-items:center;gap:14px;font-family:var(--fb);font-size:12px;
+  font-weight:600;letter-spacing:.20em;text-transform:uppercase;
+  color:var(--bg);background:linear-gradient(135deg,var(--primary),var(--accent));
+  padding:20px 52px;border:none;cursor:pointer;text-decoration:none;
+  transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(201,169,110,.30)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+.cta-ghost{font-family:var(--fb);font-size:20px;font-weight:400;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent);border-bottom:1px solid rgba(201,169,110,.35);
+  padding-bottom:2px;text-decoration:none;transition:border-color .20s}
+.cta-ghost:hover{border-color:var(--accent)}
+
+/* Bottom brand */
+.brand-bottom{position:absolute;z-index:5;bottom:32px;right:60px;
+  font-family:var(--fb);font-size:10px;letter-spacing:.16em;color:rgba(238,240,248,.25)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body><div class="scene"><div class="sw"><div class="post">
+  <div class="bg-glow"></div><div class="bg-dots"></div>
+  <div class="gold-rule-top"></div><div class="gold-rule-mid"></div>
+  <div class="hero">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+  </div>
+  <div class="num-overlay" data-field="num_overlay">{{num_overlay}}</div>
+  <div class="topbar">
+    <div class="logo-area"><div class="logo-circle"></div><span class="logo-name" data-field="logo_name">{{logo_name}}</span></div>
+    <span class="est-tag" data-field="est_tag">{{est_tag}}</span>
+  </div>
+  <div class="img-headline">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <h1 class="headline"><span data-field="headline_main">{{headline_main}}</span><br><em data-field="headline_accent">{{headline_accent}}</em></h1>
+  </div>
+  <div class="content">
+    <div class="gold-divider"></div>
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="areas">
+      <div class="area"><span class="area-name" data-field="area_1_name">{{area_1_name}}</span><span class="area-desc" data-field="area_1_desc">{{area_1_desc}}</span></div>
+      <div class="area"><span class="area-name" data-field="area_2_name">{{area_2_name}}</span><span class="area-desc" data-field="area_2_desc">{{area_2_desc}}</span></div>
+      <div class="area"><span class="area-name" data-field="area_3_name">{{area_3_name}}</span><span class="area-desc" data-field="area_3_desc">{{area_3_desc}}</span></div>
+    </div>
+    <div class="cta-row">
+      <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+      <a class="cta-ghost" href="#" data-field="cta_ghost_label">{{cta_ghost_label}}</a>
+    </div>
+  </div>
+  <div class="brand-bottom" data-field="brand_bottom">{{brand_bottom}}</div>
+</div></div></div></body></html>

@@ -29,6 +29,10 @@ class RunSequences extends Command
 
     public function handle(): int
     {
+        // LAUNCH SCOPE (2026-07-20) — removed capability execution hard-stop.
+        \Illuminate\Support\Facades\Log::info('[LaunchScope] lu:sequences:run refused — email marketing removed from launch');
+        $this->info('lu:sequences:run is disabled for launch (email marketing removed).');
+        return self::SUCCESS;
         $dry = (bool) $this->option('dry');
         $sent = 0; $skipped = 0; $errored = 0; $completed = 0;
 

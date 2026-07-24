@@ -145,8 +145,15 @@ window._msgSend=async function(){
   }
 
   var uiSlug=_msg.agent==='sarah'?'dmm':_msg.agent;
+  // v1.4.4 attach (floater) — fold uploaded attachments + clear chips.
+  var _msgFloatBody = Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{});
+  if (window.LU_attachComposer) {
+    var _floatAtts = window.LU_attachComposer.getPending('lu-msg-input');
+    if (_floatAtts && _floatAtts.length) _msgFloatBody.attachments = _floatAtts;
+    window.LU_attachComposer.clear('lu-msg-input');
+  }
   try{
-    var _msgResp = await _msgApi('POST','/agents/'+uiSlug+'/messages',Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{}));
+    var _msgResp = await _msgApi('POST','/agents/'+uiSlug+'/messages',_msgFloatBody);
     // Wave 24 — Update chat counter badge.
     try {
       if (_msgResp && _msgResp.chat_meter && typeof window._lgseUpdateChatMeter === 'function') {
@@ -263,9 +270,13 @@ async function _msgLoadPageThread(slug){
     if(arr.length===0){feed.innerHTML='<div style="text-align:center;padding:60px;color:var(--t3)"><div style="font-size:40px;margin-bottom:12px">'+window.icon("message",14)+'</div><div style="font-size:14px">No messages with '+_msgE(conv.name)+' yet.</div><div style="font-size:12px;margin-top:6px">Send a message to start working together.</div></div>';return;}
     feed.innerHTML=arr.map(function(m){
       var isUser=m.from==='User'||m.from==='user';
+      // v1.4.4 — historical agent messages go through fmt() to match the
+      // markdown + paragraph spacing applied to new replies. User messages
+      // stay plain (typed text, no markdown).
+      var body = isUser ? _msgE(m.content) : (typeof fmt === 'function' ? fmt(m.content) : _msgE(m.content));
       return'<div style="display:flex;justify-content:'+(isUser?'flex-end':'flex-start')+';margin-bottom:10px"><div style="max-width:70%;padding:12px 16px;border-radius:14px;background:'+(isUser?'var(--p)':color+'12')+';border:'+(isUser?'none':'1px solid '+color+'25')+';color:'+(isUser?'#fff':'var(--t1)')+';font-size:14px;line-height:1.6">'
         +'<div style="font-size:10px;font-weight:600;margin-bottom:4px;opacity:.7">'+(isUser?'You':_msgE(conv.name))+'</div>'
-        +_msgE(m.content)
+        +body
         +'<div style="font-size:10px;opacity:.5;margin-top:6px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
     }).join('');
     // 2026-05-22 FIX 12 — was scrollIntoView({block:'start'}) which yanked
@@ -288,8 +299,15 @@ window._msgPageSend=async function(){
   }
 
   var uiSlug=_msg.agent==='sarah'?'dmm':_msg.agent;
+  // v1.4.4 attach (page) — fold uploaded attachments + clear chips.
+  var _msgPageBody = Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{});
+  if (window.LU_attachComposer) {
+    var _pageAtts = window.LU_attachComposer.getPending('lu-msg-page-input');
+    if (_pageAtts && _pageAtts.length) _msgPageBody.attachments = _pageAtts;
+    window.LU_attachComposer.clear('lu-msg-page-input');
+  }
   try{
-    var _msgResp = await _msgApi('POST','/agents/'+uiSlug+'/messages',Object.assign({content:msg,from:'User'}, window._lgseActiveSiteUrl?{site_url:window._lgseActiveSiteUrl}:{}));
+    var _msgResp = await _msgApi('POST','/agents/'+uiSlug+'/messages',_msgPageBody);
     // Wave 24 — Update chat counter badge.
     try {
       if (_msgResp && _msgResp.chat_meter && typeof window._lgseUpdateChatMeter === 'function') {

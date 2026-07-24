@@ -667,19 +667,48 @@ class AgentMeetingEngine
                 // which left tasks orphaned. Route through TaskService so they
                 // hit the canonical pipeline (capability check, approval,
                 // idempotency, audit, dispatch).
+                // 2026-05-26 — forward extracted params into the task payload
+                // so dispatchers (e.g. seo/deep_audit) actually receive the
+                // URL / topic / keyword the meeting agreed on. Previously
+                // only `description` + `from_meeting` were carried, so every
+                // engine threw "X required" on dispatch.
+                $extractedParams = (isset($planTask['params']) && is_array($planTask['params'])) ? $planTask['params'] : [];
+                $payload = array_merge($extractedParams, [
+                    'description'  => $planTask['description'] ?? '',
+                    'from_meeting' => $meeting->id,
+                ]);
+                // 2026-05-26 — the tasks.priority enum is ('low','normal','high','urgent').
+                // LLMs commonly emit "medium" because the prompt examples use it.
+                // Map medium→normal so the insert doesn't get truncated and silently
+                // drop the task. Anything else outside the enum also gets normal.
+                $rawPriority = strtolower((string) ($planTask['priority'] ?? 'normal'));
+                $priority = match ($rawPriority) {
+                    'low', 'normal', 'high', 'urgent' => $rawPriority,
+                    'medium', 'med', 'mid', ''        => 'normal',
+                    'critical', 'emergency'           => 'urgent',
+                    default                           => 'normal',
+                };
+                // 2026-05-27 Phase 4 — if the LLM emitted a valid category,
+                // pass it through. Otherwise TaskService::create derives one.
+                $taskCategory = null;
+                if (!empty($planTask['category']) && is_string($planTask['category'])) {
+                    $svc = app(\App\Core\TaskSystem\TaskCategoryService::class);
+                    if ($svc->isValid($planTask['category'])) {
+                        $taskCategory = $planTask['category'];
+                    }
+                }
                 try {
-                    $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($meeting->workspace_id, [
+                    $createPayload = [
                         'engine'            => $planTask['engine'] ?? 'marketing',
                         'action'            => $planTask['action'] ?? 'follow_up',
                         'source'            => 'agent',
-                        'priority'          => $planTask['priority'] ?? 'normal',
+                        'priority'          => $priority,
                         'assigned_agents'   => [$agentSlug],
                         'requires_approval' => $planTask['requires_approval'] ?? false,
-                        'payload'           => [
-                            'description'  => $planTask['description'] ?? '',
-                            'from_meeting' => $meeting->id,
-                        ],
-                    ]);
+                        'payload'           => $payload,
+                    ];
+                    if ($taskCategory) $createPayload['category'] = $taskCategory;
+                    $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($meeting->workspace_id, $createPayload);
                     $taskId = $newTask->id;
                     $newTask->update([
                         'progress_message' => $planTask['description'] ?? ucfirst(str_replace('_', ' ', $planTask['action'])),
@@ -804,14 +833,22 @@ class AgentMeetingEngine
     // HELPERS
     // ═══════════════════════════════════════════════════════════
 
-    private function storeMessage(int $meetingId, Agent $agent, string $message, string $phase): void
+    private function storeMessage(int $meetingId, Agent $agent, string $message, string $phase, int $tokensUsed = 0): void
     {
+        // 2026-05-26 — was always writing tokens_used=0 (column unused, so the
+        // entire meeting transcript was unmetered post-hoc). Now estimate
+        // tokens from message length when the caller doesn't supply one, so
+        // per-message accounting is at least observable.
+        if ($tokensUsed <= 0) {
+            $tokensUsed = (int) ceil(strlen($message) / 4);
+        }
         MeetingMessage::create([
-            'meeting_id' => $meetingId,
-            'sender_type' => 'agent',
-            'sender_id' => $agent->id,
-            'message' => $message,
-            'attachments_json' => json_encode(['phase' => $phase, 'agent_slug' => $agent->slug]),
+            'meeting_id'      => $meetingId,
+            'sender_type'     => 'agent',
+            'sender_id'       => $agent->id,
+            'message'         => $message,
+            'tokens_used'     => $tokensUsed,
+            'attachments_json'=> json_encode(['phase' => $phase, 'agent_slug' => $agent->slug]),
         ]);
     }
 
@@ -843,25 +880,20 @@ class AgentMeetingEngine
         $team = ['sarah']; // Always
         $lower = strtolower($goal);
 
-        // Match relevant specialists by keyword
+        // Match relevant specialists by keyword.
+        // LAUNCH SCOPE 2026-07-20 — removed social/email specialists (marcus, maya,
+        // zara, tyler, jordan, leo, kai, vera + phantom aria/sam) are NO LONGER
+        // meeting candidates. Only retained launch agents remain. Social/email
+        // keywords intentionally match no specialist now (that work is out of scope).
         $matches = [
             'james' => '/\b(seo|keyword|search|rank|organic|audit|serp|google)\b/',
             'alex'  => '/\b(technical|speed|schema|site|core web|mobile|crawl|index)\b/',
             'diana' => '/\b(local|map|google business|citation|gmb|near me)\b/',
             'ryan'  => '/\b(link|backlink|outreach|authority|pr|digital pr)\b/',
             'priya' => '/\b(content|write|article|blog|copy|editorial)\b/',
-            'leo'   => '/\b(brand|headline|ad|conversion|landing page|copy)\b/',
-            'maya'  => '/\b(caption|hashtag|social content|reel|short.form)\b/',
             'nora'  => '/\b(strategy|calendar|editorial|thought leader|content plan)\b/',
-            'marcus'=> '/\b(social|instagram|facebook|post|tiktok|linkedin|community)\b/',
-            'zara'  => '/\b(instagram|reels|stories|follower|growth)\b/',
-            'tyler' => '/\b(linkedin|b2b|thought leader|professional)\b/',
-            'aria'  => '/\b(tiktok|reels|viral|short.form|trend)\b/',
-            'jordan'=> '/\b(analytics|roi|data|metrics|reporting|insights)\b/',
+            'sofia' => '/\b(design|layout|visual|brand look|page design)\b/',
             'elena' => '/\b(lead|crm|customer|pipeline|nurture|funnel)\b/',
-            'sam'   => '/\b(email|campaign|newsletter|drip|sequence)\b/',
-            'kai'   => '/\b(nurture|scoring|lead score|follow.up|drip)\b/',
-            'vera'  => '/\b(automation|workflow|trigger|sequence|multi.channel)\b/',
             'max'   => '/\b(conversion|cro|funnel|a.b test|optimize)\b/',
         ];
 
@@ -871,10 +903,9 @@ class AgentMeetingEngine
             }
         }
 
-        // Minimum 4 agents per meeting (Sarah + 3 specialists)
+        // Minimum 4 agents per meeting (Sarah + 3 specialists) — retained agents only.
         if (count($team) < 4) {
-            // Add most relevant agents based on common meeting topics
-            $defaults = ['james', 'priya', 'marcus', 'elena', 'jordan'];
+            $defaults = ['james', 'priya', 'elena', 'max', 'nora'];
             foreach ($defaults as $d) {
                 if (!in_array($d, $team)) $team[] = $d;
                 if (count($team) >= 4) break;
@@ -887,9 +918,12 @@ class AgentMeetingEngine
 
     private function agentToEngine(string $slug): string
     {
+        // LAUNCH SCOPE 2026-07-20 — 'marcus'=>'social' removed. Retained agents only.
         return match ($slug) {
-            'james' => 'seo', 'priya' => 'write', 'marcus' => 'social',
-            'elena' => 'crm', 'alex' => 'seo', default => 'marketing',
+            'james' => 'seo', 'alex' => 'seo', 'diana' => 'seo', 'ryan' => 'seo',
+            'priya' => 'write', 'nora' => 'write', 'sofia' => 'builder',
+            'elena' => 'crm', 'max' => 'crm',
+            default => 'seo',
         };
     }
 
@@ -920,6 +954,31 @@ class AgentMeetingEngine
      * directly — each domain owns its provider in
      * App\Core\Intelligence\Providers\*.
      */
+    /**
+     * Build a 1-line summary of category usage in the workspace's last 7
+     * days of tasks. Used in workspace context blocks for Sarah + the
+     * meeting engine so the LLM can reason about workload balance.
+     * Returns "Category mix last 7 days: research: 12, create: 9, ..."
+     * or an empty string when there's no recent work.
+     */
+    public static function categoryMixLine(int $wsId): string
+    {
+        try {
+            $rows = \Illuminate\Support\Facades\DB::table('tasks')
+                ->where('workspace_id', $wsId)
+                ->where('created_at', '>=', now()->subDays(7))
+                ->whereNotNull('category')
+                ->selectRaw('category, COUNT(*) as cnt')
+                ->groupBy('category')
+                ->orderByDesc('cnt')
+                ->get();
+            if ($rows->isEmpty()) return '';
+            return 'Category mix last 7 days: ' . $rows->map(fn($r) => "{$r->category}: {$r->cnt}")->implode(', ');
+        } catch (\Throwable $e) {
+            return '';
+        }
+    }
+
     private function buildWorkspaceContext(Workspace $workspace): string
     {
         $wsId = $workspace->id;
@@ -941,14 +1000,23 @@ class AgentMeetingEngine
         try {
             $seo     = app(\App\Core\Intelligence\Providers\SEOContextProvider::class)->get($wsId);
             $crm     = app(\App\Core\Intelligence\Providers\CRMContextProvider::class)->get($wsId);
-            $social  = app(\App\Core\Intelligence\Providers\SocialContextProvider::class)->get($wsId);
+            // LAUNCH SCOPE (W6 2026-07-22) — social state no longer feeds agent context.
+            // Reporting "0 social posts in 30 days" invited the model to talk about a
+            // channel the product does not have. Removed, not zeroed.
+            $social = [];
             $billing = app(\App\Core\Intelligence\Providers\BillingContextProvider::class)->get($wsId);
             $content = app(\App\Core\Intelligence\Providers\ContentContextProvider::class)->get($wsId);
 
-            if ($seo['seo_score'] !== null) {
+            // 2026-05-27 — SEOContextProvider's Phase 0 rewrite renamed
+            // `seo_issues` to `critical_issues` (its actual semantic — count
+            // of seo_audit_items rows with status='error'). The consumer
+            // here was never updated, so every meeting opening logged
+            // "Undefined array key 'seo_issues'". Read the real key.
+            if (($seo['seo_score'] ?? null) !== null) {
+                $issues = $seo['critical_issues'] ?? null;
                 $parts[] = "Latest SEO score: {$seo['seo_score']}"
-                         . ($seo['seo_issues'] !== null ? " (critical issues: {$seo['seo_issues']})" : "");
-            } elseif ($seo['last_audit_at'] === null) {
+                         . (($issues !== null && $issues > 0) ? " (critical issues: {$issues})" : "");
+            } elseif (($seo['last_audit_at'] ?? null) === null) {
                 $parts[] = "SEO: no audit yet";
             }
 
@@ -971,6 +1039,11 @@ class AgentMeetingEngine
                 'error'        => $e->getMessage(),
             ]);
         }
+
+        // 2026-05-27 Phase 4 — category mix (last 7 days). Lets Sarah and the
+        // specialists see workload balance and steer the synthesis accordingly
+        // ("you've done lots of Create this week, let's research before more").
+        $parts[] = self::categoryMixLine($wsId);
 
         // Workspace memory facts (custom key/value learnings)
         try {
@@ -1030,40 +1103,62 @@ class AgentMeetingEngine
 
     private function extractPlanFromSynthesis(int $meetingId, Workspace $workspace, string $goal, array $agents, string $synthesis): ?array
     {
-        if (!$this->runtime->isConfigured()) return null;
-
-        // Wave 87 — enumerate ALL valid engine+action pairs from
-        // CapabilityMapService so the LLM picks real, callable actions.
-        $validActionsLine = '';
-        try {
-            $caps = app(\App\Core\EngineKernel\CapabilityMapService::class)->getAllCapabilities();
-            $byEngine = [];
-            foreach ($caps as $action => $def) {
-                $eng = $def['engine'] ?? 'unknown';
-                if (!isset($byEngine[$eng])) $byEngine[$eng] = [];
-                $byEngine[$eng][] = $action;
-            }
-            ksort($byEngine);
-            $lines = [];
-            foreach ($byEngine as $eng => $actions) {
-                sort($actions);
-                $lines[] = "  - {$eng}: " . implode(', ', $actions);
-            }
-            $validActionsLine = "VALID engine+action pairs (do NOT invent others):\n" . implode("\n", $lines) . "\n\n";
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::debug('extractPlan validActions skipped: ' . $e->getMessage());
+        if (!$this->runtime->isConfigured()) {
+            \Illuminate\Support\Facades\Log::warning('[Meeting] plan-extraction skipped — runtime not configured', ['meeting_id' => $meetingId]);
+            return null;
         }
 
-        $systemPrompt = "Extract actionable tasks from a marketing plan. "
-                      . "Output ONLY a valid JSON object of the form {\"tasks\":[...]}. "
-                      . "Each task in the tasks array must have: "
-                      . "{\"engine\":\"<from list>\","
-                      . "\"action\":\"<from list>\",\"agent\":\"agent_slug\","
-                      . "\"description\":\"what to do\",\"priority\":\"high|medium|low\","
-                      . "\"requires_approval\":true|false}. "
-                      . "Available agents: " . implode(', ', $agents) . ".\n\n"
-                      . $validActionsLine
-                      . "No markdown, no commentary outside the JSON.";
+        // 2026-05-26 fix — was previously using CapabilityMapService which
+        // is OUT OF SYNC with the Orchestrator dispatchMap (capability rows
+        // exist for actions with no async handler, so the extracted tasks
+        // failed with "No async handler registered"). The new source of
+        // truth is Orchestrator::dispatchableActions(): only actions that
+        // have a real handler appear in the prompt, AND each entry carries
+        // a params_hint so the LLM can populate task.params correctly.
+        $catalog = \App\Core\TaskSystem\Orchestrator::dispatchableActions();
+        $byEngine = [];
+        foreach ($catalog as $key => $meta) {
+            [$eng, $act] = array_pad(explode('/', $key, 2), 2, '');
+            if (!$eng || !$act) continue;
+            $hint = $meta['params_hint'] ?? '';
+            if (!isset($byEngine[$eng])) $byEngine[$eng] = [];
+            $byEngine[$eng][] = "{$act}  (params: {$hint})";
+        }
+        ksort($byEngine);
+        $catalogLines = [];
+        foreach ($byEngine as $eng => $actions) {
+            sort($actions);
+            $catalogLines[] = "  {$eng}:";
+            foreach ($actions as $line) $catalogLines[] = "    - {$line}";
+        }
+        $catalogText = "DISPATCHABLE ACTIONS (engine + action + required params — do NOT invent others):\n"
+                     . implode("\n", $catalogLines) . "\n\n";
+
+        $systemPrompt = "You extract actionable tasks from a marketing plan. Output ONLY a valid JSON\n"
+                      . "object of the form {\"tasks\":[...]}. Each task must have:\n"
+                      . "  engine: <one of the engines in the catalog>\n"
+                      . "  action: <one of that engine's actions>\n"
+                      . "  agent: <one of: " . implode(', ', $agents) . ">\n"
+                      . "  category: \"research\" | \"create\" | \"optimize\" | \"publish\" | \"crm\" | \"campaign\" | \"operations\"\n"
+                      . "  description: short human-readable summary of what this task does\n"
+                      . "  priority: \"high\" | \"medium\" | \"low\"\n"
+                      . "  requires_approval: true | false\n"
+                      . "  params: { ... }  // OBJECT with the required params for the action\n\n"
+                      . "Rules:\n"
+                      . "1. Only choose engine+action pairs from the catalog below. NEVER invent new ones.\n"
+                      . "2. Always include `params` populated with the required fields. If the plan does\n"
+                      . "   not mention a concrete value (e.g. a URL for deep_audit), SKIP that task\n"
+                      . "   rather than emit one with missing params.\n"
+                      . "3. Category semantics:\n"
+                      . "   - research: information gathering, audits, web reading\n"
+                      . "   - create: generative output (article, post, image, page)\n"
+                      . "   - optimize: tweaks to live assets (links, keywords, meta)\n"
+                      . "   - publish: distribution / going live (ALWAYS requires approval)\n"
+                      . "   - crm: lead, contact, deal lifecycle\n"
+                      . "   - campaign: multi-step marketing orchestration\n"
+                      . "   - operations: governance, housekeeping, destructive\n"
+                      . "4. No markdown, no commentary outside the JSON.\n\n"
+                      . $catalogText;
 
         $userPrompt = "PLAN TO EXTRACT:\n{$synthesis}";
 
@@ -1073,9 +1168,20 @@ class AgentMeetingEngine
             'goal'       => $goal,
         ], 800);
 
-        if (!($result['success'] ?? false) || !is_array($result['parsed'] ?? null)) return null;
+        if (!($result['success'] ?? false) || !is_array($result['parsed'] ?? null)) {
+            \Illuminate\Support\Facades\Log::warning('[Meeting] plan-extraction returned no parseable JSON', [
+                'meeting_id'  => $meetingId,
+                'result_keys' => is_array($result) ? array_keys($result) : null,
+            ]);
+            return null;
+        }
 
         $tasks = $result['parsed']['tasks'] ?? null;
+        if (!is_array($tasks) || empty($tasks)) {
+            \Illuminate\Support\Facades\Log::warning('[Meeting] plan-extraction returned empty tasks array', [
+                'meeting_id' => $meetingId,
+            ]);
+        }
         return is_array($tasks) ? $tasks : null;
     }
 }

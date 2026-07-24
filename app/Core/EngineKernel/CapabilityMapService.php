@@ -11,7 +11,11 @@ class CapabilityMapService
         // ── CRM Engine (internal) ────────────────────────────────
         'create_lead'         => ['engine'=>'crm',       'connector'=>null,       'action'=>'create_lead',         'approval_mode'=>'review',    'credit_cost'=>0],  // FIX-7: runtime requires_approval:true → review
         'update_lead'         => ['engine'=>'crm',       'connector'=>null,       'action'=>'update_lead',         'approval_mode'=>'auto',      'credit_cost'=>0],
-        'delete_lead'         => ['engine'=>'crm',       'connector'=>null,       'action'=>'delete_lead',         'approval_mode'=>'auto',      'credit_cost'=>0],
+        // 2026-05-30 — escalated auto → review. Lead deletion is irreversible
+        // and the previous auto-approval meant any agent-driven path bypassed
+        // the human gate. The CRM UI's _crmDelLead already has a button-level
+        // luConfirm; this brings chat/agent paths in line.
+        'delete_lead'         => ['engine'=>'crm',       'connector'=>null,       'action'=>'delete_lead',         'approval_mode'=>'review',    'credit_cost'=>0],
         'import_leads'        => ['engine'=>'crm',       'connector'=>null,       'action'=>'import_leads',        'approval_mode'=>'auto',      'credit_cost'=>0],
         'create_deal'         => ['engine'=>'crm',       'connector'=>null,       'action'=>'create_deal',         'approval_mode'=>'auto',      'credit_cost'=>0],
         'update_deal_stage'   => ['engine'=>'crm',       'connector'=>null,       'action'=>'update_deal_stage',   'approval_mode'=>'auto',      'credit_cost'=>0],
@@ -25,9 +29,25 @@ class CapabilityMapService
         'deep_audit'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'deep_audit',          'approval_mode'=>'auto',      'credit_cost'=>3],
         'improve_draft'       => ['engine'=>'write',     'connector'=>null,       'action'=>'improve_draft',       'approval_mode'=>'review',    'credit_cost'=>2],
         'write_article'       => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article',       'approval_mode'=>'review',    'credit_cost'=>1],
+        'fill_missing_images' => ['engine'=>'write',     'connector'=>null,       'action'=>'fill_missing_images', 'approval_mode'=>'auto',      'credit_cost'=>0],
+        // 2026-07-23 — was MISSING; every publish_article task died at
+        // "No capability mapped" before executing. See fix note in git/backup.
+        'publish_article'     => ['engine'=>'write',     'connector'=>null,       'action'=>'publish_article',     'approval_mode'=>'protected', 'credit_cost'=>0],
+        // 2026-07-23 — was MISSING; 'tasks/retry_blocked' has an executor
+        // (TaskRetryService) + category 'operations' + is in Sarah's prompt,
+        // but resolved null here -> "No capability mapped" (ws2 task 2164 failed).
+        // Retries ALREADY-blocked (already-approved) tasks, so approval_mode=auto.
+        'retry_blocked'       => ['engine'=>'tasks',     'connector'=>null,       'action'=>'retry_blocked',       'approval_mode'=>'auto',      'credit_cost'=>0],
         'ai_status'           => ['engine'=>'seo',       'connector'=>null,       'action'=>'ai_status',           'approval_mode'=>'auto',      'credit_cost'=>0],
         'link_suggestions'    => ['engine'=>'seo',       'connector'=>null,       'action'=>'link_suggestions',    'approval_mode'=>'auto',      'credit_cost'=>1],
         'insert_link'         => ['engine'=>'seo',       'connector'=>null,       'action'=>'insert_link',         'approval_mode'=>'review',    'credit_cost'=>2],
+        // 2026-06-11 — first-class orphan fix Sarah can delegate as one task.
+        // credit_cost=0 here because fixOrphans SELF-BILLS the exact applied count
+        // (2cr/insert) via the atomic pipeline — a fixed upfront reservation would
+        // over/under-charge a variable bulk op. auto so Sarah can trigger directly.
+        'fix_orphans'         => ['engine'=>'seo',       'connector'=>null,       'action'=>'fix_orphans',         'approval_mode'=>'auto',      'credit_cost'=>0],
+        // GSC data pull (not generation) — free, auto so agents can refresh rankings directly.
+        'gsc_sync'            => ['engine'=>'seo',       'connector'=>null,       'action'=>'gsc_sync',            'approval_mode'=>'auto',      'credit_cost'=>0],
         'dismiss_link'        => ['engine'=>'seo',       'connector'=>null,       'action'=>'dismiss_link',        'approval_mode'=>'auto',      'credit_cost'=>0],
         'outbound_links'      => ['engine'=>'seo',       'connector'=>null,       'action'=>'outbound_links',      'approval_mode'=>'auto',      'credit_cost'=>2],
         'check_outbound'      => ['engine'=>'seo',       'connector'=>null,       'action'=>'check_outbound',      'approval_mode'=>'auto',      'credit_cost'=>2],
@@ -48,6 +68,8 @@ class CapabilityMapService
         'assistant_message'   => ['engine'=>'sarah',     'connector'=>null,       'action'=>'assistant_message',   'approval_mode'=>'auto',      'credit_cost'=>1],
         'agent_message'       => ['engine'=>'sarah',     'connector'=>null,       'action'=>'agent_message',       'approval_mode'=>'auto',      'credit_cost'=>1],
         'strategy_meeting'    => ['engine'=>'sarah',     'connector'=>null,       'action'=>'strategy_meeting',    'approval_mode'=>'auto',      'credit_cost'=>8],
+        // Sarah cross-engine campaign drafting (Batch 4 — activates ContentPackService) /* b4-sarah-capmap */
+        'sarah_draft_campaign' => ['engine'=>'sarah',     'connector'=>null,       'action'=>'draft_campaign',      'approval_mode'=>'auto',      'credit_cost'=>0],
         // Wave 23 — Canonical realignment additions.
         'write_article_image' => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article_image', 'approval_mode'=>'review',    'credit_cost'=>2],
         'generate_image_mini' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_mini', 'approval_mode'=>'auto',      'credit_cost'=>1],
@@ -57,6 +79,8 @@ class CapabilityMapService
         'social_image'        => ['engine'=>'social',    'connector'=>'creative', 'action'=>'social_image',        'approval_mode'=>'auto',      'credit_cost'=>1],
         'hashtag_suggestions' => ['engine'=>'social',    'connector'=>null,       'action'=>'hashtag_suggestions', 'approval_mode'=>'auto',      'credit_cost'=>1],
         'ai_followup_draft'   => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_followup_draft',   'approval_mode'=>'review',    'credit_cost'=>1],
+        // Sarah × CRM Phase 1 — generate_outreach is the lead-stage entry point (Elena drafts cold outreach) /* b5-crm-capmap */
+        'generate_outreach'   => ['engine'=>'crm',       'connector'=>null,       'action'=>'generate_outreach',   'approval_mode'=>'review',    'credit_cost'=>1],
         'ai_reply_suggestion' => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_reply_suggestion', 'approval_mode'=>'auto',      'credit_cost'=>1],
         'ai_lead_scoring'     => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_lead_scoring',     'approval_mode'=>'auto',      'credit_cost'=>1],
         'ai_campaign_copy'    => ['engine'=>'marketing', 'connector'=>null,       'action'=>'ai_campaign_copy',    'approval_mode'=>'review',    'credit_cost'=>1],
@@ -64,6 +88,27 @@ class CapabilityMapService
         'builder_page_image'  => ['engine'=>'builder',   'connector'=>'creative', 'action'=>'builder_page_image',  'approval_mode'=>'auto',      'credit_cost'=>1],
         'full_site_generation'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'full_site_generation','approval_mode'=>'review',    'credit_cost'=>10],
         'chatbot_ai_session'  => ['engine'=>'chatbot',   'connector'=>null,       'action'=>'chatbot_ai_session',  'approval_mode'=>'auto',      'credit_cost'=>1],
+        // Sarah × Studio wiring 2026-06-03 — generate_design produces drafts; review before social publish.
+        'studio_generate_design'   => ['engine'=>'studio',    'connector'=>null,       'action'=>'generate_design',     'approval_mode'=>'auto',      'credit_cost'=>5],
+        'studio_generate_image'    => ['engine'=>'studio',    'connector'=>null,       'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>3],
+        'studio_suggest_copy'      => ['engine'=>'studio',    'connector'=>null,       'action'=>'suggest_copy',        'approval_mode'=>'auto',      'credit_cost'=>1],
+        // Sarah × Email Phase 1 wiring 2026-06-04 — all AI surfaces produce drafts; send is approval-gated separately.
+        'marketing_email_ai_generate'      => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_ai_generate',      'approval_mode'=>'review',    'credit_cost'=>3],
+        'marketing_email_block_rewrite'    => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_block_rewrite',    'approval_mode'=>'auto',      'credit_cost'=>1],
+        'marketing_email_subject_suggest'  => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_subject_suggest',  'approval_mode'=>'auto',      'credit_cost'=>1],
+        'marketing_email_spam_check'       => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_spam_check',       'approval_mode'=>'auto',      'credit_cost'=>0],
+        'marketing_email_preview_template' => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_preview_template', 'approval_mode'=>'auto',      'credit_cost'=>0],
+        'marketing_email_send_test'        => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_send_test',        'approval_mode'=>'review',    'credit_cost'=>0],
+        'marketing_email_validate_campaign'=> ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_validate_campaign','approval_mode'=>'auto',      'credit_cost'=>0],
+        'marketing_email_use_template'     => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_use_template',     'approval_mode'=>'auto',      'credit_cost'=>0],
+        'marketing_email_template_picker'  => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_template_picker',  'approval_mode'=>'auto',      'credit_cost'=>1],
+
+        // ── Content Pack Engine (H1 — cross-engine campaign orchestrator) /* h1-batch3-capmap */
+        'content_create_pack'  => ['engine'=>'content',  'connector'=>null,       'action'=>'create_pack',         'approval_mode'=>'auto',      'credit_cost'=>0],
+        'content_add_asset'    => ['engine'=>'content',  'connector'=>null,       'action'=>'add_asset',           'approval_mode'=>'auto',      'credit_cost'=>0],
+        'content_get_pack'     => ['engine'=>'content',  'connector'=>null,       'action'=>'get_pack',            'approval_mode'=>'auto',      'credit_cost'=>0],
+        'content_list_packs'   => ['engine'=>'content',  'connector'=>null,       'action'=>'list_packs',          'approval_mode'=>'auto',      'credit_cost'=>0],
+        'content_publish_pack' => ['engine'=>'content',  'connector'=>null,       'action'=>'publish_pack',        'approval_mode'=>'protected', 'credit_cost'=>0],
 
         // ── Write / Content Engine ───────────────────────────────
         // PATCH 2026-04-19: create_article was called from WriteController::createArticle
@@ -91,21 +136,50 @@ class CapabilityMapService
 
         // ── Builder Engine ───────────────────────────────────────
         'create_website'      => ['engine'=>'builder',   'connector'=>null,       'action'=>'create_website',      'approval_mode'=>'auto',      'credit_cost'=>0],
-        'generate_page'       => ['engine'=>'builder',   'connector'=>null,       'action'=>'generate_page',       'approval_mode'=>'auto',    'credit_cost'=>1],
-        'publish_website'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'publish_website',     'approval_mode'=>'auto', 'credit_cost'=>0],
+        'generate_page'       => ['engine'=>'builder',   'connector'=>null,       'action'=>'generate_page',       'approval_mode'=>'auto',    'credit_cost'=>5], // G15 2026-06-24: add-a-page = 5cr (Boss)
+        // 2026-05-30 — escalated auto → protected. Publishing pushes content
+        // live to customers; the re-publish path in the UI had ZERO confirm
+        // before this change, and there was no agent-side gate either. Now
+        // gated at backend + frontend + Sarah's destructive list.
+        'publish_website'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'publish_website',     'approval_mode'=>'protected', 'credit_cost'=>0],
         // PATCH v1.0.1: wizard_generate was missing — hit fallback (was zero-cost passthrough, now INVALID_ACTION)
         'wizard_generate'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'wizard_generate',     'approval_mode'=>'auto',      'credit_cost'=>1],
+
+        // -- INFRA888 (2026-07-18) ------------------------------------------
+        // Infrastructure mutations are ALWAYS protected and NEVER cost AI
+        // credits. Canonical metadata lives in InfrastructureCapabilityRegistry;
+        // a drift test asserts these rows stay in sync with it.
+        'provision_hosting'   => ['engine'=>'infrastructure', 'connector'=>null,     'action'=>'provision_hosting',   'approval_mode'=>'protected', 'credit_cost'=>0],
+        // -- INFRA888 Phase 2A-2 catalog authoring ---------------------------
+        // Commercial changes: what customers can buy, and what existing
+        // subscribers are on. Draft editing is deliberately UNGOVERNED (a
+        // draft is not sellable); publishing/retiring is protected.
+        // Canonical metadata lives in InfrastructureCapabilityRegistry.
+        'publish_product'     => ['engine'=>'infrastructure', 'connector'=>null,     'action'=>'publish_product',     'approval_mode'=>'protected', 'credit_cost'=>0],
+        'deprecate_product'   => ['engine'=>'infrastructure', 'connector'=>null,     'action'=>'deprecate_product',   'approval_mode'=>'protected', 'credit_cost'=>0],
+        'retire_product'      => ['engine'=>'infrastructure', 'connector'=>null,     'action'=>'retire_product',      'approval_mode'=>'protected', 'credit_cost'=>0],
+        'publish_plan'        => ['engine'=>'infrastructure', 'connector'=>null,     'action'=>'publish_plan',        'approval_mode'=>'protected', 'credit_cost'=>0],
+        'withdraw_plan'       => ['engine'=>'infrastructure', 'connector'=>null,     'action'=>'withdraw_plan',       'approval_mode'=>'protected', 'credit_cost'=>0],
+        'plan_subscriber_migration' => ['engine'=>'infrastructure', 'connector'=>null, 'action'=>'plan_subscriber_migration', 'approval_mode'=>'protected', 'credit_cost'=>0],
 
         // ── Marketing Engine ─────────────────────────────────────
         'create_campaign'     => ['engine'=>'marketing', 'connector'=>null,       'action'=>'create_campaign',     'approval_mode'=>'review',    'credit_cost'=>1],
         'send_campaign'       => ['engine'=>'marketing', 'connector'=>'email',    'action'=>'send_campaign',       'approval_mode'=>'protected', 'credit_cost'=>0],
-        'schedule_campaign'   => ['engine'=>'marketing', 'connector'=>null,       'action'=>'schedule_campaign',   'approval_mode'=>'auto',      'credit_cost'=>5],  // FIX-7: runtime requires_approval:false → auto
+        // 2026-05-30 — pricing fix. Implementation is two DB columns
+        // (status='scheduled', scheduled_at=?); zero AI / no email send /
+        // no API hit. The previous 5 cr was leftover from a Wave-7
+        // approval-mode fix. Scheduling is cheaper than sending (which is
+        // 0 cr), so scheduling should not cost more.
+        'schedule_campaign'   => ['engine'=>'marketing', 'connector'=>null,       'action'=>'schedule_campaign',   'approval_mode'=>'auto',      'credit_cost'=>0],
         // Phase 3 fix: removed 'send_email' (1cr) — no MarketingService::sendEmail() method exists.
         // Re-add when single-email sending is implemented (separate from campaign sends).
         'create_automation'   => ['engine'=>'marketing', 'connector'=>null,       'action'=>'create_automation',   'approval_mode'=>'review',    'credit_cost'=>5],
 
         // ── Social Engine ────────────────────────────────────────
-        'social_create_post'  => ['engine'=>'social',    'connector'=>'social',   'action'=>'create_post',         'approval_mode'=>'review',    'credit_cost'=>3],
+        // v1.4.4 (2026-05-30) — repriced 3cr → 1cr to match write_article and
+        // peer single-task AI ops. Social post generation is a single LLM call
+        // producing one social post; 3× write_article (1cr) was unjustified.
+        'social_create_post'  => ['engine'=>'social',    'connector'=>'social',   'action'=>'create_post',         'approval_mode'=>'review',    'credit_cost'=>1],
         'social_publish_post' => ['engine'=>'social',    'connector'=>'social',   'action'=>'publish_post',        'approval_mode'=>'protected', 'credit_cost'=>2],
         'social_schedule_post'=> ['engine'=>'social',    'connector'=>null,       'action'=>'schedule_post',       'approval_mode'=>'review',    'credit_cost'=>2],
 
@@ -157,8 +231,28 @@ class CapabilityMapService
         'get_builder_page'      => ['engine'=>'builder',   'connector'=>null,       'action'=>'get_builder_page',      'approval_mode'=>'auto',      'credit_cost'=>0],
         // Phase 3 fix: removed 'ai_builder_action' (5cr), 'generate_page_layout' (10cr) —
         // no BuilderService methods exist for either. Re-add when builder AI features ship.
-        'publish_builder_page'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'publish_builder_page','approval_mode'=>'auto',    'credit_cost'=>0],
+        // 2026-05-30 — escalated auto → protected. The page editor UI's
+        // bldPublish already has a button-level luConfirm and the
+        // frontend _PROTECTED set already includes this; this brings the
+        // backend cap-map and Sarah's destructive list in line.
+        'publish_builder_page'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'publish_builder_page','approval_mode'=>'protected', 'credit_cost'=>0],
         'import_html_page'      => ['engine'=>'builder',   'connector'=>null,       'action'=>'import_html_page',      'approval_mode'=>'auto',      'credit_cost'=>0],
+        // v1.4.4 (2026-05-30) — page-edit actions re-added now that the
+        // service methods exist (BuilderService::updatePage,
+        // ArthurEditService::editPage). Previously removed in Phase 3
+        // because no implementations were wired.
+        'update_page'           => ['engine'=>'builder',   'connector'=>null,       'action'=>'update_page',           'approval_mode'=>'review',    'credit_cost'=>0],
+        // v1.4.4 (2026-05-30) — repriced 5cr → 1cr. The previous 5cr was
+        // 5× builder_page_copy + builder_page_image (the conceptual peers),
+        // 5× wizard_generate (which builds an ENTIRE website), and 5×
+        // write_article (full 1000+ word draft). Sarah's recommended page-edit
+        // path is to delegate to Arthur — keeping it at 5cr taxed that pattern
+        // disproportionately. 1cr aligns with the system's per-AI-task baseline.
+        'ai_builder_action'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'ai_builder_action',     'approval_mode'=>'review',    'credit_cost'=>1],
+        // v1.4.4 Phase D-1 (2026-05-30) — add a new page from a universal
+        // template (about / services / pricing / contact / faq / legal / blog).
+        // Industry-aware via workspace_memory. Cheap: just a structured DB insert.
+        'add_page_from_template'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'add_page_from_template','approval_mode'=>'review',    'credit_cost'=>5], // G15 2026-06-24: add-a-page = 5cr (Boss)
 
         // -- Site Engine -- PATCH v1.0.2 ------------------------------
         'get_site_pages'        => ['engine'=>'site',      'connector'=>null,       'action'=>'get_site_pages',        'approval_mode'=>'auto',      'credit_cost'=>0],
@@ -235,22 +329,24 @@ class CapabilityMapService
      */
     public function resolveAction(string $engine, string $action): ?array
     {
-        // Try exact match first
-        $cap = $this->resolve($action);
-        if ($cap) {
-            return array_merge($cap, [
-                'credit_cost'    => $this->getCreditCost($action),
-                'approval_level' => $this->getApprovalMode($action),
-            ]);
-        }
-
-        // Try engine-prefixed (e.g. 'social_create_post' for engine=social, action=create_post)
+        // engine-prefixed-first — 2026-06-03 — prevent cross-engine name collisions
+        // (e.g. Studio's generate_image vs Creative's generate_image).
+        // Try engine-prefixed FIRST so each engine owns its action namespace cleanly.
         $prefixed = "{$engine}_{$action}";
         $cap = $this->resolve($prefixed);
         if ($cap) {
             return array_merge($cap, [
                 'credit_cost'    => $this->getCreditCost($prefixed),
                 'approval_level' => $this->getApprovalMode($prefixed),
+            ]);
+        }
+
+        // Fall back to unprefixed (existing actions stored without engine prefix)
+        $cap = $this->resolve($action);
+        if ($cap) {
+            return array_merge($cap, [
+                'credit_cost'    => $this->getCreditCost($action),
+                'approval_level' => $this->getApprovalMode($action),
             ]);
         }
 

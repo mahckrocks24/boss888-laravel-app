@@ -1,0 +1,39 @@
+{
+  "name": "Logistics Tracking Reel",
+  "slug": "r03-logistics",
+  "format": "reels",
+  "category": "logistics",
+  "sub_category": "shipping",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": ["logistics", "shipping", "tech", "b2b", "tracking"],
+  "variables": {
+    "live_text":       { "type": "text", "label": "Live label",      "default": "Live Tracking" },
+    "brand_name":      { "type": "text", "label": "Brand name",      "default": "Logo Here" },
+    "brand_tag":       { "type": "text", "label": "Brand tag",       "default": "Global" },
+    "eyebrow":         { "type": "text", "label": "Eyebrow",         "default": "Global Logistics" },
+    "headline_1":      { "type": "text", "label": "Headline 1",      "default": "MOVE" },
+    "headline_2":      { "type": "text", "label": "Headline 2",      "default": "ANY" },
+    "headline_accent": { "type": "text", "label": "Headline accent", "default": "WHERE." },
+    "subheading":      { "type": "text", "label": "Subheading",      "default": "Real-time global delivery across 150+ countries — tracked, secured, and guaranteed on time." },
+    "kpi_1_val":       { "type": "text", "label": "KPI 1 value",     "default": "4.8K" },
+    "kpi_1_label":     { "type": "text", "label": "KPI 1 label",     "default": "Active Shipments" },
+    "kpi_2_val":       { "type": "text", "label": "KPI 2 value",     "default": "99.2%" },
+    "kpi_2_label":     { "type": "text", "label": "KPI 2 label",     "default": "On-Time Rate" },
+    "kpi_3_val":       { "type": "text", "label": "KPI 3 value",     "default": "150+" },
+    "kpi_3_label":     { "type": "text", "label": "KPI 3 label",     "default": "Countries" },
+    "kpi_4_val":       { "type": "text", "label": "KPI 4 value",     "default": "24/7" },
+    "kpi_4_label":     { "type": "text", "label": "KPI 4 label",     "default": "Support" },
+    "cta_label":       { "type": "text", "label": "CTA",             "default": "Track Shipment" },
+    "footer_brand":    { "type": "text", "label": "Footer brand",    "default": "Logo Here" },
+    "footer_url":      { "type": "text", "label": "Footer URL",      "default": "companyname.com" },
+    "footer_handle":   { "type": "text", "label": "Footer handle",   "default": "@handle" }
+  },
+  "semantic": {
+    "mood": ["professional", "bold"],
+    "color_temperature": "dark",
+    "best_for": ["logistics", "shipping", "tech", "b2b", "tracking"]
+  }
+}

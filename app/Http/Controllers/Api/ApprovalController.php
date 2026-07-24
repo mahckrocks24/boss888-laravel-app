@@ -43,9 +43,10 @@ class ApprovalController
             ->offset(($page - 1) * $perPage)
             ->limit($perPage)
             ->get([
-                'a.id', 'a.task_id', 'a.status', 'a.created_at',
+                'a.id', 'a.task_id', 'a.proposal_id', 'a.status', 'a.created_at',
                 'a.decided_at', 'a.decision_by', 'a.decision_note',
-                't.engine', 't.action', 't.payload_json',
+                'a.data_json as a_data_json',
+                't.engine', 't.action', 't.category as task_category', 't.payload_json',
                 't.credit_cost', 't.priority', 't.status as task_status',
                 't.assigned_agents_json',
             ]);
@@ -127,10 +128,28 @@ class ApprovalController
     public function approve(Request $request, int $id): JsonResponse
     {
         $wsId = (int) $request->attributes->get('workspace_id');
-        $row = DB::table('approvals')->where('id', $id)->first(['id', 'workspace_id', 'task_id', 'status']);
+        $row = DB::table('approvals')->where('id', $id)->first(['id', 'workspace_id', 'task_id', 'proposal_id', 'status', 'batch_id', 'action', 'engine', 'requested_by']);
 
         if (!$row) return response()->json(['error' => 'approval_not_found'], 404);
-        if ((int) $row->workspace_id !== $wsId) return response()->json(['error' => 'forbidden'], 403);
+        if ((int) $row->workspace_id !== $wsId) return response()->json(['error' => 'approval_not_found'], 404);
+
+        // INFRA888 Phase 1D — central approval authorization.
+        // Previously this checked ONLY workspace + pending state: no role check
+        // and no self-approval prevention, so a viewer could approve a protected
+        // action and a requester could approve their own request.
+        $authz = app(\App\Core\Governance\ApprovalAuthorizationService::class)->authorize($row, $request);
+
+        if (!$authz['allowed']) {
+            try {
+                app(\App\Core\Audit\AuditLogService::class)->log(
+                    $wsId, $request->user()?->id, 'approval.denied', 'approval', (int) $row->id,
+                    ['code' => $authz['code'], 'capability' => $authz['policy']['capability_key'] ?? null,
+                     'role' => $authz['role'], 'requested_by' => $row->requested_by ?? null]
+                );
+            } catch (\Throwable $e) { /* audit must never block a denial */ }
+
+            return response()->json(['error' => $authz['message'], 'code' => $authz['code']], 403);
+        }
 
         // Idempotent: already approved
         if ($row->status === 'approved') {
@@ -139,13 +158,77 @@ class ApprovalController
         if ($row->status !== 'pending') {
             return response()->json(['error' => 'not_pending', 'status' => $row->status], 409);
         }
+
+        // 2026-06-30 — proposal-linked approval: delegate to the proactive engine,
+        // which reserves credits + creates and runs the task(s), then mark the
+        // mirrored approval row approved.
+        if (!empty($row->proposal_id)) {
+            try {
+                $res = app(\App\Core\Orchestration\ProactiveStrategyEngine::class)
+                    ->approveProposal($wsId, (int) $request->user()->id, (int) $row->proposal_id);
+                if (($res['success'] ?? false) === false) {
+                    return response()->json($res, ($res['code'] ?? '') === 'NO_CREDITS' ? 402 : 422);
+                }
+                DB::table('approvals')->where('id', $id)->update([
+                    'status'      => 'approved',
+                    'decision_by' => $request->user()->id,
+                    'decided_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+                return response()->json(array_merge(['success' => true, 'approval_id' => $id], $res));
+            } catch (\Throwable $e) {
+                return response()->json(['error' => 'proposal_approve_failed', 'message' => $e->getMessage()], 500);
+            }
+        }
+
         if (!$row->task_id) {
             return response()->json(['error' => 'orphan_approval', 'hint' => 'This approval has no attached task. Expire it instead.'], 422);
         }
 
         try {
             $approval = $this->service->approve($id, (int) $request->user()->id, $request->input('note'));
-            return response()->json(['success' => true, 'message' => 'Approved — the task will proceed.', 'approval' => $approval]);
+
+            // v1.4.4 (2026-05-30) — batched approvals cascade.
+            // If this approval represents a batch, mark every sibling
+            // task in the same batch as approved + push them to the queue.
+            // The single approval row covered all of them.
+            $cascaded = 0;
+            if ($row->batch_id) {
+                $taskAction = $row->action ?? null;
+                $siblings = \App\Models\Task::where('workspace_id', $wsId)
+                    ->where('batch_id', $row->batch_id)
+                    ->when($taskAction, fn ($q) => $q->where('action', $taskAction))
+                    ->where('approval_status', 'pending')
+                    ->where('id', '!=', $row->task_id)  // first task already handled by service
+                    ->get();
+                foreach ($siblings as $sib) {
+                    try {
+                        $sib->update(['approval_status' => 'approved', 'status' => 'pending']);
+                        $cascaded++;
+                        // Dispatch — service already dispatched the first sibling
+                        // via approve(); for the rest we replicate that step.
+                        try {
+                            app(\App\Core\TaskSystem\TaskDispatcher::class)->dispatch($sib);
+                        } catch (\Throwable $dispErr) {
+                            \Illuminate\Support\Facades\Log::warning('[ApprovalController] batch sibling dispatch failed', [
+                                'task_id' => $sib->id, 'err' => $dispErr->getMessage(),
+                            ]);
+                        }
+                    } catch (\Throwable $sibErr) {
+                        \Illuminate\Support\Facades\Log::warning('[ApprovalController] batch sibling approve failed', [
+                            'task_id' => $sib->id, 'err' => $sibErr->getMessage(),
+                        ]);
+                    }
+                }
+            }
+            return response()->json([
+                'success'  => true,
+                'message'  => $cascaded > 0
+                    ? "Approved — {$cascaded} sibling task" . ($cascaded === 1 ? '' : 's') . " in this batch will also proceed."
+                    : 'Approved — the task will proceed.',
+                'approval' => $approval,
+                'cascaded' => $cascaded,
+            ]);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'approve_failed', 'message' => $e->getMessage()], 500);
         }
@@ -163,15 +246,50 @@ class ApprovalController
             return response()->json(['error' => 'reason_required', 'message' => 'A rejection reason is required.'], 422);
         }
 
-        $row = DB::table('approvals')->where('id', $id)->first(['id', 'workspace_id', 'task_id', 'status']);
+        $row = DB::table('approvals')->where('id', $id)->first(['id', 'workspace_id', 'task_id', 'proposal_id', 'status', 'batch_id', 'action', 'engine', 'requested_by']);
         if (!$row) return response()->json(['error' => 'approval_not_found'], 404);
-        if ((int) $row->workspace_id !== $wsId) return response()->json(['error' => 'forbidden'], 403);
+        if ((int) $row->workspace_id !== $wsId) return response()->json(['error' => 'approval_not_found'], 404);
+
+        // INFRA888 Phase 1D — central approval authorization.
+        // Previously this checked ONLY workspace + pending state: no role check
+        // and no self-approval prevention, so a viewer could approve a protected
+        // action and a requester could approve their own request.
+        $authz = app(\App\Core\Governance\ApprovalAuthorizationService::class)->authorize($row, $request);
+
+        if (!$authz['allowed']) {
+            try {
+                app(\App\Core\Audit\AuditLogService::class)->log(
+                    $wsId, $request->user()?->id, 'approval.denied', 'approval', (int) $row->id,
+                    ['code' => $authz['code'], 'capability' => $authz['policy']['capability_key'] ?? null,
+                     'role' => $authz['role'], 'requested_by' => $row->requested_by ?? null]
+                );
+            } catch (\Throwable $e) { /* audit must never block a denial */ }
+
+            return response()->json(['error' => $authz['message'], 'code' => $authz['code']], 403);
+        }
 
         if ($row->status === 'rejected') {
             return response()->json(['success' => true, 'message' => 'already rejected', 'approval_id' => $id]);
         }
         if ($row->status !== 'pending') {
             return response()->json(['error' => 'not_pending', 'status' => $row->status], 409);
+        }
+
+        // 2026-06-30 — proposal-linked approval: decline the proposal (no credits)
+        // and mark the mirrored approval row rejected.
+        if (!empty($row->proposal_id)) {
+            try {
+                app(\App\Core\Orchestration\ProactiveStrategyEngine::class)
+                    ->declineProposal($wsId, (int) $row->proposal_id);
+            } catch (\Throwable $e) { /* still mark the approval rejected below */ }
+            DB::table('approvals')->where('id', $id)->update([
+                'status'        => 'rejected',
+                'decision_by'   => $request->user()->id,
+                'decision_note' => $reason,
+                'decided_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+            return response()->json(['success' => true, 'message' => 'Declined.']);
         }
 
         // Orphan — no task to cancel; just mark rejected directly.
@@ -188,7 +306,42 @@ class ApprovalController
 
         try {
             $approval = $this->service->reject($id, (int) $request->user()->id, $reason);
-            return response()->json(['success' => true, 'message' => 'Rejected — the task was cancelled.', 'approval' => $approval]);
+
+            // v1.4.4 (2026-05-30) — batched approvals cascade.
+            // Cancel every sibling task that shared this batch_id.
+            $cascaded = 0;
+            if ($row->batch_id) {
+                $taskAction = $row->action ?? null;
+                $siblings = \App\Models\Task::where('workspace_id', $wsId)
+                    ->where('batch_id', $row->batch_id)
+                    ->when($taskAction, fn ($q) => $q->where('action', $taskAction))
+                    ->where('approval_status', 'pending')
+                    ->where('id', '!=', $row->task_id)
+                    ->get();
+                foreach ($siblings as $sib) {
+                    try {
+                        $sib->update([
+                            'approval_status' => 'rejected',
+                            'status'          => 'cancelled',
+                            'error_text'      => 'Rejected via batch approval: ' . $reason,
+                            'cancelled_at'    => now(),
+                        ]);
+                        $cascaded++;
+                    } catch (\Throwable $sibErr) {
+                        \Illuminate\Support\Facades\Log::warning('[ApprovalController] batch sibling reject failed', [
+                            'task_id' => $sib->id, 'err' => $sibErr->getMessage(),
+                        ]);
+                    }
+                }
+            }
+            return response()->json([
+                'success' => true,
+                'message' => $cascaded > 0
+                    ? "Rejected — {$cascaded} sibling task" . ($cascaded === 1 ? '' : 's') . " in this batch were also cancelled."
+                    : 'Rejected — the task was cancelled.',
+                'approval' => $approval,
+                'cascaded' => $cascaded,
+            ]);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'reject_failed', 'message' => $e->getMessage()], 500);
         }
@@ -321,6 +474,13 @@ class ApprovalController
     /** Build the API response shape for a single approval + joined task. */
     private function shapeApproval(object $r): array
     {
+        // 2026-06-30 — proposal-linked approval (Sarah's daily/weekly/monthly
+        // recommendation mirrored into the queue). No task yet; render from the
+        // proposal's display data so it shows as a normal, approvable card.
+        if (!empty($r->proposal_id ?? null)) {
+            return $this->shapeProposalApproval($r);
+        }
+
         $engine = $r->engine ?: 'system';
         $action = $r->action ?: 'review';
         $payload = $r->payload_json ? json_decode($r->payload_json, true) : null;
@@ -354,7 +514,103 @@ class ApprovalController
                 'primary_agent' => $primaryAgentSlug,
                 'agent'         => $this->agentBadge($primaryAgentSlug ?: $this->agentForEngine($engine)['slug']),
                 'engine_badge'  => $this->engineBadge($engine),
+                // 2026-05-27 — surface meeting context when present so the Review Queue
+                // can highlight tasks that originated from a Strategy Room synthesis.
+                'from_meeting'  => $this->meetingContext($payload),
+                // 2026-05-27 — surface category for the chip + filter in the Review Queue
+                'category'        => $this->categoryFor($r, $engine, $action),
+                'category_label'  => $this->categoryMeta($r, $engine, $action)['label'],
+                'category_color'  => $this->categoryMeta($r, $engine, $action)['color'],
             ] : null,
+        ];
+    }
+
+    /**
+     * 2026-06-30 — shape a proposal-linked approval for the Command Center.
+     * Display data comes from approvals.data_json (mirrored at sync time); the
+     * card renders like a normal approval with Sarah + credit cost, approve
+     * enabled (is_orphan=false). Approve/reject route to the proposal engine.
+     */
+    private function shapeProposalApproval(object $r): array
+    {
+        $d = [];
+        if (!empty($r->a_data_json)) {
+            $d = is_string($r->a_data_json) ? (json_decode($r->a_data_json, true) ?: []) : (array) $r->a_data_json;
+        }
+        $agentSlug = $d['agent'] ?? 'sarah';
+        $ageHours  = (int) Carbon::parse($r->created_at)->diffInHours(now());
+
+        return [
+            'id'            => (int) $r->id,
+            'kind'          => 'proposal',
+            'status'        => $r->status,
+            'created_at'    => $r->created_at,
+            'decided_at'    => $r->decided_at,
+            'decision_note' => $r->decision_note,
+            'age_hours'     => $ageHours,
+            'time_ago'      => Carbon::parse($r->created_at)->diffForHumans(),
+            'is_overdue'    => $ageHours > 24 && $r->status === 'pending',
+            'is_orphan'     => false,
+            'task' => [
+                'id'              => 0,
+                'engine'          => 'strategy',
+                'action'          => $d['type'] ?? 'proposal',
+                'label'           => $d['title'] ?? 'Recommended action',
+                'description'     => $d['description'] ?? '',
+                'payload'         => null,
+                'payload_keys'    => [],
+                'credit_cost'     => (int) ($d['total_credits'] ?? 0),
+                'priority'        => 'normal',
+                'status'          => 'pending',
+                'assigned_agents' => [$agentSlug],
+                'primary_agent'   => $agentSlug,
+                'agent'           => $this->agentBadge($agentSlug),
+                'engine_badge'    => $this->engineBadge('strategy'),
+                'from_meeting'    => null,
+                'category'        => 'strategy',
+                'category_label'  => 'Strategy',
+                'category_color'  => '#F59E0B',
+            ],
+        ];
+    }
+
+    /**
+     * Resolve the task's category — prefers the persisted column value (set
+     * by TaskService::create) then falls back to live derivation for any
+     * legacy row whose backfill missed.
+     */
+    private function categoryFor(object $r, string $engine, string $action): string
+    {
+        if (!empty($r->task_category)) return $r->task_category;
+        return app(\App\Core\TaskSystem\TaskCategoryService::class)->for($engine, $action);
+    }
+
+    private function categoryMeta(object $r, string $engine, string $action): array
+    {
+        return app(\App\Core\TaskSystem\TaskCategoryService::class)
+            ->metadata($this->categoryFor($r, $engine, $action));
+    }
+
+    /**
+     * If a task's payload carries a from_meeting ID, look up minimal context
+     * (id + title) so the Review Queue can show a "From meeting #N — title" chip
+     * without an extra round trip. Returns null when not meeting-sourced.
+     */
+    private function meetingContext(?array $payload): ?array
+    {
+        if (!is_array($payload) || empty($payload['from_meeting'])) return null;
+        $meetingId = (int) $payload['from_meeting'];
+        if ($meetingId <= 0) return null;
+        static $cache = [];
+        if (isset($cache[$meetingId])) return $cache[$meetingId];
+        $row = \Illuminate\Support\Facades\DB::table('meetings')
+            ->where('id', $meetingId)
+            ->first(['id', 'title', 'status']);
+        if (!$row) return $cache[$meetingId] = null;
+        return $cache[$meetingId] = [
+            'id'     => (int) $row->id,
+            'title'  => $row->title,
+            'status' => $row->status,
         ];
     }
 
@@ -409,18 +665,21 @@ class ApprovalController
     private function agentBadge(?string $slug): array
     {
         if (!$slug) return ['name' => 'Sarah', 'slug' => 'sarah', 'color' => '#F59E0B'];
-        $row = DB::table('agents')->where('slug', $slug)->first(['slug', 'name', 'color']);
-        if ($row) return ['name' => $row->name, 'slug' => $row->slug, 'color' => $row->color ?: '#6C5CE7'];
-        return ['name' => ucfirst($slug), 'slug' => $slug, 'color' => '#6C5CE7'];
+        // W6: see DashboardController::agentForSlug - raw reads bypass the scope.
+        return \App\Core\LaunchScope\AgentDirectory::resolve($slug);
     }
 
     private function agentForEngine(string $engine): array
     {
+        // LAUNCH SCOPE 2026-07-20 — removed-agent badges (marcus) replaced with
+        // honest non-person tool labels. Studio/creative are direct user tools;
+        // social is the retained article-share service. Nothing here re-attributes
+        // removed work to a retained specialist.
         $map = [
             'seo' => ['slug' => 'james'], 'write' => ['slug' => 'priya'],
-            'social' => ['slug' => 'marcus'], 'crm' => ['slug' => 'elena'],
-            'studio' => ['slug' => 'marcus'], 'marketing' => ['slug' => 'priya'],
-            'builder' => ['slug' => 'sarah'], 'creative' => ['slug' => 'marcus'],
+            'social' => ['slug' => 'system', 'name' => 'Article share'], 'crm' => ['slug' => 'elena'],
+            'studio' => ['slug' => 'studio', 'name' => 'Studio'], 'marketing' => ['slug' => 'sarah'],
+            'builder' => ['slug' => 'sarah'], 'creative' => ['slug' => 'studio', 'name' => 'Studio'],
             'meeting' => ['slug' => 'sarah'], 'calendar' => ['slug' => 'elena'],
         ];
         return $map[$engine] ?? ['slug' => 'sarah'];

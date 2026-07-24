@@ -1,0 +1,90 @@
+{
+  "name": "Fitness Reel",
+  "slug": "b02-fitness",
+  "format": "reels",
+  "category": "fitness",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "fitness"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "12-Week Program"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Science-backed training that actually gets results — no fluff, no filler, just progress you can see."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "⭐ 4.9 App Store rating"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "PUSH"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "YOUR"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "LIMIT."
+    },
+    "pill_1": {
+      "type": "text",
+      "label": "Pill 1",
+      "default": "Join Free"
+    },
+    "pill_2": {
+      "type": "text",
+      "label": "Pill 2",
+      "default": "🏋️ Strength"
+    },
+    "pill_3": {
+      "type": "text",
+      "label": "Pill 3",
+      "default": "🏃 Cardio"
+    },
+    "pill_4": {
+      "type": "text",
+      "label": "Pill 4",
+      "default": "🥗 Nutrition"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Start Today"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "fitness"
+    ]
+  }
+}

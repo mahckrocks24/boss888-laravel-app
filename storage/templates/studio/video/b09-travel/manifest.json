@@ -1,0 +1,75 @@
+{
+  "name": "Travel Reel",
+  "slug": "b09-travel",
+  "format": "reels",
+  "category": "travel",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "travel"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "Explore"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Curated Escapes"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Handpicked destinations, stress-free planning, and memories that last forever. Where do you want to go?"
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "brand_icon": {
+      "type": "text",
+      "label": "Brand Icon",
+      "default": "✈️"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Pack"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "your bags,"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "let's go!"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "travel"
+    ]
+  }
+}

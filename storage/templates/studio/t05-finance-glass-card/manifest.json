@@ -1,0 +1,43 @@
+{
+  "name": "Floating Glass Card — Finance",
+  "slug": "t05-finance-glass-card",
+  "format": "square",
+  "category": "corporate",
+  "sub_category": "finance",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["finance", "wealth", "investment", "corporate", "b2b"],
+  "variables": {
+    "hero_image":       { "type": "image", "label": "Hero image",       "default": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=540&q=85&fit=crop" },
+    "stat_value":       { "type": "text",  "label": "Floating stat value", "default": "$2.4M" },
+    "stat_label":       { "type": "text",  "label": "Floating stat label", "default": "Portfolio Value" },
+    "stat_delta":       { "type": "text",  "label": "Stat delta",          "default": "+18.4% this year" },
+    "eyebrow":          { "type": "text",  "label": "Eyebrow",             "default": "Wealth Management" },
+    "headline_main":    { "type": "text",  "label": "Headline (main)",     "default": "Grow Your" },
+    "headline_accent":  { "type": "text",  "label": "Headline (accent)",   "default": "Wealth Wisely." },
+    "subheading":       { "type": "text",  "label": "Subheading",          "default": "Smart investment strategies backed by data — built for long-term financial freedom." },
+    "metric_1_val":     { "type": "text",  "label": "Metric 1 value",      "default": "15yr" },
+    "metric_1_label":   { "type": "text",  "label": "Metric 1 label",      "default": "Track Record" },
+    "metric_2_val":     { "type": "text",  "label": "Metric 2 value",      "default": "98%" },
+    "metric_2_label":   { "type": "text",  "label": "Metric 2 label",      "default": "Client Trust" },
+    "metric_3_val":     { "type": "text",  "label": "Metric 3 value",      "default": "24/7" },
+    "metric_3_label":   { "type": "text",  "label": "Metric 3 label",      "default": "Monitoring" },
+    "cta_label":        { "type": "text",  "label": "CTA",                 "default": "Start Investing" },
+    "brand_name":       { "type": "text",  "label": "Brand name",          "default": "Logo Here" },
+    "brand_url":        { "type": "text",  "label": "Brand URL",           "default": "companyname.com" }
+  },
+  "css_variables": {
+    "bg":      { "label": "Background", "default": "#060A1F" },
+    "navy":    { "label": "Navy",       "default": "#0A1035" },
+    "gold":    { "label": "Gold",       "default": "#C9A84C" },
+    "gold-l":  { "label": "Gold light", "default": "#E8CFA0" },
+    "blue":    { "label": "Blue",       "default": "#2B5CE6" },
+    "white":   { "label": "Text",       "default": "#EEF0FF" }
+  },
+  "semantic": {
+    "mood": ["luxury", "professional"],
+    "color_temperature": "dark",
+    "composition": "split",
+    "best_for": ["finance", "wealth", "investment", "b2b", "corporate"]
+  }
+}

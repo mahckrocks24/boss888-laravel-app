@@ -76,6 +76,133 @@ class SectionSchema
         'generic' => [
             'optional' => ['heading', 'body', 'content'],
         ],
+        // ─── v1.4.4 Phase D-2 (2026-05-30) — booking + events ───────
+        // booking_form: reservation / appointment widget. Renders as a
+        // structured form with optional service selector, date+time, and
+        // contact fields. Backend submission goes through the contact_form
+        // pipeline today; a dedicated booking pipeline can swap later.
+        'booking_form' => [
+            'optional' => [
+                'heading', 'subheading', 'body',
+                'submit_label', 'success_message',
+                'fields',                // array of {name,label,type,required,options?}
+                'services',              // array of service strings for a service-selector dropdown
+                'duration_options',      // array of duration choices (e.g. [15,30,60])
+                'show_calendar',         // bool — whether to render a date picker
+                'show_time_slots',       // bool — whether to render time-slot chips
+                'background_image',
+            ],
+        ],
+        // events_calendar: upcoming events / classes / shows. Industries:
+        // event_venue, training_center, online_courses, hotel, resort,
+        // cafe, restaurant, gym (class schedule), news_channel.
+        'events_calendar' => [
+            'optional' => [
+                'heading', 'subheading', 'body',
+                'events',                // array of {title, date, time, location, description, image, cta_text, cta_url}
+                'view',                  // 'list' | 'grid' | 'calendar'
+                'max_events',            // int — how many to show inline (defaults to all)
+                'cta_text', 'cta_url',
+            ],
+        ],
+        // ─── v1.4.4 Phase D-3 (2026-05-30) — listings / map / trust ─
+        // grid: generic card-grid section. Items shape:
+        //   {title, subtitle, image, price, badge, cta_text, cta_url, tags?}
+        // Powers property listings, product grids, room types, vehicles,
+        // course catalogues. Distinct from `features` (which is icon+text).
+        'grid' => [
+            'optional' => [
+                'heading', 'subheading', 'body',
+                'items',                 // array of item cards
+                'columns',               // int 2-4 (defaults to 3)
+                'style',                 // 'card' | 'media' | 'compact'
+                'cta_text', 'cta_url',
+            ],
+        ],
+        // filter_bar: client-side filter chips that target a grid by id.
+        // Powers property search, product filters, course filters.
+        'filter_bar' => [
+            'optional' => [
+                'heading',
+                'target_grid_id',        // string — id of the grid section to filter
+                'filters',               // array of {label, options[]}
+                'search_enabled',        // bool — show free-text search box
+                'sort_options',          // array of strings (e.g. ['Newest', 'Price low to high'])
+            ],
+        ],
+        // map: embed a static map illustration with location pins.
+        // Powers locations page, store finder, branch listings.
+        'map' => [
+            'optional' => [
+                'heading', 'subheading', 'body',
+                'locations',             // array of {name, address, phone, hours, lat?, lng?}
+                'embed_url',             // optional iframe src for live map (Mapbox/Google)
+                'height',                // px height (default 480)
+            ],
+        ],
+        // related_listings: smaller card-grid for cross-sell on detail pages.
+        // Same item shape as `grid` but defaults to 3 columns and compact style.
+        'related_listings' => [
+            'optional' => [
+                'heading', 'subheading',
+                'items',
+                'max_items',             // int (default 6)
+            ],
+        ],
+        // trust_signals: social proof bar — logos, badges, awards, stats.
+        // Compact row, sits under hero or above footer.
+        'trust_signals' => [
+            'optional' => [
+                'heading', 'subheading',
+                'items',                 // array of {label, logo?, value?, sublabel?}
+                'style',                 // 'logo_row' | 'stat_row' | 'badge_row'
+            ],
+        ],
+        // ─── v1.4.4 Phase D-5 (2026-05-30) — commerce / account ────
+        // cart_summary: shopping cart line items + totals + checkout CTA.
+        'cart_summary' => [
+            'optional' => [
+                'heading', 'subheading',
+                'items',                 // array of {name, qty, price, subtotal, image?}
+                'subtotal_label', 'tax_label', 'shipping_label', 'total_label',
+                'subtotal', 'tax', 'shipping', 'total',
+                'currency',
+                'cta_text', 'cta_url',
+                'continue_shopping_url',
+                'empty_message',
+            ],
+        ],
+        // checkout_form: multi-section checkout (contact, shipping, payment).
+        'checkout_form' => [
+            'optional' => [
+                'heading', 'subheading',
+                'sections',              // array of {title, fields[]}
+                'order_summary',         // optional sidebar summary {items[], total}
+                'submit_label',
+                'success_message',
+                'payment_methods',       // array of method labels (display only)
+            ],
+        ],
+        // account_nav: vertical or top nav for /account pages.
+        'account_nav' => [
+            'optional' => [
+                'heading',               // e.g. "Welcome back, {name}"
+                'subheading',            // e.g. email
+                'items',                 // array of {label, url, active?}
+                'orientation',           // 'vertical' | 'top'
+                'logout_url',
+            ],
+        ],
+        // account_panel: dashboard panel for orders / addresses / profile.
+        'account_panel' => [
+            'optional' => [
+                'heading', 'subheading',
+                'panel_type',            // 'orders' | 'addresses' | 'profile' | 'wishlist'
+                'items',                 // panel-specific list (orders/addresses/etc)
+                'empty_message',
+                'cta_text', 'cta_url',
+            ],
+        ],
     ];
 
     public static function allowedTypes(): array

@@ -24,31 +24,21 @@ function _obBuildOrbit() {
   var agents = [
     // [id, ring, size]
     { id: 'sarah',  ring: 'centre', size: 'lg' },
-    // Inner ring — 5 agents
+    // Inner ring — 4 agents
     { id: 'james',  ring: 'inner',  size: 'md' },
     { id: 'priya',  ring: 'inner',  size: 'md' },
-    { id: 'marcus', ring: 'inner',  size: 'md' },
     { id: 'elena',  ring: 'inner',  size: 'md' },
     { id: 'alex',   ring: 'inner',  size: 'md' },
-    // Outer ring — 14 agents
+    // Outer ring — 5 agents
     { id: 'diana',  ring: 'outer',  size: 'sm' },
     { id: 'ryan',   ring: 'outer',  size: 'sm' },
     { id: 'sofia',  ring: 'outer',  size: 'sm' },
-    { id: 'leo',    ring: 'outer',  size: 'sm' },
-    { id: 'maya',   ring: 'outer',  size: 'sm' },
     { id: 'nora',   ring: 'outer',  size: 'sm' },
-    { id: 'zara',   ring: 'outer',  size: 'sm' },
-    { id: 'tyler',  ring: 'outer',  size: 'sm' },
-    { id: 'jordan', ring: 'outer',  size: 'sm' },
-    { id: 'chris',  ring: 'outer',  size: 'sm' },
-    { id: 'aria',   ring: 'outer',  size: 'sm' },
-    { id: 'kai',    ring: 'outer',  size: 'sm' },
-    { id: 'vera',   ring: 'outer',  size: 'sm' },
     { id: 'max',    ring: 'outer',  size: 'sm' }
   ];
 
   var innerCount = 0, outerCount = 0;
-  var innerTotal = 5, outerTotal = 14;
+  var innerTotal = 4, outerTotal = 5;
 
   function makeOrbHTML(id, size) {
     if (window.OrbAvatar && window.OrbAvatar.buildAgentOrb) {
@@ -427,9 +417,7 @@ var _OB2_COUNTRIES = [
 
 var _OB2_GOALS = [
   ['leads','Get more leads & customers','🚀'],
-  ['social','Grow my social media presence','📈'],
   ['seo','Rank higher on Google','🔍'],
-  ['email','Build my email list','📧'],
   ['website','Launch my website','🌐'],
   ['agency','Replace my marketing agency','💼'],
 ];
@@ -1064,9 +1052,7 @@ async function _showOnboardingStep3() {
   // 4. Derive services seed + target_market from Step 2 goal/customer
   var goalLabel = {
     leads:   'Lead generation',
-    social:  'Social media marketing',
     seo:     'Search engine optimisation',
-    email:   'Email marketing',
     website: 'Website launch',
     agency:  'Full-service marketing',
   };

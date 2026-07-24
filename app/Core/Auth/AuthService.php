@@ -90,20 +90,83 @@ class AuthService
         $workspace = $result['workspace_id'] ? Workspace::find($result['workspace_id']) : null;
 
         return $this->buildAuthResponse($user, $workspace, [
-            'access_token' => $this->refreshTokenService->issueAccessToken($user, $workspace),
+            // Provenance comes from the SERVER-SIDE session record, never from the
+            // client. A shared-admin session stays restricted across refreshes.
+            'access_token' => $this->refreshTokenService->issueAccessToken(
+                $user, $workspace, $result['auth_via'] ?? null, $result['session_id'] ?? null
+            ),
             'refresh_token' => $result['refresh_token'],
         ]);
     }
 
     public function logout(string $refreshToken): void
     {
+        // b19/b20 (2026-07-24) — resolve the session BEFORE revoking so we can
+        // clean up the push registrations belonging to THIS device.
+        $hash    = hash('sha256', $refreshToken);
+        $session = \Illuminate\Support\Facades\DB::table('sessions')
+            ->where('refresh_token_hash', $hash)
+            ->first(['id', 'user_id']);
+
         $this->refreshTokenService->revoke($refreshToken);
+
+        if (! $session) {
+            return;
+        }
+        $userId = $session->user_id;
+
+        // b20 — PER-DEVICE REVOCATION. device_tokens.session_id binds a
+        // registration to the sign-in that created it (and follows it across
+        // refresh rotation), so signing out on one phone silences exactly that
+        // phone and leaves the user's other signed-in devices working.
+        $removedThisDevice = \Illuminate\Support\Facades\DB::table('device_tokens')
+            ->where('session_id', $session->id)
+            ->delete();
+
+        if ($removedThisDevice > 0) {
+            \Illuminate\Support\Facades\Log::info('[Auth] revoked push for the device signing out', [
+                'user_id' => $userId, 'session_id' => $session->id, 'removed' => $removedThisDevice,
+            ]);
+        }
+
+        // Backstop for registrations with no session binding — rows created by
+        // an app still holding a pre-b20 access token (no `sid` claim). Those
+        // cannot be matched to a device, so they are cleared once the user is
+        // signed out everywhere, at which point every registration is
+        // unreachable by definition and the app re-registers on next login.
+        $stillSignedIn = \Illuminate\Support\Facades\DB::table('sessions')
+            ->where('user_id', $userId)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->exists();
+
+        if ($stillSignedIn) {
+            return;
+        }
+
+        $removed = \Illuminate\Support\Facades\DB::table('device_tokens')
+            ->where('user_id', $userId)
+            ->delete();
+
+        if ($removed > 0) {
+            \Illuminate\Support\Facades\Log::info('[Auth] purged device tokens on full logout', [
+                'user_id' => $userId, 'removed' => $removed,
+            ]);
+        }
     }
 
     public function me(User $user): array
     {
         $workspaces = $user->workspaces()->with('subscription.plan')->get();
         $currentWs = $workspaces->first();
+
+        // 2026-05-28 — Per-user preferences (sidebar visibility mode, etc.).
+        // Pulled directly via DB::table so we don't have to add preferences_json
+        // to the User model's $fillable (preferences is admin-curated, not
+        // exposed to mass-assign).
+        $rawPrefs = \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->value('preferences_json');
+        $prefs = is_string($rawPrefs) ? (json_decode($rawPrefs, true) ?: []) : [];
+        if (! is_array($prefs)) $prefs = [];
 
         return [
             'user' => [
@@ -119,6 +182,7 @@ class AuthService
                 'plan' => $ws->subscription?->plan?->slug ?? 'free',
             ])->toArray(),
             'current_workspace_id' => $currentWs?->id,
+            'preferences' => $prefs,
         ];
     }
 

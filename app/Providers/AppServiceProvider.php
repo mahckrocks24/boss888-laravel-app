@@ -95,5 +95,20 @@ class AppServiceProvider extends ServiceProvider
         // Register middleware alias
         $router = $this->app['router'];
         $router->aliasMiddleware('auth.jwt', \App\Http\Middleware\JwtAuthMiddleware::class);
+
+        // INFRA888 - explicit policy registration. Engine-namespaced models are
+        // NOT discovered by Laravel's App\Policies naming convention, so without
+        // this every infrastructure policy would silently fail open.
+        \App\Engines\Infrastructure\Policies\InfrastructurePolicyRegistrar::register();
+
+        // INFRA888 - engine-namespaced console command (not auto-discovered).
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \App\Engines\Infrastructure\Console\ReapStuckInfraOperations::class,
+                \App\Engines\Infrastructure\Console\SweepCredentialExpiry::class,
+                \App\Engines\Infrastructure\Console\RunMonitorChecks::class,
+                \App\Engines\Infrastructure\Console\RollupMonitorDaily::class,
+            ]);
+        }
     }
 }

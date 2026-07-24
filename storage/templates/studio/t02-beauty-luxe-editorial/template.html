@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>T02 — Soft Luxe Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:     #F8F2EE;
+  --mauve:  #2D1B2E;
+  --accent:   #C9A56A;
+  --primary:  #E8C4B8;
+  --rose:   #B07A6E;
+  --cream:  #FAF5F0;
+  --text:    #1A0E10;
+  --font-h: 'Cormorant Garamond', Georgia, serif;
+  --font-b: 'Raleway', sans-serif;
+  --w:1080px;--h:1350px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#EDE8E3}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.scale-wrap{transform-origin:top center}
+@media(max-width:1200px){.scale-wrap{transform:scale(.78);display:block;width:calc(var(--w)*.78);height:calc(var(--h)*.78)}}
+@media(max-width:960px){.scale-wrap{transform:scale(.60);display:block;width:calc(var(--w)*.60);height:calc(var(--h)*.60)}}
+@media(max-width:720px){.scale-wrap{transform:scale(.43);display:block;width:calc(var(--w)*.43);height:calc(var(--h)*.43)}}
+@media(max-width:500px){.scale-wrap{transform:scale(.29);display:block;width:calc(var(--w)*.29);height:calc(var(--h)*.29)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--font-b);color:var(--text)}
+
+/* Full-bleed image — top ~62% */
+.hero{position:absolute;top:0;left:0;right:0;height:840px;overflow:hidden;z-index:1}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center 20%}
+/* Strong gradient bottom fade into cream */
+.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(45,27,46,.25) 0%,transparent 35%,rgba(248,242,238,.40) 72%,var(--bg) 100%)}
+
+/* Decorative hairline frame inside post */
+.frame{position:absolute;z-index:5;top:20px;left:20px;right:20px;bottom:20px;border:1px solid rgba(201,165,106,.28);pointer-events:none}
+.frame-corner{position:absolute;width:28px;height:28px}
+.frame-corner--tl{top:-1px;left:-1px;border-top:2px solid var(--accent);border-left:2px solid var(--accent)}
+.frame-corner--tr{top:-1px;right:-1px;border-top:2px solid var(--accent);border-right:2px solid var(--accent)}
+.frame-corner--bl{bottom:-1px;left:-1px;border-bottom:2px solid var(--accent);border-left:2px solid var(--accent)}
+.frame-corner--br{bottom:-1px;right:-1px;border-bottom:2px solid var(--accent);border-right:2px solid var(--accent)}
+
+/* Topbar */
+.topbar{position:absolute;z-index:6;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:40px 48px}
+.logo-area{display:flex;align-items:center;gap:14px}
+.logo-oval{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.50);display:flex;align-items:center;justify-content:center}
+.logo-oval::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--accent);opacity:.85}
+.logo-name{font-family:var(--font-b);font-size:20px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#fff}
+.edition-tag{font-family:var(--font-b);font-size:10px;font-weight:400;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.22);padding:8px 18px;border-radius:2px}
+
+/* Gold rule + eyebrow in image zone */
+.img-eyebrow{position:absolute;z-index:6;bottom:340px;left:56px;right:56px;display:flex;align-items:center;gap:16px}
+.img-eyebrow-text{font-family:var(--font-b);font-size:11px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);white-space:nowrap}
+.img-eyebrow-rule{flex:1;height:1px;background:linear-gradient(90deg,var(--accent),transparent);opacity:.55}
+
+/* Large editorial headline — spans image bottom into content zone */
+.headline-wrap{position:absolute;z-index:6;bottom:240px;left:52px;right:52px}
+.headline{font-family:var(--font-h);font-size:102px;font-weight:300;line-height:.92;letter-spacing:-.02em;color:var(--text)}
+.headline em{font-style:italic;font-weight:300;color:var(--rose);display:block}
+
+/* Content zone */
+.content{position:absolute;z-index:4;bottom:0;left:0;right:0;height:300px;display:flex;flex-direction:column;justify-content:center;padding:0 56px;background:var(--bg)}
+.content::before{content:'';position:absolute;top:0;left:56px;right:56px;height:1px;background:rgba(201,165,106,.25)}
+
+.sub{font-family:var(--font-b);font-size:16px;font-weight:300;line-height:1.70;color:#7A6860;max-width:560px;margin-bottom:28px}
+
+.cta-row{display:flex;align-items:center;gap:20px}
+.cta{display:inline-flex;align-items:center;gap:12px;font-family:var(--font-b);font-size:12px;font-weight:600;letter-spacing:.20em;text-transform:uppercase;color:var(--cream);background:var(--mauve);padding:18px 42px;border:none;cursor:pointer;text-decoration:none;transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(45,27,46,.30)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+.cta-ghost{font-family:var(--font-b);font-size:20px;font-weight:400;letter-spacing:.18em;text-transform:uppercase;color:var(--rose);border-bottom:1px solid rgba(176,122,110,.35);padding-bottom:2px;text-decoration:none;transition:border-color .20s}
+.cta-ghost:hover{border-color:var(--rose)}
+
+/* Brand url bottom right */
+.brand-url{position:absolute;z-index:5;bottom:28px;right:56px;font-family:var(--font-b);font-size:17px;font-weight:400;letter-spacing:.18em;color:#B0A39C}
+
+/* Dot grid deco bottom left */
+.deco-dots{position:absolute;z-index:5;bottom:36px;left:56px;width:72px;height:72px;background-image:radial-gradient(circle,rgba(201,165,106,.30) 1.5px,transparent 1.5px);background-size:10px 10px;mask-image:radial-gradient(ellipse at bottom left,black 20%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at bottom left,black 20%,transparent 75%)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="scale-wrap">
+<div class="post">
+  <!-- Frame -->
+  <div class="frame">
+    <div class="frame-corner frame-corner--tl"></div>
+    <div class="frame-corner frame-corner--tr"></div>
+    <div class="frame-corner frame-corner--bl"></div>
+    <div class="frame-corner frame-corner--br"></div>
+  </div>
+
+  <!-- Hero image -->
+  <div class="hero">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+  </div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo-area">
+      <div class="logo-oval"></div>
+      <span class="logo-name" data-field="logo_name">{{logo_name}}</span>
+    </div>
+    <span class="edition-tag" data-field="edition_tag">{{edition_tag}}</span>
+  </div>
+
+  <!-- Image eyebrow -->
+  <div class="img-eyebrow">
+    <span class="img-eyebrow-text" data-field="img_eyebrow_text">{{img_eyebrow_text}}</span>
+    <div class="img-eyebrow-rule"></div>
+  </div>
+
+  <!-- Headline -->
+  <div class="headline-wrap">
+    <h1 class="headline"><span data-field="headline_main">{{headline_main}}</span><em data-field="headline_accent">{{headline_accent}}</em></h1>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="cta-row">
+      <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+      <a class="cta-ghost" href="#" data-field="cta_ghost_label">{{cta_ghost_label}}</a>
+    </div>
+  </div>
+
+  <div class="brand-url" data-field="brand_url">{{brand_url}}</div>
+  <div class="deco-dots"></div>
+</div>
+</div></div>
+</body></html>

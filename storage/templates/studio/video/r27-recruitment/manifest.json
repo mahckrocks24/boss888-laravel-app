@@ -1,0 +1,100 @@
+{
+  "name": "Recruitment Reel",
+  "slug": "r27-recruitment",
+  "format": "reels",
+  "category": "recruitment",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "recruitment"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Recruitment Agency"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "We connect exceptional talent with world-class companies — faster, smarter, and on your terms."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Launch"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "Your Next"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "Career Move."
+    },
+    "stat_val_1": {
+      "type": "text",
+      "label": "Stat Val 1",
+      "default": "2,400"
+    },
+    "stat_val_2": {
+      "type": "text",
+      "label": "Stat Val 2",
+      "default": "94%"
+    },
+    "stat_val_3": {
+      "type": "text",
+      "label": "Stat Val 3",
+      "default": "14d"
+    },
+    "stat_label_1": {
+      "type": "text",
+      "label": "Stat Label 1",
+      "default": "Open Roles"
+    },
+    "stat_label_2": {
+      "type": "text",
+      "label": "Stat Label 2",
+      "default": "Placement"
+    },
+    "stat_label_3": {
+      "type": "text",
+      "label": "Stat Label 3",
+      "default": "Avg. Time"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Find Your Role"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "recruitment"
+    ]
+  }
+}

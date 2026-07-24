@@ -1,0 +1,37 @@
+{
+  "name": "Legal Luxury Reel",
+  "slug": "r02-legal",
+  "format": "reels",
+  "category": "legal",
+  "sub_category": "luxury",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": ["legal", "law", "attorney", "luxury", "professional"],
+  "variables": {
+    "brand_stars":     { "type": "text", "label": "Brand stars",     "default": "★ ★ ★ ★ ★" },
+    "brand_name":      { "type": "text", "label": "Brand name",      "default": "LOGO HERE" },
+    "brand_sub":       { "type": "text", "label": "Brand sub",       "default": "Attorneys at Law — Est. 1990" },
+    "eyebrow":         { "type": "text", "label": "Eyebrow",         "default": "Luxury Legal Services" },
+    "headline_1":      { "type": "text", "label": "Headline 1",      "default": "Justice." },
+    "headline_2":      { "type": "text", "label": "Headline 2",      "default": "Delivered." },
+    "headline_accent": { "type": "text", "label": "Headline accent", "default": "Guaranteed." },
+    "subheading":      { "type": "text", "label": "Subheading",      "default": "Elite legal representation for corporations, high-net-worth individuals, and complex international matters." },
+    "area_1_name":     { "type": "text", "label": "Area 1 name",     "default": "Corporate" },
+    "area_1_desc":     { "type": "text", "label": "Area 1 desc",     "default": "M&A · Compliance" },
+    "area_2_name":     { "type": "text", "label": "Area 2 name",     "default": "Litigation" },
+    "area_2_desc":     { "type": "text", "label": "Area 2 desc",     "default": "Civil · Criminal" },
+    "area_3_name":     { "type": "text", "label": "Area 3 name",     "default": "Real Estate" },
+    "area_3_desc":     { "type": "text", "label": "Area 3 desc",     "default": "Property Law" },
+    "cta_label":       { "type": "text", "label": "CTA",             "default": "Book Consultation" },
+    "footer_brand":    { "type": "text", "label": "Footer brand",    "default": "Logo Here" },
+    "footer_url":      { "type": "text", "label": "Footer URL",      "default": "companyname.com" },
+    "footer_handle":   { "type": "text", "label": "Footer handle",   "default": "@handle" }
+  },
+  "semantic": {
+    "mood": ["luxury", "professional"],
+    "color_temperature": "dark",
+    "best_for": ["legal", "law firm", "attorney", "luxury", "professional services"]
+  }
+}

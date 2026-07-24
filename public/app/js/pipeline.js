@@ -130,8 +130,8 @@ console.log('[Pipeline] engine slot claimed');
         });
         html += '</div>';
 
-        // Status tabs
-        var tabs = ['all', 'queued', 'running', 'completed', 'failed'];
+        // Status tabs — 2026-05-25 'blocked' is its own tab now (was folded into failed).
+        var tabs = ['all', 'queued', 'running', 'blocked', 'completed', 'failed'];
         html += '<div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--bd);padding-bottom:0">';
         tabs.forEach(function (t) {
             var ac = t === _state.statusTab;
@@ -144,14 +144,55 @@ console.log('[Pipeline] engine slot claimed');
         });
         html += '</div>';
 
+        // 2026-05-27 — Phase 2: category filter pills (client-side filter)
+        var catPills = [
+            { slug: 'all',        label: 'All',        color: 'var(--p)' },
+            { slug: 'research',   label: 'Research',   color: '#3B82F6' },
+            { slug: 'create',     label: 'Create',     color: '#7C3AED' },
+            { slug: 'optimize',   label: 'Optimize',   color: '#00E5A8' },
+            { slug: 'publish',    label: 'Publish',    color: '#F59E0B' },
+            { slug: 'crm',        label: 'CRM',        color: '#EC4899' },
+            { slug: 'campaign',   label: 'Campaign',   color: '#F97316' },
+            { slug: 'operations', label: 'Operations', color: '#6B7280' },
+        ];
+        _state.categoryTab = _state.categoryTab || 'all';
+        html += '<div style="display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap">';
+        catPills.forEach(function (c) {
+            var ac = c.slug === _state.categoryTab;
+            var bg = ac ? c.color : 'var(--s2)';
+            var fg = ac ? '#fff' : 'var(--t2)';
+            var border = ac ? c.color : 'var(--bd)';
+            var dotMarkup = ac ? '' : '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + c.color + ';margin-right:5px;vertical-align:middle"></span>';
+            html += '<button onclick="window._pipeSetCategory(\'' + c.slug + '\')" '
+                  + 'style="padding:5px 11px;background:' + bg + ';color:' + fg + ';'
+                  + 'border:1px solid ' + border + ';border-radius:99px;cursor:pointer;'
+                  + 'font-size:11px;font-weight:600">' + dotMarkup + c.label + '</button>';
+        });
+        html += '</div>';
+
         // Task table
         var rows = [];
         if (_state.statusTab === 'all') {
-            ['running', 'queued', 'completed', 'failed', 'cancelled'].forEach(function (b) {
+            ['running', 'queued', 'blocked', 'completed', 'failed', 'cancelled'].forEach(function (b) {
                 rows = rows.concat(p.pipeline[b] || []);
             });
         } else {
             rows = p.pipeline[_state.statusTab] || [];
+        }
+
+        // Apply category filter client-side
+        if (_state.categoryTab && _state.categoryTab !== 'all') {
+            rows = rows.filter(function (t) { return (t.category || 'operations') === _state.categoryTab; });
+        }
+
+        // 2026-05-25 — when viewing blocked tab, show a batch-retry button.
+        if (_state.statusTab === 'blocked' && rows.length > 0) {
+            html += '<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">'
+                  +   '<button onclick="window._pipeRetryAllBlocked()" style="padding:8px 14px;background:var(--p);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'
+                  +     '↻ Retry all blocked'
+                  +   '</button>'
+                  +   '<span style="font-size:11px;color:var(--t3)">Duplicates are auto-skipped. Only legitimately-stuck work is requeued.</span>'
+                  + '</div>';
         }
 
         if (rows.length === 0) {
@@ -165,22 +206,38 @@ console.log('[Pipeline] engine slot claimed');
         html += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden">';
         html += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
         html += '<thead style="background:var(--s2)"><tr>'
+              +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Category</th>'
               +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Type</th>'
               +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Task</th>'
               +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Status</th>'
               +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Progress</th>'
               +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Created</th>'
+              +   '<th style="padding:10px 14px;text-align:left;font-weight:600">Action</th>'
               + '</tr></thead><tbody>';
         rows.forEach(function (t) {
             var badgeC = _badgeColor(t.task_type);
             var statC  = _statusColor(t.status);
             var prog   = (t.progress >= 0 ? t.progress : 0);
+            // 2026-05-25 — per-row retry button for blocked tasks.
+            var actionCell = '';
+            if (t.status === 'blocked') {
+                actionCell = '<button onclick="window._pipeRetryOne(' + t.id + ')" style="padding:4px 10px;background:var(--p);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600">↻ Retry</button>';
+            }
+            // 2026-05-27 — Phase 2 category cell
+            var catColor = t.category_color || '#6B7280';
+            var catLabel = t.category_label || (t.category || 'Ops');
+            var catCell = '<span style="background:' + catColor + '15;color:' + catColor + ';padding:3px 8px;border-radius:99px;font-size:10px;font-weight:600;display:inline-flex;align-items:center;gap:4px">'
+                        + '<span style="width:6px;height:6px;border-radius:50%;background:' + catColor + '"></span>'
+                        + _esc(catLabel)
+                        + '</span>';
             html += '<tr style="border-top:1px solid var(--bd)">'
+                  +   '<td style="padding:10px 14px">' + catCell + '</td>'
                   +   '<td style="padding:10px 14px"><span style="background:' + badgeC + '15;color:' + badgeC + ';padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600">' + _fmtAction(t.task_type) + '</span></td>'
                   +   '<td style="padding:10px 14px;color:var(--t1)">' + _esc(t.result_summary || _fmtAction(t.task_type)) + '</td>'
                   +   '<td style="padding:10px 14px"><span style="color:' + statC + ';font-weight:600">' + _esc(t.status) + '</span></td>'
                   +   '<td style="padding:10px 14px"><div style="background:var(--s2);border-radius:3px;height:6px;width:100px;overflow:hidden"><div style="background:' + statC + ';height:100%;width:' + prog + '%"></div></div></td>'
                   +   '<td style="padding:10px 14px;color:var(--t3);font-size:11px">' + _esc(_fmtDate(t.created_at)) + '</td>'
+                  +   '<td style="padding:10px 14px">' + actionCell + '</td>'
                   + '</tr>';
         });
         html += '</tbody></table></div>';
@@ -301,6 +358,49 @@ console.log('[Pipeline] engine slot claimed');
         _render();
     };
     window._pipeSetStatus = function (s) { _state.statusTab = s; _render(); };
+    window._pipeSetCategory = function (c) { _state.categoryTab = c; _render(); };
+
+    // 2026-05-25 — retry handlers. Idempotency-checked Laravel-side, so
+    // duplicate retries are silently skipped. UI shows a brief toast.
+    window._pipeRetryOne = async function (taskId) {
+        try {
+            var r = await window._luFetch('POST', '/tasks/' + taskId + '/retry', {});
+            var d = await r.json();
+            var verdict = (d.result && d.result.action) || 'unknown';
+            var msg = verdict === 'requeued'           ? 'Task ' + taskId + ' requeued.'
+                    : verdict === 'skipped_duplicate'  ? 'Task ' + taskId + ' skipped — work already done on the target.'
+                    : verdict === 'not_blocked'        ? 'Task ' + taskId + ' is not blocked (current status: ' + (d.result.status || '?') + ').'
+                    :                                    'Retry result: ' + verdict;
+            if (typeof window.toast === 'function') window.toast(msg);
+            else alert(msg);
+            // Refetch pipeline
+            setTimeout(function(){ window._pipeRefresh && window._pipeRefresh(); }, 800);
+        } catch (e) {
+            alert('Retry failed: ' + e.message);
+        }
+    };
+
+    window._pipeRetryAllBlocked = async function () {
+        if (!confirm('Retry all blocked tasks?\n\nDuplicates (work already done) will be auto-skipped — only legitimately-stuck tasks will requeue.')) return;
+        try {
+            var r = await window._luFetch('POST', '/tasks/retry-blocked', {});
+            var d = await r.json();
+            var s = d.summary || {};
+            var msg = 'Retry batch complete:\n'
+                    + (s.requeued || 0) + ' requeued\n'
+                    + (s.skipped_duplicate || 0) + ' skipped (duplicates)\n'
+                    + (s.errors || 0) + ' errors';
+            alert(msg);
+            setTimeout(function(){ window._pipeRefresh && window._pipeRefresh(); }, 800);
+        } catch (e) {
+            alert('Batch retry failed: ' + e.message);
+        }
+    };
+
+    // Expose a refresh hook so the retry handlers can re-fetch after a retry.
+    window._pipeRefresh = function () {
+        if (typeof _fetchPipeline === 'function') _fetchPipeline();
+    };
     window._pipeSetMonth = function (m) {
         _state.month = m;
         _state.calendar = null;

@@ -30,6 +30,16 @@ class SocialConnector extends BaseConnector
     private const GRAPH_API_VERSION = 'v19.0';
     private const GRAPH_BASE_URL   = 'https://graph.facebook.com/' . self::GRAPH_API_VERSION;
 
+    /* b16-linkedin */
+    private const LI_AUTHORIZE_URL = 'https://www.linkedin.com/oauth/v2/authorization';
+    private const LI_TOKEN_URL     = 'https://www.linkedin.com/oauth/v2/accessToken';
+    private const LI_USERINFO_URL  = 'https://api.linkedin.com/v2/userinfo';
+
+    /* b17-twitter */
+    private const TW_AUTHORIZE_URL = 'https://twitter.com/i/oauth2/authorize';
+    private const TW_TOKEN_URL     = 'https://api.twitter.com/2/oauth2/token';
+    private const TW_USERINFO_URL  = 'https://api.twitter.com/2/users/me';
+
     private string $baseUrl;
     private string $apiKey;
     private bool   $mockMode;
@@ -38,6 +48,16 @@ class SocialConnector extends BaseConnector
     private string $fbAppId;
     private string $fbAppSecret;
     private string $fbRedirectUri;
+
+    // /* b16-linkedin */ LinkedIn OAuth
+    private string $liClientId;
+    private string $liClientSecret;
+    private string $liRedirectUri;
+
+    // /* b17-twitter */ Twitter/X OAuth
+    private string $twClientId;
+    private string $twClientSecret;
+    private string $twRedirectUri;
 
     public function __construct()
     {
@@ -48,6 +68,16 @@ class SocialConnector extends BaseConnector
         $this->fbAppId      = (string) env('FACEBOOK_APP_ID', '');
         $this->fbAppSecret  = (string) env('FACEBOOK_APP_SECRET', '');
         $this->fbRedirectUri = (string) env('FACEBOOK_REDIRECT_URI', '');
+
+        /* b16-linkedin */
+        $this->liClientId     = (string) env('LINKEDIN_CLIENT_ID', '');
+        $this->liClientSecret = (string) env('LINKEDIN_CLIENT_SECRET', '');
+        $this->liRedirectUri  = (string) env('LINKEDIN_REDIRECT_URI', '');
+
+        /* b17-twitter */
+        $this->twClientId     = (string) env('TWITTER_CLIENT_ID', '');
+        $this->twClientSecret = (string) env('TWITTER_CLIENT_SECRET', '');
+        $this->twRedirectUri  = (string) env('TWITTER_REDIRECT_URI', '');
     }
 
     public function supportedActions(): array
@@ -116,6 +146,7 @@ class SocialConnector extends BaseConnector
             'success'     => $result['success'] ?? false,
             'external_id' => $data['post_id'] ?? null,
             'url'         => $data['url'] ?? null,
+            'mock'        => $data['mock'] ?? false,
             'error'       => $result['message'] ?? null,
         ];
     }
@@ -135,6 +166,24 @@ class SocialConnector extends BaseConnector
     // ═══════════════════════════════════════════════════════════
     // OAUTH — Facebook + Instagram
     // ═══════════════════════════════════════════════════════════
+
+    /* b16-linkedin-config-check */
+    /**
+     * Is LinkedIn OAuth configured? (all 3 env vars present)
+     */
+    public function isLinkedInOAuthConfigured(): bool
+    {
+        return $this->liClientId !== '' && $this->liClientSecret !== '' && $this->liRedirectUri !== '';
+    }
+
+    /* b17-twitter-config-check */
+    /**
+     * Is Twitter/X OAuth configured? (all 3 env vars present)
+     */
+    public function isTwitterOAuthConfigured(): bool
+    {
+        return $this->twClientId !== '' && $this->twClientSecret !== '' && $this->twRedirectUri !== '';
+    }
 
     /**
      * Is Facebook OAuth configured? (all 3 env vars present)
@@ -159,8 +208,19 @@ class SocialConnector extends BaseConnector
      */
     public function getAuthUrl(string $platform, int $workspaceId): string
     {
+        /* b16-linkedin-authurl */
+        if ($platform === 'linkedin') {
+            return $this->buildLinkedInAuthUrl($workspaceId);
+        }
+
+        /* b17-twitter-authurl */
+        // Twitter OAuth 2.0 with PKCE — different flow shape (verifier/challenge).
+        if ($platform === 'twitter') {
+            return $this->buildTwitterAuthUrl($workspaceId);
+        }
+
         if ($platform !== 'facebook' && $platform !== 'instagram') {
-            throw new \InvalidArgumentException("OAuth for {$platform} is not yet supported. Use facebook or instagram.");
+            throw new \InvalidArgumentException("OAuth for {$platform} is not yet supported. Use facebook, instagram, linkedin, or twitter.");
         }
 
         if (! $this->isFacebookOAuthConfigured()) {
@@ -377,6 +437,278 @@ class SocialConnector extends BaseConnector
         }
 
         return $stored;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // LINKEDIN OAUTH (Batch 16)
+    // ═══════════════════════════════════════════════════════════
+
+    /* b16-linkedin-methods */
+
+    /**
+     * Build LinkedIn OAuth authorization URL. Uses OpenID Connect scopes
+     * (openid, profile, email) plus w_member_social for posting on the
+     * user's behalf. w_member_social is part of LinkedIn's "Share on
+     * LinkedIn" product which is auto-approved when added to a developer
+     * app — no review needed.
+     */
+    public function buildLinkedInAuthUrl(int $workspaceId): string
+    {
+        if (! $this->isLinkedInOAuthConfigured()) {
+            throw new \RuntimeException('LinkedIn OAuth not configured. Set LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, LINKEDIN_REDIRECT_URI in .env.');
+        }
+
+        $nonce = \Illuminate\Support\Str::random(32);
+        $state = "{$workspaceId}_{$nonce}";
+
+        cache()->put("social_oauth_state:{$state}", [
+            'workspace_id' => $workspaceId,
+            'platform'     => 'linkedin',
+            'nonce'        => $nonce,
+            'created_at'   => now()->toISOString(),
+        ], now()->addMinutes(10));
+
+        $scopes = implode(' ', [
+            'openid',           // OpenID Connect — required for /userinfo
+            'profile',          // Basic profile (name, picture, locale)
+            'email',            // Verified email
+            'w_member_social',  // Post on member's behalf — the publishing scope
+        ]);
+
+        return self::LI_AUTHORIZE_URL . '?' . http_build_query([
+            'response_type' => 'code',
+            'client_id'     => $this->liClientId,
+            'redirect_uri'  => $this->liRedirectUri,
+            'scope'         => $scopes,
+            'state'         => $state,
+        ]);
+    }
+
+    /**
+     * Handle the LinkedIn OAuth callback. Mirrors handleCallback() shape:
+     *   1. Verify state (CSRF nonce from cache)
+     *   2. Exchange code for access_token (returns expires_in ~60 days)
+     *   3. Fetch /v2/userinfo for member ID + name + email + picture
+     *   4. Store as a single LinkedIn account
+     *
+     * Returns: ['success' => bool, 'accounts' => [...], 'error' => ?string]
+     */
+    public function handleLinkedInCallback(string $code, string $state, int $workspaceId): array
+    {
+        // ── Step 1: Verify state ──────────────────────────────────────
+        $cached = cache()->pull("social_oauth_state:{$state}");
+        if (! $cached || ($cached['workspace_id'] ?? null) !== $workspaceId || ($cached['platform'] ?? null) !== 'linkedin') {
+            return ['success' => false, 'error' => 'Invalid or expired OAuth state. Try connecting again.'];
+        }
+
+        // ── Step 2: Exchange code for access_token ────────────────────
+        $tokenResp = \Illuminate\Support\Facades\Http::asForm()->post(self::LI_TOKEN_URL, [
+            'grant_type'    => 'authorization_code',
+            'code'          => $code,
+            'redirect_uri'  => $this->liRedirectUri,
+            'client_id'     => $this->liClientId,
+            'client_secret' => $this->liClientSecret,
+        ]);
+
+        if ($tokenResp->failed()) {
+            $err = $tokenResp->json('error_description') ?? $tokenResp->json('error') ?? $tokenResp->body();
+            \Illuminate\Support\Facades\Log::error('SocialConnector: LinkedIn code exchange failed', ['error' => $err]);
+            return ['success' => false, 'error' => "LinkedIn code exchange failed: {$err}"];
+        }
+
+        $accessToken = $tokenResp->json('access_token');
+        $expiresIn   = (int) ($tokenResp->json('expires_in') ?? 0);
+        if (! $accessToken) {
+            return ['success' => false, 'error' => 'No access_token in LinkedIn response'];
+        }
+
+        // ── Step 3: Fetch userinfo ────────────────────────────────────
+        $userResp = \Illuminate\Support\Facades\Http::withToken($accessToken)->get(self::LI_USERINFO_URL);
+        if ($userResp->failed()) {
+            $err = $userResp->json('message') ?? $userResp->body();
+            return ['success' => false, 'error' => "Failed to fetch LinkedIn userinfo: {$err}"];
+        }
+
+        $user = $userResp->json();
+        $memberId = $user['sub'] ?? null;
+        if (! $memberId) {
+            return ['success' => false, 'error' => 'LinkedIn userinfo missing member ID (sub)'];
+        }
+
+        $accountName = $user['name'] ?? trim(($user['given_name'] ?? '') . ' ' . ($user['family_name'] ?? '')) ?: 'LinkedIn user';
+
+        // ── Step 4: Persist ───────────────────────────────────────────
+        $accounts = [[
+            'platform'      => 'linkedin',
+            'account_id'    => $memberId,
+            'account_name'  => $accountName,
+            'access_token'  => $accessToken,
+            'token_expires' => $expiresIn > 0 ? now()->addSeconds($expiresIn)->toISOString() : null,
+            'picture_url'   => $user['picture'] ?? null,
+            'email'         => $user['email'] ?? null,
+        ]];
+        $stored = $this->storeAccountTokens($accounts, $workspaceId);
+
+        \Illuminate\Support\Facades\Log::info('SocialConnector: LinkedIn OAuth callback completed', [
+            'workspace_id'    => $workspaceId,
+            'member_id'       => $memberId,
+            'accounts_stored' => $stored,
+        ]);
+
+        return [
+            'success'  => true,
+            'accounts' => $accounts,
+            'stored'   => $stored,
+        ];
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TWITTER/X OAUTH 2.0 with PKCE (Batch 17)
+    // ═══════════════════════════════════════════════════════════
+
+    /* b17-twitter-methods */
+
+    /**
+     * Build Twitter OAuth 2.0 authorization URL with PKCE.
+     *
+     * PKCE flow:
+     *   1. Generate random code_verifier (43-128 chars, [A-Za-z0-9-._~])
+     *   2. Compute code_challenge = base64url(sha256(code_verifier))
+     *   3. Send code_challenge + code_challenge_method=S256 with auth URL
+     *   4. Cache code_verifier alongside state for callback verification
+     *   5. On callback: send code_verifier to token endpoint; Twitter verifies
+     *      sha256(verifier) === stored challenge.
+     *
+     * Scopes:
+     *   - tweet.read     — read tweets (required to fetch own tweets)
+     *   - tweet.write    — post tweets on member's behalf
+     *   - users.read     — fetch authenticated user info (/users/me)
+     *   - offline.access — receive a refresh_token alongside access_token
+     */
+    public function buildTwitterAuthUrl(int $workspaceId): string
+    {
+        if (! $this->isTwitterOAuthConfigured()) {
+            throw new \RuntimeException('Twitter OAuth not configured. Set TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET, TWITTER_REDIRECT_URI in .env.');
+        }
+
+        // PKCE verifier: 64-char random URL-safe string
+        $verifier = rtrim(strtr(base64_encode(random_bytes(48)), '+/', '-_'), '=');
+        // PKCE challenge: base64url(sha256(verifier))
+        $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+
+        $nonce = \Illuminate\Support\Str::random(32);
+        $state = "{$workspaceId}_{$nonce}";
+
+        cache()->put("social_oauth_state:{$state}", [
+            'workspace_id'  => $workspaceId,
+            'platform'      => 'twitter',
+            'nonce'         => $nonce,
+            'code_verifier' => $verifier,
+            'created_at'    => now()->toISOString(),
+        ], now()->addMinutes(10));
+
+        $scopes = implode(' ', [
+            'tweet.read',
+            'tweet.write',
+            'users.read',
+            'offline.access',
+        ]);
+
+        return self::TW_AUTHORIZE_URL . '?' . http_build_query([
+            'response_type'         => 'code',
+            'client_id'             => $this->twClientId,
+            'redirect_uri'          => $this->twRedirectUri,
+            'scope'                 => $scopes,
+            'state'                 => $state,
+            'code_challenge'        => $challenge,
+            'code_challenge_method' => 'S256',
+        ]);
+    }
+
+    /**
+     * Handle Twitter OAuth 2.0 callback. PKCE verifier is retrieved from
+     * cache and sent during token exchange.
+     */
+    public function handleTwitterCallback(string $code, string $state, int $workspaceId): array
+    {
+        // ── Step 1: Verify state + retrieve code_verifier ─────────────
+        $cached = cache()->pull("social_oauth_state:{$state}");
+        if (! $cached
+            || ($cached['workspace_id'] ?? null) !== $workspaceId
+            || ($cached['platform'] ?? null) !== 'twitter'
+            || empty($cached['code_verifier'])
+        ) {
+            return ['success' => false, 'error' => 'Invalid or expired OAuth state. Try connecting again.'];
+        }
+        $verifier = $cached['code_verifier'];
+
+        // ── Step 2: Exchange code for access_token (with PKCE verifier)
+        // Twitter requires HTTP Basic auth (client_id:client_secret) for
+        // Confidential clients, even though PKCE is in use.
+        $tokenResp = \Illuminate\Support\Facades\Http::asForm()
+            ->withBasicAuth($this->twClientId, $this->twClientSecret)
+            ->post(self::TW_TOKEN_URL, [
+                'grant_type'    => 'authorization_code',
+                'code'          => $code,
+                'redirect_uri'  => $this->twRedirectUri,
+                'code_verifier' => $verifier,
+                'client_id'     => $this->twClientId,
+            ]);
+
+        if ($tokenResp->failed()) {
+            $err = $tokenResp->json('error_description')
+                ?? $tokenResp->json('error')
+                ?? $tokenResp->body();
+            \Illuminate\Support\Facades\Log::error('SocialConnector: Twitter code exchange failed', ['error' => $err]);
+            return ['success' => false, 'error' => "Twitter code exchange failed: {$err}"];
+        }
+
+        $accessToken  = $tokenResp->json('access_token');
+        $refreshToken = $tokenResp->json('refresh_token');
+        $expiresIn    = (int) ($tokenResp->json('expires_in') ?? 0);
+        if (! $accessToken) {
+            return ['success' => false, 'error' => 'No access_token in Twitter response'];
+        }
+
+        // ── Step 3: Fetch authenticated user info ─────────────────────
+        $userResp = \Illuminate\Support\Facades\Http::withToken($accessToken)
+            ->get(self::TW_USERINFO_URL, [
+                'user.fields' => 'id,name,username,profile_image_url',
+            ]);
+        if ($userResp->failed()) {
+            $err = $userResp->json('detail') ?? $userResp->body();
+            return ['success' => false, 'error' => "Failed to fetch Twitter user: {$err}"];
+        }
+
+        $userData = $userResp->json('data') ?? [];
+        $userId   = $userData['id'] ?? null;
+        if (! $userId) {
+            return ['success' => false, 'error' => 'Twitter user response missing id'];
+        }
+
+        // ── Step 4: Persist ───────────────────────────────────────────
+        $accounts = [[
+            'platform'      => 'twitter',
+            'account_id'    => (string) $userId,
+            'account_name'  => $userData['username'] ?? $userData['name'] ?? 'Twitter user',
+            'access_token'  => $accessToken,
+            'refresh_token' => $refreshToken,
+            'token_expires' => $expiresIn > 0 ? now()->addSeconds($expiresIn)->toISOString() : null,
+            'picture_url'   => $userData['profile_image_url'] ?? null,
+        ]];
+        $stored = $this->storeAccountTokens($accounts, $workspaceId);
+
+        \Illuminate\Support\Facades\Log::info('SocialConnector: Twitter OAuth callback completed', [
+            'workspace_id'    => $workspaceId,
+            'twitter_user_id' => $userId,
+            'accounts_stored' => $stored,
+        ]);
+
+        return [
+            'success'  => true,
+            'accounts' => $accounts,
+            'stored'   => $stored,
+        ];
     }
 
     // ═══════════════════════════════════════════════════════════

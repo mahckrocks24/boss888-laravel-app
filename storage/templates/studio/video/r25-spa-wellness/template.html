@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Motion Reel — Spa & Wellness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#F8F6F2;--sage:#6B8F71;--sage-l:#A8C5AD;--accent:#A87848;--primary:#C8A870;--cream:#FAF7F0;--text:#1A1208;--muted:rgba(26,18,8,.42);--fh:'Cormorant Garamond',Georgia,serif;--fb:'Jost',sans-serif;--w:1080px;--h:1920px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#EDE8DF}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:#E8E2D8}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.46);display:block;width:calc(var(--w)*.46);height:calc(var(--h)*.46)}}
+@media(max-width:780px){.sw{transform:scale(.33);display:block;width:calc(var(--w)*.33);height:calc(var(--h)*.33)}}
+@media(max-width:520px){.sw{transform:scale(.24);display:block;width:calc(var(--w)*.24);height:calc(var(--h)*.24)}}
+.reel{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--fb)}
+.layer-bg{position:absolute;inset:0;z-index:1;opacity:0;animation:fade-in 1.4s ease 0s both}
+.bg-base{position:absolute;inset:0;background:linear-gradient(160deg,#F5F2EC 0%,var(--bg) 55%,#F2EEE6 100%)}
+.bg-grain{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.06'/%3E%3C/svg%3E");background-size:300px;mix-blend-mode:multiply}
+.bg-sage{position:absolute;width:600px;height:500px;border-radius:50%;background:radial-gradient(ellipse,rgba(107,143,113,.08) 0%,transparent 70%);bottom:-80px;right:-60px;animation:float-slow 16s ease-in-out 1s infinite alternate}
+.bg-gold{position:absolute;width:500px;height:400px;border-radius:50%;background:radial-gradient(ellipse,rgba(168,120,72,.06) 0%,transparent 70%);top:-60px;left:-40px;animation:float-slow 12s ease-in-out 3s infinite alternate-reverse}
+.layer-shape{position:absolute;inset:0;z-index:2}
+.shape-top{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--sage),var(--primary),var(--sage),transparent);transform:scaleX(0);transform-origin:center;animation:scale-x 1.4s cubic-bezier(.16,1,.3,1) .2s both}
+/* Calm expanding rings */
+.calm-ring{position:absolute;border-radius:50%;border:1px solid;opacity:0;animation:calm-expand var(--dur) ease-in-out var(--d) infinite}
+.cr1{width:240px;height:240px;border-color:rgba(107,143,113,.20);top:50%;left:50%;margin:-120px 0 0 -120px;--dur:5s;--d:2.5s}
+.cr2{width:440px;height:440px;border-color:rgba(107,143,113,.12);top:50%;left:50%;margin:-220px 0 0 -220px;--dur:5s;--d:3.0s}
+.cr3{width:640px;height:640px;border-color:rgba(107,143,113,.08);top:50%;left:50%;margin:-320px 0 0 -320px;--dur:5s;--d:3.5s}
+/* Frame */
+.shape-frame{position:absolute;top:60px;left:60px;right:60px;bottom:60px;border:1px solid rgba(107,143,113,.16);opacity:0;animation:fade-in .8s ease .6s both}
+.sfc{position:absolute}
+.sfc-tl{top:-1px;left:-1px;width:20px;height:20px;border-top:1px solid var(--sage);border-left:1px solid var(--sage);opacity:0;animation:fade-in .4s ease .8s both}
+.sfc-tr{top:-1px;right:-1px;width:20px;height:20px;border-top:1px solid rgba(107,143,113,.55);border-right:1px solid rgba(107,143,113,.55);opacity:0;animation:fade-in .4s ease .9s both}
+.sfc-br{bottom:-1px;right:-1px;width:20px;height:20px;border-bottom:1px solid rgba(168,120,72,.40);border-right:1px solid rgba(168,120,72,.40);opacity:0;animation:fade-in .4s ease 1.0s both}
+.layer-brand{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:center;padding:90px 80px 0;gap:8px}
+.brand-leaf{font-size:32px;opacity:0;animation:bloom .8s ease .9s both}
+.brand-name{font-family:var(--fh);font-size:26px;font-weight:400;letter-spacing:.14em;color:var(--text);opacity:0;animation:drift-down .7s cubic-bezier(.16,1,.3,1) 1.05s both}
+.brand-sub{font-family:var(--fb);font-size:12px;font-weight:200;letter-spacing:.30em;text-transform:uppercase;color:var(--muted);opacity:0;animation:drift-down .6s cubic-bezier(.16,1,.3,1) 1.2s both}
+.layer-text{position:absolute;z-index:6;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:center;padding:560px 80px 0;text-align:center}
+.eyebrow{font-family:var(--fb);font-size:20px;font-weight:300;letter-spacing:.34em;text-transform:uppercase;color:var(--sage);display:flex;align-items:center;gap:16px;margin-bottom:36px;opacity:0;animation:fade-in .8s ease 1.4s both}
+.eyebrow::before,.eyebrow::after{content:'';width:36px;height:1px;background:var(--sage)}
+.headline{font-family:var(--fh);font-size:108px;font-weight:300;line-height:.92;color:var(--text);display:flex;flex-direction:column;align-items:center;margin-bottom:14px}
+.hl{display:block;opacity:0}
+.hl-em{font-style:italic;font-weight:300;color:var(--sage)}
+.hl-1{animation:bloom-rise .9s cubic-bezier(.16,1,.3,1) 1.9s both}
+.hl-2{animation:bloom-rise .9s cubic-bezier(.16,1,.3,1) 2.35s both}
+.hl-3{font-size:90px;animation:bloom-rise .9s cubic-bezier(.16,1,.3,1) 2.80s both}
+.ornament{display:flex;align-items:center;gap:16px;margin:22px 0;opacity:0;animation:fade-in .7s ease 3.1s both}
+.orn-line{width:56px;height:1px;background:linear-gradient(90deg,transparent,var(--sage))}
+.orn-line-r{width:56px;height:1px;background:linear-gradient(90deg,var(--accent),transparent)}
+.orn-c{font-size:18px;color:var(--accent)}
+.sage-rule{width:0;height:1px;background:linear-gradient(90deg,transparent,var(--sage),var(--primary),transparent);margin:0 auto 44px;animation:line-draw .9s cubic-bezier(.16,1,.3,1) 3.0s both}
+.subtext{font-family:var(--fb);font-size:26px;font-weight:200;line-height:1.75;color:var(--muted);max-width:820px;margin-bottom:52px;opacity:0;transform:translateY(18px);animation:fade-rise .9s cubic-bezier(.16,1,.3,1) 3.5s both}
+/* Treatment menu */
+.treatments{display:flex;flex-direction:column;gap:0;width:100%;margin-bottom:52px}
+.trt{display:flex;align-items:center;justify-content:space-between;padding:22px 0;border-bottom:1px solid rgba(107,143,113,.14);opacity:0;transform:translateY(12px);animation:fade-rise .55s cubic-bezier(.16,1,.3,1) var(--d) both}
+.trt:last-child{border-bottom:none}
+.trt-left{display:flex;align-items:center;gap:16px}
+.trt-icon{font-size:28px}
+.trt-name{font-family:var(--fh);font-size:24px;color:var(--text)}
+.trt-dur{font-family:var(--fb);font-size:13px;font-weight:200;letter-spacing:.12em;color:var(--muted)}
+.trt-price{font-family:var(--fh);font-size:22px;color:var(--accent)}
+.trt:nth-child(1){--d:4.0s}.trt:nth-child(2){--d:4.2s}.trt:nth-child(3){--d:4.4s}.trt:nth-child(4){--d:4.6s}
+.cta-wrap{opacity:0;animation:fade-rise .8s cubic-bezier(.16,1,.3,1) 5.0s both;width:100%}
+.cta{display:flex;align-items:center;justify-content:center;gap:14px;font-family:var(--fb);font-size:16px;font-weight:400;letter-spacing:.24em;text-transform:uppercase;color:var(--cream);background:var(--sage);padding:34px 80px;text-decoration:none;width:100%;animation:cta-bloom 3s ease-in-out 6s infinite}
+.cta-arrow{display:inline-block;animation:arrow-nudge 3s ease-in-out 6s infinite}
+.layer-footer{position:absolute;z-index:9;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:28px 80px 60px;border-top:1px solid rgba(107,143,113,.12);opacity:0;transform:translateY(14px);animation:fade-rise .7s ease 5.6s both}
+.footer-brand{font-family:var(--fh);font-size:18px;font-weight:400;color:var(--text)}
+.footer-url{font-family:var(--fb);font-size:14px;font-weight:200;letter-spacing:.14em;color:var(--muted)}
+.footer-handle{font-family:var(--fb);font-size:21px;font-weight:400;letter-spacing:.12em;color:var(--sage)}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes fade-rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes drift-down{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bloom{from{opacity:0;transform:scale(0) rotate(-20deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes bloom-rise{from{opacity:0;transform:translateY(32px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes scale-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes line-draw{from{width:0;opacity:0}to{width:100%;opacity:1}}
+@keyframes calm-expand{0%{opacity:0;transform:scale(.5)}30%{opacity:.7}100%{opacity:0;transform:scale(1.5)}}
+@keyframes cta-bloom{0%,100%{box-shadow:0 14px 44px rgba(107,143,113,.22)}50%{box-shadow:0 22px 64px rgba(107,143,113,.40)}}
+@keyframes arrow-nudge{0%,80%,100%{transform:translateX(0)}90%{transform:translateX(8px)}}
+@keyframes float-slow{from{transform:translate(0,0)}to{transform:translate(16px,-12px)}}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="sw"><div class="reel">
+  <div class="layer-bg"><div class="bg-base"></div><div class="bg-grain"></div><div class="bg-sage"></div><div class="bg-gold"></div></div>
+  <div class="layer-shape">
+    <div class="shape-top"></div>
+    <div class="calm-ring cr1"></div><div class="calm-ring cr2"></div><div class="calm-ring cr3"></div>
+    <div class="shape-frame"><div class="sfc sfc-tl"></div><div class="sfc sfc-tr"></div><div class="sfc sfc-br"></div></div>
+  </div>
+  <div class="layer-brand"><div class="brand-leaf">🌿</div><div class="brand-name" data-field="brand_name">{{brand_name}}</div><div class="brand-sub" data-field="brand_sub">{{brand_sub}}</div></div>
+  <div class="layer-text">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <div class="headline">
+      <span class="hl hl-1" data-field="headline_1">{{headline_1}}</span>
+      <span class="hl hl-2"><em class="hl-em" data-field="headline_accent">{{headline_accent}}</em></span>
+      <span class="hl hl-3" data-field="headline_3">{{headline_3}}</span>
+    </div>
+    <div class="ornament"><div class="orn-line"></div><div class="orn-c">✦</div><div class="orn-line-r"></div></div>
+    <div class="sage-rule"></div>
+    <p class="subtext" data-field="subheading">{{subheading}}</p>
+    <div class="treatments">
+      <div class="trt"><div class="trt-left"><span class="trt-icon">🕊️</span><div><div class="trt-name">Signature Ritual</div><div class="trt-dur">90 min · full body</div></div></div><span class="trt-price">$180</span></div>
+      <div class="trt"><div class="trt-left"><span class="trt-icon">🌿</span><div><div class="trt-name">Botanical Facial</div><div class="trt-dur">60 min · deep cleanse</div></div></div><span class="trt-price">$120</span></div>
+      <div class="trt"><div class="trt-left"><span class="trt-icon">🪨</span><div><div class="trt-name">Hot Stone Massage</div><div class="trt-dur">75 min · full body</div></div></div><span class="trt-price">$150</span></div>
+      <div class="trt"><div class="trt-left"><span class="trt-icon">☁️</span><div><div class="trt-name">Couples Retreat</div><div class="trt-dur">120 min · two guests</div></div></div><span class="trt-price">$320</span></div>
+    </div>
+    <div class="cta-wrap"><a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a></div>
+  </div>
+  <div class="layer-footer"><span class="footer-brand" data-field="footer_brand">{{footer_brand}}</span><span class="footer-url" data-field="footer_url">{{footer_url}}</span><span class="footer-handle" data-field="footer_handle">{{footer_handle}}</span></div>
+</div></div></div>
+</body></html>

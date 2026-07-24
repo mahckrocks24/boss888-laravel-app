@@ -52,6 +52,8 @@ class CrmService
      */
     public function generateOutreach(int $wsId, array $params): array
     {
+        // /* b5-crm-brand */ resolve workspace brand kit (white-label)
+        $brandKit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolveWithOverrides($wsId, $params);
         $leadId  = $params['lead_id'] ?? null;
         $stage   = $params['pipeline_stage'] ?? 'new';
         $goal    = $params['goal'] ?? 'Book a discovery call';
@@ -84,7 +86,12 @@ class CrmService
             'cta'              => $ctaText,
             'tone'             => $toneInstr,
             'avoid'            => $avoid ?: null,
-            'agent_voice'      => 'Elena — CRM and sales specialist',
+            // /* b5-crm-brand */ resolver-grounded brand voice (replaces deprecated single-persona default)
+            'brand_name'       => $brandKit['brand_name'] ?? null,
+            'brand_voice'      => $brandKit['voice'] ?? 'professional',
+            'brand_tone'       => $brandKit['tone'] ?? 'friendly',
+            'industry'         => $brandKit['industry'] ?? null,
+            'audience'         => $brandKit['target_audience'] ?? null,
         ], fn($v) => $v !== null && $v !== '');
 
         $userPrompt = "Write a personalized outreach email.\n"
@@ -148,11 +155,99 @@ class CrmService
         ]));
     }
 
+    /* b5-crm-newmethods */
+
+    /**
+     * AI reply suggestion — given an inbound message from a lead, draft a reply.
+     * Routes through runtime per hands-vs-brain rule.
+     */
+    public function aiReplySuggestion(int $wsId, array $params): array
+    {
+        $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolveWithOverrides($wsId, $params);
+        $inbound = trim((string) ($params['inbound_message'] ?? ''));
+        if ($inbound === '') {
+            return ['success' => false, 'error' => 'inbound_message is required'];
+        }
+        $leadId = $params['lead_id'] ?? null;
+        $leadCtx = '';
+        if ($leadId) {
+            $lead = DB::table('leads')->where('id', $leadId)->where('workspace_id', $wsId)->first();
+            $leadCtx = $lead ? "Lead: {$lead->name}, Status: {$lead->status}" : '';
+        }
+        $context = array_filter([
+            'brand_name'  => $kit['brand_name'] ?? null,
+            'brand_voice' => $kit['voice'] ?? 'professional',
+            'brand_tone'  => $kit['tone'] ?? 'friendly',
+            'lead_context'=> $leadCtx ?: null,
+            'goal'        => $params['goal'] ?? 'Keep the lead engaged and move toward a call',
+        ], fn($v) => $v !== null && $v !== '');
+        $userPrompt = "INBOUND MESSAGE FROM LEAD:\n{$inbound}\n\n"
+                    . "Draft a reply that matches the brand voice + tone, addresses the lead's question, "
+                    . "and moves the conversation forward. Return JSON: {\"reply\":\"...\",\"suggested_next_step\":\"...\"}";
+        $result = $this->runtime->aiRun('email_generation', $userPrompt, $context, 400);
+        $this->engineIntel->recordToolUsage('crm', 'ai_reply_suggestion', $result['success'] ? 0.85 : 0.3);
+        $parsed = $result['success'] && !empty($result['text']) ? json_decode($result['text'], true) : null;
+        if ($result['success'] && is_array($parsed)) {
+            return array_merge($parsed, ['generated' => true, 'lead_id' => $leadId]);
+        }
+        return ['success' => false, 'error' => 'reply generation failed', 'detail' => $result['error'] ?? null];
+    }
+
+    /**
+     * AI lead scoring — analyse a lead and return a recommended score + reasoning.
+     * Complements deterministic scoreLead with an AI second opinion.
+     */
+    public function aiLeadScoring(int $wsId, array $params): array
+    {
+        $leadId = (int) ($params['lead_id'] ?? 0);
+        if ($leadId <= 0) {
+            return ['success' => false, 'error' => 'lead_id is required'];
+        }
+        $lead = DB::table('leads')->where('id', $leadId)->where('workspace_id', $wsId)->first();
+        if (!$lead) {
+            return ['success' => false, 'error' => 'lead not found'];
+        }
+        $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+        $leadFacts = [
+            'name'       => $lead->name,
+            'email'      => $lead->email,
+            'company'    => $lead->company,
+            'status'     => $lead->status,
+            'source'     => $lead->source,
+            'deal_value' => $lead->deal_value,
+            'days_old'   => max(0, (int) round((time() - strtotime($lead->created_at)) / 86400)),
+        ];
+        $context = array_filter([
+            'brand_industry' => $kit['industry'] ?? null,
+            'brand_audience' => $kit['target_audience'] ?? null,
+            'lead_facts'     => json_encode($leadFacts),
+            'current_score'  => $lead->score,
+        ], fn($v) => $v !== null && $v !== '');
+        $userPrompt = "Score this lead 0-100 based on fit + intent + recency. "
+                    . "Lead facts (JSON):\n" . json_encode($leadFacts) . "\n\n"
+                    . "Return JSON: {\"recommended_score\":N,\"reasoning\":\"...\",\"key_signals\":[\"...\"]}";
+        $result = $this->runtime->aiRun('email_generation', $userPrompt, $context, 300);
+        $this->engineIntel->recordToolUsage('crm', 'ai_lead_scoring', $result['success'] ? 0.85 : 0.3);
+        $parsed = $result['success'] && !empty($result['text']) ? json_decode($result['text'], true) : null;
+        if ($result['success'] && is_array($parsed)) {
+            return [
+                'success'           => true,
+                'lead_id'           => $leadId,
+                'current_score'     => (int) $lead->score,
+                'recommended_score' => (int) ($parsed['recommended_score'] ?? $lead->score),
+                'reasoning'         => $parsed['reasoning'] ?? '',
+                'key_signals'       => $parsed['key_signals'] ?? [],
+            ];
+        }
+        return ['success' => false, 'error' => 'scoring failed', 'detail' => $result['error'] ?? null];
+    }
+
     public function createLead(int $wsId, array $data): Lead
     {
         $lead = Lead::create([
             'workspace_id' => $wsId,
-            'name' => $data['name'],
+            'name' => $data['name']
+                ?? (trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? '')) ?: ($data['email'] ?? 'New Lead')),  // 2026-07-23: runtime LLM sends first_name/last_name per params_hint, not 'name'
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'company' => $data['company'] ?? null,
@@ -177,9 +272,9 @@ class CrmService
         return $lead->fresh();
     }
 
-    public function updateLead(int $leadId, array $data, ?int $userId = null): Lead
+    public function updateLead(int $leadId, array $data, ?int $userId = null, ?int $wsId = null): Lead
     {
-        $lead = Lead::findOrFail($leadId);
+        $lead = ($wsId !== null ? Lead::where('workspace_id', $wsId) : Lead::query())->findOrFail($leadId);
         $oldStatus = $lead->status;
 
         $fillable = ['name', 'email', 'phone', 'company', 'website', 'city', 'country',
@@ -211,15 +306,15 @@ class CrmService
         return $lead->fresh();
     }
 
-    public function deleteLead(int $leadId): void
+    public function deleteLead(int $leadId, ?int $wsId = null): void
     {
-        $lead = Lead::findOrFail($leadId);
+        $lead = ($wsId !== null ? Lead::where('workspace_id', $wsId) : Lead::query())->findOrFail($leadId);
         $lead->delete(); // soft delete
     }
 
-    public function restoreLead(int $leadId): Lead
+    public function restoreLead(int $leadId, ?int $wsId = null): Lead
     {
-        $lead = Lead::withTrashed()->findOrFail($leadId);
+        $lead = Lead::withTrashed()->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->findOrFail($leadId);
         $lead->restore();
         return $lead;
     }
@@ -339,17 +434,17 @@ class CrmService
         ];
     }
 
-    public function scoreLead(int $leadId, ?int $manualScore = null): Lead
+    public function scoreLead(int $leadId, ?int $manualScore = null, ?int $wsId = null): Lead
     {
-        $lead = Lead::findOrFail($leadId);
+        $lead = ($wsId !== null ? Lead::where('workspace_id', $wsId) : Lead::query())->findOrFail($leadId);
         $score = $manualScore ?? $this->calculateScore($lead);
         $lead->update(['score' => max(0, min(100, $score))]);
         return $lead;
     }
 
-    public function assignLead(int $leadId, ?int $userId, ?int $performedBy = null): Lead
+    public function assignLead(int $leadId, ?int $userId, ?int $performedBy = null, ?int $wsId = null): Lead
     {
-        $lead = Lead::findOrFail($leadId);
+        $lead = ($wsId !== null ? Lead::where('workspace_id', $wsId) : Lead::query())->findOrFail($leadId);
         $lead->update(['assigned_to' => $userId]);
         $this->logActivityInternal($lead->workspace_id, 'Lead', $leadId, 'assigned',
             "Lead assigned to user #{$userId}", $performedBy);
@@ -434,17 +529,17 @@ class CrmService
         ]);
     }
 
-    public function updateContact(int $contactId, array $data): Contact
+    public function updateContact(int $contactId, array $data, ?int $wsId = null): Contact
     {
-        $contact = Contact::findOrFail($contactId);
+        $contact = ($wsId !== null ? Contact::where('workspace_id', $wsId) : Contact::query())->findOrFail($contactId);
         $contact->update(array_intersect_key($data,
             array_flip(['name', 'email', 'phone', 'company', 'position', 'source', 'metadata_json', 'tags_json'])));
         return $contact->fresh();
     }
 
-    public function deleteContact(int $contactId): void
+    public function deleteContact(int $contactId, ?int $wsId = null): void
     {
-        Contact::findOrFail($contactId)->delete();
+        ($wsId !== null ? Contact::where('workspace_id', $wsId) : Contact::query())->findOrFail($contactId)->delete();
     }
 
     public function getContact(int $wsId, int $contactId): array
@@ -544,17 +639,17 @@ class CrmService
         return $deal;
     }
 
-    public function updateDeal(int $dealId, array $data, ?int $userId = null): Deal
+    public function updateDeal(int $dealId, array $data, ?int $userId = null, ?int $wsId = null): Deal
     {
-        $deal = Deal::findOrFail($dealId);
+        $deal = ($wsId !== null ? Deal::where('workspace_id', $wsId) : Deal::query())->findOrFail($dealId);
         $deal->update(array_intersect_key($data,
             array_flip(['title', 'value', 'currency', 'probability', 'expected_close', 'assigned_to', 'lead_id', 'contact_id', 'metadata_json'])));
         return $deal->fresh();
     }
 
-    public function updateDealStage(int $dealId, string $newStage, ?int $userId = null): Deal
+    public function updateDealStage(int $dealId, string $newStage, ?int $userId = null, ?int $wsId = null): Deal
     {
-        $deal = Deal::findOrFail($dealId);
+        $deal = ($wsId !== null ? Deal::where('workspace_id', $wsId) : Deal::query())->findOrFail($dealId);
         $oldStage = $deal->stage;
 
         // Get stage probability
@@ -637,17 +732,17 @@ class CrmService
         ]);
     }
 
-    public function updateStage(int $stageId, array $data): void
+    public function updateStage(int $stageId, array $data, ?int $wsId = null): void
     {
-        DB::table('pipeline_stages')->where('id', $stageId)->update(array_merge(
+        DB::table('pipeline_stages')->where('id', $stageId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update(array_merge(
             array_intersect_key($data, array_flip(['name', 'color', 'position', 'default_probability', 'is_won', 'is_lost'])),
             ['updated_at' => now()]
         ));
     }
 
-    public function deleteStage(int $stageId): void
+    public function deleteStage(int $stageId, ?int $wsId = null): void
     {
-        DB::table('pipeline_stages')->where('id', $stageId)->delete();
+        DB::table('pipeline_stages')->where('id', $stageId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->delete();
     }
 
     public function reorderStages(int $wsId, array $stageIds): void
@@ -701,9 +796,9 @@ class CrmService
         ]);
     }
 
-    public function completeActivity(int $activityId): Activity
+    public function completeActivity(int $activityId, ?int $wsId = null): Activity
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = ($wsId !== null ? Activity::where('workspace_id', $wsId) : Activity::query())->findOrFail($activityId);
         $activity->update(['completed' => true, 'completed_at' => now()]);
         return $activity;
     }
@@ -787,9 +882,9 @@ class CrmService
             ->toArray();
     }
 
-    public function deleteNote(int $noteId): void
+    public function deleteNote(int $noteId, ?int $wsId = null): void
     {
-        Note::findOrFail($noteId)->delete();
+        ($wsId !== null ? Note::where('workspace_id', $wsId) : Note::query())->findOrFail($noteId)->delete();
     }
 
     // ═══════════════════════════════════════════════════════════

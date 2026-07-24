@@ -4,15 +4,25 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Core\Auth\ApiCredentialResolver;
 
 /**
  * ApiKeyAuth — workspace-scoped API key authentication for inbound integrations
- * (e.g. the LUSEO WP Connector plugin v1.0.5).
+ * (e.g. the SEO WP Connector plugin).
  *
- * Reads key from `X-API-KEY` header or `?api_key=` query param. Resolves the
- * workspace from `api_keys.workspace_id` and attaches to the request the same
- * way JwtAuthMiddleware does. Bumps `last_used_at` on every authenticated call.
+ * 2026-07-18 SECURITY REMEDIATION (INFRA888 Phase 1B)
+ * ---------------------------------------------------
+ * Resolution now delegates to ApiCredentialResolver, so this middleware and
+ * JwtAuthMiddleware can no longer disagree about what a credential means.
+ *
+ * FIXED: this middleware previously set workspace_id but NEVER set a user
+ * resolver. Downstream, $request->user() was null — so audit rows written by
+ * API-key traffic recorded user_id = NULL and TeamRoleMiddleware 401'd. The
+ * bound principal is now attached, which makes API-key actions attributable.
+ *
+ * Unchanged: when no X-API-KEY is present but a Bearer token is, the request
+ * falls through to JwtAuthMiddleware. That preserves the SPA's direct-mode
+ * contract and is not a privilege path — the JWT is validated normally.
  */
 class ApiKeyAuth
 {
@@ -20,43 +30,32 @@ class ApiKeyAuth
     {
         $key = $request->header('X-API-KEY') ?? $request->query('api_key');
 
-        // No X-API-KEY? Fall through to JWT Bearer — JwtAuthMiddleware already
-        // accepts BOTH Bearer JWT AND X-API-KEY (per 2026-05-11 patch), so
-        // this preserves the WP plugin's X-API-KEY contract while restoring
-        // the SPA's direct-mode Bearer-JWT contract that was rotted when this
-        // middleware was tightened. Same workspace_id attribute is set either
-        // way, so downstream route handlers see no difference.
         if (! $key) {
             if ($request->bearerToken()) {
-                return app(\App\Http\Middleware\JwtAuthMiddleware::class)->handle($request, $next);
+                return app(JwtAuthMiddleware::class)->handle($request, $next);
             }
+
             return response()->json(['error' => 'api_key_required'], 401);
         }
 
-        $record = DB::table('api_keys')
-            ->where('key', $key)
-            ->where('is_active', true)
-            ->first();
+        $resolver = app(ApiCredentialResolver::class);
+        $resolved = $resolver->resolve($key);
 
-        if (! $record) {
-            return response()->json(['error' => 'invalid_api_key'], 403);
+        if ($resolved['denied']) {
+            return response()->json([
+                'error' => $resolved['message'],
+                'code'  => $resolved['code'],
+            ], 403);
         }
 
-        if ($record->expires_at && now()->isAfter($record->expires_at)) {
-            return response()->json(['error' => 'api_key_expired'], 403);
-        }
+        $user = $resolved['user'];
+        $request->setUserResolver(fn () => $user);
+        $request->attributes->set('workspace_id', $resolved['workspace_id']);
+        $request->attributes->set('api_key_id', $resolved['api_key_id']);
+        $request->attributes->set('workspace_role', $resolved['role']);
+        $request->attributes->set('auth_via', 'api_key');
 
-        // Attach workspace_id (same contract as JwtAuthMiddleware so downstream
-        // queries that read $request->attributes->get('workspace_id') work).
-        $request->attributes->set('workspace_id', $record->workspace_id);
-        $request->attributes->set('api_key_id', $record->id);
-
-        // Bump last_used_at (fire-and-forget — failure here must not block the request)
-        try {
-            DB::table('api_keys')->where('id', $record->id)->update(['last_used_at' => now()]);
-        } catch (\Throwable $e) {
-            // swallow — observability handled elsewhere
-        }
+        $resolver->touch($resolved['api_key_id']);
 
         return $next($request);
     }

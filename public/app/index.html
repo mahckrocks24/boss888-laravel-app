@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- M1 mobile foundation: tokens + dvh + safe-area + z-index system --><html lang="en"><head>
+<!-- M1 mobile foundation: tokens + dvh + safe-area + z-index system --><html lang="en"><head><script>/*MW1A-GATE*/(function(){try{var P=["levelupgrowth.io","www.levelupgrowth.io"];var LAUNCHED=false;if(!LAUNCHED&&P.indexOf(location.hostname)!==-1){location.replace("/");}}catch(e){}})();</script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
 // LGSC global fetch + XHR interceptor — MUST be first script in <head>.
@@ -183,6 +183,15 @@ textarea,input{font-family:var(--fb);outline:none}
 .nav-item .ni{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:currentColor}
 .nav-item .ni svg{width:18px;height:18px;display:block}
 .nav-section{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:1px;padding:12px 16px 4px;margin-top:4px}
+/* 2026-05-28 — Basic / Advanced visibility mode.
+   Basic shows only the 8 essential nav items; everything else hides via this single :not() rule.
+   Section headers also hide in Basic so the list reads as a flat column. */
+body.lu-mode-basic .sb-nav .nav-section{display:none}
+body.lu-mode-basic .sb-nav .nav-item:not(#ni-workspace):not(#ni-agents):not(#ni-command):not(#ni-crm):not(#ni-calendar):not(#ni-billing):not(#ni-settings):not(#ni-reports){display:none !important}
+#sb-mode-toggle{margin:8px 10px 4px;padding:3px;background:var(--s3);border-radius:6px;display:flex;gap:2px}
+#sb-mode-toggle .lu-mode-btn{flex:1;padding:5px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--t2);transition:background .15s,color .15s}
+#sb-mode-toggle .lu-mode-btn.active{background:var(--p);color:#fff}
+#sb-mode-toggle .lu-mode-btn:hover:not(.active){color:var(--t1);background:var(--s2)}
 .sb-bottom{padding:12px 8px;border-top:1px solid var(--bd)}
 .sb-status{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:11px;color:var(--t3)}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s infinite;flex-shrink:0}
@@ -388,6 +397,9 @@ textarea,input{font-family:var(--fb);outline:none}
 @keyframes lu-line-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-22}}
 @keyframes lu-approval-blink{0%,100%{border-color:var(--rd,#f87171);box-shadow:0 0 0 1px var(--rd,#f87171),0 0 14px rgba(248,113,113,.55),0 2px 12px rgba(0,0,0,.35)}50%{border-color:var(--rd,#f87171);box-shadow:0 0 0 2px var(--rd,#f87171),0 0 28px rgba(248,113,113,.85),0 2px 12px rgba(0,0,0,.35)}}
 .canvas-line.active{animation:lu-line-flow 1.1s linear infinite}
+/* 2026-05-26 — new chain detected: 3s flash on top of normal animation. Pulses stroke-width + opacity so the user catches the moment work was assigned. */
+@keyframes lu-line-pulse{0%,100%{opacity:1;stroke-width:2.5}50%{opacity:0.5;stroke-width:5}}
+.canvas-line.flash{animation:lu-line-flow 0.4s linear infinite,lu-line-pulse 0.6s ease-in-out infinite}
 .task-node.awaiting-approval{border-color:var(--rd,#f87171) !important;animation:lu-approval-blink 1.4s ease-in-out infinite}
 
 
@@ -2260,8 +2272,192 @@ html.lgsc-embed-mode #view-seo > #seo-root {
 @media (max-width:1100px){#cmd-kpis{grid-template-columns:repeat(2,1fr)}#cmd-row2{grid-template-columns:1fr}.cmd-agents-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:720px){#cmd-kpis{grid-template-columns:1fr}.cmd-agents-grid{grid-template-columns:1fr}}
 </style>
+<script>
+/* 2026-05-28 — Apply Basic / Advanced visibility mode BEFORE the sidebar
+   renders, so the visitor never sees a flash of the full Advanced nav.
+   Default for everyone is Basic; explicit 'advanced' from localStorage
+   keeps the user on Advanced if they previously toggled to it. */
+(function () {
+  try {
+    var saved = localStorage.getItem('lu_visibility_mode');
+    if (saved !== 'advanced') {
+      document.documentElement.classList.add('lu-mode-basic-preload');
+    }
+  } catch (e) {}
+})();
+</script>
+<style>
+/* Mirror of the body.lu-mode-basic rules on <html>, so the class set
+   pre-body-paint hides nav-items too. After DOM ready, _lgsc_set_visibility_mode
+   moves the class to <body> and drops the preload class. */
+html.lu-mode-basic-preload .sb-nav .nav-section{display:none}
+html.lu-mode-basic-preload .sb-nav .nav-item:not(#ni-workspace):not(#ni-agents):not(#ni-command):not(#ni-crm):not(#ni-calendar):not(#ni-billing):not(#ni-settings):not(#ni-reports){display:none !important}
+</style>
 </head>
 <body>
+<script>
+/* 2026-05-28 — Visibility mode toggle. Inline (not in core.js) so it's
+   available the instant the toggle buttons render. Also handles initial
+   class-application on DOMContentLoaded to move the preload class from
+   <html> to <body>. */
+/* Tracks whether the visibility mode was changed by user action in this
+   tab. Used by the post-boot server-reconciliation step so a click in this
+   tab isn't overwritten by a stale server value. */
+window._lgsc_mode_user_changed = false;
+
+window._lgsc_set_visibility_mode = function (mode, opts) {
+  mode = (mode === 'advanced') ? 'advanced' : 'basic';
+  opts = opts || {};
+  try { localStorage.setItem('lu_visibility_mode', mode); } catch (e) {}
+  document.documentElement.classList.remove('lu-mode-basic-preload');
+  if (mode === 'basic') document.body.classList.add('lu-mode-basic');
+  else                  document.body.classList.remove('lu-mode-basic');
+  var btns = document.querySelectorAll('#sb-mode-toggle .lu-mode-btn');
+  for (var i = 0; i < btns.length; i++) {
+    var b = btns[i];
+    var on = b.getAttribute('data-mode') === mode;
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    if (on) b.classList.add('active'); else b.classList.remove('active');
+  }
+  try { window.dispatchEvent(new CustomEvent('lu:visibility-mode', { detail: { mode: mode } })); } catch (e) {}
+
+  /* 2026-05-28 — Cross-device sync. Push the choice to the server so the
+     same user lands in the same mode on every browser they sign into.
+     fire-and-forget. opts.skipServer skips this (used by the boot-time
+     reconciliation step so we don't write right back what we just read). */
+  if (! opts.skipServer) {
+    window._lgsc_mode_user_changed = true;
+    try {
+      var token = localStorage.getItem('lu_access_token') || localStorage.getItem('lu_jwt') || localStorage.getItem('token');
+      if (token && typeof fetch === 'function') {
+        fetch('/api/user/preferences', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ visibility_mode: mode }),
+          credentials: 'omit'
+        }).catch(function () { /* network errors are fine — localStorage keeps the value */ });
+      }
+    } catch (e) {}
+  }
+};
+
+/* 2026-05-28 — Cross-device sync read side. After core.js boots and the
+   user is authenticated, hit /api/auth/me directly to read server-side
+   preferences. If the server has a different visibility_mode AND the user
+   hasn't toggled in this session, apply the server value silently (no PUT
+   back, no jarring flash since the body class is already correct in 95%
+   of cases). Failure is silent — localStorage continues to be the source
+   of truth. */
+window._lgsc_reconcile_visibility_from_server = function () {
+  try {
+    var token = localStorage.getItem('lu_access_token') || localStorage.getItem('lu_jwt') || localStorage.getItem('token');
+    if (! token || typeof fetch !== 'function') return;
+    fetch('/api/auth/me', {
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+      credentials: 'omit'
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (! d || ! d.preferences) return;
+      var serverMode = d.preferences.visibility_mode;
+      if (serverMode !== 'basic' && serverMode !== 'advanced') return;
+      if (window._lgsc_mode_user_changed) return;
+      var localMode;
+      try { localMode = localStorage.getItem('lu_visibility_mode'); } catch (e) {}
+      if (serverMode !== localMode) {
+        window._lgsc_set_visibility_mode(serverMode, { skipServer: true });
+      }
+    }).catch(function () { /* silent */ });
+  } catch (e) {}
+};
+document.addEventListener('DOMContentLoaded', function () {
+  var saved;
+  try { saved = localStorage.getItem('lu_visibility_mode'); } catch (e) {}
+  /* Suppress server-write on the boot-time apply — we haven't actually
+     chosen anything yet, we're just rendering the saved/default value. */
+  window._lgsc_set_visibility_mode(saved === 'advanced' ? 'advanced' : 'basic', { skipServer: true });
+  /* Reset the "user changed" flag because boot-time apply is not a user
+     action — needed so the server reconciliation will actually run. */
+  window._lgsc_mode_user_changed = false;
+  /* Reconcile from server a moment after boot — gives core.js a chance to
+     populate the JWT in localStorage before we read it. */
+  setTimeout(function () { window._lgsc_reconcile_visibility_from_server(); }, 800);
+
+  /* 2026-05-28 — Deep-link guard. If a Basic user navigates to a hidden
+     engine (notification click, history nav, agent-recommended link, etc.),
+     intercept the nav() call and surface a modal that explains the section
+     is Advanced-only and offers to switch. The user keeps control: Cancel
+     stays on Basic, Switch & open auto-promotes to Advanced and continues
+     to the requested view. */
+  // 2026-07-23 FIX — 'blog' and 'write' were missing, so nav('blog')/nav('write')
+  // were swallowed by the mode-switch guard below: the engine bundle never loaded
+  // and the Publish button had no handler at all. Publishing an article is core
+  // product function, not an Advanced-only tool. Revert = remove the two entries.
+  var BASIC_VISIBLE = ['workspace','agents','command','crm','calendar','billing','settings','reports','blog','write'];
+  var _origNav = window.nav;
+  if (typeof _origNav === 'function') {
+    window.nav = function (view) {
+      var mode;
+      try { mode = localStorage.getItem('lu_visibility_mode'); } catch (e) {}
+      mode = (mode === 'advanced') ? 'advanced' : 'basic';
+      if (mode === 'basic' && view && BASIC_VISIBLE.indexOf(view) === -1) {
+        var origArgs = arguments;
+        window._lgsc_show_mode_switch_modal(view, function () {
+          window._lgsc_set_visibility_mode('advanced');
+          _origNav.apply(window, origArgs);
+        });
+        return;
+      }
+      return _origNav.apply(window, arguments);
+    };
+  }
+});
+
+window._lgsc_show_mode_switch_modal = function (view, onSwitch) {
+  /* Idempotent — remove any existing instance first. */
+  var existing = document.getElementById('lu-mode-switch-modal');
+  if (existing) existing.remove();
+
+  var labels = {
+    meeting: 'Strategy Room', projects: 'Projects', approvals: 'Review Queue',
+    seo: 'SEO', write: 'Write', creative: 'Creative', marketing: 'Marketing',
+    social: 'Social', studio: 'Studio', chatbot: 'Chatbot', automation: 'Automation',
+    blog: 'Blog', messages: 'Messages', builder: 'Landing Pages', websites: 'Websites',
+    wizard: 'Website Wizard'
+  };
+  var nice = labels[view] || (view ? view.charAt(0).toUpperCase() + view.slice(1) : 'this tool');
+
+  var modal = document.createElement('div');
+  modal.id = 'lu-mode-switch-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+  modal.innerHTML =
+    '<div style="background:var(--s1,#15151A);color:var(--t1,#fff);border:1px solid var(--bd,#2a2a33);border-radius:12px;max-width:420px;width:100%;padding:24px;box-shadow:0 16px 48px rgba(0,0,0,.55)">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--p,#6C5CE7);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Advanced tool</div>'
+    + '<h2 style="font-size:18px;font-weight:700;margin:0 0 10px;color:var(--t1,#fff)">' + nice + ' lives in Advanced mode</h2>'
+    + '<p style="font-size:13px;line-height:1.5;color:var(--t2,#9aa0aa);margin:0 0 18px">Switch to Advanced to open it. You can flip back to Basic anytime from the sidebar toggle.</p>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +   '<button id="lu-mode-modal-cancel" style="background:transparent;border:1px solid var(--bd,#2a2a33);color:var(--t2,#9aa0aa);padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Stay in Basic</button>'
+    +   '<button id="lu-mode-modal-switch" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Switch & open</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(modal);
+
+  var close = function () { modal.remove(); };
+  document.getElementById('lu-mode-modal-cancel').addEventListener('click', close);
+  document.getElementById('lu-mode-modal-switch').addEventListener('click', function () {
+    close();
+    if (typeof onSwitch === 'function') onSwitch();
+  });
+  /* Esc to cancel. */
+  var onKey = function (e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+  };
+  document.addEventListener('keydown', onKey);
+};
+</script>
 <div class="app">
 <!-- ── M2: Mobile overlay + top bar (1023px and below) ── -->
 <div class="lu-mob-overlay" id="lu-mob-overlay" onclick="luToggleSidebar()"></div>
@@ -2459,31 +2655,37 @@ window.luSwipeToClose = luSwipeToClose;
         <div id="sb-credit-sub" style="font-size:10px;color:var(--t3);margin-top:3px">of — monthly limit</div>
 
     </div>
+    <!-- 2026-05-28 — Basic / Advanced visibility mode toggle. Default = Basic for everyone.
+         Hides all engines + tools that aren't in the essential 8-item list. AI Agent Chat
+         and Aira chat bubbles stay visible in both modes. -->
+    <div id="sb-mode-toggle" role="radiogroup" aria-label="View mode" title="Basic shows the essentials. Switch to Advanced to see every engine and tool.">
+      <button type="button" data-mode="basic"    role="radio" aria-checked="true"  class="lu-mode-btn active" onclick="_lgsc_set_visibility_mode('basic')">Basic</button>
+      <button type="button" data-mode="advanced" role="radio" aria-checked="false" class="lu-mode-btn"        onclick="_lgsc_set_visibility_mode('advanced')">Advanced</button>
+    </div>
     <div class="sb-nav">
+      <!-- /* b24-sidebar-reorganized */ -->
       <div class="nav-section">Workspace</div>
       <div class="nav-item active" onclick="nav('workspace')" id="ni-workspace"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Workspace</div>
       <div class="nav-item" onclick="nav('meeting')" id="ni-meeting" data-feature="meeting_room"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a6 6 0 016 6c0 2.5-1.5 4.7-3.7 5.7L12 17H8l-.3-3.3C5.5 12.7 4 10.5 4 8a6 6 0 016-6z"/><path d="M8 17h4M9 19h2"/></svg></span>Strategy Room</div>
       <div class="nav-item" onclick="nav('projects')" id="ni-projects"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg></span>Projects</div>
-      <div class="nav-section">Team</div>
-      <div class="nav-item" onclick="nav('agents')" id="ni-agents" data-feature="ai_agents"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3"/><path d="M4 18c0-3.314 2.686-6 6-6s6 2.686 6 6"/><circle cx="15.5" cy="6" r="2"/><path d="M17.5 12c1 .5 1.5 1.5 1.5 2.5"/></svg></span>Agents</div>
-      <div class="nav-section">Data</div>
       <div class="nav-item" onclick="nav('command')" id="ni-command" data-feature="ai_agents"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Command Center<span id="cmd-nav-badge-approvals" class="cmd-nav-badge">0</span></div>
       <div class="nav-item" onclick="nav('approvals')" id="ni-approvals"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12M4 10h12M4 15h8"/><path d="M16 13l2 2 3-3" transform="translate(-5 0)"/><circle cx="16" cy="15" r="1.5"/></svg></span>Review Queue<span id="nav-approval-badge" class="cmd-nav-badge">0</span></div>
-      <!-- REMOVED: Campaigns (ni-campaigns) — v5.5.2 — duplicate of Marketing engine's Campaigns tab (same /marketing/campaigns data, Marketing tab has richer UI). Router redirects nav('campaigns') → nav('marketing'). -->
-      <div class="nav-item" onclick="nav('reports')" id="ni-reports"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h8l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M12 2v4h4"/><path d="M6 10h8M6 13h5"/></svg></span>Reports &amp; History</div>
-      <!-- Tool Registry removed from app sidebar 2026-04-21 — admin-only feature, accessed via /admin/ panel -->
-            <div class="nav-item" onclick="nav('billing')" id="ni-billing"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16M5 13h3"/></svg></span>Billing</div>
-      <div class="nav-item" onclick="nav('settings')" id="ni-settings"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg></span>Settings</div>
-
-      <div class="nav-section">Engines</div>
+      <div class="nav-item" onclick="nav('queue')" id="ni-queue" data-admin-only="true" style="display:none"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/><circle cx="16" cy="14" r="2.5"/><path d="M15 13.5l1 1 2-2"/></svg></span>Worker Queue</div>
+      <!-- /* b24b-more-moves */ -->
+      <div class="nav-section">Team</div>
+      <div class="nav-item" onclick="nav('agents')" id="ni-agents" data-feature="ai_agents"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3"/><path d="M4 18c0-3.314 2.686-6 6-6s6 2.686 6 6"/><circle cx="15.5" cy="6" r="2"/><path d="M17.5 12c1 .5 1.5 1.5 1.5 2.5"/></svg></span>Agents</div>
+            <div class="nav-item" onclick="nav('messages')" id="ni-messages"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5H2v9a1 1 0 001 1h12l3 2V5z"/><path d="M6 9h8M6 11.5h5"/></svg></span>Messages</div>
+      <div class="nav-section">Publishing</div>
+      <div class="nav-item" onclick="_bldShowTemplatePicker()" id="ni-wizard"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 3c-2 2-3 4.5-3 7s1 5 3 7M10 3c2 2 3 4.5 3 7s-1 5-3 7"/><path d="M3 10h14"/></svg></span>Website Wizard</div>
+      <div class="nav-item" onclick="nav('builder')" id="ni-builder"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="16" height="16" rx="2"/><path d="M2 7h16"/><path d="M5 4.5h.01M7.5 4.5h.01M10 4.5h.01"/><path d="M5 11h10M5 14h7"/></svg></span>Landing Pages</div>
+      <div class="nav-item" onclick="nav('websites')" id="ni-websites"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16M7 3v4M13 3v4"/></svg></span>Websites</div>
+      <!-- REMOVED: Pending Actions (ni-governance) — v5.5.2 — duplicated Review Queue (same approvals data via /api/governance/pending alias). Router redirects nav('governance') → nav('approvals'). View panel kept for back-compat deep-links. -->
+      <!-- REMOVED: Review Queue (ni-previews) — v5.5.2 — legacy "Action Previews" (Phase 6.5) reading /api/previews which references non-existent `previews` table. Canonical Review Queue is ni-approvals → /api/approvals. Router redirects nav('previews') → nav('approvals'). -->
+    <div class="nav-section">Engines</div>
             <div class="nav-item" onclick="nav('crm')" id="ni-crm">
         <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6" r="3"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7"/></svg></span>CRM</div>
             <div class="nav-item" onclick="nav('seo')" id="ni-seo" data-feature="seo_suite">
         <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5.5"/><path d="M17 17l-3.5-3.5"/><path d="M7 9h4M9 7v4"/></svg></span>SEO</div>
-            <div class="nav-item" onclick="nav('marketing')" id="ni-marketing" data-feature="marketing">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 4l-8 4-7-2v8l7 2 8-4V4z"/><path d="M10 8v8"/></svg></span>Marketing</div>
-            <div class="nav-item" onclick="nav('social')" id="ni-social" data-feature="social">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="5" r="2"/><circle cx="5" cy="10" r="2"/><circle cx="15" cy="15" r="2"/><path d="M7 9l6-3M7 11l6 3"/></svg></span>Social</div>
             <div class="nav-item" onclick="nav('write')" id="ni-write" data-feature="content_writing">
         <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l4 4-9 9H4v-4L13 3z"/><path d="M11 5l4 4"/></svg></span>Write</div>
             <div class="nav-item" onclick="nav('studio')" id="ni-studio">
@@ -2494,18 +2696,24 @@ window.luSwipeToClose = luSwipeToClose;
             <div class="nav-item" onclick="nav('pipeline')" id="ni-pipeline" style="display:none !important" data-removed="2026-05-12-moved-to-seo-tab"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14M3 10h14M3 15h9"/><circle cx="16" cy="15" r="2"/></svg></span>Pipeline</div>
             <div class="nav-item" onclick="nav('calendar')" id="ni-calendar">
         <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="14" rx="2"/><path d="M2 9h16M6 2v4M14 2v4"/></svg></span>Calendar</div>
-            <div class="nav-item" onclick="nav('automation')" id="ni-automation" data-feature="automation">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L6 11h6l-1 7 7-9h-6l1-7z"/></svg></span>Automation<span class="aq-coming-soon" style="font-size:9px;background:rgba(245,158,11,.15);color:var(--am);padding:1px 6px;border-radius:8px;margin-left:auto;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Soon</span></div>
+            
             <div class="nav-item" onclick="nav('blog')" id="ni-blog" data-feature="content_writing"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h12a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M6 7h8M6 10h8M6 13h5"/></svg></span>Blog</div>
-            <div class="nav-item" onclick="nav('messages')" id="ni-messages"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5H2v9a1 1 0 001 1h12l3 2V5z"/><path d="M6 9h8M6 11.5h5"/></svg></span>Messages</div>
-            <div class="nav-item" onclick="nav('queue')" id="ni-queue" data-admin-only="true" style="display:none"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/><circle cx="16" cy="14" r="2.5"/><path d="M15 13.5l1 1 2-2"/></svg></span>Worker Queue</div>
-      <div class="nav-section">Publishing</div>
-      <div class="nav-item" onclick="_bldShowTemplatePicker()" id="ni-wizard"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 3c-2 2-3 4.5-3 7s1 5 3 7M10 3c2 2 3 4.5 3 7s-1 5-3 7"/><path d="M3 10h14"/></svg></span>Website Wizard</div>
-      <div class="nav-item" onclick="nav('builder')" id="ni-builder"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="16" height="16" rx="2"/><path d="M2 7h16"/><path d="M5 4.5h.01M7.5 4.5h.01M10 4.5h.01"/><path d="M5 11h10M5 14h7"/></svg></span>Landing Pages</div>
-      <div class="nav-item" onclick="nav('websites')" id="ni-websites"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16M7 3v4M13 3v4"/></svg></span>Websites</div>
-      <!-- REMOVED: Pending Actions (ni-governance) — v5.5.2 — duplicated Review Queue (same approvals data via /api/governance/pending alias). Router redirects nav('governance') → nav('approvals'). View panel kept for back-compat deep-links. -->
-      <!-- REMOVED: Review Queue (ni-previews) — v5.5.2 — legacy "Action Previews" (Phase 6.5) reading /api/previews which references non-existent `previews` table. Canonical Review Queue is ni-approvals → /api/approvals. Router redirects nav('previews') → nav('approvals'). -->
-    </div>
+            
+            
+      <div class="nav-section">Hosting</div>
+      <div class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Websites</div>
+      <div class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('domains'):nav('infrastructure'))" id="ni-infra-domains" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c1.9 2 3 4.7 3 7.5s-1.1 5.5-3 7.5c-1.9-2-3-4.7-3-7.5s1.1-5.5 3-7.5z"/></svg></span>Domains</div>
+      <div class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('email'):nav('infrastructure'))" id="ni-infra-email" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5 7-5"/></svg></span>Email Accounts</div>
+      <div class="nav-section">Data</div>
+      
+      
+      <!-- REMOVED: Campaigns (ni-campaigns) — v5.5.2 — duplicate of Marketing engine's Campaigns tab (same /marketing/campaigns data, Marketing tab has richer UI). Router redirects nav('campaigns') → nav('marketing'). -->
+      <div class="nav-item" onclick="nav('reports')" id="ni-reports"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h8l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M12 2v4h4"/><path d="M6 10h8M6 13h5"/></svg></span>Reports &amp; History</div>
+      <!-- Tool Registry removed from app sidebar 2026-04-21 — admin-only feature, accessed via /admin/ panel -->
+            <div class="nav-item" onclick="nav('billing')" id="ni-billing"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16M5 13h3"/></svg></span>Billing</div>
+      <div class="nav-item" onclick="nav('settings')" id="ni-settings"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg></span>Settings</div>
+
+      </div>
     <div class="sb-bottom">
       <!-- Phase 4: Credit + plan widget -->
       
@@ -2519,356 +2727,7 @@ window.luSwipeToClose = luSwipeToClose;
   <div class="main">
 
     <!-- ── WORKSPACE ── -->
-    <div id="view-workspace" class="view active" style="position:relative;overflow:auto;background:#0D0D0F">
-      <svg class="canvas-svg" id="canvas-svg"></svg>
-      <!-- Zone overlays -->
-      <div id="zone-leadership" class="zone-overlay" style="background:rgba(108,92,231,.03);border:1px dashed rgba(108,92,231,.08)"></div>
-      <div id="zone-strategy"   class="zone-overlay" style="background:rgba(59,139,245,.025);border:1px dashed rgba(59,139,245,.07)"></div>
-      <div id="zone-execution"  class="zone-overlay" style="background:rgba(0,229,168,.02);border:1px dashed rgba(0,229,168,.07)"></div>
-      <div id="zone-lbl-leadership" class="zone-label" style="color:var(--pu)">Leadership</div>
-      <div id="zone-lbl-strategy"   class="zone-label" style="color:var(--bl)">Strategy</div>
-      <div id="zone-lbl-execution"  class="zone-label" style="color:var(--ac)">Execution</div>
-      <!-- Drag select box -->
-      <div class="drag-select-box" id="drag-select-box"></div>
-      <div class="canvas-agents" id="canvas-agents">
-        <!-- Agent nodes loaded dynamically from GET /api/agents -->
-        <div id="canvas-agents-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--t3);font-size:13px">Loading agents...</div>
-      </div>
-      <script>
-      // Dynamic workspace agent loader — replaces 6 hardcoded nodes with all DB agents
-      (function(){
-        var _lastAgentLoad = 0; // debounce timestamp (3s window). Loader stays idempotent — empty/401 reset this to 0 so the next nav retries.
-        var CATS={
-          dmm:{emoji:'👩‍💼',color:'#6C5CE7',zone:'leadership'},
-          sarah:{emoji:'👩‍💼',color:'#6C5CE7',zone:'leadership'},
-          seo:{emoji:'📊',color:'#3B8BF5',zone:'strategy'},
-          content:{emoji:'✍️',color:'#A78BFA',zone:'strategy'},
-          social:{emoji:'📱',color:'#F59E0B',zone:'strategy'},
-          crm:{emoji:'🎯',color:'#F87171',zone:'execution'},
-          technical:{emoji:'⚙️',color:'#00E5A8',zone:'execution'},
-          analytics:{emoji:'📈',color:'#3B8BF5',zone:'strategy'},
-          email:{emoji:'📧',color:'#EC4899',zone:'execution'},
-          paid:{emoji:'💰',color:'#F97316',zone:'execution'},
-          design:{emoji:'🎨',color:'#8B5CF6',zone:'strategy'},
-          video:{emoji:'🎬',color:'#06B6D4',zone:'execution'},
-          automation:{emoji:'⚡',color:'#10B981',zone:'execution'},
-          research:{emoji:'🔍',color:'#6366F1',zone:'strategy'},
-          pr:{emoji:'📣',color:'#EC4899',zone:'strategy'},
-          local:{emoji:'📍',color:'#14B8A6',zone:'execution'},
-          link:{emoji:'🔗',color:'#8B5CF6',zone:'execution'},
-          conversion:{emoji:'🎯',color:'#EF4444',zone:'execution'},
-          community:{emoji:'👥',color:'#F59E0B',zone:'strategy'},
-        };
-        function inferCat(slug,title){
-          if(slug==='sarah'||slug==='dmm')return 'dmm';
-          var t=(title||'').toLowerCase();
-          if(t.includes('seo')&&!t.includes('local')&&!t.includes('link'))return 'seo';
-          if(t.includes('local'))return 'local';
-          if(t.includes('link'))return 'link';
-          if(t.includes('content')||t.includes('writer')||t.includes('copy'))return 'content';
-          if(t.includes('social')||t.includes('community'))return 'social';
-          if(t.includes('crm')||t.includes('lead'))return 'crm';
-          if(t.includes('technical')||t.includes('engineer'))return 'technical';
-          if(t.includes('analytics')||t.includes('data'))return 'analytics';
-          if(t.includes('email')||t.includes('marketing auto'))return 'email';
-          if(t.includes('paid')||t.includes('ppc')||t.includes('ads'))return 'paid';
-          if(t.includes('design')||t.includes('creative'))return 'design';
-          if(t.includes('video'))return 'video';
-          if(t.includes('conversion')||t.includes('cro'))return 'conversion';
-          if(t.includes('pr')||t.includes('public'))return 'pr';
-          return 'technical';
-        }
-        window._loadWorkspaceAgents=async function(){
-          var now = Date.now();
-          if (now - _lastAgentLoad < 3000) return;  // debounce 3s
-          _lastAgentLoad = now;
-          var el=document.getElementById('canvas-agents');
-          if(!el){ _lastAgentLoad=0; return; }
-          try{
-            var t=localStorage.getItem('lu_token')||'';
-            var r=await fetch('/api/agents',{headers:{
-              'Authorization':'Bearer '+t,
-              'Accept':'application/json',
-              'X-Workspace-Id':localStorage.getItem('lu_workspace_id')||''
-            }});
-            if (r.status === 401) { console.warn('[workspace] agent load 401 — token may be stale'); _lastAgentLoad=0; return; }
-            if (!r.ok) { console.warn('[workspace] agent load failed:', r.status); _lastAgentLoad=0; return; }
-            var d=await r.json();
-            var agents=d.agents||d.data||[];
-            if(!Array.isArray(agents)||agents.length===0){ console.warn('[workspace] agent load returned empty:', d); _lastAgentLoad=0; return; }
-            // Remove loading indicator
-            var ld=document.getElementById('canvas-agents-loading');
-            if(ld)ld.remove();
-            // Grid layout: 4 columns, auto rows
-            // ── Radial layout: Sarah at center, agents in rings ──
-            var cardW=160, cardH=140;
-            var centerX=1500, centerY=1000;
-            // Group by zone for ring ordering
-            var zones={leadership:[],strategy:[],execution:[]};
-            agents.forEach(function(a){
-              var cat=inferCat(a.slug||'',a.title||'');
-              var info=CATS[cat]||CATS.technical;
-              var zone=info.zone||'execution';
-              zones[zone].push({agent:a,cat:cat,info:info});
-            });
-            var nodePos_dyn={};
-            // Sarah (leadership) goes dead center
-            var sarahItem=zones.leadership[0]||null;
-            // Everyone else in rings: inner ring (strategy), outer ring (execution)
-            var innerRing=zones.strategy;
-            var outerRing=zones.execution;
-            var allGrouped=[];
-            if(sarahItem) allGrouped.push(sarahItem);
-            allGrouped=allGrouped.concat(innerRing,outerRing);
-            var innerRadius=280, outerRadius=520;
-            var sarahIdx=0;
-            allGrouped.forEach(function(item,i){
-              var x,y;
-              if(i===0&&sarahItem){
-                // Sarah at exact center
-                x=centerX-cardW/2;
-                y=centerY-cardH/2;
-              } else if(i<=innerRing.length){
-                // Inner ring (strategy agents)
-                var ringIdx=i-1;
-                var angle=(ringIdx/innerRing.length)*2*Math.PI - Math.PI/2;
-                x=centerX+innerRadius*Math.cos(angle)-cardW/2;
-                y=centerY+innerRadius*Math.sin(angle)-cardH/2;
-              } else {
-                // Outer ring (execution agents)
-                var ringIdx=i-1-innerRing.length;
-                var angle=(ringIdx/outerRing.length)*2*Math.PI - Math.PI/2;
-                x=centerX+outerRadius*Math.cos(angle)-cardW/2;
-                y=centerY+outerRadius*Math.sin(angle)-cardH/2;
-              }
-              x=Math.round(x); y=Math.round(y);
-              var a=item.agent, info=item.info;
-              var slug=a.slug||'agent_'+a.id;
-              // Sarah uses 'dmm' as slug in the UI
-              var uiSlug=slug==='sarah'?'dmm':slug;
-              nodePos_dyn[uiSlug]={x:x,y:y};
-              // Register in global AGENTS map
-              if(window.AGENTS&&!window.AGENTS[uiSlug]){
-                window.AGENTS[uiSlug]={name:a.name,role:a.title||'Specialist',emoji:info.emoji,color:info.color,expertise:[],skills:(function(){try{return JSON.parse(a.skills_json||'[]')}catch(e){return []}})(),capabilities:(function(){try{return JSON.parse(a.capabilities_json||'[]')}catch(e){return []}})()};
-              }
-              var node=document.createElement('div');
-              node.className='agent-node';
-              node.id='node-'+uiSlug;
-              node.style.cssText='left:'+x+'px;top:'+y+'px';
-              node.setAttribute('data-agent',uiSlug);
-              node.setAttribute('data-x',x);
-              node.setAttribute('data-y',y);
-              node.innerHTML=
-                '<div class="an-top">'+
-                  (typeof buildAgentOrb==='function'?buildAgentOrb(uiSlug,'sm','idle'):'<div class="an-av" style="background:'+info.color+'15;border-color:'+info.color+'30">'+info.emoji+'</div>')+
-                  '<div style="flex:1;min-width:0">'+
-                    '<div class="an-name" style="color:'+info.color+'" onclick="openAgentDrawer(\''+uiSlug+'\')">'+a.name+'</div>'+
-                    '<div class="an-role">'+(a.title||'Specialist')+'</div>'+
-                  '</div>'+
-                '</div>'+
-                '<div class="an-workload">'+
-                  '<div class="wl-dot available" id="wl-dot-'+uiSlug+'"></div>'+
-                  '<span class="wl-label" id="wl-label-'+uiSlug+'">Available</span>'+
-                '</div>'+
-                '<div class="an-activity" id="an-activity-'+uiSlug+'"></div>'+
-                '<div class="an-tasks">'+
-                  '<div class="an-task-row"><span class="an-task-lbl">Ongoing</span><span class="an-task-count" style="color:'+info.color+'" id="tc-ongoing-'+uiSlug+'">0</span></div>'+
-                  '<div class="an-task-bar"><div class="an-task-fill" id="tb-ongoing-'+uiSlug+'" style="background:'+info.color+';width:0%"></div></div>'+
-                  '<div class="an-task-row" style="margin-top:5px"><span class="an-task-lbl">Upcoming</span><span class="an-task-count" style="color:var(--am)" id="tc-upcoming-'+uiSlug+'">0</span></div>'+
-                  '<div class="an-task-row" style="margin-top:3px"><span class="an-task-lbl">Completed</span><span class="an-task-count" style="color:var(--bl)" id="tc-completed-'+uiSlug+'">0</span></div>'+
-                '</div>'+
-                '<button class="an-open-btn" onclick="openAgentDrawer(\''+uiSlug+'\')">View Profile & Tasks \u2192</button>';
-              el.appendChild(node);
-            });
-            // Update global nodePos for zone drawing
-            if(window.nodePos){Object.assign(window.nodePos,nodePos_dyn);}
-            // Refresh zones and task counts
-            if(typeof drawZones==='function')drawZones();
-            if(typeof updateNodeCounts==='function')updateNodeCounts();
-            if(typeof updateWorkloadIndicators==='function')updateWorkloadIndicators();
-            _lastAgentLoad = Date.now(); // mark successful load
-            // Redraw canvas after a short delay to ensure loadTasks has also completed
-            // (builder.js calls loadTasks on DOMContentLoaded — it's async and may finish after this)
-            setTimeout(function(){
-              if(typeof drawCanvas==='function') drawCanvas();
-              if(typeof drawZones==='function') drawZones();
-            }, 2000);
-            // Scroll viewport to center on agents
-            setTimeout(function(){
-              var wsV=document.getElementById('view-workspace');
-              if(wsV){
-                wsV.scrollLeft=1500-Math.round((wsV.clientWidth||window.innerWidth||1200)/2);
-                wsV.scrollTop=1000-Math.round((wsV.clientHeight||window.innerHeight||800)/2);
-              }
-            },150);
-            // ── Workspace canvas drag — event delegation (v4.3.5) ──
-            // Removed _dragWired guard — it was blocking wiring if meeting view ran
-            // its IIFE first but left the wiring partial or detached.
-            (function(){
-              var canvas=document.getElementById('canvas-agents');
-              if(!canvas) { console.warn('[workspace] canvas-agents missing — drag not wired'); return; }
-              if(canvas._wsDragWired){ console.log('[workspace] drag already wired — skipping'); return; }
-              canvas._wsDragWired=true;
-              console.log('[workspace] wiring drag + lasso (v4.3.5)');
-              var dragNode=null, dragStartX=0, dragStartY=0, dragOX=0, dragOY=0, didMove=false;
-              canvas.addEventListener('mousedown',function(e){
-                var node=e.target.closest('.agent-node');
-                if(!node) return;
-                if(e.target.closest('.an-name')||e.target.closest('.an-open-btn')) return;
-                e.preventDefault(); e.stopPropagation();
-                dragNode=node; didMove=false;
-                dragStartX=e.clientX; dragStartY=e.clientY;
-                var id=node.dataset.agent;
-                dragOX=window.nodePos&&window.nodePos[id]?window.nodePos[id].x:parseInt(node.style.left)||0;
-                dragOY=window.nodePos&&window.nodePos[id]?window.nodePos[id].y:parseInt(node.style.top)||0;
-                node.style.cursor='grabbing'; node.style.zIndex='50';
-              });
-              document.addEventListener('mousemove',function(e){
-                if(!dragNode) return;
-                var dx=e.clientX-dragStartX, dy=e.clientY-dragStartY;
-                if(Math.abs(dx)>3||Math.abs(dy)>3) didMove=true;
-                if(!didMove) return;
-                var nx=dragOX+dx, ny=dragOY+dy;
-                var id=dragNode.dataset.agent;
-                dragNode.style.left=nx+'px'; dragNode.style.top=ny+'px';
-                if(window.nodePos&&id) window.nodePos[id]={x:nx,y:ny};
-                if(typeof drawCanvas==='function') drawCanvas();
-                if(typeof drawZones==='function') drawZones();
-              });
-              document.addEventListener('mouseup',function(e){
-                if(!dragNode) return;
-                dragNode.style.cursor='grab'; dragNode.style.zIndex='';
-                if(didMove){
-                  var id=dragNode.dataset.agent;
-                  var pos=window.nodePos&&window.nodePos[id]?window.nodePos[id]:{x:parseInt(dragNode.style.left),y:parseInt(dragNode.style.top)};
-                  try{
-                    var tk=localStorage.getItem('lu_token')||'';
-                    fetch('/api/workspace/agents/positions',{method:'PUT',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify({agent:id,x:pos.x,y:pos.y})}).catch(function(){});
-                  }catch(ex){}
-                } else {
-                  var id=dragNode.dataset.agent;
-                  if(e.shiftKey||e.ctrlKey||e.metaKey){
-                    if(typeof toggleAgentSelect==='function') toggleAgentSelect(id, dragNode);
-                  } else {
-                    if(typeof clearSelection==='function') clearSelection();
-                    if(typeof toggleAgentSelect==='function') toggleAgentSelect(id, dragNode);
-                  }
-                  if(typeof updateSelectionToolbar==='function') updateSelectionToolbar();
-                }
-                dragNode=null;
-              });
-
-              // ── Drag-select box (lasso select multiple agents) — v4.3.7 coord fix ──
-              // cr.left already accounts for scroll (getBoundingClientRect is
-              // viewport-relative), so adding scrollLeft again double-counted
-              // the scroll offset — producing a ~5-6 inch diagonal offset.
-              var selStart=null, selBox=document.getElementById('drag-select-box');
-              canvas.addEventListener('mousedown',function(e2){
-                if(e2.target.closest('.agent-node')||e2.target.closest('.task-node')) return;
-                var cr=canvas.getBoundingClientRect();
-                selStart={x:e2.clientX-cr.left, y:e2.clientY-cr.top};
-                if(selBox){selBox.style.display='block';selBox.style.left=selStart.x+'px';selBox.style.top=selStart.y+'px';selBox.style.width='0';selBox.style.height='0';}
-                if(!e2.shiftKey&&!e2.ctrlKey&&typeof clearSelection==='function') clearSelection();
-                e2.preventDefault();
-              });
-              document.addEventListener('mousemove',function(e2){
-                if(!selStart||dragNode) return;
-                var cr=canvas.getBoundingClientRect();
-                var cx=e2.clientX-cr.left, cy=e2.clientY-cr.top;
-                var x=Math.min(cx,selStart.x),y=Math.min(cy,selStart.y);
-                var w=Math.abs(cx-selStart.x),h=Math.abs(cy-selStart.y);
-                if(selBox){selBox.style.left=x+'px';selBox.style.top=y+'px';selBox.style.width=w+'px';selBox.style.height=h+'px';}
-              });
-              document.addEventListener('mouseup',function(e2){
-                if(!selStart) return;
-                var sw=parseInt(selBox?selBox.style.width:0)||0;
-                var sh=parseInt(selBox?selBox.style.height:0)||0;
-                if(sw>10&&sh>10){
-                  var sx=parseInt(selBox.style.left)||0,sy=parseInt(selBox.style.top)||0;
-                  canvas.querySelectorAll('.agent-node').forEach(function(node){
-                    var nl=parseInt(node.style.left)||0,nt=parseInt(node.style.top)||0;
-                    var ncx=nl+80,ncy=nt+70;
-                    if(ncx>=sx&&ncx<=sx+sw&&ncy>=sy&&ncy<=sy+sh){
-                      if(typeof selectedAgents!=='undefined') selectedAgents.add(node.dataset.agent);
-                      node.classList.add('selected');
-                    }
-                  });
-                  if(typeof updateSelectionToolbar==='function') updateSelectionToolbar();
-                }
-                if(selBox) selBox.style.display='none';
-                selStart=null;
-              });
-            })();
-          }catch(e){console.warn('[workspace] agent load failed:',e);}
-        };
-        // Load on workspace view
-        var origNav2=window.nav;
-        if(origNav2){
-          var patched=false;
-          window.nav=function(v){
-            origNav2(v);
-            if(v==='workspace')window._loadWorkspaceAgents();
-          };
-        }
-        // Also load on DOMContentLoaded if workspace is default view
-        // Don't fire on DOMContentLoaded (auth not ready yet). Fire after bootstrap.
-        document.addEventListener('lu:bootstrap-complete', function() {
-          if (window.location.hash === '#workspace' || window.location.hash === '' || !window.location.hash) {
-            window._loadWorkspaceAgents();
-          }
-        });
-        // Self-healing interval: if workspace view is visible but canvas is empty, retry every 5s.
-        setInterval(function() {
-          var canvas = document.getElementById('canvas-agents');
-          var view = document.getElementById('view-workspace');
-          if (!canvas || !view) return;
-          if (view.style.display === 'none') return;
-          // Count only real agent nodes (skip the loading indicator)
-          var realNodes = canvas.querySelectorAll('.agent-node').length;
-          if (realNodes === 0) window._loadWorkspaceAgents();
-        }, 5000);
-      })();
-      </script>
-      <div class="canvas-toolbar">
-        <button class="ct-btn" onclick="resetLayout()">⟳ Reset Layout</button>
-        <button class="ct-btn" onclick="nav('meeting')">+ New Meeting</button>
-        <button class="ct-btn primary" id="ct-start-meeting" onclick="nav('meeting')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l6 2v6c0 4-3 7-6 8-3-1-6-4-6-8V4l6-2z"/></svg> Strategy Room</button>
-        <button class="ct-btn" id="ct-activity" onclick="toggleActivityPanel()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg> Activity</button>
-      </div>
-      <!-- Multi-agent selection toolbar -->
-      <div class="selection-toolbar" id="selection-toolbar">
-        <span class="sel-info"><strong id="sel-count">0</strong> agents selected</span>
-        <div class="sel-divider"></div>
-        <button class="sel-btn primary" onclick="openDirectAssign()">＋ Assign Task</button>
-        <button class="sel-btn" onclick="startMeetingWithSelected()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l6 2v6c0 4-3 7-6 8-3-1-6-4-6-8V4l6-2z"/></svg> Start Meeting</button>
-        <button class="sel-btn" onclick="analyzeWorkload()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M2 16l4-6 4 3 4-8 4 4"/></svg> Workload</button>
-        <div class="sel-divider"></div>
-        <button class="sel-btn" onclick="clearSelection()" style="color:var(--t3)">✕ Clear</button>
-      </div>
-      <div class="canvas-legend">
-        <div class="cl-title">Connection Legend</div>
-        <div class="cl-items">
-          <div class="cl-item"><div class="cl-line ongoing" style="border-top:2px dashed var(--ac);background:none;height:0;width:24px"></div>Ongoing tasks</div>
-          <div class="cl-item"><div class="cl-line upcoming" style="border-top:2px dashed var(--am);background:none;height:0;width:24px"></div>Upcoming tasks</div>
-          <div class="cl-item"><div class="cl-line complete" style="border-top:2px dashed var(--bl);background:none;height:0;width:24px"></div>Completed</div>
-        </div>
-      </div>
-    </div>
-
-      <!-- Phase 4: Live activity stream panel (collapsed by default) -->
-      <div id="ws-activity-panel" style="position:absolute;bottom:0;left:0;right:0;height:200px;background:var(--s1);border-top:1px solid var(--bd);transform:translateY(100%);transition:transform .3s ease;z-index:50;display:flex;flex-direction:column">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--bd)">
-          <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg> Live Activity</div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div id="ws-activity-dot" style="width:6px;height:6px;border-radius:50%;background:var(--t3)"></div>
-            <button onclick="toggleActivityPanel()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
-          </div>
-        </div>
-        <div id="ws-activity-feed" style="flex:1;overflow-y:auto;padding:8px 14px;display:flex;flex-direction:column;gap:6px">
-          <div style="font-size:11px;color:var(--t3);text-align:center;padding:16px">No activity yet.</div>
-        </div>
-      </div>
-      <!-- Activity toggle button on canvas toolbar -->
+    <div id="view-workspace" class="view active" style="display:flex;position:relative;height:100%;background:#0D0D0F"></div>
 
         <!-- ── MEETING ROOM ── -->
     <div id="view-meeting" class="view" style="display:none">
@@ -3092,13 +2951,13 @@ window.luSwipeToClose = luSwipeToClose;
                 <div class="cmd-quick">
                   <button class="cq-btn" onclick="prefill('@james SEO priorities?')">📊 @James</button>
                   <button class="cq-btn" onclick="prefill('@priya content structure?')">✍️ @Priya</button>
-                  <button class="cq-btn" onclick="prefill('@marcus social platforms?')">📱 @Marcus</button>
+                  
                   <button class="cq-btn" onclick="prefill('@elena lead funnel?')">🎯 @Elena</button>
                   <button class="cq-btn" onclick="prefill('@everyone do we all agree?')">👥 @Everyone</button>
                 </div>
                 <div class="cmd-iw">
                   <button class="upload-btn" onclick="triggerUpload()" title="Upload image or file for team analysis" style="width:28px;height:28px;background:var(--s3);border:1px solid var(--bd);border-radius:6px;color:var(--t3);font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all var(--tr);margin-right:4px" onmouseover="this.style.borderColor='var(--p)';this.style.color='var(--pu)'" onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--t3)'"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M15 8l-6.5 6.5a3 3 0 01-4.24-4.24l7.07-7.07a2 2 0 012.83 2.83L7.07 13.07a1 1 0 01-1.41-1.41L11 6.3"/></svg></button>
-                  <input type="file" id="file-input" style="display:none" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="handleFileUpload(event)">
+                  <input type="file" id="file-input" style="display:none" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" onchange="handleFileUpload(event)">
                   <textarea id="cmd-input" rows="1" placeholder="Ask the team… @james, @priya, @everyone · 📎 attach files" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
                   <button class="cmd-send" onclick="sendMessage()">↑</button>
                 </div>
@@ -3116,7 +2975,9 @@ window.luSwipeToClose = luSwipeToClose;
     </div>
 
     <!-- ── PROJECTS ── -->
+    <div id="view-infrastructure" class="view" style="display:none"><div id="infrastructure-root"></div></div>
     <div id="view-projects" class="view" style="display:none">
+      <div id="projects-root" style="flex:1;overflow-y:auto;padding:24px"></div>
       <div class="proj-wrap">
         <!-- Header -->
         <div class="proj-hdr">
@@ -3224,6 +3085,7 @@ window.luSwipeToClose = luSwipeToClose;
           <button class="td-tab" onclick="tdTab('deliverable',this)">Deliverable</button>
           <button class="td-tab" onclick="tdTab('notes',this)">Notes</button>
           <button class="td-tab" onclick="tdTab('history',this)">History</button>
+          <button class="td-tab" id="td-tab-webactivity" onclick="tdTab('webactivity',this)" style="display:none">Web Activity</button>
         </div>
         <div class="td-body">
           <div id="tdp-details" class="td-pane active">
@@ -3253,6 +3115,7 @@ window.luSwipeToClose = luSwipeToClose;
           <div id="tdp-history" class="td-pane" style="display:none">
             <div id="td-history-feed"></div>
           </div>
+          <div id="tdp-webactivity" class="td-pane" style="display:none;max-height:60vh;overflow-y:auto"></div>
         </div>
       </div>
     </div>
@@ -4307,18 +4170,6 @@ window.luSwipeToClose = luSwipeToClose;
             </div>
             <div class="av-card-expertise">Editorial · Brand Voice · Content Strategy</div>
           </div>
-                    <div class="av-card" onclick="openAgentDrawer('marcus')">
-            <div class="av-card-top">
-              <div class="av-card-av" style="background:transparent;border:none" data-orb-agent="marcus" data-orb-size="md" data-orb-state="idle"></div>
-              <div><div class="av-card-name" style="color:#F59E0B">Marcus</div><div class="av-card-role">Social Media</div></div>
-            </div>
-            <div class="av-card-stats">
-              <div class="av-stat"><div class="av-stat-val" id="av-ongoing-marcus">—</div><div class="av-stat-lbl">Ongoing</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-upcoming-marcus">—</div><div class="av-stat-lbl">Upcoming</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-completed-marcus">—</div><div class="av-stat-lbl">Done</div></div>
-            </div>
-            <div class="av-card-expertise">Instagram · LinkedIn · TikTok · Paid Social</div>
-          </div>
                     <div class="av-card" onclick="openAgentDrawer('elena')">
             <div class="av-card-top">
               <div class="av-card-av" style="background:transparent;border:none" data-orb-agent="elena" data-orb-size="md" data-orb-state="idle"></div>
@@ -4329,7 +4180,7 @@ window.luSwipeToClose = luSwipeToClose;
               <div class="av-stat"><div class="av-stat-val" id="av-upcoming-elena">—</div><div class="av-stat-lbl">Upcoming</div></div>
               <div class="av-stat"><div class="av-stat-val" id="av-completed-elena">—</div><div class="av-stat-lbl">Done</div></div>
             </div>
-            <div class="av-card-expertise">Lead Capture · Email Nurture · CRM Pipeline</div>
+            <div class="av-card-expertise">Lead Capture · Lead Nurture · CRM Pipeline</div>
           </div>
                     <div class="av-card" onclick="openAgentDrawer('alex')">
             <div class="av-card-top">
@@ -4504,7 +4355,10 @@ window.luSwipeToClose = luSwipeToClose;
       <div id="automation-root" style="flex:1;overflow-y:auto;padding:24px"></div>
     </div>
     
-        <div id="view-blog" class="view" style="display:none;flex-direction:column">
+        <div id="view-mentions" class="view" style="display:none;flex-direction:column">
+      <div id="mentions-root" style="flex:1;overflow-y:auto;padding:24px"></div>
+    </div>
+            <div id="view-blog" class="view" style="display:none;flex-direction:column">
       <div id="blog-root" style="flex:1;overflow-y:auto;padding:24px"></div>
     </div>
         <div id="view-messages" class="view" style="display:none;flex-direction:column;height:100%">
@@ -4739,8 +4593,14 @@ window.LU_CFG = {
   bu:      'https://staging.levelupgrowth.io',
   restUrl: '/api/',
   pluginUrl: '/app/assets/',
-  version: '5.7.5-drawer-chat-hardening',
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.0-mobile-scroll',marketing:'/app/js/marketing.js?v=4.0.2-mobile-scroll',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.29.1-wave69',write:'/app/js/write.js',creative:'/app/js/creative.js',manualedit:'/app/js/manualedit.js',blog:'/app/js/blog.js?v=1.0.7-btn-feedback',studio:'/app/js/studio.js?v=4.0.1-scroll-fix','studio-video':'/app/js/studio-video.js',pipeline:'/app/js/pipeline.js?v=1.0.1-visibility-fix'}};
+  version: "5.9.0-w6b",
+  // v5.7.19 (2026-05-31) — Phase 1.0 URL routing feature flag.
+  // When true, each top-level section gets a real URL (/app/crm, /app/seo
+  // etc.) via history.pushState. Hash and query-string deep-links remain
+  // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
+  // Flip to false for an instant revert with no other code changes.
+  url_routing_enabled: true,
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.0-mobile-scroll',marketing:'/app/js/marketing.js?v=4.12.0-decomposed',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.36.0-orphan-align',write:'/app/js/write.js?v=apifix-20260703',creative:'/app/js/creative.js?v=apifix-20260703',manualedit:'/app/js/manualedit.js',blog:'/app/js/blog.js?v=1.0.7-btn-feedback',studio:'/app/js/studio.js?v=consolidate-20260703b','studio-video':'/app/js/studio-video.js?v=consolidate-20260703',pipeline:'/app/js/pipeline.js?v=1.0.2-blocked-retry',automation:'/app/js/automation.js?v=1.0.2-meeting-cta',projects:'/app/js/projects.js?v=1.0.1-mutations',mentions:'/app/js/mentions.js?v=1.0.4-progress-bar',infrastructure:'/app/js/infrastructure.js?v=1.7.0-domains'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4838,8 +4698,10 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 #bl-toolbar button.is-active { background:var(--p,#6C5CE7); color:#fff; }
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
+<script src="/app/js/launch-scope.js?v=w6-2026-07-22"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/core.js?v=5.7.9-messages-rebuild-1779483987"></script>
+<script defer src="/app/js/lu-attach-composer.js?v=1.4.4-observe"></script>
+<script defer src="/app/js/core.js?v=5.8.0-w6-launchscope"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
@@ -4924,7 +4786,6 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 .eng-agent-card[data-agent="sarah"]::before  { background:#6C5CE7; }
 .eng-agent-card[data-agent="james"]::before  { background:#3B8BF5; }
 .eng-agent-card[data-agent="priya"]::before  { background:#A78BFA; }
-.eng-agent-card[data-agent="marcus"]::before { background:#F59E0B; }
 .eng-agent-card[data-agent="elena"]::before  { background:#F87171; }
 .eng-agent-card[data-agent="alex"]::before   { background:#00E5A8; }
 .eng-agent-name { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
@@ -5036,7 +4897,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 
 <!-- JS in core.js -->
 
-<script defer src="/app/js/messages-ui.js?v=5.7.9-messages-rebuild-1779483987"></script>
+<script defer src="/app/js/messages-ui.js?v=5.7.11-fmt-historical"></script>
 <script defer src="/app/js/arthur-chat.js?v=5.9.3-result-card-scroll-fix"></script>
 <script defer src="/app/js/chatbot-spa.js?v=1.0.0"></script>
 
@@ -5310,4 +5171,25 @@ document.addEventListener('wheel', function(e) {
   }
 }, { passive: false });
 </script>
+  <script src="/app/js/workspace-v2.js?v=1.0.5-no-blank" defer></script>
+  <script>
+  // v1.4.4 — universal attach composer wiring on the four core chat surfaces.
+  // The composer self-detects parent flex-direction and inserts a paperclip
+  // button + chip row that survives drawer/modal open/close. Send functions
+  // in core.js already pick up pending uploads via LU_attachComposer.getPending().
+  document.addEventListener('DOMContentLoaded', function () {
+    if (!window.LU_attachComposer) return;
+    // Static surfaces — bind eagerly. observe() also handles the case
+    // where they exist, so this is just for clarity.
+    var STATIC_IDS  = ['agent-msg-input', 'dm-ta', 'ai-input'];
+    // Dynamic surfaces — created by messages-ui.js after the messages
+    // floater button or messages page first opens. MutationObserver
+    // picks them up the moment they hit the DOM.
+    var DYNAMIC_IDS = ['lu-msg-input', 'lu-msg-page-input'];
+    STATIC_IDS.concat(DYNAMIC_IDS).forEach(function (id) {
+      try { window.LU_attachComposer.observe(id, {}); }
+      catch (e) { console.warn('[attach] observe failed for ' + id, e); }
+    });
+  });
+  </script>
 </body></html>

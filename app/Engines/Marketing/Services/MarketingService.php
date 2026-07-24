@@ -104,27 +104,29 @@ class MarketingService
         return ['campaigns' => $q->orderByDesc('created_at')->limit($filters['limit'] ?? 50)->get(), 'total' => $total];
     }
 
-    public function updateCampaign(int $id, array $data): array
+    public function updateCampaign(int $id, array $data, ?int $wsId = null): array
     {
         $update = array_intersect_key($data, array_flip(['name', 'subject', 'body_html', 'type']));
         if (isset($data['recipients'])) $update['recipients_json'] = json_encode($data['recipients']);
         if (isset($data['template_id'])) $update['template_id'] = $data['template_id'];
         $update['updated_at'] = now();
-        DB::table('campaigns')->where('id', $id)->update($update);
+        $n = DB::table('campaigns')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update($update);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Campaign not found');
         return ['updated' => true];
     }
 
-    public function scheduleCampaign(int $id, string $scheduledAt): array
+    public function scheduleCampaign(int $id, string $scheduledAt, ?int $wsId = null): array
     {
-        DB::table('campaigns')->where('id', $id)->update([
+        $n = DB::table('campaigns')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update([
             'status' => 'scheduled', 'scheduled_at' => $scheduledAt, 'updated_at' => now(),
         ]);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Campaign not found');
         return ['scheduled' => true, 'scheduled_at' => $scheduledAt];
     }
 
     public function sendCampaign(int $wsId, int $id): array
     {
-        $campaign = DB::table('campaigns')->where('id', $id)->first();
+        $campaign = DB::table('campaigns')->where('id', $id)->where('workspace_id', $wsId)->first();
         if (!$campaign) throw new \RuntimeException("Campaign not found");
         if ($campaign->status === 'sent') throw new \RuntimeException("Campaign already sent");
 
@@ -159,9 +161,10 @@ class MarketingService
         return ['sent' => $sent, 'failed' => $failed, 'total' => count($recipients)];
     }
 
-    public function deleteCampaign(int $id): void
+    public function deleteCampaign(int $id, ?int $wsId = null): void
     {
-        DB::table('campaigns')->where('id', $id)->update(['deleted_at' => now()]);
+        $n = DB::table('campaigns')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update(['deleted_at' => now()]);
+        if ($wsId !== null && $n === 0) throw new \RuntimeException('Campaign not found');
     }
 
     // ═══════════════════════════════════════════════════════
@@ -288,6 +291,8 @@ class MarketingService
     // phase5-test-email-alias
     public function sendTestEmail(string $toEmail): array
     {
+        // LAUNCH SCOPE (2026-07-20) — removed capability execution hard-stop.
+        return ['success' => false, 'error' => 'Email marketing is not available in the current plan.', 'code' => 'LAUNCH_SCOPE_REMOVED_ACTION'];
         if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
             return ['success' => false, 'message' => 'Invalid email address'];
         }
@@ -528,7 +533,7 @@ class MarketingService
             'goal'           => $goal,
             'audience'       => $audience,
             'campaign_type'  => $type,
-            'brand_voice'    => 'Maya — email marketing specialist',
+            'brand_voice'    => "the brand's own marketing voice", // launch-scope 2026-07-20: no removed-agent persona (email marketing is kernel-denied at launch)
             'brand_context'  => $bpCtx ?: null,
             'subject_angle'  => $subjectAngle,
             'email_structure'=> $structure,

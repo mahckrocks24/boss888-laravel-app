@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Motion Reel — Education</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#F0F4FF; --text:#1A237E; --blue:#3F51B5; --primary:#FFD600;
+  --yellow-d:rgba(255,214,0,.15); --sky:#E8EAF6; --accent:#00C853;
+  --ink:#1A237E; --muted:rgba(26,35,126,.45); --white:#FFFFFF;
+  --fh:'Outfit',sans-serif; --fb:'Josefin Sans',sans-serif;
+  --w:1080px; --h:1920px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#D8DEFF}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:#D4D8F5}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.46);display:block;width:calc(var(--w)*.46);height:calc(var(--h)*.46)}}
+@media(max-width:780px){.sw{transform:scale(.33);display:block;width:calc(var(--w)*.33);height:calc(var(--h)*.33)}}
+@media(max-width:520px){.sw{transform:scale(.24);display:block;width:calc(var(--w)*.24);height:calc(var(--h)*.24)}}
+.reel{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--fh)}
+
+.layer-bg{position:absolute;inset:0;z-index:1;opacity:0;animation:fade-in 1s ease 0s both}
+.bg-base{position:absolute;inset:0;background:linear-gradient(160deg,#EEF2FF 0%,var(--bg) 55%,#EAF0FF 100%)}
+.bg-lines{position:absolute;inset:0;background-image:linear-gradient(rgba(63,81,181,.05) 1px,transparent 1px);background-size:52px 52px}
+.bg-dot{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(63,81,181,.06) 1px,transparent 1px);background-size:36px 36px}
+.bg-blob{position:absolute;width:500px;height:400px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,214,0,.10) 0%,transparent 70%);bottom:-80px;right:80px;animation:float-slow 14s ease-in-out 1s infinite alternate}
+
+.layer-shape{position:absolute;inset:0;z-index:2}
+/* Yellow top bar */
+.shape-top{position:absolute;top:0;left:0;right:0;height:8px;background:linear-gradient(90deg,var(--primary),rgba(255,214,0,.60),var(--blue));transform:scaleX(0);transform-origin:left;animation:scale-x 1s cubic-bezier(.16,1,.3,1) 0s both}
+.shape-bot{position:absolute;bottom:0;left:0;right:0;height:4px;background:var(--text);transform:scaleX(0);transform-origin:right;animation:scale-x .9s cubic-bezier(.16,1,.3,1) .2s both}
+/* Floating emoji accents */
+.shape-emoji{position:absolute;font-size:64px;opacity:0;animation:pop-in .5s cubic-bezier(.34,1.56,.64,1) var(--d) both}
+.e1{top:380px;right:68px;--d:1.5s;animation-name:pop-in;transform:rotate(15deg)}
+.e2{top:1080px;left:60px;--d:4.5s}
+.e3{bottom:300px;right:80px;--d:5.2s}
+
+.layer-brand{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:84px 80px}
+.brand-logo{display:flex;align-items:center;gap:16px;opacity:0;animation:bounce-in .7s cubic-bezier(.34,1.56,.64,1) .9s both}
+.brand-mark{width:48px;height:48px;background:var(--text);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.brand-mark::after{content:'E';font-family:var(--fh);font-size:22px;font-weight:900;color:var(--primary)}
+.brand-name{font-family:var(--fh);font-size:20px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text)}
+.brand-tag{font-family:var(--fb);font-size:20px;font-weight:700;letter-spacing:.20em;text-transform:uppercase;color:var(--text);background:var(--primary);padding:10px 22px;border-radius:4px;opacity:0;animation:bounce-in .6s cubic-bezier(.34,1.56,.64,1) 1.05s both}
+
+.layer-text{position:absolute;z-index:6;top:540px;left:80px;right:80px}
+.eyebrow{font-family:var(--fb);font-size:16px;font-weight:700;letter-spacing:.30em;text-transform:uppercase;color:var(--blue);display:flex;align-items:center;gap:14px;margin-bottom:40px;opacity:0;animation:wipe-right .7s cubic-bezier(.16,1,.3,1) 1.4s both}
+.eyebrow::before{content:'';width:24px;height:2px;background:var(--blue);flex-shrink:0}
+
+.headline{display:flex;flex-direction:column;gap:0;margin-bottom:44px}
+.hl{font-family:var(--fh);font-size:128px;font-weight:900;line-height:.88;letter-spacing:-.03em;color:var(--text);opacity:0;display:block}
+.hl-yellow{color:var(--primary);-webkit-text-stroke:2px var(--text)}
+.hl-1{animation:bounce-slam .6s cubic-bezier(.34,1.56,.64,1) 1.9s both}
+.hl-2{animation:bounce-slam .6s cubic-bezier(.34,1.56,.64,1) 2.2s both}
+.hl-3{animation:bounce-slam .6s cubic-bezier(.34,1.56,.64,1) 2.5s both}
+
+.rule{width:0;height:3px;background:linear-gradient(90deg,var(--blue),rgba(63,81,181,.30));border-radius:3px;margin-bottom:44px;animation:line-draw .8s cubic-bezier(.16,1,.3,1) 3.0s both}
+.subtext{font-family:var(--fh);font-size:28px;font-weight:300;line-height:1.70;color:var(--muted);margin-bottom:56px;opacity:0;transform:translateY(20px);animation:fade-rise .9s cubic-bezier(.16,1,.3,1) 3.5s both}
+
+/* Bento cards */
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:60px}
+.bcard{border-radius:16px;padding:32px 28px;display:flex;flex-direction:column;gap:8px;opacity:0;transform:scale(.88) translateY(20px);animation:card-pop .6s cubic-bezier(.34,1.56,.64,1) var(--d) both}
+.bcard--navy{background:var(--text);--d:4.1s}
+.bcard--yellow{background:var(--primary);--d:4.3s}
+.bcard--sky{background:var(--sky);border:1px solid rgba(63,81,181,.12);--d:4.5s}
+.bcard--green{background:var(--accent);--d:4.7s}
+.bcard-val{font-family:var(--fh);font-size:56px;font-weight:900;letter-spacing:-.04em;line-height:1}
+.bcard-val--white{color:var(--white)}
+.bcard-val--navy{color:var(--text)}
+.bcard-val--blue{color:var(--blue)}
+.bcard-label{font-family:var(--fb);font-size:14px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.bcard-label--dim-white{color:rgba(255,255,255,.60)}
+.bcard-label--dim-navy{color:rgba(26,35,126,.55)}
+/* Live dot */
+.live{display:flex;align-items:center;gap:8px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:live-pulse 1.5s ease-in-out 2s infinite}
+.live-text{font-family:var(--fb);font-size:20px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.70)}
+
+.cta-wrap{opacity:0;animation:bounce-in .8s cubic-bezier(.34,1.56,.64,1) 5.0s both}
+.cta{display:flex;align-items:center;justify-content:center;gap:18px;font-family:var(--fh);font-size:24px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text);background:var(--primary);padding:38px 80px;text-decoration:none;width:100%;border-radius:8px;animation:cta-bounce 3s ease-in-out 6s infinite;box-shadow:0 8px 0 rgba(26,35,126,.20)}
+.cta-arrow{display:inline-block;animation:arrow-nudge 3s ease-in-out 6s infinite}
+
+.layer-footer{position:absolute;z-index:9;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:32px 80px 72px;border-top:1px solid rgba(63,81,181,.12);opacity:0;transform:translateY(20px);animation:fade-rise .7s cubic-bezier(.16,1,.3,1) 5.6s both;background:rgba(240,244,255,.85)}
+.footer-brand{font-family:var(--fh);font-size:18px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:var(--text)}
+.footer-url{font-family:var(--fh);font-size:16px;font-weight:300;letter-spacing:.12em;color:var(--muted)}
+.footer-handle{font-family:var(--fb);font-size:16px;font-weight:700;letter-spacing:.10em;color:var(--blue)}
+
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes fade-rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce-in{from{opacity:0;transform:scale(.80) translateY(-10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes bounce-slam{0%{opacity:0;transform:translateY(80px) scale(.92)}60%{transform:translateY(-6px) scale(1.02)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes card-pop{from{opacity:0;transform:scale(.88) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes pop-in{from{opacity:0;transform:scale(0) rotate(0)}to{opacity:1;transform:scale(1) rotate(15deg)}}
+@keyframes wipe-right{from{opacity:0;transform:translateX(-20px);clip-path:inset(0 100% 0 0)}to{opacity:1;transform:translateX(0);clip-path:inset(0 0% 0 0)}}
+@keyframes line-draw{from{width:0;opacity:0}to{width:100%;opacity:1}}
+@keyframes scale-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes cta-bounce{0%,100%{box-shadow:0 8px 0 rgba(26,35,126,.20)}50%{transform:translateY(-4px);box-shadow:0 12px 0 rgba(26,35,126,.20)}}
+@keyframes arrow-nudge{0%,80%,100%{transform:translateX(0)}90%{transform:translateX(8px)}}
+@keyframes live-pulse{0%,100%{box-shadow:0 0 6px rgba(0,200,83,.80)}50%{box-shadow:0 0 16px rgba(0,200,83,1)}}
+@keyframes float-slow{from{transform:translate(0,0)}to{transform:translate(20px,-16px)}}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="sw"><div class="reel">
+  <div class="layer-bg">
+    <div class="bg-base"></div><div class="bg-lines"></div>
+    <div class="bg-dot"></div><div class="bg-blob"></div>
+  </div>
+  <div class="layer-shape">
+    <div class="shape-top"></div><div class="shape-bot"></div>
+    <div class="shape-emoji e1">🎓</div>
+    <div class="shape-emoji e2">💡</div>
+    <div class="shape-emoji e3">🚀</div>
+  </div>
+  <div class="layer-brand">
+    <div class="brand-logo"><div class="brand-mark"></div><span class="brand-name" data-field="brand_name">{{brand_name}}</span></div>
+    <span class="brand-tag" data-field="brand_tag">{{brand_tag}}</span>
+  </div>
+  <div class="layer-text">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <div class="headline">
+      <span class="hl hl-1" data-field="headline_1">{{headline_1}}</span>
+      <span class="hl hl-2" data-field="headline_2">{{headline_2}}</span>
+      <span class="hl hl-3" data-field="headline_3">{{headline_3}}</span>
+    </div>
+    <div class="rule"></div>
+    <p class="subtext" data-field="subheading">{{subheading}}</p>
+    <div class="bento">
+      <div class="bcard bcard--navy">
+        <span class="bcard-val bcard-val--white">500+</span>
+        <span class="bcard-label bcard-label--dim-white">Courses</span>
+      </div>
+      <div class="bcard bcard--yellow">
+        <span class="bcard-val bcard-val--navy">92%</span>
+        <span class="bcard-label bcard-label--dim-navy">Completion</span>
+      </div>
+      <div class="bcard bcard--sky">
+        <span class="bcard-val bcard-val--blue">14K</span>
+        <span class="bcard-label" style="color:var(--muted)">Students</span>
+        <div class="live"><span class="live-dot" style="background:var(--blue)"></span><span class="live-text" style="color:var(--muted)" data-field="live_text">{{live_text}}</span></div>
+      </div>
+      <div class="bcard bcard--green">
+        <span class="bcard-val bcard-val--white">4.9★</span>
+        <span class="bcard-label" style="color:rgba(255,255,255,.65)">Rated</span>
+      </div>
+    </div>
+    <div class="cta-wrap"><a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a></div>
+  </div>
+  <div class="layer-footer">
+    <span class="footer-brand" data-field="footer_brand">{{footer_brand}}</span>
+    <span class="footer-url" data-field="footer_url">{{footer_url}}</span>
+    <span class="footer-handle" data-field="footer_handle">{{footer_handle}}</span>
+  </div>
+</div></div></div>
+</body></html>

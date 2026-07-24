@@ -83,6 +83,25 @@ class RenderStudioVideoJob implements ShouldQueue
         $data = json_decode($row->video_data, true) ?: [];
         $wsId = (int) $row->workspace_id;
 
+        // 2026-07-02 Phase 3 — server-ENFORCED output quality cap + watermark by
+        // plan (can't be bypassed by editing video_data). Watermark is forced;
+        // requested quality is clamped to the plan's max tier.
+        $policy = self::resolveVideoPolicy($wsId);
+        $data['watermark'] = $policy['watermark'];
+        $rank = ['720' => 1, 'sd' => 1, '1080' => 2, 'hd' => 2, '4k' => 3, 'uhd' => 3];
+        $req  = strtolower((string) ($data['quality'] ?? $policy['max_quality']));
+        if (($rank[$req] ?? 2) > ($rank[$policy['max_quality']] ?? 2)) {
+            $req = $policy['max_quality'];
+        }
+        $data['quality'] = $req;
+
+        // 2026-07-02 — re-export cleanup: remove the previous MP4 for this design
+        // so re-renders don't leave orphaned files on disk.
+        if (!empty($row->exported_video_url)) {
+            $prev = storage_path('app/public' . str_replace('/storage', '', (string) $row->exported_video_url));
+            if (is_file($prev)) { @unlink($prev); }
+        }
+
         try {
             $url = $this->render($data, $wsId, $this->designId);
             DB::table('studio_designs')->where('id', $this->designId)->update([
@@ -92,6 +111,18 @@ class RenderStudioVideoJob implements ShouldQueue
                 'status'              => 'exported',
                 'updated_at'          => now(),
             ]);
+
+            // 2026-07-02 Phase 2 — auto-register the rendered MP4 into the media
+            // library (owner rule: all video assets live in media, paid-tier
+            // usable). Best-effort — media registration must never fail the export.
+            try {
+                app(\App\Engines\Studio\Services\StudioService::class)
+                    ->saveExportToMedia($this->designId, $wsId);
+            } catch (\Throwable $me) {
+                Log::warning('studio.video.render media register failed', [
+                    'design_id' => $this->designId, 'error' => $me->getMessage(),
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::error('studio.video.render failed', [
                 'design_id' => $this->designId,
@@ -278,6 +309,38 @@ class RenderStudioVideoJob implements ShouldQueue
             }
         }
 
+        // ── Watermark (free/trial tier) — 2026-07-02 Phase 3 ──
+        // Bottom-right "Made with LevelUp", semi-transparent, whole duration.
+        // Applied when video_data.watermark is truthy (the export gate sets this
+        // from the workspace plan). Paid tiers export clean.
+        if (!empty($data['watermark'])) {
+            $wmLabel = 'vwm';
+            $wmSize  = max(18, (int) round($W * 0.026));
+            $wm = 'drawtext=fontfile=' . $fontPath . ":text='Made with LevelUp'"
+                . ':fontcolor=white@0.65:fontsize=' . $wmSize
+                . ':box=1:boxcolor=black@0.28:boxborderw=8:x=w-tw-30:y=h-th-30';
+            $streams[]  = "[{$prevLabel}]{$wm}[{$wmLabel}]";
+            $prevLabel  = $wmLabel;
+        }
+
+        // ── Quality tier — output resolution + encode quality (plan-gated) ──
+        // 2026-07-02 Phase 3: real 720/1080/4K tiers (not the fake image-tier
+        // problem). The export gate sets video_data.quality from the plan.
+        $qMap = [
+            '720' => [0.6667, 28], 'sd'  => [0.6667, 28],
+            '1080'=> [1.0,    23], 'hd'  => [1.0,    23],
+            '4k'  => [2.0,    20], 'uhd' => [2.0,    20],
+        ];
+        $quality = strtolower((string) ($data['quality'] ?? '1080'));
+        [$qMult, $crf] = $qMap[$quality] ?? [1.0, 23];
+        if ($qMult != 1.0) {
+            $outW = (int) (round($W * $qMult / 2) * 2);
+            $outH = (int) (round($H * $qMult / 2) * 2);
+            $qLabel = 'vq';
+            $streams[]  = "[{$prevLabel}]scale={$outW}:{$outH}:flags=lanczos[{$qLabel}]";
+            $prevLabel  = $qLabel;
+        }
+
         // ── Audio track ──
         $hasAudio = false;
         if ($audio && !empty($audio['url'])) {
@@ -302,12 +365,12 @@ class RenderStudioVideoJob implements ShouldQueue
         $map = "-map \"[{$prevLabel}]\"";
         if ($hasAudio) $map .= " -map \"[amix]\" -c:a aac -b:a 128k";
 
-        $cmd = '/usr/bin/ffmpeg -y -loglevel warning '
+        $cmd = '/usr/bin/ffmpeg -y -nostdin -loglevel warning '
              . implode(' ', $inputs) . ' '
              . '-filter_complex ' . escapeshellarg($filterComplex) . ' '
              . $map . ' '
              . "-t {$duration} "
-             . '-c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p '
+             . "-c:v libx264 -preset ultrafast -crf {$crf} -pix_fmt yuv420p "
              . '-movflags +faststart '
              . escapeshellarg($outPath) . ' 2>&1';
 
@@ -380,19 +443,59 @@ class RenderStudioVideoJob implements ShouldQueue
 
     private function ffXfadeType(string $type): string
     {
-        return match (strtolower($type)) {
+        // 2026-07-02 — map friendly names to xfade names, then WHITELIST-validate
+        // against transitions the installed ffmpeg (4.4.2) actually supports, so an
+        // unsupported value degrades to 'fade' instead of HARD-FAILING the whole
+        // render. ffmpeg 4.4.2 has NO 'zoomin' (added in 5.0) — templates default to
+        // zoom_in, which previously broke every such render.
+        $map = [
             'fade'        => 'fade',
             'slide_left'  => 'slideleft',
             'slide_right' => 'slideright',
             'slide_up'    => 'slideup',
             'slide_down'  => 'slidedown',
-            'zoom_in'     => 'zoomin',
-            'zoom_out'    => 'fadeblack',  // xfade has no zoomout; fadeblack is closest dramatic alt
+            'zoom_in'     => 'smoothup',    // no zoomin in 4.4.2; smoothup = dynamic push
+            'zoom_out'    => 'fadeblack',
             'dissolve'    => 'dissolve',
             'wipe'        => 'wipeleft',
-            'glitch'      => 'pixelize',   // closest rough approximation
-            default       => 'fade',
-        };
+            'glitch'      => 'fadeblack',   // pixelize unreliable across builds; safe dramatic alt
+        ];
+        // Transitions confirmed present in ffmpeg 4.4.2 (xfade 0..42).
+        $safe = [
+            'fade','fadeblack','fadewhite','dissolve','circlecrop',
+            'wipeleft','wiperight','wipeup','wipedown',
+            'slideleft','slideright','slideup','slidedown',
+            'smoothleft','smoothright','smoothup','smoothdown',
+        ];
+        $x = $map[strtolower($type)] ?? strtolower($type);
+        return in_array($x, $safe, true) ? $x : 'fade';
+    }
+
+    /**
+     * 2026-07-02 Phase 3 — resolve the workspace's video export policy from its
+     * plan: the max output-quality tier and whether exports are watermarked.
+     * DEFAULT policy (tunable — Boss decision R4): free/trial → 720 + watermark;
+     * growth/pro → 1080 clean; agency → 4K clean.
+     */
+    public static function resolveVideoPolicy(int $wsId): array
+    {
+        $slug = '';
+        try {
+            $slug = strtolower((string) (DB::table('subscriptions')
+                ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
+                ->where('subscriptions.workspace_id', $wsId)
+                ->where('subscriptions.status', 'active')
+                ->value('plans.slug') ?? ''));
+        } catch (\Throwable $e) {
+            // no subscription context → treat as free
+        }
+        if (str_contains($slug, 'agency')) {
+            return ['max_quality' => '4k', 'watermark' => false];
+        }
+        if (str_contains($slug, 'pro') || str_contains($slug, 'growth')) {
+            return ['max_quality' => '1080', 'watermark' => false];
+        }
+        return ['max_quality' => '720', 'watermark' => true]; // free / trial / starter
     }
 
     /** Return an FFmpeg filter chain fragment (without trailing comma) for a preset name. */

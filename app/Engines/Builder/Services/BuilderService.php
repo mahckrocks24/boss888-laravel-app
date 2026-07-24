@@ -37,24 +37,44 @@ class BuilderService
 
     public function createWebsite(int $wsId, array $data): array
     {
-        // ── Plan limit enforcement ──────────────────────────────────
-        $currentCount = DB::table('websites')
-            ->where('workspace_id', $wsId)
-            ->whereNull('deleted_at')
-            ->count();
+        // ── P1 (2026-06-24): website = its own workspace ─────────────
+        // Quota counts across ALL the user's pool-family workspaces; website
+        // #2+ gets its own seeded workspace (shares the credit pool + plan).
+        $ownerUserId = (int) ($data['user_id']
+            ?? DB::table('workspace_users')->where('workspace_id', $wsId)->where('role', 'owner')->value('user_id')
+            ?: DB::table('workspaces')->where('id', $wsId)->value('created_by') ?: 0);
+        $billingWs = (int) (DB::table('workspaces')->where('id', $wsId)->value('billing_workspace_id') ?: $wsId);
         $plan = \App\Models\Plan::find(
-            \App\Models\Subscription::where('workspace_id', $wsId)
+            \App\Models\Subscription::where('workspace_id', $billingWs)
                 ->where('status', 'active')->latest()->value('plan_id')
         ) ?? \App\Models\Plan::where('slug', 'free')->first();
         $maxWebsites = (int) ($plan->max_websites ?? 1);
-        if ($currentCount >= $maxWebsites) {
+        $userWsIds = DB::table('workspaces')->where('billing_workspace_id', $billingWs)->pluck('id')->all();
+        if (empty($userWsIds)) $userWsIds = [$billingWs];
+        $totalSites = (int) DB::table('websites')->whereIn('workspace_id', $userWsIds)->whereNull('deleted_at')->count();
+        if ($totalSites >= $maxWebsites) {
             return [
                 'success' => false,
                 'error' => "Website limit reached ({$maxWebsites} on {$plan->name} plan). Upgrade to create more.",
                 'limit_reached' => true,
-                'current' => $currentCount,
+                'current' => $totalSites,
                 'max' => $maxWebsites,
             ];
+        }
+        // Target workspace: current if it has no website yet (no regression);
+        // else provision a dedicated workspace for this site.
+        try {
+            $currentHasSite = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->exists();
+            if ($currentHasSite && $ownerUserId > 0) {
+                $newWs = app(\App\Engines\Builder\Services\ArthurService::class)
+                    ->provisionWebsiteWorkspace($wsId, $ownerUserId, $billingWs, (string) ($data['name'] ?? 'New Website'));
+                if ($newWs > 0) {
+                    \Illuminate\Support\Facades\Log::info('[Builder] provisioned dedicated workspace for new website', ['source_ws' => $wsId, 'new_ws' => $newWs]);
+                    $wsId = $newWs;
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Builder] workspace provisioning failed; building in current workspace: ' . $e->getMessage());
         }
         // ────────────────────────────────────────────────────────────
         $id = DB::table('websites')->insertGetId([
@@ -90,7 +110,7 @@ class BuilderService
         }
         // ────────────────────────────────────────────────────────────────────────
 
-        return ['website_id' => $id, 'status' => 'draft'];
+        return ['website_id' => $id, 'workspace_id' => $wsId, 'status' => 'draft'];
     }
 
     public function getWebsite(int $wsId, int $id): ?object
@@ -163,8 +183,11 @@ class BuilderService
         return ['published' => true];
     }
 
-    public function deleteWebsite(int $id): void
+    public function deleteWebsite(int $id, ?int $wsId = null): void
     {
+        if ($wsId !== null && !DB::table('websites')->where('id', $id)->where('workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException("Website not found: {$id}");
+        }
         $this->invalidatePublishedCache($id);
         DB::table('websites')->where('id', $id)->update(['deleted_at' => now()]);
     }
@@ -196,13 +219,119 @@ class BuilderService
         return json_encode(['schemaVersion' => 1, 'sections' => []]);
     }
 
+    /**
+     * 2026-06-24 — build the rich, industry-aware section stack for a page
+     * template, hydrating from workspace_memory (business/services/location).
+     * Shared by createPage's rich fallback; mirrors addPageFromTemplate's prep.
+     */
+    private function templateSections(int $wsId, int $websiteId, string $pageTemplate): array
+    {
+        $mem = DB::table('workspace_memory')->where('workspace_id', $wsId)->pluck('value_json', 'key')->toArray();
+        $unwrap = fn ($v) => is_string($v) ? trim($v, '"') : '';
+
+        // Workspace-level memory = FALLBACK (it holds the workspace's PRIMARY
+        // business, which is wrong for secondary websites in the same workspace).
+        $data = [
+            'business_name' => $unwrap($mem['business_name'] ?? '') ?: 'Your Business',
+            'industry'      => $unwrap($mem['industry'] ?? '') ?: 'business',
+            'core_service'  => $unwrap($mem['core_service'] ?? ''),
+            'location'      => $unwrap($mem['location'] ?? ''),
+            'services'      => [],
+        ];
+        if (is_string($mem['services'] ?? null) && $mem['services'] !== '') {
+            $decoded = json_decode($mem['services'], true);
+            $data['services'] = is_array($decoded)
+                ? $decoded
+                : array_map('trim', preg_split('/[,;\n]+/', trim($mem['services'], '"')) ?: []);
+        }
+
+        // 2026-06-24 (multi-site fix) — PREFER the specific website's own identity
+        // (websites.name/template_industry + template_variables) so an added page
+        // reflects THAT site, not the workspace's primary business.
+        $site = DB::table('websites')->where('id', $websiteId)->first();
+        if ($site) {
+            $tv = is_string($site->template_variables ?? null)
+                ? (json_decode($site->template_variables, true) ?: [])
+                : (is_array($site->template_variables ?? null) ? $site->template_variables : []);
+            $bn = (string) ($tv['business_name'] ?? $tv['brand_name'] ?? $site->name ?? '');
+            if ($bn !== '') $data['business_name'] = $bn;
+            if (! empty($site->template_industry)) $data['industry'] = (string) $site->template_industry;
+            $loc = (string) ($tv['city'] ?? $tv['contact_service_area'] ?? '');
+            if ($loc !== '') $data['location'] = $loc;
+            $svc = [];
+            for ($i = 1; $i <= 8; $i++) {
+                $title  = trim((string) ($tv["service_{$i}_title"] ?? ''));
+                $hidden = (string) ($tv["service_{$i}_display"] ?? '') === 'display:none';
+                if ($title !== '' && ! $hidden) $svc[] = $title;
+            }
+            if (! empty($svc)) {
+                $data['services'] = $svc;
+                if ($data['core_service'] === '') $data['core_service'] = $svc[0];
+            }
+        }
+
+        return app(\App\Engines\Builder\Services\ArthurService::class)
+            ->buildDefaultSectionsForPage($pageTemplate, $data);
+    }
+
+    /**
+     * 2026-06-24 — derive a unique page slug. Prefer an explicit slug, else the
+     * page_template, else the title; ensure uniqueness within the website
+     * (append -2, -3 …) so multiple template adds without a title don't collide
+     * on the (website_id, slug) UNIQUE key.
+     */
+    private function uniquePageSlug(int $websiteId, array $data): string
+    {
+        $base = $data['slug'] ?? null;
+        if (! $base) {
+            $tpl = (string) ($data['page_template'] ?? '');
+            $base = $tpl !== ''
+                ? Str::slug(str_replace('_', '-', strtolower($tpl)))
+                : Str::slug($data['title'] ?? 'page');
+        }
+        $base = $base ?: 'page';
+        $slug = $base;
+        $n = 1;
+        while (DB::table('pages')->where('website_id', $websiteId)->where('slug', $slug)->exists()) {
+            $n++;
+            $slug = $base . '-' . $n;
+        }
+        return $slug;
+    }
+
     public function createPage(int $websiteId, array $data): array
     {
+        // 2026-06-24 (G15/G5) — rich-template fallback. If no sections were
+        // supplied but a page template is named (or inferable from slug/title),
+        // build the full industry-aware section stack via Arthur's
+        // buildDefaultSectionsForPage so added pages are NOT thin 1-section
+        // stubs. (addPageFromTemplate already passes sections, so this is a
+        // no-op for it.)
+        $hasSections = isset($data['sections']) && is_array($data['sections']) && isset($data['sections'][0]);
+        if (! $hasSections) {
+            $tpl = strtolower(trim((string) ($data['page_template'] ?? $data['slug'] ?? $data['title'] ?? '')));
+            $tpl = preg_replace('/[\s\-]+/', '_', $tpl);
+            $known = ['about','about_us','services','pricing','contact','faq','legal','privacy','terms','blog','home','team','portfolio','menu','booking','events'];
+            if ($tpl !== '' && in_array($tpl, $known, true)) {
+                $wsId = (int) (DB::table('websites')->where('id', $websiteId)->value('workspace_id') ?? 0);
+                if ($wsId > 0) {
+                    try {
+                        $built = $this->templateSections($wsId, $websiteId, $tpl);
+                        if (! empty($built)) {
+                            $data['sections'] = $built;
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::warning('[Builder] createPage rich-template fallback failed: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+
         $position = DB::table('pages')->where('website_id', $websiteId)->max('position') ?? 0;
         $id = DB::table('pages')->insertGetId([
             'website_id' => $websiteId,
             'title' => $data['title'] ?? 'New Page',
-            'slug' => $data['slug'] ?? Str::slug($data['title'] ?? 'page'),
+            'slug' => $this->uniquePageSlug($websiteId, $data),
             'type' => $data['type'] ?? 'page',
             'status' => 'draft',
             'sections_json' => json_encode(
@@ -257,8 +386,11 @@ class BuilderService
         return ['page_id' => $id, 'status' => 'draft'];
     }
 
-    public function updatePage(int $pageId, array $data): void
+    public function updatePage(int $pageId, array $data, ?int $wsId = null): void
     {
+        if ($wsId !== null && !DB::table('pages')->join('websites', 'websites.id', '=', 'pages.website_id')->where('pages.id', $pageId)->where('websites.workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException("Page not found: {$pageId}");
+        }
         // PATCH 8 (2026-05-08) — auto-snapshot before+after every mutation.
         // sections_json is the canonical source of truth; every change is
         // recorded in canvas_states so it can be undone via
@@ -328,13 +460,106 @@ class BuilderService
         })->toArray();
     }
 
+    /**
+     * v1.4.4 (2026-05-30) — workspace-level page listing across all websites.
+     * Joins pages to websites so Sarah (workspace-scoped) can see every
+     * landing page without iterating per-website.
+     */
+    public function listWorkspacePages(int $wsId, array $params = []): array
+    {
+        $status = strtolower((string) ($params['status'] ?? 'all'));
+        $limit  = max(1, min((int) ($params['limit'] ?? 50), 200));
+        $q = DB::table('pages as p')
+            ->join('websites as w', 'w.id', '=', 'p.website_id')
+            ->where('w.workspace_id', $wsId)
+            ->whereNull('w.deleted_at');
+        if ($status !== 'all') $q->where('p.status', $status);
+        $rows = $q->orderByDesc('p.updated_at')
+            ->limit($limit)
+            ->get(['p.id', 'p.website_id', 'p.title', 'p.slug', 'p.type', 'p.status', 'p.is_homepage', 'p.updated_at', 'w.name as website_name']);
+        return $rows->map(function ($p) {
+            $obj = (array) $p;
+            return $obj;
+        })->toArray();
+    }
+
     public function getPage(int $pageId): ?object
     {
         return DB::table('pages')->where('id', $pageId)->first();
     }
 
-    public function deletePage(int $pageId): void
+    /**
+     * v1.4.4 (2026-05-30) — Add a new page to an existing website using one
+     * of the universal page templates (about / services / pricing / contact
+     * / faq / legal / blog / home). Pulls workspace_memory facts (business
+     * name, industry, services, location) and hands them to Arthur's
+     * buildDefaultSectionsForPage() so the new page is industry-aware out
+     * of the box.
+     */
+    public function addPageFromTemplate(int $wsId, array $params): array
     {
+        $websiteId    = (int) ($params['website_id'] ?? 0);
+        $pageTemplate = (string) ($params['page_template'] ?? '');
+        $title        = (string) ($params['title'] ?? '');
+        $slug         = (string) ($params['slug']  ?? '');
+
+        if ($websiteId <= 0) {
+            return ['success' => false, 'error' => 'website_id is required'];
+        }
+        if ($pageTemplate === '') {
+            return ['success' => false, 'error' => 'page_template is required (about, services, pricing, contact, faq, legal, blog, home)'];
+        }
+
+        // Verify the website belongs to this workspace.
+        $website = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->first();
+        if (!$website) {
+            return ['success' => false, 'error' => "Website {$websiteId} not found in workspace {$wsId}"];
+        }
+
+        // 2026-06-24 — use the shared, website-aware section builder. It prefers
+        // THIS website's identity (name/industry/template_variables) over
+        // workspace memory, so a secondary site doesn't inherit the workspace's
+        // primary-business copy. (Removes the old workspace_memory-only gather.)
+        $sections = $this->templateSections($wsId, $websiteId, $pageTemplate);
+
+        // Default title + slug if not supplied.
+        $titleDefaults = [
+            'about'   => 'About', 'about_us' => 'About Us',
+            'services'=> 'Services',
+            'pricing' => 'Pricing',
+            'contact' => 'Contact',
+            'faq'     => 'FAQ',
+            'legal'   => 'Legal', 'privacy' => 'Privacy Policy', 'terms' => 'Terms of Service',
+            'blog'    => 'Blog',
+            'home'    => 'Home',
+        ];
+        $slugN = strtolower(preg_replace('/[\s\-]+/', '_', $pageTemplate));
+        if ($title === '') $title = $titleDefaults[$slugN] ?? Str::title(str_replace('_', ' ', $slugN));
+        if ($slug === '')  $slug  = str_replace('_', '-', $slugN);
+
+        // Hand off to the existing createPage which auto-snapshots + syncs SEO.
+        $created = $this->createPage($websiteId, [
+            'title'    => $title,
+            'slug'     => $slug,
+            'sections' => $sections,
+        ]);
+
+        return [
+            'success'       => true,
+            'page_id'       => $created['page_id'] ?? null,
+            'page_template' => $slugN,
+            'title'         => $title,
+            'slug'          => $slug,
+            'section_count' => count($sections),
+            'result'        => "Added '{$title}' page (template: {$slugN}, {$slug}) to website {$websiteId}.",
+        ];
+    }
+
+    public function deletePage(int $pageId, ?int $wsId = null): void
+    {
+        if ($wsId !== null && !DB::table('pages')->join('websites', 'websites.id', '=', 'pages.website_id')->where('pages.id', $pageId)->where('websites.workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException("Page not found: {$pageId}");
+        }
         DB::table('pages')->where('id', $pageId)->delete();
     }
 

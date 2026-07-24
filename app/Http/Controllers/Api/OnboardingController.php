@@ -17,7 +17,10 @@ class OnboardingController
             'city'           => 'required|string|max:120',
             'country'        => 'required|string|max:120',
             'website'        => 'nullable|string|max:2048',
-            'primary_goal'   => 'required|string|max:64',
+            // W6: the picker no longer offers social/email goals. Rejected
+            // server-side too, so a replayed or crafted request cannot store a
+            // removed capability as the workspace goal.
+            'primary_goal'   => 'required|string|max:64|not_in:social,email,newsletter,campaign,social_media,email_list',
             'customer_type'  => 'required|string|max:64',
             'employees'      => 'nullable|string|max:32',
             'budget'         => 'nullable|string|max:32',

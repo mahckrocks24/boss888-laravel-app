@@ -1,0 +1,40 @@
+{
+  "name": "Personal Brand Reel",
+  "slug": "v10-personal-brand",
+  "format": "reels",
+  "category": "personal brand",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "personal brand"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Your Name"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Helping 500K+ creators build authentic brands and monetise their expertise."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Work With Me"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=1080&q=85&fit=crop&crop=face"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "personal brand"
+    ]
+  }
+}

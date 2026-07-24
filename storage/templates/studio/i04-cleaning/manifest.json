@@ -1,0 +1,43 @@
+{
+  "name": "Fresh Minimal Clean — Cleaning",
+  "slug": "i04-cleaning",
+  "format": "square",
+  "category": "social",
+  "sub_category": "services",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["cleaning", "home services", "eco", "services", "B2C"],
+  "variables": {
+    "hero_image":        { "type": "image", "label": "Hero image",   "default": "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=440&q=85&fit=crop&crop=top" },
+    "review_stars":      { "type": "text",  "label": "Star rating",  "default": "★★★★★" },
+    "review_text":       { "type": "text",  "label": "Review text",  "default": "Spotless every time!" },
+    "review_sub":        { "type": "text",  "label": "Review sub",   "default": "500+ happy clients" },
+    "brand_name":        { "type": "text",  "label": "Brand name",   "default": "Logo Here" },
+    "cert_badge":        { "type": "text",  "label": "Cert badge",   "default": "Eco Certified" },
+    "eyebrow":           { "type": "text",  "label": "Eyebrow",      "default": "Professional Cleaning" },
+    "headline_main":     { "type": "text",  "label": "Headline (main)",  "default": "Clean Home," },
+    "headline_accent":   { "type": "text",  "label": "Headline (accent)","default": "Clear Mind." },
+    "subheading":        { "type": "text",  "label": "Subheading",   "default": "Eco-friendly, professional deep cleaning services that leave every space sparkling and fresh." },
+    "pill_1":            { "type": "text",  "label": "Pill 1",       "default": "Deep Clean" },
+    "pill_2":            { "type": "text",  "label": "Pill 2",       "default": "Move-in/out" },
+    "pill_3":            { "type": "text",  "label": "Pill 3",       "default": "Office" },
+    "pill_4":            { "type": "text",  "label": "Pill 4",       "default": "Eco Products" },
+    "cta_label":         { "type": "text",  "label": "CTA",          "default": "Book a Clean" },
+    "cta_ghost_label":   { "type": "text",  "label": "Ghost CTA",    "default": "View Packages" },
+    "footer_left":       { "type": "text",  "label": "Footer left",  "default": "companyname.com &nbsp;·&nbsp; Same-day available" },
+    "footer_right":      { "type": "text",  "label": "Footer right", "default": "@handle" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#FFFFFF" },
+    "blue":   { "label": "Primary",    "default": "#0EA5E9" },
+    "teal":   { "label": "Accent",     "default": "#0D9488" },
+    "mint":   { "label": "Mint",       "default": "#D1FAE5" },
+    "ink":    { "label": "Ink",        "default": "#0C1A2E" }
+  },
+  "semantic": {
+    "mood": ["calm", "minimal"],
+    "color_temperature": "light",
+    "composition": "split",
+    "best_for": ["cleaning", "home services", "wellness", "B2C", "services"]
+  }
+}

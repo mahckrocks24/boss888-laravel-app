@@ -1,0 +1,41 @@
+{
+  "name": "Architect Minimal Grid",
+  "slug": "i10-architecture",
+  "format": "portrait",
+  "category": "marketing",
+  "sub_category": "architecture",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["architecture", "design", "minimal", "portfolio", "studio"],
+  "variables": {
+    "brand_name":      { "type": "text",  "label": "Brand name",   "default": "Logo Here" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",    "default": "companyname.com" },
+    "project_tag":     { "type": "text",  "label": "Project tag",  "default": "Portfolio 2025" },
+    "hero_image":      { "type": "image", "label": "Hero image",   "default": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1080&q=85&fit=crop&crop=center" },
+    "img_caption":     { "type": "text",  "label": "Image caption","default": "Project No. 047 — Dubai" },
+    "eyebrow":         { "type": "text",  "label": "Eyebrow",      "default": "Architecture & Design" },
+    "seq_num":         { "type": "text",  "label": "Sequence",     "default": "01 / 12" },
+    "headline_1":      { "type": "text",  "label": "Headline 1",   "default": "Form" },
+    "headline_2":      { "type": "text",  "label": "Headline 2",   "default": "Follows" },
+    "headline_accent": { "type": "text",  "label": "Headline accent","default": "Vision." },
+    "sub_text":        { "type": "text",  "label": "Sub text",     "default": "We design spaces that transcend function — where precision meets poetry, and every line tells a story." },
+    "service_1":       { "type": "text",  "label": "Service 1",    "default": "Residential Design" },
+    "service_2":       { "type": "text",  "label": "Service 2",    "default": "Commercial Architecture" },
+    "service_3":       { "type": "text",  "label": "Service 3",    "default": "Interior Concepts" },
+    "service_4":       { "type": "text",  "label": "Service 4",    "default": "Urban Planning" },
+    "cta_label":       { "type": "text",  "label": "CTA",          "default": "View Portfolio" },
+    "bottom_handle":   { "type": "text",  "label": "Handle",       "default": "@handle" }
+  },
+  "css_variables": {
+    "bg":    { "label": "Background", "default": "#FAFAFA" },
+    "black": { "label": "Ink",        "default": "#0A0A0A" },
+    "grey":  { "label": "Grey",       "default": "#888888" },
+    "red":   { "label": "Accent",     "default": "#CC0000" }
+  },
+  "semantic": {
+    "mood": ["minimal", "elegant"],
+    "color_temperature": "light",
+    "composition": "no_person",
+    "best_for": ["architecture", "design studio", "portfolio", "minimal", "professional"]
+  }
+}

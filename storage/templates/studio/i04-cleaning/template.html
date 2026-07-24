@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Cleaning — Fresh Minimal Clean</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#FFFFFF;--sky:#EBF8FF;--accent:#0EA5E9;--primary:#0369A1;
+  --mint:#D1FAE5;--mint-a:#10B981;--teal:#0D9488;
+  --text:#0C1A2E;--muted:rgba(12,26,46,.50);
+  --fh:'Nunito',sans-serif;--fb:'DM Sans',sans-serif;
+  --w:1080px;--h:1080px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#D6EEF8}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.80);display:block;width:calc(var(--w)*.80);height:calc(var(--h)*.80)}}
+@media(max-width:940px){.sw{transform:scale(.62);display:block;width:calc(var(--w)*.62);height:calc(var(--h)*.62)}}
+@media(max-width:700px){.sw{transform:scale(.44);display:block;width:calc(var(--w)*.44);height:calc(var(--h)*.44)}}
+@media(max-width:500px){.sw{transform:scale(.30);display:block;width:calc(var(--w)*.30);height:calc(var(--h)*.30)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg)}
+
+/* Soft bg blobs */
+.blob-a{position:absolute;z-index:1;width:500px;height:500px;border-radius:50% 40% 60% 30%/40% 50% 50% 60%;
+  background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(16,185,129,.06));top:-100px;right:-60px;pointer-events:none}
+.blob-b{position:absolute;z-index:1;width:300px;height:300px;border-radius:50%;
+  background:rgba(16,185,129,.07);bottom:-60px;left:80px;pointer-events:none}
+/* Dot grid */
+.dots{position:absolute;inset:0;z-index:1;
+  background-image:radial-gradient(circle,rgba(14,165,233,.10) 1px,transparent 1px);
+  background-size:32px 32px;pointer-events:none}
+
+/* Blue top accent */
+.top-bar{position:absolute;z-index:5;top:0;left:0;right:0;height:5px;
+  background:linear-gradient(90deg,var(--accent),var(--teal),var(--mint-a))}
+
+/* Topbar */
+.topbar{position:absolute;z-index:6;top:20px;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;padding:0 56px}
+.brand-logo{display:flex;align-items:center;gap:12px}
+.brand-ring{width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--teal));
+  display:flex;align-items:center;justify-content:center}
+.brand-ring::after{content:'✦';font-size:14px;color:var(--bg)}
+.brand-name{font-family:var(--fh);font-size:16px;font-weight:800;letter-spacing:.06em;color:var(--text)}
+.cert-badge{font-family:var(--fb);font-size:17px;font-weight:500;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--teal);
+  border:1.5px solid rgba(13,148,136,.25);background:rgba(13,148,136,.06);
+  padding:8px 18px;border-radius:20px;display:flex;align-items:center;gap:7px}
+.cert-badge::before{content:'✓';font-weight:700}
+
+/* IMAGE — large rounded frame right side */
+.img-frame{position:absolute;z-index:4;top:80px;right:48px;width:440px;height:460px;
+  border-radius:220px 220px 180px 180px;overflow:hidden;
+  box-shadow:0 24px 72px rgba(14,165,233,.18),0 0 0 4px rgba(14,165,233,.12)}
+.img-frame img{width:100%;height:100%;object-fit:cover;object-position:center top;
+  filter:saturate(1.05) brightness(1.02)}
+/* Sparkle overlay glow on image */
+.img-frame::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 50%,rgba(235,248,255,.15) 100%)}
+
+/* Floating review card */
+.review-card{position:absolute;z-index:5;top:320px;right:36px;
+  background:white;border-radius:16px;padding:18px 18px;
+  box-shadow:0 8px 32px rgba(14,165,233,.14);border:1px solid rgba(14,165,233,.10);
+  display:flex;align-items:center;gap:14px}
+.stars{color:#FFD60A;font-size:14px;letter-spacing:2px}
+.review-text{font-family:var(--fb);font-size:20px;font-weight:500;color:var(--text)}
+.review-sub{font-family:var(--fb);font-size:18px;color:var(--muted)}
+
+/* CONTENT — left side */
+.content{position:absolute;z-index:5;top:0;left:0;width:560px;height:100%;
+  display:flex;flex-direction:column;justify-content:center;padding:72px0 60px 56px}
+
+.eyebrow{font-family:var(--fb);font-size:18px;font-weight:500;letter-spacing:.28em;
+  text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.eyebrow::before{content:'';width:20px;height:2px;background:var(--accent);flex-shrink:0}
+
+.headline{font-family:var(--fh);font-size:72px;font-weight:800;line-height:.96;
+  letter-spacing:-.02em;color:var(--text);margin-bottom:10px}
+.headline .teal{color:var(--teal)}
+
+.rule{width:48px;height:3px;background:linear-gradient(90deg,var(--accent),var(--teal));
+  border-radius:3px;margin:20px 0}
+
+.sub{font-family:var(--fb);font-size:16px;font-weight:300;line-height:1.70;
+  color:var(--muted);max-width:420px;margin-bottom:32px}
+
+/* Service pills */
+.pills{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:36px}
+.pill{font-family:var(--fb);font-size:20px;font-weight:500;color:var(--primary);
+  background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.18);
+  padding:9px 18px;border-radius:30px;display:flex;align-items:center;gap:7px}
+.pill::before{content:'●';font-size:17px;color:var(--accent)}
+
+/* CTA */
+.cta-row{display:flex;align-items:center;gap:16px}
+.cta{display:inline-flex;align-items:center;gap:12px;font-family:var(--fh);
+  font-size:14px;font-weight:700;letter-spacing:.08em;
+  color:white;background:linear-gradient(135deg,var(--accent),var(--teal));
+  padding:18px 44px;border-radius:50px;border:none;cursor:pointer;
+  text-decoration:none;transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(14,165,233,.30)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+.cta-ghost{font-family:var(--fb);font-size:20px;font-weight:500;color:var(--accent);
+  text-decoration:underline;text-underline-offset:3px;transition:color .20s}
+.cta-ghost:hover{color:var(--teal)}
+
+/* Footer */
+.footer{position:absolute;z-index:5;bottom:0;left:0;right:0;height:70px;
+  display:flex;align-items:center;justify-content:space-between;padding:0 56px;
+  background:rgba(235,248,255,.80);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border-top:1px solid rgba(14,165,233,.10)}
+.footer-text{font-family:var(--fb);font-size:20px;font-weight:400;letter-spacing:.10em;color:var(--muted)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body><div class="scene"><div class="sw"><div class="post">
+  <div class="blob-a"></div><div class="blob-b"></div><div class="dots"></div>
+  <div class="top-bar"></div>
+
+  <!-- Image -->
+  <div class="img-frame">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+  </div>
+
+  <!-- Review card -->
+  <div class="review-card">
+    <div>
+      <div class="stars" data-field="review_stars">{{review_stars}}</div>
+      <div class="review-text" data-field="review_text">{{review_text}}</div>
+      <div class="review-sub" data-field="review_sub">{{review_sub}}</div>
+    </div>
+  </div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand-logo"><div class="brand-ring"></div><span class="brand-name" data-field="brand_name">{{brand_name}}</span></div>
+    <div class="cert-badge" data-field="cert_badge">{{cert_badge}}</div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <h1 class="headline"><span data-field="headline_main">{{headline_main}}</span><br><span class="teal" data-field="headline_accent">{{headline_accent}}</span></h1>
+    <div class="rule"></div>
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="pills">
+      <span class="pill" data-field="pill_1">{{pill_1}}</span>
+      <span class="pill" data-field="pill_2">{{pill_2}}</span>
+      <span class="pill" data-field="pill_3">{{pill_3}}</span>
+      <span class="pill" data-field="pill_4">{{pill_4}}</span>
+    </div>
+    <div class="cta-row">
+      <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+      <a class="cta-ghost" href="#" data-field="cta_ghost_label">{{cta_ghost_label}}</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span class="footer-text" data-field="footer_left">{{footer_left}}</span>
+    <span class="footer-text" data-field="footer_right">{{footer_right}}</span>
+  </div>
+</div></div></div></body></html>

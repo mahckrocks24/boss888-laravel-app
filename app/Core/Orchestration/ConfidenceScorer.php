@@ -59,9 +59,9 @@ class ConfidenceScorer
         // Wave 88 Phase D — runtime is canonical. On unreachable runtime,
         // return a safe-permissive default (review tier, score 0.70).
         return [
-            score         => 0.70,
-            reason        => runtime_unavailable,
-            approval_mode => review,
+            'score'         => 0.70,
+            'reason'        => 'runtime_unavailable',
+            'approval_mode' => 'review',
         ];
     }
 

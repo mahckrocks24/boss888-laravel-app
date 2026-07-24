@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Automotive — Performance Dark Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Barlow:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#080808;--surface:#111111;--primary:#FF2D55;--silver:#B8BEC7;--white:#F5F5F5;
+  --muted:rgba(245,245,245,.40);--red-g:rgba(255,45,85,.18);
+  --fh:'Orbitron',sans-serif;--fb:'Barlow',sans-serif;
+  --w:1080px;--h:1350px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#040404}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1200px){.sw{transform:scale(.78);display:block;width:calc(var(--w)*.78);height:calc(var(--h)*.78)}}
+@media(max-width:960px){.sw{transform:scale(.60);display:block;width:calc(var(--w)*.60);height:calc(var(--h)*.60)}}
+@media(max-width:720px){.sw{transform:scale(.43);display:block;width:calc(var(--w)*.43);height:calc(var(--h)*.43)}}
+@media(max-width:500px){.sw{transform:scale(.29);display:block;width:calc(var(--w)*.29);height:calc(var(--h)*.29)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg)}
+
+/* BG effects */
+.bg-grain{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:160px;opacity:.030;mix-blend-mode:screen}
+/* Speed lines — horizontal streaks */
+.speed-lines{position:absolute;z-index:2;pointer-events:none;
+  top:50%;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(255,45,85,.45),transparent);
+  transform:translateY(-50%)}
+.speed-lines::before{content:'';position:absolute;top:-24px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,45,85,.20),transparent)}
+.speed-lines::after{content:'';position:absolute;top:24px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,45,85,.15),transparent)}
+/* Red glow upper */
+.glow-red{position:absolute;z-index:2;width:700px;height:500px;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(255,45,85,.14) 0%,transparent 65%);
+  top:-100px;left:-100px;pointer-events:none}
+
+/* HERO IMAGE — full bleed, upper ~58% */
+.hero{position:absolute;top:0;left:0;right:0;height:780px;z-index:3;overflow:hidden}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center 40%;
+  filter:brightness(.50) saturate(.60) contrast(1.15)}
+.hero::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,8,8,.55) 0%,transparent 25%,transparent 55%,rgba(8,8,8,.80) 85%,var(--bg) 100%),
+  linear-gradient(90deg,rgba(8,8,8,.45) 0%,transparent 40%)}
+
+/* Red corner mark */
+.red-corner{position:absolute;z-index:5;top:0;left:0;
+  width:0;height:0;border-left:80px solid var(--primary);border-bottom:80px solid transparent}
+.red-corner-label{position:absolute;z-index:6;top:16px;left:8px;
+  font-family:var(--fh);font-size:9px;font-weight:900;letter-spacing:.10em;
+  color:white;transform:rotate(-45deg)}
+
+/* Topbar */
+.topbar{position:absolute;z-index:7;top:28px;left:0;right:0;
+  display:flex;align-items:center;justify-content:flex-end;padding:0 52px}
+.logo-area{display:flex;align-items:center;gap:14px}
+.logo-name{font-family:var(--fh);font-size:16px;font-weight:700;letter-spacing:.12em;color:var(--white)}
+.logo-sub{font-family:var(--fb);font-size:10px;letter-spacing:.20em;text-transform:uppercase;color:var(--muted)}
+
+/* Headline block — on heavy bottom overlay of hero */
+.hero-headline{position:absolute;z-index:5;bottom:400px;left:52px;right:52px}
+.model-label{font-family:var(--fh);font-size:11px;font-weight:400;letter-spacing:.32em;
+  text-transform:uppercase;color:var(--primary);margin-bottom:18px;
+  display:flex;align-items:center;gap:12px}
+.model-label::before{content:'';width:18px;height:2px;background:var(--primary);flex-shrink:0}
+.headline{font-family:var(--fh);font-size:88px;font-weight:900;line-height:.86;
+  letter-spacing:-.02em;color:var(--white)}
+.headline .red{color:var(--primary)}
+
+/* Divider line */
+.divider{position:absolute;z-index:4;top:777px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--primary),rgba(255,45,85,.30),transparent)}
+
+/* CONTENT ZONE */
+.content{position:absolute;z-index:5;bottom:0;left:0;right:0;height:580px;
+  display:flex;flex-direction:column;justify-content:center;padding:0 52px}
+
+.sub{font-family:var(--fb);font-size:18px;font-weight:300;line-height:1.70;
+  color:var(--muted);max-width:680px;margin-bottom:40px}
+
+/* Spec grid */
+.specs{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:rgba(245,245,245,.06);margin-bottom:44px}
+.spec{padding:18px 20px;background:var(--surface)}
+.spec-val{font-family:var(--fh);font-size:28px;font-weight:700;color:var(--white);letter-spacing:-.02em;line-height:1}
+.spec-unit{font-size:14px;font-weight:400;color:var(--primary)}
+.spec-label{font-family:var(--fb);font-size:17px;font-weight:400;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);margin-top:5px}
+
+/* CTA row */
+.cta-row{display:flex;align-items:center;gap:20px}
+.cta{display:inline-flex;align-items:center;gap:14px;font-family:var(--fh);
+  font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:white;background:var(--primary);padding:20px 52px;border:none;cursor:pointer;
+  text-decoration:none;transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(255,45,85,.40)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(5px)}
+.cta-ghost{font-family:var(--fh);font-size:20px;font-weight:400;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--silver);border:1px solid rgba(184,190,199,.20);
+  padding:20px 36px;text-decoration:none;transition:border-color .20s,color .20s}
+.cta-ghost:hover{border-color:var(--primary);color:var(--white)}
+
+/* Brand bottom */
+.brand-bottom{position:absolute;z-index:5;bottom:28px;left:52px;right:52px;
+  display:flex;align-items:center;justify-content:space-between}
+.brand-b-name{font-family:var(--fh);font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--white)}
+.brand-b-url{font-family:var(--fb);font-size:10px;letter-spacing:.16em;color:var(--muted)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body><div class="scene"><div class="sw"><div class="post">
+  <div class="bg-grain"></div><div class="speed-lines"></div><div class="glow-red"></div>
+  <div class="hero">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+  </div>
+  <div class="divider"></div>
+  <div class="red-corner"></div>
+  <div class="red-corner-label" data-field="corner_label">{{corner_label}}</div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo-area">
+      <div><div class="logo-name" data-field="logo_name">{{logo_name}}</div><div class="logo-sub" data-field="logo_sub">{{logo_sub}}</div></div>
+    </div>
+  </div>
+
+  <!-- Hero headline -->
+  <div class="hero-headline">
+    <div class="model-label" data-field="model_label">{{model_label}}</div>
+    <h1 class="headline"><span data-field="headline_main">{{headline_main}}</span><br><span class="red" data-field="headline_accent">{{headline_accent}}</span></h1>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="specs">
+      <div class="spec"><div class="spec-val"><span data-field="spec_1_val">{{spec_1_val}}</span><span class="spec-unit" data-field="spec_1_unit">{{spec_1_unit}}</span></div><div class="spec-label" data-field="spec_1_label">{{spec_1_label}}</div></div>
+      <div class="spec"><div class="spec-val"><span data-field="spec_2_val">{{spec_2_val}}</span><span class="spec-unit" data-field="spec_2_unit">{{spec_2_unit}}</span></div><div class="spec-label" data-field="spec_2_label">{{spec_2_label}}</div></div>
+      <div class="spec"><div class="spec-val"><span data-field="spec_3_val">{{spec_3_val}}</span><span class="spec-unit" data-field="spec_3_unit">{{spec_3_unit}}</span></div><div class="spec-label" data-field="spec_3_label">{{spec_3_label}}</div></div>
+      <div class="spec"><div class="spec-val"><span data-field="spec_4_val">{{spec_4_val}}</span><span class="spec-unit" data-field="spec_4_unit">{{spec_4_unit}}</span></div><div class="spec-label" data-field="spec_4_label">{{spec_4_label}}</div></div>
+    </div>
+    <div class="cta-row">
+      <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+      <a class="cta-ghost" href="#" data-field="cta_ghost_label">{{cta_ghost_label}}</a>
+    </div>
+  </div>
+
+  <!-- Brand bottom -->
+  <div class="brand-bottom">
+    <span class="brand-b-name" data-field="brand_b_name">{{brand_b_name}}</span>
+    <span class="brand-b-url" data-field="brand_b_url">{{brand_b_url}}</span>
+  </div>
+</div></div></div></body></html>

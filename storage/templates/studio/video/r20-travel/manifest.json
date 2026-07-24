@@ -1,0 +1,90 @@
+{
+  "name": "Travel Reel",
+  "slug": "r20-travel",
+  "format": "reels",
+  "category": "travel",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "travel"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_sub": {
+      "type": "text",
+      "label": "Brand Sub",
+      "default": "Travel & Experiences"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Curated Journeys"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Handcrafted itineraries for the curious traveller — from sun-drenched coastlines to ancient mountain trails."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "price_label": {
+      "type": "text",
+      "label": "Price Label",
+      "default": "Packages from"
+    },
+    "price_val": {
+      "type": "text",
+      "label": "Price Val",
+      "default": "$899"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Wander"
+    },
+    "headline_accent": {
+      "type": "text",
+      "label": "Headline Accent",
+      "default": "Further,"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "Dream Deeper."
+    },
+    "tag_1": {
+      "type": "text",
+      "label": "Tag 1",
+      "default": "All Inclusive"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Explore Destinations"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "travel"
+    ]
+  }
+}

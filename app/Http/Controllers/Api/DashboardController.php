@@ -142,18 +142,28 @@ class DashboardController
             'articles_total'         => DB::table('articles')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
             'leads_captured'         => DB::table('leads')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
             'leads_this_week'        => DB::table('leads')->where('workspace_id', $wsId)->whereNull('deleted_at')->where('created_at', '>=', $weekAgo)->count(),
-            'social_posts_scheduled' => DB::table('social_posts')->where('workspace_id', $wsId)->whereIn('status', ['scheduled', 'draft'])->whereNull('deleted_at')->count(),
-            'social_posts_published' => DB::table('social_posts')->where('workspace_id', $wsId)->where('status', 'published')->whereNull('deleted_at')->count(),
+            // W6 launch scope: social_posts_scheduled / social_posts_published removed.
             'keywords_tracked'       => DB::table('seo_keywords')->where('workspace_id', $wsId)->count(),
             'designs_created'        => DB::table('studio_designs')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
-            'emails_sent'            => DB::table('email_campaigns_log')->where('workspace_id', $wsId)->count(),
-            'campaigns_total'        => DB::table('campaigns')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
+            // W6 launch scope: emails_sent / campaigns_total removed.
             'active_agents'          => DB::table('workspace_agents')->where('workspace_id', $wsId)->where('enabled', true)->count(),
             'websites_total'         => DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
             'websites_published'     => DB::table('websites')->where('workspace_id', $wsId)->where('status', 'published')->whereNull('deleted_at')->count(),
         ];
 
         // ── PENDING APPROVALS (join tasks for engine/action context) ───────
+        // 2026-05-30 fix: ApprovalService::requestIfNeeded() creates approvals
+        // BEFORE a task exists (the task is created post-approval). Those rows
+        // have NULL task_id but DO carry engine/action/data_json on the
+        // approvals row itself. The previous query only read engine/action
+        // from the joined task and fell back to "system"/"review" — which
+        // surfaced as "Review · system" labels with greyed-out buttons. We
+        // now coalesce between the two tables so the real engine/action shows.
+        //
+        // v1.4.4 (2026-05-30) — batched approvals. Each row now exposes
+        // batch_id + batch_count + batch_total_credits + sample_titles so the
+        // SPA can render "Approve all 10 articles" instead of 10 separate
+        // rows. When batch_id is null the row behaves identically to before.
         $approvals = DB::table('approvals as ap')
             ->leftJoin('tasks as t', 't.id', '=', 'ap.task_id')
             ->where('ap.workspace_id', $wsId)
@@ -161,24 +171,54 @@ class DashboardController
             ->orderByDesc('ap.created_at')
             ->limit(5)
             ->get([
-                'ap.id', 'ap.task_id', 'ap.status', 'ap.created_at',
-                't.engine', 't.action', 't.payload_json', 't.credit_cost',
+                'ap.id', 'ap.task_id', 'ap.status', 'ap.created_at', 'ap.batch_id',
+                'ap.engine as ap_engine', 'ap.action as ap_action', 'ap.data_json as ap_data_json',
+                't.engine as t_engine', 't.action as t_action', 't.payload_json as t_payload_json',
+                't.credit_cost',
             ])
-            ->map(function ($row) {
-                $engine = $row->engine ?: 'system';
-                $action = $row->action ?: 'review';
-                $meta = $row->payload_json ? json_decode($row->payload_json, true) : null;
+            ->map(function ($row) use ($wsId) {
+                $engine = $row->t_engine ?: ($row->ap_engine ?: 'system');
+                $action = $row->t_action ?: ($row->ap_action ?: 'review');
+                $rawMeta = $row->t_payload_json ?: $row->ap_data_json;
+                $meta = $rawMeta ? json_decode($rawMeta, true) : null;
+
+                // Batch context: if this approval has a batch_id, count and
+                // sample the sibling tasks so the Command Center card can
+                // surface "10 articles" with a few title previews.
+                $batchCount        = 1;
+                $batchTotalCredits = (int) ($row->credit_cost ?? 0);
+                $sampleTitles      = [];
+                if ($row->batch_id) {
+                    $siblings = DB::table('tasks')
+                        ->where('workspace_id', $wsId)
+                        ->where('batch_id', $row->batch_id)
+                        ->where('action', $action)
+                        ->whereIn('approval_status', ['pending'])
+                        ->get(['id', 'credit_cost', 'payload_json']);
+                    $batchCount = $siblings->count() ?: 1;
+                    $batchTotalCredits = (int) $siblings->sum('credit_cost') ?: $batchTotalCredits;
+                    foreach ($siblings->take(6) as $s) {
+                        $p = $s->payload_json ? json_decode($s->payload_json, true) : null;
+                        $t = is_array($p) ? ($p['title'] ?? $p['topic'] ?? $p['keyword'] ?? null) : null;
+                        if ($t) $sampleTitles[] = mb_substr((string) $t, 0, 80);
+                    }
+                }
+
                 return [
-                    'id'         => $row->id,
-                    'task_id'    => $row->task_id,
-                    'engine'     => $engine,
-                    'action'     => $action,
-                    'label'      => $this->labelFor($engine, $action, $meta),
-                    'agent'      => $this->agentForEngine($engine),
-                    'credit_cost' => $row->credit_cost ?? 0,
-                    'created_at' => $row->created_at,
-                    'age_hours'  => (int) Carbon::parse($row->created_at)->diffInHours(now()),
-                    'time_ago'   => Carbon::parse($row->created_at)->diffForHumans(),
+                    'id'                  => $row->id,
+                    'task_id'             => $row->task_id,
+                    'batch_id'            => $row->batch_id,
+                    'batch_count'         => $batchCount,
+                    'batch_total_credits' => $batchTotalCredits,
+                    'sample_titles'       => array_values(array_unique($sampleTitles)),
+                    'engine'              => $engine,
+                    'action'              => $action,
+                    'label'               => $this->labelFor($engine, $action, $meta),
+                    'agent'               => $this->agentForEngine($engine),
+                    'credit_cost'         => $row->credit_cost ?? 0,
+                    'created_at'          => $row->created_at,
+                    'age_hours'           => (int) Carbon::parse($row->created_at)->diffInHours(now()),
+                    'time_ago'            => Carbon::parse($row->created_at)->diffForHumans(),
                 ];
             })->values();
 
@@ -307,18 +347,18 @@ class DashboardController
             'write.ai_write'           => 'Priya drafted content with AI',
             'write.improve_draft'      => 'Priya improved a draft',
             'write.generate_outline'   => 'Priya outlined an article',
-            'social.create_post'       => 'Marcus created a social post',
-            'social.update_post'       => 'Marcus edited a social post',
-            'social.schedule_post'     => 'Marcus scheduled a post',
-            'social.publish_post'      => 'Marcus published a post',
+            'social.create_post'       => 'An article was shared to social',
+            'social.update_post'       => 'A social share was edited',
+            'social.schedule_post'     => 'A social share was scheduled',
+            'social.publish_post'      => 'An article was published to social',
             'crm.create_lead'          => 'Elena captured a new lead',
             'crm.create_contact'       => 'Elena added a contact',
             'crm.update_lead'          => 'Elena updated a lead',
             'crm.score_lead'           => 'Elena scored a lead',
             'crm.generate_outreach'    => 'Elena drafted an outreach email',
-            'studio.export_design'     => 'Marcus exported a design',
-            'studio.create_design'     => 'Marcus started a new design',
-            'studio.publish_social'    => 'Marcus published a design to social',
+            'studio.export_design'     => 'Studio exported a design',
+            'studio.create_design'     => 'Studio started a new design',
+            'studio.publish_social'    => 'A Studio design was shared to social',
             'marketing.send_campaign'  => 'Priya sent an email campaign',
             'marketing.schedule_campaign' => 'Priya scheduled a campaign',
             'marketing.update_campaign'=> 'Priya edited a campaign',
@@ -328,7 +368,7 @@ class DashboardController
             'builder.publish_website'  => 'Arthur published your website',
             'creative.generate_image'  => 'The creative engine generated an image',
             'creative.generate_video'  => 'The creative engine rendered a video',
-            'manualedit.create_canvas' => 'Marcus started a canvas edit',
+            'manualedit.create_canvas' => 'A canvas edit was started',
             'meeting.end_meeting'      => 'Sarah closed a strategy meeting',
             'meeting.start_meeting'    => 'Sarah opened a strategy meeting',
             'meeting.create_plan'      => 'Sarah drafted a strategic plan',
@@ -351,15 +391,9 @@ class DashboardController
         static $cache = [];
         $slug = strtolower($slug);
         if (isset($cache[$slug])) return $cache[$slug];
-        $row = DB::table('agents')->where('slug', $slug)->first(['name', 'slug', 'color']);
-        if ($row) {
-            return $cache[$slug] = [
-                'name'  => $row->name,
-                'slug'  => $row->slug,
-                'color' => $row->color ?: '#6C5CE7',
-            ];
-        }
-        return $cache[$slug] = ['name' => ucfirst($slug), 'slug' => $slug, 'color' => '#6C5CE7'];
+        // W6: raw DB reads bypass the Agent model global scope. Resolve through
+        // the one authority so a removed agent can only render as historical.
+        return $cache[$slug] = \App\Core\LaunchScope\AgentDirectory::resolve($slug);
     }
 
     private function agentForEngine(string $engine): array
@@ -367,13 +401,16 @@ class DashboardController
         $map = [
             'seo'        => ['name' => 'James',  'slug' => 'james',  'color' => '#3B82F6'],
             'write'      => ['name' => 'Priya',  'slug' => 'priya',  'color' => '#7C3AED'],
-            'social'     => ['name' => 'Marcus', 'slug' => 'marcus', 'color' => '#EC4899'],
+            // LAUNCH SCOPE 2026-07-20 — removed-agent (marcus) badges replaced with
+            // honest non-person tool labels. Studio/creative/manualedit are direct
+            // user tools; social is the retained article-share service.
+            'social'     => ['name' => 'Article share', 'slug' => 'system', 'color' => '#EC4899'],
             'crm'        => ['name' => 'Elena',  'slug' => 'elena',  'color' => '#00E5A8'],
-            'studio'     => ['name' => 'Marcus', 'slug' => 'marcus', 'color' => '#EC4899'],
-            'marketing'  => ['name' => 'Priya',  'slug' => 'priya',  'color' => '#7C3AED'],
+            'studio'     => ['name' => 'Studio', 'slug' => 'studio', 'color' => '#EC4899'],
+            'marketing'  => ['name' => 'Sarah',  'slug' => 'sarah',  'color' => '#F59E0B'],
             'builder'    => ['name' => 'Arthur', 'slug' => 'arthur', 'color' => '#00E5A8'],
-            'creative'   => ['name' => 'Marcus', 'slug' => 'marcus', 'color' => '#EC4899'],
-            'manualedit' => ['name' => 'Marcus', 'slug' => 'marcus', 'color' => '#EC4899'],
+            'creative'   => ['name' => 'Studio', 'slug' => 'studio', 'color' => '#F97316'],
+            'manualedit' => ['name' => 'Editor', 'slug' => 'system', 'color' => '#EC4899'],
             'meeting'    => ['name' => 'Sarah',  'slug' => 'sarah',  'color' => '#F59E0B'],
             'calendar'   => ['name' => 'Elena',  'slug' => 'elena',  'color' => '#00E5A8'],
             'agent'      => ['name' => 'Sarah',  'slug' => 'sarah',  'color' => '#F59E0B'],

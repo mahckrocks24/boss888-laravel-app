@@ -1,0 +1,75 @@
+{
+  "name": "Education Reel",
+  "slug": "b04-education",
+  "format": "reels",
+  "category": "education",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "education"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "Start Free"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "500+ Courses"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "World-class courses taught by industry experts — on your schedule, at your pace, from anywhere."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "brand_icon": {
+      "type": "text",
+      "label": "Brand Icon",
+      "default": "📚"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Learn"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "Without"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "limits."
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "education"
+    ]
+  }
+}

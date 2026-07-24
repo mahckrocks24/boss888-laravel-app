@@ -1,0 +1,70 @@
+{
+  "name": "Restaurant Reel",
+  "slug": "v02-restaurant",
+  "format": "reels",
+  "category": "restaurant",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "restaurant"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_stars": {
+      "type": "text",
+      "label": "Brand Stars",
+      "default": "★ ★ ★ ★ ★"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Tonight's Menu"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Modern European · Open Daily from 6pm"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Taste the"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "Extraordinary."
+    },
+    "bottom_text_1": {
+      "type": "text",
+      "label": "Bottom Text 1",
+      "default": "companyname.com"
+    },
+    "bottom_text_2": {
+      "type": "text",
+      "label": "Bottom Text 2",
+      "default": "@handle"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Reserve a Table"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1080&q=85&fit=crop&crop=center"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "restaurant"
+    ]
+  }
+}

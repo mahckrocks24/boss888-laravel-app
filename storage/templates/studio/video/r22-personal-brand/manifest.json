@@ -1,0 +1,35 @@
+{
+  "name": "Personal Brand Reel",
+  "slug": "r22-personal-brand",
+  "format": "reels",
+  "category": "personal brand",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "personal brand"
+  ],
+  "variables": {
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@yourhandle"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Work With Me"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "personal brand"
+    ]
+  }
+}

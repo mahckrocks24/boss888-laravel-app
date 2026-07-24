@@ -1,0 +1,47 @@
+{
+  "name": "Luxury Edition — Real Estate",
+  "slug": "sp01-luxury-realestate",
+  "format": "portrait",
+  "category": "real-estate",
+  "sub_category": "luxury",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["real estate", "luxury", "property", "broker", "premium"],
+  "variables": {
+    "hero_image":       { "type": "image", "label": "Hero image",       "default": "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1080&q=85&fit=crop&crop=center" },
+    "hero_label":       { "type": "text",  "label": "Hero label",       "default": "PENTHOUSE" },
+    "hero_badge":       { "type": "text",  "label": "Hero badge",       "default": "New Listing" },
+    "vert_text":        { "type": "text",  "label": "Vertical text",    "default": "MMXXV — Est. Collection" },
+    "eyebrow":          { "type": "text",  "label": "Eyebrow",          "default": "Luxury Real Estate" },
+    "headline_pre":     { "type": "text",  "label": "Headline pre",     "default": "Where " },
+    "headline_accent":  { "type": "text",  "label": "Headline accent",  "default": "Elevation" },
+    "headline_mid":     { "type": "text",  "label": "Headline mid",     "default": "Meets" },
+    "headline_end":     { "type": "text",  "label": "Headline end",     "default": "Legacy." },
+    "subheading":       { "type": "text",  "label": "Subheading",       "default": "An unparalleled collection of curated residences designed for those who demand nothing less than extraordinary." },
+    "stat_1_val":       { "type": "text",  "label": "Stat 1 value",     "default": "12" },
+    "stat_1_label":     { "type": "text",  "label": "Stat 1 label",     "default": "Exclusive Units" },
+    "stat_2_val":       { "type": "text",  "label": "Stat 2 value",     "default": "48F" },
+    "stat_2_label":     { "type": "text",  "label": "Stat 2 label",     "default": "Sky Level" },
+    "stat_3_val":       { "type": "text",  "label": "Stat 3 value",     "default": "360°" },
+    "stat_3_label":     { "type": "text",  "label": "Stat 3 label",     "default": "City Panorama" },
+    "cta_label":        { "type": "text",  "label": "CTA",              "default": "Book a Private Viewing" },
+    "offer_tag":        { "type": "text",  "label": "Offer tag",        "default": "Starting From" },
+    "offer_value":      { "type": "text",  "label": "Offer value",      "default": "AED 4.2M" },
+    "brand_primary":    { "type": "text",  "label": "Brand primary",    "default": "Logo Here" },
+    "brand_secondary":  { "type": "text",  "label": "Brand secondary",  "default": "Your Tagline" },
+    "brand_handle":     { "type": "text",  "label": "Brand handle",     "default": "companyname.com" },
+    "qr_label":         { "type": "text",  "label": "QR label",         "default": "SCAN" }
+  },
+  "css_variables": {
+    "clr-bg":           { "label": "Background", "default": "#08080A" },
+    "clr-gold":         { "label": "Gold",       "default": "#C9A96E" },
+    "clr-gold-light":   { "label": "Gold light", "default": "#E8CFA0" },
+    "clr-text-primary": { "label": "Text",       "default": "#F0EDE8" }
+  },
+  "semantic": {
+    "mood": ["luxury", "elegant"],
+    "color_temperature": "dark",
+    "composition": "image_top",
+    "best_for": ["real estate", "luxury", "property", "premium", "broker"]
+  }
+}

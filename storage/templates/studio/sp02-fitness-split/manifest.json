@@ -1,0 +1,47 @@
+{
+  "name": "Bold Dark Fitness Split",
+  "slug": "sp02-fitness-split",
+  "format": "square",
+  "category": "fitness",
+  "sub_category": "performance",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["fitness", "gym", "performance", "training", "transformation"],
+  "variables": {
+    "hero_image":       { "type": "image", "label": "Hero image",       "default": "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=540&q=85&fit=crop&crop=top" },
+    "vert_label":       { "type": "text",  "label": "Vertical label",   "default": "Performance · Endurance" },
+    "img_badge_num":    { "type": "text",  "label": "Badge number",     "default": "12W" },
+    "img_badge_label":  { "type": "text",  "label": "Badge label",      "default": "Program Duration" },
+    "eyebrow_pill":     { "type": "text",  "label": "Eyebrow pill",     "default": "FITNESS" },
+    "headline_1":       { "type": "text",  "label": "Headline 1",       "default": "Push" },
+    "headline_2":       { "type": "text",  "label": "Headline 2",       "default": "Your" },
+    "headline_accent":  { "type": "text",  "label": "Headline accent",  "default": "Limits." },
+    "subheading":       { "type": "text",  "label": "Subheading",       "default": "A 12-week transformation program built for athletes who refuse to settle for average." },
+    "feature_1":        { "type": "text",  "label": "Feature 1",        "default": "Daily Workouts" },
+    "feature_2":        { "type": "text",  "label": "Feature 2",        "default": "Nutrition Plan" },
+    "feature_3":        { "type": "text",  "label": "Feature 3",        "default": "Live Coaching" },
+    "stat_1_val":       { "type": "text",  "label": "Stat 1 value",     "default": "4K+" },
+    "stat_1_label":     { "type": "text",  "label": "Stat 1 label",     "default": "Members" },
+    "stat_2_val":       { "type": "text",  "label": "Stat 2 value",     "default": "98%" },
+    "stat_2_label":     { "type": "text",  "label": "Stat 2 label",     "default": "Completion" },
+    "stat_3_val":       { "type": "text",  "label": "Stat 3 value",     "default": "★4.9" },
+    "stat_3_label":     { "type": "text",  "label": "Stat 3 label",     "default": "Rating" },
+    "cta_label":        { "type": "text",  "label": "CTA",              "default": "Start Today" },
+    "offer_tag":        { "type": "text",  "label": "Offer tag",        "default": "Join For" },
+    "offer_value":      { "type": "text",  "label": "Offer value",      "default": "Free" },
+    "brand_primary":    { "type": "text",  "label": "Brand primary",    "default": "Logo Here" },
+    "brand_url":        { "type": "text",  "label": "Brand URL",        "default": "companyname.com" },
+    "brand_handle":     { "type": "text",  "label": "Brand handle",     "default": "@handle" }
+  },
+  "css_variables": {
+    "clr-bg":   { "label": "Background", "default": "#0D0D0D" },
+    "clr-lime": { "label": "Primary",    "default": "#C8FF00" },
+    "clr-white":{ "label": "Text",       "default": "#F5F5F5" }
+  },
+  "semantic": {
+    "mood": ["energetic", "bold"],
+    "color_temperature": "dark",
+    "composition": "split",
+    "best_for": ["fitness", "performance", "training", "promotion", "transformation"]
+  }
+}

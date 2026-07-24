@@ -41,7 +41,8 @@ class ChatbotContextBuilder
 
         $ws = DB::table('workspaces')->where('id', $workspaceId)->first();
         $settings = DB::table('chatbot_settings')->where('workspace_id', $workspaceId)->first();
-        $brand = DB::table('creative_brand_identities')->where('workspace_id', $workspaceId)->first();
+        // /* h2-chatbot */ brand kit via single resolver (was direct creative_brand_identities read)
+        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($workspaceId);
 
         // PATCH (per-website chatbot context, 2026-05-09) — workspace 1
         // hosts many tenant subdomains in staging; each tenant is a
@@ -83,8 +84,16 @@ class ChatbotContextBuilder
         $pageUrl  = (string) ($session->page_url ?? '');
         $pageTitle = $this->resolvePageTitle($workspaceId, $pageUrl);
 
-        // KB retrieval — workspace-scoped, FULLTEXT first, LIKE fallback
-        $chunks = $this->kb->retrieveChunks($workspaceId, $userMessage, self::KB_TOP_K);
+        // KB retrieval — B1 (2026-06-23) per-website scoping. Prefer the website
+        // bound to the widget token (canonical, per-website); fall back to the
+        // website resolved from the visitor's page_url. NULL → workspace-wide.
+        $kbWebsiteId = (int) (DB::table('chatbot_widget_tokens')
+            ->where('id', (int) ($session->widget_token_id ?? 0))
+            ->value('website_id') ?? 0);
+        if ($kbWebsiteId <= 0 && $website && ! empty($website->id)) {
+            $kbWebsiteId = (int) $website->id;
+        }
+        $chunks = $this->kb->retrieveChunks($workspaceId, $userMessage, self::KB_TOP_K, $kbWebsiteId ?: null);
 
         // History — chronological, last N user+assistant messages
         $history = DB::table('chatbot_messages')
@@ -223,21 +232,15 @@ PROMPT;
 
     // ── Private ──────────────────────────────────────
 
-    private function extractTone(?object $brand): string
+    /* h2-extracttone-shape */
+    private function extractTone($brand): string
     {
-        if (! $brand) return 'helpful and concise';
-        // creative_brand_identities may carry tone in different fields across
-        // workspaces. Look at the most likely candidates; default if none.
-        foreach (['tone_of_voice', 'tone', 'voice'] as $key) {
-            if (! empty($brand->{$key})) {
-                $val = (string) $brand->{$key};
-                if (is_string($val) && trim($val) !== '') return mb_substr(trim($val), 0, 200);
-            }
-        }
-        // Sometimes tone is buried in metadata_json
-        if (! empty($brand->metadata_json)) {
-            $meta = is_string($brand->metadata_json) ? json_decode($brand->metadata_json, true) : $brand->metadata_json;
-            if (is_array($meta) && ! empty($meta['tone'])) return mb_substr(trim((string) $meta['tone']), 0, 200);
+        if (empty($brand)) return 'helpful and concise';
+        // Accept both legacy creative_brand_identities row object and the
+        // resolver array shape (resolver shape has tone + voice keys).
+        $tone = is_array($brand) ? ($brand['tone'] ?? $brand['voice'] ?? null) : ($brand->tone ?? $brand->voice ?? null);
+        if ($tone && is_string($tone) && trim($tone) !== '') {
+            return mb_substr(trim($tone), 0, 200);
         }
         return 'helpful and concise';
     }

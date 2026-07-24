@@ -564,6 +564,85 @@ window.LU_API_BASE = '';
 // Engine bust — file mtime from server so LiteSpeed cache can never serve stale engine JS
 window.LU_ENGINE_BUST = (window.LU_CFG && window.LU_CFG.engineBust) ? window.LU_CFG.engineBust : (window.LU_CFG ? window.LU_CFG.version : '3.0.4');
 
+// ═══════════════════════════════════════════════════════════════
+// LU_humanize — schema-leakage scrubber (added v5.7.7)
+// ═══════════════════════════════════════════════════════════════
+// Mirrors the mobile companion's src/utils/humanize.ts. ANYWHERE a
+// tool slug, task type, status enum, or other internal identifier
+// could surface to a user, render `LU_humanize(slug)` instead of
+// the raw value. Keeps mobile + web in lock-step on the no-schema-
+// leakage rule.
+;(function(){
+  var SLUG_PHRASES = {
+    write_article:'drafting an article', improve_draft:'polishing the draft',
+    optimize_article:'optimising the article', generate_article:'drafting an article',
+    create_campaign:'building a campaign', schedule_campaign:'scheduling the campaign',
+    seo_content_generation:'writing SEO content', email_generation:'drafting an email',
+    competitor_analysis:'reviewing competitor context', serp_analysis:'researching search rankings',
+    keyword_research:'researching keywords', builder_generate:'designing the page',
+    image_generation:'generating an image', scene_planning:'planning the scenes',
+    blueprint_generate:'mapping the strategy', agent_meeting:'a team meeting',
+    strategy_meeting:'a strategy session', before_after:'a before-and-after',
+    chat_json:'a thoughtful reply', deep_audit:'a full SEO audit',
+    generate_page_layout:'designing the page',
+    waiting_approval:'waiting for sign-off', waiting_input:'waiting for input',
+    queued:'queued up', running:'in progress', pending:'about to start',
+    completed:'finished', failed:'hit a problem', cancelled:'cancelled',
+    revision_requested:'sent back for revisions',
+    blog_article:'blog article',
+    landing_page:'landing page', seo_report:'SEO report'
+  };
+  var SORTED = Object.keys(SLUG_PHRASES).sort(function(a,b){return b.length-a.length;});
+  var RX = new RegExp('\\b(' + SORTED.join('|') + ')\\b', 'g');
+  // ── LU_statusLabel (2026-07-19) — proposal/approval status labels ───────
+  // core.js:6769 rendered `_cmdcEsc(p.status || 'draft')`, i.e. the RAW enum,
+  // as visible chip text: users saw "pending_approval", "superseded",
+  // "executing". LU_humanize existed to prevent exactly this but was never
+  // called on the approvals path, and its generic snake_case rule would only
+  // yield "pending approval" anyway. This gives the statuses real copy and
+  // falls back to LU_humanize for anything unmapped, so a NEW backend status
+  // degrades to readable words instead of a raw enum.
+  var STATUS_LABELS = {
+    pending_approval: 'Awaiting your OK',
+    pending:          'Awaiting your OK',
+    approved:         'Approved',
+    declined:         'Declined',
+    rejected:         'Declined',
+    executing:        'Running now',
+    completed:        'Done',
+    failed:           'Didn’t complete',
+    superseded:       'No longer needed',
+    acknowledged:     'Noted',
+    expired:          'Expired',
+    revised:          'Changes requested',
+    draft:            'Draft',
+    // Billing / subscription statuses (Stripe-style) — second chip site,
+    // core.js ~7304. `past_due` / `incomplete_expired` would otherwise
+    // render raw in the plan header.
+    active:             'Active',
+    trialing:           'Free trial',
+    past_due:           'Payment overdue',
+    unpaid:             'Unpaid',
+    canceled:           'Cancelled',
+    cancelled:          'Cancelled',
+    incomplete:         'Setup incomplete',
+    incomplete_expired: 'Setup expired',
+    paused:             'Paused'
+  };
+  window.LU_statusLabel = function(status){
+    if (status === undefined || status === null || status === '') return 'Draft';
+    var k = String(status).toLowerCase().trim();
+    return STATUS_LABELS[k] || window.LU_humanize(k).replace(/^./, function(c){ return c.toUpperCase(); });
+  };
+
+  window.LU_humanize = function(text){
+    if (text === undefined || text === null) return '';
+    var s = String(text).replace(RX, function(_, slug){ return SLUG_PHRASES[slug] || slug; });
+    s = s.replace(/\b([a-z]{2,}(?:_[a-z]{2,})+)\b/g, function(_, slug){ return slug.replace(/_/g,' '); });
+    return s;
+  };
+})();
+
 // ── nav() queue stub ────────────────────────────────────────────────────────
 // Defined immediately (top of file) so onclick="nav('...')" handlers that fire
 // before the full script loads don't throw ReferenceError.
@@ -579,13 +658,179 @@ window.LU_ENGINE_BUST = (window.LU_CFG && window.LU_CFG.engineBust) ? window.LU_
   }
 })();
 
+// ═══════════════════════════════════════════════════════════════════════════
+// v5.7.19 (2026-05-31) — Phase 1.0 URL routing
+// Wraps the SPA's existing nav() chokepoint with HTML5 History API so each
+// section gets a real URL (/app/crm, /app/seo, /app/articles, …). Refresh,
+// back/forward, and direct URL access all work. Existing hash and query-
+// string deep links (#signup, #seo, /app/?tab=strategy, etc.) are NOT
+// touched — they continue to resolve via their existing parsers for back-
+// compat. The catch-all Laravel route at routes/web.php:33 already serves
+// the SPA shell for any /app/{any?} path, so no backend work is needed.
+//
+// Behind LU_CFG.url_routing_enabled feature flag — flip to false for an
+// instant revert.
+// ═══════════════════════════════════════════════════════════════════════════
+window._luRouter = (function () {
+  // Canonical view registry — must match view-* IDs in index.html. Synced
+  // 2026-05-31. If a new view is added to the SPA, add its key here.
+  // Two redirect-only keys (governance, campaigns) are intentionally
+  // omitted because canonical nav() redirects them to (approvals, marketing).
+  var KNOWN_VIEWS = {
+    agents:1, approvals:1, automation:1, billing:1, blog:1, builder:1,
+    calendar:1, chatbot:1, command:1, crm:1, manualedit:1, marketing:1, mentions:1,
+    meeting:1, messages:1, projects:1, queue:1, reports:1, seo:1,
+    settings:1, social:1, studio:1, tools:1, websites:1, workspace:1,
+    write:1, infrastructure:1,
+  };
+
+  // v5.7.23 (2026-05-31) — URL aliases. /app/{alias} resolves to the
+  // mapped view. Used for friendly URLs that don't have a 1:1 view-*
+  // panel (e.g. strategy proposals live INSIDE command center). Keeps
+  // existing backend-generated notification URLs working with the new
+  // path scheme.
+  var URL_ALIASES = {
+    strategy: 'command',  // proposals + Sarah's strategies surface here
+  };
+
+  // v5.7.23 (2026-05-31) — per-view human titles for document.title.
+  // Updated on every successful nav() call. Default is "LevelUp Growth"
+  // (the bare brand) for the workspace home; everything else gets a
+  // suffix so browser tabs / bookmarks read meaningfully.
+  var VIEW_TITLES = {
+    workspace:  'Workspace',
+    infrastructure: 'Infrastructure',
+    command:    'Command Center',
+    crm:        'CRM',
+    seo:        'SEO',
+    write:      'Articles',
+    blog:       'Blog',
+    marketing:  'Marketing',
+    social:     'Social',
+    calendar:   'Calendar',
+    creative:   'Creative',
+    studio:     'Studio',
+    builder:    'Builder',
+    websites:   'Websites',
+    agents:     'Agents',
+    approvals:  'Approvals',
+    automation: 'Automation',
+    billing:    'Billing',
+    chatbot:    'Chatbot',
+    manualedit: 'Edit',
+    mentions:   'Mentions',
+    meeting:    'Strategy Room',
+    messages:   'Messages',
+    projects:   'Projects',
+    queue:      'Queue',
+    reports:    'Reports',
+    settings:   'Settings',
+    tools:      'Tools',
+  };
+
+  // workspace is the default landing — pushes to /app/ rather than
+  // /app/workspace so the URL stays clean on first load.
+  var DEFAULT_VIEW = 'workspace';
+  var BASE = '/app/';
+
+  function enabled() {
+    return !!(window.LU_CFG && window.LU_CFG.url_routing_enabled);
+  }
+  function isKnown(view) {
+    return !!(view && KNOWN_VIEWS[view]);
+  }
+  // v5.7.20 (2026-05-31) — Phase 2 path tails. pathToView returns
+  // { view, tail } so /app/write/176 → { view:'write', tail:'176' }.
+  // viewToPath + pushView accept an optional tail to build /app/write/176.
+  // Tail charset is intentionally narrow (alphanumeric, dash, underscore,
+  // dot) — IDs and slugs. Anything more exotic would suggest a Phase 3
+  // sub-router. For now the router only resolves first-level tails;
+  // /app/crm/leads/123 is treated as /app/crm/leads (tail='leads'),
+  // intentionally — Phase 2 doesn't model two-segment sub-routes yet.
+  function viewToPath(view, tail) {
+    if (!isKnown(view)) return null;
+    var base = (view === DEFAULT_VIEW && !tail) ? BASE : BASE + view;
+    return tail ? base + '/' + encodeURIComponent(String(tail)) : base;
+  }
+  function pathToView(pathname) {
+    // Accept /app/, /app/{view}, /app/{view}/, /app/{view}/{tail}, ...
+    if (!pathname) return null;
+    var p = pathname.replace(/\/+$/, '').toLowerCase();
+    if (p === '/app' || p === '') return { view: DEFAULT_VIEW, tail: null };
+    // Match /app/{view}[/{tail}] — case-insensitive on view, preserve raw tail.
+    var m = p.match(/^\/app\/([a-z0-9_-]+)(?:\/([a-z0-9._-]+))?$/);
+    if (!m) return null;
+    // v5.7.23 — resolve alias before the registry check.
+    var slug = URL_ALIASES[m[1]] || m[1];
+    if (!isKnown(slug)) return null;
+    return { view: slug, tail: m[2] || null };
+  }
+
+  // v5.7.23 (2026-05-31) — update document.title per route. Called from
+  // nav() after the view dispatch. Keeps browser tabs + bookmarks readable.
+  function setTitle(view) {
+    if (typeof document === 'undefined') return;
+    var brand = (window.LU_CFG && window.LU_CFG.bn) || 'LevelUp Growth';
+    var label = VIEW_TITLES[view];
+    document.title = label ? (label + ' · ' + brand) : brand;
+  }
+  function pushView(view, tail) {
+    if (!enabled()) return;
+    var target = viewToPath(view, tail);
+    if (!target) return;
+    var curPath = window.location.pathname.replace(/\/+$/, '');
+    var tgtPath = target.replace(/\/+$/, '');
+    if (curPath === tgtPath) return;  // idempotent
+    try {
+      // Preserve query string + hash so embed mode + #signup etc. survive.
+      var qs = window.location.search || '';
+      var hash = window.location.hash || '';
+      history.pushState({ view: view, tail: tail || null }, '', target + qs + hash);
+    } catch (e) {
+      console.warn('[LU Router] pushState failed:', e);
+    }
+  }
+  function parseInitial() {
+    return pathToView(window.location.pathname);
+  }
+  // popstate handler — back/forward triggers a nav with silent:true so we
+  // don't re-push the URL we just landed on. Tail is passed through so
+  // /app/write/176 → /app/write transition (or vice versa) re-opens or
+  // closes the article.
+  function onPopState() {
+    if (!enabled()) return;
+    var hit = pathToView(window.location.pathname);
+    if (hit && typeof window.nav === 'function') {
+      try { window.nav(hit.view, { silent: true, tail: hit.tail }); }
+      catch (e) { console.warn('[LU Router] popstate nav failed:', e); }
+    }
+  }
+  // Wire popstate once, regardless of when nav() loads.
+  try { window.addEventListener('popstate', onPopState); }
+  catch (_) { /* server-side or restricted context */ }
+
+  return {
+    enabled: enabled,
+    isKnown: isKnown,
+    pushView: pushView,
+    parseInitial: parseInitial,
+    viewToPath: viewToPath,
+    pathToView: pathToView,
+    onPopState: onPopState,
+    setTitle: setTitle,
+    KNOWN_VIEWS: KNOWN_VIEWS,
+    URL_ALIASES: URL_ALIASES,
+    DEFAULT_VIEW: DEFAULT_VIEW,
+  };
+})();
+
 async function luLoadEngine(engine) {
   if (window.LU_LOADED_ENGINES[engine]) return;
   if (_luEngineLoading[engine]) return;
   _luEngineLoading[engine] = true;
   var urls = (window.LU_CFG && window.LU_CFG.engineUrls) || {};
   var base = (window.LU_CFG && window.LU_CFG.pluginUrl) ? window.LU_CFG.pluginUrl + '/assets/js/' : '';
-  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video'];
+  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','automation','projects','mentions','infrastructure'];
   if (lazy.indexOf(engine) === -1) { _luEngineLoading[engine] = false; return; }
   var src = urls[engine] || (base + engine + '.js');
   var isFallback = !urls[engine] && base;
@@ -611,16 +856,14 @@ var ENG_AGENTS = {
   sarah:  { name:'Sarah',  role:'DMM',         color:'var(--p)' },
   james:  { name:'James',  role:'SEO',          color:'var(--bl)' },
   priya:  { name:'Priya',  role:'Content',      color:'var(--pu)' },
-  marcus: { name:'Marcus', role:'Social',       color:'var(--am)' },
   elena:  { name:'Elena',  role:'CRM',          color:'var(--rd)' },
   alex:   { name:'Alex',   role:'Tech SEO',     color:'var(--ac)' },
 };
 var ENG_TOOL_AGENTS = {
   // prefill tool options per agent selection
-  sarah:  ['autonomous_goal','list_goals','create_campaign','schedule_campaign','pause_goal'],
+  sarah:  ['autonomous_goal','list_goals','pause_goal'],
   james:  ['serp_analysis','ai_report','deep_audit'],
-  priya:  ['write_article','improve_draft','create_campaign','schedule_campaign'],
-  marcus: ['create_post','schedule_post','publish_post'],
+  priya:  ['write_article','improve_draft'],
   elena:  ['create_lead','update_lead','list_leads','move_lead','log_activity'],
   alex:   ['insert_link','dismiss_link','outbound_links','check_outbound','deep_audit'],
 };
@@ -705,14 +948,13 @@ var icons = {
 };
 var wpNonce_alias = NONCE; // alias used by some governance calls
 var AGENTS={
-  dmm: {name:'Sarah',role:'Digital Marketing Manager',emoji:'👩‍💼',color:'var(--p)',expertise:['Strategy','Growth','Analytics','Campaign Planning']},
+  dmm: {name:'Sarah',role:'Digital Marketing Manager',emoji:'👩‍💼',color:'var(--p)',expertise:['Strategy','Growth','Analytics','Content Planning']},
   james:{name:'James',role:'SEO Strategist',emoji:'📊',color:'var(--bl)',expertise:['Keyword Research','Search Intent','Topical Authority','SERP Features','Local SEO']},
   priya:{name:'Priya',role:'Content Manager',emoji:'✍️',color:'var(--pu)',expertise:['Editorial Calendar','Brand Voice','Content Briefs','TOFU/MOFU/BOFU','Repurposing']},
-  marcus:{name:'Marcus',role:'Social Media Manager',emoji:'📱',color:'var(--am)',expertise:['Instagram Reels','LinkedIn B2B','TikTok Strategy','Paid Social','Community']},
-  elena:{name:'Elena',role:'CRM & Leads Specialist',emoji:'🎯',color:'var(--rd)',expertise:['Lead Capture','Email Nurture','CRM Segmentation','Lead Scoring','Attribution']},
+  elena:{name:'Elena',role:'CRM & Leads Specialist',emoji:'🎯',color:'var(--rd)',expertise:['Lead Capture','Lead Nurture','CRM Segmentation','Lead Scoring','Attribution']},
   alex:{name:'Alex',role:'Technical SEO Engineer',emoji:'⚙️',color:'var(--ac)',expertise:['Core Web Vitals','Crawl Budget','Schema Markup','Site Architecture','Speed Optimisation']},
 };
-var PAIR_COLORS={'dmm-james':'var(--bl)','dmm-priya':'var(--pu)','dmm-marcus':'var(--am)','dmm-elena':'var(--rd)','dmm-alex':'var(--ac)','james-priya':'#06B6D4','james-marcus':'#8B5CF6','james-elena':'#EC4899','james-alex':'#10B981','priya-marcus':'#F97316','priya-elena':'#EAB308','priya-alex':'#84CC16','marcus-elena':'#FB923C','marcus-alex':'#22D3EE','elena-alex':'#818CF8'};
+var PAIR_COLORS={'dmm-james':'var(--bl)','dmm-priya':'var(--pu)','dmm-elena':'var(--rd)','dmm-alex':'var(--ac)','james-priya':'#06B6D4','james-elena':'#EC4899','james-alex':'#10B981','priya-elena':'#EAB308','priya-alex':'#84CC16','elena-alex':'#818CF8'};
 function pairColor(a,b){var k=[a,b].sort().join('-');return PAIR_COLORS[k]||'var(--t2)';}
 
 let currentView='workspace',currentAgent=null,allTasks=[],pendingApprovalData=null,noteTargetConn=null;
@@ -725,7 +967,6 @@ var THINK = {
     dmm:    ['Coordinating the team…','Synthesising insights…','Reviewing the strategy…','Connecting the dots…'],
     james:  ['Analysing keyword demand…','Checking search volume…','Mapping search intent…','Running competitor gap…','Pulling SERP features…','Checking keyword difficulty…','Reviewing topical authority…'],
     priya:  ['Drafting content brief…','Mapping the funnel stage…','Reviewing brand voice…','Structuring the content…','Checking repurpose formats…','Aligning with editorial calendar…'],
-    marcus: ['Checking platform algorithms…','Reviewing Reel formats…','Pulling engagement data…','Mapping distribution channels…','Checking paid social options…','Reviewing audience targeting…'],
     elena:  ['Mapping the lead funnel…','Reviewing CRM triggers…','Building nurture sequence…','Checking lead scoring logic…','Reviewing conversion points…','Pulling attribution data…'],
     alex:   ['Running technical audit…','Checking Core Web Vitals…','Reviewing crawl budget…','Checking schema markup…','Auditing site architecture…','Reviewing canonical setup…'],
 };
@@ -753,7 +994,10 @@ function stopAgentActivity(agentId) {
 }
 
 // ── Routing ────────────────────────────────────────────────────────────────
-async function nav(view){
+async function nav(view, opts){
+  // v5.7.19 — opts.silent skips history.pushState (used by popstate replays
+  // and any internal call that doesn't represent a real navigation).
+  opts = opts || {};
   document.querySelectorAll('.view').forEach(v=>{
     v.classList.remove('active');
     // SEO view uses visibility (not display:none) to keep iframe alive
@@ -775,6 +1019,18 @@ async function nav(view){
   el.classList.add('active');
   var ni=document.getElementById('ni-'+view);if(ni)ni.classList.add('active');
   currentView=view;
+  // v5.7.19 (2026-05-31) — Phase 1.0 URL routing. Push the URL after the
+  // view has been resolved (so unknown views never pollute history), and
+  // only when this nav() call represents a real navigation. Internal
+  // switches and popstate replays pass {silent:true} to skip.
+  if (!opts.silent && window._luRouter && window._luRouter.enabled()) {
+    window._luRouter.pushView(view, opts.tail || null);
+  }
+  // v5.7.23 — update document.title for browser tab + bookmark labels.
+  // Runs regardless of silent flag so popstate/initial-URL also update.
+  if (window._luRouter && window._luRouter.enabled() && typeof window._luRouter.setTitle === 'function') {
+    try { window._luRouter.setTitle(view); } catch (_e) {}
+  }
   // 2026-05-15 — hide SEO AI Assistant FAB when navigating away from SEO.
   if (view !== 'seo' && typeof window._lgseHideFab === 'function') {
     window._lgseHideFab();
@@ -783,9 +1039,11 @@ async function nav(view){
   var _wsAct=document.getElementById('ws-activity-panel');
   if(_wsAct){ _wsAct.style.display = (view==='meeting') ? 'none' : ''; }
   if(view==='reports')    loadReports();
-  if(view==='projects')   loadProjects();
+  if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); }
+  if(view==='infrastructure') { await luLoadEngine('infrastructure'); var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
+  if(view==='mentions')   { await luLoadEngine('mentions'); var _el=document.getElementById('mentions-root'); if(_el && typeof mentionsLoad==='function') mentionsLoad(_el); }
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
-  if(view==='workspace')  {loadTasks();drawCanvas();drawZones();}
+  if(view==='workspace')  {loadTasks();drawCanvas();drawZones(); if(typeof loadAgentStats==='function') loadAgentStats();}
   if(view==='agents')     { loadTasks(); loadAgentStats(); }
   if(view==='governance') loadGovernance();
   if(view==='previews')   { loadPreviews(); _previewAutoRefreshStart(); } else { _previewAutoRefreshStop(); }
@@ -811,23 +1069,72 @@ async function nav(view){
     if (wsSitePages) wsSitePages.style.display = 'none';
     if (wsSiteList) wsSiteList.style.display = 'block';
     var _vb = document.getElementById('view-builder'); if(_vb) _vb.style.display = 'none';
-    if (typeof wsLoadSites === 'function') wsLoadSites();
+    if (typeof wsLoadSites === 'function') await wsLoadSites();
     else if (window._lu_engine_loaders && window._lu_engine_loaders['websites']) {
       var _el = document.getElementById('websites-root');
       if (_el) window._lu_engine_loaders['websites'](_el);
     }
+    // v5.7.21 (2026-05-31) — Phase 2 deep link. If the URL was
+    // /app/websites/{siteId}, open that site's page list after sites load.
+    if (opts.tail && typeof window.wsOpenSite === 'function') {
+      var _sid = parseInt(opts.tail, 10);
+      if (Number.isFinite(_sid) && _sid > 0) {
+        try { await window.wsOpenSite(_sid); }
+        catch (e) { console.warn('[Websites] deep-link open failed:', e); }
+      }
+    }
   }
   // ── Engine modules — dynamic dispatch via loader registry ──────────────
-  if(view==='crm')        { await luLoadEngine('crm'); var _el=document.getElementById('crm-root'); if(_el && typeof crmLoad==='function') crmLoad(_el); }
+  if(view==='crm')        {
+    await luLoadEngine('crm');
+    var _el=document.getElementById('crm-root');
+    if(_el && typeof crmLoad==='function') await crmLoad(_el);
+    // v5.7.21 (2026-05-31) — Phase 2 deep link. If the URL was /app/crm/{leadId},
+    // open that lead's detail drawer after the engine mounts.
+    if (opts.tail && typeof window._crmOpenDetail === 'function') {
+      var _lid = parseInt(opts.tail, 10);
+      if (Number.isFinite(_lid) && _lid > 0) {
+        try { await window._crmOpenDetail(_lid); }
+        catch (e) { console.warn('[CRM] deep-link open failed:', e); }
+      }
+    }
+  }
   if(view==='marketing')  { await luLoadEngine('marketing'); var _el=document.getElementById('marketing-root'); if(_el && typeof mktLoad==='function') mktLoad(_el); }
   if(view==='social')     { await luLoadEngine('social'); var _el=document.getElementById('social-root'); if(_el && typeof socialLoad==='function') socialLoad(_el); }
   if(view==='calendar')   { await luLoadEngine('calendar'); var _el=document.getElementById('calendar-root'); if(_el && typeof calLoad==='function') calLoad(_el); }
-  if(view==='write')      { await luLoadEngine('write'); var _el=document.getElementById('write-root'); if(_el && typeof writeLoad==='function') writeLoad(_el); }
+  if(view==='write')      {
+    await luLoadEngine('write');
+    var _el=document.getElementById('write-root');
+    if(_el && typeof writeLoad==='function') await writeLoad(_el);
+    // v5.7.20 (2026-05-31) — Phase 2 deep link. If the URL was
+    // /app/write/{articleId}, open that article after the engine mounts.
+    if (opts.tail && typeof window._wrLoadAndOpenEditor === 'function') {
+      var _aid = parseInt(opts.tail, 10);
+      if (Number.isFinite(_aid) && _aid > 0) {
+        try { await window._wrLoadAndOpenEditor(_aid); }
+        catch (e) { console.warn('[Write] deep-link open failed:', e); }
+      }
+    }
+  }
   if(view==='creative')   { await luLoadEngine('creative'); var _el=document.getElementById('creative-root'); if(_el && typeof creativeLoad==='function') creativeLoad(_el); }
   if(view==='manualedit') { await luLoadEngine('manualedit'); var _el=document.getElementById('manualedit-root'); if(_el && typeof manualeditLoad==='function') manualeditLoad(_el); }
-  if(view==='automation') { var _el=document.getElementById('automation-root'); if(_el && typeof autoLoad==='function') autoLoad(_el); }
+  if(view==='automation') { await luLoadEngine('automation'); var _el=document.getElementById('automation-root'); if(_el && typeof automationLoad==='function') automationLoad(_el); }
   if(view==='blog')       { await luLoadEngine('blog'); var _el=document.getElementById('blog-root'); if(_el && typeof blogLoad==='function') blogLoad(_el); }
-  if(view==='studio')     { await luLoadEngine('studio'); var _el=document.getElementById('studio-root'); if(_el && typeof studioLoad==='function') studioLoad(_el); }
+  if(view==='studio')     {
+    await luLoadEngine('studio');
+    var _el=document.getElementById('studio-root');
+    if(_el && typeof studioLoad==='function') await studioLoad(_el);
+    // v5.7.22 (2026-05-31) — Phase 2 deep link. /app/studio/{designId} →
+    // fetch design and mount editor. silentPush=true so we don't re-push
+    // the URL we just read.
+    if (opts.tail && typeof window.studioOpenDesign === 'function') {
+      var _did = parseInt(opts.tail, 10);
+      if (Number.isFinite(_did) && _did > 0) {
+        try { await window.studioOpenDesign(_did, true); }
+        catch (e) { console.warn('[Studio] deep-link open failed:', e); }
+      }
+    }
+  }
   // 2026-05-12 — Pipeline moved into SEO engine as a tab. Sidebar dispatch removed.
   if(view==='chatbot')    { var _el=document.getElementById('chatbot-root'); if(_el && typeof chatbotLoad==='function') chatbotLoad(_el); }
   if(view==='messages')   { var _el=document.getElementById('messages-root'); if(_el && typeof messagesLoad==='function') messagesLoad(_el); }
@@ -968,8 +1275,8 @@ async function loadToolRegistry(el) {
 }
 
 // ── Governance ─────────────────────────────────────────────────────────────
-var AGENT_COLORS = {dmm:'var(--p)',james:'var(--bl)',priya:'var(--pu)',marcus:'var(--am)',elena:'var(--rd)',alex:'var(--ac)'};
-var AGENT_NAMES  = {dmm:'Sarah',james:'James',priya:'Priya',marcus:'Marcus',elena:'Elena',alex:'Alex'};
+var AGENT_COLORS = {dmm:'var(--p)',james:'var(--bl)',priya:'var(--pu)',elena:'var(--rd)',alex:'var(--ac)'};
+var AGENT_NAMES  = {dmm:'Sarah',james:'James',priya:'Priya',elena:'Elena',alex:'Alex'};
 let govHistory = [];
 
 async function loadGovernance(){
@@ -1117,7 +1424,7 @@ async function renderPreviewCard(p) {
   html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
     <span style="font-size:22px">${agent.emoji}</span>
     <div style="flex:1">
-      <div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(preview.summary || p.tool_id)}</div>
+      <div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(preview.summary || LU_humanize(p.tool_id))}</div>
       <div style="font-size:11px;color:var(--t3)">${agent.name} · ${preview.domain || ''} · ${window._luParseTs(p.created_at).toLocaleString()}</div>
     </div>
     <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:${(riskColors[preview.risk]||'var(--t3)')}22;color:${riskColors[preview.risk]||'var(--t3)'}">${(preview.risk||'').toUpperCase()}</span>
@@ -1237,7 +1544,7 @@ function updatePreviewBadge(count) {
 })();
 
 // ── Canvas ─────────────────────────────────────────────────────────────────
-var defaultPos={dmm:{x:450,y:280},james:{x:180,y:140},priya:{x:720,y:130},marcus:{x:860,y:300},elena:{x:640,y:460},alex:{x:240,y:440}};
+var defaultPos={dmm:{x:450,y:280},james:{x:180,y:140},priya:{x:720,y:130},elena:{x:640,y:460},alex:{x:240,y:440}};
 var nodePos={...Object.fromEntries(Object.entries(defaultPos).map(([k,v])=>([k,{...v}])))};
 // Task node positions — overrides centroid when user has dragged them
 var taskNodePos = {};
@@ -1245,8 +1552,8 @@ var taskNodePos = {};
 // ── Zone layout ────────────────────────────────────────────────────────────
 var ZONE_DEFS = {
   leadership: { agents:['dmm'],                 color:'rgba(108,92,231,.03)' },
-  strategy:   { agents:['james','priya','marcus','sofia','jordan','vera','kai'], color:'rgba(59,139,245,.025)' },
-  execution:  { agents:['alex','elena','diana','ryan','leo','maya','chris','nora','zara','tyler','zoe','max'], color:'rgba(0,229,168,.02)' },
+  strategy:   { agents:['james','priya','sofia'], color:'rgba(59,139,245,.025)' },
+  execution:  { agents:['alex','elena','diana','ryan','nora','max'], color:'rgba(0,229,168,.02)' },
 };
 
 function drawZones() {
@@ -1309,7 +1616,7 @@ function resetLayout(){
   nodes.forEach(function(n){
     var id=n.dataset.agent;
     if(id==='dmm'||id==='sarah') sarahNode=n;
-    else if(['james','priya','marcus','sofia','jordan','vera','kai'].indexOf(id)>=0) inner.push(n);
+    else if(['james','priya','sofia'].indexOf(id)>=0) inner.push(n);
     else outer.push(n);
   });
   // Sarah at center
@@ -1368,6 +1675,15 @@ function drawCanvas(){
   var svg=document.getElementById('canvas-svg');
   if(!svg){console.warn('[drawCanvas] no SVG element');return;}
   svg.innerHTML='';
+
+  // 2026-05-26 — FORCED position sync. Bug 1 in the forensic: index.html
+  // writes dynamic positions to window.nodePos_dyn, but drawCanvas reads
+  // from nodePos (file-local). The intended sync at index.html:2684 races
+  // with drawCanvas calls. Force-sync EVERY draw so lines always land at
+  // the correct node positions.
+  if (window.nodePos_dyn) {
+    Object.assign(nodePos, window.nodePos_dyn);
+  }
 
   // Remove existing task nodes from canvas
   document.querySelectorAll('.task-node').forEach(n=>n.remove());
@@ -1434,38 +1750,66 @@ function drawCanvas(){
   var canvasEl=document.getElementById('canvas-agents');
   if(!canvasEl) return;
 
+  // 2026-05-26 — instrument: log how many lines drew this pass + the pairs.
+  // Helps users verify visually in DevTools whether the canvas line render
+  // path is actually firing.
+  var _drawnPairs = [];
   // Draw collaboration lines between agents
   Object.entries(connMap).forEach(([pair,tasks],pairIdx)=>{
     var [a,b]=pair.split('-');
     var nodeA=document.getElementById('node-'+a);
     var nodeB=document.getElementById('node-'+b);
     if(!nodeA||!nodeB) return;
-    if(!nodePos[a]||!nodePos[b]) return;
 
-    // Use nodePos (layout coords) for positions — works on virtual canvas
-    var x1=nodePos[a].x+80, y1=nodePos[a].y+60;
-    var x2=nodePos[b].x+80, y2=nodePos[b].y+60;
+    // 2026-05-26 — read positions DIRECTLY from agent-node DOM, not from
+    // nodePos. nodePos can be stale (defaults from core.js init vs. IIFE
+    // radial layout that overrides style.left/top). When they diverge,
+    // lines render at the wrong coordinates. The DOM is the source of truth.
+    function nodeCenter(n) {
+      var x = parseInt(n.style.left, 10);
+      var y = parseInt(n.style.top, 10);
+      if (isNaN(x)) x = (nodePos[n.dataset.agent] || {}).x || 0;
+      if (isNaN(y)) y = (nodePos[n.dataset.agent] || {}).y || 0;
+      // +80 +60 = approx center of a 160×140 agent card
+      return { x: x + 80, y: y + 60 };
+    }
+    var pA = nodeCenter(nodeA), pB = nodeCenter(nodeB);
+    var x1 = pA.x, y1 = pA.y;
+    var x2 = pB.x, y2 = pB.y;
     var mx=(x1+x2)/2, my=(y1+y2)/2;
     var dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy)||1;
     var nx=-dy/len, ny=dx/len;
     var offsetAmt=50*(pairIdx%2===0?1:-1);
     var cx=mx+nx*offsetAmt, cy=my+ny*offsetAmt;
 
-    var hasOngoing=tasks.some(t=>t.status==='ongoing'||t.status==='in_progress');
-    var hasUpcoming=tasks.some(t=>t.status==='upcoming');
-    var color=hasOngoing?'var(--ac)':hasUpcoming?'var(--am)':'var(--bl)';
+    // 2026-05-26 — Bug 2: animation now fires for ANY non-terminal task in
+    // the chain, not just running/verifying (which were too brief to ever
+    // catch). Upcoming + ongoing both animate; only fully-settled chains
+    // (all completed/cancelled/failed) stop animating.
+    var hasOngoing  = tasks.some(t=>t.status==='ongoing'||t.status==='in_progress');
+    var hasUpcoming = tasks.some(t=>t.status==='upcoming');
+    var hasActive   = hasOngoing || hasUpcoming;
+    var color = hasOngoing ? 'var(--ac)' : (hasUpcoming ? 'var(--am)' : 'var(--bl)');
+
+    // 2026-05-26 — Bug 3: flash on new chain detected. Track previous
+    // poll's pair set; pairs new in this draw get a 3s flash on top of
+    // their normal class. Makes delegation visible even when tasks finish
+    // between polls.
+    var prevPairs = window._previousLinePairs || {};
+    var isNewPair = !prevPairs[pair];
 
     var path=document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d',`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-    // 2026-05-22 URGENT FIX C — collaboration lines were invisible on dense
-    // canvases. Bumped stroke + opacity, added drop-shadow filter for contrast.
     path.setAttribute('stroke',color);path.setAttribute('stroke-width','2.5');
     path.setAttribute('stroke-dasharray','7,4');path.setAttribute('fill','none');
     path.setAttribute('opacity','0.95');
     path.style.filter='drop-shadow(0 0 4px rgba(0,0,0,0.55))';
     path.style.pointerEvents='stroke';path.style.cursor='pointer';
-    // Wave 85 — add .canvas-line class + .active when chain has ongoing/in_progress
-    path.setAttribute('class', hasOngoing ? 'canvas-line active' : 'canvas-line');
+    path.setAttribute('class', hasActive ? 'canvas-line active' : 'canvas-line');
+    if (isNewPair) {
+      path.classList.add('flash');
+      setTimeout(function(pe){ try { pe.classList.remove('flash'); } catch(_e){} }, 3000, path);
+    }
     path.addEventListener('mouseenter',e=>showConnTooltip(e,a,b,tasks));
     path.addEventListener('mouseleave',hideConnTooltip);
     svg.appendChild(path);
@@ -1481,7 +1825,13 @@ function drawCanvas(){
     lbl.setAttribute('font-family','DM Sans,sans-serif');lbl.setAttribute('font-weight','700');
     lbl.setAttribute('fill',color);lbl.textContent=tasks.length+' task'+(tasks.length>1?'s':'');
     lbl.style.pointerEvents='none'; svg.appendChild(lbl);
+    _drawnPairs.push({ pair: pair, tasks: tasks.length, active: hasActive, flash: isNewPair });
   });
+  // 2026-05-26 — bookkeeping + summary log so user can verify in DevTools.
+  var newPairSet = {};
+  _drawnPairs.forEach(function(p){ newPairSet[p.pair] = true; });
+  window._previousLinePairs = newPairSet;
+  console.log('[drawCanvas] paths drawn:', _drawnPairs.length, _drawnPairs);
 }
 
 function renderTaskNode(task, agents) {
@@ -1582,6 +1932,10 @@ async function loadTasks(){
     allTasks = raw.map(t => ({
       ...t,
       id:       t.id || t.task_id,
+      // v1.4.4 (2026-05-30) — preserve batch_id for client-side grouping
+      // in the workspace task views (drawer task list + agent task board).
+      batch_id: t.batch_id || null,
+      action:   t.action || '',
       assignee: (function(){
         var a = t.assignee || t.agent_id || '';
         if(!a && t.assigned_agents_json){
@@ -1678,14 +2032,34 @@ async function loadTasks(){
 }
 
 function updateNodeCounts(){
+  // 2026-05-25 — writes BOTH workspace-tab tc-* IDs AND agents-tab av-* IDs
+  // from window._agentStatsData (populated by loadAgentStats from
+  // /api/agents/dashboard). Earlier FIX 67 NEUTERED this and only wrote
+  // the progress bar — that's why the workspace tab stayed empty: the
+  // tc-* IDs (workspace-tab cards) and av-* IDs (agents-tab cards) are
+  // DIFFERENT DOM elements on DIFFERENT views. They look identical but
+  // live in separate HTML sections (view-workspace at index.html L2522
+  // vs view-agents at L4274).
+  //
+  // Both sets now read from the same _agentStatsData dictionary — single
+  // source of truth, no race with loadAgentStats.
   Object.keys(AGENTS).forEach(id=>{
-    var ongoing=allTasks.filter(t=>(t.assignee===id||(t.assignees||[]).includes(id))&&(t.status==='ongoing'||t.status==='in_progress')).length;
-    var upcoming=allTasks.filter(t=>(t.assignee===id||(t.assignees||[]).includes(id))&&t.status==='upcoming').length;
-    var completed=allTasks.filter(t=>(t.assignee===id||(t.assignees||[]).includes(id))&&t.status==='completed').length;
-    var tot=ongoing+upcoming+completed||1;
-    setEl('tc-ongoing-'+id,ongoing);setEl('tc-upcoming-'+id,upcoming);setEl('tc-completed-'+id,completed);
-    var onBar=document.getElementById('tb-ongoing-'+id);if(onBar)onBar.style.width=Math.min(ongoing/tot*100*3,100)+'%';
-    setEl('av-ongoing-'+id,ongoing);setEl('av-upcoming-'+id,upcoming);setEl('av-completed-'+id,completed);
+    var stats = (window._agentStatsData && window._agentStatsData[id]) || null;
+    if (!stats) return;
+    var ongoing   = stats.ongoing   || 0;
+    var upcoming  = stats.upcoming  || 0;
+    var completed = stats.completed || 0;
+    var tot = ongoing + upcoming + completed || 1;
+    // workspace-tab cards
+    setEl('tc-ongoing-'+id,   ongoing);
+    setEl('tc-upcoming-'+id,  upcoming);
+    setEl('tc-completed-'+id, completed);
+    // agents-tab cards (kept in sync with loadAgentStats writes)
+    setEl('av-ongoing-'+id,   ongoing);
+    setEl('av-upcoming-'+id,  upcoming);
+    setEl('av-completed-'+id, completed);
+    var onBar = document.getElementById('tb-ongoing-'+id);
+    if (onBar) onBar.style.width = Math.min(ongoing/tot*100*3, 100) + '%';
   });
 }
 
@@ -1901,27 +2275,188 @@ async function saveNote(){
 }
 
 // ── Agent drawer ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// Live agent-chat event stream (2026-06-15) — web parity with the mobile
+// companion app's eventClient. The drawer previously only refreshed on open +
+// a bounded 90s post-send poll, so async/proactive agent replies and task
+// lifecycle never appeared live in the web chat. This wires the open drawer
+// into the SAME brain stream the mobile app consumes — GET /api/agent/events
+// (AgentDispatchController::events, already mounted under the SPA's auth.jwt
+// group). No client-side intelligence: Laravel emits render-ready, humanized
+// copy (no-schema-leakage); the client only places it. Dedup is shared with
+// loadDrawerMessages + the two-phase poll via window._agentChatRendered so the
+// final reply / ack / history never double-render. Scoped to the open drawer;
+// stopped on close; self-disables after repeated failures.
+// ─────────────────────────────────────────────────────────────────
+function _acRenderedSet(slug){
+  window._agentChatRendered = window._agentChatRendered || {};
+  if(!window._agentChatRendered[slug]) window._agentChatRendered[slug] = new Set();
+  return window._agentChatRendered[slug];
+}
+function _acIsRendered(slug, id){ return id!=null && _acRenderedSet(slug).has(String(id)); }
+function _acMark(slug, id){ if(id!=null) _acRenderedSet(slug).add(String(id)); }
+// Backend emits conversation_id='sarah'; the web AGENTS key for Sarah is 'dmm'.
+function _acNorm(slug){ return slug === 'sarah' ? 'dmm' : (slug||''); }
+
+function _acNearBottom(feed){ return (feed.scrollHeight - (feed.scrollTop + feed.clientHeight)) < 120; }
+
+function _acRenderAgentBubble(slug, content, tsMs, isError){
+  var feed=document.getElementById('msgs-feed-container'); if(!feed) return;
+  var ag=AGENTS[slug]||{};
+  var stick=_acNearBottom(feed);
+  var div=document.createElement('div');
+  div.className='msg-from-agent';
+  div.style.alignSelf='flex-start';
+  var c = isError ? 'var(--rd,#dc2626)' : (ag.color||'var(--t2)');
+  div.innerHTML='<div style="font-size:9px;font-weight:700;color:'+c+';margin-bottom:3px">'+esc(ag.name||slug)+(isError?' · error':'')+'</div>'+(typeof fmt==='function'?fmt(content||''):esc(content||''))+'<div class="msg-ts">'+new Date(tsMs||Date.now()).toLocaleTimeString()+'</div>';
+  feed.appendChild(div);
+  if(stick) feed.scrollTop=feed.scrollHeight;
+}
+
+// Task-lifecycle card — natural-language, no technical kicker (mirrors the
+// mobile StructuredCard). Uses existing design-system vars only.
+function _acRenderActivityCard(ev){
+  var feed=document.getElementById('msgs-feed-container'); if(!feed) return;
+  var d = ev.data || {};
+  var accent = (ev.type==='failure_notice') ? 'var(--rd,#dc2626)'
+             : (ev.type==='approval_request') ? 'var(--p)'
+             : (ev.type==='output_preview') ? 'var(--p)'
+             : 'var(--am)';
+  var pct = (typeof d.progress === 'number') ? Math.max(0,Math.min(100,Math.round(d.progress))) : null;
+  var lead = esc(ev.content || 'Update');
+  var html = '<span style="font-size:11px;color:var(--t2);line-height:1.5">'+lead+'</span>';
+  if(pct!==null && ev.type==='progress_update'){
+    html += '<div style="height:4px;background:var(--s3);border-radius:2px;overflow:hidden;margin-top:6px"><div style="height:100%;width:'+pct+'%;background:'+accent+'"></div></div>';
+  }
+  if(ev.type==='approval_request'){
+    html += '<div style="margin-top:6px"><button onclick="if(typeof nav===\'function\')nav(\'command\')" style="background:var(--ps);border:1px solid var(--p);color:var(--pu);border-radius:var(--rg);padding:4px 10px;font-size:10px;font-weight:600;cursor:pointer">Review &amp; approve</button></div>';
+  }
+  var stick=_acNearBottom(feed);
+  var div=document.createElement('div');
+  div.className='msg-activity-card';
+  div.style.cssText='align-self:flex-start;max-width:88%;background:var(--s1);border:1px solid var(--bd);border-left:3px solid '+accent+';border-radius:var(--rg);padding:8px 12px;margin:3px 0';
+  div.innerHTML=html;
+  feed.appendChild(div);
+  if(stick) feed.scrollTop=feed.scrollHeight;
+}
+
+function _acHandleEvents(events, drawerSlug, primed){
+  if(!Array.isArray(events)) return;
+  for(var i=0;i<events.length;i++){
+    var ev=events[i];
+    if(!ev || !ev.id) continue;
+    if(_acNorm(String(ev.conversation_id||'')) !== drawerSlug) continue; // only the open thread
+    if(ev.type==='message' || ev.type==='agent_reply'){
+      var rowId = String(ev.id).indexOf('am_')===0 ? String(ev.id).slice(3) : String(ev.id);
+      if(_acIsRendered(drawerSlug,rowId) || _acIsRendered(drawerSlug,ev.id)) continue;
+      _acMark(drawerSlug,rowId); _acMark(drawerSlug,ev.id);
+      // a live reply means any in-flight two-phase "working…"/typing UI is done
+      var w=document.getElementById('agent-still-working'); if(w) w.remove();
+      var ti=document.getElementById('agent-typing-indicator'); if(ti) ti.remove();
+      _acRenderAgentBubble(drawerSlug, ev.content, ev.timestamp?Date.parse(ev.timestamp):Date.now(), !!(ev.data&&ev.data.error));
+    } else {
+      // Task lifecycle. Only render cards for activity that happened AFTER the
+      // drawer opened (primed) — the first poll's backlog (cursor=null returns
+      // the last 5 min) is consumed to advance the cursor, not replayed.
+      if(!primed) continue;
+      if(_acIsRendered(drawerSlug,ev.id)) continue;
+      _acMark(drawerSlug,ev.id);
+      _acRenderActivityCard(ev);
+    }
+  }
+}
+
+function _acStartEventPoll(drawerSlug){
+  _acStopEventPoll();
+  var queryConv = (drawerSlug==='dmm') ? 'sarah' : drawerSlug;
+  window._agentChatCursor = null;
+  window._agentChatPollFails = 0;
+  window._agentChatPrimed = false;
+  var tick = async function(){
+    if(document.hidden) return;
+    if(window._agentDrawerOpen !== drawerSlug) { _acStopEventPoll(); return; }
+    try{
+      var url = API+'agent/events?conversation_id='+encodeURIComponent(queryConv)+(window._agentChatCursor?('&cursor='+encodeURIComponent(window._agentChatCursor)):'');
+      var res = await get(url);
+      if(res && Array.isArray(res.events)){
+        if(res.cursor) window._agentChatCursor = res.cursor;
+        if(res.events.length) _acHandleEvents(res.events, drawerSlug, window._agentChatPrimed);
+      }
+      window._agentChatPrimed = true;  // subsequent ticks render task cards live
+      window._agentChatPollFails = 0;
+    }catch(e){
+      window._agentChatPollFails = (window._agentChatPollFails||0)+1;
+      if(window._agentChatPollFails>=5){ console.warn('[AgentChat] live event poll disabled after 5 failures'); _acStopEventPoll(); }
+    }
+  };
+  window._agentChatEventTimer = setInterval(tick, 2500);
+  tick();
+}
+function _acStopEventPoll(){
+  if(window._agentChatEventTimer){ clearInterval(window._agentChatEventTimer); window._agentChatEventTimer=null; }
+}
+
 function openAgentDrawer(id){
+  console.log('[Drawer] openAgentDrawer called for', id);
   currentAgent=id;
   window._agentDrawerOpen=id;
   var ag=AGENTS[id]||{};
+  console.log('[Drawer] AGENTS[' + id + '] =', ag.name || '(not in AGENTS map)');
   var col=ag.color||'var(--t2)';
-  document.getElementById('ad-av').innerHTML=(typeof buildAgentOrb==='function')?buildAgentOrb(id,'lg','idle'):('<div style="width:52px;height:52px;font-size:26px">'+(ag.emoji||'?')+'</div>');
-  var nameEl=document.getElementById('ad-name');nameEl.textContent=ag.name||id;nameEl.style.color=col;
-  setEl('ad-role',ag.role||'');
-  renderProfilePane(id,ag);
-  renderDrawerTasks(id,'all');
-  loadDrawerMessages(id);
-  renderDocuments(id);
-  drawerTab('profile');
-  document.getElementById('drawer-bg').classList.add('visible');
-  document.getElementById('agent-drawer').classList.add('open');
+
+  // 2026-05-25 — each sub-render wrapped so one failure doesn't abort the
+  // drawer open. Previously a throw in renderProfilePane / loadDrawerMessages
+  // / etc. could leave the drawer half-open or hidden. Forensic logging
+  // surfaces the actual error to the browser console.
+  function tryRun(label, fn) {
+    try { fn(); } catch (e) {
+      console.error('[Drawer] ' + label + ' threw for agent=' + id + ':', e.message, e.stack ? e.stack.split('\n')[0] : '');
+    }
+  }
+  tryRun('ad-av',           function () { var el = document.getElementById('ad-av'); if (el) el.innerHTML=(typeof buildAgentOrb==='function')?buildAgentOrb(id,'lg','idle'):('<div style="width:52px;height:52px;font-size:26px">'+(ag.emoji||'?')+'</div>'); });
+  tryRun('ad-name',         function () { var el = document.getElementById('ad-name'); if (el) { el.textContent = ag.name || id; el.style.color = col; } });
+  tryRun('ad-role',         function () { setEl('ad-role',ag.role||''); });
+  tryRun('loadAgentStats',  function () { if (typeof loadAgentStats === 'function') loadAgentStats(); });
+  tryRun('renderProfilePane', function () { renderProfilePane(id,ag); });
+  tryRun('renderDrawerTasks', function () { renderDrawerTasks(id,'all'); });
+  tryRun('loadDrawerMessages',function () { loadDrawerMessages(id); });
+  tryRun('renderDocuments', function () { renderDocuments(id); });
+  tryRun('drawerTab',       function () { drawerTab('profile'); });
+
+  // Open the drawer DOM unconditionally — these elements are static.
+  var bg = document.getElementById('drawer-bg');
+  var dr = document.getElementById('agent-drawer');
+  if (bg) bg.classList.add('visible'); else console.error('[Drawer] #drawer-bg not in DOM');
+  if (dr) dr.classList.add('open');    else console.error('[Drawer] #agent-drawer not in DOM');
+  console.log('[Drawer] open complete for', id);
+  // 2026-05-25 — live refresh while drawer is open. Poll every 5s,
+  // pause when tab is hidden. Cleared by closeAgentDrawer.
+  if (window._agentDrawerTimer) { clearInterval(window._agentDrawerTimer); }
+  window._agentDrawerTimer = setInterval(function(){
+    if (document.hidden) return;
+    if (!window._agentDrawerOpen) return;
+    // 2026-05-25 — only loadAgentStats on the poll. It's the source of
+    // truth for counter numbers AND its onSuccess re-renders the drawer's
+    // counter strip + profile pane (see body above). Skipping loadTasks
+    // here: its updateNodeCounts call was racing with loadAgentStats and
+    // causing flicker/revert. The recent-activity list refreshes when the
+    // user changes drawer tab or filters manually.
+    if (typeof loadAgentStats === 'function') loadAgentStats();
+  }, 5000);
+  // 2026-06-15 — wire this thread into the live brain event stream (parity
+  // with the mobile companion app). Renders async agent replies + task cards
+  // inline while the drawer is open. Stopped by closeAgentDrawer.
+  try { _acStartEventPoll(id); } catch (e) { console.warn('[AgentChat] live poll start failed', e); }
 }
 function closeAgentDrawer(){
   document.getElementById('drawer-bg').classList.remove('visible');
   document.getElementById('agent-drawer').classList.remove('open');
   currentAgent=null;
   window._agentDrawerOpen=null;
+  // 2026-05-25 — stop the polling timer.
+  if (window._agentDrawerTimer) { clearInterval(window._agentDrawerTimer); window._agentDrawerTimer = null; }
+  // 2026-06-15 — stop the live event poller.
+  try { _acStopEventPoll(); } catch (e) {}
 }
 function drawerTab(tab){
   ['profile','tasks','messages','documents','board'].forEach(t=>{
@@ -1931,9 +2466,12 @@ function drawerTab(tab){
   if(tab==='board' && window._agentDrawerOpen) loadAgentStats(); if(tab==='tasks' && currentAgent){ if(typeof loadTasks==='function') loadTasks().then(function(){renderDrawerTasks(currentAgent,'all');}); else renderDrawerTasks(currentAgent,'all'); }
 }
 function renderProfilePane(id,ag){
-  var ongoing=allTasks.filter(t=>t.assignee===id&&t.status==='ongoing').length;
-  var upcoming=allTasks.filter(t=>t.assignee===id&&t.status==='upcoming').length;
-  var done=allTasks.filter(t=>t.assignee===id&&t.status==='completed').length;
+  // 2026-05-25 — read from window._agentStatsData (same source as drawer
+  // counter strip + agent grid card). loadAgentStats() populates it.
+  var stats = (window._agentStatsData && window._agentStatsData[id]) || { ongoing: 0, upcoming: 0, completed: 0 };
+  var ongoing  = stats.ongoing;
+  var upcoming = stats.upcoming;
+  var done     = stats.completed;
   var col=ag.color||'var(--t2)';
   document.getElementById('dp-profile').innerHTML=`
     <div class="profile-section">
@@ -1949,38 +2487,238 @@ function renderProfilePane(id,ag){
       </div>
     </div>`;
 }
-function renderDrawerTasks(id,filter){
-  // Wave 38h — Sarah (dmm) is an orchestrator. Her Tasks tab shows tasks
-  // she DELEGATED (created_via=sarah_chat), not tasks she executed.
-  var tasks = (id === 'dmm' || id === 'sarah')
-    ? allTasks.filter(t => t.delegated_by === 'dmm' && (filter==='all'||t.status===filter))
-    : allTasks.filter(t => t.assignee===id && (filter==='all'||t.status===filter));
-  var list=document.getElementById('dp-tasks-list');
-  if(!tasks.length){list.innerHTML=`<div style="text-align:center;padding:30px;font-size:12px;color:var(--t3)">No ${filter==='all'?'':filter+' '}tasks yet.</div>`;return;}
-  var ag=AGENTS[id]||{};
-  var viewingOrchestrator = (id === 'dmm' || id === 'sarah');
-  list.innerHTML=tasks.map(t=>{
-    var stClass=t.status==='ongoing'?'st-ongoing':t.status==='upcoming'?'st-upcoming':'st-completed';
-    // Wave 38h — orchestrator view: prefix title with the delegate name
-    var displayTitle = t.title;
-    if (viewingOrchestrator && t.assignee && t.assignee !== 'dmm') {
-      var delegateName = (AGENTS[t.assignee] && AGENTS[t.assignee].name) || t.assignee;
-      displayTitle = '→ ' + delegateName + ': ' + (t.title || '(no title)');
+// 2026-05-27 — Phase 2: per-agent category breakdown shown on the drawer's
+// Tasks tab. Reads allTasks (recent 50), counts only non-terminal tasks for
+// THIS agent, groups by task.category. Returns '' when agent has no active
+// work so we don't render a meaningless empty strip.
+function _drawerCategoryStripHtml(slug) {
+  if (!Array.isArray(allTasks) || !allTasks.length) return '';
+  var TERMINAL = { completed: 1, failed: 1, cancelled: 1, degraded: 1 };
+  var counts = {};
+  allTasks.forEach(function (t) {
+    if (TERMINAL[t.status]) return;
+    var as = t.assignees || [];
+    var matches = (t.assignee === slug) || (as.indexOf(slug) !== -1)
+      // dmm alias for Sarah
+      || (slug === 'dmm' && (t.assignee === 'sarah' || as.indexOf('sarah') !== -1));
+    if (!matches) return;
+    var c = t.category || 'operations';
+    counts[c] = (counts[c] | 0) + 1;
+  });
+  var keys = Object.keys(counts);
+  if (!keys.length) return '';
+  var ORDER = ['research', 'create', 'optimize', 'publish', 'crm', 'campaign', 'operations'];
+  var COLOR = { research:'#3B82F6', create:'#7C3AED', optimize:'#00E5A8', publish:'#F59E0B', crm:'#EC4899', campaign:'#F97316', operations:'#6B7280' };
+  var LABEL = { research:'Research', create:'Create', optimize:'Optimize', publish:'Publish', crm:'CRM', campaign:'Campaign', operations:'Ops' };
+  var chips = ORDER.filter(function (k) { return counts[k]; }).map(function (k) {
+    var c = COLOR[k];
+    return '<span style="padding:3px 9px;background:' + c + '15;color:' + c + ';border:1px solid ' + c + '40;border-radius:99px;font-size:10px;font-weight:600;font-family:var(--fh);display:inline-flex;align-items:center;gap:5px">'
+      + '<span style="width:6px;height:6px;border-radius:50%;background:' + c + '"></span>'
+      + counts[k] + ' ' + LABEL[k]
+      + '</span>';
+  });
+  return '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;padding:8px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px">'
+    + '<span style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;align-self:center;margin-right:4px;font-family:var(--fh)">Active by category</span>'
+    + chips.join('')
+    + '</div>';
+}
+
+// v1.4.4 (2026-05-30) — shared task-grouping helper.
+// Collapses an array of task rows into "groups" keyed by (batch_id + action).
+// A single-task group keeps the row as-is. Multi-task groups expose:
+//   count, sample_titles[], all_completed bool, mixed_status bool,
+//   primary (the canonical task row used for status + meta), tasks (all members).
+// Used by both the agent drawer list and the agent task board so the same
+// "10 articles — Priya" UX shows up wherever tasks render.
+function _luGroupTasksByBatch(tasks) {
+  var groups = [];
+  var byKey = Object.create(null);
+  for (var i = 0; i < tasks.length; i++) {
+    var t = tasks[i];
+    var key = (t.batch_id && t.action) ? ('batch:' + t.batch_id + ':' + t.action) : ('solo:' + (t.id || i));
+    if (!byKey[key]) {
+      var g = { key: key, batch_id: t.batch_id || null, action: t.action || '', tasks: [], sample_titles: [], primary: t };
+      groups.push(g);
+      byKey[key] = g;
     }
-    var timeInfo=t.status==='completed'?`✓ ${t.actual_time||t.estimated_time}min used`:t.status==='upcoming'?`Est. ${t.estimated_time}min`:t.status==='ongoing'?`${window.icon('clock',14)} ${t.estimated_time}min est`:'';
-    var tokenInfo=t.status==='completed'?`${((t.actual_tokens||t.estimated_tokens)/1000).toFixed(0)}k tokens`:t.status==='upcoming'?`~${(t.estimated_tokens/1000).toFixed(0)}k tokens est`:`~${(t.estimated_tokens/1000).toFixed(0)}k tokens`;
-    var coord=t.coordinator?AGENTS[t.coordinator]:null;
-    return `<div class="task-item">
-      <div class="ti-title">${esc(displayTitle)}</div>
-      <div class="ti-desc">${esc(t.description)}</div>
-      <div class="ti-meta">
-        <span class="ti-badge ${stClass}">${t.status}</span>
-        ${coord?`<span class="ti-badge" style="background:rgba(108,92,231,.08);color:var(--pu);border-color:rgba(108,92,231,.2)">↔ ${coord.emoji||''} ${coord.name||t.coordinator}</span>`:''}
-        <span class="ti-time">${window.icon('clock',14)} ${timeInfo}</span>
-        <span class="ti-tokens">🪙 ${tokenInfo}</span>
-      </div>
-      ${(t.notes||[]).map(n=>`<div style="margin-top:8px;padding:7px 9px;background:var(--s3);border-radius:6px;font-size:10px;color:var(--t2)">${window.icon('edit',14)} ${esc(n.text)}</div>`).join('')}
-    </div>`;
+    var grp = byKey[key];
+    grp.tasks.push(t);
+    if (t.title && grp.sample_titles.length < 6 && grp.sample_titles.indexOf(t.title) === -1 && t.title !== '—') {
+      grp.sample_titles.push(t.title);
+    }
+  }
+  // Annotate groups
+  return groups.map(function(g) {
+    g.count = g.tasks.length;
+    g.is_batch = g.count > 1;
+    var statuses = {};
+    var allCompleted = true;
+    var anyOngoing = false;
+    var anyFailed = false;
+    var anyUpcoming = false;
+    for (var j = 0; j < g.tasks.length; j++) {
+      var s = g.tasks[j].status;
+      statuses[s] = (statuses[s] || 0) + 1;
+      if (s !== 'completed') allCompleted = false;
+      if (s === 'ongoing' || s === 'in_progress') anyOngoing = true;
+      if (s === 'failed') anyFailed = true;
+      if (s === 'upcoming' || s === 'pending' || s === 'queued') anyUpcoming = true;
+    }
+    g.status_counts = statuses;
+    g.all_completed = allCompleted;
+    g.any_ongoing  = anyOngoing;
+    g.any_failed   = anyFailed;
+    g.any_upcoming = anyUpcoming;
+    // Roll-up status for the batch card: ongoing wins, else upcoming, else failed, else completed
+    g.rollup_status = anyOngoing ? 'ongoing' : (anyUpcoming ? 'upcoming' : (anyFailed ? 'failed' : 'completed'));
+    // Total estimated time / tokens
+    g.total_time   = g.tasks.reduce(function(a, t){ return a + (t.estimated_time   || 0); }, 0);
+    g.total_tokens = g.tasks.reduce(function(a, t){ return a + (t.estimated_tokens || 0); }, 0);
+    return g;
+  });
+}
+
+// Friendly label for a batched group (e.g. "5 articles" / "3 internal links")
+function _luBatchUnit(action, count) {
+  var unitMap = {
+    'write_article':   ['article', 'articles'],
+    'generate_meta':   ['meta block', 'meta blocks'],
+    'insert_link':     ['internal link', 'internal links'],
+    'generate_image':       ['image', 'images'],
+    'generate_image_mini':  ['image', 'images'],
+    'generate_image_high':  ['image', 'images'],
+    'social_create_post':   ['social post', 'social posts'],
+    'social_schedule_post': ['scheduled post', 'scheduled posts'],
+    'create_lead':     ['lead', 'leads'],
+    'create_campaign': ['campaign', 'campaigns'],
+    'create_event':    ['calendar event', 'calendar events'],
+    'add_page_from_template': ['page', 'pages'],
+    'publish_article': ['article', 'articles'],
+    'delete_article':  ['article', 'articles'],
+    'delete_post':     ['post', 'posts'],
+    'delete_lead':     ['lead', 'leads'],
+    'publish_website': ['site', 'sites'],
+  };
+  var unit = unitMap[action] || ['task', 'tasks'];
+  return count + ' ' + (count === 1 ? unit[0] : unit[1]);
+}
+
+function renderDrawerTasks(id,filter){
+  // 2026-05-25 — counter strip reads from window._agentStatsData (populated
+  // by loadAgentStats() from /api/agents/dashboard). Same data source as
+  // the agent grid card → numbers always agree. Task LIST below still uses
+  // allTasks because /api/tasks returns the recent 50 actual rows.
+  window._drawerTaskFilter = filter;
+  var stats = (window._agentStatsData && window._agentStatsData[id]) || null;
+
+  var nUpcoming = stats ? stats.upcoming  : '—';
+  var nOngoing  = stats ? stats.ongoing   : '—';
+  var nBlocked  = stats ? stats.blocked   : '—';
+  var nDone     = stats ? stats.completed : '—';
+  var nFailed   = stats ? stats.failed    : '—';
+  // 2026-05-25 — "blocked" is now its own pill. Was previously folded into
+  // "upcoming" which over-counted real ready-to-run work. Blocked = waiting
+  // on external (rate limit, dependency, approval) not the same as queued.
+  var stripHtml = '<div style="display:flex;gap:8px;margin-bottom:12px;font-size:11px;flex-wrap:wrap">' +
+    '<span style="padding:4px 10px;background:rgba(245,158,11,.10);color:var(--am);border-radius:6px"><b>' + nUpcoming + '</b> upcoming</span>' +
+    '<span style="padding:4px 10px;background:rgba(59,139,245,.10);color:var(--bl);border-radius:6px"><b>' + nOngoing + '</b> ongoing</span>' +
+    (typeof nBlocked === 'number' && nBlocked > 0 ? '<span style="padding:4px 10px;background:rgba(167,139,250,.10);color:var(--pu);border-radius:6px"><b>' + nBlocked + '</b> blocked</span>' : '') +
+    '<span style="padding:4px 10px;background:rgba(0,229,168,.10);color:var(--ac);border-radius:6px"><b>' + nDone + '</b> completed</span>' +
+    (typeof nFailed === 'number' && nFailed > 0 ? '<span style="padding:4px 10px;background:rgba(248,113,113,.10);color:var(--rd);border-radius:6px"><b>' + nFailed + '</b> issues</span>' : '') +
+    '<span style="margin-left:auto;color:var(--t3);align-self:center">auto-refresh 5s</span>' +
+  '</div>';
+
+  // 2026-05-27 — Phase 2: per-category breakdown strip for this agent.
+  // Counts NON-terminal tasks (allTasks recent 50) where agent appears in
+  // assignees or assignee. Empty when agent has no active work in the window.
+  stripHtml += _drawerCategoryStripHtml(id);
+
+  // Task list still uses allTasks (recent 50 from /api/tasks) so we can
+  // show actual task rows. Filter to this agent's tasks. The COUNTER above
+  // is the source of truth; this list is "recent activity".
+  function matchesAgent(t) {
+    var as = t.assignees || [];
+    return t.assignee === id || as.indexOf(id) !== -1;
+  }
+
+  var scoped = allTasks.filter(matchesAgent);
+
+  // Apply the user-selected status filter on top of the scoped set.
+  var tasks = scoped.filter(function(t){
+    if (filter === 'all') return true;
+    if (filter === 'ongoing') return t.status==='ongoing'||t.status==='in_progress';
+    return t.status === filter;
+  });
+
+  var list=document.getElementById('dp-tasks-list');
+  if(!tasks.length){
+    list.innerHTML = stripHtml + '<div style="text-align:center;padding:30px;font-size:12px;color:var(--t3)">No ' + (filter==='all'?'':filter+' ') + 'tasks for this agent.</div>';
+    return;
+  }
+  var ag=AGENTS[id]||{};
+
+  // v1.4.4 (2026-05-30) — collapse tasks by (batch_id + action) so a single
+  // Sarah-prompt that emitted 10 articles renders as one "10 articles" card
+  // instead of 10 individual rows. Solo tasks (no batch_id) render
+  // identically to before.
+  var groups = _luGroupTasksByBatch(tasks);
+
+  list.innerHTML = stripHtml + groups.map(function(g) {
+    if (!g.is_batch) {
+      // Solo task — render exactly as before
+      var t = g.primary;
+      var stClass = t.status==='ongoing'?'st-ongoing':t.status==='upcoming'?'st-upcoming':'st-completed';
+      var displayTitle = t.title;
+      if (viewingOrchestrator && t.assignee && t.assignee !== 'dmm') {
+        var delegateName = (AGENTS[t.assignee] && AGENTS[t.assignee].name) || t.assignee;
+        displayTitle = '→ ' + delegateName + ': ' + (t.title || '(no title)');
+      }
+      var timeInfo  = t.status==='completed'?('✓ '+(t.actual_time||t.estimated_time)+'min used'):t.status==='upcoming'?('Est. '+t.estimated_time+'min'):t.status==='ongoing'?(window.icon('clock',14)+' '+t.estimated_time+'min est'):'';
+      var tokenInfo = t.status==='completed'?(((t.actual_tokens||t.estimated_tokens)/1000).toFixed(0)+'k tokens'):t.status==='upcoming'?('~'+(t.estimated_tokens/1000).toFixed(0)+'k tokens est'):('~'+(t.estimated_tokens/1000).toFixed(0)+'k tokens');
+      var coord = t.coordinator ? AGENTS[t.coordinator] : null;
+      return '<div class="task-item">' +
+        '<div class="ti-title">' + esc(displayTitle) + '</div>' +
+        '<div class="ti-desc">' + esc(t.description) + '</div>' +
+        '<div class="ti-meta">' +
+          '<span class="ti-badge ' + stClass + '">' + t.status + '</span>' +
+          (coord ? '<span class="ti-badge" style="background:rgba(108,92,231,.08);color:var(--pu);border-color:rgba(108,92,231,.2)">↔ ' + (coord.emoji||'') + ' ' + (coord.name||t.coordinator) + '</span>' : '') +
+          '<span class="ti-time">' + window.icon('clock',14) + ' ' + timeInfo + '</span>' +
+          '<span class="ti-tokens">🪙 ' + tokenInfo + '</span>' +
+        '</div>' +
+        (t.notes||[]).map(function(n){ return '<div style="margin-top:8px;padding:7px 9px;background:var(--s3);border-radius:6px;font-size:10px;color:var(--t2)">' + window.icon('edit',14) + ' ' + esc(n.text||'') + '</div>'; }).join('') +
+      '</div>';
+    }
+
+    // Batched group — collapsed card with expand-to-details
+    var stClassG = g.rollup_status==='ongoing'?'st-ongoing':g.rollup_status==='upcoming'?'st-upcoming':'st-completed';
+    var label = _luBatchUnit(g.action, g.count);
+    var samples = g.sample_titles.slice(0, 3).map(function(t){ return '<li style="font-size:11px;color:var(--t3);margin:2px 0;list-style:none;padding-left:8px;border-left:1px solid var(--bd)">' + esc(t) + '</li>'; }).join('');
+    if (g.sample_titles.length < g.count) samples += '<li style="font-size:11px;color:var(--t3);opacity:.65;margin:2px 0;list-style:none;padding-left:8px">…and ' + (g.count - g.sample_titles.length) + ' more</li>';
+    var statusBits = [];
+    if (g.status_counts.completed) statusBits.push(g.status_counts.completed + ' done');
+    if (g.any_ongoing) statusBits.push(g.status_counts.ongoing || g.status_counts.in_progress || 0 ? ((g.status_counts.ongoing||0)+(g.status_counts.in_progress||0)) + ' running' : '');
+    if (g.any_upcoming) statusBits.push(((g.status_counts.upcoming||0)+(g.status_counts.pending||0)+(g.status_counts.queued||0)) + ' queued');
+    if (g.any_failed) statusBits.push(g.status_counts.failed + ' failed');
+    var subStatus = statusBits.filter(Boolean).join(' · ');
+    var detailsId = 'batch-details-' + g.batch_id.replace(/[^a-z0-9]/gi, '');
+    return '<div class="task-item" data-batch-id="' + g.batch_id + '">' +
+      '<div class="ti-title" style="display:flex;align-items:center;gap:8px"><span style="display:inline-block;background:var(--p);color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;letter-spacing:.05em">×' + g.count + '</span>' + esc(label) + '</div>' +
+      (g.primary.description ? '<div class="ti-desc">From one Sarah prompt</div>' : '') +
+      '<div class="ti-meta">' +
+        '<span class="ti-badge ' + stClassG + '">' + g.rollup_status + '</span>' +
+        '<span class="ti-time">' + window.icon('clock',14) + ' ~' + g.total_time + 'min total</span>' +
+        '<span class="ti-tokens">🪙 ~' + Math.round(g.total_tokens/1000) + 'k tokens</span>' +
+        (subStatus ? '<span style="font-size:10px;color:var(--t3);margin-left:8px">' + subStatus + '</span>' : '') +
+      '</div>' +
+      '<ul style="margin:8px 0 0;padding:0">' + samples + '</ul>' +
+      '<button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.textContent=this.nextElementSibling.style.display===\'none\'?\'Show all '+g.count+'\':\'Hide details\';" style="margin-top:8px;background:transparent;border:1px solid var(--bd);color:var(--t3);font-size:10px;padding:4px 10px;border-radius:6px;cursor:pointer">Show all ' + g.count + '</button>' +
+      '<div id="' + detailsId + '" style="display:none;margin-top:8px;padding:8px;background:var(--s1);border-radius:6px">' +
+        g.tasks.map(function(t){
+          var st = t.status==='ongoing'?'st-ongoing':t.status==='upcoming'?'st-upcoming':'st-completed';
+          return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid var(--bd)"><span style="flex:1;color:var(--t1)">' + esc(t.title || '(untitled)') + '</span><span class="ti-badge ' + st + '">' + t.status + '</span></div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 function filterTasks(filter,btn){
@@ -1998,12 +2736,24 @@ async function loadDrawerMessages(id){
   try{
     var msgs=await get(API+'agents/'+id+'/messages');
     var feed=document.getElementById('msgs-feed-container');
+    // 2026-06-15 — history load is the canonical baseline for the live event
+    // poller's dedup. Reset the per-thread rendered-id set here so reopening a
+    // drawer starts clean, then register every loaded row id below.
+    window._agentChatRendered = window._agentChatRendered || {};
+    window._agentChatRendered[id] = new Set();
     if(!msgs||!msgs.length){feed.innerHTML=`<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3)">No messages yet. Send a direct message to ${AGENTS[id]?.name||id}.</div>`;return;}
     var ag=AGENTS[id]||{};
     feed.innerHTML=msgs.map(m=>{
       var isUser=m.from==='user'||m.from==='User';
-      return `<div class="${isUser?'msg-from-user':'msg-from-agent'}" style="align-self:${isUser?'flex-end':'flex-start'}"><div style="font-size:9px;font-weight:700;color:${isUser?'var(--pu)':ag.color||'var(--t2)'};margin-bottom:3px">${isUser?'You':ag.name||id}</div>${esc(m.content)}<div class="msg-ts">${window._luParseTs(m.ts).toLocaleTimeString()}</div></div>`;
+      // v1.4.4 — historical agent messages now go through fmt() so the
+      // markdown + paragraph spacing matches new replies. User messages
+      // stay plain (they're typed plain text, not markdown).
+      var body = isUser ? esc(m.content) : (typeof fmt === 'function' ? fmt(m.content) : esc(m.content));
+      return `<div class="${isUser?'msg-from-user':'msg-from-agent'}" style="align-self:${isUser?'flex-end':'flex-start'}"><div style="font-size:9px;font-weight:700;color:${isUser?'var(--pu)':ag.color||'var(--t2)'};margin-bottom:3px">${isUser?'You':ag.name||id}</div>${body}<div class="msg-ts">${window._luParseTs(m.ts).toLocaleTimeString()}</div></div>`;
     }).join('');
+    // 2026-06-15 — register every loaded agent_messages row id so the live
+    // event poller (/api/agent/events) won't re-render history as "new".
+    try{ msgs.forEach(function(m){ if(m && m.id!=null) window._agentChatRendered[id].add(String(m.id)); }); }catch(_e){}
     feed.scrollTop=feed.scrollHeight;
   }catch(e){console.error('loadMsgs:',e);}
 }
@@ -2049,6 +2799,12 @@ async function sendAgentMessage(quickAction, overrideMessage){
   try{
     var payload={from:'User',content:content||quickAction};
     if(quickAction) payload.quick_action=quickAction;
+    // v1.4.4 attach — fold any uploaded attachments into the dispatch payload, then clear chips
+    if (window.LU_attachComposer) {
+      var _atts = window.LU_attachComposer.getPending('agent-msg-input');
+      if (_atts && _atts.length) payload.attachments = _atts;
+      window.LU_attachComposer.clear('agent-msg-input');
+    }
     var d=await post(API+'agents/'+currentAgent+'/messages',payload);
     // Wave 31 — Update chat counter from response.
     try {
@@ -2057,11 +2813,99 @@ async function sendAgentMessage(quickAction, overrideMessage){
       }
     } catch (_e) {}
 
+    // v1.4.4 (2026-05-30) — Two-phase response handling.
+    // If the server returned {pending:true, ack, ack_message_id, ...}, we
+    // got the instant acknowledgment first and the final reply is being
+    // computed in the background. Render the ack now, swap the typing
+    // indicator to a smaller "still working" footer, and poll the GET
+    // /agents/{slug}/messages endpoint for the final row (id > ack_message_id
+    // with phase='final').
+    if (d && d.pending && d.ack) {
+      // Remove the bouncing-dots typing indicator
+      var ti0 = document.getElementById('agent-typing-indicator');
+      if (ti0) ti0.remove();
+
+      // Render the ack as Sarah's first bubble
+      var ackDiv = document.createElement('div');
+      ackDiv.className = 'msg-from-agent msg-from-agent-ack';
+      ackDiv.style.alignSelf = 'flex-start';
+      ackDiv.style.opacity = '0.92';
+      ackDiv.innerHTML = '<div style="font-size:9px;font-weight:700;color:'+(ag.color||'var(--t2)')+';margin-bottom:3px">'+(d.agent_name||ag.name||currentAgent)+'</div>'+fmt(d.ack)+'<div class="msg-ts">'+new Date().toLocaleTimeString()+'</div>';
+      feed.appendChild(ackDiv);
+
+      // Add a small "still working" footer with continuous pulse
+      var workDiv = document.createElement('div');
+      workDiv.id = 'agent-still-working';
+      workDiv.style.cssText = 'align-self:flex-start;display:flex;gap:6px;align-items:center;padding:6px 12px;font-size:11px;color:var(--t3);opacity:.8';
+      workDiv.innerHTML = '<div style="display:flex;gap:3px"><div style="width:5px;height:5px;border-radius:50%;background:'+(ag.color||'var(--t2)')+';animation:typePulse .9s ease-in-out infinite"></div><div style="width:5px;height:5px;border-radius:50%;background:'+(ag.color||'var(--t2)')+';animation:typePulse .9s ease-in-out .2s infinite"></div><div style="width:5px;height:5px;border-radius:50%;background:'+(ag.color||'var(--t2)')+';animation:typePulse .9s ease-in-out .4s infinite"></div></div><span>working…</span>';
+      feed.appendChild(workDiv);
+      feed.scrollTop = feed.scrollHeight;
+
+      // Start polling for the final reply
+      var ackId = d.ack_message_id || 0;
+      // 2026-06-15 — register the ack row id so the always-on event poller
+      // (/api/agent/events) dedups it and never double-renders this turn.
+      try{ if(ackId && window._agentChatRendered && window._agentChatRendered[currentAgent]) window._agentChatRendered[currentAgent].add(String(ackId)); }catch(_e){}
+      var pollIntervalMs = d.poll_interval_ms || 2500;
+      var maxPolls = Math.ceil(90000 / pollIntervalMs); // 90s safety cap
+      var polls = 0;
+      var pollHandle = null;
+      // Cancel polling on new send (set sentinel)
+      window._agentChatActivePoll = window._agentChatActivePoll || {};
+      var pollKey = currentAgent + ':' + ackId;
+      window._agentChatActivePoll[pollKey] = true;
+
+      var pollOnce = async function() {
+        if (!window._agentChatActivePoll[pollKey]) {
+          if (pollHandle) { clearTimeout(pollHandle); pollHandle = null; }
+          return;
+        }
+        polls++;
+        if (polls > maxPolls) {
+          // Timeout fallback
+          var w = document.getElementById('agent-still-working');
+          if (w) w.innerHTML = '<span style="color:var(--am)">Took longer than expected — refresh to see the latest reply if it arrived.</span>';
+          delete window._agentChatActivePoll[pollKey];
+          return;
+        }
+        try {
+          var msgs = await get(API+'agents/'+currentAgent+'/messages');
+          if (Array.isArray(msgs)) {
+            for (var i = 0; i < msgs.length; i++) {
+              var m = msgs[i];
+              if (m && m.id && m.id > ackId && (m.phase === 'final' || (!m.is_ack && (m.role === 'agent' || m.from !== 'user' && m.from !== 'User')))) {
+                delete window._agentChatActivePoll[pollKey];
+                // 2026-06-15 — register the final row id so the event poller
+                // dedups it (whichever channel renders first wins).
+                try{ if(window._agentChatRendered && window._agentChatRendered[currentAgent]) window._agentChatRendered[currentAgent].add(String(m.id)); }catch(_e){}
+                var w = document.getElementById('agent-still-working');
+                if (w) w.remove();
+                var finalDiv = document.createElement('div');
+                finalDiv.className = 'msg-from-agent';
+                finalDiv.style.alignSelf = 'flex-start';
+                var finalColor = m.error ? 'var(--rd,#dc2626)' : (ag.color||'var(--t2)');
+                var finalHtml = '<div style="font-size:9px;font-weight:700;color:'+finalColor+';margin-bottom:3px">'+(ag.name||currentAgent)+(m.error?' · error':'')+'</div>'+fmt(m.content||'')+'<div class="msg-ts">'+new Date().toLocaleTimeString()+'</div>';
+                finalDiv.innerHTML = finalHtml;
+                feed.appendChild(finalDiv);
+                feed.scrollTop = feed.scrollHeight;
+                return;
+              }
+            }
+          }
+        } catch (pe) {
+          console.warn('[sendAgentMessage] poll error', pe);
+        }
+        pollHandle = setTimeout(pollOnce, pollIntervalMs);
+      };
+      pollHandle = setTimeout(pollOnce, pollIntervalMs);
+      return;
+    }
+
     // Remove typing indicator
     var ti=document.getElementById('agent-typing-indicator');
     if(ti) ti.remove();
 
-    // Show agent response
+    // Legacy synchronous path — server returned the full reply in one go
     if(d.reply){
       var agDiv=document.createElement('div');
       agDiv.className='msg-from-agent';
@@ -2084,6 +2928,8 @@ async function sendAgentMessage(quickAction, overrideMessage){
   }catch(e){
     var ti2=document.getElementById('agent-typing-indicator');
     if(ti2) ti2.remove();
+    var ws2 = document.getElementById('agent-still-working');
+    if(ws2) ws2.remove();
     console.error('[sendAgentMessage] POST failed', e);
     if (typeof showToast === 'function') showToast('Error: '+e.message,'error');
     else alert('Error: '+e.message);
@@ -2138,19 +2984,41 @@ async function renderDocuments(id){
 }
 let _agentStatsFails = 0;
 async function loadAgentStats(){
-  updateNodeCounts();
-  if (_agentStatsFails >= 3) return; // stop retrying after 3 failures
+  // 2026-05-25 — REMOVED updateNodeCounts() call here.
+  // 2026-05-26 — instrumented heavily so we can SEE what's failing.
+  console.log('[loadAgentStats] FIRING. _agentStatsFails =', _agentStatsFails);
+  if (_agentStatsFails >= 3) {
+    console.warn('[loadAgentStats] BLOCKED — 3 prior failures. Reset via: _agentStatsFails=0;loadAgentStats()');
+    return;
+  }
 
   try {
     var d = await get(API + 'agents/dashboard');
+    console.log('[loadAgentStats] response received. agents in payload:', (d && d.agents ? d.agents.length : 'MISSING'));
+    if (d && d.agents && d.agents[0]) {
+      console.log('[loadAgentStats] first agent sample:', d.agents[0]);
+    }
     _agentStatsFails = 0;
     var agents = d.agents || [];
 
+    // 2026-05-25 — publish per-agent stats globally so the drawer + workspace
+    // command center can read the SAME source the agent grid card uses.
+    // Source of truth: /api/agents/dashboard (correct Sarah orchestrator
+    // logic + all-status counting + no 50-row /api/tasks cap).
+    window._agentStatsData = window._agentStatsData || {};
     agents.forEach(a => {
-      // Wave 38g — Sarah uses 'dmm' as DOM id alias (frontend convention) while
+      // Sarah uses 'dmm' as DOM id alias (frontend convention) while
       // the API returns 'sarah'. Map for DOM lookup.
       var uiId = a.agent_id === 'sarah' ? 'dmm' : a.agent_id;
       var ag = AGENTS[a.agent_id] || AGENTS[uiId] || {};
+      window._agentStatsData[uiId] = {
+        ongoing:   a.executing || 0,
+        upcoming:  a.pending || 0,
+        blocked:   a.blocked || 0,
+        completed: a.completed || 0,
+        failed:    a.failed || 0,
+        success_rate: a.success_rate || 0,
+      };
       var ongoing = document.getElementById('av-ongoing-' + uiId);
       var upcoming = document.getElementById('av-upcoming-' + uiId);
       var completed = document.getElementById('av-completed-' + uiId);
@@ -2159,11 +3027,174 @@ async function loadAgentStats(){
       if (completed) completed.textContent = a.completed || 0;
     });
 
+    // 2026-05-25 — re-render the drawer counter strip + profile tiles with
+    // fresh data if the drawer is open.
+    if (window._agentDrawerOpen) {
+      if (typeof renderDrawerTasks === 'function') {
+        renderDrawerTasks(window._agentDrawerOpen, window._drawerTaskFilter || 'all');
+      }
+      var openAg = AGENTS[window._agentDrawerOpen] || {};
+      if (typeof renderProfilePane === 'function') {
+        renderProfilePane(window._agentDrawerOpen, openAg);
+      }
+    }
+
+    // 2026-05-25 — also refresh the workspace command center if it's on
+    // screen. Stash the last d.agents list (set by _cmdcRenderAll) so we
+    // can re-render with the now-populated _agentStatsData.
+    if (window._cmdcLastAgents && typeof _cmdcRenderAgents === 'function') {
+      _cmdcRenderAgents(window._cmdcLastAgents);
+    }
+
+    // 2026-05-25 — refresh the workspace-tab agent cards (tc-* IDs).
+    // updateNodeCounts now reads from _agentStatsData (we populated it
+    // above) and writes both tc-* (workspace) and av-* (agents page).
+    if (typeof updateNodeCounts === 'function') updateNodeCounts();
+
     // Build detailed task board in drawer (if open)
     if (window._agentDrawerOpen) _renderAgentTaskBoard(window._agentDrawerOpen, agents);
 
-  } catch(e) { _agentStatsFails++; console.warn('[LU] loadAgentStats fail #'+_agentStatsFails+':', e.message); }
+  } catch(e) {
+    _agentStatsFails++;
+    console.error('[loadAgentStats] FAIL #'+_agentStatsFails+':', e.message, e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : '');
+  }
 }
+
+// 2026-05-26 — INITIAL WORKSPACE BOOTSTRAP.
+// The workspace tab is the DEFAULT active view, but nav('workspace') only
+// fires on user click — not on page load. Without this, _agentStatsData
+// stays undefined, allTasks stays empty, drawCanvas paints 0 paths, cards
+// show 0/0/0. User has to click another tab + back to trigger the data
+// load. This bootstrap forces it on initial DOMContentLoaded.
+document.addEventListener('DOMContentLoaded', function () {
+  function bootWorkspace() {
+    console.log('[bootstrap] firing initial workspace data load + agent-node loader');
+    try { document.dispatchEvent(new CustomEvent('lu:bootstrap-complete')); } catch (e) {}
+    try { if (typeof window._loadWorkspaceAgents === 'function') window._loadWorkspaceAgents(); } catch (e) { console.error('[bootstrap] _loadWorkspaceAgents threw:', e); }
+    try { if (typeof loadAgentStats === 'function') loadAgentStats(); } catch (e) { console.error('[bootstrap] loadAgentStats threw:', e); }
+    try { if (typeof loadTasks === 'function') loadTasks(); } catch (e) { console.error('[bootstrap] loadTasks threw:', e); }
+  }
+  setTimeout(bootWorkspace, 400);
+
+  // 2026-05-26 — scroll-to-content. The workspace view auto-scrolled to
+  // (-624, -844) — content positioned at SVG coords (0-720, 0-300) lands
+  // off-screen upper-left. Force scroll to top-left so default-positioned
+  // agent nodes are immediately visible.
+  function focusOnContent() {
+    var vw = document.getElementById('view-workspace');
+    if (!vw) return;
+    // Find bounding rect of all agent-nodes; scroll to roughly their centroid
+    var nodes = vw.querySelectorAll('.agent-node');
+    if (!nodes.length) return;
+    var minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+    nodes.forEach(function (n) {
+      var x = parseInt(n.style.left || n.getAttribute('data-x') || '0', 10);
+      var y = parseInt(n.style.top  || n.getAttribute('data-y') || '0', 10);
+      if (x < minX) minX = x; if (y < minY) minY = y;
+      if (x > maxX) maxX = x; if (y > maxY) maxY = y;
+    });
+    if (minX === Infinity) return;
+    // Scroll so that minX/minY is near the top-left of viewport with margin
+    var targetX = Math.max(0, minX - 80);
+    var targetY = Math.max(0, minY - 80);
+    console.log('[bootstrap] focusing canvas: agents span (' + minX + ',' + minY + ')-(' + maxX + ',' + maxY + '), scrolling to (' + targetX + ',' + targetY + ')');
+    vw.scrollTo(targetX, targetY);
+  }
+
+  setTimeout(function () {
+    if (!document.querySelector('.agent-node')) {
+      console.warn('[bootstrap] no .agent-node at 2s — retrying _loadWorkspaceAgents');
+      try { if (typeof window._loadWorkspaceAgents === 'function') window._loadWorkspaceAgents(); } catch (e) {}
+    }
+    if (!window._agentStatsData) {
+      console.warn('[bootstrap] _agentStatsData still empty at 2s — retrying loadAgentStats');
+      try { if (typeof loadAgentStats === 'function') loadAgentStats(); } catch (e) {}
+    }
+    // Center viewport on the content.
+    focusOnContent();
+  }, 2000);
+  // Once more at 4s after everything settles
+  setTimeout(focusOnContent, 4000);
+});
+
+// 2026-05-26 — VISUAL FORCE: outline agent nodes + recolor lines so they
+// are IMPOSSIBLE to miss. Auto-fires once at +3s after page load.
+window.lu_visual_force = function () {
+  var vw = document.getElementById('view-workspace');
+  if (!vw) return console.warn('[visual_force] no view-workspace');
+  // Force scroll to where agents are positioned
+  var nodes = vw.querySelectorAll('.agent-node');
+  if (nodes.length) {
+    var minX = Infinity, minY = Infinity;
+    nodes.forEach(function (n) {
+      var x = parseInt(n.style.left || '0', 10);
+      var y = parseInt(n.style.top  || '0', 10);
+      if (x < minX) minX = x; if (y < minY) minY = y;
+    });
+    if (minX !== Infinity) vw.scrollTo(Math.max(0, minX - 100), Math.max(0, minY - 100));
+  }
+  // Outline every agent node in lime
+  nodes.forEach(function (n) {
+    n.style.outline = '6px solid #00FF00';
+    n.style.outlineOffset = '2px';
+    n.style.zIndex = '999';
+  });
+  // Recolor every SVG path to bright magenta + thick stroke
+  document.querySelectorAll('.canvas-svg path').forEach(function (p) {
+    p.setAttribute('stroke', '#FF00FF');
+    p.setAttribute('stroke-width', '10');
+    p.setAttribute('opacity', '1');
+  });
+  console.log('[visual_force] outlined', nodes.length, 'nodes (lime) + recolored paths (magenta)');
+};
+setTimeout(function(){ try { window.lu_visual_force(); } catch(e){} }, 3000);
+
+// 2026-05-26 — Self-diagnostic. Call lu_diagnose() from console to dump
+// everything that could be wrong with the workspace render.
+window.lu_diagnose = function () {
+  console.group('━━━━━━━ LU WORKSPACE DIAGNOSTIC ━━━━━━━');
+  console.log('Build version:', (window.LU_CFG && window.LU_CFG.version) || 'unknown');
+  console.log('Current view:', currentView);
+  var vw = document.getElementById('view-workspace');
+  console.log('view-workspace exists:', !!vw, 'display:', vw && getComputedStyle(vw).display, 'active class:', vw && vw.classList.contains('active'));
+  var svg = document.getElementById('canvas-svg');
+  console.log('canvas-svg exists:', !!svg, 'children:', svg ? svg.children.length : 'N/A');
+  if (svg) {
+    var rect = svg.getBoundingClientRect();
+    console.log('canvas-svg bounding rect:', { x: rect.x, y: rect.y, w: rect.width, h: rect.height });
+    console.log('canvas-svg visibility:', getComputedStyle(svg).visibility, 'opacity:', getComputedStyle(svg).opacity);
+    Array.from(svg.children).forEach(function (el, i) {
+      if (i < 5) {
+        var r = el.getBoundingClientRect();
+        console.log('  svg child', i, el.tagName, 'class=' + el.getAttribute('class'), 'stroke=' + el.getAttribute('stroke'), 'rect=', r);
+      }
+    });
+  }
+  var nodes = document.querySelectorAll('.agent-node');
+  console.log('.agent-node count:', nodes.length);
+  Array.from(nodes).slice(0, 6).forEach(function (n) {
+    console.log('  node id=' + n.id + ' data-agent=' + n.dataset.agent + ' visible=' + (getComputedStyle(n).display !== 'none'));
+  });
+  console.log('window._agentStatsData:', window._agentStatsData);
+  console.log('window.nodePos:', window.nodePos);
+  console.log('window.nodePos_dyn:', window.nodePos_dyn);
+  console.log('allTasks.length:', (typeof allTasks !== 'undefined' && allTasks) ? allTasks.length : 'undefined');
+  if (typeof allTasks !== 'undefined' && allTasks && allTasks.length) {
+    console.log('first allTask sample:', allTasks[0]);
+  }
+  console.log('AGENTS keys:', Object.keys(window.AGENTS || {}));
+  console.log('_agentStatsFails:', _agentStatsFails);
+  // Sample the workspace card numbers
+  ['dmm','priya','james','elena','alex'].forEach(function (a) {
+    var u = document.getElementById('tc-upcoming-' + a);
+    var o = document.getElementById('tc-ongoing-' + a);
+    var c = document.getElementById('tc-completed-' + a);
+    console.log('  card', a, 'upcoming=' + (u ? u.textContent : 'NO DOM'), 'ongoing=' + (o ? o.textContent : 'NO DOM'), 'completed=' + (c ? c.textContent : 'NO DOM'));
+  });
+  console.groupEnd();
+};
+// Auto-run diagnostic 2s after page load so user always has a fresh snapshot
+setTimeout(function(){ try { window.lu_diagnose(); } catch(e){} }, 2000);
 
 function _renderAgentTaskBoard(agentId, allAgents) {
   // Wave 38g — Sarah's drawer uses 'dmm' but API uses 'sarah'. Normalize.
@@ -2194,28 +3225,54 @@ function _renderAgentTaskBoard(agentId, allAgents) {
   </div>`;
 
   // Recent tasks
+  // v1.4.4 (2026-05-30) — collapse by batch_id (same helper as the drawer
+  // task list). Solo tasks render identically to before.
   if (data.recent_tasks.length) {
     html += '<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Recent Tasks</div>';
     html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">';
-    data.recent_tasks.forEach(t => {
+    var rtGroups = _luGroupTasksByBatch(data.recent_tasks);
+    rtGroups.forEach(function(g) {
+      var t = g.primary;
       var icon = statusIcons[t.status] || '⚪';
-      var tools = t.tools ? (typeof t.tools === 'string' ? JSON.parse(t.tools) : t.tools) : [];
-      var creator = t.created_by ? (AGENTS[t.created_by]?.name || t.created_by) : 'Sarah';
-      var timeline = [
-        t.created_at ? `${window.icon('more',14)} ${window._luParseTs(t.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
-        t.acknowledged_at ? `${window.icon('info',14)} ${new Date(t.acknowledged_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
-        t.started_at ? `${window.icon('edit',14)} ${window._luParseTs(t.started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
-        t.completed_at ? `${window.icon('check',14)} ${window._luParseTs(t.completed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}` : '',
-      ].filter(Boolean).join(' → ');
-      html += `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px">
-        <span style="font-size:14px;margin-top:2px">${icon}</span>
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(t.title||'')}</div>
-          <div style="font-size:10px;color:var(--t3)">Created by ${creator} · ${t.status} ${tools.length?'· '+tools.join(', '):''} ${t.duration_ms?'· '+t.duration_ms+'ms':''}</div>
-          ${timeline?'<div style="font-size:9px;color:var(--t3);margin-top:2px">'+timeline+'</div>':''}
-        </div>
-        <div style="font-size:10px;color:var(--t3)">${t.created_at?window._luParseTs(t.created_at).toLocaleDateString():''}</div>
-      </div>`;
+      if (!g.is_batch) {
+        var tools = t.tools ? (typeof t.tools === 'string' ? JSON.parse(t.tools) : t.tools) : [];
+        var creator = t.created_by ? (AGENTS[t.created_by]?.name || t.created_by) : 'Sarah';
+        var timeline = [
+          t.created_at ? (window.icon('more',14) + ' ' + window._luParseTs(t.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})) : '',
+          t.acknowledged_at ? (window.icon('info',14) + ' ' + new Date(t.acknowledged_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})) : '',
+          t.started_at ? (window.icon('edit',14) + ' ' + window._luParseTs(t.started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})) : '',
+          t.completed_at ? (window.icon('check',14) + ' ' + window._luParseTs(t.completed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})) : '',
+        ].filter(Boolean).join(' → ');
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px">' +
+          '<span style="font-size:14px;margin-top:2px">' + icon + '</span>' +
+          '<div style="flex:1">' +
+            '<div style="font-size:12px;font-weight:600;color:var(--t1)">' + esc(t.title||'') + '</div>' +
+            '<div style="font-size:10px;color:var(--t3)">Created by ' + creator + ' · ' + t.status + (tools.length?' · '+tools.join(', '):'') + (t.duration_ms?' · '+t.duration_ms+'ms':'') + '</div>' +
+            (timeline?'<div style="font-size:9px;color:var(--t3);margin-top:2px">'+timeline+'</div>':'') +
+          '</div>' +
+          '<div style="font-size:10px;color:var(--t3)">' + (t.created_at?window._luParseTs(t.created_at).toLocaleDateString():'') + '</div>' +
+        '</div>';
+      } else {
+        // Batched card
+        var label = _luBatchUnit(g.action, g.count);
+        var samples = g.sample_titles.slice(0, 3).map(function(s){ return '<li style="font-size:10px;color:var(--t3);margin:1px 0;list-style:none;padding-left:6px;border-left:1px solid var(--bd)">' + esc(s) + '</li>'; }).join('');
+        if (g.sample_titles.length < g.count) samples += '<li style="font-size:10px;color:var(--t3);opacity:.65;margin:1px 0;list-style:none;padding-left:6px">…and ' + (g.count - g.sample_titles.length) + ' more</li>';
+        var subStatus = [];
+        if (g.status_counts.completed) subStatus.push(g.status_counts.completed + ' done');
+        if (g.any_ongoing) subStatus.push(((g.status_counts.ongoing||0)+(g.status_counts.in_progress||0)) + ' running');
+        if (g.any_upcoming) subStatus.push(((g.status_counts.upcoming||0)+(g.status_counts.pending||0)+(g.status_counts.queued||0)) + ' queued');
+        if (g.any_failed) subStatus.push(g.status_counts.failed + ' failed');
+        var rollupIcon = statusIcons[g.rollup_status] || '⚪';
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px" data-batch-id="' + g.batch_id + '">' +
+          '<span style="font-size:14px;margin-top:2px">' + rollupIcon + '</span>' +
+          '<div style="flex:1">' +
+            '<div style="font-size:12px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px"><span style="display:inline-block;background:var(--p);color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px">×' + g.count + '</span>' + esc(label) + '</div>' +
+            '<div style="font-size:10px;color:var(--t3)">From one Sarah prompt · ' + subStatus.join(' · ') + '</div>' +
+            '<ul style="margin:4px 0 0;padding:0">' + samples + '</ul>' +
+          '</div>' +
+          '<div style="font-size:10px;color:var(--t3)">' + (t.created_at?window._luParseTs(t.created_at).toLocaleDateString():'') + '</div>' +
+        '</div>';
+      }
     });
     html += '</div>';
   }
@@ -2227,7 +3284,7 @@ function _renderAgentTaskBoard(agentId, allAgents) {
     data.recent_exec.forEach(e => {
       html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--s1);border-radius:6px;font-size:11px">
         <span>${parseInt(e.success)?''+window.icon("check",14)+'':''+window.icon("close",14)+''}</span>
-        <span style="font-weight:600;color:var(--t1)">${esc(e.tool_id)}</span>
+        <span style="font-weight:600;color:var(--t1)">${esc(LU_humanize(e.tool_id))}</span>
         <span style="flex:1;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((e.result_summary||'').slice(0,60))}</span>
         <span style="color:var(--t3)">${e.duration_ms||0}ms</span>
       </div>`;
@@ -2467,13 +3524,42 @@ function renderTaskDrawer(task) {
     } else { mtgEl.textContent = '—'; }
 
     // Deliverable
+    // v1.4.4 (2026-05-30) — summary is server-built HTML (DeliverableSummary
+    // uses htmlspecialchars on every dynamic value) so innerHTML is safe and
+    // necessary — was being escaped as text by setEl(textContent).
+    // The raw JSON envelope used to render unconditionally below the summary
+    // and leaked engine/action slugs to end users; it's now collapsed behind
+    // a "Show raw data" toggle for power users.
     var delEmpty   = document.getElementById('td-deliverable-empty');
     var delContent = document.getElementById('td-deliverable-content');
     if (task.deliverable) {
         delEmpty.style.display = 'none'; delContent.style.display = 'block';
-        setEl('td-del-summary', task.deliverable.summary || '');
+        var sumEl = document.getElementById('td-del-summary');
+        if (sumEl) sumEl.innerHTML = task.deliverable.summary || '';
+
         var json = task.deliverable.deliverable || task.deliverable;
-        setEl('td-del-json', JSON.stringify(json, null, 2));
+        var jsonEl = document.getElementById('td-del-json');
+        if (jsonEl) {
+            jsonEl.style.display = 'none';
+            jsonEl.textContent = JSON.stringify(json, null, 2);
+            var toggleId = 'td-del-json-toggle';
+            var prevToggle = document.getElementById(toggleId);
+            if (prevToggle) prevToggle.remove();
+            var toggle = document.createElement('button');
+            toggle.id = toggleId;
+            toggle.textContent = 'Show raw data';
+            toggle.style.cssText = 'margin-top:10px;background:transparent;border:1px solid var(--bd);color:var(--t3);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer';
+            toggle.onclick = function() {
+                if (jsonEl.style.display === 'none') {
+                    jsonEl.style.display = 'block';
+                    toggle.textContent = 'Hide raw data';
+                } else {
+                    jsonEl.style.display = 'none';
+                    toggle.textContent = 'Show raw data';
+                }
+            };
+            jsonEl.parentNode.insertBefore(toggle, jsonEl);
+        }
     } else {
         delEmpty.style.display = 'block'; delContent.style.display = 'none';
     }
@@ -2497,6 +3583,44 @@ function renderTaskDrawer(task) {
         div.innerHTML = `<div class="td-hist-dot" style="background:${STATUS_COLORS[h.status]||'var(--t3)'}"></div><div><div style="font-size:11px;color:var(--t1)">${STATUS_LABELS[h.status]||h.status}${h.from?` <span style="color:var(--t3)">from ${STATUS_LABELS[h.from]||h.from}</span>`:''}</div><div style="font-size:9px;color:var(--t3)">${h.at ? new Date(h.at).toLocaleString() : ''} · ${h.by||'system'}${h.note?` — ${esc(h.note)}`:''}</div></div>`;
         histFeed.appendChild(div);
     });
+
+    // 2026-05-27 Phase 3 — Web Activity tab for category=research tasks.
+    // Shows every URL the agent fetched / queries it searched during execution.
+    var waTabBtn = document.getElementById('td-tab-webactivity');
+    var waPane   = document.getElementById('tdp-webactivity');
+    var isResearch = (task.category === 'research') || (task.task && task.task.category === 'research');
+    var webRows = Array.isArray(task.web_activity) ? task.web_activity : [];
+    if (waTabBtn) waTabBtn.style.display = isResearch ? 'inline-block' : 'none';
+    if (waPane) {
+        if (!isResearch) {
+            waPane.innerHTML = '';
+        } else if (!webRows.length) {
+            waPane.innerHTML = '<div style="padding:32px;text-align:center;color:var(--t3);font-size:12px"><div style="font-size:28px;margin-bottom:8px">&#127760;</div>Agent did not access the web during this research task.</div>';
+        } else {
+            waPane.innerHTML = webRows.map(function (r) {
+                var icon = r.action === 'search' ? '&#128269;' : '&#127760;';
+                var col  = r.status === 'ok' ? 'var(--ac)' : (r.status === 'blocked' || r.status === 'capped' ? 'var(--am)' : 'var(--rd)');
+                var t = esc(r.title || '');
+                var u = esc(r.url_or_query || '');
+                var dur = r.duration_ms ? (r.duration_ms + 'ms') : '';
+                var bytes = r.content_length ? (Math.round(r.content_length / 1024) + 'KB') : '';
+                var meta = [dur, bytes, (r.cost_credits + 'c'), (r.agent_slug ? '@' + esc(r.agent_slug) : '')].filter(Boolean).join(' · ');
+                var hrefMaybe = r.action === 'fetch' && /^https?:\/\//.test(r.url_or_query || '')
+                    ? '<a href="' + u + '" target="_blank" rel="noopener" style="color:var(--bl);text-decoration:none">' + u + ' &#8599;</a>'
+                    : u;
+                return '<div style="padding:10px 12px;border-bottom:1px solid var(--bd);display:flex;gap:10px;align-items:flex-start;font-size:12px">'
+                    + '<div style="font-size:16px">' + icon + '</div>'
+                    + '<div style="flex:1;min-width:0">'
+                    + '  <div style="color:var(--t1);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (t || u) + '</div>'
+                    + '  <div style="color:var(--t3);font-size:10px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + hrefMaybe + '</div>'
+                    + '  <div style="color:var(--t3);font-size:10px;margin-top:3px">' + esc(meta) + '</div>'
+                    + (r.error ? '  <div style="color:var(--rd);font-size:10px;margin-top:3px">' + esc(r.error) + '</div>' : '')
+                    + '</div>'
+                    + '<span style="font-size:10px;color:' + col + ';text-transform:uppercase;font-weight:700;flex-shrink:0">' + esc(r.status || '') + '</span>'
+                    + '</div>';
+            }).join('');
+        }
+    }
 
     tdTab('details', document.querySelector('.td-tab'));
 }
@@ -2544,6 +3668,7 @@ async function loadReports(){
       ${window._luIsAdmin?'<button class="tab ${rptTab===\'executions\'?\'active\':\'\'}" onclick="rptTab=\'executions\';loadReports()">'+window.icon("ai",14)+' Executions</button>':''}
       ${window._luIsAdmin?'<button class="tab ${rptTab===\'decisions\'?\'active\':\'\'}" onclick="rptTab=\'decisions\';loadReports()">'+window.icon("tag",14)+' Decisions</button>':''}
       <button class="tab ${rptTab==='tasks'?'active':''}" onclick="rptTab='tasks';loadReports()" style="display:inline-flex;align-items:center;gap:6px">${window.icon('more',14)} Tasks</button>
+      <button class="tab ${rptTab==='categories'?'active':''}" onclick="rptTab='categories';loadReports()" style="display:inline-flex;align-items:center;gap:6px">${window.icon('tag',14)} Categories</button>
     </div>
     <div id="rpt-content" style="min-height:200px"><div style="text-align:center;padding:40px;color:var(--t3)">Loading…</div></div>
   `;
@@ -2562,7 +3687,7 @@ async function loadReports(){
         var ok=parseInt(r.success);var dt=window._luParseTs(r.created_at);
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
           <div style="font-size:16px">${ok?''+window.icon("check",14)+'':''+window.icon("close",14)+''}</div>
-          <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.tool_id)}</div><div style="font-size:10px;color:var(--t3)">${esc(r.agent_id)} · ${r.duration_ms||0}ms · ${r.mode||'?'}</div>${r.rationale?'<div style="font-size:10px;color:var(--t2);margin-top:2px">'+esc(r.rationale.slice(0,100))+'</div>':''}</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(LU_humanize(r.tool_id))}</div><div style="font-size:10px;color:var(--t3)">${esc(r.agent_id)} · ${r.duration_ms||0}ms · ${r.mode||'?'}</div>${r.rationale?'<div style="font-size:10px;color:var(--t2);margin-top:2px">'+esc(r.rationale.slice(0,100))+'</div>':''}</div>
           <div style="font-size:10px;color:var(--t3);white-space:nowrap">${dt.toLocaleDateString()} ${dt.toLocaleTimeString()}</div>
           <div style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;color:var(--t2)">${esc((r.result_summary||'').slice(0,80))}</div>
         </div>`;
@@ -2593,6 +3718,93 @@ async function loadReports(){
           <div style="font-size:10px;color:var(--t3);white-space:nowrap">${r.created_at?window._luParseTs(r.created_at).toLocaleDateString():''}</div>
         </div>`;
       }).join('')+'</div>';
+    }
+    else if(rptTab==='categories'){
+      // 2026-05-27 — Phase 2: Work distribution + credit spend by category.
+      // Pulls /api/workspace/state (which we already extended to include
+      // category) and aggregates client-side. No new endpoint needed.
+      var wd = await get(API+'workspace/state');
+      var tasks = wd.tasks || [];
+      if (!tasks.length) { box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon">'+window.icon("tag",14)+'</div><div class="rv-empty-text">No tasks to categorize yet.</div></div>'; return; }
+      // Aggregate
+      var ORDER = ['research','create','optimize','publish','crm','campaign','operations'];
+      var COLOR = { research:'#3B82F6', create:'#7C3AED', optimize:'#00E5A8', publish:'#F59E0B', crm:'#EC4899', campaign:'#F97316', operations:'#6B7280' };
+      var LABEL = { research:'Research', create:'Create', optimize:'Optimize', publish:'Publish', crm:'CRM', campaign:'Campaign', operations:'Operations' };
+      var counts = {}, completed = {}, failed = {}, byStatus = {};
+      tasks.forEach(function(t){
+        var c = t.category || 'operations';
+        counts[c] = (counts[c]||0) + 1;
+        if (t.status === 'completed') completed[c] = (completed[c]||0)+1;
+        if (t.status === 'failed' || t.status === 'cancelled' || t.status === 'degraded') failed[c] = (failed[c]||0)+1;
+      });
+      var totalTasks = tasks.length;
+      var maxCount = Math.max.apply(null, ORDER.map(function(k){ return counts[k]||0; })) || 1;
+      // Section: Work distribution (horizontal bar chart)
+      var distHtml = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:18px;margin-bottom:18px">'
+        + '<div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Work distribution — last '+totalTasks+' tasks</div>'
+        + ORDER.filter(function(k){ return counts[k]; }).map(function(k){
+            var n = counts[k]; var pct = Math.round((n/totalTasks)*100);
+            var width = Math.max(2, Math.round((n/maxCount)*100));
+            return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+              + '<div style="width:100px;font-size:11px;font-family:var(--fh);font-weight:600;color:var(--t1);display:flex;align-items:center;gap:6px">'
+              + '<span style="width:8px;height:8px;border-radius:50%;background:'+COLOR[k]+'"></span>'
+              + LABEL[k] + '</div>'
+              + '<div style="flex:1;background:var(--s3);height:18px;border-radius:9px;overflow:hidden;position:relative">'
+              + '<div style="background:'+COLOR[k]+';height:100%;width:'+width+'%;border-radius:9px;transition:width .4s ease"></div>'
+              + '</div>'
+              + '<div style="min-width:80px;text-align:right;font-size:11px;color:var(--t2);font-family:var(--fb)"><b style="color:var(--t1)">'+n+'</b> · '+pct+'%</div>'
+              + '</div>';
+          }).join('')
+        + '</div>';
+      // Section: Web research footprint (Phase 3) — sums fetches/searches
+      // across recent research tasks. Pulled from /api/web/activity (read-only).
+      var researchHtml = '';
+      try {
+        var wa = await get(API+'web/activity?limit=200');
+        var rows = wa.rows || wa.activity || wa.items || wa || [];
+        if (Array.isArray(rows) && rows.length) {
+          var nFetch = 0, nSearch = 0, totalCost = 0, totalBytes = 0;
+          var domains = {};
+          rows.forEach(function (r) {
+            if (r.action === 'fetch') nFetch++;
+            if (r.action === 'search') nSearch++;
+            totalCost += (r.cost_credits | 0);
+            totalBytes += (r.content_length | 0);
+            if (r.action === 'fetch' && r.url_or_query) {
+              try { var u = new URL(r.url_or_query); domains[u.hostname] = (domains[u.hostname]||0)+1; } catch(e){}
+            }
+          });
+          var topDoms = Object.keys(domains).sort(function(a,b){return domains[b]-domains[a];}).slice(0,6);
+          researchHtml = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:18px;margin-bottom:18px">'
+            + '<div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px;display:flex;align-items:center;gap:8px">&#127760; Web research footprint &mdash; <span style="font-weight:500;color:var(--t3);font-size:11px">last '+rows.length+' web actions</span></div>'
+            + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px">'
+            + '  <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:11px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fh)">Pages fetched</div><div style="font-size:22px;font-weight:700;color:#3B82F6;font-family:var(--fh);margin-top:4px">'+nFetch+'</div></div>'
+            + '  <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:11px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fh)">Searches</div><div style="font-size:22px;font-weight:700;color:#3B82F6;font-family:var(--fh);margin-top:4px">'+nSearch+'</div></div>'
+            + '  <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:11px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fh)">Credits</div><div style="font-size:22px;font-weight:700;color:var(--am);font-family:var(--fh);margin-top:4px">'+totalCost+'</div></div>'
+            + '  <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:11px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fh)">Content read</div><div style="font-size:22px;font-weight:700;color:var(--ac);font-family:var(--fh);margin-top:4px">'+Math.round(totalBytes/1024)+'<span style="font-size:11px;color:var(--t3);font-weight:400"> KB</span></div></div>'
+            + '</div>'
+            + (topDoms.length ? '<div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fh);margin-bottom:8px">Top domains</div>' + topDoms.map(function(d){ return '<span style="display:inline-block;background:var(--s3);color:var(--t1);padding:4px 10px;border-radius:99px;font-size:11px;margin-right:5px;margin-bottom:5px">'+esc(d)+' <span style="color:var(--t3)">&middot; '+domains[d]+'</span></span>'; }).join('')+'</div>' : '')
+            + '</div>';
+        }
+      } catch (e) { /* web activity may be empty / restricted */ }
+
+      // Section: Success rate by category
+      var successHtml = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:18px;margin-bottom:18px">'
+        + '<div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Success rate by category</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">'
+        + ORDER.filter(function(k){ return counts[k]; }).map(function(k){
+            var done = completed[k]||0; var fail = failed[k]||0;
+            var denom = done + fail;
+            var rate = denom > 0 ? Math.round((done/denom)*100) : null;
+            var rateText = rate === null ? '—' : rate + '%';
+            return '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:11px">'
+              + '<div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fh)">'+LABEL[k]+'</div>'
+              + '<div style="font-size:22px;font-weight:700;color:'+COLOR[k]+';font-family:var(--fh);margin-top:4px">'+rateText+'</div>'
+              + '<div style="font-size:10px;color:var(--t3);margin-top:2px">'+done+' ok · '+fail+' issues</div>'
+              + '</div>';
+          }).join('')
+        + '</div></div>';
+      box.innerHTML = distHtml + researchHtml + successHtml;
     }
   }catch(e){box.innerHTML='<div style="color:#F87171;padding:20px">Error loading: '+esc(e.message)+'</div>';}
 }
@@ -2801,7 +4013,7 @@ function _renderSynthesisPanel(text) {
         if (isAction) {
           // Detect agent mentions
           let agentBadge = '';
-          ['James','Priya','Marcus','Elena','Alex','Sarah'].forEach(n => {
+          ['James','Priya','Elena','Alex','Sarah'].forEach(n => {
             if (trimmed.includes(n)) {
               var id = n.toLowerCase();
               var ag = AGENTS[id] || AGENTS[n.toLowerCase().slice(0,1) + n.slice(1)];
@@ -2894,7 +4106,6 @@ function extractIntel(msg){
   if(role==='dmm'&&!intel.theme){var m=text.match(/(?:strategy|campaign|focus).*?(?:around|on|for)\s+[""]?([^.,""\n]{10,50})/i);if(m){intel.theme=m[1].trim();updated=true;}}
   if(role==='james'){var w=text.match(/[""]([^""]{5,40})[""]/g)||[];w.forEach(x=>{var c=x.replace(/[""]/g,'');if(!intel.seo.includes(c)&&intel.seo.length<6){intel.seo.push(c);updated=true;}});}
   if(role==='priya'){var m=text.match(/\b([A-Z][a-z]+(?: [A-Z][a-z]+)?)\b(?= content| strategy| guide)/g)||[];m.forEach(p=>{if(!intel.content.includes(p)&&intel.content.length<5){intel.content.push(p);updated=true;}});}
-  if(role==='marcus'){['Instagram','LinkedIn','TikTok','Facebook','YouTube','Reels'].forEach(p=>{if(text.includes(p)&&!intel.social.includes(p)){intel.social.push(p);updated=true;}});}
   if(role==='elena'&&!intel.funnel.length){var s=[];if(/content|blog/i.test(text))s.push('Content');if(/landing page|form/i.test(text))s.push('Landing Page');if(/CRM|lead/i.test(text))s.push('CRM');if(/email|nurture/i.test(text))s.push('Email');if(s.length){intel.funnel=s;updated=true;}}
   if(updated)renderIntel();
 }
@@ -2904,10 +4115,9 @@ function renderIntel(){
   document.getElementById('mi-live')?.classList.add('on');
   body.innerHTML='';
   var mk=(icon,title,content,from)=>{var s=document.createElement('div');s.className='mi-sec';s.innerHTML=`<div class="mi-sec-title"><span>${icon}</span>${title}</div><div>${content}</div><div style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t3);padding-top:5px;border-top:1px solid var(--bd);margin-top:6px"><div style="width:4px;height:4px;border-radius:50%;background:var(--ac)"></div>${from}</div>`;body.appendChild(s);};
-  if(intel.theme) mk(''+window.icon("more",14)+'','Campaign Theme',`<div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--t1)">${esc(intel.theme)}</div>`,'Live · Sarah');
+  if(intel.theme) mk(''+window.icon("more",14)+'','Strategy Focus',`<div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--t1)">${esc(intel.theme)}</div>`,'Live · Sarah');
   if(intel.seo.length) mk(''+window.icon("chart",14)+'','SEO Opportunities',intel.seo.map(k=>`<span class="mi-tag ac">${esc(k)}</span>`).join(''),'From James');
   if(intel.content.length) mk(''+window.icon("edit",14)+'','Content Pillars',intel.content.map(p=>`<span class="mi-tag">${esc(p)}</span>`).join(''),'From Priya');
-  if(intel.social.length) mk(''+window.icon("message",14)+'','Social Channels',intel.social.map(p=>`<span class="mi-tag">${esc(p)}</span>`).join(''),'From Marcus');
   if(intel.funnel.length) mk(''+window.icon("more",14)+'','Lead Funnel',intel.funnel.map((st,i)=>`<span class="mi-tag">${esc(st)}</span>${i<intel.funnel.length-1?'<span style="color:var(--t3);font-size:10px;margin:0 2px">→</span>':''}`).join(''),'From Elena');
 }
 function prefill(text){var ta=document.getElementById('cmd-input');ta.value=text;ta.focus();ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,80)+'px';}
@@ -2978,6 +4188,15 @@ var EXEC_INTENTS = [
   {rx:/\b(?:analyze|check)\s+funnel/i,                                                                  tool:'analyze_funnel_structure',label:'Analyze Funnel', icon:''+window.icon("chart",14)+'', paramFn:()=>({})},
 ];
 
+// ── LAUNCH SCOPE (W6) ────────────────────────────────────────────────────
+// Quick actions are derived from an allowlist, not from label deletions. Even
+// if a crafted agent reply matches a removed intent's regex, the action can no
+// longer render, because the intent is not in the array at all. The same filter
+// runs over chains so a multi-step flow cannot smuggle a removed step in.
+if (window.LU_SCOPE) {
+  EXEC_INTENTS = EXEC_INTENTS.filter(function (i) { return !window.LU_SCOPE.isRemovedAction(i.tool); });
+}
+
 // ── Chained flows ────────────────────────────────────────────────────────
 var EXEC_CHAINS = [
   {rx:/\b(?:improve|fix|boost|optimize)\s+(?:my\s+|our\s+|the\s+)?seo\b/i, label:'SEO Improvement Flow', icon:''+window.icon("rocket",14)+'',
@@ -2989,6 +4208,15 @@ var EXEC_CHAINS = [
   {rx:/\b(?:fix|check|analyze)\s+(?:all\s+)?(?:broken\s+)?links\b/i, label:'Link Health Flow', icon:''+window.icon("link",14)+'',
    steps:[{tool:'outbound_links',label:'Check outbound links',paramFn:_pPostId},{tool:'link_suggestions',label:'Find link opportunities',paramFn:_pPostId}]},
 ];
+
+// Drop any chain that contains a removed step, and any chain whose own label
+// advertises a removed capability (e.g. "Campaign Launch Flow").
+if (window.LU_SCOPE) {
+  EXEC_CHAINS = EXEC_CHAINS.filter(function (ch) {
+    if (window.LU_SCOPE.isRemovedLabel(String(ch.label || '').replace(/\s*Flow$/i, ''))) return false;
+    return (ch.steps || []).every(function (s) { return !window.LU_SCOPE.isRemovedAction(s.tool); });
+  });
+}
 
 // ── Parameter extractors ─────────────────────────────────────────────────
 function _pPostId(text){var m=text.match(/post[_\s]?id[:\s=]*(\d+)/i);if(m) return {post_id:parseInt(m[1])};var all=document.getElementById('disc-feed')?.textContent||'';var pm=all.match(/post_id=(\d+)/);return pm?{post_id:parseInt(pm[1])}:{post_id:0};}
@@ -3043,6 +4271,13 @@ function execCtrl(div, msg){
 
 // ── Render proposal card (APPROVAL-FIRST or AUTOPILOT) ───────────────────
 function _renderProposal(div, actions, text, msg, chainLabel, chainIcon){
+  // LAUNCH SCOPE (W6): last line of defence — never render a removed action,
+  // whatever produced it (agent text, cached payload, backend metadata).
+  if (window.LU_SCOPE) {
+    steps = window.LU_SCOPE.filterActions(steps);
+    if (!steps.length) return;
+  }
+
   var isAutopilot = execMode === 'autopilot';
   var bubble = div.querySelector('.msg-bubble');
   if(!bubble) return;
@@ -3303,7 +4538,7 @@ async function sendMessage(){
   ];
   var nameNorm = [
     [/\bsarah\b/i, '@Sarah'], [/\bjames\b/i, '@James'],
-    [/\bpriya\b/i, '@Priya'], [/\bmarcus\b/i, '@Marcus'],
+    [/\bpriya\b/i, '@Priya'],
     [/\belena\b/i, '@Elena'], [/\balex\b/i, '@Alex'],
   ];
   // Only normalize if no @ already present
@@ -3390,8 +4625,12 @@ function fmt(t){
     return '<ul style="margin:6px 0 8px;padding-left:18px;line-height:1.55">' + m + '</ul>';
   });
   // Newlines AFTER bullets are converted (don't insert <br> inside <ul>)
+  // v1.4.4 — replace the old <br><br> trick (which renders as a tight,
+  // barely-visible gap) with a real paragraph spacer so multi-paragraph
+  // agent replies actually read as separate paragraphs in the drawer
+  // and messages surfaces. Single \n inside a paragraph stays as <br>.
   s = s.replace(/<\/ul>\n+/g,'</ul>')
-       .replace(/\n\n/g,'<br><br>')
+       .replace(/\n{2,}/g,'<div style="height:10px" aria-hidden="true"></div>')
        .replace(/\n/g,'<br>');
   return s;
 }
@@ -3512,8 +4751,15 @@ async function sendDm() {
     if (!content) return;
 
     if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    // v1.4.4 attach — fold any uploaded attachments into the DM payload, then clear chips
+    var _dmPayload = { agentId: dmAgentId, content: content };
+    if (window.LU_attachComposer) {
+      var _dmAtts = window.LU_attachComposer.getPending('dm-ta');
+      if (_dmAtts && _dmAtts.length) _dmPayload.attachments = _dmAtts;
+      window.LU_attachComposer.clear('dm-ta');
+    }
     try {
-        await post(API + 'meeting/' + mid + '/dm', { agentId: dmAgentId, content });
+        await post(API + 'meeting/' + mid + '/dm', _dmPayload);
         // Show sent confirmation then close
         var body = document.getElementById('dm-body');
         if (body) body.innerHTML = `<div class="dm-sent">✓ Message sent to ${document.getElementById('dm-name')?.textContent || 'agent'}.<br><span style="color:var(--t3);font-size:9px">Reply will appear in the main feed.</span></div>`;
@@ -3548,6 +4794,18 @@ function closeDirectAssign(){
   document.getElementById('da-backdrop').classList.remove('visible');
 }
 async function createDirectTask(){
+  // 2026-05-26 — REWRITE. Previously this built a TASK BRIEF markdown and
+  // sent it as a chat message to Sarah, relying on her LLM to emit
+  // create_tasks. Result: button labeled "Create Task" but no task was
+  // ever created; user redirected to Sarah's chat with no action. User
+  // expectation: button creates the task immediately with the selected
+  // agents as assignees.
+  //
+  // New behavior: POST directly to /api/tasks with the selected agents,
+  // a sensible engine derived from the first specialist, action=manual_brief,
+  // requires_approval=false, credit_cost=0. Task lands as 'pending' →
+  // visible on canvas → triggers a new-chain flash on the agent connection
+  // line (Fix 3 from canvas-line patch).
   var title=document.getElementById('da-title').value.trim();
   if(!title||!selectedAgents.size){showToast('Task title and at least one agent are required.','warning');return;}
   var assignees=[...selectedAgents];
@@ -3556,29 +4814,66 @@ async function createDirectTask(){
   var estTime=parseInt(document.getElementById('da-time').value)||60;
   var metric=document.getElementById('da-metric').value.trim();
 
-  // Build Sarah brief context
-  var agentNames=assignees.map(function(id){return AGENTS[id]?.name||id;}).join(', ');
-  var sarahBrief="TASK BRIEF:\n"+
-    "Title: "+title+"\n"+
-    "Description: "+(desc||'No description')+"\n"+
-    "Assign to: "+agentNames+"\n"+
-    "Priority: "+priority+"\n"+
-    "Est. time: "+estTime+" minutes"+
-    (metric?"\nSuccess metric: "+metric:"");
+  // Normalize UI 'dmm' back to backend 'sarah'
+  var realAssignees=assignees.map(function(a){return a==='dmm'?'sarah':a;});
 
-  // Close modal + clear selection
-  closeDirectAssign();
-  clearSelection();
+  // Map agent slug → engine. Used for the task's engine field, which is
+  // required by the API. We pick the FIRST non-orchestrator agent's
+  // engine; if only Sarah is selected, fall back to 'write' (her default
+  // delegation target). The action is generic 'manual_brief' so the
+  // orchestrator doesn't auto-execute the task — it sits as a human-
+  // managed TODO until someone picks it up.
+  var engineMap={
+    james:'seo',alex:'seo',diana:'seo',ryan:'seo',sofia:'seo',
+    priya:'write',nora:'write',
+    elena:'crm',max:'crm',sarah:'write'
+  };
+  var firstSpec=realAssignees.find(function(a){return a!=='sarah';})||realAssignees[0];
+  var engine=engineMap[firstSpec]||'write';
 
-  // Open Sarah's drawer → Messages tab → auto-send the brief
-  openAgentDrawer('dmm');
-  drawerTab('messages');
+  // Disable the submit button to prevent double-post
+  var btn=document.getElementById('da-submit')||document.querySelector('#da-backdrop button.da-btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Creating...';}
 
-  // Wait for drawer to render then auto-send
-  setTimeout(function(){
-    sendAgentMessage(null, sarahBrief);
-  }, 400);
-
+  try{
+    var res=await post(API+'tasks',{
+      engine:engine,
+      action:'manual_brief',
+      source:'manual',
+      assigned_agents:realAssignees,
+      priority:priority==='medium'?'normal':priority,
+      requires_approval:false,
+      credit_cost:0,
+      payload:{
+        title:title,
+        description:desc||'',
+        priority:priority,
+        estimated_time:estTime,
+        success_metric:metric||'',
+        created_via:'manual_direct_assign',
+        // 2026-05-26 — unique-suffix so the idempotency hash differs between
+        // identical-titled direct posts. Without this, posting the same
+        // task title twice causes a 500 (DB duplicate key on idempotency_key
+        // unique index). Manual posts should never be auto-dedup'd.
+        client_ts: Date.now(),
+        nonce: Math.random().toString(36).slice(2, 10),
+      },
+    });
+    if(res&&(res.task||res.id)){
+      showToast('Task created: '+title+' → '+assignees.map(function(id){return AGENTS[id]&&AGENTS[id].name||id;}).join(', '),'success');
+      closeDirectAssign();
+      clearSelection();
+      // Refresh the canvas — this triggers the line-draw + new-chain flash.
+      if(typeof loadTasks==='function') await loadTasks();
+      if(typeof loadAgentStats==='function') loadAgentStats();
+    }else{
+      throw new Error('unexpected response: '+JSON.stringify(res).slice(0,200));
+    }
+  }catch(e){
+    console.error('[createDirectTask] failed:',e);
+    showToast('Task creation failed: '+(e&&e.message||e),'error');
+    if(btn){btn.disabled=false;btn.textContent='Create Task';}
+  }
 }
 
 function startMeetingWithSelected(){
@@ -3758,7 +5053,14 @@ async function sendAssistant() {
 
   try {
     var ctx = buildAiContext();
-    var r = await post(API + 'assistant', { message, context: ctx, history: aiHistory.slice(-8) });
+    // v1.4.4 attach — fold any uploaded attachments into the assistant payload, then clear chips
+    var _aiPayload = { message: message, context: ctx, history: aiHistory.slice(-8) };
+    if (window.LU_attachComposer) {
+      var _aiAtts = window.LU_attachComposer.getPending('ai-input');
+      if (_aiAtts && _aiAtts.length) _aiPayload.attachments = _aiAtts;
+      window.LU_attachComposer.clear('ai-input');
+    }
+    var r = await post(API + 'assistant', _aiPayload);
     // Wave 31 — Update Aria's chat counter from response JSON.
     try {
       var cm = (r && r.chat_meter) || (r && r.data && r.data.chat_meter);
@@ -4461,6 +5763,49 @@ function _appEnterDashboard() {
   _notifStartPolling();
   // Signal that bootstrap is complete (consumers like the workspace canvas loader rely on this)
   document.dispatchEvent(new Event('lu:bootstrap-complete'));
+
+  // v5.7.19 (2026-05-31) — Phase 1.0 URL routing.
+  // v5.7.20 (2026-05-31) — Phase 2 path tails: pass tail through so
+  // /app/write/176 lands at write engine + opens article 176.
+  // v5.7.23 (2026-05-31) — 404 toast for unknown views.
+  // LGSC embed mode skips this because it does its own
+  // setTimeout(window.nav('seo'), 500) below.
+  if (!window._LGSC_EMBED && window._luRouter && window._luRouter.enabled()) {
+    var initialHit = window._luRouter.parseInitial();
+    var rawPath = (window.location.pathname || '').replace(/\/+$/, '');
+    var isAppPath = rawPath === '/app' || rawPath === '' || rawPath.indexOf('/app/') === 0;
+    if (initialHit && (initialHit.view !== window._luRouter.DEFAULT_VIEW || initialHit.tail)) {
+      // Defer one tick so the view-* DOM elements are mounted.
+      setTimeout(function () {
+        try {
+          if (typeof window.nav === 'function') {
+            window.nav(initialHit.view, { silent: true, tail: initialHit.tail });
+          }
+        } catch (e) { console.warn('[LU Router] initial nav failed:', e); }
+      }, 0);
+    } else if (!initialHit && isAppPath && rawPath !== '/app' && rawPath !== '') {
+      // /app/{unknown} — toast + repath to /app/ so the URL bar matches
+      // what the user sees (workspace default).
+      setTimeout(function () {
+        try {
+          if (typeof showToast === 'function') {
+            showToast('Section not found — showing your workspace.', 'warning');
+          } else {
+            console.warn('[LU Router] unknown section:', rawPath);
+          }
+          // Replace state — don't push, since user didn't actually navigate.
+          try { history.replaceState(null, '', '/app/' + window.location.search + window.location.hash); } catch (_e) {}
+          // Update title to match the workspace landing.
+          if (window._luRouter && typeof window._luRouter.setTitle === 'function') {
+            window._luRouter.setTitle(window._luRouter.DEFAULT_VIEW);
+          }
+        } catch (_e) {}
+      }, 0);
+    } else if (initialHit) {
+      // /app/ or /app/workspace direct landing — set title to match.
+      try { window._luRouter.setTitle(initialHit.view); } catch (_e) {}
+    }
+  }
 }
 
 // ── Onboarding + auth views ──────────────────────────────────────────
@@ -4877,8 +6222,9 @@ async function _openNotifications() {
               var unread = !n.read_at;
               return '<div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid var(--bd);background:' + (unread?'rgba(108,92,231,.06)':'') + ';cursor:pointer" onclick="_markNotifRead(' + n.id + ',this)">'
                 + '<div style="width:8px;height:8px;border-radius:50%;background:' + (unread?'var(--p,#6C5CE7)':'transparent') + ';flex-shrink:0;margin-top:4px"></div>'
-                + '<div style="flex:1"><div style="font-size:13px;font-weight:' + (unread?'600':'400') + ';color:var(--t1)">' + _luEsc(n.title) + '</div>'
-                + '<div style="font-size:11px;color:var(--t3);margin-top:2px">' + window._luParseTs(n.created_at).toLocaleString() + '</div></div></div>';
+                + '<div style="flex:1"><div style="font-size:13px;font-weight:' + (unread?'600':'400') + ';color:var(--t1)">' + _luEsc(n.title || 'LevelUp Growth') + '</div>'
+                + (n.body ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;line-height:1.4">' + _luEsc(n.body) + '</div>' : '')
+                + '<div style="font-size:11px;color:var(--t3);margin-top:3px">' + window._luParseTs(n.created_at).toLocaleString() + '</div></div></div>';
             }).join(''))
       + '</div></div>';
     document.body.appendChild(bd);
@@ -4903,11 +6249,46 @@ async function _markNotifRead(id, el) {
 
 var _aqState = {
   status: 'pending',
+  category: 'all',  // 2026-05-27 — Phase 2 category filter
   page: 1,
   perPage: 20,
   selected: new Set(),
   stats: null,
   pollTimer: null,
+};
+
+// 2026-05-27 — Phase 2: client-side filter pills above the approval list.
+// Renders into #aq-category-filter (added by _aqRenderList).
+function _aqCategoryFilterHtml() {
+  var cats = [
+    { slug: 'all',        label: 'All',        color: 'var(--p)' },
+    { slug: 'research',   label: 'Research',   color: '#3B82F6' },
+    { slug: 'create',     label: 'Create',     color: '#7C3AED' },
+    { slug: 'optimize',   label: 'Optimize',   color: '#00E5A8' },
+    { slug: 'publish',    label: 'Publish',    color: '#F59E0B' },
+    { slug: 'crm',        label: 'CRM',        color: '#EC4899' },
+    { slug: 'operations', label: 'Operations', color: '#6B7280' },
+  ];
+  return '<div id="aq-category-filter" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'
+    + cats.map(function (c) {
+        var active = _aqState.category === c.slug;
+        return '<button onclick="_aqSetCategory(\'' + c.slug + '\')" '
+          + 'style="padding:5px 11px;background:' + (active ? c.color : 'var(--s2)') + ';'
+          + 'color:' + (active ? '#fff' : 'var(--t2)') + ';'
+          + 'border:1px solid ' + (active ? c.color : 'var(--bd)') + ';'
+          + 'border-radius:99px;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--fh);'
+          + 'transition:all .15s">'
+          + (active ? '' : '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + c.color + ';margin-right:5px;vertical-align:middle"></span>')
+          + c.label
+          + '</button>';
+      }).join('')
+    + '</div>';
+}
+
+window._aqSetCategory = function (slug) {
+  _aqState.category = slug;
+  _aqState.page = 1;
+  _aqFetchList();
 };
 
 window.loadApprovals = async function loadApprovals() {
@@ -5001,12 +6382,26 @@ function _aqRenderList(d) {
   var list = document.getElementById('aq-list');
   var pager = document.getElementById('aq-pager');
   if (!list) return;
+  // 2026-05-27 — Phase 2: category filter row above the cards (always shown)
+  var filterRow = _aqCategoryFilterHtml();
   if (!d.items.length) {
-    list.innerHTML = _aqEmptyStateFor(_aqState.status);
+    list.innerHTML = filterRow + _aqEmptyStateFor(_aqState.status);
     if (pager) pager.style.display = 'none';
     return;
   }
-  list.innerHTML = d.items.map(_aqCardHtml).join('');
+  // Client-side category filter (server pagination still applies on status)
+  var items = d.items;
+  if (_aqState.category && _aqState.category !== 'all') {
+    items = items.filter(function (it) {
+      return it.task && it.task.category === _aqState.category;
+    });
+  }
+  if (!items.length) {
+    list.innerHTML = filterRow + '<div class="cmd-empty" style="padding:40px 16px">No ' + _cmdcEsc(_aqState.status) + ' approvals in the <b>' + _cmdcEsc(_aqState.category) + '</b> category on this page.</div>';
+    if (pager) pager.style.display = 'flex';  // pagination may have more
+    return;
+  }
+  list.innerHTML = filterRow + items.map(_aqCardHtml).join('');
   // Pagination
   if (pager) {
     if (d.pages > 1) {
@@ -5042,6 +6437,33 @@ function _aqCardHtml(it) {
   var engineChip = '<span class="aq-engine-badge" style="background:' + engineBadge.color + '">' + _cmdcEsc(engineBadge.name) + '</span>';
   var agentLine  = '<span class="aq-agent-line"><span style="width:6px;height:6px;border-radius:50%;background:' + agent.color + '"></span>' + _cmdcEsc(agent.name) + '</span>';
   var creditLine = task && task.credit_cost ? '<span style="font-size:11px;color:var(--t3)">· ' + task.credit_cost + ' credits</span>' : '';
+  // 2026-05-27 — meeting-origin chip: surface Strategy Room source so the user
+  // can mentally connect this approval to the meeting that produced it. Click
+  // opens a transcript modal via window._aqOpenMeetingModal.
+  // 2026-05-27 — category chip (Phase 2 surface visibility)
+  var categoryChip = '';
+  if (task && task.category && task.category_color) {
+    categoryChip = '<span class="aq-category-chip" '
+      + 'data-category="' + _cmdcEsc(task.category) + '" '
+      + 'title="' + _cmdcEsc(task.category_label || task.category) + ' task" '
+      + 'style="background:' + task.category_color + '22;color:' + task.category_color + ';'
+      + 'border:1px solid ' + task.category_color + '55;border-radius:99px;padding:2px 8px;'
+      + 'font-size:10px;font-weight:600;font-family:var(--fh);display:inline-flex;align-items:center;gap:4px">'
+      + '<span style="width:6px;height:6px;border-radius:50%;background:' + task.category_color + '"></span>'
+      + _cmdcEsc(task.category_label || task.category)
+      + '</span>';
+  }
+  var meetingChip = '';
+  if (task && task.from_meeting && task.from_meeting.id) {
+    var mt = task.from_meeting;
+    var mtTitle = _cmdcEsc((mt.title || 'Strategy meeting').replace(/^Strategy:\s*/, ''));
+    meetingChip = '<span class="aq-meeting-chip" onclick="_aqOpenMeetingModal(' + mt.id + ')" '
+      + 'title="View meeting #' + mt.id + ' transcript" '
+      + 'style="background:rgba(108,92,231,.12);color:var(--pu);border:1px solid rgba(108,92,231,.3);'
+      + 'border-radius:99px;padding:2px 8px;font-size:10px;font-weight:600;cursor:pointer;'
+      + 'display:inline-flex;align-items:center;gap:4px;font-family:var(--fh)">'
+      + '✨ Meeting #' + mt.id + ' · ' + mtTitle + '</span>';
+  }
 
   var payloadBits = '';
   if (task && Array.isArray(task.payload_keys) && task.payload_keys.length) {
@@ -5070,7 +6492,7 @@ function _aqCardHtml(it) {
       orb +
       '<div class="aq-card-meta">' +
         '<div class="aq-card-title">' + label + orphanChip + '</div>' +
-        '<div class="aq-card-sub">' + engineChip + agentLine + creditLine + '</div>' +
+        '<div class="aq-card-sub">' + categoryChip + engineChip + agentLine + creditLine + meetingChip + '</div>' +
       '</div>' +
     '</div>' +
     desc +
@@ -5089,6 +6511,57 @@ function _aqCardHtml(it) {
     '</div>' +
   '</div>';
 }
+
+// ── Meeting-source transcript modal (opened from approval card meeting chip) ─
+// Fetches the meeting transcript and renders a read-only modal so the user
+// can see what was discussed and decided before approving/rejecting the task
+// it produced. No edit affordances — purely contextual.
+window._aqOpenMeetingModal = async function(meetingId) {
+  meetingId = parseInt(meetingId, 10);
+  if (!meetingId) return;
+  var bd = document.getElementById('aq-meeting-modal');
+  if (!bd) {
+    bd = document.createElement('div');
+    bd.id = 'aq-meeting-modal';
+    bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px';
+    bd.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.6)">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd)">'
+      + '<div id="aq-mm-title" style="font-family:var(--fh);font-size:14px;font-weight:700;color:var(--t1)">Meeting transcript</div>'
+      + '<button onclick="document.getElementById(\'aq-meeting-modal\').style.display=\'none\'" style="background:none;border:none;color:var(--t2);cursor:pointer;font-size:18px;padding:0 6px">×</button>'
+      + '</div>'
+      + '<div id="aq-mm-body" style="flex:1;overflow-y:auto;padding:14px 18px;font-family:var(--fb);font-size:13px;color:var(--t1);line-height:1.6">Loading…</div>'
+      + '</div>';
+    document.body.appendChild(bd);
+    bd.addEventListener('click', function(e){ if (e.target === bd) bd.style.display = 'none'; });
+  }
+  bd.style.display = 'flex';
+  var titleEl = document.getElementById('aq-mm-title');
+  var bodyEl = document.getElementById('aq-mm-body');
+  if (bodyEl) bodyEl.innerHTML = 'Loading meeting #' + meetingId + '…';
+
+  try {
+    var r = await _luFetch('GET', '/meeting/' + meetingId);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    if (titleEl) titleEl.textContent = (d.title || ('Meeting #' + meetingId)) + (d.status ? ' · ' + d.status : '');
+    var msgs = Array.isArray(d.messages) ? d.messages : [];
+    if (!msgs.length) {
+      bodyEl.innerHTML = '<div style="color:var(--t3);text-align:center;padding:40px">No transcript stored for this meeting.</div>';
+      return;
+    }
+    bodyEl.innerHTML = msgs.map(function(m){
+      var name = _cmdcEsc(m.sender_name || m.agent_name || (m.sender_type === 'user' ? 'You' : 'Agent'));
+      var phase = m.phase ? '<span style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-left:6px">' + _cmdcEsc(m.phase) + '</span>' : '';
+      var col   = m.sender_type === 'user' ? 'var(--ac)' : 'var(--p)';
+      return '<div style="margin-bottom:14px;padding:10px 12px;background:var(--s2);border-radius:var(--r);border-left:2px solid ' + col + '">'
+        + '<div style="font-family:var(--fh);font-size:12px;font-weight:700;color:' + col + ';margin-bottom:4px">' + name + phase + '</div>'
+        + '<div style="white-space:pre-wrap;color:var(--t1)">' + _cmdcEsc(m.message || '') + '</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    bodyEl.innerHTML = '<div style="color:var(--rd);text-align:center;padding:40px">Could not load meeting: ' + _cmdcEsc(e.message || '') + '</div>';
+  }
+};
 
 // ── Actions ─────────────────────────────────────────────────────────────
 function _aqSwitchTab(status) {
@@ -5295,7 +6768,12 @@ function _cmdcRenderAll(d, isPoll) {
   _cmdcSetNavBadge(d.approvals_pending_total || 0);
 
   // Agents
-  _cmdcRenderAgents(d.agents || []);
+  window._cmdcLastAgents = d.agents || [];
+  _cmdcRenderAgents(window._cmdcLastAgents);
+  // 2026-05-25 — kick off fresh per-agent stats so the cards show real
+  // ongoing/pending/completed numbers (the dashboard endpoint's
+  // tasks_this_week count is a different metric and was showing 0s).
+  if (typeof loadAgentStats === 'function') loadAgentStats();
 
   // Websites + Meetings
   _cmdcRenderWebsites(d.websites || []);
@@ -5345,7 +6823,7 @@ function _cmdcRenderStrategy(p, totalWs, totalGlobal) {
   }
   var statusClass = p.status === 'approved' ? 'cmd-chip-approved' : (p.status === 'pending' ? 'cmd-chip-pending' : 'cmd-chip-default');
   var desc = p.description ? (p.description.length > 140 ? p.description.substr(0, 137) + '…' : p.description) : '';
-  var chips = '<span class="cmd-chip ' + statusClass + '">' + _cmdcEsc(p.status || 'draft') + '</span>' +
+  var chips = '<span class="cmd-chip ' + statusClass + '">' + _cmdcEsc(window.LU_statusLabel ? window.LU_statusLabel(p.status) : (p.status || 'draft')) + '</span>' +
               (p.total_credits ? '<span class="cmd-chip cmd-chip-default">' + p.total_credits + ' credits</span>' : '');
   var btn = p.meeting_id
     ? '<button class="cmd-btn cmd-btn-approve" style="width:100%" onclick="nav(\'meeting\');if(typeof _meetingOpen===\'function\')_meetingOpen(' + p.meeting_id + ')">Review strategy →</button>'
@@ -5373,33 +6851,119 @@ function _cmdcRenderApprovals(list, total) {
     el.innerHTML = '<div class="cmd-empty" style="color:var(--ac)">✓ All clear — no actions waiting</div>';
     return;
   }
+  // v1.4.4 (2026-05-30) — Buttons are no longer gated on `task_id`.
+  // ApprovalService::requestIfNeeded() creates approvals BEFORE the task,
+  // so task_id can legitimately be null. The previous "Task no longer
+  // exists" tooltip was wrong — the task was never CREATED. Reject works
+  // for orphan approvals (server handles task_id=null directly). Approve
+  // currently 422s on orphans; the error toast surfaces the reason.
+  //
+  // v1.4.4 (2026-05-30, later) — batched approvals. When a row has
+  // batch_count > 1, render "Approve all N" / "Reject all N" with a
+  // sample-titles preview. Backend cascades to all sibling tasks by
+  // batch_id, so one click decides the whole group.
   el.innerHTML = list.map(function(a) {
     var orb = _cmdcOrbHtml(a.agent);
-    return '<div class="cmd-approval-row" data-id="' + a.id + '">' +
-      '<div class="cmd-approval-head">' + orb + '<div class="cmd-approval-label">' + _cmdcEsc(a.label) + '</div></div>' +
-      '<div class="cmd-approval-meta">' + _cmdcEsc(a.time_ago) + (a.credit_cost ? ' · ' + a.credit_cost + ' credits' : '') + '</div>' +
+    var orphan = !a.task_id;
+    var isBatch = (a.batch_count || 1) > 1;
+    var n       = a.batch_count || 1;
+    var totalCr = a.batch_total_credits != null ? a.batch_total_credits : a.credit_cost;
+    var approveLabel = isBatch ? ('Approve all ' + n) : 'Approve';
+    var rejectLabel  = isBatch ? ('Reject all ' + n)  : 'Reject';
+    var approveTitle = orphan ? 'Approve — orphan approval, server will explain if it can\'t auto-execute'
+                       : (isBatch ? ('Approve all ' + n + ' ' + (a.action || 'tasks') + ' tasks in this batch — one click decides the group') : '');
+    var rejectTitle  = orphan ? 'Reject — clears this orphan approval'
+                       : (isBatch ? ('Reject all ' + n + ' tasks in this batch — single rejection reason applies to the whole group') : '');
+    var batchBadge = isBatch
+      ? '<span style="display:inline-block;background:var(--p);color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;margin-right:6px;letter-spacing:.05em">×' + n + '</span>'
+      : '';
+    var samplesHtml = '';
+    if (isBatch && a.sample_titles && a.sample_titles.length) {
+      var shown = a.sample_titles.slice(0, 3).map(function(t){ return '<li style="font-size:11px;color:var(--t3);margin:2px 0">' + _cmdcEsc(t) + '</li>'; }).join('');
+      var more = a.sample_titles.length < n ? '<li style="font-size:11px;color:var(--t3);opacity:.7;margin:2px 0">…and ' + (n - a.sample_titles.length) + ' more</li>' : '';
+      samplesHtml = '<ul style="list-style:none;padding:0;margin:6px 0 0 0;border-left:2px solid var(--bd);padding-left:10px">' + shown + more + '</ul>';
+    }
+    var labelText = isBatch
+      ? (batchBadge + _cmdcEsc(_cmdcBatchLabel(a)))
+      : _cmdcEsc(a.label);
+    var metaBits = [_cmdcEsc(a.time_ago)];
+    if (isBatch) metaBits.push(n + ' ' + (a.action || 'tasks'));
+    if (totalCr) metaBits.push(totalCr + ' cr total');
+    if (orphan)  metaBits.push('<span style="color:var(--am);opacity:.8">no attached task</span>');
+    return '<div class="cmd-approval-row" data-id="' + a.id + '" data-batch="' + (a.batch_id||'') + '" data-count="' + n + '">' +
+      '<div class="cmd-approval-head">' + orb + '<div class="cmd-approval-label">' + labelText + '</div></div>' +
+      '<div class="cmd-approval-meta">' + metaBits.join(' · ') + '</div>' +
+      samplesHtml +
       '<div class="cmd-approval-actions">' +
-        (a.task_id
-          ? '<button class="cmd-btn cmd-btn-approve" onclick="_cmdcApprovalAction(' + a.id + ',\'approve\')">Approve</button>'
-          : '<button class="cmd-btn cmd-btn-approve" disabled title="Task no longer exists" style="opacity:0.4;cursor:not-allowed">Approve</button>'
-        ) +
-        (a.task_id
-          ? '<button class="cmd-btn cmd-btn-reject"  onclick="_cmdcApprovalAction(' + a.id + ',\'reject\')">Reject</button>'
-          : '<button class="cmd-btn cmd-btn-reject" disabled title="Task no longer exists" style="opacity:0.4;cursor:not-allowed">Reject</button>'
-        ) +
+        '<button class="cmd-btn cmd-btn-approve" onclick="_cmdcApprovalAction(' + a.id + ',\'approve\',' + n + ')" title="' + approveTitle + '">' + approveLabel + '</button>' +
+        '<button class="cmd-btn cmd-btn-reject"  onclick="_cmdcApprovalAction(' + a.id + ',\'reject\','  + n + ')"  title="' + rejectTitle + '">' + rejectLabel + '</button>' +
       '</div>' +
     '</div>';
   }).join('');
 }
 
-async function _cmdcApprovalAction(id, which) {
+// v1.4.4 (2026-05-30) — friendly batched label
+function _cmdcBatchLabel(a) {
+  var n = a.batch_count || 1;
+  var action = (a.action || '').toLowerCase();
+  var unitMap = {
+    'write_article':   ['article', 'articles'],
+    'generate_meta':   ['meta block', 'meta blocks'],
+    'insert_link':     ['internal link', 'internal links'],
+    'generate_image':       ['image', 'images'],
+    'generate_image_mini':  ['image', 'images'],
+    'generate_image_high':  ['image', 'images'],
+    'social_create_post':   ['social post', 'social posts'],
+    'social_schedule_post': ['scheduled post', 'scheduled posts'],
+    'create_lead':     ['lead', 'leads'],
+    'create_campaign': ['campaign', 'campaigns'],
+    'create_event':    ['calendar event', 'calendar events'],
+    'add_page_from_template': ['page', 'pages'],
+    'publish_article': ['article publish', 'article publishes'],
+    'delete_article':  ['article delete', 'article deletes'],
+    'delete_post':     ['post delete', 'post deletes'],
+    'delete_lead':     ['lead delete', 'lead deletes'],
+    'publish_website': ['site publish', 'site publishes'],
+  };
+  var unit = unitMap[action] || ['task', 'tasks'];
+  var label = unit[n === 1 ? 0 : 1];
+  // Include the agent's first name if known so the user sees who's doing it
+  var agentName = (a.agent && a.agent.name) ? a.agent.name : '';
+  return n + ' ' + label + (agentName ? ' — ' + agentName : '');
+}
+
+async function _cmdcApprovalAction(id, which, batchCount) {
+  // Reject requires a reason. For a batch, mention the count so the user
+  // knows their reason applies to all N tasks.
+  var n = batchCount || 1;
+  var body = null;
+  if (which === 'reject') {
+    var promptMsg = n > 1
+      ? 'Reason for rejecting all ' + n + ' tasks in this batch (required):'
+      : 'Reason for rejection (required):';
+    var reason = window.prompt(promptMsg, '');
+    if (reason === null) return;            // cancelled
+    reason = (reason || '').trim();
+    if (!reason) { if (typeof _luToast === 'function') _luToast('A rejection reason is required.'); return; }
+    body = { reason: reason };
+  }
   var row = document.querySelector('.cmd-approval-row[data-id="' + id + '"]');
   if (row) { row.style.transition = 'opacity 200ms,max-height 300ms'; row.style.opacity = '.3'; row.style.pointerEvents = 'none'; }
   try {
-    var r = await _luFetch('POST', '/approvals/' + id + '/' + which);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var r = await _luFetch('POST', '/approvals/' + id + '/' + which, body);
+    var payload = null;
+    try { payload = await r.json(); } catch (_) { /* non-JSON */ }
+    if (!r.ok) {
+      var srvMsg = (payload && (payload.message || payload.hint || payload.error)) || ('HTTP ' + r.status);
+      throw new Error(srvMsg);
+    }
     if (row) { row.style.maxHeight = '0'; row.style.padding = '0'; row.style.margin = '0'; setTimeout(function(){ row.remove(); }, 280); }
-    var toast = (which === 'approve') ? 'Approved — the task will proceed.' : 'Rejected — the task was cancelled.';
+    // Server returns a contextual message that includes cascade counts when
+    // this was a batch. Fall back to a generic message if the server didn't
+    // send one (older deploys).
+    var toast = (payload && payload.message) || (which === 'approve'
+        ? (n > 1 ? ('Approved — all ' + n + ' tasks will proceed.') : 'Approved — the task will proceed.')
+        : (n > 1 ? ('Rejected — all ' + n + ' tasks cancelled.')     : 'Rejected — the task was cancelled.'));
     if (typeof _luToast === 'function') _luToast(toast);
     setTimeout(_cmdcFetchAndRender, 400);
   } catch(e) {
@@ -5422,7 +6986,23 @@ function _cmdcRenderAgents(list) {
     var titleLine = a.title || (a.is_dmm ? 'Digital Marketing Manager' : (a.category || 'Specialist'));
     var metaBits = [];
     metaBits.push('<span class="cmd-agent-dot"></span>' + (a.status === 'active' ? 'Active' : (a.status || 'idle')));
-    metaBits.push(a.tasks_this_week + ' task' + (a.tasks_this_week === 1 ? '' : 's') + ' this week');
+    // 2026-05-25 — prefer all-time stats from window._agentStatsData when
+    // available (populated by loadAgentStats from /api/agents/dashboard).
+    // Falls back to server-rendered tasks_this_week when stats aren't loaded yet.
+    var uiId = (a.is_dmm || a.slug === 'sarah') ? 'dmm' : a.slug;
+    var live = window._agentStatsData && window._agentStatsData[uiId];
+    if (live) {
+      var liveTotal = (live.ongoing || 0) + (live.upcoming || 0) + (live.completed || 0);
+      // 2026-05-25 — blocked is its own pill, only shown when > 0 to keep
+      // the meta line clean. Distinct from upcoming (which is now correct —
+      // queued/pending only, not blocked).
+      var bits = live.ongoing + ' ongoing · ' + live.upcoming + ' pending';
+      if ((live.blocked || 0) > 0) bits += ' · ' + live.blocked + ' blocked';
+      bits += ' · ' + live.completed + ' done';
+      metaBits.push(bits);
+    } else {
+      metaBits.push(a.tasks_this_week + ' task' + (a.tasks_this_week === 1 ? '' : 's') + ' this week');
+    }
     if (a.last_action_ago) metaBits.push('Last: ' + a.last_action_ago);
     var nav = _cmdcAgentNav(a);
     return '<div class="cmd-agent-card" onclick="' + nav + '">' + orb +
@@ -5642,10 +7222,77 @@ async function _billFetchAndRender() {
       _luFetch('GET', '/billing/plans').then(r => r.json()),
     ]);
     _billRender(statusR || {}, (plansR && plansR.plans) || []);
+    _billRenderWorkspaceUsage();
   } catch (e) {
     root.querySelector('#bill-current').innerHTML = '<div class="cmd-empty">Could not load billing status: ' + _cmdcEsc(e.message || '') + '</div>';
   }
 }
+
+// 2026-06-24 — Agency billing: one shared credit pool, usage broken down PER
+// website-workspace, with an optional per-workspace allocation cap so you don't
+// overspend on any one client. Backed by GET /billing/workspace-usage +
+// POST /workspaces/{id}/allocation. Injected after the current-plan card.
+async function _billRenderWorkspaceUsage() {
+  var anchor = document.getElementById('bill-current');
+  if (!anchor) return;
+  var holder = document.getElementById('bill-ws-usage');
+  if (!holder) {
+    holder = document.createElement('div');
+    holder.id = 'bill-ws-usage';
+    anchor.parentNode.insertBefore(holder, anchor.nextSibling);
+  }
+  try {
+    var d = await _luFetch('GET', '/billing/workspace-usage').then(r => r.json());
+    var list = (d && d.workspaces) || [];
+    // Single-workspace accounts don't need the breakdown.
+    if (list.length < 2) { holder.innerHTML = ''; return; }
+    var rows = list.map(function (w) {
+      var allocVal = (w.allocation === null || w.allocation === undefined) ? '' : w.allocation;
+      var rem = (w.allocation_remaining === null || w.allocation_remaining === undefined) ? '∞' : w.allocation_remaining;
+      return '<tr>' +
+        '<td style="padding:8px 10px;color:var(--t1);font-size:13px">' + _cmdcEsc(w.name || ('Workspace ' + w.workspace_id)) + '</td>' +
+        '<td style="padding:8px 10px;color:var(--t2);font-size:13px;text-align:right">' + (w.used_this_cycle || 0) + '</td>' +
+        '<td style="padding:8px 10px;text-align:right">' +
+          '<input id="alloc-' + w.workspace_id + '" type="number" min="0" placeholder="∞" value="' + allocVal + '" ' +
+          'style="width:90px;background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;font-size:12px;text-align:right">' +
+        '</td>' +
+        '<td style="padding:8px 10px;color:var(--t3);font-size:12px;text-align:right">' + rem + '</td>' +
+        '<td style="padding:8px 10px;text-align:right">' +
+          '<button class="aq-btn aq-btn-approve" style="padding:5px 10px;font-size:12px" onclick="_billSetAllocation(' + w.workspace_id + ')">Save</button>' +
+        '</td></tr>';
+    }).join('');
+    holder.innerHTML =
+      '<div style="margin-top:16px;padding:16px;border:1px solid var(--bd);border-radius:10px;background:var(--s1)">' +
+        '<div style="font-family:var(--fh);font-weight:700;color:var(--t1);font-size:15px">Per-website usage</div>' +
+        '<div style="font-size:12px;color:var(--t3);margin:4px 0 12px">' +
+          'One shared credit pool across all your websites · ' + (d.pool_available || 0) + ' credits available · cycle from ' + _cmdcEsc(d.cycle_start || '') +
+          '. Set an allocation to cap any one website\'s spend.' +
+        '</div>' +
+        '<table style="width:100%;border-collapse:collapse">' +
+          '<thead><tr style="border-bottom:1px solid var(--bd)">' +
+            '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">Website</th>' +
+            '<th style="padding:6px 10px;text-align:right;font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">Used (cycle)</th>' +
+            '<th style="padding:6px 10px;text-align:right;font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">Allocation</th>' +
+            '<th style="padding:6px 10px;text-align:right;font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">Remaining</th>' +
+            '<th style="padding:6px 10px"></th>' +
+          '</tr></thead><tbody>' + rows + '</tbody>' +
+        '</table>' +
+      '</div>';
+  } catch (e) {
+    holder.innerHTML = '';
+  }
+}
+
+window._billSetAllocation = function (wsId) {
+  var inp = document.getElementById('alloc-' + wsId);
+  if (!inp) return;
+  var raw = String(inp.value).trim();
+  var body = { credit_allocation: (raw === '' ? null : Math.max(0, parseInt(raw, 10) || 0)) };
+  _luFetch('POST', '/workspaces/' + wsId + '/allocation', body)
+    .then(r => r.json())
+    .then(function () { _billRenderWorkspaceUsage(); })
+    .catch(function () {});
+};
 
 function _billRender(status, plans) {
   var curEl = document.getElementById('bill-current');
@@ -5682,7 +7329,7 @@ function _billRender(status, plans) {
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">' +
         '<div style="flex:1;min-width:220px">' +
           '<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);letter-spacing:-0.01em">' + _cmdcEsc(status.plan || 'Free') +
-          ' <span class="cmd-chip ' + statusClass + '" style="margin-left:6px">' + _cmdcEsc(status.status || 'active') + '</span></div>' +
+          ' <span class="cmd-chip ' + statusClass + '" style="margin-left:6px">' + _cmdcEsc(window.LU_statusLabel ? window.LU_statusLabel(status.status || 'active') : (status.status || 'active')) + '</span></div>' +
           '<div style="font-size:13px;color:var(--t2);margin-top:4px">' +
             (status.plan_price ? '$' + status.plan_price + '/month · ' : '') +
             (creditLimit ? creditLimit + ' credits/month' : 'Free tier') +

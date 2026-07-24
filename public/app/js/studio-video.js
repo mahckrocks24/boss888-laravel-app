@@ -61,8 +61,13 @@
     opts.headers['Authorization'] = 'Bearer ' + _tok();
     if (opts.body && !(opts.body instanceof FormData)) opts.headers['Content-Type'] = 'application/json';
     return fetch(_apiBase() + url, opts).then(function(r){
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json().catch(function(){ return {}; });
+      // 2026-07-03 — read the body BEFORE deciding failure so the backend's
+      // real error message (e.g. "MiniMax API key not configured") surfaces
+      // instead of a bare "HTTP 5xx".
+      return r.json().catch(function(){ return {}; }).then(function(body){
+        if (!r.ok) throw new Error((body && (body.error || body.message)) || ('HTTP ' + r.status));
+        return body;
+      });
     });
   }
   function _host(){
@@ -159,7 +164,7 @@
       '.sv-blank{background:linear-gradient(180deg,#1a1a24,#14141c);border:1px dashed rgba(255,255,255,0.15);color:#fff;padding:16px 22px;border-radius:10px;cursor:pointer;font:500 13px/1.3 inherit;display:flex;align-items:center;gap:10px}' +
       '.sv-blank:hover{border-color:#6C5CE7;background:rgba(108,92,231,0.1)}' +
       '.sv-blank .ic{font-size:20px}' +
-      '#sv-grid{display:grid;grid-template-columns:repeat(auto-fill,260px);gap:20px;justify-content:start}' +
+      '#sv-grid,#sv-mine-grid{display:grid;grid-template-columns:repeat(auto-fill,260px);gap:20px;justify-content:start}' +
       '.sv-card{width:260px;background:#1a1a24;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}' +
       '.sv-card:hover{transform:translateY(-2px);border-color:#6C5CE7}' +
       '.sv-card-preview{position:relative;background:#050810;display:flex;align-items:center;justify-content:center;overflow:hidden}' +
@@ -262,6 +267,7 @@
           '<button class="sv-blank" data-start="images"><span class="ic">\u{1F5BC}</span> Upload images (slideshow)</button>' +
           '<button class="sv-blank" data-start="ai"><span class="ic">\u2728</span> Generate with AI</button>' +
         '</div>' +
+        '<div id="sv-mine-wrap"></div>' +
         '<div class="sv-tab-head" style="display:flex;align-items:center;gap:12px">' +
           '<span>Templates</span>' +
           '<div class="sv-type-row" style="display:inline-flex;gap:4px;margin-left:auto">' +
@@ -285,6 +291,48 @@
       btn.onclick = function(){ _newBlankDesign(btn.getAttribute('data-start')); };
     });
     _renderGallery();
+    _renderMyDesigns();   // 2026-07-03 FIX (#4) — list + reopen saved video designs
+  }
+
+  // 2026-07-03 FIX (#4) — the gallery never listed saved video designs, so users
+  // could not reopen their own work. GET /studio/video/designs exists; render a
+  // "Your videos" strip that reopens via the clip editor (loads video_data).
+  function _renderMyDesigns(){
+    _fetchJson('/studio/video/designs').then(function(d){
+      var wrap = document.getElementById('sv-mine-wrap');
+      if (!wrap) return;
+      var rows = (d && d.designs) || [];
+      if (!rows.length){ wrap.innerHTML = ''; return; }
+      wrap.innerHTML =
+        '<div class="sv-tab-head" style="margin-top:4px"><span>Your videos</span></div>' +
+        '<div id="sv-mine-grid" class="sv-grid">' + rows.map(function(dz){
+          var st = (dz.export_status || '').toLowerCase();
+          var badge = st === 'done' ? '✓ Exported'
+                    : (st === 'processing' || st === 'pending') ? '⏳ Rendering…'
+                    : (st === 'failed' ? '⚠ Failed' : 'Draft');
+          var thumb = dz.thumbnail_url
+            ? ' style="background-image:url(' + JSON.stringify(dz.thumbnail_url).slice(1,-1) + ');background-size:cover;background-position:center"'
+            : '';
+          return '<div class="sv-card" data-id="' + _esc(dz.id) + '">' +
+            '<div class="sv-card-preview ' + _esc(dz.format) + '"' + thumb + '>' +
+              '<span class="sv-card-fmt-badge">' + _esc(dz.format) + '</span>' +
+              '<span class="sv-card-dur-badge">' + _esc(dz.duration_seconds || 0) + 's</span>' +
+              (dz.thumbnail_url ? '' : '<div class="sv-card-play">✎</div>') +
+            '</div>' +
+            '<div class="sv-card-meta">' +
+              '<div class="sv-card-name">' + _esc(dz.name || 'Untitled') + '</div>' +
+              '<div class="sv-card-cat">' + badge + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>';
+      var grid = document.getElementById('sv-mine-grid');
+      if (grid) grid.onclick = function(ev){
+        var card = ev.target.closest && ev.target.closest('.sv-card');
+        if (!card) return;
+        var id = parseInt(card.getAttribute('data-id'), 10);
+        if (id && typeof window._svOpenClipEditor === 'function') window._svOpenClipEditor(id);
+      };
+    }).catch(function(){ /* non-fatal — gallery still works without the reopen strip */ });
   }
 
   function _activeFormat(){
@@ -799,16 +847,19 @@
       _fetchJson('/studio/video/designs/' + _designId + '/export-status').then(function(d){
         var s = document.getElementById('sv-anim-export-status');
         if (!s) return;
-        var st = (d.export_status || '').toLowerCase();
-        var pct = d.export_progress_pct || 0;
-        if (st === 'done' && d.exported_video_url) {
+        // 2026-07-03 FIX (#2) \u2014 export-status returns status/progress_pct/video_url/
+        // error (not the raw DB column names). Reading the old names left st='' \u2192
+        // polled forever + download href undefined. Now aligned with the backend.
+        var st = (d.status || '').toLowerCase();
+        var pct = d.progress_pct || 0;
+        if (st === 'done' && d.video_url) {
           s.style.color = '#9AE6B4';
-          s.innerHTML = '\u2714 Exported. <a href="' + _esc(d.exported_video_url) + '" download style="color:#6C5CE7;font-weight:600">Download MP4</a>';
+          s.innerHTML = '\u2714 Exported. <a href="' + _esc(d.video_url) + '" download style="color:#6C5CE7;font-weight:600">Download MP4</a>';
           return;
         }
         if (st === 'failed') {
           s.style.color = '#FFA4A4';
-          s.textContent = 'Render failed: ' + (d.export_error || 'unknown');
+          s.textContent = 'Render failed: ' + (d.error || 'unknown');
           return;
         }
         s.textContent = 'Rendering\u2026 ' + pct + '% (may take 1\u20132 minutes)';
@@ -839,6 +890,11 @@
   // SCREEN 2 — EDITOR
   // ═══════════════════════════════════════════════════════════════
   function _mountEditor(){
+    // 2026-07-03 CONSOLIDATION — route to the canonical VE clip editor (Slice B,
+    // _svOpenClipEditor). The old Slice-A editor body below is being retired;
+    // this redirect makes the VE editor the single clip editor for EVERY entry
+    // path. (Dead Slice-A code removed after browser-verification.)
+    if (window._svOpenClipEditor) { return window._svOpenClipEditor(_designId); }
     var host = _host();
     host.innerHTML =
       '<div class="sv-topbar">' +
@@ -1302,7 +1358,7 @@
         if (!d.success) throw new Error(d.error||'audio_upload_failed');
         _vd.audio = _vd.audio || {};
         _vd.audio.url = d.audio_url;
-        _vd.audio.duration = d.duration_seconds;
+        _vd.audio.duration = (d.duration != null ? d.duration : d.duration_seconds); // 2026-07-03 FIX (#5): BE returns `duration`
         _toast('Audio ready', 'success');
         _renderAudioTab(body);
         _renderTimeline();
@@ -1331,16 +1387,34 @@
       if (!prompt){ _toast('Prompt required', 'error'); return; }
       var st = document.getElementById('sv-ai-status');
       st.textContent = '\u2726 Generating\u2026 (45\u2013120s typical)';
+      var btn = document.getElementById('sv-ai-gen');
+      if (btn) btn.disabled = true;
+      // 2026-07-03 (#3) \u2014 ASYNC: create returns a task_id instantly, then the CLIENT
+      // polls minimax-status. Replaces the 180s server-side sync call that 504'd
+      // behind the 100s Cloudflare / 120s PHP-FPM caps.
       _fetchJson('/studio/video/generate-minimax', {
         method:'POST', body: JSON.stringify({ prompt: prompt, duration_seconds: dur })
       }).then(function(d){
-        if (!d.success) throw new Error(d.error + (d.detail ? ': ' + d.detail : ''));
-        _myClips.push({ id:'ai_'+Date.now(), name:'AI: ' + prompt.substring(0,30), url:d.clip_url, duration:d.duration||dur, type:'video', width:d.width, height:d.height });
-        st.textContent = '\u2713 Generated \u2014 added to My Clips';
-        _switchTab('clips');
-        _toast('AI video ready', 'success');
+        if (!d.success || !d.task_id) throw new Error((d && d.error) || 'create_failed');
+        var t0 = Date.now();
+        (function poll(){
+          if (Date.now() - t0 > 5*60*1000){ st.textContent = '\u2717 Timed out after 5 min'; if (btn) btn.disabled = false; return; }
+          st.textContent = '\u2726 Generating\u2026 (' + Math.round((Date.now()-t0)/1000) + 's; 45\u2013120s typical)';
+          _fetchJson('/studio/video/minimax-status?task_id=' + encodeURIComponent(d.task_id)).then(function(s){
+            if (s && s.status === 'done' && s.clip_url){
+              _myClips.push({ id:'ai_'+Date.now(), name:'AI: ' + prompt.substring(0,30), url:s.clip_url, duration:s.duration||dur, type:'video', width:s.width, height:s.height });
+              st.textContent = '\u2713 Generated \u2014 added to My Clips';
+              if (btn) btn.disabled = false;
+              _switchTab('clips'); _toast('AI video ready', 'success');
+              return;
+            }
+            if (s && s.status === 'failed'){ st.textContent = '\u2717 ' + (s.error || 'generation failed'); if (btn) btn.disabled = false; _toast('AI gen failed', 'error'); return; }
+            setTimeout(poll, 5000); // still processing
+          }).catch(function(){ setTimeout(poll, 5000); }); // transient \u2014 keep polling
+        })();
       }).catch(function(err){
         st.textContent = '\u2717 ' + err.message;
+        if (btn) btn.disabled = false;
         _toast('AI gen failed: ' + err.message, 'error');
       });
     };
@@ -2779,6 +2853,7 @@
             '<button class="sv-icon-btn" id="sv-undo" title="Undo">\u21a9</button>' +
             '<button class="sv-icon-btn" id="sv-redo" title="Redo">\u21aa</button>' +
             '<span id="sv-save-status" class="sv-save-status"></span>' +
+            '<select id="sv-quality" class="sv-quality-sel" title="Export quality"></select>' +
             '<button class="sv-btn-ghost" id="sv-save-btn">Save</button>' +
             '<button class="sv-btn-primary" id="sv-export-btn">Export MP4</button>' +
           '</div>' +
@@ -4079,6 +4154,7 @@
     document.getElementById('sv-redo').onclick = _svRedo;
     document.getElementById('sv-save-btn').onclick = function(){ _svAutoSave(false); };
     document.getElementById('sv-export-btn').onclick = _svExport;
+    _svLoadExportPolicy();   // 2026-07-03 (#4b) — populate quality tiers from plan
   }
   function _svWirePlaybackControls(){
     document.getElementById('sv-play-btn').onclick = function(){ VE.playing ? _svStop() : _svPlay(); };
@@ -4141,18 +4217,45 @@
     if (VE.saving) return Promise.resolve();
     VE.saving = true;
     var s = document.getElementById('sv-save-status'); if (s) s.textContent = 'Saving\u2026';
-    return _fetchJson('/studio/designs/' + VE.designId, {
+    // 2026-07-03 FIX (#1) — was PUT /studio/designs/{id} {layers_json}, the IMAGE
+    // studio route, which never writes video_data. The renderer + reopen both read
+    // video_data, so every template edit was silently lost and exports rendered
+    // empty placeholders. Route to the VIDEO endpoint + video_data column.
+    return _fetchJson('/studio/video/designs/' + VE.designId, {
       method: 'PUT',
       body: JSON.stringify({
-        layers_json: VE.vd,     // reuse existing column for backwards compat
-        canvas_width: VE.vd.canvas_width, canvas_height: VE.vd.canvas_height,
+        video_data: VE.vd,
+        name: VE.designName || VE.name || undefined,
       }),
     }).then(function(){
       VE.dirty = false; if (s) s.textContent = 'Saved';
       setTimeout(function(){ if (s && s.textContent === 'Saved') s.textContent = ''; }, 1500);
     }).catch(function(){ if (s) s.textContent = 'Save failed'; }).then(function(){ VE.saving = false; });
   }
+  // 2026-07-03 (#4b) — populate the quality selector with the plan's ALLOWED tiers
+  // and flag watermarking on free plans. The server enforces the same policy in
+  // RenderStudioVideoJob::resolveVideoPolicy, so this is UX, not the security gate.
+  function _svLoadExportPolicy(){
+    var sel = document.getElementById('sv-quality');
+    if (!sel) return;
+    _fetchJson('/studio/video/export-policy').then(function(p){
+      if (!p || !p.tiers) return;
+      var cur = (VE.vd && VE.vd.quality) || p.max_quality;
+      sel.innerHTML = p.tiers.map(function(t){
+        var dis = t.allowed ? '' : ' disabled';
+        var mk  = (t.value === cur && t.allowed) ? ' selected' : '';
+        return '<option value="' + t.value + '"' + dis + mk + '>' + t.label + (t.allowed ? '' : ' 🔒') + '</option>'; // labels are trusted server constants; _esc is IIFE1-only
+      }).join('');
+      if (!p.tiers.some(function(t){ return t.value === sel.value && t.allowed; })) sel.value = p.max_quality;
+      if (p.watermark) sel.title = 'Free plan exports include a watermark. Upgrade for HD/4K, watermark-free.';
+    }).catch(function(){ /* non-fatal — selector stays empty; server still enforces */ });
+  }
+
   function _svExport(){
+    // 2026-07-03 (#4b) — persist the chosen quality into video_data before export;
+    // the server clamps it to the plan cap regardless.
+    var qs = document.getElementById('sv-quality');
+    if (qs && qs.value && VE.vd) VE.vd.quality = qs.value;
     _svAutoSave(true).then(function(){
       _svToast('Exporting MP4...', 'info');
       return fetch(_svApi() + '/studio/video/designs/' + VE.designId + '/export', {
@@ -4200,6 +4303,9 @@
       '.sv-btn-primary{background:var(--p,#6C5CE7);border:none;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}',
       '.sv-btn-primary:hover{background:var(--p-dark,#5849d3)}',
       '.sv-save-status{font-size:11px;color:var(--t3,#64748B)}',
+      '.sv-quality-sel{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:6px;padding:5px 8px;font:500 12px/1 inherit;cursor:pointer}',
+      '.sv-quality-sel option{background:#1a1d29;color:#fff}',
+      '.sv-quality-sel option:disabled{color:rgba(255,255,255,0.35)}',
       '.sv-btn-wide{width:100%;padding:8px 12px;margin-top:6px;background:var(--s2,#171b23);border:1px solid var(--bd,#2a2f3a);color:var(--t1,#F1F5F9);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left}',
       '.sv-btn-wide:hover{border-color:var(--p,#6C5CE7)}',
       '.sv-btn-wide:disabled{opacity:.5;cursor:default}',

@@ -21,6 +21,56 @@ use Illuminate\Support\Facades\Log;
  */
 class PublicContactController
 {
+    /**
+     * 2026-05-28 — Host-resolved submission entry point. Same as ::submit
+     * but resolves the website from the Origin / Referer / Host request
+     * header instead of a {subdomain} URL parameter. Used by templates that
+     * can't hardcode their site slug at template-time (any custom-domain
+     * tenant whose published HTML uses the dynamic by-host fallback).
+     */
+    public function submitByHost(Request $request): JsonResponse
+    {
+        // Try Origin → Referer → Host header in that order
+        $candidates = [];
+        $origin = $request->header('Origin');
+        $referer = $request->header('Referer');
+        $host = $request->header('Host');
+        foreach ([$origin, $referer] as $url) {
+            if (!$url) continue;
+            $h = parse_url($url, PHP_URL_HOST);
+            if ($h) $candidates[] = strtolower($h);
+        }
+        if ($host && $host !== 'staging.levelupgrowth.io') $candidates[] = strtolower($host);
+
+        if (!$candidates) {
+            return response()->json(['success' => false, 'message' => 'Cannot resolve site (no Origin/Referer/Host header)'], 400);
+        }
+
+        // Resolve via custom_domain OR subdomain match
+        $website = null;
+        foreach ($candidates as $h) {
+            $website = DB::table('websites')
+                ->where(function ($q) use ($h) {
+                    $q->where('custom_domain', $h)->orWhere('subdomain', $h);
+                })
+                ->where('status', 'published')
+                ->first();
+            if ($website) break;
+        }
+
+        if (!$website) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Site not found for host: ' . implode(' / ', $candidates),
+            ], 404);
+        }
+
+        // Re-extract slug from subdomain so we can hand control to ::submit
+        // (slug is the first label before .levelupgrowth.io)
+        $slug = explode('.', $website->subdomain)[0] ?? '';
+        return $this->submit($request, $slug);
+    }
+
     public function submit(Request $request, string $subdomain): JsonResponse
     {
         // ─── 1. Resolve website + workspace from subdomain ────────────
@@ -100,6 +150,50 @@ class PublicContactController
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
+
+            // 2026-05-27 — Auto-mirror new contact → lead so the submission
+            // surfaces in the CRM "Leads" view immediately. The CRM UI reads
+            // from the `leads` table; without this row, contact-form
+            // submissions were invisible despite the contact existing.
+            // Dedupe by (workspace_id, email) so we never double-create.
+            try {
+                $existingLead = DB::table('leads')
+                    ->where('workspace_id', $wsId)
+                    ->where('email', $validated['email'])
+                    ->whereNull('deleted_at')
+                    ->first();
+                if (!$existingLead) {
+                    DB::table('leads')->insert([
+                        'workspace_id'  => $wsId,
+                        'name'          => $validated['firstname'],
+                        'email'         => $validated['email'],
+                        'phone'         => $validated['phone'] ?? null,
+                        'source'        => 'website_form',
+                        'status'        => 'new',
+                        'score'         => 0,
+                        'deal_value'    => 0,
+                        'metadata_json' => json_encode([
+                            'first_message' => $validated['message'],
+                            'subdomain'     => $subdomain,
+                            'contact_id'    => $contactId,
+                            'submitted_at'  => now()->toIso8601String(),
+                        ]),
+                        'created_at'    => now(),
+                        'updated_at'    => now(),
+                    ]);
+                } else {
+                    // Touch existing lead so it floats back up in the UI.
+                    DB::table('leads')->where('id', $existingLead->id)->update([
+                        'updated_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[PublicContact] lead mirror failed', [
+                    'contact_id'   => $contactId,
+                    'workspace_id' => $wsId,
+                    'error'        => $e->getMessage(),
+                ]);
+            }
         }
 
         // ─── 5. Owner discovery ───────────────────────────────────────

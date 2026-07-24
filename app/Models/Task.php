@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Task extends Model
 {
     protected $fillable = [
-        'workspace_id', 'engine', 'action', 'payload_json', 'status',
+        'workspace_id', 'engine', 'action', 'category', 'payload_json', 'status',
         'requires_approval', 'approval_status', 'source',
         'assigned_agents_json', 'priority', 'retry_count',
         'result_json', 'error_text', 'started_at', 'completed_at',
@@ -19,6 +19,8 @@ class Task extends Model
         'idempotency_key', 'execution_hash',
         'execution_started_at', 'execution_finished_at',
         'current_step', 'total_steps', 'progress_message',
+        // v1.4.4 (2026-05-30) — batched approvals
+        'batch_id',
     ];
 
     protected function casts(): array

@@ -10,10 +10,82 @@ use Illuminate\Support\Str;
 class CreditService
 {
     /**
+     * 2026-06-24 — SHARED CREDIT POOL. Resolve any workspace to its BILLING
+     * workspace (the owner's primary workspace, which holds the single shared
+     * wallet across all of a user's website-workspaces). For single-workspace
+     * users `billing_workspace_id` = self → identical behavior, zero regression.
+     * Applied to every balance-touching op so commit/release (which read the
+     * reservation's stored workspace_id) hit the pool automatically.
+     */
+    private function poolWorkspaceId(int $workspaceId): int
+    {
+        $bw = (int) (DB::table('workspaces')->where('id', $workspaceId)->value('billing_workspace_id') ?? 0);
+        return $bw > 0 ? $bw : $workspaceId;
+    }
+
+    /**
+     * 2026-06-24 — a workspace's credit usage this billing cycle: committed
+     * spend (`commit`) + in-flight pending reserves. Drives allocation caps and
+     * the per-workspace billing breakdown (agencies see spend per client).
+     */
+    public function workspaceUsage(int $workspaceId, ?\DateTimeInterface $since = null): int
+    {
+        $since = $since ?: now()->startOfMonth();
+        return (int) CreditTransaction::where('workspace_id', $workspaceId)
+            ->where('created_at', '>=', $since)
+            ->where(function ($q) {
+                $q->where('type', 'commit')
+                  ->orWhere(function ($q2) {
+                      $q2->where('type', 'reserve')->where('reservation_status', 'pending');
+                  });
+            })
+            ->sum('amount');
+    }
+
+    /**
+     * Per-workspace usage for the shared wallet's family (all workspaces sharing
+     * one billing_workspace_id). Keyed by workspace_id — for the billing screen.
+     */
+    public function usageByWorkspace(int $anyWorkspaceId, ?\DateTimeInterface $since = null): array
+    {
+        $since  = $since ?: now()->startOfMonth();
+        $poolWs = $this->poolWorkspaceId($anyWorkspaceId);
+        $wsIds  = DB::table('workspaces')->where('billing_workspace_id', $poolWs)->pluck('id')->all();
+        if (empty($wsIds)) {
+            $wsIds = [$poolWs];
+        }
+        return CreditTransaction::whereIn('workspace_id', $wsIds)
+            ->where('type', 'commit')
+            ->where('created_at', '>=', $since)
+            ->selectRaw('workspace_id, SUM(amount) AS used')
+            ->groupBy('workspace_id')
+            ->pluck('used', 'workspace_id')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+    }
+
+    /**
+     * Enforce a workspace's optional monthly allocation cap against the shared
+     * pool (agency overspend guard). NULL/0 allocation = no cap = full pool.
+     */
+    private function assertWithinAllocation(int $workspaceId, int $amount): void
+    {
+        $alloc = (int) (DB::table('workspaces')->where('id', $workspaceId)->value('credit_allocation') ?? 0);
+        if ($alloc <= 0) {
+            return; // no cap
+        }
+        $used = $this->workspaceUsage($workspaceId);
+        if ($used + $amount > $alloc) {
+            abort(402, "Workspace credit allocation reached ({$used}/{$alloc} this cycle).");
+        }
+    }
+
+    /**
      * Get current balance breakdown.
      */
     public function getBalance(int $workspaceId): array
     {
+        $workspaceId = $this->poolWorkspaceId($workspaceId);
         // Phase 3 fix (Gap 4): was firstOrFail() which threw ModelNotFoundException
         // for workspaces with no credits row (new/free-tier). The throw happened at
         // EES Step 3 which is BEFORE the try/catch, causing an unhandled 500 instead
@@ -41,10 +113,16 @@ class CreditService
         ?int $refId = null,
         ?string $reservationRef = null,
     ): CreditTransaction {
+        // 2026-06-24 — keep the ORIGINATING workspace on the transaction for
+        // per-workspace USAGE ATTRIBUTION (agency billing + allocation caps);
+        // resolve the shared POOL only for the wallet. commit/release re-resolve
+        // the stored originating id → pool for the balance adjustment.
+        $origWs = $workspaceId;
+        $poolWs = $this->poolWorkspaceId($workspaceId);
         if ($amount <= 0) {
             // Zero-cost action — no reservation needed, return dummy
             return new CreditTransaction([
-                'workspace_id' => $workspaceId,
+                'workspace_id' => $origWs,
                 'type' => 'reserve',
                 'amount' => 0,
                 'reservation_status' => 'committed',
@@ -52,19 +130,23 @@ class CreditService
             ]);
         }
 
-        return DB::transaction(function () use ($workspaceId, $amount, $refType, $refId, $reservationRef) {
-            $credit = Credit::where('workspace_id', $workspaceId)->lockForUpdate()->firstOrFail();
+        return DB::transaction(function () use ($origWs, $poolWs, $amount, $refType, $refId, $reservationRef) {
+            $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->firstOrFail();
 
             if ($credit->available() < $amount) {
                 abort(402, 'Insufficient credits for reservation');
             }
+
+            // Per-workspace allocation cap (agency overspend guard). Opt-in via
+            // workspaces.credit_allocation; NULL/0 = no cap = full shared pool.
+            $this->assertWithinAllocation($origWs, $amount);
 
             $credit->increment('reserved_balance', $amount);
 
             $ref = $reservationRef ?? 'rsv_' . Str::random(16);
 
             return CreditTransaction::create([
-                'workspace_id' => $workspaceId,
+                'workspace_id' => $origWs,   // ATTRIBUTION = the consuming workspace
                 'type' => 'reserve',
                 'amount' => $amount,
                 'reference_type' => $refType,
@@ -92,8 +174,8 @@ class CreditService
                 return null; // Already committed/released or zero-cost
             }
 
-            $credit = Credit::where('workspace_id', $reservation->workspace_id)
-                ->lockForUpdate()->firstOrFail();
+            $credit = Credit::where('workspace_id', $this->poolWorkspaceId($reservation->workspace_id))
+                ->lockForUpdate()->firstOrFail(); // resolve originating → shared pool for the wallet
 
             // Move from reserved to spent
             $credit->decrement('reserved_balance', $reservation->amount);
@@ -135,8 +217,8 @@ class CreditService
                 return null; // Already committed/released
             }
 
-            $credit = Credit::where('workspace_id', $reservation->workspace_id)
-                ->lockForUpdate()->firstOrFail();
+            $credit = Credit::where('workspace_id', $this->poolWorkspaceId($reservation->workspace_id))
+                ->lockForUpdate()->firstOrFail(); // resolve originating → shared pool for the wallet
 
             $credit->decrement('reserved_balance', $reservation->amount);
 
@@ -195,12 +277,14 @@ class CreditService
         ?int $refId = null,
         ?array $meta = null,
     ): CreditTransaction {
-        return DB::transaction(function () use ($workspaceId, $amount, $refType, $refId, $meta) {
-            $credit = Credit::where('workspace_id', $workspaceId)->lockForUpdate()->firstOrFail();
+        $origWs = $workspaceId;
+        $poolWs = $this->poolWorkspaceId($workspaceId);
+        return DB::transaction(function () use ($origWs, $poolWs, $amount, $refType, $refId, $meta) {
+            $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->firstOrFail();
             $credit->increment('balance', $amount);
 
             return CreditTransaction::create([
-                'workspace_id' => $workspaceId,
+                'workspace_id' => $origWs,
                 'type' => 'credit',
                 'amount' => $amount,
                 'reference_type' => $refType,

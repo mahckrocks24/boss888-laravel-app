@@ -1,0 +1,37 @@
+{
+  "name": "Soft Luxe Editorial — Beauty",
+  "slug": "t02-beauty-luxe-editorial",
+  "format": "portrait",
+  "category": "beauty",
+  "sub_category": "editorial",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["beauty", "skincare", "wellness", "luxury", "editorial"],
+  "variables": {
+    "hero_image":        { "type": "image", "label": "Hero image",        "default": "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1080&q=85&fit=crop&crop=top" },
+    "logo_name":         { "type": "text",  "label": "Logo name",         "default": "Logo Here" },
+    "edition_tag":       { "type": "text",  "label": "Edition tag",       "default": "Autumn Edit" },
+    "img_eyebrow_text":  { "type": "text",  "label": "Image eyebrow",     "default": "Luxury Skincare" },
+    "headline_main":     { "type": "text",  "label": "Headline (main)",   "default": "Your Skin," },
+    "headline_accent":   { "type": "text",  "label": "Headline (accent)", "default": "Reimagined." },
+    "subheading":        { "type": "text",  "label": "Subheading",        "default": "A botanical ritual powered by clinically proven actives — crafted for luminous, ageless skin." },
+    "cta_label":         { "type": "text",  "label": "CTA",               "default": "Discover Now" },
+    "cta_ghost_label":   { "type": "text",  "label": "Ghost CTA",         "default": "Learn More" },
+    "brand_url":         { "type": "text",  "label": "Brand URL",         "default": "companyname.com" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#F8F2EE" },
+    "mauve":  { "label": "Primary",    "default": "#2D1B2E" },
+    "gold":   { "label": "Accent",     "default": "#C9A56A" },
+    "blush":  { "label": "Blush",      "default": "#E8C4B8" },
+    "rose":   { "label": "Rose",       "default": "#B07A6E" },
+    "cream":  { "label": "Cream",      "default": "#FAF5F0" },
+    "ink":    { "label": "Ink",        "default": "#1A0E10" }
+  },
+  "semantic": {
+    "mood": ["elegant", "luxury"],
+    "color_temperature": "warm",
+    "composition": "image_top",
+    "best_for": ["beauty", "wellness", "editorial", "skincare", "promotion"]
+  }
+}

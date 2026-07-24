@@ -3,6 +3,7 @@
 namespace App\Engines\Creative\Services;
 
 use App\Connectors\CreativeConnector;
+use App\Connectors\RuntimeClient;
 use App\Core\Intelligence\EngineIntelligenceService;
 use Illuminate\Support\Facades\DB;
 
@@ -30,6 +31,10 @@ class CreativeService
         private BlueprintService          $blueprint,
         private ScenePlannerService       $scenePlanner,
         private WhiteLabelService         $whiteLabel,
+        // 2026-07-02 F1 — was referenced at generateImage() (descriptive alt-text
+        // upgrade) but never injected → $this->runtime was undefined → alt-text
+        // silently dead. DI-only fix (no logic change).
+        private RuntimeClient             $runtime,
     ) {}
 
     // ═══════════════════════════════════════════════════════
@@ -141,9 +146,13 @@ class CreativeService
             DB::table('assets')->where('id', $assetId)->update(['status' => 'generating', 'updated_at' => now()]);
 
             $result = $this->connector->generateImage($enhancedPrompt, [
-                'size'    => $this->resolveSize($params['aspect_ratio'] ?? '1:1'),
-                'quality' => $params['quality'] ?? 'standard',
-                'style'   => $params['style'] ?? 'natural',
+                'size'         => $this->resolveSize($params['aspect_ratio'] ?? '1:1'),
+                'quality'      => $params['quality'] ?? 'standard',
+                'style'        => $params['style'] ?? 'natural',
+                // 2026-07-02 F2 — thread the known workspace_id all the way to the
+                // runtime storage path so images stop landing in the shared
+                // ai-images/0/ bucket (tenant-isolation fix).
+                'workspace_id' => $wsId,
             ]);
 
             if ($result['success']) {
@@ -168,24 +177,58 @@ class CreativeService
 
                 // Wave 36c — when called as part of an article chain, persist the
                 // featured_image_url + featured_image_alt onto the article row.
-                // Alt text is derived from the article title (or the original
-                // prompt if no article_id was passed).
+                // v1.4.4 (2026-05-30) — two-step alt:
+                //   (1) immediately write a title-based fallback so the field is
+                //       never NULL even if the descriptive-alt step below fails;
+                //   (2) call the runtime to upgrade it to a real descriptive
+                //       SEO-friendly alt (max 120 chars), overwriting the fallback.
                 if ($articleId) {
                     try {
                         $existing = \Illuminate\Support\Facades\DB::table('articles')
                             ->where('id', $articleId)->where('workspace_id', $wsId)
-                            ->first(['title']);
-                        $altText = $existing && !empty($existing->title)
-                            ? (string) $existing->title
-                            : (string) ($params['prompt'] ?? $prompt);
+                            ->first(['title', 'focus_keyword']);
+                        $title = (string) ($existing->title ?? '');
+                        $focusKw = (string) ($existing->focus_keyword ?? '');
+                        $fallbackAlt = $title !== '' ? $title : (string) ($params['prompt'] ?? $prompt);
+
+                        // (1) Write the fallback alt immediately + the image URL.
                         \Illuminate\Support\Facades\DB::table('articles')
                             ->where('id', $articleId)
                             ->where('workspace_id', $wsId)
                             ->update([
                                 'featured_image_url' => $result['url'],
-                                'featured_image_alt' => mb_substr($altText, 0, 250),
+                                'featured_image_alt' => mb_substr($fallbackAlt, 0, 250),
                                 'updated_at'         => now(),
                             ]);
+                        $altText = $fallbackAlt;
+
+                        // (2) Best-effort upgrade to a real descriptive alt via runtime.
+                        // Runs synchronously but cheap (~60 tokens). On any failure
+                        // we keep the fallback above. Logs at warning level so
+                        // failures actually surface (was a silent debug in the
+                        // SEO-Assistant copy of this code).
+                        try {
+                            $altPrompt = "Write a concise (max 120 chars), SEO-friendly alt text describing a featured image for this blog article. "
+                                . "Title: \"{$title}\". Focus keyword: \"{$focusKw}\". "
+                                . "Image prompt that was used: \"" . mb_substr((string)($params['prompt'] ?? $prompt), 0, 300) . "\". "
+                                . "Describe what the image VISUALLY shows (not the article topic). "
+                                . "Return ONLY the alt-text string. No quotes, no preamble.";
+                            $altResp = $this->runtime->aiRun('seo_content_generation', $altPrompt, ['workspace_id' => $wsId], 60);
+                            $descriptive = trim((string) ($altResp['text'] ?? ''));
+                            $descriptive = preg_replace('/^["\']|["\']$/u', '', $descriptive) ?? $descriptive;
+                            if ($descriptive !== '' && mb_strlen($descriptive) <= 250 && $descriptive !== $fallbackAlt) {
+                                \Illuminate\Support\Facades\DB::table('articles')
+                                    ->where('id', $articleId)
+                                    ->where('workspace_id', $wsId)
+                                    ->update(['featured_image_alt' => $descriptive, 'updated_at' => now()]);
+                                $altText = $descriptive;
+                            }
+                        } catch (\Throwable $altErr) {
+                            \Illuminate\Support\Facades\Log::warning('[Creative] descriptive alt upgrade failed (kept title fallback)', [
+                                'article_id' => $articleId,
+                                'error'      => $altErr->getMessage(),
+                            ]);
+                        }
                     } catch (\Throwable $persistErr) {
                         \Illuminate\Support\Facades\Log::warning('[Creative] article featured-image persistence failed', [
                             'article_id' => $articleId,

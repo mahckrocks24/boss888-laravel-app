@@ -1,0 +1,170 @@
+{
+  "name": "Restaurant Reel",
+  "slug": "b03-restaurant",
+  "format": "reels",
+  "category": "restaurant",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "restaurant"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "Order Now"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Today's Specials"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Fresh, seasonal, ridiculously delicious — every dish is made with love and zero shortcuts."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "brand_icon": {
+      "type": "text",
+      "label": "Brand Icon",
+      "default": "🍽️"
+    },
+    "stars_val": {
+      "type": "text",
+      "label": "Stars Val",
+      "default": "4.9"
+    },
+    "stars_sub": {
+      "type": "text",
+      "label": "Stars Sub",
+      "default": "from 1,200 reviews"
+    },
+    "stars_row": {
+      "type": "text",
+      "label": "Stars Row",
+      "default": "★★★★★"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Food"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "that makes"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "you smile."
+    },
+    "menu_price_1": {
+      "type": "text",
+      "label": "Menu Price 1",
+      "default": "$88"
+    },
+    "menu_price_2": {
+      "type": "text",
+      "label": "Menu Price 2",
+      "default": "$56"
+    },
+    "menu_price_3": {
+      "type": "text",
+      "label": "Menu Price 3",
+      "default": "$38"
+    },
+    "menu_price_4": {
+      "type": "text",
+      "label": "Menu Price 4",
+      "default": "$18"
+    },
+    "menu_emoji_1": {
+      "type": "text",
+      "label": "Menu Emoji 1",
+      "default": "🥩"
+    },
+    "menu_emoji_2": {
+      "type": "text",
+      "label": "Menu Emoji 2",
+      "default": "🦞"
+    },
+    "menu_emoji_3": {
+      "type": "text",
+      "label": "Menu Emoji 3",
+      "default": "🍄"
+    },
+    "menu_emoji_4": {
+      "type": "text",
+      "label": "Menu Emoji 4",
+      "default": "🍫"
+    },
+    "menu_name_1": {
+      "type": "text",
+      "label": "Menu Name 1",
+      "default": "Wagyu Striploin"
+    },
+    "menu_name_2": {
+      "type": "text",
+      "label": "Menu Name 2",
+      "default": "Lobster Linguine"
+    },
+    "menu_name_3": {
+      "type": "text",
+      "label": "Menu Name 3",
+      "default": "Truffle Risotto"
+    },
+    "menu_name_4": {
+      "type": "text",
+      "label": "Menu Name 4",
+      "default": "Valrhona Fondant"
+    },
+    "menu_desc_1": {
+      "type": "text",
+      "label": "Menu Desc 1",
+      "default": "Truffle butter · seasonal veg"
+    },
+    "menu_desc_2": {
+      "type": "text",
+      "label": "Menu Desc 2",
+      "default": "Bisque · cherry tomato · chilli"
+    },
+    "menu_desc_3": {
+      "type": "text",
+      "label": "Menu Desc 3",
+      "default": "Black truffle · Parm · porcini"
+    },
+    "menu_desc_4": {
+      "type": "text",
+      "label": "Menu Desc 4",
+      "default": "Salted caramel · vanilla ice cream"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "restaurant"
+    ]
+  }
+}

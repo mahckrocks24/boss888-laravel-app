@@ -1,0 +1,40 @@
+{
+  "name": "Neon Power Split — Fitness",
+  "slug": "t01-fitness-neon-split",
+  "format": "square",
+  "category": "fitness",
+  "sub_category": "performance",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["fitness", "gym", "performance", "training", "transformation"],
+  "variables": {
+    "hero_image":      { "type": "image", "label": "Hero image",        "default": "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=500&q=85&fit=crop&crop=top" },
+    "badge":           { "type": "text",  "label": "Badge",             "default": "Elite Program" },
+    "stat_value":      { "type": "text",  "label": "Stat value",        "default": "12" },
+    "stat_unit":       { "type": "text",  "label": "Stat unit",         "default": "wk" },
+    "stat_label":      { "type": "text",  "label": "Stat label",        "default": "Transformation" },
+    "eyebrow":         { "type": "text",  "label": "Eyebrow",           "default": "Performance" },
+    "headline_main":   { "type": "text",  "label": "Headline (main)",   "default": "Break" },
+    "headline_accent": { "type": "text",  "label": "Headline (accent)", "default": "Limits." },
+    "subheading":      { "type": "text",  "label": "Subheading",        "default": "A science-backed training system built for athletes who refuse to settle for average." },
+    "pill_1":          { "type": "text",  "label": "Pill 1",            "default": "Strength" },
+    "pill_2":          { "type": "text",  "label": "Pill 2",            "default": "Cardio" },
+    "pill_3":          { "type": "text",  "label": "Pill 3",            "default": "Nutrition" },
+    "cta_label":       { "type": "text",  "label": "CTA",               "default": "Start Now" },
+    "brand_name":      { "type": "text",  "label": "Brand name",        "default": "Logo Here" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",         "default": "companyname.com" }
+  },
+  "css_variables": {
+    "bg":    { "label": "Background", "default": "#080808" },
+    "cyan":  { "label": "Primary",    "default": "#00F5D4" },
+    "pink":  { "label": "Accent",     "default": "#FF006E" },
+    "white": { "label": "Text",       "default": "#F5F5F5" },
+    "muted": { "label": "Muted",      "default": "#888888" }
+  },
+  "semantic": {
+    "mood": ["energetic", "bold"],
+    "color_temperature": "dark",
+    "composition": "person_left",
+    "best_for": ["fitness", "transformation", "promotion", "performance"]
+  }
+}

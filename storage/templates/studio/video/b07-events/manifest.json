@@ -1,0 +1,135 @@
+{
+  "name": "Events Reel",
+  "slug": "b07-events",
+  "format": "reels",
+  "category": "events",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "events"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "Get Tickets"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Dubai · Oct 25"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "One night. 5,000 people. 20 headliners. Three stages. The most unmissable event of the year — are you in?"
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "brand_icon": {
+      "type": "text",
+      "label": "Brand Icon",
+      "default": "🎉"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "THE"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "BIGGEST"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "NIGHT. 🌟"
+    },
+    "data_label_1": {
+      "type": "text",
+      "label": "Data Label 1",
+      "default": "Venue"
+    },
+    "data_label_2": {
+      "type": "text",
+      "label": "Data Label 2",
+      "default": "Doors Open"
+    },
+    "data_label_3": {
+      "type": "text",
+      "label": "Data Label 3",
+      "default": "Artists"
+    },
+    "data_label_4": {
+      "type": "text",
+      "label": "Data Label 4",
+      "default": "Tickets from"
+    },
+    "data_val_1": {
+      "type": "text",
+      "label": "Data Val 1",
+      "default": "City Arena"
+    },
+    "data_val_2": {
+      "type": "text",
+      "label": "Data Val 2",
+      "default": "7:00 PM"
+    },
+    "data_val_3": {
+      "type": "text",
+      "label": "Data Val 3",
+      "default": "20+ Live"
+    },
+    "data_val_4": {
+      "type": "text",
+      "label": "Data Val 4",
+      "default": "$49"
+    },
+    "data_icon_1": {
+      "type": "text",
+      "label": "Data Icon 1",
+      "default": "📍"
+    },
+    "data_icon_2": {
+      "type": "text",
+      "label": "Data Icon 2",
+      "default": "🕗"
+    },
+    "data_icon_3": {
+      "type": "text",
+      "label": "Data Icon 3",
+      "default": "🎤"
+    },
+    "data_icon_4": {
+      "type": "text",
+      "label": "Data Icon 4",
+      "default": "🎫"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "events"
+    ]
+  }
+}

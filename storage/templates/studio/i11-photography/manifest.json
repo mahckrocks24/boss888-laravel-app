@@ -1,0 +1,42 @@
+{
+  "name": "Full Bleed Visual — Photography",
+  "slug": "i11-photography",
+  "format": "square",
+  "category": "marketing",
+  "sub_category": "photography",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["photography", "creative", "portfolio", "art", "editorial"],
+  "variables": {
+    "hero_image":      { "type": "image", "label": "Hero image",     "default": "https://images.unsplash.com/photo-1554080353-a576cf803bda?w=1080&q=85&fit=crop&crop=center" },
+    "brand_name":      { "type": "text",  "label": "Brand name",     "default": "Logo Here" },
+    "category_tag":    { "type": "text",  "label": "Category tag",   "default": "Fine Art Photography" },
+    "award_val":       { "type": "text",  "label": "Award value",    "default": "★ Award 2025" },
+    "award_label":     { "type": "text",  "label": "Award label",    "default": "Top Photographer" },
+    "vert_text":       { "type": "text",  "label": "Vertical text",  "default": "Dubai · London · New York" },
+    "eyebrow":         { "type": "text",  "label": "Eyebrow",        "default": "Portfolio Collection" },
+    "headline_main":   { "type": "text",  "label": "Headline (main)", "default": "Light." },
+    "headline_accent": { "type": "text",  "label": "Headline (accent)","default": "Story. Soul." },
+    "subheading":      { "type": "text",  "label": "Subheading",     "default": "Commercial and editorial photography that captures the moment beyond the moment." },
+    "spec_1_val":      { "type": "text",  "label": "Spec 1 value",   "default": "12yr" },
+    "spec_1_label":    { "type": "text",  "label": "Spec 1 label",   "default": "Experience" },
+    "spec_2_val":      { "type": "text",  "label": "Spec 2 value",   "default": "800+" },
+    "spec_2_label":    { "type": "text",  "label": "Spec 2 label",   "default": "Projects" },
+    "spec_3_val":      { "type": "text",  "label": "Spec 3 value",   "default": "40+" },
+    "spec_3_label":    { "type": "text",  "label": "Spec 3 label",   "default": "Countries" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",      "default": "companyname.com" },
+    "cta_label":       { "type": "text",  "label": "CTA",            "default": "View Work" }
+  },
+  "css_variables": {
+    "black": { "label": "Black",  "default": "#080808" },
+    "white": { "label": "White",  "default": "#F8F8F8" },
+    "gold":  { "label": "Gold",   "default": "#C9A56A" },
+    "gold-l":{ "label": "Gold light", "default": "#E8CFA0" }
+  },
+  "semantic": {
+    "mood": ["elegant", "minimal"],
+    "color_temperature": "dark",
+    "composition": "image_dominant",
+    "best_for": ["photography", "portfolio", "art", "creative", "editorial"]
+  }
+}

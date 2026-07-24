@@ -1,0 +1,44 @@
+{
+  "name": "Health Clean Card",
+  "slug": "t10-healthcare-clean",
+  "format": "square",
+  "category": "wellness",
+  "sub_category": "healthcare",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["healthcare", "wellness", "medical", "clinic", "health"],
+  "variables": {
+    "hero_image":        { "type": "image", "label": "Hero image",      "default": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=440&q=85&fit=crop&crop=top" },
+    "brand_name":        { "type": "text",  "label": "Brand name",      "default": "Logo Here" },
+    "brand_url":         { "type": "text",  "label": "Brand URL",       "default": "companyname.com" },
+    "trust_badge":       { "type": "text",  "label": "Trust badge",     "default": "Certified" },
+    "stat_icon":         { "type": "text",  "label": "Stat icon",       "default": "🩺" },
+    "stat_val":          { "type": "text",  "label": "Stat value",      "default": "50K+" },
+    "stat_label":        { "type": "text",  "label": "Stat label",      "default": "Patients helped" },
+    "eyebrow":           { "type": "text",  "label": "Eyebrow",         "default": "Healthcare" },
+    "headline_main":     { "type": "text",  "label": "Headline (main)", "default": "Your Health," },
+    "headline_accent":   { "type": "text",  "label": "Headline (accent)", "default": "Our Priority." },
+    "subheading":        { "type": "text",  "label": "Subheading",      "default": "Expert-led care with a personal touch — accessible, compassionate, and built around you." },
+    "check_1":           { "type": "text",  "label": "Check 1",         "default": "Board-Certified Specialists" },
+    "check_2":           { "type": "text",  "label": "Check 2",         "default": "Same-Day Appointments" },
+    "check_3":           { "type": "text",  "label": "Check 3",         "default": "Insurance Accepted" },
+    "cta_label":         { "type": "text",  "label": "CTA",             "default": "Book Now" },
+    "cta_ghost_label":   { "type": "text",  "label": "Ghost CTA",       "default": "Learn More" },
+    "footer_text":       { "type": "text",  "label": "Footer text",     "default": "Trusted healthcare since 2010" },
+    "footer_handle":     { "type": "text",  "label": "Footer handle",   "default": "@handle" }
+  },
+  "css_variables": {
+    "bg":    { "label": "Background", "default": "#F4F9FF" },
+    "navy":  { "label": "Navy",       "default": "#03045E" },
+    "blue":  { "label": "Blue",       "default": "#0077B6" },
+    "sky":   { "label": "Sky",        "default": "#00B4D8" },
+    "teal":  { "label": "Teal",       "default": "#48CAE4" },
+    "mint":  { "label": "Mint",       "default": "#ADE8F4" }
+  },
+  "semantic": {
+    "mood": ["calm", "professional"],
+    "color_temperature": "light",
+    "composition": "split",
+    "best_for": ["healthcare", "wellness", "clinic", "medical", "B2C"]
+  }
+}

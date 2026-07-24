@@ -157,6 +157,16 @@ class EmailBlockLibrary
     {
         $content = array_merge(self::defaultContent($type), $content);
         $html    = self::template($type);
+        // Conditional removal: header img if logo_url is empty, hero img if hero_image_url is empty
+        if ($type === 'header' && empty(trim((string) ($content['logo_url'] ?? '')))) {
+            $html = preg_replace('#<img[^>]*src="\{\{logo_url\}\}"[^>]*/?>#i', '', $html);
+        }
+        if ($type === 'hero' && empty(trim((string) ($content['hero_image_url'] ?? '')))) {
+            $html = preg_replace('#<img[^>]*src="\{\{hero_image_url\}\}"[^>]*/?>#i', '', $html);
+        }
+        if ($type === 'product' && empty(trim((string) ($content['product_image_url'] ?? '')))) {
+            $html = preg_replace('#<img[^>]*src="\{\{product_image_url\}\}"[^>]*/?>#i', '', $html);
+        }
         $html    = self::substitute($html, $content);
         // Wrap in a marker tr so the iframe bridge can detect hover/click
         return '<tr data-block-id="' . $blockId . '" data-block-type="' . $type . '"><td>' . $html . '</td></tr>';
@@ -587,9 +597,7 @@ HTML;
 HTML;
 
     private const CUSTOM_HTML = <<<'HTML'
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-  <tr><td style="background-color:#FFFFFF;padding:20px 40px;" class="card-w">{{raw_html}}</td></tr>
-</table>
+{{raw_html}}
 HTML;
 
     // ═══════════════════════════════════════════════════════════════════
@@ -606,6 +614,9 @@ HTML;
      */
     public static function wrap(string $innerHtml, array $meta = []): string
     {
+        // Allow templates to set custom body bg + max width via meta
+        $bodyBg = $meta['body_bg'] ?? '#F2F4F8';
+        
         $brand       = $meta['brand_color']  ?? '#5B5BD6';
         $brandTint   = $meta['brand_color_tint']  ?? self::tint($brand);
         $brandDark   = $meta['brand_color_dark']  ?? self::darken($brand);
@@ -613,8 +624,8 @@ HTML;
         $title       = $meta['title']        ?? '';
 
         $shell = str_replace(
-            ['{{TITLE}}', '{{PREVIEW_TEXT}}', '{{INNER}}'],
-            [htmlspecialchars($title), htmlspecialchars($previewText), $innerHtml],
+            ['{{TITLE}}', '{{PREVIEW_TEXT}}', '{{INNER}}', '{{BODY_BG}}'],
+            [htmlspecialchars($title), htmlspecialchars($previewText), $innerHtml, $bodyBg],
             self::SHELL
         );
         // Apply brand color tokens LAST so they propagate into inner HTML too
@@ -706,9 +717,9 @@ o\:* { behavior:url(#default#VML); }
 <style>body,td{font-family:Arial,Helvetica,sans-serif!important;}</style>
 <![endif]-->
 </head>
-<body style="margin:0;padding:0;background-color:#F2F4F8;font-family:'Inter',Arial,Helvetica,sans-serif;" class="wrap">
+<body style="margin:0;padding:0;background-color:{{BODY_BG}};font-family:'Inter',Arial,Helvetica,sans-serif;" class="wrap">
 <div class="preheader" style="display:none;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;">{{PREVIEW_TEXT}}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background-color:#F2F4F8;" class="wrap">
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background-color:{{BODY_BG}};" class="wrap">
 <tr><td align="center" style="padding:28px 16px;">
 <!--[if mso]><table role="presentation" align="center" border="0" cellpadding="0" cellspacing="0" width="600"><tr><td><![endif]-->
 <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;width:100%;" class="container">

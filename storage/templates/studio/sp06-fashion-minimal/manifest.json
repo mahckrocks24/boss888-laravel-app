@@ -1,0 +1,27 @@
+{
+  "name": "Minimal Fashion Editorial",
+  "slug": "sp06-fashion-minimal",
+  "format": "square",
+  "category": "social",
+  "sub_category": "fashion",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["fashion", "lookbook", "editorial", "retail", "minimal"],
+  "variables": {
+    "hero_image":   { "type": "image", "label": "Hero image",   "default": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1080&q=85&fit=crop&crop=top" },
+    "word_main":    { "type": "text",  "label": "Word (main)",  "default": "BOL" },
+    "word_accent":  { "type": "text",  "label": "Word (accent)","default": "D" },
+    "edition":      { "type": "text",  "label": "Edition",      "default": "SS 2025 Collection" },
+    "season":       { "type": "text",  "label": "Season",       "default": "New Arrival" },
+    "cta_label":    { "type": "text",  "label": "CTA",          "default": "Shop" },
+    "brand_name":   { "type": "text",  "label": "Brand name",   "default": "Logo Here" },
+    "brand_url":    { "type": "text",  "label": "Brand URL",    "default": "companyname.com" }
+  },
+  "css_variables": {},
+  "semantic": {
+    "mood": ["minimal", "bold"],
+    "color_temperature": "light",
+    "composition": "image_dominant",
+    "best_for": ["fashion", "lookbook", "retail", "editorial", "product"]
+  }
+}

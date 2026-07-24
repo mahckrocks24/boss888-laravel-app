@@ -1,0 +1,49 @@
+{
+  "name": "Bento Business Grid — SaaS",
+  "slug": "t03-saas-bento-grid",
+  "format": "square",
+  "category": "corporate",
+  "sub_category": "saas",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["saas", "tech", "b2b", "startup", "corporate"],
+  "variables": {
+    "brand_name":      { "type": "text",  "label": "Brand name",          "default": "Logo Here" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",           "default": "/ companyname.com" },
+    "eyebrow":         { "type": "text",  "label": "Eyebrow",             "default": "Growth Platform" },
+    "headline_main":   { "type": "text",  "label": "Headline (main)",     "default": "Scale" },
+    "headline_accent": { "type": "text",  "label": "Headline (accent)",   "default": "Smarter." },
+    "subheading":      { "type": "text",  "label": "Subheading",          "default": "AI-powered tools that turn strategy into growth — without the complexity." },
+    "hero_image":      { "type": "image", "label": "Hero image",          "default": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=360&q=85&fit=crop" },
+    "stat_b_val":      { "type": "text",  "label": "Stat value",          "default": "10×" },
+    "stat_b_label":    { "type": "text",  "label": "Stat label",          "default": "Avg. ROI" },
+    "metric_value":    { "type": "text",  "label": "Metric value",        "default": "98%" },
+    "metric_label":    { "type": "text",  "label": "Metric label",        "default": "Retention Rate" },
+    "metric_delta":    { "type": "text",  "label": "Metric delta",        "default": "+12% vs last quarter" },
+    "live_label":      { "type": "text",  "label": "Live status",         "default": "LIVE" },
+    "features_title":  { "type": "text",  "label": "Features title",      "default": "What's included" },
+    "feat_1":          { "type": "text",  "label": "Feature 1",           "default": "AI Strategy Engine" },
+    "feat_2":          { "type": "text",  "label": "Feature 2",           "default": "Real-time Analytics" },
+    "feat_3":          { "type": "text",  "label": "Feature 3",           "default": "CRM Automation" },
+    "feat_4":          { "type": "text",  "label": "Feature 4",           "default": "No-code Builder" },
+    "cta_tag":         { "type": "text",  "label": "CTA tag",             "default": "Free Trial" },
+    "cta_headline":    { "type": "text",  "label": "CTA headline",        "default": "Start building today." },
+    "cta_label":       { "type": "text",  "label": "CTA button",          "default": "Get Started" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#F0F2F8" },
+    "navy":   { "label": "Navy",       "default": "#0F172A" },
+    "blue":   { "label": "Primary",    "default": "#4361EE" },
+    "blue-l": { "label": "Blue tint",  "default": "#EEF2FF" },
+    "slate":  { "label": "Slate",      "default": "#334155" },
+    "muted":  { "label": "Muted",      "default": "#94A3B8" },
+    "white":  { "label": "White",      "default": "#FFFFFF" },
+    "green":  { "label": "Status",     "default": "#22C55E" }
+  },
+  "semantic": {
+    "mood": ["professional", "bold"],
+    "color_temperature": "dark",
+    "composition": "grid",
+    "best_for": ["saas", "tech", "b2b", "startup", "growth"]
+  }
+}

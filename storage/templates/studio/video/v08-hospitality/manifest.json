@@ -1,0 +1,65 @@
+{
+  "name": "Hospitality Reel",
+  "slug": "v08-hospitality",
+  "format": "reels",
+  "category": "hospitality",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "hospitality"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "LOGO HERE"
+    },
+    "brand_sub": {
+      "type": "text",
+      "label": "Brand Sub",
+      "default": "Luxury Resort & Spa"
+    },
+    "brand_stars": {
+      "type": "text",
+      "label": "Brand Stars",
+      "default": "★ ★ ★ ★ ★"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "5-Star Experience"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Nightly from $480 · Private suites · Infinity pool"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Beyond Ordinary"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "Luxury."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Reserve Now"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1080&q=85&fit=crop&crop=center"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "hospitality"
+    ]
+  }
+}

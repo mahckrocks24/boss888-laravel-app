@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Motion Reel — Interior Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0F0F0D;--text:#1C1C1A;--ivory:#F8F4EE;--accent:#B8963C;--primary:#D4B870;
+  --warm:#C8A870;--cream:#F5EED8;--muted:rgba(248,244,238,.42);
+  --fh:'Playfair Display',Georgia,serif;--fb:'Jost',sans-serif;
+  --w:1080px;--h:1920px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#080808}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;background:#070706}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.46);display:block;width:calc(var(--w)*.46);height:calc(var(--h)*.46)}}
+@media(max-width:780px){.sw{transform:scale(.33);display:block;width:calc(var(--w)*.33);height:calc(var(--h)*.33)}}
+@media(max-width:520px){.sw{transform:scale(.24);display:block;width:calc(var(--w)*.24);height:calc(var(--h)*.24)}}
+.reel{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg);font-family:var(--fb)}
+
+.layer-bg{position:absolute;inset:0;z-index:1;opacity:0;animation:fade-in 1.4s ease 0s both}
+.bg-base{position:absolute;inset:0;background:linear-gradient(160deg,#131210 0%,var(--bg) 55%,#121008 100%)}
+.bg-warm{position:absolute;width:700px;height:600px;border-radius:50%;background:radial-gradient(ellipse,rgba(184,150,60,.12) 0%,transparent 65%);top:-100px;right:-60px;animation:float-slow 16s ease-in-out 1s infinite alternate}
+.bg-grain{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.07'/%3E%3C/svg%3E");background-size:300px;mix-blend-mode:multiply}
+
+/* ROOM REVEAL — split panels */
+.layer-reveal{position:absolute;z-index:8;top:0;left:0;right:0;height:55%;pointer-events:none}
+.reveal-panel-l{position:absolute;top:0;bottom:0;left:0;width:50%;background:var(--bg);transform:translateX(0);animation:panel-open-l 1.2s cubic-bezier(.65,0,.35,1) .2s both}
+.reveal-panel-r{position:absolute;top:0;bottom:0;right:0;width:50%;background:var(--bg);transform:translateX(0);animation:panel-open-r 1.2s cubic-bezier(.65,0,.35,1) .2s both}
+
+/* Hero room image area */
+.layer-hero{position:absolute;z-index:2;top:0;left:0;right:0;height:55%;overflow:hidden;background:var(--text)}
+.hero-img-placeholder{width:100%;height:100%;background:linear-gradient(160deg,#2A2218 0%,#1C1810 50%,#241E14 100%);display:flex;align-items:center;justify-content:center}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,15,13,.60) 0%,transparent 25%,transparent 65%,rgba(15,15,13,.90) 100%)}
+
+.layer-shape{position:absolute;z-index:3;inset:0}
+/* Gold top rule */
+.shape-top{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--primary),var(--accent),transparent);transform:scaleX(0);transform-origin:center;animation:scale-x 1.2s cubic-bezier(.16,1,.3,1) 1.4s both}
+/* Hairline frame */
+.shape-frame{position:absolute;top:1050px;left:64px;right:64px;bottom:64px;border:1px solid rgba(184,150,60,.14);opacity:0;animation:fade-in .7s ease 1.6s both}
+.sfc{position:absolute}
+.sfc-tl{top:-1px;left:-1px;width:22px;height:22px;border-top:1.5px solid var(--accent);border-left:1.5px solid var(--accent);opacity:0;animation:fade-in .4s ease 1.8s both}
+.sfc-tr{top:-1px;right:-1px;width:22px;height:22px;border-top:1.5px solid rgba(184,150,60,.55);border-right:1.5px solid rgba(184,150,60,.55);opacity:0;animation:fade-in .4s ease 1.9s both}
+.sfc-br{bottom:-1px;right:-1px;width:22px;height:22px;border-bottom:1.5px solid rgba(184,150,60,.40);border-right:1.5px solid rgba(184,150,60,.40);opacity:0;animation:fade-in .4s ease 2.0s both}
+/* Gold horizontal rule between hero and content */
+.shape-gold-rule{position:absolute;top:55%;left:64px;right:64px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),var(--primary),var(--accent),transparent);width:0;left:50%;transform:translateX(-50%);animation:line-draw-center 1.0s cubic-bezier(.16,1,.3,1) 1.3s both}
+
+/* BRAND — on hero overlay */
+.layer-brand{position:absolute;z-index:6;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:80px 80px}
+.brand-logo{display:flex;align-items:center;gap:14px;opacity:0;animation:drift-down .7s cubic-bezier(.16,1,.3,1) 1.5s both}
+.brand-mark{width:38px;height:38px;border:1px solid var(--accent);display:flex;align-items:center;justify-content:center}
+.brand-mark::after{content:'';width:10px;height:10px;background:var(--accent)}
+.brand-name{font-family:var(--fh);font-size:20px;font-weight:700;letter-spacing:.12em;color:var(--ivory)}
+.brand-tag{font-family:var(--fb);font-size:20px;font-weight:300;letter-spacing:.24em;text-transform:uppercase;color:rgba(248,244,238,.55);border:1px solid rgba(184,150,60,.22);padding:9px 20px;opacity:0;animation:drift-down .6s cubic-bezier(.16,1,.3,1) 1.65s both}
+
+/* Hero label — bottom of hero image */
+.hero-label{position:absolute;z-index:6;top:45%;left:80px;display:flex;flex-direction:column;gap:6px;opacity:0;animation:drift-down .7s cubic-bezier(.16,1,.3,1) 1.7s both}
+.hero-label-room{font-family:var(--fh);font-size:26px;font-weight:400;font-style:italic;color:rgba(248,244,238,.55)}
+.hero-label-project{font-family:var(--fb);font-size:12px;font-weight:300;letter-spacing:.24em;text-transform:uppercase;color:rgba(248,244,238,.35)}
+
+/* TEXT */
+.layer-text{position:absolute;z-index:5;top:1070px;left:80px;right:80px;display:flex;flex-direction:column}
+.eyebrow{font-family:var(--fb);font-size:21px;font-weight:400;letter-spacing:.30em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:14px;margin-bottom:36px;opacity:0;animation:wipe-right .7s cubic-bezier(.16,1,.3,1) 2.0s both}
+.eyebrow::before{content:'';width:22px;height:1px;background:var(--accent);flex-shrink:0}
+.headline{display:flex;flex-direction:column;gap:0;margin-bottom:40px}
+.hl{font-family:var(--fh);font-size:108px;font-weight:700;line-height:.94;letter-spacing:.01em;color:var(--ivory);opacity:0;display:block}
+.hl-em{font-style:italic;font-weight:400;color:var(--primary)}
+.hl-1{animation:room-reveal .9s cubic-bezier(.16,1,.3,1) 2.0s both}
+.hl-2{animation:room-reveal .9s cubic-bezier(.16,1,.3,1) 2.4s both}
+.hl-3{font-size:88px;animation:room-reveal .9s cubic-bezier(.16,1,.3,1) 2.8s both}
+.gold-rule{width:0;height:1.5px;background:linear-gradient(90deg,var(--accent),rgba(184,150,60,.25));margin-bottom:40px;animation:line-draw .8s cubic-bezier(.16,1,.3,1) 3.3s both}
+.subtext{font-family:var(--fb);font-size:26px;font-weight:300;line-height:1.72;color:var(--muted);margin-bottom:52px;opacity:0;transform:translateY(18px);animation:fade-rise .9s cubic-bezier(.16,1,.3,1) 3.7s both}
+/* Service cards */
+.services{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:52px}
+.svc{background:rgba(248,244,238,.05);border:1px solid rgba(184,150,60,.12);padding:24px 20px;display:flex;flex-direction:column;gap:6px;opacity:0;animation:fade-rise .55s cubic-bezier(.16,1,.3,1) var(--d) both}
+.svc-name{font-family:var(--fh);font-size:20px;font-weight:600;color:var(--ivory);letter-spacing:.02em}
+.svc-desc{font-family:var(--fb);font-size:13px;font-weight:300;letter-spacing:.06em;color:var(--muted)}
+.svc:nth-child(1){--d:4.1s}.svc:nth-child(2){--d:4.3s}.svc:nth-child(3){--d:4.5s}.svc:nth-child(4){--d:4.7s}
+.cta-wrap{opacity:0;animation:fade-rise .8s cubic-bezier(.16,1,.3,1) 5.0s both}
+.cta{display:flex;align-items:center;justify-content:center;gap:16px;font-family:var(--fb);font-size:16px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:var(--bg);background:linear-gradient(135deg,var(--primary),var(--accent));padding:34px 80px;text-decoration:none;width:100%;animation:cta-glow 3s ease-in-out 6s infinite}
+.cta-arrow{display:inline-block;animation:arrow-nudge 3s ease-in-out 6s infinite}
+.layer-footer{position:absolute;z-index:9;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:28px 80px 60px;border-top:1px solid rgba(184,150,60,.10);opacity:0;transform:translateY(16px);animation:fade-rise .7s ease 5.6s both}
+.footer-brand{font-family:var(--fh);font-size:18px;color:var(--ivory)}
+.footer-url{font-family:var(--fb);font-size:14px;font-weight:300;letter-spacing:.12em;color:var(--muted)}
+.footer-handle{font-family:var(--fb);font-size:21px;font-weight:400;letter-spacing:.10em;color:var(--accent)}
+
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes fade-rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes drift-down{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes room-reveal{from{opacity:0;transform:translateY(36px);filter:blur(4px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes panel-open-l{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@keyframes panel-open-r{from{transform:translateX(0)}to{transform:translateX(100%)}}
+@keyframes wipe-right{from{opacity:0;transform:translateX(-20px);clip-path:inset(0 100% 0 0)}to{opacity:1;transform:translateX(0);clip-path:inset(0 0% 0 0)}}
+@keyframes scale-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes line-draw{from{width:0;opacity:0}to{width:100%;opacity:1}}
+@keyframes line-draw-center{from{width:0}to{width:952px}}
+@keyframes cta-glow{0%,100%{box-shadow:0 20px 60px rgba(184,150,60,.28)}50%{box-shadow:0 28px 80px rgba(184,150,60,.48)}}
+@keyframes arrow-nudge{0%,80%,100%{transform:translateX(0)}90%{transform:translateX(8px)}}
+@keyframes float-slow{from{transform:translate(0,0)}to{transform:translate(20px,-16px)}}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+<div class="scene"><div class="sw"><div class="reel">
+  <!-- Hero room image -->
+  <div class="layer-hero">
+    <div class="hero-img-placeholder">
+      <!-- ↓ SWAP: Replace with actual interior design project photo -->
+      <svg width="100%" height="100%" viewBox="0 0 1080 594" xmlns="http://www.w3.org/2000/svg">
+        <rect width="1080" height="594" fill="#1C1810"/>
+        <!-- Minimal room silhouette -->
+        <rect x="80" y="280" width="920" height="2" fill="rgba(184,150,60,.08)"/>
+        <rect x="80" y="100" width="2" height="180" fill="rgba(184,150,60,.06)"/>
+        <rect x="998" y="100" width="2" height="180" fill="rgba(184,150,60,.06)"/>
+        <rect x="460" y="180" width="160" height="100" rx="4" fill="rgba(184,150,60,.04)" stroke="rgba(184,150,60,.08)" stroke-width="1"/>
+        <text x="540" y="240" text-anchor="middle" font-family="Jost" font-size="14" fill="rgba(248,244,238,.18)" letter-spacing="4">ROOM PHOTO HERE</text>
+      </svg>
+    </div>
+    <div class="hero-overlay"></div>
+  </div>
+  <!-- Reveal panels -->
+  <div class="layer-reveal"><div class="reveal-panel-l"></div><div class="reveal-panel-r"></div></div>
+  <div class="layer-bg"><div class="bg-base"></div><div class="bg-warm"></div><div class="bg-grain"></div></div>
+  <div class="layer-shape">
+    <div class="shape-top"></div>
+    <div class="shape-gold-rule"></div>
+    <div class="shape-frame"><div class="sfc sfc-tl"></div><div class="sfc sfc-tr"></div><div class="sfc sfc-br"></div></div>
+  </div>
+  <div class="layer-brand">
+    <div class="brand-logo"><div class="brand-mark"></div><span class="brand-name" data-field="brand_name">{{brand_name}}</span></div>
+    <span class="brand-tag" data-field="brand_tag">{{brand_tag}}</span>
+  </div>
+  <div class="hero-label"><span class="hero-label-room">Living Space, Dubai Hills</span><span class="hero-label-project">Project No. 042 · 2025</span></div>
+  <div class="layer-text">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <div class="headline">
+      <span class="hl hl-1" data-field="headline_1">{{headline_1}}</span>
+      <span class="hl hl-2"><em class="hl-em" data-field="headline_accent">{{headline_accent}}</em></span>
+      <span class="hl hl-3" data-field="headline_3">{{headline_3}}</span>
+    </div>
+    <div class="gold-rule"></div>
+    <p class="subtext" data-field="subheading">{{subheading}}</p>
+    <div class="services">
+      <div class="svc"><span class="svc-name">Residential</span><span class="svc-desc">Villas · Apartments</span></div>
+      <div class="svc"><span class="svc-name">Commercial</span><span class="svc-desc">Offices · Retail</span></div>
+      <div class="svc"><span class="svc-name">Smart Home</span><span class="svc-desc">Automation · AV</span></div>
+      <div class="svc"><span class="svc-name">FF&E</span><span class="svc-desc">Furniture · Fixtures</span></div>
+    </div>
+    <div class="cta-wrap"><a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a></div>
+  </div>
+  <div class="layer-footer"><span class="footer-brand" data-field="footer_brand">{{footer_brand}}</span><span class="footer-url" data-field="footer_url">{{footer_url}}</span><span class="footer-handle" data-field="footer_handle">{{footer_handle}}</span></div>
+</div></div></div>
+</body></html>

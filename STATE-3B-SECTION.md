@@ -1,0 +1,12 @@
+<!-- READY-TO-PASTE: insert this block into BOSS888-STATE.md immediately after the title line, once you are sole owner and have confirmed the 13:33 W3 content is intact. -->
+
+### ✅ INFRA888 PHASE 3B CLOSEOUT — ENTERPRISE INTELLIGENCE INTERFACE (2026-07-20) → GO (conditional)
+Docs: `PHASE-3B-ENTERPRISE-INFRASTRUCTURE-INTELLIGENCE-FINAL-2026-07-20.md`, `INFRA888-3B-{MASTERCONTEXT,HANDOFF,SESSION-LOG}-2026-07-20.md`, `daily-progress/2026-07-20-infra888-3b.md`. Backups `.bak-3bcloseout-20260720-105500`. **All LIVE + verified on staging.**
+- **Frontend NOW LIVE**: `public/app/js/infrastructure.js` v1.2.0-infra888-intelligence (29→71KB) — Overview/Assets/drilldown/Incidents/Reliability tabs consume the 6 real intelligence APIs (top-level json, not `.data`); Phase-1D hosting workflow preserved. Honest states (unknown="Not yet observed"≠healthy, adopted≠provisioned, no fake uptime, empty/loading/error/stale, a11y text+shape). index.html cache-buster bumped.
+- **Backend ADDITIVE**: `InfrastructureIntelligenceService::dashboard()` gained `management` composition block (grouped SQL). Test added.
+- **Validation**: INFRA888 **315/0/1skip** · intelligence proof **23/0** · live authenticated HTTP **29/0** (real middleware+minted JWTs, isolation 3-ways) · REAL headless-Chromium **25/0** (live API, PTAA data, 0 console/API errors, no overflow @1440/390).
+- **Full-platform regression**: 315/66fail/1skip → **0 INFRA888 failures** (GO gate met). ⚠️ **OPEN (launch-scope/W3, NOT 3B):** `agents.status` column rejects value 'dormant' (`SQLSTATE 01000 Data truncated`) seeded in shared test setUp → cascades ~half the 66 failures. Fix: widen column/add enum value OR stop seeding 'dormant'. Remainder = env-sensitive integration suites + launch-scope-disabled email/social execution.
+- **Perf**: strong composite indexes (dashboard groupby=covering). **Pre-scale gap**: assets(cap500)/incidents(cap200) NOT truly paginated — the GO condition before large tenants.
+- **PTAA (ws 990006)**: 3 assets — monitor=managed_by_infra888, server+website=ADOPTED. Never shown provisioned. D1/D2 adapters still gated (provisioning/DNS/SSL/backup honestly Null).
+- **VERDICT: GO (Founder-stage), conditioned on pagination.** Next=Phase 3C (pagination + retention + incident write-ops behind approval + axe-core CI).
+- **⚠️ temp files (safe to delete):** `public/app/infra-verify-3b.html`, repo-root `infra3b-browser-verify.cjs`, `mktoken_env.php`.

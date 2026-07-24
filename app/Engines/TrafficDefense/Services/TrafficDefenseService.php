@@ -111,10 +111,21 @@ class TrafficDefenseService
 
     public function logTraffic(int $wsId, array $data): void
     {
+        // 2026-06-20 — referrer/user_agent are varchar(255). Connector SEO-embed
+        // referrers (…?lgsc_key=…&lgsc_v=…&…) run ~280+ chars and threw
+        // SQLSTATE[22001] "Data too long" on every ws=7 request (~32k/day), so
+        // those traffic_logs rows were silently dropped (analytics under-count).
+        // Truncate to the column width before insert. Pure data hygiene — no
+        // change to scoring/blocking, which already ran on the full value.
+        $ua  = $data['user_agent'] ?? null;
+        $ref = $data['referrer'] ?? null;
+        if (is_string($ua))  { $ua  = mb_substr($ua, 0, 255); }
+        if (is_string($ref)) { $ref = mb_substr($ref, 0, 255); }
+
         DB::table('traffic_logs')->insert([
             'workspace_id' => $wsId,
-            'ip' => $data['ip'] ?? '', 'user_agent' => $data['user_agent'] ?? null,
-            'referrer' => $data['referrer'] ?? null, 'country' => $data['country'] ?? null,
+            'ip' => $data['ip'] ?? '', 'user_agent' => $ua,
+            'referrer' => $ref, 'country' => $data['country'] ?? null,
             'action' => $data['action'] ?? 'allowed', 'rule_name' => $data['rule_name'] ?? null,
             'quality_score' => $data['quality_score'] ?? null,
             'created_at' => now(),

@@ -1,0 +1,70 @@
+{
+  "name": "Pet Services Reel",
+  "slug": "r10-pet-services",
+  "format": "reels",
+  "category": "pet services",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "pet services"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "Vet Approved"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Pet Care Services"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Happy pet families"
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Your Pet"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "Deserves"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "the Best."
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "pet services"
+    ]
+  }
+}

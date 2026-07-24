@@ -9,12 +9,13 @@ class TemplateService
     /**
      * Render a template with variable substitution.
      *
-     * @param string $industry  Template industry key (e.g. 'restaurant')
-     * @param array  $variables Key-value pairs to substitute into the template
+     * @param string   $industry  Template industry key (e.g. 'restaurant')
+     * @param array    $variables Key-value pairs to substitute into the template
+     * @param int|null $websiteId Owning website id — when set, gates + injects CHATBOT888 widget
      * @return string Rendered HTML
      * @throws \Exception If template not found
      */
-    public function render(string $industry, array $variables): string
+    public function render(string $industry, array $variables, ?int $websiteId = null): string
     {
         $path = storage_path("templates/{$industry}/template.html");
         if (!file_exists($path)) {
@@ -130,7 +131,45 @@ class TemplateService
         $html = str_replace(['&LARR;', '&larr;', '&amp;larr;'], '←', $html);
         $html = str_replace(['&amp;amp;', '&amp;nbsp;'], ['&amp;', '&nbsp;'], $html);
 
+        if ($websiteId) {
+            $widget = $this->buildChatbotWidget($websiteId);
+            if ($widget !== '' && stripos($html, '</body>') !== false) {
+                $html = preg_replace('#</body>#i', $widget . '</body>', $html, 1);
+            }
+        }
+
         return $html;
+    }
+
+    /**
+     * Build the CHATBOT888 widget snippet for a website, or '' when not entitled / not configured.
+     * Mirrors BuilderRenderer::injectChatbotWidget so both render paths gate identically.
+     */
+    private function buildChatbotWidget(int $websiteId): string
+    {
+        $website = DB::table('websites')->where('id', $websiteId)->first();
+        if (!$website) return '';
+        $wsId = (int) ($website->workspace_id ?? 0);
+        if ($wsId <= 0) return '';
+
+        try {
+            $gate = app(\App\Core\Billing\FeatureGateService::class);
+            if (!$gate->canAccessChatbot($wsId)) return '';
+        } catch (\Throwable $e) { return ''; }
+
+        $cs = DB::table('chatbot_settings')->where('workspace_id', $wsId)->first();
+        if (!$cs || !$cs->enabled) return '';
+
+        $settings = $website->settings_json ?? '{}';
+        if (is_string($settings)) $settings = json_decode($settings, true) ?: [];
+        $token = is_array($settings) ? ($settings['chatbot_widget_token'] ?? null) : null;
+        if (!$token) return '';
+
+        $tokenSafe = htmlspecialchars((string) $token, ENT_QUOTES, 'UTF-8');
+        $apiBase = rtrim((string) config('app.url'), '/');
+        return "<!-- CHATBOT888 Widget -->\n"
+            . "<script>window.LU_CHATBOT_TOKEN = \"{$tokenSafe}\"; window.LU_CHATBOT_API = \"{$apiBase}\";</script>\n"
+            . "<script src=\"{$apiBase}/chatbot-widget.js?v=20260528-color\" defer></script>\n";
     }
 
     /**
@@ -260,9 +299,45 @@ class TemplateService
         $xpath = new \DOMXPath($dom);
         $found = false;
 
+        // Image-typed fields set src / background-image; text fields set textContent.
+        // Doing this surgically (in-place) instead of a full template re-render is
+        // what preserves the site's post-processed content (archetype-governed
+        // sections, injected menu/catalog/units blocks, scrubbed names). A full
+        // re-render can't reproduce those without the original build_data.
+        $isImg = str_ends_with($fieldId, '_image') || $fieldId === 'logo_url'
+              || str_contains($fieldId, 'image_') || str_contains($fieldId, '_img');
+
+        $applyImg = function (\DOMElement $el, string $value) {
+            $done = false;
+            if (strtolower($el->nodeName) === 'img') {
+                $el->setAttribute('src', $value);
+                if ($el->hasAttribute('srcset')) $el->setAttribute('srcset', $value);
+                $done = true;
+            }
+            foreach ($el->getElementsByTagName('img') as $img) {
+                $img->setAttribute('src', $value);
+                if ($img->hasAttribute('srcset')) $img->setAttribute('srcset', $value);
+                $done = true;
+            }
+            if ($el->hasAttribute('style') && stripos($el->getAttribute('style'), 'background') !== false) {
+                $el->setAttribute('style', preg_replace(
+                    '/background-image\s*:\s*url\([^)]*\)/i',
+                    "background-image:url('" . $value . "')",
+                    $el->getAttribute('style')
+                ));
+                $done = true;
+            }
+            return $done;
+        };
+
         foreach ($xpath->query("//*[@data-field='{$fieldId}']") as $el) {
-            $el->textContent = $value;
-            $found = true;
+            if ($isImg) {
+                if ($applyImg($el, $value)) $found = true;
+                else { $el->textContent = $value; $found = true; } // fallback (e.g. alt/text logo)
+            } else {
+                $el->textContent = $value;
+                $found = true;
+            }
         }
 
         if ($found) {

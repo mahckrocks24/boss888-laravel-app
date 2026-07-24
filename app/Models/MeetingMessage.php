@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MeetingMessage extends Model
 {
     protected $fillable = [
-        'meeting_id', 'sender_type', 'sender_id', 'message', 'attachments_json',
+        'meeting_id', 'sender_type', 'sender_id', 'message', 'tokens_used', 'attachments_json',
     ];
 
     protected function casts(): array

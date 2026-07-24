@@ -40,12 +40,12 @@ var _wr = {
 
 function _wrUrl(p) {
     var b = (window.LU_API_BASE || '/api');
-    return b + '/api/write' + p;
+    return '/api/write' + p;
 }
 // Streaming endpoints live in Core (lu/v1), not the Write Engine plugin (luwrite/v1)
 function _luUrl(p) {
     var b = (window.LU_API_BASE || '/api');
-    return b + '/api' + p;
+    return '/api' + p;
 }
 function _wrNonce() { return (window.LU_CFG && '') || ''; }
 function _wrHeaders() {
@@ -505,6 +505,9 @@ async function _wrLoadAndOpenEditor(id) {
         _wrToast('Could not load content.', 'error');
     }
 }
+// v5.7.20 (2026-05-31) — expose for router deep links: /app/write/{id}
+// dispatches to nav('write', {tail: id}) which calls this after writeLoad().
+window._wrLoadAndOpenEditor = _wrLoadAndOpenEditor;
 
 function _wrOpenEditor(item) {
     // Full state reset before mounting a new item — prevents ghost data
@@ -520,6 +523,14 @@ function _wrOpenEditor(item) {
     // Cancel any pending outline debounce from previous textarea session
     clearTimeout(_wr._outlineTimer);
     _wr._outlineTimer = null;
+    // v5.7.20 (2026-05-31) — keep URL in sync. When user clicks an article
+    // in the write list, push /app/write/{id} so refresh / bookmark / share
+    // all work. Skipped silently if the router isn't enabled.
+    try {
+        if (item && item.id && window._luRouter && window._luRouter.enabled()) {
+            window._luRouter.pushView('write', String(item.id));
+        }
+    } catch (_e) {}
     _wrRender();
 }
 
@@ -720,6 +731,12 @@ function _wrBindEditor() {
         _wr.isDirty = false;
         _wr.view = 'dashboard';
         _wr.currentItem = null;
+        // v5.7.20 (2026-05-31) — keep URL in sync when leaving the editor
+        try {
+            if (window._luRouter && window._luRouter.enabled()) {
+                window._luRouter.pushView('write');
+            }
+        } catch (_e) {}
         await _wrBootstrap();
         _wrRender();
     });
@@ -820,6 +837,11 @@ function _wrBindEditor() {
     if (backDash) backDash.addEventListener('click', function(e) {
         e.preventDefault();
         _wr.view = 'dashboard';
+        try {
+            if (window._luRouter && window._luRouter.enabled()) {
+                window._luRouter.pushView('write');
+            }
+        } catch (_e) {}
         _wrRender();
     });
 }

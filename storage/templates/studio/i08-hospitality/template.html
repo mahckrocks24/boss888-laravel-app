@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Hospitality — Luxury Stay Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Karla:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#FAF6F0;--warm:#F5EDD8;--accent:#A0522D;--terra-l:#C87A4E;
+  --gold:#C9A56A;--primary:#E8CFA0;--text:#1A1208;--muted:rgba(26,18,8,.45);
+  --white:#FDFAF5;
+  --fh:'Cormorant Garamond',Georgia,serif;--fb:'Karla',sans-serif;
+  --w:1080px;--h:1350px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#EDE4D4}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1200px){.sw{transform:scale(.78);display:block;width:calc(var(--w)*.78);height:calc(var(--h)*.78)}}
+@media(max-width:960px){.sw{transform:scale(.60);display:block;width:calc(var(--w)*.60);height:calc(var(--h)*.60)}}
+@media(max-width:720px){.sw{transform:scale(.43);display:block;width:calc(var(--w)*.43);height:calc(var(--h)*.43)}}
+@media(max-width:500px){.sw{transform:scale(.29);display:block;width:calc(var(--w)*.29);height:calc(var(--h)*.29)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--bg)}
+
+/* HERO IMAGE — full bleed top 64% */
+.hero{position:absolute;top:0;left:0;right:0;height:870px;z-index:1;overflow:hidden}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center 35%}
+.hero::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(26,18,8,.30) 0%,transparent 28%,transparent 52%,
+  rgba(26,18,8,.45) 72%,var(--bg) 100%)}
+
+/* Hairline frame */
+.frame{position:absolute;z-index:8;top:18px;left:18px;right:18px;bottom:18px;
+  border:1px solid rgba(201,165,106,.22);pointer-events:none}
+.fc{position:absolute;width:24px;height:24px}
+.fc--tl{top:-1px;left:-1px;border-top:2px solid var(--gold);border-left:2px solid var(--gold)}
+.fc--tr{top:-1px;right:-1px;border-top:2px solid var(--gold);border-right:2px solid var(--gold)}
+.fc--bl{bottom:-1px;left:-1px;border-bottom:2px solid var(--gold);border-left:2px solid var(--gold)}
+.fc--br{bottom:-1px;right:-1px;border-bottom:2px solid var(--gold);border-right:2px solid var(--gold)}
+
+/* Top bar */
+.topbar{position:absolute;z-index:6;top:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;padding:36px 52px}
+.brand-area{display:flex;align-items:center;gap:14px}
+.brand-star{font-family:var(--fb);font-size:12px;letter-spacing:.22em;color:var(--gold);text-align:center}
+.brand-name{font-family:var(--fh);font-size:20px;font-weight:600;letter-spacing:.12em;color:var(--white)}
+.est{font-family:var(--fb);font-size:10px;font-weight:400;letter-spacing:.24em;
+  text-transform:uppercase;color:rgba(253,250,245,.55);border:1px solid rgba(253,250,245,.20);padding:8px 18px;border-radius:2px}
+
+/* Location / eyebrow over image */
+.img-eyebrow{position:absolute;z-index:5;bottom:440px;left:60px;
+  display:flex;align-items:center;gap:14px}
+.img-eyebrow-tag{font-family:var(--fb);font-size:11px;font-weight:500;letter-spacing:.28em;
+  text-transform:uppercase;color:var(--primary)}
+.img-eyebrow-line{width:40px;height:1px;background:var(--primary);opacity:.55}
+
+/* BIG headline over image bottom */
+.headline-wrap{position:absolute;z-index:5;bottom:290px;left:56px;right:56px}
+.headline{font-family:var(--fh);font-size:106px;font-weight:300;line-height:.92;
+  letter-spacing:-.01em;color:var(--white);text-shadow:0 4px 60px rgba(26,18,8,.45)}
+.headline em{font-style:italic;font-weight:300;color:var(--primary);display:block}
+
+/* Gold rule divider */
+.gold-rule{position:absolute;z-index:4;top:867px;left:56px;right:56px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.35}
+
+/* CONTENT ZONE */
+.content{position:absolute;z-index:5;bottom:0;left:0;right:0;height:500px;
+  display:flex;flex-direction:column;justify-content:center;padding:0 60px}
+
+.sub{font-family:var(--fb);font-size:17px;font-weight:300;line-height:1.75;
+  color:var(--muted);max-width:640px;margin-bottom:36px}
+
+/* Amenities row */
+.amenities{display:flex;gap:0;margin-bottom:40px}
+.amen{flex:1;padding:18px 20px;border-right:1px solid rgba(201,165,106,.18);
+  display:flex;flex-direction:column;gap:5px}
+.amen:last-child{border-right:none}
+.amen-name{font-family:var(--fh);font-size:17px;font-weight:600;color:var(--text);letter-spacing:.02em}
+.amen-desc{font-family:var(--fb);font-size:18px;font-weight:300;color:var(--muted);letter-spacing:.06em}
+
+/* Rate + CTA */
+.cta-row{display:flex;align-items:center;gap:24px}
+.rate{display:flex;flex-direction:column;gap:3px}
+.rate-label{font-family:var(--fb);font-size:10px;font-weight:400;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--gold)}
+.rate-val{font-family:var(--fh);font-size:44px;font-weight:300;color:var(--text);line-height:1;letter-spacing:-.01em}
+.cta{display:inline-flex;align-items:center;gap:14px;font-family:var(--fb);
+  font-size:12px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--white);background:var(--accent);padding:20px 52px;
+  border:none;cursor:pointer;text-decoration:none;border-radius:2px;
+  transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(160,82,45,.30)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+
+/* Brand bottom */
+.brand-bottom{position:absolute;z-index:5;bottom:26px;left:60px;right:60px;
+  display:flex;align-items:center;justify-content:space-between}
+.brand-b-text{font-family:var(--fb);font-size:10px;letter-spacing:.16em;color:rgba(26,18,8,.28)}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body><div class="scene"><div class="sw"><div class="post">
+  <!-- Frame -->
+  <div class="frame"><div class="fc fc--tl"></div><div class="fc fc--tr"></div><div class="fc fc--bl"></div><div class="fc fc--br"></div></div>
+
+  <!-- Hero -->
+  <div class="hero"><img data-field="hero_image" src="{{hero_image}}" alt="Hero"/></div>
+  <div class="gold-rule"></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand-area">
+      <div><div class="brand-star" data-field="brand_stars">{{brand_stars}}</div><div class="brand-name" data-field="brand_name">{{brand_name}}</div></div>
+    </div>
+    <span class="est" data-field="est">{{est}}</span>
+  </div>
+
+  <!-- Image overlay text -->
+  <div class="img-eyebrow">
+    <span class="img-eyebrow-tag" data-field="location">{{location}}</span>
+    <div class="img-eyebrow-line"></div>
+  </div>
+  <div class="headline-wrap">
+    <h1 class="headline"><span data-field="headline_main">{{headline_main}}</span><br><em data-field="headline_accent">{{headline_accent}}</em></h1>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="amenities">
+      <div class="amen"><span class="amen-name" data-field="amen_1_name">{{amen_1_name}}</span><span class="amen-desc" data-field="amen_1_desc">{{amen_1_desc}}</span></div>
+      <div class="amen"><span class="amen-name" data-field="amen_2_name">{{amen_2_name}}</span><span class="amen-desc" data-field="amen_2_desc">{{amen_2_desc}}</span></div>
+      <div class="amen"><span class="amen-name" data-field="amen_3_name">{{amen_3_name}}</span><span class="amen-desc" data-field="amen_3_desc">{{amen_3_desc}}</span></div>
+    </div>
+    <div class="cta-row">
+      <div class="rate"><span class="rate-label" data-field="rate_label">{{rate_label}}</span><span class="rate-val" data-field="rate_val">{{rate_val}}</span></div>
+      <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+    </div>
+  </div>
+
+  <div class="brand-bottom">
+    <span class="brand-b-text" data-field="brand_b_left">{{brand_b_left}}</span>
+    <span class="brand-b-text" data-field="brand_b_right">{{brand_b_right}}</span>
+  </div>
+</div></div></div></body></html>

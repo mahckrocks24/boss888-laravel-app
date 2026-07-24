@@ -36,7 +36,18 @@ return new class extends Migration {
         $now = now();
         $rows = [];
         foreach ($capMap as $agentSlug => $toolIds) {
+            // LAUNCH SCOPE (2026-07-20) — never seed a grant for a removed agent,
+            // and never seed a removed social/email tool for anyone. A future
+            // migrate:fresh / re-seed therefore reproduces the launch-scoped grant
+            // set, not the pre-launch one. (canUse() short-circuits these anyway,
+            // but keeping them out of the table keeps the audit surface clean.)
+            if (\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent($agentSlug)) {
+                continue;
+            }
             foreach ($toolIds as $toolId) {
+                if (\App\Core\LaunchScope\LaunchScopePolicy::isRemovedTool($toolId)) {
+                    continue;
+                }
                 $rows[] = [
                     'agent_slug' => $agentSlug,
                     'tool_id'    => $toolId,

@@ -90,3 +90,17 @@ test-results/
 tests/mobile/report/
 tests/mobile/screenshots/
 playwright-report/
+
+# ─── R0.5 hardening (2026-07-24) ───────────────────────────────────
+storage/backups/
+*.sql
+*.sql.gz
+*.bak.*
+*.orig
+/genimg.php
+/mktoken_env.php
+/push_data.php
+/patch-*.py
+# authoritative builder/studio templates (source, unconventionally under storage/)
+!storage/templates/
+!storage/templates/**

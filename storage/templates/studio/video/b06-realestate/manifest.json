@@ -1,0 +1,75 @@
+{
+  "name": "Realestate Reel",
+  "slug": "b06-realestate",
+  "format": "reels",
+  "category": "realestate",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "realestate"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "View Listings"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Dream Properties"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Hundreds of dream properties across Dubai — from cosy apartments to luxury penthouses, we've got your next home waiting."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "brand_icon": {
+      "type": "text",
+      "label": "Brand Icon",
+      "default": "🏠"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Find your"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "perfect"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "home."
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "realestate"
+    ]
+  }
+}

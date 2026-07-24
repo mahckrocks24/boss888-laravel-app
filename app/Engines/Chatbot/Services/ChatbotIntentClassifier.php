@@ -60,10 +60,10 @@ class ChatbotIntentClassifier
     /**
      * Pure regex match on user text → intent + confidence + captures.
      */
-    public function classify(string $userMessage, array $sessionCapturedFields = []): array
+    public function classify(string $userMessage, array $sessionCapturedFields = [], ?string $expectingField = null): array
     {
         $userMessage = trim($userMessage);
-        $captured = $this->extractCaptures($userMessage);
+        $captured = $this->extractCaptures($userMessage, $expectingField);
 
         // Merge with already-captured fields so the orchestrator sees the full set.
         if (! empty($sessionCapturedFields) && is_array($sessionCapturedFields)) {
@@ -112,7 +112,15 @@ class ChatbotIntentClassifier
             'service' => null,
         ];
 
-        // Email — strict RFC-ish pattern
+        // 2026-05-28 — regex retained for the deterministic fields ONLY
+        // (email + phone). Name / service / fuzzy date+time are now
+        // extracted by the runtime LLM in ChatbotResponseService.
+        // The "my name is X" volunteering regex was removed because the
+        // LLM does a better job — including bare-name responses and
+        // names that don't fit the capitalised-Latin assumption.
+
+        // Email — strict RFC-ish pattern (still useful as a fast path
+        // before any LLM call; LLM will also confirm)
         if (preg_match('/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i', $text, $m)) {
             $captured['email'] = strtolower($m[0]);
         }
@@ -123,15 +131,6 @@ class ChatbotIntentClassifier
             if ($digits !== null && strlen($digits) >= 7 && strlen($digits) <= 15) {
                 // Re-prepend + if original had it
                 $captured['phone'] = (str_starts_with($m[1], '+') ? '+' : '') . $digits;
-            }
-        }
-
-        // Name volunteering — "my name is X", "I'm X", "this is X"
-        if (preg_match('/\b(?:my name is|i.?m|i am|this is|name.?s)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i', $text, $m)) {
-            $candidate = trim($m[1]);
-            // Reject if it's clearly a verb phrase (e.g. "I'm interested")
-            if (! preg_match('/^(?:interested|looking|trying|just|here|going|coming|new|sure|good|fine|busy|tired)$/i', $candidate)) {
-                $captured['name'] = $candidate;
             }
         }
 

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Session extends Model
 {
     protected $fillable = [
-        'user_id', 'workspace_id', 'refresh_token_hash',
+        'user_id', 'workspace_id', 'auth_via', 'refresh_token_hash',
         'ip_address', 'user_agent', 'expires_at', 'revoked_at',
     ];
 

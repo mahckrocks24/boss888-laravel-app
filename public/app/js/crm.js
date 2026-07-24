@@ -206,6 +206,14 @@ function _crmRender(el) {
 
 window._crmTab = async function(tab) {
     _crm.tab=tab; _crm.detailLeadId=null; _crm.activities=[];
+    // v5.7.21 (2026-05-31) — Phase 2 URL: leaving the detail drawer drops
+    // the tail so URL returns to /app/crm. Other tabs also reset the tail
+    // because they're list-level views.
+    try {
+        if (window._luRouter && window._luRouter.enabled()) {
+            window._luRouter.pushView('crm');
+        }
+    } catch (_e) {}
     var el=document.getElementById('crm-root');
     if(tab==='tasks'||tab==='today') {
         if(el)el.innerHTML=loadingCard(200);
@@ -641,6 +649,12 @@ window._crmOpenDetail=async function(id){
     var actData=await _crmGet('/activities?lead_id='+id).catch(function(e){console.error('[LuCRM] activities:',e.message);return null;});
     _crm.activities=(actData&&actData.activities)?actData.activities:[];
     if(!lead){if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:var(--rd)">Lead not found.</div>';return;}
+    // v5.7.21 (2026-05-31) — Phase 2 URL: push /app/crm/{id} on lead open.
+    try {
+        if (window._luRouter && window._luRouter.enabled()) {
+            window._luRouter.pushView('crm', String(id));
+        }
+    } catch (_e) {}
     try{_renderDetail(el,lead);}catch(e){console.error('[LuCRM] detail render:',e);}
 };
 

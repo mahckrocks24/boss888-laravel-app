@@ -168,6 +168,47 @@ class AeoSettingsService
             $out .= "\n";
         }
 
+        // 2026-05-28 — WP-synced fallback. The pages + articles queries above
+        // only see Laravel-built websites and Laravel-managed articles. WP
+        // workspaces (shukranuae.com etc.) have neither — their canonical URL
+        // list lives in seo_content_index, populated by the WP connector
+        // sync. Without this block llms.txt is just a header for any WP-only
+        // workspace. Filter the same junk URLs the chatbot crawler skips so
+        // the LLM-facing index isn't littered with drafts.
+        if ($pages->isEmpty() && $articles->isEmpty()) {
+            try {
+                $indexed = DB::table('seo_content_index')
+                    ->where('workspace_id', $wsId)
+                    ->whereNotNull('url')
+                    ->where('url', '!=', '')
+                    ->orderByDesc('word_count')
+                    ->limit(200)
+                    ->get(['url', 'title', 'meta_description']);
+
+                $kept = [];
+                foreach ($indexed as $row) {
+                    $u = (string) $row->url;
+                    if (preg_match('/\?p=\d+/i', $u))             continue;
+                    if (preg_match('#/(wp-admin|wp-content|wp-includes|wp-json|feed)/?#i', $u)) continue;
+                    if (preg_match('#\.(jpg|jpeg|png|gif|webp|pdf|zip|svg|ico)(\?|$)#i', $u)) continue;
+                    $kept[] = $row;
+                    if (count($kept) >= 100) break;
+                }
+
+                if (! empty($kept)) {
+                    $out .= "## Pages\n\n";
+                    foreach ($kept as $row) {
+                        $title = trim((string) ($row->title ?: $row->url));
+                        $desc  = $row->meta_description ? ' — ' . $this->oneLine($row->meta_description) : '';
+                        $out  .= "- [{$title}]({$row->url}){$desc}\n";
+                    }
+                    $out .= "\n";
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[AeoSettings] seo_content_index fallback failed', ['err' => $e->getMessage()]);
+            }
+        }
+
         $out .= "## About\n\n";
         $out .= "This llms.txt file follows the convention proposed at https://llmstxt.org\n";
         $out .= "It provides a canonical, machine-readable index of this site's content for LLM-based search engines.\n";

@@ -28,17 +28,22 @@ class EngineIntelligenceService
      */
     public const ENGINES = [
         'crm', 'seo', 'write', 'creative', 'marketing', 'social',
-        'builder', 'calendar', 'beforeafter', 'traffic', 'manualedit',
+        'builder', 'calendar', 'beforeafter', 'traffic', 'manualedit', 'studio',
     ];
 
     public function getBriefing(string $engine): array
     {
         return [
-            'engine' => $engine,
-            'tools' => $this->getToolBlueprints($engine),
-            'best_practices' => $this->getBestPractices($engine),
-            'constraints' => $this->getConstraints($engine),
-            'effectiveness_data' => $this->getEffectivenessData($engine),
+            'engine'              => $engine,
+            'tools'               => $this->getToolBlueprints($engine),
+            'best_practices'      => $this->getBestPractices($engine),
+            'constraints'         => $this->getConstraints($engine),
+            'effectiveness_data'  => $this->getEffectivenessData($engine),
+            /* b6-briefing */ // Phase 2 — categories previously consulted only at orchestrator runtime
+            'industry_patterns'   => $this->getIndustryPatterns($engine),
+            'chains'              => $this->getChains($engine),
+            'brand_grounding'     => $this->getBrandGrounding($engine),
+            'platform_adapt'      => $this->getPlatformAdapt($engine),
         ];
     }
 
@@ -72,6 +77,35 @@ class EngineIntelligenceService
             $lines[] = "\nConstraints:";
             foreach ($briefing['constraints'] as $c) {
                 $lines[] = "- {$c->content}";
+            }
+        }
+
+        /* b6-briefing */ // Phase 2 — surface previously-hidden categories. Each
+        // item is trimmed to 280 chars so the briefing stays token-tight even with
+        // 4 new sections. Each category gates on emptiness so engines without
+        // seeded rows don't get empty section headers.
+        if (!empty($briefing['industry_patterns'])) {
+            $lines[] = "\nIndustry patterns:";
+            foreach ($briefing['industry_patterns'] as $row) {
+                $lines[] = "- " . mb_substr($row->content, 0, 280);
+            }
+        }
+        if (!empty($briefing['chains'])) {
+            $lines[] = "\nCross-engine chains:";
+            foreach ($briefing['chains'] as $row) {
+                $lines[] = "- " . mb_substr($row->content, 0, 280);
+            }
+        }
+        if (!empty($briefing['brand_grounding'])) {
+            $lines[] = "\nBrand grounding rules:";
+            foreach ($briefing['brand_grounding'] as $row) {
+                $lines[] = "- " . mb_substr($row->content, 0, 280);
+            }
+        }
+        if (!empty($briefing['platform_adapt'])) {
+            $lines[] = "\nChannel / platform adaptations:";
+            foreach ($briefing['platform_adapt'] as $row) {
+                $lines[] = "- " . mb_substr($row->content, 0, 280);
             }
         }
 
@@ -218,6 +252,44 @@ class EngineIntelligenceService
             ->where('engine', $engine)->where('knowledge_type', 'effectiveness_data')
             ->orderByDesc('effectiveness_score')
             ->limit(10)->get()->toArray();
+    }
+
+    /* b6-briefing */
+
+    /** Industry-specific reasoning patterns (gym, spa, restaurant, etc.). Capped at 5. */
+    private function getIndustryPatterns(string $engine, int $cap = 5): array
+    {
+        return DB::table('engine_intelligence')
+            ->where('engine', $engine)->where('knowledge_type', 'industry_pattern')
+            ->orderByDesc('usage_count')->orderByDesc('effectiveness_score')
+            ->limit($cap)->get()->toArray();
+    }
+
+    /** Cross-engine automation chains (trigger → action). Capped at 5. */
+    private function getChains(string $engine, int $cap = 5): array
+    {
+        return DB::table('engine_intelligence')
+            ->where('engine', $engine)->where('knowledge_type', 'chain')
+            ->orderByDesc('usage_count')->orderByDesc('effectiveness_score')
+            ->limit($cap)->get()->toArray();
+    }
+
+    /** Brand voice/tone application rules per action. Capped at 5. */
+    private function getBrandGrounding(string $engine, int $cap = 5): array
+    {
+        return DB::table('engine_intelligence')
+            ->where('engine', $engine)->where('knowledge_type', 'brand_grounding')
+            ->orderByDesc('usage_count')->orderByDesc('effectiveness_score')
+            ->limit($cap)->get()->toArray();
+    }
+
+    /** Channel / platform-specific adaptations. Capped at 5. */
+    private function getPlatformAdapt(string $engine, int $cap = 5): array
+    {
+        return DB::table('engine_intelligence')
+            ->where('engine', $engine)->where('knowledge_type', 'platform_adapt')
+            ->orderByDesc('usage_count')->orderByDesc('effectiveness_score')
+            ->limit($cap)->get()->toArray();
     }
 
     // ── Default Data — ALL 11 ENGINES ────────────────────────

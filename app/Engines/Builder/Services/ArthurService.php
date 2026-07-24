@@ -59,17 +59,34 @@ class ArthurService
     // FIX 4 — industry keyword deny-list. If a generated service title
     // contains a keyword from a DIFFERENT industry, we fall back to the
     // manifest default. Keys are the site's industry.
+    // PATCH (deny re-key, 2026-07-24) — Keys MUST be on-disk template slugs
+    // (the resolved $industry passed to isCrossIndustryLeak), NOT the old
+    // abstract vocab ('fitness','healthcare','legal'…). With abstract keys the
+    // lookup missed for every industry except 'restaurant', silently disabling
+    // the cross-industry copy-leak guard platform-wide — which is how a
+    // clothing store rendered full "Managed IT Services" copy unflagged.
     private const INDUSTRY_DENY = [
-        'fitness'      => ['dining','restaurant','cuisine','menu','chef','bakery','tasting','wedding','venue','clinic','attorney','law firm','property','listing','couture','atelier','saas','api','endpoint'],
-        'restaurant'   => ['workout','fitness','gym','hiit','yoga','pilates','strength training','clinic','attorney','property','listing','couture','saas','api','endpoint'],
-        'healthcare'   => ['dining','cuisine','menu','workout','hiit','yoga','couture','atelier','property','listing','saas','api','endpoint'],
-        'legal'        => ['dining','cuisine','menu','workout','hiit','yoga','clinic','salon','couture','saas','api'],
-        'beauty'       => ['dining','cuisine','menu','workout','hiit','yoga','attorney','law firm','property','saas','api','endpoint'],
-        'real_estate'  => ['dining','cuisine','menu','workout','hiit','yoga','clinic','attorney','couture','saas','api'],
-        'interior_design' => ['dining','cuisine','menu','workout','hiit','clinic','attorney','property listing','saas','api'],
-        'fashion'      => ['dining','cuisine','menu','workout','hiit','clinic','attorney','property listing','saas','api'],
-        'technology'   => ['dining','cuisine','menu','workout','hiit','yoga','clinic','attorney','couture','atelier'],
-        'events'       => ['dining menu','cuisine','workout','hiit','yoga','clinic','attorney','saas','api'],
+        'gym'                => ['dining','restaurant','cuisine','menu','chef','bakery','tasting','wedding','venue','clinic','attorney','law firm','property','listing','couture','atelier','saas','api','endpoint'],
+        'restaurant'         => ['workout','fitness','gym','hiit','yoga','pilates','strength training','clinic','attorney','property','listing','couture','saas','api','endpoint'],
+        'cafe'               => ['workout','fitness','gym','hiit','yoga','pilates','clinic','attorney','property','listing','saas','api','endpoint'],
+        'catering'           => ['workout','fitness','gym','hiit','yoga','clinic','attorney','property','listing','saas','api','endpoint'],
+        'dental'             => ['dining','cuisine','menu','workout','hiit','yoga','couture','atelier','property','listing','saas','api','endpoint'],
+        'medical_clinic'     => ['dining','cuisine','menu','workout','hiit','yoga','couture','atelier','property','listing','saas','api','endpoint'],
+        'aesthetic_clinic'   => ['dining','cuisine','menu','kitchen','workout','hiit','yoga','property','listing','saas','api','endpoint'],
+        'consulting'         => ['dining','cuisine','menu','workout','hiit','yoga','clinic','salon','couture','saas','api'],
+        'beauty_salon'       => ['dining','cuisine','menu','workout','hiit','yoga','attorney','law firm','property','saas','api','endpoint'],
+        'barbershop'         => ['dining','cuisine','menu','workout','hiit','yoga','attorney','law firm','property','saas','api','endpoint'],
+        'real_estate_agency' => ['dining','cuisine','menu','workout','hiit','yoga','clinic','attorney','couture','saas','api'],
+        'interior_design'    => ['dining','cuisine','menu','workout','hiit','clinic','attorney','saas','api'],
+        'architecture'       => ['dining','cuisine','menu','workout','hiit','clinic','attorney','saas','api'],
+        'retail_shop'        => ['dining','cuisine','menu','workout','hiit','clinic','attorney','saas','api','endpoint'],
+        'ecommerce'          => ['dining','cuisine','menu','workout','hiit','clinic','attorney','saas','api'],
+        'it_services'        => ['dining','cuisine','menu','workout','hiit','yoga','clinic','attorney','couture','atelier'],
+        'marketing_agency'   => ['dining','cuisine','menu','workout','hiit','yoga','clinic','attorney','couture','atelier'],
+        'home_services'      => ['dining','cuisine','menu','workout','hiit','yoga','clinic','attorney','couture','saas','api'],
+        'automotive'         => ['dining','cuisine','menu','workout','hiit','yoga','clinic','attorney','couture','saas','api'],
+        'pet_services'       => ['dining','cuisine','menu','workout','hiit','yoga','attorney','law firm','saas','api'],
+        'event_venue'        => ['dining menu','cuisine','workout','hiit','yoga','clinic','attorney','saas','api'],
     ];
 
     // BUG 2 FIX — keyword → canonical industry map. Order of keys matters:
@@ -101,15 +118,15 @@ class ArthurService
         'tech'                     => 'technology',
         'digital'                  => 'technology',
         // Education (new)
-        'education'                => 'education',
-        'school'                   => 'education',
-        'university'               => 'education',
-        'college'                  => 'education',
-        'institute'                => 'education',
-        'academy'                  => 'education',
-        'tutoring'                 => 'education',
-        'training center'          => 'education',
-        'online course'            => 'education',
+        'education'                => 'tutoring',
+        'school'                   => 'tutoring',
+        'university'               => 'tutoring',
+        'college'                  => 'tutoring',
+        'institute'                => 'tutoring',
+        'academy'                  => 'tutoring',
+        'tutoring'                 => 'tutoring',
+        'training center'          => 'tutoring',
+        'online course'            => 'tutoring',
         // Automotive (new)
         'automotive'               => 'automotive',
         'car dealership'           => 'automotive',
@@ -121,13 +138,13 @@ class ArthurService
         'car rental'               => 'automotive',
         'detailing'                => 'automotive',
         // Hospitality (new)
-        'hotel'                    => 'hospitality',
-        'hospitality'              => 'hospitality',
-        'resort'                   => 'hospitality',
-        'serviced apartment'       => 'hospitality',
-        'guesthouse'               => 'hospitality',
-        'boutique hotel'           => 'hospitality',
-        'vacation rental'          => 'hospitality',
+        'hotel'                    => 'hotel',
+        'hospitality'              => 'hotel',
+        'resort'                   => 'hotel',
+        'serviced apartment'       => 'hotel',
+        'guesthouse'               => 'hotel',
+        'boutique hotel'           => 'hotel',
+        'vacation rental'          => 'hotel',
         // Cafe (new — split from restaurant)
         'cafe'                     => 'cafe',
         'coffee shop'              => 'cafe',
@@ -139,16 +156,16 @@ class ArthurService
         'breakfast'                => 'cafe',
         'dessert shop'             => 'cafe',
         // Cleaning (new)
-        'cleaning services'        => 'cleaning',
-        'cleaning'                 => 'cleaning',
-        'maid service'             => 'cleaning',
-        'housekeeping'             => 'cleaning',
-        'office cleaning'          => 'cleaning',
-        'deep cleaning'            => 'cleaning',
-        'move-out cleaning'        => 'cleaning',
-        'post construction cleaning' => 'cleaning',
-        'sanitization'             => 'cleaning',
-        'disinfection'             => 'cleaning',
+        'cleaning services'        => 'home_services',
+        'cleaning'                 => 'home_services',
+        'maid service'             => 'home_services',
+        'housekeeping'             => 'home_services',
+        'office cleaning'          => 'home_services',
+        'deep cleaning'            => 'home_services',
+        'move-out cleaning'        => 'home_services',
+        'post construction cleaning' => 'home_services',
+        'sanitization'             => 'home_services',
+        'disinfection'             => 'home_services',
         // Construction (new)
         'construction'             => 'construction',
         'contractor'               => 'construction',
@@ -161,14 +178,14 @@ class ArthurService
         'building contractor'      => 'construction',
         'joinery'                  => 'construction',
         // Photography (new)
-        'photography'              => 'photography',
-        'photographer'             => 'photography',
-        'photo studio'             => 'photography',
-        'videography'              => 'photography',
-        'videographer'             => 'photography',
-        'wedding photographer'     => 'photography',
-        'portrait studio'          => 'photography',
-        'commercial photography'   => 'photography',
+        'photography'              => 'consulting',
+        'photographer'             => 'consulting',
+        'photo studio'             => 'consulting',
+        'videography'              => 'consulting',
+        'videographer'             => 'consulting',
+        'wedding photographer'     => 'consulting',
+        'portrait studio'          => 'consulting',
+        'commercial photography'   => 'consulting',
         // Childcare (new)
         'childcare'                => 'childcare',
         'nursery'                  => 'childcare',
@@ -189,29 +206,29 @@ class ArthurService
         'strategy'                 => 'consulting',
         'advisory'                 => 'consulting',
         // Finance (new)
-        'finance'                  => 'finance',
-        'accounting'               => 'finance',
-        'accountant'               => 'finance',
-        'financial advisor'        => 'finance',
-        'tax'                      => 'finance',
-        'audit'                    => 'finance',
-        'bookkeeping'              => 'finance',
-        'payroll'                  => 'finance',
-        'vat'                      => 'finance',
-        'cfo services'             => 'finance',
-        'wealth management'        => 'finance',
+        'finance'                  => 'consulting',
+        'accounting'               => 'consulting',
+        'accountant'               => 'consulting',
+        'financial advisor'        => 'consulting',
+        'tax'                      => 'consulting',
+        'audit'                    => 'consulting',
+        'bookkeeping'              => 'consulting',
+        'payroll'                  => 'consulting',
+        'vat'                      => 'consulting',
+        'cfo services'             => 'consulting',
+        'wealth management'        => 'consulting',
         // Wellness (new)
-        'wellness'                 => 'wellness',
-        'nutrition'                => 'wellness',
-        'nutritionist'             => 'wellness',
-        'life coach'               => 'wellness',
-        'mental health'            => 'wellness',
-        'therapist'                => 'wellness',
-        'meditation'               => 'wellness',
-        'holistic'                 => 'wellness',
-        'naturopath'               => 'wellness',
-        'health coach'             => 'wellness',
-        'mindfulness'              => 'wellness',
+        'wellness'                 => 'medical_clinic',
+        'nutrition'                => 'medical_clinic',
+        'nutritionist'             => 'medical_clinic',
+        'life coach'               => 'medical_clinic',
+        'mental health'            => 'medical_clinic',
+        'therapist'                => 'medical_clinic',
+        'meditation'               => 'medical_clinic',
+        'holistic'                 => 'medical_clinic',
+        'naturopath'               => 'medical_clinic',
+        'health coach'             => 'medical_clinic',
+        'mindfulness'              => 'medical_clinic',
         // Pet services (new)
         'pet'                      => 'pet_services',
         'veterinary'               => 'pet_services',
@@ -225,18 +242,18 @@ class ArthurService
         'animal hospital'          => 'pet_services',
         'pet daycare'              => 'pet_services',
         // Logistics (new)
-        'logistics'                => 'logistics',
-        'freight'                  => 'logistics',
-        'shipping'                 => 'logistics',
-        'courier'                  => 'logistics',
-        'delivery'                 => 'logistics',
-        'warehousing'              => 'logistics',
-        'moving company'           => 'logistics',
-        'relocation'               => 'logistics',
-        'cargo'                    => 'logistics',
-        'supply chain'             => 'logistics',
-        'last mile'                => 'logistics',
-        'movers'                   => 'logistics',
+        'logistics'                => 'consulting',
+        'freight'                  => 'consulting',
+        'shipping'                 => 'consulting',
+        'courier'                  => 'consulting',
+        'delivery'                 => 'consulting',
+        'warehousing'              => 'consulting',
+        'moving company'           => 'consulting',
+        'relocation'               => 'consulting',
+        'cargo'                    => 'consulting',
+        'supply chain'             => 'consulting',
+        'last mile'                => 'consulting',
+        'movers'                   => 'consulting',
         // Architecture (new)
         'architecture'             => 'architecture',
         'architect'                => 'architecture',
@@ -250,52 +267,181 @@ class ArthurService
         // beat 'real estate' / 'property' which go to the company-site
         // 'real_estate' template. Keys ordered so the more-specific phrase
         // matches first via normalizeIndustry()'s longest-key-wins rule.
-        'real estate broker'       => 'real_estate_broker',
-        'property broker'          => 'real_estate_broker',
-        'real estate agent'        => 'real_estate_broker',
-        'property agent'           => 'real_estate_broker',
-        'property consultant'      => 'real_estate_broker',
-        'realtor'                  => 'real_estate_broker',
-        'broker'                   => 'real_estate_broker',
-        // Legacy / existing industries
-        'law firm'                 => 'legal',
-        'lawyer'                   => 'legal',
-        'attorney'                 => 'legal',
-        'clinic'                   => 'healthcare',
-        'hospital'                 => 'healthcare',
-        'doctor'                   => 'healthcare',
-        'dental'                   => 'healthcare',
-        'gym'                      => 'fitness',
-        'yoga'                     => 'fitness',
-        'pilates'                  => 'fitness',
-        'personal trainer'         => 'fitness',
-        'salon'                    => 'beauty',
-        'spa'                      => 'beauty',
-        'barbershop'               => 'beauty',
+        'real estate broker'       => 'real_estate_agency',
+        'property broker'          => 'real_estate_agency',
+        'real estate agent'        => 'real_estate_agency',
+        'property agent'           => 'real_estate_agency',
+        'property consultant'      => 'real_estate_agency',
+        'realtor'                  => 'real_estate_agency',
+        'broker'                   => 'real_estate_agency',
+        // v1.4.4 (2026-05-30) — legacy aliases REMAPPED to actual template
+        // slugs. Before this, `legal`, `healthcare`, `fitness`, `beauty`,
+        // `real_estate`, `fashion`, `events` were the values — but no such
+        // templates exist on disk. Routing here pointed at the void; the
+        // fallback only saved obvious cases. Now each routes to a real
+        // template manifest.
+        'law firm'                 => 'consulting',         // no `legal` template; consulting is closest professional services
+        'lawyer'                   => 'consulting',
+        'attorney'                 => 'consulting',
+        'clinic'                   => 'medical_clinic',
+        'hospital'                 => 'medical_clinic',
+        'doctor'                   => 'medical_clinic',
+        'gym'                      => 'gym',
+        'yoga'                     => 'gym',
+        'pilates'                  => 'gym',
+        'personal trainer'         => 'gym',
+        'salon'                    => 'beauty_salon',
+        'spa'                      => 'beauty_salon',
+        'barbershop'               => 'barbershop',         // own template now (was routed to beauty)
+        'barber'                   => 'barbershop',
         'restaurant'               => 'restaurant',
         'bistro'                   => 'restaurant',
         'food'                     => 'restaurant',
         'interior'                 => 'interior_design',
-        'real estate'              => 'real_estate',
-        'property'                 => 'real_estate',
-        'fashion'                  => 'fashion',
-        'clothing'                 => 'fashion',
-        'boutique'                 => 'fashion',
-        'wedding'                  => 'events',
-        'events'                   => 'events',
+        'real estate'              => 'real_estate_agency',
+        'property'                 => 'real_estate_agency',
+        'fashion'                  => 'retail_shop',        // closest match — `fashion` template doesn't exist
+        'clothing'                 => 'retail_shop',
+        'boutique'                 => 'retail_shop',
+        'wedding'                  => 'event_venue',
+        'events'                   => 'event_venue',
+        // v1.4.4 — direct routes for templates that the prior map missed
+        'home cleaning'            => 'home_services',
+        'gardening'                => 'home_services',
+        'landscaping'              => 'home_services',
+        'pool service'             => 'home_services',
+        'handyman'                 => 'home_services',
+        'pest control'             => 'home_services',
+        'ecommerce'                => 'ecommerce',
+        'online store'             => 'ecommerce',
+        'e-commerce'               => 'ecommerce',
+        'dropshipping'             => 'ecommerce',
+        'training center'          => 'training_center',
+        'corporate training'       => 'training_center',
+        'professional training'    => 'training_center',
+        'travel agency'            => 'travel_agency',
+        'tour operator'            => 'travel_agency',
+        'tour'                     => 'travel_agency',
+        'online course'            => 'online_courses',
+        'online courses'           => 'online_courses',
+        'e-learning'               => 'online_courses',
+        'mooc'                     => 'online_courses',
+        'news channel'             => 'news_channel',
+        'newspaper'                => 'news_channel',
+        'publishing'               => 'news_channel',
+        'media publication'        => 'news_channel',
+        'event venue'              => 'event_venue',
+        'banquet hall'             => 'event_venue',
+        'conference centre'        => 'event_venue',
+        'conference center'        => 'event_venue',
+        // Legacy slugs we shouldn't keep emitting (no template manifest):
+        // 'cleaning', 'logistics', 'finance', 'wellness', 'photography',
+        // 'real_estate_broker', 'education', 'healthcare', 'fitness',
+        // 'beauty', 'real_estate', 'fashion', 'events', 'hospitality',
+        // 'legal' — keys above now point at real templates; resolveTemplateSlug's
+        // catch-all regex handles the residual cases (cleaning → home_services,
+        // logistics → consulting, photography → consulting, wellness → medical_clinic).
     ];
 
     // Canonical industry slugs the template system understands.
+    // v1.4.4 (2026-05-30) — synced to the 31 templates that actually
+    // exist on disk at storage/templates/. Legacy "category" aliases
+    // (healthcare, fashion, beauty, fitness, hospitality, events, education,
+    // legal) are still routed via KEYWORD_TO_TEMPLATE + resolveTemplateSlug()
+    // — they map TO these 31 template slugs but aren't themselves "valid"
+    // raw industry slugs anymore. This keeps normalizeIndustry() from
+    // emitting an industry name that has no template manifest.
     private const VALID_INDUSTRIES = [
-        // Original 10
-        'restaurant','interior_design','fitness','healthcare','legal',
-        'real_estate','fashion','technology','events','beauty',
-        // Added 2026-04-19
-        'marketing_agency','education','automotive','hospitality','cafe',
-        'cleaning','construction','photography','childcare','consulting',
-        'finance','wellness','pet_services','logistics','architecture',
-        'real_estate_broker',
+        'aesthetic_clinic', 'architecture', 'automotive', 'barbershop',
+        'beauty_salon', 'cafe', 'catering', 'childcare', 'construction',
+        'consulting', 'dental', 'ecommerce', 'event_venue', 'gym',
+        'home_services', 'hotel', 'interior_design', 'it_services',
+        'marketing_agency', 'medical_clinic', 'news_channel', 'online_courses',
+        'pet_services', 'real_estate_agency', 'resort', 'restaurant',
+        'retail_shop', 'short_term_rental', 'training_center', 'travel_agency',
+        'tutoring',
     ];
+
+    /**
+     * v1.4.4 (2026-05-30) — Page template catalogue.
+     *
+     * Authoritative metadata for the 17 page templates surfaced by
+     * `buildDefaultSectionsForPage()`. This array describes WHAT each
+     * template is for; the switch in buildDefaultSectionsForPage()
+     * remains the source of truth for the actual section stack.
+     *
+     * Categories:
+     *   universal          — works for any industry
+     *   bookings_events    — reservations / appointments / classes
+     *   listings           — searchable catalogues (property, room, product)
+     *   visual_portfolios  — gallery-driven (transformations, menu, work)
+     *   commerce_account   — cart → checkout → account flow
+     *
+     * Used by AdminTemplatesController::pageTemplates() to populate the
+     * admin "Page Templates" tab.
+     */
+    public const PAGE_TEMPLATE_CATALOGUE = [
+        // ─── Universal (D-1) ────────────────────────────────────────
+        'about'           => ['label' => 'About',           'category' => 'universal',         'aliases' => ['about_us'],                                                            'industries' => ['*'],                                                                                                                                                                                    'description' => "Company story + values + team + testimonials + CTA. Industry-agnostic."],
+        'services'        => ['label' => 'Services',        'category' => 'universal',         'aliases' => [],                                                                       'industries' => ['*'],                                                                                                                                                                                    'description' => "Service offerings as cards + testimonials + inline quote form."],
+        'pricing'         => ['label' => 'Pricing',         'category' => 'universal',         'aliases' => [],                                                                       'industries' => ['*'],                                                                                                                                                                                    'description' => "Tiered pricing + FAQ + closing CTA."],
+        'contact'         => ['label' => 'Contact',         'category' => 'universal',         'aliases' => [],                                                                       'industries' => ['*'],                                                                                                                                                                                    'description' => "Hero + contact form + footer."],
+        'faq'             => ['label' => 'FAQ',             'category' => 'universal',         'aliases' => [],                                                                       'industries' => ['*'],                                                                                                                                                                                    'description' => "Common questions with industry-aware sample answers."],
+        'legal'           => ['label' => 'Legal',           'category' => 'universal',         'aliases' => ['privacy', 'privacy_policy', 'terms', 'terms_of_service'],              'industries' => ['*'],                                                                                                                                                                                    'description' => "Privacy policy / Terms of service skeleton."],
+
+        // ─── Bookings + events (D-2) ────────────────────────────────
+        'booking'         => ['label' => 'Booking / Appointments', 'category' => 'bookings_events', 'aliases' => ['book', 'book_now', 'appointments', 'reservations', 'reserve'],     'industries' => ['aesthetic_clinic', 'dental', 'medical_clinic', 'beauty_salon', 'barbershop', 'gym', 'hotel', 'resort', 'restaurant', 'cafe', 'event_venue', 'training_center', 'tutoring'],            'description' => "Hero + booking_form (service picker, date+time, contact fields) + features + FAQ + footer."],
+        'events'          => ['label' => 'Events / Classes',       'category' => 'bookings_events', 'aliases' => ['event', 'classes', 'schedule', 'whats_on'],                        'industries' => ['event_venue', 'training_center', 'online_courses', 'hotel', 'resort', 'cafe', 'restaurant', 'gym', 'news_channel'],                                                                       'description' => "Hero + events_calendar (grid/list of upcoming sessions) + CTA + footer."],
+
+        // ─── Listings (D-3) ─────────────────────────────────────────
+        'listing_browser' => ['label' => 'Listing browser',  'category' => 'listings',         'aliases' => ['listings', 'properties', 'rooms', 'products', 'shop', 'catalogue', 'catalog', 'inventory', 'fleet', 'courses', 'menu_browser'], 'industries' => ['real_estate_agency', 'short_term_rental', 'ecommerce', 'retail_shop', 'hotel', 'resort', 'automotive', 'online_courses', 'training_center', 'tutoring'],                              'description' => "Hero + filter_bar + grid of cards + cross-sell CTA. Industry-aware kind label (properties / rooms / products / vehicles / courses)."],
+        'listing_detail'  => ['label' => 'Listing detail',   'category' => 'listings',         'aliases' => ['property', 'product', 'room', 'course'],                               'industries' => ['real_estate_agency', 'short_term_rental', 'ecommerce', 'hotel', 'resort', 'automotive', 'online_courses'],                                                                              'description' => "Hero + key-detail features + gallery + trust signals + CTA + inquiry form + related listings."],
+        'locations'       => ['label' => 'Locations',        'category' => 'listings',         'aliases' => ['location', 'branches', 'find_us', 'store_finder', 'stores'],           'industries' => ['*'],                                                                                                                                                                                    'description' => "Hero + map with branch list + trust signals + CTA. Suits any tenant with physical presence."],
+
+        // ─── Visual portfolios (D-4) ────────────────────────────────
+        'before_after'    => ['label' => 'Before / After',   'category' => 'visual_portfolios','aliases' => ['before_and_after', 'transformations', 'results', 'case_studies'],      'industries' => ['aesthetic_clinic', 'dental', 'beauty_salon', 'barbershop', 'home_services', 'construction', 'interior_design'],                                                                         'description' => "Hero + gallery (paired before/after) + testimonials + stat row + CTA."],
+        'menu'            => ['label' => 'Menu',             'category' => 'visual_portfolios','aliases' => ['food_menu', 'dishes', 'drinks', 'wine_list'],                          'industries' => ['restaurant', 'cafe', 'catering', 'hotel', 'resort'],                                                                                                                                    'description' => "Hero + filter_bar (sections / dietary) + 2-column grid of items + reservation CTA."],
+        'portfolio'       => ['label' => 'Portfolio',        'category' => 'visual_portfolios','aliases' => ['work', 'projects', 'gallery_page', 'showcase'],                        'industries' => ['architecture', 'interior_design', 'construction', 'marketing_agency', 'consulting', 'it_services'],                                                                                     'description' => "Hero + filter_bar + media-style grid + testimonials + project CTA."],
+
+        // ─── Commerce + account (D-5) ───────────────────────────────
+        'cart'            => ['label' => 'Cart',             'category' => 'commerce_account', 'aliases' => ['basket', 'shopping_cart'],                                              'industries' => ['ecommerce', 'retail_shop', 'online_courses'],                                                                                                                                           'description' => "Cart summary (line items + tax + shipping + total) + trust signals + footer."],
+        'checkout'        => ['label' => 'Checkout',         'category' => 'commerce_account', 'aliases' => ['checkout_page'],                                                        'industries' => ['ecommerce', 'retail_shop', 'online_courses'],                                                                                                                                           'description' => "Multi-section checkout form (contact / shipping / payment) + order summary sidebar + trust signals."],
+        'account'         => ['label' => 'Account',          'category' => 'commerce_account', 'aliases' => ['my_account', 'dashboard', 'profile_page'],                              'industries' => ['ecommerce', 'retail_shop', 'online_courses', 'short_term_rental'],                                                                                                                      'description' => "Account nav (top) + account panel (orders / addresses / profile / wishlist)."],
+    ];
+
+    /**
+     * Return the page template catalogue enriched with the actual section
+     * stack each template produces. Sample data used so the structure is
+     * representative — actual tenant data is substituted at runtime.
+     */
+    public function listPageTemplates(): array
+    {
+        $sample = [
+            'business_name' => 'Sample Business',
+            'industry'      => 'consulting',
+            'core_service'  => 'our core service',
+            'services'      => ['Service one', 'Service two', 'Service three'],
+            'location'      => 'Dubai',
+        ];
+
+        $out = [];
+        foreach (self::PAGE_TEMPLATE_CATALOGUE as $slug => $meta) {
+            $stack = $this->buildDefaultSectionsForPage($slug, $sample);
+            $types = array_values(array_map(fn ($s) => $s['type'] ?? '', $stack));
+            $out[] = [
+                'slug'                   => $slug,
+                'label'                  => $meta['label'],
+                'category'               => $meta['category'],
+                'aliases'                => $meta['aliases'],
+                'recommended_industries' => $meta['industries'],
+                'description'            => $meta['description'],
+                'section_types'          => $types,
+                'section_count'          => count($types),
+                'preview_url'            => '/page-templates/' . $slug . '/preview',
+            ];
+        }
+        return $out;
+    }
 
     public function __construct()
     {
@@ -614,6 +760,17 @@ class ArthurService
         'handyman'               => 'home_services',
         'cleaning'               => 'home_services',
         'cleaning services'      => 'home_services',
+        'shelving installation'  => 'home_services',
+        'shelving systems'       => 'home_services',
+        'shelving'               => 'home_services',
+        'installation services'  => 'home_services',
+        'installation'           => 'home_services',
+        'manufacturing'          => 'construction',
+        'fabrication'            => 'construction',
+        'metalwork'              => 'construction',
+        'carpentry'              => 'construction',
+        'woodwork'               => 'construction',
+        'joinery'                => 'construction',
         // Auto
         'auto repair'            => 'automotive',
         'car repair'             => 'automotive',
@@ -648,6 +805,10 @@ class ArthurService
         'veterinary'             => 'pet_services',
         'veterinarian'           => 'pet_services',
         'vet clinic'             => 'pet_services',
+        'pet clinic'             => 'pet_services',
+        'animal hospital'        => 'pet_services',
+        'animal clinic'          => 'pet_services',
+        'pet hospital'           => 'pet_services',
         'pet'                    => 'pet_services',
         'childcare'              => 'childcare',
         'daycare'                => 'childcare',
@@ -739,6 +900,48 @@ class ArthurService
         // 4. Final fallback — 'consulting' is the most generic professional
         // template; safer than 'restaurant' for unknown businesses.
         return 'consulting';
+    }
+
+    // PATCH (name-grounding, 2026-07-24) — Derive a template slug from a
+    // business NAME (or any free text) but ONLY when the text carries a real
+    // industry signal; returns null otherwise so callers can fall back to the
+    // LLM's classification. Unlike resolveTemplateSlug (which is fed a
+    // user-typed industry string and safely uses bare substring matching),
+    // this scans a NAME, where bare substrings are dangerous — "Caspian
+    // Travel" contains "spa", "Bishop & Co" contains "shop", "Winner Gym"
+    // contains "inn". So every match here is WORD-BOUNDARIED. Longest keyword
+    // wins, mirroring resolveTemplateSlug's precedence.
+    private function confidentSlugFromText(?string $text): ?string
+    {
+        $text = strtolower(trim((string) $text));
+        if ($text === '') return null;
+
+        // 1. Word-boundaried longest-keyword-wins over the disk-slug map.
+        $keys = array_keys(self::KEYWORD_TO_TEMPLATE);
+        usort($keys, fn($a, $b) => strlen($b) - strlen($a));
+        foreach ($keys as $kw) {
+            if (preg_match('/\b' . preg_quote($kw, '/') . '\b/', $text)) {
+                return self::KEYWORD_TO_TEMPLATE[$kw];
+            }
+        }
+
+        // 2. Small curated stem set for morphological variants the exact-word
+        // map misses ("Architectural", "Dentistry", "Orthodontics",
+        // "Veterinary"). Prefix-boundaried and deliberately unambiguous so a
+        // name can never over-trigger an override.
+        $stems = [
+            '/\barchitect/'   => 'architecture',
+            '/\bdent(al|ist)/' => 'dental',
+            '/\borthodont/'   => 'dental',
+            '/\bveterinar/'   => 'pet_services',
+            '/\bshelv/'       => 'home_services',
+        ];
+        foreach ($stems as $regex => $slug) {
+            if (preg_match($regex, $text)) return $slug;
+        }
+
+        // No confident signal in the name — let the LLM's guess stand.
+        return null;
     }
 
     // PATCH (image-injection, 2026-05-09) — Build a fallback image pool
@@ -1768,46 +1971,118 @@ PROMPT;
         ];
     }
 
+    /**
+     * P1 (2026-06-24) — provision a NEW dedicated workspace for an additional
+     * website (website = workspace architecture). Seeds: owner membership, the
+     * inherited plan (subscription pointing at the billing workspace's plan),
+     * the same agent team, and billing_workspace_id = the user's pool. NO own
+     * credit row — credits resolve to the shared pool. Returns new workspace id.
+     */
+    public function provisionWebsiteWorkspace(int $sourceWsId, int $ownerUserId, int $billingWs, string $name): int
+    {
+        $base = \Illuminate\Support\Str::slug($name) ?: 'site';
+        $slug = $base . '-' . substr(md5($name . microtime(true)), 0, 6);
+
+        $newWsId = (int) DB::table('workspaces')->insertGetId([
+            'name'                 => $name,
+            'slug'                 => $slug,
+            'created_by'           => $ownerUserId,
+            'billing_workspace_id' => $billingWs,   // shares the user's credit pool
+            'onboarded'            => 1,            // built site → skip onboarding
+            'created_at'           => now(),
+            'updated_at'           => now(),
+        ]);
+
+        // Owner membership so the user can switch to / access it.
+        DB::table('workspace_users')->insert([
+            'workspace_id' => $newWsId,
+            'user_id'      => $ownerUserId,
+            'role'         => 'owner',
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        // Inherit the plan from the billing/primary workspace (seed subscription).
+        $srcSub = DB::table('subscriptions')->where('workspace_id', $billingWs)
+            ->whereIn('status', ['active', 'trialing'])->latest()->first();
+        if ($srcSub) {
+            DB::table('subscriptions')->insert([
+                'workspace_id'         => $newWsId,
+                'plan_id'              => $srcSub->plan_id,
+                'status'               => $srcSub->status,
+                'provider'             => 'inherited',
+                'chatbot_addon_active' => $srcSub->chatbot_addon_active ?? 0,
+                'created_at'           => now(),
+                'updated_at'           => now(),
+            ]);
+        }
+
+        // Attach the same agent team (copy pivot rows → no NOT NULL surprises).
+        foreach (DB::table('workspace_agents')->where('workspace_id', $sourceWsId)->get() as $row) {
+            $r = (array) $row;
+            unset($r['id']);
+            $r['workspace_id'] = $newWsId;
+            $r['created_at']   = now();
+            $r['updated_at']   = now();
+            DB::table('workspace_agents')->insert($r);
+        }
+
+        return $newWsId;
+    }
+
     private function generateWebsite(int $wsId, array $data): array
     {
-        // PATCH (plan-limit, 2026-05-09) — Mirrors BuilderService::createWebsite's
-        // limit check. ArthurService used to bypass it (insert directly into
-        // websites table), so users could exceed their plan via Arthur even
-        // when the create-website route enforced the cap.
+        $name = $data['business_name'] ?? 'My Business';
+
+        // ── P1 (2026-06-24): WEBSITE = ITS OWN WORKSPACE ────────────────────
+        // Each built website lives in its OWN workspace (isolated CRM/SEO/blog/
+        // tasks/agent-memory; they can be different companies). Website #1 uses
+        // the current workspace; #2+ each get a freshly-seeded workspace that
+        // SHARES the user's credit pool + plan. Quota = plan max_websites
+        // counted across ALL the user's workspaces (the pool family).
+        $ownerUserId = (int) (DB::table('workspace_users')->where('workspace_id', $wsId)->where('role', 'owner')->value('user_id')
+            ?: DB::table('workspaces')->where('id', $wsId)->value('created_by') ?: 0);
+        $billingWs = (int) (DB::table('workspaces')->where('id', $wsId)->value('billing_workspace_id') ?: $wsId);
         try {
-            $currentCount = DB::table('websites')
-                ->where('workspace_id', $wsId)
-                ->whereNull('deleted_at')
-                ->count();
-            $sub = DB::table('subscriptions')
-                ->where('workspace_id', $wsId)
-                ->whereIn('status', ['active', 'trialing'])
-                ->latest()
-                ->first();
-            $plan = null;
-            if ($sub) $plan = DB::table('plans')->where('id', $sub->plan_id)->first();
+            $sub = DB::table('subscriptions')->where('workspace_id', $billingWs)
+                ->whereIn('status', ['active', 'trialing'])->latest()->first();
+            $plan = $sub ? DB::table('plans')->where('id', $sub->plan_id)->first() : null;
             if (! $plan) $plan = DB::table('plans')->where('slug', 'free')->first();
             $maxWebsites = (int) ($plan->max_websites ?? 1);
-            if ($currentCount >= $maxWebsites) {
+            $userWsIds = DB::table('workspaces')->where('billing_workspace_id', $billingWs)->pluck('id')->all();
+            if (empty($userWsIds)) $userWsIds = [$billingWs];
+            $totalSites = (int) DB::table('websites')->whereIn('workspace_id', $userWsIds)->whereNull('deleted_at')->count();
+            if ($totalSites >= $maxWebsites) {
                 $planName = $plan->name ?? 'Free';
                 return [
                     'type'          => 'error',
-                    'message'       => "You've reached your plan limit of {$maxWebsites} website" . ($maxWebsites === 1 ? '' : 's') . " on the {$planName} plan. Upgrade your plan or delete an existing website to continue.",
+                    'message'       => "You've reached your plan limit of {$maxWebsites} website" . ($maxWebsites === 1 ? '' : 's') . " on the {$planName} plan. Upgrade your plan or delete a website to add more.",
                     'limit_reached' => true,
-                    'current'       => $currentCount,
+                    'current'       => $totalSites,
                     'max'           => $maxWebsites,
                     'plan'          => $planName,
                 ];
             }
         } catch (\Throwable $e) {
-            // Non-fatal: if the limit lookup fails (DB hiccup), let the build
-            // proceed rather than stranding the user. BuilderService's check
-            // already runs as a backstop.
             Log::warning('[Arthur] plan-limit check failed: ' . $e->getMessage(), ['workspace_id' => $wsId]);
         }
 
+        // Target workspace: current if it has no website yet (#1 / single-site
+        // users → no change); otherwise spin up a dedicated workspace for this site.
+        try {
+            $currentHasSite = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->exists();
+            if ($currentHasSite && $ownerUserId > 0) {
+                $newWs = $this->provisionWebsiteWorkspace($wsId, $ownerUserId, $billingWs, (string) $name);
+                if ($newWs > 0) {
+                    Log::info('[Arthur] provisioned dedicated workspace for new website', ['source_ws' => $wsId, 'new_ws' => $newWs, 'name' => $name]);
+                    $wsId = $newWs; // build into the new workspace from here on
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] workspace provisioning failed; building in current workspace: ' . $e->getMessage());
+        }
+
         $rawIndustry = (string) ($data['industry'] ?? '');
-        $name = $data['business_name'] ?? 'My Business';
 
         // PATCH (template-resolution, 2026-05-09) — Resolve the free-form
         // industry string (from chat() build_data, which never normalises)
@@ -1817,6 +2092,26 @@ PROMPT;
         // "plastic surgery" / "cosmetic clinic" / "med spa" maps to
         // aesthetic_clinic. Generic medical → medical_clinic. Etc.
         $industry = $this->resolveTemplateSlug($rawIndustry);
+
+        // PATCH (name-grounding, 2026-07-24) — The live chat() path hands
+        // industry classification to a free-form LLM that has misrouted on
+        // sparse input (Architecture→interior_design, Clothing Store→
+        // it_services, Pet Clinic→medical_clinic, Shelving→consulting). The
+        // business NAME almost always states the industry outright, so run it
+        // through the keyword matcher and let a CONFIDENT name hit override the
+        // LLM's guess. confidentSlugFromText() returns null when the text has
+        // no real signal (so a signal-free name never overrides a good guess).
+        $nameSignal = $this->confidentSlugFromText((string) $name);
+        if ($nameSignal !== null && $nameSignal !== $industry) {
+            \Illuminate\Support\Facades\Log::info('[Arthur] name-grounded industry override', [
+                'name'         => $name,
+                'llm_industry' => $rawIndustry,
+                'llm_slug'     => $industry,
+                'name_slug'    => $nameSignal,
+            ]);
+            $industry = $nameSignal;
+        }
+
         $manifest = $this->templates->getManifest($industry);
 
         // Defensive double-check — if resolveTemplateSlug ever returned a
@@ -1839,18 +2134,65 @@ PROMPT;
             'resolved' => $industry,
         ]);
 
+        // PATCH (archetype routing, 2026-07-24 · P1) — the generic 'consulting'
+        // fallback is an enterprise-advisory layout that fits almost nobody. If
+        // we landed there but the business is clearly another archetype (tattoo
+        // studio → appointment service), re-route to that archetype's best
+        // template so the SECTIONS actually fit the business.
+        if ($industry === 'consulting') {
+            $bizArch = \App\Engines\Builder\Support\TemplateArchetypes::archetypeForBusiness($rawIndustry, (string) $name);
+            if ($bizArch && $bizArch !== 'professional_advisory') {
+                $reTpl = \App\Engines\Builder\Support\TemplateArchetypes::fallbackTemplate($bizArch);
+                if ($reTpl && $reTpl !== 'consulting' && ($reManifest = $this->templates->getManifest($reTpl))) {
+                    \Illuminate\Support\Facades\Log::info('[Arthur] archetype re-route', [
+                        'from' => 'consulting', 'archetype' => $bizArch, 'to' => $reTpl, 'raw' => $rawIndustry,
+                    ]);
+                    $industry = $reTpl;
+                    $manifest = $reManifest;
+                }
+            }
+        }
+
+        // Section governance (P2/P3) — blocks that don't belong to this template's
+        // archetype (e.g. a "doctors" block on a restaurant — a clone artifact) or
+        // that need real track-record data (stats/case_studies/clients) are
+        // stripped below. The maturity gate keeps credibility blocks only when the
+        // business is established WITH real data (P3); auto-builds stay conservative.
+        $established  = \App\Engines\Builder\Support\TemplateArchetypes::looksEstablished($data);
+        $removeBlocks = \App\Engines\Builder\Support\TemplateArchetypes::blocksToRemove($industry, $established);
+
         // Generate content via LLM
         $variables = $this->generateContent($data, $industry);
 
-        // Get brand colors from workspace
-        $brand = DB::table('creative_brand_identities')->where('workspace_id', $wsId)->first();
-        if ($brand) {
-            $variables['primary_color'] = $brand->primary_color ?? $variables['primary_color'];
-            $variables['secondary_color'] = $brand->secondary_color ?? $variables['secondary_color'];
+        // PATCH (hero-context, 2026-07-24) — signals reused by hero resolution
+        // (below). The text-coverage pass and demo-brand sweep intentionally run
+        // LATER (after the manifest-default injection) so their neutralizations
+        // are not overwritten by that re-defaulting step.
+        $rawIndustry  = trim((string) ($data['industry'] ?? ''));
+        $servicesText = is_array($data['services'] ?? null)
+            ? implode(', ', $data['services'])
+            : (string) ($data['services'] ?? '');
+        $templateFits = ($rawIndustry === '') || ($this->confidentSlugFromText($rawIndustry) === $industry);
+        $copyIndustry = $templateFits ? $industry : $rawIndustry;
+
+        // /* h2-arthur */ workspace brand colors via single resolver (was direct creative_brand_identities read)
+        $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+        if (!$kit['is_neutral']) {
+            $variables['primary_color']   = $kit['primary_color'];
+            $variables['secondary_color'] = $kit['secondary_color'];
         }
 
         // Set defaults
         $variables['business_name'] = $name;
+        // Logo text fallback — 14 of 31 templates use a separate {{logo}}/{{footer_logo}}
+        // text variable that defaults to a template brand placeholder ("Momentum",
+        // "Foliage", "APEX MOTORS", etc.). When the user hasn't uploaded a logo,
+        // those defaults leak into nav/footer. Force them all to business_name so
+        // the brand stays the user's. In-browser logo edits go through a different
+        // path (PUT /fields/{field}) and are unaffected.
+        foreach (['logo', 'nav_logo', 'footer_logo', 'header_logo', 'brand', 'brand_name'] as $logoKey) {
+            $variables[$logoKey] = $name;
+        }
         $variables['footer_text'] = '© ' . date('Y') . ' ' . $name . '. All rights reserved.';
         $variables['contact_address'] = $data['location'] ?? 'Dubai, UAE';
         $variables['city'] = $data['location'] ?? 'Dubai';
@@ -1864,7 +2206,9 @@ PROMPT;
         try {
             $defaultRow = DB::table('builder_default_assets')
                 ->where('asset_type', 'hero')
-                ->where('industry', $industry)
+                // Borrowed template → the slug's floor hero is the wrong industry
+                // (consulting=office); use the neutral 'default' floor instead.
+                ->where('industry', $templateFits ? $industry : 'default')
                 ->first();
             if (!$defaultRow) {
                 $defaultRow = DB::table('builder_default_assets')
@@ -1881,17 +2225,27 @@ PROMPT;
             Log::warning('[Arthur] builder_default_assets lookup failed: ' . $e->getMessage());
         }
 
-        // Check media library first, generate only if no match
-        $existingHero = \App\Services\MediaService::findOrGenerate($industry, 'hero', 'luxury', $wsId);
+        // Hero image — prefer EXISTING media, generate only if nothing applicable.
+        // Matched template: the slug's platform hero fits (findOrGenerate reuses
+        // it, one DALL-E call per industry ever). Borrowed template: the slug hero
+        // is the WRONG industry (tattoo → consulting → office), so search media by
+        // the ACTUAL business first and generate a business-context hero only as a
+        // last resort — never reuse or poison the slug's shared platform hero.
+        $existingHero = $templateFits
+            ? \App\Services\MediaService::findOrGenerate($industry, 'hero', 'luxury', $wsId)
+            : $this->findApplicableHero($rawIndustry, $servicesText, $wsId);
         if ($existingHero) {
             $variables['hero_image'] = $existingHero['url'];
-            Log::info('[Arthur] Reused existing hero image: ' . $existingHero['id']);
+            Log::info('[Arthur] Reused existing hero image: ' . ($existingHero['id'] ?? '?'));
         } else {
-        // Generate hero image
+        // Generate hero image — context depends on whether the template fits.
+        $heroPrompt = $templateFits
+            ? $this->getHeroImagePrompt($industry, $data['location'] ?? 'Dubai')
+            : $this->getBusinessHeroPrompt($rawIndustry, $servicesText, $data['location'] ?? 'Dubai');
 
         try {
             $imgResult = $this->runtime->imageGenerate(
-                $this->getHeroImagePrompt($industry, $data['location'] ?? 'Dubai'),
+                $heroPrompt,
                 ['size' => '1792x1024', 'quality' => 'standard']
             );
             if ($imgResult['success'] ?? false) {
@@ -1903,16 +2257,19 @@ PROMPT;
                     if ($imgData) {
                         file_put_contents($heroFullPath . '/' . basename($heroLocalPath), $imgData);
                         $variables['hero_image'] = $heroLocalPath;
-                        // PATCH (image-rule, 2026-05-09) — Register the hero
-                        // as a PLATFORM asset (workspace_id=null) so every
-                        // future build of the same industry reuses it via
-                        // findOrGenerate, regardless of workspace. One
-                        // DALL-E call per industry, ever.
+                        // PATCH (image-rule, 2026-05-09; hero-context 2026-07-24) —
+                        // Matched template: register as a PLATFORM asset keyed by
+                        // the slug (workspace_id=null) so every future build of that
+                        // industry reuses it — one DALL-E call per industry, ever.
+                        // Borrowed template: register WORKSPACE-scoped and keyed by
+                        // the real business industry, so it never poisons the slug's
+                        // shared hero but is still reused within this workspace.
                         try {
                             \App\Services\MediaService::registerFull(
-                                $heroLocalPath, $heroLocalPath, 'dalle', 'hero', $industry,
-                                null, // workspace_id=null → is_platform_asset=1
-                                $this->getHeroImagePrompt($industry, $data['location'] ?? 'Dubai'),
+                                $heroLocalPath, $heroLocalPath, 'dalle', 'hero',
+                                $templateFits ? $industry : ($rawIndustry !== '' ? $rawIndustry : $industry),
+                                $templateFits ? null : $wsId,
+                                $heroPrompt,
                                 'dall-e-3', 'luxury'
                             );
                         } catch (\Throwable $e) {}
@@ -1924,6 +2281,29 @@ PROMPT;
             Log::warning('[Arthur] Hero image generation failed: ' . $e->getMessage());
         }
         } // end else (no existing hero)
+
+        // BUGFIX (hero-floor, 2026-07-24) — guarantee hero_image points to a file
+        // that EXISTS. When generation times out (intermittent runtime 503) and no
+        // applicable media is found, some manifests default to a missing file
+        // (e.g. beauty_salon → /storage/builder-heroes/beauty.jpg, which doesn't
+        // exist), rendering an empty hero. Fall back to the resolved template's
+        // own builder-hero, then a guaranteed-present one.
+        $heroCur = (string) ($variables['hero_image'] ?? '');
+        $heroLocal = $heroCur !== '' && $heroCur[0] === '/'
+            ? storage_path('app/public' . preg_replace('#^/storage#', '', $heroCur))
+            : '';
+        $heroOk = $heroCur !== '' && (str_starts_with($heroCur, 'http') || ($heroLocal !== '' && is_file($heroLocal)));
+        if (!$heroOk) {
+            foreach ([$industry, 'consulting', 'restaurant'] as $slugTry) {
+                $cand = '/storage/builder-heroes/' . $slugTry . '.jpg';
+                if (is_file(storage_path('app/public/builder-heroes/' . $slugTry . '.jpg'))) {
+                    $variables['hero_image'] = $cand;
+                    $variables['og_image']   = $variables['og_image'] ?? $cand;
+                    Log::info('[Arthur] hero fell back to existing builder-hero', ['from' => $heroCur, 'to' => $cand]);
+                    break;
+                }
+            }
+        }
 
         // PATCH (image-rule, 2026-05-09) — Gallery generation REMOVED.
         // Old behaviour: 3 DALL-E calls per build × every site = ~$0.12/build
@@ -2094,6 +2474,101 @@ PROMPT;
             }
         } catch (\Throwable $e) { /* non-fatal */ }
 
+        // PATCH (no-static-text, 2026-07-24) — MUST run AFTER the FIX-3 manifest
+        // re-defaulting above, otherwise every blank we set is overwritten by the
+        // sample default again. Two passes on the FINAL variable set:
+        //   (1) FULL TEXT COVERAGE — regenerate every content field still holding
+        //       its manifest SAMPLE value from business context (text is cheap).
+        //   (2) DEMO-BRAND SWEEP — neutralize any field still carrying the
+        //       template's demo brand (canonical/og URLs, sample e-mails, or
+        //       "Summit Advisors is a…" prose) so no static template text renders.
+        $variables = $this->fillTemplateTextCoverage(
+            $variables, is_array($manifest) ? $manifest : [], $data,
+            $copyIndustry, $servicesText, $data['location'] ?? 'Dubai', $established
+        );
+
+        // PATCH (section-labels, 2026-07-24 · P2b) — the re-sectioned clone
+        // templates carry a generic "services" block that IS the menu / catalog /
+        // programs / destinations for their industry. Relabel its heading so it
+        // reads correctly (a restaurant shows "Our Menu", retail "Shop", courses
+        // "Our Courses"). Content is already industry-correct from generateContent.
+        foreach (\App\Engines\Builder\Support\TemplateArchetypes::sectionLabels($industry) as $lk => $lv) {
+            $variables[$lk] = $lv;
+        }
+
+        // P2b-full — build the bespoke industry section (real menu / catalog /
+        // destinations) that will REPLACE the generic "services" block at render.
+        $bespokeHtml = $this->bespokeSectionFor($industry, $data, $wsId);
+
+        // PATCH (no-fabricated-credibility, 2026-07-24) — Templates ship invented
+        // track-record props: stats ("22 Years in MENA", "AED 6B+ Value Created"),
+        // client logos ("Al Noor Holding", "Zenith Capital"), and case studies
+        // ("AED 380M Capital Released"). A brand-new business has done NONE of
+        // this, and regenerating would only invent DIFFERENT fake numbers — a
+        // false claim. Blank every credibility value by variable name; the
+        // matching sections are then hidden at render (see scrubSampleStaff).
+        // Users add real stats/clients later in the builder. (P3) Only blank when
+        // NOT established — an established business keeps its credibility blocks
+        // and the real values supplied via build_data / the builder UI.
+        $credPattern = '/^(stat_\d|hero_stat_\d|strip_stat_\d|stats_strip_\d|client_logo_?\d|clients_title|clients_eyebrow|case_\d)/i';
+        $isCred = fn($mk) => preg_match($credPattern, (string) $mk) || preg_match('/_metric_\d+_(value|label)$/i', (string) $mk);
+        // (P3) When ESTABLISHED, inject the business's REAL credibility data
+        // (build_data stats/clients/case_studies) into the kept blocks; blank any
+        // credibility field NOT supplied so no template SAMPLE ("Summit Advisors",
+        // "Al Noor Holding") can survive. When NOT established, blank all.
+        $injected = $established
+            ? $this->injectCredibilityData($variables, $data, $manifest['variables'] ?? [])
+            : [];
+        foreach (($manifest['variables'] ?? []) as $mk => $_mspec) {
+            if (isset($injected[$mk])) continue;
+            if ($isCred($mk)) {
+                $variables[$mk] = '';
+            }
+        }
+
+        // NOTE: lowercase BEFORE stripping — '/[^a-z0-9]/' also removes A-Z, so
+        // "Summit Advisors" would wrongly become "ummitdvisors" and never match.
+        $domainSlug = preg_replace('/[^a-z0-9]/', '', strtolower((string) $name)) ?: 'business';
+        $sampleName = trim((string) ($manifest['variables']['business_name']['default'] ?? ''));
+        $sampleSlug = preg_replace('/[^a-z0-9]/', '', strtolower($sampleName));
+
+        // Unconditional SEO/e-mail neutralization — canonical/og URLs carry the
+        // template's demo domain (e.g. coralresort.ae) whose slug need not match
+        // the demo business_name, so brand-matching alone misses them. A fresh
+        // draft has no canonical anyway -> blank; rewrite any e-mail to the
+        // business's own domain slug.
+        foreach (($manifest['variables'] ?? []) as $mk => $mspec) {
+            $cur = $variables[$mk] ?? (is_array($mspec) ? ($mspec['default'] ?? null) : null);
+            if (!is_string($cur) || $cur === '') continue;
+            if (preg_match('/canonical|og_?url/i', (string) $mk)) {
+                $variables[$mk] = '';
+            } elseif ((preg_match('/email/i', (string) $mk) || strpos($cur, '@') !== false)
+                      && preg_match('/@[a-z0-9.-]+\.[a-z]{2,}/i', $cur)) {
+                $variables[$mk] = preg_replace('/@[^\s"\'<>]+/', '@' . $domainSlug . '.com', $cur);
+            }
+        }
+
+        if (strlen($sampleSlug) >= 4 && is_array($manifest['variables'] ?? null)) {
+            foreach ($manifest['variables'] as $mk => $mspec) {
+                if (!is_array($mspec)) continue;
+                $cur = $variables[$mk] ?? ($mspec['default'] ?? null);
+                if (!is_string($cur) || $cur === '') continue;
+                $hasName = $sampleName !== '' && stripos($cur, $sampleName) !== false;
+                $hasSlug = strpos(preg_replace('/[^a-z0-9]/', '', strtolower($cur)), $sampleSlug) !== false;
+                if (!$hasName && !$hasSlug) continue;
+                $type = strtolower((string) ($mspec['type'] ?? ''));
+                if (strpos($cur, '@') !== false || preg_match('/email/i', (string) $mk)) {
+                    $variables[$mk] = preg_replace('/@[^\s"\'<>]+/', '@' . $domainSlug . '.com', $cur);
+                } elseif ($type === 'url' || stripos($cur, 'http') === 0 || preg_match('/url|canonical|href|link/i', (string) $mk)) {
+                    $variables[$mk] = '';
+                } elseif ($hasName) {
+                    $variables[$mk] = str_ireplace($sampleName, (string) $name, $cur);
+                } else {
+                    $variables[$mk] = '';
+                }
+            }
+        }
+
         // T2 (2026-04-20) — if wizard collected a palette (from logo color
         // extraction), promote it into $data['colors'] so applyBrandColors
         // uses it. Also persist bg/text so templates with those vars pick up.
@@ -2142,7 +2617,11 @@ PROMPT;
         // image defaults so even variables unknown to the manifest won't
         // render as hollow sections.
         try {
-            $html = $this->templates->render($industry, $variables);
+            $html = \App\Engines\Builder\Support\TemplateArchetypes::removeBlocks(
+                $this->scrubSampleStaff($this->templates->render($industry, $variables)),
+                $removeBlocks
+            );
+            $html = \App\Engines\Builder\Support\SectionLibrary::replaceBlock($html, 'services', $bespokeHtml);
         } catch (\Throwable $e) {
             return ['type' => 'error', 'message' => 'Website rendering failed: ' . $e->getMessage()];
         }
@@ -2205,7 +2684,11 @@ PROMPT;
                     ]);
                     // Re-render with the final URL (transitional render above used temp URL).
                     try {
-                        $html = $this->templates->render($industry, $variables);
+                        $html = \App\Engines\Builder\Support\TemplateArchetypes::removeBlocks(
+                            $this->scrubSampleStaff($this->templates->render($industry, $variables)),
+                            $removeBlocks
+                        );
+                        $html = \App\Engines\Builder\Support\SectionLibrary::replaceBlock($html, 'services', $bespokeHtml);
                     } catch (\Throwable $_e) { /* keep previous html */ }
                 }
             } catch (\Throwable $e) {
@@ -2360,6 +2843,7 @@ PROMPT;
             'type' => 'complete',
             'message' => "✅ Your website for **{$name}** is ready! I built it from scratch with a premium " . str_replace('_', ' ', $industry) . " design and generated all the copy for you. You can preview it, edit the text, or publish it right away.",
             'website_id' => $websiteId,
+            'workspace_id' => $wsId, // P1 — the (possibly new) workspace this site lives in; FE switches to it
             'name' => $name,
             'industry' => $industry,
         ];
@@ -2537,7 +3021,23 @@ PROMPT;
             // News / media (added 2026-05-09)
             'news_channel'       => 'Write for a premium online news channel. Editorial tone, authoritative, journalistic. Headlines must sound like real news with a verb and a real claim — never marketing copy. Categories: Politics, Business, Technology, Sports, Culture, Opinion. Bylines = professional journalist names with surnames (e.g. "Layla Al-Mansoori", "Karim Hashem"). CTAs: Read More, Subscribe, Watch Live. Reading times in minutes. NEVER mention dining, food, kitchen, gym, salon, or product sales.',
         ];
+        // PATCH (copy-identity, 2026-07-24) — $industry is the resolved TEMPLATE
+        // (layout) slug. For unlisted businesses it is a GENERIC fallback
+        // (tattoo studio → consulting), so telling the copywriter the business
+        // IS a {$industry} makes it write consulting copy for a tattoo studio
+        // (real symptom: "Inkredible Tattoo Studio is a premier management
+        // consultancy"). Anchor the copy on the STATED industry whenever the
+        // template is a non-matching fallback; matched industries are unchanged.
+        $rawIndustry  = trim((string) ($data['industry'] ?? ''));
+        $templateFits = ($rawIndustry === '') || ($this->confidentSlugFromText($rawIndustry) === $industry);
+        $copyIndustry = $templateFits ? $industry : $rawIndustry;
+
         $hint = $industryHints[$industry] ?? "Use {$industry}-appropriate content only. Do not generate content from a different industry.";
+        if (!$templateFits) {
+            // Novel/unlisted business on a borrowed layout — force the copy to
+            // the real business identity, not the template's industry.
+            $hint = "This business is a {$rawIndustry} — NOT a {$industry}. Write EVERY field authentically for a {$rawIndustry}, using its real services ({$services}). Professional, premium Dubai/UAE tone. Do NOT describe it as a {$industry}, a consultancy, or an agency, and never invent services from another industry.";
+        }
 
         // PATCH (FIX 4, 2026-05-09) — Add blog_section_title to the prompt
         // (was leaking 'From Our Kitchen' restaurant default before).
@@ -2550,35 +3050,35 @@ PROMPT;
             : '';
 
         try {
-            $prompt = "Generate complete website content for '{$name}', a {$industry} business in {$location}. "
+            $prompt = "Generate complete website content for '{$name}', a {$copyIndustry} business in {$location}. "
                 . "Services: {$services}. "
                 . "INDUSTRY RULES: {$hint}\n\n"
-                . "Return a JSON object with the word json. ALL fields must have real, {$industry}-appropriate content — no placeholders:\n\n"
+                . "Return a JSON object with the word json. ALL fields must have real, {$copyIndustry}-appropriate content — no placeholders:\n\n"
                 . "hero_title (short punchy headline, 3-6 words, plain text),\n"
                 . "hero_subtitle (one compelling sentence),\n"
-                . "hero_cta (action button appropriate for {$industry}),\n"
+                . "hero_cta (action button appropriate for {$copyIndustry}),\n"
                 . "hero_eyebrow (short badge text),\n"
-                . "business_tagline (short brand tagline for a {$industry} business),\n"
-                . "about_title, about_text_1, about_text_2, about_text_3 (2-3 sentences each, {$industry}-appropriate),\n"
+                . "business_tagline (short brand tagline for a {$copyIndustry} business),\n"
+                . "about_title, about_text_1, about_text_2, about_text_3 (2-3 sentences each, {$copyIndustry}-appropriate),\n"
                 . "service_1_title, service_1_text, service_2_title, service_2_text, service_3_title, service_3_text "
-                . "(each service MUST be a {$industry} offering — not a different industry's service),\n"
+                . "(each service MUST be a {$copyIndustry} offering — not a different industry's service),\n"
                 . $cuisineBlock
                 . "testimonial_1_quote, testimonial_1_author (Full Name — Title, City),\n"
                 . "testimonial_2_quote, testimonial_2_author,\n"
-                . "testimonial_3_quote, testimonial_3_author (all testimonials must read like real {$industry} clients),\n"
+                . "testimonial_3_quote, testimonial_3_author (all testimonials must read like real {$copyIndustry} clients),\n"
                 . "contact_email, contact_service_area, contact_availability_text,\n"
-                . "blog_section_title (a short section title appropriate to {$industry} — e.g. 'Health Tips' for medical, 'Training Tips' for gym, 'Industry Insights' for consulting, 'Brewer's Notes' for cafe; for an aesthetic clinic try 'Beauty & Confidence'. NEVER use 'From Our Kitchen' unless this is literally a restaurant/cafe/catering business),\n"
+                . "blog_section_title (a short section title appropriate to {$copyIndustry} — e.g. 'Health Tips' for medical, 'Training Tips' for gym, 'Industry Insights' for consulting, 'Brewer's Notes' for cafe; for an aesthetic clinic try 'Beauty & Confidence'. NEVER use 'From Our Kitchen' unless this is literally a restaurant/cafe/catering business),\n"
                 . "blog_1_title, blog_1_excerpt, blog_1_category "
-                . "(blog content must be about {$industry} topics — e.g. for fitness: training methodology, recovery; for restaurant: cooking technique, sourcing; for aesthetic_clinic: pre/post-op care, treatment Q&A; for medical_clinic: preventive health, chronic care; for marketing_agency: SEO/PPC/content strategy),\n"
+                . "(blog content must be about {$copyIndustry} topics — e.g. for fitness: training methodology, recovery; for restaurant: cooking technique, sourcing; for aesthetic_clinic: pre/post-op care, treatment Q&A; for medical_clinic: preventive health, chronic care; for marketing_agency: SEO/PPC/content strategy),\n"
                 . "blog_2_title, blog_2_excerpt, blog_2_category,\n"
                 . "blog_3_title, blog_3_excerpt, blog_3_category,\n"
                 . "meta_description (under 160 chars for SEO).\n\n"
                 . "IMPORTANT: No HTML tags. No markdown. Plain text. Dubai/UAE tone. Premium quality. "
-                . "Do NOT use content appropriate for any industry OTHER than {$industry}. "
+                . "Do NOT use content appropriate for any industry OTHER than {$copyIndustry}. "
                 . ($isFoodIndustry ? '' : "Do NOT mention cuisine, menus, dishes, kitchen, dining, or chefs anywhere — this is NOT a food business.");
 
             $result = $this->runtime->chatJson(
-                "You are a professional website copywriter for a {$industry} business in Dubai/UAE. "
+                "You are a professional website copywriter for a {$copyIndustry} business in Dubai/UAE. "
                 . "Never generate content from a different industry. Return only valid JSON with the word json.",
                 $prompt,
                 ['task' => 'arthur_copywrite'],
@@ -2619,7 +3119,7 @@ PROMPT;
                 // Only fabricate a description when the template/LLM didn't
                 // provide one — never clobber a real write-up.
                 if (empty($vars["service_{$slot}_text"])
-                    || $this->isCrossIndustryLeak((string)$vars["service_{$slot}_text"], $data['industry'] ?? 'technology')) {
+                    || $this->isCrossIndustryLeak((string)$vars["service_{$slot}_text"], $this->resolveTemplateSlug((string)($data['industry'] ?? '')))) {
                     $vars["service_{$slot}_text"] = "Professional {$title} tailored to your business goals.";
                 }
                 $vars["service_{$slot}_display"] = '';
@@ -2683,6 +3183,328 @@ PROMPT;
 
         $base = $prompts[$industry] ?? "Professional modern {$industry} business interior, clean design, warm lighting, premium atmosphere";
         return $base . ", photorealistic, 16:9 aspect ratio, no text, no signs, no logos, no words, no lettering, no watermarks";
+    }
+
+    // PATCH (hero-context, 2026-07-24) — Hero prompt anchored on the ACTUAL
+    // business (raw industry + services), used when the template is a borrowed
+    // fallback so the hero depicts the real business, not the template's slug.
+    private function getBusinessHeroPrompt(string $rawIndustry, string $services, string $location): string
+    {
+        $ri  = trim($rawIndustry) !== '' ? trim($rawIndustry) : 'business';
+        $svc = trim($services) !== '' ? " that offers {$services}" : '';
+        return "Photorealistic hero background for a {$ri}{$svc} in {$location}. "
+            . "Depict an authentic, on-brand real-world environment for a {$ri} — premium atmosphere, "
+            . "natural lighting, wide cinematic 16:9 composition, no people's faces. "
+            . "photorealistic, no text, no signs, no logos, no words, no lettering, no watermarks";
+    }
+
+    // PATCH (hero-context, 2026-07-24) — Find an EXISTING media asset applicable
+    // to the actual business (by industry tag / tags matching the raw industry +
+    // service tokens), preferring the workspace's own uploads. Returns null when
+    // nothing applicable exists so the caller generates a fresh business hero.
+    private function findApplicableHero(string $rawIndustry, string $services, int $wsId): ?array
+    {
+        $tokens = array_values(array_filter(
+            preg_split('/[^a-z0-9]+/', mb_strtolower($rawIndustry . ' ' . $services)),
+            fn($t) => strlen($t) >= 4
+        ));
+        if (empty($tokens)) return null;
+        $tokens = array_slice(array_unique($tokens), 0, 8);
+        try {
+            $row = DB::table('media')
+                ->whereIn('asset_type', ['hero', 'image'])
+                ->whereNotNull('url')->where('url', '!=', '')
+                ->where(function ($w) use ($tokens) {
+                    // BUGFIX (2026-07-24) — the media table has NO 'industry' column
+                    // (was erroring on every borrowed-template build). Match the raw
+                    // industry/service tokens against the JSON `tags` array instead.
+                    foreach ($tokens as $t) {
+                        $w->orWhere('tags', 'like', '%"' . $t . '"%')
+                          ->orWhere('category', 'like', '%' . $t . '%');
+                    }
+                })
+                ->where(function ($w) use ($wsId) {
+                    $w->where('workspace_id', $wsId)->orWhereNull('workspace_id');
+                })
+                ->orderByRaw('CASE WHEN workspace_id = ? THEN 0 ELSE 1 END', [$wsId])
+                ->orderByRaw("CASE WHEN asset_type = 'hero' THEN 0 ELSE 1 END")
+                ->first(['id', 'url']);
+            if ($row && !empty($row->url)) {
+                Log::info('[Arthur] applicable existing hero found for borrowed template', [
+                    'raw' => $rawIndustry, 'media_id' => $row->id,
+                ]);
+                return ['id' => $row->id, 'url' => $row->url];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] findApplicableHero failed: ' . $e->getMessage());
+        }
+        return null;
+    }
+
+    // PATCH (credibility-injection, 2026-07-24 · P3) — When a business is
+    // established, map its REAL data (build_data.stats / clients / case_studies)
+    // into the template's credibility variables so the kept blocks show the
+    // business's own numbers, not the template sample. Returns the set of keys it
+    // populated (assoc, key => true) so the caller can blank everything it didn't.
+    private function injectCredibilityData(array &$variables, array $data, array $manifestVars): array
+    {
+        $set = [];
+        $put = function (string $key, $val) use (&$variables, &$set, $manifestVars) {
+            if (array_key_exists($key, $manifestVars) && is_string($val) && trim($val) !== '') {
+                $variables[$key] = $val;
+                $set[$key] = true;
+            }
+        };
+
+        // STATS — [{value,label}] (or {label:value}); fills stat_N / hero_stat_N / strip_stat_N.
+        $stats = $this->normalizeKV($data['stats'] ?? [], 'value', 'label');
+        foreach ($stats as $i => $s) {
+            $n = $i + 1;
+            foreach (['stat', 'hero_stat', 'strip_stat', 'stats_strip'] as $pfx) {
+                $put("{$pfx}_{$n}_value", (string) ($s['value'] ?? ''));
+                $put("{$pfx}_{$n}_label", (string) ($s['label'] ?? ''));
+            }
+        }
+
+        // CLIENTS — [names]; fills client_logo_N (+ clients_title if provided).
+        $clients = array_values(array_filter(array_map('strval', (array) ($data['clients'] ?? $data['client_logos'] ?? [])), fn($v) => trim($v) !== ''));
+        foreach ($clients as $i => $name) {
+            $put('client_logo_' . ($i + 1), $name);
+            $put('client_logo' . ($i + 1), $name); // some templates omit the underscore
+        }
+        if (!empty($data['clients_title'])) $put('clients_title', (string) $data['clients_title']);
+
+        // CASE STUDIES — [{client,title,metrics:[{value,label}]}].
+        foreach ((array) ($data['case_studies'] ?? []) as $idx => $case) {
+            if (!is_array($case)) continue;
+            $n = $idx + 1;
+            $put("case_{$n}_client", (string) ($case['client'] ?? ''));
+            $put("case_{$n}_title", (string) ($case['title'] ?? ''));
+            foreach ($this->normalizeKV($case['metrics'] ?? [], 'value', 'label') as $mi => $m) {
+                $mn = $mi + 1;
+                $put("case_{$n}_metric_{$mn}_value", (string) ($m['value'] ?? ''));
+                $put("case_{$n}_metric_{$mn}_label", (string) ($m['label'] ?? ''));
+            }
+        }
+        return $set;
+    }
+
+    /** Normalise [{value,label}] OR ['label'=>'value'] OR ['label'=>N] into [{value,label}]. */
+    private function normalizeKV($raw, string $vk, string $lk): array
+    {
+        if (!is_array($raw) || empty($raw)) return [];
+        $out = [];
+        foreach ($raw as $k => $v) {
+            if (is_array($v)) {
+                $out[] = [$vk => (string) ($v[$vk] ?? $v['value'] ?? $v[0] ?? ''), $lk => (string) ($v[$lk] ?? $v['label'] ?? $v[1] ?? '')];
+            } elseif (is_string($k)) {
+                $out[] = [$vk => (string) $v, $lk => (string) $k]; // label=>value map
+            }
+        }
+        return $out;
+    }
+
+    // PATCH (bespoke-blocks, 2026-07-24 · P2b-full) — Build a real industry
+    // section (menu with prices / product catalog / destinations) to REPLACE the
+    // generic 3-card "services" block on templates that lack one. Returns section
+    // HTML (reusing the template's own classes so it themes automatically) or ''
+    // to keep the original block. Slug-gated to the clones that need it.
+    private function bespokeSectionFor(string $slug, array $data, int $wsId = 0): string
+    {
+        // 'images' mode: false = text cards; 'pool' = generic industry photos are
+        // fine (travel destinations); 'uploads' = photo cards ONLY if the OWNER
+        // uploaded real product photos (retail/ecommerce — the generic platform
+        // gallery is store scenes that mismatch product names, so text unless the
+        // owner brought their own shots).
+        $cfg = [
+            'restaurant'    => ['kind' => 'menu',    'images' => false,     'count' => 8, 'noun' => 'signature menu dishes',              'price' => "a realistic dish price like 'AED 45'",        'labels' => ['eyebrow' => 'What We Serve',     'title' => 'Our Menu']],
+            'catering'      => ['kind' => 'menu',    'images' => false,     'count' => 6, 'noun' => 'catering menu packages',             'price' => "a per-head/package price like 'AED 120 / head'", 'labels' => ['eyebrow' => 'Catering Menus',    'title' => 'Menus & Packages']],
+            'retail_shop'   => ['kind' => 'catalog', 'images' => 'uploads', 'count' => 6, 'noun' => 'featured products or collections',   'price' => "a price like 'AED 120' or 'From AED 90'",     'labels' => ['eyebrow' => 'Our Collection',    'title' => 'Shop by Category']],
+            'ecommerce'     => ['kind' => 'catalog', 'images' => 'uploads', 'count' => 6, 'noun' => 'featured products',                  'price' => "a price like 'AED 120'",                      'labels' => ['eyebrow' => 'Our Collection',    'title' => 'Shop the Collection']],
+            'travel_agency' => ['kind' => 'catalog', 'images' => 'pool',    'count' => 6, 'noun' => 'destination trips or packages',      'price' => "a from-price like 'From AED 2,400'",          'labels' => ['eyebrow' => 'Where We Take You', 'title' => 'Destinations & Packages']],
+            'resort'            => ['kind' => 'units', 'images' => 'pool', 'count' => 6, 'noun' => 'room / suite / villa types', 'price' => "a per-night rate like 'From AED 1,200 / night'", 'meta' => "a short capacity line like 'Sleeps 4 · 65m² · Sea view'", 'labels' => ['eyebrow' => 'Your Stay', 'title' => 'Rooms & Suites']],
+            'short_term_rental' => ['kind' => 'units', 'images' => 'pool', 'count' => 6, 'noun' => 'rental unit / apartment types', 'price' => "a per-night rate like 'From AED 600 / night'",  'meta' => "a short capacity line like 'Sleeps 3 · 1 bed · City view'", 'labels' => ['eyebrow' => 'Your Stay', 'title' => 'Our Spaces']],
+        ][$slug] ?? null;
+        if (!$cfg) return '';
+        $items = $this->generateBespokeItems($data, $cfg);
+        if (empty($items)) return '';
+        $labels = $cfg['labels'] + ['intro' => ''];
+        if ($cfg['kind'] === 'menu') {
+            return \App\Engines\Builder\Support\SectionLibrary::menuSection($items, $labels);
+        }
+        // catalog / units — enrich with photos per the mode; otherwise text cards.
+        $images = [];
+        $mode = $cfg['images'] ?? false;
+        if ($mode === 'pool' && $wsId > 0) {
+            try { $images = $this->buildImagePool($slug, $wsId); } catch (\Throwable $e) {}
+        } elseif ($mode === 'uploads') {
+            // ONLY the owner's own uploaded product photos — never the generic pool.
+            $up = array_values(array_filter(array_map('strval', (array) ($data['uploaded_images'] ?? [])), fn($u) => trim($u) !== ''));
+            if (count($up) >= 3) $images = $up; // enough to fill a grid; else stay text
+        }
+        if ($cfg['kind'] === 'units') {
+            return \App\Engines\Builder\Support\SectionLibrary::unitsSection($items, $labels, $images);
+        }
+        return \App\Engines\Builder\Support\SectionLibrary::catalogSection($items, $labels, $images);
+    }
+
+    private function generateBespokeItems(array $data, array $cfg): array
+    {
+        if (!$this->runtime->isConfigured()) return [];
+        $name     = (string) ($data['business_name'] ?? 'the business');
+        $industry = (string) ($data['industry'] ?? 'business');
+        $location = (string) ($data['location'] ?? 'Dubai');
+        $services = is_array($data['services'] ?? null) ? implode(', ', $data['services']) : (string) ($data['services'] ?? '');
+        $sys = "You write website content for '{$name}', a {$industry} in {$location}. Every item must be specific "
+             . "and realistic for a {$industry} — never placeholders. Return ONLY valid JSON (include the word json).";
+        $metaKey = !empty($cfg['meta']) ? ',"meta":"..."' : '';
+        $metaRule = !empty($cfg['meta']) ? " and meta is {$cfg['meta']}" : '';
+        $prompt = "Generate {$cfg['count']} {$cfg['noun']} for this business. Services: {$services}. "
+             . 'Return {"items":[{"name":"...","price":"..."' . $metaKey . ',"desc":"short 6-12 word description"}]} '
+             . "where price is {$cfg['price']}{$metaRule}.";
+        try {
+            $r = $this->runtime->chatJson($sys, $prompt, ['task' => 'arthur_bespoke_items'], 1300);
+            $items = $r['parsed']['items'] ?? ($r['parsed'] ?? null);
+            if (is_array($items)) {
+                return array_values(array_filter($items, fn($i) => is_array($i) && !empty($i['name'])));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] bespoke items failed: ' . $e->getMessage());
+        }
+        return [];
+    }
+
+    // PATCH (no-static-text, 2026-07-24) — Several template.html files hardcode
+    // SAMPLE staff names — in booking <option>s AND team cards ("Dr. James
+    // Whitfield", "Lila Hadid", "Marcus Idowu", …); even non-medical templates
+    // inherited the doctor block, so a catering site could show a "Dr. James
+    // Whitfield" option. These are HTML literals (not variables), so replace
+    // every occurrence post-render with a realistic, locale-neutral placeholder
+    // name (a fresh site has no real team yet — the user edits these in the
+    // builder). Replacing the surname-bearing form also fixes "Dr. " instances.
+    private function scrubSampleStaff(string $html): string
+    {
+        $map = [
+            'Aisha Rahman'    => 'Layla Hassan',
+            'Omar Al-Sayed'   => 'Karim Nasser',
+            'Sarah Nakamura'  => 'Mariam Saleh',
+            'James Whitfield' => 'Adam Farouk',
+            'Lila Hadid'      => 'Yasmin Aziz',
+            'Priya Desai'     => 'Hana Malik',
+            'Sofia Moreau'    => 'Reem Khalil',
+            'Nadia Chen'      => 'Sara Mansour',
+            'Layla Nader'     => 'Dana Rashed',
+            'Marcus Chen'     => 'Tariq Aziz',
+            'Marcus Idowu'    => 'Zaid Haddad',
+            'Nadia Petrov'    => 'Lina Fares',
+            'Jordan Walker'   => 'Nour Sami',
+            'Rania Al Sabah'  => 'Salma Darwish',
+            'Priya Menon'     => 'Amira Fadel',
+        ];
+        $html = str_ireplace(array_keys($map), array_values($map), $html);
+        // Backstop — remove any remaining "<option>Dr. Firstname Lastname</option>".
+        $html = preg_replace('~<option\b[^>]*>\s*Dr\.?\s+[A-Z][a-z]+\s+[A-Z][a-z]+\s*</option>~', '', $html);
+
+        // Hide the fabricated-credibility sections (their VALUES are blanked in
+        // generateWebsite). Classes are credibility-specific — deliberately NOT
+        // generic layout classes (.reveal/.section/.wrap). A fresh business has
+        // no stats/clients/case-studies; the user re-enables and fills them in
+        // the builder.
+        $hideCss = '<style id="lu-hide-fabricated">'
+            . '.stats,.stats-grid,.stats-strip,.stats-strip-item,.stats-strip-label,'
+            . '.stat-item,.stat-label,.stat-value,.hero-stats,.hero-stat,.hero-stat-label,.hero-stat-value,'
+            . '.clients,.clients-grid,.clients-title,.client-logo,.client-logos,'
+            . '.case-metrics,.case-metric,.case-metric-value,.case-metric-label,'
+            . '.results,.result-item,.result-label,.result-value'
+            . '{display:none !important}</style>';
+        if (stripos($html, '</head>') !== false) {
+            $html = preg_replace('~</head>~i', $hideCss . '</head>', $html, 1);
+        } else {
+            $html .= $hideCss;
+        }
+        return is_string($html) ? $html : '';
+    }
+
+    // PATCH (text-coverage, 2026-07-24) — Regenerate EVERY remaining template
+    // text field from business context so no manifest SAMPLE text (sample names,
+    // wrong-industry taglines/prose) can render. Skips colors/images/urls and
+    // short structural labels (nav/menu/buttons), targets only unfilled content
+    // prose. A deterministic net neutralizes anything the LLM still misses.
+    private function fillTemplateTextCoverage(array $variables, array $manifest, array $data, string $copyIndustry, string $services, string $location, bool $established = false): array
+    {
+        $vars = $manifest['variables'] ?? [];
+        if (!is_array($vars) || empty($vars)) return $variables;
+
+        $skipKey = '/(image|img|photo|logo|url|color|colour|display|icon|bg|background|style|css|href|src|width|height|dim|ratio|font|hex|locale|canonical|slug|og_image|_id$)/i';
+        // structural labels we must NOT rewrite/blank (would break nav/buttons)
+        $structKey = '/(nav|menu|link|button|_cta$|^cta|tab|breadcrumb|^logo|_label$)/i';
+
+        $name = $data['business_name'] ?? 'the business';
+        $toFill = [];
+        foreach ($vars as $k => $spec) {
+            if (!is_array($spec)) continue;
+            $type = strtolower((string) ($spec['type'] ?? ''));
+            if (in_array($type, ['color', 'image', 'url', 'file', 'media', 'number', 'bool', 'boolean'], true)) continue;
+            $key = (string) $k;
+            if (preg_match($skipKey, $key) || preg_match($structKey, $key)) continue;
+            $def = $spec['default'] ?? null;
+            if (!is_string($def)) continue;
+            $def = trim($def);
+            // Only CONTENT prose (multi-word, >=15 chars) — leaves short generic
+            // labels ("About Us", "Our Services") untouched.
+            if (strlen($def) < 15 || strpos($def, ' ') === false) continue;
+            if (preg_match('~^(/|https?:|\#|display:)~i', $def)) continue;
+            $cur = $variables[$key] ?? null;
+            $filledByLLM = is_string($cur) && $cur !== '' && $cur !== $def;
+            if ($filledByLLM) continue;
+            $toFill[$key] = (string) ($spec['label'] ?? $spec['description'] ?? $key);
+        }
+        if (empty($toFill)) return $variables;
+
+        // Regenerate in chunks so a large template stays reliable.
+        foreach (array_chunk($toFill, 35, true) as $chunk) {
+            $lines = [];
+            foreach ($chunk as $k => $label) $lines[] = "- {$k}: {$label}";
+            $sys = "You are a website copywriter for '{$name}', a {$copyIndustry} in {$location}. "
+                 . "Return ONLY valid JSON (include the word json). Every value must be authentic, specific "
+                 . "content for THIS {$copyIndustry} business — realistic names (never 'John Doe'), concise "
+                 . "taglines, 1-2 sentence body copy — and NEVER content from any other industry."
+                 . ($established ? '' : ' CRITICAL: this is a NEW business with NO track record yet — NEVER '
+                    . 'fabricate numbers or claims of experience (no "X years", "X+ clients/projects", revenue '
+                    . 'figures, awards, "trusted by", or big-name clients). For trust/badge/credential fields '
+                    . 'write qualitative value propositions (approach, quality, care), not invented metrics.');
+            $prompt = "Services: {$services}.\nWrite on-brand website text for EACH field below, matching its "
+                 . "label/role. Return a JSON object keyed EXACTLY by these field keys:\n" . implode("\n", $lines);
+            try {
+                $res = $this->runtime->chatJson($sys, $prompt, ['task' => 'arthur_coverage'], 2000);
+                if (($res['success'] ?? false) && is_array($res['parsed'] ?? null)) {
+                    foreach ($res['parsed'] as $k => $v) {
+                        if (isset($toFill[$k]) && is_string($v) && trim($v) !== '') {
+                            $variables[$k] = trim($v);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[Arthur] text coverage pass failed: ' . $e->getMessage());
+            }
+        }
+
+        // Deterministic net — anything STILL unfilled is neutralized so no sample
+        // text can survive. Names/people → blank (never a fake person); taglines/
+        // meta → derive from business; other content prose → blank.
+        foreach ($toFill as $k => $label) {
+            $def = trim((string) ($vars[$k]['default'] ?? ''));
+            $cur = $variables[$k] ?? null;
+            if (is_string($cur) && $cur !== '' && $cur !== $def) continue; // filled
+            if (preg_match('/name|author|signature|broker|agent|partner|founder|owner|byline|member|manager|attorney|realtor/i', $k)) {
+                $variables[$k] = '';
+            } elseif (preg_match('/tagline|meta|subtitle|description/i', $k)) {
+                $variables[$k] = $name . ' — ' . ucfirst($copyIndustry) . ' in ' . $location . '.';
+            } else {
+                $variables[$k] = '';
+            }
+        }
+        return $variables;
     }
 
     /**
@@ -2848,7 +3670,134 @@ PROMPT;
      * Section schema is what BuilderRenderer expects:
      *   [{"type": "...", "heading": "...", "body": "...", ...}, ...]
      */
-    private function buildDefaultSectionsForPage(string $slug, array $data): array
+    /**
+     * v1.4.4 (2026-05-30) — made public so BuilderService::addPageFromTemplate
+     * can reuse it when Sarah / the user asks Arthur to add a new page.
+     */
+    // PATCH (pages-context, 2026-07-24 · P4) — Public entry: build the page's
+    // section SKELETON (structure), then enrich its copy with business-context,
+    // archetype-aware text so an added About/Services/Contact page no longer
+    // ships identical consultancy filler ("Quality first", "work with you on
+    // your project") for a bakery or a law firm alike.
+    public function buildDefaultSectionsForPage(string $slug, array $data): array
+    {
+        $sections = $this->buildRawPageSections($slug, $data);
+        try {
+            $sections = $this->enrichPageSections($sections, $data, $slug);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Arthur] enrichPageSections failed: ' . $e->getMessage());
+        }
+        return $sections;
+    }
+
+    /**
+     * One LLM call → business-context copy for the given page. Returns [] on any
+     * failure so the raw skeleton's (now archetype-improved) copy stands.
+     */
+    private function pageCopy(string $pageType, array $data): array
+    {
+        if (!$this->runtime->isConfigured()) return [];
+        $name     = (string) ($data['business_name'] ?? 'the business');
+        $industry = trim((string) ($data['industry'] ?? 'business')) ?: 'business';
+        $location = (string) ($data['location'] ?? 'Dubai');
+        $services = is_array($data['services'] ?? null) ? implode(', ', $data['services']) : (string) ($data['services'] ?? '');
+        $spec = [
+            'about'    => 'story_body (2-3 sentences on how this business started and what it stands for), value_1_title (2-3 words), value_1_body (1 sentence), value_2_title, value_2_body, value_3_title, value_3_body, team_heading (short), reviews_heading (short), cta_heading (short), cta_body (1 sentence), cta_text (2-3 words)',
+            'services' => 'hero_body (1 sentence), section_heading (short), reviews_heading (short), cta_heading (short), cta_body (1 sentence), cta_text (2-3 words)',
+            'contact'  => 'hero_subheading (short), hero_body (1-2 sentences), form_heading (short), form_body (1 sentence)',
+            'pricing'  => "hero_subheading (short), hero_body (1 sentence), pricing_heading (short), tiers (an array of EXACTLY 3 objects {name: short plan name that fits a {$industry}, price: a realistic price like 'AED 250' or 'AED 250/mo' where a {$industry} has standard pricing, otherwise 'Contact us' or 'Custom' — never '\$X', features: array of 3-4 short benefit strings specific to a {$industry}}), faq_heading (short), faq (array of 3 objects {question, answer} that a {$industry} customer actually asks about pricing), cta_heading (short), cta_body (1 sentence), cta_text (2-3 words)",
+            'faq'      => "hero_body (1 sentence), faq (array of 5 objects {question, answer} — real questions a {$industry} customer asks, answered in the business's voice)",
+        ][$pageType] ?? '';
+        if ($spec === '') return [];
+        $sys = "You are a website copywriter for '{$name}', a {$industry} in {$location}. "
+             . "Write authentic, {$industry}-specific copy in the business's own voice. NEVER use generic "
+             . "consultancy filler like 'we help clients with your project' or 'your success is our metric' "
+             . "unless this literally IS a consultancy, and NEVER leave placeholders like '\$X' or 'Feature 1'. "
+             . "Return ONLY valid JSON (include the word json).";
+        $prompt = "Services: {$services}.\nFor the {$pageType} page, return a JSON object with EXACTLY these keys: {$spec}.";
+        try {
+            $r = $this->runtime->chatJson($sys, $prompt, ['task' => 'arthur_page_copy'], 1300);
+            if (($r['success'] ?? false) && is_array($r['parsed'] ?? null)) {
+                // keep both scalar copy and nested arrays (tiers / faq)
+                return array_filter($r['parsed'], fn($v) => (is_string($v) && trim($v) !== '') || (is_array($v) && !empty($v)));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Arthur] pageCopy failed: ' . $e->getMessage());
+        }
+        return [];
+    }
+
+    /** Overlay business-context copy from pageCopy() onto the page skeleton. */
+    private function enrichPageSections(array $sections, array $data, string $slug): array
+    {
+        $slugN = preg_replace('/[\s\-]+/', '_', strtolower(trim($slug)));
+        $pageType = in_array($slugN, ['about', 'about_us'], true) ? 'about'
+            : (in_array($slugN, ['services', 'contact', 'pricing', 'faq'], true) ? $slugN : '');
+        if ($pageType === '') return $sections; // blog skeleton is fine
+        $c = $this->pageCopy($pageType, $data);
+        if (empty($c)) return $sections;
+
+        foreach ($sections as &$sec) {
+            $t = $sec['type'] ?? '';
+            if ($t === 'hero') {
+                if (!empty($c['hero_body']))       $sec['body']       = $c['hero_body'];
+                if (!empty($c['story_body']))      $sec['body']       = $c['story_body'];
+                if (!empty($c['hero_subheading'])) $sec['subheading'] = $c['hero_subheading'];
+            } elseif ($t === 'features' && $pageType === 'about') {
+                for ($i = 1; $i <= 3; $i++) {
+                    if (!empty($c["value_{$i}_title"]) && isset($sec['items'][$i - 1])) {
+                        $sec['items'][$i - 1]['title'] = $c["value_{$i}_title"];
+                        if (!empty($c["value_{$i}_body"])) $sec['items'][$i - 1]['body'] = $c["value_{$i}_body"];
+                    }
+                }
+            } elseif ($t === 'team' && !empty($c['team_heading'])) {
+                $sec['heading'] = $c['team_heading'];
+            } elseif ($t === 'testimonials' && !empty($c['reviews_heading'])) {
+                $sec['heading'] = $c['reviews_heading'];
+            } elseif ($t === 'services' && !empty($c['section_heading'])) {
+                $sec['heading'] = $c['section_heading'];
+            } elseif ($t === 'cta') {
+                if (!empty($c['cta_heading'])) $sec['heading']  = $c['cta_heading'];
+                if (!empty($c['cta_body']))    $sec['body']     = $c['cta_body'];
+                if (!empty($c['cta_text']))    $sec['cta_text'] = $c['cta_text'];
+            } elseif ($t === 'contact_form') {
+                if (!empty($c['form_heading'])) $sec['heading'] = $c['form_heading'];
+                if (!empty($c['form_body']))    $sec['body']    = $c['form_body'];
+            } elseif ($t === 'pricing') {
+                if (!empty($c['pricing_heading'])) $sec['heading'] = $c['pricing_heading'];
+                if (!empty($c['tiers']) && is_array($c['tiers'])) {
+                    $tiers = [];
+                    foreach ($c['tiers'] as $ti) {
+                        if (!is_array($ti) || empty($ti['name'])) continue;
+                        $tiers[] = [
+                            'name'     => (string) $ti['name'],
+                            'price'    => (string) ($ti['price'] ?? 'Contact us'),
+                            'features' => array_values(array_filter(array_map('strval', (array) ($ti['features'] ?? [])), fn($s) => trim($s) !== '')),
+                        ];
+                    }
+                    if (count($tiers) >= 2) {
+                        $tiers[1]['highlight'] = true; // middle tier highlighted, matching the skeleton
+                        $sec['tiers'] = $tiers;
+                    }
+                }
+            } elseif ($t === 'faq') {
+                if (!empty($c['faq_heading'])) $sec['heading'] = $c['faq_heading'];
+                if (!empty($c['faq']) && is_array($c['faq'])) {
+                    $items = [];
+                    foreach ($c['faq'] as $q) {
+                        if (is_array($q) && !empty($q['question'])) {
+                            $items[] = ['question' => (string) $q['question'], 'answer' => (string) ($q['answer'] ?? '')];
+                        }
+                    }
+                    if ($items) $sec['items'] = $items;
+                }
+            }
+        }
+        unset($sec);
+        return $sections;
+    }
+
+    private function buildRawPageSections(string $slug, array $data): array
     {
         $businessName = (string) ($data['business_name'] ?? 'Your Business');
         $industry     = (string) ($data['industry']      ?? 'business');
@@ -2863,12 +3812,613 @@ PROMPT;
 
         $featureItems = array_slice(array_filter(array_map('strval', $services)), 0, 6);
 
-        switch ($slug) {
+        // Normalise common slug aliases so "about-us" / "About Us" all match the same case.
+        $slugN = strtolower(trim($slug));
+        $slugN = preg_replace('/[\s\-]+/', '_', $slugN);
+
+        switch ($slugN) {
             case 'blog':
                 return [
                     ['type' => 'header'],
                     ['type' => 'hero', 'heading' => 'Latest from ' . $businessName, 'body' => 'News, updates, and stories.'],
                     ['type' => 'blog_list'],
+                    ['type' => 'footer'],
+                ];
+
+            // ─── v1.4.4 (2026-05-30) — universal page templates ─────────
+            case 'about':
+            case 'about_us':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Our story',
+                        'subheading' => $businessName,
+                        'body'       => $coreService !== ''
+                            ? "We help our clients with {$coreService}. Here's how we got started."
+                            : "Get to know the team behind {$businessName}."],
+                    ['type' => 'features',
+                        'heading' => 'What we believe in',
+                        'body'    => 'The principles that guide our work.',
+                        'items'   => [
+                            ['title' => 'Quality first', 'body' => "We never cut corners on the things that matter."],
+                            ['title' => 'Client focused', 'body' => 'Your success is the metric we measure ourselves against.'],
+                            ['title' => 'Always improving', 'body' => 'We learn from every engagement and bring that forward.'],
+                        ]],
+                    ['type' => 'team', 'heading' => 'Meet the team'],
+                    ['type' => 'testimonials', 'heading' => 'What our clients say'],
+                    ['type' => 'cta',
+                        'heading'  => "Ready to work with {$businessName}?",
+                        'body'     => "Let's talk about your project.",
+                        'cta_text' => 'Get in touch',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'services':
+                $svcItems = $featureItems
+                    ? array_map(fn($s) => ['title' => $s, 'body' => "Learn more about our {$s} offering."], $featureItems)
+                    : [['title' => 'Service one', 'body' => 'Describe what this service does for the client.']];
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Our services',
+                        'subheading' => "What we do for {$industry} clients",
+                        'body'       => 'A focused set of services tailored to your needs.'],
+                    ['type' => 'services',
+                        'heading' => 'Services we offer',
+                        'body'    => '',
+                        'items'   => $svcItems],
+                    ['type' => 'testimonials', 'heading' => 'Client success stories'],
+                    ['type' => 'cta',
+                        'heading'  => 'Need something specific?',
+                        'body'     => 'Tell us about your project and we will tailor a solution.',
+                        'cta_text' => 'Request a quote',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'contact_form',
+                        'heading'      => 'Get a quote',
+                        'body'         => 'Tell us what you need.',
+                        'submit_label' => 'Request quote'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'pricing':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Simple, transparent pricing',
+                        'subheading' => 'Choose the option that fits your needs',
+                        'body'       => 'No hidden fees. Cancel anytime.'],
+                    ['type' => 'pricing',
+                        'heading' => 'Our plans',
+                        'tiers'   => [
+                            ['name' => 'Starter',    'price' => '$X',     'features' => ['Feature 1', 'Feature 2', 'Feature 3']],
+                            ['name' => 'Pro',        'price' => '$Y',     'features' => ['Everything in Starter', 'Feature 4', 'Feature 5'], 'highlight' => true],
+                            ['name' => 'Enterprise', 'price' => 'Custom', 'features' => ['Everything in Pro', 'Custom integrations', 'Dedicated support']],
+                        ]],
+                    ['type' => 'faq',
+                        'heading' => 'Pricing questions',
+                        'items'   => [
+                            ['question' => 'Can I switch plans later?',     'answer' => 'Yes — upgrade or downgrade at any time.'],
+                            ['question' => 'Is there a free trial?',         'answer' => 'Get in touch and we will set you up.'],
+                            ['question' => 'Do you offer custom pricing?',   'answer' => 'Yes, contact us for Enterprise needs.'],
+                        ]],
+                    ['type' => 'cta',
+                        'heading'  => 'Ready to get started?',
+                        'cta_text' => 'Choose your plan',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'contact':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => "Get in touch with {$businessName}",
+                        'subheading' => 'We would love to hear from you',
+                        'body'       => $location !== ''
+                            ? "Based in {$location}. Available across the regions we serve."
+                            : 'Reach out for any inquiry — we respond within one business day.'],
+                    ['type' => 'contact_form',
+                        'heading'      => 'Send us a message',
+                        'body'         => '',
+                        'submit_label' => 'Send message'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'faq':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Questions, answered',
+                        'subheading' => "Common questions about {$businessName}",
+                        'body'       => "Can't find what you're looking for? Get in touch."],
+                    ['type' => 'faq',
+                        'heading' => 'Frequently asked questions',
+                        'items'   => [
+                            ['question' => "How do I get started with {$businessName}?", 'answer' => 'Reach out via our contact form and we will follow up.'],
+                            ['question' => 'What areas do you serve?',                   'answer' => $location !== '' ? "We serve {$location} and surrounding areas." : 'We work with clients across all regions.'],
+                            ['question' => 'How much does it cost?',                     'answer' => 'See our Pricing page for current rates and packages.'],
+                            ['question' => 'Do you offer custom solutions?',             'answer' => 'Yes — every engagement is tailored to your specific needs.'],
+                        ]],
+                    ['type' => 'cta',
+                        'heading'  => 'Still have questions?',
+                        'body'     => "We're happy to answer.",
+                        'cta_text' => 'Contact us',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'legal':
+            case 'privacy':
+            case 'privacy_policy':
+            case 'terms':
+            case 'terms_of_service':
+                $legalTitle = in_array($slugN, ['privacy', 'privacy_policy'], true) ? 'Privacy Policy'
+                            : (in_array($slugN, ['terms', 'terms_of_service'], true) ? 'Terms of Service' : 'Legal');
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero', 'heading' => $legalTitle, 'subheading' => 'Last updated: ' . date('F j, Y')],
+                    ['type' => 'generic',
+                        'content' => "Placeholder for {$legalTitle}. Add the full legal text here. This template is industry-agnostic — substitute the appropriate content for your jurisdiction. Sarah can be asked to draft a starting version and Arthur will edit it once placed."],
+                    ['type' => 'footer'],
+                ];
+
+            // ─── v1.4.4 Phase D-2 (2026-05-30) — booking + events ──────
+            case 'book':
+            case 'booking':
+            case 'book_now':
+            case 'appointments':
+            case 'reservations':
+            case 'reserve':
+                $bookingServices = $featureItems
+                    ?: ($coreService !== '' ? [$coreService] : []);
+                $bookingHeroSub  = $coreService !== ''
+                    ? "Schedule your {$coreService} with {$businessName}."
+                    : "Pick a time that works for you. We'll confirm by email.";
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Book your appointment',
+                        'subheading' => $businessName,
+                        'body'       => $bookingHeroSub],
+                    ['type' => 'booking_form',
+                        'heading'         => 'Choose a time',
+                        'subheading'      => 'Quick and easy — under 60 seconds.',
+                        'submit_label'    => 'Confirm booking',
+                        'success_message' => 'Thanks — we will confirm your booking by email shortly.',
+                        'services'        => $bookingServices,
+                        'show_calendar'   => true,
+                        'show_time_slots' => true,
+                        'fields'          => [
+                            ['name' => 'name',  'label' => 'Your name', 'type' => 'text',     'required' => true],
+                            ['name' => 'email', 'label' => 'Email',     'type' => 'email',    'required' => true],
+                            ['name' => 'phone', 'label' => 'Phone',     'type' => 'tel',      'required' => true],
+                            ['name' => 'notes', 'label' => 'Notes (optional)', 'type' => 'textarea', 'required' => false],
+                        ]],
+                    ['type' => 'features',
+                        'heading' => 'Why book with us',
+                        'body'    => '',
+                        'items'   => [
+                            ['title' => 'Confirmed quickly',  'body' => 'We respond within one business day to confirm your time.'],
+                            ['title' => 'Easy rescheduling',  'body' => 'Need to move the booking? Just reply to the confirmation email.'],
+                            ['title' => 'No surprises',       'body' => "What you book is what you get — clear, fixed expectations."],
+                        ]],
+                    ['type' => 'faq',
+                        'heading' => 'Booking FAQ',
+                        'items'   => [
+                            ['question' => 'How do I cancel or reschedule?',  'answer' => 'Reply to the confirmation email at least 24 hours before your slot.'],
+                            ['question' => 'Do you offer same-day bookings?', 'answer' => 'Depending on availability — submit the form and we will let you know.'],
+                            ['question' => 'Is a deposit required?',          'answer' => "Most bookings don't require a deposit. We'll tell you in the confirmation if yours does."],
+                        ]],
+                    ['type' => 'footer'],
+                ];
+
+            case 'event':
+            case 'events':
+            case 'classes':
+            case 'schedule':
+            case 'whats_on':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Upcoming events',
+                        'subheading' => "What's on at {$businessName}",
+                        'body'       => $location !== ''
+                            ? "Join us in {$location} for these upcoming sessions."
+                            : 'Join us for these upcoming sessions and classes.'],
+                    ['type' => 'events_calendar',
+                        'heading'    => 'This month',
+                        'subheading' => 'Reserve your spot — limited capacity.',
+                        'view'       => 'grid',
+                        'events'     => [
+                            [
+                                'title'       => 'Event title one',
+                                'date'        => 'Sat, June 14',
+                                'time'        => '6:00 PM',
+                                'location'    => $location !== '' ? $location : 'Venue TBA',
+                                'description' => 'A short description of what this event covers and who it is for.',
+                                'cta_text'    => 'RSVP',
+                                'cta_url'     => '/contact',
+                            ],
+                            [
+                                'title'       => 'Event title two',
+                                'date'        => 'Wed, June 18',
+                                'time'        => '7:30 PM',
+                                'location'    => $location !== '' ? $location : 'Venue TBA',
+                                'description' => 'A short description of what this event covers and who it is for.',
+                                'cta_text'    => 'RSVP',
+                                'cta_url'     => '/contact',
+                            ],
+                            [
+                                'title'       => 'Event title three',
+                                'date'        => 'Sat, June 28',
+                                'time'        => '11:00 AM',
+                                'location'    => $location !== '' ? $location : 'Venue TBA',
+                                'description' => 'A short description of what this event covers and who it is for.',
+                                'cta_text'    => 'RSVP',
+                                'cta_url'     => '/contact',
+                            ],
+                        ]],
+                    ['type' => 'cta',
+                        'heading'  => 'Want to be the first to hear about new events?',
+                        'body'     => 'Join the mailing list and we will let you know.',
+                        'cta_text' => 'Get in touch',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'footer'],
+                ];
+
+            // ─── v1.4.4 Phase D-3 (2026-05-30) — listings/locations ────
+            case 'listings':
+            case 'listing_browser':
+            case 'properties':
+            case 'rooms':
+            case 'products':
+            case 'shop':
+            case 'catalogue':
+            case 'catalog':
+            case 'inventory':
+            case 'fleet':
+            case 'courses':
+            case 'menu_browser':
+                // Industry-flavoured copy
+                $kindLabel  = match (true) {
+                    in_array($industry, ['real_estate_agency', 'short_term_rental'], true) => 'properties',
+                    in_array($industry, ['hotel', 'resort'], true)                          => 'rooms',
+                    in_array($industry, ['ecommerce', 'retail_shop'], true)                => 'products',
+                    in_array($industry, ['automotive'], true)                              => 'vehicles',
+                    in_array($industry, ['online_courses', 'training_center', 'tutoring'], true) => 'courses',
+                    default                                                                => 'listings',
+                };
+                $listHeading = 'Browse our ' . $kindLabel;
+                $sampleItems = [];
+                for ($i = 1; $i <= 6; $i++) {
+                    $sampleItems[] = [
+                        'title'    => ucfirst($kindLabel) . ' ' . $i,
+                        'subtitle' => 'A short descriptor goes here',
+                        'price'    => '',
+                        'badge'    => $i === 1 ? 'New' : '',
+                        'cta_text' => 'View details',
+                        'cta_url'  => '#',
+                    ];
+                }
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => $listHeading,
+                        'subheading' => $businessName,
+                        'body'       => "Browse the latest {$kindLabel} from {$businessName}" . ($location !== '' ? " in {$location}." : '.')],
+                    ['type' => 'filter_bar',
+                        'heading'        => 'Filter ' . $kindLabel,
+                        'target_grid_id' => 'listings-grid',
+                        'search_enabled' => true,
+                        'filters'        => [
+                            ['label' => 'Category',  'options' => ['All']],
+                            ['label' => 'Price',     'options' => ['Any', 'Low', 'Mid', 'High']],
+                        ],
+                        'sort_options' => ['Newest first', 'Price: low to high', 'Price: high to low']],
+                    ['type' => 'grid',
+                        'heading'    => '',
+                        'columns'    => 3,
+                        'style'      => 'card',
+                        'items'      => $sampleItems],
+                    ['type' => 'cta',
+                        'heading'  => "Can't find what you're looking for?",
+                        'body'     => 'Tell us what you need — we may have something off-market.',
+                        'cta_text' => 'Get in touch',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'listing_detail':
+            case 'property':
+            case 'product':
+            case 'room':
+            case 'course':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Listing title',
+                        'subheading' => 'A short tagline for this listing',
+                        'body'       => 'Replace with a hero summary of the listing — key specs, headline price, and the single most compelling reason to inquire.'],
+                    ['type' => 'features',
+                        'heading' => 'Key details',
+                        'body'    => '',
+                        'items'   => [
+                            ['title' => 'Detail one',   'body' => 'Replace with a key spec.'],
+                            ['title' => 'Detail two',   'body' => 'Replace with a key spec.'],
+                            ['title' => 'Detail three', 'body' => 'Replace with a key spec.'],
+                            ['title' => 'Detail four',  'body' => 'Replace with a key spec.'],
+                        ]],
+                    ['type' => 'gallery', 'heading' => 'Gallery'],
+                    ['type' => 'trust_signals',
+                        'heading' => 'Why us',
+                        'style'   => 'badge_row',
+                        'items'   => [
+                            ['label' => 'Verified listing'],
+                            ['label' => 'Fast response'],
+                            ['label' => 'Best price guarantee'],
+                        ]],
+                    ['type' => 'cta',
+                        'heading'  => 'Interested?',
+                        'body'     => 'Reach out and we will get back to you within one business day.',
+                        'cta_text' => 'Request information',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'contact_form',
+                        'heading'      => 'Send an inquiry',
+                        'body'         => '',
+                        'submit_label' => 'Send inquiry'],
+                    ['type' => 'related_listings',
+                        'heading' => 'You may also like',
+                        'items'   => [
+                            ['title' => 'Related 1', 'subtitle' => 'Short descriptor', 'cta_url' => '#'],
+                            ['title' => 'Related 2', 'subtitle' => 'Short descriptor', 'cta_url' => '#'],
+                            ['title' => 'Related 3', 'subtitle' => 'Short descriptor', 'cta_url' => '#'],
+                        ]],
+                    ['type' => 'footer'],
+                ];
+
+            case 'locations':
+            case 'location':
+            case 'branches':
+            case 'find_us':
+            case 'store_finder':
+            case 'stores':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Visit us',
+                        'subheading' => $businessName,
+                        'body'       => $location !== ''
+                            ? "Find {$businessName} in {$location} — directions, hours, and contact below."
+                            : 'Directions, hours, and contact details for our locations.'],
+                    ['type' => 'map',
+                        'heading'   => 'Our locations',
+                        'locations' => [
+                            ['name' => $location !== '' ? $location : 'Main branch', 'address' => 'Replace with full address', 'phone' => '', 'hours' => 'Mon–Fri 9:00–18:00'],
+                        ]],
+                    ['type' => 'trust_signals',
+                        'heading' => 'Why visit',
+                        'style'   => 'badge_row',
+                        'items'   => [
+                            ['label' => 'Easy parking'],
+                            ['label' => 'Friendly staff'],
+                            ['label' => 'Walk-ins welcome'],
+                        ]],
+                    ['type' => 'cta',
+                        'heading'  => 'Have a question before you visit?',
+                        'cta_text' => 'Get in touch',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'footer'],
+                ];
+
+            // ─── v1.4.4 Phase D-4 (2026-05-30) — visual portfolios ─────
+            case 'before_after':
+            case 'before_and_after':
+            case 'transformations':
+            case 'results':
+            case 'case_studies':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Results that speak for themselves',
+                        'subheading' => $businessName,
+                        'body'       => 'Browse a selection of recent transformations and case studies.'],
+                    ['type' => 'gallery',
+                        'heading' => 'Before and after',
+                        'body'    => 'Tap any image to see the full transformation.',
+                        'columns' => 3,
+                        'style'   => 'card'],
+                    ['type' => 'testimonials',
+                        'heading' => 'What clients say',
+                        'items'   => [
+                            ['quote' => 'Replace with a real quote from a happy client.',  'author' => 'Client name', 'role' => 'Treatment / project'],
+                            ['quote' => 'Replace with a real quote from a happy client.',  'author' => 'Client name', 'role' => 'Treatment / project'],
+                        ]],
+                    ['type' => 'stats',
+                        'heading' => 'By the numbers',
+                        'items'   => [
+                            ['label' => 'Projects completed', 'value' => '500+'],
+                            ['label' => 'Client satisfaction', 'value' => '98%'],
+                            ['label' => 'Years of experience', 'value' => '10+'],
+                        ]],
+                    ['type' => 'cta',
+                        'heading'  => 'Want results like these?',
+                        'body'     => 'Tell us about your goals and we will design a tailored plan.',
+                        'cta_text' => 'Book a consultation',
+                        'cta_url'  => '/booking'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'menu':
+            case 'food_menu':
+            case 'dishes':
+            case 'drinks':
+            case 'wine_list':
+                $menuItems = $featureItems
+                    ? array_map(fn($s) => ['title' => $s, 'subtitle' => 'Description goes here', 'price' => 'AED 00'], $featureItems)
+                    : [
+                        ['title' => 'Signature dish 1', 'subtitle' => 'Short description of ingredients', 'price' => 'AED 00'],
+                        ['title' => 'Signature dish 2', 'subtitle' => 'Short description of ingredients', 'price' => 'AED 00'],
+                        ['title' => 'Signature dish 3', 'subtitle' => 'Short description of ingredients', 'price' => 'AED 00'],
+                        ['title' => 'Signature dish 4', 'subtitle' => 'Short description of ingredients', 'price' => 'AED 00'],
+                    ];
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Our menu',
+                        'subheading' => $businessName,
+                        'body'       => $location !== ''
+                            ? "Crafted with care in {$location}. Updated seasonally."
+                            : 'Crafted with care. Updated seasonally.'],
+                    ['type' => 'filter_bar',
+                        'heading'        => 'Browse by section',
+                        'target_grid_id' => 'menu-grid',
+                        'search_enabled' => false,
+                        'filters'        => [
+                            ['label' => 'Section', 'options' => ['All', 'Starters', 'Mains', 'Desserts', 'Drinks']],
+                            ['label' => 'Dietary', 'options' => ['Any', 'Vegetarian', 'Vegan', 'Gluten-free']],
+                        ]],
+                    ['type' => 'grid',
+                        'heading'    => 'On the menu',
+                        'columns'    => 2,
+                        'style'      => 'compact',
+                        'items'      => $menuItems],
+                    ['type' => 'cta',
+                        'heading'  => 'Reserve a table',
+                        'body'     => 'Walk-ins welcome — bookings recommended on weekends.',
+                        'cta_text' => 'Book a table',
+                        'cta_url'  => '/booking'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'portfolio':
+            case 'work':
+            case 'projects':
+            case 'gallery_page':
+            case 'showcase':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero',
+                        'heading'    => 'Selected work',
+                        'subheading' => $businessName,
+                        'body'       => $coreService !== ''
+                            ? "A selection of recent {$coreService} projects."
+                            : 'A selection of recent projects.'],
+                    ['type' => 'filter_bar',
+                        'heading'        => 'Filter by',
+                        'target_grid_id' => 'portfolio-grid',
+                        'search_enabled' => true,
+                        'filters'        => [
+                            ['label' => 'Category', 'options' => ['All']],
+                            ['label' => 'Year',     'options' => ['All', '2026', '2025', '2024']],
+                        ]],
+                    ['type' => 'grid',
+                        'heading' => '',
+                        'columns' => 3,
+                        'style'   => 'media',
+                        'items'   => [
+                            ['title' => 'Project one',   'subtitle' => 'Category · 2026', 'badge' => 'Featured'],
+                            ['title' => 'Project two',   'subtitle' => 'Category · 2026'],
+                            ['title' => 'Project three', 'subtitle' => 'Category · 2025'],
+                            ['title' => 'Project four',  'subtitle' => 'Category · 2025'],
+                            ['title' => 'Project five',  'subtitle' => 'Category · 2024'],
+                            ['title' => 'Project six',   'subtitle' => 'Category · 2024'],
+                        ]],
+                    ['type' => 'testimonials', 'heading' => 'Client feedback'],
+                    ['type' => 'cta',
+                        'heading'  => "Have a project in mind?",
+                        'body'     => "Let's talk about what you want to build.",
+                        'cta_text' => 'Start a project',
+                        'cta_url'  => '/contact'],
+                    ['type' => 'footer'],
+                ];
+
+            // ─── v1.4.4 Phase D-5 (2026-05-30) — commerce + account ────
+            case 'cart':
+            case 'basket':
+            case 'shopping_cart':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'cart_summary',
+                        'heading' => 'Your cart',
+                        'items'   => [
+                            ['name' => 'Sample item 1', 'qty' => 1, 'price' => '120', 'subtotal' => '120'],
+                            ['name' => 'Sample item 2', 'qty' => 2, 'price' => '60',  'subtotal' => '120'],
+                        ],
+                        'currency' => 'AED',
+                        'subtotal' => '240',
+                        'tax'      => '12',
+                        'shipping' => '25',
+                        'total'    => '277',
+                        'cta_text' => 'Proceed to checkout',
+                        'cta_url'  => '/checkout',
+                        'continue_shopping_url' => '/shop'],
+                    ['type' => 'trust_signals',
+                        'heading' => 'Shop with confidence',
+                        'style'   => 'badge_row',
+                        'items'   => [
+                            ['label' => 'Secure checkout'],
+                            ['label' => 'Easy returns'],
+                            ['label' => 'Fast delivery'],
+                        ]],
+                    ['type' => 'footer'],
+                ];
+
+            case 'checkout':
+            case 'checkout_page':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'checkout_form',
+                        'heading'    => 'Checkout',
+                        'subheading' => "You're moments away — fill in the details below.",
+                        'submit_label' => 'Place order',
+                        'payment_methods' => ['Visa', 'Mastercard', 'Apple Pay', 'Cash on delivery'],
+                        'order_summary' => [
+                            'items' => [
+                                ['name' => 'Sample item 1', 'price' => 'AED 120'],
+                                ['name' => 'Sample item 2 × 2', 'price' => 'AED 120'],
+                                ['name' => 'Shipping',     'price' => 'AED 25'],
+                                ['name' => 'Tax (VAT)',    'price' => 'AED 12'],
+                            ],
+                            'total' => 'AED 277',
+                        ]],
+                    ['type' => 'trust_signals',
+                        'heading' => 'Secure transaction',
+                        'style'   => 'badge_row',
+                        'items'   => [
+                            ['label' => 'SSL encrypted'],
+                            ['label' => 'PCI compliant'],
+                            ['label' => 'No card stored'],
+                        ]],
+                    ['type' => 'footer'],
+                ];
+
+            case 'account':
+            case 'my_account':
+            case 'dashboard':
+            case 'profile_page':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'account_nav',
+                        'heading'    => 'Welcome back',
+                        'subheading' => 'Manage your orders, addresses, and profile.',
+                        'orientation' => 'top',
+                        'items' => [
+                            ['label' => 'Orders',    'url' => '/account/orders',    'active' => true],
+                            ['label' => 'Addresses', 'url' => '/account/addresses'],
+                            ['label' => 'Profile',   'url' => '/account/profile'],
+                            ['label' => 'Wishlist',  'url' => '/account/wishlist'],
+                        ]],
+                    ['type' => 'account_panel',
+                        'heading'    => 'Recent orders',
+                        'panel_type' => 'orders',
+                        'items'      => [
+                            ['ref' => '#1042', 'date' => 'May 28, 2026', 'status' => 'Delivered',  'total' => 'AED 277', 'url' => '/account/orders/1042'],
+                            ['ref' => '#1038', 'date' => 'May 14, 2026', 'status' => 'Processing', 'total' => 'AED 150', 'url' => '/account/orders/1038'],
+                        ],
+                        'empty_message' => "You haven't placed any orders yet.",
+                        'cta_text' => 'Start shopping',
+                        'cta_url'  => '/shop'],
                     ['type' => 'footer'],
                 ];
 

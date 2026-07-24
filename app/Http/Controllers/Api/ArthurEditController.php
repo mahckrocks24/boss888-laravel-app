@@ -55,6 +55,25 @@ class ArthurEditController
             'section_index' => 'nullable|integer|min:0',
         ]);
 
+        // A2 (2026-06-24) — meter Arthur prompt edits at 1 credit per block edit
+        // (Boss 2026-06-23). Deterministic "instant" field edits don't hit this
+        // endpoint (they save directly), so they stay free. Reserve BEFORE the
+        // runtime call (cost-gating doc), commit only on a real applied edit,
+        // release on no-op/failure. (The agent path is metered separately by
+        // EngineExecutionService via the ai_builder_action capability = 1cr.)
+        $credits = app(\App\Core\Billing\CreditService::class);
+        $reservationRef = null;
+        try {
+            $rsv = $credits->reserveCredits($wsId, 1, 'arthur_edit', $pageId);
+            $reservationRef = $rsv->reservation_reference;
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error'            => 'insufficient_credits',
+                'required_credits' => 1,
+                'message'          => 'Not enough credits to edit (1 credit per change).',
+            ], 402);
+        }
+
         try {
             $result = $this->arthur->editPage(
                 pageId:       $pageId,
@@ -62,8 +81,18 @@ class ArthurEditController
                 sectionIndex: $validated['section_index'] ?? null,
                 context:      ['subdomain' => $page->subdomain ?? null],
             );
+            if (($result['success'] ?? false) && (int) ($result['actions_applied'] ?? 0) > 0) {
+                $credits->commitReservedCredits($reservationRef);
+                $result['credits_used'] = 1;
+            } else {
+                $credits->releaseReservedCredits($reservationRef);
+                $result['credits_used'] = 0;
+            }
             return response()->json($result);
         } catch (\Throwable $e) {
+            if ($reservationRef) {
+                $credits->releaseReservedCredits($reservationRef);
+            }
             return response()->json([
                 'error'   => 'Arthur edit failed',
                 'detail'  => $e->getMessage(),

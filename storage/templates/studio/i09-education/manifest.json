@@ -1,0 +1,45 @@
+{
+  "name": "EdTech Bento UI — Education",
+  "slug": "i09-education",
+  "format": "square",
+  "category": "corporate",
+  "sub_category": "edtech",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["education", "edtech", "courses", "learning", "saas"],
+  "variables": {
+    "brand_name":      { "type": "text",  "label": "Brand name",   "default": "Logo Here" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",    "default": "companyname.com" },
+    "eyebrow":         { "type": "text",  "label": "Eyebrow",      "default": "EdTech Platform" },
+    "headline_1":      { "type": "text",  "label": "Headline 1",   "default": "Learn" },
+    "headline_accent": { "type": "text",  "label": "Headline accent","default": "Without" },
+    "headline_2":      { "type": "text",  "label": "Headline 2",   "default": "Limits." },
+    "subheading":      { "type": "text",  "label": "Subheading",   "default": "Courses taught by world-class instructors — on your schedule, at your pace." },
+    "cta_label":       { "type": "text",  "label": "Main CTA",     "default": "Start Learning" },
+    "hero_image":      { "type": "image", "label": "Hero image",   "default": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=340&q=85&fit=crop" },
+    "cb_val":          { "type": "text",  "label": "B value",      "default": "500+" },
+    "cb_label":        { "type": "text",  "label": "B label",      "default": "Courses" },
+    "cc_label":        { "type": "text",  "label": "C label",      "default": "Completion Rate" },
+    "cc_val":          { "type": "text",  "label": "C value",      "default": "92%" },
+    "cc_note":         { "type": "text",  "label": "C note",       "default": "Industry leading" },
+    "cd_emoji":        { "type": "text",  "label": "D emoji",      "default": "🎓" },
+    "cd_title":        { "type": "text",  "label": "D title",      "default": "Certified Courses" },
+    "cd_sub":          { "type": "text",  "label": "D sub",        "default": "Industry-recognized certificates upon completion." },
+    "ce_live_label":   { "type": "text",  "label": "E live label", "default": "Live Now" },
+    "ce_num":          { "type": "text",  "label": "E number",     "default": "14K" },
+    "ce_label":        { "type": "text",  "label": "E label",      "default": "Students online" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#F0F4FF" },
+    "navy":   { "label": "Primary",    "default": "#1A237E" },
+    "blue":   { "label": "Blue",       "default": "#3F51B5" },
+    "yellow": { "label": "Accent",     "default": "#FFD600" },
+    "green":  { "label": "Status",     "default": "#00C853" }
+  },
+  "semantic": {
+    "mood": ["professional", "calm"],
+    "color_temperature": "light",
+    "composition": "grid",
+    "best_for": ["education", "edtech", "saas", "b2c", "learning"]
+  }
+}

@@ -166,9 +166,12 @@ class CreativeConnector extends BaseConnector
         $size = $options['size'] ?? $this->mapAspectRatioToSize($options['aspect_ratio'] ?? null);
 
         $result = $this->runtime->imageGenerate($prompt, [
-            'style'   => $options['style']   ?? null,
-            'size'    => $size,
-            'quality' => $options['quality'] ?? null,
+            'style'        => $options['style']   ?? null,
+            'size'         => $size,
+            'quality'      => $options['quality'] ?? null,
+            // 2026-07-02 F2 — forward the caller's workspace_id so the runtime
+            // stores under ai-images/{ws}/ instead of the shared 0/ bucket.
+            'workspace_id' => $options['workspace_id'] ?? null,
         ]);
 
         if (! ($result['success'] ?? false)) {
@@ -206,7 +209,7 @@ class CreativeConnector extends BaseConnector
             'width'        => $width,
             'height'       => $height,
             'file_size'    => $fileSize,
-            'storage_path' => null,  // DALL-E 3 returns hosted URLs; no local storage path
+            'storage_path' => $result['storage_path'] ?? null,  // 2026-07-02 F3 — runtime (gpt-image-1) writes b64 to local disk + returns the real path; stop discarding it
             'asset_id'     => 'dalle3-' . substr(md5($url . microtime(true)), 0, 12),
             'metadata'     => [
                 'revised_prompt' => $result['revised_prompt'] ?? null,

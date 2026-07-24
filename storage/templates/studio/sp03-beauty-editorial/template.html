@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Media Template — Minimal Editorial / Beauty / Portrait</title>
+
+  <!-- ============================================================
+       GOOGLE FONTS
+       Display: Italiana        — refined high-contrast serif
+       Body:    DM Sans         — geometric, ultra-clean
+       Accent:  Tenor Sans      — airy small-caps feel
+  ============================================================ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Italiana&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Tenor+Sans&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ============================================================
+       DESIGN TOKENS
+       Industry:  Beauty · Skincare · Wellness
+       Style:     Minimal · Editorial · Airy
+       Layout:    Centered stack — full-bleed image top, content below
+       Format:    Portrait 1080 × 1350
+    ============================================================ */
+    :root{
+      /* --- Palette --- */
+      --bg:          #FAF8F5;          /* warm ivory page */
+      --clr-surface:     #F3EFE8;          /* slightly deeper ivory */
+      --accent:        #C4907A;          /* dusty terracotta-rose */
+      --primary:  #E8C5B5;          /* pale blush */
+      --clr-rose-dim:    #8A6357;          /* deep rose for text */
+      --clr-sage:        #8FA68A;          /* muted sage green accent */
+      --text:         #1E1A17;          /* warm near-black */
+      --clr-text-body:   #3D3630;          /* rich brown-black */
+      --clr-text-muted:  #9C9188;          /* warm mid gray */
+      --clr-text-ghost:  #C8C0B8;          /* very soft */
+      --clr-border:      rgba(196,144,122,0.20);
+      --clr-border-soft: rgba(30,26,23,0.08);
+
+      /* --- Typography --- */
+      --font-display:  'Italiana', 'Didot', 'Bodoni MT', serif;
+      --font-body:     'DM Sans', sans-serif;
+      --font-accent:   'Tenor Sans', serif;
+
+      /* --- Spacing --- */
+      --sp-xs:   8px;
+      --sp-sm:  16px;
+      --sp-md:  32px;
+      --sp-lg:  56px;
+      --sp-xl:  80px;
+
+      /* --- Dimensions --- */
+      --post-w: 1080px;
+      --post-h: 1350px;
+    }
+
+    /* ============================================================
+       RESET
+    ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      background:#EDEAE5;
+    }
+
+    /* ============================================================
+       SCENE — browser preview
+    ============================================================ */
+    .scene {
+      display:         flex;
+      flex-direction:  column;
+      align-items:     center;
+      justify-content: center;
+      min-height:      100vh;
+      padding:         48px 20px;
+      background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(196,144,122,0.10) 0%, transparent 60%),
+        #E8E4DE;
+    }
+
+    .scale-wrap {
+      transform-origin: top center;
+    }
+
+    /* ============================================================
+       POST — 1080 × 1350
+    ============================================================ */
+    .post {
+      width:     var(--post-w);
+      height:    var(--post-h);
+      position:  relative;
+      overflow:  hidden;
+      background:var(--bg);
+      display:   flex;
+      flex-direction: column;
+      font-family: var(--font-body);
+      color:var(--clr-text-body);
+    }
+
+    /* ============================================================
+       SECTION 1 — HERO IMAGE (full-width, top half)
+    ============================================================ */
+    .hero {
+      position: relative;
+      width:    100%;
+      height:   620px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    /*
+      SWAP IMAGE:
+      Beauty:    https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1080&q=85
+      Skincare:  https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1080&q=85
+      Wellness:  https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1080&q=85
+      Fashion:   https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1080&q=85
+    */
+    .hero__img {
+      width:   100%;
+      height:  100%;
+      display: block;
+      object-fit:      cover;
+      object-position: center 25%;
+    }
+
+    /* Soft bottom fade into the ivory page — no hard cut */
+    .hero::after {
+      content:  '';
+      position: absolute;
+      inset:    0;
+      background:linear-gradient(180deg,
+          transparent 50%,
+          rgba(250,248,245,0.55) 78%,
+          var(--bg) 100%
+        );
+    }
+
+    /* Floating category pill — bottom-left of image */
+    .hero__pill {
+      position:   absolute;
+      z-index:    3;
+      bottom:     var(--sp-md);
+      left:       var(--sp-lg);
+      display:    flex;
+      align-items: center;
+      gap:         9px;
+      font-family:    var(--font-accent);
+      font-size:      12px;
+      letter-spacing: 0.22em;
+      color:var(--clr-rose-dim);
+      text-transform: uppercase;
+    }
+
+    .hero__pill::before {
+      content:       '';
+      width:         28px;
+      height:        1px;
+      background:var(--accent);
+      display:       block;
+      flex-shrink:   0;
+    }
+
+    /* Minimal edition tag — top-right */
+    .hero__edition {
+      position:   absolute;
+      z-index:    3;
+      top:        var(--sp-md);
+      right:      var(--sp-lg);
+      font-family:    var(--font-body);
+      font-size:      11px;
+      font-weight:    400;
+      letter-spacing: 0.18em;
+      color:var(--bg);
+      background:var(--accent);
+      padding:        8px 16px;
+      text-transform: uppercase;
+    }
+
+    /* ============================================================
+       DECORATIVE ELEMENTS
+    ============================================================ */
+
+    /* Thin top border stripe — luxury feel */
+    .deco-topline {
+      position:   absolute;
+      z-index:    10;
+      top:        0;
+      left:       var(--sp-lg);
+      right:      var(--sp-lg);
+      height:     1.5px;
+      background:linear-gradient(90deg, transparent, var(--accent), transparent);
+      pointer-events: none;
+    }
+
+    /* Large ghost circle — sits behind content, bleeds off bottom */
+    .deco-circle {
+      position:     absolute;
+      z-index:      0;
+      width:        760px;
+      height:       760px;
+      border-radius: 50%;
+      border:       1px solid var(--clr-border);
+      bottom:       -280px;
+      left:         50%;
+      transform:    translateX(-50%);
+      pointer-events: none;
+    }
+
+    /* Second inner circle */
+    .deco-circle-2 {
+      position:     absolute;
+      z-index:      0;
+      width:        520px;
+      height:       520px;
+      border-radius: 50%;
+      border:       1px solid var(--clr-border-soft);
+      bottom:       -160px;
+      left:         50%;
+      transform:    translateX(-50%);
+      pointer-events: none;
+    }
+
+    /* Vertical rule — right side of content area */
+    .deco-vline {
+      position:   absolute;
+      z-index:    1;
+      width:      1px;
+      height:     180px;
+      background:linear-gradient(180deg, transparent, var(--primary), transparent);
+      right:      var(--sp-lg);
+      top:        700px;
+      pointer-events: none;
+    }
+
+    /* Tiny rose dot cluster — top-left content corner */
+    .deco-dots {
+      position:   absolute;
+      z-index:    1;
+      width:      72px;
+      height:     72px;
+      top:        640px;
+      left:       var(--sp-lg);
+      background-image: radial-gradient(circle, var(--primary) 1.5px, transparent 1.5px);
+      background-size: 10px 10px;
+      mask-image: radial-gradient(ellipse at top left, black 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse at top left, black 30%, transparent 80%);
+      pointer-events: none;
+    }
+
+    /* Horizontal rule dividers — used multiple times */
+    .rule {
+      width:      100%;
+      height:     1px;
+      background:var(--clr-border-soft);
+      flex-shrink: 0;
+    }
+
+    .rule--rose {
+      background:linear-gradient(90deg, var(--primary), transparent);
+    }
+
+    /* ============================================================
+       CONTENT BODY — everything below hero
+    ============================================================ */
+    .content {
+      position:  relative;
+      z-index:   2;
+      flex:      1;
+      display:   flex;
+      flex-direction: column;
+      padding:   var(--sp-md) var(--sp-lg) 0;
+    }
+
+    /* ── Eyebrow ──────────────────────────────────────────────── */
+    .eyebrow {
+      display:     flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-md);
+    }
+
+    .eyebrow__label {
+      font-family:    var(--font-accent);
+      font-size:      11px;
+      letter-spacing: 0.30em;
+      color:var(--accent);
+      text-transform: uppercase;
+    }
+
+    .eyebrow__number {
+      font-family:    var(--font-body);
+      font-size:18px;
+      font-weight:    300;
+      letter-spacing: 0.16em;
+      color:var(--clr-text-ghost);
+    }
+
+    /* ── Headline ─────────────────────────────────────────────── */
+    .headline {
+      font-family: var(--font-display);
+      font-size:   96px;
+      font-weight: 400;
+      line-height: 0.96;
+      letter-spacing: -0.01em;
+      color:var(--text);
+      margin-bottom: var(--sp-md);
+    }
+
+    /* Italic emphasis word */
+    .headline__em {
+      font-style: italic;
+      color:var(--accent);
+    }
+
+    /* ── Separator with rose dot ──────────────────────────────── */
+    .dot-rule {
+      display:     flex;
+      align-items: center;
+      gap:         16px;
+      margin-bottom: var(--sp-md);
+    }
+
+    .dot-rule__line {
+      flex:       1;
+      height:     1px;
+      background:var(--clr-border-soft);
+    }
+
+    .dot-rule__dot {
+      width:         6px;
+      height:        6px;
+      border-radius: 50%;
+      background:var(--accent);
+      flex-shrink:   0;
+    }
+
+    /* ── Subheadline ──────────────────────────────────────────── */
+    .subheadline {
+      font-family: var(--font-body);
+      font-size:18px;
+      font-weight: 300;
+      line-height: 1.7;
+      color:var(--clr-text-muted);
+      margin-bottom: var(--sp-md);
+    }
+
+    /* ── Ingredient / feature tag list ───────────────────────── */
+    .tag-list {
+      display:       flex;
+      flex-wrap:     wrap;
+      gap:           10px;
+      margin-bottom: var(--sp-md);
+    }
+
+    .tag {
+      font-family:    var(--font-accent);
+      font-size:18px;
+      letter-spacing: 0.18em;
+      color:var(--clr-rose-dim);
+      text-transform: uppercase;
+      padding:        8px 18px;
+      border:         1px solid var(--clr-border);
+      background:rgba(196,144,122,0.04);
+      border-radius:  40px;
+    }
+
+    /* ── CTA + Badge ──────────────────────────────────────────── */
+    .cta-area {
+      display:     flex;
+      align-items: center;
+      gap:         var(--sp-sm);
+      margin-bottom: var(--sp-md);
+    }
+
+    .cta-btn {
+      display:        inline-flex;
+      align-items:    center;
+      gap:            14px;
+      font-family:    var(--font-body);
+      font-size:      13px;
+      font-weight:    500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color:var(--bg);
+      background:var(--accent);
+      border:         none;
+      padding:        18px 44px;
+      border-radius:  2px;
+      cursor:         pointer;
+      text-decoration: none;
+      position:       relative;
+      overflow:       hidden;
+      transition:     transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .cta-btn::before {
+      content:  '';
+      position: absolute;
+      inset:    0;
+      background:linear-gradient(135deg, rgba(255,255,255,0.12), transparent);
+      pointer-events: none;
+    }
+
+    .cta-btn::after {
+      content:  '';
+      position: absolute;
+      top:    0;
+      left:   -100%;
+      width:  50%;
+      height: 100%;
+      background:linear-gradient(120deg, transparent, rgba(255,255,255,0.22), transparent);
+      transition: left 0.45s ease;
+    }
+
+    .cta-btn:hover {
+      transform:  translateY(-2px);
+      box-shadow: 0 12px 40px rgba(196,144,122,0.35);
+    }
+
+    .cta-btn:hover::after {
+      left: 160%;
+    }
+
+    /* Thin arrow inside CTA */
+    .cta-btn__arrow {
+      font-size: 18px;
+      transition: transform 0.25s ease;
+    }
+
+    .cta-btn:hover .cta-btn__arrow {
+      transform: translateX(4px);
+    }
+
+    /* Secondary ghost CTA */
+    .cta-ghost {
+      display:        inline-flex;
+      align-items:    center;
+      gap:            10px;
+      font-family:    var(--font-body);
+      font-size:20px;
+      font-weight:    400;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color:var(--clr-rose-dim);
+      border-bottom:  1px solid var(--primary);
+      padding-bottom: 2px;
+      text-decoration: none;
+      transition:     color 0.2s, border-color 0.2s;
+    }
+
+    .cta-ghost:hover {
+      color:var(--accent);
+      border-color:var(--accent);
+    }
+
+    /* ============================================================
+       BOTTOM BRAND BAR — fixed to bottom of post
+    ============================================================ */
+    .brand-bar {
+      position: absolute;
+      z-index:  5;
+      bottom:   0;
+      left:     0;
+      right:    0;
+      height:   96px;
+      display:  flex;
+      align-items: center;
+      justify-content: space-between;
+      padding:  0 var(--sp-lg);
+      background:var(--clr-surface);
+      border-top: 1px solid var(--clr-border-soft);
+    }
+
+    .brand-bar__logo {
+      display:     flex;
+      align-items: center;
+      gap:         14px;
+    }
+
+    /* Logo mark — replace with <img> or <svg> */
+    .brand-mark {
+      width:         46px;
+      height:        46px;
+      border-radius: 50%;
+      border:        1.5px solid var(--accent);
+      display:       grid;
+      place-items:   center;
+      position:      relative;
+      flex-shrink:   0;
+    }
+
+    /* Inner circle on logo mark */
+    .brand-mark::before {
+      content:       '';
+      position:      absolute;
+      inset:         8px;
+      border-radius: 50%;
+      background:var(--primary);
+    }
+
+    .brand-mark::after {
+      content:       '';
+      position:      absolute;
+      inset:         14px;
+      border-radius: 50%;
+      background:var(--accent);
+    }
+
+    .brand-bar__text {
+      display:        flex;
+      flex-direction: column;
+      gap:            3px;
+    }
+
+    .brand-bar__name {
+      font-family:    var(--font-body);
+      font-size:      15px;
+      font-weight:    500;
+      letter-spacing: 0.10em;
+      color:var(--text);
+      text-transform: uppercase;
+    }
+
+    .brand-bar__url {
+      font-family:    var(--font-body);
+      font-size:      11px;
+      font-weight:    300;
+      letter-spacing: 0.12em;
+      color:var(--clr-text-muted);
+    }
+
+    .brand-bar__right {
+      display:     flex;
+      align-items: center;
+      gap:         var(--sp-sm);
+    }
+
+    /* Volume / price callout */
+    .brand-bar__price {
+      text-align: right;
+    }
+
+    .brand-bar__price-label {
+      font-family:    var(--font-accent);
+      font-size:      10px;
+      letter-spacing: 0.22em;
+      color:var(--clr-text-ghost);
+      text-transform: uppercase;
+      display:        block;
+    }
+
+    .brand-bar__price-val {
+      font-family: var(--font-display);
+      font-size:   28px;
+      line-height: 1;
+      color:var(--accent);
+    }
+
+    /* Social handle */
+    .brand-bar__handle {
+      font-family:    var(--font-body);
+      font-size:      11px;
+      font-weight:    300;
+      letter-spacing: 0.12em;
+      color:var(--clr-text-ghost);
+      border-left:    1px solid var(--clr-border-soft);
+      padding-left:   var(--sp-sm);
+    }
+
+    /* ============================================================
+       PREVIEW LABEL
+    ============================================================ */
+    .preview-note {
+      text-align:  center;
+      margin-top:  20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size:   11px;
+      color:rgba(30,26,23,0.28);
+      letter-spacing: 0.18em;
+    }
+
+    /* ============================================================
+       RESPONSIVE PREVIEW SCALING — CSS-only, no JS
+    ============================================================ */
+    @media (max-width: 1220px) {
+      .scale-wrap { transform: scale(0.80); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.80); height: calc(1350px * 0.80); }
+    }
+    @media (max-width: 980px) {
+      .scale-wrap { transform: scale(0.62); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.62); height: calc(1350px * 0.62); }
+    }
+    @media (max-width: 760px) {
+      .scale-wrap { transform: scale(0.44); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.44); height: calc(1350px * 0.44); }
+    }
+    @media (max-width: 520px) {
+      .scale-wrap { transform: scale(0.30); transform-origin: top center;
+                    display: block; width: calc(1080px * 0.30); height: calc(1350px * 0.30); }
+    }
+  
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body>
+
+  <div class="scene">
+    <div>
+      <div class="scale-wrap">
+
+        <!-- ======================================================
+             POST CANVAS — 1080 × 1350 export frame
+        ====================================================== -->
+        <div class="post" id="post">
+
+          <!-- Top border accent -->
+          <div class="deco-topline"></div>
+
+          <!-- Ghost circles behind content -->
+          <div class="deco-circle"></div>
+          <div class="deco-circle-2"></div>
+
+          <!-- Vertical rule right -->
+          <div class="deco-vline"></div>
+
+          <!-- Dot cluster top-left of content -->
+          <div class="deco-dots"></div>
+
+          <!-- ── SECTION 1: HERO IMAGE ──────────────────────── -->
+          <div class="hero">
+            <img
+              class="hero__img"
+              data-field="hero_image"
+              src="{{hero_image}}"
+              alt="Hero"
+              loading="eager"
+            />
+            <!-- Floating labels on image -->
+            <div class="hero__pill" data-field="hero_pill">{{hero_pill}}</div>
+            <div class="hero__edition" data-field="hero_edition">{{hero_edition}}</div>
+          </div>
+
+          <!-- ── CONTENT BODY ──────────────────────────────── -->
+          <div class="content">
+
+            <!-- Eyebrow row -->
+            <div class="eyebrow">
+              <span class="eyebrow__label" data-field="eyebrow_label">{{eyebrow_label}}</span>
+              <span class="eyebrow__number" data-field="eyebrow_number">{{eyebrow_number}}</span>
+            </div>
+
+            <!-- Headline -->
+            <h1 class="headline">
+              <span data-field="headline_main">{{headline_main}}</span><br>
+              <span class="headline__em" data-field="headline_accent">{{headline_accent}}</span>
+            </h1>
+
+            <!-- Dot rule divider -->
+            <div class="dot-rule">
+              <div class="dot-rule__line"></div>
+              <div class="dot-rule__dot"></div>
+              <div class="dot-rule__line"></div>
+            </div>
+
+            <!-- Subheadline -->
+            <p class="subheadline" data-field="subheading">
+              {{subheading}}
+            </p>
+
+            <!-- Ingredient / feature tags -->
+            <div class="tag-list">
+              <span class="tag" data-field="tag_1">{{tag_1}}</span>
+              <span class="tag" data-field="tag_2">{{tag_2}}</span>
+              <span class="tag" data-field="tag_3">{{tag_3}}</span>
+              <span class="tag" data-field="tag_4">{{tag_4}}</span>
+            </div>
+
+            <div class="rule rule--rose" style="margin-bottom: var(--sp-md);"></div>
+
+            <!-- CTA + secondary action -->
+            <div class="cta-area">
+              <a class="cta-btn" href="#">
+                <span data-field="cta_label">{{cta_label}}</span>
+                <span class="cta-btn__arrow">&rarr;</span>
+              </a>
+              <a class="cta-ghost" href="#" data-field="cta_ghost_label">
+                {{cta_ghost_label}}
+              </a>
+            </div>
+
+          </div>
+          <!-- end .content -->
+
+          <!-- ── BRAND BAR ─────────────────────────────────── -->
+          <div class="brand-bar">
+
+            <div class="brand-bar__logo">
+              <!-- Replace .brand-mark with your <img> or <svg> logo -->
+              <div class="brand-mark"></div>
+              <div class="brand-bar__text">
+                <span class="brand-bar__name" data-field="brand_name">{{brand_name}}</span>
+                <span class="brand-bar__url" data-field="brand_url">{{brand_url}}</span>
+              </div>
+            </div>
+
+            <div class="brand-bar__right">
+              <div class="brand-bar__price">
+                <span class="brand-bar__price-label" data-field="price_label">{{price_label}}</span>
+                <span class="brand-bar__price-val" data-field="price_val">{{price_val}}</span>
+              </div>
+              <span class="brand-bar__handle" data-field="brand_handle">{{brand_handle}}</span>
+            </div>
+
+          </div>
+
+        </div>
+        <!-- end .post -->
+
+      </div>
+      <!-- end .scale-wrap -->
+
+      <p class="preview-note">1080 × 1350 px &nbsp;·&nbsp; Portrait 4:5 &nbsp;·&nbsp; Minimal Editorial / Beauty</p>
+    </div>
+  </div>
+
+</body>
+</html>

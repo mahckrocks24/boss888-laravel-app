@@ -88,9 +88,29 @@ class StrategyLearningService
                 ? min(1.0, (float)$outcome['engagement_rate'] / 5.0) : 0.50,
             'email_campaign' => isset($outcome['click_through_rate'])
                 ? min(1.0, (float)$outcome['click_through_rate'] / 5.0) : 0.50,
-            default => 0.50,
+            // Generic task-completion outcomes (daily_action_* / proposal-origin
+            // tasks). Keyed by raw action slug, so they land here. Score from the
+            // success + applied signals the EES callback carries. 2026-06-30.
+            default => $this->scoreGeneric($outcome),
         };
         return max(0.0, min(1.0, $val));
+    }
+
+    /**
+     * Generic outcome scorer for proposal/strategy tasks that don't map to one
+     * of the named campaign types. Uses the success + applied signals recorded
+     * by EngineExecutionService::handleRuntimeCallback. A task that ran but did
+     * nothing (applied=0) scores low — that is the orphan-rescue no-op signal.
+     */
+    private function scoreGeneric(array $outcome): float
+    {
+        if (array_key_exists('success', $outcome) && $outcome['success'] === false) {
+            return 0.10;
+        }
+        if (array_key_exists('applied', $outcome) && is_numeric($outcome['applied'])) {
+            return ((int)$outcome['applied'] > 0) ? 0.85 : 0.40;
+        }
+        return 0.50;
     }
 
     private function generateNotes(string $type, array $outcome, float $score): string

@@ -1,0 +1,70 @@
+{
+  "name": "Barbershop Reel",
+  "slug": "r26-barbershop",
+  "format": "reels",
+  "category": "barbershop",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "barbershop"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Premium Barbershop"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Old-school craft meets modern precision — walk out looking like the best version of yourself, every time."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "LOGO HERE"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "SHARP"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "CUTS."
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "CLEAN FADES."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Book Now"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "barbershop"
+    ]
+  }
+}

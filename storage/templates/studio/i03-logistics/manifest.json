@@ -1,0 +1,46 @@
+{
+  "name": "Tech Dashboard Bento — Logistics",
+  "slug": "i03-logistics",
+  "format": "square",
+  "category": "corporate",
+  "sub_category": "logistics",
+  "canvas_width": 1080,
+  "canvas_height": 1080,
+  "industry_tags": ["logistics", "shipping", "fleet", "tech", "b2b"],
+  "variables": {
+    "eyebrow":          { "type": "text", "label": "Eyebrow",            "default": "Global Logistics" },
+    "headline_1":       { "type": "text", "label": "Headline line 1",    "default": "MOVE" },
+    "headline_2":       { "type": "text", "label": "Headline line 2",    "default": "ANY" },
+    "headline_accent":  { "type": "text", "label": "Headline accent",    "default": "WHERE." },
+    "subheading":       { "type": "text", "label": "Subheading",         "default": "Real-time global delivery network connecting 150+ countries with precision and speed." },
+    "ca_cta_label":     { "type": "text", "label": "Main CTA",           "default": "Track Shipment" },
+    "cb_label":         { "type": "text", "label": "B card label",       "default": "Active Shipments" },
+    "cb_val":           { "type": "text", "label": "B value",            "default": "4,820" },
+    "cb_unit":          { "type": "text", "label": "B unit",             "default": " pkgs" },
+    "cb_sub":           { "type": "text", "label": "B sub",              "default": "Live Tracking" },
+    "cc_label":         { "type": "text", "label": "C card label",       "default": "On-Time Delivery" },
+    "cc_val":           { "type": "text", "label": "C value",            "default": "99.2" },
+    "cc_unit":          { "type": "text", "label": "C unit",             "default": "%" },
+    "cd_label":         { "type": "text", "label": "D card label",       "default": "Fleet Size" },
+    "cd_val":           { "type": "text", "label": "D value",            "default": "2,400" },
+    "cd_unit":          { "type": "text", "label": "D unit",             "default": " units" },
+    "cd_tag":           { "type": "text", "label": "D tag",              "default": "🌐 150+ Countries" },
+    "brand_name":       { "type": "text", "label": "Brand name",         "default": "Logo Here" },
+    "brand_url":        { "type": "text", "label": "Brand URL",          "default": "companyname.com" },
+    "ce_headline_1":    { "type": "text", "label": "E headline line 1",  "default": "Ship" },
+    "ce_headline_2":    { "type": "text", "label": "E headline line 2",  "default": "Smarter." },
+    "ce_cta_label":     { "type": "text", "label": "E CTA",              "default": "Get Quote →" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#050D18" },
+    "cyan":   { "label": "Primary",    "default": "#00E5FF" },
+    "green":  { "label": "Status",     "default": "#00FF88" },
+    "orange": { "label": "Accent",     "default": "#FF6B35" }
+  },
+  "semantic": {
+    "mood": ["professional", "bold"],
+    "color_temperature": "dark",
+    "composition": "grid",
+    "best_for": ["logistics", "shipping", "fleet", "b2b", "saas"]
+  }
+}

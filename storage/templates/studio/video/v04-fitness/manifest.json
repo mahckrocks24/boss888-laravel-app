@@ -1,0 +1,60 @@
+{
+  "name": "Fitness Reel",
+  "slug": "v04-fitness",
+  "format": "reels",
+  "category": "fitness",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "fitness"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "LOGO HERE"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "Elite Training"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "12-Week Transformation · Join 4,000+ Athletes"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "PUSH"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "YOUR"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "LIMITS."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Start Today"
+    },
+    "bg_image": {
+      "type": "image",
+      "label": "Background image",
+      "default": "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1080&q=85&fit=crop&crop=top"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "fitness"
+    ]
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "name": "Saas Reel",
+  "slug": "b01-saas",
+  "format": "reels",
+  "category": "saas",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "saas"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "✨"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "One platform that handles your entire growth stack — strategy, content, CRM, and analytics, all connected by AI."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Grow"
+    },
+    "headline_2": {
+      "type": "text",
+      "label": "Headline 2",
+      "default": "smarter,"
+    },
+    "pill_1": {
+      "type": "text",
+      "label": "Pill 1",
+      "default": "Free Trial →"
+    },
+    "stat_val_1": {
+      "type": "text",
+      "label": "Stat Val 1",
+      "default": "10×"
+    },
+    "stat_val_2": {
+      "type": "text",
+      "label": "Stat Val 2",
+      "default": "14K"
+    },
+    "stat_val_3": {
+      "type": "text",
+      "label": "Stat Val 3",
+      "default": "99%"
+    },
+    "stat_label_1": {
+      "type": "text",
+      "label": "Stat Label 1",
+      "default": "Avg. Growth"
+    },
+    "stat_label_2": {
+      "type": "text",
+      "label": "Stat Label 2",
+      "default": "Happy Teams"
+    },
+    "stat_label_3": {
+      "type": "text",
+      "label": "Stat Label 3",
+      "default": "Uptime"
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Start for Free"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "saas"
+    ]
+  }
+}

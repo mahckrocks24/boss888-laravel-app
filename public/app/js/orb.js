@@ -11,7 +11,7 @@ const ORB_CONFIG = {
     dmm:       { color: '#F59E0B', label: 'Sarah',  role: 'Marketing Lead'      },
     seo:       { color: '#3B82F6', label: 'James',  role: 'SEO Strategist'      },
     content:   { color: '#7C3AED', label: 'Priya',  role: 'Content Manager'     },
-    social:    { color: '#EC4899', label: 'Marcus', role: 'Social Media'        },
+    social:    { color: '#EC4899', label: 'LevelUp Growth', role: 'Article share' },
     ads:       { color: '#F97316', label: 'Elena',  role: 'CRM Manager'         },
     technical: { color: '#06B6D4', label: 'Alex',   role: 'Technical SEO'       },
     crm:       { color: '#00E5A8', label: 'Elena',  role: 'CRM Manager'         },
@@ -23,14 +23,11 @@ const AGENT_ORB_MAP = {
     sarah:  'dmm',
     james:  'seo',
     priya:  'content',
-    marcus: 'social',
     elena:  'crm',
     alex:   'technical',
-    // 20 specialists
+    // retained specialists
     diana:  'seo',      ryan:   'technical', sofia:  'seo',
-    leo:    'content',  maya:   'content',   chris:  'ads',       nora:   'content',
-    zara:   'social',   tyler:  'social',    aria:   'ads',       jordan: 'social',
-    sam:    'crm',      kai:    'crm',       vera:   'ads',       max:    'crm',
+    nora:   'content',  max:    'crm',
 };
 
 // ── Core agent level assignments (spec-locked) ────────────────────────────
@@ -39,7 +36,6 @@ const AGENT_LEVELS = {
     dmm:    'senior',
     james:  'junior',      // SEO Strategist
     priya:  'specialist',  // Content Manager
-    marcus: 'specialist',  // Social Media Manager
     elena:  'junior',      // CRM Manager
     alex:   'senior',      // Technical SEO
 };
@@ -124,7 +120,7 @@ function getAgentLevel(agentId) {
 
 /**
  * Build orb for a core agent using their spec-locked level.
- * @param {string} agentId - sarah|james|priya|marcus|elena|alex|dmm|seo|...
+ * @param {string} agentId - sarah|james|priya|elena|alex|dmm|seo|...
  * @param {string} size    - sm | md | lg
  * @param {string} state   - idle | thinking | executing | success | error
  * @param {string} label   - optional

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Photography — Full Bleed Visual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Lato:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --text:#080808;--bg:#F8F8F8;--accent:#C9A56A;--primary:#E8CFA0;
+  --muted:rgba(248,248,248,.50);
+  --fh:'Rozha One',Georgia,serif;--fb:'Lato',sans-serif;
+  --w:1080px;--h:1080px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:#050505}
+.scene{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px}
+.sw{transform-origin:top center}
+@media(max-width:1160px){.sw{transform:scale(.80);display:block;width:calc(var(--w)*.80);height:calc(var(--h)*.80)}}
+@media(max-width:940px){.sw{transform:scale(.62);display:block;width:calc(var(--w)*.62);height:calc(var(--h)*.62)}}
+@media(max-width:700px){.sw{transform:scale(.44);display:block;width:calc(var(--w)*.44);height:calc(var(--h)*.44)}}
+@media(max-width:500px){.sw{transform:scale(.30);display:block;width:calc(var(--w)*.30);height:calc(var(--h)*.30)}}
+
+.post{width:var(--w);height:var(--h);position:relative;overflow:hidden;background:var(--text)}
+
+/* FULL BLEED IMAGE */
+.hero{position:absolute;inset:0;z-index:1}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center;
+  filter:saturate(0.85) contrast(1.08) brightness(.80)}
+
+/* LAYERED GRADIENTS — heavy at top and bottom for text */
+/* Top scrim — strong so topbar is readable */
+.scrim-top{position:absolute;z-index:2;top:0;left:0;right:0;height:200px;
+  background:linear-gradient(180deg,rgba(8,8,8,.88) 0%,rgba(8,8,8,.40) 60%,transparent 100%)}
+/* Bottom scrim — heavy so all bottom text is readable */
+.scrim-bot{position:absolute;z-index:2;bottom:0;left:0;right:0;height:420px;
+  background:linear-gradient(180deg,transparent 0%,rgba(8,8,8,.70) 40%,rgba(8,8,8,.96) 100%)}
+/* Center vignette */
+.vignette{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse 80% 80% at 50% 50%,transparent 40%,rgba(8,8,8,.40) 100%)}
+
+/* TOPBAR — on scrim-top */
+.topbar{position:absolute;z-index:6;top:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;padding:28px 44px}
+.brand-logo{display:flex;align-items:center;gap:14px}
+/* Monogram mark */
+.mono-mark{width:38px;height:38px;border:1.5px solid rgba(201,165,106,.55);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mono-mark::after{content:'P';font-family:var(--fh);font-size:16px;color:var(--accent)}
+.brand-name{font-family:var(--fb);font-size:21px;font-weight:700;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--bg)}
+.category-tag{font-family:var(--fb);font-size:10px;font-weight:400;letter-spacing:.24em;
+  text-transform:uppercase;color:rgba(248,248,248,.65);
+  border:1px solid rgba(248,248,248,.18);padding:8px 18px}
+
+/* Award badge — top right */
+.award{position:absolute;z-index:6;top:36px;right:52px;text-align:right}
+.award-val{font-family:var(--fh);font-size:11px;letter-spacing:.08em;color:var(--primary)}
+.award-label{font-family:var(--fb);font-size:10px;font-weight:300;letter-spacing:.20em;
+  text-transform:uppercase;color:var(--muted);margin-top:2px}
+
+/* VERTICAL TEXT — left edge, mid-canvas */
+.vert-text{position:absolute;z-index:6;left:28px;top:50%;
+  transform:translateY(-50%) rotate(-90deg);
+  font-family:var(--fb);font-size:10px;font-weight:300;letter-spacing:.30em;
+  text-transform:uppercase;color:rgba(248,248,248,.28);white-space:nowrap}
+
+/* CONTENT — bottom, on scrim-bot */
+.content{position:absolute;z-index:5;bottom:0;left:0;right:0;padding:0 52px 48px}
+
+/* Eyebrow on scrim-bot */
+.eyebrow{font-family:var(--fb);font-size:18px;font-weight:400;letter-spacing:.30em;
+  text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.eyebrow::before{content:'';width:24px;height:1px;background:var(--accent);flex-shrink:0}
+
+/* Big editorial headline */
+.headline{font-family:var(--fh);font-size:92px;line-height:.90;color:var(--bg);
+  margin-bottom:18px;text-shadow:0 4px 40px rgba(8,8,8,.60)}
+.headline em{font-style:italic;color:var(--primary)}
+
+/* Sub — short, single line */
+.sub{font-family:var(--fb);font-size:16px;font-weight:300;line-height:1.65;
+  color:var(--muted);max-width:560px;margin-bottom:36px}
+
+/* Bottom row: specs + CTA */
+.bottom-row{display:flex;align-items:center;justify-content:space-between}
+.specs{display:flex;gap:36px}
+.spec{display:flex;flex-direction:column;gap:4px}
+.spec-val{font-family:var(--fh);font-size:28px;color:var(--bg);line-height:1}
+.spec-label{font-family:var(--fb);font-size:17px;font-weight:300;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted)}
+
+.cta-group{display:flex;align-items:center;gap:18px}
+.cta{display:inline-flex;align-items:center;gap:12px;font-family:var(--fb);
+  font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--text);background:var(--bg);padding:18px 40px;
+  border:none;cursor:pointer;text-decoration:none;
+  transition:transform .22s,box-shadow .22s}
+.cta:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(248,248,248,.18)}
+.cta .cta-arrow{transition:transform .22s}
+.cta:hover .cta-arrow{transform:translateX(4px)}
+.brand-url{font-family:var(--fb);font-size:18px;font-weight:300;letter-spacing:.16em;
+  color:var(--muted)}
+
+/* Thin gold rule accent — across full width mid-canvas */
+.gold-rule{position:absolute;z-index:3;top:50%;left:52px;right:52px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,165,106,.18),transparent);pointer-events:none}
+
+/* phone-readability safety: clip overflow rather than overlap */
+.card,.ca,.cb,.cc,.cd,.ce,.float-card,.review-card,.rating-card,.trust-badge,.stat-float,.panel-img,.panel-right,.content,.bento>*{overflow:hidden!important}
+.sub,.subtext,.subheading,.subheadline,.card-sub,.cb-sub,.cc-sub,.cd-sub,.ce-sub,.ca-sub,.desc,.description,.feat-item,.check-item,.feature-text,.feat-text,.float-card-sub,.review-text,.tagline{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style>
+</head>
+<body><div class="scene"><div class="sw"><div class="post">
+  <!-- Full image -->
+  <div class="hero">
+    <img data-field="hero_image" src="{{hero_image}}" alt="Hero"/>
+  </div>
+
+  <!-- Overlay layers -->
+  <div class="scrim-top"></div>
+  <div class="scrim-bot"></div>
+  <div class="vignette"></div>
+  <div class="gold-rule"></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand-logo">
+      <div class="mono-mark"></div>
+      <span class="brand-name" data-field="brand_name">{{brand_name}}</span>
+    </div>
+    <span class="category-tag" data-field="category_tag">{{category_tag}}</span>
+  </div>
+
+  <!-- Award -->
+  <div class="award">
+    <div class="award-val" data-field="award_val">{{award_val}}</div>
+    <div class="award-label" data-field="award_label">{{award_label}}</div>
+  </div>
+
+  <!-- Vertical text -->
+  <div class="vert-text" data-field="vert_text">{{vert_text}}</div>
+
+  <!-- Content bottom — all on scrim-bot -->
+  <div class="content">
+    <div class="eyebrow" data-field="eyebrow">{{eyebrow}}</div>
+    <h1 class="headline"><span data-field="headline_main">{{headline_main}}</span><br><em data-field="headline_accent">{{headline_accent}}</em></h1>
+    <p class="sub" data-field="subheading">{{subheading}}</p>
+    <div class="bottom-row">
+      <div class="specs">
+        <div class="spec"><div class="spec-val" data-field="spec_1_val">{{spec_1_val}}</div><div class="spec-label" data-field="spec_1_label">{{spec_1_label}}</div></div>
+        <div class="spec"><div class="spec-val" data-field="spec_2_val">{{spec_2_val}}</div><div class="spec-label" data-field="spec_2_label">{{spec_2_label}}</div></div>
+        <div class="spec"><div class="spec-val" data-field="spec_3_val">{{spec_3_val}}</div><div class="spec-label" data-field="spec_3_label">{{spec_3_label}}</div></div>
+      </div>
+      <div class="cta-group">
+        <span class="brand-url" data-field="brand_url">{{brand_url}}</span>
+        <a class="cta" href="#"><span data-field="cta_label">{{cta_label}}</span> <span class="cta-arrow">&rarr;</span></a>
+      </div>
+    </div>
+  </div>
+</div></div></div></body></html>

@@ -303,6 +303,7 @@
 
       <div class="nav-group">Agents &amp; Tasks</div>
       <div class="nav-item" onclick="nav('agents')"><span class="nav-icon">&#129302;</span> Agents</div>
+      <div class="nav-item" onclick="nav('webActivity')"><span class="nav-icon">&#127760;</span> Agent Web Activity</div>
       <div class="nav-item" onclick="nav('tasks')"><span class="nav-icon">&#9889;</span> Task Monitor</div>
       <div class="nav-item" onclick="nav('orchestration')"><span class="nav-icon">&#128279;</span> Orchestration</div>
 
@@ -467,6 +468,7 @@
         sessions: 'Sessions', credits: 'Credits & Transactions', queue: 'Queue Monitor', apiUsage: 'API Usage & Costs', houseAccount: 'House Account', media: 'Media Library',
         engines: 'Engine Registry', capabilities: 'Capability Map', analytics: 'Platform Analytics',
         orchestration: 'Orchestration Health',
+        webActivity: 'Agent Web Activity',
       }[page] || page;
       pages[page]?.();
     }
@@ -482,6 +484,34 @@
     function ts(str) { return str ? new Date(str).toLocaleDateString() : '\u2014'; }
     function tsTime(str) { return str ? new Date(str).toLocaleString() : '\u2014'; }
     function truncate(str, len) { if (!str) return '\u2014'; return str.length > len ? str.substring(0, len) + '...' : str; }
+
+    // 2026-05-25 \u2014 Agent Web Activity: detail-view modal opener.
+    function _waShowDetail(id) {
+      const r = (window._waRows || {})[id];
+      const m = document.getElementById('wa-detail-modal');
+      if (!r || !m) return;
+      let body = '<div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;max-width:780px;width:90%;max-height:80vh;overflow-y:auto;padding:24px">';
+      body += '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px"><h3 style="font-size:18px;font-weight:700">Activity #' + r.id + '</h3><button onclick="document.getElementById(\'wa-detail-modal\').style.display=\'none\'" style="background:transparent;border:none;color:var(--muted);font-size:24px;cursor:pointer">&times;</button></div>';
+      body += '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px 16px;font-size:13px">';
+      const f = (k, v) => '<div style="color:var(--muted)">' + k + '</div><div>' + (v == null ? '\u2014' : v) + '</div>';
+      body += f('Time', tsTime(r.created_at));
+      body += f('Workspace', (r.workspace_name || '\u2014') + ' (id=' + r.workspace_id + ')');
+      body += f('Agent', r.agent_slug);
+      body += f('User ID', r.user_id || '(autonomous)');
+      body += f('Action', r.action);
+      body += f('Status', r.status);
+      body += f('Cost (credits)', r.cost_credits);
+      body += f('Duration (ms)', r.duration_ms);
+      body += f('Content length', r.content_length);
+      body += '</div>';
+      body += '<div style="margin-top:16px"><div style="color:var(--muted);font-size:12px;margin-bottom:6px">Target (URL or query)</div><div style="background:var(--s2);padding:10px;border-radius:6px;font-family:monospace;font-size:12px;word-break:break-all">' + (r.url_or_query || '\u2014') + '</div></div>';
+      if (r.title) body += '<div style="margin-top:12px"><div style="color:var(--muted);font-size:12px;margin-bottom:6px">Title</div><div style="background:var(--s2);padding:10px;border-radius:6px;font-size:13px">' + r.title + '</div></div>';
+      if (r.response_preview) body += '<div style="margin-top:12px"><div style="color:var(--muted);font-size:12px;margin-bottom:6px">Response preview (first 500 chars)</div><pre style="background:var(--s2);padding:10px;border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow-y:auto;margin:0">' + (r.response_preview || '').replace(/</g, '&lt;') + '</pre></div>';
+      if (r.error) body += '<div style="margin-top:12px"><div style="color:var(--rd);font-size:12px;margin-bottom:6px">Error</div><pre style="background:rgba(248,113,113,.1);border:1px solid var(--rd);padding:10px;border-radius:6px;font-size:12px;white-space:pre-wrap;margin:0;color:var(--rd)">' + r.error + '</pre></div>';
+      body += '</div>';
+      m.innerHTML = body;
+      m.style.display = 'flex';
+    }
 
     // ── Admin Table Utilities: Search, Sort, Filter ─────────────────
     window._adminTables = {};
@@ -738,6 +768,106 @@
 
     // -- Pages ---------------------------------------------------------------------
     const pages = {
+      webActivity: async () => {
+        content().innerHTML = '<div style="text-align:center;padding:40px;color:#6B7280">Loading agent web activity...</div>';
+        try {
+          // Read filter values (default empty)
+          const ws     = document.getElementById('wa-ws')?.value || '';
+          const agent  = document.getElementById('wa-agent')?.value || '';
+          const action = document.getElementById('wa-action')?.value || '';
+          const status = document.getElementById('wa-status')?.value || '';
+          const qs     = new URLSearchParams();
+          if (ws)     qs.set('workspace_id', ws);
+          if (agent)  qs.set('agent', agent);
+          if (action) qs.set('action', action);
+          if (status) qs.set('status', status);
+          qs.set('limit', '300');
+
+          const d = await api('/web-activity' + (qs.toString() ? '?' + qs.toString() : ''));
+          if (!d) return;
+
+          const rows = d.rows || [];
+          const today = d.today || {};
+          const byStatus = d.by_status_7d || [];
+          const statusMap = byStatus.reduce(function (m, r) { m[r.status] = r.count; return m; }, {});
+
+          // Distinct agents for dropdown
+          let agentList = [];
+          try { const ad = await api('/web-activity/agents'); agentList = (ad && ad.agents) || []; } catch (_) {}
+
+          // -- Header stats --
+          let h = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
+          h += '<div class="stat-card"><div class="stat-value">' + (today.total || 0) + '</div><div class="stat-label">Calls Today</div></div>';
+          h += '<div class="stat-card"><div class="stat-value">' + (today.credits || 0) + '</div><div class="stat-label">Credits Today</div></div>';
+          h += '<div class="stat-card"><div class="stat-value">' + (today.workspaces || 0) + '</div><div class="stat-label">Workspaces Active</div></div>';
+          h += '<div class="stat-card"><div class="stat-value">' + (today.agents || 0) + '</div><div class="stat-label">Agents Active</div></div>';
+          h += '</div>';
+
+          // -- 7-day status pill row --
+          h += '<div style="margin-bottom:16px;font-size:12px;color:var(--muted)">Last 7 days: ';
+          ['ok', 'blocked', 'capped', 'error', 'pending'].forEach(function (s) {
+            if (statusMap[s]) h += '<span style="margin-right:14px"><b style="color:var(--text)">' + statusMap[s] + '</b> ' + s + '</span>';
+          });
+          h += '</div>';
+
+          // -- Filter bar --
+          const agentOpts = ['<option value="">All agents</option>']
+            .concat(agentList.map(function (a) {
+              const sel = (a.agent_slug === agent) ? ' selected' : '';
+              return '<option value="' + a.agent_slug + '"' + sel + '>' + a.agent_slug + ' (' + a.count + ')</option>';
+            }))
+            .join('');
+          h += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:end">';
+          h += '<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Workspace ID</label><input id="wa-ws" value="' + ws + '" placeholder="any" style="padding:6px 10px;background:var(--s2);border:1px solid var(--bd);color:var(--text);border-radius:6px;width:100px" /></div>';
+          h += '<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Agent</label><select id="wa-agent" style="padding:6px 10px;background:var(--s2);border:1px solid var(--bd);color:var(--text);border-radius:6px">' + agentOpts + '</select></div>';
+          h += '<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Action</label><select id="wa-action" style="padding:6px 10px;background:var(--s2);border:1px solid var(--bd);color:var(--text);border-radius:6px"><option value="">all</option><option value="fetch"' + (action === 'fetch' ? ' selected' : '') + '>fetch</option><option value="search"' + (action === 'search' ? ' selected' : '') + '>search</option></select></div>';
+          h += '<div><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Status</label><select id="wa-status" style="padding:6px 10px;background:var(--s2);border:1px solid var(--bd);color:var(--text);border-radius:6px"><option value="">all</option><option value="ok"' + (status === 'ok' ? ' selected' : '') + '>ok</option><option value="blocked"' + (status === 'blocked' ? ' selected' : '') + '>blocked</option><option value="error"' + (status === 'error' ? ' selected' : '') + '>error</option><option value="capped"' + (status === 'capped' ? ' selected' : '') + '>capped</option></select></div>';
+          h += '<button onclick="pages.webActivity()" style="padding:7px 14px;background:var(--p);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600">Apply</button>';
+          h += '</div>';
+
+          // -- Table --
+          h += '<div style="background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden">';
+          h += '<table class="data-table" style="margin:0"><thead><tr>';
+          h += '<th>Time</th><th>WS</th><th>Workspace</th><th>Agent</th><th>Action</th><th>Target</th><th>Status</th><th>Title</th><th>Cost</th><th>Dur</th><th></th>';
+          h += '</tr></thead><tbody>';
+
+          if (!rows.length) {
+            h += '<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--muted)">No activity matches the current filters.</td></tr>';
+          }
+          rows.forEach(function (r) {
+            const statusColor = { ok: 'var(--ac)', blocked: 'var(--rd)', capped: 'var(--am)', error: 'var(--rd)', pending: 'var(--bl)' }[r.status] || 'var(--muted)';
+            const target = (r.url_or_query || '').length > 60 ? r.url_or_query.substring(0, 57) + '…' : (r.url_or_query || '');
+            const title  = (r.title || '').length > 50 ? r.title.substring(0, 47) + '…' : (r.title || '—');
+            h += '<tr>';
+            h += '<td style="white-space:nowrap">' + tsTime(r.created_at) + '</td>';
+            h += '<td>' + (r.workspace_id || '—') + '</td>';
+            h += '<td>' + truncate(r.workspace_name || '—', 18) + '</td>';
+            h += '<td style="font-weight:600">' + r.agent_slug + '</td>';
+            h += '<td>' + r.action + '</td>';
+            h += '<td title="' + (r.url_or_query || '').replace(/"/g, '&quot;') + '" style="font-family:monospace;font-size:11px;color:var(--muted)">' + target + '</td>';
+            h += '<td><span style="color:' + statusColor + '">●</span> ' + r.status + '</td>';
+            h += '<td>' + title + '</td>';
+            h += '<td>' + (r.cost_credits || 0) + '</td>';
+            h += '<td>' + (r.duration_ms || '—') + (r.duration_ms ? 'ms' : '') + '</td>';
+            h += '<td><button onclick="_waShowDetail(' + r.id + ')" style="padding:3px 8px;background:var(--s2);color:var(--text);border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:11px">view</button></td>';
+            h += '</tr>';
+          });
+
+          h += '</tbody></table></div>';
+          h += '<div style="margin-top:12px;font-size:11px;color:var(--muted)">Showing ' + rows.length + ' rows. Filter to narrow.</div>';
+
+          // Hidden modal area for detail-view
+          h += '<div id="wa-detail-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display=\'none\'"></div>';
+
+          // Stash the rows so the detail-view modal can read them client-side
+          window._waRows = rows.reduce(function (m, r) { m[r.id] = r; return m; }, {});
+
+          content().innerHTML = h;
+        } catch (e) {
+          content().innerHTML = '<div style="color:#F87171;padding:40px;text-align:center">Failed to load: ' + e.message + '</div>';
+        }
+      },
+
       apiUsage: async () => {
         content().innerHTML = '<div style="text-align:center;padding:40px;color:#6B7280">Loading API usage...</div>';
         try {
@@ -1500,10 +1630,26 @@
       },
 
       // ── Template Library (admin CRUD for storage/templates/*) ─────
+      // v1.4.4 (2026-05-30) — Two sub-tabs:
+      //   Website Templates — file-based, 31 industry sites in storage/templates/
+      //   Page Templates    — Arthur's 17 code-defined page templates
+      // Tab choice held in window._admTemplatesTab.
       async templatesAdmin() {
-        setContent('<div class="loading">Loading...</div>');
+        var tab = window._admTemplatesTab || 'websites';
+        var tabBar =
+          '<div style="display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--border)">' +
+            '<button onclick="window._admTemplatesTab=\'websites\';pages.templatesAdmin()" style="padding:10px 18px;background:' + (tab==='websites'?'var(--p)':'transparent') + ';color:' + (tab==='websites'?'#fff':'var(--muted)') + ';border:none;border-radius:6px 6px 0 0;cursor:pointer;font-size:13px;font-weight:600;letter-spacing:.02em;border-bottom:2px solid ' + (tab==='websites'?'var(--p)':'transparent') + ';margin-bottom:-1px">Website Templates</button>' +
+            '<button onclick="window._admTemplatesTab=\'pages\';pages.templatesAdmin()" style="padding:10px 18px;background:' + (tab==='pages'?'var(--p)':'transparent') + ';color:' + (tab==='pages'?'#fff':'var(--muted)') + ';border:none;border-radius:6px 6px 0 0;cursor:pointer;font-size:13px;font-weight:600;letter-spacing:.02em;border-bottom:2px solid ' + (tab==='pages'?'var(--p)':'transparent') + ';margin-bottom:-1px">Page Templates</button>' +
+          '</div>';
+        setContent(tabBar + '<div id="tpl-tab-body"><div class="loading">Loading...</div></div>');
+        if (tab === 'pages') { await this._templatesAdminPages(); } else { await this._templatesAdminWebsites(); }
+      },
+
+      async _templatesAdminWebsites() {
+        var body = document.getElementById('tpl-tab-body');
+        body.innerHTML = '<div class="loading">Loading...</div>';
         const data = await api('/templates');
-        if (!data || !data.success) { setContent('<div class="loading">Failed to load templates.</div>'); return; }
+        if (!data || !data.success) { body.innerHTML = '<div class="loading">Failed to load templates.</div>'; return; }
         const templates = data.templates || [];
         const stats = data.stats || {};
         const usage = data.usage || [];
@@ -1521,7 +1667,7 @@
             '<button onclick="_admTemplatesOpenUpload()" style="background:var(--p);color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">+ Add Template</button>' +
           '</div>';
 
-        setContent(statsHtml + actionBar + '<div id="tpl-library"></div><div id="tpl-usage" style="margin-top:32px"></div><div id="tpl-modal-root"></div>');
+        body.innerHTML = statsHtml + actionBar + '<div id="tpl-library"></div><div id="tpl-usage" style="margin-top:32px"></div><div id="tpl-modal-root"></div>';
 
         document.getElementById('tpl-library').innerHTML = adminTable({
           id: 'tpl-library', data: templates,
@@ -1564,6 +1710,92 @@
               '<tbody>' + (usageRows || '<tr><td colspan="2" style="padding:20px;text-align:center;color:var(--muted)">No sites built yet.</td></tr>') + '</tbody>' +
             '</table>' +
           '</div>';
+      },
+
+      // v1.4.4 (2026-05-30) — Page Templates tab body.
+      // Lists Arthur's 17 code-defined page templates from
+      // ArthurService::PAGE_TEMPLATE_CATALOGUE. Read-only — preview opens
+      // a new tab to /page-templates/{slug}/preview (same chrome as
+      // website-template preview).
+      async _templatesAdminPages() {
+        var body = document.getElementById('tpl-tab-body');
+        body.innerHTML = '<div class="loading">Loading...</div>';
+        const data = await api('/page-templates');
+        if (!data || !data.success) { body.innerHTML = '<div class="loading">Failed to load page templates.</div>'; return; }
+        const tpls = data.templates || [];
+        const stats = data.stats || {};
+
+        var catLabel = {
+          universal: 'Universal',
+          bookings_events: 'Bookings & Events',
+          listings: 'Listings',
+          visual_portfolios: 'Visual Portfolios',
+          commerce_account: 'Commerce & Account'
+        };
+
+        var catCountsHtml = Object.keys(stats.category_counts || {}).map(function (k) {
+          return '<div class="stat-card"><div class="stat-value" style="color:var(--p)">' + stats.category_counts[k] + '</div><div class="stat-label">' + (catLabel[k] || k) + '</div></div>';
+        }).join('');
+
+        var statsHtml =
+          '<div class="stats-grid" style="margin-bottom:16px">' +
+            '<div class="stat-card"><div class="stat-value" style="color:var(--p)">' + (stats.total_templates || 0) + '</div><div class="stat-label">Total Page Templates</div></div>' +
+            '<div class="stat-card"><div class="stat-value" style="color:#00E5A8">' + (stats.total_categories || 0) + '</div><div class="stat-label">Categories</div></div>' +
+            catCountsHtml +
+          '</div>';
+
+        var infoBar =
+          '<div style="background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--muted);line-height:1.6">' +
+            '<strong style="color:var(--text)">About page templates:</strong> these are code-defined section stacks Sarah/Arthur can apply when a tenant asks to add a page (e.g. "add a booking page"). Each preview uses sample data from a representative industry. Aliases map common phrasings to the right template.' +
+          '</div>';
+
+        body.innerHTML = statsHtml + infoBar + '<div id="page-tpl-library"></div>';
+
+        document.getElementById('page-tpl-library').innerHTML = adminTable({
+          id: 'page-tpl-library', data: tpls,
+          columns: [
+            { key:'slug', label:'Template', sortable:true, render:function(v,row){
+                return '<strong>' + (row.label || v) + '</strong>' +
+                       '<div style="font-size:11px;color:var(--muted);font-family:monospace">' + v + '</div>';
+              } },
+            { key:'category', label:'Category', sortable:true, render:function(v){
+                return badge(catLabel[v] || v);
+              } },
+            { key:'section_count', label:'Sections', sortable:true, render:function(v,row){
+                var preview = (row.section_types||[]).slice(0,5).join(' → ');
+                if ((row.section_types||[]).length > 5) preview += ' → …';
+                return '<div>' + v + '</div><div style="font-size:11px;color:var(--muted);font-family:monospace">' + preview + '</div>';
+              } },
+            { key:'recommended_industries', label:'Industries', render:function(v){
+                if (!Array.isArray(v) || v.length === 0) return '<span style="color:var(--muted)">—</span>';
+                if (v.length === 1 && v[0] === '*') return '<span class="badge badge-green">any industry</span>';
+                var shown = v.slice(0, 3).map(function(i){ return '<span class="badge" style="margin-right:4px">' + i + '</span>'; }).join('');
+                var more = v.length > 3 ? '<span style="color:var(--muted);font-size:11px">+' + (v.length - 3) + '</span>' : '';
+                return shown + more;
+              } },
+            { key:'aliases', label:'Aliases', render:function(v){
+                if (!Array.isArray(v) || v.length === 0) return '<span style="color:var(--muted);font-size:11px">—</span>';
+                return '<span style="font-family:monospace;font-size:11px;color:var(--muted)">' + v.join(', ') + '</span>';
+              } },
+            { key:'slug', label:'Actions', render:function(v,row){
+                var preview = '<a href="' + (row.preview_url || ('/page-templates/' + v + '/preview')) + '" target="_blank" style="color:var(--p);font-size:12px;margin-right:12px">Preview</a>';
+                var desc = '<a href="#" onclick="_admPageTemplateInfo(event,\'' + v + '\');return false;" style="color:var(--muted);font-size:12px">Details</a>';
+                return preview + desc;
+              } }
+          ],
+          searchFields: ['slug','label','description','category'],
+          defaultSort: { key:'category', dir:'asc' },
+          filters: [
+            { key:'category', label:'Category', options:[
+              {value:'',label:'All'},
+              {value:'universal',label:'Universal'},
+              {value:'bookings_events',label:'Bookings & Events'},
+              {value:'listings',label:'Listings'},
+              {value:'visual_portfolios',label:'Visual Portfolios'},
+              {value:'commerce_account',label:'Commerce & Account'}
+            ] }
+          ]
+        });
       },
 
       async emailTemplatesAdmin() {
@@ -2265,6 +2497,25 @@
       api('/templates/' + industry + '/clone', 'POST').then(function(r){
         if (r && r.success) { alert('Cloned to ' + r.cloned_to); pages.templatesAdmin(); }
         else alert('Clone failed: ' + ((r && r.error) || 'unknown error'));
+      });
+    };
+    // v1.4.4 (2026-05-30) — Page template details popup
+    window._admPageTemplateInfo = function(e, slug) {
+      if (e && e.preventDefault) e.preventDefault();
+      api('/page-templates').then(function(r){
+        if (!r || !r.success) { alert('Failed to load page template details.'); return; }
+        var tpl = (r.templates || []).find(function(t){ return t.slug === slug; });
+        if (!tpl) { alert('Page template not found: ' + slug); return; }
+        var industries = (tpl.recommended_industries || []).join(', ') || '—';
+        var aliases    = (tpl.aliases || []).join(', ') || '—';
+        var sections   = (tpl.section_types || []).join(' → ');
+        var msg = tpl.label + ' (' + tpl.slug + ')\n\n'
+                + 'Category: ' + tpl.category + '\n\n'
+                + 'Description:\n' + tpl.description + '\n\n'
+                + 'Recommended industries:\n' + industries + '\n\n'
+                + 'Aliases:\n' + aliases + '\n\n'
+                + 'Section stack (' + tpl.section_count + ' sections):\n' + sections;
+        alert(msg);
       });
     };
     window._admTemplatesOpenUpload = function() {

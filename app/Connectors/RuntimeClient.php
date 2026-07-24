@@ -126,10 +126,90 @@ class RuntimeClient
             'status'    => $body['status'] ?? null,
             'version'   => $body['version'] ?? null,
             'phase'     => $body['phase'] ?? null,
-            'agents'    => $body['agents'] ?? [],
-            'tools'     => $body['tools'] ?? [],
+            // LAUNCH SCOPE (2026-07-20) — the deployed runtime registry still lists
+            // removed social/email agents and tools. Until the runtime itself is
+            // rebuilt+redeployed, Laravel is the authoritative gateway and MUST NOT
+            // pass a removed agent/tool through from a runtime response. See
+            // sanitizeAgentList()/sanitizeToolList().
+            'agents'    => self::sanitizeAgentList($body['agents'] ?? []),
+            'tools'     => self::sanitizeToolList($body['tools'] ?? []),
             'config'    => $body['config'] ?? [],
         ];
+    }
+
+    /**
+     * LAUNCH SCOPE boundary sanitizers (2026-07-20).
+     *
+     * The runtime is a separately-deployed Node service (Railway) whose baked-in
+     * agent/tool registry still contains the launch-removed social/email agents
+     * and tools. It cannot be rebuilt/redeployed from here (no current source, no
+     * Railway credentials in this environment). Laravel is therefore the single
+     * enforced boundary: every agent/tool list, and every planner proposal, that
+     * comes BACK from the runtime is scrubbed of removed agents/tools before
+     * Laravel uses, stores, or exposes it. This means the runtime can never inject
+     * a removed agent into a roster, a removed tool into a plan, or a removed-agent
+     * assignment into a task, regardless of what its own registry still holds.
+     */
+    public static function sanitizeAgentList(array $agents): array
+    {
+        return array_values(array_filter($agents, function ($a) {
+            $slug = is_array($a) ? ($a['slug'] ?? $a['id'] ?? $a['agent'] ?? null) : $a;
+            return !\App\Core\LaunchScope\LaunchScopePolicy::isRemovedAgent(is_string($slug) ? $slug : '');
+        }));
+    }
+
+    public static function sanitizeToolList(array $tools): array
+    {
+        return array_values(array_filter($tools, function ($t) {
+            $id = is_array($t) ? ($t['id'] ?? $t['tool_id'] ?? $t['name'] ?? null) : $t;
+            return !\App\Core\LaunchScope\LaunchScopePolicy::isRemovedTool(is_string($id) ? $id : '');
+        }));
+    }
+
+    /**
+     * Recursively scrub a runtime response body: strip removed agents/tools from
+     * any agents/tools list, and DROP any planner proposal / action / tool-call
+     * whose agent, tool, or engine+action is launch-removed. Anything the runtime
+     * proposes that names a removed capability is discarded here — it never
+     * reaches the dispatcher, the UI, or storage.
+     */
+    public static function sanitizeRuntimeBody(array $body): array
+    {
+        foreach ($body as $key => $val) {
+            if ($key === 'agents' && is_array($val)) { $body[$key] = self::sanitizeAgentList($val); continue; }
+            if ($key === 'tools'  && is_array($val)) { $body[$key] = self::sanitizeToolList($val);  continue; }
+            if (in_array($key, ['proposals', 'actions', 'tool_calls', 'plan', 'steps', 'candidates'], true) && is_array($val)) {
+                $body[$key] = array_values(array_filter($val, fn($item) => !self::proposalIsRemoved($item)));
+                // recurse into surviving items too
+                $body[$key] = array_map(fn($item) => is_array($item) ? self::sanitizeRuntimeBody($item) : $item, $body[$key]);
+                continue;
+            }
+            if (is_array($val)) { $body[$key] = self::sanitizeRuntimeBody($val); }
+        }
+        return $body;
+    }
+
+    /** True if a proposal/action/tool-call references a removed agent, tool, or engine+action. */
+    private static function proposalIsRemoved($item): bool
+    {
+        if (!is_array($item)) return false;
+        $P = \App\Core\LaunchScope\LaunchScopePolicy::class;
+        foreach (['agent', 'agent_id', 'assigned_agent', 'slug'] as $k) {
+            if (!empty($item[$k]) && is_string($item[$k]) && $P::isRemovedAgent($item[$k])) return true;
+        }
+        if (!empty($item['assigned_agents']) && is_array($item['assigned_agents'])) {
+            foreach ($item['assigned_agents'] as $a) {
+                if (is_string($a) && $P::isRemovedAgent($a)) return true;
+            }
+        }
+        foreach (['tool', 'tool_id', 'action'] as $k) {
+            if (!empty($item[$k]) && is_string($item[$k]) && $P::isRemovedTool($item[$k])) return true;
+        }
+        // engine+action pair (e.g. social/social_ai_post, marketing/create_campaign)
+        if (!empty($item['engine']) && !empty($item['action']) && is_string($item['engine']) && is_string($item['action'])) {
+            if ($P::isRemoved($item['engine'], $item['action'], $item['params'] ?? [], $item)) return true;
+        }
+        return false;
     }
 
     /**
@@ -358,7 +438,10 @@ class RuntimeClient
             if (!isset($body['response']) && isset($body['reply']))   $body['response'] = $body['reply'];
             if (!isset($body['response']) && isset($body['content'])) $body['response'] = $body['content'];
 
-            return $body;
+            // LAUNCH SCOPE (2026-07-20) — scrub any removed agent/tool/proposal the
+            // runtime's still-unsanitised registry may have produced before it
+            // reaches the caller (dispatcher / UI / storage).
+            return self::sanitizeRuntimeBody($body);
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::assistant connection failed', ['error' => $e->getMessage()]);
             return ['response' => null, 'error' => true, 'reason' => 'connection_failed'];
@@ -550,6 +633,27 @@ class RuntimeClient
                     // No request/auth context (cron, queue worker, etc.) — leave as 0.
                 }
             }
+            // 2026-06-20 — last-resort fallback for queue/orchestrator context,
+            // where there is no request header and no authenticated user, so
+            // agent-generated featured images were landing in ai-images/0/
+            // (wrong workspace). The Orchestrator binds 'lu.current_workspace_id'
+            // for the task it is executing; read it ONLY when every other source
+            // came back empty. Request-context callers (WP connector API, app888
+            // API) resolve wsId above and never reach this branch — zero change
+            // for them. No generation logic touched (CREATIVE888 untouched);
+            // this only namespaces where the returned bytes are stored.
+            if ($wsId === 0) {
+                try {
+                    if (app()->bound('lu.current_workspace_id')) {
+                        $boundWs = (int) app('lu.current_workspace_id');
+                        if ($boundWs > 0) {
+                            $wsId = $boundWs;
+                        }
+                    }
+                } catch (\Throwable) {
+                    // Container/context unavailable — leave as 0.
+                }
+            }
 
             $filename    = md5($prompt . microtime(true) . random_int(0, PHP_INT_MAX)) . '.png';
             $storagePath = 'ai-images/' . $wsId . '/' . $filename;
@@ -640,6 +744,49 @@ class RuntimeClient
             'provider' => 'openai',
             'model'       => $body['model'] ?? 'gpt-4o',
             'duration_ms' => $body['duration_ms'] ?? null,
+        ];
+    }
+
+    /**
+     * v1.4.4 — interpret user-uploaded attachments through the runtime
+     * (vision for images, pdf-parse / mammoth / xlsx for documents).
+     *
+     * @param array $attachments  Each item: ['url' => string, 'mime' => string,
+     *                            'kind' => string, 'name' => string]
+     * @return array  ['success' => bool, 'results' => [...], 'prompt_block' => string]
+     *                On any failure the structure is the same with success=false
+     *                and prompt_block='' so callers can safely concat.
+     */
+    public function interpretAttachments(array $attachments): array
+    {
+        if (empty($attachments)) {
+            return ['success' => false, 'error' => 'no_attachments', 'prompt_block' => ''];
+        }
+
+        try {
+            // Interpretation can be slow (download + PDF parse + vision call) —
+            // 180s timeout covers up to 10 attachments of mixed types.
+            $resp = $this->post('/internal/interpret-attachment',
+                ['attachments' => $attachments],
+                180,
+            );
+        } catch (ConnectionException $e) {
+            Log::warning('RuntimeClient::interpretAttachments connection failed', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'connection_failed', 'prompt_block' => ''];
+        }
+
+        $body = $resp->json() ?? [];
+        if (! $resp->successful() || !($body['success'] ?? false)) {
+            Log::warning('RuntimeClient::interpretAttachments non-2xx', [
+                'status' => $resp->status(), 'body_keys' => array_keys($body),
+            ]);
+            return ['success' => false, 'error' => $body['error'] ?? 'http_' . $resp->status(), 'prompt_block' => ''];
+        }
+
+        return [
+            'success'      => true,
+            'results'      => $body['results'] ?? [],
+            'prompt_block' => $body['prompt_block'] ?? '',
         ];
     }
 
@@ -750,7 +897,7 @@ class RuntimeClient
     {
         if (! $this->isConfigured()) return false;
         return filter_var(
-            env('INTELLIGENCE_VIA_RUNTIME', false),
+            config('intelligence.via_runtime', false),
             FILTER_VALIDATE_BOOLEAN,
             FILTER_NULL_ON_FAILURE
         ) === true;

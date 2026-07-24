@@ -1,0 +1,75 @@
+{
+  "name": "Interior Design Reel",
+  "slug": "r21-interior-design",
+  "format": "reels",
+  "category": "interior design",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": [
+    "interior design"
+  ],
+  "variables": {
+    "brand_name": {
+      "type": "text",
+      "label": "Brand Name",
+      "default": "Logo Here"
+    },
+    "brand_tag": {
+      "type": "text",
+      "label": "Brand Tag",
+      "default": "Interior Studio"
+    },
+    "eyebrow": {
+      "type": "text",
+      "label": "Eyebrow",
+      "default": "Interiors & Design"
+    },
+    "subheading": {
+      "type": "text",
+      "label": "Subheading",
+      "default": "Bespoke interiors crafted with intention — where every material, texture, and light tells a deliberate story."
+    },
+    "footer_brand": {
+      "type": "text",
+      "label": "Footer Brand",
+      "default": "Logo Here"
+    },
+    "footer_url": {
+      "type": "text",
+      "label": "Footer Url",
+      "default": "companyname.com"
+    },
+    "footer_handle": {
+      "type": "text",
+      "label": "Footer Handle",
+      "default": "@handle"
+    },
+    "headline_1": {
+      "type": "text",
+      "label": "Headline 1",
+      "default": "Spaces That"
+    },
+    "headline_accent": {
+      "type": "text",
+      "label": "Headline Accent",
+      "default": "Tell Your"
+    },
+    "headline_3": {
+      "type": "text",
+      "label": "Headline 3",
+      "default": "Story."
+    },
+    "cta_label": {
+      "type": "text",
+      "label": "Cta Label",
+      "default": "Book a Consultation"
+    }
+  },
+  "semantic": {
+    "best_for": [
+      "interior design"
+    ]
+  }
+}

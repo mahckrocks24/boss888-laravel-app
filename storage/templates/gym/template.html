@@ -677,7 +677,7 @@ footer { background: var(--carbon); color: var(--chalk); padding: 4.5rem 2.5rem 
       <div class="form-field full"><label>Email</label><input type="email" name="email" required></div>
       <div class="form-field"><label>Phone</label><input type="tel" name="phone"></div>
       <div class="form-field"><label>Interest</label><select name="interest"><option>Membership</option><option>Personal Training</option><option>Hyrox Prep</option><option>Drop-in class</option><option>Other</option></select></div>
-      <div class="form-field full"><label>Message</label><textarea name="message"></textarea></div>
+      <div class="form-field full"><label>Message</label><textareaname="message"  name="message"></textarea></div>
       <button type="submit" class="form-submit" data-field="form_submit_text">{{form_submit_text}}</button>
       <div id="form-success" style="display:none" data-field="form_success_message">{{form_success_message}}</div>
     </form>
@@ -797,8 +797,44 @@ setInterval(function(){ goToSlide((currentSlide + 1) % slides.length); }, 6500);
 
 function handleSubmit(e){
   e.preventDefault();
-  e.target.style.display = 'none';
-  document.getElementById('form-success').style.display = 'block';
+  var f = e.target;
+  var btn = f.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending\u2026'; }
+  var host = window.location.hostname.toLowerCase();
+  var sub;
+  if (host.endsWith('.levelupgrowth.io')) { sub = host.split('.levelupgrowth.io')[0]; }
+  else if (window.LU_SITE_SUBDOMAIN) { sub = window.LU_SITE_SUBDOMAIN; }
+  else {
+    // Custom-domain fallback: ask the API to resolve by Host header.
+    sub = 'by-host';
+  }
+  var fd = new FormData(f);
+  var firstname = (fd.get('firstname') || fd.get('first_name') || fd.get('name') || '').toString().trim();
+  var lastname  = (fd.get('lastname')  || fd.get('last_name')  || '').toString().trim();
+  var email     = (fd.get('email')     || '').toString().trim();
+  var phone     = (fd.get('phone')     || '').toString().trim();
+  var subject   = (fd.get('service')   || fd.get('subject')   || fd.get('specialty') || '').toString().trim();
+  var body      = (fd.get('message')   || '').toString().trim();
+  var message   = (subject ? '['+subject+'] ' : '') + body;
+  var url = 'https://staging.levelupgrowth.io/api/public/contact/' + encodeURIComponent(sub);
+  fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify({firstname: firstname + (lastname ? ' '+lastname : ''), email: email, phone: phone, message: message || 'Contact form submission'})
+  }).then(function(r){ return r.json().catch(function(){return {success:false};}); })
+    .then(function(res){
+      if (res && res.success !== false) {
+        f.style.display = 'none';
+        var ok = document.getElementById('form-success'); if (ok) ok.style.display = 'block';
+      } else {
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry \u2192'; }
+        alert('Submission failed: ' + ((res && res.message) || 'please try again.'));
+      }
+    })
+    .catch(function(){
+      if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry \u2192'; }
+      alert('Network error \u2014 please try again.');
+    });
 }
 
 function handleBookingSubmit(e){

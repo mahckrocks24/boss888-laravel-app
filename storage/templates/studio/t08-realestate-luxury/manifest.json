@@ -1,0 +1,48 @@
+{
+  "name": "Luxury Property Frame — Real Estate",
+  "slug": "t08-realestate-luxury",
+  "format": "portrait",
+  "category": "real-estate",
+  "sub_category": "luxury",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["real estate", "property", "luxury", "broker", "listing"],
+  "variables": {
+    "hero_image":      { "type": "image", "label": "Property image",   "default": "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=560&q=85&fit=crop&crop=center" },
+    "img_label":       { "type": "text",  "label": "Image badge",      "default": "New Listing" },
+    "img_info_val":    { "type": "text",  "label": "Floor value",      "default": "48F" },
+    "img_info_label":  { "type": "text",  "label": "Floor label",      "default": "Sky Penthouse" },
+    "brand_name":      { "type": "text",  "label": "Brand name",       "default": "Logo Here" },
+    "brand_url":       { "type": "text",  "label": "Brand URL",        "default": "companyname.com" },
+    "eyebrow":         { "type": "text",  "label": "Eyebrow",          "default": "Luxury Residences" },
+    "headline_main":   { "type": "text",  "label": "Headline (main)",  "default": "Where Views" },
+    "headline_accent": { "type": "text",  "label": "Headline (accent)","default": "Meet Legacy." },
+    "subheading":      { "type": "text",  "label": "Subheading",       "default": "An unmatched penthouse experience above the city skyline — curated for those who demand exceptional living." },
+    "spec_1_val":      { "type": "text",  "label": "Spec 1 value",     "default": "4" },
+    "spec_1_label":    { "type": "text",  "label": "Spec 1 label",     "default": "Bedrooms" },
+    "spec_2_val":      { "type": "text",  "label": "Spec 2 value",     "default": "4,200" },
+    "spec_2_label":    { "type": "text",  "label": "Spec 2 label",     "default": "Sq. Ft." },
+    "spec_3_val":      { "type": "text",  "label": "Spec 3 value",     "default": "360°" },
+    "spec_3_label":    { "type": "text",  "label": "Spec 3 label",     "default": "City View" },
+    "spec_4_val":      { "type": "text",  "label": "Spec 4 value",     "default": "2" },
+    "spec_4_label":    { "type": "text",  "label": "Spec 4 label",     "default": "Parking" },
+    "price_label":     { "type": "text",  "label": "Price label",      "default": "Price" },
+    "price_val":       { "type": "text",  "label": "Price value",      "default": "AED 6.8M" },
+    "cta_label":       { "type": "text",  "label": "CTA",              "default": "Book Private Tour" },
+    "agent_label":     { "type": "text",  "label": "Agent label",      "default": "Licensed Agent" },
+    "agent_handle":    { "type": "text",  "label": "Agent handle",     "default": "@handle" }
+  },
+  "css_variables": {
+    "bg":      { "label": "Background", "default": "#F7F3EE" },
+    "slate":   { "label": "Slate",      "default": "#1C2331" },
+    "champ":   { "label": "Champagne",  "default": "#B8986A" },
+    "champ-l": { "label": "Champ light","default": "#D9C4A0" },
+    "cream":   { "label": "Cream",      "default": "#FAF6F0" }
+  },
+  "semantic": {
+    "mood": ["luxury", "professional"],
+    "color_temperature": "dark",
+    "composition": "split",
+    "best_for": ["real estate", "property", "luxury", "listing", "broker"]
+  }
+}

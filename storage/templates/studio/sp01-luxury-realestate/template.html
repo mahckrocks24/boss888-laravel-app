@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Media Template — Luxury Edition</title>
+
+  <!-- ============================================================
+       GOOGLE FONTS
+       Display: Cormorant Garamond (editorial serif, ultra-luxury)
+       Body:    Syne (geometric, modern contrast)
+       Mono:    DM Mono (badge / accent text)
+  ============================================================ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================================================
+       DESIGN TOKENS — swap these to change industry / mood
+    ============================================================ */
+    :root{
+      /* --- Palette --- */
+      --text:           #08080A;        /* deep obsidian */
+      --clr-bg-2:         #111115;        /* card surface */
+      --clr-bg-3:         #1A1A22;        /* subtle lift */
+      --accent:         #C9A96E;        /* primary accent */
+      --primary:   #E8CFA0;        /* highlight */
+      --clr-gold-dim:     #7A6340;        /* muted gold */
+      --bg: #F0EDE8;        /* near-white warm */
+      --clr-text-secondary: #9A9490;      /* muted body */
+      --clr-text-tertiary:  #504D4A;      /* ghost text */
+      --clr-border:       rgba(201,169,110,0.18); /* gold border */
+      --clr-glass-bg:     rgba(201,169,110,0.06);
+      --clr-glass-border: rgba(201,169,110,0.22);
+
+      /* --- Typography --- */
+      --font-display:  'Cormorant Garamond', Georgia, serif;
+      --font-ui:       'Syne', sans-serif;
+      --font-mono:     'DM Mono', monospace;
+
+      /* --- Template Dimensions (portrait 4:5) --- */
+      --post-w:  1080px;
+      --post-h:  1350px;
+
+      /* --- Spacing scale --- */
+      --sp-xs:  8px;
+      --sp-sm:  16px;
+      --sp-md:  28px;
+      --sp-lg:  48px;
+      --sp-xl:  72px;
+
+      /* ============================================================
+         INDUSTRY SWAP VARIABLES
+         Change these 4 lines to retheme for any vertical:
+           • --brand-tag:   Short industry descriptor
+           • --hero-label:  Floating label on the image
+           • --hero-url:    Unsplash image (change to any 1080×800 img)
+           • --cta-label:   Button text
+      ============================================================ */
+      --brand-tag:   "LUXURY REAL ESTATE";
+      --hero-label:  "PENTHOUSE";
+      --cta-label:   "Book a Private Viewing";
+    }
+
+    /* ============================================================
+       RESET & GLOBAL
+    ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background:#04040600;
+    }
+
+    /* ============================================================
+       VIEWPORT SCALER
+       Keeps the 1080×1350 canvas visible in any browser window
+       without altering the actual post pixel dimensions.
+    ============================================================ */
+    .scene {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+      background:radial-gradient(ellipse 60% 50% at 30% 20%, rgba(201,169,110,0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 70% 60% at 80% 80%, rgba(100,80,200,0.05) 0%, transparent 70%),
+        #0c0c10;
+    }
+
+    .scale-wrap {
+      transform-origin: top center;
+    }
+
+    /* ============================================================
+       POST CANVAS — the actual 1080×1350 social media frame
+    ============================================================ */
+    .post {
+      width:    var(--post-w);
+      height:   var(--post-h);
+      position: relative;
+      overflow: hidden;
+      background:var(--text);
+      font-family: var(--font-ui);
+      color:var(--bg);
+
+      /* Outer frame border */
+      outline: 1px solid rgba(201,169,110,0.12);
+    }
+
+    /* ============================================================
+       NOISE TEXTURE OVERLAY (pure CSS grain for depth)
+    ============================================================ */
+    .post::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-image:
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+      opacity: 0.028;
+      mix-blend-mode: overlay;
+    }
+
+    /* ============================================================
+       DECORATIVE GEOMETRY — abstract circles & lines
+    ============================================================ */
+    .deco {
+      position: absolute;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Large faint circle — top-right corner anchor */
+    .deco-circle-lg {
+      width:  820px;
+      height: 820px;
+      border-radius: 50%;
+      border: 1px solid rgba(201,169,110,0.07);
+      top:  -260px;
+      right: -280px;
+    }
+
+    /* Medium circle inside the large one */
+    .deco-circle-md {
+      width:  540px;
+      height: 540px;
+      border-radius: 50%;
+      border: 1px solid rgba(201,169,110,0.09);
+      top:  -120px;
+      right: -140px;
+    }
+
+    /* Small accent circle — bottom-left */
+    .deco-circle-sm {
+      width:  220px;
+      height: 220px;
+      border-radius: 50%;
+      border: 1px solid rgba(201,169,110,0.11);
+      bottom: 160px;
+      left:  -60px;
+    }
+
+    /* Thin horizontal rule accent — mid-post */
+    .deco-line-h {
+      width:  280px;
+      height: 1px;
+      background:linear-gradient(90deg, transparent, var(--clr-gold-dim), transparent);
+      top:  810px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* Diagonal accent grain line */
+    .deco-line-diag {
+      width:  340px;
+      height: 1px;
+      background:linear-gradient(90deg, transparent, rgba(201,169,110,0.15), transparent);
+      top:  420px;
+      left: -40px;
+      transform: rotate(-35deg);
+    }
+
+    /* Dot grid — bottom-right corner */
+    .deco-dots {
+      width:  120px;
+      height: 120px;
+      bottom: 110px;
+      right:  56px;
+      background-image: radial-gradient(circle, rgba(201,169,110,0.25) 1px, transparent 1px);
+      background-size: 14px 14px;
+      mask-image: radial-gradient(ellipse at bottom right, black 30%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse at bottom right, black 30%, transparent 75%);
+    }
+
+    /* Gold glow smear — top-left behind hero */
+    .deco-glow {
+      width:  500px;
+      height: 400px;
+      background:radial-gradient(ellipse at center, rgba(201,169,110,0.12) 0%, transparent 70%);
+      top:  -60px;
+      left: -80px;
+    }
+
+    /* ============================================================
+       SECTION 1 — HERO IMAGE / VISUAL
+    ============================================================ */
+    .hero {
+      position: absolute;
+      top:   0;
+      left:  0;
+      width: 100%;
+      height: 640px;
+      z-index: 3;
+      overflow: hidden;
+    }
+
+    .hero__img {
+      width:  100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 40%;
+      display: block;
+    }
+
+    /* Gradient vignette over the hero so text doesn't clash */
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:linear-gradient(180deg, rgba(8,8,10,0.30) 0%, transparent 35%, rgba(8,8,10,0.65) 75%, var(--text) 100%),
+        linear-gradient(90deg, rgba(8,8,10,0.22) 0%, transparent 40%);
+    }
+
+    /* Floating label inside hero — top-left */
+    .hero__label {
+      position: absolute;
+      z-index: 5;
+      top:   var(--sp-lg);
+      left:  var(--sp-lg);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size:   18px;
+      font-weight: 300;
+      letter-spacing: 0.32em;
+      color:var(--primary);
+    }
+
+    .hero__label::before {
+      content: '';
+      display: block;
+      width:  28px;
+      height: 1px;
+      background:var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* Property tag badge — top-right of hero */
+    .hero__badge {
+      position: absolute;
+      z-index: 5;
+      top:   var(--sp-lg);
+      right: var(--sp-lg);
+      font-family: var(--font-mono);
+      font-size:   12px;
+      letter-spacing: 0.22em;
+      color:var(--text);
+      background:var(--accent);
+      padding: 8px 18px;
+      text-transform: uppercase;
+    }
+
+    /* ============================================================
+       SECTION 2 & 3 — HEADLINE + SUBHEADLINE
+    ============================================================ */
+    .content {
+      position: absolute;
+      z-index: 5;
+      top:  580px; /* overlaps bottom of hero */
+      left: 0;
+      right: 0;
+      padding: 0 var(--sp-lg);
+    }
+
+    /* Eyebrow line above headline */
+    .content__eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .content__eyebrow span {
+      font-family: var(--font-mono);
+      font-size:   13px;
+      letter-spacing: 0.28em;
+      color:var(--accent);
+      text-transform: uppercase;
+    }
+
+    .content__eyebrow::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background:linear-gradient(90deg, var(--clr-gold-dim), transparent);
+    }
+
+    /* Main headline — editorial serif */
+    .content__headline {
+      font-family: var(--font-display);
+      font-size:   88px;
+      font-weight: 300;
+      line-height: 0.95;
+      letter-spacing: -0.01em;
+      color:var(--bg);
+      margin-bottom: 32px;
+    }
+
+    .content__headline em {
+      font-style: italic;
+      color:var(--primary);
+    }
+
+    /* Sub-headline */
+    .content__sub {
+      font-family: var(--font-ui);
+      font-size:18px;
+      font-weight: 400;
+      line-height: 1.65;
+      color:var(--clr-text-secondary);
+      max-width: 620px;
+      margin-bottom: var(--sp-md);
+    }
+
+    /* Stats row — three small KPIs */
+    .content__stats {
+      display: flex;
+      gap: var(--sp-md);
+      margin-bottom: var(--sp-lg);
+      padding: var(--sp-md) 0;
+      border-top:    1px solid var(--clr-border);
+      border-bottom: 1px solid var(--clr-border);
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat__val {
+      font-family: var(--font-display);
+      font-size:   42px;
+      font-weight: 300;
+      color:var(--bg);
+      line-height: 1;
+    }
+
+    .stat__label {
+      font-family: var(--font-mono);
+      font-size:   11px;
+      letter-spacing: 0.22em;
+      color:var(--clr-text-tertiary);
+      text-transform: uppercase;
+    }
+
+    .stat + .stat {
+      padding-left: var(--sp-md);
+      border-left:  1px solid var(--clr-border);
+    }
+
+    /* ============================================================
+       SECTION 4 — CTA BUTTON / OFFER BADGE
+    ============================================================ */
+    .cta-row {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-md);
+    }
+
+    /* Primary CTA button */
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-family:    var(--font-ui);
+      font-size:      16px;
+      font-weight:    600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color:var(--text);
+      background:linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      border:         none;
+      padding:        20px 44px;
+      cursor:         pointer;
+      position:       relative;
+      overflow:       hidden;
+      transition:     transform 0.25s ease, box-shadow 0.25s ease;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    /* Shimmer pseudo-element for hover */
+    .cta-btn::before {
+      content: '';
+      position: absolute;
+      top:  0;
+      left: -120%;
+      width: 80px;
+      height: 100%;
+      background:linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+      transition: left 0.45s ease;
+    }
+
+    .cta-btn:hover {
+      transform:  translateY(-2px);
+      box-shadow: 0 14px 48px rgba(201,169,110,0.35);
+    }
+
+    .cta-btn:hover::before {
+      left: 160%;
+    }
+
+    /* Arrow icon inside CTA */
+    .cta-btn__arrow {
+      display:      inline-flex;
+      align-items:  center;
+      justify-content: center;
+      width:  20px;
+      height: 20px;
+      border:       1.5px solid var(--text);
+      border-radius: 50%;
+      font-size:    12px;
+      line-height:  1;
+      flex-shrink:  0;
+      transition:   transform 0.25s ease;
+    }
+
+    .cta-btn:hover .cta-btn__arrow {
+      transform: translateX(3px) rotate(-45deg);
+    }
+
+    /* Offer badge — secondary element */
+    .offer-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      padding: 14px 20px;
+      background:var(--clr-glass-bg);
+      border:    1px solid var(--clr-glass-border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .offer-badge__tag {
+      font-family: var(--font-mono);
+      font-size:   10px;
+      letter-spacing: 0.24em;
+      color:var(--clr-gold-dim);
+      text-transform: uppercase;
+    }
+
+    .offer-badge__value {
+      font-family: var(--font-display);
+      font-size:26px;
+      font-weight: 300;
+      color:var(--primary);
+      line-height: 1;
+    }
+
+    /* ============================================================
+       SECTION 5 — BRAND / LOGO PLACEHOLDER
+    ============================================================ */
+    .brand {
+      position: absolute;
+      z-index:  6;
+      bottom:   var(--sp-lg);
+      left:     var(--sp-lg);
+      right:    var(--sp-lg);
+      display:  flex;
+      align-items:     center;
+      justify-content: space-between;
+    }
+
+    .brand__logo {
+      display:     flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* Logo mark placeholder — replace with <img> or SVG */
+    .brand__mark {
+      width:  44px;
+      height: 44px;
+      border: 1px solid var(--accent);
+      display: flex;
+      align-items:     center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Inner rotated square decoration */
+    .brand__mark::before {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border: 1px solid var(--clr-gold-dim);
+      transform: rotate(45deg);
+    }
+
+    .brand__name {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand__name-primary {
+      font-family: var(--font-ui);
+      font-size:   18px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color:var(--bg);
+      text-transform: uppercase;
+    }
+
+    .brand__name-secondary {
+      font-family: var(--font-mono);
+      font-size:   10px;
+      letter-spacing: 0.26em;
+      color:var(--clr-gold-dim);
+      text-transform: uppercase;
+    }
+
+    /* Social handle + QR area */
+    .brand__social {
+      display:     flex;
+      align-items: center;
+      gap: var(--sp-sm);
+    }
+
+    .brand__handle {
+      font-family: var(--font-mono);
+      font-size:   13px;
+      letter-spacing: 0.1em;
+      color:var(--clr-text-tertiary);
+    }
+
+    /* QR code placeholder */
+    .brand__qr {
+      width:  54px;
+      height: 54px;
+      border: 1px solid var(--clr-border);
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Faux QR pattern using CSS */
+    .brand__qr::before {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(201,169,110,0.3) 4px, rgba(201,169,110,0.3) 5px),
+        repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(201,169,110,0.3) 4px, rgba(201,169,110,0.3) 5px);
+    }
+
+    .brand__qr-label {
+      font-family: var(--font-mono);
+      font-size: 7px;
+      letter-spacing: 0.1em;
+      color:var(--clr-gold-dim);
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      z-index: 1;
+    }
+
+    /* ============================================================
+       SECTION 6 — OPTIONAL DECORATIVE ELEMENTS (already handled
+       via .deco-* classes above) — add more here if needed
+    ============================================================ */
+
+    /* Vertical text accent — right edge */
+    .vert-text {
+      position: absolute;
+      z-index:  5;
+      right:   var(--sp-lg);
+      top:     680px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.30em;
+      color:var(--clr-text-tertiary);
+      text-transform: uppercase;
+      transform: rotate(180deg);
+    }
+
+    /* Thin left border accent beside headline */
+    .border-accent {
+      position: absolute;
+      z-index:  5;
+      left:     var(--sp-lg);
+      top:      625px;
+      width:    2px;
+      height:   120px;
+      background:linear-gradient(180deg, var(--accent), transparent);
+    }
+
+    /* ============================================================
+       BROWSER PREVIEW LABEL (not part of the post export)
+    ============================================================ */
+    .preview-note {
+      text-align: center;
+      margin-top: 24px;
+      font-family: var(--font-mono);
+      font-size:   12px;
+      color:rgba(255,255,255,0.2);
+      letter-spacing: 0.2em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       BROWSER SCENE WRAPPER (for preview scaling)
+  ============================================================ -->
+  <div class="scene">
+    <div>
+
+      <!-- POST CANVAS — everything inside here is the 1080×1350 export -->
+      <div class="post" id="post">
+
+        <!-- ── DECORATIVE GEOMETRY ────────────────────────────── -->
+        <div class="deco deco-glow"></div>
+        <div class="deco deco-circle-lg"></div>
+        <div class="deco deco-circle-md"></div>
+        <div class="deco deco-circle-sm"></div>
+        <div class="deco deco-line-h"></div>
+        <div class="deco deco-line-diag"></div>
+        <div class="deco deco-dots"></div>
+
+        <!-- ── SECTION 1: HERO VISUAL ─────────────────────────── -->
+        <section class="hero">
+          <!--
+            SWAP THIS IMAGE:
+            Replace the src below with any 1080×640 image URL.
+            Unsplash random: https://source.unsplash.com/1080x640/?luxury,architecture
+            Or use a solid color block:  remove <img> and add background: #1a1a2e
+          -->
+          <img
+            class="hero__img"
+            data-field="hero_image"
+            src="{{hero_image}}"
+            alt="Hero"
+            loading="eager"
+          />
+          <!-- Floating label — top left -->
+          <div class="hero__label" data-field="hero_label">{{hero_label}}</div>
+          <!-- Badge — top right -->
+          <div class="hero__badge" data-field="hero_badge">{{hero_badge}}</div>
+        </section>
+
+        <!-- ── BORDER ACCENT ──────────────────────────────────── -->
+        <div class="border-accent"></div>
+
+        <!-- ── VERTICAL TEXT ACCENT ───────────────────────────── -->
+        <div class="vert-text" data-field="vert_text">{{vert_text}}</div>
+
+        <!-- ── SECTIONS 2 & 3: HEADLINE + SUBHEADLINE ─────────── -->
+        <div class="content">
+
+          <!-- Eyebrow -->
+          <div class="content__eyebrow">
+            <span data-field="eyebrow">{{eyebrow}}</span>
+          </div>
+
+          <!-- Main headline -->
+          <h1 class="content__headline">
+            <span data-field="headline_pre">{{headline_pre}}</span><em data-field="headline_accent">{{headline_accent}}</em><br><span data-field="headline_mid">{{headline_mid}}</span><br><span data-field="headline_end">{{headline_end}}</span>
+          </h1>
+
+          <!-- Sub-headline -->
+          <p class="content__sub" data-field="subheading">
+            {{subheading}}
+          </p>
+
+          <!-- Stats row — 3 KPIs -->
+          <div class="content__stats">
+            <div class="stat">
+              <span class="stat__val" data-field="stat_1_val">{{stat_1_val}}</span>
+              <span class="stat__label" data-field="stat_1_label">{{stat_1_label}}</span>
+            </div>
+            <div class="stat">
+              <span class="stat__val" data-field="stat_2_val">{{stat_2_val}}</span>
+              <span class="stat__label" data-field="stat_2_label">{{stat_2_label}}</span>
+            </div>
+            <div class="stat">
+              <span class="stat__val" data-field="stat_3_val">{{stat_3_val}}</span>
+              <span class="stat__label" data-field="stat_3_label">{{stat_3_label}}</span>
+            </div>
+          </div>
+
+          <!-- ── SECTION 4: CTA + OFFER BADGE ──────────────────── -->
+          <div class="cta-row">
+
+            <!-- Primary CTA -->
+            <a class="cta-btn" href="#">
+              <span data-field="cta_label">{{cta_label}}</span>
+              <span class="cta-btn__arrow">↗</span>
+            </a>
+
+            <!-- Offer badge -->
+            <div class="offer-badge">
+              <span class="offer-badge__tag" data-field="offer_tag">{{offer_tag}}</span>
+              <span class="offer-badge__value" data-field="offer_value">{{offer_value}}</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── SECTION 5: BRAND / LOGO ───────────────────────── -->
+        <div class="brand">
+
+          <!-- Logo group -->
+          <div class="brand__logo">
+            <!-- Mark placeholder — replace with your SVG/PNG logo -->
+            <div class="brand__mark"></div>
+            <div class="brand__name">
+              <span class="brand__name-primary" data-field="brand_primary">{{brand_primary}}</span>
+              <span class="brand__name-secondary" data-field="brand_secondary">{{brand_secondary}}</span>
+            </div>
+          </div>
+
+          <!-- Social + QR -->
+          <div class="brand__social">
+            <span class="brand__handle" data-field="brand_handle">{{brand_handle}}</span>
+            <!-- QR placeholder -->
+            <div class="brand__qr">
+              <span class="brand__qr-label" data-field="qr_label">{{qr_label}}</span>
+            </div>
+          </div>
+
+        </div>
+        <!-- end .brand -->
+
+      </div>
+      <!-- end .post -->
+
+      <p class="preview-note">1080 × 1350 px &nbsp;·&nbsp; Portrait 4:5 &nbsp;·&nbsp; Social Media Template</p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       RESPONSIVE SCALE SCRIPT
+       Scales the post canvas to fit the viewport without any
+       layout shift — purely for browser preview. On export,
+       screenshot or save the .post element at 1 : 1.
+  ============================================================ -->
+  <script>
+    function scalePost() {
+      var wrap  = document.querySelector('.scale-wrap');
+      var post  = document.querySelector('.post');
+      var postW = 1080;
+      var postH = 1350;
+      var pad   = 80; // breathing room
+      var vw = window.innerWidth  - pad;
+      var vh = window.innerHeight - pad;
+      var scale = Math.min(vw / postW, vh / postH, 1); // never scale UP
+      wrap.style.transform = 'scale(' + scale + ')';
+      // Fix the outer wrapper height so it doesn't collapse
+      wrap.style.height = (postH * scale) + 'px';
+      wrap.style.width  = (postW * scale) + 'px';
+      // Keep post at real dimensions inside the scaled wrapper
+      post.style.width  = postW + 'px';
+      post.style.height = postH + 'px';
+    }
+    scalePost();
+    window.addEventListener('resize', scalePost);
+  </script>
+
+</body>
+</html>

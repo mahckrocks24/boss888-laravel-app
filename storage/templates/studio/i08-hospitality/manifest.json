@@ -1,0 +1,44 @@
+{
+  "name": "Luxury Stay Editorial — Hospitality",
+  "slug": "i08-hospitality",
+  "format": "portrait",
+  "category": "marketing",
+  "sub_category": "hospitality",
+  "canvas_width": 1080,
+  "canvas_height": 1350,
+  "industry_tags": ["hospitality", "hotel", "luxury", "resort", "travel"],
+  "variables": {
+    "hero_image":      { "type": "image", "label": "Hero image",      "default": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1080&q=85&fit=crop&crop=center" },
+    "brand_stars":     { "type": "text",  "label": "Brand stars",     "default": "★ ★ ★ ★ ★" },
+    "brand_name":      { "type": "text",  "label": "Brand name",      "default": "LOGO HERE" },
+    "est":             { "type": "text",  "label": "Est. tag",        "default": "Est. 1965" },
+    "location":        { "type": "text",  "label": "Location",        "default": "Dubai, UAE" },
+    "headline_main":   { "type": "text",  "label": "Headline (main)", "default": "Beyond" },
+    "headline_accent": { "type": "text",  "label": "Headline (accent)","default": "Luxury." },
+    "subheading":      { "type": "text",  "label": "Subheading",      "default": "An oasis of unparalleled elegance — where every detail is curated for those who expect nothing less than extraordinary." },
+    "amen_1_name":     { "type": "text",  "label": "Amenity 1 name",  "default": "Private Pool" },
+    "amen_1_desc":     { "type": "text",  "label": "Amenity 1 desc",  "default": "Infinity suites" },
+    "amen_2_name":     { "type": "text",  "label": "Amenity 2 name",  "default": "5-Star Spa" },
+    "amen_2_desc":     { "type": "text",  "label": "Amenity 2 desc",  "default": "Full wellness" },
+    "amen_3_name":     { "type": "text",  "label": "Amenity 3 name",  "default": "Fine Dining" },
+    "amen_3_desc":     { "type": "text",  "label": "Amenity 3 desc",  "default": "3 restaurants" },
+    "rate_label":      { "type": "text",  "label": "Rate label",      "default": "Nightly From" },
+    "rate_val":        { "type": "text",  "label": "Rate value",      "default": "$480" },
+    "cta_label":       { "type": "text",  "label": "CTA",             "default": "Reserve Now" },
+    "brand_b_left":    { "type": "text",  "label": "Bottom left",     "default": "companyname.com" },
+    "brand_b_right":   { "type": "text",  "label": "Bottom right",    "default": "@handle" }
+  },
+  "css_variables": {
+    "bg":     { "label": "Background", "default": "#FAF6F0" },
+    "terra":  { "label": "Primary",    "default": "#A0522D" },
+    "gold":   { "label": "Gold",       "default": "#C9A56A" },
+    "gold-l": { "label": "Gold light", "default": "#E8CFA0" },
+    "ink":    { "label": "Ink",        "default": "#1A1208" }
+  },
+  "semantic": {
+    "mood": ["luxury", "elegant"],
+    "color_temperature": "warm",
+    "composition": "image_top",
+    "best_for": ["hospitality", "hotel", "resort", "luxury", "travel"]
+  }
+}

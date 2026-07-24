@@ -1,0 +1,39 @@
+{
+  "name": "Real Estate Luxury Reel",
+  "slug": "r05-realestate",
+  "format": "reels",
+  "category": "real-estate",
+  "sub_category": "luxury",
+  "canvas_width": 1080,
+  "canvas_height": 1920,
+  "duration_seconds": 15,
+  "template_type": "html_animated",
+  "industry_tags": ["real estate", "property", "luxury", "broker", "penthouse"],
+  "variables": {
+    "brand_name":      { "type": "text", "label": "Brand name",     "default": "Logo Here" },
+    "brand_lic":       { "type": "text", "label": "Brand license",  "default": "DLD Lic. #000000" },
+    "eyebrow":         { "type": "text", "label": "Eyebrow",        "default": "Luxury Real Estate" },
+    "headline_1":      { "type": "text", "label": "Headline 1",     "default": "Where Views" },
+    "headline_accent": { "type": "text", "label": "Headline accent","default": "Meet Legacy." },
+    "subheading":      { "type": "text", "label": "Subheading",     "default": "An unmatched penthouse experience above the city skyline — curated for those who demand exceptional living." },
+    "spec_1_val":      { "type": "text", "label": "Spec 1 value",   "default": "48F" },
+    "spec_1_label":    { "type": "text", "label": "Spec 1 label",   "default": "Sky Level" },
+    "spec_2_val":      { "type": "text", "label": "Spec 2 value",   "default": "4,200" },
+    "spec_2_label":    { "type": "text", "label": "Spec 2 label",   "default": "Sq. Ft." },
+    "spec_3_val":      { "type": "text", "label": "Spec 3 value",   "default": "4" },
+    "spec_3_label":    { "type": "text", "label": "Spec 3 label",   "default": "Bedrooms" },
+    "spec_4_val":      { "type": "text", "label": "Spec 4 value",   "default": "360°" },
+    "spec_4_label":    { "type": "text", "label": "Spec 4 label",   "default": "City View" },
+    "price_label":     { "type": "text", "label": "Price label",    "default": "Starting" },
+    "price_val":       { "type": "text", "label": "Price value",    "default": "AED 6.8M" },
+    "cta_label":       { "type": "text", "label": "CTA",            "default": "Book Private Tour" },
+    "footer_brand":    { "type": "text", "label": "Footer brand",   "default": "Logo Here" },
+    "footer_url":      { "type": "text", "label": "Footer URL",     "default": "companyname.com" },
+    "footer_handle":   { "type": "text", "label": "Footer handle",  "default": "@handle" }
+  },
+  "semantic": {
+    "mood": ["luxury", "professional"],
+    "color_temperature": "dark",
+    "best_for": ["real estate", "property", "luxury", "broker", "penthouse"]
+  }
+}
