@@ -77,10 +77,10 @@ class CreativeAssetLifecycleTest extends TestCase
     }
 
     /** @test */
-    public function assets_table_has_no_creative_job_id_column_yet(): void
+    public function assets_table_has_the_creative_job_id_linkage_column(): void
     {
-        // Pre-linkage baseline — MRC-2A adds creative_job_id LATER, not in this phase.
-        $this->assertFalse(Schema::hasColumn('assets', 'creative_job_id'));
+        // PHASE I (2026-07-26): the creative_job_id linkage column is now present.
+        $this->assertTrue(Schema::hasColumn('assets', 'creative_job_id'));
     }
 
     private function svcGenerate(int $wsId, array $params): array
