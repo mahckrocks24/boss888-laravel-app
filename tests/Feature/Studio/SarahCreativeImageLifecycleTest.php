@@ -90,8 +90,13 @@ class SarahCreativeImageLifecycleTest extends TestCase
 
     // ── A. Success ──────────────────────────────────────────────────────
 
-    /** @test */
-    public function successful_generate_image_completes_and_commits_without_asset_row(): void
+    /**
+     * PHASE H2 (2026-07-26): Sarah/Orchestrator now persists an assets row for a
+     * successful image, at parity with the EES path (was: connector-only, no asset).
+     *
+     * @test
+     */
+    public function successful_generate_image_completes_commits_and_persists_one_asset(): void
     {
         $this->allowGuards();
         $this->fakeRuntime(true);
@@ -104,8 +109,16 @@ class SarahCreativeImageLifecycleTest extends TestCase
         $this->assertTrue(($task->result_json['success'] ?? false));
         $this->assertSame('https://cdn.test/i.png', $task->result_json['data']['url'] ?? null);
 
-        // Connector path — no assets row persisted.
-        $this->assertSame(0, DB::table('assets')->where('workspace_id', $this->testWorkspace->id)->count());
+        // H2 parity: exactly one asset persisted, correctly attributed, white-labelled.
+        $assets = DB::table('assets')->where('workspace_id', $this->testWorkspace->id)->get();
+        $this->assertCount(1, $assets);
+        $asset = $assets->first();
+        $this->assertSame('image', $asset->type);
+        $this->assertSame('completed', $asset->status);
+        $this->assertSame('https://cdn.test/i.png', $asset->url);
+        $this->assertSame('LevelUp AI', $asset->provider);   // identical to EES metadata
+        $this->assertSame('LevelUp AI', $asset->model);
+        $this->assertSame($task->id, (int) $asset->task_id);  // task linkage
 
         // Charge committed once, dispatched once.
         $this->assertCreditBalance(5000 - 2);
@@ -113,6 +126,20 @@ class SarahCreativeImageLifecycleTest extends TestCase
         $this->assertContains('commit', $this->txnTypes());
         $this->assertNotContains('release', $this->txnTypes());
         $this->assertSame(1, $this->imageCalls);
+    }
+
+    /** @test */
+    public function re_executing_a_completed_image_task_does_not_duplicate_the_asset(): void
+    {
+        $this->allowGuards();
+        $this->fakeRuntime(true);
+
+        $task = $this->imageTask('generate_image', [], 2);
+        app(Orchestrator::class)->execute($task);
+        // idempotent replay
+        app(Orchestrator::class)->execute($task->fresh());
+
+        $this->assertSame(1, DB::table('assets')->where('task_id', $task->id)->count());
     }
 
     // ── B1. Retryable provider failure → requeued ('queued') ────────────
