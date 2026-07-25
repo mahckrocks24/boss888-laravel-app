@@ -258,6 +258,7 @@
       <div class="product-card reveal a2" style="opacity:.72"><div class="product-icon">🔗</div><div class="product-name">Domains</div><div class="product-desc">Own your identity — connect your own domain with automatic SSL.</div><div class="product-link" style="color:var(--green)">Coming soon</div></div>
       <div class="product-card reveal a3" style="opacity:.72"><div class="product-icon">✉️</div><div class="product-name">Business Email</div><div class="product-desc">Professional mailboxes on your domain — you@yourbrand.com.</div><div class="product-link" style="color:var(--green)">Coming soon</div></div>
       <div class="product-card reveal a4" style="opacity:.72"><div class="product-icon">🖥️</div><div class="product-name">Managed Hosting</div><div class="product-desc">Own your platform — fast, secure hosting, managed for you.</div><div class="product-link" style="color:var(--green)">Coming soon</div></div>
+      <a class="product-card card-glow reveal a1" href="/pages/seo/"><div class="product-icon">🔍</div><div class="product-name">SEO</div><div class="product-desc">Own your growth — find what holds your site back, track what matters, and act on it.</div><div class="product-link">Explore →</div></a>
       <a class="product-card card-glow reveal a2" href="/pages/creative/"><div class="product-icon">🎨</div><div class="product-name">Creative</div><div class="product-desc">AI images, ad creatives, and visuals for your brand.</div><div class="product-link">Explore →</div></a>
       <a class="product-card card-glow reveal a3" href="/pages/video/"><div class="product-icon">🎬</div><div class="product-name">Video</div><div class="product-desc">Professional video and short-form content with AI.</div><div class="product-link">Explore →</div></a>
       <a class="product-card card-glow reveal a4" href="/pages/crm/"><div class="product-icon">🤝</div><div class="product-name">CRM</div><div class="product-desc">Own your customers — capture leads and track your pipeline.</div><div class="product-link">Explore →</div></a>
@@ -358,7 +359,7 @@
 </div>
 
 <div id="site-footer-placeholder"></div>
-<script src="/marketing/js/site.js?v=2.6.1-scope"></script>
+<script src="/marketing/js/site.js?v=2.8.0-mrc1-aria"></script>
 <script src="/marketing/js/orb.js?v=2.0.0"></script>
 <script>
 // ── Simulation data ────────────────────────────────────────────
@@ -378,7 +379,7 @@ var SIM = {
       {t:'dmm',n:'Sarah',m:'Restaurant digital strategy ready. Google My Business + website + social plan complete.',dur:2000},
       {t:'seo',n:'James',m:'Turkish restaurant near me — 1,200 searches/mo. Low competition. 18 keywords mapped.',dur:2500},
       {t:'content',n:'Priya',m:'Writing menu descriptions and local SEO content for 5 pages.',dur:2800},
-      {t:'social',n:'Marcus',m:'Drafting 14 social posts for launch week. Ready for your review.',dur:2000}
+      {t:'seo',n:'Alex',m:'Technical audit done — fixed 3 crawl issues. Site health back above target.',dur:2000}
     ],pages:['🍽️ Home','📋 Menu','📸 Gallery','📍 Location','📞 Book Table'],kw:18
   },
   consulting:{
@@ -519,7 +520,7 @@ document.addEventListener('DOMContentLoaded', function() {
     {id:'sarah',  t:'dmm',       l:'Sarah'},
     {id:'james',  t:'seo',       l:'James'},
     {id:'priya',  t:'content',   l:'Priya'},
-    {id:'marcus', t:'social',    l:'Marcus'},
+    {id:'ryan',   t:'seo',       l:'Ryan'},
     {id:'elena',  t:'crm',       l:'Elena'},
     {id:'alex',   t:'technical', l:'Alex'}
   ];
@@ -539,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var f3 = document.getElementById('feed-orb-3');
     if (f1) f1.innerHTML = OrbAvatar.buildAgentOrb('james',  'sm', 'thinking');
     if (f2) f2.innerHTML = OrbAvatar.buildAgentOrb('priya',  'sm', 'idle');
-    if (f3) f3.innerHTML = OrbAvatar.buildAgentOrb('marcus', 'sm', 'idle');
+    if (f3) f3.innerHTML = OrbAvatar.buildAgentOrb('ryan', 'sm', 'idle');
   }
 
   // Agent cards
@@ -549,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
     {id:'sarah',  t:'dmm',       n:'Sarah',  r:'Digital Marketing Manager', c:'#F59E0B', d:'Plans your overall strategy and coordinates the entire AI team.',   lv:'senior'},
     {id:'james',  t:'seo',       n:'James',  r:'SEO Strategist',            c:'#3B82F6', d:'Finds high-value keywords and optimizes your content for Google.',  lv:'junior'},
     {id:'priya',  t:'content',   n:'Priya',  r:'Content Manager',           c:'#7C3AED', d:'Creates blog articles, website copy, and marketing content.',       lv:'specialist'},
-    {id:'marcus', t:'social',    n:'Marcus', r:'Social Media Manager',      c:'#EC4899', d:'Generates and schedules content across all social platforms.',      lv:'specialist'},
+    {id:'ryan',   t:'seo',       n:'Ryan',   r:'Link Building Specialist',    c:'#06B6D4', d:'Authority and internal linking that strengthens how your pages rank.', lv:'specialist'},
     {id:'elena',  t:'crm',       n:'Elena',  r:'Lead & CRM Manager',        c:'#00E5A8', d:'Captures leads and manages your sales pipeline automatically.',     lv:'junior'},
     {id:'alex',   t:'technical', n:'Alex',   r:'Technical SEO Engineer',    c:'#06B6D4', d:'Ensures your website structure and performance are optimized.',     lv:'senior'}
   ];
@@ -597,9 +598,9 @@ document.addEventListener('DOMContentLoaded', function() {
   var SAMPLE = [
     {id:'james',  orbType:'seo',     color:'#3B82F6', name:'James',  role:'SEO Strategist',             level:'junior',     desc:'Keyword research and SERP analysis.'},
     {id:'priya',  orbType:'content', color:'#7C3AED', name:'Priya',  role:'Content Manager',            level:'specialist', desc:'Blog articles and SEO copy.'},
-    {id:'marcus', orbType:'social',  color:'#EC4899', name:'Marcus', role:'Social Media Manager',       level:'specialist', desc:'Content creation and scheduling.'},
+    {id:'ryan',   orbType:'seo',     color:'#06B6D4', name:'Ryan',   role:'Link Building Specialist',    level:'specialist', desc:'Authority and internal linking strategy.'},
     {id:'diana',  orbType:'seo',     color:'#3B82F6', name:'Diana',  role:'Local SEO Specialist',       level:'junior',     desc:'Local citations and map pack rankings.'},
-    {id:'maya',   orbType:'content', color:'#7C3AED', name:'Maya',   role:'Social Content Writer',      level:'junior',     desc:'Captions, hashtags, and social formats.'},
+    {id:'nora',   orbType:'content', color:'#7C3AED', name:'Nora',   role:'Content Strategy Director',   level:'senior',     desc:'Editorial strategy and the content roadmap.'},
     {id:'sofia',  orbType:'seo',     color:'#3B82F6', name:'Sofia',  role:'International SEO Director', level:'senior',     desc:'Multi-market SEO and international search.'}
   ];
   var PLAN_L = {specialist:'Growth', junior:'Pro', senior:'Agency'};

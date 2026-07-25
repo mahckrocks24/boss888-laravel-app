@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INFRA888 3B — browser verification harness</title>
+<style>
+:root{
+  --bp-sm: 480px; --bp-md: 768px; --bp-lg: 1024px; --bp-xl: 1280px; --bp-2xl: 1536px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-9:36px; --sp-10:40px;
+  --touch-min: 44px;
+  --dur-fast:150ms; --dur-normal:250ms; --dur-slow:400ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --bg:#0F1117;--s1:#171A21;--s2:#1E2230;--s3:#252A3A;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
+  --p:#6C5CE7;--pg:rgba(108,92,231,.22);--ps:rgba(108,92,231,.1);
+  --ac:#00E5A8;--ag:rgba(0,229,168,.18);--as:rgba(0,229,168,.08);
+  --bl:#3B8BF5;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA;
+  --t1:#E8EDF5;--t2:#8B97B0;--t3:#4A566B;
+  --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
+  --r:10px;--rg:14px;--rx:20px;--tr:150ms cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--t1);font-family:var(--fb);min-height:100vh;}
+/* Visible focus ring for accessibility validation. */
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+  outline:2px solid var(--p); outline-offset:2px;
+}
+</style>
+</head>
+<body>
+<div id="infrastructure-root"></div>
+<script>
+  window.LU_CFG = { api: '/api/' };
+  // Token is injected at runtime by the verifier (never written to disk).
+  // Call window.__startInfra() after setting localStorage.lu_token.
+  window.__startInfra = function () {
+    if (typeof window.infraLoad === 'function') {
+      window.infraLoad(document.getElementById('infrastructure-root'));
+      return 'started';
+    }
+    return 'infraLoad-not-loaded';
+  };
+</script>
+<script src="/app/js/infrastructure.js?v=1.2.0-infra888-intelligence"></script>
+</body>
+</html>

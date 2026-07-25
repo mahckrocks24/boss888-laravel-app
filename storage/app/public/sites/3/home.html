@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-E85R7C9T1R"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date());gtag("config","G-E85R7C9T1R");</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chef Red Raymundo — Private Chef · Performance Nutrition</title>
@@ -1336,24 +1339,24 @@ footer {
       <div class="form-row">
         <div class="form-field reveal">
           <label>First Name</label>
-          <input type="text" placeholder="Your first name" required>
+          <input type="text" name="firstname" placeholder="Your first name" required>
         </div>
         <div class="form-field reveal reveal-delay-1">
           <label>Last Name</label>
-          <input type="text" placeholder="Your last name" required>
+          <input type="text" name="lastname" placeholder="Your last name" required>
         </div>
       </div>
       <div class="form-field reveal reveal-delay-2">
         <label>Email Address</label>
-        <input type="email" placeholder="your@email.com" required>
+        <input type="email" name="email" placeholder="your@email.com" required>
       </div>
       <div class="form-field reveal reveal-delay-3">
         <label>Phone Number</label>
-        <input type="tel" placeholder="+1 (000) 000-0000">
+        <input type="tel" name="phone" placeholder="+1 (000) 000-0000">
       </div>
       <div class="form-field reveal reveal-delay-4">
         <label>Service of Interest</label>
-        <select>
+        <select name="service">
           <option value="" disabled selected>Select a service…</option>
           <option>Private Chef (Daily / Weekly)</option>
           <option>Performance Nutrition</option>
@@ -1366,7 +1369,7 @@ footer {
       </div>
       <div class="form-field reveal">
         <label>Tell Me About Your Goals</label>
-        <textarea placeholder="Share your lifestyle, preferences, health goals, or any details that help Chef Red understand what you're looking for…"></textarea>
+        <textareaname="message"  name="message" placeholder="Share your lifestyle, preferences, health goals, or any details that help Chef Red understand what you're looking for…"></textarea>
       </div>
       <button type="submit" class="form-submit reveal reveal-delay-1">Send Inquiry →</button>
       <div id="form-success" style="display:none;font-size:.8rem;color:var(--gold);letter-spacing:.06em;">
@@ -1480,10 +1483,37 @@ function goToSlide(n) {
 setInterval(() => goToSlide((currentSlide + 1) % slides.length), 5000);
 
 /* ── Form ── */
-function handleSubmit(e) {
+function handleSubmit(e){
   e.preventDefault();
-  e.target.style.display = 'none';
-  document.getElementById('form-success').style.display = 'block';
+  var f = e.target;
+  var btn = f.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending\u2026'; }
+  var fd = new FormData(f);
+  var firstname = (fd.get('firstname')||'').toString().trim();
+  var lastname  = (fd.get('lastname') ||'').toString().trim();
+  var email     = (fd.get('email')    ||'').toString().trim();
+  var phone     = (fd.get('phone')    ||'').toString().trim();
+  var service   = (fd.get('service')  ||'').toString().trim();
+  var body      = (fd.get('message')  ||'').toString().trim();
+  var message   = (service ? '['+service+'] ' : '') + body;
+  fetch('https://staging.levelupgrowth.io/api/public/contact/chef-red', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify({firstname: firstname + (lastname ? ' '+lastname : ''), email: email, phone: phone, message: message || 'Contact form submission'})
+  }).then(function(r){ return r.json().catch(function(){return {success:false};}); })
+    .then(function(res){
+      if (res && res.success !== false) {
+        f.style.display = 'none';
+        document.getElementById('form-success').style.display = 'block';
+      } else {
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry \u2192'; }
+        alert('Submission failed: ' + ((res && res.message) || 'please try again or email chef@chefredraymundo.com'));
+      }
+    })
+    .catch(function(){
+      if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry \u2192'; }
+      alert('Network error \u2014 please try again or email chef@chefredraymundo.com');
+    });
 }
 </script>
 <script>

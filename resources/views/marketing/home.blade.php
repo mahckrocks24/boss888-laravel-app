@@ -175,7 +175,7 @@
         <div class="sol-check"><span class="sol-check-icon">✓</span><span style="color:#D1D5DB;font-size:14.5px">SEO content created and published daily</span></div>
         <div class="sol-check"><span class="sol-check-icon">✓</span><span style="color:#D1D5DB;font-size:14.5px">Social media managed across all platforms</span></div>
         <div class="sol-check"><span class="sol-check-icon">✓</span><span style="color:#D1D5DB;font-size:14.5px">Leads captured and organized automatically</span></div>
-        <div class="sol-check"><span class="sol-check-icon">✓</span><span style="color:#D1D5DB;font-size:14.5px">Email campaigns run on autopilot</span></div>
+        <div class="sol-check"><span class="sol-check-icon">✓</span><span style="color:#D1D5DB;font-size:14.5px">Lead follow-up runs automatically</span></div>
         <div class="sol-check"><span class="sol-check-icon">✓</span><span style="color:#D1D5DB;font-size:14.5px">No coding. No agencies. No complexity.</span></div>
       </div>
     </div>
@@ -245,7 +245,6 @@
     </div>
     <div class="products-grid">
       <a class="product-card card-glow reveal a1" href="/pages/builder/"><div class="product-icon">🏗️</div><div class="product-name">Website Builder + Hosting</div><div class="product-desc">AI generates your site in minutes. Drag-and-drop editing. Hosting included.</div><div class="product-link">Explore →</div></a>
-      <a class="product-card card-glow reveal a2" href="/pages/email/"><div class="product-icon">📣</div><div class="product-name">Email Marketing</div><div class="product-desc">AI-written campaigns, automated sequences, and analytics.</div><div class="product-link">Explore →</div></a>
       <a class="product-card card-glow reveal a3" href="/pages/crm/"><div class="product-icon">🤝</div><div class="product-name">CRM + Lead Management</div><div class="product-desc">Capture leads, track pipeline, automate follow-ups.</div><div class="product-link">Explore →</div></a>
       <a class="product-card card-glow reveal a4" href="/pages/creative/"><div class="product-icon">🎨</div><div class="product-name">Creative Engine</div><div class="product-desc">AI image generation, ad creatives, before/after visuals.</div><div class="product-link">Explore →</div></a>
       <a class="product-card card-glow reveal a1" href="/pages/video/"><div class="product-icon">🎬</div><div class="product-name">AI Video Generator</div><div class="product-desc">Professional video content and short-form ads with AI.</div><div class="product-link">Explore →</div></a>

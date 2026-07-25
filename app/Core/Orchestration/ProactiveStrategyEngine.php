@@ -300,6 +300,40 @@ class ProactiveStrategyEngine
         // Article: parent write_article + 3 children (meta, link suggestions, insert).
         // Image/AEO skipped here — proposals don't yet carry those flags.
         if ($slug === 'write_article') {
+            // b24 (2026-07-24) — A PROPOSAL TITLE IS NOT AN ARTICLE TOPIC.
+            //
+            // Both 'title' and 'topic' below used to be the proposal title
+            // verbatim. Proposal titles are ACTION descriptions, so the writer
+            // was told to write an article *about the instruction*. Live result
+            // on customer blogs:
+            //
+            //   Chef Red (private chef)      → "Expand 7 Thin Pages to 800+
+            //                                   Words: A Practical Guide" ×7
+            //   AMG Global Travel & Tours    → "Optimize Published Articles
+            //                                   with Focus Keywords"
+            //
+            // Off-brand SEO-housekeeping content, 1,200 words each, published
+            // to real customer sites. Recover the actual subject; when there
+            // isn't one, the proposal was mis-typed as write_article and must
+            // not produce an article at all.
+            $writeSvc = app(\App\Engines\Write\Services\WriteService::class);
+            $subject  = $writeSvc->looksLikeInstruction($title)
+                ? $writeSvc->subjectFromInstruction($title)
+                : $title;
+
+            if ($subject === null || trim((string) $subject) === '') {
+                Log::warning('[Proactive] write_article proposal has no real topic — skipped', [
+                    'workspace_id' => $wsId,
+                    'proposal_id'  => $proposal->id,
+                    'title'        => $title,
+                ]);
+                DB::table('strategy_proposals')->where('id', $proposal->id)->update([
+                    'status'     => 'superseded',
+                    'updated_at' => now(),
+                ]);
+                return $ids;
+            }
+
             $parent = $taskSvc->create($wsId, [
                 'engine'            => 'write',
                 'action'            => 'write_article',
@@ -310,8 +344,9 @@ class ProactiveStrategyEngine
                 'requires_approval' => false,
                 'credit_cost'       => (int) $proposal->total_credits,
                 'payload'           => [
-                    'title'        => $title,
-                    'topic'        => $title,
+                    // b24 — the recovered SUBJECT, never the instruction.
+                    'title'        => $subject,
+                    'topic'        => $subject,
                     'audience'     => 'small business owners',
                     'tone'         => 'professional yet warm',
                     'length'       => 1100,

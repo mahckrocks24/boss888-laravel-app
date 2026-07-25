@@ -103,7 +103,7 @@ async function main() {
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
 
     // setContent + waitUntil:networkidle0 lets images/fonts finish loading.
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.setContent(html, { waitUntil: 'load', timeout: 60000 });
 
     // Belt-and-suspenders: explicit font readiness + one paint tick.
     await page.evaluate(() => document.fonts && document.fonts.ready);

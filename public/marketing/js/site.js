@@ -23,8 +23,12 @@ const NAV_DATA = {
         ]},
         { title: 'Own your operations', items: [
             { name: 'CRM',             desc: 'Manage leads, customers and opportunities.',                    href: '/pages/crm/',       state: 'available', icon: '🤝' },
-            { name: 'Calendar',        desc: 'Manage appointments, bookings and availability.',               href: '/pages/calendar/',  state: 'available', icon: '📅' },
-            { name: 'AI Workforce',    desc: 'Coordinate AI assistants across the business.',                 href: '/pages/ai-agents/', state: 'available', icon: '🤖' }
+            { name: 'Calendar',        desc: 'Manage appointments, bookings and availability.',               href: '/pages/calendar/',  state: 'available', icon: '📅' }
+        ]},
+        { title: 'Your AI', items: [
+            { name: 'Aria',            desc: 'Platform intelligence — ask your workspace anything.',           href: '/pages/ai-assistant/', state: 'available', icon: '🧠' },
+            { name: 'AI Workforce',    desc: 'The team that executes your marketing.',                        href: '/pages/ai-agents/', state: 'available', icon: '🤖' },
+            { name: 'Automation',      desc: 'What runs automatically — and what you approve.',               href: '/pages/automation/', state: 'available', icon: '⚙️' }
         ]}
     ],
     journey: [
@@ -144,7 +148,22 @@ const FOOTER_HTML = `
           <a class="footer-link" href="/pages/video/">Video</a>
           <a class="footer-link" href="/pages/crm/">CRM</a>
           <a class="footer-link" href="/pages/calendar/">Calendar</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">AI</div>
+        <div class="footer-links">
+          <a class="footer-link" href="/pages/ai-assistant/">Aria — Assistant</a>
           <a class="footer-link" href="/pages/ai-agents/">AI Workforce</a>
+          <a class="footer-link" href="/pages/automation/">Automation</a>
+        </div>
+        <div class="footer-col-title" style="margin-top:20px">Legal</div>
+        <div class="footer-links">
+          <a class="footer-link" href="/pages/privacy/">Privacy Policy</a>
+          <a class="footer-link" href="/pages/terms/">Terms of Service</a>
+          <a class="footer-link" href="/pages/cookies/">Cookie Policy</a>
+          <a class="footer-link" href="/pages/ai-disclosure/">AI Disclosure</a>
+          <a class="footer-link" href="/pages/refund/">Refund &amp; Billing</a>
         </div>
       </div>
       <div>
@@ -169,7 +188,7 @@ const FOOTER_HTML = `
       </div>
     </div>
     <div class="footer-bottom">
-      <p style="color:#374151;font-size:13px">© 2026 LevelUpGrowth. All rights reserved.</p>
+      <p style="color:#374151;font-size:13px">© 2026 <!--[[OWNER:LEGAL_ENTITY_NAME]]-->LevelUpGrowth. All rights reserved.</p>
       <p style="color:#374151;font-size:13px;font-family:var(--ff-h)">Own your business online — run by AI</p>
     </div>
   </div>
@@ -478,3 +497,13 @@ function injectJourney() {
     else { document.addEventListener('DOMContentLoaded', run); }
 })();
 window.closeMobileNav = closeMobileNav;
+
+// ── MRC-1 analytics loader (consent-gated; transmits nothing until a real ID is set) ──
+(function () {
+    if (document.getElementById('lu-analytics')) { return; }
+    var s = document.createElement('script');
+    s.id = 'lu-analytics';
+    s.src = '/marketing/js/analytics.js?v=2.8.0-mrc1';
+    s.async = true;
+    document.head.appendChild(s);
+})();

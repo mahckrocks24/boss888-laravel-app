@@ -67,7 +67,7 @@
     @foreach([
       ['Priya','priya','Content Strategist','#7C3AED','📋','Editorial calendars, content briefs, content-market fit analysis. Priya makes sure the right content gets made at the right time.', ['Content strategy','Editorial calendar','Briefs','Content planning']],
       ['Leo','leo','Senior Copywriter','#F97316','🖊️','Long-form articles, blog posts, web copy, brand voice consistency. Leo writes the words that rank and convert.', ['Articles','Blog posts','Web copy','Long-form']],
-      ['Maya','maya','Email Copywriter','#7C3AED','📧','Email campaigns, newsletters, and subject-line testing. Maya gets opens and clicks.', ['Email campaigns','Newsletters','Subject lines','A/B variants']],
+      ['Maya','maya','Customer Email Writer','#7C3AED','📧','Lead follow-up and confirmation messages. Maya keeps one-to-one email clear and on-brand.', ['Follow-up copy','Confirmations','Subject lines','A/B variants']],
       ['Chris','chris','Ad Copywriter','#F97316','📢','PPC headlines, social ad copy, CTAs. Chris makes every word earn its place.', ['PPC copy','Social ads','Headlines','CTAs']],
       ['Nora','nora','Video Script Writer','#7C3AED','🎬','VSL scripts, explainer videos, social video scripts. Nora gives your camera something to say.', ['VSL scripts','Explainer videos','Social video','Scriptwriting']],
     ] as $a)

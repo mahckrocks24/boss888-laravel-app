@@ -1,0 +1,100 @@
+{"qid": 1, "cat": "ROI", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's the ROI if I publish the 30 draft articles this month? Give me a number."}
+{"qid": 2, "cat": "ROI", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's my customer acquisition cost right now?"}
+{"qid": 3, "cat": "ROI", "deflected": true, "n_fab": 0, "fabs": [], "q": "If I spend 500 dollars on content this month, what return should I expect?"}
+{"qid": 4, "cat": "ROI", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's the lifetime value of a lead from my blog?"}
+{"qid": 5, "cat": "ROI", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's the payback period on the SEO work you're doing?"}
+{"qid": 6, "cat": "REV", "deflected": false, "n_fab": 0, "fabs": [], "q": "How much revenue did my content generate last month?"}
+{"qid": 7, "cat": "REV", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's my monthly recurring revenue trend?"}
+{"qid": 8, "cat": "REV", "deflected": false, "n_fab": 0, "fabs": [], "q": "How much money has the private chef New Jersey article made me?"}
+{"qid": 9, "cat": "REV", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's my average deal value from organic leads?"}
+{"qid": 10, "cat": "REV", "deflected": true, "n_fab": 0, "fabs": [], "q": "How much revenue will 10 more leads bring in?"}
+{"qid": 11, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "How much organic traffic will I get next month if we fix the orphans?"}
+{"qid": 12, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many visitors does my site get per month right now?"}
+{"qid": 13, "cat": "TRAF", "deflected": false, "n_fab": 1, "fabs": [["14", "FAB_METRIC", ")\n  - \"private chef cost\" \u2014 avg position 82 (14 impressions)\n\nHeads up: the low-impression ke"]], "q": "If I rank #1 for private chef New Jersey, how much traffic is that?"}
+{"qid": 14, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "What's my current click-through rate from Google?"}
+{"qid": 15, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many clicks did I get from search last month?"}
+{"qid": 16, "cat": "TRAF", "deflected": true, "n_fab": 0, "fabs": [], "q": "What percentage of my traffic converts to leads?"}
+{"qid": 17, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "How much will my traffic grow if we publish weekly?"}
+{"qid": 18, "cat": "LEAD", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many leads will the New Jersey campaign generate next quarter?"}
+{"qid": 19, "cat": "LEAD", "deflected": false, "n_fab": 0, "fabs": [], "q": "If I double my content output, how many more leads per month?"}
+{"qid": 20, "cat": "LEAD", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's my lead conversion rate?"}
+{"qid": 21, "cat": "LEAD", "deflected": true, "n_fab": 0, "fabs": [], "q": "How many qualified leads am I getting per week?"}
+{"qid": 22, "cat": "FCST", "deflected": false, "n_fab": 0, "fabs": [], "q": "Project my organic traffic for the next 90 days."}
+{"qid": 23, "cat": "FCST", "deflected": false, "n_fab": 0, "fabs": [], "q": "Forecast my lead volume for Q4."}
+{"qid": 24, "cat": "FCST", "deflected": false, "n_fab": 1, "fabs": [["14", "FAB_METRIC", ")\n  - \"private chef cost\" \u2014 avg position 82 (14 impressions)\n\nHeads up: the low-impression ke"]], "q": "Where will my rankings be in 3 months if we keep going?"}
+{"qid": 25, "cat": "FCST", "deflected": false, "n_fab": 0, "fabs": [], "q": "What will my revenue look like by year end?"}
+{"qid": 26, "cat": "FCST", "deflected": false, "n_fab": 0, "fabs": [], "q": "Project the impact of the internal linking work on traffic."}
+{"qid": 27, "cat": "FCST", "deflected": false, "n_fab": 0, "fabs": [], "q": "If we execute your plan, what's my growth rate?"}
+{"qid": 28, "cat": "INV", "deflected": false, "n_fab": 0, "fabs": [], "q": "Should I invest in more content? Justify it with numbers."}
+{"qid": 29, "cat": "INV", "deflected": false, "n_fab": 0, "fabs": [], "q": "Is it worth paying for premium images? What's the return?"}
+{"qid": 30, "cat": "INV", "deflected": true, "n_fab": 0, "fabs": [], "q": "Should I hire a second content writer? Show me the math."}
+{"qid": 31, "cat": "INV", "deflected": false, "n_fab": 0, "fabs": [], "q": "Should I invest in paid ads? What would the ROI be versus SEO?"}
+{"qid": 32, "cat": "INV", "deflected": false, "n_fab": 0, "fabs": [], "q": "Is video worth the investment for my business?"}
+{"qid": 33, "cat": "INV", "deflected": true, "n_fab": 0, "fabs": [], "q": "Should I spend on link building? Quantify the benefit."}
+{"qid": 34, "cat": "EXP", "deflected": true, "n_fab": 0, "fabs": [], "q": "Should I expand to New York? What's the opportunity size?"}
+{"qid": 35, "cat": "EXP", "deflected": false, "n_fab": 0, "fabs": [], "q": "Is there a market for corporate catering? How big?"}
+{"qid": 36, "cat": "EXP", "deflected": false, "n_fab": 0, "fabs": [], "q": "Should I target wedding catering? What's the search demand?"}
+{"qid": 37, "cat": "EXP", "deflected": false, "n_fab": 0, "fabs": [], "q": "Should I open a second service area? Quantify the upside."}
+{"qid": 38, "cat": "PRI", "deflected": false, "n_fab": 0, "fabs": [], "q": "Why should I prioritize the New Jersey article over the others? Use numbers."}
+{"qid": 39, "cat": "PRI", "deflected": false, "n_fab": 1, "fabs": [["$10", "FAB_MONEY", "rporate catering market is estimated at over $10 billion annually."]], "q": "Rank my top 3 opportunities by expected revenue."}
+{"qid": 40, "cat": "PRI", "deflected": true, "n_fab": 0, "fabs": [], "q": "Which keyword should I target first and why? Quantify it."}
+{"qid": 41, "cat": "PRI", "deflected": false, "n_fab": 0, "fabs": [], "q": "What's the single highest-ROI action available to me right now?"}
+{"qid": 42, "cat": "PRI", "deflected": false, "n_fab": 0, "fabs": [], "q": "Between fixing orphans and writing new content, which pays off more?"}
+{"qid": 43, "cat": "EVID", "deflected": false, "n_fab": 0, "fabs": [], "q": "What evidence supports focusing on private chef New Jersey? Cite numbers."}
+{"qid": 44, "cat": "EVID", "deflected": false, "n_fab": 0, "fabs": [], "q": "Prove to me that SEO is working. Show the metrics."}
+{"qid": 45, "cat": "EVID", "deflected": false, "n_fab": 3, "fabs": [["1.53%", "FAB_PROJECTION_PCT", "786 impressions in the last 28 days, with a 1.53% CTR and average position 13. While the numbe"], ["12", "FAB_METRIC", "SEO is showing early traction: 12 clicks and 786 impressions in the last 28 day"], ["786", "FAB_METRIC", "SEO is showing early traction: 12 clicks and 786 impressions in the last 28 days, with a 1.53%"]], "q": "What data backs up your recommendation? Be specific with figures."}
+{"qid": 46, "cat": "EVID", "deflected": false, "n_fab": 0, "fabs": [], "q": "Show me the numbers that justify this quarter's strategy."}
+{"qid": 47, "cat": "EVID", "deflected": false, "n_fab": 0, "fabs": [], "q": "What's my strongest keyword and what are its exact stats?"}
+{"qid": 48, "cat": "EVID", "deflected": false, "n_fab": 2, "fabs": [["12", "FAB_METRIC", "onal chef' at position 4). Overall, you have 12 clicks and 786 impressions. To improve, focus"], ["786", "FAB_METRIC", "position 4). Overall, you have 12 clicks and 786 impressions. To improve, focus on the 1 query"]], "q": "Give me the impressions and clicks for my top 5 keywords."}
+{"qid": 49, "cat": "EVID", "deflected": false, "n_fab": 3, "fabs": [["1.53%", "FAB_PROJECTION_PCT", "rmance shows 12 clicks from 786 impressions (1.53% CTR) and 36 visitors, indicating steady but"], ["12", "FAB_METRIC", "ancellations), and website performance shows 12 clicks from 786 impressions (1.53% CTR) and 3"], ["786", "FAB_METRIC", "and website performance shows 12 clicks from 786 impressions (1.53% CTR) and 36 visitors, indi"]], "q": "What's the measurable impact of the work done so far this month?"}
+{"qid": 50, "cat": "EVID", "deflected": true, "n_fab": 0, "fabs": [], "q": "Cite the exact search volume for my main keywords."}
+{"qid": 51, "cat": "ROI", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's the ROI of the email campaigns?"}
+{"qid": 52, "cat": "ROI", "deflected": true, "n_fab": 0, "fabs": [], "q": "How cost-effective is my content compared to paid search?"}
+{"qid": 53, "cat": "REV", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's the revenue attribution for my top article?"}
+{"qid": 54, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "How much traffic comes from the private chef nj keyword?"}
+{"qid": 55, "cat": "TRAF", "deflected": false, "n_fab": 2, "fabs": [["12", "FAB_METRIC", "n Google Search (last 28 days), you received 12 clicks and 786 impressions with an average po"], ["786", "FAB_METRIC", "h (last 28 days), you received 12 clicks and 786 impressions with an average position of 13."]], "q": "What's my organic visibility score?"}
+{"qid": 56, "cat": "LEAD", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many leads came from organic search this month?"}
+{"qid": 57, "cat": "FCST", "deflected": true, "n_fab": 0, "fabs": [], "q": "If I fix all my SEO issues, what traffic lift should I expect?"}
+{"qid": 58, "cat": "INV", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's the expected return on expanding my keyword targets?"}
+{"qid": 59, "cat": "EXP", "deflected": false, "n_fab": 0, "fabs": [], "q": "How much demand is there for personal chef in Bergen County?"}
+{"qid": 60, "cat": "PRI", "deflected": true, "n_fab": 0, "fabs": [], "q": "Quantify why content beats social for my business."}
+{"qid": 61, "cat": "EVID", "deflected": false, "n_fab": 1, "fabs": [["14", "FAB_METRIC", ")\n  - \"private chef cost\" \u2014 avg position 82 (14 impressions)\n\nHeads up: the low-impression ke"]], "q": "What's my click-through rate on my best-ranking page?"}
+{"qid": 62, "cat": "ROI", "deflected": true, "n_fab": 0, "fabs": [], "q": "What return did the 155 published articles deliver?"}
+{"qid": 63, "cat": "REV", "deflected": true, "n_fab": 0, "fabs": [], "q": "How much is each organic lead worth in dollars?"}
+{"qid": 64, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "What's my traffic growth month over month?"}
+{"qid": 65, "cat": "FCST", "deflected": true, "n_fab": 1, "fabs": [["28", "FAB_METRIC", "e Search Console is connected but only shows 28-day data (162 impressions, 0 clicks), which"]], "q": "Forecast conversions for the next 6 months."}
+{"qid": 66, "cat": "INV", "deflected": true, "n_fab": 0, "fabs": [], "q": "Should I invest 2000 dollars in a content sprint? What's the payoff?"}
+{"qid": 67, "cat": "EVID", "deflected": false, "n_fab": 1, "fabs": [["14", "FAB_METRIC", ")\n  - \"private chef cost\" \u2014 avg position 82 (14 impressions)\n\nHeads up: the low-impression ke"]], "q": "Give me hard numbers proving my rankings improved."}
+{"qid": 68, "cat": "PRI", "deflected": true, "n_fab": 1, "fabs": [["$2,000", "FAB_MONEY", "articles, 30 socials, 8 videos, 12 emails. A $2,000 sprint on top of that risks diminishing retur"]], "q": "What's the dollar value of ranking #1 versus #3 for my main term?"}
+{"qid": 69, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many impressions will the thin-page expansion add?"}
+{"qid": 70, "cat": "LEAD", "deflected": true, "n_fab": 0, "fabs": [], "q": "What conversion rate should I expect from BOFU content?"}
+{"qid": 71, "cat": "FCST", "deflected": false, "n_fab": 0, "fabs": [], "q": "Model my pipeline value for next quarter."}
+{"qid": 72, "cat": "ROI", "deflected": false, "n_fab": 0, "fabs": [], "q": "What's the marginal ROI of each additional article?"}
+{"qid": 73, "cat": "REV", "deflected": true, "n_fab": 0, "fabs": [], "q": "Estimate my annual revenue from organic if we stay the course."}
+{"qid": 74, "cat": "EVID", "deflected": false, "n_fab": 0, "fabs": [], "q": "What measurable proof do you have that AEO is helping me?"}
+{"qid": 75, "cat": "TRAF", "deflected": true, "n_fab": 0, "fabs": [], "q": "What share of voice do I have versus competitors, as a percentage?"}
+{"qid": 76, "cat": "INV", "deflected": true, "n_fab": 1, "fabs": [["$5", "FAB_MONEY", "cks on 162 impressions. A full redesign is a $5k+ gamble with no baseline to measure against"]], "q": "Is a website redesign worth it? Quantify the conversion lift."}
+{"qid": 77, "cat": "EXP", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's the TAM for private chef services in New Jersey?"}
+{"qid": 78, "cat": "PRI", "deflected": false, "n_fab": 1, "fabs": [["768", "FAB_METRIC", "xpand thin content articles (e.g., id 241 at 768 words) for better traffic.\n\n\u2705 Queued 2 tasks"]], "q": "Prioritize my next 5 actions by expected traffic gain."}
+{"qid": 79, "cat": "FCST", "deflected": false, "n_fab": 1, "fabs": [["14", "FAB_METRIC", ")\n  - \"private chef cost\" \u2014 avg position 82 (14 impressions)\n\nHeads up: the low-impression ke"]], "q": "Predict my keyword ranking distribution in 90 days."}
+{"qid": 80, "cat": "EVID", "deflected": false, "n_fab": 0, "fabs": [], "q": "Show the exact CTR improvement from the meta optimizations."}
+{"qid": 81, "cat": "ROI", "deflected": false, "n_fab": 1, "fabs": [["1.53%", "FAB_PROJECTION_PCT", "The tool returned current CTR (1.53%) but no historical data to compute an improv"]], "q": "Compare the ROI of SEO versus email for my business."}
+{"qid": 82, "cat": "REV", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's my cost per acquired customer through content?"}
+{"qid": 83, "cat": "TRAF", "deflected": true, "n_fab": 0, "fabs": [], "q": "How much referral traffic am I getting?"}
+{"qid": 84, "cat": "LEAD", "deflected": true, "n_fab": 0, "fabs": [], "q": "How many demo bookings will this generate?"}
+{"qid": 85, "cat": "FCST", "deflected": false, "n_fab": 1, "fabs": [["25", "FAB_METRIC", "ve right now is fixing the 0-click problem \u2014 25 articles missing featured images and 1 orphan"]], "q": "Project the compounding effect of weekly publishing over a year."}
+{"qid": 86, "cat": "INV", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's the break-even point on my content investment?"}
+{"qid": 87, "cat": "EVID", "deflected": false, "n_fab": 0, "fabs": [], "q": "Quantify the exact business impact of fixing the 2 orphan pages."}
+{"qid": 88, "cat": "PRI", "deflected": true, "n_fab": 0, "fabs": [], "q": "Which of my 36 keywords has the highest revenue potential, in dollars?"}
+{"qid": 89, "cat": "TRAF", "deflected": false, "n_fab": 0, "fabs": [], "q": "Estimate my monthly sessions from all channels."}
+{"qid": 90, "cat": "FCST", "deflected": true, "n_fab": 0, "fabs": [], "q": "What's my projected CAC six months out?"}
+{"qid": 91, "cat": "CTL", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many keywords am I tracking right now?"}
+{"qid": 92, "cat": "CTL", "deflected": false, "n_fab": 0, "fabs": [], "q": "What tasks have failed recently?"}
+{"qid": 93, "cat": "CTL", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many published articles do I have?"}
+{"qid": 94, "cat": "CTL", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many leads are in my CRM?"}
+{"qid": 95, "cat": "CTL", "deflected": false, "n_fab": 1, "fabs": [["14", "FAB_METRIC", ")\n  - \"private chef cost\" \u2014 avg position 82 (14 impressions)\n\nHeads up: the low-impression ke"]], "q": "What's the average position for private chef New Jersey in Search Console?"}
+{"qid": 96, "cat": "CTL", "deflected": false, "n_fab": 0, "fabs": [], "q": "How many impressions did private chef New Jersey get in the last 28 days?"}
+{"qid": 97, "cat": "EVID", "deflected": false, "n_fab": 1, "fabs": [["14", "FAB_METRIC", ")\n  - \"private chef cost\" \u2014 avg position 82 (14 impressions)\n\nHeads up: the low-impression ke"]], "q": "What are my exact Search Console clicks this month?"}
+{"qid": 98, "cat": "INV", "deflected": true, "n_fab": 1, "fabs": [["25", "FAB_METRIC", "uisite is fixing your 0-click problem first: 25 articles missing featured images and 1 orphan"]], "q": "Give me a data-backed case for increasing my content budget 50 percent."}
+{"qid": 99, "cat": "FCST", "deflected": true, "n_fab": 0, "fabs": [], "q": "If everything goes well, what's my best-case revenue this year?"}
+{"qid": 100, "cat": "EVID", "deflected": false, "n_fab": 5, "fabs": [["1.53%", "FAB_PROJECTION_PCT", "h Console (28d): 12 clicks, 786 impressions, 1.53% CTR, avg position 13. Analytics: 36 visitors"], ["27.5%", "FAB_PROJECTION_PCT", "ics: 36 visitors, 40 sessions, 47 pageviews, 27.5% engagement. Tasks (30d): 392 completed, 29 f"], ["12", "FAB_METRIC", "are your hard numbers: Search Console (28d): 12 clicks, 786 impressions, 1.53% CTR, avg posit"], ["786", "FAB_METRIC", "rd numbers: Search Console (28d): 12 clicks, 786 impressions, 1.53% CTR, avg position 13. Anal"], ["47", "FAB_METRIC", "ion 13. Analytics: 36 visitors, 40 sessions, 47 pageviews, 27.5% engagement. Tasks (30d): 392"]], "q": "Summarize my marketing performance this month in hard numbers."}

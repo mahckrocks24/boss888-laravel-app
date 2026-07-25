@@ -1,140 +1,126 @@
-/**
- * LevelUpGrowth — Analytics
- * Sparkline charts, no external libraries.
- * Data from GET /lu/v1/analytics/overview
- */
-'use strict';
+/* ============================================================================
+ * LevelUp Growth — Marketing Analytics  (MRC-1)
+ * ----------------------------------------------------------------------------
+ * Consent-gated GA4 + dataLayer event taxonomy.
+ *
+ * ⚠ NO IDENTIFIERS ARE CONFIGURED. Nothing transmits until the owner supplies a
+ *   real GA4 Measurement ID (and/or GTM ID) below. Until then this file only
+ *   builds the dataLayer locally and no network request is made.
+ *
+ *   Set GA4_ID (e.g. "G-XXXXXXXXXX") and, optionally, GTM_ID ("GTM-XXXXXXX").
+ * ========================================================================== */
+(function () {
+  'use strict';
 
-const Analytics = {
+  // ── Owner-supplied identifiers — REQUIRED before anything transmits ──
+  var GA4_ID = null;   // [[OWNER:GA4_MEASUREMENT_ID]]  e.g. "G-XXXXXXXXXX"
+  var GTM_ID = null;   // [[OWNER:GTM_CONTAINER_ID]]    optional, e.g. "GTM-XXXXXXX"
 
-    async render(container) {
-        container.innerHTML = `
-        <div class="view-header">
-          <div><h1 class="view-title">Analytics</h1><p class="view-sub">Performance snapshots across all engines</p></div>
-          <select class="form-input" id="an-period" style="width:130px;padding:8px 12px;font-size:13px" onchange="Analytics.load()">
-            <option value="7">Last 7 days</option>
-            <option value="30" selected>Last 30 days</option>
-            <option value="90">Last 90 days</option>
-          </select>
-        </div>
-        <div id="an-content"><div class="loading-row">Loading analytics…</div></div>`;
-        await this.load();
-    },
+  // ── Local dataLayer (always available; used for QA even without an ID) ──
+  window.dataLayer = window.dataLayer || [];
+  function push(evt, params) {
+    var payload = Object.assign({ event: evt, ts: undefined }, params || {});
+    window.dataLayer.push(payload);
+  }
+  window.luTrack = push; // exposed so pages can fire custom events
 
-    async load() {
-        const days = parseInt(document.getElementById('an-period')?.value || '30');
-        const content = document.getElementById('an-content');
-        if (!content) return;
-        try {
-            const { data } = await API.AnalyticsAPI.overview(days);
-            this.renderCharts(data.engines || {}, days);
-        } catch (e) {
-            content.innerHTML = `<div class="empty-state">Could not load analytics: ${_esc(e.message)}<br><span style="font-size:12px;color:var(--faint)">Analytics snapshots are collected daily at 02:00 UTC. Data will appear after the first snapshot runs.</span></div>`;
-        }
-    },
+  // ── Consent (cookie-policy aligned) ──
+  var CONSENT_KEY = 'lu_analytics_consent';
+  function consentGranted() { try { return localStorage.getItem(CONSENT_KEY) === 'granted'; } catch (e) { return false; } }
+  window.luSetAnalyticsConsent = function (granted) {
+    try { localStorage.setItem(CONSENT_KEY, granted ? 'granted' : 'denied'); } catch (e) {}
+    if (granted) loadGA();
+  };
 
-    renderCharts(engines, days) {
-        const content = document.getElementById('an-content');
-        if (!content) return;
+  // ── GA4 loader — only runs with a real ID AND consent ──
+  var gaLoaded = false;
+  function loadGA() {
+    if (gaLoaded || !GA4_ID || !consentGranted()) return; // hard gate: no ID or no consent → no transmit
+    gaLoaded = true;
+    var s = document.createElement('script');
+    s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA4_ID;
+    document.head.appendChild(s);
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', GA4_ID, { anonymize_ip: true, send_page_view: true });
+    // flush queued events
+    _queue.forEach(function (q) { window.gtag('event', q.evt, q.params); });
+    _queue = [];
+  }
 
-        const ENGINE_CONFIG = {
-            tasks:    { label: 'Task Execution',  icon: '⚡', key: 'completed',        color: '#7C3AED', unit: 'tasks' },
-            credits:  { label: 'Credit Usage',    icon: '💳', key: 'spent',            color: '#3B82F6', unit: 'credits' },
-            write:    { label: 'Content Created', icon: '✍️', key: 'items_created',    color: '#A78BFA', unit: 'items' },
-            marketing:{ label: 'Campaigns Sent',  icon: '📣', key: 'campaigns_sent',   color: '#F59E0B', unit: 'campaigns' },
-            social:   { label: 'Posts Published', icon: '📱', key: 'posts_published',  color: '#00E5A8', unit: 'posts' },
-        };
+  // events captured before GA is live are queued (and mirrored to dataLayer)
+  var _queue = [];
+  function track(evt, params) {
+    push(evt, params);
+    if (window.gtag && GA4_ID && consentGranted()) window.gtag('event', evt, params || {});
+    else _queue.push({ evt: evt, params: params || {} });
+  }
 
-        if (!Object.keys(engines).length) {
-            content.innerHTML = `<div class="empty-state">No analytics data yet.<br><span style="font-size:12.5px;color:var(--faint)">Snapshots are collected daily. Check back tomorrow for your first data points.</span></div>`;
-            return;
-        }
+  // ── EVENT TAXONOMY ────────────────────────────────────────────────
+  function pageGroup() {
+    var p = location.pathname;
+    if (p === '/' || p === '') return 'home';
+    if (/\/pages\/(privacy|terms|cookies|ai-disclosure|refund)/.test(p)) return 'legal';
+    if (/\/pages\/(ai-assistant|ai-agents|automation)/.test(p)) return 'ai';
+    if (/\/pages\/pricing/.test(p)) return 'pricing';
+    if (/\/pages\//.test(p)) return 'product';
+    return 'other';
+  }
+  function aiSurface() {
+    if (/ai-assistant/.test(location.pathname)) return 'aria';
+    if (/ai-agents/.test(location.pathname)) return 'workforce';
+    if (/automation/.test(location.pathname)) return 'automation';
+    return null;
+  }
 
-        content.innerHTML = `<div class="an-grid">${Object.entries(ENGINE_CONFIG).map(([key, cfg]) => {
-            const rows = engines[key] || [];
-            const values = rows.map(r => parseFloat(r.metrics?.[cfg.key] || 0));
-            const total  = values.reduce((a, b) => a + b, 0);
-            const latest = values[values.length - 1] || 0;
-            const canvasId = 'an-chart-' + key;
-            return `
-              <div class="an-card">
-                <div class="an-card-header">
-                  <span class="an-icon" style="background:${cfg.color}18;color:${cfg.color}">${cfg.icon}</span>
-                  <div>
-                    <div class="an-engine-name">${cfg.label}</div>
-                    <div class="an-engine-sub">${days}d window</div>
-                  </div>
-                </div>
-                <div class="an-val" style="color:${cfg.color}">${total}</div>
-                <div class="an-val-sub">${total} ${cfg.unit} total · ${latest} yesterday</div>
-                <div class="an-chart-wrap">
-                  <canvas id="${canvasId}" width="300" height="60"></canvas>
-                </div>
-              </div>`;
-        }).join('')}</div>`;
+  function init() {
+    // page_view
+    track('page_view', { page_path: location.pathname, page_group: pageGroup() });
 
-        // Draw sparklines after DOM is ready
-        requestAnimationFrame(() => {
-            Object.entries(ENGINE_CONFIG).forEach(([key, cfg]) => {
-                const rows = engines[key] || [];
-                const values = rows.map(r => parseFloat(r.metrics?.[cfg.key] || 0));
-                this.drawSparkline('an-chart-' + key, values, cfg.color);
-            });
-        });
-    },
+    // cta_click + waitlist + outbound + nav
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a, button'); if (!a) return;
+      var href = a.getAttribute('href') || '';
+      var label = (a.textContent || '').trim().slice(0, 60);
 
-    drawSparkline(canvasId, values, color) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width, h = canvas.height;
-        ctx.clearRect(0, 0, w, h);
+      if (a.classList.contains('btn') || /get notified|start free|view pricing/i.test(label)) {
+        track('cta_click', { cta_label: label, cta_location: pageGroup(), gated: /mailto:/.test(href) });
+      }
+      if (/mailto:.*Notify|get notified/i.test(href + label)) {
+        track('waitlist_signup', { source_page: location.pathname });
+      }
+      if (a.closest('#nav, .mega, #site-footer')) {
+        track('nav_interaction', { item: label, area: a.closest('#site-footer') ? 'footer' : 'nav' });
+      }
+      if (/^https?:\/\//.test(href) && href.indexOf(location.hostname) === -1) {
+        track('outbound_click', { target: href });
+      }
+      if (pageGroup() === 'pricing' && /plan|choose|select|start/i.test(label)) {
+        track('plan_select', { plan: label });
+      }
+    }, true);
 
-        if (!values.length || values.every(v => v === 0)) {
-            ctx.fillStyle = 'rgba(255,255,255,0.04)';
-            ctx.fillRect(0, h * 0.8, w, 1);
-            ctx.fillStyle = 'rgba(255,255,255,0.06)';
-            ctx.font = '11px Inter, sans-serif';
-            ctx.fillText('No data yet', w / 2 - 28, h / 2 + 4);
-            return;
-        }
+    // scroll_depth (25/50/75/100) + product/ai engagement
+    var marks = { 25: false, 50: false, 75: false, 100: false };
+    var engaged = false;
+    window.addEventListener('scroll', function () {
+      var h = document.documentElement;
+      var pct = Math.round(((h.scrollTop + window.innerHeight) / h.scrollHeight) * 100);
+      [25, 50, 75, 100].forEach(function (m) {
+        if (!marks[m] && pct >= m) { marks[m] = true; track('scroll_depth', { percent: m, page_group: pageGroup() }); }
+      });
+      if (!engaged && pct >= 50) {
+        engaged = true;
+        if (pageGroup() === 'product') track('product_interest', { product: location.pathname.replace(/\/pages\/|\//g, '') });
+        if (pageGroup() === 'ai') track('ai_page_engagement', { ai_surface: aiSurface() });
+        if (pageGroup() === 'pricing') track('pricing_view', {});
+      }
+    }, { passive: true });
 
-        const max = Math.max(...values, 1);
-        const pad = 4;
-        const step = values.length > 1 ? (w - pad * 2) / (values.length - 1) : w;
-        const points = values.map((v, i) => ({
-            x: pad + i * step,
-            y: pad + ((1 - v / max) * (h - pad * 2)),
-        }));
+    // conversion goal placeholder — waitlist_signup is the pre-launch conversion.
+    if (GA4_ID && consentGranted()) loadGA();
+  }
 
-        // Fill area
-        const grad = ctx.createLinearGradient(0, 0, 0, h);
-        grad.addColorStop(0, color + '3a');
-        grad.addColorStop(1, color + '00');
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, h);
-        points.forEach(p => ctx.lineTo(p.x, p.y));
-        ctx.lineTo(points[points.length - 1].x, h);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        // Line
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
-        points.forEach(p => ctx.lineTo(p.x, p.y));
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-
-        // Last point dot
-        const last = points[points.length - 1];
-        ctx.beginPath();
-        ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-    },
-};
-
-window.Analytics = Analytics;
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+})();

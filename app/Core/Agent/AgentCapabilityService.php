@@ -403,7 +403,13 @@ class AgentCapabilityService
                 }
                 return 0;
             });
-            if ($hit === 1) return true;
+            // b27 (2026-07-24) — was `$hit === 1`. Cache::remember round-trips
+            // through the cache driver, and redis returns the integer back as the
+            // STRING "1", so the strict comparison was never true. Net effect: the
+            // DB-first dynamic registry has never granted anything — all 186 active
+            // rows in agent_capabilities were dead and every decision silently fell
+            // through to the static CAPABILITY_MAP below. Cast before comparing.
+            if ((int) $hit === 1) return true;
             // DB said no — but still fall through to static map so a
             // half-seeded table never breaks an agent.
         }

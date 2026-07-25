@@ -41,6 +41,29 @@ class SyncProposalApprovalsCommand extends Command
         'improve_draft', 'generate_image',
     ];
 
+    /**
+     * b22 (2026-07-24) — STRATEGY PROPOSALS DO NOT BELONG IN THE REVIEW QUEUE.
+     *
+     * Boss decision: nothing may sit in the pending approvals queue that Sarah
+     * could have raised in chat and had approved in chat. Every proposal this
+     * command mirrored was exactly that — daily_action_* / weekly_pivot_* /
+     * discovery_strategy_meeting / publish_ready are all surfaced in Sarah's
+     * daily brief and are approvable end-to-end through the chat-side path
+     * (GET /api/sarah/proposals, POST /api/sarah/proposals/{id}/approve|decline
+     * and the batch variants). ProactiveStrategyEngine::approveProposal() works
+     * purely off strategy_proposals and never needed an approvals row, so the
+     * mirror only ever produced a second inbox showing the same decision twice.
+     *
+     * It had grown to 84 rows — the entire proposal-backed half of the queue.
+     *
+     * Steps 2 (reconcile) and 3 (close-out) below are unaffected and still run:
+     * they keep any pre-existing mirrored rows consistent and unstick proposals
+     * left in 'executing'.
+     *
+     * Set to true to restore Command-Center mirroring.
+     */
+    private const MIRROR_TO_APPROVAL_QUEUE = false;
+
     public function handle(): int
     {
         $wsFilter = $this->option('workspace');
@@ -48,17 +71,26 @@ class SyncProposalApprovalsCommand extends Command
         $reconciled = 0;
 
         // 1) MIRROR — pending, approvable proposals without an approval row yet.
-        $proposals = DB::table('strategy_proposals')
-            ->where('status', 'pending_approval')
-            ->whereNotIn('type', self::INFORMATIONAL)
-            ->when($wsFilter, fn ($q) => $q->where('workspace_id', (int) $wsFilter))
-            ->get();
+        $proposals = self::MIRROR_TO_APPROVAL_QUEUE
+            ? DB::table('strategy_proposals')
+                ->where('status', 'pending_approval')
+                ->when($wsFilter, fn ($q) => $q->where('workspace_id', (int) $wsFilter))
+                ->get()
+            : collect();
 
         foreach ($proposals as $p) {
             // Skip the safe recurring work sarah:auto-execute already handles —
             // never nag for daily approval on an already-approved standing plan.
             $suffix = preg_replace('/^(daily_action_|weekly_pivot_)/', '', (string) $p->type);
             if (in_array($suffix, self::AUTO_SAFE, true)) continue;
+
+            // b22 — the INFORMATIONAL filter used to run as whereNotIn('type', …)
+            // against the RAW type, but real rows carry a daily_action_ /
+            // weekly_pivot_ prefix, so it never matched a single one. Purely
+            // informational items (goal pivots, budget alerts) were queued for
+            // "approval" when there is nothing to approve — 15 of the 84. The
+            // prefix is stripped here, exactly as it already was for AUTO_SAFE.
+            if (in_array($suffix, self::INFORMATIONAL, true)) continue;
 
             $exists = DB::table('approvals')->where('proposal_id', $p->id)->exists();
             if ($exists) continue;

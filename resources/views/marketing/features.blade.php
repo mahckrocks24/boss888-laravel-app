@@ -113,11 +113,11 @@
   <div>
     <div class="engine-badge" style="background:rgba(236,72,153,.1);color:#EC4899">📱 Social + Marketing</div>
     <h2 style="font-size:clamp(24px,3vw,36px);font-weight:800;margin-bottom:14px">Campaigns out. Engagement up. Leads in.</h2>
-    <p style="color:var(--muted);font-size:15px;margin-bottom:16px">Marcus, Zara, Tyler, Maya, and Kai handle your social presence and email marketing end-to-end.</p>
+    <p style="color:var(--muted);font-size:15px;margin-bottom:16px">Marcus, Zara, Tyler, Maya, and Kai prepare your social content for you to review and publish.</p>
     <div class="feature-list">
       <div class="feature-row"><span class="feature-row-icon">✓</span>Native publishing to Facebook &amp; Instagram. Drafts and content for LinkedIn, TikTok, X to post manually.</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>AI post generation with platform-specific rules</div>
-      <div class="feature-row"><span class="feature-row-icon">✓</span>Visual email campaign builder with AI-assisted copy</div>
+      <div class="feature-row"><span class="feature-row-icon">✓</span>Lead follow-up templates with AI-assisted copy</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>Campaign analytics + open/click tracking</div>
       <div class="feature-row"><span class="feature-row-icon">✓</span>Everything requires your approval before publish/send</div>
     </div>

@@ -642,6 +642,15 @@ class SarahOrchestrator
                             DB::table('tasks')->where('id', $task->task_id)->update([
                                 'status' => 'completed',
                                 'result_json' => json_encode($result['data'] ?? []),
+                                // b26 (2026-07-24) — CLEAR THE APPROVAL FLAG.
+                                // TaskService stamps approval_status='pending' on every
+                                // protected action at creation. When the action then runs
+                                // under the plan's captured publish consent (b18), it never
+                                // passes through the review queue, so nothing ever cleared
+                                // the flag — 41 published articles sat reading "awaiting
+                                // approval" while already live. A completed task cannot
+                                // still be awaiting approval; the consent IS the approval.
+                                'approval_status' => 'approved',
                                 'completed_at' => now(),
                                 'updated_at' => now(),
                             ]);

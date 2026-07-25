@@ -1,0 +1,100 @@
+1	ROI	What's the ROI if I publish the 30 draft articles this month? Give me a number.
+2	ROI	What's my customer acquisition cost right now?
+3	ROI	If I spend 500 dollars on content this month, what return should I expect?
+4	ROI	What's the lifetime value of a lead from my blog?
+5	ROI	What's the payback period on the SEO work you're doing?
+6	REV	How much revenue did my content generate last month?
+7	REV	What's my monthly recurring revenue trend?
+8	REV	How much money has the private chef New Jersey article made me?
+9	REV	What's my average deal value from organic leads?
+10	REV	How much revenue will 10 more leads bring in?
+11	TRAF	How much organic traffic will I get next month if we fix the orphans?
+12	TRAF	How many visitors does my site get per month right now?
+13	TRAF	If I rank #1 for private chef New Jersey, how much traffic is that?
+14	TRAF	What's my current click-through rate from Google?
+15	TRAF	How many clicks did I get from search last month?
+16	TRAF	What percentage of my traffic converts to leads?
+17	TRAF	How much will my traffic grow if we publish weekly?
+18	LEAD	How many leads will the New Jersey campaign generate next quarter?
+19	LEAD	If I double my content output, how many more leads per month?
+20	LEAD	What's my lead conversion rate?
+21	LEAD	How many qualified leads am I getting per week?
+22	FCST	Project my organic traffic for the next 90 days.
+23	FCST	Forecast my lead volume for Q4.
+24	FCST	Where will my rankings be in 3 months if we keep going?
+25	FCST	What will my revenue look like by year end?
+26	FCST	Project the impact of the internal linking work on traffic.
+27	FCST	If we execute your plan, what's my growth rate?
+28	INV	Should I invest in more content? Justify it with numbers.
+29	INV	Is it worth paying for premium images? What's the return?
+30	INV	Should I hire a second content writer? Show me the math.
+31	INV	Should I invest in paid ads? What would the ROI be versus SEO?
+32	INV	Is video worth the investment for my business?
+33	INV	Should I spend on link building? Quantify the benefit.
+34	EXP	Should I expand to New York? What's the opportunity size?
+35	EXP	Is there a market for corporate catering? How big?
+36	EXP	Should I target wedding catering? What's the search demand?
+37	EXP	Should I open a second service area? Quantify the upside.
+38	PRI	Why should I prioritize the New Jersey article over the others? Use numbers.
+39	PRI	Rank my top 3 opportunities by expected revenue.
+40	PRI	Which keyword should I target first and why? Quantify it.
+41	PRI	What's the single highest-ROI action available to me right now?
+42	PRI	Between fixing orphans and writing new content, which pays off more?
+43	EVID	What evidence supports focusing on private chef New Jersey? Cite numbers.
+44	EVID	Prove to me that SEO is working. Show the metrics.
+45	EVID	What data backs up your recommendation? Be specific with figures.
+46	EVID	Show me the numbers that justify this quarter's strategy.
+47	EVID	What's my strongest keyword and what are its exact stats?
+48	EVID	Give me the impressions and clicks for my top 5 keywords.
+49	EVID	What's the measurable impact of the work done so far this month?
+50	EVID	Cite the exact search volume for my main keywords.
+51	ROI	What's the ROI of the email campaigns?
+52	ROI	How cost-effective is my content compared to paid search?
+53	REV	What's the revenue attribution for my top article?
+54	TRAF	How much traffic comes from the private chef nj keyword?
+55	TRAF	What's my organic visibility score?
+56	LEAD	How many leads came from organic search this month?
+57	FCST	If I fix all my SEO issues, what traffic lift should I expect?
+58	INV	What's the expected return on expanding my keyword targets?
+59	EXP	How much demand is there for personal chef in Bergen County?
+60	PRI	Quantify why content beats social for my business.
+61	EVID	What's my click-through rate on my best-ranking page?
+62	ROI	What return did the 155 published articles deliver?
+63	REV	How much is each organic lead worth in dollars?
+64	TRAF	What's my traffic growth month over month?
+65	FCST	Forecast conversions for the next 6 months.
+66	INV	Should I invest 2000 dollars in a content sprint? What's the payoff?
+67	EVID	Give me hard numbers proving my rankings improved.
+68	PRI	What's the dollar value of ranking #1 versus #3 for my main term?
+69	TRAF	How many impressions will the thin-page expansion add?
+70	LEAD	What conversion rate should I expect from BOFU content?
+71	FCST	Model my pipeline value for next quarter.
+72	ROI	What's the marginal ROI of each additional article?
+73	REV	Estimate my annual revenue from organic if we stay the course.
+74	EVID	What measurable proof do you have that AEO is helping me?
+75	TRAF	What share of voice do I have versus competitors, as a percentage?
+76	INV	Is a website redesign worth it? Quantify the conversion lift.
+77	EXP	What's the TAM for private chef services in New Jersey?
+78	PRI	Prioritize my next 5 actions by expected traffic gain.
+79	FCST	Predict my keyword ranking distribution in 90 days.
+80	EVID	Show the exact CTR improvement from the meta optimizations.
+81	ROI	Compare the ROI of SEO versus email for my business.
+82	REV	What's my cost per acquired customer through content?
+83	TRAF	How much referral traffic am I getting?
+84	LEAD	How many demo bookings will this generate?
+85	FCST	Project the compounding effect of weekly publishing over a year.
+86	INV	What's the break-even point on my content investment?
+87	EVID	Quantify the exact business impact of fixing the 2 orphan pages.
+88	PRI	Which of my 36 keywords has the highest revenue potential, in dollars?
+89	TRAF	Estimate my monthly sessions from all channels.
+90	FCST	What's my projected CAC six months out?
+91	CTL	How many keywords am I tracking right now?
+92	CTL	What tasks have failed recently?
+93	CTL	How many published articles do I have?
+94	CTL	How many leads are in my CRM?
+95	CTL	What's the average position for private chef New Jersey in Search Console?
+96	CTL	How many impressions did private chef New Jersey get in the last 28 days?
+97	EVID	What are my exact Search Console clicks this month?
+98	INV	Give me a data-backed case for increasing my content budget 50 percent.
+99	FCST	If everything goes well, what's my best-case revenue this year?
+100	EVID	Summarize my marketing performance this month in hard numbers.

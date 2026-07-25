@@ -50,6 +50,7 @@ Route::get('/sitemap.xml', function (\Illuminate\Http\Request $r) {
         ['loc' => '/pages/automation/',      'priority' => '0.7', 'changefreq' => 'monthly'],
         ['loc' => '/pages/crm/',             'priority' => '0.8', 'changefreq' => 'monthly'],
         ['loc' => '/pages/ai-agents/',       'priority' => '0.8', 'changefreq' => 'monthly'],
+        ['loc' => '/pages/ai-assistant/',   'priority' => '0.8', 'changefreq' => 'monthly'],
         ['loc' => '/pages/creative/',        'priority' => '0.7', 'changefreq' => 'monthly'],
         ['loc' => '/pages/video/',           'priority' => '0.7', 'changefreq' => 'monthly'],
         ['loc' => '/pages/calendar/',        'priority' => '0.7', 'changefreq' => 'monthly'],
@@ -137,8 +138,8 @@ Route::get('/ai-agents', function () {
 })->name('ai-agents');
 
 Route::get('/ai-assistant', function () {
-    // MW-1b P4 - AI Workforce consolidation
-    return redirect('/pages/ai-agents/', 301);
+    // MRC-1: Aria restored as a distinct page (Platform Intelligence).
+    return redirect('/pages/ai-assistant/', 301);
 })->name('ai-assistant');
 
 Route::get('/builder', function () {
@@ -178,14 +179,15 @@ Route::get('/video', function () {
 })->name('video');
 
 Route::get('/assistant', function () {
-    // MW-1b P4 - AI Workforce consolidation
-    return redirect('/pages/ai-agents/', 301);
+    // MRC-1: legacy /assistant now points to Aria (Platform Intelligence).
+    return redirect('/pages/ai-assistant/', 301);
 })->name('assistant');
 
 // Pages catch-all (handles /pages/pricing/, /pages/how-it-works/ etc. from nav links)
 Route::get('/pages/{slug}', function (string $slug) {
-    // MW-1b P4 - AI Workforce consolidation: 301 legacy AI pages to the hub.
-    $consolidated = ['ai-assistant' => '/pages/ai-agents/', 'assistant' => '/pages/ai-agents/', 'specialists' => '/pages/ai-agents/',
+    // MRC-1: Aria restored as a distinct page. 'assistant' (legacy) -> Aria;
+    // 'specialists' stays consolidated into the AI Workforce hub.
+    $consolidated = ['assistant' => '/pages/ai-assistant/', 'specialists' => '/pages/ai-agents/',
         // Email Marketing removed from launch scope 2026-07-24; CRM now owns the
         // approved one-to-one and workflow-triggered email capability.
         'email' => '/pages/crm/'];

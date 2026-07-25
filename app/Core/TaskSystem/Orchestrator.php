@@ -57,6 +57,23 @@ class Orchestrator
         }
 
         try {
+            // ── b27 (2026-07-24) — AGENT CAPABILITY CHECK (SHADOW MODE) ──
+            //
+            // The platform has TWO execution engines. EngineExecutionService
+            // (synchronous / Sarah-plan path) checks AgentCapabilityService before
+            // it runs anything. This async queue path — which carries ~95% of all
+            // task volume — has its own dispatch table and never consulted it, so
+            // agent permissions were simply not enforced on the busy path. Audit
+            // evidence: james ran `fix_orphans` 114 times without holding the
+            // capability, and zero AGENT_NOT_AUTHORIZED was ever raised here.
+            //
+            // Deliberately SHADOW for now: it records what WOULD be denied and
+            // changes nothing. Turning this into a hard block is a governance
+            // decision — flipping it blind on a live queue would stop real
+            // customer work the moment the grant table disagrees with reality.
+            // Promote to enforcing only once the log stays clean.
+            $this->shadowCapabilityCheck($task);
+
             // ── 0. Idempotency check ─────────────────────────────────────
             $idemKey = $this->idempotency->ensureKey($task);
 
@@ -522,17 +539,126 @@ class Orchestrator
                     'reservation_ref' => $reservationRef,
                 ]));
 
-            $this->taskService->markFailed($task, $e->getMessage());
-
+            // b28 (2026-07-24) — TRANSIENT-PROVIDER BACKOFF.
+            //
+            // The in-step retry loop waits 0.5s then 1s. Upstream blips
+            // (runtime 503 request_timeout, OpenAI Cloudflare 520, rate limits
+            // that return retry_after:60) outlast all three attempts inside
+            // ~1.5s, so a task that would succeed on a later try was recorded as
+            // a hard failure. Audit found this on image generation (14/174).
+            //
+            // If the error looks transient AND we have re-queue budget left,
+            // release the lock and re-dispatch with a real delay instead of
+            // failing. Deterministic-failure paths (bad input, plan gating,
+            // moderation_blocked) are NOT transient and fall straight through to
+            // markFailed as before.
             if (isset($idemKey)) {
                 $this->idempotency->releaseLock($idemKey);
             }
+
+            $requeueDelay = $this->transientRequeueDelay($task, $e->getMessage());
+            if ($requeueDelay !== null) {
+                \Illuminate\Support\Facades\DB::table('tasks')->where('id', $task->id)->update([
+                    'status'           => 'queued',
+                    'retry_count'      => \Illuminate\Support\Facades\DB::raw('retry_count + 1'),
+                    'progress_message' => 'Transient upstream error — retrying in ' . $requeueDelay . 's',
+                    'updated_at'       => now(),
+                ]);
+                $this->progress->recordEvent($task->id, 'transient_requeue', 'queued',
+                    message: 'Upstream transient — re-dispatched with ' . $requeueDelay . 's backoff');
+                Log::warning('[Orchestrator] transient error — re-queued', [
+                    'task_id' => $task->id, 'action' => $task->action,
+                    'delay_s' => $requeueDelay, 'error' => mb_substr($e->getMessage(), 0, 160),
+                ]);
+                app(\App\Core\TaskSystem\TaskDispatcher::class)
+                    ->dispatchWithDelay($task->fresh(), $requeueDelay);
+                return;
+            }
+
+            $this->taskService->markFailed($task, $e->getMessage());
         }
+    }
+
+    /**
+     * b28 — decide whether a failed task should be re-queued after a backoff.
+     *
+     * @return int|null  seconds to wait, or null to fail immediately.
+     */
+    private function transientRequeueDelay(Task $task, string $error): ?int
+    {
+        // Budget: at most 2 transient re-queues per task, on top of the
+        // in-step retries. retry_count is the persisted counter.
+        $maxRequeues = 2;
+        if ((int) ($task->retry_count ?? 0) >= $maxRequeues) {
+            return null;
+        }
+
+        $e = strtolower($error);
+
+        // Deterministic — retrying cannot help. Never re-queue these.
+        $permanent = [
+            'bad input', 'no content', 'validation', 'moderation_blocked',
+            'safety system', 'not authorized', 'plan does not allow',
+            'no capability', 'invalid', 'unauthorized', 'quota', 'insufficient',
+        ];
+        foreach ($permanent as $p) {
+            if (str_contains($e, $p)) return null;
+        }
+
+        // Transient — worth another attempt after a real pause.
+        $transient = [
+            'request_timeout', 'timeout', 'timed out', '503', '502', '520', '429',
+            'temporarily', 'try again', 'rate limit', 'overloaded', 'unavailable',
+            'connection', 'econnreset', 'cloudflare', 'origin',
+        ];
+        $isTransient = false;
+        foreach ($transient as $t) {
+            if (str_contains($e, $t)) { $isTransient = true; break; }
+        }
+        if (! $isTransient) return null;
+
+        // Honour an explicit retry_after if the upstream gave one; else escalate
+        // 30s → 90s across the two re-queues.
+        if (preg_match('/retry[_ ]?after["\':\s]+(\d{1,4})/', $e, $m)) {
+            return min(300, max(30, (int) $m[1]));
+        }
+        return ((int) ($task->retry_count ?? 0) === 0) ? 30 : 90;
     }
 
     /**
      * Execute a single step with idempotent check, retry, and verification.
      */
+    /**
+     * b27 — record (never block) an agent running an action it does not hold.
+     *
+     * Writes to the app log AND to engine_intelligence so the drift is queryable
+     * rather than buried. Wholly best-effort: a fault here must never stop a task.
+     */
+    private function shadowCapabilityCheck(Task $task): void
+    {
+        try {
+            $agents = json_decode((string) ($task->assigned_agents_json ?? '[]'), true) ?: [];
+            $agent  = is_array($agents) ? ($agents[0] ?? null) : null;
+            $action = (string) ($task->action ?? '');
+            if (!$agent || $action === '') return;
+
+            if (app(\App\Core\Agent\AgentCapabilityService::class)->canUse((string) $agent, $action)) {
+                return;
+            }
+
+            \Illuminate\Support\Facades\Log::warning('[CapabilityShadow] agent ran an action it does not hold', [
+                'task_id'      => $task->id,
+                'workspace_id' => $task->workspace_id,
+                'agent'        => $agent,
+                'engine'       => $task->engine,
+                'action'       => $action,
+                'mode'         => 'shadow — not blocked',
+            ]);
+        } catch (\Throwable $e) {
+            // never let an audit probe break execution
+        }
+    }
+
     private function executeStep(Task $task, string $action, array $params, array $capability, int $stepIndex): array
     {
         $connectorName = $capability['connector'];

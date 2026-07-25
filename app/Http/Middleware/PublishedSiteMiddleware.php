@@ -253,6 +253,20 @@ class PublishedSiteMiddleware
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
                         ->header('X-Served-By', 'dynamic-article');
                 }
+
+                // b25 (2026-07-24) — SERVE seo_redirects.
+                //
+                // The SEO engine has always let a workspace CREATE redirects
+                // (seo_redirects + the management UI), but nothing in the request
+                // path ever read the table, so every stored redirect was inert and
+                // a moved URL simply 404'd. This runs only once an article has
+                // failed to resolve, so it costs a query on 404s alone and can
+                // never shadow a live post.
+                $redirect = $this->lookupRedirect((int) ($website->workspace_id ?? 0), $request->path());
+                if ($redirect !== null) {
+                    return redirect($redirect['target'], $redirect['code'])
+                        ->header('X-Served-By', 'seo-redirect');
+                }
             }
         }
 
@@ -383,6 +397,65 @@ class PublishedSiteMiddleware
      * Wave 63d helper — clone a template (post-card or post-featured) and
      * substitute an article's data. Shared by featured-rotation and grid-injection.
      */
+    /**
+     * b25 (2026-07-24) — resolve a stored redirect for a 404'ing path.
+     *
+     * Matches with and without a leading slash, since the UI stores both forms.
+     * Regex rows (is_regex=1) are supported but evaluated last and guarded, so a
+     * malformed pattern can never take a customer site down.
+     *
+     * @return array{target:string,code:int}|null
+     */
+    private function lookupRedirect(int $wsId, string $path): ?array
+    {
+        if ($wsId <= 0) return null;
+
+        $path  = '/' . ltrim($path, '/');
+        $alt   = ltrim($path, '/');
+
+        try {
+            $rows = \Illuminate\Support\Facades\DB::table('seo_redirects')
+                ->where('workspace_id', $wsId)
+                ->where('is_active', 1)
+                ->where('status', 'active')
+                ->whereNotNull('source_url')
+                ->where('source_url', '!=', '')
+                ->get(['id', 'source_url', 'target_url', 'type', 'status_code', 'is_regex']);
+        } catch (\Throwable $e) {
+            return null;   // never break the site over a redirect lookup
+        }
+
+        $exact = null; $regex = null;
+        foreach ($rows as $r) {
+            $src = trim((string) $r->source_url);
+            if ($src === '' || trim((string) $r->target_url) === '') continue;
+
+            if ((int) $r->is_regex === 1) {
+                if ($regex === null) {
+                    try {
+                        if (@preg_match($src, $path) === 1) $regex = $r;
+                    } catch (\Throwable $e) { /* bad pattern — skip */ }
+                }
+                continue;
+            }
+            $s = '/' . ltrim($src, '/');
+            if ($s === $path || $src === $alt) { $exact = $r; break; }
+        }
+
+        $hit = $exact ?: $regex;
+        if (!$hit) return null;
+
+        $code = (int) ($hit->status_code ?: $hit->type ?: 301);
+        if (!in_array($code, [301, 302, 307], true)) $code = 301;
+
+        try {
+            \Illuminate\Support\Facades\DB::table('seo_redirects')
+                ->where('id', $hit->id)->increment('hit_count');
+        } catch (\Throwable $e) { /* counting must never block the redirect */ }
+
+        return ['target' => (string) $hit->target_url, 'code' => $code];
+    }
+
     private function renderArticleIntoTemplate(string $tpl, object $article): string
     {
         $card = $tpl;

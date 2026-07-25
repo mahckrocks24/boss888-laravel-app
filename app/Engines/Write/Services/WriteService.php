@@ -380,6 +380,132 @@ class WriteService
      * Hands vs brain pattern enforced: runtime generates, Laravel persists.
      * W1 LLM bypass site eliminated.
      */
+    /**
+     * b23 (2026-07-24) — an article headline must never be the instruction that
+     * asked for the article.
+     *
+     * Sarah's autonomous path spawns write_article tasks whose `title` is the
+     * PROPOSAL title — an action description, not a headline. WriteService then
+     * persisted it verbatim, so a live customer blog ended up publishing:
+     *
+     *     "Expand 7 thin pages to 800+ words"            (7 copies)
+     *     "Write article targeting 'private chef nj'"
+     *     "Write targeted article for keyword 'private chef nj'"
+     *
+     * Those are permanent, public, and indexable. Fixing only the caller would
+     * leave every other caller free to do the same, so the guard lives here,
+     * where articles are actually born.
+     *
+     * Recovery order: the model already writes a proper H1 in the body, so use
+     * that; otherwise fall back to the cleaned topic.
+     */
+    private function resolveHeadline(?string $proposed, string $content, string $topic): string
+    {
+        $proposed = trim((string) $proposed);
+
+        if ($proposed !== '' && ! $this->looksLikeInstruction($proposed)) {
+            return $proposed;
+        }
+
+        // 1) The H1/title the model wrote for its own article.
+        if (preg_match('/<h1[^>]*>(.*?)<\/h1>/is', $content, $m)) {
+            $h1 = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            if ($h1 !== '' && mb_strlen($h1) <= 160 && ! $this->looksLikeInstruction($h1)) {
+                return $h1;
+            }
+        }
+        // Markdown-style leading heading, in case the model emitted markdown.
+        if (preg_match('/^\s*#\s+(.+)$/m', $content, $m)) {
+            $h1 = trim($m[1]);
+            if ($h1 !== '' && mb_strlen($h1) <= 160 && ! $this->looksLikeInstruction($h1)) {
+                return $h1;
+            }
+        }
+
+        // 2) The instruction often QUOTES the intended headline —
+        //    Write blog article 'AI Marketing Automation ROI: How SaaS Companies…'
+        //    Body draft for 'Cybersecurity Tips for Remote Teams'
+        //    Take what is inside the quotes; it is the real title.
+        foreach ([$proposed, $topic] as $src) {
+            if ($src === '' || $src === null) continue;
+            if (preg_match('/[\'"“‘]([^\'"”’]{12,160})[\'"”’]/u', (string) $src, $q)) {
+                $inner = trim($q[1]);
+                if ($inner !== '' && ! $this->looksLikeInstruction($inner)) {
+                    return $inner;
+                }
+            }
+        }
+
+        // 3) Fall back to the topic, with any instruction wrapper stripped.
+        // Alternations are ordered longest-first: (a|an|the) matched "a" inside
+        // "an article" and left a stray "n", producing "N Article About …".
+        $clean = trim(preg_replace(
+            '/^(?:write|publish|generate|draft|rewrite|create|expand|improve)\b\s*(?:an|a|the)?\b\s*(?:targeted|new)?\s*(?:blog post|article|post|page)?\b\s*(?:targeting|about|for|on)?\b\s*/i',
+            '', $topic
+        ) ?? '');
+        $clean = trim($clean, " \t\n\r\0\x0B\"'“”‘’:-");
+
+        if ($clean !== '' && ! $this->looksLikeInstruction($clean)) {
+            return \Illuminate\Support\Str::title($clean);
+        }
+
+        // 4) Never persist an instruction. 'Untitled' is honest and visible,
+        //    and createArticle already uses it as its own default.
+        return 'Untitled';
+    }
+
+    /**
+     * b24 (2026-07-24) — the SUBJECT inside an instruction, or null when the
+     * instruction has no subject at all.
+     *
+     *   "Write targeted article for keyword 'private chef nj'" → "private chef nj"
+     *   "Write article: 'How Coworking Wins'"                  → "How Coworking Wins"
+     *   "Expand 7 thin pages to 800+ words"                    → null (maintenance,
+     *                                                            not a topic)
+     *
+     * Callers use the null case to detect a proposal that should never have
+     * become an article at all. Public because ProactiveStrategyEngine must
+     * apply the same test before it spawns a write_article task.
+     */
+    public function subjectFromInstruction(string $t): ?string
+    {
+        $t = trim($t);
+        if ($t === '') return null;
+
+        if (preg_match('/[\'"“‘]([^\'"”’]{4,160})[\'"”’]/u', $t, $q)) {
+            $inner = trim($q[1]);
+            if ($inner !== '' && ! $this->looksLikeInstruction($inner)) return $inner;
+        }
+
+        $clean = trim(preg_replace(
+            '/^(?:write|publish|generate|draft|rewrite|create|expand|improve|optimi[sz]e|refresh|fix)\b\s*(?:an|a|the)?\b\s*(?:targeted|new|top|foundational)?\s*(?:blog post|article|post|page|pages)?\b\s*(?:targeting|about|for|on|with)?\b\s*(?:keyword)?\s*/i',
+            '', $t
+        ) ?? '');
+        $clean = trim($clean, " \t\n\r\0\x0B\"'“”‘’:-");
+
+        // Pure maintenance phrasing — no subject survives.
+        if ($clean === '' || $this->looksLikeInstruction($clean)) return null;
+        if (preg_match('/^\d+\s|^(thin|published|draft)\b|\bwords?$|\bpages?$/i', $clean)) return null;
+        if (mb_strlen($clean) < 4) return null;
+
+        return $clean;
+    }
+
+    /** Task/instruction phrasing that can never be a public headline. */
+    public function looksLikeInstruction(string $t): bool
+    {
+        $t = trim($t);
+        if ($t === '') return true;
+        // Narrow on purpose: verbs that legitimately open headlines (make,
+        // improve, add) are excluded so "Make-Ahead Freezer Meals" survives.
+        if (preg_match('/^(write|publish|generate|draft|rewrite|optimi[sz]e)\s/i', $t)) return true;
+        if (preg_match('/^create\s+(a|an|the)?\s*(article|post|page|blog)/i', $t)) return true;
+        if (preg_match("/targeting\s*['\"]|for keyword\s*['\"]/i", $t)) return true;
+        if (preg_match('/\b\d+\s+thin pages\b/i', $t)) return true;
+        if (preg_match('/\b\d{3,}\+?\s*words\b/i', $t)) return true;
+        return false;
+    }
+
     public function writeArticle(int $wsId, array $params): array
     {
         $topic   = $params['topic'] ?? $params['title'] ?? '';
@@ -550,7 +676,10 @@ class WriteService
         // public blog listing (BuilderRenderer.renderBlogList) actually
         // shows AI-generated posts.
         $article = $this->createArticle($wsId, [
-            'title'             => $params['title'] ?? ucfirst($topic),
+            // b23 (2026-07-24) — see resolveHeadline(). The caller's title is a
+            // TASK description on the autonomous path, and it was being stored
+            // verbatim as the public headline.
+            'title'             => $this->resolveHeadline($params['title'] ?? null, $content, $topic),
             'content'           => $content,
             'type'              => $type,
             'target_keyword'    => $keyword,
