@@ -362,6 +362,28 @@ class EngineExecutionService
             return ['success' => false, 'error' => $e->getMessage(), 'code' => 'EXECUTION_FAILED'];
         }
 
+        // ─── Step 5b (Phase H1): truthful billing for creative/studio ──────
+        // CreativeService and StudioAiService RETURN structured failures instead of
+        // throwing (status=failed / success=false / runtime_unavailable / ambiguous).
+        // Without this, Step 6 would commit the reservation and the caller would see
+        // success:true for a failed generation. Detect a semantic failure, RELEASE
+        // (never commit), and return a truthful sanitized failure. Scoped to
+        // creative+studio ONLY — all other engines are unaffected.
+        if (in_array($engine, ['creative', 'studio'], true)
+            && is_array($result)
+            && ! $this->creativeResultIsSuccessful($result)) {
+            if (isset($reservationId) && $creditCost > 0) {
+                $this->creditService->release($wsId, $reservationId);
+            }
+            if ($source === 'agent') {
+                $this->notifyTaskEvent($wsId, \App\Core\Notifications\NotificationTypes::AGENT_TASK_FAILED,
+                    'Agent task failed',
+                    "Agent task {$engine}/{$action} did not complete.",
+                    'error', '/agents');
+            }
+            return $this->creativeFailureResponse($engine, $action, $result);
+        }
+
         // ─── Step 6: Commit credits ──────────────────────────
         if (isset($reservationId) && $creditCost > 0) {
             $this->creditService->commit($wsId, $reservationId, $creditCost);
@@ -505,6 +527,59 @@ class EngineExecutionService
     // ═══════════════════════════════════════════════════════════
     // ENGINE DISPATCH — routes action to correct engine service
     // ═══════════════════════════════════════════════════════════
+
+    /**
+     * Phase H1 — semantic-success predicate for creative/studio downstream results.
+     * CreativeService returns a lifecycle `status` (completed/in_progress/pending on
+     * success, failed on failure); StudioAiService returns an explicit `success`
+     * boolean. Anything without a recognized positive signal is treated as a failure
+     * so an ambiguous/malformed payload is never billed as success.
+     */
+    private function creativeResultIsSuccessful(array $result): bool
+    {
+        if (array_key_exists('success', $result)) {
+            return $result['success'] === true;
+        }
+
+        if (isset($result['status']) && is_scalar($result['status'])) {
+            $status = strtolower((string) $result['status']);
+            if (in_array($status, ['failed', 'error', 'cancelled', 'canceled', 'timeout', 'timed_out'], true)) {
+                return false;
+            }
+            if (in_array($status, ['completed', 'complete', 'success', 'succeeded', 'in_progress',
+                                    'processing', 'pending', 'queued', 'dispatching', 'ok', 'created', 'done'], true)) {
+                return true;
+            }
+            return false; // unrecognized status → fail safe (do not bill)
+        }
+
+        return false; // no success flag and no status → ambiguous → fail safe
+    }
+
+    /**
+     * Phase H1 — truthful, sanitized failure envelope for a non-throwing
+     * creative/studio failure. Surfaces a known-safe snake_case code where the
+     * service provided one (runtime_unavailable, image_generation_failed, …) and a
+     * generic user message; never leaks raw provider messages, bodies, or secrets.
+     */
+    private function creativeFailureResponse(string $engine, string $action, array $result): array
+    {
+        $code = 'generation_failed';
+        foreach (['code', 'error'] as $k) {
+            if (isset($result[$k]) && is_string($result[$k]) && preg_match('/^[a-z][a-z0-9_]{2,40}$/', $result[$k])) {
+                $code = $result[$k];
+                break;
+            }
+        }
+
+        return [
+            'success' => false,
+            'error'   => 'Creative generation did not complete. No credits were charged.',
+            'code'    => strtoupper($code),
+            'engine'  => $engine,
+            'action'  => $action,
+        ];
+    }
 
     private function dispatchToEngine(int $wsId, string $engine, string $action, array $params, array $context): array
     {
