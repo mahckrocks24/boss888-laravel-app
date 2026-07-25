@@ -222,6 +222,10 @@ class Orchestrator
                 if (! $stepResult['success']) {
                     throw new \RuntimeException("Step " . ($i + 1) . " ({$step['action']}) failed: {$stepResult['message']}");
                 }
+
+                // H2 Part 1 — asset parity: persist Sarah-generated creative images
+                // via the EXISTING asset lifecycle, exactly as the EES path does.
+                $this->persistCreativeAssetIfNeeded($task, $step['action'], $step['params'], $stepResult);
             }
 
             // ── 9. Commit credits ────────────────────────────────────────
@@ -623,6 +627,70 @@ class Orchestrator
             return min(300, max(30, (int) $m[1]));
         }
         return ((int) ($task->retry_count ?? 0) === 0) ? 30 : 90;
+    }
+
+    /**
+     * H2 Part 1 — Sarah/Orchestrator asset parity.
+     *
+     * The CreativeConnector dispatch path returns image data but (unlike the
+     * EES/CreativeService path) never writes an assets row. Reuse the EXISTING
+     * asset lifecycle (CreativeService::createAsset + completeAsset) to record
+     * exactly one asset per task with identical provider/model metadata. Guarded
+     * against duplicates so retries and idempotent replays never double-persist.
+     * No creative_job_id, no schema change, no EES impact.
+     */
+    private function persistCreativeAssetIfNeeded(Task $task, string $action, array $params, array $result): void
+    {
+        if (! in_array($action, ['generate_image', 'generate_image_mini', 'generate_image_high'], true)) {
+            return;
+        }
+        if (! ($result['success'] ?? false)) {
+            return;
+        }
+        $data = is_array($result['data'] ?? null) ? $result['data'] : [];
+        $url  = $data['url'] ?? null;
+        if (! is_string($url) || $url === '') {
+            return;
+        }
+        // Exactly one asset per task — safe across in-step retries and idempotent replay.
+        if (\Illuminate\Support\Facades\DB::table('assets')->where('task_id', $task->id)->exists()) {
+            return;
+        }
+
+        try {
+            $creative = app(\App\Engines\Creative\Services\CreativeService::class);
+            $meta = is_array($data['metadata'] ?? null) ? $data['metadata'] : [];
+            [$w, $h] = $this->parseImageDimensions((string) ($meta['requested_size'] ?? ''));
+
+            $asset = $creative->createAsset($task->workspace_id, [
+                'type'     => 'image',
+                'prompt'   => (string) ($params['prompt'] ?? ($task->payload_json['prompt'] ?? '')),
+                'task_id'  => $task->id,
+                'metadata' => ['source' => 'orchestrator', 'revised_prompt' => $meta['revised_prompt'] ?? null],
+            ]);
+            $creative->completeAsset((int) $asset['asset_id'], [
+                'url'       => $url,
+                'width'     => $w,
+                'height'    => $h,
+                'mime_type' => 'image/png',
+            ]);
+
+            $this->progress->recordEvent($task->id, 'asset_persisted', null,
+                message: 'Creative asset recorded (parity with EES path)');
+        } catch (\Throwable $e) {
+            // Best-effort — a persistence hiccup must not fail an otherwise
+            // successful generation (mirrors CreativeService's own dual-write policy).
+            Log::warning("[Orchestrator] creative asset persist failed for task {$task->id}: " . $e->getMessage());
+        }
+    }
+
+    /** Parse a 'WxH' size string into [width, height]; default 1024x1024. */
+    private function parseImageDimensions(string $size): array
+    {
+        if (preg_match('/^(\d+)x(\d+)$/', trim($size), $m)) {
+            return [(int) $m[1], (int) $m[2]];
+        }
+        return [1024, 1024];
     }
 
     /**
