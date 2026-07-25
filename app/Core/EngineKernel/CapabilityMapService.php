@@ -74,7 +74,10 @@ class CapabilityMapService
         'write_article_image' => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article_image', 'approval_mode'=>'review',    'credit_cost'=>2],
         'generate_image_mini' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_mini', 'approval_mode'=>'auto',      'credit_cost'=>1],
         'generate_image_high' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_high', 'approval_mode'=>'auto',      'credit_cost'=>4],
-        'upscale_image'       => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'upscale_image',       'approval_mode'=>'auto',      'credit_cost'=>1],
+        // [Phase G Fix 3 · 2026-07-25] Disabled dead capability: no engine implements the
+        // upscale_image action (EngineExecutionService throws "Unknown Creative action: upscale_image").
+        // Re-added by Wave 23 in error; see the Phase 2A removal note below. Reversible — uncomment to restore.
+        // 'upscale_image'       => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'upscale_image',       'approval_mode'=>'auto',      'credit_cost'=>1],
         'social_ai_post'      => ['engine'=>'social',    'connector'=>null,       'action'=>'social_ai_post',      'approval_mode'=>'review',    'credit_cost'=>1],
         'social_image'        => ['engine'=>'social',    'connector'=>'creative', 'action'=>'social_image',        'approval_mode'=>'auto',      'credit_cost'=>1],
         'hashtag_suggestions' => ['engine'=>'social',    'connector'=>null,       'action'=>'hashtag_suggestions', 'approval_mode'=>'auto',      'credit_cost'=>1],
