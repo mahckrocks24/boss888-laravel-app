@@ -282,12 +282,14 @@ class TaskService
         ]);
     }
 
-    public function markFailed(Task $task, string $error): void
+    public function markFailed(Task $task, string $error, bool $terminal = false): void
     {
         $task->increment('retry_count');
         $maxRetries = 4;
 
-        if ($task->retry_count < $maxRetries) {
+        // H2: a terminal (non-retryable) failure must NOT consume the generic
+        // retry budget — the caller already classified it as permanent. Fail now.
+        if (! $terminal && $task->retry_count < $maxRetries) {
             $task->update(['status' => 'queued']);
             $this->dispatcher->dispatch($task);
         } else {

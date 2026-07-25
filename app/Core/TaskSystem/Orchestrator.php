@@ -579,7 +579,10 @@ class Orchestrator
                 return;
             }
 
-            $this->taskService->markFailed($task, $e->getMessage());
+            // H2 Part 2 — reached only after transientRequeueDelay() returned null,
+            // i.e. a TERMINAL (non-retryable) error. Fail immediately instead of
+            // re-queuing on the generic retry budget.
+            $this->taskService->markFailed($task, $e->getMessage(), terminal: true);
         }
     }
 
