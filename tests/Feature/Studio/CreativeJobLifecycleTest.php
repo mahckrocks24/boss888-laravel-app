@@ -79,7 +79,7 @@ class CreativeJobLifecycleTest extends TestCase
         $this->assertSame('generate_image', $job->capability);
         $this->assertSame($wsId, (int) $job->workspace_id);           // workspace linked
         $this->assertSame('a serene lake', $job->original_prompt);
-        $this->assertNull($job->compiled_prompt);                     // Phase J placeholder stays NULL
+        $this->assertSame('a serene lake', $job->compiled_prompt);    // Phase J shadow compiler populates it
         $this->assertNotNull($job->asset_id);                         // asset linked
         $this->assertNotNull($job->provider);                         // provider metadata stored
 
