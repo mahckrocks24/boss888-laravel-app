@@ -23,9 +23,10 @@ use Tests\TestCase;
  *   - Result schema: {success, image_url, width, height} (NOT {status, url, asset_id}).
  *   - Capability studio_generate_image: credit_cost=3, approval=auto.
  *
- * The EES commit-on-non-throw defect (see EesCreativeLifecycleTest) applies here too:
- * StudioAiService RETURNS success:false (never throws) on provider failure AND on
- * misconfiguration, so EES commits the 3-credit charge in both failure cases.
+ * PHASE H1 CORRECTION (2026-07-25): EES now releases (not commits) and returns
+ * success:false when StudioAiService returns success:false — including provider
+ * failure and runtime_unavailable. The success path is unchanged. These
+ * expectations were flipped from the Phase B baseline (which pinned the old bug).
  */
 class EesStudioImageLifecycleTest extends TestCase
 {
@@ -93,44 +94,43 @@ class EesStudioImageLifecycleTest extends TestCase
         $this->assertNotContains('release', $this->types());
     }
 
-    // ── B. Provider failure (returned, not thrown) — DEFECT ─────────────
+    // ── B. Provider failure (returned, not thrown) — H1 corrected ───────
 
     /** @test */
-    public function studio_provider_failure_writes_no_media_but_still_commits_charge_defect(): void
+    public function studio_provider_failure_releases_credit_and_reports_failure(): void
     {
         $this->bindRuntime(true, ['success' => false, 'error' => 'provider_down']);
         $wsId = $this->testWorkspace->id;
 
         $res = $this->ees()->execute($wsId, 'studio', 'generate_image', ['prompt' => 'doomed']);
 
-        // DEFECT (masking): a returned (non-thrown) failure is reported as success:true
-        // by EES — the inner failure is not surfaced to the caller.
-        $this->assertTrue($res['success'] ?? false);
+        // H1: truthful failure surfaced to the caller.
+        $this->assertFalse($res['success'] ?? true);
         $this->assertSame(0, DB::table('media')->where('workspace_id', $wsId)->where('source', 'studio-ai')->count());
 
-        // DEFECT: charged despite failure (StudioAiService returns, never throws).
-        $this->assertCreditBalance(5000 - self::COST);
-        $this->assertContains('commit', $this->types());
-        $this->assertNotContains('release', $this->types());
+        // Released, not charged.
+        $this->assertCreditBalance(5000);
+        $this->assertContains('release', $this->types());
+        $this->assertNotContains('commit', $this->types());
     }
 
-    // ── C. Absent runtime config → returns runtime_unavailable, no HTTP ──
+    // ── C. Absent runtime config → runtime_unavailable, no HTTP, no charge ─
 
     /** @test */
-    public function studio_absent_runtime_config_makes_no_provider_call_yet_still_commits_charge_defect(): void
+    public function studio_absent_runtime_config_reports_failure_with_safe_code_and_no_charge(): void
     {
         $this->bindRuntime(false, null); // isConfigured=false, imageGenerate must NOT be called
         $wsId = $this->testWorkspace->id;
 
         $res = $this->ees()->execute($wsId, 'studio', 'generate_image', ['prompt' => 'anything']);
 
-        // DEFECT (masking): misconfiguration is reported as success:true to the caller.
-        $this->assertTrue($res['success'] ?? false);
+        // H1: truthful failure + a safe, non-sensitive code (no charge, no HTTP).
+        $this->assertFalse($res['success'] ?? true);
+        $this->assertSame('RUNTIME_UNAVAILABLE', $res['code'] ?? null);
         $this->assertSame(0, DB::table('media')->where('workspace_id', $wsId)->where('source', 'studio-ai')->count());
 
-        // DEFECT: even a misconfiguration commits the charge (returned success:false, no throw).
-        $this->assertCreditBalance(5000 - self::COST);
-        $this->assertContains('commit', $this->types());
-        $this->assertNotContains('release', $this->types());
+        $this->assertCreditBalance(5000);
+        $this->assertContains('release', $this->types());
+        $this->assertNotContains('commit', $this->types());
     }
 }

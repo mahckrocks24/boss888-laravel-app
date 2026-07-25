@@ -20,13 +20,12 @@ use Tests\TestCase;
  *
  * generate_image capability: engine=creative, connector=creative, credit_cost=2, approval=auto.
  *
- * PRODUCTION DEFECT CHARACTERIZED (not fixed — see report):
- *   EES commits the reservation whenever dispatch does NOT throw. CreativeService
- *   ::generateImage SWALLOWS provider failures and RETURNS ['status'=>'failed']
- *   (no throw). EES never inspects result['success']/['status'], so a FAILED image
- *   generation still COMMITS the 2-credit charge. Only a *thrown* error releases.
- *   The Orchestrator path has a "STATUS != TRUTH" guard (2026-06-10) that EES lacks
- *   — see SarahCreativeImageLifecycleTest for the divergent (correct) behaviour.
+ * PHASE H1 CORRECTION (2026-07-25): EES now inspects semantic success of the
+ * downstream creative/studio result. A non-throwing failure (status=failed /
+ * success=false / runtime_unavailable / ambiguous) RELEASES the reservation and
+ * returns success:false instead of committing and masking. Successful and thrown
+ * paths are unchanged. These expectations were flipped from the Phase B baseline
+ * that honestly pinned the old (broken) commit-on-failure behaviour.
  */
 class EesCreativeLifecycleTest extends TestCase
 {
@@ -113,29 +112,52 @@ class EesCreativeLifecycleTest extends TestCase
         $this->assertSame(1, count(array_filter($types, fn ($t) => $t === 'commit')));
     }
 
-    // ── B. Provider failure (swallowed → returned) — DEFECT ─────────────
+    // ── B. Provider failure (swallowed → returned) — H1 corrected ───────
 
     /** @test */
-    public function swallowed_provider_failure_marks_asset_failed_but_still_commits_the_charge_defect(): void
+    public function swallowed_provider_failure_releases_credit_and_reports_failure(): void
     {
         $this->fakeRuntime(false);
         $wsId = $this->testWorkspace->id;
 
-        $this->ees()->execute($wsId, 'creative', 'generate_image', ['prompt' => 'A doomed render']);
+        $res = $this->ees()->execute($wsId, 'creative', 'generate_image', ['prompt' => 'A doomed render']);
 
         // Asset created then marked failed — exactly one, no duplicates.
         $assets = DB::table('assets')->where('workspace_id', $wsId)->get();
         $this->assertCount(1, $assets);
         $this->assertSame('failed', $assets->first()->status);
 
-        // DEFECT: the 2 credits are COMMITTED (charged) despite the failure,
-        // because CreativeService returned (did not throw) and EES commits on
-        // any non-throwing dispatch. This is the behaviour to FIX later, pinned here.
-        $this->assertCreditBalance(5000 - self::COST); // charged
+        // H1: the failure is now truthful — EES reports success:false...
+        $this->assertFalse($res['success'] ?? true);
+
+        // ...and RELEASES the reservation (no charge), never commits.
+        $this->assertCreditBalance(5000); // NOT charged
         $this->assertReservedBalance(0);
         $types = array_map(fn ($t) => $t->type, $this->txns());
-        $this->assertContains('commit', $types);
-        $this->assertNotContains('release', $types);
+        $this->assertContains('release', $types);
+        $this->assertNotContains('commit', $types);
+    }
+
+    // ── B2. Ambiguous/malformed downstream payload → fail safe ──────────
+
+    /** @test */
+    public function ambiguous_downstream_payload_fails_safe_without_charging(): void
+    {
+        // Bind a CreativeService that returns a payload with NO success/status
+        // signal — EES must fail safe (release, success:false), never bill.
+        $svc = \Mockery::mock(\App\Engines\Creative\Services\CreativeService::class);
+        $svc->shouldReceive('generateImage')->once()->andReturn(['foo' => 'bar']);
+        $this->app->instance(\App\Engines\Creative\Services\CreativeService::class, $svc);
+        $wsId = $this->testWorkspace->id;
+
+        $res = $this->ees()->execute($wsId, 'creative', 'generate_image', ['prompt' => 'ambiguous']);
+
+        $this->assertFalse($res['success'] ?? true);
+        $this->assertCreditBalance(5000);
+        $this->assertReservedBalance(0);
+        $types = array_map(fn ($t) => $t->type, $this->txns());
+        $this->assertContains('release', $types);
+        $this->assertNotContains('commit', $types);
     }
 
     // ── C. Thrown failure (empty prompt) → release, no charge ───────────
