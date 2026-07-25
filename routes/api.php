@@ -10235,7 +10235,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 $r->attributes->get('workspace_id'), 'creative', 'generate_image', $r->all(),
                 ['user_id' => $r->user()?->id, 'source' => 'manual']
             ), 202);
-        });
+        })->middleware('throttle:20,1');
 
         // Video generation (async — returns in_progress immediately)
         Route::post('/generate/video', function (\Illuminate\Http\Request $r) use ($exec) {
@@ -10243,7 +10243,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 $r->attributes->get('workspace_id'), 'creative', 'generate_video', $r->all(),
                 ['user_id' => $r->user()?->id, 'source' => 'manual']
             ), 202);
-        });
+        })->middleware('throttle:20,1');
 
         // Video job polling
         Route::get('/assets/{id}/poll', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->pollVideoJob((int) $id)));
@@ -12147,8 +12147,8 @@ HTMLSCRIPT;
                 throw $e;
             }
         };
-        Route::post('/ai/generate-design', fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'generateDesign', 5, 'studio_ai_generate_design'));
-        Route::post('/ai/generate-image',  fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'generateImage',  8, 'studio_ai_generate_image'));
+        Route::post('/ai/generate-design', fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'generateDesign', 5, 'studio_ai_generate_design'))->middleware('throttle:20,1');
+        Route::post('/ai/generate-image',  fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'generateImage',  8, 'studio_ai_generate_image'))->middleware('throttle:20,1');
         Route::post('/ai/suggest-copy',    fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'suggestCopy',    1, 'studio_ai_suggest_copy'));
         Route::post('/ai/chat',            fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'chat',           1, 'studio_ai_chat'));
 
