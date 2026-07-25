@@ -37,6 +37,12 @@ class Task extends Model
         ];
     }
 
+    /** Phase I — the observational CreativeJob for this task (if any). */
+    public function creativeJob(): HasOne
+    {
+        return $this->hasOne(CreativeJob::class);
+    }
+
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);

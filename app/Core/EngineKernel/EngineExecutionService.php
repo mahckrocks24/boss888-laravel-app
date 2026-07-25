@@ -341,10 +341,24 @@ class EngineExecutionService
         }
 
         // ─── Step 5: Execute the actual engine action ────────
+        // ─── Step 4b (Phase I): open an observational CreativeJob (Studio only) ──
+        $__cjs  = app(\App\Engines\Studio\Services\CreativeJobService::class);
+        $__cjob = in_array($engine, ['creative', 'studio'], true)
+            ? $this->cjSafe(fn () => $__cjs->begin([
+                'workspace_id'    => $wsId,
+                'user_id'         => $context['user_id'] ?? null,
+                'type'            => $action === 'generate_video' ? 'video' : 'generation',
+                'capability'      => $action,
+                'original_prompt' => is_string($params['prompt'] ?? null) ? $params['prompt'] : null,
+                'source'          => $source,
+            ]))
+            : null;
+
         try {
             $result = $this->dispatchToEngine($wsId, $engine, $action, $params, $context);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             if (isset($reservationId)) $this->creditService->release($wsId, $reservationId);
+            $this->cjSafe(fn () => $__cjs->fail($__cjob, 'Resource not found'));
             return ['success' => false, 'error' => 'Resource not found', 'code' => 'NOT_FOUND'];
         } catch (\Throwable $e) {
             // Release credits on failure
@@ -359,6 +373,7 @@ class EngineExecutionService
                     'error', '/agents');
             }
 
+            $this->cjSafe(fn () => $__cjs->fail($__cjob, $e->getMessage()));
             return ['success' => false, 'error' => $e->getMessage(), 'code' => 'EXECUTION_FAILED'];
         }
 
@@ -381,12 +396,22 @@ class EngineExecutionService
                     "Agent task {$engine}/{$action} did not complete.",
                     'error', '/agents');
             }
+            $this->cjSafe(fn () => $__cjs->fail($__cjob, (string) ($result['error'] ?? $result['status'] ?? 'generation_failed')));
             return $this->creativeFailureResponse($engine, $action, $result);
         }
 
         // ─── Step 6: Commit credits ──────────────────────────
         if (isset($reservationId) && $creditCost > 0) {
             $this->creditService->commit($wsId, $reservationId, $creditCost);
+        }
+
+        // ─── Step 6b (Phase I): finalize the observational CreativeJob ──
+        if ($__cjob) {
+            $this->cjSafe(fn () => $__cjs->complete($__cjob, [
+                'status'   => (is_array($result) && ($result['status'] ?? null) === 'in_progress') ? 'running' : 'completed',
+                'asset_id' => (is_array($result) && isset($result['asset_id']) && is_numeric($result['asset_id'])) ? (int) $result['asset_id'] : null,
+                'provider' => (is_array($result) && isset($result['provider'])) ? $result['provider'] : null,
+            ]));
         }
 
         // ─── Step 7: Fire automation triggers ────────────────
@@ -535,6 +560,20 @@ class EngineExecutionService
      * boolean. Anything without a recognized positive signal is treated as a failure
      * so an ambiguous/malformed payload is never billed as success.
      */
+    /**
+     * Phase I — run a CreativeJob observational side-write with total isolation.
+     * A CreativeJob fault MUST NEVER affect execution, billing, or the response.
+     */
+    private function cjSafe(callable $fn): mixed
+    {
+        try {
+            return $fn();
+        } catch (\Throwable $e) {
+            Log::warning('[CreativeJob] hook error (ignored, execution unaffected): ' . $e->getMessage());
+            return null;
+        }
+    }
+
     private function creativeResultIsSuccessful(array $result): bool
     {
         if (array_key_exists('success', $result)) {

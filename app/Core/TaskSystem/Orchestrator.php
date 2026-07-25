@@ -41,6 +41,7 @@ class Orchestrator
     public function execute(Task $task): void
     {
         $reservationRef = null;
+        $__cjob = null; // Phase I — observational CreativeJob handle
 
         // 2026-06-20 — bind the executing task's workspace into the container so
         // queue/orchestrator-context callers that have no request header and no
@@ -204,6 +205,18 @@ class Orchestrator
                     message: "Reserved {$creditCost} credits (ref: {$reservationRef})");
             }
 
+            // ── 7b (Phase I): open an observational CreativeJob for Studio tasks ──
+            if (in_array($task->engine, ['creative', 'studio'], true)) {
+                $__cjob = $this->cjSafe(fn () => app(\App\Engines\Studio\Services\CreativeJobService::class)->begin([
+                    'workspace_id'    => $task->workspace_id,
+                    'task_id'         => $task->id,
+                    'type'            => $task->action === 'generate_video' ? 'video' : 'generation',
+                    'capability'      => $task->action,
+                    'original_prompt' => is_string($task->payload_json['prompt'] ?? null) ? $task->payload_json['prompt'] : null,
+                    'source'          => 'orchestrator',
+                ]));
+            }
+
             // ── 8. Execute steps ─────────────────────────────────────────
             $steps = $this->resolveSteps($task, $validatedParams);
             $totalSteps = min(count($steps), $this->maxStepsPerTask);
@@ -244,6 +257,20 @@ class Orchestrator
 
             $task->update(['execution_finished_at' => now()]);
             $this->taskService->markCompleted($task, $finalResult);
+
+            // Phase I — finalize the observational CreativeJob (link persisted asset).
+            if ($__cjob) {
+                $this->cjSafe(function () use ($__cjob, $finalResult, $task) {
+                    $__meta = (is_array($finalResult['data'] ?? null) && is_array($finalResult['data']['metadata'] ?? null))
+                        ? $finalResult['data']['metadata'] : [];
+                    app(\App\Engines\Studio\Services\CreativeJobService::class)->complete($__cjob, [
+                        'status'         => 'completed',
+                        'asset_id'       => \Illuminate\Support\Facades\DB::table('assets')->where('task_id', $task->id)->value('id'),
+                        'provider'       => $__meta['provider'] ?? null,
+                        'provider_model' => $__meta['model'] ?? null,
+                    ]);
+                });
+            }
             $this->progress->recordEvent($task->id, 'execution_completed', 'completed',
                 message: 'Task completed successfully');
 
@@ -583,6 +610,7 @@ class Orchestrator
             // i.e. a TERMINAL (non-retryable) error. Fail immediately instead of
             // re-queuing on the generic retry budget.
             $this->taskService->markFailed($task, $e->getMessage(), terminal: true);
+            $this->cjSafe(fn () => app(\App\Engines\Studio\Services\CreativeJobService::class)->fail($__cjob, $e->getMessage()));
         }
     }
 
@@ -684,6 +712,20 @@ class Orchestrator
             // Best-effort — a persistence hiccup must not fail an otherwise
             // successful generation (mirrors CreativeService's own dual-write policy).
             Log::warning("[Orchestrator] creative asset persist failed for task {$task->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Phase I — run a CreativeJob observational side-write with total isolation.
+     * A CreativeJob fault MUST NEVER affect task execution, billing, or assets.
+     */
+    private function cjSafe(callable $fn): mixed
+    {
+        try {
+            return $fn();
+        } catch (\Throwable $e) {
+            Log::warning('[CreativeJob] hook error (ignored, execution unaffected): ' . $e->getMessage());
+            return null;
         }
     }
 
