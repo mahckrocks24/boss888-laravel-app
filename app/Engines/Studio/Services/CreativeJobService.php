@@ -60,7 +60,7 @@ class CreativeJobService
                 }
             }
 
-            return CreativeJob::create([
+            $job = CreativeJob::create([
                 'workspace_id'    => (int) ($ctx['workspace_id'] ?? 0),
                 'user_id'         => $ctx['user_id'] ?? null,
                 'task_id'         => $ctx['task_id'] ?? null,
@@ -69,13 +69,58 @@ class CreativeJobService
                 'capability'      => $ctx['capability'] ?? null,
                 'status'          => 'running',
                 'original_prompt' => $ctx['original_prompt'] ?? null,
-                'compiled_prompt' => null, // Phase J placeholder
+                'compiled_prompt' => null, // populated below by the shadow compiler (Phase J)
                 'metadata'        => ['source' => $ctx['source'] ?? null],
                 'started_at'      => now(),
             ]);
+
+            // Phase J — SHADOW prompt compilation (observational; never affects execution).
+            $this->applyPromptCompiler($job, $ctx);
+
+            return $job;
         } catch (\Throwable $e) {
             Log::warning('[CreativeJob] begin failed (execution unaffected): ' . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Phase J — run the deterministic Prompt Compiler in shadow mode and persist
+     * its output onto the CreativeJob. Fully isolated: a compiler fault leaves
+     * compiled_prompt NULL and never touches execution, billing, or assets.
+     */
+    private function applyPromptCompiler(CreativeJob $job, array $ctx): void
+    {
+        try {
+            $compiler = app(\App\Engines\Studio\Compiler\PromptCompilerService::class);
+            if (! $compiler->enabled()) {
+                return;
+            }
+
+            $result = $compiler->compile([
+                'prompt'           => (string) ($ctx['original_prompt'] ?? ''),
+                'capability'       => $ctx['capability'] ?? null,
+                'provider'         => $ctx['provider'] ?? null,
+                'model'            => $ctx['model'] ?? null,
+                'reference_images' => $ctx['reference_images'] ?? [],
+                'workspace_id'     => $ctx['workspace_id'] ?? null,
+            ]);
+
+            $job->update([
+                'compiled_prompt' => $result->compiledPrompt,
+                'generation_spec' => $result->spec->toArray(),
+                'metadata'        => array_merge((array) ($job->metadata ?? []), [
+                    'compiler' => [
+                        'version'    => $result->compilerVersion,
+                        'confidence' => $result->confidence,
+                        'warnings'   => $result->warnings,
+                        'comparison' => $result->comparison,
+                        'meta'       => $result->metadata,
+                    ],
+                ]),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('[PromptCompiler] shadow compile failed (execution unaffected): ' . $e->getMessage());
         }
     }
 
