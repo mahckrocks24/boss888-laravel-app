@@ -162,14 +162,13 @@ class SarahCreativeImageLifecycleTest extends TestCase
         $this->assertCreditBalance(5000);
     }
 
-    // ── B2. Even a "hard" provider error is treated as retryable ────────
+    // ── B2. Terminal provider error fails immediately (H2) ──────────────
 
     /** @test */
-    public function even_a_quota_provider_error_is_retried_not_terminally_failed(): void
+    public function quota_provider_error_terminally_fails_and_releases_credit(): void
     {
-        // FINDING: the creative-connector path has no terminal classification for
-        // provider errors — even 'quota exceeded' requeues rather than failing.
-        // Whatever the outcome, no charge is committed (contrast the EES path).
+        // PHASE H2: quota is a terminal (non-retryable) provider error — the task
+        // fails immediately instead of being requeued 4× on the generic retry budget.
         $this->allowGuards();
         $this->fakeRuntime(false, 'quota exceeded');
 
@@ -177,7 +176,7 @@ class SarahCreativeImageLifecycleTest extends TestCase
         app(Orchestrator::class)->execute($task);
         $task->refresh();
 
-        $this->assertSame('queued', $task->status);
+        $this->assertSame('failed', $task->status);
         $this->assertReservedBalance(0);
         $this->assertNotContains('commit', $this->txnTypes());
         $this->assertCreditBalance(5000);
