@@ -161,6 +161,24 @@ supervisorctl status
 #   ...
 ```
 
+> ⚠️ **Operational rule — restarting queue workers** (added 2026-07-25, STUDIO888 Phase G)
+>
+> To reload worker code after an `app/` change, use:
+>
+> ```bash
+> php artisan queue:restart   # workers finish the current job, exit, and supervisor respawns them
+> ```
+>
+> **Do NOT** run `supervisorctl restart levelup-worker:*`. The worker group runs with
+> `stopwaitsecs=3600`, so a blanket `supervisorctl restart`/`stop` blocks for up to an hour
+> waiting on long-running jobs and can leave every worker STOPPED — an avoidable queue
+> outage (this occurred once, ~5 min, 0 data loss). Starting a single named worker
+> (`supervisorctl start 'levelup-worker:levelup-worker_00'`) is safe; a blanket restart is not.
+>
+> Related: `config/queue.php` sets the redis `retry_after` to **2000s**, which must stay
+> strictly greater than the longest job `$timeout` to prevent double-execution
+> (guarded by `tests/Feature/Queue/RetryAfterSafetyTest.php`).
+
 ---
 
 ## Phase 7 — Stripe Webhook Registration
