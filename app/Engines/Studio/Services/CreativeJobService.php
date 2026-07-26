@@ -106,18 +106,32 @@ class CreativeJobService
                 'workspace_id'     => $ctx['workspace_id'] ?? null,
             ]);
 
+            $metaUpdate = [
+                'compiler' => [
+                    'version'    => $result->compilerVersion,
+                    'confidence' => $result->confidence,
+                    'warnings'   => $result->warnings,
+                    'comparison' => $result->comparison,
+                    'meta'       => $result->metadata,
+                ],
+            ];
+
+            // Phase K — SHADOW guardrails over the compiler output (isolated; a
+            // guardrail fault omits the report but never affects compiled_prompt
+            // persistence or execution).
+            try {
+                $guardrails = app(\App\Engines\Studio\Guardrail\PromptGuardrailService::class);
+                if ($guardrails->enabled()) {
+                    $metaUpdate['guardrails'] = $guardrails->evaluate($result)->toArray();
+                }
+            } catch (\Throwable $ge) {
+                Log::warning('[PromptGuardrail] shadow eval failed (execution unaffected): ' . $ge->getMessage());
+            }
+
             $job->update([
                 'compiled_prompt' => $result->compiledPrompt,
                 'generation_spec' => $result->spec->toArray(),
-                'metadata'        => array_merge((array) ($job->metadata ?? []), [
-                    'compiler' => [
-                        'version'    => $result->compilerVersion,
-                        'confidence' => $result->confidence,
-                        'warnings'   => $result->warnings,
-                        'comparison' => $result->comparison,
-                        'meta'       => $result->metadata,
-                    ],
-                ]),
+                'metadata'        => array_merge((array) ($job->metadata ?? []), $metaUpdate),
             ]);
         } catch (\Throwable $e) {
             Log::warning('[PromptCompiler] shadow compile failed (execution unaffected): ' . $e->getMessage());
