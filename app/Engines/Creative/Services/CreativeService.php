@@ -665,7 +665,16 @@ class CreativeService
         $filename    = md5($prompt . microtime(true) . random_int(0, PHP_INT_MAX)) . '.png';
         $storagePath = 'ai-images/' . $wsId . '/' . $filename;
         try {
-            \Illuminate\Support\Facades\Storage::disk('public')->put($storagePath, $edit['bytes']);
+            // Phase P — VERIFY the write. Storage::put() returns false on a silent
+            // failure (e.g. permissions/full disk) WITHOUT throwing; unchecked, that
+            // produced a phantom asset with a broken URL yet still charged the user.
+            // A failed write must fail the edit so EngineExecutionService RELEASES the
+            // reserved credit (truthful billing) and no fileless asset is created.
+            $stored = \Illuminate\Support\Facades\Storage::disk('public')->put($storagePath, $edit['bytes']);
+            if (! $stored || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($storagePath)) {
+                \Illuminate\Support\Facades\Log::warning('[ImageEdit] storage write did not persist', ['path' => $storagePath, 'ws' => $wsId]);
+                return ['success' => false, 'error' => 'The edited image could not be saved. Please try again.'];
+            }
             $url = \Illuminate\Support\Facades\Storage::disk('public')->url($storagePath);
         } catch (\Throwable $e) {
             return ['success' => false, 'error' => 'The edited image could not be saved.'];
