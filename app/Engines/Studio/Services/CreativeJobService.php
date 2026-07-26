@@ -174,8 +174,82 @@ class CreativeJobService
                 DB::table('assets')->where('id', $assetId)->whereNull('creative_job_id')
                     ->update(['creative_job_id' => $job->id]);
             }
+
+            // Phase L — SHADOW execution observation + compiler-readiness comparison.
+            $this->applyReadiness($job, $assetId, $data);
         } catch (\Throwable $e) {
             Log::warning('[CreativeJob] complete failed (execution unaffected): ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Phase L — capture the actual production provider prompt (non-invasively,
+     * from the persisted asset) and run the deterministic shadow comparison /
+     * readiness scoring. Fully isolated + flag-gated: any fault here leaves the
+     * job, asset, billing, and provider result untouched.
+     */
+    private function applyReadiness(CreativeJob $job, ?int $assetId, array $data): void
+    {
+        try {
+            if (! (bool) config('studio.execution_prompt_observation', true)) {
+                return;
+            }
+
+            // Observe the actual provider prompt from assets.prompt — enhanced for
+            // the EES/CreativeService path, raw for the Sarah/connector path. This
+            // reads existing persisted data; the live provider request is untouched.
+            $observedRaw = null;
+            $truncated = false;
+            if ($assetId) {
+                $row = DB::table('assets')->where('id', $assetId)->first(['prompt']);
+                if ($row && $row->prompt !== null) {
+                    $observedRaw = (string) $row->prompt;
+                    $truncated = mb_strlen($observedRaw) >= 250; // varchar(255) / mb_substr(250) storage cap
+                }
+            }
+
+            $meta = is_array($job->metadata) ? $job->metadata : [];
+            $metaUpdate = [];
+
+            if ($observedRaw !== null) {
+                $san = \App\Engines\Studio\Readiness\PromptSanitizer::sanitize($observedRaw);
+                $metaUpdate['execution_observation'] = [
+                    'actual_provider_prompt'      => $san['text'],
+                    'actual_provider_prompt_hash' => hash('sha256', $observedRaw),
+                    'prompt_length'               => mb_strlen($observedRaw),
+                    'capture_version'             => '1.0.0-shadow',
+                    'sanitized'                   => $san['redacted'],
+                    'truncated'                   => $truncated,
+                    'source'                      => 'assets.prompt',
+                    'provider'                    => $data['provider'] ?? null,
+                    'model'                       => $data['provider_model'] ?? null,
+                ];
+            }
+
+            if ((bool) config('studio.compiler_readiness_shadow', true)) {
+                try {
+                    $cmp = app(\App\Engines\Studio\Readiness\PromptComparisonService::class)->compare([
+                        'original_prompt'        => $job->original_prompt,
+                        'compiled_prompt'        => $job->compiled_prompt,
+                        'actual_provider_prompt' => $metaUpdate['execution_observation']['actual_provider_prompt'] ?? null,
+                        'generation_spec'        => is_array($job->generation_spec) ? $job->generation_spec : [],
+                        'compiler'               => $meta['compiler'] ?? [],
+                        'guardrail'              => $meta['guardrails'] ?? [],
+                        'capability'             => $job->capability,
+                        'observation_truncated'  => $truncated,
+                    ]);
+                    $metaUpdate['compiler_readiness'] = $cmp->toArray();
+                } catch (\Throwable $ce) {
+                    $metaUpdate['compiler_readiness'] = ['comparison_failed' => true, 'error' => mb_substr($ce->getMessage(), 0, 200)];
+                    Log::warning('[CompilerReadiness] comparison failed (execution unaffected): ' . $ce->getMessage());
+                }
+            }
+
+            if (! empty($metaUpdate)) {
+                $job->update(['metadata' => array_merge($meta, $metaUpdate)]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[CompilerReadiness] observation failed (execution unaffected): ' . $e->getMessage());
         }
     }
 
