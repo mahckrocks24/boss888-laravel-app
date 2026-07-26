@@ -129,6 +129,67 @@ class CompilerReadinessService
         ];
     }
 
+    /**
+     * Phase N — compact V1-vs-V2 readiness side-by-side (read-only). Reads
+     * compiler_readiness (V1) and compiler_readiness_v2 (V2) independently; neither
+     * overwrites the other, so historical reports stay reproducible.
+     */
+    public function readinessByVersion(?int $workspaceId = null): array
+    {
+        if (! $this->tableAvailable()) {
+            return ['v1' => ['state' => self::STATE_INSUFFICIENT, 'jobs_comparable' => 0],
+                    'v2' => ['state' => self::STATE_INSUFFICIENT, 'jobs_comparable' => 0]];
+        }
+        $q = CreativeJob::query();
+        if ($workspaceId !== null) {
+            $q->where('workspace_id', $workspaceId);
+        }
+        $jobs = $q->get();
+        return [
+            'v1' => $this->summariseVersion($jobs, 'compiler_readiness'),
+            'v2' => $this->summariseVersion($jobs, 'compiler_readiness_v2'),
+        ];
+    }
+
+    private function summariseVersion($jobs, string $key): array
+    {
+        $comparable = 0; $norm = 0; $exact = 0; $conflicts = 0; $missing = 0; $compFail = 0;
+        $dist = []; $wouldPass = 0; $scores = [];
+        foreach ($jobs as $job) {
+            $meta = is_array($job->metadata) ? $job->metadata : [];
+            $r = $meta[$key] ?? null;
+            if ($r === null) { continue; }
+            if (! empty($r['comparison_failed'])) { $compFail++; continue; }
+            $class = $r['divergence_class'] ?? 'UNCOMPARABLE';
+            $dist[$class] = ($dist[$class] ?? 0) + 1;
+            if ($class === PromptComparisonService::MISSING_OBSERVATION) { $missing++; }
+            if (in_array($class, [PromptComparisonService::MISSING_COMPILED, PromptComparisonService::MISSING_OBSERVATION, PromptComparisonService::UNCOMPARABLE], true)) {
+                continue;
+            }
+            $comparable++;
+            if (! empty($r['normalized_identical'])) { $norm++; }
+            if (! empty($r['byte_identical'])) { $exact++; }
+            if ($class === PromptComparisonService::CONFLICTING) { $conflicts++; }
+            if (! empty($r['would_pass'])) { $wouldPass++; }
+            $scores[] = (int) ($r['readiness_score'] ?? 0);
+        }
+        $pct = fn (int $n, int $d) => $d === 0 ? 0.0 : round($n / $d * 100, 2);
+        $normRate = $pct($norm, $comparable);
+        $conflictRate = $pct($conflicts, $comparable);
+        return [
+            'state'                     => $this->state($comparable, $normRate, $conflictRate, 0.0, 0.0),
+            'jobs_comparable'           => $comparable,
+            'divergence_distribution'   => $dist,
+            'normalized_agreement_rate' => $normRate,
+            'exact_agreement_rate'      => $pct($exact, $comparable),
+            'conflict_rate'             => $conflictRate,
+            'would_pass'                => $wouldPass,
+            'average_readiness_score'   => empty($scores) ? 0.0 : round(array_sum($scores) / count($scores), 2),
+            'comparison_failures'       => $compFail,
+            'missing_observation'       => $missing,
+        ];
+    }
+
     private function state(int $comparable, float $normRate, float $conflictRate, float $failRate, float $missingRate): string
     {
         if ($comparable < self::MIN_COMPARABLE_JOBS) {

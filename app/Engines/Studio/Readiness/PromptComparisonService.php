@@ -51,24 +51,35 @@ class PromptComparisonService
 
         $reasons = [];
 
-        $byteIdentical = is_string($compiled) && is_string($observed) && $compiled === $observed;
-        $normIdentical = is_string($compiled) && is_string($observed) && $this->norm($compiled) === $this->norm($observed);
+        // Phase N — truncation-aware comparison. When the observation was capped
+        // (assets.prompt varchar limit), compare only the observable PREFIX of the
+        // compiled prompt, so a parity compiler is not penalised for the lost tail.
+        // Hashes/lengths below still report the FULL compiled prompt for audit.
+        $truncated = (bool) ($in['observation_truncated'] ?? false);
+        $compiledCmp = $compiled;
+        if ($truncated && is_string($compiled) && is_string($observed)) {
+            $compiledCmp = mb_substr($compiled, 0, mb_strlen($observed));
+            $reasons[] = 'observation_truncated_prefix_compared';
+        }
+
+        $byteIdentical = is_string($compiledCmp) && is_string($observed) && $compiledCmp === $observed;
+        $normIdentical = is_string($compiledCmp) && is_string($observed) && $this->norm($compiledCmp) === $this->norm($observed);
 
         $addedTokens = [];
         $removedTokens = [];
-        $aspectMatch = $this->aspectMatch($compiled, $observed, $spec);
-        $styleMatch  = $this->styleMatch($compiled, $observed);
+        $aspectMatch = $this->aspectMatch($compiledCmp, $observed, $spec);
+        $styleMatch  = $this->styleMatch($compiledCmp, $observed);
         $capMatch    = true;   // capability is compiler-derived; production doesn't re-declare it — treated as matched unless observation missing
         $refMatch    = true;
 
-        if ($compiled !== null && $observed !== null) {
-            $ct = $this->tokens($compiled);
+        if ($compiledCmp !== null && $observed !== null) {
+            $ct = $this->tokens($compiledCmp);
             $ot = $this->tokens($observed);
             $addedTokens   = array_values(array_diff($ot, $ct)); // production has, compiler doesn't
             $removedTokens = array_values(array_diff($ct, $ot)); // compiler has, production doesn't
         }
 
-        $class = $this->classify($compiled, $observed, $byteIdentical, $normIdentical, $addedTokens, $removedTokens, $aspectMatch, $reasons);
+        $class = $this->classify($compiledCmp, $observed, $byteIdentical, $normIdentical, $addedTokens, $removedTokens, $aspectMatch, $reasons);
 
         if ($class === self::MISSING_OBSERVATION) { $capMatch = false; $refMatch = false; }
 

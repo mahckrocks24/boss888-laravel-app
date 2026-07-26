@@ -128,6 +128,38 @@ class CreativeJobService
                 Log::warning('[PromptGuardrail] shadow eval failed (execution unaffected): ' . $ge->getMessage());
             }
 
+            // Phase N — Compiler V2 (production parity) in shadow, alongside V1.
+            // Reproduces the deterministic production image enhancement using the SAME
+            // brand identity source production uses. Isolated; a fault omits compiler_v2.
+            try {
+                $v2svc = app(\App\Engines\Studio\Compiler\PromptCompilerV2Service::class);
+                if ($v2svc->enabled()) {
+                    $brand = [];
+                    try {
+                        $brand = app(\App\Engines\Creative\Services\CimsService::class)
+                            ->getBrandIdentity((int) ($ctx['workspace_id'] ?? 0));
+                    } catch (\Throwable $be) {
+                        $brand = [];
+                    }
+                    $v2 = $v2svc->compile([
+                        'prompt'           => (string) ($ctx['original_prompt'] ?? ''),
+                        'capability'       => $ctx['capability'] ?? null,
+                        'reference_images' => $ctx['reference_images'] ?? [],
+                        'brand'            => is_array($brand) ? $brand : [],
+                        'style'            => $ctx['style'] ?? null,
+                    ]);
+                    $metaUpdate['compiler_v2'] = [
+                        'version'         => $v2->compilerVersion,
+                        'compiled_prompt' => $v2->compiledPrompt,
+                        'comparison'      => $v2->comparison,
+                        'confidence'      => $v2->confidence,
+                        'warnings'        => $v2->warnings,
+                    ];
+                }
+            } catch (\Throwable $v2e) {
+                Log::warning('[PromptCompilerV2] shadow compile failed (execution unaffected): ' . $v2e->getMessage());
+            }
+
             $job->update([
                 'compiled_prompt' => $result->compiledPrompt,
                 'generation_spec' => $result->spec->toArray(),
@@ -242,6 +274,28 @@ class CreativeJobService
                 } catch (\Throwable $ce) {
                     $metaUpdate['compiler_readiness'] = ['comparison_failed' => true, 'error' => mb_substr($ce->getMessage(), 0, 200)];
                     Log::warning('[CompilerReadiness] comparison failed (execution unaffected): ' . $ce->getMessage());
+                }
+
+                // Phase N — V2 (production parity) readiness, computed independently
+                // and stored separately so V1 and V2 are compared without overwrite.
+                $v2compiled = $meta['compiler_v2']['compiled_prompt'] ?? null;
+                if ($v2compiled !== null) {
+                    try {
+                        $cmp2 = app(\App\Engines\Studio\Readiness\PromptComparisonService::class)->compare([
+                            'original_prompt'        => $job->original_prompt,
+                            'compiled_prompt'        => $v2compiled,
+                            'actual_provider_prompt' => $metaUpdate['execution_observation']['actual_provider_prompt'] ?? null,
+                            'generation_spec'        => is_array($job->generation_spec) ? $job->generation_spec : [],
+                            'compiler'               => $meta['compiler_v2'] ?? [],
+                            'guardrail'              => $meta['guardrails'] ?? [],
+                            'capability'             => $job->capability,
+                            'observation_truncated'  => $truncated,
+                        ]);
+                        $metaUpdate['compiler_readiness_v2'] = $cmp2->toArray();
+                    } catch (\Throwable $ce2) {
+                        $metaUpdate['compiler_readiness_v2'] = ['comparison_failed' => true, 'error' => mb_substr($ce2->getMessage(), 0, 200)];
+                        Log::warning('[CompilerReadinessV2] comparison failed (execution unaffected): ' . $ce2->getMessage());
+                    }
                 }
             }
 

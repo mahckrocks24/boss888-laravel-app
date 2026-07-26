@@ -46,4 +46,15 @@ return [
     'execution_prompt_observation' => env('STUDIO_EXECUTION_PROMPT_OBSERVATION', true),
     'compiler_readiness_shadow'    => env('STUDIO_COMPILER_READINESS_SHADOW', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Prompt Compiler V2 — production parity shadow (Phase N)
+    |--------------------------------------------------------------------------
+    | Default ON. V2 deterministically reproduces the production image-enhancement
+    | pipeline (blueprint additions + no-text rule) for byte-parity measurement.
+    | Observational only — never transmitted, never alters execution. OFF ⇒ only V1
+    | runs; behaviour identical to Phase L/M.
+    */
+    'prompt_compiler_v2_shadow' => env('STUDIO_PROMPT_COMPILER_V2_SHADOW', true),
+
 ];
