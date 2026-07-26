@@ -33,4 +33,17 @@ return [
     */
     'prompt_guardrails_shadow' => env('STUDIO_PROMPT_GUARDRAILS_SHADOW', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Execution shadow comparison & compiler readiness (Phase L)
+    |--------------------------------------------------------------------------
+    | Observational only. `execution_prompt_observation` captures the actual
+    | production provider prompt (sanitized) from the persisted asset; it never
+    | alters the provider request. `compiler_readiness_shadow` runs the
+    | deterministic comparison and persists readiness evidence. OFF ⇒ execution
+    | and provider prompts remain identical.
+    */
+    'execution_prompt_observation' => env('STUDIO_EXECUTION_PROMPT_OBSERVATION', true),
+    'compiler_readiness_shadow'    => env('STUDIO_COMPILER_READINESS_SHADOW', true),
+
 ];
