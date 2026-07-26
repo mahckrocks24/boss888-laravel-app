@@ -22,7 +22,7 @@ use Tests\TestCase;
 class CapabilityMapUpscaleDisabledTest extends TestCase
 {
     /** The count the map had BEFORE Fix 3 (golden + the one disabled entry). */
-    private const COUNT_BEFORE = 133;
+    private const COUNT_BEFORE = 134;
 
     /** The exact metadata upscale_image carried before it was disabled. */
     private const UPSCALE_BEFORE = [

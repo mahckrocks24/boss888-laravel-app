@@ -803,6 +803,8 @@ class EngineExecutionService
             // (which just makes a DB row with status=pending).
             'generate_image' => $svc->generateImage($wsId, $params),
             'generate_video' => $svc->generateVideo($wsId, $params),
+            // STUDIO888 Phase O — masked/local image editing (non-destructive child version).
+            'edit_image'     => $svc->editImage($wsId, $params),
             'create_asset'   => $svc->createAsset($wsId, $params),
             default => throw new \RuntimeException("Unknown Creative action: {$action}"),
         };

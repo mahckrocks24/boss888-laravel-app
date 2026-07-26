@@ -129,12 +129,17 @@ class CapabilityMapService
         // ── Creative Engine (native AI) ──────────────────────────
         'generate_image'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>2],
         'generate_video'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_video',      'approval_mode'=>'review',    'credit_cost'=>8],
+        // STUDIO888 Phase O (2026-07-26): edit_image RE-ADDED with a real
+        // implementation — CreativeService::editImage() performs masked
+        // inpainting via OpenAI gpt-image-1 (/v1/images/edits) and creates a
+        // non-destructive child version. Same cost as generation.
+        'edit_image'          => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'edit_image',          'approval_mode'=>'auto',      'credit_cost'=>2],
         // Phase 2A: removed 6 unimplemented aspirational creative actions that had
         // registered capabilities but no CreativeService implementation. Leaving them
         // registered caused Sarah's planner to include them in plans, then
         // EngineExecutionService threw "Unknown Creative action: upscale_image" at
         // execution time. These can be re-added when the implementations ship.
-        //   REMOVED: edit_image, upscale_image, remove_background, generate_variations,
+        //   REMOVED: upscale_image, remove_background, generate_variations,
         //            create_scene_plan, stitch_video
 
         // ── Builder Engine ───────────────────────────────────────

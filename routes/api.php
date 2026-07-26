@@ -1112,24 +1112,32 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $userId = (int) ($r->user()?->id ?? 0);
         $scheduleFollowup = null;
 
-        // Wave 22 — 10-chat batched metering (0.1 cr effective per chat).
-        $_meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'agent_message');
-        // Wave 24 — surface counter via JSON only (raw header() unreliable).
-        if (!$_meter['sufficient']) {
-            return response()->json([
-                'success' => false,
-                'error'   => 'Not enough credits — chat costs 0.1 credit (1 credit per 10 chats). Please top up.',
-                'required_credits' => 1,
-                'chat_counter'     => $_meter['counter'],
-            ], 402);
-        }
-
         // Map 'dmm' alias to 'sarah' (frontend uses 'dmm' for Sarah)
         if ($slug === 'dmm') $slug = 'sarah';
         $agent = \App\Models\Agent::where('slug', $slug)->first();
         if (!$agent) return response()->json(['error' => 'Agent not found'], 404);
 
-        // Store user message in both audit_logs AND agent_messages
+        // ── INCIDENT FIX 2026-07-26 — PERSIST BEFORE METERING ──────────────
+        // The credit meter used to run here, BEFORE the message was written.
+        // A refused chat therefore returned 402 without ever storing what the
+        // user typed: the SPA had already rendered it optimistically, so on
+        // refresh it silently vanished ("my message gets deleted").
+        //
+        // The user's own words are not the platform's to discard because of a
+        // billing state. Persist first; meter second. A stored-but-unanswered
+        // message is recoverable; a discarded one is not.
+        try {
+            \Illuminate\Support\Facades\DB::table('agent_messages')->insert([
+                'workspace_id' => $wsId,
+                'agent_slug'   => $slug,
+                'sender'       => 'user',
+                'content'      => $content,
+                'role'         => 'user',
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+        } catch (\Throwable $e) { /* table may not exist yet */ }
+
         \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
             'workspace_id' => $wsId,
             'action' => 'agent.direct_message',
@@ -1138,18 +1146,42 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             'created_at' => now(),
         ]);
 
-        // Also store in agent_messages for the unified messaging system
-        try {
+        // Wave 22 — 10-chat batched metering (0.1 cr effective per chat).
+        $_meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'agent_message');
+        // Wave 24 — surface counter via JSON only (raw header() unreliable).
+        if (!$_meter['sufficient']) {
+            // ── INCIDENT FIX 2026-07-26 — HUMAN ERROR COPY ─────────────────
+            // The old text led with internal metering mechanics and never told
+            // the user what happened to the message they had just typed. It
+            // also read as a hard failure, which is how a temporary billing
+            // state came across as "Sarah is broken".
+            $agentName = $agent->name ?: 'Sarah';
             \Illuminate\Support\Facades\DB::table('agent_messages')->insert([
-                'workspace_id' => $wsId,
-                'agent_slug' => $slug,
-                'sender' => 'user',
-                'content' => $content,
-                'role' => 'user',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'workspace_id'  => $wsId,
+                'agent_slug'    => $slug,
+                'sender'        => $agentName,
+                'content'       => "I can't reply just yet — this workspace is out of credits. "
+                                 . "Your message is saved, so top up and I'll pick straight up from here.",
+                'role'          => 'agent',
+                'metadata_json' => json_encode(['phase' => 'final', 'error' => true, 'reason' => 'insufficient_credits']),
+                'created_at'    => now(),
+                'updated_at'    => now(),
             ]);
-        } catch (\Throwable $e) { /* table may not exist yet */ }
+
+            return response()->json([
+                'success' => false,
+                'error'   => "This workspace is out of credits, so {$agentName} can't reply right now. "
+                           . "Your message has been saved — add credits and she'll continue from where you left off.",
+                'reason'            => 'insufficient_credits',
+                'message_saved'     => true,
+                'required_credits'  => 1,
+                'chat_counter'      => $_meter['counter'],
+                'action_label'      => 'Top up credits',
+            ], 402);
+        }
+
+        // (user message + audit row are persisted above, before metering)
+
 
         // ── v1.4.4 (2026-05-30) — Two-phase response (ChatGPT-style ack) ──
         // Generate an instant heuristic acknowledgment ("Got it — pulling
@@ -3496,6 +3528,23 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         }
 
         return response()->json(['total' => $total, 'by_agent' => $byAgent]);
+    });
+
+    // 2026-07-26 (chat forensic) — D6: there was no way to clear the whole
+    // workspace. The floater badge sums unread across every agent, so a user
+    // who only ever opens Sarah could never get the badge to zero. This is the
+    // "mark all as read" primitive every messaging product has.
+    Route::post('/messages/read-all', function (\Illuminate\Http\Request $r) {
+        $wsId = $r->attributes->get('workspace_id');
+        $n = 0;
+        try {
+            $n = \Illuminate\Support\Facades\DB::table('agent_messages')
+                ->where('workspace_id', $wsId)
+                ->where('role', 'agent')
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
+        } catch (\Throwable $e) {}
+        return response()->json(['marked' => true, 'count' => $n]);
     });
 
     Route::post('/messages/{slug}/read', function (\Illuminate\Http\Request $r, $slug) {
@@ -10247,6 +10296,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
         // Video job polling
         Route::get('/assets/{id}/poll', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->pollVideoJob((int) $id)));
+
+        // STUDIO888 Phase O — masked/local prompt edit (through the kernel: credit
+        // reserve/commit/release + idempotency + workspace scoping). Creates a
+        // non-destructive child version; the original is never overwritten.
+        Route::post('/edit', function (\Illuminate\Http\Request $r) use ($exec) {
+            return response()->json(app($exec)->execute(
+                $r->attributes->get('workspace_id'), 'creative', 'edit_image', $r->all(),
+                ['user_id' => $r->user()?->id, 'source' => 'manual']
+            ));
+        })->middleware('throttle:20,1');
+
+        // STUDIO888 Phase O — version tree for an asset (original + all edits).
+        Route::get('/assets/{id}/versions', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getAssetVersions($r->attributes->get('workspace_id'), (int) $id)));
 
         // Asset CRUD
         Route::get('/assets', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAssets($r->attributes->get('workspace_id'), $r->all())));

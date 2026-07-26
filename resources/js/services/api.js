@@ -125,6 +125,9 @@ export const creative = {
   getAsset:      (id)    => api.get(`/creative/assets/${id}`),
   generateImage: (d)     => api.post('/creative/generate/image',  d),
   generateVideo: (d)     => api.post('/creative/generate/video',  d),
+  // STUDIO888 Phase O — masked/local prompt edit → non-destructive child version.
+  editImage:     (d)     => api.post('/creative/edit',            d),
+  assetVersions: (id)    => api.get(`/creative/assets/${id}/versions`),
   pollVideo:     (id)    => api.get(`/creative/assets/${id}/poll`),
   brand:         ()      => api.get('/creative/brand'),
   updateBrand:   (d)     => api.put('/creative/brand',            d),

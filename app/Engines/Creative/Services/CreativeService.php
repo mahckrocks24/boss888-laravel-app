@@ -556,6 +556,182 @@ class CreativeService
         ]);
     }
 
+    /**
+     * STUDIO888 Phase O — full version tree for an asset (original + all edits),
+     * ordered oldest→newest. Tenancy-scoped. Used by the editor's version rail.
+     */
+    public function getAssetVersions(int $wsId, int $assetId): array
+    {
+        $anchor = DB::table('assets')->where('id', $assetId)->where('workspace_id', $wsId)->first();
+        if (! $anchor) return ['versions' => [], 'root_asset_id' => null];
+        $rootId = (int) ($anchor->root_asset_id ?: $anchor->id);
+        $rows = DB::table('assets')
+            ->where('workspace_id', $wsId)->whereNull('deleted_at')
+            ->where(fn ($q) => $q->where('root_asset_id', $rootId)->orWhere('id', $rootId))
+            ->orderBy('version')->orderBy('id')->get()->toArray();
+        return $this->sanitize(['versions' => $rows, 'root_asset_id' => $rootId]);
+    }
+
+    /**
+     * STUDIO888 Phase O — masked / local prompt-based image editing.
+     *
+     * NON-DESTRUCTIVE: never overwrites the source; always creates a child
+     * asset (parent_asset_id / root_asset_id / version / edit_mode). Real local
+     * inpainting via ImageEditService → OpenAI gpt-image-1 /v1/images/edits.
+     * Tenancy is enforced here (source must belong to $wsId). Billing +
+     * idempotency are owned by EngineExecutionService (edit_image capability).
+     *
+     * @param array $params source_asset_id, prompt, selection_type(mask|rectangle|full),
+     *                       region{x,y,w,h normalized}, mask_base64, edit_mode
+     */
+    public function editImage(int $wsId, array $params): array
+    {
+        $sourceId = (int) ($params['source_asset_id'] ?? 0);
+        $prompt   = trim((string) ($params['prompt'] ?? ''));
+        if ($sourceId <= 0) return ['success' => false, 'error' => 'A source image is required.'];
+        if ($prompt === '') return ['success' => false, 'error' => 'Describe the change you want to make.'];
+
+        // ── Tenancy: the source asset MUST belong to this workspace ──
+        $src = DB::table('assets')->where('id', $sourceId)
+            ->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $src) return ['success' => false, 'error' => 'Image not found in this workspace.', 'code' => 'NOT_FOUND'];
+        if (($src->type ?? '') !== 'image') return ['success' => false, 'error' => 'Only images can be edited.'];
+        if (($src->status ?? '') !== 'completed') return ['success' => false, 'error' => 'This image is not ready to edit yet.'];
+
+        // ── Idempotency: a repeated submit with the same key returns the SAME
+        // child version instead of creating (and re-generating) a duplicate.
+        // Guards against double-clicks / retries at the data layer. (The editor
+        // also disables submit while generating; concurrent-duplicate credit
+        // dedup on the sync kernel path is a tracked follow-up.)
+        $idemKey = isset($params['idempotency_key']) ? (string) $params['idempotency_key'] : null;
+        if ($idemKey !== null && $idemKey !== '') {
+            $dupe = DB::table('assets')->where('workspace_id', $wsId)
+                ->where('parent_asset_id', (int) $src->id)->whereNull('deleted_at')
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.idempotency_key')) = ?", [$idemKey])
+                ->first();
+            if ($dupe) {
+                return $this->sanitize([
+                    'success' => true, 'status' => 'completed', 'idempotent_replay' => true,
+                    'id' => (int) $dupe->id, 'asset_id' => (int) $dupe->id, 'url' => $dupe->url, 'type' => 'image',
+                    'parent_asset_id' => (int) $dupe->parent_asset_id, 'root_asset_id' => (int) $dupe->root_asset_id,
+                    'version' => (int) $dupe->version, 'edit_mode' => $dupe->edit_mode,
+                ]);
+            }
+        }
+
+        // ── Load source bytes (local storage first, then its URL) ──
+        $bytes = null;
+        if (! empty($src->storage_path)) {
+            try {
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($src->storage_path)) {
+                    $bytes = \Illuminate\Support\Facades\Storage::disk('public')->get($src->storage_path);
+                }
+            } catch (\Throwable) {}
+        }
+        if ($bytes === null && ! empty($src->url)) {
+            try { $bytes = @file_get_contents($src->url); } catch (\Throwable) {}
+        }
+        if (! $bytes) return ['success' => false, 'error' => 'The original image could not be loaded.'];
+
+        // ── Normalise selection ──
+        $stype = $params['selection_type'] ?? 'full';
+        if (! in_array($stype, ['mask', 'rectangle', 'full'], true)) $stype = 'full';
+        $selection = [
+            'type'        => $stype,
+            'mask_base64' => $params['mask_base64'] ?? null,
+            'region'      => $params['region'] ?? null,
+        ];
+
+        // ── Provider call (OpenAI inpainting, Laravel-direct) ──
+        $edit = app(\App\Engines\Creative\Services\ImageEditService::class)->inpaint($bytes, $selection, $prompt);
+        if (! ($edit['success'] ?? false)) {
+            // Returning success=false makes EngineExecutionService RELEASE the
+            // reserved credit — the customer is never charged for a failed edit.
+            return ['success' => false, 'error' => $this->humaniseEditError($edit['error'] ?? 'edit_failed')];
+        }
+
+        // ── Persist edited bytes → public storage URL (same path scheme as generation) ──
+        $filename    = md5($prompt . microtime(true) . random_int(0, PHP_INT_MAX)) . '.png';
+        $storagePath = 'ai-images/' . $wsId . '/' . $filename;
+        try {
+            \Illuminate\Support\Facades\Storage::disk('public')->put($storagePath, $edit['bytes']);
+            $url = \Illuminate\Support\Facades\Storage::disk('public')->url($storagePath);
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => 'The edited image could not be saved.'];
+        }
+
+        // ── Non-destructive child version ──
+        $rootId      = (int) ($src->root_asset_id ?: $src->id);
+        $maxVersion  = (int) DB::table('assets')
+            ->where(fn ($q) => $q->where('root_asset_id', $rootId)->orWhere('id', $rootId))
+            ->max('version');
+        $nextVersion = max(1, $maxVersion) + 1;
+        $editMode    = $params['edit_mode'] ?? ($stype === 'full' ? 'edit_full' : ($stype === 'mask' ? 'edit_mask' : 'edit_region'));
+
+        $childId = DB::table('assets')->insertGetId([
+            'workspace_id'    => $wsId,
+            'type'            => 'image',
+            'title'           => mb_substr('Edit — ' . $prompt, 0, 250),
+            'prompt'          => mb_substr($prompt, 0, 250),
+            'provider'        => 'LevelUp AI',
+            'model'           => 'LevelUp AI',
+            'status'          => 'completed',
+            'url'             => $url,
+            'storage_path'    => $storagePath,
+            'mime_type'       => 'image/png',
+            'width'           => $edit['width'] ?? null,
+            'height'          => $edit['height'] ?? null,
+            'parent_asset_id' => $src->id,
+            'root_asset_id'   => $rootId,
+            'version'         => $nextVersion,
+            'edit_mode'       => $editMode,
+            'metadata_json'   => json_encode([
+                'original_prompt' => $prompt,
+                'edit'            => true,
+                'edit_mode'       => $editMode,
+                'selection_type'  => $stype,
+                'region'          => $params['region'] ?? null,
+                'has_mask'        => $stype === 'mask',
+                'source_asset_id' => (int) $src->id,
+                'provider_size'   => $edit['size'] ?? null,
+                'provider_usage'  => $edit['usage'] ?? [],
+                'idempotency_key' => $idemKey,
+            ]),
+            'tags_json'       => json_encode(['edit']),
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        return $this->sanitize([
+            'success'         => true,
+            'status'          => 'completed',
+            'id'              => $childId,
+            'asset_id'        => $childId,
+            'url'             => $url,
+            'type'            => 'image',
+            'parent_asset_id' => (int) $src->id,
+            'root_asset_id'   => $rootId,
+            'version'         => $nextVersion,
+            'edit_mode'       => $editMode,
+            'width'           => $edit['width'] ?? null,
+            'height'          => $edit['height'] ?? null,
+        ]);
+    }
+
+    /** Map raw ImageEditService error codes to customer-safe messages. */
+    private function humaniseEditError(string $code): string
+    {
+        return match (true) {
+            str_contains($code, 'no OpenAI key')        => 'Image editing is temporarily unavailable.',
+            str_contains($code, 'prompt_required')      => 'Describe the change you want to make.',
+            str_contains($code, 'source_decode')        => 'The original image could not be read.',
+            str_contains($code, 'mask_build')           => 'The selected region was invalid — try selecting again.',
+            str_contains($code, 'provider_connection')  => 'The image editor timed out. Please try again.',
+            str_contains($code, 'provider_error')       => 'The edit could not be completed. Try a simpler instruction or a different area.',
+            default                                     => 'The edit could not be completed. Please try again.',
+        };
+    }
+
     private function resolveSize(string $ratio): string
     {
         return match ($ratio) {

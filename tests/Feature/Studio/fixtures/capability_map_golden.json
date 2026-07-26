@@ -566,6 +566,13 @@
         "approval_mode": "review",
         "credit_cost": 8
     },
+    "edit_image": {
+        "engine": "creative",
+        "connector": "creative",
+        "action": "edit_image",
+        "approval_mode": "auto",
+        "credit_cost": 2
+    },
     "create_website": {
         "engine": "builder",
         "connector": null,

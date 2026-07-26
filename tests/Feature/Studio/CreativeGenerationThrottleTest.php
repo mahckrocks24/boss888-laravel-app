@@ -23,6 +23,9 @@ class CreativeGenerationThrottleTest extends TestCase
     private const TARGETS = [
         'api/creative/generate/image',
         'api/creative/generate/video',
+        // STUDIO888 Phase O — masked/local image edit is an interactive,
+        // credit-charged generation route and carries the same throttle.
+        'api/creative/edit',
         'api/studio/ai/generate-image',
         'api/studio/ai/generate-design',
     ];
