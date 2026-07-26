@@ -23,4 +23,14 @@ return [
     */
     'prompt_compiler_shadow' => env('STUDIO_PROMPT_COMPILER_SHADOW', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Prompt Guardrails shadow mode (Phase K)
+    |--------------------------------------------------------------------------
+    | Default ON. Deterministic structural analysis of the compiler output,
+    | persisted to creative_jobs.metadata.guardrails. Observational only — never
+    | blocks, modifies, or rejects a prompt. OFF ⇒ no evaluation; execution identical.
+    */
+    'prompt_guardrails_shadow' => env('STUDIO_PROMPT_GUARDRAILS_SHADOW', true),
+
 ];
