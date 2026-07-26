@@ -643,7 +643,18 @@ class CreativeService
         ];
 
         // ── Provider call (OpenAI inpainting, Laravel-direct) ──
-        $edit = app(\App\Engines\Creative\Services\ImageEditService::class)->inpaint($bytes, $selection, $prompt);
+        // gpt-image-1 edits are GENERATIVE (they concentrate the change in the
+        // mask but can subtly re-render outside it). Proven in Phase O testing:
+        // spatially-scoped prompt language markedly improves mask adherence, so
+        // for a masked/region edit we append an explicit scope instruction. The
+        // customer's original prompt is what we store/title; this suffix only
+        // shapes the provider request. (Full-image edits get no suffix.)
+        $providerPrompt = $prompt;
+        if ($stype !== 'full') {
+            $providerPrompt = rtrim($prompt, '. ')
+                . '. Apply this change ONLY within the selected area; keep everything outside the selection unchanged.';
+        }
+        $edit = app(\App\Engines\Creative\Services\ImageEditService::class)->inpaint($bytes, $selection, $providerPrompt);
         if (! ($edit['success'] ?? false)) {
             // Returning success=false makes EngineExecutionService RELEASE the
             // reserved credit — the customer is never charged for a failed edit.
