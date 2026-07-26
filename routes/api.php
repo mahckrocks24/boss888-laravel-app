@@ -10300,11 +10300,55 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // STUDIO888 Phase O — masked/local prompt edit (through the kernel: credit
         // reserve/commit/release + idempotency + workspace scoping). Creates a
         // non-destructive child version; the original is never overwritten.
+        //
+        // EXACTLY-ONCE under concurrency: the kernel only enforces idempotency on
+        // the ASYNC task path, so two same-key requests could otherwise both
+        // reserve+dispatch (double charge). We serialise same-key edits with a
+        // MySQL named lock BEFORE the kernel charges: the winner runs once; a
+        // racing duplicate waits, then returns the already-created child (no
+        // second reserve/dispatch/commit). Different keys never contend.
         Route::post('/edit', function (\Illuminate\Http\Request $r) use ($exec) {
-            return response()->json(app($exec)->execute(
-                $r->attributes->get('workspace_id'), 'creative', 'edit_image', $r->all(),
-                ['user_id' => $r->user()?->id, 'source' => 'manual']
-            ));
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $key  = trim((string) $r->input('idempotency_key', ''));
+            $src  = (int) $r->input('source_asset_id', 0);
+            $run  = fn () => app($exec)->execute($wsId, 'creative', 'edit_image', $r->all(),
+                ['user_id' => $r->user()?->id, 'source' => 'manual']);
+
+            if ($key === '') {
+                return response()->json($run()); // opted out of idempotency
+            }
+
+            $lock = 'studio_edit:' . $wsId . ':' . $src . ':' . md5($key);
+            $db   = \Illuminate\Support\Facades\DB::connection();
+            $existing = function () use ($wsId, $src, $key) {
+                $row = \Illuminate\Support\Facades\DB::table('assets')
+                    ->where('workspace_id', $wsId)->where('parent_asset_id', $src)->whereNull('deleted_at')
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.idempotency_key')) = ?", [$key])
+                    ->first();
+                return $row ? ['success' => true, 'status' => 'completed', 'idempotent_replay' => true, 'data' => [
+                    'id' => (int) $row->id, 'asset_id' => (int) $row->id, 'url' => $row->url,
+                    'parent_asset_id' => (int) $row->parent_asset_id, 'root_asset_id' => (int) $row->root_asset_id,
+                    'version' => (int) $row->version, 'edit_mode' => $row->edit_mode, 'type' => 'image',
+                ]] : null;
+            };
+
+            // Fast path: already done.
+            if ($hit = $existing()) return response()->json($hit);
+
+            $got = (int) $db->selectOne('SELECT GET_LOCK(?, 45) AS l', [$lock])->l;
+            if ($got !== 1) {
+                // Couldn't acquire in time — an identical edit is almost certainly
+                // in flight. Deterministic, non-charging conflict response.
+                if ($hit = $existing()) return response()->json($hit);
+                return response()->json(['success' => false, 'status' => 'in_progress',
+                    'error' => 'An identical edit is already being processed.'], 409);
+            }
+            try {
+                if ($hit = $existing()) return response()->json($hit); // winner finished while we waited
+                return response()->json($run());
+            } finally {
+                $db->selectOne('SELECT RELEASE_LOCK(?) AS r', [$lock]);
+            }
         })->middleware('throttle:20,1');
 
         // STUDIO888 Phase O — version tree for an asset (original + all edits).
