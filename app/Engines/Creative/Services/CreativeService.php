@@ -413,6 +413,30 @@ class CreativeService
         return $row ? $this->sanitize((array) $row) : null;
     }
 
+    /**
+     * STUDIO888 Phase P — resolve a Studio image element's URL back to the
+     * creative asset it came from, so "AI Edit" can open on a selected Studio
+     * image. Tenancy-scoped (workspace-owned images only). Returns the minimal
+     * shape the AI editor needs, or null when the image is not an editable
+     * creative raster asset (e.g. an upload or an external URL).
+     */
+    public function resolveAssetByUrl(int $wsId, string $url): ?array
+    {
+        $url = trim($url);
+        if ($url === '') return null;
+        $row = DB::table('assets')
+            ->where('workspace_id', $wsId)->where('type', 'image')
+            ->where('status', 'completed')->whereNull('deleted_at')
+            ->where('url', $url)
+            ->orderByDesc('id')->first(['id', 'url', 'width', 'height', 'parent_asset_id', 'root_asset_id', 'version']);
+        if (! $row) return null;
+        return [
+            'id' => (int) $row->id, 'url' => $row->url,
+            'width' => $row->width, 'height' => $row->height, 'type' => 'image', 'status' => 'completed',
+            'parent_asset_id' => $row->parent_asset_id, 'root_asset_id' => $row->root_asset_id, 'version' => $row->version,
+        ];
+    }
+
     public function listAssets(int $wsId, array $filters = []): array
     {
         $q = DB::table('assets')->where('workspace_id', $wsId)->whereNull('deleted_at');

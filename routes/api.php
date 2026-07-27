@@ -10354,6 +10354,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // STUDIO888 Phase O — version tree for an asset (original + all edits).
         Route::get('/assets/{id}/versions', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getAssetVersions($r->attributes->get('workspace_id'), (int) $id)));
 
+        // STUDIO888 Phase P — resolve a Studio image URL → its creative asset,
+        // so "AI Edit" can open on a selected Studio image (tenancy-scoped).
+        Route::get('/resolve-asset', fn(\Illuminate\Http\Request $r) => response()->json(['asset' => app($s)->resolveAssetByUrl($r->attributes->get('workspace_id'), (string) $r->query('url', ''))]));
+
         // Asset CRUD
         Route::get('/assets', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAssets($r->attributes->get('workspace_id'), $r->all())));
         Route::get('/assets/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getAsset($r->attributes->get('workspace_id'), (int) $id)));
