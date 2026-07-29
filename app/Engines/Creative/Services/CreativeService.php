@@ -120,25 +120,44 @@ class CreativeService
             throw new \InvalidArgumentException('Prompt required');
         }
 
-        $bp             = $this->blueprint->getImageBlueprint($wsId, $prompt, $params);
-        $enhancedPrompt = $bp['enhanced_prompt'];
-
-        // Wave 61 — Append a strong no-text directive. DALL-E / GPT Image
-        // routinely add garbled fake text unless explicitly told not to.
-        // Applied centrally so every caller (Sarah chain, WP connector,
-        // blog-editor button, AEO enrichment) inherits it.
-        $noTextRule = ' Strict rule: NO TEXT, NO WORDS, NO LETTERS, NO NUMBERS, '
-                    . 'NO LOGOS, NO WATERMARKS, NO CAPTIONS, NO TYPOGRAPHY of any kind. '
-                    . 'Pure visual composition only — no readable characters anywhere '
-                    . 'in the image.';
-        if (stripos($enhancedPrompt, 'no text') === false) {
-            $enhancedPrompt = rtrim($enhancedPrompt, '. ') . '.' . $noTextRule;
-        }
+        // CANONICAL IMAGE INTELLIGENCE (2026-07-28) — replaces the old
+        // string-concat getImageBlueprint() + global Wave-61 NO-TEXT rule.
+        // Arthur now reasons (platform, audience, brand, history, typography)
+        // and returns a structured ImageBlueprint; typography is decided
+        // per-request (none / separate_overlay / baked_in) instead of always
+        // stripping text. Same intelligence the Studio path uses.
+        $plan     = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->plan([
+            'source'      => $params['source'] ?? ($articleId ? 'blog' : 'creative'),
+            'platform'    => $params['platform'] ?? null,
+            'asset_type'  => $params['asset_type'] ?? ($articleId ? 'featured_image' : 'social_post'),
+            'workspace_id'=> $wsId,
+            'article_id'  => $articleId,
+            'user_prompt' => $prompt,
+            'requested_dimensions' => $params['dimensions'] ?? null,
+            'requested_quality'    => $params['quality'] ?? 'auto',
+            'include_text_preference' => $params['include_text_preference'] ?? 'auto',
+            'style'       => $params['style'] ?? 'natural',
+        ]);
+        $blueprint      = $plan['blueprint'];
+        $compiled       = $plan['compiled'];
+        $enhancedPrompt = $compiled['provider_prompt'];
 
         $asset   = $this->createAsset($wsId, array_merge($params, [
-            'type'     => 'image',
-            'prompt'   => $enhancedPrompt,
-            'metadata' => ['original_prompt' => $prompt, 'enhanced' => true],
+            'type'         => 'image',
+            'prompt'       => $enhancedPrompt,
+            'aspect_ratio' => $blueprint['aspect_ratio'] ?? ($params['aspect_ratio'] ?? '1:1'),
+            'quality'      => $compiled['quality'],
+            'metadata'     => [
+                'original_prompt' => $prompt,
+                'enhanced'        => true,
+                'reasoning_model' => $plan['reasoning']['model'] ?? null,
+                'reasoning_fallback' => $plan['reasoning']['fallback'] ?? false,
+                'platform'        => $blueprint['platform'] ?? null,
+                'asset_type'      => $blueprint['asset_type'] ?? null,
+                'typography_mode' => $compiled['typography']['mode'] ?? 'none',
+                'typography_overlay' => $compiled['overlay'],
+                'blueprint'       => $blueprint,
+            ],
         ]));
         $assetId = $asset['asset_id'];
 
@@ -146,8 +165,10 @@ class CreativeService
             DB::table('assets')->where('id', $assetId)->update(['status' => 'generating', 'updated_at' => now()]);
 
             $result = $this->connector->generateImage($enhancedPrompt, [
-                'size'         => $this->resolveSize($params['aspect_ratio'] ?? '1:1'),
-                'quality'      => $params['quality'] ?? 'standard',
+                // Canonical size/quality from the ImageBlueprint (was hardcoded
+                // resolveSize + 'standard'). Quality now preserved end-to-end.
+                'size'         => $compiled['size'],
+                'quality'      => $compiled['quality'],
                 'style'        => $params['style'] ?? 'natural',
                 // 2026-07-02 F2 — thread the known workspace_id all the way to the
                 // runtime storage path so images stop landing in the shared
@@ -156,6 +177,23 @@ class CreativeService
             ]);
 
             if ($result['success']) {
+                // Typography compositing (separate_overlay) — same canonical
+                // fidelity path as the Studio flow: render the captured copy
+                // onto the text-free background as REAL typography. Mutating
+                // $result flows the finished image into completeAsset, article
+                // persistence and the return. (mode 'none' => untouched.)
+                if (($compiled['typography']['mode'] ?? '') === 'separate_overlay'
+                    && !empty($compiled['overlay']) && !empty($result['storage_path'])) {
+                    $ov = app(\App\Core\ImageIntelligence\ImageOverlayRenderer::class)->render(
+                        $result['storage_path'], $compiled['overlay'],
+                        (int) ($result['width'] ?? 1024), (int) ($result['height'] ?? 1024), $wsId
+                    );
+                    if (!empty($ov['success'])) {
+                        $result['background_url'] = $result['url'];
+                        $result['url']            = $ov['url'];
+                        $result['storage_path']   = $ov['storage_path'];
+                    }
+                }
                 $this->completeAsset($assetId, [
                     'url'          => $result['url'],
                     'storage_path' => $result['storage_path'] ?? null,
