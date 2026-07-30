@@ -62,7 +62,7 @@ class SarahCreativeImageLifecycleTest extends TestCase
         $rt = \Mockery::mock(RuntimeClient::class)->makePartial();
         $rt->shouldReceive('isConfigured')->andReturn(true);
         $rt->shouldReceive('aiRun')->andReturn(['text' => '']);
-        $rt->shouldReceive('chatJson')->never(); // image path invokes NO LLM enhancer
+        $rt->shouldReceive('chatJson')->andReturn(['success' => false, 'error' => 'test_forces_fallback']); // WP2.1B: image path now attempts reasoning (returns failure -> deterministic fallback)
         $rt->shouldReceive('imageGenerate')->andReturnUsing(function ($prompt, $opts) use ($success, $error) {
             $this->imageCalls++;
             $this->capturedPrompt = $prompt;
@@ -216,7 +216,7 @@ class SarahCreativeImageLifecycleTest extends TestCase
         app(Orchestrator::class)->execute($task);
 
         // Subject + exact quoted text preserved; no stage mutated/invented anything;
-        // exactly one provider dispatch; chatJson (LLM enhancer) never called (mock ->never()).
+        // exactly one provider dispatch; chatJson (LLM reasoner) called once, returns failure -> fallback (WP2.1B).
         $this->assertSame('A red bicycle beside the "Blue Door" cafe', $this->capturedPrompt);
         $this->assertSame(1, $this->imageCalls);
     }

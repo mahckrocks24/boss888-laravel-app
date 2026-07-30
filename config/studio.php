@@ -57,4 +57,31 @@ return [
     */
     'prompt_compiler_v2_shadow' => env('STUDIO_PROMPT_COMPILER_V2_SHADOW', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Image Intelligence canonical-reasoning gate (CRP-001 WP2 Phase 2.1)
+    |--------------------------------------------------------------------------
+    | Added 2026-07-30 for the D3 image-reasoning migration (CRP-001 WP2).
+    | Convention mirrors config/ai_provenance.php: EXECUTION-CONTROLLING flag,
+    | default OFF so it lands without changing a byte of production behaviour;
+    | flipping the flag is also the rollback (no deploy, no migration).
+    |
+    | SEMANTICS (declared, not silent): when Phase 2.1 wires this at the
+    | not-yet-migrated Studio image entry points — the `studio/generate_image`
+    | ACTION (currently StudioAiService string-wrap) and the
+    | generateThroughBlueprint('*','image') branch (currently getImageBlueprint
+    | string-concat, then ImageIntelligence — a double stage) — then:
+    |     true  ⇒ those paths reason once through ImageIntelligence (canonical)
+    |     false ⇒ those paths keep their current legacy/ double behaviour
+    |
+    | SCOPE NOTE: CreativeService::generateImage is already unconditionally
+    | canonical (WP2.0 commit 806b95d) and is NOT governed by this flag; this
+    | flag governs only the entry points Phase 2.1 migrates.
+    |
+    | PHASE 2.1A STATUS: this flag is DEFINED and TESTED but NOT YET CONSUMED by
+    | any production code path. It has zero runtime effect until Phase 2.1 wires
+    | it. Default OFF preserves current production behaviour.
+    */
+    'image_intelligence_enabled' => env('STUDIO_IMAGE_INTELLIGENCE_ENABLED', false),
+
 ];

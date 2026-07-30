@@ -39,27 +39,37 @@ class ImageReasoningService
 
         [$system, $user] = $this->buildPrompt($context);
 
-        $res = $this->runtime->chatJson($system, $user, [], 1400);
-        $parsed = $res['parsed'] ?? ($res['data'] ?? null);
+        // Robustness (WP2 Phase 2.1B): the reasoning call must NEVER break image
+        // generation. isConfigured + returned-failure already fall back; this
+        // try/catch also guarantees that ANY throw from chatJson/parsing (not
+        // just the ConnectionException chatJson handles internally) degrades to
+        // the documented deterministic fallback rather than propagating.
+        try {
+            $res = $this->runtime->chatJson($system, $user, [], 1400);
+            $parsed = $res['parsed'] ?? ($res['data'] ?? null);
 
-        if (empty($res['success']) || !is_array($parsed)) {
-            Log::warning('[ImageIntelligence] reasoning call failed', ['res' => $res]);
-            return $this->fallback($context, 'reasoning_failed:' . ($res['error'] ?? 'no_parsed'));
+            if (empty($res['success']) || !is_array($parsed)) {
+                Log::warning('[ImageIntelligence] reasoning call failed', ['res' => $res]);
+                return $this->fallback($context, 'reasoning_failed:' . ($res['error'] ?? 'no_parsed'));
+            }
+
+            $bp = $this->normalizeAndValidate($parsed, $context);
+            if ($bp === null) {
+                Log::warning('[ImageIntelligence] blueprint schema invalid', ['parsed' => $parsed]);
+                return $this->fallback($context, 'schema_invalid');
+            }
+
+            return [
+                'success'           => true,
+                'blueprint'         => $bp,
+                'reasoning_summary' => mb_substr((string) ($parsed['reasoning_summary'] ?? $bp['intent']), 0, 400),
+                'model'             => $res['model'] ?? 'runtime-chat',
+                'fallback'          => false,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('[ImageIntelligence] reasoning threw; degrading to fallback', ['error' => $e->getMessage()]);
+            return $this->fallback($context, 'reasoning_threw');
         }
-
-        $bp = $this->normalizeAndValidate($parsed, $context);
-        if ($bp === null) {
-            Log::warning('[ImageIntelligence] blueprint schema invalid', ['parsed' => $parsed]);
-            return $this->fallback($context, 'schema_invalid');
-        }
-
-        return [
-            'success'           => true,
-            'blueprint'         => $bp,
-            'reasoning_summary' => mb_substr((string) ($parsed['reasoning_summary'] ?? $bp['intent']), 0, 400),
-            'model'             => $res['model'] ?? 'runtime-chat',
-            'fallback'          => false,
-        ];
     }
 
     /** Build the reasoning system + user prompts from the context. */
