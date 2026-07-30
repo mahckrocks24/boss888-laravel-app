@@ -207,6 +207,13 @@ class ImageReasoningService
         $isSeo = in_array(($c['source'] ?? ''), ['seo','blog'], true) || ($c['asset_type'] ?? '') === 'featured_image';
         [$w, $h, $ar] = $this->snapDimensions(0, 0, $isSeo ? 'landscape' : 'portrait', $c);
 
+        // WP2 Phase 2.1D-B — even the deterministic fallback honours the resolved
+        // (and request-overridden) brand palette, so brand is never lost when the
+        // LLM is unavailable.
+        $brand     = is_array($c['brand'] ?? null) ? $c['brand'] : [];
+        $colors    = array_values(array_filter((array) ($brand['colors'] ?? [])));
+        $brandLine = $colors ? ' Use the brand colour palette: ' . implode(', ', array_slice($colors, 0, 4)) . '.' : '';
+
         $bp = [
             'intent'     => 'Deterministic fallback (reasoning unavailable): ' . $why,
             'subject'    => $prompt !== '' ? $prompt : 'brand-neutral marketing visual',
@@ -220,12 +227,14 @@ class ImageReasoningService
             'visual_hierarchy' => 'subject dominant; clean supporting background',
             'lighting'   => 'soft professional lighting',
             'mood'       => 'professional, trustworthy',
-            'color_palette' => [],
-            'brand_application' => 'no brand context available',
+            'color_palette' => $colors,
+            'brand_application' => $colors
+                ? ('Brand palette applied: ' . implode(', ', array_slice($colors, 0, 3)) . (!empty($brand['voice']) ? '; voice: ' . $brand['voice'] : ''))
+                : 'no brand context available',
             'historical_or_factual_constraints' => [],
             'negative_constraints' => ['no text', 'no watermark', 'no logos'],
             'typography_strategy' => ['mode' => 'none', 'reason' => 'fallback path — text handled by design layer', 'headline' => '', 'supporting_copy' => [], 'placement' => '', 'style' => ''],
-            'provider_prompt' => 'Professional, high-quality marketing visual of ' . ($prompt !== '' ? $prompt : 'an on-brand scene') . '. Clean composition, deliberate negative space, no text, no letters, no words, no logos, no watermark.',
+            'provider_prompt' => 'Professional, high-quality marketing visual of ' . ($prompt !== '' ? $prompt : 'an on-brand scene') . '.' . $brandLine . ' Clean composition, deliberate negative space, no text, no letters, no words, no logos, no watermark.',
             'quality'    => in_array(strtolower((string) ($c['requested_quality'] ?? '')), ['low','medium','high'], true) ? strtolower((string) $c['requested_quality']) : 'medium',
             'provider'   => 'openai',
             'model'      => 'gpt-image-1',

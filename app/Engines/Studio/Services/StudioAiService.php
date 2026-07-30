@@ -146,6 +146,26 @@ class StudioAiService
 
         $userPrompt = (string) ($params['prompt'] ?? '');
         if (trim($userPrompt) === '') return ['success' => false, 'error' => 'prompt_required'];
+
+        // WP2 Phase 2.1C — canonical routing gate (default OFF). ON: the Studio
+        // generate_image action reasons through the single ImageIntelligence
+        // pipeline instead of the legacy string-wrap below. OFF: unchanged.
+        if (config('studio.image_intelligence_enabled', false)) {
+            $out = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->generate([
+                'source'       => 'studio',
+                'workspace_id' => $wsId,
+                'user_prompt'  => $userPrompt,
+                'style'        => (string) ($params['style'] ?? 'natural'),
+                'platform'     => $params['platform'] ?? null,
+                'asset_type'   => $params['asset_type'] ?? 'social_post',
+                'requested_quality' => $params['quality'] ?? 'auto',
+            ]);
+            if (!empty($out['success'])) {
+                [$w, $h] = array_map('intval', array_pad(explode('x', (string) ($out['size'] ?? '1024x1024')), 2, 1024));
+                return ['success' => true, 'image_url' => $out['url'], 'width' => $w, 'height' => $h];
+            }
+            return ['success' => false, 'error' => $out['error'] ?? 'image_generation_failed', 'message' => $out['message'] ?? null];
+        }
         $style      = (string) ($params['style'] ?? 'cinematic');
 
         $styleAdd = match ($style) {

@@ -531,7 +531,12 @@ class CreativeService
             in_array($type, ['page', 'landing', 'page_copy'])               => $this->blueprint->getPageBlueprint($wsId, $context),
             in_array($type, ['outreach', 'follow_up', 'sales'])             => $this->blueprint->getOutreachBlueprint($wsId, $context),
             in_array($type, ['ad', 'ad_copy', 'paid'])                      => $this->blueprint->getAdBlueprint($wsId, $context),
-            $type === 'image'  => $this->blueprint->getImageBlueprint($wsId, $context['prompt'] ?? '', $context),
+            // WP2 Phase 2.1C gate (default OFF): ON => skip the legacy getImageBlueprint
+            // string-concat so generateImage reasons the RAW prompt ONCE via ImageIntelligence
+            // (eliminates the double stage). OFF => current legacy enrichment.
+            $type === 'image'  => (config('studio.image_intelligence_enabled', false)
+                ? ['type' => 'image', 'enhanced_prompt' => (string) ($context['prompt'] ?? ''), 'gated_canonical' => true]
+                : $this->blueprint->getImageBlueprint($wsId, $context['prompt'] ?? '', $context)),
             $type === 'video'  => $this->blueprint->getVideoBlueprint($wsId, $context['prompt'] ?? '', $context),
             default            => $this->blueprint->getContentBlueprint($wsId, $context),
         };

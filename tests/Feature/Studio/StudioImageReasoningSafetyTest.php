@@ -89,31 +89,30 @@ class StudioImageReasoningSafetyTest extends TestCase
 
     /**
      * PART 3 — BASELINE GAP (D2): ImageIntelligence currently sources brand via
-     * StudioService::getBrandKit and does NOT use the canonical
-     * WorkspaceBrandKitResolver. This test PINS the bypass. Phase 2.1 (WP3) must
-     * invert it: resolver called, getBrandKit not.
+     * StudioService::getBrandKit. WP2 Phase 2.1C (WP3) FIXES D2: ImageIntelligence
+     * now sources brand via the canonical WorkspaceBrandKitResolver; the direct
+     * getBrandKit bypass is removed. (Was the D2 baseline; now the conformance gate.)
      * @test
      */
-    public function image_intelligence_currently_bypasses_workspace_brand_resolver_D2_baseline(): void
+    public function image_intelligence_sources_brand_via_workspace_resolver_not_getBrandKit(): void
     {
         $this->bindFallbackRuntime();
 
-        $studio = \Mockery::mock(StudioService::class)->makePartial();
-        $studio->shouldReceive('getBrandKit')->atLeast()->once()
-               ->andReturn(['primary_color' => '#123456', 'heading_font' => 'Syne', 'body_font' => 'DM Sans']);
-        $this->app->instance(StudioService::class, $studio);
-
         $resolver = \Mockery::spy(WorkspaceBrandKitResolver::class);
+        $resolver->shouldReceive('resolve')->andReturn(['is_neutral' => true]);
         $this->app->instance(WorkspaceBrandKitResolver::class, $resolver);
+
+        $studio = \Mockery::spy(StudioService::class);
+        $this->app->instance(StudioService::class, $studio);
 
         app(ImageIntelligenceService::class)->plan([
             'source' => 'studio', 'platform' => 'linkedin', 'asset_type' => 'social_post',
             'workspace_id' => $this->testWorkspace->id, 'user_prompt' => 'brand test',
         ]);
 
-        // CURRENT (non-conformant) behaviour — the D2 bypass:
-        $studio->shouldHaveReceived('getBrandKit');
-        $resolver->shouldNotHaveReceived('resolve');
+        // CONFORMANT (D2 fixed): canonical resolver used; getBrandKit bypass removed.
+        $resolver->shouldHaveReceived('resolve');
+        $studio->shouldNotHaveReceived('getBrandKit');
         $this->addToAssertionCount(1);
     }
 

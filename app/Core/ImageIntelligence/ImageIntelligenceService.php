@@ -234,21 +234,37 @@ class ImageIntelligenceService
     private function resolveContext(array $c): array
     {
         $wsId = (int) ($c['workspace_id'] ?? 0);
-        // Brand intelligence input (best-effort; neutral if none).
+        // Brand intelligence input — WP2 Phase 2.1C/2.1D-B.
+        // PRECEDENCE (per-field): explicit request override (only fields supplied)
+        //   > workspace brand (canonical WorkspaceBrandKitResolver, ADR-0014)
+        //   > neutral fallback.
+        // The merge is field-level and non-destructive: absent/null overrides never
+        // erase workspace values; non-overridden workspace fields are retained
+        // exactly (no re-derivation). Workspace identity is never overridable
+        // (only brand fields are extracted). The two brand stores are NOT merged
+        // and stored kit data is never mutated (resolve() is read-only).
+        $overrides = $this->extractBrandOverrides($c);
         $brand = [];
         try {
-            $bk = app(\App\Engines\Studio\Services\StudioService::class)->getBrandKit($wsId);
-            $bk = $bk['brand_kit'] ?? $bk;
-            if (is_array($bk)) {
-                $colors = array_values(array_filter([
-                    $bk['primary_color'] ?? null, $bk['secondary_color'] ?? null, $bk['accent_color'] ?? null,
-                ]));
+            $kit     = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+            $branded = empty($kit['is_neutral']);
+            if ($branded || $overrides) {
+                // per-field: explicit override wins; else workspace value (branded
+                // only — a neutral workspace never leaks its neutral-default grays).
+                $val = function (string $kitKey) use ($kit, $overrides, $branded) {
+                    if (array_key_exists($kitKey, $overrides)) return $overrides[$kitKey];
+                    return $branded ? ($kit[$kitKey] ?? null) : null;
+                };
+                $colors = array_values(array_filter([$val('primary_color'), $val('secondary_color'), $val('accent_color')]));
                 $brand = array_filter([
+                    'brand_name'    => $val('brand_name'),
                     'colors'        => $colors,
-                    'heading_font'  => $bk['heading_font'] ?? null,
-                    'body_font'     => $bk['body_font'] ?? null,
-                    'logo_url'      => $bk['logo_url'] ?? null,
-                    'visual_style'  => $bk['visual_style'] ?? null,
+                    'heading_font'  => $val('heading_font'),
+                    'body_font'     => $val('body_font'),
+                    'logo_url'      => $val('logo_url'),
+                    'visual_style'  => $val('visual_style'),
+                    'voice'         => $val('voice'),
+                    'tone'          => $val('tone'),
                 ]);
             }
         } catch (\Throwable $e) { /* neutral brand */ }
@@ -262,6 +278,40 @@ class ImageIntelligenceService
             'include_text_preference' => 'auto',
             'language'    => 'en',
         ], $c, ['brand' => $brand, 'workspace_id' => $wsId]);
+    }
+
+    /**
+     * Extract EXPLICIT request-level brand overrides from the request context.
+     * Only present, non-empty, scalar brand fields are returned (normalized to
+     * kit keys). Never extracts workspace identity/ownership/authorization — only
+     * brand-composition fields — so overrides can never alter tenancy or isolation.
+     * Accepts flat keys, the `brand_color` alias, a nested `brand` object, and a
+     * `colors[]` array (→ primary/secondary/accent).
+     */
+    private function extractBrandOverrides(array $c): array
+    {
+        $direct = ['primary_color','secondary_color','accent_color','voice','tone',
+                   'heading_font','body_font','logo_url','brand_name','visual_style'];
+        $ov = [];
+        $put = function (string $key, $v) use (&$ov) {
+            if ($v !== null && $v !== '' && !is_array($v) && !array_key_exists($key, $ov)) $ov[$key] = $v;
+        };
+        $fromColors = function ($cols) use ($put) {
+            if (!is_array($cols)) return;
+            $cols = array_values($cols);
+            if (isset($cols[0])) $put('primary_color', $cols[0]);
+            if (isset($cols[1])) $put('secondary_color', $cols[1]);
+            if (isset($cols[2])) $put('accent_color', $cols[2]);
+        };
+        foreach ($direct as $k) if (array_key_exists($k, $c)) $put($k, $c[$k]);
+        if (array_key_exists('brand_color', $c)) $put('primary_color', $c['brand_color']); // alias
+        if (!empty($c['brand']) && is_array($c['brand'])) {
+            foreach ($direct as $k) if (array_key_exists($k, $c['brand'])) $put($k, $c['brand'][$k]);
+            if (array_key_exists('brand_color', $c['brand'])) $put('primary_color', $c['brand']['brand_color']);
+            $fromColors($c['brand']['colors'] ?? null);
+        }
+        $fromColors($c['colors'] ?? null);
+        return $ov;
     }
 
     private function estimateCost(string $size, string $quality, string $prompt): float
