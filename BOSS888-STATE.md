@@ -1,3 +1,972 @@
+# BOSS888 STATE
+
+## PHASE LEDGER — as at 2026-07-27
+
+| Phase | Status |
+|---|---|
+| P1 · P2-A · P2-B · P2-C | COMPLETE |
+| CR-22 (A+B) | COMPLETE |
+| ENTERPRISE888 E0 | COMPLETE |
+| ENTERPRISE888 E0.5 | COMPLETE |
+| ENTERPRISE888 E0.6 TECHNICAL | COMPLETE |
+| **ENTERPRISE888 E0.6 OPERATIONAL** | **DEFERRED (Development Exception EX-2026-001)** |
+| ENTERPRISE888 E1 BLUEPRINT | APPROVED 2026-07-27 |
+| ENTERPRISE888 E1 KICKOFF | APPROVED |
+| ENTERPRISE888 E1 — M0 Foundation | COMPLETE |
+| **ENTERPRISE888 E1 — M1 Overview + Health** | **COMPLETE 2026-07-27** |
+| ENTERPRISE888 E1 — M2..M6 | NOT STARTED |
+
+### ⚠️ EX-2026-001 — MFA gate deferred (temporary project exception)
+Administrator MFA enrolment + the 20-point verification are **deferred** by
+Platform Owner decision to prioritise implementation velocity.
+
+Safe for E1 because E1 is **read-only**, adds no privileged surface, and depends
+on neither MFA nor governance enforcement.
+
+**Binding boundaries (unchanged):** governance stays `bootstrap`/`shadow`; no
+enforcement may activate; Bella stays admin-only and MFA-closed; no production
+security control is weakened; the exception covers the IMPLEMENTATION gate only,
+**not** the production readiness gate.
+
+**Binding engineering deadline: before E5** — earlier than "before production
+launch". E5 is the first phase where an agent writes to production, and an agent
+mutating protected paths under an advisory lock (TD-14) with no MFA-verified
+approver is the combination that carries real risk. E1–E4 do not.
+
+**Side effect to be aware of:** Bella is currently inaccessible to *everyone*
+(0 of 2 admins enrolled). That is the fail-closed gate working correctly — but
+using Bella during development requires enrolment.
+
+**EX-2026-001 remains OPEN until enrolment and verification complete.**
+
+
+
+### ⏳ WAITING ON ONE HUMAN STEP
+Administrator id 1 (Mark) must complete MFA enrolment with a live authenticator.
+`TotpMfaService::confirm()` verifies a real TOTP code — it cannot be done
+server-side. Runbook: `ADMIN-MFA-ENROLLMENT-RUNBOOK.md`.
+
+**Nothing has been enrolled, simulated or fabricated.** Per-administrator status:
+
+| id | status |
+|---|---|
+| 1 (Mark) | **not enrolled** |
+| 990016 | **not enrolled** — validation identity, should stay that way (TD-21) |
+
+When Mark confirms, a 20-point verification runs against authoritative production
+state before E0.6 is closed.
+
+Enrolling Mark does **NOT** activate governance (eligible count 0→1, bar ≥2).
+
+### E1 BLUEPRINT DELIVERED (design only — no code)
+`ENTERPRISE888-E1-ARCHITECTURE-BLUEPRINT.md` — the permanent E1 specification.
+15 sections, 6 ADRs, truthfulness rules, 15 screen specs, TD re-evaluation,
+12 risks, 6 milestones, success + anti-criteria.
+
+**Three findings became architectural constraints:**
+1. `tasks` (2,436) is the CUSTOMER marketing engine — the screen is renamed
+   **Marketing Tasks**; engineering tasks are a separate model (ADR-002).
+2. Incidents have **THREE** sources, not two: `infra_incidents` (3 — all PTAA
+   monitor events about a *co-tenanted client app*), the markdown register
+   (5 real platform incidents), and `engineering_incidents` (0, E3). Merging
+   them would mislead in both directions (ADR-003).
+3. **7 of 15 screens have no data.** They ship as explicit not-built states with
+   why/phase/expected-evidence — never empty shells (§8).
+
+**ADR-001 reverses my earlier advice:** correlation-ID columns should land at the
+start of **E3**, not E1 — there is no functional need until something correlates,
+and E3 is the last responsible moment before backfill becomes impossible.
+
+**No implementation begins until the blueprint is formally approved.**
+
+### E1 PLAN READY (planning only — no code)
+`ENTERPRISE888-E1-IMPLEMENTATION-PLAN.md`.
+
+**Headline: 6 of the 14 requested screens have no data to show.** Runs, Workers,
+Reports, Deployments, Rollbacks have no model until E3/E5/E6; Providers has 0
+health rows. The plan builds **8 real screens** and marks the other 6 explicitly
+not-built rather than shipping empty shells — a hollow dashboard teaches you to
+distrust the whole section.
+
+Also flagged: `tasks` (2,436) is the CUSTOMER task engine, not engineering work,
+and must be labelled so; and one open question — whether to include an additive
+`audit_logs` correlation-column migration in E1 (recommended, but your call).
+
+
+## 2026-07-27 — ENTERPRISE888 E0.6 · TECHNICAL COMPLETE · MFA PENDING
+
+**E0.6 TECHNICAL: COMPLETE · E0.6 OPERATIONAL: PENDING HUMAN MFA ENROLMENT**
+
+### TD-19 CLOSED — all active route source is protected
+Protected patterns 5 → 8, files 16 → 19. Added `routes/web.php`,
+`routes/exec-api.php`, and — found by inspecting the real loading path rather
+than the two named files — `app/Engines/CRM/Http/Routes.php`.
+New `ProtectedPaths::unmanagedBackups()` detector. 0 unmanaged backups, 0 drift.
+
+### ⚠️ CORRECTION to the E0.5 warning
+I said enrolling the second admin would "activate governance platform-wide".
+**Both halves were wrong:**
+1. `mfa.stepup` is on **ONE** route —
+   `POST api/admin/infrastructure/providers/approvals/{aid}/approve`.
+2. Admin `id 990016` is `validation_only` **and** the hard-coded validation
+   identity, so it is excluded from eligibility **regardless of MFA**.
+
+**Enrolling Mark takes the eligible count 0 → 1. The bar is ≥ 2. Governance does
+NOT activate.** Only one enrolment is needed and it is low-risk.
+
+### MFA status (per administrator)
+| id | status |
+|---|---|
+| 1 (Mark) | **not enrolled** — enrol via `ADMIN-MFA-ENROLLMENT-RUNBOOK.md` |
+| 990016 | **not enrolled** — and should stay that way (validation identity) |
+
+Bella remains **safely closed** until Mark enrols.
+
+### New tech debt
+**TD-20** `app/Engines/CRM/Http/Routes.php` executes every boot but contributes
+0 live routes — `crm-01.php` shadows it. A latent trap; now protected.
+**TD-21** `id 990016` holds `is_platform_admin` but can never be
+governance-eligible; the roster over-reports.
+
+### Verified unchanged
+982 routes · signature `4ed42286…` · `routes/web.php` `85adfa71…` with the
+concurrent session's Cache-Control change intact · credits 80664.00 ·
+4,335 transactions · 11 users, 0 suspended · health 200 · workers 3/3 ·
+governance `shadow` / state `bootstrap`.
+
+Tests: Security **67/207** · Routes **51/1,314** · Governance **18/59**.
+
+**E1 has not started.**
+
+
+## 2026-07-27 — ENTERPRISE888 E0.5 COMPLETE (capability removal + MFA gate)
+
+**Bella can no longer mutate billing or user access. Bella is closed to everyone
+until an administrator completes MFA enrolment.**
+
+| | |
+|---|---|
+| Bella actions | **11 → 9** (6 read, 1 report, 2 write only to `bella_memory`) |
+| `adjust_credits` / `suspend_user` | **REMOVED** — prompt, registry, dispatcher, handlers, `PermissionRegistry` |
+| Alias variants blocked | **29**, behind an authoritative backend gate |
+| Mode dependence | **none** — the capability is gone, not gated |
+| Bella routes | 4, now behind **`mfa.enrolled`** (fail-closed) |
+| Admin MFA enrolment | **0 of 2 — AWAITING INTERACTIVE COMPLETION** |
+| Credits / users | 80664.00, 4,335 tx, 11 users, **0 suspended** — all unchanged |
+| Routes | 982 · signature `c46d8a07…` → **`4ed42286…`** (4 Bella lines, middleware-only, justified) |
+| Tests | Security 42 · Routes 51 · Chat 139 · Governance 18 · Studio 132 · Infra 352 |
+
+### ⚠️ ACTION REQUIRED — MFA enrolment is yours to complete
+`TotpMfaService::confirm()` needs a live code from your authenticator; I could not
+and did not complete it. Staged instructions in `ADMIN-MFA-ENFORCEMENT-REPORT.md` §5.
+**Note:** enrolling the SECOND admin activates governance platform-wide
+(`maybeActivateGovernance()` fires at two eligible admins) — expect step-up
+prompts elsewhere. Do it deliberately.
+
+### Key discovery
+`mfa.stepup` would **not** have protected Bella. It stands down while governance
+is un-activated, and activation needs two MFA-enrolled admins — of which there
+were zero. A dedicated fail-closed gate (`RequireEnrolledMfa`) was required.
+
+### New tech debt
+**TD-19** — `routes/web.php` and `routes/exec-api.php` are not protected paths.
+A concurrent session left an unmanaged `.bak` there on 2026-07-27 (second
+occurrence of the INC-2026-004 pattern). Quarantined. One-line fix available.
+
+Docs: `/root/handoff-2026-07-27-e0/` — start at
+`ENTERPRISE888-E0.5-IMPLEMENTATION-REPORT.md`.
+
+**E1 has not started.**
+
+
+## 2026-07-27 — ENTERPRISE888 E0 COMPLETE (audit + masterplan only)
+
+**Read-only phase. Nothing built, nothing enabled, production unchanged.**
+
+CR-22 is closed (CR-22A + CR-22B complete). The next initiative, ENTERPRISE888
+E0, delivered an 18-document forensic audit and enterprise masterplan for Bella,
+Engineer888 and the engineering control plane.
+
+### Three findings that matter
+
+1. **Evidence scores 0/10.** Nothing on this platform can substantiate a
+   completion claim. Given the history of confident false success (CR-03
+   fabricated reply, Sarah fabricated-success, runtime tool stubs, and CR-22B's
+   gates passing green during an outage), this is the central gap.
+
+2. **Bella is a reachable prototype with unguarded privileged actions.**
+   `adjust_credits` and `suspend_user` write to billing and user access with **no
+   approval, no governance, no MFA**, dispatched by regex over model output, with
+   customer-influenceable log content in the prompt. She has **never been used**
+   (0 conversations, 0 memory, 0 audit rows) — that is the only reason nothing
+   has happened. Her docblock claims "DORMANT"; there is no dormancy gate.
+
+3. **Governance records but does not enforce.** `GOVERNANCE_MODE=shadow` →
+   `effective=true` regardless of decision. 73 permissions + 99 approval policies
+   are authored; the switch is off. **Both platform admins have MFA disabled.**
+
+### Verified reusable assets
+`tasks` (2,424) + `TaskStateMachine` · `ExecutionPlanService` dependency graphs ·
+`approvals` (127, real) · `PermissionRegistry`/`ApprovalPolicyRegistry` ·
+the entire CR-22 safety layer · `RequireMfaStepUp` (exists, unused).
+
+### Verified absences
+Engineer888 (no code under any name) · evidence model · run/worker separation ·
+tool permissions · deployment records · scheduled database backup ·
+companion-app admin surface · Filament (the admin is a bespoke SPA).
+
+### Readiness: 2.85 / 10 now → 8.75 target. Evidence and Mobile at 0.
+
+### ⚠️ IMMEDIATE RECOMMENDATION — E0.5, awaiting approval
+1. Remove `adjust_credits` and `suspend_user` from Bella's `allowedActions()`.
+2. Enrol both platform admins in MFA; apply `mfa.stepup` to Bella's routes.
+
+Deletion and configuration only. Closes the only live exposure; every later phase
+assumes MFA step-up is possible, and today it is not.
+
+### New tech debt
+TD-17 vestigial `DeepSeekConnector` (0 invocations, live key) ·
+TD-18 recurring `payload` column insert failure in the write path.
+
+Docs: `/root/handoff-2026-07-27-e0/` (18) — masterplan is
+`BELLA-ENGINEER888-ENTERPRISE-MASTERPLAN.md`; start at
+`ENTERPRISE888-E0-FORENSIC-AUDIT-REPORT.md`.
+
+**Bella and Engineer888 are NOT implemented. E1 has not started.**
+
+
+## 2026-07-27 — CR-22B COMPLETE · MODULAR ROUTE STRUCTURE LIVE
+
+**CR-22A complete · CR-22B complete · CR-22 overall COMPLETE**
+(deployed to production, rollback certified)
+
+`routes/api.php` **19,595 → 7,991 lines**. BLOCK17 (13,362 lines, 68% of the
+file, all four INC-2026-003 collision points) is now **13 owned modules** at
+`routes/api/authenticated/`.
+
+| | |
+|---|---|
+| routes | **982** (unchanged) |
+| ordered signature | **c46d8a07…** (unchanged, zero differing lines, no waiver) |
+| byte-identical reconstruction | **yes** — modules rebuild the pre-extraction file exactly |
+| routes tests | 39 / 1,280 assertions |
+| chat tests | 139 / 561 assertions |
+| health / workers | 200 / 3-of-3 |
+| stray backups in routes/ | 0 |
+
+**Two defects caught by gates, not inspection:**
+1. indentation-derived boundaries cut through a JavaScript heredoc → caught by
+   `php -l`; boundaries now come from PHP's lexer (172 children, not 352)
+2. `use` aliases do not cross a `require`, **silently** — 8 routes registered
+   against nonexistent controllers; caught only by the ordered-signature gate;
+   every module now re-declares all 11 parent imports
+
+**Rollback fired for real** during the first activation (a wrong `array_rand === 0`
+assertion) and restored production automatically. Drill certified both directions.
+
+### Ownership is now ENFORCED (TD-14 closed to a narrower gap)
+
+CR-22B originally shipped the lock as advisory and logged the enforcement gap as
+TD-14. The brief mandated enforcement, so it is built:
+
+- `ProtectedPaths` — 16 protected files (routes/api.php, routes/api/*,
+  bootstrap/app.php, the ownership registry), sealed with expected hashes
+- `GovernedWriter` — the 8 required steps, all fail-closed. The decisive one is
+  **re-hashing immediately before the write**: if the file moved since
+  acquisition the write is REFUSED, which is exactly the INC-2026-003 window
+- `GovernedRestore` — additionally requires a manifest, a non-stale revision, a
+  diff preview and post-restore equivalence, and **undoes itself** if routing
+  comes out wrong
+- `ProtectedPaths::drift()` — an ungoverned write cannot be prevented, but it is
+  now DETECTED and must be recorded as an operational-policy violation
+- `storage/app/source-locks/route-ownership.json` — module → owner registry,
+  itself a protected path
+- `tests/Feature/Routes/RouteOwnershipEnforcementTest.php` — 12 tests covering
+  all eight brief-mandated concurrency/restore properties
+
+**TD-14 is now narrowed** to: enforcement is tooling-level, not filesystem-level.
+A session that never calls the tooling still writes — but no longer silently.
+
+### Full battery (2026-07-27)
+
+routes+ownership 51/1,314 · chat 139/561 · Studio 132/557 ·
+Infrastructure 352/1,274 · Governance 25/196 · Domains 16/49 · Queue 1/1 ·
+functional smoke 20/20 against live production.
+
+Equivalence facts, counted with the lexer not grep: `array_rand` **call sites 0**
+(the single occurrence is a comment documenting the removed CR-03 defect),
+Phase O 2, Phase P 1, all P1→P2-C fixes present.
+
+### Working rules added
+- route source spans **14 files** — read `routes/api.php` +
+  `routes/api/authenticated/*.php` (tests: `Tests\Support\RouteSource::all()`)
+- never derive PHP structure from indentation in this file (heredoc JavaScript)
+- never hand-restore `/root/cr22b-legacy/api.php.pre-extraction`; use
+  `php /root/cr22b-legacy/rollback.php`
+
+### ⚠️ OPEN — TD-14
+`SourceOwnershipLock` is **advisory** and was violated again on 2026-07-27 (a
+concurrent session wrote an unmanaged `.bak` into `routes/`, quarantined as
+evidence). Nothing stops a session that never calls it. Highest-value remaining
+infrastructure item.
+
+### TD-15
+`seo-01` is 5,266 lines and **one statement** — a single
+`Route::prefix('seo')->group()`. Under the 5,500 threshold but not well-factored.
+Splitting needs the SEO route group restructured: product work, not an
+infrastructure refactor.
+
+Docs: `CR-22B-IMPLEMENTATION-REPORT.md`, `CR-22B-IMPACT-MATRIX.md`,
+`CR-22B-ROLLBACK-REPORT.md`, `ROUTE-SCOPE-DEPENDENCY-MAP.md`,
+`ROUTE-NESTED-BOUNDARY-PROOF.md`, `CR-22B-DOC-UPDATES.md`.
+
+
+Handoff: `C:\Users\markr\LVL\handoff-2026-07-26\START-HERE-2026-07-26.md`
+Reports: `CR-22-IMPLEMENTATION-REPORT.md` · `CR-22-ROUTE-MODULARIZATION-IMPACT-MATRIX.md`
+
+---
+
+## CR-22 — ROUTE OWNERSHIP AND MODULARIZATION (2026-07-27)
+
+**Delivered: the safety controls that address INC-2026-003's root cause.
+Held: the extraction itself, pending ONE decision from the Boss.**
+
+**Production route files are byte-identical to baseline. Nothing was extracted.**
+
+### ⚠️ THE DECISION REQUIRED
+
+The brief says *"split only at proven top-level boundaries."* I measured before extracting:
+
+| | |
+|---|---|
+| Top-level `Route::` statements | 56 — **all 56 parse standalone (0 failures)** |
+| **BLOCK17** | **13,362 lines = 68% of the file**, 165 children, every business domain |
+| INC-2026-003 collision points inside BLOCK17 | **4 of 4** (Phase O, Phase P, agent persist, Studio CR-03) |
+
+**A top-level-only split would NOT have prevented the incident.** Phase P's `creative` route and my Studio/agent fixes land in the same 13,362-line module.
+
+- **Option A** (as instructed): ~15 modules, one of 13,362 lines. Safe, honest, changes nothing about the risk.
+- **Option B** (recommended): also split BLOCK17's 165 children, `require`d **inside** the parent closure. ~30 modules, largest ~5,272 (seo). Needs "top-level" relaxed to "proven, independently-parseable".
+
+**Enabling fact verified on the host, not assumed:** PHP `require` inside a closure inherits the enclosing variable scope, so all **110** `use ($var)` captures survive. Middleware and order are preserved because each require sits in its original position.
+
+I did not extract: Option A spends the ownership window on something that doesn't help; Option B exceeds an explicit instruction.
+
+### DELIVERED (boundary-independent, all tested)
+
+| Control | Effect |
+|---|---|
+| **`SourceOwnershipLock`** | fail-closed ownership. **No lock = refused.** Scope, owner, phase, acquisition hashes, heartbeat, stale takeover (audited), release reporting `changed_paths` |
+| **`ManifestBackup`** | **a backup without a manifest is not restorable**; a manifest predating current source is refused (`SOURCE_HAS_ADVANCED`); wholesale restores refused (`WOULD_TOUCH_UNRELATED`) |
+| **Route-equivalence gate** | 982 routes, **ordered** signature `c46d8a07…`, one assertion per route. Order is behaviour; differences are never waived |
+| **Legacy backup quarantine** | **63 of 64 `.bak` files moved out of `routes/`** |
+| **Ownership registry** | 18 proposed modules, owners, approvals, high-risk routes, restore procedure |
+
+**Tests: 22 / 1,034 assertions passing** — including all 8 required concurrency scenarios **and a full INC-2026-003 replay that now fails closed.**
+
+### ⚠️ STRIKING FINDING — 61 OF 64 BACKUPS WERE UNSAFE
+Every one of those 61 `.bak` files, if restored, would have **reintroduced the `array_rand` fabricated-reply defect**. They were sitting beside the live source where any session could mistake one for a valid restore point. That is the size of the trap that caused INC-2026-003. Now quarantined at `/root/route-backup-quarantine-20260727/` with a full classification manifest; the incident evidence (`api.php.bak-20260727-phaseP2`) is preserved in place.
+
+### AUTHORITATIVE BASELINE — all 13 checks pass
+P1 CR-18 (2) · P1 CR-01 (2) · P2-A CR-03 (1) · P2-A C4 (1) · P2-A C5 (1) · P2-B gate (1) · P2-B runner (1) · P2-C chatbot (2) · Phase O (2) · Phase P (1) · array_rand (0) · machine copy (0) · routes (982).
+Stored outside the working tree at `/root/cr22-baseline-20260727/`.
+
+### A CORRECTION WORTH KEEPING
+My first equivalence run compared a `route:list --json` baseline against a `Route::getRoutes()` signature — they render middleware differently, so every route "differed". Waiving that as serialization noise would have made the gate worthless from its first run. Both sides now use **one** generator, so any surviving difference is real.
+
+### Production
+`routes/api.php` sha256 **9aa519a1445f8e26** (= baseline) · routes **982** · Phase O **2** · Phase P **1** · health **200** · workers **3/3** · chat suite **139/564** · route suite **22/1,034**.
+
+### Honest limitation
+The lock is **advisory**. A session that never calls `acquire()`/`assertOwned()` can still write. It stops a careful session, not a careless one — enforcement belongs in tooling, and every patch script should call `assertOwned()` first.
+
+### Next
+1. **Decide the module boundary** (impact matrix §0). Until then the monolith remains the largest operational risk.
+2. Then chat roadmap: Aria classification → Studio billing (CR-23) → E-1 (refused message still discarded on s4 and s8) → agent surfaces.
+
+---
+
+
+Handoff: `C:\Users\markr\LVL\handoff-2026-07-26\START-HERE-2026-07-26.md`
+Contract: `CHAT-CONTRACT-v1.md` — **STILL FROZEN at 1.0**
+Reports: `CHAT-P2-C-IMPLEMENTATION-REPORT.md` · `CHAT-P2-C-DELTA-REPORT.md`
+
+---
+
+## CHAT P2-C — COMPLETE (2026-07-27). P2-D / broader migration NOT STARTED.
+
+| | P2-B final | **P2-C final** |
+|---|---|---|
+| Pass / Fail | 215 / 195 | **217 / 193** |
+| **Critical** | 43 | **41** |
+| **Regressions** | — | **0** |
+| Chat suite | 105 / 344 | **139 tests / 564 assertions** |
+
+**Both P2-C targets closed:** `s8 persist.no_duplicate_on_safe_retry` and `s8 credits.no_double_charge_on_retry`. s8 criticals **4 → 2** (remaining X-09 and G-03 were excluded before work began — a message-schema change and a frontend change).
+
+### 1. Chatbot adopted the P2-B primitive
+`ChatbotResponseService` wraps its existing pipeline in `ChatExecutionCoordinator` — no new services, no second idempotency implementation, no second charge ledger. The gate sits **before** the quota gate and reservation, so a duplicate never reaches the pipeline. **`routes/api.php` was not edited for this** — the chatbot route points at a controller.
+When the widget sends no key, a **canonical server-side key** `cb:sha256(session|message|60s bucket)` is derived, so the guarantee holds without a frontend change.
+
+⚠️ **Correction to the P2-C impact matrix:** it predicted the coordinator would own the chatbot's charge. Wrong — that billed one request **twice** (2.0 credits), caught by the integration test. Charging is now **delegated**: the pipeline keeps its correct reserve/commit/release; the coordinator records linkage only. Double-charging is still prevented by the gate refusing to re-run the pipeline.
+
+### 2. GENUINE process-parallel certification
+`ProcessParallelTest` — **10 tests, 168 assertions**, independent `proc_open` processes on a shared timestamp barrier (P2-B's evidence was interleaved, not parallel).
+```
+10 independent OS processes, same key, simultaneous
+   → 1 provider execution · 1 user message · 1 final message
+   → 1 committed charge (balance −1, not −10) · 1 correlation id
+```
+0 deadlocks · 0 orphan charges · 0 stuck records · every reservation settled.
+Limits stated: single host, 10 not 100 processes, simulated rather than SIGKILL-ed worker death, stubbed provider.
+
+### 3. Environment safety — INC-2026-002 closed
+```
+BEFORE:  php artisan migrate --env=testing  →  levelup_staging   (production)
+AFTER:   APP_ENV=testing                    →  levelup_chat_test
+```
+`.env.testing` created (its absence *was* the defect) · `ProductionDatabaseGuard` fails closed on **deny-then-allow** (a denylist alone cannot know tomorrow's production DB) · dedicated **`levelup_tester`** MySQL user **proven unable to read production** · `EnvironmentSafetyTest` 11 tests.
+**Run the chat suite as:** `php artisan test -c phpunit.chat.xml tests/Feature/Chat`
+
+### 4. ⚠️ INC-2026-003 — A CONCURRENT SESSION REVERTED THREE PHASES IN PRODUCTION
+At 04:53 a **STUDIO888 Phase P** session rewrote `routes/api.php` from a backup predating P1/P2-A/P2-B. It added its own route and reverted **every** route-level fix of three phases — including **CR-03, so `array_rand($palettes)` fabricated replies were live in production again**, plus CR-01 machine copy, CR-18 silent catch, all structured errors, SEO persist-on-refusal and the P2-B idempotency gate.
+
+**Detected by the conformance suite** (11 regressions; the F-06 detector fired on the restored `array_rand`) — exactly what the harness exists for.
+**Recovered** by re-applying all seven edits **on top of their file**, never restoring a whole file, with per-edit match assertions. Verified: Phase O 2→2, Phase P 1→1 and its route registered, routes 982→982, fabrication 0, all markers restored, **zero regressions**. **No Phase P work was lost.**
+
+**CR-22's file half remains OPEN and is now a prerequisite, not a recommendation.** Required convention: one session owns `routes/api.php` at a time; a backup must be taken from the **current** file immediately before writing, never from an older snapshot; patch on top rather than restore; verify other workstreams' markers after every write.
+
+> A backup taken at the wrong moment is not a safety net. Phase P *did* take a backup — of a file that no longer reflected production.
+
+### Freezes held
+Contract **1.0** (every emitted code already in the v1 taxonomy; no v2 directory) · Studio **uncharged**, dead guard intact · Aria **ephemeral**, no store · `routes/api.php` **not decomposed** · all 15 P2-B invariants revalidated **through the chatbot integration**, 15/15 pass.
+
+### Production
+health **200** · routes **982** (981 + Phase P's `api/creative/resolve-asset`) · Phase O **2** · Phase P **1** · workers **3/3** · `chatbot_messages` **197** · `seo_assistant_messages` **105** · credit rows **16** · reconciliation: 0 orphan charges, 0 mismatches.
+
+### Next (recommended)
+1. **Resolve CR-22** before any further shared-file work — it has now caused a real production regression.
+2. Decide **Aria** classification (7 criticals; we bill for a conversation the customer cannot retrieve).
+3. Decide **Studio** billing (CR-23) or record that it stays free.
+4. **E-1 on s4 and s8** — a refused message is still discarded on both.
+5. **Agent surfaces** (17 criticals, 597 msgs/7d) — own phase, higher-concurrency certification first.
+
+---
+
+
+Handoff: `C:\Users\markr\LVL\handoff-2026-07-26\START-HERE-2026-07-26.md`
+Contract: `CHAT-CONTRACT-v1.md` — **STILL FROZEN at 1.0, no bump was required**
+Reports: `CHAT-P2-B-IMPLEMENTATION-REPORT.md` · `CHAT-P2-B-DELTA-REPORT.md`
+
+---
+
+## CHAT P2-B — COMPLETE (2026-07-27). P2-C NOT STARTED.
+
+**The guarantee, measured:**
+```
+five identical requests → 1 provider execution · 1 user message · 1 final message
+                        · 1 committed charge (balance −1, not −5) · 1 correlation id
+```
+
+| | P2-A | Harness-corrected | Production-final |
+|---|---|---|---|
+| Pass / Fail | 212 / 198 | 213 / 197 | **215 / 195** |
+| **Critical** | 46 | 45 | **43** |
+| **Regressions** | — | **0** | **0** |
+| Chat tests | 39 | — | **105 tests / 344 assertions** |
+
+Reported in two parts as required: **harness correction ≠ production improvement.**
+
+### Delivered
+- **`chat_idempotency_records`** — UNIQUE `(workspace_id, surface, idempotency_key)`. Acquisition **is** the INSERT, so the database decides who was first and correctness does not depend on timing. Deliberately **not** globally unique (`tasks.idempotency_key` is, and that pattern lets one workspace's key collide with another's).
+- **`message_charges`** — UNIQUE `idempotency_record_id`; provides the message↔ledger join clause K-07 says does not exist. **The ledger stays authoritative; this holds no balance.**
+- **`ChatIdempotencyService` · `MessageChargeService` · `ChatExecutionCoordinator` · `ChatIdempotencyGate`**
+- **SEO assistant integrated** behind `CHAT_IDEMPOTENCY_SURFACES=s4_seo_assistant`; gate sits **before** the surface's meter, so a duplicate never re-meters, re-calls the provider, or re-persists.
+- **Migrations additive only. Rollback drilled ON PRODUCTION: 499 ms down / 1,119 ms up, health 200, ledger identical.**
+
+### Targeted criticals: **2 of 21 closed** (matrix ceiling was 5)
+`s4 persist.no_duplicate_on_safe_retry` and `s4 credits.no_double_charge_on_retry`.
+**Shortfall stated plainly:** s8 chatbot integration **deferred** (needs the gate inside `ChatbotResponseService`, a bigger change than the route wrapper — not attempted rather than attempted badly, worth 2); s5 Studio capability **not declared** (Studio is provably never charged, but K-06 is capability-driven and Studio has no gate — declaring it would be self-certification, worth 1).
+**19 of the remaining 43 criticals are still this primitive**, now built and proven, awaiting surface integration.
+
+### Two real bugs the tests caught
+1. **`open()` was not idempotent per record** — a retry reclaims the same idempotency record, so a blind insert violated the unique index. **The constraint fired and forced the right design** (find-or-reopen; a committed charge is never reopened).
+2. **A replayed refusal returned 409 instead of its original 402** — INV-10 requires a replay to return the existing result *unchanged*. The stored status is now replayed.
+
+### Harness correction (reported separately)
+`s4 / render.no_fabricated_replies` was a false positive: the old regex matched the **identifier** `extractKeywordFromReply()`, which parses a keyword *out of* a genuine reply. Replaced with an assignment-based detector, **proven to still catch the exact CR-03 fallback if reintroduced** (8 tests). One transition; criticals 46→45 — confirming the true count stated in P2-A.
+
+### Frozen / untouched
+- **Studio still charges nothing.** The dead `class_exists()` guard is deliberately preserved; repairing it would begin billing a free feature. → `STUDIO-BILLING-DECISION-NOTE.md` (5 options, recommendation: stay free pending a decision). **CR-23 open.**
+- **Aria still ephemeral.** No store, no persistence, no durability claimed. → `ARIA-CONVERSATION-CLASSIFICATION.md` (recommends durable, **not urgently**; we already bill 0.1cr for a conversation the customer cannot retrieve, and the unread badge already promises durability). **Decision required.**
+- Contract 1.0 · no message table altered · no ledger row rewritten · 1,707 messages / 442 unread / 16 credit rows unchanged.
+
+### CR-22 ownership gate — all 10 steps evidenced
+0 active runs · hash `243091c146bd` → recheck → `304f7bcb664f` · match counts asserted · Phase O **2→2** · routes **981→981**, **route set diff IDENTICAL** · `php -l` gate with auto-restore · ownership released after validation. **`routes/api.php` was NOT decomposed.**
+
+### Disclosure
+A rehearsal command used `--env=testing`; with no `.env.testing` present it resolved to production, so the two tables were created there earlier than the sequence intended. Empty, unreferenced, and deployment step 2 regardless — the production rollback drill was then run deliberately to verify. Stated because the ordering differed from the plan.
+
+### Next (recommended)
+1. Integrate **s8 chatbot** — finish the deferred step, worth 2 criticals, primitive ready.
+2. Decide **Aria** classification. 3. Decide **Studio** billing. 4. Then the agent surfaces (9 criticals, primary customer path, own phase). 5. Genuinely parallel concurrency testing — current evidence is interleaved, not OS-parallel.
+
+### Run the suite
+```bash
+php artisan test -c phpunit.chat.xml tests/Feature/Chat     # 105 tests, 344 assertions
+```
+
+---
+
+
+Handoff: `C:\Users\markr\LVL\handoff-2026-07-26\START-HERE-2026-07-26.md`
+Contract: `CHAT-CONTRACT-v1.md` — **FROZEN at `chat.contract.version = 1.0`**
+Delta: `CHAT-P2A-DELTA-REPORT.md` · Proposal: `ROUTES-DECOMPOSITION-PROPOSAL.md`
+
+---
+
+## CHAT P2-A STABILIZATION SPRINT — COMPLETE (2026-07-26)
+
+**Approved scope only.** P2-B **NOT STARTED**.
+
+| | P1 end | P2-A end |
+|---|---|---|
+| Pass / Fail | 207 / 188 | **212 / 198** |
+| Blocked | 62 | **47** |
+| Conformance (all evaluated) | 52.4% | 51.7% |
+| **Conformance (same measured set)** | 52.4% | **52.7%** |
+| **Regressions** | — | **0** |
+| Critical failures | 47 | **46** (45 real — one is a proven false positive) |
+| Chat suite | 30 tests / 124 assertions | **39 tests / 141 assertions** |
+
+**The headline % fell while the platform improved.** Enabling a probe P1 had wrongly marked unreachable turned **15 unmeasured cases into real measurements** (11 fails, 4 passes). On the set measured in *both* runs — the only fair comparison — conformance rose **52.4% → 52.7% with zero regressions**.
+
+### Delivered
+- **CR-03 CLOSED** — Studio's fabricated replies removed. It used to invent answers when the runtime was down: `"luxury"`/`"brand"` applied hard-coded palettes and `"color"` picked one with **`array_rand()`**, all returned `success:true`. Now returns **503 `CHAT_PROVIDER_UNAVAILABLE`** and leaves the design untouched. `s5` now **passes** clause F-06.
+- **SEO persist-on-refusal CLOSED** — behaviourally proven: 402 returned **and** a `seo_assistant_messages` row exists, with `chat_error.persistence.user_message_saved = true`.
+- **Structured errors** — `CHAT_VALIDATION_FAILED` (422) and `CHAT_PROVIDER_UNAVAILABLE` (503) on Studio, each with `retryable`/`provider_called`/`persistence`/`action`. Legacy `error` strings retained (clause S-03).
+- **Silent failures eliminated** on the touched paths (clause O-04).
+
+### ⚠️ THREE FINDINGS THAT CORRECT THE P1 AUDIT
+1. **`App\Services\CreditService` DOES NOT EXIST.** `/api/studio/chat` guards its charge with `class_exists()` on that name — always false. **Studio chat has never charged anything.** The audit's *"three credit models across two CreditService classes"* was **wrong**: there is one CreditService. Left off deliberately — switching it on would start billing a free feature, which is a **pricing decision**. Logged **CR-23**.
+2. **Aria (`/api/assistant`) is the Builder's assistant and is client-held by design** — `builder.js` keeps history in `bld_aiHistory` and replays 8 turns; the handler persists nothing. This also completes the CR-01 story end to end. **Persist-before-meter is impossible for Aria without a migration → BLOCKED, deferred to P2-B.**
+3. **Aria is probably misclassified** (`ephemeral_tool`, not `durable_assistant`). **Deliberately not changed** — it would lift the score for reasons unrelated to the fixes and muddy the delta. P2-B product decision.
+
+### ⚠️ KNOWN FALSE POSITIVE — STATED, NOT SILENTLY FIXED
+`s4 / render.no_fabricated_replies` (critical) is a harness false positive: the regex matches `extractKeywordFromReply()`, a helper that *parses a keyword out of the model's reply* — the opposite of fabrication. No offline path exists in that service. **True critical count is 45, not 46.** The case was **not edited** — editing a conformance test right after a freeze, in the direction that improves the score, is exactly the move not to make quietly. P2-B harness fix.
+
+### ⚠️ CR-22 ESCALATED — AND HALF FIXED
+A concurrent STUDIO888 session ran `tests/Feature/Studio/` against the SAME `levelup_test` database
+as the chat suite. Two `RefreshDatabase` runs on one database drop and recreate each other's tables:
+20 spurious chat failures and a half-migrated DB (`workspaces` present, `migrations` gone).
+**Production was never involved** (1,707 rows throughout, health 200). A reset was **refused by its
+own guard** because their suite was still running.
+**Fixed for chat:** `phpunit.chat.xml` forces `DB_DATABASE=levelup_chat_test`.
+Run with: `php artisan test -c phpunit.chat.xml tests/Feature/Chat`
+**Proof:** 39 passed WHILE two other test runs were active, and conformance is bit-for-bit identical
+on both databases (212/198/47). The file-level half of CR-22 (`routes/api.php`) is **still open**.
+
+### CONTRACT FROZEN
+`chat.contract.version = 1.0`. No endpoint, payload, schema or response contract may change unless **all five** happen together: version bumped · adapters updated · schemas updated · conformance tests updated · documentation updated. Permitted without a bump: changes that only **remove a violation** or **add a field v1 already defines** (e.g. the §8.2 `chat_error`). **All four P2-A changes qualified; no bump was required.**
+
+### CRITICALS REMAINING — 45 real
+**21 of them (K-06 ×10, I-01 ×8, I-04 ×3) are the single missing idempotency primitive.** Still the highest-leverage work on the platform.
+
+### PRODUCTION
+`routes/api.php` `0a4a91570ec3 → 243091c146bd` (+3,705 bytes, 5 edits, **one file**) · health **200** · routes **981** · Phase O markers **2** (concurrent session's work intact) · workers **3/3** · `agent_messages` **1,707** · `seo_assistant_messages` **105** · unread **442** — all unchanged.
+Rollback: `cp -p /root/backups/p2a-20260726/api.php routes/api.php` — single file, drilled at ~0.5s.
+
+### ⚠️ CUSTOMER-VISIBLE CHANGE (flagged before implementation)
+**Studio chat now says the AI is unavailable instead of appearing to answer.** That is the point of CR-03 and the only behaviour change from P2-A.
+
+---
+
+## ROUTES/API.PHP DECOMPOSITION — PROPOSAL ONLY, NOT IMPLEMENTED
+
+`ROUTES-DECOMPOSITION-PROPOSAL.md`. Measured: **19,576 lines · 1.08 MB · 981 routes** (669 closures / 312 controllers) · **56 top-level `Route::` statements** = natural split points · **61 `.bak` files (~66 MB)** in `routes/`.
+
+Two facts make it low-risk: `bootstrap/app.php` **already** loads a second route file (`exec-api.php`) via `then:`, so the include mechanism is proven here; and all **109** `use ($var)` captures are declared **inside** the block that captures them, so splitting at top-level boundaries breaks no binding.
+
+Proposed: **18 module files under `routes/api/`**, split on URL prefix, required from a ~120-line manifest in a fixed array (not `glob`). Acceptance gate: `route:list --json` **byte-identical including order**. Rollback: restore one file, delete a directory (~0.5s).
+
+**Blocked on CR-22** — the migration needs exclusive ownership of `routes/api.php`, and today it demonstrably does not have it. **Do not combine with P2-B.**
+
+---
+
+
+Handoff: `C:\Users\markr\LVL\handoff-2026-07-26\START-HERE-2026-07-26.md`
+Normative contract: `CHAT-CONTRACT-v1.md` — **ratified, `chat.contract.version = 1.0`**
+Baseline: `CHAT-CONFORMANCE-BASELINE-P1.md` · Decision: `CHAT-P2-DECISION-REPORT.md`
+
+---
+
+## CHAT PLATFORM P1 — COMPLETE (2026-07-26)
+
+**P1 = Canonical Contract + Conformance Harness + Minimal Confirmed Fixes.** Approved and delivered.
+**P2 NOT STARTED — awaiting Boss approval.**
+
+### Delivered
+| Item | Detail |
+|---|---|
+| `CHAT-CONTRACT-v1.md` | **118 normative clauses**, RFC-2119 language, REQUIRED/OPTIONAL/PROHIBITED/DEPRECATED classes, deprecation register with removal phases |
+| Machine-readable schemas | **14 JSON Schema files** in `contracts/chat/v1/` — validated by 11 tests / 66 assertions |
+| Conformance harness | `tests/Feature/Chat/` — **74 normative cases**, ONE suite, 11 surface adapters, 24 files |
+| **Measured baseline** | **52.4% conformance · 207 pass · 188 fail · 47 critical · 62 blocked · 0 harness errors** |
+| Production fixes | **CR-01, CR-02, CR-18 — all closed, 16 regression assertions** |
+| Rollback | **Drilled live: 509 ms revert / 539 ms restore, health 200 throughout** |
+
+### The first honest measurement this platform has ever had
+| Group | Fails | |
+|---|---|---|
+| A Contract shape | 44 | |
+| **E Credits** | **43** | **worst area — not read state** |
+| I Observability | 29 | |
+| B Persistence | 28 | |
+| D Delivery | 13 | |
+| H Errors | 12 | |
+| G Rendering | 9 | |
+| C Tenancy | 7 | |
+| F Read state | **3** | **now the strongest group** |
+
+Weakest surface: **Aria (`/api/assistant`) at 31.3%** — declares itself durable but persists nothing.
+Strongest by applicable load: **S1 Agent Drawer, 52.2% over 67 clauses.**
+
+### Fixes closed
+- **CR-01 markup leak** — `arthur-chat.js:1039` (SVG→`textContent`), `builder.js:578` (error rendered as an *assistant* message with an icon prefixed — **the exact `Hi ✦ Assistant <svg…>` output**), and the Aria/SEO refusal copy at `routes/api.php:12748`/`:18589`, now human copy + a structured `chat_error` carrying `CHAT_INSUFFICIENT_CREDITS`.
+- **CR-02** — duplicate `_msgMarkRead` at `messages-ui.js:399-400` (my own earlier defect).
+- **CR-18** — the empty `catch (\Throwable $e) {}` after the persist-before-metering insert now logs `chat.persist_failed` with workspace/agent/exception. Deliberately does **not** rethrow.
+
+### ⚠️ Corrections that measurement forced
+1. **Authorization is sound.** All eight authenticated chat endpoints correctly return 401 to unauthenticated and invalid-token requests. An intermediate harness bug (Laravel's `withHeaders()` persists across requests, leaking the auth header) reported the opposite on 7 surfaces; a standalone probe disproved it **before** it reached any report.
+2. **Credits, not read state, are the worst area** — 43 failures vs 3.
+3. **Aria's real route is `/api/assistant`**, not `/api/ai/assistant`.
+4. **`meterChat()` batches** — it charges on every 10th chat and returns `sufficient=true` for the nine between. A zero balance alone never produces a refusal; `chat_meter` must also be at 9.
+
+### ⚠️ NEW RISKS
+- **CR-21 (P2)** — the icon-into-`textContent` defect exists at **26 further sites across 6 bundles** (`builder.js` 9, `crm.js` 6, `creative.js` 5, `core.js` 3, `write.js` 2, `calendar.js` 1) — publish buttons, status labels, toasts. **UI chrome, not chat**, so out of P1 scope (it is the broad renderer rewrite P1 excludes). **Pinned at 26 by an automated test.** Needs a scoping decision.
+- **CR-22 (P1)** — **a concurrent STUDIO888 Phase O session was editing `routes/api.php` during P1** (`.bak-phaseO-*` at 16:10 and 17:29; it added `POST /api/creative/edit` + `/assets/{id}/versions`, which explains the 979→981 route delta). Every patch used atomic read-modify-write with match-count assertions and Phase O was verified intact after every write — **no work was lost** — but two agents rewriting a 1.1 MB production file is not a safe steady state. **Must be resolved before P2.**
+
+### Incident during P1 (disclosed)
+`builder.js` was left syntactically broken for ~4 minutes. My patch script used `FIND_GUARD_REPL` to terminate a `<<<'REPL'` heredoc; PHP does not close on that identifier, so it scanned forward, absorbed the next edit's terminator, injected PHP source into `builder.js` **and** silently dropped the CR-02 edit. Caught by the `node --check` gate in the same run and restored from backup immediately (md5 verified). The retry added a hard syntax gate with automatic rollback. **My defect, not the platform's.**
+
+### Guarantees held
+No migration · no route added or removed · no middleware change · no credit/permission/governance change · **1,707 messages and 442 unread unchanged** · 16 credit rows untouched · health 200 · workers 3/3 · `GOVERNANCE_MODE=shadow`.
+
+### P2 RECOMMENDATION (evidence-based)
+- **P2-A now:** remove Studio's fabricated reply (**CR-03**, ~10 lines + honest 503) and apply persist-before-meter to Aria/SEO (**CR-04**). Both harm customers today; neither needs architecture.
+- **P2-B core:** **idempotency key + `message_charges`** — closes ~**39 measured failures across 10 surfaces** from one additive schema change. Nothing else comes close.
+- **Roadmap correction: migrate Aria FIRST, not last.** It is the weakest surface and the cheapest to move.
+- **Exit gate:** conformance ≥75%, critical <15, zero regressions.
+
+### How to re-run
+```bash
+cd /var/www/levelup-staging
+php artisan test --filter=ChatSchemaValidationTest
+CHAT_CONFORMANCE_MODE=postfix php artisan test --filter=ChatConformanceTest
+php artisan test --filter='Cr01MarkupLeakTest|Cr02DuplicateMarkReadTest|Cr18SwallowedPersistenceFailureTest'
+```
+Tests are forced onto `levelup_test` by `phpunit.xml`; provider keys and `RUNTIME_URL` are blanked, so **no test run can reach a real AI provider**.
+
+**Backups:** `/root/backups/p1-chatfix-20260726-p1cr/` (pre-fix) · `/root/backups/p1-chatfix-FIXED-20260726/` (post-fix).
+
+---
+
+
+Handoff: `C:\Users\markr\LVL\handoff-2026-07-26\START-HERE-2026-07-26.md`
+Chat audit: `CHAT-PLATFORM-FORENSIC-AUDIT.md` — **complete 2026-07-26, awaiting roadmap approval**
+
+---
+
+## CHAT PLATFORM — FORENSIC AUDIT RESULT (2026-07-26)
+
+**Finding: there is no chat platform. There are nine independent chat implementations that
+share a login.** Overall grade **2/10** — matching the Boss's own assessment.
+
+| Metric | Value |
+|---|---|
+| Conversational surfaces | **9** (+ meeting room = 10 entry points) |
+| Frontend chat clients | **7 bundles** |
+| Independent message stores | **5** |
+| Names for the "reply" field | **4** (`reply`/`text`/`message`/`response`) |
+| Credit models | **3** (0.1cr batched · 1cr flat · variable reserve) |
+| `CreditService` classes in live use | **2** different classes |
+| Real-time transports | **0** — no SSE, no WebSocket, no Echo/Pusher. Everything is polling. |
+| Contract drifts catalogued | **16** |
+| **Chat tests** | **0** |
+
+### The five structural defects
+- **SD-1 No conversation model** — one eternal thread per `(workspace, agent)`; `limit(100)` with
+  no pagination; Studio/Studio-AI/Builder persist nothing at all.
+- **SD-2 No delivery layer** — the reply is generated inside a php-fpm worker held open after
+  `fastcgi_finish_request()`. Measured **p50 9 s · p90 26 s · max 71 s** against a 90 s client cap.
+  No queue, no retry, no DLQ, no delivery record.
+- **SD-3 No shared contract** — `content` vs `message`; two-phase on 3 surfaces, synchronous on 6;
+  23 distinct credit-refusal strings.
+- **SD-4 No commercial consistency** — identical user action costs 0.1cr, 1cr or a variable
+  reserve depending only on which panel it was typed into. No charge joins to any message row.
+- **SD-5 No verification** — zero tests. **Every chat regression in this platform's history was
+  found by the Boss, in production.** That is the root cause of the incident pattern.
+
+### Validation of the 2026-07-26 fixes — 8 shipped, 0 tested, 1 never applied
+| Fix | Verdict |
+|---|---|
+| `POST /messages/read-all` | retain → supersede (workspace-scoped, not per-user) |
+| `_msgMarkRead()` server-authoritative | retain — **duplicate call at `messages-ui.js:399–400` (CR-02)** |
+| `_msgMarkAllRead()` + header control | retain |
+| read-on-view / live read marking | retain — **S3 page view still has no background refresh** |
+| Sarah two-phase in the widget | retain → supersede (19 s of headroom on the 90 s cap) |
+| persist-before-meter | **promote to a platform rule** — currently 1 of 6 paths |
+| **Aria markup-leak fix** | ❌ **NOT FIXED — was never applied. See CR-01.** |
+| cache-busters | retain |
+
+### ⚠️ CORRECTION ON RECORD
+The Aria markup leak was **not** fixed on 2026-07-26 and must not be recorded as resolved.
+`routes/api.php:12748` and `:18589` still return the original machine copy, and the root cause of
+the visible `<svg…>` is now identified: `arthur-chat.js:1039` assigns an SVG string to
+`.textContent`, and `builder.js:578` injects `window.icon()` into an assistant message body.
+
+### CHAT TECHNICAL DEBT — 20 open risks (`CHAT-RISK-REGISTER.md`)
+- 🔴 **CR-01 P0** markup leak — raw `<svg>` renders as visible text. **Live, customer-visible.**
+- 🔴 **CR-03 P0** **Studio chat fabricates replies** via a keyword fallback when the runtime is
+  down. The user cannot tell it is not the AI. Highest-severity trust defect found.
+- 🔴 **CR-04 P1** Aria/SEO discard the user's message on credit refusal — same class as the
+  Sarah incident, on two other surfaces.
+- 🟠 **CR-05 P1** read state is workspace-scoped, not per-user (ws1: 2 members, ws990003: 3).
+- 🟠 **CR-06 P1** no idempotency or lock on send — double-click ⇒ duplicate message and charge.
+- 🟠 **CR-07 P1** no delivery guarantee — worker death ⇒ reply never exists, no signal.
+- 🟠 **CR-08 P1** `meeting_messages` has **no `workspace_id` and no `user_id`** — tenancy relies
+  entirely on the `meetings` join. **CR-09** `bella_conversations` has no `workspace_id` (latent —
+  becomes P0 the moment Bella is enabled).
+- 🟠 **CR-16 P1** zero chat tests.
+- 🟡 **CR-02** duplicate `_msgMarkRead` · **CR-10** 100-row history cap · **CR-11** S3 no refresh ·
+  **CR-12/13/14** credit inconsistency, no message↔charge join, no refund on failure ·
+  **CR-15** no correlation id or provider/model attribution · **CR-17** 312 untyped rows ·
+  **CR-18** swallowed persistence failure · **CR-19/20** render fragility, 90 s cap headroom.
+
+### RECOMMENDED FIRST PHASE — **P1 Contract + Test Harness (approve this only)**
+Zero-risk. Write the normative contract, build a ~60-case conformance suite, run it against all
+nine surfaces to produce the platform's first honest baseline (≈22 predicted failures), and ship
+four lines of corrective production change: **CR-01**, **CR-02**, **CR-18**. No architecture
+changes, no data migration, no user-visible behaviour change beyond fixing the leak.
+
+**Full roadmap:** `CHAT-MIGRATION-ROADMAP.md` — P1 harness → P2 unified core (shadow) →
+P3 migrate Messages modal/page → P4 migrate Agent Drawer → P5 peripherals → P6 decommission.
+**Not started. Awaiting Boss approval.**
+
+### CHAT DOCUMENTS (2026-07-26)
+`CHAT-PLATFORM-FORENSIC-AUDIT.md` · `CHAT-SURFACE-INVENTORY.md` ·
+`CHAT-CONTRACT-DRIFT-MATRIX.md` · `CHAT-FUNCTIONAL-PARITY-MATRIX.md` ·
+`CHAT-ENTERPRISE-ARCHITECTURE-MASTERPLAN.md` · `CHAT-MIGRATION-ROADMAP.md` ·
+`CHAT-CONTRACT-TEST-PLAN.md` · `CHAT-RISK-REGISTER.md`
+
+---
+
+
+Handoff: `C:\Users\markr\LVL\handoff-2026-07-26\START-HERE-2026-07-26.md`
+Masterplan: `GOVERNANCE-HARDENING-MASTERPLAN-P0.md` — **APPROVED 2026-07-26**
+Decisions: `GOVERNANCE-DECISION-REGISTER.md` — **binding**
+
+### PHASE STATUS
+- **P0-A COMPLETE** — documentation, governance registration, architectural preparation.
+- **P0-B NOT STARTED** — awaiting Boss approval.
+- **Engineering888 PAUSED** — 9 of 9 mandatory dependencies (M1–M9) outstanding.
+
+### ⚠️ ZERO PRODUCTION CHANGE IN P0-A
+No code · no middleware · no route protection · no migrations · no runtime edits · no
+authorization enforcement · no feature work. HEAD unchanged at `416686e`. Bella remains
+**dormant** (`audit_logs action='bella_chat'` = 0) and **unmodified**.
+
+### EXECUTIVE DECISIONS (binding — GOVERNANCE-DECISION-REGISTER.md)
+- **GD-001 Bella → GOVERN AND GATE.** Not retired, not exposed. Permanent rule:
+  **Bella NEVER directly executes privileged actions. Bella may REQUEST. The Governance layer
+  decides.** No exceptions, no emergency bypass.
+- **GD-002 `query_database` → REMOVE.** Intentionally deprecated. **DO NOT REPAIR** — its safety
+  depends on an unintended Laravel 11 `TypeError`. Do not replace with unrestricted SQL. Do not
+  reintroduce under another name. ⚠️ The broken line *looks like a trivial bug*; the correct
+  action is deletion.
+- **GD-003 Replay Policy → APPROVED.** Tier 1 automatic (infra, AI, SEO, sync, maintenance) ·
+  Tier 2 manual approval (customer deliverables, billing, credits, emails, publishing,
+  deployments, notifications) · Tier 3 discard (expired drafts, superseded reports, historical
+  temp jobs, obsolete snapshots). Ambiguous ⇒ Tier 2.
+- **GD-004 Platform Owner invariants** (PO-1…PO-5) · **GD-005 Machine authority invariants**
+  (MA-1…MA-6) · **GD-006 Approval invariants** (AP-1…AP-6) · **GD-007 Authorization principles**
+  (AZ-1…AZ-6).
+
+### DOCUMENTS CREATED (P0-A)
+| Document | Content |
+|---|---|
+| `GOVERNANCE-DECISION-REGISTER.md` | 7 binding entries · append-only · Owner-only change control |
+| `SENSITIVE-OPERATIONS-REGISTER.md` | **77 operations** (72 implemented + 5 not-implemented) · 16 CRITICAL · 21 DANGEROUS |
+| `CAPABILITY-REGISTRY.md` | **83 capabilities** · 23 LIVE · 42 EXISTS-UNGOVERNED · 17 PLANNED · 1 REMOVED |
+| `BELLA-GOVERNANCE-SPECIFICATION.md` | 5-tier action model · 10-stage execution pipeline · enablement gate |
+| `ENGINEERING888-DEPENDENCY-REGISTER.md` | M1–M9 mandatory · R1–R8 recommended · O1–O8 optional |
+| `GOVERNANCE-VERIFICATION-PLAN-M9.md` | **87 tests · 84 MUST-PASS** across 8 suites · designed, NOT executed |
+
+### KEY EVIDENCE ESTABLISHED IN P0-A
+- **64 mutating admin routes**; only **16 hardened** (`DenyApiKeyAuth`), exactly **1 MFA**.
+  Unguarded include `POST /workspaces/{id}/credits`, `DELETE /users/{id}`, `POST /config`,
+  `POST /house-accounts/{id}/top-up`, `POST /notifications/broadcast`.
+- **`delete_workspace` DOES NOT EXIST** — no route, no method. Registered as PLANNED so it is
+  governed *before* it is built. Same for workspace ownership transfer, DNS record mutation,
+  SSL operations, and in-platform deployment trigger.
+- **18 capability keys already exist** in `ApprovalPolicyRegistry` with fail-closed
+  `STRICT_DEFAULT` — the platform's native `engine.action` vocabulary is extended, not replaced.
+- **INFRA888 provider control plane is the reference implementation** — 13 hardened + 1
+  hardened+MFA, approval-backed, separation of duties enforced.
+
+### GOVERNANCE MODEL ADOPTED
+- **Authorization: HYBRID** — Gates + capability registry + Policies where model-scoped.
+  **Rejected:** third-party RBAC package (would create a 5th competing authority vocabulary
+  alongside `agent_capabilities`, `ApprovalPolicyRegistry`, `workspace_users.role`,
+  `LaunchScopePolicy`).
+- **12 principals:** Platform Owner · Platform Administrator · Engineering · Support · Finance ·
+  Marketing · Customer · Workspace User · API · Service · System · Machine.
+- **Three invariants:** no machine approves anything · no machine holds standing authority ·
+  the Platform Owner cannot be suspended/demoted/deleted by any other principal.
+
+### ROADMAP
+**P0-A ✅ → P0-B (coverage: MFA enrolment + DenyApiKeyAuth) → P0-C (events + alerting) →
+P0-D (authorization, shadow-mode first) → P0-E (machine governance + Bella) → P0-F (M9
+certification) → ENGINEERING888.**
+
+⚠️ **P0-B is the riskiest phase, not P0-D.** Attaching `DenyApiKeyAuth` will 403 any tooling
+using the shared admin token, and enrolling **only one** admin trips the DEGRADED state → **423
+platform-wide**. Both admins must enrol together. Inventory shared-token consumers first.
+
+### CURRENT PRIORITIES
+1. Boss approval to begin **P0-B**.
+2. Inventory shared-admin-token consumers before P0-B (prevents a 403 outage).
+3. V4 pricing lookup (TD-02) — still outstanding.
+4. Replay implementation per GD-003 (213 failed + 63 blocked tasks).
+
+### PROJECTED OUTCOME
+Enterprise readiness **5.4 → 7.7** after full P0. Authorization 3.5 → 8.0 · Security 5.0 → 7.5 ·
+Observability 5.0 → 7.5. 7.7 is the honest ceiling for a governance-only phase — the route
+monolith (19,363 lines), 508 `.bak` files, and scalability headroom are deliberately out of scope.
+
+### INSTALL STATUS
+- Source (Laravel) — **NOT modified**. HEAD `416686e`, clean apart from documentation.
+- Runtime — **NOT modified**. v2.37.4 content, `/health` reports 2.37.3.
+- Database — **NOT modified**. No migrations.
+- Middleware / routes / authorization — **NOT modified**.
+- Bella — **NOT modified**, still dormant, still reachable, still ungoverned pending P0-E.
+- Backups — `/root/backups/docsync-p0a-<stamp>/`.
+
+---
+
+# BOSS888 STATE - 2026-07-26 (DEEPSEEK V4 INCIDENT + RUNTIME RESTORATION)
+
+Handoff: `C:\Users\markr\LVL\handoff-2026-07-26\START-HERE-2026-07-26.md`
+(mirrored on droplet at `/root/handoff-2026-07-26/`).
+Incident: `INCIDENT-REGISTER.md` → **INC-2026-001**.
+
+### PRODUCTION STATE
+- **RESOLVED.** AI content generation was down **~42 h** (2026-07-24 13:37 → 2026-07-26 08:45 UTC).
+- Post-fix, first 90 min: **47 tasks completed · 3 running · 38 queued · 0 FAILED · 0 DeepSeek
+  failures.** `failed_jobs` 0. Autonomous agents resumed unaided (ws 26, 27, 29, 990003).
+- Baseline before fix: **36 failed tasks / 72 h** across 10 workspaces (incl. ws 7 Shukran Group).
+
+### AI PROVIDER STATE
+- **DeepSeek `deepseek-v4-flash` is the production default.** `deepseek-v4-pro` available by
+  explicit tier only — **nothing routes to Pro by default** (measured reasoning ~6x flash).
+- `deepseek-chat` / `deepseek-reasoner` **retired by DeepSeek 2026-07-24 15:59 UTC** → HTTP 400.
+- OpenAI retained for images (`gpt-image-1`), vision (`gpt-4o`), and `/ai/run` fallback (`gpt-4o-mini`).
+
+### RUNTIME
+- **`levelup-runtime` v2.37.4-content deployed to Railway 2026-07-26 ~08:45 UTC by Boss.**
+- ⚠️ **`/health` still reports `2.37.3`** — version constant deliberately NOT bumped.
+  **Deploy proof is behavioural:** POST `/ai/run` with `model:"deepseek-chat"` → must return
+  `400 DEEPSEEK_INVALID_MODEL`. Do not use `/health` as a deploy signal.
+- Package `LVL\runtime-v2.37.4-deepseek-v4\` · prior `LVL\runtime-pkg-2.37.3\`.
+  Deploy/rollback: `RUNTIME-2.37.4-DEEPSEEK-V4-DEPLOY-AND-ROLLBACK.md`.
+
+### ⚠️ THE ARCHITECTURAL FACT (this incident's biggest lesson)
+**Laravel orchestrates; the Railway Node runtime EXECUTES all provider calls.**
+`config/llm.php` + `DeepSeekConnector` hold model names but that path is dormant (the
+2026-04-12 hands-vs-brain refactor moved every call site to `RuntimeClient`).
+**Patching Laravel would have fixed nothing.** The 8 hardcoded `deepseek-chat` literals were
+all in the runtime. Full truth: `ARCHITECTURE-AI-EXECUTION-LAYER.md` (AD-01…AD-12).
+
+### WHAT CHANGED (runtime only — ZERO Laravel changes this session)
+- **NEW `deepseek-models.js`** — central model registry (`DEEPSEEK_DEFAULT_MODEL`), retired-name
+  rejection, reasoning headroom (2000, capped 8192), empty-content + structured-output guards,
+  usage split, secret redaction.
+- `index.js` (+94/-20), `llm.js` (+30/-7), `lu-planner.js` (+23/-6), `lu-worker-manager.js` (+3/-2),
+  `ai-complete-endpoint.js` (+2/-2), `.railway-trigger`. Removed stray `index.js.bak2`.
+- **81 of 87 baseline files byte-identical** (SHA-256 verified).
+- New error codes: `DEEPSEEK_INVALID_MODEL`, `DEEPSEEK_EMPTY_FINAL_CONTENT`,
+  `DEEPSEEK_INVALID_STRUCTURED_OUTPUT`.
+- **Behaviour change:** `/ai/run` `chat_json` now returns **502** on malformed JSON (was
+  `success:true, parsed:null`). Previously-silent garbage now surfaces as failure.
+
+### V4 GOTCHA THAT WILL BITE AGAIN IF FORGOTTEN
+Reasoning is **always on and not disableable**, and `reasoning_tokens` are billed **inside**
+`completion_tokens` — so they consume `max_tokens`. Exhausted budget returns **HTTP 200 with
+empty content**. Measured on real workloads: flash 70-324 tokens, **pro 1238**. Flash at
+existing budgets was never at risk; **Pro would have truncated** against the planner's 1500.
+Headroom is near cost-neutral (+125% ceiling produced +1.8% spend).
+
+### VALIDATION
+50/50 tests (43 offline + 7 live API) · patched runtime booted on isolated port · exact upload
+artifact re-verified · 13 production smoke tests passed incl. `writeDraft` (5,556 chars) and a
+full Orchestrator `write_article` task → `completed`.
+
+### KNOWN RISKS / TECHNICAL DEBT (full register in the incident doc)
+- 🔴 **TD-04 no provider-error alerting** — the reason this ran 42 h undetected. Failures land in
+  `tasks.error_text`, never `failed_jobs`, so nothing pages.
+- 🟠 **TD-10** 213 failed + 78 blocked tasks never replayed (incl. 2595/2599, ws 7 customer).
+- 🟠 **TD-02** V4 pricing unverified — `RuntimeClient.php:1207` still uses V3 rates. All DeepSeek
+  cost figures in admin are wrong. Customer credits are flat-rate, so exposure is **margin**.
+- 🟠 **TD-01/TD-03** Laravel still hardcodes `logApiUsage('deepseek',…)` and prices by provider,
+  not model — OpenAI fallbacks record as DeepSeek. Runtime emits the truth; Laravel ignores it.
+- 🟡 **TD-05/TD-06** runtime streaming is dead code — `stream-init` has a PRE-EXISTING body-parser
+  bug (route line 271, parser line 438 → `req.body` undefined) and Laravel calls neither
+  streaming route. The patched streaming lines are unexercised.
+- 🟡 **TD-07** V4 vision unverified · **TD-08** no lockfile · **TD-09** runtime has no git repo ·
+  **TD-12** `lu-worker-manager.js:53` requires a missing module (pre-existing) · **TD-13** 0 of 60
+  Laravel test files reference DeepSeek.
+
+### RESOLVED FROM EARLIER STATE
+- **MASTERCONTEXT §5 "THE ONE BLOCKER" (Railway deploy access) is CLEARED** — Boss deployed
+  successfully 2026-07-26. Runtime source for the deployed version now exists locally.
+  (Note: still no Railway CLI/token *in the working environment* — Boss deploys manually.)
+
+### CURRENT PRIORITIES
+1. Boss decision: replay policy for the 213 failed / 78 blocked tasks (TD-10).
+2. Boss action: V4 pricing lookup (TD-02) so cost/margin become truthful.
+3. Provider-error alerting (TD-04) — prevents a repeat 42 h blind spot.
+4. Laravel provider attribution + model-keyed pricing (TD-01/TD-03).
+
+### NEXT PHASE (Boss-approved sequence)
+**1. Laravel Admin Forensic Audit (NEXT)** → 2. AI Architecture Audit →
+3. Engineering888 Masterplan → 4. Bella Masterplan.
+Note: **Engineering888 and Bella do not exist in any codebase today** — 0 hits for
+`engineer888`; `bella` is only an admin persona + `BellaController`. Both need their own phase.
+
+### STUDIO888 MRC-2A
+Still **PAUSED** at `416686e`, inert in production. V4 answered several revalidation questions
+(empty-content enforcement, reasoning/content separation, structured-output shape); streaming,
+vision, and latency baselines remain open. Pre-V4 and post-V4 readiness data must stay
+segmented. See `STUDIO888-DEEPSEEK-V4-IMPACT-REGISTER.md`.
+
+### ⚠️ GIT STATE (read before the next phase)
+Repo is checked out on branch **`feature/studio888-mrc-2a` @ `416686e`** — the Studio freeze
+point, **NOT a mainline branch**. Preserve branch `preserve/studio888-mrc-2a-pre-deepseek-v4`
+and tag `studio888-mrc-2a-pre-deepseek-v4` both exist at that commit. All Studio work is
+**committed**, not dirty. Only this documentation sync is uncommitted.
+**Anyone starting the Laravel Admin Forensic Audit must know they are on a feature branch.**
+
+### INSTALL STATUS
+- Source (Laravel) — **NOT modified** (zero Laravel changes this incident).
+- Runtime — ✅ modified, built, tested (50/50), **deployed to Railway by Boss**, verified in production.
+- Database — **NOT modified** (no migration involved).
+- Config cache — untouched (`config:cache` remains banned).
+- Workers — **not restarted** (not required; no `app/` change).
+- Test data — created on ws 990003 during verification and **removed**.
+- Backups — `/root/backups/docsync-deepseek-v4-20260726-094249/` + dated `.bak-docsync-*`.
+
+---
+
 # BOSS888 STATE - 2026-07-24 (SARAH + PUBLISHING + FEATURED IMAGES)
 
 Handoff: `/root/handoff-2026-07-24/HANDOFF-SARAH-PUBLISHING-2026-07-24.md`
