@@ -347,6 +347,8 @@
       }
       _toast('\u2726 Arthur picked ' + d.template_slug + '. Opening...', 'success');
       _designId = d.design_id; _designName = prompt.substring(0, 60);
+      // P4: remember Arthur's hero prompt so the editor can offer the hero-image CTA.
+      if (d.hero_image_prompt) { (window._st2HeroPrompts = window._st2HeroPrompts || {})[d.design_id] = d.hero_image_prompt; }
       _mountEditor();
     } catch(e){
       _toast('Failed: ' + e.message, 'error');
@@ -816,6 +818,14 @@
             '</div>' +
           '</div>' +
           '<div class="st-chat" id="st-chat">' +
+            // P4 (2026-08-02): AI hero-image CTA. Surfaced (not auto-run) only when
+            // Arthur returned a hero_image_prompt and no hero has been generated yet.
+            // Click reuses the existing /studio/ai/generate-image flow with the stored
+            // prompt and replaces ONLY the hero image field. Hidden by default.
+            '<div id="st-hero-cta" style="display:none;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px;padding:10px 14px;border:1px solid rgba(108,92,231,0.5);background:linear-gradient(90deg,rgba(108,92,231,0.18),rgba(108,92,231,0.06));border-radius:8px">' +
+              '<span style="font-size:13px;line-height:1.35">✦ <strong>Generate Matching AI Image</strong><br><span style="opacity:0.7;font-size:11px">Creates a hero image from your design prompt · Uses 1 image credit</span></span>' +
+              '<button id="st-hero-cta-btn" style="background:#6C5CE7;border:1px solid #6C5CE7;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font:600 13px/1 inherit;white-space:nowrap" onclick="_st2GenerateHeroImage()">✦ Generate Matching AI Image</button>' +
+            '</div>' +
             '<div class="st-chat-msgs" id="st-chat-msgs" style="display:none"></div>' +
             '<div class="st-chat-quick" id="st-chat-quick">' +
               '<button class="st-chat-quick-btn" data-msg="Apply my brand colors and make the design feel on-brand.">\u2726 Apply my brand</button>' +
@@ -839,6 +849,10 @@
       '<div id="st-save-indicator">\u2713 Saved</div>';
 
     window.addEventListener('message', _handleIframeMsg);
+
+    // P4: resolve Arthur's hero prompt (in-memory from generate, or recovered
+    // from a fresh design) so the hero-image CTA can surface once fields arrive.
+    _st2EnsureHeroPrompt(_designId);
 
     // Preview route is behind the auth.jwt middleware, so an <iframe src=…>
     // would hit it with no Bearer header and get 401. Fetch with the token,
@@ -1147,6 +1161,79 @@
       _queueAutosave();
     });
   };
+
+  // ── P4: AI hero-image experience (Option B — surface, never auto-run) ──
+  // Resolve the template's PRIMARY (hero) image field. Templates name it
+  // differently — hero_image, or a full-bleed background_image on posters — so we
+  // prefer an explicit hero field, then a background/main/feature field, then fall
+  // back to the sole image field when there is exactly one (unambiguous). We never
+  // touch text fields and never guess among multiple non-hero images.
+  function _st2HeroFieldName() {
+    var imgs = (_fieldList || []).filter(function(f){ return f.kind === 'image'; });
+    if (!imgs.length) return null;
+    var exact = imgs.find(function(f){ return f.name === 'hero_image'; });
+    if (exact) return exact.name;
+    var heroish = imgs.find(function(f){ return /hero/i.test(f.name); });
+    if (heroish) return heroish.name;
+    var primary = imgs.find(function(f){ return /background|bg_image|main_image|feature|cover/i.test(f.name); });
+    if (primary) return primary.name;
+    if (imgs.length === 1) return imgs[0].name;   // single image field = the hero, unambiguous
+    return null;                                   // multiple, none hero-like → don't guess
+  }
+  // Show the CTA only when a hero prompt exists, the hero hasn't been generated
+  // in this editor session, and the template actually has a hero image field.
+  window._st2MaybeShowHeroCta = function(designId) {
+    var cta = document.getElementById('st-hero-cta');
+    if (!cta) return;
+    var prompt = (window._st2HeroPrompts || {})[designId];
+    var done   = (window._st2HeroDone || {})[designId];
+    var show = !!prompt && !done && !!_st2HeroFieldName();
+    cta.style.display = show ? 'flex' : 'none';
+  };
+  // Best-effort: recover Arthur's stored hero prompt for a re-opened design.
+  // Only works while content_html is still Arthur JSON (fresh, unsaved design);
+  // once edited/saved it becomes rendered HTML and no prompt is recoverable —
+  // in which case no CTA is shown. Never calls Arthur.
+  function _st2EnsureHeroPrompt(designId) {
+    if ((window._st2HeroPrompts || {})[designId]) { window._st2MaybeShowHeroCta(designId); return; }
+    _fetchJson('/studio/designs/' + designId).then(function(d){
+      var design = d && d.design;
+      if (design && design.content_html) {
+        try {
+          var parsed = JSON.parse(design.content_html);
+          var hp = parsed && parsed.arthur_meta && parsed.arthur_meta.hero_prompt;
+          if (hp) { (window._st2HeroPrompts = window._st2HeroPrompts || {})[designId] = hp; }
+        } catch(_e) { /* content_html is rendered HTML, not JSON → no prompt */ }
+      }
+      window._st2MaybeShowHeroCta(designId);
+    }).catch(function(){ /* non-blocking */ });
+  }
+  // CTA click: reuse the EXISTING image-generation endpoint with the STORED
+  // prompt (no Arthur call, no modal), then replace ONLY the hero image field
+  // and refresh via autosave. Billing path unchanged (same endpoint as Insert).
+  window._st2GenerateHeroImage = function() {
+    var id = _designId;
+    var prompt = (window._st2HeroPrompts || {})[id];
+    if (!prompt) { _toast('No AI hero prompt for this design', 'info'); return; }
+    var field = _st2HeroFieldName();
+    if (!field) { _toast('This template has no hero image field', 'info'); return; }
+    var btn = document.getElementById('st-hero-cta-btn');
+    var cta = document.getElementById('st-hero-cta');
+    if (btn) { btn.disabled = true; btn.textContent = '✦ Generating matching image…'; }
+    _fetchJson('/studio/ai/generate-image', { method: 'POST', body: JSON.stringify({ prompt: prompt, style: 'cinematic' }) }).then(function(d){
+      var url = d && (d.url || d.image_url);
+      if (!d || !d.success || !url) { throw new Error((d && (d.message || d.error)) || 'generation failed'); }
+      _postToIframe({ type: 'lu-update-image', field: field, url: url });
+      _queueAutosave();
+      (window._st2HeroDone = window._st2HeroDone || {})[id] = true;
+      if (cta) cta.style.display = 'none';
+      _toast('✦ Matching AI hero image added', 'success');
+    }).catch(function(e){
+      if (btn) { btn.disabled = false; btn.textContent = '✦ Generate Matching AI Image'; }
+      _toast('Hero image failed: ' + ((e && e.message) || e), 'error');
+    });
+  };
+
   window._studioApplyPaletteFromEl = function(el) {
     try {
       var vars = JSON.parse(el.getAttribute('data-vars'));
@@ -1237,6 +1324,8 @@
         _fieldList = Array.isArray(e.data.fields) ? e.data.fields : [];
         if (_currentTab === 'content') _renderContentTab(document.getElementById('st-tab-body'));
         else if (_currentTab === 'images') _renderImagesTab(document.getElementById('st-tab-body'));
+        // P4: now that we know the template's image fields, decide the hero CTA.
+        if (window._st2MaybeShowHeroCta) window._st2MaybeShowHeroCta(_designId);
         break;
       case 'field-changed':
         // iframe reports live text/html change; queue autosave.
