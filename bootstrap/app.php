@@ -18,6 +18,24 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
 
+        // PHASE 1C (2026-07-30) — platform event processing: reap stale claims,
+        // fan out recorded events, run due deliveries. ONE command rather than
+        // three schedule entries, so the three stages cannot race each other.
+        //
+        // Every stage inside is independently flag-gated and defaults to OFF, so
+        // with the flags off this entry is a proven no-op (see ActivationGateTest).
+        // ->withoutOverlapping() is belt-and-braces: the command also takes its
+        // own cache lock, because a scheduler restart can clear the mutex.
+        $schedule->command('platform-events:process')
+            ->name('platform-events:process')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('platform-events:process cron failed');
+            });
+
         // 2026-05-24 FIX 53C — removed legacy `sarah:proactive --type=daily`
         // cron entry. It was a lightweight pending-approval reminder at
         // 08:00 UTC that duplicated the new TZ-gated sarah:morning-brief.
@@ -429,6 +447,28 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error("Sarah run-due-tasks failed");
             });
 
+        // Engineer888 (2026-07-30) — daily engineering brief.
+        //
+        // Runs the probes that were previously only run by hand, and only when
+        // someone remembered: git delivery state, runtime health, worker and
+        // scheduler liveness, queue depth, task failures, and new errors counted
+        // forward from the last run's log offset.
+        //
+        // 06:00 so the brief covers the whole previous day and is waiting before
+        // work starts. --quiet-ok keeps the scheduler log silent on a clean
+        // platform, so anything logged here is worth reading.
+        //
+        // NOT runInBackground(): the brief is a ~1.3s read-only collector, and
+        // running it in the foreground means a failure surfaces in the scheduler
+        // log rather than being detached from it.
+        $schedule->command('engineering:brief', ['--quiet-ok'])
+            ->name('engineering:brief')
+            ->dailyAt('06:00')
+            ->withoutOverlapping()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('engineering:brief failed — platform state is now unmonitored');
+            });
+
     })
     ->withMiddleware(function (Middleware $middleware) {
         // Wave 47 — AEO Plan Gate (\$69+ tiers only)
@@ -466,6 +506,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // Phase 2B-R2 — MFA step-up for privileged control-plane ops. Self-
             // disables below the two-MFA-admin governance bar (fail-safe, not fail-open).
             'mfa.stepup'      => \App\Http\Middleware\RequireMfaStepUp::class,
+            // E0.5 (2026-07-27) — fail-closed MFA ENROLMENT gate.
+            // `mfa.stepup` stands down before governance activation, and
+            // activation needs two MFA-enrolled admins — of which there are
+            // currently zero. This one has no bootstrap path: no confirmed
+            // enrolment, no access. Applied to Bella's admin routes.
+            'mfa.enrolled'    => \App\Http\Middleware\RequireEnrolledMfa::class,
             'api.key'         => \App\Http\Middleware\ApiKeyAuth::class,
             'connector.brand' => \App\Http\Middleware\ConnectorBrandFilter::class,
             'runtime.secret'  => \App\Http\Middleware\RuntimeSecretMiddleware::class,
