@@ -437,3 +437,91 @@ running the tests as unconditionally safe, and it was not.
 Any other code path that shells out to `artisan test` from inside a booted process has
 the same `$_SERVER` exposure. Only the Engineer888 path is fixed. Defect 2 protects the
 rest, but a repository-wide check for nested test invocations is outstanding.
+
+
+## INC-2026-006 — Engineering Safety Sweep (closure)
+
+**Date:** 2026-07-31 · **Scope:** entire LevelUp Growth platform · **Instrument:** `tools/exec-safety-audit.php`
+**Result:** 1,184 PHP files scanned · **0 UNSAFE** · 2 UNKNOWN (both hand-verified) · 126 SAFE
+
+### The defect class
+
+A child process inherits `DB_DATABASE` through **`$_SERVER`**. PHPUnit's `<env force="true">`
+sets `putenv()` and `$_ENV` but not `$_SERVER`, and Laravel's env repository reads `$_SERVER`.
+Measured, not inferred: in the nested child, `getenv()` and `$_ENV` both read
+`levelup_e888_test` while `$_SERVER` read `levelup_staging`.
+
+Two further facts were measured during the sweep:
+
+- A bare Laravel boot with no environment resolves to **`levelup_staging`**. Any unguarded
+  PHP child that boots the framework reaches production by default.
+- `putenv()` in a parent **does** propagate to children. So forcing works downward; the
+  failure was specifically the inherited real environment beating the forced value.
+
+Therefore **overriding is not sufficient — the variable must be absent.** `env -u`.
+
+### Inventory and classification
+
+| Category | Count | Verdict |
+|---|---|---|
+| process spawn (exec/shell_exec/proc_open/popen/system/backtick) | 43 | 41 SAFE, 2 UNKNOWN |
+| in-process `Artisan::call` / `$this->call` | 22 | 22 SAFE — none destructive |
+| phpunit configurations | 5 | 5 SAFE (was 1 UNSAFE) |
+| `RefreshDatabase` test classes | 58 | 58 SAFE — all inherit the guard |
+
+Excluded as **not live code**, verified rather than assumed: `_backup/` (7 MB, not autoloaded,
+not routed, not web-reachable, not included by anything) and `storage/` (runtime state).
+They contain 43 spawn sites in stale copies; counting them buried the ~20 that execute.
+
+### Defects found and corrected
+
+| # | Defect | Severity | Fix | Evidence |
+|---|---|---|---|---|
+| 1 | Guard ran after `RefreshDatabase` | **P0** | `Tests\TestCase::setUpTraits()` asserts before any trait | Suite pointed at a refused DB reports `REFUSING TO RUN`, never `Unknown database` |
+| 2 | `TestSelector` spawned a Laravel child without stripping env | **P0** | `sanitisedTestCommand()` — `env -u` for every DB_* and APP_ENV | Nested run resolves to `levelup_e888_test` |
+| 3 | `phpunit.integration.xml`: **0 of 7** env entries forced, suite = all of `tests/Feature` (126 RefreshDatabase classes), DB `boss888_test` does not exist | **P0 latent** | `force="true"` on all 7 | All 5 configs now forced |
+| 4 | `Shell::run` — choke point, command unprovable | P1 | Strips env unconditionally | `ENV_STRIP` constant |
+| 5 | `CommitExecutor::runShell` — executed whatever it was handed | P1 | Strips env unconditionally, `bash -c` wrapped | Belt-and-braces with #2 |
+| 6 | Audit tool passed a `RefreshDatabase` class extending PHPUnit's TestCase | P1 | Resolve base class through imports | Selftest case `RogueTest` |
+
+Defect 3 was a loaded gun independent of Engineer888: any nested invocation of that config
+would have run `migrate:fresh` against production across the entire feature suite.
+
+### Remaining UNKNOWN — 2, both hand-verified
+
+`AdminMediaController.php:341` and `:359`. `$cmd` is built from
+`shell_exec('command -v ffprobe')`, so the binary path is discovered at runtime and is
+unresolvable by design. Hand-verified: both run `ffprobe`/`ffmpeg`. The file contains **zero**
+references to `artisan`, `phpunit` or `bootstrap/app`, so it cannot boot a second framework.
+Left as UNKNOWN deliberately — marking them SAFE would require the tool to assume something
+it cannot prove.
+
+### Guard review
+
+`ProductionDatabaseGuard` reads configuration only and never opens a connection, so it can
+refuse before anything is touched. It is deny-then-allow: a target must be absent from the
+production denylist **and** positively match a test-database pattern. Anything unprovable is
+refused. It is now invoked at two points — `setUpTraits()` (before RefreshDatabase) and
+`setUp()` (after boot, catching a runtime connection swap).
+
+### Permanent protections
+
+1. `tools/exec-safety-audit.php` — tokenizer-based, with backward variable resolution and a
+   **15-case selftest** that must pass before its output is trusted.
+2. `tests/Feature/Engineer888/ExecutionSafetyTest.php` — 7 tests that fail the build on any
+   UNSAFE finding, any unforced phpunit config, any unguarded `RefreshDatabase` class, and
+   re-measure the inheritance mechanism itself so a framework upgrade that changes precedence
+   is detected here rather than in production.
+
+### Honest limitations
+
+- The audit is static. A command assembled from database content or an env var at runtime
+  cannot be classified; the two UNKNOWNs are exactly that shape.
+- Backward variable resolution is nearest-assignment, not full data-flow. A variable
+  reassigned in a branch resolves to the textually nearest assignment. This can only produce
+  a wrong SAFE if a variable is reassigned to an artisan command after being assigned a
+  harmless one — no such case exists today, and the selftest asserts that an unresolvable
+  assignment stays UNKNOWN rather than defaulting to SAFE.
+- The cross-check compares against grep, which cannot tell code from comments. Its four
+  remaining discrepancies are all the word "exec"/"system" in prose, individually verified.
+- Third-party code under `vendor/` was not audited.
