@@ -253,7 +253,12 @@ use Illuminate\Support\Facades\Route;
             $row  = \Illuminate\Support\Facades\DB::table('studio_designs')
                 ->where('id', (int)$id)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
             if (!$row) return response('Not found', 404);
-            $html = (string)($row->content_html ?? '');
+            // BUG-001 fix: a design's content_html may be Arthur JSON
+            // ({template_slug, fields}) rather than rendered HTML. Resolve it to
+            // real template HTML via StudioService::renderHtml() so the editor
+            // canvas shows the DESIGN, never raw JSON. renderHtml passes existing
+            // HTML through unchanged and never returns raw JSON (unknown → shell).
+            $html = (string) (app(\App\Engines\Studio\Services\StudioService::class)->renderHtml($row) ?? '');
             if ($html === '') {
                 return response('<!doctype html><html><body style="background:#111;color:#fff;font-family:system-ui;padding:40px">Design has no content.</body></html>')
                     ->header('Content-Type', 'text/html; charset=UTF-8');

@@ -435,6 +435,17 @@ class StudioService
      *   2. content_html raw HTML: use as-is.
      *   3. No template/HTML: minimal shell with design name on bg color.
      */
+    /**
+     * BUG-001 fix — public entry so the preview/editor route can render a design
+     * to real HTML. A design's content_html may be JSON ({template_slug, fields})
+     * produced by Arthur's generateDesign; this resolves it to the actual template
+     * HTML (never returns raw JSON to the canvas).
+     */
+    public function renderHtml(object $design): ?string
+    {
+        return $this->renderDesignHtml($design);
+    }
+
     private function renderDesignHtml(object $design): ?string
     {
         $raw = (string) ($design->content_html ?? '');
@@ -537,7 +548,7 @@ class StudioService
                 }
             } else {
                 // Template has just one headline slot
-                foreach (['headline','headline_1','title','main_headline'] as $cand) {
+                foreach (['headline','headline_main','headline_1','title','main_headline'] as $cand) {
                     if (in_array($cand, $tplVars, true) && !isset($out[$cand])) { $out[$cand] = $headline; break; }
                 }
             }
@@ -546,7 +557,7 @@ class StudioService
         // Subheadline
         $sub = $arthur['subheadline_text'] ?? $arthur['subheadline'] ?? $arthur['sub_text'] ?? null;
         if ($sub) {
-            foreach (['subheadline','sub','subhead','tagline','description'] as $cand) {
+            foreach (['subheadline','subheading','sub','subhead','tagline','description'] as $cand) {
                 if (in_array($cand, $tplVars, true) && !isset($out[$cand])) { $out[$cand] = $sub; break; }
             }
         }
