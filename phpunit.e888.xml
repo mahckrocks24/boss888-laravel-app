@@ -1,0 +1,90 @@
+<!--
+    phpunit.e888.xml — dedicated configuration for the Engineer888 suite.
+
+    WHY THIS EXISTS
+    Same reason as phpunit.chat.xml, observed again on 2026-07-30: this suite was
+    run three times against the shared `levelup_test` and failed all 22 tests
+    each time with "Base table or view already exists" / "migrations doesn't
+    exist". The cause was not the tests — an existing suite (CircuitBreakerTest)
+    failed identically at the same moment, and MySQL's processlist showed four
+    `levelup_tester` connections actively creating tables in that database from
+    another session's run.
+
+    Engineer888 exists to make platform state legible. A suite whose result
+    depends on who else is running tests cannot do that, so it gets its own
+    database.
+
+    USE:
+      php artisan test -c phpunit.e888.xml
+
+    Everything except the database name and the suite definition is inherited
+    verbatim from phpunit.chat.xml, which in turn inherits from phpunit.xml.
+
+    NOTE ON REDIS. REDIS_HOST is pointed at an unroutable address here. The
+    queue-depth collector reads production Redis, and a test run must not touch
+    production infrastructure (INC-2026-002). The consequence is deliberate and
+    documented: the Redis path is proven by running the command against the live
+    platform, and what the suite proves instead is that an unreachable Redis
+    degrades the brief rather than breaking it.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="Engineer888">
+            <directory suffix="Test.php">./tests/Feature/Engineer888</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+    </source>
+
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+
+        <!-- Dedicated Engineer888 database. NEVER levelup_staging, and
+             deliberately NOT levelup_test (which other suites share and which
+             concurrent sessions were observed corrupting on 2026-07-30). -->
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_DATABASE" value="levelup_e888_test" force="true"/>
+        <!-- Declares this session's sprint manifest. Its presence switches on
+             assigned-database enforcement in Tests\TestCase::setUpTraits(). -->
+        <env name="E888_SPRINT_MANIFEST" value=".engineer888/sprints/2026-08-01-coordination-hardening.json" force="true"/>
+        <!-- P2-C: a dedicated MySQL user with grants ONLY on the two test
+             databases. Even if every other safeguard were bypassed, these
+             credentials cannot reach production. -->
+        <env name="DB_USERNAME" value="levelup_tester" force="true"/>
+        <env name="DB_PASSWORD" value="eyi0ZVuBIbj6CeP1Vo0G0Ocd" force="true"/>
+
+        <!-- No production Redis, no real queue workers, no real mail. -->
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="REDIS_CLIENT" value="phpredis" force="true"/>
+        <env name="REDIS_HOST" value="127.0.0.1" force="true"/>
+        <env name="REDIS_PORT" value="59999" force="true"/>
+
+        <!-- Providers must never be contacted from a test run. -->
+        <env name="INFRA_HOSTING_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullHostingConnector" force="true"/>
+        <env name="INFRA_CUSTOM_HOSTNAME_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullCustomHostnameConnector" force="true"/>
+        <env name="INFRA_NULL_OUTCOME" value="success" force="true"/>
+        <env name="SOCIAL_MOCK_MODE" value="true" force="true"/>
+        <env name="CLOUDFLARE_API_TOKEN" value="" force="true"/>
+        <env name="CLOUDFLARE_ZONE_ID" value="" force="true"/>
+        <env name="BELLA_ADMIN_TOKEN" value="" force="true"/>
+        <env name="STRIPE_SECRET" value="" force="true"/>
+        <env name="POSTMARK_TOKEN" value="" force="true"/>
+        <env name="OPENAI_API_KEY" value="" force="true"/>
+        <env name="DEEPSEEK_API_KEY" value="" force="true"/>
+        <env name="RUNTIME_URL" value="" force="true"/>
+
+        <env name="BOSS888_DEBUG_ENABLED" value="true" force="true"/>
+    </php>
+</phpunit>
