@@ -615,12 +615,12 @@
             "overrides": []
         },
         "tests/Feature/Engineer888/RepositoryIntelligenceTest.php": {
-            "component": "engineer888",
-            "source_path": "adopted from disk (P0.5 reconciliation)",
-            "source_hash": "6dcabe46d868c61cce84d9bf41a5379775ad2d92",
-            "destination_hash": "6dcabe46d868c61cce84d9bf41a5379775ad2d92",
+            "component": "engineer888/baseline",
+            "source_path": "s5-fixtest.php",
+            "source_hash": "165c74dce9ba1fd6d7176f0c45c60a04d34636b7",
+            "destination_hash": "165c74dce9ba1fd6d7176f0c45c60a04d34636b7",
             "installer_version": "1.0.0",
-            "installed_at": "2026-08-02T08:52:30+00:00",
+            "installed_at": "2026-08-02T09:59:27+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -648,5 +648,5 @@
             "overrides": []
         }
     },
-    "updated_at": "2026-08-02T09:46:39+00:00"
+    "updated_at": "2026-08-02T09:59:27+00:00"
 }

@@ -496,10 +496,26 @@ PHP,
 
     public function test_narrowing_to_one_subsystem_returns_only_that_subsystem(): void
     {
-        $report = (new RepositoryIntelligence(base_path()))->analyse('Engineer888');
+        // Deterministic: a fixture guarantees there is something to narrow.
+        // The previous version asserted the LIVE tree always held dirty
+        // Engineer888 files, which stopped being true the moment Sprint 5
+        // committed them — a test coupled to transient state, not to behaviour.
+        $this->fixtureRepo([
+            'app/Core/Alpha/Thing.php' => "<?php\nnamespace App\\Core\\Alpha;\nclass Thing {}\n",
+            'app/Core/Beta/Other.php'  => "<?php\nnamespace App\\Core\\Beta;\nclass Other {}\n",
+        ]);
 
-        $this->assertNotEmpty($report['files']);
-        foreach ($report['files'] as $file) {
+        $narrowed = (new RepositoryIntelligence($this->fixture))->analyse('Alpha');
+
+        $this->assertNotEmpty($narrowed['files'], 'the fixture guarantees a match');
+        foreach ($narrowed['files'] as $file) {
+            $this->assertSame('Alpha', $file['subsystem']['subsystem'], $file['path']);
+        }
+
+        // And the invariant against the live repository, which may legitimately
+        // be empty once a subsystem's work has been committed.
+        $live = (new RepositoryIntelligence(base_path()))->analyse('Engineer888');
+        foreach ($live['files'] as $file) {
             $this->assertSame('Engineer888', $file['subsystem']['subsystem'], $file['path']);
         }
     }
