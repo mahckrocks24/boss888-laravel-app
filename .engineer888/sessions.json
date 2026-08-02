@@ -1,0 +1,79 @@
+{
+    "registry_version": 1,
+    "purpose": "Session identity and test-database assignment for every engineering session observed in this repository. This is a REGISTRY, not a sprint manifest: it records the facts that are knowable from outside a session (its identifier, its database, its PHPUnit config). It deliberately does not declare file ownership for other engineers, because Engineer888 cannot know what they own and guessing is the failure this whole control set exists to prevent.",
+    "updated_at": "2026-08-01T11:20:00Z",
+    "updated_by": "Engineer888 (e888)",
+
+    "why_separate_from_sprints": "Sprint manifests live in .engineer888/sprints/ and are resolved by OwnershipManifest::active(). Placing other sessions' entries there would make that resolution ambiguous and every ownership lookup would fail closed, breaking the commit path for everyone. The registry is data; the sprints directory is control.",
+
+    "sessions": [
+        {
+            "session": "e888",
+            "engineer": "Engineer888",
+            "test_database": "levelup_e888_test",
+            "phpunit_config": "phpunit.e888.xml",
+            "db_forced": true,
+            "sprint_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "adoption": "FULL",
+            "notes": "Assignment enforced at Tests\\TestCase::setUpTraits() via E888_SPRINT_MANIFEST."
+        },
+        {
+            "session": "chat",
+            "engineer": "unknown — inferred from configuration only",
+            "test_database": "levelup_chat_test",
+            "phpunit_config": "phpunit.chat.xml",
+            "db_forced": true,
+            "sprint_manifest": null,
+            "adoption": "ISOLATED_NO_MANIFEST",
+            "notes": "Has an isolated, forced database. No sprint manifest, so assigned-database enforcement is inactive for this session and its file ownership is undeclared. Config NOT modified by Engineer888."
+        },
+        {
+            "session": "p1e1",
+            "engineer": "unknown — observed running PlatformEvents tests 2026-08-01 10:11 UTC",
+            "test_database": "levelup_p1e1_test",
+            "phpunit_config": "phpunit.p1e1.xml",
+            "db_forced": true,
+            "sprint_manifest": null,
+            "adoption": "ISOLATED_NO_MANIFEST",
+            "notes": "Has an isolated, forced database. Observed mid-run during the coordination sprint. Config NOT modified by Engineer888."
+        },
+        {
+            "session": "integration",
+            "engineer": "unknown — config appears unused",
+            "test_database": "boss888_test",
+            "phpunit_config": "phpunit.integration.xml",
+            "db_forced": true,
+            "sprint_manifest": null,
+            "adoption": "HARDENED_BUT_STALE",
+            "notes": "force=\"true\" added on 2026-07-31 during the INC-2026-006 sweep because none of its seven env entries had it. boss888_test does not exist on this server and the config is referenced nowhere. Recommend review or removal by its owner."
+        },
+        {
+            "session": "(default)",
+            "engineer": "shared default",
+            "test_database": "levelup_test",
+            "phpunit_config": "phpunit.xml",
+            "db_forced": true,
+            "sprint_manifest": null,
+            "adoption": "SHARED_DEFAULT",
+            "notes": "levelup_test is a SHARED database and is refused as a destructive target by DatabaseAssignment. Any session still defaulting here has no isolation. This is the single largest remaining coordination gap."
+        }
+    ],
+
+    "unassigned_databases": [
+        {
+            "database": "levelup_clean_test",
+            "note": "exists with 180 tables, no PHPUnit config references it, no owner identified. Refused as a shared name."
+        },
+        {
+            "database": "levelup_infra_test",
+            "note": "exists with 155 tables, no PHPUnit config references it, no owner identified. Not on the shared denylist — an owner should claim it or it should be dropped by whoever created it."
+        }
+    ],
+
+    "global_refusals": {
+        "production_names": ["levelup_staging", "levelup", "levelup_production", "levelup_prod"],
+        "shared_names": ["levelup_test", "levelup_clean_test", "boss888_test"],
+        "enforced_by": "app/Core/Engineer888/Coordination/DatabaseAssignment.php",
+        "applies_to": "every session, regardless of manifest adoption"
+    }
+}

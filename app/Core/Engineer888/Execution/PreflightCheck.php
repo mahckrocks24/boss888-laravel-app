@@ -2,6 +2,8 @@
 
 namespace App\Core\Engineer888\Execution;
 
+use App\Core\Engineer888\Coordination\GovernedFiles;
+use App\Core\Engineer888\Coordination\OwnershipManifest;
 use App\Core\Engineer888\Repository\FileClassifier;
 
 /**
@@ -133,6 +135,46 @@ final class PreflightCheck
             $ignored === [] ? 'no planned file is covered by .gitignore'
                             : 'gitignored file(s) in the group: ' . implode(', ', $ignored)
                               . ' — staging these would require a force flag, which is never permitted')) {
+            return $this->result($gates, $abort);
+        }
+
+        // ── ownership, re-proved at staging time ─────────────────────────
+        // The planner already excluded unowned files. This gate exists because
+        // the plan is stored and executed later, and because a control with one
+        // implementation is a control with one place to fail.
+        $manifest = OwnershipManifest::active($this->repoPath);
+        if (! $add('sprint-manifest', $manifest !== null,
+            $manifest !== null
+                ? 'sprint ' . $manifest->sprint() . ' (' . $manifest->engineer() . ')'
+                : 'no active sprint manifest — ownership cannot be proven for any file')) {
+            return $this->result($gates, $abort);
+        }
+
+        $unowned = [];
+        $undeclared = [];
+        foreach ($group['files'] as $path) {
+            $ownership = $manifest->classify($path);
+            if (! OwnershipManifest::isCommittable($ownership['status'])) {
+                $unowned[] = $path . ' (' . $ownership['status'] . ')';
+                continue;
+            }
+            if (GovernedFiles::isGoverned($path) && $ownership['status'] !== OwnershipManifest::SHARED_DECLARED) {
+                $undeclared[] = $path;
+            }
+        }
+
+        if (! $add('ownership-proven', $unowned === [],
+            $unowned === []
+                ? count($group['files']) . ' file(s) owned by this sprint or declared shared'
+                : count($unowned) . ' file(s) with no ownership evidence: ' . implode(', ', array_slice($unowned, 0, 3))
+                  . ' — technical coherence is not ownership')) {
+            return $this->result($gates, $abort);
+        }
+
+        if (! $add('governed-declared', $undeclared === [],
+            $undeclared === []
+                ? 'no undeclared governed shared files'
+                : 'governed file(s) not declared in the manifest: ' . implode(', ', $undeclared))) {
             return $this->result($gates, $abort);
         }
 

@@ -2,6 +2,9 @@
 
 namespace App\Core\Engineer888\Repository;
 
+use App\Core\Engineer888\Coordination\GovernedFiles;
+use App\Core\Engineer888\Coordination\OwnershipManifest;
+
 /**
  * Turns a changed set into an ordered sequence of proposed commits.
  *
@@ -40,7 +43,7 @@ final class CommitPlanner
     public function plan(array $analysed, DependencyGraph $graph): array
     {
         $groups = [];
-        $excluded = ['do_not_commit' => [], 'blocked' => []];
+        $excluded = ['do_not_commit' => [], 'blocked' => [], 'not_owned' => [], 'governed_undeclared' => []];
         $units = $this->cohesiveUnits($analysed);
 
         foreach ($analysed as $file) {
@@ -54,6 +57,31 @@ final class CommitPlanner
             // Conflict markers block everything; they are not committable at all.
             if ($classification === FileClassifier::MERGE) {
                 $excluded['blocked'][] = ['path' => $file['path'], 'why' => $file['analysis']['reason']];
+                continue;
+            }
+
+            // Ownership, checked before grouping. A file this sprint cannot
+            // prove it owns never reaches a commit group, so no amount of
+            // technical coherence can pull it in.
+            $ownership = $file['ownership'] ?? ['status' => OwnershipManifest::UNKNOWN, 'evidence' => 'not classified'];
+            if (! OwnershipManifest::isCommittable($ownership['status'])) {
+                $excluded['not_owned'][] = [
+                    'path'   => $file['path'],
+                    'status' => $ownership['status'],
+                    'why'    => $ownership['evidence'],
+                ];
+                continue;
+            }
+
+            // A governed shared file may only be staged when this sprint has
+            // declared it, with a reason, in the manifest.
+            if (GovernedFiles::isGoverned($file['path']) && $ownership['status'] !== OwnershipManifest::SHARED_DECLARED) {
+                $policy = GovernedFiles::policyFor($file['path']);
+                $excluded['governed_undeclared'][] = [
+                    'path'   => $file['path'],
+                    'status' => $policy['classification'] ?? 'GOVERNED',
+                    'why'    => 'governed shared file, not declared in the sprint manifest — ' . ($policy['affects'] ?? ''),
+                ];
                 continue;
             }
 

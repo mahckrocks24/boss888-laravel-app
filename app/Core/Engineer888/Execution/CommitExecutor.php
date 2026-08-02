@@ -5,6 +5,7 @@ namespace App\Core\Engineer888\Execution;
 use App\Core\Engineer888\Repository\DependencyGraph;
 use App\Core\Engineer888\Signals\Shell;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Executes exactly one commit group, or refuses to.
@@ -234,12 +235,39 @@ final class CommitExecutor
         ];
     }
 
-    /** @return array{0:bool, 1:string} */
+    /**
+     * Runs a verification command with the database environment removed.
+     *
+     * THE STRIPPING HAPPENS HERE, not only in TestSelector, and that is the
+     * point. TestSelector builds a safe command today; this method executes
+     * whatever it is handed. On 2026-07-30 it was handed a command that resolved
+     * to production and it ran it without question. A choke point that trusts its
+     * caller is not a choke point.
+     *
+     * Belt and braces: TestSelector still emits `env -u ...` itself, so the
+     * protection survives either component being changed in isolation. Applying
+     * `env -u` twice is harmless.
+     *
+     * @return array{0:bool, 1:string}
+     */
     private function runShell(array $check): array
     {
         $out = [];
         $code = 0;
-        @exec('cd ' . escapeshellarg($this->repoPath) . ' && ' . $check['command'] . ' 2>&1', $out, $code);
+
+        $strip = 'env';
+        foreach (['DB_CONNECTION', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME',
+                  'DB_PASSWORD', 'APP_ENV'] as $variable) {
+            $strip .= ' -u ' . $variable;
+        }
+
+        // `env -u X <cmd>` execs a BINARY. Several checks are shell constructs —
+        // `for f in ...; do php -l "$f"; done` — which env cannot exec, so the
+        // command runs through bash and env strips the environment bash is
+        // started with. Wrapping was not optional: prefixing env directly broke
+        // the syntax check the moment it was introduced.
+        @exec('cd ' . escapeshellarg($this->repoPath) . ' && ' . $strip
+            . ' bash -c ' . escapeshellarg($check['command']) . ' 2>&1', $out, $code);
 
         return [$code === 0, implode("\n", array_slice($out, -60))];
     }
@@ -312,9 +340,27 @@ final class CommitExecutor
         // A dry run is not an execution and must not pollute the log — but a
         // refusal IS, because "why is this still uncommitted" is exactly the
         // question the log exists to answer.
+        // The log IS the engineering memory, so losing a write must never lose
+        // the outcome and must never be silent. On 2026-07-30 this insert threw
+        // because the verification run had just emptied the database, taking the
+        // plan row its foreign key points at — the execution had succeeded and
+        // the record of it was lost. The result is now returned regardless, with
+        // the logging failure carried in it rather than thrown away.
         $id = null;
+        $logError = null;
         if (! $dryRun) {
-            $id = DB::table('engineering_executions')->insertGetId($record);
+            try {
+                $id = DB::table('engineering_executions')->insertGetId($record);
+            } catch (\Throwable $e) {
+                $logError = substr($e->getMessage(), 0, 300);
+                Log::error('[Engineer888] execution log write FAILED — the outcome below was not recorded', [
+                    'group'   => $record['group_key'],
+                    'status'  => $record['status'],
+                    'outcome' => $record['outcome'],
+                    'commit'  => $record['commit_sha'],
+                    'error'   => $logError,
+                ]);
+            }
         }
 
         return array_merge($extra, [
@@ -323,6 +369,7 @@ final class CommitExecutor
             'outcome'      => $outcome,
             'duration_ms'  => $record['duration_ms'],
             'dry_run'      => $dryRun,
+            'log_error'    => $logError,
         ]);
     }
 }

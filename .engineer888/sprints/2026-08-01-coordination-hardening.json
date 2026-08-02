@@ -1,0 +1,78 @@
+{
+    "manifest_version": 1,
+    "engineer": "Engineer888",
+    "session": "e888",
+    "sprint": "2026-08-01-coordination-hardening",
+    "opened_at": "2026-08-01T10:11:49Z",
+    "test_database": "levelup_e888_test",
+    "phpunit_config": "phpunit.e888.xml",
+    "owned_paths": [
+        "app/Core/Engineer888/**",
+        "tests/Feature/Engineer888/**",
+        ".engineer888/**"
+    ],
+    "owned_files": [
+        ".engineer888/sessions.json",
+        "ENGINEERING-COORDINATION.md",
+        "app/Console/Commands/BaselineCommand.php",
+        "app/Console/Commands/CommitExecutionCommand.php",
+        "app/Console/Commands/CoordinationCommand.php",
+        "app/Console/Commands/DeployVerifyCommand.php",
+        "app/Console/Commands/EngineeringBriefCommand.php",
+        "app/Console/Commands/RepositoryIntelligenceCommand.php",
+        "app/Console/Commands/SafeInstallCommand.php",
+        "config/governed_files.php",
+        "database/migrations/2026_07_30_120000_create_engineering_snapshots_table.php",
+        "database/migrations/2026_07_30_140000_create_engineering_execution_tables.php",
+        "database/migrations/2026_08_01_120000_create_engineering_deployment_tables.php",
+        "phpunit.e888.xml",
+        "tools/exec-safety-audit.php",
+        "tools/install-integrity-audit.php"
+    ],
+    "shared_files": [
+        {
+            "path": "tests/TestCase.php",
+            "policy": "ANNOUNCE BEFORE EDIT",
+            "reason": "INC-2026-006 P0: ProductionDatabaseGuard ran after RefreshDatabase had already dropped the target database. The guard moved to setUpTraits(), which is the only hook between application boot and trait execution. A second, additive assertion checks that the resolved database is the one assigned to this session.",
+            "backup": "storage/app/ads-backups/TestCase.php.before-guard-order-fix-20260730-140725",
+            "unavoidable_because": "the defect is in this file; there is no other hook that runs before RefreshDatabase"
+        },
+        {
+            "path": "phpunit.integration.xml",
+            "policy": "SAFETY CORRECTION",
+            "reason": "INC-2026-006 sweep: zero of seven env entries used force=\"true\", so a nested run would ignore the declared database and resolve to production, with a testsuite covering all of tests/Feature (126 RefreshDatabase classes).",
+            "backup": "storage/app/ads-backups/phpunit.integration.xml.before-force-20260731-092901",
+            "unavoidable_because": "the config itself was the loaded gun"
+        },
+        {
+            "path": "bootstrap/app.php",
+            "policy": "ANNOUNCE BEFORE EDIT",
+            "reason": "Added one scheduler entry for engineering:brief via an anchored insertion. Scheduler count verified 34 -> 35 with every other engineer's entry intact.",
+            "backup": "storage/app/ads-backups/bootstrap-app.php.before-e888-schedule-20260730-122422",
+            "unavoidable_because": "Laravel 11 registers scheduled commands only in this file"
+        },
+        {
+            "path": "INCIDENT-REGISTER.md",
+            "policy": "APPEND ONLY",
+            "reason": "Appended INC-2026-006 and its sweep closure. No existing content was modified.",
+            "backup": "none required \u2014 append-only edit",
+            "unavoidable_because": "it is the platform's incident register"
+        }
+    ],
+    "exclusions": [
+        "storage/**",
+        "_backup/**",
+        "vendor/**",
+        "node_modules/**"
+    ],
+    "coordination_notes": [
+        "COORDINATION DEBT, accepted by CEO decision 2026-08-01: commit c42ea4b contains 33 documents, at least 9 authored by the PlatformEvents engineer. Left unchanged deliberately \u2014 docs-only, work preserved, and rewriting history is the larger risk.",
+        "COORDINATION DEBT: levelup_test was dropped and recreated at ~12:05 on 2026-07-30 while a concurrent session was migrating it. Isolation had been inferred from a point-in-time process check, which this sprint establishes is not proof.",
+        "Observed 2026-08-01 10:11 UTC: the PlatformEvents engineer was running phpunit -c phpunit.p1e1.xml against levelup_p1e1_test. Their configuration and database were left untouched.",
+        "Other engineers' configs observed and NOT modified: phpunit.chat.xml (levelup_chat_test), phpunit.p1e1.xml (levelup_p1e1_test).",
+        "Observed 2026-08-01 10:17:40 UTC, DURING this sprint: the Domains/Stripe engineer created app/Console/Commands/ReplayTestWebhookCommand.php (PHASE 1E.2 signed-webhook replay). It appeared six minutes after this sprint's concurrency refresh, which is the reason the refresh is required immediately before a consequential action rather than once at the start. The ownership control classified it UNKNOWN and refused it with no prior knowledge of the file. Left untouched.",
+        "SPRINT 4.1: the Sprint 4 migration was absent from owned_files, so `engineering:coordination --owns` correctly reported UNKNOWN for a file this sprint authored. Added. The lesson is that a manifest is only as good as its upkeep: the control did its job and the declaration had drifted behind the work.",
+        "P0.5: SafeInstaller refused to install its own command and audit tool because they were undeclared. Ownership is checked before provenance, so an undeclared file is never written regardless of whether it would have been safe to write.",
+        "SPRINT 5 (2026-08-02): production baseline. Observed active engineers during this sprint \u2014 Studio888 (ImageReasoningService.php, StudioFallbackQualityTest.php) and a Hosting engineer (ReconcileHostingCommand.php, new). Their files are classified EXTERNALLY_OWNED and are not committed."
+    ]
+}

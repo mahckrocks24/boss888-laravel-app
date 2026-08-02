@@ -319,6 +319,95 @@ class CommitExecutionTest extends TestCase
             'only the test that actually imports the class, not everything in the directory');
     }
 
+    // ── test isolation (INC-2026-006) ───────────────────────────────────
+
+    /**
+     * Regression for the data loss on 2026-07-30. The selector emitted
+     * `php artisan test -c phpunit.e888.xml <files>`, the executor ran it with
+     * exec() from inside a booted artisan process, the child inherited
+     * DB_DATABASE=levelup_staging through $_SERVER — which phpunit's
+     * <env force="true"> does not override — and RefreshDatabase emptied
+     * production.
+     */
+    public function test_the_test_command_strips_the_parents_database_environment(): void
+    {
+        $this->makeRepo(['seed.txt' => "x\n"], commit: true);
+        $selector = new TestSelector($this->repo, (new DependencyGraph($this->repo))->build());
+
+        $command = $selector->sanitisedTestCommand('phpunit.x.xml', ['tests/Feature/X/ATest.php']);
+
+        foreach (['DB_DATABASE', 'DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'APP_ENV'] as $variable) {
+            $this->assertStringContainsString('-u ' . $variable, $command,
+                $variable . ' must be removed from the child environment, not merely overridden');
+        }
+        $this->assertStringStartsWith('env ', $command);
+    }
+
+    public function test_a_config_pointing_at_production_is_never_selected(): void
+    {
+        $template = $this->phpunitConfigTemplate();
+
+        $cases = [
+            'levelup_e888_test'  => true,
+            'levelup_infra_test' => true,
+            'levelup_staging'    => false,
+            'levelup'            => false,
+            'levelup_prod'       => false,
+            'levelup_scratch'    => false,   // not recognisable as a test database
+        ];
+
+        foreach ($cases as $database => $shouldAccept) {
+            $this->rmrf($this->repo);
+            $this->makeRepo(['tests/Feature/X/ATest.php' => "<?php\n"], commit: false);
+            $this->write('phpunit.case.xml', str_replace('__DB__', $database, $template));
+
+            $selector = new TestSelector($this->repo, (new DependencyGraph($this->repo))->build());
+            $accepted = $selector->configFor(['tests/Feature/X/ATest.php']);
+
+            $shouldAccept
+                ? $this->assertNotNull($accepted, $database . ' is a test database and should be usable')
+                : $this->assertNull($accepted, $database . ' must never be used as a verification target');
+        }
+    }
+
+    public function test_tests_are_reported_as_not_run_when_no_isolated_config_exists(): void
+    {
+        $this->makeRepo([
+            'app/Core/X/Service.php'          => "<?php\nnamespace App\\Core\\X;\nclass Service {}\n",
+            'tests/Feature/X/ServiceTest.php' => "<?php\nnamespace Tests\\Feature\\X;\nuse App\\Core\\X\\Service;\nclass ServiceTest { public function t(Service \$s) {} }\n",
+        ], commit: false);
+        // No phpunit config at all in this repository.
+
+        $selector = new TestSelector($this->repo, (new DependencyGraph($this->repo))->build());
+        $checks = $selector->select($this->fakeGroup(['app/Core/X/Service.php'], ['core'], subsystem: 'X'));
+
+        $ids = array_column($checks, 'id');
+        $this->assertContains('covering-tests-skipped', $ids,
+            'relevant tests exist, so their absence from the run must be reported');
+        $this->assertNotContains('covering-tests', $ids,
+            'running them without a provably isolated database is the thing that destroyed production');
+
+        $skipped = $checks[array_search('covering-tests-skipped', $ids, true)];
+        $this->assertSame('none', $skipped['runner'], 'a skipped check must not execute anything');
+        $this->assertStringContainsString('Run them yourself', $skipped['rationale']);
+    }
+
+    private function phpunitConfigTemplate(): string
+    {
+        return <<<'XML'
+<phpunit bootstrap="vendor/autoload.php">
+    <testsuites>
+        <testsuite name="X">
+            <directory suffix="Test.php">./tests/Feature/X</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="DB_DATABASE" value="__DB__" force="true"/>
+    </php>
+</phpunit>
+XML;
+    }
+
     // ── commit messages ─────────────────────────────────────────────────
 
     public function test_the_message_follows_this_repositorys_convention(): void
@@ -513,6 +602,28 @@ class CommitExecutionTest extends TestCase
             if (! is_dir(dirname($full))) { mkdir(dirname($full), 0775, true); }
             file_put_contents($full, $content);
         }
+        // Ownership is fail-closed, so a fixture repository needs a manifest like
+        // any real sprint. These fixtures exercise grouping and execution, not
+        // ownership, so the manifest owns everything inside the temp directory.
+        // Where the running configuration says the manifest lives. An explicit
+        // declaration is authoritative, so the fixture must satisfy it rather
+        // than invent its own filename.
+        $declared = getenv('E888_SPRINT_MANIFEST') ?: '.engineer888/sprints/fixture.json';
+        $manifestPath = $this->repo . '/' . ltrim($declared, '/');
+        if (! is_dir(dirname($manifestPath))) { mkdir(dirname($manifestPath), 0775, true); }
+        file_put_contents($manifestPath, json_encode([
+            'manifest_version' => 1,
+            'engineer'         => 'Engineer888',
+            'session'          => 'fixture',
+            'sprint'           => 'fixture',
+            'test_database'    => 'levelup_e888_test',
+            'owned_paths'      => ['**'],
+        ], JSON_PRETTY_PRINT));
+
+        // Scaffolding, not subject matter: keep it out of git so the working-tree
+        // counts these fixtures assert on are unaffected. Ownership resolution
+        // reads the file from disk, so it still applies.
+        file_put_contents($this->repo . '/.gitignore', ".engineer888/\n.gitignore\n");
         $this->git('init -q');
         $this->git('config user.email e888@test');
         $this->git('config user.name e888');
@@ -550,6 +661,8 @@ class CommitExecutionTest extends TestCase
 
     private function rmrf(string $dir): void
     {
+        if (! is_dir($dir)) { return; }
+
         $items = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::CHILD_FIRST

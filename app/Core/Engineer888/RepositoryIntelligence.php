@@ -2,6 +2,7 @@
 
 namespace App\Core\Engineer888;
 
+use App\Core\Engineer888\Coordination\OwnershipManifest;
 use App\Core\Engineer888\Repository\ArchitectureMap;
 use App\Core\Engineer888\Repository\CommitPlanner;
 use App\Core\Engineer888\Repository\DependencyGraph;
@@ -35,6 +36,7 @@ final class RepositoryIntelligence
             return ['available' => false, 'reason' => $tree['reason'] ?? 'working tree unreadable'];
         }
 
+        $manifest = OwnershipManifest::active($this->repoPath);
         $map = new ArchitectureMap($this->repoPath);
         $graph = (new DependencyGraph($this->repoPath))->build();
         $classifier = new FileClassifier($this->repoPath, $map);
@@ -48,6 +50,16 @@ final class RepositoryIntelligence
             $file['layer'] = $map->layer($file['path']);
             $file['subsystem'] = $subsystem;
             $file['analysis'] = $classifier->classify($file, $graph);
+
+            // Ownership is a SEPARATE question from technical grouping. On
+            // 2026-07-31 the two were conflated and a commit captured 9
+            // documents belonging to the PlatformEvents engineer: the grouping
+            // was right and the commit was still wrong. No manifest means no
+            // ownership evidence for anything, which is the fail-closed state.
+            $file['ownership'] = $manifest !== null
+                ? $manifest->classify($file['path'])
+                : ['status' => OwnershipManifest::UNKNOWN, 'evidence' => 'no active sprint manifest'];
+
             $analysed[] = $file;
         }
 

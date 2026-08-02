@@ -1,0 +1,2482 @@
+{
+    "snapshot_version": 1,
+    "label": "sprint5-pre-commit",
+    "captured_at": "2026-08-02T09:47:14+00:00",
+    "captured_by": "e888",
+    "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+    "git": {
+        "head": "0079f73cdb74ff6b44bfc6c1c0bdb2e6c03e24e1",
+        "branch": "feature/studio888-mrc-2a",
+        "dirty_count": 408,
+        "upstream": null
+    },
+    "platform": {
+        "database": "levelup_staging",
+        "table_counts": {
+            "users": 11,
+            "workspaces": 25,
+            "tasks": 2466,
+            "task_events": 12777,
+            "api_usage_logs": 3892
+        },
+        "queue_workers": 4,
+        "scheduler_log_age": 12
+    },
+    "migrations": {
+        "applied_count": 231,
+        "pending": [
+            "2026_07_29_130000_add_execution_provenance_to_api_usage_logs"
+        ]
+    },
+    "files": {
+        ".engineer888/baselines/20260802-093627-sprint5-production-baseline.json": {
+            "status": "??",
+            "hash": "bc23ec0033d1a23d6ac32c560d4b594a67e5b475",
+            "size": 89820,
+            "mtime": 1785663387
+        },
+        ".engineer888/installed.json": {
+            "status": "??",
+            "hash": "bdc54996472921380e975ec9463becf507b2497e",
+            "size": 34590,
+            "mtime": 1785663999
+        },
+        ".engineer888/sessions.json": {
+            "status": "??",
+            "hash": "6c777578af9ed0634ae67e2f6d9377bd466b5613",
+            "size": 4446,
+            "mtime": 1785583364
+        },
+        ".engineer888/sprints/2026-08-01-coordination-hardening.json": {
+            "status": "??",
+            "hash": "4a874c31c9fe44fc8cea15678f2c46e79490891a",
+            "size": 5702,
+            "mtime": 1785663366
+        },
+        "BOSS888-PHASE-1E-DOMAIN-ORDER-PAID-REPORT.md": {
+            "status": " M",
+            "hash": "2ef938d0a0ba8079489ab5da54f622ec5ed3d2be",
+            "size": 56080,
+            "mtime": 1785581637
+        },
+        "DIGITAL-ESTATE-ARCHITECTURE.md": {
+            "status": "??",
+            "hash": "a71c3f1331ce5c847021fbec404938bdb555405e",
+            "size": 26573,
+            "mtime": 1785660598
+        },
+        "ENGINEERING-COORDINATION.md": {
+            "status": "??",
+            "hash": "596bf8d21059cff119c0f4fce12cf81d6cfae572",
+            "size": 5555,
+            "mtime": 1785579515
+        },
+        "INCIDENT-REGISTER.md": {
+            "status": " M",
+            "hash": "cb6b531620941f1c49e346c7ac40e892250da13e",
+            "size": 28326,
+            "mtime": 1785491258
+        },
+        "INFRA888-HOSTING-STATUS-REPORT.md": {
+            "status": "??",
+            "hash": "25bab8d72fcec044bc15d34d4fadb9ffc64498f6",
+            "size": 10673,
+            "mtime": 1785582819
+        },
+        "INFRA888-LAUNCH-MASTERPLAN-V2.md": {
+            "status": "??",
+            "hash": "86124a6572522d78aa46c7bf5a2eb120c1ba6f9a",
+            "size": 20376,
+            "mtime": 1785603279
+        },
+        "INFRA888-LAUNCH-MASTERPLAN-V3.md": {
+            "status": "??",
+            "hash": "a0937d9a690327edbe680469e6f7a4dc712ad7da",
+            "size": 18791,
+            "mtime": 1785612220
+        },
+        "INFRA888-LAUNCH-MASTERPLAN.md": {
+            "status": "??",
+            "hash": "c74fd6190a660bec08b13d918e0ca33b42c155a3",
+            "size": 26315,
+            "mtime": 1785584805
+        },
+        "INFRA888-S2-CLOUDFLARE-PRODUCTION-REPORT.md": {
+            "status": "??",
+            "hash": "b30a98857140c1154ce277a07c533be7ae54489b",
+            "size": 17519,
+            "mtime": 1785663908
+        },
+        "WP2-PHASE-2.2B-STUDIO-IMAGE-INTELLIGENCE-VALIDATION.md": {
+            "status": "??",
+            "hash": "cfa47be7c80d6ee955aa713c2362eaf266c67847",
+            "size": 17748,
+            "mtime": 1785491994
+        },
+        "_audit.php": {
+            "status": "??",
+            "hash": "8f570e92e6555589563eb3968780e1e9fe6f0f85",
+            "size": 13734,
+            "mtime": 1785309028
+        },
+        "app/Connectors/Infrastructure/Namecheap/NamecheapClient.php": {
+            "status": "??",
+            "hash": "d9910cfa3d334a8672350944b9d6fa524b8cf5ee",
+            "size": 10791,
+            "mtime": 1785322210
+        },
+        "app/Connectors/Infrastructure/Namecheap/NamecheapRegistrarConnector.php": {
+            "status": "??",
+            "hash": "27525f58ed40278d9a6cd7970f998554ab4318f6",
+            "size": 46707,
+            "mtime": 1785328423
+        },
+        "app/Connectors/RuntimeClient.php": {
+            "status": " M",
+            "hash": "c99e5d1664c4ee280e0d59712cdb27c4b219b58f",
+            "size": 63729,
+            "mtime": 1785330974
+        },
+        "app/Console/Commands/AdoptCustomDomainsCommand.php": {
+            "status": "??",
+            "hash": "6648de94ce948a4dac49360731ef4cb69a6b5cba",
+            "size": 20065,
+            "mtime": 1785663381
+        },
+        "app/Console/Commands/AdsPreviewCommand.php": {
+            "status": "??",
+            "hash": "aa5c6f60617578794d52a56e3fffd226f8f9e420",
+            "size": 19495,
+            "mtime": 1785233603
+        },
+        "app/Console/Commands/AdsProfileInventoryCommand.php": {
+            "status": "??",
+            "hash": "505b36500540485a7fba3fb338008f97e2262021",
+            "size": 11071,
+            "mtime": 1785180864
+        },
+        "app/Console/Commands/AdsReachCommand.php": {
+            "status": "??",
+            "hash": "1695a303062d3fce7d8f3cda540ce6228cdc1713",
+            "size": 4491,
+            "mtime": 1785213589
+        },
+        "app/Console/Commands/AdsReportCommand.php": {
+            "status": "??",
+            "hash": "657415c98262e02d8180c4434081d2929ab040b2",
+            "size": 8610,
+            "mtime": 1785213589
+        },
+        "app/Console/Commands/AdsRollupCommand.php": {
+            "status": "??",
+            "hash": "a101776f69f1af495f280797ab861a96680c35a7",
+            "size": 4475,
+            "mtime": 1785213589
+        },
+        "app/Console/Commands/AdsSeedPlatformCommand.php": {
+            "status": "??",
+            "hash": "d544d4f5b46b91ae2e417461644c9c42d8671d75",
+            "size": 10909,
+            "mtime": 1785227117
+        },
+        "app/Console/Commands/AdsSettingsCommand.php": {
+            "status": "??",
+            "hash": "44c99e29a50de2f27b05e5bcdad7b109279d20c5",
+            "size": 7899,
+            "mtime": 1785237192
+        },
+        "app/Console/Commands/AdsSimulateCommand.php": {
+            "status": "??",
+            "hash": "74700f4cc8ddc57a713a0f62a36166f058243c45",
+            "size": 4763,
+            "mtime": 1785184457
+        },
+        "app/Console/Commands/AdsSmokeCommand.php": {
+            "status": "??",
+            "hash": "ed393976218aa7ba995bbdfc75a88cea2ffd3be9",
+            "size": 36960,
+            "mtime": 1785308903
+        },
+        "app/Console/Commands/AdsSyncTaxonomyCommand.php": {
+            "status": "??",
+            "hash": "3fc8478b7654a8c89e657715a36b81d53e587834",
+            "size": 6357,
+            "mtime": 1785180864
+        },
+        "app/Console/Commands/AttachTestSessionCommand.php": {
+            "status": "??",
+            "hash": "3557a9f2d9833db6c7a79991c0a5ff4fc75e7331",
+            "size": 7865,
+            "mtime": 1785418630
+        },
+        "app/Console/Commands/BaselineCommand.php": {
+            "status": "??",
+            "hash": "6be9524c43686c684e54edbd7d74805e508c3775",
+            "size": 11448,
+            "mtime": 1785663367
+        },
+        "app/Console/Commands/CommitExecutionCommand.php": {
+            "status": "??",
+            "hash": "233653cb934b988471b2ae33d0cea5bce03342c6",
+            "size": 15075,
+            "mtime": 1785421199
+        },
+        "app/Console/Commands/CoordinationCommand.php": {
+            "status": "??",
+            "hash": "eb6c89aa69fb18fd7fec6b4cd94f176f4fd16bdd",
+            "size": 8718,
+            "mtime": 1785579515
+        },
+        "app/Console/Commands/DeployVerifyCommand.php": {
+            "status": "??",
+            "hash": "0858b419ef373a1536efdfadbc20796122360dc2",
+            "size": 13987,
+            "mtime": 1785583364
+        },
+        "app/Console/Commands/EngineeringBriefCommand.php": {
+            "status": "??",
+            "hash": "da29615da08fc11ee5d85bb67e78a83ab74e97fd",
+            "size": 11848,
+            "mtime": 1785417620
+        },
+        "app/Console/Commands/NamecheapValidate.php": {
+            "status": "??",
+            "hash": "f55c38411397a6cb90c6e2944f2ccaf5f2421070",
+            "size": 17637,
+            "mtime": 1785324465
+        },
+        "app/Console/Commands/PlatformEventsProcessCommand.php": {
+            "status": "??",
+            "hash": "27b25e520f162aeaa651b9025c14a5a99d6a1de1",
+            "size": 12472,
+            "mtime": 1785416475
+        },
+        "app/Console/Commands/PlatformEventsVerifyCommand.php": {
+            "status": "??",
+            "hash": "cbcf60ea3dad7cba05d2b0a0ef7f14ff26d6ae9c",
+            "size": 2279,
+            "mtime": 1785409724
+        },
+        "app/Console/Commands/ReconcileHostingCommand.php": {
+            "status": "??",
+            "hash": "3b0c146d2aa44d56de811d447ddb207d274990e4",
+            "size": 12841,
+            "mtime": 1785661850
+        },
+        "app/Console/Commands/ReplayTestWebhookCommand.php": {
+            "status": "??",
+            "hash": "17407b3f4b37b20c7489c46f3d41f226944c3e90",
+            "size": 7484,
+            "mtime": 1785579460
+        },
+        "app/Console/Commands/RepositoryIntelligenceCommand.php": {
+            "status": "??",
+            "hash": "ba4c3dce3344817b00d3046274d7a30f6c75f9bf",
+            "size": 14840,
+            "mtime": 1785419197
+        },
+        "app/Console/Commands/SafeInstallCommand.php": {
+            "status": "??",
+            "hash": "fefd8f707c49862a71d261a6c64d7c9680789723",
+            "size": 5194,
+            "mtime": 1785660653
+        },
+        "app/Console/Commands/ValidateCloudflareCommand.php": {
+            "status": "??",
+            "hash": "b5618ac6c7303c5a1453b5734dae70a216280a2f",
+            "size": 10991,
+            "mtime": 1785663506
+        },
+        "app/Core/Agent/AgentDispatchService.php": {
+            "status": " M",
+            "hash": "9659014e4b007de4ab884557d20ba9ed1967719e",
+            "size": 29696,
+            "mtime": 1785079655
+        },
+        "app/Core/Billing/StripeService.php": {
+            "status": " M",
+            "hash": "bcbc820058ee3c14e619c61c456a6eb940888a07",
+            "size": 55886,
+            "mtime": 1785419055
+        },
+        "app/Core/Chat/ChatExecutionCoordinator.php": {
+            "status": "??",
+            "hash": "06be1ca77b557b51a4aa36e8db9083d9db264df9",
+            "size": 10635,
+            "mtime": 1785129183
+        },
+        "app/Core/Chat/ChatIdempotencyGate.php": {
+            "status": "??",
+            "hash": "da0a59056fb77810b8734b0d2f2f7bd22bafeead",
+            "size": 8351,
+            "mtime": 1785101682
+        },
+        "app/Core/Chat/ChatIdempotencyService.php": {
+            "status": "??",
+            "hash": "362513a0c8083ff96033b7a639927e75d2d155d9",
+            "size": 10842,
+            "mtime": 1785099500
+        },
+        "app/Core/Chat/ChatRequestFingerprint.php": {
+            "status": "??",
+            "hash": "396f300a244594af583f07bc01226313635fb495",
+            "size": 2422,
+            "mtime": 1785099500
+        },
+        "app/Core/Chat/MessageChargeService.php": {
+            "status": "??",
+            "hash": "6481f3bfef555d290c8b9cf733a0a2c0baf66745",
+            "size": 13692,
+            "mtime": 1785129183
+        },
+        "app/Core/Chat/SeoAssistantIdempotentRunner.php": {
+            "status": "??",
+            "hash": "8bf96282ec8d66ebbcda0c2d8649e3b1490f7cc6",
+            "size": 3752,
+            "mtime": 1785101464
+        },
+        "app/Core/Engineer888/Baseline/BaselineSnapshot.php": {
+            "status": "??",
+            "hash": "5aca03e88444896c609713e581ae52ab0dc22217",
+            "size": 9177,
+            "mtime": 1785663334
+        },
+        "app/Core/Engineer888/Baseline/DirtyFileClassifier.php": {
+            "status": "??",
+            "hash": "3c61a06726fedacf3228eaaa1b1e492e2ab157f3",
+            "size": 8248,
+            "mtime": 1785663447
+        },
+        "app/Core/Engineer888/Coordination/DatabaseAssignment.php": {
+            "status": "??",
+            "hash": "44eb5b65da985059d0fea624703af4d78a8e84af",
+            "size": 5798,
+            "mtime": 1785581029
+        },
+        "app/Core/Engineer888/Coordination/GovernedFiles.php": {
+            "status": "??",
+            "hash": "96c8a2231b812b05c84dc19550eb6e57dd5a6622",
+            "size": 2357,
+            "mtime": 1785579515
+        },
+        "app/Core/Engineer888/Coordination/OwnershipManifest.php": {
+            "status": "??",
+            "hash": "0760489f02da499b209e51343181fb5920083e36",
+            "size": 6377,
+            "mtime": 1785579515
+        },
+        "app/Core/Engineer888/Deployment/BaselineComparison.php": {
+            "status": "??",
+            "hash": "65171a18c1f0d69abdc0a663eaf5c5d7910958ef",
+            "size": 5365,
+            "mtime": 1785583364
+        },
+        "app/Core/Engineer888/Deployment/DeploymentIntent.php": {
+            "status": "??",
+            "hash": "30ff82e9c4d7ae8fae1e02661094a8c8a202bf30",
+            "size": 4018,
+            "mtime": 1785583364
+        },
+        "app/Core/Engineer888/Deployment/DeploymentVerifier.php": {
+            "status": "??",
+            "hash": "60034eb23d8dc76bd9eceae4ce2b2108121e1e58",
+            "size": 13697,
+            "mtime": 1785583364
+        },
+        "app/Core/Engineer888/Deployment/Evidence.php": {
+            "status": "??",
+            "hash": "7456babf3f9cd2be086ceae93b56785aa03fac46",
+            "size": 2331,
+            "mtime": 1785583364
+        },
+        "app/Core/Engineer888/Deployment/ReleaseIdentity.php": {
+            "status": "??",
+            "hash": "8a4985d7d02ef10779a0db2c9936f042e51f79f9",
+            "size": 13949,
+            "mtime": 1785614835
+        },
+        "app/Core/Engineer888/Deployment/SmokeChecks.php": {
+            "status": "??",
+            "hash": "05f3d1139360e15024e30220521366e913a75d2b",
+            "size": 13230,
+            "mtime": 1785614835
+        },
+        "app/Core/Engineer888/Execution/CommitExecutor.php": {
+            "status": " M",
+            "hash": "01b50f640a85234483fae9bee51fcad40e340741",
+            "size": 16955,
+            "mtime": 1785490977
+        },
+        "app/Core/Engineer888/Execution/PreflightCheck.php": {
+            "status": " M",
+            "hash": "2e4655d5a7ab56eb26c66ff6f5f49f51e0126211",
+            "size": 10961,
+            "mtime": 1785579377
+        },
+        "app/Core/Engineer888/Execution/TestSelector.php": {
+            "status": " M",
+            "hash": "2716f59d4cab40379a3cb08c1220df5192378783",
+            "size": 13414,
+            "mtime": 1785421199
+        },
+        "app/Core/Engineer888/Install/InstallDecision.php": {
+            "status": "??",
+            "hash": "ea2ddd4e49a943bf26d972fbad44412abd70509b",
+            "size": 3474,
+            "mtime": 1785660532
+        },
+        "app/Core/Engineer888/Install/InstallManifest.php": {
+            "status": "??",
+            "hash": "2acc98204617e3a997e154cb058ef0c738c3186a",
+            "size": 5585,
+            "mtime": 1785660532
+        },
+        "app/Core/Engineer888/Install/SafeInstaller.php": {
+            "status": "??",
+            "hash": "fe38e0f0b9670ce9484247983dd346050dadfd9a",
+            "size": 14671,
+            "mtime": 1785660532
+        },
+        "app/Core/Engineer888/Repository/CommitPlanner.php": {
+            "status": " M",
+            "hash": "a059210c147284236b70ec1237a6af4dbf79d6d5",
+            "size": 23993,
+            "mtime": 1785579377
+        },
+        "app/Core/Engineer888/RepositoryIntelligence.php": {
+            "status": " M",
+            "hash": "43eb18770f8259372dfd272e2f10d6250b72fe56",
+            "size": 11845,
+            "mtime": 1785579376
+        },
+        "app/Core/Engineer888/Signals/Shell.php": {
+            "status": " M",
+            "hash": "d5fcfdbfd51c26af9e755d5ee2e21748fa994e0a",
+            "size": 2360,
+            "mtime": 1785490141
+        },
+        "app/Core/Engineering/EngineeringListQuery.php": {
+            "status": "??",
+            "hash": "25e9613f69a4fcdf94449865c7fd9a5fb913a164",
+            "size": 5089,
+            "mtime": 1785154467
+        },
+        "app/Core/Engineering/EngineeringReadService.php": {
+            "status": "??",
+            "hash": "276afeb85b5764b4fa7bb1b185c6a3a887407b3c",
+            "size": 89016,
+            "mtime": 1785220329
+        },
+        "app/Core/Governance/DomainCapabilityRegistry.php": {
+            "status": "??",
+            "hash": "cb4b7e64c323915cc3ff20ad2762bbcccad1042c",
+            "size": 21301,
+            "mtime": 1785350689
+        },
+        "app/Core/Governance/GovernanceDecision.php": {
+            "status": "??",
+            "hash": "beafd821d4d13b676983b46777086403da5d6365",
+            "size": 2369,
+            "mtime": 1785069082
+        },
+        "app/Core/Governance/GovernanceGateRegistrar.php": {
+            "status": "??",
+            "hash": "287bc943c6731dfb522ccbd8fd707fb29890ffef",
+            "size": 4360,
+            "mtime": 1785069082
+        },
+        "app/Core/Governance/GovernanceService.php": {
+            "status": "??",
+            "hash": "132687809d82b59460f67c52ec1134bd3277a9fb",
+            "size": 9342,
+            "mtime": 1785069082
+        },
+        "app/Core/Governance/PermissionRegistry.php": {
+            "status": "??",
+            "hash": "692c13f697b3c6ee8a9930d578d321992525fee9",
+            "size": 17531,
+            "mtime": 1785148731
+        },
+        "app/Core/PlatformEvents/ChainVerifier.php": {
+            "status": "??",
+            "hash": "27ff95047e5a282ceb4043779c8b8b7bdd9f572f",
+            "size": 31300,
+            "mtime": 1785412701
+        },
+        "app/Core/PlatformEvents/DeliveryProjection.php": {
+            "status": "??",
+            "hash": "3fea1ad2ddd76373b9c233900ce6cda52f39ebba",
+            "size": 4033,
+            "mtime": 1785409720
+        },
+        "app/Core/PlatformEvents/DeliveryWorker.php": {
+            "status": "??",
+            "hash": "45cf550512ee9bfb5a3522fbf1ef19a26438e482",
+            "size": 10093,
+            "mtime": 1785409885
+        },
+        "app/Core/PlatformEvents/EventFanOut.php": {
+            "status": "??",
+            "hash": "5a018637773626502119c98f6b87f230a73e4664",
+            "size": 6887,
+            "mtime": 1785409729
+        },
+        "app/Core/PlatformEvents/EventReplay.php": {
+            "status": "??",
+            "hash": "e483ea34095636be4a59e8bd2d31c854750b4907",
+            "size": 8917,
+            "mtime": 1785409729
+        },
+        "app/Core/PlatformEvents/EventSystemHealth.php": {
+            "status": "??",
+            "hash": "9566d8f6d7354e1606031f361f5b99fc14eb2a9d",
+            "size": 19468,
+            "mtime": 1785416309
+        },
+        "app/Core/PlatformEvents/Outbox.php": {
+            "status": "??",
+            "hash": "66856142e9ac514ee9f391c6576a0f47ef5da26a",
+            "size": 9108,
+            "mtime": 1785415918
+        },
+        "app/Core/PlatformEvents/OutboxDispatcher.php": {
+            "status": "??",
+            "hash": "fc1f98123cf33592afac0a92363a6c4957c1ae1f",
+            "size": 6844,
+            "mtime": 1785353581
+        },
+        "app/Core/PlatformEvents/PermanentSubscriberFailure.php": {
+            "status": "??",
+            "hash": "243c9e0c12a4448a1c2f0647d5405244f2bb5e56",
+            "size": 715,
+            "mtime": 1785356354
+        },
+        "app/Core/PlatformEvents/PlatformEvent.php": {
+            "status": "??",
+            "hash": "64b5cf61e730dc5a6ca3375b25d575d53a259662",
+            "size": 4036,
+            "mtime": 1785353057
+        },
+        "app/Core/PlatformEvents/SubscriberDeclaration.php": {
+            "status": "??",
+            "hash": "a7ac729e08f0fec60c68050750a77a1ee869e365",
+            "size": 7456,
+            "mtime": 1785406825
+        },
+        "app/Core/PlatformEvents/SubscriberRegistry.php": {
+            "status": "??",
+            "hash": "a0f4402c9410700880acbfa316e150de0ab59827",
+            "size": 8404,
+            "mtime": 1785412462
+        },
+        "app/Core/PlatformEvents/Subscribers/AuditSubscriber.php": {
+            "status": "??",
+            "hash": "8e4f7b3c88e1fe50ac099bc6927c5fc4099e7c9f",
+            "size": 8322,
+            "mtime": 1785412507
+        },
+        "app/Core/PlatformEvents/Types/DomainOrderCreated.php": {
+            "status": "??",
+            "hash": "c9b966aaba8143a68c3cb807a0d5abed7c0910a6",
+            "size": 3915,
+            "mtime": 1785353057
+        },
+        "app/Core/PlatformEvents/Types/DomainOrderPaid.php": {
+            "status": "??",
+            "hash": "70f4b98aa39af024bef704bade723e7c3a219b4a",
+            "size": 6609,
+            "mtime": 1785412457
+        },
+        "app/Core/Safety/ConcurrencyGuard.php": {
+            "status": "??",
+            "hash": "d03a85fdc42cfb06469ffb870237dd9d6a82ed4a",
+            "size": 11461,
+            "mtime": 1785184286
+        },
+        "app/Core/Safety/EngineeringOperation.php": {
+            "status": "??",
+            "hash": "1ff3f55f3da641cf2cfc73b17732b6ad1ce06955",
+            "size": 5258,
+            "mtime": 1785184286
+        },
+        "app/Core/Safety/GovernedRestore.php": {
+            "status": "??",
+            "hash": "fbe45cb5b6f5386524bbc6c462b93f278fd58b8b",
+            "size": 7667,
+            "mtime": 1785137525
+        },
+        "app/Core/Safety/GovernedWriter.php": {
+            "status": "??",
+            "hash": "ed57d139bba51d5bb2c2a39e01919bea431a50a9",
+            "size": 14869,
+            "mtime": 1785213121
+        },
+        "app/Core/Safety/ManifestBackup.php": {
+            "status": "??",
+            "hash": "63120cfeedc09af57df3138c67a752577644a4f8",
+            "size": 6830,
+            "mtime": 1785133129
+        },
+        "app/Core/Safety/ProductionDatabaseGuard.php": {
+            "status": "??",
+            "hash": "0d4dd0ccdf23e7475eae95370dc21da475e8a01c",
+            "size": 5359,
+            "mtime": 1785127809
+        },
+        "app/Core/Safety/ProtectedPaths.php": {
+            "status": "??",
+            "hash": "2683b57ab6b9989f223889ba3b59dcefc73c806d",
+            "size": 7435,
+            "mtime": 1785151181
+        },
+        "app/Core/Safety/ReconstructionManifest.php": {
+            "status": "??",
+            "hash": "012e28975557098a439047c05a42efd9fba6e211",
+            "size": 8516,
+            "mtime": 1785178798
+        },
+        "app/Core/Safety/SourceOwnershipLock.php": {
+            "status": "??",
+            "hash": "9457f257a132c8989aec75aad14a9fe3e563f571",
+            "size": 8505,
+            "mtime": 1785137530
+        },
+        "app/Engines/Ads/ARCHITECTURE.md": {
+            "status": "??",
+            "hash": "36d1efa5f547ad34f1da364524200d732149c8f8",
+            "size": 7236,
+            "mtime": 1785184958
+        },
+        "app/Engines/Ads/README.md": {
+            "status": "??",
+            "hash": "64d68a57fad623371bf5de2f19f50cc51fb88633",
+            "size": 8540,
+            "mtime": 1785181944
+        },
+        "app/Engines/Ads/Services/AdAuditService.php": {
+            "status": "??",
+            "hash": "2af904b39f610b238a68cfb07234a4f016cc89a2",
+            "size": 2346,
+            "mtime": 1785184457
+        },
+        "app/Engines/Ads/Services/AdBudgetService.php": {
+            "status": "??",
+            "hash": "3a444eda0cab1f1b929c912909fb93775977f735",
+            "size": 4922,
+            "mtime": 1785227117
+        },
+        "app/Engines/Ads/Services/AdCreativeValidator.php": {
+            "status": "??",
+            "hash": "001a1aec0033d81ef0248d006f41598cdd25b90d",
+            "size": 6234,
+            "mtime": 1785237192
+        },
+        "app/Engines/Ads/Services/AdDecisionService.php": {
+            "status": "??",
+            "hash": "c48228779ef9ac028a5e15e05ee6d6f0aa2919f7",
+            "size": 19459,
+            "mtime": 1785227117
+        },
+        "app/Engines/Ads/Services/AdDeliveryService.php": {
+            "status": "??",
+            "hash": "aedd83df41c520f7400a18695e9cdbb11c1dde8e",
+            "size": 14299,
+            "mtime": 1785227117
+        },
+        "app/Engines/Ads/Services/AdEventRecorder.php": {
+            "status": "??",
+            "hash": "6bccf7b6bbded46435b92dc1d11d21e9f724c666",
+            "size": 7244,
+            "mtime": 1785227117
+        },
+        "app/Engines/Ads/Services/AdGateService.php": {
+            "status": "??",
+            "hash": "cc08e5916a93f49dd1c3491af8bd6452d1c40369",
+            "size": 8409,
+            "mtime": 1785184737
+        },
+        "app/Engines/Ads/Services/AdInvalidTrafficFilter.php": {
+            "status": "??",
+            "hash": "e26ea21189decb232b69d832e59c84ed67a53abc",
+            "size": 7830,
+            "mtime": 1785213589
+        },
+        "app/Engines/Ads/Services/AdReachEstimator.php": {
+            "status": "??",
+            "hash": "edb1a6291168bde0107e6a5601ad740ed7646d29",
+            "size": 7257,
+            "mtime": 1785237192
+        },
+        "app/Engines/Ads/Services/AdReportService.php": {
+            "status": "??",
+            "hash": "0989041a7b541dee691ba143c7defb59349cbb19",
+            "size": 19157,
+            "mtime": 1785213589
+        },
+        "app/Engines/Ads/Services/AdSettingsService.php": {
+            "status": "??",
+            "hash": "60ca781929aa98d16856ed23495f6137b78a3666",
+            "size": 4777,
+            "mtime": 1785184457
+        },
+        "app/Engines/Ads/Services/AdSlotInjector.php": {
+            "status": "??",
+            "hash": "a5609f80914d660adb7b5ddfa56bacca7f9da606",
+            "size": 12474,
+            "mtime": 1785233603
+        },
+        "app/Engines/Ads/Services/AdStatsRollupService.php": {
+            "status": "??",
+            "hash": "f5ba45b4842136a2cbad417bf817d799a77e745c",
+            "size": 8677,
+            "mtime": 1785227117
+        },
+        "app/Engines/Ads/Services/AdTagAssetService.php": {
+            "status": "??",
+            "hash": "90e6b537b1a68502908115c9d94189cd3f17030a",
+            "size": 29032,
+            "mtime": 1785240291
+        },
+        "app/Engines/Ads/Services/AdTargetingMatcher.php": {
+            "status": "??",
+            "hash": "13727c23a61dccae2fb840a10cc92244fa34d3be",
+            "size": 6333,
+            "mtime": 1785184457
+        },
+        "app/Engines/Ads/Services/AdTokenService.php": {
+            "status": "??",
+            "hash": "d11cdca3912e7707a8041bef5ebb4cc214a165c5",
+            "size": 7184,
+            "mtime": 1785237192
+        },
+        "app/Engines/Ads/Services/IndustryClassifier.php": {
+            "status": "??",
+            "hash": "b0c38961dd8e3253839e0c715631fbb6497241a6",
+            "size": 9634,
+            "mtime": 1785237192
+        },
+        "app/Engines/Ads/Services/InterestDeriver.php": {
+            "status": "??",
+            "hash": "16ac4c33f0587eab5c6fc86eb275222a1f7eb928",
+            "size": 11417,
+            "mtime": 1785182084
+        },
+        "app/Engines/Ads/Services/InventoryProfileService.php": {
+            "status": "??",
+            "hash": "6729a15609b4853921e54642d0e8f95c1ad76ac2",
+            "size": 16287,
+            "mtime": 1785237192
+        },
+        "app/Engines/Ads/Services/LocationParser.php": {
+            "status": "??",
+            "hash": "61dc08035d2582e3712d913378801caa9ffda2bf",
+            "size": 16019,
+            "mtime": 1785182084
+        },
+        "app/Engines/Ads/Support/AdIndustryTaxonomy.php": {
+            "status": "??",
+            "hash": "687ee7a301b6b29e4780b231f1ed017f9d179dcd",
+            "size": 15825,
+            "mtime": 1785180864
+        },
+        "app/Engines/Ads/Support/AdInterestTaxonomy.php": {
+            "status": "??",
+            "hash": "50c3d5fb0db54c6a702e82ecbc530b239ebbb4d6",
+            "size": 14154,
+            "mtime": 1785180864
+        },
+        "app/Engines/Ads/Support/AdSettings.php": {
+            "status": "??",
+            "hash": "25f5399df4c45ee3d00b4d23a27470d94bd6b91c",
+            "size": 16907,
+            "mtime": 1785237192
+        },
+        "app/Engines/Chatbot/Services/ChatbotResponseService.php": {
+            "status": " M",
+            "hash": "aafbbdac15530696c2241cd0550c54f4fd798363",
+            "size": 42978,
+            "mtime": 1785129183
+        },
+        "app/Engines/Studio/Services/StudioAiService.php": {
+            "status": " M",
+            "hash": "dc9b3959b107aeaf650eaf9625826a9e70c1d8ac",
+            "size": 20048,
+            "mtime": 1785420955
+        },
+        "app/Http/Controllers/Admin/AdminPageController.php": {
+            "status": "??",
+            "hash": "7b8976834e99318cbfaa2f2d5bc074fad37f4243",
+            "size": 3430,
+            "mtime": 1785308666
+        },
+        "app/Http/Controllers/Api/Admin/AdminAdsCampaignController.php": {
+            "status": "??",
+            "hash": "11b532d707c0bab8e7fd1773b26df9dc04daf148",
+            "size": 20649,
+            "mtime": 1785248928
+        },
+        "app/Http/Controllers/Api/Admin/AdminAdsController.php": {
+            "status": "??",
+            "hash": "b99885dadfffa7d193a179d7724ff08634efe7d3",
+            "size": 11143,
+            "mtime": 1785265671
+        },
+        "app/Http/Controllers/Api/Admin/BellaController.php": {
+            "status": " M",
+            "hash": "f5870ff736221bfec9df3c3cfb150db1b7038f39",
+            "size": 80128,
+            "mtime": 1785148731
+        },
+        "app/Http/Controllers/Api/Admin/DomainAdminController.php": {
+            "status": "??",
+            "hash": "dce0c444713136c98ef0b18d9a07f41ada2e1737",
+            "size": 9908,
+            "mtime": 1785326234
+        },
+        "app/Http/Controllers/Api/Admin/EngineeringController.php": {
+            "status": "??",
+            "hash": "592755c789acda7b3e969e948d66f6e55fc92edc",
+            "size": 6358,
+            "mtime": 1785218743
+        },
+        "app/Http/Controllers/Api/Admin/HostingAdminController.php": {
+            "status": "??",
+            "hash": "685e0aa662c524b64d474c3944de33d9d1eb0cee",
+            "size": 11516,
+            "mtime": 1785265971
+        },
+        "app/Http/Controllers/Api/Admin/RegistrarAdminController.php": {
+            "status": "??",
+            "hash": "b382ee3baa95fb48bd9a1288ee7f518bc059160b",
+            "size": 6435,
+            "mtime": 1785309789
+        },
+        "app/Http/Controllers/Api/CustomerDomainController.php": {
+            "status": "??",
+            "hash": "d7392718f8e9b5ca6deb9f25b2565e3a8db7dd12",
+            "size": 16280,
+            "mtime": 1785328423
+        },
+        "app/Http/Controllers/Api/Widget/PublicChatbotController.php": {
+            "status": " M",
+            "hash": "4e30587be68a2f590a89c430882b8fa2d1eac7a9",
+            "size": 14492,
+            "mtime": 1785127810
+        },
+        "app/Http/Middleware/RequireEnrolledMfa.php": {
+            "status": "??",
+            "hash": "98b7c6681ff7328a7b740e5db8681d560b039e91",
+            "size": 2427,
+            "mtime": 1785148731
+        },
+        "app/Jobs/RegisterDomainJob.php": {
+            "status": "??",
+            "hash": "48fc949a0094c10b0f680693520c46f8cd4f251e",
+            "size": 9499,
+            "mtime": 1785326516
+        },
+        "app/Jobs/RenderHtmlAnimatedJob.php": {
+            "status": " M",
+            "hash": "1cd6fe1d8ebd41ff1146b9f06ebdc162171f4710",
+            "size": 8958,
+            "mtime": 1785184818
+        },
+        "app/Jobs/SyncCustomerDomainJob.php": {
+            "status": "??",
+            "hash": "392a035e06d085ff7968d7aa06a1832166414eba",
+            "size": 4865,
+            "mtime": 1785326234
+        },
+        "app/Models/CustomerDomain.php": {
+            "status": "??",
+            "hash": "1f76bddc0dc8719774beae04b0b8b4dbb33f1e34",
+            "size": 3011,
+            "mtime": 1785326234
+        },
+        "app/Models/DomainOrder.php": {
+            "status": "??",
+            "hash": "5a96cbb14f49c6e3aa487276c5732bcc9ebc08ea",
+            "size": 2709,
+            "mtime": 1785326234
+        },
+        "app/Models/DomainOrderItem.php": {
+            "status": "??",
+            "hash": "ae52380108bf5d9468e98356d1696ff35129c1aa",
+            "size": 2053,
+            "mtime": 1785326234
+        },
+        "app/Models/Subscription.php": {
+            "status": " M",
+            "hash": "64cd195c77af7311b7c92b3d1548c33479a0c5fb",
+            "size": 2807,
+            "mtime": 1785240969
+        },
+        "app/Policies/UserPolicy.php": {
+            "status": "??",
+            "hash": "348735e8743ef396c5be4f6a2c52b90a83c214a3",
+            "size": 3051,
+            "mtime": 1785069082
+        },
+        "app/Policies/WorkspacePolicy.php": {
+            "status": "??",
+            "hash": "707dde31c4d86e92cce5da4f2a2eadb107b89217",
+            "size": 2852,
+            "mtime": 1785069082
+        },
+        "app/Providers/AppServiceProvider.php": {
+            "status": " M",
+            "hash": "9edf87b353fa24b3f989243f9b7702744b95ac0b",
+            "size": 6427,
+            "mtime": 1785069104
+        },
+        "app/Services/Domains/DomainAuditLogger.php": {
+            "status": "??",
+            "hash": "fc82b410b7372f1bb123e62680b5bf6d004d446d",
+            "size": 7485,
+            "mtime": 1785326234
+        },
+        "app/Services/Domains/DomainCommerceService.php": {
+            "status": "??",
+            "hash": "f5facb87c8c9554350a3e86aab2f80eab80d72dc",
+            "size": 22690,
+            "mtime": 1785416309
+        },
+        "app/Services/Domains/DomainContactResolver.php": {
+            "status": "??",
+            "hash": "4b47c06378d012085b947c45f9429c3ad77dbc41",
+            "size": 5949,
+            "mtime": 1785324465
+        },
+        "app/Services/Domains/DomainPricingService.php": {
+            "status": "??",
+            "hash": "f2ae11137220c19cc9bc83d1eebeb30ac860ddf5",
+            "size": 9535,
+            "mtime": 1785309407
+        },
+        "bootstrap/app.candidate.php": {
+            "status": "??",
+            "hash": "37e5762f5484efbb329c6bddc3130c537dd1ba3a",
+            "size": 23503,
+            "mtime": 1785135174
+        },
+        "bootstrap/app.php": {
+            "status": " M",
+            "hash": "d25228f98c88580306769fe16d758aa194a92356",
+            "size": 26068,
+            "mtime": 1785414262
+        },
+        "config/admin_pages.php": {
+            "status": "??",
+            "hash": "5cc6adf7eb23afd8e7d63c298ee47232457fa5c1",
+            "size": 14626,
+            "mtime": 1785305210
+        },
+        "config/ai_provenance.php": {
+            "status": "??",
+            "hash": "b9116ac487e2ed0fa8152801c7b5b6e6639ca9be",
+            "size": 4909,
+            "mtime": 1785330974
+        },
+        "config/domains.php": {
+            "status": "??",
+            "hash": "ff4c6741f3360960203d8dd344cc191d6bad7899",
+            "size": 3181,
+            "mtime": 1785419055
+        },
+        "config/governance.php": {
+            "status": "??",
+            "hash": "1c2a8702d14652c6a9377a96dffcc02d4487e40a",
+            "size": 1939,
+            "mtime": 1785069082
+        },
+        "config/governed_files.php": {
+            "status": "??",
+            "hash": "f04a9cd0fe059ff8fc68c3beffc945114a35e010",
+            "size": 2776,
+            "mtime": 1785579515
+        },
+        "config/infrastructure.php": {
+            "status": " M",
+            "hash": "72c1173e6967ef42de0434f71bb379d7d5e69a11",
+            "size": 5781,
+            "mtime": 1785309407
+        },
+        "config/namecheap.php": {
+            "status": "??",
+            "hash": "c41b26cce27a1ffe1328cb3204501e83bdb85985",
+            "size": 4939,
+            "mtime": 1785324465
+        },
+        "config/platform_events.php": {
+            "status": "??",
+            "hash": "5aaaf2d071a172c0dd3c405e3934e3214a71f9bc",
+            "size": 7045,
+            "mtime": 1785412462
+        },
+        "config/studio.php": {
+            "status": " M",
+            "hash": "3b4509839005a659c82cfb5f3f72ba16accb1d76",
+            "size": 5748,
+            "mtime": 1785420919
+        },
+        "contracts/chat/v1/acknowledgement.schema.json": {
+            "status": "??",
+            "hash": "96acfb6edb675dfd2b8f4950b89e0663ebaf2ab2",
+            "size": 1361,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/approval.schema.json": {
+            "status": "??",
+            "hash": "f1f792c48608927a0bf99021e4ba620c63e614d6",
+            "size": 1750,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/attachment.schema.json": {
+            "status": "??",
+            "hash": "d7fb9ecec4ebdd2e16314a529b7749518442389f",
+            "size": 952,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/conversation.schema.json": {
+            "status": "??",
+            "hash": "6e41f58d4905de744afe54b471d116b4d1284465",
+            "size": 1653,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/credits.schema.json": {
+            "status": "??",
+            "hash": "2925b3d29e71b041045a3f71a82f918dfa4282f2",
+            "size": 1676,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/delivery.schema.json": {
+            "status": "??",
+            "hash": "1344d3d6fa802b009afc9a15e0590a8121e2c411",
+            "size": 1493,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/error.schema.json": {
+            "status": "??",
+            "hash": "bdab9ad69db382dccd8654835d1e2b3fcff3bea5",
+            "size": 2402,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/final-response.schema.json": {
+            "status": "??",
+            "hash": "bc7508fc74de4cce4ef15a0998f84557232cde5a",
+            "size": 1540,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/message.schema.json": {
+            "status": "??",
+            "hash": "266dcb141a7b5c2e175b316fa6ce2e347d5b52c5",
+            "size": 3237,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/progress-event.schema.json": {
+            "status": "??",
+            "hash": "9dda00c66a53435b06fe4c519c448b476b50b388",
+            "size": 1301,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/read-state.schema.json": {
+            "status": "??",
+            "hash": "e3618088c6a58780de77b224feec35db3c33f4f8",
+            "size": 1368,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/send-request.schema.json": {
+            "status": "??",
+            "hash": "608223a080a0377aa7aadecc0638020867a5c470",
+            "size": 1862,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/tool-call.schema.json": {
+            "status": "??",
+            "hash": "874784cb47c2f3ce180cc9ca7a90c305c6f38ed6",
+            "size": 1599,
+            "mtime": 1785087821
+        },
+        "contracts/chat/v1/usage.schema.json": {
+            "status": "??",
+            "hash": "ad3895767dc2e0c2223d26902fee685762f1a194",
+            "size": 843,
+            "mtime": 1785087821
+        },
+        "cron|-": {
+            "status": "??",
+            "hash": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "size": 0,
+            "mtime": 1785413816
+        },
+        "daily|-": {
+            "status": "??",
+            "hash": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "size": 0,
+            "mtime": 1785413816
+        },
+        "database/migrations/2026_07_27_000100_create_chat_idempotency_records_table.php": {
+            "status": "??",
+            "hash": "c3330f69e6d8ceb6b2b8539eda717cf39bf0d606",
+            "size": 4338,
+            "mtime": 1785099500
+        },
+        "database/migrations/2026_07_27_000200_create_message_charges_table.php": {
+            "status": "??",
+            "hash": "87f993cf354b9383f7d9d247ca3a2b8695f80bb5",
+            "size": 4793,
+            "mtime": 1785099500
+        },
+        "database/migrations/2026_07_27_190000_create_ad_taxonomy_table.php": {
+            "status": "??",
+            "hash": "721dc5e28aade3e50257a705c1b4b8583b11ce30",
+            "size": 2794,
+            "mtime": 1785180864
+        },
+        "database/migrations/2026_07_27_190100_create_ad_inventory_profiles_table.php": {
+            "status": "??",
+            "hash": "9d07b6da3be5651ba663e5ecfd72b0de7df2ef9f",
+            "size": 6002,
+            "mtime": 1785180864
+        },
+        "database/migrations/2026_07_27_200000_create_ad_platform_tables.php": {
+            "status": "??",
+            "hash": "733dc704f386419d9cc08990a26ac3827a35a42f",
+            "size": 2575,
+            "mtime": 1785184457
+        },
+        "database/migrations/2026_07_27_200100_create_ad_inventory_tables.php": {
+            "status": "??",
+            "hash": "dfdb9cc5d61398d2954f7d596435fd629ea92802",
+            "size": 4105,
+            "mtime": 1785184457
+        },
+        "database/migrations/2026_07_27_200200_create_ad_demand_tables.php": {
+            "status": "??",
+            "hash": "5fcf44ce5fdb944b9b98d2b8b0a1b89d2dfcbfaa",
+            "size": 6263,
+            "mtime": 1785184457
+        },
+        "database/migrations/2026_07_27_200300_create_ad_delivery_tables.php": {
+            "status": "??",
+            "hash": "c2f88fb4f1c87558ad53c180c56839267c95dafc",
+            "size": 5211,
+            "mtime": 1785184457
+        },
+        "database/migrations/2026_07_28_080000_add_interstitial_support.php": {
+            "status": "??",
+            "hash": "96d7f4c299b8c0aa84c4f6cd358944dcd27f416e",
+            "size": 4635,
+            "mtime": 1785227117
+        },
+        "database/migrations/2026_07_28_083000_widen_ad_events_event_column.php": {
+            "status": "??",
+            "hash": "1439f78ec327d071bc2d1e252f1cde88d2e4378d",
+            "size": 1908,
+            "mtime": 1785227551
+        },
+        "database/migrations/2026_07_28_093000_widen_ad_settings_description.php": {
+            "status": "??",
+            "hash": "6d772669271931340e04468ab33cf58ef021b778",
+            "size": 1416,
+            "mtime": 1785232794
+        },
+        "database/migrations/2026_07_29_120000_create_domain_commerce_tables.php": {
+            "status": "??",
+            "hash": "c80c6f6c8be41dadd9d9299761809af70ff6bfb1",
+            "size": 6060,
+            "mtime": 1785326234
+        },
+        "database/migrations/2026_07_29_130000_add_execution_provenance_to_api_usage_logs.php": {
+            "status": "??",
+            "hash": "deed80edc31792eb103c4d99b8cfbcf862164f91",
+            "size": 5262,
+            "mtime": 1785330974
+        },
+        "database/migrations/2026_07_29_190000_create_platform_events_table.php": {
+            "status": "??",
+            "hash": "e3b3bb5553d0309cde2f9c8ac9bb6a5d3b1f6c1c",
+            "size": 4595,
+            "mtime": 1785353057
+        },
+        "database/migrations/2026_07_29_200000_create_platform_event_deliveries_table.php": {
+            "status": "??",
+            "hash": "37f8fb16b72ba2efdb30e35cb2578d97f4dd1550",
+            "size": 3548,
+            "mtime": 1785355851
+        },
+        "database/migrations/2026_07_29_200100_add_fanout_fields_to_platform_events.php": {
+            "status": "??",
+            "hash": "ec864e20006960ba189f521e57a04e1fdf3f2af7",
+            "size": 1690,
+            "mtime": 1785355851
+        },
+        "database/migrations/2026_07_30_140000_create_engineering_execution_tables.php": {
+            "status": "??",
+            "hash": "57b342dca97c168425db2a2ce37e5bcc70a22732",
+            "size": 3209,
+            "mtime": 1785421199
+        },
+        "database/migrations/2026_08_01_120000_create_engineering_deployment_tables.php": {
+            "status": "??",
+            "hash": "4c61b85d5b56db8a5017007edffdb80658cdba0f",
+            "size": 3972,
+            "mtime": 1785612429
+        },
+        "everyM|-": {
+            "status": "??",
+            "hash": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "size": 0,
+            "mtime": 1785413816
+        },
+        "hourly": {
+            "status": "??",
+            "hash": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "size": 0,
+            "mtime": 1785413816
+        },
+        "lu-ad": {
+            "status": "??",
+            "hash": "57627b2b0a276b3af9dc6a3af706d3b38b671b4b",
+            "size": 131,
+            "mtime": 1785233151
+        },
+        "phpunit.chat.xml": {
+            "status": "??",
+            "hash": "4adc9bed18bb2e4f7d0217d886ff6fbbe5813122",
+            "size": 3891,
+            "mtime": 1785127984
+        },
+        "phpunit.e888.xml": {
+            "status": "??",
+            "hash": "a90d42a75d7fba938c69bc5e48229cc3f2b1c489",
+            "size": 4655,
+            "mtime": 1785581029
+        },
+        "phpunit.integration.xml": {
+            "status": " M",
+            "hash": "e99988fa5d7d95c063b367e048b3f15156874b98",
+            "size": 1984,
+            "mtime": 1785490141
+        },
+        "phpunit.p1e1.xml": {
+            "status": "??",
+            "hash": "7c398434d85da2f263e4ffedf8809ab0a9008f7b",
+            "size": 3727,
+            "mtime": 1785415659
+        },
+        "public/ads-preview/architecture.html": {
+            "status": "??",
+            "hash": "9dba43d49cc4c2370e14002729c5d1840c234d7c",
+            "size": 69189,
+            "mtime": 1785233603
+        },
+        "public/ads-preview/index.html": {
+            "status": "??",
+            "hash": "fa9cd29cb64426ea62cabd0dc7b6eb84303982ed",
+            "size": 1250,
+            "mtime": 1785233603
+        },
+        "public/ads-preview/news_channel.html": {
+            "status": "??",
+            "hash": "776b7878ed14598ef12def4c7c47694c1fb4dba7",
+            "size": 47574,
+            "mtime": 1785233603
+        },
+        "public/ads-preview/restaurant.html": {
+            "status": "??",
+            "hash": "dd7304f601421bb9f34343346d1c49c6e74c9a4b",
+            "size": 74426,
+            "mtime": 1785233603
+        },
+        "public/app/index.html": {
+            "status": " M",
+            "hash": "a4a83918b3c26a1f845d9f5ab093aa192b00c9e9",
+            "size": 350862,
+            "mtime": 1785328728
+        },
+        "public/app/infra-verify-3b.html": {
+            "status": " M",
+            "hash": "ff956ab424cac03eb641872d464d74666fb233d8",
+            "size": 1885,
+            "mtime": 1785326344
+        },
+        "public/app/js/arthur-chat.js": {
+            "status": " M",
+            "hash": "e4698682e079401346eff367671c70bf741e5f40",
+            "size": 83471,
+            "mtime": 1785089234
+        },
+        "public/app/js/builder.js": {
+            "status": " M",
+            "hash": "b3aec515921662f455c460cb00880b09f5ff30ad",
+            "size": 172702,
+            "mtime": 1785089368
+        },
+        "public/app/js/core.js": {
+            "status": " M",
+            "hash": "ab500311c0fa839af702061af83bb546332b6a6a",
+            "size": 441688,
+            "mtime": 1785328703
+        },
+        "public/app/js/domains-commerce.js": {
+            "status": "??",
+            "hash": "4c391852ed7a93ac3aabf081dcede591d073c0d0",
+            "size": 41099,
+            "mtime": 1785328727
+        },
+        "public/app/js/infrastructure.js": {
+            "status": " M",
+            "hash": "cb591065520630b381cc5b3e5ea4d48a0a277fab",
+            "size": 151609,
+            "mtime": 1785328728
+        },
+        "public/app/js/manualedit-aiedit.js": {
+            "status": "??",
+            "hash": "0c97a6f6c579ccfa3f9f8a4ec6701e41cce780cd",
+            "size": 24342,
+            "mtime": 1785128002
+        },
+        "public/app/js/manualedit-fabric.js": {
+            "status": " M",
+            "hash": "1cec33f548b5dff1a1f9c9d27658a47b8309af41",
+            "size": 77849,
+            "mtime": 1785102642
+        },
+        "public/app/js/media-picker.js": {
+            "status": " M",
+            "hash": "db665bcaf135b3a2a613b836a803bc31be0cab4d",
+            "size": 35769,
+            "mtime": 1785326344
+        },
+        "public/app/js/messages-ui.js": {
+            "status": " M",
+            "hash": "af7cf642351ff91e84b1a74a1cff05a0dcbef7ce",
+            "size": 32011,
+            "mtime": 1785154743
+        },
+        "public/app/js/studio-aiedit-entry.js": {
+            "status": "??",
+            "hash": "5d9e8306c7219d60dfc690aaf39e8d942938af86",
+            "size": 4175,
+            "mtime": 1785100186
+        },
+        "public/app/js/studio-overlay-spike.js": {
+            "status": "??",
+            "hash": "9f3c6fabe5a1245a3a380b1c6f44f28dfc6c4d68",
+            "size": 50191,
+            "mtime": 1785182407
+        },
+        "public/app/js/studio-video.js": {
+            "status": " M",
+            "hash": "6d3f5f9a7c49c3e7ab4639f9f896cd343b9b3735",
+            "size": 255349,
+            "mtime": 1785234940
+        },
+        "public/app/js/studio.js": {
+            "status": " M",
+            "hash": "57e838b8a7d7738eae654c2da11fb92bbfce34e0",
+            "size": 226715,
+            "mtime": 1785234943
+        },
+        "public/marketing/css/admin.css": {
+            "status": "??",
+            "hash": "505707a49b573b6796ef5dda6108b628bf137e0f",
+            "size": 16691,
+            "mtime": 1785305882
+        },
+        "public/marketing/index.html": {
+            "status": " M",
+            "hash": "3163a0a37012bb929e01339a2b59fdcfbcaf0a02",
+            "size": 47432,
+            "mtime": 1785265456
+        },
+        "public/marketing/js/admin-bella.js": {
+            "status": "??",
+            "hash": "17e399e8af4d772040464c348a64bfca336cdd80",
+            "size": 15420,
+            "mtime": 1785305882
+        },
+        "public/marketing/js/admin-core.js": {
+            "status": "??",
+            "hash": "eee5e7df9f33e265bf2c6f4fdaf6a67362ade31b",
+            "size": 21584,
+            "mtime": 1785305882
+        },
+        "public/marketing/js/admin-shared.js": {
+            "status": "??",
+            "hash": "585b0187cf2f7f8a26502d9d94566481de9afbcd",
+            "size": 115229,
+            "mtime": 1785308666
+        },
+        "public/marketing/pages/faq.html": {
+            "status": " M",
+            "hash": "87c9a1ebc928adcf0d11e487c2cb8f9a28039ed1",
+            "size": 11916,
+            "mtime": 1785265371
+        },
+        "public/marketing/pages/pricing.html": {
+            "status": " M",
+            "hash": "edee2c4ade3b2f1318ba1b610e7100c1a44a5d1a",
+            "size": 18501,
+            "mtime": 1785305782
+        },
+        "public/marketing/pages/why-levelup.html": {
+            "status": " M",
+            "hash": "48fdfd2ae46e2ec0cecdd7338aa2354e7b85c350",
+            "size": 11747,
+            "mtime": 1785265371
+        },
+        "resources/js/pages/creative/editor/CreativeEditor.jsx": {
+            "status": "??",
+            "hash": "679ac9945a119605a5958037de60611577fd038d",
+            "size": 27400,
+            "mtime": 1785087728
+        },
+        "resources/js/pages/creative/editor/coords.js": {
+            "status": "??",
+            "hash": "dbb3862f89834bdc11ef0b48280606f4097cce40",
+            "size": 4490,
+            "mtime": 1785087722
+        },
+        "resources/js/pages/creative/editor/mask.js": {
+            "status": "??",
+            "hash": "cf53df93f653d3157ea6a8d4d7042822cebf98d7",
+            "size": 4097,
+            "mtime": 1785087725
+        },
+        "resources/js/pages/engines/Engines.jsx": {
+            "status": " M",
+            "hash": "6764d4da1193aaa2cd6e699f617bf73cb1df3715",
+            "size": 39950,
+            "mtime": 1785087735
+        },
+        "resources/js/services/api.js": {
+            "status": " M",
+            "hash": "7a45c19a870194e3abcd3f7f12bb0d303d55ff06",
+            "size": 16197,
+            "mtime": 1785087732
+        },
+        "resources/views/admin/app.blade.php": {
+            "status": " D",
+            "hash": "absent",
+            "size": 0,
+            "mtime": null
+        },
+        "resources/views/admin/pages/ads/campaigns.blade.php": {
+            "status": "??",
+            "hash": "51bec362d9b8dd7e472afb3f675c859d31f2e76e",
+            "size": 3503,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/ads/creatives.blade.php": {
+            "status": "??",
+            "hash": "e6267818d1d60a29bc78a583a005a067a8580302",
+            "size": 1975,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/ads/dashboard.blade.php": {
+            "status": "??",
+            "hash": "dee4e3b85ab9f1d0a3e7b5052ca9a05fbffd9555",
+            "size": 3462,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/ads/inventory.blade.php": {
+            "status": "??",
+            "hash": "1fefd3679ea77410307aac193cc12fec109bd7dc",
+            "size": 3929,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/ads/settings.blade.php": {
+            "status": "??",
+            "hash": "f3d6e86b65f4502dd69078bdca4b0c07b6cb9c4c",
+            "size": 3741,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/ads/status.blade.php": {
+            "status": "??",
+            "hash": "e50bcc99a2fc88f8e8e5cd712c6bcf229c456b7c",
+            "size": 2915,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/agents.blade.php": {
+            "status": "??",
+            "hash": "d0914b0c7fcd7f892f5458c13e411b90c21c3d15",
+            "size": 1844,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/analytics.blade.php": {
+            "status": "??",
+            "hash": "26e10df1694f406588f0bedf10281670e336abc4",
+            "size": 6632,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/api-usage.blade.php": {
+            "status": "??",
+            "hash": "15ff4e61fc1f61472c9b1ab2471330f9a8ceb942",
+            "size": 3628,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/articles.blade.php": {
+            "status": "??",
+            "hash": "053391ce5e3ddadb921153e5a5e7c90ac1764221",
+            "size": 1346,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/audit.blade.php": {
+            "status": "??",
+            "hash": "c4a73701ebf7ee3c18868c57a2dbb32fc8489034",
+            "size": 1271,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/campaigns.blade.php": {
+            "status": "??",
+            "hash": "68d2980a454ba50fd355d8a714ac7c9c5f3a7160",
+            "size": 1412,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/capabilities.blade.php": {
+            "status": "??",
+            "hash": "afc4ff24696e4bbfddedd37b00f3523961169c28",
+            "size": 3626,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/credits.blade.php": {
+            "status": "??",
+            "hash": "8a3cf2b630f57c9bbbd495c45ee6e710f14579b3",
+            "size": 3193,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/crm.blade.php": {
+            "status": "??",
+            "hash": "2e8137c0bc2a42554c303ab850f84ba1464287ea",
+            "size": 1400,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/dashboard.blade.php": {
+            "status": "??",
+            "hash": "08b26f48ec6422a4ff7388931c15e440d73d3d78",
+            "size": 2568,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/email-templates.blade.php": {
+            "status": "??",
+            "hash": "27667c5340c528c57a1560435f2571cdd8227e59",
+            "size": 2937,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering.blade.php": {
+            "status": "??",
+            "hash": "f10322d623c9a70a4fdae021420e9306e29db237",
+            "size": 5981,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/audit.blade.php": {
+            "status": "??",
+            "hash": "235785df475f187d89f1bd2aa24746a73436fc72",
+            "size": 4791,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/backups.blade.php": {
+            "status": "??",
+            "hash": "ca0fb812a2e091ac47a9eab9e08f8d03b3fabce7",
+            "size": 5937,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/costs.blade.php": {
+            "status": "??",
+            "hash": "ed9d0af72045dfa8f7ad61e5f3595560f5e510cc",
+            "size": 4190,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/docs.blade.php": {
+            "status": "??",
+            "hash": "685975ea6aee29c62ce0837d1d85e455565a3a29",
+            "size": 4681,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/health.blade.php": {
+            "status": "??",
+            "hash": "84f51eab1805ced94cc6eab2b7797a4bbbdd832f",
+            "size": 3168,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/incidents.blade.php": {
+            "status": "??",
+            "hash": "352e62c75a98d7117287fc487967ffbffde6cd6e",
+            "size": 4093,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/logs.blade.php": {
+            "status": "??",
+            "hash": "22d6abe908d2e52998bab063928dde44f4eb407a",
+            "size": 4867,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/overview.blade.php": {
+            "status": "??",
+            "hash": "8d81559fcc250b387efed58a9d145d0ba6d78226",
+            "size": 5535,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/ownership.blade.php": {
+            "status": "??",
+            "hash": "34ee9d8ca6526f832dcd5a6fbd0df8b076be239b",
+            "size": 5972,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engineering/tasks.blade.php": {
+            "status": "??",
+            "hash": "206fb65cf1ce8a444e2a12de370daa85838b124e",
+            "size": 4483,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/engines.blade.php": {
+            "status": "??",
+            "hash": "02fcb1ec4a025e6c5982a23779faa56c83c3efca",
+            "size": 3042,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/experiments.blade.php": {
+            "status": "??",
+            "hash": "a6061bcc94925bc7659411ceddabe611b586c019",
+            "size": 1229,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/health.blade.php": {
+            "status": "??",
+            "hash": "5a498432cee8091c69d98bfa14f53b0f7bddeff6",
+            "size": 1545,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/hosting.blade.php": {
+            "status": "??",
+            "hash": "1814418e0eaacfb4ce549f640599abc8e4fbc438",
+            "size": 6350,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/house-account.blade.php": {
+            "status": "??",
+            "hash": "58eec9859b79f8a10e43a441e47d776c63843050",
+            "size": 4945,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/knowledge.blade.php": {
+            "status": "??",
+            "hash": "4ec37e4ff6adf3d11eb03cd698ac61a7cd93aff6",
+            "size": 1358,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/media.blade.php": {
+            "status": "??",
+            "hash": "ea34ec29a482ea2e1f467b229db91ea43b02b6a5",
+            "size": 804,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/meetings.blade.php": {
+            "status": "??",
+            "hash": "b5965dea5d11eeeb1e1fe78696e5510ff2dbd694",
+            "size": 1496,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/memberships.blade.php": {
+            "status": "??",
+            "hash": "50f9270a811f6b00932dda0552c77bc8e63d27e4",
+            "size": 1954,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/memory.blade.php": {
+            "status": "??",
+            "hash": "5633d35de9fca9b4a5b4d0f71d78eb3866e2740a",
+            "size": 1255,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/notifications.blade.php": {
+            "status": "??",
+            "hash": "c28c9e4fb2f0b95ea457509b2a44176eca1599e9",
+            "size": 1556,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/orchestration.blade.php": {
+            "status": "??",
+            "hash": "66333573306fbf1fe77cdce469019798db497b5e",
+            "size": 7458,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/plans.blade.php": {
+            "status": "??",
+            "hash": "27d4d43f86ea648a60da0d289c67d9b9a723a22f",
+            "size": 1324,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/proposals.blade.php": {
+            "status": "??",
+            "hash": "92c9b921ff706fc2acc6f7d3a123df31905ca860",
+            "size": 1400,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/queue.blade.php": {
+            "status": "??",
+            "hash": "7b05f5370d98c4de945b726a755c4f4cce668ca2",
+            "size": 3475,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/revenue.blade.php": {
+            "status": "??",
+            "hash": "8a6391291cd37ce7aab4f5e1bc557c6902acc2f0",
+            "size": 1400,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/seo.blade.php": {
+            "status": "??",
+            "hash": "cb816f4e708e1a5f923e16838ab73dc9f0d477dd",
+            "size": 1508,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/sessions.blade.php": {
+            "status": "??",
+            "hash": "e0e31f2ec528e53c02651b8ba140963eb335172f",
+            "size": 3124,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/settings.blade.php": {
+            "status": "??",
+            "hash": "9f67500f6f6d482e09ac7ad65996acbb925beebb",
+            "size": 2621,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/subscriptions.blade.php": {
+            "status": "??",
+            "hash": "a58184e8dabbeca48140094dc1025c0db47193a8",
+            "size": 2314,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/tasks.blade.php": {
+            "status": "??",
+            "hash": "99a5e78241687c9df0d03c05d5de29fdfa4af3f0",
+            "size": 1965,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/templates.blade.php": {
+            "status": "??",
+            "hash": "cdaed6bcb0580dc2d6073f7a3e97dc955ee7a2fb",
+            "size": 1691,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/users.blade.php": {
+            "status": "??",
+            "hash": "77310ba8cc85ef3cd6bea09e4c17c890fb3e3483",
+            "size": 1801,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/web-activity.blade.php": {
+            "status": "??",
+            "hash": "5834df9f9eecc51a54170b592f5f0dbc244743c9",
+            "size": 8200,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/websites.blade.php": {
+            "status": "??",
+            "hash": "1c7060998ec4df096a7768e691b19ba7c5f9833f",
+            "size": 2945,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/pages/workspaces.blade.php": {
+            "status": "??",
+            "hash": "a4f171032b107fddcb7be4566a87577376a791af",
+            "size": 2058,
+            "mtime": 1785308666
+        },
+        "resources/views/admin/partials/bella.blade.php": {
+            "status": "??",
+            "hash": "b199ba4261003d25e062a9595ebe729f426cb347",
+            "size": 6162,
+            "mtime": 1785305882
+        },
+        "resources/views/admin/partials/sidebar.blade.php": {
+            "status": "??",
+            "hash": "c3a7414e56901a067db8b5299f18d7749427a666",
+            "size": 1749,
+            "mtime": 1785305882
+        },
+        "resources/views/admin/shell.blade.php": {
+            "status": "??",
+            "hash": "c9c38c7f737b6dfc3d86061452b6661774dca38e",
+            "size": 4953,
+            "mtime": 1785308666
+        },
+        "routes/api.php": {
+            "status": " M",
+            "hash": "35769d8da57bded0660d0a3c7bd9a12df0c286a2",
+            "size": 459089,
+            "mtime": 1785418543
+        },
+        "routes/api/admin/ads.php": {
+            "status": "??",
+            "hash": "4b9cd8735359ab1b5572ba324095bff6004d0bac",
+            "size": 4245,
+            "mtime": 1785265671
+        },
+        "routes/api/authenticated/agents-01.php": {
+            "status": "??",
+            "hash": "0e07d1683433215f9f81b20d9afe9da001404bb3",
+            "size": 186653,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/agents-02.php": {
+            "status": "??",
+            "hash": "c23d7bfb7c4292047eb86576533cb483be0370d6",
+            "size": 7765,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/agents-03.php": {
+            "status": "??",
+            "hash": "1ba08f241f6695711e407b20e956268bad7b392e",
+            "size": 12702,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/agents-04.php": {
+            "status": "??",
+            "hash": "922122daa8657f7fd5ae9f924fdc6950a513572d",
+            "size": 10210,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/builder-01.php": {
+            "status": "??",
+            "hash": "370582e7d4d9f41de6a015cb746220a6901f3f86",
+            "size": 27326,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/content-01.php": {
+            "status": "??",
+            "hash": "e7d73c83bd5ff7449b42d88f04b9ad68b4dc4c76",
+            "size": 41269,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/crm-01.php": {
+            "status": "??",
+            "hash": "57a3ea20d74c12e7d4bfebffdf8639a50e69cab8",
+            "size": 14964,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/intelligence-01.php": {
+            "status": "??",
+            "hash": "3992c3e28d7c7bc843840433961cda25e8825ca2",
+            "size": 9546,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/projects-01.php": {
+            "status": "??",
+            "hash": "9b92d0ada346a6fa2e36d626bbe3dd233e5d42e4",
+            "size": 10993,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/seo-01.php": {
+            "status": "??",
+            "hash": "d550c6059e8917755612f4e5da66b51f78e79c97",
+            "size": 285958,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/studio-01.php": {
+            "status": "??",
+            "hash": "288a2ec45ad7a574f7110ae0353363fd69f3e896",
+            "size": 11908,
+            "mtime": 1785135167
+        },
+        "routes/api/authenticated/workspace-01.php": {
+            "status": "??",
+            "hash": "93006c0e1eff45507739ef4a9f7c9e9af0d98fd3",
+            "size": 8943,
+            "mtime": 1785135167
+        },
+        "routes/web.php": {
+            "status": " M",
+            "hash": "a7d5619f90fbe096a0c2469174c218af0fc3ea4e",
+            "size": 45768,
+            "mtime": 1785305995
+        },
+        "tests/Feature/Ads/AdDecisionServiceTest.php": {
+            "status": "??",
+            "hash": "9a81dba967b0d32ef8b36852b3757557354f77a4",
+            "size": 10996,
+            "mtime": 1785184457
+        },
+        "tests/Feature/Ads/AdDeliveryTest.php": {
+            "status": "??",
+            "hash": "e8049b2968bdedde309e045f7e04830dd67764f0",
+            "size": 17024,
+            "mtime": 1785219010
+        },
+        "tests/Feature/Ads/AdGateServiceTest.php": {
+            "status": "??",
+            "hash": "b14b558a7792666faab403775de66d0452063b55",
+            "size": 7367,
+            "mtime": 1785184457
+        },
+        "tests/Feature/Ads/AdInterstitialTest.php": {
+            "status": "??",
+            "hash": "763373274df3b5fd0b25e1c8e35eeb85bf01fe98",
+            "size": 24734,
+            "mtime": 1785233492
+        },
+        "tests/Feature/Ads/AdMeasurementTest.php": {
+            "status": "??",
+            "hash": "1ca10f9a836c7f6aa5220cbf249aded051db930a",
+            "size": 13260,
+            "mtime": 1785213761
+        },
+        "tests/Feature/Ads/AdReachEstimatorTest.php": {
+            "status": "??",
+            "hash": "371a9cb16494b0c1059ae6116a333bc2e358f61e",
+            "size": 5860,
+            "mtime": 1785213589
+        },
+        "tests/Feature/Ads/AdSettingsConfigurabilityTest.php": {
+            "status": "??",
+            "hash": "924a6e3163ce6f41e97c1e38a1843be9a83c2b87",
+            "size": 7316,
+            "mtime": 1785237453
+        },
+        "tests/Feature/Ads/AdTargetingMatcherTest.php": {
+            "status": "??",
+            "hash": "7fd6343c3bbd8919b75769373baa09f6ce2acda1",
+            "size": 6021,
+            "mtime": 1785184457
+        },
+        "tests/Feature/Ads/AdUpgradeRemovalTest.php": {
+            "status": "??",
+            "hash": "424c94769e74e992f72642491e8a225c46f92a24",
+            "size": 10422,
+            "mtime": 1785240969
+        },
+        "tests/Feature/Ads/AdminAdsAccessTest.php": {
+            "status": "??",
+            "hash": "c0dbf6011f1fba20c10260489832f121647e5884",
+            "size": 8794,
+            "mtime": 1785266252
+        },
+        "tests/Feature/Ads/AdminAdsCampaignTest.php": {
+            "status": "??",
+            "hash": "55324791fe444d867bbe1cbc66bae3cf4ad07504",
+            "size": 10983,
+            "mtime": 1785249112
+        },
+        "tests/Feature/Ads/IndustryClassifierTest.php": {
+            "status": "??",
+            "hash": "f8c22148b6f3ede86fa8632d25c9aaff64f2cae5",
+            "size": 7492,
+            "mtime": 1785180864
+        },
+        "tests/Feature/Ads/InventoryProfileServiceTest.php": {
+            "status": "??",
+            "hash": "6fa343ce757aefa85de79a92e36ca97693632e7e",
+            "size": 9081,
+            "mtime": 1785182084
+        },
+        "tests/Feature/Ads/LocationParserTest.php": {
+            "status": "??",
+            "hash": "0465e8deaf613743fc1060e0dcc73cdee561ab80",
+            "size": 5781,
+            "mtime": 1785182084
+        },
+        "tests/Feature/Ai/RuntimeUsageProvenanceTest.php": {
+            "status": "??",
+            "hash": "8633f0effdd4de1cdd7157c285034fce2dccf71a",
+            "size": 11707,
+            "mtime": 1785331322
+        },
+        "tests/Feature/Chat/Adapters/AgentApiSurface.php": {
+            "status": "??",
+            "hash": "dbfaff6d7294cebb75b2a85a93b47688e3d0fb6e",
+            "size": 2796,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Chat/Adapters/S10MeetingRoomSurface.php": {
+            "status": "??",
+            "hash": "296f46e7a20f6b600aa0b3be59ab6793ebed3911",
+            "size": 2489,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Adapters/S11AriaAssistantSurface.php": {
+            "status": "??",
+            "hash": "837d81a3e3e7606d1527e23abd3e1177806284eb",
+            "size": 3287,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Adapters/S1AgentDrawerSurface.php": {
+            "status": "??",
+            "hash": "c0e269acfe8727ad4194395e8624ce8188b6fc2d",
+            "size": 1916,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Adapters/S2MessagesModalSurface.php": {
+            "status": "??",
+            "hash": "6450f476338af12a1c4b3ff0b9181e77617e8c04",
+            "size": 1892,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Adapters/S3MessagesPageSurface.php": {
+            "status": "??",
+            "hash": "5aa3ae1d9f10723e6f73c161bffce237c406ac21",
+            "size": 1836,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Adapters/S4SeoAssistantSurface.php": {
+            "status": "??",
+            "hash": "70f6be0e880ce715aee23450444aade3a41da90a",
+            "size": 4557,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Adapters/S5StudioChatSurface.php": {
+            "status": "??",
+            "hash": "57fbc1f93062baae41100182150de6f063d838ad",
+            "size": 3954,
+            "mtime": 1785136029
+        },
+        "tests/Feature/Chat/Adapters/S6StudioAiSurface.php": {
+            "status": "??",
+            "hash": "9660600b4412cd0e2f13350c50a2a98bd8ea38d8",
+            "size": 2605,
+            "mtime": 1785136029
+        },
+        "tests/Feature/Chat/Adapters/S7BuilderArthurSurface.php": {
+            "status": "??",
+            "hash": "8e2e100c86e64b6eb7a341454cce37d4de4f2cfb",
+            "size": 2728,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Chat/Adapters/S8PublicChatbotSurface.php": {
+            "status": "??",
+            "hash": "f4313e0070e08d02a6898332cb8bf17f9f76057c",
+            "size": 3330,
+            "mtime": 1785131251
+        },
+        "tests/Feature/Chat/Adapters/S9BellaSurface.php": {
+            "status": "??",
+            "hash": "e70a5dfe95a4082af8aad11ed706e4df5cd8275c",
+            "size": 2500,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Chat/Charges/MessageChargeLifecycleTest.php": {
+            "status": "??",
+            "hash": "8f13b5ce7fae768c3de1c4cc6b81d28c177e9a9d",
+            "size": 10448,
+            "mtime": 1785099814
+        },
+        "tests/Feature/Chat/ChatAuthProbeTest.php": {
+            "status": "??",
+            "hash": "ed12a57dac486798b4b572ccf328e18c967d4e59",
+            "size": 1994,
+            "mtime": 1785089951
+        },
+        "tests/Feature/Chat/ChatConformanceTest.php": {
+            "status": "??",
+            "hash": "d4660451fdc3f26d68c138e956eb84765d57b4c8",
+            "size": 9626,
+            "mtime": 1785087821
+        },
+        "tests/Feature/Chat/ChatProbeDiagnosticTest.php": {
+            "status": "??",
+            "hash": "9af65b1d2012295b7d211eeb90dab6cb96e621ce",
+            "size": 4349,
+            "mtime": 1785088435
+        },
+        "tests/Feature/Chat/ChatSchemaValidationTest.php": {
+            "status": "??",
+            "hash": "561973e3a0ed9e5702b628fa39432f57d1de72fb",
+            "size": 7610,
+            "mtime": 1785087821
+        },
+        "tests/Feature/Chat/Chatbot/ChatbotIdempotencyTest.php": {
+            "status": "??",
+            "hash": "4b39ab0f574929ba5b1f1452123d9bd483251963",
+            "size": 11391,
+            "mtime": 1785128832
+        },
+        "tests/Feature/Chat/Concurrency/ChatConcurrencyTest.php": {
+            "status": "??",
+            "hash": "bcc42682e83c49ad4ff515344df601c7ab15982c",
+            "size": 13463,
+            "mtime": 1785100716
+        },
+        "tests/Feature/Chat/Concurrency/ProcessParallelTest.php": {
+            "status": "??",
+            "hash": "636519fcfb87ce3b114d06bcaefa3fb77a41126a",
+            "size": 14499,
+            "mtime": 1785128010
+        },
+        "tests/Feature/Chat/Concurrency/bin/parallel_worker.php": {
+            "status": "??",
+            "hash": "d2b30641ef0558e2606a3681dc26cccdfc9fca44",
+            "size": 4864,
+            "mtime": 1785127935
+        },
+        "tests/Feature/Chat/Contract/FabricationDetectorTest.php": {
+            "status": "??",
+            "hash": "d64cbe6fd62569e3f01047b0d314c1d976ff9d2a",
+            "size": 5679,
+            "mtime": 1785099100
+        },
+        "tests/Feature/Chat/Contract/P2bGuardrailTest.php": {
+            "status": "??",
+            "hash": "9ffe50ee7970d00e57166adad45a463a86a04bea",
+            "size": 8441,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Idempotency/ChatIdempotencyTest.php": {
+            "status": "??",
+            "hash": "48930b32c826c0c816bed1594fa10d01a27b0880",
+            "size": 10251,
+            "mtime": 1785099814
+        },
+        "tests/Feature/Chat/Integration/SeoIdempotencyIntegrationTest.php": {
+            "status": "??",
+            "hash": "e010172ac338362d4b167ee6e062f9a097cfc3ce",
+            "size": 7533,
+            "mtime": 1785101538
+        },
+        "tests/Feature/Chat/Regression/Cr01MarkupLeakTest.php": {
+            "status": "??",
+            "hash": "ac1c9c6f365d69e25fd4d2abf76725986242eb62",
+            "size": 7083,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Regression/Cr02DuplicateMarkReadTest.php": {
+            "status": "??",
+            "hash": "b985aac864aa2d2c909ceec538175c47b79d476e",
+            "size": 4602,
+            "mtime": 1785088933
+        },
+        "tests/Feature/Chat/Regression/Cr03FabricatedReplyTest.php": {
+            "status": "??",
+            "hash": "a3e31b72faa9520851a981c15494580b489b67f8",
+            "size": 6685,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Regression/Cr18SwallowedPersistenceFailureTest.php": {
+            "status": "??",
+            "hash": "eabd6032c0119015304643370d0dfb6c4a54cff4",
+            "size": 5711,
+            "mtime": 1785136028
+        },
+        "tests/Feature/Chat/Safety/EnvironmentSafetyTest.php": {
+            "status": "??",
+            "hash": "ab52fd0dbee60f859dfe05e1448a9fd84d683a82",
+            "size": 6537,
+            "mtime": 1785127809
+        },
+        "tests/Feature/Chat/Support/Cap.php": {
+            "status": "??",
+            "hash": "5cdeaf98b3bc4387e6e956943d01a8a52796f8a4",
+            "size": 1409,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Chat/Support/ChatSurface.php": {
+            "status": "??",
+            "hash": "abc16f22a0a99be479b43cb3008906225bd56618",
+            "size": 5730,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Chat/Support/ChatTestContext.php": {
+            "status": "??",
+            "hash": "3fdf4c51acb86f6c816ebc9d40fd69454112e1a6",
+            "size": 4738,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Chat/Support/ConformanceSuite.php": {
+            "status": "??",
+            "hash": "bd4cc19ef80a9c845cfc261e41cf21a05917bb65",
+            "size": 79592,
+            "mtime": 1785099100
+        },
+        "tests/Feature/Chat/Support/JsonSchemaValidator.php": {
+            "status": "??",
+            "hash": "504c44c5b1ec6cbc70896ebec10f3a55ccc00a9e",
+            "size": 10126,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Chat/Support/Outcome.php": {
+            "status": "??",
+            "hash": "fd3b3c779b2c6eafcf138ddafa8f860d99ce63d1",
+            "size": 1822,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Chat/Support/ProbeResponse.php": {
+            "status": "??",
+            "hash": "aaf277adad2168e42d224804d2eb627412963de4",
+            "size": 944,
+            "mtime": 1785090141
+        },
+        "tests/Feature/Domains/DomainCommerceTest.php": {
+            "status": "??",
+            "hash": "8b38c0f9d2b62d4a98514b43e52702e744a9f4fe",
+            "size": 26129,
+            "mtime": 1785326937
+        },
+        "tests/Feature/Domains/DomainPortalTest.php": {
+            "status": "??",
+            "hash": "e2e934509114f402f3213003de0370d27ce45804",
+            "size": 14268,
+            "mtime": 1785329222
+        },
+        "tests/Feature/Engineer888/BaselineTest.php": {
+            "status": "??",
+            "hash": "b572f60544e2a91f07374ea1b9f5566044f18f3b",
+            "size": 11443,
+            "mtime": 1785663999
+        },
+        "tests/Feature/Engineer888/CommitExecutionTest.php": {
+            "status": " M",
+            "hash": "f66ecc54aaddcc68bfbce74839a98476fb6db15f",
+            "size": 30667,
+            "mtime": 1785581309
+        },
+        "tests/Feature/Engineer888/CoordinationTest.php": {
+            "status": "??",
+            "hash": "9b6fe3a80297a2d50c17e10a3c3c53dc5746b83a",
+            "size": 17022,
+            "mtime": 1785579807
+        },
+        "tests/Feature/Engineer888/DeploymentVerificationTest.php": {
+            "status": "??",
+            "hash": "82489fb28defa9563972f8a7a451df7087632a2f",
+            "size": 21410,
+            "mtime": 1785614900
+        },
+        "tests/Feature/Engineer888/ExecutionSafetyTest.php": {
+            "status": "??",
+            "hash": "8b1b4d3923c2a8363033e8b17002e62327cab3a1",
+            "size": 9384,
+            "mtime": 1785490748
+        },
+        "tests/Feature/Engineer888/InstallIntegrityTest.php": {
+            "status": "??",
+            "hash": "767e81abbb0849e208375726e567a1d46d3fafa7",
+            "size": 15091,
+            "mtime": 1785661205
+        },
+        "tests/Feature/Engineer888/RepositoryIntelligenceTest.php": {
+            "status": " M",
+            "hash": "6dcabe46d868c61cce84d9bf41a5379775ad2d92",
+            "size": 26921,
+            "mtime": 1785581308
+        },
+        "tests/Feature/Engineering/EngineeringFoundationTest.php": {
+            "status": "??",
+            "hash": "dbde40fdbba55ce740796d3c845db5f52aef29a6",
+            "size": 58823,
+            "mtime": 1785221044
+        },
+        "tests/Feature/Governance/DomainCapabilityRegistrationTest.php": {
+            "status": "??",
+            "hash": "b1c01a035aba021854be7d03164220f23996e16b",
+            "size": 11957,
+            "mtime": 1785350689
+        },
+        "tests/Feature/Governance/GovernanceIntegrationTest.php": {
+            "status": "??",
+            "hash": "1c06daf978cc3378f154a7bee239fd164f28373c",
+            "size": 12708,
+            "mtime": 1785149831
+        },
+        "tests/Feature/Governance/GovernedRouteEnforcementTest.php": {
+            "status": "??",
+            "hash": "eb1a946bce1abfe1089cbb4671274981d01eaf6c",
+            "size": 11311,
+            "mtime": 1785350689
+        },
+        "tests/Feature/Governance/fixtures/domain_governance_allowlist.json": {
+            "status": "??",
+            "hash": "b1fe4a36fb36ea7a9b72f3b4022861e9e1d5f406",
+            "size": 6090,
+            "mtime": 1785350689
+        },
+        "tests/Feature/Namecheap/NamecheapContactTest.php": {
+            "status": "??",
+            "hash": "7dc2e27636a62babceb5ca322b0f1824866c0699",
+            "size": 9916,
+            "mtime": 1785324465
+        },
+        "tests/Feature/Namecheap/NamecheapDomainStatusTest.php": {
+            "status": "??",
+            "hash": "10994beb5913528d4f889acfd51aac69b4391bdc",
+            "size": 9939,
+            "mtime": 1785322158
+        },
+        "tests/Feature/PlatformEvents/ActivationGateTest.php": {
+            "status": "??",
+            "hash": "24849d09141e01085d2a6303c1a2e57504f86eae",
+            "size": 21626,
+            "mtime": 1785415408
+        },
+        "tests/Feature/PlatformEvents/DeliveryMigrationTest.php": {
+            "status": "??",
+            "hash": "cd06aaff2de6a1d91887135951856ba56597802c",
+            "size": 7190,
+            "mtime": 1785415408
+        },
+        "tests/Feature/PlatformEvents/DeliveryTest.php": {
+            "status": "??",
+            "hash": "2956f3e632921f11af15496b16699baf6f259f63",
+            "size": 27455,
+            "mtime": 1785415408
+        },
+        "tests/Feature/PlatformEvents/DeploymentVerificationTest.php": {
+            "status": "??",
+            "hash": "071acb693482710a960bd00a86301d5c91ffb0b6",
+            "size": 22219,
+            "mtime": 1785415408
+        },
+        "tests/Feature/PlatformEvents/DomainOrderPaidTest.php": {
+            "status": "??",
+            "hash": "0c7ae6716dfd11a59f4e04fcaa4ba364fbc9ab98",
+            "size": 32918,
+            "mtime": 1785416794
+        },
+        "tests/Feature/PlatformEvents/FixtureControlsTest.php": {
+            "status": "??",
+            "hash": "dddab7afa6d2d18526451d57e28fa318da5a5753",
+            "size": 18197,
+            "mtime": 1785419055
+        },
+        "tests/Feature/PlatformEvents/OutboxArchitectureTest.php": {
+            "status": "??",
+            "hash": "ae423dd03396ca855d2c23b288ee357a82f215a7",
+            "size": 11017,
+            "mtime": 1785415918
+        },
+        "tests/Feature/PlatformEvents/OutboxMigrationTest.php": {
+            "status": "??",
+            "hash": "d0d03b4f82cdfa7b2b534b231c04b608a82b026c",
+            "size": 5926,
+            "mtime": 1785415409
+        },
+        "tests/Feature/PlatformEvents/OutboxTest.php": {
+            "status": "??",
+            "hash": "198b2d7f32447dedd659aa71272ab973f18668cb",
+            "size": 23356,
+            "mtime": 1785415409
+        },
+        "tests/Feature/PlatformEvents/PaymentWebhookRemediationTest.php": {
+            "status": "??",
+            "hash": "3c3f41940f6c0fe8949fd3eb0e1b2e36e7c73d29",
+            "size": 20947,
+            "mtime": 1785416829
+        },
+        "tests/Feature/PlatformEvents/ReplayProjectionTest.php": {
+            "status": "??",
+            "hash": "8545015476a5c96e693261f9aefdd71a5f635981",
+            "size": 18112,
+            "mtime": 1785415409
+        },
+        "tests/Feature/PlatformEvents/SubscriberEligibilityTest.php": {
+            "status": "??",
+            "hash": "f5469748b9e917282b98cc14f282d8946a60e962",
+            "size": 25310,
+            "mtime": 1785415409
+        },
+        "tests/Feature/PlatformEvents/SubscriberGovernanceTest.php": {
+            "status": "??",
+            "hash": "709a8926d691ed4d9050346b241c2876a482b547",
+            "size": 19037,
+            "mtime": 1785415441
+        },
+        "tests/Feature/Routes/ConcurrentChangeSimulationTest.php": {
+            "status": "??",
+            "hash": "cf92b95312ed8affabcfda3e6151edf29e0f7472",
+            "size": 8881,
+            "mtime": 1785133273
+        },
+        "tests/Feature/Routes/ReconstructionManifestTest.php": {
+            "status": "??",
+            "hash": "a398ff091090e1ffc3b31ff866f9c055ce0f44a6",
+            "size": 10657,
+            "mtime": 1785178798
+        },
+        "tests/Feature/Routes/RouteEquivalenceTest.php": {
+            "status": "??",
+            "hash": "4a870e9ade1dfad0ec549dfe9c0c67eb6766326e",
+            "size": 12570,
+            "mtime": 1785158378
+        },
+        "tests/Feature/Routes/RouteModuleScopeInheritanceTest.php": {
+            "status": "??",
+            "hash": "9f4bd8304f02c02c3660be7e94a8e6d1a7ba7ccc",
+            "size": 17156,
+            "mtime": 1785160088
+        },
+        "tests/Feature/Routes/RouteOwnershipEnforcementTest.php": {
+            "status": "??",
+            "hash": "eb4bec210e959a02f1cb253f76dba95f955476a6",
+            "size": 18012,
+            "mtime": 1785160088
+        },
+        "tests/Feature/Safety/ConcurrencyGuardTest.php": {
+            "status": "??",
+            "hash": "4420f0972c023b98d70ebb07fd06c6c44783cad8",
+            "size": 16951,
+            "mtime": 1785213121
+        },
+        "tests/Feature/Safety/ReservedWordAuditTest.php": {
+            "status": "??",
+            "hash": "0bc591b35b499659fdec8413cf0402f4bcd36844",
+            "size": 8349,
+            "mtime": 1785222677
+        },
+        "tests/Feature/Security/AdminMfaEnforcementTest.php": {
+            "status": "??",
+            "hash": "93bf9a0f4bab530d90183fd0677ec84cf6234852",
+            "size": 5974,
+            "mtime": 1785149139
+        },
+        "tests/Feature/Security/BellaCapabilityRemovalTest.php": {
+            "status": "??",
+            "hash": "36e70a55b64cea04324290573933679ed90142a3",
+            "size": 11846,
+            "mtime": 1785148994
+        },
+        "tests/Feature/Security/ProtectedRouteSourceTest.php": {
+            "status": "??",
+            "hash": "fa8060a1153ae7de7485f72ed1316c7a19c13e8d",
+            "size": 14962,
+            "mtime": 1785160240
+        },
+        "tests/Support/IsolatedDatabase.php": {
+            "status": "??",
+            "hash": "961982c550b9766138a9f045f2e4237ca6e060c8",
+            "size": 3186,
+            "mtime": 1785415659
+        },
+        "tests/Support/RouteSource.php": {
+            "status": "??",
+            "hash": "a3a5e2f508d8478de76a796dea772801fe073994",
+            "size": 1384,
+            "mtime": 1785136028
+        },
+        "tests/TestCase.php": {
+            "status": " M",
+            "hash": "3d8ed15ef5f7b6b32d0be6b87d04c64e41f8d99c",
+            "size": 2858,
+            "mtime": 1785581029
+        },
+        "tests/js/domains-commerce.test.cjs": {
+            "status": "??",
+            "hash": "2469e07c624e0a56c090662de6f108254c9f2ab9",
+            "size": 25990,
+            "mtime": 1785329153
+        },
+        "tools/exec-safety-audit.php": {
+            "status": "??",
+            "hash": "0f1134fe17a16e7eec894ca11aa44f95f598313b",
+            "size": 37656,
+            "mtime": 1785490748
+        },
+        "tools/install-integrity-audit.php": {
+            "status": "??",
+            "hash": "f0eb952ee1d82dc76e2b012eb9c3fb02e39fee2f",
+            "size": 11265,
+            "mtime": 1785660654
+        }
+    },
+    "integrity": "85ef28052265bf0017788258bf64dc128e0cc3fd"
+}

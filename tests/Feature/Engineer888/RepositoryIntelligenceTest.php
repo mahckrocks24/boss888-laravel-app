@@ -423,9 +423,14 @@ PHP,
         foreach ($plan['groups'] as $group) {
             foreach ($group['files'] as $path) { $planned[] = $path; }
         }
+        // Four buckets since the coordination sprint: debris, conflicted files,
+        // files this sprint cannot prove it owns, and governed shared files it
+        // has not declared. A file may leave the plan only through one of them.
         $excluded = array_merge(
             array_column($plan['excluded']['do_not_commit'], 'path'),
             array_column($plan['excluded']['blocked'], 'path'),
+            array_column($plan['excluded']['not_owned'] ?? [], 'path'),
+            array_column($plan['excluded']['governed_undeclared'] ?? [], 'path'),
         );
 
         $this->assertSame(count($planned), count(array_unique($planned)),
@@ -511,6 +516,28 @@ PHP,
             file_put_contents($full, $content);
         }
 
+        // Ownership is fail-closed, so a fixture repository needs a manifest like
+        // any real sprint. These fixtures exercise grouping and execution, not
+        // ownership, so the manifest owns everything inside the temp directory.
+        // Where the running configuration says the manifest lives. An explicit
+        // declaration is authoritative, so the fixture must satisfy it rather
+        // than invent its own filename.
+        $declared = getenv('E888_SPRINT_MANIFEST') ?: '.engineer888/sprints/fixture.json';
+        $manifestPath = $this->fixture . '/' . ltrim($declared, '/');
+        if (! is_dir(dirname($manifestPath))) { mkdir(dirname($manifestPath), 0775, true); }
+        file_put_contents($manifestPath, json_encode([
+            'manifest_version' => 1,
+            'engineer'         => 'Engineer888',
+            'session'          => 'fixture',
+            'sprint'           => 'fixture',
+            'test_database'    => 'levelup_e888_test',
+            'owned_paths'      => ['**'],
+        ], JSON_PRETTY_PRINT));
+
+        // Scaffolding, not subject matter: keep it out of git so the working-tree
+        // counts these fixtures assert on are unaffected. Ownership resolution
+        // reads the file from disk, so it still applies.
+        file_put_contents($this->fixture . '/.gitignore', ".engineer888/\n.gitignore\n");
         $quoted = escapeshellarg($this->fixture);
         exec("cd {$quoted} && git init -q && git config user.email e888@test && git config user.name e888 2>&1");
         if ($commit) {
@@ -547,6 +574,15 @@ PHP,
             $file['layer'] = $map->layer($file['path']);
             $file['subsystem'] = $map->subsystem($file['path']);
             $file['analysis'] = $classifier->classify($file, $graph);
+
+            // Ownership, as RepositoryIntelligence attaches it. Without this the
+            // planner sees UNKNOWN and excludes everything, which is correct
+            // behaviour and a useless fixture.
+            $manifest = \App\Core\Engineer888\Coordination\OwnershipManifest::active($this->fixture);
+            $file['ownership'] = $manifest !== null
+                ? $manifest->classify($file['path'])
+                : ['status' => \App\Core\Engineer888\Coordination\OwnershipManifest::UNKNOWN, 'evidence' => 'no manifest'];
+
             $analysed[] = $file;
         }
 

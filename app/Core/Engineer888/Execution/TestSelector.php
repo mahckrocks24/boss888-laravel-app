@@ -109,22 +109,36 @@ final class TestSelector
         $tests = $this->coveringTests($group);
         if ($tests !== []) {
             $config = $this->configFor($tests);
-            $checks[] = [
-                'id' => 'covering-tests',
-                'kind' => 'test',
-                'description' => count($tests) . ' test file(s) that reference this group\'s classes'
-                    . ($config !== null ? ' (via ' . $config . ')' : ''),
-                'command' => 'php artisan test'
-                    . ($config !== null ? ' -c ' . escapeshellarg($config) : '')
-                    . ' ' . implode(' ', array_map('escapeshellarg', $tests)),
-                'rationale' => 'Selected from the dependency graph — these are the test files that import a '
-                    . 'class this group changes. Not a path convention, an actual reference.'
-                    . ($config !== null
-                        ? ' Run under ' . $config . ', which owns a dedicated database: the shared one is '
-                        . 'corrupted by concurrent sessions often enough that a failure there would say '
-                        . 'nothing about this commit.'
-                        : ''),
-            ];
+
+            if ($config === null) {
+                // Refusing to run is the safe branch. Engineer888 launches test
+                // processes from inside a booted application, and a test run
+                // that resolves to production destroys it — see the comment on
+                // sanitisedTestCommand(). Without a configuration that provably
+                // targets an isolated database, the tests are reported as NOT
+                // RUN rather than run dangerously.
+                $checks[] = [
+                    'id' => 'covering-tests-skipped',
+                    'kind' => 'test',
+                    'runner' => 'none',
+                    'description' => count($tests) . ' covering test(s) NOT RUN — no isolated configuration covers them',
+                    'rationale' => 'These tests exist and are relevant, but no phpunit config was found whose '
+                        . 'database is provably a test database. Running them would risk resolving to '
+                        . 'production. Run them yourself: ' . implode(' ', array_slice($tests, 0, 3))
+                        . (count($tests) > 3 ? ' …' : ''),
+                ];
+            } else {
+                $checks[] = [
+                    'id' => 'covering-tests',
+                    'kind' => 'test',
+                    'description' => count($tests) . ' test file(s) that reference this group\'s classes (via ' . $config . ')',
+                    'command' => $this->sanitisedTestCommand($config, $tests),
+                    'rationale' => 'Selected from the dependency graph — these are the test files that import a '
+                        . 'class this group changes. Not a path convention, an actual reference. Run under '
+                        . $config . ', which owns a dedicated database, with the parent process\'s database '
+                        . 'environment stripped so it cannot leak in.',
+                ];
+            }
         }
 
         if ($checks === []) {
@@ -176,8 +190,42 @@ final class TestSelector
     }
 
     /**
+     * A test command that cannot inherit the parent process's database.
+     *
+     * THIS EXISTS BECAUSE IT ALREADY WENT WRONG. On 2026-07-30 this selector
+     * emitted `php artisan test -c phpunit.e888.xml <files>` and the executor ran
+     * it with exec() from inside a booted artisan process. From a plain shell
+     * that command is correct and targets levelup_e888_test. Nested, it targeted
+     * levelup_staging, RefreshDatabase ran migrate:fresh, and production was
+     * emptied.
+     *
+     * The mechanism, established by probe rather than by guesswork: the parent
+     * exports DB_DATABASE into `$_SERVER`, the child inherits it, and phpunit's
+     * `<env force="true">` block sets putenv() and `$_ENV` but NOT `$_SERVER`.
+     * Laravel's env repository reads `$_SERVER`, so the forced value loses.
+     * getenv() and $_ENV both reported the correct test database throughout —
+     * which is exactly why the fault was invisible.
+     *
+     * `env -u` removes the variables from the child's environment entirely, so
+     * there is nothing for `$_SERVER` to be populated from and the configuration
+     * file is the only source.
+     */
+    public function sanitisedTestCommand(string $config, array $tests): string
+    {
+        $strip = ['DB_CONNECTION', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME',
+                  'DB_PASSWORD', 'APP_ENV', 'REDIS_HOST', 'REDIS_PORT', 'CACHE_STORE',
+                  'CACHE_DRIVER', 'SESSION_DRIVER', 'QUEUE_CONNECTION'];
+
+        $env = 'env';
+        foreach ($strip as $variable) { $env .= ' -u ' . $variable; }
+
+        return $env . ' php artisan test -c ' . escapeshellarg($config)
+             . ' ' . implode(' ', array_map('escapeshellarg', $tests));
+    }
+
+    /**
      * A per-suite phpunit config whose testsuite directories cover EVERY
-     * selected test, or null.
+     * selected test AND provably targets a test database, or null.
      *
      * This repository keeps dedicated configs (phpunit.chat.xml,
      * phpunit.e888.xml) precisely because the shared levelup_test database gets
@@ -206,7 +254,20 @@ final class TestSelector
                 if (! $covered) { $coversAll = false; break; }
             }
 
-            if ($coversAll) { return basename($configPath); }
+            if (! $coversAll) { continue; }
+
+            // The config must also name a database that is provably a test
+            // database. A config covering the right directories but pointing at
+            // production is the worst possible match.
+            if (! preg_match('/DB_DATABASE"\s+value="([^"]+)"/', $xml, $dbMatch)) { continue; }
+            $database = $dbMatch[1];
+
+            if (in_array(strtolower($database), ['levelup_staging', 'levelup', 'levelup_production', 'levelup_prod'], true)) {
+                continue;
+            }
+            if (! preg_match('/(_test|_testing)$/i', $database)) { continue; }
+
+            return basename($configPath);
         }
 
         return null;
