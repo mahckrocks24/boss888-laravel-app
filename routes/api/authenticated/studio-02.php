@@ -275,20 +275,56 @@ use Illuminate\Support\Facades\Route;
   // tainting the canvas. Covers designs created before the fix
   // landed in the template source. We re-assign src after setting
   // crossOrigin so the image is re-fetched in CORS mode.
-  function _ensureCrossOrigin() {
-    document.querySelectorAll('img').forEach(function(img){
-      if (img.crossOrigin) return;
-      var src = img.src || img.getAttribute('src') || '';
-      try { img.crossOrigin = 'anonymous'; } catch(_e) {}
-      if (src) img.src = src;
-    });
+  //
+  // Stability fix (2026-08-02, BUG-D): the observer used to watch the whole
+  // subtree for 'src' ATTRIBUTE mutations and re-scan every <img>, re-assigning
+  // img.src — which is itself a 'src' mutation that re-fired the observer. Under
+  // editor interaction (selection overlays, contenteditable, drag/resize) the DOM
+  // mutates continuously, so this thrashed the CPU and froze the editor. We now
+  // (1) tag each image once (crossOrigin guard), (2) observe childList/subtree
+  // ONLY — no attribute observation, so our own src re-assign never re-triggers
+  // us, (3) scan only newly-added subtrees (never the whole document per
+  // mutation), and (4) coalesce bursts into one pass per animation frame.
+  function _coTagImage(img) {
+    if (!img || img.tagName !== 'IMG' || img.crossOrigin) return;
+    var src = img.src || img.getAttribute('src') || '';
+    try { img.crossOrigin = 'anonymous'; } catch(_e) {}
+    // Re-assign once, only to force the CORS re-fetch now that crossOrigin is set.
+    // The crossOrigin guard above means this runs at most once per image, and we
+    // skip it when the value would be unchanged/empty.
+    if (src && img.getAttribute('src') !== src) img.setAttribute('src', src);
+    else if (src) img.src = src;
   }
+  function _coScan(root) {
+    if (!root) return;
+    _coTagImage(root);
+    if (root.querySelectorAll) {
+      var imgs = root.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) _coTagImage(imgs[i]);
+    }
+  }
+  // Kept for back-compat: a one-shot full-document pass.
+  function _ensureCrossOrigin() { _coScan(document); }
   _ensureCrossOrigin();
-  // Re-run once images from a later mutation (e.g. Media Picker swap)
-  // land in the DOM.
-  new MutationObserver(function(){ _ensureCrossOrigin(); }).observe(
-    document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] }
-  );
+  // Queue newly-added element subtrees and process them once per frame. Media
+  // Picker swaps that replace an <img> node land here; swaps that only change an
+  // existing image's src keep the crossOrigin already set on that element.
+  var _coQueue = [], _coScheduled = false;
+  var _coRaf = window.requestAnimationFrame || function(f){ return setTimeout(f, 16); };
+  function _coFlush() {
+    _coScheduled = false;
+    var q = _coQueue; _coQueue = [];
+    for (var i = 0; i < q.length; i++) _coScan(q[i]);
+  }
+  new MutationObserver(function(muts){
+    for (var i = 0; i < muts.length; i++) {
+      var added = muts[i].addedNodes;
+      for (var j = 0; j < added.length; j++) {
+        if (added[j].nodeType === 1) _coQueue.push(added[j]);
+      }
+    }
+    if (_coQueue.length && !_coScheduled) { _coScheduled = true; _coRaf(_coFlush); }
+  }).observe(document.documentElement, { childList: true, subtree: true });
 
   function _fields() {
     return Array.prototype.slice.call(document.querySelectorAll('[data-field]'));
