@@ -199,47 +199,153 @@ class ImageReasoningService
         return 1.0;
     }
 
-    /** Explicit, documented fallback when reasoning is unavailable — NOT a raw pass-through. */
+    /**
+     * Explicit, documented fallback when reasoning is unavailable — NOT a raw
+     * pass-through. Deterministically composes a rich, CATEGORY-AWARE,
+     * BRAND-GROUNDED provider prompt so that when the reasoning model times out
+     * the image is still professional, well-composed and on-brand (not a generic
+     * stock visual). Studio-owned quality lever; no runtime dependency.
+     */
     private function fallback(array $c, string $why): array
     {
-        $prompt = trim((string) ($c['user_prompt'] ?? ''));
-        $platform = $c['platform'] ?? 'null';
-        $isSeo = in_array(($c['source'] ?? ''), ['seo','blog'], true) || ($c['asset_type'] ?? '') === 'featured_image';
+        $prompt    = trim((string) ($c['user_prompt'] ?? ''));
+        $platform  = (string) ($c['platform'] ?? '');
+        $assetType = strtolower((string) ($c['asset_type'] ?? 'social_post'));
+        $style     = strtolower((string) ($c['style'] ?? 'natural'));
+        $isSeo     = in_array(($c['source'] ?? ''), ['seo','blog'], true) || $assetType === 'featured_image';
         [$w, $h, $ar] = $this->snapDimensions(0, 0, $isSeo ? 'landscape' : 'portrait', $c);
 
-        // WP2 Phase 2.1D-B — even the deterministic fallback honours the resolved
-        // (and request-overridden) brand palette, so brand is never lost when the
-        // LLM is unavailable.
-        $brand     = is_array($c['brand'] ?? null) ? $c['brand'] : [];
-        $colors    = array_values(array_filter((array) ($brand['colors'] ?? [])));
-        $brandLine = $colors ? ' Use the brand colour palette: ' . implode(', ', array_slice($colors, 0, 4)) . '.' : '';
+        // WP2 Phase 2.1D-B — brand (resolved + request-overridden) is never lost
+        // when the LLM is unavailable.
+        $brand  = is_array($c['brand'] ?? null) ? $c['brand'] : [];
+        $colors = array_values(array_filter((array) ($brand['colors'] ?? [])));
+        $voice  = trim((string) ($brand['voice'] ?? ''));
+        $vstyle = trim((string) ($brand['visual_style'] ?? ''));
+
+        // Category-aware framing is the biggest quality lever on the deterministic
+        // path: a food photo, a menu background and a promotional poster each need
+        // different composition, lighting and subject treatment.
+        $cat         = $this->fallbackFraming($assetType, $platform);
+        $styleClause = $this->fallbackStyle($style);
+
+        // Brand-visual clause folded INTO the scene (palette + visual style) — as
+        // composition/props/lighting, never as drawn text.
+        $brandVisual = '';
+        if ($colors) $brandVisual .= ' Incorporate the brand colour palette (' . implode(', ', array_slice($colors, 0, 4)) . ') naturally through props, surfaces, lighting and accents — never as text.';
+        if ($vstyle) $brandVisual .= ' Overall visual style: ' . $vstyle . '.';
+
+        // Compose the subject naturally, tolerating empty and verb-leading prompts.
+        $subject   = $prompt !== '' ? $prompt : $cat['default_subject'];
+        $directive = $prompt !== '' && (mb_strlen($prompt) > 120
+            || (bool) preg_match('/^(create|generate|make|design|show|produce|depict|render|illustrate|draw|craft|compose|capture|build)\b/i', $prompt));
+
+        $tail = sprintf(
+            ' Composition: %s, with clean deliberate negative space reserved for text to be added later. Lighting: %s. Mood: %s.%s%s Ultra-detailed, photorealistic, professional %s quality, sharp focus, natural textures, high dynamic range. No text, no letters, no words, no logos, no watermark.',
+            $cat['composition'], $cat['lighting'], $cat['mood'], $styleClause, $brandVisual, $cat['quality_word']
+        );
+
+        $providerPrompt = $directive
+            ? ($subject . '. ' . $cat['enhance'] . $tail)
+            : ($cat['lead'] . ' of ' . $subject . ', ' . $cat['scene_note'] . '.' . $tail);
 
         $bp = [
             'intent'     => 'Deterministic fallback (reasoning unavailable): ' . $why,
-            'subject'    => $prompt !== '' ? $prompt : 'brand-neutral marketing visual',
+            'subject'    => $prompt !== '' ? $prompt : $cat['default_subject'],
             'audience'   => 'general business audience',
-            'platform'   => (string) $platform,
-            'asset_type' => (string) ($c['asset_type'] ?? 'social_post'),
+            'platform'   => $platform,
+            'asset_type' => $assetType,
             'aspect_ratio' => $ar,
             'dimensions' => ['width' => $w, 'height' => $h],
-            'composition' => 'clear single focal subject, balanced negative space',
-            'scene'      => $prompt,
-            'visual_hierarchy' => 'subject dominant; clean supporting background',
-            'lighting'   => 'soft professional lighting',
-            'mood'       => 'professional, trustworthy',
+            'composition' => $cat['composition'],
+            'scene'      => $subject,
+            'visual_hierarchy' => 'subject dominant; clean supporting background with reserved negative space',
+            'lighting'   => $cat['lighting'],
+            'mood'       => $cat['mood'] . ($voice ? '; brand voice ' . $voice : ''),
             'color_palette' => $colors,
             'brand_application' => $colors
-                ? ('Brand palette applied: ' . implode(', ', array_slice($colors, 0, 3)) . (!empty($brand['voice']) ? '; voice: ' . $brand['voice'] : ''))
-                : 'no brand context available',
+                ? ('Brand palette applied through composition: ' . implode(', ', array_slice($colors, 0, 3)) . ($voice ? '; voice: ' . $voice : '') . ($vstyle ? '; style: ' . $vstyle : ''))
+                : 'no brand context available — neutral professional treatment',
             'historical_or_factual_constraints' => [],
-            'negative_constraints' => ['no text', 'no watermark', 'no logos'],
-            'typography_strategy' => ['mode' => 'none', 'reason' => 'fallback path — text handled by design layer', 'headline' => '', 'supporting_copy' => [], 'placement' => '', 'style' => ''],
-            'provider_prompt' => 'Professional, high-quality marketing visual of ' . ($prompt !== '' ? $prompt : 'an on-brand scene') . '.' . $brandLine . ' Clean composition, deliberate negative space, no text, no letters, no words, no logos, no watermark.',
+            'negative_constraints' => ['no text', 'no watermark', 'no logos', 'no distorted anatomy', 'no artificial-looking composites'],
+            'typography_strategy' => ['mode' => 'none', 'reason' => 'fallback path — text handled by the Studio design layer', 'headline' => '', 'supporting_copy' => [], 'placement' => '', 'style' => ''],
+            'provider_prompt' => $providerPrompt,
             'quality'    => in_array(strtolower((string) ($c['requested_quality'] ?? '')), ['low','medium','high'], true) ? strtolower((string) $c['requested_quality']) : 'medium',
             'provider'   => 'openai',
             'model'      => 'gpt-image-1',
         ];
 
         return ['success' => true, 'blueprint' => $bp, 'reasoning_summary' => 'FALLBACK: ' . $why, 'model' => 'fallback', 'fallback' => true];
+    }
+
+    /** Category-aware framing for the deterministic fallback (Studio-owned). */
+    private function fallbackFraming(string $assetType, string $platform): array
+    {
+        $t = $assetType . ' ' . $platform;
+        $has = fn(string ...$n) => (bool) array_filter($n, fn($x) => str_contains($t, $x));
+
+        if ($has('food', 'dish', 'recipe', 'meal', 'cuisine')) return [
+            'lead' => 'A close-up, appetising food photograph', 'default_subject' => 'a beautifully plated gourmet dish',
+            'scene_note' => 'styled on matte ceramic over a dark rustic surface, with fresh garnish, a glossy sauce detail and soft background bokeh',
+            'composition' => 'hero dish slightly off-centre on the rule of thirds', 'lighting' => 'soft directional window light with gentle falloff',
+            'mood' => 'warm, premium, mouth-watering', 'quality_word' => 'editorial food-photography',
+            'enhance' => 'Render it as a close-up, appetising, professionally styled food photograph.',
+        ];
+        if ($has('menu')) return [
+            'lead' => 'An elegant, minimal fine-dining background', 'default_subject' => 'a refined tasting-menu backdrop',
+            'scene_note' => 'abstract culinary textures with muted premium tones and generous empty space',
+            'composition' => 'generous negative space in the upper two-thirds for menu text', 'lighting' => 'soft, even studio light',
+            'mood' => 'refined, understated, upscale', 'quality_word' => 'fine-dining art-direction',
+            'enhance' => 'Render it as a refined, minimal fine-dining background with generous empty space.',
+        ];
+        if ($has('poster', 'promotion', 'promo', 'advertisement', 'ad', 'flyer', 'campaign')) return [
+            'lead' => 'A bold, eye-catching promotional key visual', 'default_subject' => 'a striking promotional hero scene',
+            'scene_note' => 'a dynamic focal subject with strong depth, dramatic contrast and room for a headline',
+            'composition' => 'a bold rule-of-thirds subject with strong leading lines', 'lighting' => 'dramatic high-contrast light with a bright key',
+            'mood' => 'confident, energetic, premium', 'quality_word' => 'advertising-campaign',
+            'enhance' => 'Render it as a bold, high-impact advertising key visual with room for a headline.',
+        ];
+        if ($has('story', 'reel', 'vertical', 'tiktok')) return [
+            'lead' => 'A vertical, lifestyle-led hero image', 'default_subject' => 'an immersive vertical lifestyle scene',
+            'scene_note' => 'immersive full-bleed vertical framing with depth and atmosphere',
+            'composition' => 'a strong vertical composition with the subject in the lower-middle third', 'lighting' => 'natural, atmospheric light',
+            'mood' => 'immersive, authentic, aspirational', 'quality_word' => 'social-lifestyle',
+            'enhance' => 'Render it as an immersive, full-bleed vertical lifestyle image.',
+        ];
+        if ($has('cover', 'banner', 'header')) return [
+            'lead' => 'A wide, cinematic brand banner', 'default_subject' => 'an atmospheric wide brand scene',
+            'scene_note' => 'wide panoramic framing with the subject to one side and calm background on the other',
+            'composition' => 'wide cinematic framing with the subject offset to one third', 'lighting' => 'soft cinematic light',
+            'mood' => 'calm, established, trustworthy', 'quality_word' => 'brand-banner',
+            'enhance' => 'Render it as a wide, cinematic brand banner with offset composition.',
+        ];
+        if ($has('portrait', 'headshot', 'team', 'staff', 'founder')) return [
+            'lead' => 'A professional environmental portrait', 'default_subject' => 'a confident professional in their working environment',
+            'scene_note' => 'shallow depth of field, flattering soft light and an authentic setting',
+            'composition' => 'a head-and-shoulders subject framed slightly off-centre', 'lighting' => 'a soft flattering key with gentle fill',
+            'mood' => 'approachable, credible, human', 'quality_word' => 'editorial-portrait',
+            'enhance' => 'Render it as a flattering, professional environmental portrait.',
+        ];
+        // default: social post / product hero
+        return [
+            'lead' => 'A polished, scroll-stopping social hero image', 'default_subject' => 'an on-brand hero product scene',
+            'scene_note' => 'a clean styled surface with considered props and soft background separation',
+            'composition' => 'a single clear focal subject on the rule of thirds', 'lighting' => 'soft professional studio light',
+            'mood' => 'polished, premium, inviting', 'quality_word' => 'commercial social-media',
+            'enhance' => 'Render it as a polished, scroll-stopping social hero image.',
+        ];
+    }
+
+    /** Style modifier for the deterministic fallback (Studio-owned). */
+    private function fallbackStyle(string $style): string
+    {
+        return match ($style) {
+            'cinematic' => ' Cinematic colour grade, shallow depth of field, film-like tonality.',
+            'minimal'   => ' Minimal styling, lots of clean negative space, restrained neutral palette.',
+            'bold'      => ' High contrast, vibrant saturated colour, strong graphic composition.',
+            'elegant'   => ' Soft refined lighting, luxury aesthetic, delicate premium details.',
+            'editorial' => ' Magazine-editorial styling, crisp focus, considered art-direction.',
+            'vibrant'   => ' Bright, vivid, punchy colour with lively energy.',
+            default     => ' Clean, natural, professional styling.',
+        };
     }
 }
