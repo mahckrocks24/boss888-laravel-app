@@ -78,6 +78,18 @@ class ImageIntelligenceService
         // 2) compile provider request + typography enforcement
         $compiled = $this->compiler->compile($blueprint);
 
+        // WAVE 4A — manual Studio image SHADOW (default OFF). When enabled AND the
+        // caller is the manual Studio route (source==='studio'), ALSO derive a
+        // Creative888-brief plan (getImageBlueprint → compileFromBrief) purely for
+        // comparison. Side-effect-free: NO provider call, NO credit reserve, NO
+        // asset/creative_job, NO persistence, and it NEVER touches the user
+        // response. Wrapped so a shadow failure can never disturb the authoritative
+        // legacy path below. OFF preserves current behaviour byte-for-byte.
+        if ($this->manualImageShadowEnabled($ctx)) {
+            try { $this->runManualImageShadow($ctx, $blueprint, $compiled); }
+            catch (\Throwable $e) { Log::debug('[Wave4A shadow] skipped: ' . $e->getMessage()); }
+        }
+
         // 3) cost estimate + canonical credit reserve
         $estCost = $this->estimateCost($compiled['size'], $compiled['quality'], $compiled['provider_prompt']);
         $credits = self::CREDIT_BY_QUALITY[$compiled['quality']] ?? 2;
@@ -386,5 +398,97 @@ class ImageIntelligenceService
                 'failed_at' => now(), 'updated_at' => now(),
             ]);
         } catch (\Throwable $e) {}
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 4A — manual Studio image shadow migration (default OFF, no activation)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /** Shadow runs ONLY for the manual Studio route and ONLY when the path-specific
+     *  flag is enabled. Default OFF → false → the legacy path is byte-for-byte
+     *  unchanged. NOT the cross-engine STUDIO_IMAGE_INTELLIGENCE_ENABLED flag. */
+    private function manualImageShadowEnabled(array $ctx): bool
+    {
+        return (bool) config('studio_image_migration.manual_shadow_enabled', false)
+            && ($ctx['source'] ?? '') === 'studio';
+    }
+
+    /** Produce the Creative888-brief plan for COMPARISON ONLY. Reads brand/memory
+     *  (no writes), compiles the brief technically, records a scoped structured
+     *  diff. No provider call, no reserve, no asset, no creative_job, no persistence. */
+    private function runManualImageShadow(array $ctx, array $legacyBlueprint, array $legacyCompiled): void
+    {
+        $brief = app(\App\Engines\Creative\Services\BlueprintService::class)->getImageBlueprint(
+            (int) ($ctx['workspace_id'] ?? 0),
+            (string) ($ctx['user_prompt'] ?? ''),
+            [
+                'platform'          => $ctx['platform'] ?? null,
+                'asset_type'        => $ctx['asset_type'] ?? 'social_post',
+                'style'             => $ctx['style'] ?? null,
+                'requested_quality' => $ctx['requested_quality'] ?? 'auto',
+            ]
+        );
+        $shadowCompiled = $this->compiler->compileFromBrief($brief);
+        $diff = $this->compareImagePlans($legacyBlueprint, $legacyCompiled, $brief, $shadowCompiled);
+
+        // Scoped audit only — debug log, NOT production-wide telemetry, NOT persisted,
+        // NOT billed. Customer-sensitive prompt text is deliberately omitted.
+        Log::debug('[Wave4A manual-image shadow]', [
+            'workspace_id'     => (int) ($ctx['workspace_id'] ?? 0),
+            'source'           => $ctx['source'] ?? null,
+            'differing_fields' => $diff['summary']['differing_fields'],
+            'regression_risks' => array_keys(array_filter(
+                $diff['fields'],
+                fn ($f) => !($f['equal'] ?? true) && ($f['classification'] ?? '') === 'regression_risk'
+            )),
+        ]);
+    }
+
+    /**
+     * PURE structured comparison of the legacy plan (reasoner blueprint + compiled)
+     * vs the Creative888-brief shadow plan (brief + compiled). Classifies each field:
+     *   architectural       — intended ownership move (brief carries it as a field)
+     *   missing_field       — the shadow brief did not populate it
+     *   compiler_difference — differs in the technical compile stage
+     *   regression_risk     — MUST match (provider / model / size / quality / typography)
+     *   equivalent_wording  — different text, same meaning
+     */
+    public function compareImagePlans(array $legacyBp, array $legacyCompiled, array $shadowBrief, array $shadowCompiled): array
+    {
+        $fields = [];
+        $add = function (string $key, $legacy, $shadow, string $whenDiffer) use (&$fields): void {
+            $ls = is_array($legacy) ? json_encode($legacy) : (string) $legacy;
+            $ss = is_array($shadow) ? json_encode($shadow) : (string) $shadow;
+            $equal = $ls === $ss;
+            $classification = 'equivalent';
+            if (!$equal) {
+                $classification = ($ss === '' || $ss === '[]' || $ss === 'null') ? 'missing_field' : $whenDiffer;
+            }
+            $fields[$key] = ['equal' => $equal, 'classification' => $classification];
+        };
+
+        $add('provider_prompt',      $legacyCompiled['provider_prompt'] ?? '',   $shadowCompiled['provider_prompt'] ?? '',   'equivalent_wording');
+        $add('audience',             $legacyBp['audience'] ?? '',                $shadowBrief['audience'] ?? '',             'architectural');
+        $add('subject',              $legacyBp['subject'] ?? '',                 $shadowBrief['subject'] ?? '',              'equivalent_wording');
+        $add('composition',          $legacyBp['composition'] ?? '',             $shadowBrief['composition'] ?? '',          'architectural');
+        $add('lighting',             $legacyBp['lighting'] ?? '',                $shadowBrief['lighting'] ?? '',             'architectural');
+        $add('mood',                 $legacyBp['mood'] ?? '',                    $shadowBrief['mood'] ?? '',                 'architectural');
+        $add('brand_application',    $legacyBp['brand_application'] ?? '',       $shadowBrief['brand_application'] ?? '',    'architectural');
+        $add('negative_constraints', $legacyBp['negative_constraints'] ?? [],    $shadowBrief['negative_constraints'] ?? [], 'compiler_difference');
+        $add('typography_mode',      $legacyCompiled['typography']['mode'] ?? '', $shadowCompiled['typography']['mode'] ?? '', 'regression_risk');
+        $add('dimensions',           $legacyCompiled['size'] ?? '',              $shadowCompiled['size'] ?? '',              'regression_risk');
+        $add('requested_quality',    $legacyCompiled['quality'] ?? '',           $shadowCompiled['quality'] ?? '',           'regression_risk');
+        $add('provider',             $legacyCompiled['provider'] ?? '',          $shadowCompiled['provider'] ?? '',          'regression_risk');
+        $add('model',                $legacyCompiled['model'] ?? '',             $shadowCompiled['model'] ?? '',             'regression_risk');
+
+        $differing = array_values(array_keys(array_filter($fields, fn ($f) => !$f['equal'])));
+        return [
+            'fields'  => $fields,
+            'summary' => [
+                'total'            => count($fields),
+                'differing'        => count($differing),
+                'differing_fields' => $differing,
+            ],
+        ];
     }
 }
