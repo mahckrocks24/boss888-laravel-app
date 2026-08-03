@@ -67,6 +67,45 @@ class ImagePromptCompiler
         ];
     }
 
+    /**
+     * WAVE 3 — compile DIRECTLY from a Creative888 image brief (the enriched
+     * BlueprintService::getImageBlueprint output), with NO second creative
+     * reasoning. Studio technical realization only: fold the brief's
+     * already-reasoned creative direction (composition / lighting / mood / brand
+     * application) into ONE provider prompt, then run the SAME deterministic
+     * compile() above (typography enforcement, size snap, quality). Additive and
+     * dormant — the live generate() path is unchanged, so external behavior,
+     * providers, credits and pricing are untouched. Proves Studio can execute
+     * from Creative888 without ImageReasoningService.
+     */
+    public function compileFromBrief(array $brief): array
+    {
+        $parts = [trim((string) ($brief['provider_prompt'] ?? $brief['enhanced_prompt'] ?? ''))];
+        if (($c = trim((string) ($brief['composition'] ?? ''))) !== '')       $parts[] = 'Composition: ' . $c;
+        if (($l = trim((string) ($brief['lighting'] ?? ''))) !== '')          $parts[] = 'Lighting: ' . $l;
+        if (($m = trim((string) ($brief['mood'] ?? ''))) !== '')              $parts[] = 'Mood: ' . $m;
+        if (($b = trim((string) ($brief['brand_application'] ?? ''))) !== '') $parts[] = $b;
+
+        $bp = [
+            'provider_prompt'     => implode('. ', array_filter($parts)),
+            'quality'             => $brief['quality'] ?? 'medium',
+            'dimensions'          => $brief['dimensions'] ?? ['width' => 1024, 'height' => 1024],
+            'typography_strategy' => $brief['typography_strategy'] ?? ['mode' => 'none'],
+            'color_palette'       => $brief['color_palette'] ?? [],
+            'provider'            => $brief['provider'] ?? 'openai',
+            'model'               => $brief['model'] ?? 'gpt-image-1',
+        ];
+
+        $out = $this->compile($bp);
+        // Surface the Creative888-owned negative constraints (text-free enforcement
+        // is already applied deterministically by compile()'s typography policy).
+        $out['negative_constraints'] = array_values(array_filter(
+            array_map('strval', (array) ($brief['negative_constraints'] ?? []))
+        ));
+        $out['from_brief'] = true;
+        return $out;
+    }
+
     private function size(array $bp): string
     {
         $w = (int) ($bp['dimensions']['width'] ?? 1024);
