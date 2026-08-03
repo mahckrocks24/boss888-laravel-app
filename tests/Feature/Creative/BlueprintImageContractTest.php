@@ -91,16 +91,59 @@ class BlueprintImageContractTest extends TestCase
         $this->assertFalse($bp['influence_applied']);
     }
 
-    public function test_documents_missing_studio_execution_fields_gap(): void
+    public function test_enriched_brief_carries_full_studio_execution_direction(): void
     {
-        $svc = $this->service(['tone' => 'professional', 'colors' => ['#111111']], 'B', [], []);
-        $bp = $svc->getImageBlueprint(2, 'x', []);
-        // GAP (Restoration Wave 2): the current brief does NOT yet carry the
-        // Studio-execution fields the compiler needs; today these come from
-        // ImageReasoningService. Documented, not a failure.
-        foreach (['typography_strategy', 'dimensions', 'provider_prompt', 'aspect_ratio'] as $missing) {
-            $this->assertArrayNotHasKey($missing, $bp,
-                "GAP: getImageBlueprint does not yet emit '$missing' — Wave 2 must add it.");
+        // WAVE 2 PHASE 1: the Wave-0-1 gap is now CLOSED — the Creative888 brief
+        // carries the complete creative direction Studio needs. All deterministic:
+        // no LLM, no provider (connector shouldNotReceive), no persistence, no billing.
+        $svc = $this->service(
+            ['visual_style' => 'editorial', 'tone' => 'bold', 'colors' => ['#111111', '#e5b80b'], 'target_audience' => 'independent chefs'],
+            'BRAND', [], []
+        );
+        $bp = $svc->getImageBlueprint(2, 'a gourmet taco', [
+            'asset_type' => 'poster', 'platform' => 'instagram', 'requested_quality' => 'high', 'headline' => 'Taco Tuesday',
+        ]);
+
+        foreach (['intent', 'subject', 'audience', 'platform', 'asset_type', 'provider_prompt', 'aspect_ratio',
+                  'dimensions', 'quality', 'composition', 'visual_hierarchy', 'lighting', 'mood',
+                  'color_palette', 'brand_application', 'negative_constraints', 'typography_strategy'] as $k) {
+            $this->assertArrayHasKey($k, $bp, "enriched brief must expose '$k'");
         }
+        // provider_prompt is the brand-enriched prompt (Studio compiler input)
+        $this->assertSame($bp['enhanced_prompt'], $bp['provider_prompt']);
+        // audience + palette sourced from the brand identity (CimsService)
+        $this->assertSame('independent chefs', $bp['audience']);
+        $this->assertSame(['#111111', '#e5b80b'], $bp['color_palette']);
+        // quality recommendation honours the request
+        $this->assertSame('high', $bp['quality']);
+        // dimensions snapped to a provider-supported size
+        $this->assertContains($bp['dimensions']['width'] . 'x' . $bp['dimensions']['height'], ['1024x1024', '1024x1536', '1536x1024']);
+        // typography: headline present → separate_overlay handed to the Studio layer
+        $this->assertSame('separate_overlay', $bp['typography_strategy']['mode']);
+        $this->assertSame('Taco Tuesday', $bp['typography_strategy']['headline']);
+    }
+
+    public function test_typography_none_when_no_copy_supplied(): void
+    {
+        $svc = $this->service(['tone' => 'professional', 'colors' => []], 'B', [], []);
+        $bp = $svc->getImageBlueprint(2, 'a product', ['asset_type' => 'social_post']);
+        $this->assertSame('none', $bp['typography_strategy']['mode']);
+        $this->assertSame([], $bp['typography_strategy']['supporting_copy']);
+    }
+
+    public function test_enrichment_still_reads_brand_memory_learning_and_never_executes(): void
+    {
+        // brand/memory/learning still flow through the SAME Creative888 services,
+        // and the connectors are still never called (no provider/no billing) —
+        // enforced by the shouldNotReceive() expectations in service().
+        $svc = $this->service(
+            ['visual_style' => 'x', 'tone' => 'professional', 'colors' => ['#000000']],
+            'BRAND', [['_id' => 'bpA']], ['modified' => true, 'final_prompt' => 'INF']
+        );
+        $bp = $svc->getImageBlueprint(9, 'menu backdrop', ['asset_type' => 'menu']);
+        $this->assertTrue($bp['influence_applied']);        // learning (BlueprintInfluenceService)
+        $this->assertSame(['bpA'], $bp['stored_blueprint_ids']); // memory (BlueprintRetrieverService)
+        $this->assertSame('INF', $bp['provider_prompt']);   // enriched from the same enhanced prompt
+        $this->assertSame(9, $bp['workspace_id']);          // workspace-isolated
     }
 }

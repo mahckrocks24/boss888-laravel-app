@@ -323,7 +323,33 @@ EOT;
             Log::debug('[BlueprintService] Blueprint influence skipped: ' . $e->getMessage());
         }
 
+        // ── WAVE 2 PHASE 1 (2026-08-03): enrich the Creative888 image brief so
+        // Studio has the complete creative direction it needs and never has to
+        // reason itself. ADDITIVE ONLY — every pre-existing key below is unchanged,
+        // so existing callers (which read `enhanced_prompt`) are byte-unaffected.
+        // Deterministic (no LLM, no runtime); brand from CimsService, memory from
+        // BlueprintRetrieverService, learning from BlueprintInfluenceService (above).
+        $assetType = strtolower((string) ($context['asset_type'] ?? 'social_post'));
+        $platform  = (string) ($context['platform'] ?? '');
+        $colors    = array_values(array_filter((array) ($identity['colors'] ?? [])));
+        $audience  = trim((string) ($identity['target_audience'] ?? '')) ?: 'general business audience';
+        $direction = $this->imageCreativeDirection($assetType, $platform);
+        $dims      = $this->imageDimensions($assetType, $platform, $context);
+
+        $rq       = strtolower((string) ($context['requested_quality'] ?? $context['quality'] ?? ''));
+        $quality  = in_array($rq, ['low', 'medium', 'high'], true) ? $rq : 'medium';
+
+        $headline = trim((string) ($context['headline'] ?? ''));
+        $copy     = array_values(array_filter(array_map('strval', (array) ($context['supporting_copy'] ?? []))));
+        $tsMode   = $headline !== '' ? 'separate_overlay' : 'none';
+
+        $brandApplication = $colors
+            ? ('Apply the brand palette (' . implode(', ', array_slice($colors, 0, 3)) . ') through composition, props, surfaces, and lighting — never as drawn text'
+                . (!empty($identity['visual_style']) ? '; visual style: ' . $identity['visual_style'] : '') . '.')
+            : 'No brand kit configured — neutral professional treatment.';
+
         return [
+            // ── existing contract (UNCHANGED — callers depend on these) ──
             'type'                => 'image',
             'enhanced_prompt'     => $enhancedPrompt,
             'original_prompt'     => $prompt,
@@ -333,7 +359,94 @@ EOT;
             'confidence'          => 0.85,
             'stored_blueprint_ids'=> array_column($storedBlueprints, '_id'),
             'influence_applied'   => $influenceApplied,
+
+            // ── WAVE 2 PHASE 1 additive creative brief (Studio-execution ready) ──
+            'intent'              => 'Creative888 image brief',
+            'subject'             => $prompt,
+            'audience'            => $audience,
+            'platform'            => $platform,
+            'asset_type'          => $assetType,
+            'provider_prompt'     => $enhancedPrompt,
+            'aspect_ratio'        => $dims['aspect_ratio'],
+            'dimensions'          => ['width' => $dims['width'], 'height' => $dims['height']],
+            'quality'             => $quality,
+            'composition'         => $direction['composition'],
+            'visual_hierarchy'    => $direction['visual_hierarchy'],
+            'lighting'            => $direction['lighting'],
+            'mood'                => $direction['mood'],
+            'color_palette'       => $colors,
+            'brand_application'   => $brandApplication,
+            'negative_constraints'=> ['no text', 'no watermark', 'no logos'],
+            'typography_strategy' => [
+                'mode'            => $tsMode,
+                'reason'          => $tsMode === 'separate_overlay'
+                    ? 'copy provided — render exact typography in the Studio layer over a text-free image'
+                    : 'no copy provided — text-free visual with reserved negative space',
+                'headline'        => $headline,
+                'supporting_copy' => $copy,
+                'placement'       => (string) ($context['copy_placement'] ?? 'upper-left negative space'),
+                'style'           => '',
+            ],
         ];
+    }
+
+    /**
+     * WAVE 2 PHASE 1 — deterministic creative direction by asset category.
+     * Creative888-owned art direction (no LLM, no runtime): composition, lighting
+     * and mood guidance Studio proved necessary, so execution never reasons it.
+     * Pure function of asset_type + platform.
+     */
+    private function imageCreativeDirection(string $assetType, string $platform): array
+    {
+        $t   = strtolower($assetType . ' ' . $platform);
+        $has = static fn(string ...$n): bool => (bool) array_filter($n, static fn($x) => str_contains($t, $x));
+
+        if ($has('food', 'dish', 'recipe', 'meal', 'menu', 'cuisine')) {
+            $d = ['composition' => 'hero subject slightly off-centre on the rule of thirds', 'lighting' => 'soft directional light with gentle falloff', 'mood' => 'warm, premium, appetising'];
+        } elseif ($assetType === 'ad' || $has('poster', 'promo', 'advertisement', 'flyer', 'campaign')) {
+            $d = ['composition' => 'bold rule-of-thirds subject with strong leading lines and room for a headline', 'lighting' => 'dramatic high-contrast light', 'mood' => 'confident, energetic, premium'];
+        } elseif ($has('story', 'reel', 'vertical', 'tiktok')) {
+            $d = ['composition' => 'strong vertical composition, subject in the lower-middle third', 'lighting' => 'natural, atmospheric light', 'mood' => 'immersive, authentic, aspirational'];
+        } elseif ($has('cover', 'banner', 'header')) {
+            $d = ['composition' => 'wide cinematic framing, subject offset to one third', 'lighting' => 'soft cinematic light', 'mood' => 'calm, established, trustworthy'];
+        } elseif ($has('portrait', 'headshot', 'team', 'staff', 'founder')) {
+            $d = ['composition' => 'head-and-shoulders subject framed slightly off-centre', 'lighting' => 'soft flattering key with gentle fill', 'mood' => 'approachable, credible, human'];
+        } else {
+            $d = ['composition' => 'single clear focal subject on the rule of thirds', 'lighting' => 'soft professional studio light', 'mood' => 'polished, premium, inviting'];
+        }
+        $d['visual_hierarchy'] = 'subject dominant; clean supporting background with reserved negative space for typography';
+        return $d;
+    }
+
+    /**
+     * WAVE 2 PHASE 1 — deterministic dimensions guidance, snapped to the
+     * provider-supported set (Studio's compiler independently re-validates size).
+     */
+    private function imageDimensions(string $assetType, string $platform, array $context): array
+    {
+        if (!empty($context['canvas_width']) && !empty($context['canvas_height'])) {
+            $w = (int) $context['canvas_width'];
+            $h = (int) $context['canvas_height'];
+        } else {
+            $t = strtolower($assetType . ' ' . $platform);
+            if (str_contains($t, 'story') || str_contains($t, 'reel') || str_contains($t, 'vertical') || str_contains($t, 'portrait') || str_contains($t, 'pinterest')) {
+                $w = 1024; $h = 1536;
+            } elseif (str_contains($t, 'cover') || str_contains($t, 'banner') || str_contains($t, 'header') || str_contains($t, 'landscape') || str_contains($t, 'youtube') || str_contains($t, 'blog') || str_contains($t, 'featured')) {
+                $w = 1536; $h = 1024;
+            } else {
+                $w = 1024; $h = 1024;
+            }
+        }
+        $ar        = $h > 0 ? $w / $h : 1.0;
+        $supported = [[1024, 1024], [1024, 1536], [1536, 1024]];
+        $best      = [1024, 1024];
+        $bestDiff  = PHP_FLOAT_MAX;
+        foreach ($supported as [$sw, $sh]) {
+            $diff = abs(($sw / $sh) - $ar);
+            if ($diff < $bestDiff) { $bestDiff = $diff; $best = [$sw, $sh]; }
+        }
+        [$w, $h] = $best;
+        return ['width' => $w, 'height' => $h, 'aspect_ratio' => $w === $h ? '1:1' : ($w > $h ? '3:2' : '2:3')];
     }
 
     /**
