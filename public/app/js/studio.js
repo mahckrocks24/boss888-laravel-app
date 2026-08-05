@@ -223,6 +223,8 @@
             '<button data-f="video">Videos</button>' +
             '<button data-f="templates">Templates</button>' +
           '</div>' +
+          // STUDIO888 Phase P — first-class AI Edit entry (Studio is now the single editing surface).
+          '<button class="st2-btn-ghost" id="st-ai-edit-entry" onclick="studioAiEditPicker()" title="AI-edit one of your images" style="border-color:var(--p,#6C5CE7)">✦ AI Edit</button>' +
           '<button class="st2-btn-ghost" onclick="_studioClose()">Close</button>' +
         '</div>' +
 
@@ -278,7 +280,7 @@
       b.onclick = function(){
         menu.style.display = 'none';
         var act = b.getAttribute('data-action');
-        if (act === 'image') _st2OpenFormatPicker('image');
+        if (act === 'image') _st2StartImageDesign();
         else if (act === 'video') _studioOpenVideo();
         else if (act === 'ai') document.getElementById('st2-ai-prompt').focus();
       };
@@ -357,7 +359,19 @@
     }
   }
 
-  // ── Format picker for "New image design" ────────────────────
+  // ── "Image design" entry → image templates ─────────────────
+  // The active editor edits template fields (content_html) and cannot add
+  // elements to a blank canvas, so blank-create is not a usable flow. Route
+  // "Create new → Image design" to the image templates the user starts from.
+  function _st2StartImageDesign(){
+    var ib = document.querySelector('#st2-filter [data-f="image"]');
+    if (ib) ib.click(); // activate Images filter → templates grid filters to image kind
+    var ts = document.getElementById('st2-tpl-section');
+    if (ts) ts.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    _toast('Pick an image template to start', 'success');
+  }
+
+  // ── Format picker for "New image design" (legacy blank path; unused) ──
   function _st2OpenFormatPicker(kind){
     var bd = document.createElement('div');
     bd.className = 'modal-backdrop';
@@ -422,6 +436,12 @@
           c.onclick = function(ev){
             if (ev.target.closest('.st2-dots')) return; // let menu handle
             var id = c.getAttribute('data-id');
+            // VIDEO designs open in the video editor, not the image editor.
+            if ((c.getAttribute('data-type') || '').toLowerCase() === 'video') {
+              window._studioOpenVideoDesign(Number(id));
+              try { if (window._luRouter && window._luRouter.enabled()) window._luRouter.pushView('studio', String(id)); } catch (_e) {}
+              return;
+            }
             _designId = Number(id);
             _designName = c.getAttribute('data-name');
             _mountEditor();
@@ -479,7 +499,7 @@
       '<button data-act="edit">Edit</button>' +
       '<button data-act="duplicate">Duplicate</button>' +
       '<button data-act="download">Download</button>' +
-      '<button data-act="publish">Publish to Social</button>' +
+      // Publish to Social hidden for V1 (executive decision 2026-07-27; social is a launch scope-cut)
       '<button data-act="delete" class="danger">Delete</button>';
     document.body.appendChild(pop);
     setTimeout(function(){
@@ -496,7 +516,11 @@
   }
 
   async function _st2DesignAction(id, name, act){
-    if (act === 'edit'){ _designId = id; _designName = name; _mountEditor(); return; }
+    if (act === 'edit'){
+      var dt = ((window._st2Designs || []).find(function(x){ return String(x.id) === String(id); }) || {}).design_type;
+      if ((dt || '').toLowerCase() === 'video') { window._studioOpenVideoDesign(Number(id)); return; }
+      _designId = id; _designName = name; _mountEditor(); return;
+    }
     if (act === 'duplicate'){
       try { await _fetchJson('/studio/designs/' + id + '/duplicate', { method:'POST' });
             _toast('Duplicated', 'success'); _st2LoadDesigns(); }
@@ -742,6 +766,12 @@
   })();
 
   window._studioUseTemplate = function(slug, name) {
+    // VIDEO templates open in the video editor, not the image editor.
+    var tpl = (window._st2Templates || []).find(function(t){ return t.slug === slug; });
+    if (tpl && (tpl.kind === 'video' || tpl.template_type === 'html_animated' || tpl.template_type === 'clip_json')) {
+      _studioUseVideoTemplate(slug, name);
+      return;
+    }
     _fetchJson('/studio/designs', {
       method: 'POST',
       body: JSON.stringify({ template_slug: slug, name: name })
@@ -753,6 +783,23 @@
     }).catch(function(err){
       _toast('Failed to create design: ' + err.message, 'error');
     });
+  };
+  // Load the video module (if needed) and create+open a video-template design.
+  window._studioUseVideoTemplate = function(slug, name) {
+    var rootEl = _rootEl || document.getElementById('studio-root');
+    var host = document.getElementById('st-host');
+    if (host && host.parentNode) host.parentNode.removeChild(host);
+    function go(){
+      if (typeof window.studioVideoUseTemplate === 'function') { window.studioVideoUseTemplate(slug, name, rootEl); return; }
+      setTimeout(go, 80);
+    }
+    if (typeof window.studioVideoUseTemplate === 'function') { go(); return; }
+    var s = document.createElement('script');
+    var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe6';
+    s.onload = go;
+    s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
+    document.head.appendChild(s);
   };
 
   // Hand-off to the video editor (loads studio-video.js lazily, then
@@ -769,7 +816,25 @@
     if (typeof window.studioVideoLoad === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust;
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe6';
+    s.onload = go;
+    s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
+    document.head.appendChild(s);
+  };
+
+  // Open a specific VIDEO design in the video editor (not the image editor).
+  window._studioOpenVideoDesign = function(id) {
+    var rootEl = _rootEl || document.getElementById('studio-root');
+    var host = document.getElementById('st-host');
+    if (host && host.parentNode) host.parentNode.removeChild(host);
+    function go(){
+      if (typeof window.studioVideoOpenDesign === 'function') { window.studioVideoOpenDesign(Number(id), rootEl); return; }
+      setTimeout(go, 80);
+    }
+    if (typeof window.studioVideoOpenDesign === 'function') { go(); return; }
+    var s = document.createElement('script');
+    var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe6';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -798,6 +863,7 @@
         '<button onclick="_studioBack()">\u2190 Back</button>' +
         '<span class="title" id="st-design-name">' + _esc(_designName) + '</span>' +
         '<span class="spacer"></span>' +
+        '<button onclick="_studioOpenResize()">\u21F2 Resize</button>' +
         '<button onclick="_studioSave()">\u{1F4BE} Save</button>' +
         '<button class="primary" onclick="_studioExport()">\u2B07 Export PNG</button>' +
       '</div>' +
@@ -805,6 +871,8 @@
         '<div class="st-tools">' +
           '<div class="st-tabs">' +
             '<div class="st-tab active" data-tab="content" onclick="_studioSwitchTab(\'content\')">Content</div>' +
+            '<div class="st-tab" data-tab="insert" onclick="_studioSwitchTab(\'insert\')">Insert</div>' +
+            '<div class="st-tab" data-tab="layers" onclick="_studioSwitchTab(\'layers\')">Layers</div>' +
             '<div class="st-tab" data-tab="images" onclick="_studioSwitchTab(\'images\')">Images</div>' +
             '<div class="st-tab" data-tab="colors" onclick="_studioSwitchTab(\'colors\')">Colors</div>' +
             '<div class="st-tab" data-tab="export" onclick="_studioSwitchTab(\'export\')">Export</div>' +
@@ -1049,6 +1117,8 @@
       var res = await _fetchJson('/studio/designs/' + nid);
       var d = res && (res.design || res);
       if (!d) { _toast && _toast('Design not found', 'error'); return; }
+      // VIDEO designs open in the video editor, not the image editor.
+      if ((d.design_type || '').toLowerCase() === 'video') { window._studioOpenVideoDesign(nid); return; }
       _designId = nid;
       _designName = (d.name || d.title || ('Design #' + nid));
       _mountEditor();
@@ -1073,9 +1143,177 @@
     });
     var body = document.getElementById('st-tab-body');
     if (tab === 'content') _renderContentTab(body);
+    else if (tab === 'insert') _renderInsertTab(body);
+    else if (tab === 'layers') _renderLayersTab(body);
     else if (tab === 'images') _renderImagesTab(body);
     else if (tab === 'colors') _renderColorsTab(body);
     else if (tab === 'export') _renderExportTab(body);
+  };
+
+  // ── Layers tab (P5b: order; P5c adds lock/visibility) ────────
+  function _renderLayersTab(body) {
+    var f = document.getElementById('st-iframe');
+    if (!f || !f.contentDocument) { body.innerHTML = '<div class="st-tab-head">Layers</div><div class="st-empty">Canvas loading…</div>'; return; }
+    var doc = f.contentDocument;
+    var els = [].slice.call(doc.querySelectorAll('[data-field]'));
+    if (!els.length) { body.innerHTML = '<div class="st-tab-head">Layers</div><div class="st-empty">No elements yet. Use the Insert tab to add some.</div>'; return; }
+    var rows = els.map(function(el, i){
+      var z = parseInt(el.style.zIndex, 10);
+      if (isNaN(z)) { z = parseInt(doc.defaultView.getComputedStyle(el).zIndex, 10); }
+      if (isNaN(z)) z = 0;
+      var kind = (el.tagName === 'IMG' || (el.querySelector && el.querySelector('img'))) ? 'image' : 'text';
+      return { name: el.getAttribute('data-field'), kind: kind, z: z, dom: i,
+               hidden: el.style.display === 'none', locked: el.getAttribute('data-locked') === '1' };
+    });
+    rows.sort(function(a, b){ return (b.z - a.z) || (b.dom - a.dom); });
+    var ob = 'style="background:#171b23;border:1px solid #2a2f3a;color:#fff;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:10px;flex-shrink:0"';
+    var html = '<div class="st-tab-head">Layers · ' + rows.length + '</div>';
+    rows.forEach(function(r){
+      var icon = r.kind === 'image' ? '\u{1F5BC}' : 'T';
+      var nm = _esc(r.name.replace(/_/g, ' '));
+      html += '<div class="st-field" style="display:flex;align-items:center;gap:6px" onclick="_studioSelectField(\'' + _esc(r.name) + '\')">' +
+        '<span style="width:16px;text-align:center;opacity:.75">' + icon + '</span>' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (r.hidden ? ';opacity:.4' : '') + '">' + nm + '</span>' +
+        '<button ' + ob + ' title="' + (r.hidden ? 'Show' : 'Hide') + '" onclick="event.stopPropagation();_studioLayerToggle(\'' + _esc(r.name) + '\',\'vis\')">' + (r.hidden ? '\u{1F6AB}' : '\u{1F441}') + '</button>' +
+        '<button ' + ob + ' title="' + (r.locked ? 'Unlock' : 'Lock') + '" onclick="event.stopPropagation();_studioLayerToggle(\'' + _esc(r.name) + '\',\'lock\')">' + (r.locked ? '\u{1F512}' : '\u{1F513}') + '</button>' +
+        '<button ' + ob + ' title="Bring forward" onclick="event.stopPropagation();_studioOrder(\'' + _esc(r.name) + '\',\'forward\')">▲</button>' +
+        '<button ' + ob + ' title="Send backward" onclick="event.stopPropagation();_studioOrder(\'' + _esc(r.name) + '\',\'backward\')">▼</button>' +
+      '</div>';
+    });
+    body.innerHTML = html;
+  }
+  window._studioSelectField = function(name) {
+    var f = document.getElementById('st-iframe'); if (!f || !f.contentDocument) return;
+    var el = f.contentDocument.querySelector('[data-field="' + name + '"]');
+    if (el && window.studioOverlayEditor && window.studioOverlayEditor._api) window.studioOverlayEditor._api.select(el, false);
+  };
+  window._studioOrder = function(name, dir) {
+    var f = document.getElementById('st-iframe'); if (!f || !f.contentDocument) return;
+    var el = f.contentDocument.querySelector('[data-field="' + name + '"]');
+    if (el && window.studioOverlayEditor && window.studioOverlayEditor.order) {
+      window.studioOverlayEditor.order(el, dir);
+      _renderLayersTab(document.getElementById('st-tab-body'));
+      _queueAutosave();
+    }
+  };
+  window._studioLayerToggle = function(name, which) {
+    var f = document.getElementById('st-iframe'); if (!f || !f.contentDocument) return;
+    var el = f.contentDocument.querySelector('[data-field="' + name + '"]');
+    var ov = window.studioOverlayEditor;
+    if (!el || !ov) return;
+    if (which === 'vis' && ov.setHidden) { ov.setHidden(el, el.style.display !== 'none'); }
+    else if (which === 'lock' && ov.setLock) { ov.setLock(el, el.getAttribute('data-locked') !== '1'); }
+    _renderLayersTab(document.getElementById('st-tab-body'));
+    _queueAutosave();
+  };
+
+  // ── Resize / reformat (P5f) ──────────────────────────────────
+  window._studioOpenResize = function() {
+    var f = document.getElementById('st-iframe'); var doc = f && f.contentDocument;
+    var root = doc && (doc.querySelector('.canvas') || doc.querySelector('.post') || doc.body);
+    var cw = root ? root.offsetWidth : 1080, ch = root ? root.offsetHeight : 1080;
+    var presets = [['Square',1080,1080],['Portrait',1080,1350],['Story',1080,1920],['Landscape',1920,1080]];
+    var bd = document.createElement('div'); bd.className = 'modal-backdrop';
+    bd.innerHTML = '<div class="modal" style="max-width:440px"><div class="modal-header"><h3>Resize design</h3>' +
+      '<button class="modal-close" onclick="this.closest(\'.modal-backdrop\').remove()">✕</button></div>' +
+      '<div class="modal-body"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">' +
+      presets.map(function(pp){ return '<button class="btn btn-outline st-rs-preset" data-w="'+pp[1]+'" data-h="'+pp[2]+'" style="flex:1;min-width:90px">'+pp[0]+'<br><span style="opacity:.6;font-size:11px">'+pp[1]+'×'+pp[2]+'</span></button>'; }).join('') +
+      '</div><div style="display:flex;gap:10px"><div style="flex:1"><label class="form-label">Width</label><input class="form-input" type="number" id="st-rs-w" value="'+cw+'"></div>' +
+      '<div style="flex:1"><label class="form-label">Height</label><input class="form-input" type="number" id="st-rs-h" value="'+ch+'"></div></div>' +
+      '<div class="st-empty" style="text-align:left;padding:8px 2px;font-size:12px;line-height:1.5">Content scales proportionally and centers in the new canvas. For best results, resize before fine-tuning element positions.</div></div>' +
+      '<div class="modal-footer"><button class="btn btn-outline" onclick="this.closest(\'.modal-backdrop\').remove()">Cancel</button>' +
+      '<button class="btn btn-primary" id="st-rs-apply">Resize</button></div></div>';
+    document.body.appendChild(bd);
+    bd.querySelectorAll('.st-rs-preset').forEach(function(b){ b.onclick = function(){ bd.querySelector('#st-rs-w').value = b.getAttribute('data-w'); bd.querySelector('#st-rs-h').value = b.getAttribute('data-h'); }; });
+    bd.querySelector('#st-rs-apply').onclick = function(){ var w = bd.querySelector('#st-rs-w').value, h = bd.querySelector('#st-rs-h').value; bd.remove(); window._studioResize(w, h); };
+  };
+  window._studioResize = function(w, h) {
+    w = parseInt(w, 10); h = parseInt(h, 10);
+    if (!w || !h || w < 50 || h < 50 || w > 8000 || h > 8000) { _toast('Enter a size between 50 and 8000', 'error'); return; }
+    var ov = window.studioOverlayEditor;
+    if (!ov || !ov.resizeDesign) { _toast('Editor still loading', 'info'); return; }
+    ov.resizeDesign(w, h);
+    _fetchJson('/studio/designs/' + _designId + '/resize', { method: 'POST', body: JSON.stringify({ width: w, height: h }) }).catch(function(){});
+    _queueAutosave();
+    _toast('Resized to ' + w + '×' + h, 'success');
+  };
+
+  // ── Save export to Media Library (P6) ───────────────────────
+  window._studioSaveToMedia = function() {
+    var iframe = document.getElementById('st-iframe');
+    if (!iframe || !iframe.contentDocument) { _toast('Canvas not ready', 'error'); return; }
+    var doc = iframe.contentDocument;
+    var target = doc.querySelector('.canvas') || doc.querySelector('.post') || doc.body;
+    var w = target.offsetWidth || 1080, h = target.offsetHeight || 1080;
+    doc.querySelectorAll('[contenteditable="true"]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+    var html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+    _toast('Saving to Media Library…', 'info');
+    _fetchJson('/studio/designs/' + _designId + '/render-png', {
+      method: 'POST',
+      body: JSON.stringify({ content_html: html, width: w, height: h, save: true })
+    }).then(function(d){
+      if (d && d.success) { _toast('Saved to Media Library', 'success'); }
+      else { _toast('Save failed: ' + ((d && (d.message || d.error)) || 'unknown'), 'error'); }
+    }).catch(function(e){ _toast('Save failed: ' + ((e && e.message) || e), 'error'); });
+  };
+
+  // ── Insert tab (P5a: add elements to the canvas) ─────────────
+  function _renderInsertTab(body) {
+    body.innerHTML =
+      '<div class="st-tab-head">Insert element</div>' +
+      '<button class="st-btn-lg" onclick="_studioAdd(\'heading\')">➕ Heading</button>' +
+      '<button class="st-btn-lg" onclick="_studioAdd(\'text\')">➕ Text</button>' +
+      '<button class="st-btn-lg" onclick="_studioAdd(\'image\')">\u{1F5BC} Image</button>' +
+      '<button class="st-btn-lg" onclick="_studioAdd(\'shape\')">⬛ Shape</button>' +
+      '<button class="st-btn-lg" onclick="_studioGenerateImage()">✦ Generate image (AI)</button>' +
+      '<div class="st-empty" style="text-align:left;padding:10px 2px;line-height:1.5">New elements drop in the canvas center. Drag to move, use the corner handles to resize, and the Layers panel to reorder.</div>';
+  }
+  window._studioGenerateImage = function() {
+    var bd = document.createElement('div'); bd.className = 'modal-backdrop';
+    bd.innerHTML = '<div class="modal" style="max-width:460px"><div class="modal-header"><h3>✦ Generate image</h3>' +
+      '<button class="modal-close" onclick="this.closest(\'.modal-backdrop\').remove()">✕</button></div>' +
+      '<div class="modal-body"><div class="form-group"><label class="form-label">Describe the image</label>' +
+      '<textarea class="form-input" id="st-gi-prompt" rows="3" placeholder="e.g. a serene mountain lake at golden hour"></textarea></div>' +
+      '<div class="form-group"><label class="form-label">Style</label><select class="form-input" id="st-gi-style">' +
+      '<option value="cinematic">Cinematic</option><option value="minimal">Minimal</option><option value="bold">Bold</option><option value="elegant">Elegant</option><option value="editorial">Editorial</option></select></div>' +
+      '<div id="st-gi-status" class="st-empty" style="text-align:left;display:none"></div></div>' +
+      '<div class="modal-footer"><button class="btn btn-outline" onclick="this.closest(\'.modal-backdrop\').remove()">Cancel</button>' +
+      '<button class="btn btn-primary" id="st-gi-go">Generate</button></div></div>';
+    document.body.appendChild(bd);
+    bd.querySelector('#st-gi-go').onclick = function() {
+      var prompt = bd.querySelector('#st-gi-prompt').value.trim();
+      if (!prompt) { _toast('Enter a description', 'error'); return; }
+      var style = bd.querySelector('#st-gi-style').value;
+      var go = bd.querySelector('#st-gi-go'), status = bd.querySelector('#st-gi-status');
+      go.disabled = true; go.textContent = 'Generating…';
+      status.style.display = 'block'; status.textContent = 'Creating your image — this can take 10–20 seconds…';
+      _fetchJson('/studio/ai/generate-image', { method: 'POST', body: JSON.stringify({ prompt: prompt, style: style }) }).then(function(d){
+        var url = d && (d.url || d.image_url);
+        if (!d || !d.success || !url) { status.textContent = 'Failed: ' + ((d && (d.message || d.error)) || 'unknown'); go.disabled = false; go.textContent = 'Generate'; return; }
+        var ov = window.studioOverlayEditor;
+        if (ov && ov.addElement) ov.addElement('image', { url: url });
+        _queueAutosave();
+        bd.remove();
+        _toast('AI image added', 'success');
+      }).catch(function(e){ status.textContent = 'Error: ' + ((e && e.message) || e); go.disabled = false; go.textContent = 'Generate'; });
+    };
+  };
+  window._studioAdd = function(kind) {
+    var ov = window.studioOverlayEditor;
+    if (!ov || !ov.addElement) { _toast('Editor still loading', 'info'); return; }
+    if (kind === 'image') {
+      if (typeof window.openMediaPicker !== 'function') { _toast('Media picker unavailable', 'error'); return; }
+      window.openMediaPicker({ type: 'image', context: 'studio-insert' }, function(file){
+        if (!file) return;
+        var url = file.file_url || file.url || file.src || '';
+        if (!url) return;
+        ov.addElement('image', { url: url });
+        _queueAutosave();
+      });
+      return;
+    }
+    ov.addElement(kind);
+    _queueAutosave();
   };
 
   function _renderContentTab(body) {
@@ -1142,8 +1380,9 @@
     body.innerHTML =
       '<div class="st-tab-head">Save & Export</div>' +
       '<button class="st-btn-lg" onclick="_studioExport()">\u2B07 Download PNG</button>' +
+      '<button class="st-btn-lg secondary" onclick="_studioSaveToMedia()">\u{1F5BC} Save to Media Library</button>' +
       '<button class="st-btn-lg secondary" onclick="_studioSave()">\u{1F4BE} Save to workspace</button>' +
-      '<div class="st-empty" style="text-align:left;padding:10px 2px;line-height:1.5">Exports a native-resolution PNG rendered server-side by headless Chrome. Fonts, object-fit and effects match the editor exactly.</div>';
+      '<div class="st-empty" style="text-align:left;padding:10px 2px;line-height:1.5">Exports a native-resolution PNG rendered server-side by headless Chrome. Fonts, object-fit and effects match the editor exactly. \u201CSave to Media Library\u201D stores the PNG in your workspace media for reuse across the app.</div>';
   }
 
   // ── Tab actions ──────────────────────────────────────────────
@@ -1323,6 +1562,7 @@
       case 'fields-list':
         _fieldList = Array.isArray(e.data.fields) ? e.data.fields : [];
         if (_currentTab === 'content') _renderContentTab(document.getElementById('st-tab-body'));
+        else if (_currentTab === 'layers') _renderLayersTab(document.getElementById('st-tab-body'));
         else if (_currentTab === 'images') _renderImagesTab(document.getElementById('st-tab-body'));
         // P4: now that we know the template's image fields, decide the hero CTA.
         if (window._st2MaybeShowHeroCta) window._st2MaybeShowHeroCta(_designId);
@@ -1635,6 +1875,23 @@
     }
     return host;
   }
+
+  // ── Phase Q: expose IIFE1 shared helpers so the native-editor IIFE can
+  //    resolve them (fixes the cross-closure "ReferenceError: _fetchJson is
+  //    not defined" that disabled the native editor). This does NOT change
+  //    any production routing — the gallery still calls IIFE1's local
+  //    _mountEditor (iframe). The native editor is reachable only via
+  //    window._stOpenImageEditor / window._mountEditor (external callers).
+  window.__studioCore = {
+    fetchJson: _fetchJson,
+    fetchText: _fetchText,
+    toast: _toast,
+    esc: _esc,
+    tok: _tok,
+    getOrCreateHost: _getOrCreateHost,
+    handleIframeMsg: _handleIframeMsg,
+    mountGallery: _mountGallery,
+  };
 })();
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1644,6 +1901,20 @@
 // ═══════════════════════════════════════════════════════════════════
 (function(){
   'use strict';
+
+  // ── Phase Q: import shared helpers from IIFE1 (see window.__studioCore).
+  //    These `var` bindings make every bare reference below (_fetchJson,
+  //    _toast, _esc, _tok, _getOrCreateHost, _handleIframeMsg, _mountGallery)
+  //    resolve locally instead of throwing a cross-closure ReferenceError.
+  var __C = window.__studioCore || {};
+  var _fetchJson       = __C.fetchJson,
+      _fetchText       = __C.fetchText,
+      _toast           = __C.toast,
+      _esc             = __C.esc,
+      _tok             = __C.tok,
+      _getOrCreateHost = __C.getOrCreateHost,
+      _handleIframeMsg = __C.handleIframeMsg,
+      _mountGallery    = __C.mountGallery;
 
   // ── STATE ──────────────────────────────────────────────────
   var EDT = {
@@ -3299,6 +3570,9 @@
     return (
       '<div class="st-props-group">' +
         '<div class="st-props-title">Image</div>' +
+        // STUDIO888 Phase P — AI Edit this image; the result can be applied back
+        // to this element as a normal (undoable) Studio action.
+        '<button class="st-btn-wide" data-act="aiedit" style="border-color:var(--p,#6C5CE7)">✦ AI Edit</button>' +
         '<button class="st-btn-wide" data-act="replace">Replace image</button>' +
         '<div class="st-align-row">' +
           '<button data-toggle="flip_x">Flip H</button>' +
@@ -3337,6 +3611,35 @@
           }
         });
       }
+    };
+    // STUDIO888 Phase P — AI Edit this image element. Resolves the element's
+    // image → its creative asset, opens the proven AI editor, and (on the user's
+    // explicit "Use in this design") applies the chosen version back to THIS
+    // element as an undoable Studio action (transform/layer preserved — only the
+    // image source changes; Ctrl/Cmd+Z restores the previous image).
+    var aiBtn = EDT.propsPanel.querySelector('[data-act="aiedit"]');
+    if (aiBtn) aiBtn.onclick = function(){
+      var url = (el.properties_json && (el.properties_json.src_url || el.properties_json.url)) || '';
+      if (!url) { _toast('This element has no image to edit.', 'error'); return; }
+      if (typeof window.meOpenAiEdit !== 'function') { _toast('AI editor is still loading — try again in a moment.', 'info'); return; }
+      _fetchJson('/creative/resolve-asset?url=' + encodeURIComponent(url)).then(function(d){
+        var asset = d && d.asset;
+        if (!asset || !asset.id) { _toast('This image is not AI-editable yet. Generate or add an AI image, then edit it.', 'info'); return; }
+        window.meOpenAiEdit(asset, {
+          applyLabel: 'Use in this design',
+          onApply: function(version){
+            if (!version || !version.url) return;
+            var live = _stGetEl(el.id); if (!live) return;
+            live.properties_json.src_url = version.url;      // only the source changes
+            live.properties_json._ai_source_asset_id = version.id; // so re-edit resolves
+            _stUpdateElementDom(live);
+            _stPersistElement(live.id);
+            _stMarkDirty();
+            _stSaveHistory();                                 // undoable: Ctrl/Cmd+Z restores previous image
+            _toast('Edited version applied — Ctrl+Z to undo.', 'success');
+          },
+        });
+      }).catch(function(){ _toast('Could not open the AI editor.', 'error'); });
     };
   }
 
