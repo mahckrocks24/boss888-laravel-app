@@ -991,8 +991,13 @@
   function _fitToViewport() {
     var w = document.getElementById('st-workspace');
     if (!w) return;
+    // P5B-B chat/canvas fix: reserve real space for the bottom AI chat so the
+    // canvas fits ABOVE it instead of under the absolute overlay. Reserve = the
+    // chat's own height + gap, capped at half the workspace for small viewports.
+    var _stChat = document.getElementById('st-chat');
+    var _stReserve = _stChat ? Math.min(_stChat.offsetHeight + 32, Math.round(w.clientHeight * 0.5)) : 0;
     var ww = Math.max(200, w.clientWidth  - 120);
-    var wh = Math.max(200, w.clientHeight - 120);
+    var wh = Math.max(200, w.clientHeight - 120 - _stReserve);
     // Fit-to-WIDTH: text inside the design stays readable at the highest
     // zoom that still shows the full canvas width. Vertical can overflow
     // — user pans/scrolls. Old fit-to-MIN gave ~20-35% zoom on
@@ -1001,8 +1006,11 @@
     var zh = wh / _ch;
     _zoom = Math.min(zw, 1);
     if (zh >= zw) _zoom = Math.min(zw, zh, 1);  // landscape: original behavior
+    // P5B-B: when chat space is reserved, ensure the canvas ALSO fits the reduced
+    // height so it never sits under the chat. (No reserve => width-fit unchanged.)
+    if (_stReserve > 0 && _ch * _zoom > wh) _zoom = Math.min(_zoom, wh / _ch);
     _panX = (w.clientWidth  - _cw * _zoom) / 2;
-    _panY = (_cw * _zoom <= ww) ? Math.max(20, (w.clientHeight - _ch * _zoom) / 2) : 20;
+    _panY = (_cw * _zoom <= ww) ? Math.max(20, (w.clientHeight - _stReserve - _ch * _zoom) / 2) : 20;
     _applyTransform();
   }
 
@@ -1028,6 +1036,13 @@
     var w = document.getElementById('st-workspace');
     if (!w || w._studioWired) return;
     w._studioWired = true;
+    // P5B-B: re-fit the canvas whenever the chat changes size (open/close/messages),
+    // debounced to avoid layout jitter, so chat and canvas never overlap.
+    var _stChatEl = document.getElementById('st-chat');
+    if (_stChatEl && window.ResizeObserver && !_stChatEl._stRO) {
+      _stChatEl._stRO = new ResizeObserver(function(){ clearTimeout(_stChatEl._stRT); _stChatEl._stRT = setTimeout(_fitToViewport, 120); });
+      _stChatEl._stRO.observe(_stChatEl);
+    }
 
     // Mouse wheel → zoom (with Ctrl/Cmd) or pan vertically (without)
     w.addEventListener('wheel', function(e){
