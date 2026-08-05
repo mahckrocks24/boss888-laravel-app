@@ -1717,7 +1717,61 @@
     if (q) q.style.display = 'none';
   }
 
+  // ══ P5B-B: Browser Projection SHADOW (dormant) ══════════════════════════════
+  // Gated by window.__STUDIO_BROWSER_SHADOW (default undefined => OFF). When ON, the
+  // committed browser projection adapter is run against a DETACHED serialization of the
+  // current design (an isolated shadow document) and its verified result is compared to
+  // the legacy action path. It NEVER touches the live iframe, NEVER autosaves, NEVER
+  // persists. Legacy remains authoritative. Chat success semantics are unchanged.
+  function _studioShadowEnabled(){ return typeof window !== 'undefined' && window.__STUDIO_BROWSER_SHADOW === true; }
+  function _studioShadowLoadAdapter(){
+    return new Promise(function(res){
+      if (window.StudioProjectionAdapter) return res(window.StudioProjectionAdapter);
+      var s = document.createElement('script');
+      var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
+      s.src = '/app/js/studio-projection-adapter.js?v=' + bust + '-p5bb';
+      s.onload = function(){ res(window.StudioProjectionAdapter || null); };
+      s.onerror = function(){ res(null); };   // load failure => shadow skipped; legacy unaffected
+      document.head.appendChild(s);
+    });
+  }
+  // Map a legacy chat action to the committed Phase-3B projection contract. Only text is
+  // certified for the browser engine; palette/image are element-scoped-vs-global
+  // architectural differences the new engine does not mirror.
+  function _studioShadowRequest(action){
+    if (!action || !action.type) return null;
+    if (action.type === 'update_field' && action.name != null) {
+      return { schema_version:1, operation_id:'shadow', operation_type:'replace_text',
+        target_id:String(action.name), changed_fields:['text'],
+        desired_after_state:{ text:String(action.value == null ? '' : action.value) },
+        correlation_id:'shadow-' + action.name };
+    }
+    return null;
+  }
+  function _studioShadowCompare(actions){
+    if (!_studioShadowEnabled()) return;                 // OFF => nothing runs, zero behaviour change
+    var ifr = document.getElementById('st-iframe');
+    if (!ifr || !ifr.contentDocument) return;
+    var html = '<!doctype html>' + ifr.contentDocument.documentElement.outerHTML;  // detached shadow doc
+    _studioShadowLoadAdapter().then(function(SPA){
+      if (!SPA) return;
+      var report = [];
+      (actions || []).forEach(function(a){
+        var req = _studioShadowRequest(a);
+        if (!req) { report.push({ type:(a && a.type) || null, classification:'expected_architectural_difference' }); return; }
+        var r = SPA.create(html).project(req);           // fresh detached copy per op; never the live iframe
+        report.push({ op:req.operation_type, target:req.target_id, status:r.status,
+          verified: !!(r.verification && r.verification.verified), changed:r.applied_fields,
+          classification: (r.status === 'applied') ? 'equivalent'
+            : (r.status === 'target_missing') ? 'target_mismatch'
+            : (r.status === 'unsupported') ? 'unsupported' : 'verification_failure' });
+      });
+      try { console.info('[studio-shadow] new-engine verified result (legacy authoritative; no mutation/autosave):', report); } catch(_e){}
+    });
+  }
+
   function _applyChatActions(actions) {
+    _studioShadowCompare(actions);  // P5B-B: gated dormant shadow (never mutates the active doc / never autosaves)
     actions.forEach(function(a){
       if (!a || !a.type) return;
       if (a.type === 'apply_palette' && a.vars) {
