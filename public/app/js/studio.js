@@ -23,6 +23,7 @@
   var _fieldList  = [];     // last reported list of data-field elements from iframe
   var _saveTimer  = null;
   var _pendingSerialize = null;
+  var _stEditDirty = false;   // I1: true while unsaved edits exist; gates server-verified text edits
   var _rootEl     = null;   // #studio-root — passed by core.js nav dispatcher
 
   // ── Public entry points ───────────────────────────────────────
@@ -1504,6 +1505,7 @@
 
   function _queueAutosave() {
     clearTimeout(_saveTimer);
+    _stEditDirty = true;   // I1: unsaved edits pending until persisted
     _saveTimer = setTimeout(function(){
       _pendingSerialize = { kind: 'auto' };
       _postToIframe({ type: 'serialize-html' });
@@ -1671,14 +1673,19 @@
       body: JSON.stringify({
         design_id: _designId,
         message: text,
-        history: _chatHistory.slice(-6) // last 3 pairs
+        history: _chatHistory.slice(-6), // last 3 pairs
+        client_clean: (_stEditDirty === false) // I1: server-verified text edit only when clean
       })
     }).then(function(d){
       _chatLoading = false;
       _chatRenderLoading(false);
       if (!d.success) throw new Error(d.error || 'chat_failed');
       _chatPush({ role: 'assistant', content: d.reply || '' });
-      if (Array.isArray(d.actions) && d.actions.length) {
+      if (d.server_applied) {
+        // I1: server applied+verified+persisted already. Refresh the stale iframe
+        // from the verified server HTML. NO _applyChatActions, NO autosave, NO 2nd PUT.
+        _stReloadPreview();
+      } else if (Array.isArray(d.actions) && d.actions.length) {
         _applyChatActions(d.actions);
       }
     }).catch(function(err){
@@ -1801,6 +1808,16 @@
     _queueAutosave();
   }
 
+  // I1: reload the canvas from the verified server preview (no autosave, no PUT).
+  function _stReloadPreview() {
+    var ifr = document.getElementById('st-iframe');
+    if (!ifr || !_designId) return;
+    _fetchText('/studio/designs/' + _designId + '/preview').then(function(html){
+      if (ifr) ifr.srcdoc = html;
+      _stEditDirty = false;   // server state is now the displayed truth
+    }).catch(function(){});
+  }
+
   function _stPersistHtml(html, info) {
     if (!_designId) return;
     _fetchJson('/studio/designs/' + _designId, {
@@ -1808,6 +1825,7 @@
       body: JSON.stringify({ content_html: html })
     }).then(function(d){
       if (d.success) {
+        _stEditDirty = false;   // I1: persisted => editor clean
         if (info && info.kind === 'manual') _toast('Saved', 'success');
         _showSavedIndicator();
       }

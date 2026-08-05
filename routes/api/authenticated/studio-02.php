@@ -979,6 +979,109 @@ HTMLSCRIPT;
                 ]);
             }
 
+            // ══ Integration Milestone 1: server-verified single text edit ══════════
+            // DEFAULT OFF => the legacy return below is byte-identical to today.
+            // When ON and the LLM proposed EXACTLY ONE supported update_field, apply
+            // + verify + persist on the committed HtmlProjectionAdapter and return NO
+            // action (browser stays inert: no _applyChatActions, no autosave, no 2nd
+            // PUT). ANY unsupported/unsafe/unverified/dirty-editor/concurrent case
+            // falls through to the unchanged legacy response. Never both.
+            $__pilotWs = (int) config('studio_chat_apply.pilot_workspace_id');
+            if (config('studio_chat_apply.server_apply_text') === true && ($__pilotWs === 0 || $wsId === $__pilotWs)) {
+                $__ic = null;
+                $__eligible = is_array($actions) && count($actions) === 1
+                    && is_array($actions[0] ?? null)
+                    && (($actions[0]['type'] ?? null) === 'update_field')
+                    && is_string($actions[0]['name'] ?? null) && ($actions[0]['name'] !== '')
+                    && array_key_exists('value', $actions[0])
+                    && (is_string($actions[0]['value']) || is_numeric($actions[0]['value']));
+                // Dirty-editor guard: only proceed when the browser asserts a CLEAN
+                // editor (no unsaved manual edits ahead of persisted content_html).
+                // Absent flag (older client) => treated as NOT clean => legacy.
+                if ($__eligible && $r->boolean('client_clean')) {
+                    try {
+                        // Re-read the CURRENT persisted row as the concurrency base.
+                        $__row = \Illuminate\Support\Facades\DB::table('studio_designs')
+                            ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                        if ($__row) {
+                            $__base  = (string) ($__row->content_html ?? '');
+                            $__field = (string) $actions[0]['name'];
+                            $__value = (string) $actions[0]['value'];
+                            // Canonical document form: Arthur JSON {template_slug, fields} => structured; else raw HTML.
+                            $__dec = json_decode($__base, true);
+                            $__structured = is_array($__dec) && isset($__dec['template_slug'])
+                                && isset($__dec['fields']) && is_array($__dec['fields']);
+                            $__adapter = $__structured
+                                ? \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forStructured($__dec)
+                                : \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base);
+                            $__before = $__adapter->document()->get($__field, 'text');
+                            $__req = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                'schema_version'            => 1,
+                                'operation_id'              => 'studio-chat-text',
+                                'document_id'               => (string) $designId,
+                                'target_id'                 => $__field,
+                                'changed_fields'            => ['text'],
+                                'desired_after_state'       => ['text' => $__value],
+                                'expected_document_version' => $__adapter->currentVersion()->token,
+                                'before_snapshot_hash'      => \App\Engines\Studio\Projection\ProjectionRequest::hashState(['text' => $__before]),
+                                'correlation_id'            => 'chat-' . $designId . '-' . $__field,
+                                'idempotency_key'           => null,
+                                'batch_id'                  => null,
+                                'projection_meta'           => [],
+                            ]);
+                            $__res = $__adapter->project($__req);
+                            $__verified = ($__res->status === \App\Engines\Studio\Projection\ProjectionStatus::APPLIED)
+                                && (($__res->verification['verified'] ?? false) === true)
+                                && in_array('text', $__res->appliedFields, true)
+                                && array_key_exists('text', $__res->actualAfterState);
+                            if ($__verified) {
+                                // Persist the VERIFIED payload with an optimistic compare-and-swap on
+                                // the exact row we read (updated_at) => never overwrite a newer state.
+                                $__payload = $__adapter->payload();
+                                $__store   = $__structured ? json_encode($__payload) : (string) $__payload;
+                                $__affected = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                    ->where('id', $designId)->where('workspace_id', $wsId)
+                                    ->whereNull('deleted_at')->where('updated_at', $__row->updated_at)
+                                    ->update(['content_html' => $__store, 'updated_at' => now()]);
+                                if ($__affected === 1) {
+                                    // Fire-and-forget thumbnail regen (mirror of the PUT /designs path).
+                                    register_shutdown_function(function () use ($designId) {
+                                        try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail((int) $designId); }
+                                        catch (\Throwable $e) {}
+                                    });
+                                    // Truthful reply built ONLY from the verified ProjectionResult.
+                                    $__after = (string) ($__res->actualAfterState['text'] ?? $__value);
+                                    $__ic = [
+                                        'success'         => true,
+                                        'reply'           => 'Changed "' . (string) $__before . '" to "' . $__after . '" and verified the saved result.',
+                                        'actions'         => [],            // XOR: no browser action on verified server-apply
+                                        'server_applied'  => true,
+                                        'refresh_preview' => true,
+                                        'verified'        => [
+                                            'target_id'          => $__res->targetId,
+                                            'status'             => $__res->status,
+                                            'applied_fields'     => $__res->appliedFields,
+                                            'actual_after_state' => $__res->actualAfterState,
+                                            'verification'       => $__res->verification,
+                                            'document_form'      => $__structured ? 'structured' : 'raw',
+                                        ],
+                                    ];
+                                }
+                                // $__affected !== 1 => design changed under us => fall through to legacy (nothing persisted).
+                            }
+                            // not verified (target_missing/ambiguous/stale/snapshot/no_change/failed) => fall through to legacy.
+                        }
+                    } catch (\Throwable $__e) {
+                        \Illuminate\Support\Facades\Log::warning('studio.chat server-apply text failed: ' . $__e->getMessage());
+                        $__ic = null; // safe fallback to legacy
+                    }
+                }
+                if ($__ic !== null) {
+                    return response()->json($__ic);
+                }
+                // else: fall through to the unchanged legacy response below.
+            }
+
             return response()->json([
                 'success' => true,
                 'reply'   => $reply,
