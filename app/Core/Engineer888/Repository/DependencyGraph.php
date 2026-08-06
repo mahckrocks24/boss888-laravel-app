@@ -243,11 +243,31 @@ final class DependencyGraph
     private function phpFiles(): array
     {
         $out = [];
-        $skip = ['/vendor/', '/node_modules/', '/storage/framework/', '/.git/', '/public/build/'];
+        $skip = ['/vendor/', '/node_modules/', '/storage/', '/.git/', '/public/build/'];
 
+        // Pruned at DESCENT, not after the fact. The earlier version filtered
+        // each file once the directory had already been opened, so an
+        // unreadable directory threw before its own exclusion was consulted —
+        // invisible under root, fatal under the queue user (2026-08-02).
+        $directory = new \RecursiveDirectoryIterator($this->repoPath, \FilesystemIterator::SKIP_DOTS);
+
+        $filtered = new \RecursiveCallbackFilterIterator($directory, function ($item) use ($skip) {
+            if (! $item->isDir()) { return true; }
+            $path = str_replace('\\', '/', $item->getPathname()) . '/';
+            foreach ($skip as $fragment) {
+                if (str_contains($path, $fragment)) { return false; }
+            }
+
+            return $item->isReadable();
+        });
+
+        // A directory that becomes unreadable between the check and the descent
+        // is skipped rather than thrown. Missing one corner of the graph is a
+        // worse graph; an exception is no graph at all.
         $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($this->repoPath, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST
+            $filtered,
+            \RecursiveIteratorIterator::SELF_FIRST,
+            \RecursiveIteratorIterator::CATCH_GET_CHILD
         );
 
         foreach ($iterator as $item) {

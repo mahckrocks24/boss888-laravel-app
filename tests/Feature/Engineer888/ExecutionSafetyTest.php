@@ -3,6 +3,7 @@
 namespace Tests\Feature\Engineer888;
 
 use Illuminate\Support\Facades\DB;
+use App\Core\Engineer888\Runtime\Workspace;
 use Tests\TestCase;
 
 /**
@@ -59,11 +60,16 @@ class ExecutionSafetyTest extends TestCase
     {
         $output = [];
         $code = 0;
-        exec('cd ' . escapeshellarg(base_path()) . ' && php ' . self::AUDIT . ' . --json 2>/dev/null', $output, $code);
+        exec('cd ' . escapeshellarg(base_path()) . ' && php ' . self::AUDIT . ' . --json', $output, $code);
 
         $report = json_decode(implode("\n", $output), true);
         $this->assertIsArray($report, 'the audit must produce parseable output');
         $this->assertGreaterThan(500, $report['files_scanned'], 'the audit must actually have scanned the tree');
+
+        // "0 unsafe" from a scan that could not read app/ is not a result.
+        $this->assertTrue($report['complete'] ?? false,
+            'the audit reported a verdict without complete coverage. Unreadable required paths: '
+            . json_encode($report['coverage']['required_unreadable'] ?? []));
 
         $unsafe = array_values(array_filter($report['findings'], fn ($f) => $f['verdict'] === 'UNSAFE'));
 
@@ -154,18 +160,27 @@ class ExecutionSafetyTest extends TestCase
      */
     public function test_the_guard_refuses_before_refresh_database_can_touch_anything(): void
     {
-        $config = base_path('phpunit.guardorder-' . getmypid() . '.xml');
         $absent = 'levelup_definitely_not_a_test_db_' . getmypid();
 
-        try {
-            $template = (string) file_get_contents(base_path('phpunit.e888.xml'));
-            file_put_contents($config, str_replace('levelup_e888_test', $absent, $template));
+        // Written into the Engineer888 workspace, not next to the application.
+        // base_path() is root-owned here and the queue user cannot write it —
+        // the assumption that made this very test unrunnable in the conditions
+        // it exists to protect (2026-08-02).
+        $workspace = Workspace::open(base_path(), 'guardorder-' . getmypid());
+        $config = $workspace->phpunitConfigFrom(
+            base_path('phpunit.e888.xml'),
+            base_path(),
+            ['levelup_e888_test' => $absent],
+            'phpunit.guardorder.xml'
+        );
 
+        try {
             $output = [];
             exec('cd ' . escapeshellarg(base_path())
                 . ' && env -u DB_DATABASE -u DB_CONNECTION -u DB_HOST -u DB_USERNAME -u DB_PASSWORD -u APP_ENV'
-                . ' php artisan test -c ' . escapeshellarg(basename($config))
-                . ' tests/Feature/Engineer888/EngineeringBriefTest.php --filter=test_worst_severity 2>&1', $output);
+                . ' php artisan test -c ' . escapeshellarg($config)
+                . ' ' . escapeshellarg(base_path('tests/Feature/Engineer888/EngineeringBriefTest.php'))
+                . ' --filter=test_worst_severity 2>&1', $output);
 
             $text = implode("\n", $output);
 
@@ -175,14 +190,14 @@ class ExecutionSafetyTest extends TestCase
                 'an "Unknown database" error would mean RefreshDatabase connected first — '
                 . 'the exact ordering that emptied production on 2026-07-30');
         } finally {
-            @unlink($config);
+            $workspace->close();
         }
     }
 
     public function test_every_test_class_using_refresh_database_inherits_the_guard(): void
     {
         $output = [];
-        exec('cd ' . escapeshellarg(base_path()) . ' && php ' . self::AUDIT . ' . --json 2>/dev/null', $output);
+        exec('cd ' . escapeshellarg(base_path()) . ' && php ' . self::AUDIT . ' . --json', $output);
         $report = json_decode(implode("\n", $output), true);
 
         $rogue = array_values(array_filter($report['findings'],
