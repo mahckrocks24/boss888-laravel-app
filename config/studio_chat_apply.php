@@ -22,6 +22,9 @@ return [
 
     // Feature Sprint 2 - AI Image Editing (replace + generate-and-replace). Default OFF, same ws scope.
     'server_apply_image' => env('STUDIO_CHAT_SERVER_APPLY_IMAGE', false),
+
+    // Feature Sprint 3 - verified brand colour application. Default OFF, same ws scope.
+    'server_apply_brand' => env('STUDIO_CHAT_SERVER_APPLY_BRAND', false),
     // Extra trusted image hosts (comma-separated). Same-origin (app host) + relative URLs are always allowed.
     'image_trusted_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('STUDIO_CHAT_IMAGE_TRUSTED_HOSTS', ''))))),
 

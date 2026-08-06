@@ -938,6 +938,18 @@ HTMLSCRIPT;
                         $systemPrompt .= $__imgClause;
                         $instructions .= $__imgClause;
                     }
+                    // Feature Sprint 3: when brand colour application is active, tell the model the
+                    // workspace brand palette (resolver) + the apply_brand action.
+                    if (config('studio_chat_apply.server_apply_brand') === true && ($__saPilotWs === 0 || $wsId === $__saPilotWs)) {
+                        $__kitP = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+                        if (! empty($__kitP['is_neutral'])) {
+                            $__brandClause = ' The workspace has NO configured brand palette. If the user asks to apply their brand colours, tell them to set up their brand colours first; never invent colours.';
+                        } else {
+                            $__brandClause = ' The workspace brand palette is: primary ' . $__kitP['primary_color'] . ', secondary ' . $__kitP['secondary_color'] . ', accent ' . $__kitP['accent_color'] . ', background ' . $__kitP['background_color'] . ', text ' . $__kitP['text_color'] . '. To apply the workspace brand colours to this design, return {"type":"apply_brand"} (no values needed). Use apply_brand ONLY for the workspace own brand/company colours.';
+                        }
+                        $systemPrompt .= $__brandClause;
+                        $instructions .= $__brandClause;
+                    }
                     $resp = $runtime->chatJson($systemPrompt, $instructions, [], 600);
                     if (!empty($resp['success'])) {
                         $parsed = $resp['parsed'] ?? null;
@@ -1346,6 +1358,105 @@ HTMLSCRIPT;
                         \Illuminate\Support\Facades\Log::warning('studio.chat server-apply image failed: ' . $__e->getMessage());
                     }
                     return response()->json($__im);
+                }
+            }
+
+            // ══ Feature Sprint 3: server-verified brand colour application (apply_brand) ══════
+            // Maps the workspace brand kit (WorkspaceBrandKitResolver) onto the design's single
+            // :root palette, updating ONLY the canonical variables that already exist, verified +
+            // atomic + CAS persist. WE OWN the response; never the model's reply, never a browser
+            // palette mutation. Model-supplied colours are IGNORED (resolver is authoritative).
+            // Neutral kits, structured designs, and non-standard-only templates decline truthfully.
+            if (config('studio_chat_apply.server_apply_brand') === true && ($__pilotWs === 0 || $wsId === $__pilotWs)) {
+                $__hasBrand = is_array($actions) && count(array_filter($actions, function ($a) {
+                    return is_array($a) && (($a['type'] ?? null) === 'apply_brand');
+                })) > 0;
+                if ($__hasBrand) {
+                    $__bm = ['success' => true, 'reply' => 'I could not apply your brand colours.', 'actions' => [], 'server_applied' => false];
+                    $__kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+                    if (! empty($__kit['is_neutral'])) {
+                        $__bm['reply'] = 'Your workspace does not have a configured brand palette yet, so nothing was changed. Set up your brand colours first.';
+                    } elseif (! $r->boolean('client_clean')) {
+                        $__bm['reply'] = 'Please save your current edits first, then ask me to apply your brand colours.';
+                    } else {
+                        try {
+                            $__row = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                            if (! $__row) {
+                                $__bm['reply'] = 'That design could not be found.';
+                            } else {
+                                $__base = (string) ($__row->content_html ?? '');
+                                $__dec = json_decode($__base, true);
+                                $__structured = is_array($__dec) && isset($__dec['template_slug']) && isset($__dec['fields']) && is_array($__dec['fields']);
+                                if ($__structured) {
+                                    $__bm['reply'] = 'Brand colours are not available for this template type yet, so nothing was changed.';
+                                } elseif (preg_match_all('/:root\s*\{/', $__base) !== 1) {
+                                    $__bm['reply'] = 'This design has no single colour palette I can update, so nothing was changed.';
+                                } else {
+                                    $__norm = new \App\Engines\Studio\Transform\ColorNormalizer();
+                                    $__inner = '';
+                                    if (preg_match('/:root\s*\{([^{}]*)\}/', $__base, $__rm)) { $__inner = $__rm[1]; }
+                                    $__map = [
+                                        '--primary' => $__kit['primary_color'] ?? null, '--secondary' => $__kit['secondary_color'] ?? null,
+                                        '--accent' => $__kit['accent_color'] ?? null, '--background' => $__kit['background_color'] ?? null,
+                                        '--text' => $__kit['text_color'] ?? null,
+                                    ];
+                                    $__adapter = \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base);
+                                    $__reqs = []; $__changed = []; $__anyCanonical = false;
+                                    foreach ($__map as $__var => $__col) {
+                                        if (! preg_match('/(?:^|;|\s)' . preg_quote($__var, '/') . '\s*:/', $__inner)) { continue; }
+                                        $__anyCanonical = true;
+                                        if (! is_string($__col) || $__col === '') { continue; }
+                                        $__nv = $__norm->normalize($__col);
+                                        if ($__nv === null) { continue; }
+                                        $__cur = $__adapter->document()->get(':root', 'var.' . $__var);
+                                        $__curn = is_string($__cur) ? $__norm->normalize($__cur) : null;
+                                        if ($__curn !== null && strtolower($__curn) === strtolower($__nv)) { continue; }
+                                        $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                            'schema_version' => 1, 'operation_id' => 'chat-brand-' . ltrim($__var, '-'), 'document_id' => (string) $designId,
+                                            'target_id' => ':root', 'changed_fields' => ['var.' . $__var], 'desired_after_state' => ['var.' . $__var => $__nv],
+                                            'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                            'correlation_id' => 'chat-brand-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                                        ]);
+                                        $__changed[] = ltrim($__var, '-');
+                                    }
+                                    if (empty($__reqs)) {
+                                        $__bm['reply'] = $__anyCanonical
+                                            ? 'This design already uses your brand colours - nothing to change.'
+                                            : 'This design uses custom colour variables I cannot map to your brand yet, so nothing was changed.';
+                                    } else {
+                                        $__batch = new \App\Engines\Studio\Projection\ProjectionBatch('chat-' . $designId, (string) $designId, $__reqs,
+                                            \App\Engines\Studio\Projection\ProjectionTransactionBoundary::atomic(), null, 'chat-brand-' . $designId);
+                                        $__bres = $__adapter->projectBatch($__batch);
+                                        $__ok = ($__bres->status === \App\Engines\Studio\Projection\ProjectionStatus::APPLIED) && ($__bres->appliedCount() === count($__reqs));
+                                        if ($__ok) { foreach ($__bres->results as $__rr) { if ((($__rr->verification['verified'] ?? false) !== true)) { $__ok = false; break; } } }
+                                        if ($__ok) {
+                                            $__aff = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                                ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')
+                                                ->where('updated_at', $__row->updated_at)
+                                                ->update(['content_html' => (string) $__adapter->payload(), 'updated_at' => now()]);
+                                            if ($__aff === 1) {
+                                                register_shutdown_function(function () use ($designId) {
+                                                    try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail((int) $designId); } catch (\Throwable $e) {}
+                                                });
+                                                $__n = count($__changed);
+                                                $__bm = ['success' => true, 'actions' => [], 'server_applied' => true, 'refresh_preview' => true,
+                                                    'reply' => 'Applied and verified your brand ' . implode(', ', $__changed) . ' colour' . ($__n === 1 ? '' : 's') . '.',
+                                                    'verified' => ['count' => $__n, 'status' => 'applied', 'document_form' => 'raw', 'variables' => $__changed]];
+                                            } else {
+                                                $__bm['reply'] = 'Your design changed while I was working - please try again.';
+                                            }
+                                        } else {
+                                            $__bm['reply'] = 'I could not apply your brand colours to this design.';
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (\Throwable $__e) {
+                            \Illuminate\Support\Facades\Log::warning('studio.chat server-apply brand failed: ' . $__e->getMessage());
+                        }
+                    }
+                    return response()->json($__bm);
                 }
             }
 
