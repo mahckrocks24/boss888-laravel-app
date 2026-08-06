@@ -257,6 +257,12 @@ Route::middleware(['auth.jwt', 'admin'])->prefix('admin/agents')->group(function
 // ══════════════════════════════════════════════════════════════════════════
 Route::middleware(['auth.jwt', 'admin'])->prefix('admin')->group(function () {
 
+    // Engineer888 Command Center. Inside this group, so it inherits
+    // auth.jwt + AdminMiddleware; the module adds DenyApiKeyAuth of its
+    // own, because a machine credential must never be able to approve a
+    // source change.
+    require __DIR__ . '/api/admin/engineer888.php';
+
     Route::get('/web-activity', function (\Illuminate\Http\Request $r) {
         $q = \Illuminate\Support\Facades\DB::table('agent_web_activity')
             ->leftJoin('workspaces', 'workspaces.id', '=', 'agent_web_activity.workspace_id');

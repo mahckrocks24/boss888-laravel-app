@@ -122,9 +122,17 @@ window.page = async function () {
 
   var HIGH_RISK = ['approve_candidate', 'execute_task', 'approve_recovery', 'approve_migration'];
 
+  // The exact sentence the server requires for each approval card, keyed by
+  // card uuid. The page NEVER composes one: it displays what the server sent and
+  // sends back only what the human typed. If the server sent none, the approval
+  // cannot be armed at all.
+  var REQUIRED_STATEMENT = {};
+
   function cardHtml(c) {
     var route = ACTION_ROUTE[c.action_type];
     if (!route) { return ''; }   // unknown type: draw nothing rather than guess
+
+    if (c.required_statement) { REQUIRED_STATEMENT[c.uuid] = c.required_statement; }
 
     var kv = '';
     if (c.project) { kv += '<span>Project</span><span>' + esc(c.project) + '</span>'; }
@@ -171,13 +179,75 @@ window.page = async function () {
   // the press fail at the boundary.
   var NEEDS_INSTRUCTION = ['reject-candidate'];
 
+  // Approval is not a click. The approver retypes a sentence naming the exact
+  // candidate and fingerprint, and the server compares it character for
+  // character. Nothing here generates that sentence from a press — doing so
+  // would turn the typed statement back into the click it exists to replace.
+  var NEEDS_STATEMENT = ['approve-candidate'];
+
   async function pressCard(uuid, route, label, btn) {
     var box = document.getElementById('e8-res-' + uuid);
     var needs = NEEDS_INSTRUCTION.indexOf(route) !== -1;
+    var needsStatement = NEEDS_STATEMENT.indexOf(route) !== -1;
 
     if (btn.getAttribute('data-armed') !== '1') {
       btn.setAttribute('data-armed', '1');
       btn.textContent = 'Confirm: ' + label;
+
+      if (needsStatement) {
+        var required = REQUIRED_STATEMENT[uuid];
+
+        if (!required) {
+          box.innerHTML = '<div style="color:#fca5a5">The server did not supply an approval statement '
+            + 'for this card, so it cannot be approved from here. Refresh and try again.</div>';
+          btn.removeAttribute('data-armed');
+          btn.textContent = label;
+          return;
+        }
+
+        box.innerHTML = '<div style="margin-bottom:7px">Approving binds this exact candidate, this exact '
+          + 'fingerprint and the exact file changes you reviewed. Type or paste the statement below to '
+          + 'confirm you are approving those bytes and nothing else.</div>'
+          + '<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">'
+          + '<code id="e8-req-' + esc(uuid) + '" style="flex:1;display:block;background:#0b0f18;'
+          + 'border:1px solid #2a3145;border-radius:8px;padding:8px 10px;font-size:12px;'
+          + 'line-height:1.5;word-break:break-all;color:#c9d3ea">' + esc(required) + '</code>'
+          + '<button type="button" data-copy="' + esc(uuid) + '" style="background:#1d2333;'
+          + 'border:1px solid #313a52;color:#dfe4f0;border-radius:8px;padding:6px 11px;'
+          + 'font-size:12.5px;cursor:pointer;white-space:nowrap">Copy</button></div>'
+          + '<textarea id="e8-stmt-' + esc(uuid) + '" rows="3" '
+          + 'style="width:100%;background:#141824;color:#e6e9f2;border:1px solid #2a3145;'
+          + 'border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit" '
+          + 'placeholder="Type or paste the statement above, exactly."></textarea>'
+          + '<div style="margin-top:7px;margin-bottom:4px">Comment (optional) — recorded against the approval.</div>'
+          + '<textarea id="e8-cmt-' + esc(uuid) + '" rows="2" '
+          + 'style="width:100%;background:#141824;color:#e6e9f2;border:1px solid #2a3145;'
+          + 'border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit" '
+          + 'placeholder="e.g. Reviewed the full diff and the test it adds."></textarea>';
+
+        var copyBtn = box.querySelector('[data-copy]');
+        if (copyBtn) {
+          copyBtn.onclick = function () {
+            var t = REQUIRED_STATEMENT[uuid] || '';
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(t).then(function () {
+                copyBtn.textContent = 'Copied';
+                setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1500);
+              });
+              return;
+            }
+            // No clipboard API (insecure context): select it so it can be
+            // copied by hand rather than pretending the copy succeeded.
+            var r = document.createRange();
+            r.selectNodeContents(document.getElementById('e8-req-' + uuid));
+            var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+          };
+        }
+
+        var st = document.getElementById('e8-stmt-' + uuid);
+        if (st) { st.focus(); }
+        return;
+      }
 
       if (needs) {
         box.innerHTML = '<div style="margin-bottom:6px">State why you are rejecting this. '
@@ -195,6 +265,26 @@ window.page = async function () {
     }
 
     var body = {};
+
+    if (needsStatement) {
+      var sfield = document.getElementById('e8-stmt-' + uuid);
+      var typed = sfield ? sfield.value : '';
+
+      if (!typed.trim()) {
+        box.innerHTML = '<div style="color:#fca5a5">The approval statement is required. '
+          + 'The server will refuse an approval that does not state exactly what is being approved.</div>';
+        if (sfield) { sfield.focus(); }
+        return;
+      }
+
+      // Sent as typed. Only the server decides whether it matches, and the only
+      // forgiveness is its own trim — this page normalises nothing.
+      body.statement = typed;
+
+      var cfield = document.getElementById('e8-cmt-' + uuid);
+      var comment = cfield ? cfield.value.trim() : '';
+      if (comment) { body.comment = comment; }
+    }
 
     if (needs) {
       var field = document.getElementById('e8-instr-' + uuid);

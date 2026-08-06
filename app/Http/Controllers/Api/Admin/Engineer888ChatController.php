@@ -264,9 +264,18 @@ class Engineer888ChatController
 
         // Domain input the action needs. Validated here, never invented by the
         // executor: a rejection with no stated reason is an engineering
-        // decision with no record of why.
+        // decision with no record of why, and an approval with no typed
+        // statement is a click pretending to be one.
+        //
+        // THIS IS THE WHOLE LIST. No action_type, no fingerprint, no candidate
+        // or task uuid, no project, no file hashes, no workflow state. A client
+        // that sends them is not corrected with an error naming the fields —
+        // they are simply not read, because nothing here asks for them and the
+        // executor resolves every one of them from the stored card instead.
         $input = $request->validate([
             'instruction' => 'nullable|string|max:2000',
+            'statement' => 'nullable|string|max:500',
+            'comment' => 'nullable|string|max:2000',
         ]);
 
         $card = $this->cards->consume($request, $uuid, $expectedActionType, 'executed', $input);

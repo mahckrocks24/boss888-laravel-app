@@ -194,9 +194,23 @@ final class ActionCardService
                     'required' => (bool) $card->mfa_required,
                     'satisfied' => (bool) $card->mfa_satisfied,
                 ],
-                // The fingerprint is NOT returned. It is the binding the server
-                // revalidates; a client has no use for it and echoing it invites
-                // a client to believe it can compare or supply one.
+                // THE SENTENCE THE APPROVER MUST TYPE, for approve_candidate
+                // only; null for every other type. Generated server-side from
+                // the live candidate and the fingerprint the ledger binds.
+                //
+                // It necessarily contains that fingerprint, because a statement
+                // that did not name the exact bytes would not be a binding
+                // statement. That is a deliberate narrowing of the rule below,
+                // not an exception to it: the server still accepts no
+                // fingerprint from any client. What comes back on a press is
+                // compared against this same server-generated string, so a
+                // client that alters one character is refused rather than
+                // believed.
+                'required_statement' => app(ActionCardExecutor::class)->requiredStatementFor($card),
+                // The card's own content fingerprint is NOT returned. It is the
+                // binding the server revalidates; a client has no use for it and
+                // echoing it invites a client to believe it can compare or
+                // supply one.
             ];
         }
 
