@@ -38,6 +38,9 @@ final class RawHtmlDocument implements HtmlProjectionDocument
 
     public function count(string $target): int
     {
+        if ($target === ':root') {
+            return (int) preg_match_all('/:root\s*\{/', $this->html);
+        }
         return (int) preg_match_all('/\bdata-field="' . preg_quote($target, '/') . '"/', $this->html);
     }
 
@@ -57,6 +60,9 @@ final class RawHtmlDocument implements HtmlProjectionDocument
         }
         if ($path === 'src') {
             return $this->imgTagRange($target) !== null;
+        }
+        if (str_starts_with($path, 'var.--')) {
+            return $this->paletteVar(substr($path, 4)) !== null;
         }
 
         return false;
@@ -78,6 +84,9 @@ final class RawHtmlDocument implements HtmlProjectionDocument
         if ($path === 'src') {
             return $this->imgSrc($target);
         }
+        if (str_starts_with($path, 'var.--')) {
+            return $this->paletteVar(substr($path, 4));
+        }
 
         return null;
     }
@@ -95,6 +104,9 @@ final class RawHtmlDocument implements HtmlProjectionDocument
         }
         if ($path === 'src') {
             return $this->setImgSrc($target, (string) $value);
+        }
+        if (str_starts_with($path, 'var.--')) {
+            return $this->setPaletteVar(substr($path, 4), (string) $value);
         }
 
         return false;
@@ -310,6 +322,63 @@ final class RawHtmlDocument implements HtmlProjectionDocument
             return false;
         }
         $this->html = substr($this->html, 0, $r['start']) . $newImg . substr($this->html, $r['end']);
+
+        return true;
+    }
+
+    // --- global :root palette variables (canonical --primary/--secondary/--accent/--background/--text) ---
+
+    /** @return array{innerStart:int,innerEnd:int,inner:string}|null the SINGLE :root block, or null */
+    private function rootBlockRange(): ?array
+    {
+        if (preg_match_all('/:root\s*\{/', $this->html) !== 1) {
+            return null;   // zero or ambiguous (>1) — refuse
+        }
+        if (! preg_match('/:root\s*\{([^{}]*)\}/', $this->html, $m, PREG_OFFSET_CAPTURE)) {
+            return null;
+        }
+
+        return ['innerStart' => $m[1][1], 'innerEnd' => $m[1][1] + strlen($m[1][0]), 'inner' => $m[1][0]];
+    }
+
+    /** Read a canonical palette variable value (e.g. name = '--primary'), or null if absent. */
+    private function paletteVar(string $name): ?string
+    {
+        $r = $this->rootBlockRange();
+        if ($r === null) {
+            return null;
+        }
+        if (preg_match('/(?:^|;|\s)' . preg_quote($name, '/') . '\s*:\s*([^;]+)/', $r['inner'], $m)) {
+            return trim($m[1]);
+        }
+
+        return null;
+    }
+
+    private function setPaletteVar(string $name, string $value): bool
+    {
+        if (! $this->security->isSafeColorValue($value)) {
+            return false;   // defense-in-depth: never write an unsafe colour value
+        }
+        $r = $this->rootBlockRange();
+        if ($r === null) {
+            return false;
+        }
+        $cur = $this->paletteVar($name);
+        if ($cur === null) {
+            return false;   // variable not present — never invent one
+        }
+        if ($cur === $value) {
+            return false;   // no-op
+        }
+        $inner = $r['inner'];
+        if (! preg_match('/(?:^|;|\s)' . preg_quote($name, '/') . '\s*:\s*([^;]+)/', $inner, $m, PREG_OFFSET_CAPTURE)) {
+            return false;
+        }
+        $valStart = $m[1][1];
+        $valLen = strlen($m[1][0]);
+        $newInner = substr($inner, 0, $valStart) . $value . substr($inner, $valStart + $valLen);
+        $this->html = substr($this->html, 0, $r['innerStart']) . $newInner . substr($this->html, $r['innerEnd']);
 
         return true;
     }

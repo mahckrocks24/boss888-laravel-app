@@ -24,6 +24,40 @@ final class HtmlProjectionSecurityPolicy
     }
 
     /**
+     * SAFETY gate for a palette colour VALUE (used by :root var writes). Accepts only
+     * a hex colour, a single named-colour word, or a numeric rgb()/rgba(). Rejects
+     * url()/var()/expression()/gradients/raw CSS/selectors/scripts and anything that
+     * could break out of a `--var: VALUE;` declaration.
+     */
+    public function isSafeColorValue(string $value): bool
+    {
+        $v = trim($value);
+        if ($v === '' || strlen($v) > 64) {
+            return false;
+        }
+        $lower = strtolower($v);
+        foreach (['url(', 'var(', 'expression(', 'javascript:', 'gradient', '@', '/*', '*/', ';', '{', '}', '<', '>', '"', "'", '`', '!'] as $bad) {
+            if (str_contains($lower, $bad)) {
+                return false;
+            }
+        }
+        if (strpos($v, chr(92)) !== false) {   // backslash
+            return false;
+        }
+        if (preg_match('/^#[0-9a-f]{3,8}$/i', $v)) {
+            return true;
+        }
+        if (preg_match('/^[a-z]{1,24}$/i', $v)) {          // named colour word
+            return true;
+        }
+        if (preg_match('/^rgba?\([0-9,.\s%]+\)$/i', $v)) {  // numeric rgb/rgba only
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Provenance-agnostic SAFETY gate for an image `src` value: rejects any scheme,
      * host, or format that could execute script or reach internal networks. It does
      * NOT check host allow-listing (approved provenance) — the caller enforces that.

@@ -21,7 +21,7 @@ final class HtmlProjectionCapabilityFactory
             targetTypes: ['*'],
             operations: ['replace_text', 'append_text', 'prepend_text', 'set_style', 'hide', 'show'],
             properties: self::STYLE_PROPERTIES,
-            fields: ['text', 'visible', 'src'],
+            fields: ['text', 'visible', 'src', 'var.--primary', 'var.--secondary', 'var.--accent', 'var.--background', 'var.--text'],
             mediaTypes: ['image'],
             supportsGeometry: false,
             supportsStyling: true,
