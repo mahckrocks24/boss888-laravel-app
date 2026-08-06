@@ -55,6 +55,9 @@ final class RawHtmlDocument implements HtmlProjectionDocument
         if (str_starts_with($path, 'style.')) {
             return $this->security->isAllowedProperty(substr($path, 6));
         }
+        if ($path === 'src') {
+            return $this->imgTagRange($target) !== null;
+        }
 
         return false;
     }
@@ -72,6 +75,9 @@ final class RawHtmlDocument implements HtmlProjectionDocument
         if (str_starts_with($path, 'style.')) {
             return $this->styleProp($target, substr($path, 6));
         }
+        if ($path === 'src') {
+            return $this->imgSrc($target);
+        }
 
         return null;
     }
@@ -86,6 +92,9 @@ final class RawHtmlDocument implements HtmlProjectionDocument
         }
         if (str_starts_with($path, 'style.')) {
             return $this->setStyleProp($target, substr($path, 6), (string) $value);
+        }
+        if ($path === 'src') {
+            return $this->setImgSrc($target, (string) $value);
         }
 
         return false;
@@ -233,6 +242,74 @@ final class RawHtmlDocument implements HtmlProjectionDocument
             $newAttrs = rtrim($ot['attrs']) . ' style="' . $newStyle . '"';
         }
         $this->html = substr($this->html, 0, $ot['start']) . '<' . $ot['tag'] . $newAttrs . '>' . substr($this->html, $ot['end']);
+
+        return true;
+    }
+
+    // --- image src targeting (self <img data-field> OR a SINGLE child <img>) ---
+
+    /** @return array{start:int,end:int,html:string}|null the one targetable <img>, or null */
+    private function imgTagRange(string $target): ?array
+    {
+        $ot = $this->openingTag($target);
+        if ($ot === null) {
+            return null;
+        }
+        if (strtolower($ot['tag']) === 'img') {
+            return ['start' => $ot['start'], 'end' => $ot['end'], 'html' => substr($this->html, $ot['start'], $ot['end'] - $ot['start'])];
+        }
+        $ir = $this->innerRange($target);
+        if ($ir === null) {
+            return null;
+        }
+        if (preg_match_all('/<img\b[^>]*>/i', $ir['inner'], $mm, PREG_OFFSET_CAPTURE) !== 1) {
+            return null;   // zero, or ambiguous (>1) — not a single image target
+        }
+        $imgHtml = $mm[0][0][0];
+        $abs = $ir['innerStart'] + $mm[0][0][1];
+
+        return ['start' => $abs, 'end' => $abs + strlen($imgHtml), 'html' => $imgHtml];
+    }
+
+    private function imgSrc(string $target): ?string
+    {
+        $r = $this->imgTagRange($target);
+        if ($r === null) {
+            return null;
+        }
+        if (preg_match('/\bsrc\s*=\s*"([^"]*)"/i', $r['html'], $m)) {
+            return $m[1];
+        }
+        if (preg_match("/\bsrc\s*=\s*'([^']*)'/i", $r['html'], $m)) {
+            return $m[1];
+        }
+
+        return '';
+    }
+
+    private function setImgSrc(string $target, string $url): bool
+    {
+        if (! $this->security->isSafeImageUrl($url)) {
+            return false;   // defense-in-depth: never write an unsafe src
+        }
+        $r = $this->imgTagRange($target);
+        if ($r === null) {
+            return false;
+        }
+        if ($this->imgSrc($target) === $url) {
+            return false;   // no-op
+        }
+        $img = $r['html'];
+        if (preg_match('/\bsrc\s*=\s*("[^"]*"|\'[^\']*\')/i', $img, $m, PREG_OFFSET_CAPTURE)) {
+            $s0 = $m[0][1];
+            $newImg = substr($img, 0, $s0) . 'src="' . $url . '"' . substr($img, $s0 + strlen($m[0][0]));
+        } elseif (preg_match('/(\/?>)\s*$/', $img, $m2, PREG_OFFSET_CAPTURE)) {
+            $pos = $m2[0][1];
+            $newImg = substr($img, 0, $pos) . ' src="' . $url . '"' . substr($img, $pos);
+        } else {
+            return false;
+        }
+        $this->html = substr($this->html, 0, $r['start']) . $newImg . substr($this->html, $r['end']);
 
         return true;
     }

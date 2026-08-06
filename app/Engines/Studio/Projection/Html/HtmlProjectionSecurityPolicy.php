@@ -23,6 +23,61 @@ final class HtmlProjectionSecurityPolicy
         return in_array($property, self::ALLOWED_STYLE_PROPERTIES, true);
     }
 
+    /**
+     * Provenance-agnostic SAFETY gate for an image `src` value: rejects any scheme,
+     * host, or format that could execute script or reach internal networks. It does
+     * NOT check host allow-listing (approved provenance) — the caller enforces that.
+     * Pure syntax validation; NEVER fetches the URL (SSRF-safe).
+     */
+    public function isSafeImageUrl(string $url): bool
+    {
+        $url = trim($url);
+        if ($url === '' || strlen($url) > 2048) {
+            return false;
+        }
+        if (preg_match('/[\s"\'<>`]/', $url) || strpos($url, chr(92)) !== false || preg_match('/[\x00-\x1f\x7f]/', $url)) {
+            return false;
+        }
+        $lower = strtolower($url);
+        foreach (['javascript:', 'data:', 'file:', 'blob:', 'vbscript:', 'about:', 'mailto:', 'tel:'] as $bad) {
+            if (str_starts_with($lower, $bad)) {
+                return false;
+            }
+        }
+        // Same-origin relative path (inherits the app scheme + host); reject protocol-relative.
+        if (str_starts_with($url, '/') && ! str_starts_with($url, '//')) {
+            return ! str_ends_with($lower, '.svg');
+        }
+        $p = parse_url($url);
+        if ($p === false || empty($p['scheme']) || empty($p['host'])) {
+            return false;
+        }
+        if (strtolower($p['scheme']) !== 'https') {
+            return false;
+        }
+        if (isset($p['user']) || isset($p['pass'])) {
+            return false;
+        }
+        if (isset($p['port']) && (int) $p['port'] !== 443) {
+            return false;
+        }
+        $host = strtolower($p['host']);
+        if (in_array($host, ['localhost', 'ip6-localhost'], true)) {
+            return false;
+        }
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            if (! filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return false;   // loopback / private / link-local (169.254.169.254) / reserved
+            }
+        }
+        $path = strtolower((string) ($p['path'] ?? ''));
+        if (str_ends_with($path, '.svg')) {
+            return false;       // script-capable format
+        }
+
+        return true;
+    }
+
     public function escapeText(string $text): string
     {
         return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
