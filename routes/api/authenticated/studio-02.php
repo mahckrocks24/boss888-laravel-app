@@ -925,6 +925,19 @@ HTMLSCRIPT;
                         $systemPrompt .= $__styleClause;
                         $instructions .= $__styleClause;
                     }
+                    // Feature Sprint 2: when AI Image Editing is active, let the model emit
+                    // generate_and_replace_image / update_image, and refuse unsupported edits.
+                    if (config('studio_chat_apply.server_apply_image') === true && ($__saPilotWs === 0 || $wsId === $__saPilotWs)) {
+                        $__imgFields = [];
+                        if (preg_match_all('/<img\b[^>]*\bdata-field="([^"]+)"/i', $html, $__mi)) { $__imgFields = array_merge($__imgFields, $__mi[1]); }
+                        if (preg_match_all('/\bdata-field="([^"]+)"[^>]*>\s*<img\b/i', $html, $__mw)) { $__imgFields = array_merge($__imgFields, $__mw[1]); }
+                        $__imgFields = array_values(array_unique($__imgFields));
+                        $__imgClause = ' Image fields you can target: ' . (empty($__imgFields) ? '(none in this design)' : implode(', ', $__imgFields)) . '.'
+                            . ' To CREATE a new image from a description return {"type":"generate_and_replace_image","name":"<image field>","prompt":"<vivid description>"}; to place a concrete approved URL return {"type":"update_image","name":"<image field>","url":"<approved url>"} (never invent or use an untrusted URL).'
+                            . ' You cannot remove backgrounds, crop, resize, blur, or apply filters yet - if asked for those, say they are not supported.';
+                        $systemPrompt .= $__imgClause;
+                        $instructions .= $__imgClause;
+                    }
                     $resp = $runtime->chatJson($systemPrompt, $instructions, [], 600);
                     if (!empty($resp['success'])) {
                         $parsed = $resp['parsed'] ?? null;
@@ -1192,6 +1205,147 @@ HTMLSCRIPT;
                         }
                     }
                     return response()->json($__st);
+                }
+            }
+
+            // ══ Feature Sprint 2: server-verified AI Image Editing (replace + generate) ══
+            // Reuses the projection `src` field + the existing image-generation pipeline.
+            // WE OWN the response when the model proposed any image action: a verified apply
+            // (actions:[]) or a truthful decline - never the model's unverified reply, never a
+            // browser image mutation. Structured designs + unsupported edits decline safely.
+            if (config('studio_chat_apply.server_apply_image') === true && ($__pilotWs === 0 || $wsId === $__pilotWs)) {
+                $__imgActs = is_array($actions) ? array_values(array_filter($actions, function ($a) {
+                    return is_array($a) && in_array($a['type'] ?? null, ['update_image', 'generate_and_replace_image'], true);
+                })) : [];
+                if (count($__imgActs) > 0) {
+                    $__appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+                    $__trusted = (array) config('studio_chat_apply.image_trusted_hosts', []);
+                    $__sec = new \App\Engines\Studio\Projection\Html\HtmlProjectionSecurityPolicy();
+                    $__urlApproved = function (string $u) use ($__sec, $__appHost, $__trusted): bool {
+                        if (! $__sec->isSafeImageUrl($u)) return false;
+                        if (str_starts_with($u, '/') && ! str_starts_with($u, '//')) return true;
+                        $h = strtolower((string) parse_url($u, PHP_URL_HOST));
+                        return $h !== '' && ($h === $__appHost || in_array($h, $__trusted, true));
+                    };
+                    $__im = ['success' => true, 'reply' => 'I could not update that image.', 'actions' => [], 'server_applied' => false];
+
+                    $__row = \Illuminate\Support\Facades\DB::table('studio_designs')
+                        ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                    $__base = $__row ? (string) ($__row->content_html ?? '') : '';
+                    $__dec = $__row ? json_decode($__base, true) : null;
+                    $__structured = is_array($__dec) && isset($__dec['template_slug']) && isset($__dec['fields']) && is_array($__dec['fields']);
+
+                    // shared: verified src replacement of {field=>url} pairs, atomic + optimistic CAS persist
+                    $__applySrc = function (array $pairs) use ($wsId, $designId, $__row, $__base) {
+                        $adapter = \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base);
+                        $reqs = [];
+                        foreach (array_values($pairs) as $i => $pr) {
+                            $reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                'schema_version' => 1, 'operation_id' => 'chat-img-' . $i, 'document_id' => (string) $designId,
+                                'target_id' => (string) $pr[0], 'changed_fields' => ['src'], 'desired_after_state' => ['src' => (string) $pr[1]],
+                                'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                'correlation_id' => 'chat-img-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                            ]);
+                        }
+                        $batch = new \App\Engines\Studio\Projection\ProjectionBatch('chat-' . $designId, (string) $designId, $reqs,
+                            \App\Engines\Studio\Projection\ProjectionTransactionBoundary::atomic(), null, 'chat-img-' . $designId);
+                        $bres = $adapter->projectBatch($batch);
+                        $ok = ($bres->status === \App\Engines\Studio\Projection\ProjectionStatus::APPLIED) && ($bres->appliedCount() === count($reqs));
+                        if ($ok) { foreach ($bres->results as $rr) { if ((($rr->verification['verified'] ?? false) !== true)) { $ok = false; break; } } }
+                        if (! $ok) { return [false, null]; }
+                        $aff = \Illuminate\Support\Facades\DB::table('studio_designs')
+                            ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')
+                            ->where('updated_at', $__row->updated_at)
+                            ->update(['content_html' => (string) $adapter->payload(), 'updated_at' => now()]);
+                        if ($aff !== 1) { return [false, 'stale']; }
+                        register_shutdown_function(function () use ($designId) {
+                            try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail((int) $designId); } catch (\Throwable $e) {}
+                        });
+                        return [true, $bres];
+                    };
+
+                    try {
+                        if (! $__row) {
+                            $__im['reply'] = 'That design could not be found.';
+                        } elseif (! $r->boolean('client_clean')) {
+                            $__im['reply'] = 'Please save your current edits first, then ask me to change the image.';
+                        } elseif ($__structured) {
+                            $__im['reply'] = 'Image editing is not available for this template type yet, so nothing was changed.';
+                        } else {
+                            $__gen = array_values(array_filter($__imgActs, fn ($a) => ($a['type'] ?? null) === 'generate_and_replace_image'));
+                            $__rep = array_values(array_filter($__imgActs, fn ($a) => ($a['type'] ?? null) === 'update_image'));
+
+                            if (count($__gen) >= 1) {
+                                if (count($__gen) > 1 || count($__rep) > 0) {
+                                    $__im['reply'] = 'I can generate and place one image at a time - please ask for a single image.';
+                                } else {
+                                    $g = $__gen[0];
+                                    $field = (string) ($g['name'] ?? '');
+                                    $prompt2 = trim((string) ($g['prompt'] ?? ''));
+                                    $preAdapter = \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base);
+                                    if ($field === '' || ! $preAdapter->document()->supports($field, 'src')) {
+                                        $__im['reply'] = 'I could not find that image on the design, so I did not generate anything.';
+                                    } elseif ($prompt2 === '') {
+                                        $__im['reply'] = 'Tell me what the image should show and I will generate it.';
+                                    } elseif (! app(\App\Core\Billing\FeatureGateService::class)->canUseAI($wsId)) {
+                                        $__im = ['success' => false, 'reply' => null, 'actions' => [], 'server_applied' => false,
+                                                 'chat_error' => ['code' => 'AI_NOT_IN_PLAN', 'message' => 'Your plan does not include AI image generation.', 'retryable' => false]];
+                                    } else {
+                                        $out = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->generate([
+                                            'source' => 'studio', 'platform' => null, 'asset_type' => 'social_post',
+                                            'workspace_id' => $wsId, 'user_prompt' => $prompt2, 'style' => 'natural',
+                                            'requested_dimensions' => null, 'requested_quality' => 'auto', 'include_text_preference' => 'auto',
+                                        ]);
+                                        if (empty($out['success']) || empty($out['url'])) {
+                                            $__im['reply'] = 'I could not generate that image right now, so nothing was changed.';
+                                        } elseif (! $__urlApproved((string) $out['url'])) {
+                                            $__im['reply'] = 'The generated image is in your Media Library, but I could not safely place it, so nothing on the design changed.';
+                                        } else {
+                                            [$okp, $bres] = $__applySrc([[$field, (string) $out['url']]]);
+                                            if ($okp) {
+                                                $__im = ['success' => true, 'actions' => [], 'server_applied' => true, 'refresh_preview' => true,
+                                                    'reply' => 'Generated a new image and placed it on "' . $field . '" - verified the saved result.',
+                                                    'verified' => ['count' => 1, 'status' => 'applied', 'document_form' => 'raw', 'generated' => true,
+                                                        'asset_id' => $out['asset_id'] ?? null, 'quality' => $out['quality'] ?? null, 'credits' => $out['credits'] ?? null]];
+                                            } else {
+                                                $__im['reply'] = 'I generated the image (it is in your Media Library'
+                                                    . (isset($out['asset_id']) ? ', asset #' . (int) $out['asset_id'] : '')
+                                                    . '), but the design changed while I was working so I did not place it. Please try again.';
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                $pairs = []; $bad = false;
+                                foreach ($__rep as $a) {
+                                    $name = $a['name'] ?? null; $url = $a['url'] ?? null;
+                                    if (! is_string($name) || $name === '' || ! is_string($url) || $url === '') { $bad = true; break; }
+                                    if (! $__urlApproved($url)) { $bad = 'url'; break; }
+                                    $pairs[] = [$name, $url];
+                                }
+                                if ($bad === 'url') {
+                                    $__im['reply'] = 'That image URL is not from an approved source, so I did not change anything. Use a Media Library image or ask me to generate one.';
+                                } elseif ($bad || count($pairs) === 0 || count($pairs) > 12) {
+                                    $__im['reply'] = 'I can replace images with an approved Media Library image or a generated one.';
+                                } else {
+                                    [$okp, $bres] = $__applySrc($pairs);
+                                    if ($okp) {
+                                        $n = count($pairs);
+                                        $__im = ['success' => true, 'actions' => [], 'server_applied' => true, 'refresh_preview' => true,
+                                            'reply' => 'Replaced ' . $n . ' image' . ($n === 1 ? '' : 's') . ' and verified the saved result.',
+                                            'verified' => ['count' => $n, 'status' => 'applied', 'document_form' => 'raw']];
+                                    } else {
+                                        $__im['reply'] = ($bres === 'stale')
+                                            ? 'Your design changed while I was working - please try again.'
+                                            : 'I could not place that image - the target may not exist or is not an image.';
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Throwable $__e) {
+                        \Illuminate\Support\Facades\Log::warning('studio.chat server-apply image failed: ' . $__e->getMessage());
+                    }
+                    return response()->json($__im);
                 }
             }
 

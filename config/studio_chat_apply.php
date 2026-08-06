@@ -20,6 +20,11 @@ return [
     // Feature Sprint 1 — AI Style Editing (set_style). Same default-OFF + workspace scope.
     'server_apply_style' => env('STUDIO_CHAT_SERVER_APPLY_STYLE', false),
 
+    // Feature Sprint 2 - AI Image Editing (replace + generate-and-replace). Default OFF, same ws scope.
+    'server_apply_image' => env('STUDIO_CHAT_SERVER_APPLY_IMAGE', false),
+    // Extra trusted image hosts (comma-separated). Same-origin (app host) + relative URLs are always allowed.
+    'image_trusted_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('STUDIO_CHAT_IMAGE_TRUSTED_HOSTS', ''))))),
+
     // Controlled-pilot scope. 0 => applies to ALL workspaces when the flag
     // is ON (eventual rollout). >0 => the server path is limited to that ONE
     // workspace, so a pilot can never affect other customers.
