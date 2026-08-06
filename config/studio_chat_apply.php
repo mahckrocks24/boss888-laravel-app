@@ -17,6 +17,9 @@
 return [
     'server_apply_text' => env('STUDIO_CHAT_SERVER_APPLY_TEXT', false),
 
+    // Feature Sprint 1 — AI Style Editing (set_style). Same default-OFF + workspace scope.
+    'server_apply_style' => env('STUDIO_CHAT_SERVER_APPLY_STYLE', false),
+
     // Controlled-pilot scope. 0 => applies to ALL workspaces when the flag
     // is ON (eventual rollout). >0 => the server path is limited to that ONE
     // workspace, so a pilot can never affect other customers.

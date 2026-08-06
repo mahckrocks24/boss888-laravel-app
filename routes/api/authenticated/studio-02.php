@@ -913,6 +913,18 @@ HTMLSCRIPT;
                                   . '{"type":"apply_palette","vars":{"--primary":"#...","--bg":"#...","--text":"#...","--accent":"#..."}}, '
                                   . '{"type":"update_image","name":"<existing field>","url":"<absolute url>"}. '
                                   . 'Only reference fields that exist in the provided context. No markdown fences, no prose outside the JSON.';
+                    // Feature Sprint 1: when AI Style Editing is active for this workspace,
+                    // let the model also emit update_style actions (6 committed properties only).
+                    $__saPilotWs = (int) config('studio_chat_apply.pilot_workspace_id');
+                    if (config('studio_chat_apply.server_apply_style') === true && ($__saPilotWs === 0 || $wsId === $__saPilotWs)) {
+                        $__styleClause = ' You may ALSO return style actions to restyle existing fields: '
+                            . '{"type":"update_style","name":"<existing field>","property":"color|background-color|font-size|font-weight|text-align|opacity","value":"<concrete css value>"}. '
+                            . 'Use concrete CSS values: colors as a name or hex (blue, #0000ff); font-size in px (72px; read bigger/smaller as a sensible px); font-weight bold/normal/700; text-align left/center/right; opacity 0 to 1. '
+                            . 'For plural requests (all buttons, every heading, all stats) return one update_style per matching field from the list above. '
+                            . 'Only these 6 properties are supported; for margin, padding, border, radius, shadow, animation or layout, say you cannot do that yet.';
+                        $systemPrompt .= $__styleClause;
+                        $instructions .= $__styleClause;
+                    }
                     $resp = $runtime->chatJson($systemPrompt, $instructions, [], 600);
                     if (!empty($resp['success'])) {
                         $parsed = $resp['parsed'] ?? null;
@@ -1080,6 +1092,107 @@ HTMLSCRIPT;
                     return response()->json($__ic);
                 }
                 // else: fall through to the unchanged legacy response below.
+            }
+
+            // ══ Feature Sprint 1: server-verified AI Style Editing (set_style) ═════════
+            // Exposes the committed set_style capability via chat, reusing Integration 1's
+            // verified-apply flow + the committed ProjectionBatch for plural edits. When the
+            // model proposed ANY update_style action and this workspace is in scope, WE OWN
+            // the response: a verified server apply (actions:[]) or a truthful decline — never
+            // the model's unverified reply, never a browser style mutation. Atomic batch =>
+            // all-or-nothing. Structured templates decline (engine is text-only there).
+            if (config('studio_chat_apply.server_apply_style') === true && ($__pilotWs === 0 || $wsId === $__pilotWs)) {
+                $__hasStyle = is_array($actions) && count(array_filter($actions, function ($a) {
+                    return is_array($a) && (($a['type'] ?? null) === 'update_style');
+                })) > 0;
+                if ($__hasStyle) {
+                    $__props = ['color', 'background-color', 'font-size', 'font-weight', 'text-align', 'opacity'];
+                    $__st = ['success' => true, 'reply' => 'I could not apply that style change.', 'actions' => [], 'server_applied' => false];
+                    $__allStyle = is_array($actions) && count($actions) >= 1 && count($actions) <= 24;
+                    if ($__allStyle) {
+                        foreach ($actions as $a) {
+                            if (!is_array($a) || (($a['type'] ?? null) !== 'update_style')
+                                || !is_string($a['name'] ?? null) || ($a['name'] === '')
+                                || !in_array($a['property'] ?? null, $__props, true)
+                                || !array_key_exists('value', $a)
+                                || !(is_string($a['value']) || is_numeric($a['value']))) { $__allStyle = false; break; }
+                        }
+                    }
+                    if (!$r->boolean('client_clean')) {
+                        $__st['reply'] = 'Please save your current edits first, then ask me to restyle.';
+                    } elseif (!$__allStyle) {
+                        $__st['reply'] = 'I can only change color, background, size, weight, alignment or opacity right now.';
+                    } else {
+                        try {
+                            $__row = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                            if (!$__row) {
+                                $__st['reply'] = 'That design could not be found.';
+                            } else {
+                                $__base = (string) ($__row->content_html ?? '');
+                                $__dec = json_decode($__base, true);
+                                $__structured = is_array($__dec) && isset($__dec['template_slug']) && isset($__dec['fields']) && is_array($__dec['fields']);
+                                if ($__structured) {
+                                    $__st['reply'] = 'Styling is not available for this template type yet, so nothing was changed.';
+                                } else {
+                                    $__adapter = \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base);
+                                    $__reqs = [];
+                                    foreach (array_values($actions) as $__i => $a) {
+                                        $__p = 'style.' . $a['property'];
+                                        $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                            'schema_version' => 1, 'operation_id' => 'chat-style-' . $__i, 'document_id' => (string) $designId,
+                                            'target_id' => (string) $a['name'], 'changed_fields' => [$__p],
+                                            'desired_after_state' => [$__p => (string) $a['value']],
+                                            'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                            'correlation_id' => 'chat-style-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                                        ]);
+                                    }
+                                    $__batch = new \App\Engines\Studio\Projection\ProjectionBatch(
+                                        'chat-' . $designId, (string) $designId, $__reqs,
+                                        \App\Engines\Studio\Projection\ProjectionTransactionBoundary::atomic(), null, 'chat-style-' . $designId
+                                    );
+                                    $__bres = $__adapter->projectBatch($__batch);
+                                    $__allok = ($__bres->status === \App\Engines\Studio\Projection\ProjectionStatus::APPLIED)
+                                        && ($__bres->appliedCount() === count($__reqs));
+                                    if ($__allok) {
+                                        foreach ($__bres->results as $__rr) {
+                                            if ((($__rr->verification['verified'] ?? false) !== true)) { $__allok = false; break; }
+                                        }
+                                    }
+                                    if ($__allok) {
+                                        $__store = (string) $__adapter->payload();
+                                        $__aff = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                            ->where('id', $designId)->where('workspace_id', $wsId)
+                                            ->whereNull('deleted_at')->where('updated_at', $__row->updated_at)
+                                            ->update(['content_html' => $__store, 'updated_at' => now()]);
+                                        if ($__aff === 1) {
+                                            register_shutdown_function(function () use ($designId) {
+                                                try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail((int) $designId); }
+                                                catch (\Throwable $e) {}
+                                            });
+                                            $__n = count($__reqs);
+                                            $__st = [
+                                                'success' => true,
+                                                'reply' => 'Applied and verified ' . $__n . ' style change' . ($__n === 1 ? '' : 's') . '.',
+                                                'actions' => [],
+                                                'server_applied' => true,
+                                                'refresh_preview' => true,
+                                                'verified' => ['count' => $__n, 'status' => $__bres->status, 'document_form' => 'raw'],
+                                            ];
+                                        } else {
+                                            $__st['reply'] = 'Your design changed while I was working - please try again.';
+                                        }
+                                    } else {
+                                        $__st['reply'] = 'I could not apply that style - the target may not exist or the value was not valid.';
+                                    }
+                                }
+                            }
+                        } catch (\Throwable $__e) {
+                            \Illuminate\Support\Facades\Log::warning('studio.chat server-apply style failed: ' . $__e->getMessage());
+                        }
+                    }
+                    return response()->json($__st);
+                }
             }
 
             return response()->json([
