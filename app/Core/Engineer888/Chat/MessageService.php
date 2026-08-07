@@ -3,8 +3,10 @@
 namespace App\Core\Engineer888\Chat;
 
 use App\Core\Engineer888\Access\Engineer888Capability as Cap;
+use App\Jobs\Engineer888WorkflowJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -72,7 +74,11 @@ final class MessageService
         $conversation = $this->conversations->byUuid($request, $conversationUuid);
         $routed = $this->router->route($body);
 
-        return DB::transaction(function () use ($request, $conversation, $body, $routed) {
+        // The task whose workflow must be started once this commits. Set inside
+        // the transaction, acted on strictly after it.
+        $pendingDispatch = null;
+
+        $result = DB::transaction(function () use ($request, $conversation, $body, $routed, &$pendingDispatch) {
             $userMessageId = $this->insert($conversation, 'user', $body, $routed['intent']);
 
             // High-risk text is answered, never obeyed.
@@ -95,6 +101,10 @@ final class MessageService
 
             [$reply, $meta, $taskUuid] = $this->answer($request, $conversation, $routed['intent'], $body);
 
+            if (($meta['kind'] ?? null) === 'task_created' && $taskUuid !== null) {
+                $pendingDispatch = $taskUuid;
+            }
+
             $replyId = $this->insert($conversation, 'engineer888', $reply, $routed['intent'], $meta, $taskUuid);
             $this->touch($conversation);
 
@@ -105,6 +115,16 @@ final class MessageService
                 'cards' => [],
             ];
         });
+
+        // ── AFTER THE TRANSACTION ────────────────────────────────────────
+        // The job is pushed only once the task row is durable. Pushing inside
+        // the transaction lets a worker claim a task that is not visible yet,
+        // and the run dies on a task that "does not exist".
+        if ($pendingDispatch !== null) {
+            $this->dispatchQueuedWorkflow($conversation, $pendingDispatch);
+        }
+
+        return $result;
     }
 
     /**
@@ -199,16 +219,33 @@ final class MessageService
             return ['I could not create the task; the engine returned no identifier.', ['kind' => 'error'], null];
         }
 
+        // START THE ACTUAL WORKFLOW.
+        //
+        // INC-TASK_CREATED_WITHOUT_WORKFLOW_EXECUTION (2026-08-07). Until this
+        // line existed, chat created a task, said "Current stage: ANALYZE" and
+        // dispatched nothing. Tasks sat at `received` with zero stage rows for
+        // days while the conversation claimed work was under way.
+        //
+        // This is the SAME dispatch the Command Center performs
+        // (Engineer888Controller::execute) — one job, one workflow, one domain
+        // path. No parallel lifecycle is introduced here.
+        $queued = $this->queueWorkflow($conversation, $uuid);
+
         // Read back rather than trusting what was passed in.
         $row = DB::table('engineering_tasks')->where('uuid', $uuid)->first();
 
+        // EVERY LINE BELOW IS READ FROM A RECORD. There is no narration, no
+        // default stage and no description of activity that is not proven by
+        // persisted state. Silence is better than fabricated progress.
         $text = "Task created.\n\n"
             . "Project:\n{$project->name}\n\n"
-            . "Current stage:\n" . strtoupper((string) ($row->current_stage ?? 'ANALYZE')) . "\n\n"
-            . "What I am doing:\nTracing the request through its execution chain before proposing any change.\n\n"
+            . "Status:\n" . $this->statusOf($row) . "\n\n"
+            . $this->stageLine($row)
             . "Writes made:\nNone\n\n"
             . "Approval required:\nNot yet\n\n"
-            . "I will return when the chain is proven or blocked.";
+            . ($queued
+                ? "The workflow is queued. I will report only what it records."
+                : "The workflow was NOT started, so no engineering work is running.");
 
         // The project is recorded on the message as well as on the task. A card
         // rendered tomorrow shows the project the work was FILED against, even
@@ -222,20 +259,151 @@ final class MessageService
         ], $uuid];
     }
 
+    /**
+     * Hand the task to the existing workflow queue.
+     *
+     * AFTER COMMIT, NOT INSIDE IT. post() wraps this whole path in a
+     * transaction. A job pushed inside it can be picked up by a worker before
+     * the task row is visible, and the worker then fails on a task that does
+     * not exist yet. ->afterCommit() defers the push to the moment the data is
+     * durable, which is the same guarantee the Command Center gets by
+     * dispatching outside any transaction.
+     *
+     * TRUTHFUL ON FAILURE. If the push throws once the commit has happened, the
+     * status is put back to `received` and a message says so. The alternative —
+     * leaving `queued` behind with nothing queued — is the defect this method
+     * exists to remove, in a new costume.
+     *
+     * @return bool whether the task is now genuinely queued
+     */
+    private function queueWorkflow(object $conversation, string $taskUuid): bool
+    {
+        // Recorded before the push so the state a worker sees is never behind
+        // the job. Guarded on `received` so it cannot overwrite a workflow that
+        // has already moved the task on.
+        return DB::table('engineering_tasks')
+            ->where('uuid', $taskUuid)->where('status', 'received')
+            ->update(['status' => 'queued', 'updated_at' => now()]) === 1;
+    }
+
+    /**
+     * Push the job, once the task is durable.
+     *
+     * TRUTHFUL ON FAILURE. If the push throws, the status goes back to
+     * `received` and a message says so. Leaving `queued` behind with nothing
+     * queued would be the same defect this repair removes, in a new costume.
+     */
+    private function dispatchQueuedWorkflow(object $conversation, string $taskUuid): void
+    {
+        try {
+            Engineer888WorkflowJob::dispatch($taskUuid, false, 'chat:' . ChatOwner::USER_ID);
+        } catch (\Throwable $e) {
+            DB::table('engineering_tasks')
+                ->where('uuid', $taskUuid)->where('status', 'queued')
+                ->update(['status' => 'received', 'updated_at' => now()]);
+
+            // Auditable, carrying no payload or secret.
+            Log::error('engineer888.chat.dispatch_failed', [
+                'task' => $taskUuid,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->insert($conversation, 'engineer888',
+                "Workflow dispatch failed, so no engineering work is running.\n\n"
+                . "The task is kept and can be started again.",
+                'create_task', ['kind' => 'dispatch_failed'], $taskUuid);
+        }
+    }
+
+    /**
+     * The one mapping from persisted engineering state to a word.
+     *
+     * NOTHING HERE GUESSES. Every branch is decided by a record: the task row,
+     * a stage row, or a candidate awaiting a decision. A task that exists but
+     * has never run is RECEIVED — it is not ANALYZE, and it is not "working".
+     */
+    private function statusOf(?object $row): string
+    {
+        if ($row === null) { return 'RECEIVED'; }
+
+        $status = strtolower((string) $row->status);
+
+        if ($status === 'completed') { return 'COMPLETED'; }
+        if (str_contains($status, 'failed')) { return 'FAILED'; }
+        if ($status === 'blocked') { return 'BLOCKED'; }
+
+        // A validated candidate with no live decision is waiting on a human.
+        $awaiting = DB::table('engineering_candidates as c')
+            ->leftJoin('engineering_candidate_approvals as a', function ($j) {
+                $j->on('a.candidate_id', '=', 'c.id')
+                  ->whereNull('a.revoked_at')->whereNull('a.superseded_at');
+            })
+            ->where('c.task_id', $row->id)
+            ->whereNull('c.superseded_at')
+            ->where('c.status', 'VALIDATED')
+            ->whereNull('a.id')
+            ->exists();
+
+        if ($awaiting) { return 'AWAITING_APPROVAL'; }
+
+        if ($status === 'running') { return 'RUNNING'; }
+        if ($status === 'queued') { return 'QUEUED'; }
+
+        // A stage row is the only proof that engineering actually ran.
+        if (DB::table('engineering_task_stages')->where('task_id', $row->id)->exists()) {
+            return 'RUNNING';
+        }
+
+        return 'RECEIVED';
+    }
+
+    /**
+     * The stage line, printed only when a stage row proves the stage.
+     *
+     * `engineering_tasks.current_stage` is written by the workflow, but a name
+     * in that column with no matching stage row is an assertion without
+     * evidence, so it is not repeated to the reader.
+     */
+    private function stageLine(?object $row): string
+    {
+        $stage = $row === null ? '' : trim((string) ($row->current_stage ?? ''));
+
+        if ($stage === '') {
+            return "Current stage:\nnone recorded\n\n";
+        }
+
+        $proved = DB::table('engineering_task_stages')
+            ->where('task_id', $row->id)
+            ->whereRaw('UPPER(stage) = ?', [strtoupper($stage)])
+            ->exists();
+
+        return $proved
+            ? "Current stage:\n" . strtoupper($stage) . "\n\n"
+            : "Current stage:\nnone recorded\n\n";
+    }
+
     /** Status, always read fresh from the engineering records. */
     private function statusSummary(): string
     {
         $rows = DB::table('engineering_tasks')->orderByDesc('id')->limit(5)
-            ->get(['uuid', 'title', 'current_stage', 'status']);
+            ->get(['id', 'uuid', 'title', 'current_stage', 'status']);
 
         if ($rows->isEmpty()) {
             return 'There are no engineering tasks yet.';
         }
 
+        // The same truthful mapping the task-created reply uses. A blank stage
+        // reads as "no stage recorded", never as an empty word beside a status
+        // that implies something is happening.
         $lines = $rows->map(function ($t) {
+            $stage = trim((string) ($t->current_stage ?? ''));
+            $proved = $stage !== '' && DB::table('engineering_task_stages')
+                ->where('task_id', $t->id)
+                ->whereRaw('UPPER(stage) = ?', [strtoupper($stage)])->exists();
+
             return '• ' . Str::limit($t->title, 60)
-                . "\n  stage " . strtoupper((string) $t->current_stage)
-                . ' · status ' . $t->status
+                . "\n  " . $this->statusOf($t)
+                . ' · stage ' . ($proved ? strtoupper($stage) : 'none recorded')
                 . "\n  " . substr($t->uuid, 0, 8);
         })->implode("\n\n");
 
