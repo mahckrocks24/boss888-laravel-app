@@ -123,6 +123,23 @@ final class ReasoningRequest
             $out[] = 'content to exactly COMPLETE_FILE_OUTPUT_UNAVAILABLE and explain why in';
             $out[] = 'its rationale. An honest refusal is usable; an improvised fragment is not.';
         }
+        if (($this->sections['verified_tests'] ?? []) !== []) {
+            $out[] = '';
+            $out[] = '# CITING EXISTING TESTS';
+            $out[] = 'The VERIFIED EXISTING TESTS section above is the complete list of test';
+            $out[] = 'files that exist here and relate to these targets.';
+            $out[] = '';
+            $out[] = 'test_coverage.existing_tests may contain ONLY paths from that list.';
+            $out[] = 'DO NOT invent an existing test path.';
+            $out[] = 'DO NOT claim a file that does not exist already covers this behaviour.';
+            $out[] = 'If none of them covers it, say so and propose a NEW test instead:';
+            $out[] = 'put the new test in file_changes with action create, and list it in';
+            $out[] = 'test_coverage.test_files_proposed — never in existing_tests.';
+            $out[] = 'Where the contract permits uncertainty, UNKNOWN is a valid answer and';
+            $out[] = 'is never a filename. Saying there is no coverage yet is more useful';
+            $out[] = 'than naming a file that is not there.';
+        }
+
         $out[] = '';
         $out[] = '# REQUIRED OUTPUT';
         $out[] = 'Return a single JSON object with exactly these keys. Any value you cannot';

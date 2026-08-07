@@ -242,6 +242,110 @@ class SourceGroundingTest extends TestCase
             'the model must actually receive the bytes it is asked to reproduce');
     }
 
+    // ── verified test inventory ──────────────────────────────────────
+
+    private function seedTests(): void
+    {
+        mkdir($this->repo . '/tests/Feature', 0777, true);
+        file_put_contents($this->repo . '/tests/Feature/WidgetTest.php',
+            "<?php\n// covers Widget\nclass WidgetTest {}\n");
+        file_put_contents($this->repo . '/tests/Feature/UnrelatedTest.php',
+            "<?php\nclass UnrelatedTest {}\n");
+    }
+
+    public function test_a_real_related_test_is_surfaced(): void
+    {
+        $this->seedTests();
+        $inv = $this->grounding()->testInventoryFor(['app/Core/Widget.php']);
+
+        $this->assertContains('tests/Feature/WidgetTest.php', $inv['tests']);
+        $this->assertStringContainsString('tests/Feature/WidgetTest.php', $inv['items'][0]['body']);
+    }
+
+    public function test_unrelated_tests_are_not_dumped_into_context(): void
+    {
+        $this->seedTests();
+        $inv = $this->grounding()->testInventoryFor(['app/Core/Widget.php']);
+
+        $this->assertNotContains('tests/Feature/UnrelatedTest.php', $inv['tests'],
+            'the whole suite is never poured into the prompt');
+    }
+
+    public function test_a_nonexistent_test_path_is_never_in_the_inventory(): void
+    {
+        $this->seedTests();
+        $inv = $this->grounding()->testInventoryFor(['app/Core/Widget.php']);
+
+        $this->assertNotContains('tests/Feature/Engineer888/ValidationTest.php', $inv['tests'],
+            'the exact path the model invented on 2026-08-07');
+    }
+
+    public function test_an_invented_existing_test_path_is_not_verified(): void
+    {
+        $this->seedTests();
+        $g = $this->grounding();
+
+        $this->assertTrue($g->isVerifiedTestPath('tests/Feature/WidgetTest.php'));
+        $this->assertFalse($g->isVerifiedTestPath('tests/Feature/Engineer888/ValidationTest.php'));
+    }
+
+    public function test_unknown_is_not_treated_as_a_path(): void
+    {
+        $this->assertFalse($this->grounding()->isVerifiedTestPath('UNKNOWN'));
+    }
+
+    public function test_a_path_outside_tests_is_not_an_existing_test(): void
+    {
+        $this->seedTests();
+
+        $this->assertFalse($this->grounding()->isVerifiedTestPath('app/Core/Widget.php'));
+        $this->assertFalse($this->grounding()->isVerifiedTestPath('../etc/passwd'));
+        $this->assertFalse($this->grounding()->isVerifiedTestPath('tests/../app/Core/Widget.php'));
+    }
+
+    public function test_a_proposed_new_test_need_not_exist_yet(): void
+    {
+        // A CREATE target is grounded as empty rather than refused, so a new
+        // regression test can be proposed without pretending it already exists.
+        // The directory must exist: a new file in a directory that is not there
+        // is refused, which is why this seeds tests/ first.
+        $this->seedTests();
+
+        $out = $this->grounding()->forFilesAffected([
+            ['path' => 'tests/Feature/BladeValidationTest.php', 'action' => 'create'],
+        ]);
+
+        $this->assertCount(1, $out['items']);
+        $this->assertFalse($out['grounded'][0]['exists']);
+        $this->assertFalse($this->grounding()->isVerifiedTestPath('tests/Feature/BladeValidationTest.php'),
+            'proposing it is not the same as it already covering the behaviour');
+    }
+
+    public function test_the_prompt_forbids_inventing_existing_tests(): void
+    {
+        $this->seedTests();
+        $items = array_merge(
+            $this->grounding()->forFilesAffected([['path' => 'app/Core/Widget.php', 'action' => 'update']])['items'],
+            $this->grounding()->testInventoryFor(['app/Core/Widget.php'])['items']
+        );
+
+        $project = (object) ['id' => 1, 'company' => 'LevelUp', 'name' => 'Fixture', 'key' => 'fixture',
+                             'repository_path' => $this->repo, 'phpunit_config' => 'phpunit.e888.xml',
+                             'test_database' => 'levelup_e888_test', 'deploy_command' => null, 'branch' => null];
+        $task = (object) ['uuid' => 'u', 'title' => 'Fix', 'description' => 'd', 'kind' => 'bug',
+                          'priority' => 'normal', 'acceptance_criteria' => '[]', 'constraints' => '[]',
+                          'modules' => '[]', 'id' => 1];
+
+        $text = (new ContextBuilder(new KnowledgeBase($this->repo), 60000, 6, 1))
+            ->build($project, $task, $items)->renderText();
+
+        $this->assertStringContainsString('VERIFIED EXISTING TESTS', $text);
+        $this->assertStringContainsString('tests/Feature/WidgetTest.php', $text);
+        $this->assertStringContainsString('DO NOT invent an existing test path', $text);
+        $this->assertStringContainsString('never in existing_tests', $text);
+        $this->assertStringContainsString('UNKNOWN is a valid answer', $text);
+    }
+
     // ── the whole-file mandate ───────────────────────────────────────
 
     /** @return string the rendered prompt for one grounded update target */

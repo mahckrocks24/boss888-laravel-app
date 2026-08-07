@@ -140,7 +140,12 @@ final class ReasoningEngine
         }
 
         if ($ground['items'] !== []) {
-            $groundedRequest = $this->buildRequest($project, $task, $revision, $ground['items']);
+            // The real tests that touch these targets, so "existing
+            // coverage" can be cited instead of imagined.
+            $inventory = $grounding->testInventoryFor(array_column($ground['grounded'], 'path'));
+
+            $groundedRequest = $this->buildRequest($project, $task, $revision,
+                array_merge($ground['items'], $inventory['items']));
             $groundedResponse = $provider->propose($groundedRequest);
 
             // A failed second call leaves the first answer standing, which the

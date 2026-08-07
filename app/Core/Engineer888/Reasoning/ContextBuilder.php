@@ -80,7 +80,7 @@ final class ContextBuilder
         // vocabulary could drop the very correction the revision exists to make.
         // grounded_source leads: it is the exact bytes the proposal must
         // reproduce, so a summary is dropped long before a target file is.
-        $always = ['grounded_source', 'ownership_boundaries', 'test_constraints',
+        $always = ['grounded_source', 'verified_tests', 'ownership_boundaries', 'test_constraints',
                    'deployment_constraints', 'code_surface', 'revision_instruction'];
         $pool = array_merge(
             $pool,

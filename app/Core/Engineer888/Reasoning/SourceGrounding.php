@@ -232,4 +232,96 @@ final class SourceGrounding
 
         return ['ok' => true, 'reason' => null, 'real' => $real, 'exists' => true];
     }
+    /** The context section the verified test inventory is filed under. */
+    public const TESTS_SECTION = 'verified_tests';
+
+    /**
+     * The tests that genuinely exist and genuinely relate to these targets.
+     *
+     * WHY THIS EXISTS. Grounding the source stopped the model inventing file
+     * contents; it kept inventing coverage. On 2026-08-07 a structurally
+     * perfect candidate was rejected because it claimed
+     * tests/Feature/Engineer888/ValidationTest.php already covered the change.
+     * No such file exists. CandidateValidator's invented_coverage rule caught
+     * it, correctly — the rule was never the problem, the evidence was.
+     *
+     * So the model is handed the real list and told it may cite nothing else.
+     * Selection is deterministic: a test is relevant when it mentions the
+     * target's class name. No scoring, no guessing, and never the whole suite.
+     *
+     * @param  array<int,string> $targetPaths verified implementation targets
+     * @return array{items:array,tests:array}
+     */
+    public function testInventoryFor(array $targetPaths, int $limit = 12): array
+    {
+        $root = realpath($this->repoPath);
+        if ($root === false || ! is_dir($root . '/tests')) {
+            return ['items' => [], 'tests' => []];
+        }
+
+        $needles = [];
+        foreach ($targetPaths as $p) {
+            $base = pathinfo((string) $p, PATHINFO_FILENAME);
+            if ($base !== '') { $needles[] = $base; }
+        }
+        if ($needles === []) { return ['items' => [], 'tests' => []]; }
+
+        $tests = [];
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($root . '/tests', \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($it as $file) {
+            if (count($tests) >= $limit) { break; }
+            if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.php')) { continue; }
+
+            $real = realpath($file->getPathname());
+            if ($real === false || ! str_starts_with($real, $root . '/tests/')) { continue; }
+
+            $body = @file_get_contents($real);
+            if ($body === false) { continue; }
+
+            foreach ($needles as $needle) {
+                if (str_contains($body, $needle)) {
+                    $tests[] = substr($real, strlen($root) + 1);
+                    break;
+                }
+            }
+        }
+
+        sort($tests);
+
+        if ($tests === []) { return ['items' => [], 'tests' => []]; }
+
+        return [
+            'tests' => $tests,
+            'items' => [[
+                'section' => self::TESTS_SECTION,
+                'label'   => 'VERIFIED EXISTING TESTS (' . count($tests) . ')',
+                'body'    => "\n- " . implode("\n- ", $tests),
+            ]],
+        ];
+    }
+
+    /**
+     * Does this path name a test file that really exists here?
+     *
+     * The same containment rules as source: inside the repository, inside
+     * tests/, a real file, no traversal, no symlink escape.
+     */
+    public function isVerifiedTestPath(string $path): bool
+    {
+        if ($path === '' || $path !== ltrim($path, '/')) { return false; }
+        if (preg_match('#(^|/)\.\.(/|$)#', $path)) { return false; }
+        if (! str_starts_with($path, 'tests/')) { return false; }
+
+        $root = realpath($this->repoPath);
+        if ($root === false) { return false; }
+
+        $real = realpath($root . '/' . $path);
+
+        return $real !== false
+            && str_starts_with($real, $root . '/tests/')
+            && is_file($real);
+    }
 }
