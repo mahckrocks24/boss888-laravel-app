@@ -242,6 +242,90 @@ class SourceGroundingTest extends TestCase
             'the model must actually receive the bytes it is asked to reproduce');
     }
 
+    // ── the whole-file mandate ───────────────────────────────────────
+
+    /** @return string the rendered prompt for one grounded update target */
+    private function promptFor(string $path, string $action = 'update'): string
+    {
+        $project = (object) ['id' => 1, 'company' => 'LevelUp', 'name' => 'Fixture',
+                             'key' => 'fixture', 'repository_path' => $this->repo,
+                             'phpunit_config' => 'phpunit.e888.xml',
+                             'test_database' => 'levelup_e888_test',
+                             'deploy_command' => null, 'branch' => null];
+        $task = (object) ['uuid' => 'u', 'title' => 'Fix the widget', 'description' => 'broken',
+                          'kind' => 'bug', 'priority' => 'normal', 'acceptance_criteria' => '[]',
+                          'constraints' => '[]', 'modules' => '[]', 'id' => 1];
+
+        $items = $this->grounding()->forFilesAffected([
+            ['path' => $path, 'action' => $action],
+        ])['items'];
+
+        return (new ContextBuilder(new KnowledgeBase($this->repo), 60000, 6, 1))
+            ->build($project, $task, $items)->renderText();
+    }
+
+    public function test_the_prompt_demands_the_complete_final_file(): void
+    {
+        $text = $this->promptFor('app/Core/Widget.php');
+
+        $this->assertStringContainsString('COMPLETE FINAL FILE CONTENT', $text);
+        $this->assertStringContainsString('app/Core/Widget.php', $text);
+    }
+
+    public function test_the_prompt_forbids_prose_diffs_and_placeholders(): void
+    {
+        $text = $this->promptFor('app/Core/Widget.php');
+
+        $this->assertStringContainsString('DO NOT return prose', $text);
+        $this->assertStringContainsString('DO NOT return a diff', $text);
+        $this->assertStringContainsString('...existing code...', $text);
+        $this->assertStringContainsString('rest unchanged', $text);
+        $this->assertStringContainsString('DO NOT describe the change', $text);
+    }
+
+    public function test_the_prompt_requires_unchanged_lines_to_be_reproduced(): void
+    {
+        $text = $this->promptFor('app/Core/Widget.php');
+
+        $this->assertStringContainsString('reproduce every unchanged portion', $text);
+        $this->assertStringContainsString('DO NOT omit unchanged lines', $text);
+    }
+
+    public function test_the_mandate_offers_an_honest_refusal_instead_of_a_fragment(): void
+    {
+        $this->assertStringContainsString('COMPLETE_FILE_OUTPUT_UNAVAILABLE',
+            $this->promptFor('app/Core/Widget.php'));
+    }
+
+    public function test_the_mandate_appears_immediately_before_the_output_schema(): void
+    {
+        $text = $this->promptFor('app/Core/Widget.php');
+
+        $mandate = strpos($text, '# COMPLETE FILE OUTPUT IS REQUIRED');
+        $schema  = strpos($text, '# REQUIRED OUTPUT');
+
+        $this->assertNotFalse($mandate);
+        $this->assertNotFalse($schema);
+        $this->assertLessThan($schema, $mandate, 'the mandate must be the last thing read before the schema');
+    }
+
+    public function test_a_create_only_target_gets_no_existing_file_mandate(): void
+    {
+        $text = $this->promptFor('app/Core/Fresh.php', 'create');
+
+        $this->assertStringNotContainsString('# COMPLETE FILE OUTPUT IS REQUIRED', $text,
+            'a new file has no current bytes to reproduce; its behaviour is unchanged');
+    }
+
+    public function test_fingerprinting_is_unchanged_and_stable(): void
+    {
+        $a = $this->promptFor('app/Core/Widget.php');
+        $b = $this->promptFor('app/Core/Widget.php');
+
+        $this->assertSame(hash('sha256', $a), hash('sha256', $b),
+            'the same inputs must render the same prompt');
+    }
+
     // ── the contract and the validator are unchanged ─────────────────
 
     public function test_the_contract_still_demands_the_complete_file(): void

@@ -76,6 +76,53 @@ final class ReasoningRequest
             }
         }
 
+        // ── THE WHOLE-FILE MANDATE ───────────────────────────────────────
+        //
+        // Placed here, immediately before the response schema, because that is
+        // the last thing the model reads. On 2026-08-07 the complete 13,520
+        // bytes of CandidateValidator.php were supplied and gpt-4o still
+        // answered with 107 bytes of prose describing the change — with 6,700
+        // completion tokens still unused. It was not truncated and it was not
+        // short of context. It simply had not been told, in the place it would
+        // act on, that the file itself was the required answer.
+        //
+        // Only files that already exist are named. A create target has no
+        // current bytes to reproduce, and its behaviour is unchanged.
+        $existingTargets = [];
+
+        foreach (($this->sections['grounded_source'] ?? []) as $item) {
+            $label = (string) ($item['label'] ?? '');
+            if (str_contains($label, 'does not exist yet')) { continue; }
+            if (preg_match('/^FILE (\S+) /', $label, $m)) { $existingTargets[] = $m[1]; }
+        }
+
+        if ($existingTargets !== []) {
+            $out[] = '';
+            $out[] = '# COMPLETE FILE OUTPUT IS REQUIRED';
+            $out[] = 'YOU HAVE BEEN GIVEN THE COMPLETE CURRENT CONTENTS OF THESE FILES:';
+            foreach ($existingTargets as $path) { $out[] = '- ' . $path; }
+            $out[] = '';
+            $out[] = 'YOUR OUTPUT FOR EACH OF THEM MUST BE THE COMPLETE FINAL FILE CONTENT.';
+            $out[] = '';
+            $out[] = 'DO NOT describe the change.';
+            $out[] = 'DO NOT summarize the change.';
+            $out[] = 'DO NOT return instructions.';
+            $out[] = 'DO NOT return a diff or a patch.';
+            $out[] = 'DO NOT omit unchanged lines.';
+            $out[] = 'DO NOT use placeholders such as "...existing code..." or "rest unchanged".';
+            $out[] = 'DO NOT return only the changed function.';
+            $out[] = 'DO NOT return prose in the content field.';
+            $out[] = '';
+            $out[] = 'YOU MUST reproduce every unchanged portion of the file verbatim.';
+            $out[] = 'YOU MUST incorporate the requested modification.';
+            $out[] = 'YOU MUST return syntactically complete final source.';
+            $out[] = 'The content you return replaces the file byte for byte, so a partial';
+            $out[] = 'answer does not produce a smaller change — it produces a broken file.';
+            $out[] = '';
+            $out[] = 'If you cannot produce the complete file, set that file_changes entry\'s';
+            $out[] = 'content to exactly COMPLETE_FILE_OUTPUT_UNAVAILABLE and explain why in';
+            $out[] = 'its rationale. An honest refusal is usable; an improvised fragment is not.';
+        }
         $out[] = '';
         $out[] = '# REQUIRED OUTPUT';
         $out[] = 'Return a single JSON object with exactly these keys. Any value you cannot';
