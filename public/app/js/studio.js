@@ -877,6 +877,7 @@
             '<div class="st-tab" data-tab="images" onclick="_studioSwitchTab(\'images\')">Images</div>' +
             '<div class="st-tab" data-tab="colors" onclick="_studioSwitchTab(\'colors\')">Colors</div>' +
             '<div class="st-tab" data-tab="export" onclick="_studioSwitchTab(\'export\')">Export</div>' +
+            '<div class="st-tab" data-tab="production" onclick="_studioSwitchTab(\'production\')">⚙ Production</div>' +
           '</div>' +
           '<div class="st-tab-body" id="st-tab-body"><div class="st-empty">Loading\u2026</div></div>' +
         '</div>' +
@@ -1164,9 +1165,166 @@
     else if (tab === 'images') _renderImagesTab(body);
     else if (tab === 'colors') _renderColorsTab(body);
     else if (tab === 'export') _renderExportTab(body);
+    else if (tab === 'production') _renderProductionTab(body);
   };
 
   // ── Layers tab (P5b: order; P5c adds lock/visibility) ────────
+  // ── STUDIO888 Production Phase 1B: read-only image production log (jobs / compare / lineage) ──
+  // Renders the media-production jobs already recorded in creative_jobs via GET /studio/production/jobs
+  // (dormant behind the production_log flag → this tab shows an unavailable state when OFF). READ-ONLY:
+  // no mutation, no accept/dismiss (no canonical acceptance state exists — see report). Truthful status
+  // only (no fabricated progress). Compare uses the job's real parent(before)/output(after) assets;
+  // lineage reuses GET /creative/assets/{id}/versions. Future video jobs appear here unchanged (the list
+  // is driven by the stored capability/status, not hardcoded to images).
+  var _prodJobs = [];
+  function _prodInjectCss(){
+    if (document.getElementById('st-prod-css')) return;
+    var s = document.createElement('style'); s.id = 'st-prod-css';
+    s.textContent =
+      '.st-prod-filters{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}' +
+      '.st-prod-chip{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.75);font:600 11px/1 inherit;padding:6px 10px;border-radius:999px;cursor:pointer}' +
+      '.st-prod-chip.active{background:#6C5CE7;border-color:#6C5CE7;color:#fff}' +
+      '.st-prod-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;margin-bottom:10px}' +
+      '.st-prod-row{display:flex;align-items:center;justify-content:space-between;gap:8px}' +
+      '.st-prod-cap{font:600 13px/1.2 inherit;color:#fff}' +
+      '.st-prod-status{font:600 10px/1 inherit;text-transform:uppercase;letter-spacing:1px;padding:4px 8px;border-radius:999px}' +
+      '.st-prod-status.completed{background:rgba(0,200,120,0.16);color:#4ade80}' +
+      '.st-prod-status.failed{background:rgba(255,80,80,0.16);color:#f87171}' +
+      '.st-prod-status.running{background:rgba(255,190,0,0.16);color:#fbbf24}' +
+      '.st-prod-status.queued{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7)}' +
+      '.st-prod-sub{font-size:11px;color:rgba(255,255,255,0.55);margin-top:4px}' +
+      '.st-prod-when{font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px}' +
+      '.st-prod-thumbs{display:flex;gap:8px;margin-top:10px}' +
+      '.st-prod-thumb{flex:1;text-align:center}' +
+      '.st-prod-thumb span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);margin-bottom:3px}' +
+      '.st-prod-thumb img{width:100%;height:72px;object-fit:cover;border-radius:6px;background:#111;border:1px solid rgba(255,255,255,0.08)}' +
+      '.st-prod-err{margin-top:8px;font-size:11px;color:#f87171;background:rgba(255,80,80,0.08);border-radius:6px;padding:6px 8px;word-break:break-word}' +
+      '.st-prod-actions{display:flex;gap:6px;margin-top:10px}' +
+      '.st-prod-actions button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);color:rgba(255,255,255,0.8);font:600 11px/1 inherit;padding:6px 10px;border-radius:6px;cursor:pointer}' +
+      '.st-prod-actions button:hover{background:rgba(108,92,231,0.25);border-color:#6C5CE7}' +
+      '.st-prod-ov{position:fixed;inset:0;background:rgba(6,6,12,0.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px}' +
+      '.st-prod-ov-inner{background:#14141c;border:1px solid rgba(255,255,255,0.12);border-radius:14px;max-width:900px;width:100%;max-height:88vh;overflow:auto;padding:20px}' +
+      '.st-prod-ov-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}' +
+      '.st-prod-ov-head b{font-size:15px;color:#fff}' +
+      '.st-prod-ov-close{background:rgba(255,255,255,0.08);border:0;color:#fff;font-size:16px;width:32px;height:32px;border-radius:8px;cursor:pointer}' +
+      '.st-prod-cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px}' +
+      '.st-prod-cmp figure{margin:0}' +
+      '.st-prod-cmp figcaption{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.5);margin-bottom:6px}' +
+      '.st-prod-cmp img{width:100%;border-radius:8px;background:#111;border:1px solid rgba(255,255,255,0.1)}' +
+      '.st-prod-lin{list-style:none;margin:0;padding:0}' +
+      '.st-prod-lin li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)}' +
+      '.st-prod-lin img{width:64px;height:48px;object-fit:cover;border-radius:6px;background:#111;border:1px solid rgba(255,255,255,0.1)}' +
+      '.st-prod-lin .v{font:600 12px/1.3 inherit;color:#fff}' +
+      '.st-prod-lin .m{font-size:11px;color:rgba(255,255,255,0.55)}';
+    document.head.appendChild(s);
+  }
+  function _prodCapLabel(j){
+    var c = j.capability || '';
+    if (c === 'image_intelligence' || c === 'generate_image') return 'Image Generated';
+    if (c === 'generate_video') return 'Video Generated';
+    if (c === 'edit_image') {
+      var p = (j.prompt || '').toLowerCase();
+      if (p.indexOf('background') >= 0) return 'Background Changed';
+      if (p.indexOf('remove ') >= 0) return 'Object Removed';
+      if (p.indexOf('replace ') >= 0) return 'Object Replaced';
+      return 'Image Edited';
+    }
+    return c ? c.replace(/_/g, ' ').replace(/\b\w/g, function(m){ return m.toUpperCase(); }) : 'Job';
+  }
+  function _prodCard(j){
+    var q = (j.queue || 'queued').toLowerCase();
+    var thumbs = '';
+    if (j.before_url) thumbs += '<div class="st-prod-thumb"><span>Before</span><img loading="lazy" src="' + _esc(j.before_url) + '"></div>';
+    if (j.after_url)  thumbs += '<div class="st-prod-thumb"><span>' + (j.before_url ? 'After' : 'Output') + '</span><img loading="lazy" src="' + _esc(j.after_url) + '"></div>';
+    var sub = [_prodCapLabel(j), (j.model || j.provider || '')].filter(Boolean).map(_esc).join(' · ');
+    if (j.asset_id) sub += ' · asset #' + j.asset_id + (j.version ? (' v' + j.version) : '');
+    var when = _esc(j.completed_at || j.failed_at || j.started_at || j.created_at || '');
+    var err = (q === 'failed' && j.error) ? '<div class="st-prod-err">' + _esc(j.error) + '</div>' : '';
+    var acts = '';
+    if (j.before_url && j.after_url) acts += '<button onclick="_studioProdCompare(' + j.id + ')">Compare</button>';
+    if (j.asset_id || j.root_asset_id) acts += '<button onclick="_studioProdLineage(' + (j.asset_id || j.root_asset_id) + ')">Lineage</button>';
+    return '<div class="st-prod-card" data-job="' + j.id + '">' +
+      '<div class="st-prod-row"><span class="st-prod-cap">' + _esc(_prodCapLabel(j)) + '</span>' +
+      '<span class="st-prod-status ' + q + '">' + _esc(j.queue || 'Queued') + '</span></div>' +
+      '<div class="st-prod-sub">' + sub + '</div>' +
+      '<div class="st-prod-when">' + when + '</div>' +
+      (thumbs ? ('<div class="st-prod-thumbs">' + thumbs + '</div>') : '') +
+      err +
+      (acts ? ('<div class="st-prod-actions">' + acts + '</div>') : '') +
+      '</div>';
+  }
+  function _loadProductionJobs(filter){
+    var list = document.getElementById('st-prod-list'); if (!list) return;
+    list.innerHTML = '<div class="st-empty">Loading…</div>';
+    _fetchJson('/studio/production/jobs?limit=60').then(function(d){
+      _prodJobs = (d && d.jobs) || [];
+      var jobs = _prodJobs;
+      if (filter && filter !== 'all') jobs = jobs.filter(function(j){ return (j.queue || '').toLowerCase() === filter; });
+      list.innerHTML = jobs.length ? jobs.map(_prodCard).join('') : '<div class="st-empty">No ' + (filter === 'all' ? '' : filter + ' ') + 'production jobs yet.</div>';
+    }).catch(function(){
+      list.innerHTML = '<div class="st-empty">Production history isn\'t available yet.</div>';
+    });
+  }
+  function _renderProductionTab(body){
+    _prodInjectCss();
+    body.innerHTML =
+      '<div class="st-tab-head">Production</div>' +
+      '<div class="st-prod-filters">' +
+        '<button class="st-prod-chip active" data-f="all" onclick="_studioProdFilter(\'all\')">All</button>' +
+        '<button class="st-prod-chip" data-f="running" onclick="_studioProdFilter(\'running\')">Running</button>' +
+        '<button class="st-prod-chip" data-f="completed" onclick="_studioProdFilter(\'completed\')">Completed</button>' +
+        '<button class="st-prod-chip" data-f="failed" onclick="_studioProdFilter(\'failed\')">Failed</button>' +
+      '</div>' +
+      '<div id="st-prod-list"><div class="st-empty">Loading…</div></div>';
+    _loadProductionJobs('all');
+  }
+  window._studioProdFilter = function(f){
+    document.querySelectorAll('.st-prod-chip').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-f') === f); });
+    _loadProductionJobs(f);
+  };
+  function _prodOverlay(title, inner){
+    _prodInjectCss();
+    var ov = document.createElement('div'); ov.className = 'st-prod-ov'; ov.id = 'st-prod-ov';
+    ov.onclick = function(e){ if (e.target === ov) _studioProdCloseOverlay(); };
+    ov.innerHTML = '<div class="st-prod-ov-inner"><div class="st-prod-ov-head"><b>' + _esc(title) + '</b>' +
+      '<button class="st-prod-ov-close" onclick="_studioProdCloseOverlay()">×</button></div>' + inner + '</div>';
+    document.body.appendChild(ov);
+  }
+  window._studioProdCloseOverlay = function(){ var o = document.getElementById('st-prod-ov'); if (o) o.remove(); };
+  window._studioProdCompare = function(id){
+    var j = null; for (var i = 0; i < _prodJobs.length; i++){ if (_prodJobs[i].id === id) { j = _prodJobs[i]; break; } }
+    if (!j || !j.before_url || !j.after_url) return;
+    _prodOverlay(_prodCapLabel(j) + ' — Before / After',
+      '<div class="st-prod-cmp">' +
+        '<figure><figcaption>Before (source image)</figcaption><img src="' + _esc(j.before_url) + '"></figure>' +
+        '<figure><figcaption>After (asset #' + (j.asset_id || '') + (j.version ? ' v' + j.version : '') + ')</figcaption><img src="' + _esc(j.after_url) + '"></figure>' +
+      '</div>');
+  };
+  window._studioProdLineage = function(assetId){
+    _prodOverlay('Asset lineage', '<div class="st-empty">Loading…</div>');
+    _fetchJson('/creative/assets/' + assetId + '/versions').then(function(d){
+      var arr = Array.isArray(d) ? d : ((d && (d.versions || d.assets || d.data)) || []);
+      var inner = document.querySelector('#st-prod-ov .st-prod-ov-inner');
+      if (!inner) return;
+      var body2 = inner.querySelector('.st-empty') ? inner : inner;
+      var items = (arr || []).map(function(a){
+        var mode = a.edit_mode ? (' · ' + String(a.edit_mode).replace(/_/g, ' ')) : ' · original';
+        return '<li><img loading="lazy" src="' + _esc(a.url || '') + '">' +
+          '<div><div class="v">v' + _esc(a.version || 1) + ' — asset #' + _esc(a.id) + '</div>' +
+          '<div class="m">' + (a.parent_asset_id ? ('from #' + _esc(a.parent_asset_id)) : 'root') + mode + '</div></div></li>';
+      }).join('');
+      var listHtml = '<ul class="st-prod-lin">' + (items || '<div class="st-empty">No versions.</div>') + '</ul>';
+      var target = inner.querySelector('.st-prod-lin') ? inner : inner;
+      // replace the loading placeholder (everything after the head)
+      var head = inner.querySelector('.st-prod-ov-head');
+      inner.innerHTML = '';
+      inner.appendChild(head);
+      var wrap = document.createElement('div'); wrap.innerHTML = listHtml; inner.appendChild(wrap);
+    }).catch(function(){
+      var inner = document.querySelector('#st-prod-ov .st-prod-ov-inner');
+      if (inner){ var ph = inner.querySelector('.st-empty'); if (ph) ph.textContent = 'Lineage unavailable.'; }
+    });
+  };
   function _renderLayersTab(body) {
     var f = document.getElementById('st-iframe');
     if (!f || !f.contentDocument) { body.innerHTML = '<div class="st-tab-head">Layers</div><div class="st-empty">Canvas loading…</div>'; return; }
