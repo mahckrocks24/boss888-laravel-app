@@ -1961,6 +1961,85 @@ HTMLSCRIPT;
         Route::post('/designs/{id}/history',             fn(\Illuminate\Http\Request $r, $id)       => response()->json(app($studio)->saveHistory((int) $id, (array) $r->input('snapshot', []), (int) $r->attributes->get('workspace_id'))));
         Route::get('/designs/{id}/history',              fn(\Illuminate\Http\Request $r, $id)       => response()->json(app($studio)->getHistory((int) $id)));
 
+        // ══ STUDIO888 Production Workflow Phase 1 — read-only Production log (job queue / history / lineage) ══
+        // Surfaces the EXISTING creative_jobs + assets state as a production log. Answers "what happened?"
+        // truthfully from committed data: every image generate/edit already writes a creative_jobs row
+        // (ImageIntelligenceService + the kernel CreativeJob hook) and every edit already records asset
+        // lineage (parent/root/version/edit_mode). READ-ONLY. Reuses creative_jobs + assets - NO new
+        // table, engine, registry, orchestration, or mutation. Progress phase is derived STRICTLY from the
+        // stored status (never faked). Lineage detail reuses the existing GET /assets/{id}/versions.
+        Route::get('/production/jobs', function (\Illuminate\Http\Request $r) {
+            // Dormant until authorized: default-OFF flag keeps this inert on production.
+            if (config('studio_chat_apply.production_log') !== true) { abort(404); }
+            $wsId  = (int) $r->attributes->get('workspace_id');
+            $limit = min(100, max(1, (int) $r->query('limit', 50)));
+            $q = \Illuminate\Support\Facades\DB::table('creative_jobs')->where('workspace_id', $wsId);
+            if ($r->filled('capability')) { $q->where('capability', (string) $r->query('capability')); }
+            if ($r->filled('status'))     { $q->where('status', (string) $r->query('status')); }
+            $rows = $q->orderByDesc('id')->limit($limit)->get();
+
+            $afterIds = [];
+            foreach ($rows as $row) { if ($row->asset_id) { $afterIds[(int) $row->asset_id] = 1; } }
+            $after = \Illuminate\Support\Facades\DB::table('assets')->where('workspace_id', $wsId)
+                ->whereIn('id', array_keys($afterIds) ?: [0])->get()->keyBy('id');
+            $beforeIds = [];
+            foreach ($after as $a) { if ($a->parent_asset_id) { $beforeIds[(int) $a->parent_asset_id] = 1; } }
+            $before = \Illuminate\Support\Facades\DB::table('assets')->where('workspace_id', $wsId)
+                ->whereIn('id', array_keys($beforeIds) ?: [0])->get()->keyBy('id');
+
+            // Truthful mapping from the STORED status only - no fabricated intermediate progress.
+            $queueOf = function (?string $s): string {
+                return match ($s) {
+                    'completed' => 'Completed',
+                    'failed'    => 'Failed',
+                    'cancelled', 'canceled' => 'Cancelled',
+                    'running', 'processing', 'in_progress' => 'Running',
+                    default => 'Queued',
+                };
+            };
+            $phaseOf = function (?string $s): string {
+                return match ($s) {
+                    'completed' => 'Completed',
+                    'failed'    => 'Failed',
+                    'cancelled', 'canceled' => 'Cancelled',
+                    'running', 'processing', 'in_progress' => 'Executing',
+                    'queued', 'pending', null, '' => 'Queued',
+                    default => ucfirst((string) $s),
+                };
+            };
+
+            $jobs = [];
+            foreach ($rows as $row) {
+                $a = $row->asset_id ? ($after[(int) $row->asset_id] ?? null) : null;
+                $b = ($a && $a->parent_asset_id) ? ($before[(int) $a->parent_asset_id] ?? null) : null;
+                $meta = json_decode((string) ($row->metadata ?? ''), true) ?: [];
+                $jobs[] = [
+                    'id'            => (int) $row->id,
+                    'uuid'          => $row->uuid,
+                    'capability'    => $row->capability,
+                    'type'          => $row->type,
+                    'status'        => $row->status,
+                    'queue'         => $queueOf($row->status),
+                    'phase'         => $phaseOf($row->status),
+                    'provider'      => $row->provider,
+                    'model'         => $row->provider_model,
+                    'asset_id'      => $a ? (int) $a->id : null,
+                    'after_url'     => $a->url ?? null,
+                    'before_url'    => $b->url ?? null,
+                    'version'       => $a->version ?? null,
+                    'edit_mode'     => $a->edit_mode ?? null,
+                    'root_asset_id' => $a && $a->root_asset_id ? (int) $a->root_asset_id : null,
+                    'prompt'        => $row->original_prompt,
+                    'error'         => $row->status === 'failed' ? (string) ($meta['error'] ?? $meta['reason'] ?? 'failed') : null,
+                    'created_at'    => $row->created_at,
+                    'started_at'    => $row->started_at,
+                    'completed_at'  => $row->completed_at,
+                    'failed_at'     => $row->failed_at,
+                ];
+            }
+            return response()->json(['success' => true, 'count' => count($jobs), 'jobs' => $jobs]);
+        });
+
         // Brand kit (per workspace)
         Route::get('/brand-kit',  fn(\Illuminate\Http\Request $r) => response()->json(['brand_kit' => app($studio)->getBrandKit((int) $r->attributes->get('workspace_id'))]));
         Route::put('/brand-kit',  fn(\Illuminate\Http\Request $r) => response()->json(app($studio)->updateBrandKit((int) $r->attributes->get('workspace_id'), $r->all())));

@@ -25,6 +25,7 @@ return [
 
     // Feature Sprint 3 - verified brand colour application. Default OFF, same ws scope.
     'server_apply_brand' => env('STUDIO_CHAT_SERVER_APPLY_BRAND', false),
+    'production_log' => env('STUDIO_PRODUCTION_LOG', false),
     // Extra trusted image hosts (comma-separated). Same-origin (app host) + relative URLs are always allowed.
     'image_trusted_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('STUDIO_CHAT_IMAGE_TRUSTED_HOSTS', ''))))),
 
