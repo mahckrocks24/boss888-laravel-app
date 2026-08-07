@@ -78,8 +78,10 @@ final class ContextBuilder
         // revision_instruction is structural because a human wrote it about
         // THIS proposal. Scoring a reviewer's words against the task's
         // vocabulary could drop the very correction the revision exists to make.
-        $always = ['ownership_boundaries', 'test_constraints', 'deployment_constraints',
-                   'code_surface', 'revision_instruction'];
+        // grounded_source leads: it is the exact bytes the proposal must
+        // reproduce, so a summary is dropped long before a target file is.
+        $always = ['grounded_source', 'ownership_boundaries', 'test_constraints',
+                   'deployment_constraints', 'code_surface', 'revision_instruction'];
         $pool = array_merge(
             $pool,
             $extraItems,

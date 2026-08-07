@@ -104,6 +104,52 @@ final class ReasoningEngine
             );
         }
 
+        // ── PASS 2: GROUND, THEN ASK FOR THE FILE ITSELF ─────────────────
+        //
+        // Pass 1 said which files it intends to change. Those paths came from a
+        // language model, so they are a suggestion and not a fact: every one is
+        // verified against the repository before a single byte is read, and the
+        // verified sources go back with exactly the same output contract.
+        //
+        // WHY A SECOND CALL AT ALL. The contract asks for "the complete file
+        // content, not a diff". Until 2026-08-07 the model was never shown a
+        // file, so on two real runs it answered the impossible half with a
+        // sentence describing the change and the validator rejected it. It was
+        // right to. This pass makes the request answerable instead of relaxing
+        // what is asked for.
+        $grounding = new SourceGrounding(
+            (string) $project->repository_path,
+            (int) (config('engineer888_reasoning.context.max_bytes') ?? 60000)
+        );
+
+        $ground = $grounding->forFilesAffected((array) ($response->payload['files_affected'] ?? []));
+
+        if ($ground['budget_exceeded']) {
+            // Never a truncated file plus an instruction to return all of it.
+            $violations = [[
+                'rule'   => SourceGrounding::BUDGET_EXCEEDED,
+                'detail' => 'the files this proposal would rewrite do not fit the source context budget; '
+                          . 'a narrower change set or a staged candidate is required. '
+                          . implode(' | ', array_column($ground['refused'], 'reason')),
+            ]];
+
+            $id = $this->store->record((int) $task->id, (int) $project->id, $request, $response,
+                ReasoningOutcome::REJECTED, $violations, null, $revision);
+
+            return ReasoningOutcome::rejected($violations, $request, $response, $id, $this->store->uuidFor($id));
+        }
+
+        if ($ground['items'] !== []) {
+            $groundedRequest = $this->buildRequest($project, $task, $revision, $ground['items']);
+            $groundedResponse = $provider->propose($groundedRequest);
+
+            // A failed second call leaves the first answer standing, which the
+            // validator will judge on its own merits. It is never patched over.
+            if ($groundedResponse->ok) {
+                $request = $groundedRequest;
+                $response = $groundedResponse;
+            }
+        }
         $violations = $this->validator->violations($response->payload);
 
         if ($violations !== []) {
@@ -232,7 +278,7 @@ final class ReasoningEngine
         return (new ApprovalLedger())->activeFor($taskId)?->candidate_uuid;
     }
 
-    public function buildRequest(object $project, object $task, array $revision = []): ReasoningRequest
+    public function buildRequest(object $project, object $task, array $revision = [], array $extraItems = []): ReasoningRequest
     {
         $config = (array) config('engineer888_reasoning', []);
         $context = (array) ($config['context'] ?? []);
@@ -244,7 +290,8 @@ final class ReasoningEngine
             (int) ($context['min_score'] ?? 1),
         );
 
-        return $builder->build($project, $task, $this->revisionContext($revision));
+        return $builder->build($project, $task,
+            array_merge($this->revisionContext($revision), $extraItems));
     }
 
     /**
