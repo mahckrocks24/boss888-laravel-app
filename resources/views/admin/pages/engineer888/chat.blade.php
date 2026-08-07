@@ -82,6 +82,22 @@
 window.page = async function () {
   var CONV = null, CURSOR = null, BUSY = false;
 
+  // The card currently awaiting confirmation, if any.
+  //
+  // WHY THIS EXISTS. render() replaces the log's innerHTML, so a poll landing
+  // mid-confirmation destroys the armed button and every character typed into
+  // it. Rejection tolerated that — its reason is a short sentence. Approval
+  // does not: the required statement is around 130 characters naming a uuid
+  // and a 64-character fingerprint, and the poll interval is 15 seconds, so
+  // the form was being wiped out from under the approver before they could
+  // finish. Proven in the browser on 2026-08-07: armed, typed, and 16 seconds
+  // later the textarea no longer existed.
+  //
+  // Polling pauses while a card is armed. Nothing else pauses: the server
+  // still revalidates every binding on the press, and a card that expires or
+  // is superseded while the form is open is refused there, not here.
+  var ARMED = null;
+
   // Navigating away and back calls window.page() again. Without this the old
   // interval keeps running and every return doubles the polling rate.
   if (window.__e8ChatPoll) { clearInterval(window.__e8ChatPoll); window.__e8ChatPoll = null; }
@@ -193,6 +209,7 @@ window.page = async function () {
     if (btn.getAttribute('data-armed') !== '1') {
       btn.setAttribute('data-armed', '1');
       btn.textContent = 'Confirm: ' + label;
+      ARMED = uuid;               // hold the poll until this is resolved
 
       if (needsStatement) {
         var required = REQUIRED_STATEMENT[uuid];
@@ -202,6 +219,7 @@ window.page = async function () {
             + 'for this card, so it cannot be approved from here. Refresh and try again.</div>';
           btn.removeAttribute('data-armed');
           btn.textContent = label;
+          ARMED = null;
           return;
         }
 
@@ -223,7 +241,9 @@ window.page = async function () {
           + '<textarea id="e8-cmt-' + esc(uuid) + '" rows="2" '
           + 'style="width:100%;background:#141824;color:#e6e9f2;border:1px solid #2a3145;'
           + 'border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit" '
-          + 'placeholder="e.g. Reviewed the full diff and the test it adds."></textarea>';
+          + 'placeholder="e.g. Reviewed the full diff and the test it adds."></textarea>'
+          + '<div class="e8-note" style="margin-top:7px">Live updates are paused while this is open, so '
+          + 'nothing rewrites what you are typing. The server still revalidates every binding when you confirm.</div>';
 
         var copyBtn = box.querySelector('[data-copy]');
         if (copyBtn) {
@@ -311,11 +331,13 @@ window.page = async function () {
       btn.disabled = false;
       btn.removeAttribute('data-armed');
       btn.textContent = label;
+      ARMED = null;               // decision resolved; polling may resume
       await refresh(true);
       return;
     }
 
     box.textContent = 'Accepted: ' + (d.result || 'done') + ' at ' + (d.consumed_at || '');
+    ARMED = null;
     await refresh(true);
   }
 
@@ -433,6 +455,10 @@ window.page = async function () {
 
   // Stored on window, not in closure scope, so the guard above can find and
   // clear it when the page is re-entered.
-  window.__e8ChatPoll = setInterval(function () { if (!BUSY) { refresh(false); } }, 15000);
+  window.__e8ChatPoll = setInterval(function () {
+    // ARMED holds the poll while a confirmation is open, so a re-render cannot
+    // destroy a statement the approver is part-way through typing.
+    if (!BUSY && !ARMED) { refresh(false); }
+  }, 15000);
 };
 </script>
