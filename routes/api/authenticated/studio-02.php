@@ -937,6 +937,14 @@ HTMLSCRIPT;
                             . ' You cannot remove backgrounds, crop, resize, blur, or apply filters yet - if asked for those, say they are not supported.';
                         $systemPrompt .= $__imgClause;
                         $instructions .= $__imgClause;
+                    // STUDIO888 Phase A1-A3: AI Image Editing. When image ops are active, teach the model
+                    // to answer an image-EDIT request (remove background, remove an object, replace an
+                    // object) on an EXISTING image field with an edit_image action - never a generation.
+                    if (config('studio_chat_apply.server_apply_image') === true && ($__saPilotWs === 0 || $wsId === $__saPilotWs)) {
+                        $__editClause = ' IMAGE EDITING: to REMOVE THE BACKGROUND, REMOVE AN OBJECT, or REPLACE AN OBJECT in an EXISTING image field, return {"type":"edit_image","name":"<image field>","operation":"remove_background" | "remove_object" | "replace_object", ...}. For remove_background also add "background":"white" or "studio" (transparent is not available yet). For remove_object also add "target":"<the thing to remove, e.g. the crane>". For replace_object also add "target":"<the thing>" and "replacement":"<what to put instead>". Use edit_image ONLY to change an EXISTING image; use generate_and_replace_image to create a brand-new image. Never invent an image field that does not exist.';
+                        $systemPrompt .= $__editClause;
+                        $instructions .= $__editClause;
+                    }
                     }
                     // Feature Sprint 3: when brand colour application is active, tell the model the
                     // workspace brand palette (resolver) + the apply_brand action.
@@ -1367,6 +1375,166 @@ HTMLSCRIPT;
             // atomic + CAS persist. WE OWN the response; never the model's reply, never a browser
             // palette mutation. Model-supplied colours are IGNORED (resolver is authoritative).
             // Neutral kits, structured designs, and non-standard-only templates decline truthfully.
+            // ══ STUDIO888 Phase A1-A3: AI Image Editing (background removal / object removal / replace) ══
+            // Exposes the COMMITTED edit_image capability (kernel -> Creative -> ImageEditService ->
+            // gpt-image-1 /v1/images/edits, Laravel-DIRECT, NOT the Railway runtime) through chat, then
+            // places the verified child asset on the design via the SAME Sprint-2 `src` projection. The
+            // kernel owns credits (2cr reserve/commit/release), tenancy, idempotency and non-destructive
+            // versioning - we add NO new engine / projection capability / billing. WE OWN the response:
+            // a verified server apply (actions:[]) or a truthful decline. Reuses the server_apply_image
+            // flag + ws scope. First increment: edits an image that is already a workspace asset (a
+            // generated/library image); an on-design image with no asset row declines honestly.
+            if (config('studio_chat_apply.server_apply_image') === true && ($__pilotWs === 0 || $wsId === $__pilotWs)) {
+                $__edActs = is_array($actions) ? array_values(array_filter($actions, function ($a) {
+                    return is_array($a) && (($a['type'] ?? null) === 'edit_image');
+                })) : [];
+                if (count($__edActs) > 0) {
+                    if (count($__edActs) > 1) {
+                        return response()->json(['success' => true, 'reply' => 'I can edit one image at a time - please ask for a single change.', 'actions' => [], 'server_applied' => false]);
+                    }
+                    $__ed = ['success' => true, 'reply' => 'I could not edit that image.', 'actions' => [], 'server_applied' => false];
+                    $a = $__edActs[0];
+                    $__field = is_string($a['name'] ?? null) ? $a['name'] : '';
+                    $__op = is_string($a['operation'] ?? null) ? $a['operation'] : '';
+                    $__appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+                    $__trusted = (array) config('studio_chat_apply.image_trusted_hosts', []);
+                    $__sec = new \App\Engines\Studio\Projection\Html\HtmlProjectionSecurityPolicy();
+                    $__urlApproved = function (string $u) use ($__sec, $__appHost, $__trusted): bool {
+                        if (! $__sec->isSafeImageUrl($u)) return false;
+                        if (str_starts_with($u, '/') && ! str_starts_with($u, '//')) return true;
+                        $h = strtolower((string) parse_url($u, PHP_URL_HOST));
+                        return $h !== '' && ($h === $__appHost || in_array($h, $__trusted, true));
+                    };
+                    try {
+                        if (! $r->boolean('client_clean')) {
+                            return response()->json(['success' => true, 'reply' => 'Please save your current edits first, then ask me to edit the image.', 'actions' => [], 'server_applied' => false]);
+                        }
+                        $__row = \Illuminate\Support\Facades\DB::table('studio_designs')
+                            ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                        if (! $__row) {
+                            return response()->json(['success' => true, 'reply' => 'That design could not be found.', 'actions' => [], 'server_applied' => false]);
+                        }
+                        $__base = (string) ($__row->content_html ?? '');
+                        $__dec = json_decode($__base, true);
+                        $__structured = is_array($__dec) && isset($__dec['template_slug']) && isset($__dec['fields']) && is_array($__dec['fields']);
+                        if ($__structured) {
+                            return response()->json(['success' => true, 'reply' => 'Image editing is not available for this template type yet, so nothing was changed.', 'actions' => [], 'server_applied' => false]);
+                        }
+                        $__doc = \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base)->document();
+                        if ($__field === '' || ! $__doc->supports($__field, 'src')) {
+                            return response()->json(['success' => true, 'reply' => 'I could not find that image on the design, so nothing was changed.', 'actions' => [], 'server_applied' => false]);
+                        }
+                        $__curSrc = (string) $__doc->get($__field, 'src');
+                        // Resolve the on-design image to a workspace asset (first increment: asset-backed only).
+                        $__srcAsset = \Illuminate\Support\Facades\DB::table('assets')
+                            ->where('workspace_id', $wsId)->where('type', 'image')->whereNull('deleted_at')
+                            ->where('url', $__curSrc)->first();
+                        if (! $__srcAsset) {
+                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                'reply' => 'I can only edit an image that is in your library or one I generated. Generate this image first, then ask me to edit it.']);
+                        }
+                        // Build the provider prompt from the operation (server-controlled, never the raw LLM string).
+                        $__prompt = null; $__done = null;
+                        if ($__op === 'remove_background') {
+                            $__bg = strtolower(trim((string) ($a['background'] ?? 'white')));
+                            if ($__bg === 'transparent') {
+                                return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                    'reply' => 'Transparent PNGs are not available yet - I can place the subject on a clean white or studio background instead.']);
+                            }
+                            $__prompt = ($__bg === 'studio')
+                                ? 'Remove the background entirely and place the main subject on a smooth, neutral studio backdrop with soft even lighting. Keep the subject itself unchanged.'
+                                : 'Remove the background entirely and place the main subject on a clean, solid pure-white background. Keep the subject itself unchanged.';
+                            $__done = 'Removed the background';
+                        } elseif ($__op === 'remove_object') {
+                            $__tgt = preg_replace('/^(the|a|an)\s+/i', '', trim((string) ($a['target'] ?? '')));
+                            if ($__tgt === '') {
+                                return response()->json(['success' => true, 'actions' => [], 'server_applied' => false, 'reply' => 'Tell me which object to remove.']);
+                            }
+                            $__prompt = 'Remove the ' . $__tgt . ' from the image completely, filling the space naturally and seamlessly so it looks like it was never there, matching the surrounding scene, lighting and perspective.';
+                            $__done = 'Removed the ' . $__tgt;
+                        } elseif ($__op === 'replace_object') {
+                            $__tgt = preg_replace('/^(the|a|an)\s+/i', '', trim((string) ($a['target'] ?? '')));
+                            $__rep = preg_replace('/^(a|an)\s+/i', '', trim((string) ($a['replacement'] ?? '')));
+                            if ($__tgt === '' || $__rep === '') {
+                                return response()->json(['success' => true, 'actions' => [], 'server_applied' => false, 'reply' => 'Tell me what to replace and what to replace it with.']);
+                            }
+                            $__prompt = 'Replace the ' . $__tgt . ' in the image with ' . $__rep . ', matching the scene lighting, perspective, scale and style so it looks natural.';
+                            $__done = 'Replaced the ' . $__tgt . ' with ' . $__rep;
+                        } else {
+                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                'reply' => 'I can remove the background, remove an object, or replace an object right now.']);
+                        }
+                        // Invoke the governed edit_image capability (credits/tenancy/persistence/versioning owned by the kernel).
+                        $__res = app(\App\Core\EngineKernel\EngineExecutionService::class)->execute(
+                            $wsId, 'creative', 'edit_image',
+                            ['source_asset_id' => (int) $__srcAsset->id, 'prompt' => $__prompt, 'selection_type' => 'full',
+                             'idempotency_key' => 'stchat-edit-' . $designId . '-' . $__field . '-' . substr(md5($__prompt), 0, 12)],
+                            ['user_id' => optional($r->user())->id, 'source' => 'studio_chat']
+                        );
+                        $__data = (is_array($__res) && isset($__res['data']) && is_array($__res['data'])) ? $__res['data'] : (is_array($__res) ? $__res : []);
+                        $__ok = (bool) ($__res['success'] ?? ($__data['success'] ?? false));
+                        $__newUrl = (string) ($__data['url'] ?? '');
+                        $__newAsset = $__data['asset_id'] ?? ($__data['id'] ?? null);
+                        if (! $__ok || $__newUrl === '') {
+                            $__msg = (string) ($__res['error'] ?? ($__data['error'] ?? ''));
+                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                'reply' => $__msg !== '' ? $__msg : 'I could not edit that image right now, so nothing was changed.']);
+                        }
+                        if (! $__urlApproved($__newUrl)) {
+                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                'reply' => 'The edited image was saved to your Media Library, but I could not safely place it, so nothing on the design changed.']);
+                        }
+                        // Place the edited child asset on the field via the committed `src` projection (verified + CAS).
+                        // Re-read the row (the edit took time) as the concurrency base.
+                        $__row2 = \Illuminate\Support\Facades\DB::table('studio_designs')
+                            ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                        if (! $__row2) {
+                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                'reply' => 'I edited the image (it is in your Media Library) but the design was no longer available, so I did not place it.']);
+                        }
+                        $__base2 = (string) ($__row2->content_html ?? '');
+                        $__ad2 = \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base2);
+                        if (! $__ad2->document()->supports($__field, 'src')) {
+                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                'reply' => 'I edited the image (it is in your Media Library) but the design changed while I was working, so I did not place it. Please try again.']);
+                        }
+                        $__req = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                            'schema_version' => 1, 'operation_id' => 'chat-edit-img', 'document_id' => (string) $designId,
+                            'target_id' => (string) $__field, 'changed_fields' => ['src'], 'desired_after_state' => ['src' => $__newUrl],
+                            'expected_document_version' => null, 'before_snapshot_hash' => null,
+                            'correlation_id' => 'chat-edit-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                        ]);
+                        $__bres = $__ad2->projectBatch(new \App\Engines\Studio\Projection\ProjectionBatch(
+                            'chat-edit-' . $designId, (string) $designId, [$__req],
+                            \App\Engines\Studio\Projection\ProjectionTransactionBoundary::atomic(), null, 'chat-edit-' . $designId));
+                        $__pok = ($__bres->status === \App\Engines\Studio\Projection\ProjectionStatus::APPLIED) && ($__bres->appliedCount() === 1);
+                        if ($__pok) { foreach ($__bres->results as $__rr) { if ((($__rr->verification['verified'] ?? false) !== true)) { $__pok = false; break; } } }
+                        if ($__pok) {
+                            $__aff = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->where('updated_at', $__row2->updated_at)
+                                ->update(['content_html' => (string) $__ad2->payload(), 'updated_at' => now()]);
+                            if ($__aff === 1) {
+                                register_shutdown_function(function () use ($designId) {
+                                    try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail((int) $designId); } catch (\Throwable $e) {}
+                                });
+                                $__ed = ['success' => true, 'actions' => [], 'server_applied' => true, 'refresh_preview' => true,
+                                    'reply' => $__done . ' and updated "' . $__field . '" - verified the saved result.',
+                                    'verified' => ['count' => 1, 'status' => 'applied', 'document_form' => 'raw', 'edited' => true,
+                                        'operation' => $__op, 'asset_id' => $__newAsset]];
+                            } else {
+                                $__ed['reply'] = 'I edited the image (it is in your Media Library) but the design changed while I was working, so I did not place it. Please try again.';
+                            }
+                        } else {
+                            $__ed['reply'] = 'I edited the image but could not place it on the design safely, so nothing on the design changed.';
+                        }
+                    } catch (\Throwable $__e) {
+                        \Illuminate\Support\Facades\Log::warning('studio.chat server-apply image-edit failed: ' . $__e->getMessage());
+                        $__ed = ['success' => true, 'reply' => 'I could not edit that image, so nothing was changed.', 'actions' => [], 'server_applied' => false];
+                    }
+                    return response()->json($__ed);
+                }
+            }
+
             if (config('studio_chat_apply.server_apply_brand') === true && ($__pilotWs === 0 || $wsId === $__pilotWs)) {
                 $__hasBrand = is_array($actions) && count(array_filter($actions, function ($a) {
                     return is_array($a) && (($a['type'] ?? null) === 'apply_brand');
