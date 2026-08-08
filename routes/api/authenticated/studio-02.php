@@ -1430,8 +1430,122 @@ HTMLSCRIPT;
                             ->where('workspace_id', $wsId)->where('type', 'image')->whereNull('deleted_at')
                             ->where('url', $__curSrc)->first();
                         if (! $__srcAsset) {
-                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
-                                'reply' => 'I can only edit an image that is in your library or one I generated. Generate this image first, then ask me to edit it.']);
+                            // ══ STUDIO888 Phase A4: Universal Image Ingest ═══════════════════════════════
+                            // The on-design image is NOT already a workspace asset. When ingest is enabled,
+                            // import it (safe local read for app-hosted images / SSRF-guarded download for
+                            // external https), create a COMPLETED provenance-tagged ROOT asset, and edit it
+                            // like any Studio asset. Reuses the Asset model, lineage, edit_image capability,
+                            // src projection, credits, and Production history. NO new engine/model/provider.
+                            // Dormant behind the image_ingest flag (default OFF => Phase A1-A3 decline).
+                            if (config('studio_chat_apply.image_ingest') !== true) {
+                                return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                    'reply' => 'I can only edit an image that is in your library or one I generated. Generate this image first, then ask me to edit it.']);
+                            }
+                            try {
+                                // (a) DEDUP: reuse a prior import of this exact source (no re-download, no new asset/credit).
+                                $__srcAsset = \Illuminate\Support\Facades\DB::table('assets')
+                                    ->where('workspace_id', $wsId)->where('type', 'image')->where('status', 'completed')->whereNull('deleted_at')
+                                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.ingest_source_url')) = ?", [$__curSrc])
+                                    ->orderByDesc('id')->first();
+                                if (! $__srcAsset) {
+                                    // (b) SAFETY (syntax): scheme/format/literal-private-IP/svg/https/port/userinfo.
+                                    if (! $__sec->isSafeImageUrl($__curSrc)) {
+                                        return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                            'reply' => 'That image cannot be imported safely, so nothing was changed.']);
+                                    }
+                                    // (c) FETCH bytes: app-hosted/relative => local read; external https => SSRF-guarded download.
+                                    $__ingBytes = null; $__ingSourceType = 'external';
+                                    $__isRel = str_starts_with($__curSrc, '/') && ! str_starts_with($__curSrc, '//');
+                                    $__ingHost = $__isRel ? $__appHost : strtolower((string) parse_url($__curSrc, PHP_URL_HOST));
+                                    if ($__isRel || $__ingHost === $__appHost) {
+                                        $__ingSourceType = 'app';
+                                        $__ingPath = $__isRel ? $__curSrc : (string) parse_url($__curSrc, PHP_URL_PATH);
+                                        if (preg_match('#^/storage/(.+)$#', $__ingPath, $__pm)) {
+                                            try { if (\Illuminate\Support\Facades\Storage::disk('public')->exists($__pm[1])) { $__ingBytes = \Illuminate\Support\Facades\Storage::disk('public')->get($__pm[1]); } } catch (\Throwable $e) {}
+                                        }
+                                        if ($__ingBytes === null) {
+                                            $__ingReal = realpath(public_path(ltrim($__ingPath, '/'))); $__ingRoot = realpath(public_path());
+                                            if ($__ingReal !== false && $__ingRoot !== false && str_starts_with($__ingReal, $__ingRoot . DIRECTORY_SEPARATOR) && is_file($__ingReal) && filesize($__ingReal) <= 15728640) {
+                                                $__ingBytes = @file_get_contents($__ingReal);
+                                            }
+                                        }
+                                        if ($__ingBytes === null) {
+                                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                                'reply' => 'I could not read that image to import it, so nothing was changed.']);
+                                        }
+                                    } else {
+                                        // external https — resolve host to IPv4(s); EVERY resolved IP must be public (anti-rebind), then pin it.
+                                        $__ingIps = @gethostbynamel($__ingHost) ?: [];
+                                        if (empty($__ingIps)) {
+                                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                                'reply' => 'That image source could not be reached safely, so nothing was changed.']);
+                                        }
+                                        foreach ($__ingIps as $__ip) {
+                                            if (! filter_var($__ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                                                return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                                    'reply' => 'That image source is not allowed, so nothing was changed.']);
+                                            }
+                                        }
+                                        $__ch = curl_init($__curSrc);
+                                        curl_setopt_array($__ch, [
+                                            CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false,
+                                            CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 20,
+                                            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+                                            CURLOPT_RESOLVE => [$__ingHost . ':443:' . $__ingIps[0]],
+                                            CURLOPT_MAXFILESIZE => 15728640, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
+                                        ]);
+                                        $__ingBytes = curl_exec($__ch);
+                                        $__ingCode = (int) curl_getinfo($__ch, CURLINFO_HTTP_CODE);
+                                        $__ingCtype = strtolower((string) curl_getinfo($__ch, CURLINFO_CONTENT_TYPE));
+                                        curl_close($__ch);
+                                        if ($__ingBytes === false || $__ingCode !== 200 || $__ingBytes === '' || strpos($__ingCtype, 'svg') !== false) {
+                                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                                'reply' => 'I could not download that image, so nothing was changed.']);
+                                        }
+                                    }
+                                    // (d) VALIDATE: size + real decodable raster + allowed MIME (never SVG).
+                                    if (strlen((string) $__ingBytes) > 15728640) {
+                                        return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                            'reply' => 'That image is too large to import, so nothing was changed.']);
+                                    }
+                                    $__ingInfo = @getimagesizefromstring((string) $__ingBytes);
+                                    $__ingExtMap = [IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg', IMAGETYPE_GIF => 'gif', IMAGETYPE_WEBP => 'webp'];
+                                    if ($__ingInfo === false || ! isset($__ingExtMap[$__ingInfo[2]])) {
+                                        return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                            'reply' => 'That file is not a supported image, so nothing was changed.']);
+                                    }
+                                    $__ingExt = $__ingExtMap[$__ingInfo[2]]; $__ingW = (int) $__ingInfo[0]; $__ingH = (int) $__ingInfo[1];
+                                    // (e) STORE bytes -> public storage (verify the write).
+                                    $__ingSp = 'ai-images/' . $wsId . '/ingest-' . substr(hash('sha256', $__curSrc . '|' . strlen((string) $__ingBytes)), 0, 24) . '.' . $__ingExt;
+                                    $__ingStored = \Illuminate\Support\Facades\Storage::disk('public')->put($__ingSp, (string) $__ingBytes);
+                                    if (! $__ingStored || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($__ingSp)) {
+                                        return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                            'reply' => 'I could not save the imported image, so nothing was changed.']);
+                                    }
+                                    $__ingUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($__ingSp);
+                                    // (f) CREATE completed ROOT asset with provenance (imported=true, source, timestamp, ws, edit origin).
+                                    $__ingId = \Illuminate\Support\Facades\DB::table('assets')->insertGetId([
+                                        'workspace_id' => $wsId, 'type' => 'image', 'title' => 'Imported image',
+                                        'provider' => 'Imported', 'model' => 'Imported', 'status' => 'completed',
+                                        'url' => $__ingUrl, 'storage_path' => $__ingSp, 'mime_type' => image_type_to_mime_type($__ingInfo[2]),
+                                        'width' => $__ingW, 'height' => $__ingH, 'version' => 1, 'edit_mode' => 'import',
+                                        'metadata_json' => json_encode(['imported' => true, 'ingest_source_url' => $__curSrc,
+                                            'ingest_source_type' => $__ingSourceType, 'imported_at' => now()->toIso8601String(),
+                                            'edit_origin' => 'studio_chat_ingest', 'workspace_id' => $wsId]),
+                                        'tags_json' => json_encode(['imported']), 'created_at' => now(), 'updated_at' => now(),
+                                    ]);
+                                    \Illuminate\Support\Facades\DB::table('assets')->where('id', $__ingId)->update(['root_asset_id' => $__ingId]);
+                                    $__srcAsset = \Illuminate\Support\Facades\DB::table('assets')->where('id', $__ingId)->first();
+                                }
+                            } catch (\Throwable $__ie) {
+                                \Illuminate\Support\Facades\Log::warning('studio.chat image ingest failed: ' . $__ie->getMessage());
+                                return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                    'reply' => 'I could not import that image, so nothing was changed.']);
+                            }
+                            if (! $__srcAsset) {
+                                return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                    'reply' => 'I could not import that image, so nothing was changed.']);
+                            }
                         }
                         // Build the provider prompt from the operation (server-controlled, never the raw LLM string).
                         $__prompt = null; $__done = null;
