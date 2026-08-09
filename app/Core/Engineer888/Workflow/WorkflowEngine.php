@@ -5,6 +5,7 @@ namespace App\Core\Engineer888\Workflow;
 use App\Core\Engineer888\Coordination\OwnershipManifest;
 use App\Core\Engineer888\Recovery\RecoveryService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -147,6 +148,38 @@ final class WorkflowEngine
         $project = DB::table('engineering_projects')->find($task->project_id);
         if ($project === null) { throw new RuntimeException('task has no project'); }
 
+        // ONE REPOSITORY, ONE EXECUTION.
+        //
+        // Acquired here, before the stage history is deleted, because that
+        // delete is itself destructive: a refused run that had already wiped the
+        // trail would destroy the evidence of the run it was refused in favour
+        // of. Everything past this point — PLAN, IMPLEMENT, VERIFY and the
+        // recovery that follows a halt — happens with the tree held.
+        //
+        // The release is in `finally`, and it is deliberately NOT at the end of
+        // IMPLEMENT. Recovery decides what to restore by asking whether a file
+        // is still exactly what this workflow wrote; a second workflow writing
+        // during that question makes the answer meaningless.
+        $lock = RepositoryExecutionLock::forRepository((string) $project->repository_path, $uuid);
+
+        if (! $lock->acquire()) {
+            return $this->refuseContended($task, $project, $uuid, $lock);
+        }
+
+        try {
+            return $this->lifecycle($task, $project, $uuid, $dryRun);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * The lifecycle proper. Only ever entered while the repository lock is held.
+     *
+     * @return array<string,mixed>
+     */
+    private function lifecycle(object $task, object $project, string $uuid, bool $dryRun): array
+    {
         $context = new WorkflowContext($task, $project, $project->repository_path);
 
         // Re-running clears prior stage records so the trail describes THIS run.
@@ -208,6 +241,65 @@ final class WorkflowEngine
             'stages'  => $results,
             'context' => $context,
             'recovery' => $recovery,
+        ];
+    }
+
+    /**
+     * Refused: another workflow is already executing against this repository.
+     *
+     * FAIL CLOSED AND FAIL QUIET. Nothing here deletes a stage row, runs a
+     * stage, reasons, or reaches SafeInstaller. The run does not wait, retry or
+     * steal the lock — a worker blocked on a full-suite verification is a
+     * worker that has stopped working, and forcing the lock would interrupt a
+     * process part-way through writing files.
+     *
+     * THE TASK ROW IS LEFT ALONE WHEN THE HOLDER IS THIS SAME TASK. A duplicate
+     * dispatch is refused by the same lock, and marking the task blocked would
+     * report a live execution as stopped. When some OTHER task holds the
+     * repository this task genuinely cannot proceed, and says so.
+     *
+     * @return array<string,mixed>
+     */
+    private function refuseContended(object $task, object $project, string $uuid, RepositoryExecutionLock $lock): array
+    {
+        $holder = $lock->heldBy();
+        $heldBySameTask = ($holder['task_uuid'] ?? null) === $uuid;
+
+        $detail = 'another Engineer888 workflow is already executing against '
+            . $lock->repositoryPath
+            . ($holder === null
+                ? '. Nothing was read, written or deleted.'
+                : ', started at ' . ($holder['acquired_at'] ?? 'an unrecorded time')
+                  . ' for task ' . ($holder['task_uuid'] ?? 'unknown')
+                  . '. Nothing was read, written or deleted.');
+
+        if (! $heldBySameTask) {
+            DB::table('engineering_tasks')->where('id', $task->id)
+                ->update(['status' => 'blocked', 'updated_at' => now()]);
+        }
+
+        Log::warning('[engineer888] ' . RepositoryExecutionLock::CONTENDED, [
+            'task' => $uuid, 'repository' => $lock->repositoryPath,
+            'holder' => $holder, 'same_task' => $heldBySameTask,
+        ]);
+
+        return [
+            'task'      => $this->task($uuid),
+            'project'   => $project,
+            'status'    => 'blocked',
+            'halted_at' => RepositoryExecutionLock::CONTENDED,
+            'stages'    => [],
+            'context'   => new WorkflowContext($task, $project, (string) $project->repository_path),
+            'recovery'  => null,
+            'lock'      => [
+                'contended'  => true,
+                'reason'     => RepositoryExecutionLock::CONTENDED,
+                'detail'     => $detail,
+                'key'        => $lock->key,
+                'repository' => $lock->repositoryPath,
+                'holder'     => $holder,
+                'same_task'  => $heldBySameTask,
+            ],
         ];
     }
 
