@@ -25,6 +25,9 @@ return [
 
     // Feature Sprint 3 - verified brand colour application. Default OFF, same ws scope.
     'server_apply_brand' => env('STUDIO_CHAT_SERVER_APPLY_BRAND', false),
+
+    // Feature Sprint 4 - AI Design Critique (read-only structured review). Default OFF, same ws scope.
+    'design_critique' => env('STUDIO_CHAT_DESIGN_CRITIQUE', false),
     'production_log' => env('STUDIO_PRODUCTION_LOG', false),
     'image_ingest' => env('STUDIO_CHAT_IMAGE_INGEST', false),
     // Extra trusted image hosts (comma-separated). Same-origin (app host) + relative URLs are always allowed.

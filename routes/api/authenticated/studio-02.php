@@ -862,6 +862,15 @@ HTMLSCRIPT;
             $design = \Illuminate\Support\Facades\DB::table('studio_designs')
                 ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
             if (!$design) return response()->json(['success' => false, 'error' => 'not_found'], 404);
+            // Sprint 4: detect a design REVIEW request (critique flag on, ws in scope). A review is
+            // read-only -> its response is forced to actions:[] below. 'apply ...' is never a review.
+            $__reviewPilotWs = (int) config('studio_chat_apply.pilot_workspace_id');
+            $__isReview = (config('studio_chat_apply.design_critique') === true)
+                && ($__reviewPilotWs === 0 || $wsId === $__reviewPilotWs)
+                && ! (bool) preg_match('/\bapply\b/i', $message)
+                && ((bool) preg_match('/\b(review|critique|feedback|audit|assess|recommendations?)\b/i', $message)
+                    || (bool) preg_match('/how (can|could|would|do) (i|we|you)\b.*(improve|better|premium|professional|design)/i', $message)
+                    || (bool) preg_match('/what would make .*(better|premium|professional|stronger|award)/i', $message));
 
             // Extract current text fields + CSS variables from content_html so the
             // AI has context about what it can edit.
@@ -958,6 +967,39 @@ HTMLSCRIPT;
                         $systemPrompt .= $__brandClause;
                         $instructions .= $__brandClause;
                     }
+                    // Feature Sprint 4: AI Design Critique. Provide grounded facts (real content_html
+                    // + brand kit). For a REVIEW request the response is FORCED to actions:[] server-side
+                    // (see the review gate below) so a review can never edit; applying a recommendation
+                    // reuses the existing verified update_style/apply_brand/generate_and_replace_image blocks.
+                    if (config('studio_chat_apply.design_critique') === true && ($__saPilotWs === 0 || $wsId === $__saPilotWs)) {
+                        $__cStyles = [];
+                        if (preg_match_all('/data-field="([^"]+)"[^>]*\bstyle="([^"]*)"/i', $html, $__csm)) {
+                            foreach ($__csm[1] as $__i => $__nm) { if (!isset($__cStyles[$__nm])) $__cStyles[$__nm] = trim($__csm[2][$__i]); }
+                        }
+                        $__cImgs = [];
+                        if (preg_match_all('/<img[^>]*\bdata-field="([^"]+)"/i', $html, $__cim)) { $__cImgs = array_values(array_unique($__cim[1])); }
+                        $__cKit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+                        $__cBrand = !empty($__cKit['is_neutral']) ? 'none configured yet'
+                            : ('primary ' . $__cKit['primary_color'] . ', secondary ' . $__cKit['secondary_color'] . ', accent ' . $__cKit['accent_color'] . ', background ' . $__cKit['background_color'] . ', text ' . $__cKit['text_color']);
+                        $__critique = "\n\nDESIGN-CRITIQUE FACTS (never invent beyond these): PER-ELEMENT INLINE STYLES " . json_encode($__cStyles, JSON_UNESCAPED_SLASHES)
+                          . "; IMAGE FIELDS " . json_encode($__cImgs, JSON_UNESCAPED_SLASHES)
+                          . "; WORKSPACE BRAND PALETTE " . $__cBrand . " (you also have CURRENT TEXT FIELDS and CURRENT CSS COLOR VARIABLES above)."
+                          . " Supported recommendation categories and the action each maps to: Typography (font-size/font-weight/text-align) -> update_style; Colour/Contrast (an element colour, or the design palette vs the brand palette) -> update_style or apply_brand; Image (weak/off-message hero or photo) -> generate_and_replace_image."
+                          . " NOT SUPPORTED (always 'Supported: NO', reason 'layout editing is not implemented yet'): spacing, padding, margins, positioning, alignment BETWEEN elements, overlap, resizing/geometry, adding/removing elements.";
+                        if ($__isReview) {
+                            $__critique .= " THIS MESSAGE IS A DESIGN REVIEW, NOT AN EDIT. You MUST return \"actions\":[] (an empty array) and put a DESIGN SCORECARD in \"reply\" as plain text."
+                                . " Start with a line 'OVERALL: <n>/100'. Then, for EACH category you can genuinely ground in the facts above, output a block: '<Category>: <n>/100', then a line 'Evidence:' followed by the specific observed values you used (actual px sizes, hex colours, field names, brand vs design colours), then 'Recommendation:' (one line), then 'Supported: YES' or 'Supported: NO'."
+                                . " Score ONLY these categories and ONLY when you have real evidence for them: Typography, Colour Usage, Brand Consistency, Hero Image, CTA Strength, Content Hierarchy, Readability. If a category has no supporting evidence in the facts above, OMIT it entirely - never invent a score, a px value, or a hex you did not observe."
+                                . " Every score must be derived from the evidence, and every deduction must cite the observed value(s). Do NOT score spacing, alignment, balance, composition, whitespace, or accessibility (not measurable) - if the user asks for one of those, list it as 'Supported: NO' with reason 'layout editing is not implemented yet'."
+                                . " After the category blocks, add a numbered 'Recommendations:' list where each item maps to a supported action (Typography -> update_style; Colour/Contrast/Brand -> update_style or apply_brand; Image -> generate_and_replace_image). Do NOT edit anything now.";
+                        } else {
+                            $__critique .= " If the user is applying a previous recommendation (e.g. 'apply recommendation 2' or 'apply 1,2,4'), emit ONLY the matching supported action(s) from your previous review and skip any that were 'Supported: NO' (say so).";
+                        }
+                        $systemPrompt .= $__critique;
+                        $instructions .= $__critique;
+                    }
+
+
                     $resp = $runtime->chatJson($systemPrompt, $instructions, [], 600);
                     if (!empty($resp['success'])) {
                         $parsed = $resp['parsed'] ?? null;
@@ -1031,7 +1073,13 @@ HTMLSCRIPT;
             // action (browser stays inert: no _applyChatActions, no autosave, no 2nd
             // PUT). ANY unsupported/unsafe/unverified/dirty-editor/concurrent case
             // falls through to the unchanged legacy response. Never both.
+            // Sprint 4 review gate: a review NEVER edits — return the critique reply with no actions,
+            // regardless of what the model returned (safety net against auto-apply).
+            if ($__isReview) {
+                return response()->json(['success' => true, 'reply' => $reply, 'actions' => []]);
+            }
             $__pilotWs = (int) config('studio_chat_apply.pilot_workspace_id');
+
             if (config('studio_chat_apply.server_apply_text') === true && ($__pilotWs === 0 || $wsId === $__pilotWs)) {
                 $__ic = null;
                 $__eligible = is_array($actions) && count($actions) === 1
