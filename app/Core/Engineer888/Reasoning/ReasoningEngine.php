@@ -164,8 +164,18 @@ final class ReasoningEngine
             return ReasoningOutcome::rejected($violations, $request, $response, $id, $this->store->uuidFor($id));
         }
 
+        // THE PRE-IMAGE IS CARRIED, NEVER RE-DERIVED. $ground holds what the
+        // repository actually was at the instant the prompt was built — the only
+        // source state this proposal was ever reasoned against. Reading those
+        // files again here would record the tree as it is now, and an approval
+        // would then bind a "before" that nobody, model or human, ever saw.
+        //
+        // A path in file_changes that grounding never covered gets an explicit
+        // ungrounded entry rather than no entry, so an omission is a fact in the
+        // fingerprint instead of an absence in it.
         $candidate = new CandidateImplementation(
-            $response->payload, $provider->name(), $response->model, $request->fingerprint()
+            $response->payload, $provider->name(), $response->model, $request->fingerprint(),
+            PreImage::fromGrounding($ground['grounded'], (array) ($response->payload['file_changes'] ?? []))
         );
 
         $id = $this->store->record((int) $task->id, (int) $project->id, $request, $response,

@@ -18,6 +18,11 @@ use Illuminate\Support\Str;
  * line is the structural fix for the Sprint 7 defect: reasoning again cannot
  * leave an older approval standing, because the act of recording the new
  * candidate invalidates it. Nothing has to remember to do it.
+ *
+ * IT ALSO KEEPS WHAT THE MODEL WAS LOOKING AT. The grounded pre-image travels
+ * on the candidate object and is written beside the payload, in its own column
+ * rather than inside it. Provider output stays verbatim, and the one piece of
+ * evidence an approval must be able to trust stays out of the model's reach.
  */
 final class CandidateStore
 {
@@ -32,6 +37,11 @@ final class CandidateStore
         array $revision = [],
     ): int {
         $uuid = (string) Str::uuid();
+
+        // Taken from the candidate rather than a separate argument: the object
+        // that will be bound and the row that records it must describe the same
+        // observation, and two parameters is two chances for them not to.
+        $preImage = $candidate?->preImage ?? [];
 
         $id = (int) DB::table('engineering_candidates')->insertGetId([
             'uuid'                 => $uuid,
@@ -50,6 +60,12 @@ final class CandidateStore
             ], JSON_PARTIAL_OUTPUT_ON_ERROR),
             'payload'              => json_encode($response->payload, JSON_PARTIAL_OUTPUT_ON_ERROR),
             'violations'           => json_encode($violations, JSON_PARTIAL_OUTPUT_ON_ERROR),
+            // NULL, not "[]", when there is nothing to record. A candidate that
+            // never had a pre-image reads the same as one stored before the
+            // column existed, which is the truth: neither was bound.
+            'pre_image'            => $preImage === []
+                ? null
+                : json_encode($preImage, JSON_PARTIAL_OUTPUT_ON_ERROR),
             'confidence'           => $candidate?->confidence(),
             'file_count'           => $candidate === null ? 0 : count($candidate->fileChanges()),
             'content_fingerprint'  => $candidate?->contentFingerprint(),
@@ -140,8 +156,15 @@ final class CandidateStore
         $payload = json_decode((string) $row->payload, true);
         if (! is_array($payload)) { return null; }
 
+        // A row written before the column existed decodes to nothing, and the
+        // candidate correctly reports itself as unbound. It is never repaired by
+        // hashing the repository now: that would present today's bytes as the
+        // ones an older model reasoned against.
+        $preImage = json_decode((string) ($row->pre_image ?? ''), true);
+
         return new CandidateImplementation(
-            $payload, (string) $row->provider, (string) $row->model, (string) $row->request_fingerprint
+            $payload, (string) $row->provider, (string) $row->model, (string) $row->request_fingerprint,
+            is_array($preImage) ? $preImage : []
         );
     }
 }

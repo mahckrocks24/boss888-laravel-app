@@ -3,6 +3,7 @@
 namespace App\Core\Engineer888\Approval;
 
 use App\Core\Engineer888\Reasoning\CandidateImplementation;
+use App\Core\Engineer888\Reasoning\PreImage;
 
 /**
  * What a human actually approved, reduced to one hash.
@@ -17,6 +18,13 @@ use App\Core\Engineer888\Reasoning\CandidateImplementation;
  * different: which candidate, which task, which project, which provider and
  * model produced it, which paths, and the exact content of each path. Change
  * any of those and the hash changes, and IMPLEMENT refuses.
+ *
+ * IT NOW COVERS BOTH SIDES OF THE CHANGE. Until E1-A the binding described only
+ * the bytes to be written. "Replace this file with these bytes" is only a
+ * reviewable sentence when the file being replaced is also pinned, so the
+ * grounded pre-image — the exact sources the model was shown — is folded in as
+ * deterministic parts. Same pre-image and same post-image gives the same hash;
+ * either side moving gives a different one.
  *
  * ORDER MUST NOT MATTER. Paths are sorted before hashing, so a provider that
  * returns the same two files in the other order does not invalidate an approval
@@ -50,8 +58,20 @@ final class ApprovalBinding
         }
         ksort($hashes);
 
-        return new self($candidateUuid, $taskUuid, $projectKey,
+        $binding = new self($candidateUuid, $taskUuid, $projectKey,
             $candidate->provider, $candidate->model, $hashes);
+
+        // Derived here rather than passed in, so every construction site gets
+        // the same answer. ApprovalLedger::enforce() rebuilds a binding from the
+        // stored candidate and compares hashes; if the pre-image contribution
+        // came from a caller instead, the rebuild would omit it and every new
+        // approval would fail its own enforcement check.
+        //
+        // A legacy candidate carries no evidence and therefore contributes no
+        // parts, which is what keeps its fingerprint exactly what it always was.
+        $binding->extraParts = PreImage::canonicalParts($candidate->preImage);
+
+        return $binding;
     }
 
     /** @return array<int,string> */
@@ -61,33 +81,42 @@ final class ApprovalBinding
     }
 
     /**
+     * Deterministic parts folded into the fingerprint alongside the file hashes.
+     *
+     * Two things live here. The grounded pre-image, seeded by forCandidate(),
+     * and anything a caller binds in on top — the migration rehearsal being the
+     * case this seam was built for. A migration approval that covered only the
+     * file's bytes would survive the rehearsal being redone, failing, or having
+     * been run against a different database.
+     *
+     * @var array<int,string>
+     */
+    public array $extraParts = [];
+
+    /**
+     * Bind additional parts on top of what is already bound.
+     *
+     * It appends rather than replaces, deliberately. Replacing would let a
+     * caller adding a rehearsal part silently delete the pre-image contract from
+     * the fingerprint, and an approval that quietly covers less than it did is
+     * precisely the failure this class exists to prevent.
+     */
+    public function withExtraParts(array $parts): self
+    {
+        $clone = new self($this->candidateUuid, $this->taskUuid, $this->projectKey,
+            $this->provider, $this->model, $this->fileHashes);
+        $clone->extraParts = array_merge($this->extraParts, array_values($parts));
+
+        return $clone;
+    }
+
+    /**
      * The single value an approval is recorded against.
      *
      * Deliberately includes VERSION. If the binding's definition ever changes,
      * every existing approval stops matching rather than silently meaning
      * something narrower than the human intended.
      */
-    /**
-     * Extra parts a caller can bind in — currently the migration rehearsal.
-     *
-     * A migration approval that covered only the file's bytes would survive the
-     * rehearsal being redone, failing, or having been run against a different
-     * database. Binding the rehearsal identity and verdict means a migration
-     * approval cannot outlive the evidence it rested on.
-     *
-     * @var array<int,string>
-     */
-    public array $extraParts = [];
-
-    public function withExtraParts(array $parts): self
-    {
-        $clone = new self($this->candidateUuid, $this->taskUuid, $this->projectKey,
-            $this->provider, $this->model, $this->fileHashes);
-        $clone->extraParts = $parts;
-
-        return $clone;
-    }
-
     public function fingerprint(): string
     {
         $parts = [
@@ -151,6 +180,18 @@ final class ApprovalBinding
             if ($approved->fileHashes[$path] !== $hash) {
                 $differences[] = "changed content in {$path}";
             }
+        }
+
+        // Named, not just detected. Without this the fingerprint check below
+        // would still refuse a moved pre-image, but it would report "the binding
+        // definition itself has changed" — a true statement about the wrong
+        // thing, and the kind of diagnosis that sends an engineer to the wrong
+        // file for an hour.
+        foreach (array_diff($this->extraParts, $approved->extraParts) as $part) {
+            $differences[] = 'bound evidence nobody approved: ' . PreImage::describe($part);
+        }
+        foreach (array_diff($approved->extraParts, $this->extraParts) as $part) {
+            $differences[] = 'approved bound evidence that no longer holds: ' . PreImage::describe($part);
         }
 
         return $differences;

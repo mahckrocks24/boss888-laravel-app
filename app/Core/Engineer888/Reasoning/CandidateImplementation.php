@@ -14,6 +14,14 @@ namespace App\Core\Engineer888\Reasoning;
  * question has told the truth and the workflow can act on it; a model that
  * invents a confident answer has produced the one defect no downstream gate
  * catches, because the output looks exactly like a correct one.
+ *
+ * THE PRE-IMAGE IS NOT PART OF THE PAYLOAD. `payload` is what the provide
+ * said, kept verbatim so the record can never be read as anything else.
+ * `preImage` is what Engineer888 itself observed while grounding the request.
+ * They are separate constructor arguments for one reason: if evidence about the
+ * repository lived inside provider output, a model could author its own
+ * pre-image, and the one field an approval must be able to trust would be the
+ * one field the model controls.
  */
 final class CandidateImplementation
 {
@@ -73,6 +81,17 @@ final class CandidateImplementation
         public readonly string $provider,
         public readonly string $model,
         public readonly string $requestFingerprint,
+        /**
+         * Engineer888's own observation of the sources this proposal was
+         * reasoned against, as PreImage::fromGrounding() shaped it.
+         *
+         * Empty means legacy: a candidate produced before pre-image evidence
+         * was carried. It is never filled in afterwards by re-reading the
+         * repository, because a hash taken today is not what an older model saw.
+         *
+         * @var array<int,array<string,mixed>>
+         */
+        public readonly array $preImage = [],
     ) {}
 
     public function get(string $key, mixed $default = null): mixed
@@ -133,10 +152,23 @@ final class CandidateImplementation
     }
 
     /**
+     * Does a complete, positive pre-image cover every file this candidate changes?
+     *
+     * This is the legacy discriminator, and it answers by inspection rather than
+     * by date: a candidate stored before E1-A has no evidence and reports false,
+     * and so does a new candidate whose evidence is incomplete. A later gate may
+     * refuse on that basis; nothing here manufactures the missing half.
+     */
+    public function hasBoundPreImage(): bool
+    {
+        return PreImage::covers($this->preImage, $this->paths());
+    }
+
+    /**
      * The shape ImplementStage already knows how to consume.
      *
      * Deliberately the SAME structure a human-supplied change set uses, so
-     * model-authored content flows through the identical governed path rather
+     * model-authored content flows through the identical governed path rathe
      * than a second one written for it.
      *
      * @return array<string,array{content:string}>
@@ -152,7 +184,13 @@ final class CandidateImplementation
         return $changeSet;
     }
 
-    /** Identity of the proposed content, so drift between stages is detectable. */
+    /**
+     * Identity of the proposed content, so drift between stages is detectable.
+     *
+     * Deliberately still the POST-image alone. It answers "are these the same
+     * proposed bytes?", which is a different question from "was this approved?",
+     * and the approval fingerprint is where the pre-image belongs.
+     */
     public function contentFingerprint(): string
     {
         $parts = [];
@@ -174,6 +212,8 @@ final class CandidateImplementation
             'confidence'          => $this->confidence(),
             'files'               => $this->paths(),
             'unknowns'            => count($this->unknowns()),
+            'pre_image'           => $this->preImage,
+            'pre_image_bound'     => $this->hasBoundPreImage(),
             'payload'             => $this->payload,
         ];
     }
@@ -185,6 +225,7 @@ final class CandidateImplementation
             (string) ($row['provider'] ?? 'unknown'),
             (string) ($row['model'] ?? 'unknown'),
             (string) ($row['request_fingerprint'] ?? ''),
+            is_array($row['pre_image'] ?? null) ? $row['pre_image'] : [],
         );
     }
 }
