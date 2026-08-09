@@ -3,6 +3,7 @@
 namespace App\Core\Engineer888\Workflow;
 
 use App\Core\Engineer888\Approval\ApprovalLedger;
+use App\Core\Engineer888\Approval\ApprovedPreImageGuard;
 use App\Core\Engineer888\Coordination\GovernedFiles;
 use App\Core\Engineer888\Coordination\OwnershipManifest;
 use App\Core\Engineer888\Install\SafeInstaller;
@@ -29,11 +30,12 @@ final class ImplementStage extends BaseStage
     public function name(): string { return 'IMPLEMENT'; }
     public function purpose(): string { return 'Apply the exact approved change set through SafeInstaller, with provenance, ownership and backup.'; }
     public function inputs(): array { return ['approval ledger', 'files.owned', 'task.change_set or the approved candidate']; }
-    public function outputs(): array { return ['implement.decisions', 'implement.origin', 'implement.enforcement', 'implement.recovery_manifest']; }
+    public function outputs(): array { return ['implement.decisions', 'implement.origin', 'implement.enforcement', 'implement.drift', 'implement.recovery_manifest']; }
     public function failureModes(): array {
         return [
             'no approval exists, or it is rejected, revoked, superseded or expired',
             'the candidate no longer matches the bytes that were approved',
+            'an approved target changed in the repository after it was approved',
             'the candidate proposes a file that was never checked for ownership',
             'the destination diverged after the plan was made — someone edited it',
             'the source file is missing',
@@ -86,6 +88,30 @@ final class ImplementStage extends BaseStage
             if ($unchecked !== []) {
                 return StageResult::failed('unchecked files in candidate',
                     'these paths never passed the ownership gate: ' . implode(', ', $unchecked));
+            }
+
+            // WHAT THE MODEL READ MUST STILL BE THERE.
+            //
+            // enforce() above proves the candidate is the one that was approved.
+            // It cannot prove the repository is the one that was approved — in
+            // E1-B a target was rewritten underneath a live approval and
+            // enforce() still returned permitted, because both records it
+            // compares had stayed put. This is the other half: the approved
+            // pre-image against the disk.
+            //
+            // It sits here, and not one line later, because the next thing that
+            // happens is RecoveryManifest::capture(), which writes backup files.
+            // This is the last moment at which a refusal costs nothing.
+            $drift = (new ApprovedPreImageGuard($context->repoPath))->check($candidate);
+            $context->set('implement.drift', $drift->toArray());
+
+            if (! $drift->permitted) {
+                // BLOCKED, not failed: nothing is broken, the change is simply
+                // no longer the change anybody read. The repair is a human one —
+                // reason again and approve the result — and nothing here
+                // regenerates, rebases or re-approves on their behalf.
+                return StageResult::blocked('refused: ' . $drift->summary, $drift->detail(),
+                    ['drift' => $drift->toArray()]);
             }
 
             $changeSet = $candidate->asChangeSet();

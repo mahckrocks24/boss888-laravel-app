@@ -307,6 +307,11 @@ class ExecutionRecoveryTest extends TestCase
 
     public function test_implement_writes_nothing_when_the_undo_cannot_be_promised(): void
     {
+        // E1-D: SourceGrounding can only prove a target absent when its parent
+        // directory exists, and a create with no grounded absence is refused
+        // before it can install. The directory is what a real tree looks like.
+        @mkdir($this->repo . '/app/Owned', 0775, true);
+
         [$task, $project, $uuid] = $this->approvedCandidate("<?php\n// x\n");
 
         // A destination directory that cannot be backed up into.

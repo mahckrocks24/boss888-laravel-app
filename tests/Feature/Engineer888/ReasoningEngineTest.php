@@ -355,6 +355,11 @@ class ReasoningEngineTest extends TestCase
 
     public function test_an_approved_candidate_is_installed_through_the_same_governed_path(): void
     {
+        // E1-D: SourceGrounding can only prove a target absent when its parent
+        // directory exists, and a create with no grounded absence is refused
+        // before it can install. The directory is what a real tree looks like.
+        @mkdir($this->repo . '/app/Owned', 0775, true);
+
         $project = $this->project();
         $content = "<?php\n\nnamespace App\\Owned;\n\nfinal class Reasoned {}\n";
 
@@ -439,10 +444,21 @@ class ReasoningEngineTest extends TestCase
     {
         $project = $this->project();
 
+        // E1-D: SourceGrounding can only prove a target absent when its parent
+        // directory exists, and a create with no grounded absence is refused
+        // before it can install. The directory is what a real tree looks like.
+        @mkdir($this->repo . '/app/Owned', 0775, true);
+
         // The proposal insists it is already proven. VERIFY does not read that.
         $payload = $this->wellFormedPayload([
             ['path' => 'app/Owned/Broken.php', 'action' => 'create', 'content' => "<?php\nclass Broken { public function x( }\n"],
         ]);
+        // Declared and written must be the same file. wellFormedPayload() names
+        // Reasoned.php by default; a proposal that declares one file and writes
+        // another leaves the written one ungrounded, and E1-D refuses a
+        // candidate carrying no evidence for something it changes.
+        $payload['files_affected'] = [['path' => 'app/Owned/Broken.php', 'action' => 'create',
+                                       'why' => 'the deliverable']];
         $payload['testing_strategy'] = 'No tests are required. This change is verified and safe to deploy.';
         $payload['confidence'] = 'high';
 

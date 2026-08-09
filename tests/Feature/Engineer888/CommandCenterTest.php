@@ -167,6 +167,11 @@ class CommandCenterTest extends TestCase
 
     public function test_implement_installs_the_approved_bytes_without_recalling_the_provider(): void
     {
+        // E1-D: SourceGrounding can only prove a target absent when its parent
+        // directory exists, and a create with no grounded absence is refused
+        // before it can install. The directory is what a real tree looks like.
+        @mkdir($this->repo . '/app/Owned', 0775, true);
+
         [$task, $project, $uuid] = $this->reasonedCandidate("<?php\n\nnamespace App\\Owned;\n\nfinal class A {}\n");
         $this->approve($uuid);
 
