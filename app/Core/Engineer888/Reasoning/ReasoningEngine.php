@@ -3,6 +3,7 @@
 namespace App\Core\Engineer888\Reasoning;
 
 use App\Core\Engineer888\Approval\ApprovalLedger;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The Engineering Reasoning Engine.
@@ -155,7 +156,7 @@ final class ReasoningEngine
                 $response = $groundedResponse;
             }
         }
-        $violations = $this->validator->violations($response->payload);
+        $violations = $this->validatorFor($project)->violations($response->payload);
 
         if ($violations !== []) {
             $id = $this->store->record((int) $task->id, (int) $project->id, $request, $response,
@@ -283,8 +284,33 @@ final class ReasoningEngine
 
         // Stored rows are still validated on the way out. A row written by an
         // older validator, or edited in the database, must not become
-        // installable simply because it once passed.
-        return $this->validator->violations($candidate->payload) === [] ? $candidate : null;
+        // installable simply because it once passed — and it is re-judged
+        // against ITS OWN project, not against whichever repository happens to
+        // be running the check.
+        $project = DB::table('engineering_projects')->find($approval->project_id);
+
+        return $this->validatorFor($project)->violations($candidate->payload) === [] ? $candidate : null;
+    }
+
+    /**
+     * The validator, bound to the repository the candidate is actually for.
+     *
+     * Engineer888 governs projects; it is not one of them. Every other part of
+     * the pipeline already resolves from the project — SourceGrounding, the
+     * knowledge base, the dependency graph, the verification plan, the installer,
+     * the lock, the drift guard. The validator was the last thing still reading
+     * base_path(), and it is the one that decides whether a candidate is allowed
+     * to exist at all.
+     *
+     * A project with no usable repository path yields a validator with none, and
+     * the coverage rules that need a filesystem are then skipped rather than
+     * answered wrongly — the same contract the constructor has always had.
+     */
+    private function validatorFor(?object $project): CandidateValidator
+    {
+        $path = is_object($project) ? trim((string) ($project->repository_path ?? '')) : '';
+
+        return $this->validator->withRepository($path === '' ? null : $path);
     }
 
     /** The candidate UUID an approval names, for the enforcement check. */

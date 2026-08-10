@@ -77,6 +77,26 @@ final class CandidateValidator
     ) {}
 
     /**
+     * The same rules, resolved against a different repository.
+     *
+     * WHY THIS EXISTS. Until E1-G the validator was built once, against
+     * base_path(), and every candidate for every project was judged against
+     * Engineer888's own tree. That is invisible while there is one project and
+     * incoherent the moment there are two: in E1-F the sandbox was told by
+     * SourceGrounding that tests/GreeterTest.php existed — because it does, in
+     * the sandbox — and then refused for citing it, because it does not exist
+     * here. The engine contradicted itself, and the model was right both times.
+     *
+     * The repository a candidate is judged against must be the repository the
+     * candidate is for. Returned as a new instance so the shared validator
+     * cannot acquire a project.
+     */
+    public function withRepository(?string $repoPath): self
+    {
+        return new self($this->maxFiles, $this->maxFileBytes, $repoPath);
+    }
+
+    /**
      * @return array<int,array{rule:string,detail:string}> empty means valid
      */
     public function violations(array $payload): array
@@ -196,6 +216,19 @@ final class CandidateValidator
         // not merely unverified — INSUFFICIENT_EVIDENCE at VERIFY punished a
         // candidate for a gap nobody had asked it to fill.
         if ($this->repoPath !== null && $violations === []) {
+            // A path that does not resolve cannot answer "does this test exist"
+            // or "do we own it". Skipping those checks would let a candidate for
+            // a missing repository validate more easily than one for a real
+            // repository, which is the wrong way round.
+            $root = realpath($this->repoPath);
+
+            if ($root === false || ! is_dir($root)) {
+                return [['rule' => 'unresolvable_repository',
+                         'detail' => 'the project repository ' . $this->repoPath . ' does not resolve on '
+                                   . 'this machine, so coverage and ownership cannot be checked against '
+                                   . 'it. A candidate is not validated against a repository that is not there.']];
+            }
+
             $changeSet = [];
             foreach ($changes as $change) {
                 if (isset($change['path'], $change['content'])) {

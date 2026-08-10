@@ -54,6 +54,12 @@ class ReasoningEngineTest extends TestCase
         ], JSON_PRETTY_PRINT));
 
         file_put_contents($this->repo . '/.gitignore', ".engineer888/\n.gitignore\n");
+        // E1-G: coverage is resolved against the PROJECT repository, so a test
+        // this fixture cites has to exist in the fixture's own tree.
+        @mkdir($this->repo . '/tests/Feature/Engineer888', 0775, true);
+        file_put_contents($this->repo . '/tests/Feature/Engineer888/CommandCenterTest.php', "<?php\n");
+        file_put_contents($this->repo . '/tests/Feature/Engineer888/ExecutionRecoveryTest.php', "<?php\n");
+
         $quoted = escapeshellarg($this->repo);
         exec("cd {$quoted} && git init -q && git config user.email e888@test && git config user.name e888 2>&1");
 

@@ -507,6 +507,12 @@ class ExecutionLockTest extends TestCase
         ], JSON_PRETTY_PRINT));
 
         file_put_contents($path . '/.gitignore', ".engineer888/\n.gitignore\n");
+        // E1-G: coverage is resolved against the PROJECT repository, so a test
+        // this fixture cites has to exist in the fixture's own tree.
+        @mkdir($path . '/tests/Feature/Engineer888', 0775, true);
+        file_put_contents($path . '/tests/Feature/Engineer888/CommandCenterTest.php', "<?php\n");
+        file_put_contents($path . '/tests/Feature/Engineer888/ExecutionRecoveryTest.php', "<?php\n");
+
         exec('cd ' . escapeshellarg($path) . ' && git init -q && git config user.email e888@test && git config user.name e888 2>&1');
     }
 

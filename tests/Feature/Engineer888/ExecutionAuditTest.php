@@ -60,6 +60,12 @@ class ExecutionAuditTest extends TestCase
 
         file_put_contents($this->repo . '/.gitignore', ".engineer888/\n.gitignore\n");
         file_put_contents($this->repo . '/README.md', "fixture repository\n");
+        // E1-G: coverage is resolved against the PROJECT repository, so a test
+        // this fixture cites has to exist in the fixture's own tree.
+        @mkdir($this->repo . '/tests/Feature/Engineer888', 0775, true);
+        file_put_contents($this->repo . '/tests/Feature/Engineer888/CommandCenterTest.php', "<?php\n");
+        file_put_contents($this->repo . '/tests/Feature/Engineer888/ExecutionRecoveryTest.php', "<?php\n");
+
 
         // Committed, unlike the other fixtures: a repository with no commits has
         // no HEAD at all, and this suite asserts on the commit an execution ran
