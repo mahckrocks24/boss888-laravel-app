@@ -8,20 +8,32 @@ namespace App\Core\Engineer888\Reasoning;
  * WHY THIS EXISTS. On 2026-08-10 a candidate for a whole bug tracker arrived as
  * 210 bytes across five files. The entire implementation was:
  *
- *     class BugController extends Controller { /* CRUD methods *​/ }
+ *     class BugController extends Controller { [CRUD methods] }
  *     <!-- HTML for listing bugs -->
  *
  * CandidateValidator refused it, but only incidentally: the .php entries did not
- * open with `<?php`, so `not_php` fired. Had the model written
- * `<?php class BugController { /* CRUD *​/ }` the same empty proposal would have
- * passed every rule and been offered to a human as a reviewable candidate.
+ * open with `<?php`, so `not_php` fired. Add the opening tag and the same empty
+ * proposal passes every structural rule and reaches a human as a candidate.
  *
  * WHAT THIS DELIBERATELY IS NOT. It is not a code-quality score, a linter, or a
  * judgement about whether the implementation is any good. That is the reviewer's
  * job and it is not mechanisable. This answers one narrow question — is there
- * executable substance at all — and stays silent on everything else. A rule that
- * refuses real work is far more expensive than one that misses a stub, so every
- * check below is written to fail towards ACCEPTING.
+ * executable substance at all — and stays silent on everything else.
+ *
+ * TWO EARLIER VERSIONS ARE WORTH KNOWING ABOUT, because both were wrong in ways
+ * that only measurement revealed:
+ *
+ *   1. Counting executable statements refused
+ *      `final class NotFoundException extends \RuntimeException {}`, which is
+ *      complete, correct PHP. It broke twelve existing tests. Removed.
+ *
+ *   2. A list of stub phrases ("todo", "implementation here", …) was walked
+ *      straight through on 2026-08-11 by
+ *      `public function validate() { // Implement validation logic }`
+ *      because the list held "implementation" but not the imperative
+ *      "Implement X". Every stub phrase is one paraphrase away from a stub
+ *      phrase nobody listed, so the question is now inverted — see
+ *      DELIBERATELY_EMPTY.
  */
 final class CandidateSubstanceValidator
 {
@@ -43,17 +55,18 @@ final class CandidateSubstanceValidator
     ];
 
     /**
-     * Comment bodies that announce an absence of implementation.
+     * The ONLY comment bodies that mean a construct is deliberately empty.
      *
-     * Matched only when such a comment is the ENTIRE body of a construct — see
-     * bodyIsPlaceholder(). A TODO inside a working method is a normal note and
-     * must not be refused.
+     * An allowlist rather than a stub list, for the reason in the class docblock:
+     * a body that is nothing but a comment is a placeholder UNLESS it says, in so
+     * many words, that it is empty on purpose. That list is short, closed and
+     * unambiguous, which is exactly what a list of stub phrasings can never be.
      */
-    public const STUB_WORDS = [
-        'crud', 'crud methods', 'implementation', 'implementation here', 'implement later',
-        'todo', 'fixme', 'tbd', 'placeholder', 'your code here', 'add logic here',
-        'logic here', 'code here', 'fill in', 'to be implemented', 'not implemented yet',
-        'html for', 'html form', 'form for', 'markup for', 'view for', 'template for',
+    public const DELIBERATELY_EMPTY = [
+        'no-op', 'noop', 'no op', 'intentionally empty', 'deliberately empty',
+        'intentionally blank', 'nothing to do', 'nothing to clean up', 'not needed',
+        'unused', 'by design', 'left empty on purpose', 'required by the interface',
+        'inherited behaviour is correct',
     ];
 
     /**
@@ -92,24 +105,7 @@ final class CandidateSubstanceValidator
             return [];   // unparseable is somebody else's refusal, not ours
         }
 
-        // COUNTING STATEMENTS WAS THE WRONG TEST, AND IT WAS TRIED FIRST.
-        //
-        // The first version of this class refused any file that declared a class
-        // or function without an executable statement. It caught the acceptance
-        // stub — and it also caught
-        //
-        //     final class NotFoundException extends \RuntimeException {}
-        //
-        // which is complete, correct, idiomatic PHP. It broke twelve existing
-        // Engineer888 tests whose fixtures are deliberately minimal. A rule that
-        // refuses real work costs far more than one that misses a stub, so the
-        // statement count is gone and the question is asked structurally
-        // instead: is the BODY of something a placeholder comment?
-        //
-        // That still refuses every file of candidate 86cc830a and lets a marker
-        // class through, which is the correct pair of answers.
         $declares = false;
-
         foreach ($tokens as $token) {
             if (! is_array($token)) { continue; }
             if (in_array($token[0], [T_CLASS, T_INTERFACE, T_TRAIT, T_FUNCTION], true)) { $declares = true; }
@@ -120,7 +116,9 @@ final class CandidateSubstanceValidator
 
         foreach ($this->placeholderBodies($content) as $name) {
             $violations[] = ['rule' => 'placeholder_body',
-                             'detail' => $name . ' has a body whose only content is a placeholder comment'];
+                             'detail' => $name . ' has a body whose only content is a comment. A method that '
+                                       . 'describes what it should do is not an implementation of it; if it is '
+                                       . 'empty on purpose, say so in the comment'];
         }
 
         if ($this->isTest($path) && $declares) {
@@ -135,32 +133,26 @@ final class CandidateSubstanceValidator
     }
 
     /**
-     * Function/method bodies whose entire content is a stub comment.
-     *
-     * Deliberately textual and narrow: it looks for `{ <comment only> }` where
-     * the comment says one of STUB_WORDS. A body with any statement in it, or a
-     * comment that says something specific, is left alone.
+     * Function, method and class bodies whose entire content is a comment.
      *
      * @return array<int,string>
      */
     private function placeholderBodies(string $content): array
     {
         $out = [];
-        $pattern = '/\bfunction\s+(\w+)\s*\([^)]*\)\s*(?::\s*[^{;]+)?\{\s*((?:\/\/[^\n]*|#[^\n]*|\/\*.*?\*\/|\s)*)\}/s';
+        $commentOnly = '(?:\/\/[^\n]*|\#[^\n]*|\/\*.*?\*\/|\s)*';
 
-        if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER) === false) {
-            return $out;
+        $functionPattern = '/\bfunction\s+(\w+)\s*\([^)]*\)\s*(?::\s*[^{;]+)?\{\s*(' . $commentOnly . ')\}/s';
+        if (preg_match_all($functionPattern, $content, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $m) {
+                $body = trim($m[2]);
+                if ($body === '') { continue; }          // a genuinely empty body is not our call
+                if ($this->looksLikeStub($body)) { $out[] = 'function ' . $m[1] . '()'; }
+            }
         }
 
-        foreach ($matches as $m) {
-            $body = trim($m[2]);
-            if ($body === '') { continue; }          // a genuinely empty method is not our call
-            if ($this->looksLikeStub($body)) { $out[] = 'function ' . $m[1] . '()'; }
-        }
-
-        // The class-level case: `class X { /* CRUD methods */ }`
-        $classPattern = '/\b(?:final\s+|abstract\s+)?class\s+(\w+)[^{]*\{\s*((?:\/\/[^\n]*|#[^\n]*|\/\*.*?\*\/|\s)*)\}/s';
-        if (preg_match_all($classPattern, $content, $classMatches, PREG_SET_ORDER) !== false) {
+        $classPattern = '/\b(?:final\s+|abstract\s+)?class\s+(\w+)[^{]*\{\s*(' . $commentOnly . ')\}/s';
+        if (preg_match_all($classPattern, $content, $classMatches, PREG_SET_ORDER)) {
             foreach ($classMatches as $m) {
                 $body = trim($m[2]);
                 if ($body === '') { continue; }
@@ -171,25 +163,20 @@ final class CandidateSubstanceValidator
         return $out;
     }
 
+    /** A comment-only body is a placeholder unless it declares itself empty on purpose. */
     private function looksLikeStub(string $commentBody): bool
     {
-        // The comment markers are stripped with ~ as the delimiter: the pattern
-        // has to contain a literal # for shell-style comments, and using # as the
-        // delimiter as well made PCRE read the rest of the pattern as modifiers.
-        $text = strtolower(trim(preg_replace('~^\s*(//|\#|/\*+|\*+/?)|\*+/\s*$~m', ' ', $commentBody) ?? ''));
-        $text = trim(preg_replace('/\s+/', ' ', $text) ?? '');
+        $text = preg_replace('~^\s*(?://|\#|/\*+|\*+/?)~m', ' ', $commentBody) ?? $commentBody;
+        $text = str_replace('*/', ' ', $text);
+        $text = strtolower(trim(preg_replace('/\s+/', ' ', $text) ?? ''));
 
         if ($text === '') { return false; }
 
-        // Short and made only of stub vocabulary. Length matters: a body comment
-        // that actually explains something is longer than a label.
-        if (strlen($text) > 80) { return false; }
-
-        foreach (self::STUB_WORDS as $word) {
-            if (str_contains($text, $word)) { return true; }
+        foreach (self::DELIBERATELY_EMPTY as $phrase) {
+            if (str_contains($text, $phrase)) { return false; }
         }
 
-        return false;
+        return true;
     }
 
     private function testMethodCount(array $tokens): int
@@ -211,7 +198,8 @@ final class CandidateSubstanceValidator
 
     private function hasAssertion(string $content): bool
     {
-        return preg_match('/\b(assert\w*|expect|shouldReceive|willReturn|->fail\(|self::assert|static::assert)\s*\(/i', $content) === 1;
+        return preg_match('/\b(assert\w*|expect|shouldReceive|willReturn|self::assert|static::assert)\s*\(/i', $content) === 1
+            || str_contains($content, '->fail(');
     }
 
     // ── MARKUP ──────────────────────────────────────────────────────────────
@@ -265,7 +253,7 @@ final class CandidateSubstanceValidator
             // Only when it appears inside an ellipsis or a comment marker, which
             // is how an elision is always written. "existing code" in prose about
             // the change is not an elision.
-            if (preg_match('/(\.\.\.|…|\/\/|#|\/\*|<!--)\s*[^\n]{0,20}' . preg_quote($phrase, '/') . '/i', $lower) === 1) {
+            if (preg_match('/(\.\.\.|…|\/\/|\#|\/\*|<!--)\s*[^\n]{0,20}' . preg_quote($phrase, '/') . '/i', $lower) === 1) {
                 $found[] = $phrase;
             }
         }

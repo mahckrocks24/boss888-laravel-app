@@ -360,7 +360,23 @@ final class RepositoryMap
         $out[] = 'owned paths: ' . ($this->ownership['owned_paths'] === []
             ? '(no manifest — nothing is writeable)' : implode(', ', $this->ownership['owned_paths']));
         if ($this->ownership['owned_files'] !== []) {
-            $out[] = 'owned files: ' . implode(', ', $this->ownership['owned_files']);
+            // WHETHER EACH ONE EXISTS, SAID OUT LOUD.
+            //
+            // Acceptance run 2026-08-11, candidate e29c33a3: the manifest lists
+            // README.md under owned_files, this section printed the bare name,
+            // and the provider proposed action `update` for a README that has
+            // never existed. Reading "owned files: README.md" as "README.md is
+            // here" is a fair reading of what this line used to say.
+            //
+            // Ownership answers "may I write this". It has never answered "is it
+            // there", and the two must not look alike.
+            $annotated = [];
+            foreach ($this->ownership['owned_files'] as $file) {
+                $annotated[] = $file . ($this->has($file)
+                    ? ' (exists — use action update)'
+                    : ' (DOES NOT EXIST YET — use action create)');
+            }
+            $out[] = 'owned files: ' . implode(', ', $annotated);
         }
 
         $out[] = '';

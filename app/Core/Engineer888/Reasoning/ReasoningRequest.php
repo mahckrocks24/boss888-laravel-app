@@ -35,13 +35,26 @@ final class ReasoningRequest
          * the condition that produced the 2026-08-10 Laravel proposal.
          */
         public readonly ?RepositoryMap $repositoryMap = null,
+        /**
+         * The requirements the task listed, as obligations rather than prose.
+         * Optional for the same reason as the map: every existing caller keeps
+         * working, and a task with no checklist adds nothing.
+         */
+        public readonly ?RequirementSet $requirements = null,
     ) {}
+
+    /** The same request, with the task's own checklist attached. */
+    public function withRequirements(?RequirementSet $requirements): self
+    {
+        return new self($this->project, $this->task, $this->sections,
+                        $this->excluded, $this->outputContract, $this->repositoryMap, $requirements);
+    }
 
     /** The same request, with discovery attached. */
     public function withRepositoryMap(?RepositoryMap $map): self
     {
         return new self($this->project, $this->task, $this->sections,
-                        $this->excluded, $this->outputContract, $map);
+                        $this->excluded, $this->outputContract, $map, $this->requirements);
     }
 
     /**
@@ -79,6 +92,16 @@ final class ReasoningRequest
         $out[] = 'kind: ' . ($this->task['kind'] ?? 'feature') . ' · priority: ' . ($this->task['priority'] ?? 'normal');
         $out[] = '';
         $out[] = (string) ($this->task['description'] ?? '');
+
+        // THE CHECKLIST, RIGHT AFTER THE BRIEF THAT CONTAINS IT.
+        //
+        // Candidate 7e717943 skipped the README and every line of validation
+        // while satisfying every structural rule, because the requirements were
+        // prose inside the description and nothing made them obligations.
+        if ($this->requirements !== null && ! $this->requirements->isEmpty()) {
+            $out[] = '';
+            $out[] = $this->requirements->render();
+        }
 
         foreach (['acceptance_criteria' => 'ACCEPTANCE CRITERIA',
                   'constraints'         => 'KNOWN CONSTRAINTS',
@@ -119,8 +142,42 @@ final class ReasoningRequest
             if (preg_match('/^FILE (\S+) /', $label, $m)) { $existingTargets[] = $m[1]; }
         }
 
+        // THE MANDATE THAT WAS ONLY EVER SENT FOR UPDATES.
+        //
+        // Everything below used to sit inside `if ($existingTargets !== [])`,
+        // so it was emitted only when the model was changing a file that already
+        // existed. On a greenfield build every change is a create, the list is
+        // empty, and the entire instruction — content must be complete source,
+        // no placeholders, no descriptions — was never sent at all.
+        //
+        // Measured across three acceptance runs on 2026-08-11 while this was
+        // conditional: 4546 bytes of real code, then 2157 bytes of stubs, then
+        // 313 bytes of stubs. The model was never told what the content field
+        // was for, and drifted towards outlining it.
+        $out[] = '';
+        $out[] = '# THE CONTENT FIELD IS THE DELIVERABLE';
+        $out[] = 'Every file_changes[].content is written to disk verbatim. It must be the';
+        $out[] = 'COMPLETE, FINAL, RUNNABLE source of that file.';
+        $out[] = '';
+        $out[] = 'DO NOT return an outline, a skeleton, or a class with empty methods.';
+        $out[] = 'DO NOT return a description of what the file will contain.';
+        $out[] = 'DO NOT leave a method body as a comment saying what it should do:';
+        $out[] = '  public function validate() { // Implement validation logic }';
+        $out[] = 'is refused by the validator, and one such body rejects the whole candidate.';
+        $out[] = 'DO NOT return a diff, a patch, or only the part that changed.';
+        $out[] = 'DO NOT use placeholders such as "...existing code..." or "rest unchanged".';
+        $out[] = '';
+        $out[] = 'FEWER FILES, FULLY IMPLEMENTED, BEATS MORE FILES LEFT EMPTY. If the budget';
+        $out[] = 'is tight, reduce the number of files — never the completeness of one.';
+        $out[] = 'Spend your output on content; keep the prose sections short.';
+
         if ($existingTargets !== []) {
             $out[] = '';
+            // The heading is load-bearing. SourceGroundingTest asserts both that
+            // it appears before the schema and that a create-only candidate never
+            // sees it — a new file has no current bytes to reproduce. The new
+            // unconditional block above carries its own heading precisely so this
+            // one can keep meaning exactly what it always meant.
             $out[] = '# COMPLETE FILE OUTPUT IS REQUIRED';
             $out[] = 'YOU HAVE BEEN GIVEN THE COMPLETE CURRENT CONTENTS OF THESE FILES:';
             foreach ($existingTargets as $path) { $out[] = '- ' . $path; }
@@ -221,6 +278,7 @@ final class ReasoningRequest
             'task'             => $this->task,
             'context_manifest' => $this->contextManifest(),
             'repository_map'   => $this->repositoryMap?->toArray(),
+            'requirements'     => $this->requirements?->toArray(),
             'excluded'         => $this->excluded,
             'fingerprint'      => $this->fingerprint(),
             'size_bytes'       => $this->sizeBytes(),

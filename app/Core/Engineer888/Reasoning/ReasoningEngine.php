@@ -338,9 +338,11 @@ final class ReasoningEngine
         // repository — not Engineer888's. Without it the provider receives the
         // repository as a path string and has to invent a structure to design
         // against, which is exactly what happened on 2026-08-10.
-        return $request->withRepositoryMap(
-            RepositoryMap::discover((string) $project->repository_path)
-        );
+        // DISCOVERY answers "what am I working in". REQUIREMENTS answer "what
+        // am I accountable for". Neither was reaching the provider before.
+        return $request
+            ->withRepositoryMap(RepositoryMap::discover((string) $project->repository_path))
+            ->withRequirements(RequirementSet::fromDescription((string) ($task->description ?? '')));
     }
 
     /**

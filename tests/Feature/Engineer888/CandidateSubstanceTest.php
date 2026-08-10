@@ -261,6 +261,45 @@ PHP);
         @rmdir($repo . '/app'); @rmdir($repo);
     }
 
+    public function test_an_imperative_stub_comment_is_refused(): void
+    {
+        // CANDIDATE 7d3e5f80, 2026-08-11. The stub list held 'implementation'
+        // and 'implement later' but not the imperative 'Implement X', so an
+        // entire bug tracker arrived as method bodies that described themselves:
+        //
+        //     public function validate() { // Implement validation logic }
+        //     public function save()     { // Implement persistence logic }
+        //
+        // It passed every rule. The detector is now an allowlist of deliberate
+        // emptiness rather than a denylist of stub phrasings, because every stub
+        // phrasing is one paraphrase away from one nobody listed.
+        foreach ([
+            'validate'  => "<?php\nclass Bug {\n public function validate() {\n  // Implement validation logic\n }\n}\n",
+            'save'      => "<?php\nclass Bug {\n public function save() {\n  // Implement persistence logic\n }\n}\n",
+            'listBugs'  => "<?php\nclass C {\n public function listBugs() {\n  // Implement logic to list bugs\n }\n}\n",
+            'paraphrase'=> "<?php\nclass C {\n public function f() {\n  // handle the request appropriately\n }\n}\n",
+        ] as $name => $content) {
+            $this->assertContains('placeholder_body', $this->rules('app/Bug.php', $content),
+                "a body that only describes what it should do is not an implementation ({$name})");
+        }
+    }
+
+    public function test_a_body_that_declares_itself_deliberately_empty_is_accepted(): void
+    {
+        // The cost of the inversion above is that a legitimately empty body must
+        // now say so. That is a short, closed, unambiguous list — which is what
+        // the stub list could never be.
+        foreach ([
+            "<?php\nclass A {\n public function __construct() { /* intentionally empty */ }\n}\n",
+            "<?php\nclass A {\n public function handle(): void { // no-op\n }\n}\n",
+            "<?php\nclass A {\n public function tearDown(): void { // nothing to clean up\n }\n}\n",
+            "<?php\nclass A {\n public function f(): void { // required by the interface\n }\n}\n",
+        ] as $content) {
+            $this->assertSame([], $this->rules('app/A.php', $content),
+                'an empty body that says it is empty on purpose is a decision, not an omission');
+        }
+    }
+
     public function test_an_interface_is_not_mistaken_for_an_empty_implementation(): void
     {
         $rules = $this->rules('app/BugStore.php', <<<'PHP'
