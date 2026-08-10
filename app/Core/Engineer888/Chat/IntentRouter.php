@@ -40,13 +40,76 @@ final class IntentRouter
      * appeared to ask for. Recorded on the message so the refusal can name the
      * right card rather than a generic one.
      */
-    private const HIGH_RISK = [
-        'APPROVE_CANDIDATE' => ['approve', 'approved', 'approve it', 'lgtm', 'ship it', 'go ahead', 'do it', 'yes proceed', 'accept the candidate'],
-        'EXECUTE_TASK' => ['execute', 'run it', 'apply it', 'install it', 'deploy it', 'make the change'],
-        'APPROVE_RECOVERY' => ['approve recovery', 'restore it', 'roll it back', 'recover it'],
-        'APPROVE_MIGRATION' => ['approve migration', 'run the migration', 'migrate it'],
-        'GRANT_ACCESS' => ['grant access', 'give access', 'add me', 'revoke access', 'remove access'],
+    /**
+     * HIGH RISK, AS COMMANDS RATHER THAN AS VOCABULARY.
+     *
+     * The table used to hold bare phrases matched anywhere in the message, and
+     * on 2026-08-10 that refused an entire build request:
+     *
+     *   "…a README explaining the structure and how to run it."
+     *   → matched "run it" → REQUIRES_ACTION_CARD / EXECUTE_TASK → no task created
+     *
+     * Asking for documentation about running the app was read as an instruction
+     * to run it. The same table held "approve", "do it", "install it" and
+     * "deploy it", all of which appear in ordinary descriptions of work.
+     *
+     * The fix is NOT to delete the phrases — free text must still never execute
+     * anything. It is to require COMMAND SEMANTICS: an imperative verb applied
+     * to a governed object. "execute the task" is a command; "explain how to
+     * execute tests" is a sentence about tests.
+     *
+     * Refusal still wins ties, and this tier is still tested first.
+     */
+    private const HIGH_RISK_COMMANDS = [
+        'APPROVE_CANDIDATE' => [
+            '/\b(approve|accept)\s+(the\s+|this\s+|that\s+)?(candidate|proposal|change|changes|implementation)\b/i',
+            '/\b(approve|accept)\s+it\b/i',
+        ],
+        'EXECUTE_TASK' => [
+            '/\b(execute|run|apply|install|deploy)\s+(the\s+|this\s+|that\s+)?(approved\s+)?(task|candidate|change|changes|implementation)\b/i',
+            '/\b(execute|run|apply|install|deploy)\s+it\b/i',
+            '/\bship\s+(the\s+)?(approved\s+)?(task|candidate|change)\b/i',
+            '/\bmake\s+the\s+change\b/i',
+        ],
+        'APPROVE_RECOVERY' => [
+            '/\bapprove\s+(the\s+)?recovery\b/i',
+            '/\b(restore|recover)\s+it\b/i',
+            '/\broll\s+(it\s+)?back\b/i',
+        ],
+        'APPROVE_MIGRATION' => [
+            '/\bapprove\s+(the\s+)?migration\b/i',
+            '/\brun\s+the\s+migration\b/i',
+            '/\bmigrate\s+it\b/i',
+        ],
+        'GRANT_ACCESS' => [
+            '/\b(grant|give|revoke|remove)\s+\w*\s*access\b/i',
+            '/\badd\s+me\s+(to|as)\b/i',
+        ],
     ];
+
+    /**
+     * Bare affirmations — the words a human types when they mean only "yes".
+     *
+     * These carry no object, so they can only be read as a command when they are
+     * the WHOLE message. "do it" alone is an approval; "do it yourself is not
+     * allowed" is a sentence about policy.
+     */
+    private const AFFIRMATIONS = [
+        'APPROVE_CANDIDATE' => ['approve', 'approved', 'approve it', 'lgtm', 'ship it',
+                                'go ahead', 'do it', 'yes proceed', 'accept the candidate'],
+        'EXECUTE_TASK'      => ['execute', 'execute it', 'run it'],
+    ];
+
+    /**
+     * Words that make the surrounding clause a description rather than an order.
+     *
+     * Applied to the CLAUSE the match sits in, not the whole message, so one
+     * documentation requirement in a long brief cannot disarm a real command in
+     * a later sentence.
+     */
+    private const DOCUMENTARY = '/\b(readme|documentation|document|documenting|documented|explain|explains'
+                              . '|explaining|describe|describes|describing|instructions?|guide|how\s+to'
+                              . '|tell\s+me|show\s+me|write\s+up|comment)\b/i';
 
     /**
      * TIER 2 — EXPLICIT CONVERSATIONAL COMMANDS.
@@ -130,11 +193,24 @@ final class IntentRouter
         // safe patterns were tested first it would route to REVIEW_CANDIDATE and
         // the administrator would be shown a diff when they believed they had
         // approved one. Refusing is only useful if refusal wins ties.
-        foreach (self::HIGH_RISK as $action => $phrases) {
+        // A message that is nothing but "yes" is an answer to a decision.
+        foreach (self::AFFIRMATIONS as $action => $phrases) {
             foreach ($phrases as $phrase) {
-                if ($this->mentions($text, $phrase)) {
+                if (preg_match('/^(?:please\s+|ok[,\s]+|okay[,\s]+|yes[,\s]+)?'
+                             . preg_quote($phrase, '/') . '[\s.!]*$/i', $text) === 1) {
                     return $this->result(self::REQUIRES_ACTION_CARD, $action, $phrase);
                 }
+            }
+        }
+
+        // An imperative applied to a governed object, unless the clause it sits
+        // in is describing rather than instructing.
+        foreach (self::HIGH_RISK_COMMANDS as $action => $patterns) {
+            foreach ($patterns as $pattern) {
+                if (preg_match($pattern, $text, $m, PREG_OFFSET_CAPTURE) !== 1) { continue; }
+                if ($this->isDocumentary($text, (int) $m[0][1])) { continue; }
+
+                return $this->result(self::REQUIRES_ACTION_CARD, $action, $pattern);
             }
         }
 
@@ -156,6 +232,28 @@ final class IntentRouter
 
         // TIER 4 — unrecognised is a question, never an instruction.
         return $this->result(self::GENERAL_ENGINEERING_QUESTION);
+    }
+
+    /**
+     * Is the match sitting inside a clause that describes rather than commands?
+     *
+     * The clause, not the sentence and not the message: a brief that says
+     * "build X … and a README explaining how to run it" must create a task, and
+     * a message that says "here is the plan. execute the task." must not be
+     * disarmed by the word "plan".
+     */
+    private function isDocumentary(string $text, int $offset): bool
+    {
+        $start = 0;
+        foreach (['.', ';', ',', "\n", ':'] as $stop) {
+            $found = strrpos(substr($text, 0, $offset), $stop);
+            if ($found !== false && $found + 1 > $start) { $start = $found + 1; }
+        }
+
+        $end = strcspn($text, ".;\n", $offset) + $offset;
+        $clause = substr($text, $start, max(1, $end - $start));
+
+        return preg_match(self::DOCUMENTARY, $clause) === 1;
     }
 
     /** Does free text alone permit this intent to change anything? */

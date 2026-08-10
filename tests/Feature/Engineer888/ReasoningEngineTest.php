@@ -330,7 +330,12 @@ class ReasoningEngineTest extends TestCase
     {
         $project = $this->project();
         $this->useScriptedProvider($this->wellFormedPayload([
-            ['path' => 'app/Foreign/Theirs.php', 'action' => 'update', 'content' => "<?php\n// not mine\n"],
+            // create, not update: app/Foreign/Theirs.php does not exist in the
+            // fixture repository, and update is a claim that it does. With the
+            // false claim in place the candidate is now refused at PLAN, which
+            // is still before any write but is not the refusal this test is
+            // about — it is about OWNERSHIP being caught at IDENTIFY_FILES.
+            ['path' => 'app/Foreign/Theirs.php', 'action' => 'create', 'content' => "<?php\n// not mine\n"],
         ]));
 
         $task = $this->task($project, 'Touch a file owned by somebody else');

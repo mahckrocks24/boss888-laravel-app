@@ -74,7 +74,11 @@ final class CandidateValidator
         // does this existing test exist, is this test path ours — are
         // skipped rather than guessed at.
         private readonly ?string $repoPath = null,
-    ) {}
+    ) {
+        $this->substance = new CandidateSubstanceValidator();
+    }
+
+    private readonly CandidateSubstanceValidator $substance;
 
     /**
      * The same rules, resolved against a different repository.
@@ -202,6 +206,15 @@ final class CandidateValidator
                 continue;
             }
 
+            // IS THERE AN IMPLEMENTATION IN HERE AT ALL?
+            //
+            // Structure and safety were already checked. This asks the one
+            // question they do not: whether the content implements anything, or
+            // merely describes what an implementation would do.
+            foreach ($this->substance->violations($path, (string) $change['content']) as $found) {
+                $violations[] = ['rule' => $found['rule'], 'detail' => $label . ' ' . $found['detail']];
+            }
+
             if (str_ends_with($path, '.php') && $this->leaksUnknownIntoCode($change['content'])) {
                 $violations[] = ['rule' => 'unknown_leaked_into_code',
                                  'detail' => $label . ' uses UNKNOWN as a bare identifier in executable code. '
@@ -246,7 +259,7 @@ final class CandidateValidator
             }
         }
 
-        return $violations;
+        return array_merge($violations, $this->missingUpdateTargets($changes));
     }
 
     /**
@@ -260,6 +273,44 @@ final class CandidateValidator
      * Tokenised, so the word is only a violation where it is an identifier.
      * `self::UNKNOWN`, `$x->UNKNOWN`, a comment or a string are all legitimate.
      */
+    /**
+     * UPDATE MEANS THE FILE IS ALREADY THERE.
+     *
+     * A candidate that claims to update routes/web.php in a repository that has
+     * never had one is not proposing a change, it is describing a different
+     * project — the exact claim candidate 86cc830a made on 2026-08-10.
+     *
+     * Deliberately evaluated LAST. When this ran inside the per-file loop it
+     * populated $violations before the ownership and coverage block, which is
+     * gated on $violations === [], so a wrong action silently suppressed every
+     * finding about who owns the file and whether it is tested. A new rule must
+     * add to what the validator can say, never take something away from it.
+     *
+     * @return array<int,array{rule:string,detail:string}>
+     */
+    private function missingUpdateTargets(array $changes): array
+    {
+        if ($this->repoPath === null) { return []; }
+
+        $root = realpath($this->repoPath);
+        if ($root === false) { return []; }
+
+        $out = [];
+        foreach ($changes as $index => $change) {
+            if (! is_array($change) || ! isset($change['path'])) { continue; }
+            if (strtolower((string) ($change['action'] ?? '')) !== 'update') { continue; }
+
+            $path = (string) $change['path'];
+            if (is_file($root . '/' . ltrim($path, '/'))) { continue; }
+
+            $out[] = ['rule' => 'update_target_missing',
+                      'detail' => "file_changes[{$index}] proposes action update for {$path}, which does not "
+                                . 'exist in this repository. Use create, or propose against a path that is there'];
+        }
+
+        return $out;
+    }
+
     private function leaksUnknownIntoCode(string $content): bool
     {
         $tokens = @token_get_all($content);

@@ -28,7 +28,21 @@ final class ReasoningRequest
         public readonly array $excluded,
         /** @var array<string,mixed> the structure the provider must return */
         public readonly array $outputContract,
+        /**
+         * What the repository actually is, read from disk before anything was
+         * designed. Optional so every existing caller keeps working; when it is
+         * absent the provider is told nothing about the tree, which is exactly
+         * the condition that produced the 2026-08-10 Laravel proposal.
+         */
+        public readonly ?RepositoryMap $repositoryMap = null,
     ) {}
+
+    /** The same request, with discovery attached. */
+    public function withRepositoryMap(?RepositoryMap $map): self
+    {
+        return new self($this->project, $this->task, $this->sections,
+                        $this->excluded, $this->outputContract, $map);
+    }
 
     /**
      * The question, rendered deterministically.
@@ -50,6 +64,15 @@ final class ReasoningRequest
         $out[] = 'company: ' . $this->project['company'];
         $out[] = 'project: ' . $this->project['name'] . ' (' . $this->project['key'] . ')';
         $out[] = 'repository: ' . $this->project['repository_path'];
+
+        // DISCOVERY BEFORE DESIGN. Placed immediately after the project header
+        // and before the task, because what the repository IS has to be settled
+        // before the model reads what it is being asked to do.
+        if ($this->repositoryMap !== null) {
+            $out[] = '';
+            $out[] = $this->repositoryMap->render();
+        }
+
         $out[] = '';
         $out[] = '# TASK';
         $out[] = 'title: ' . ($this->task['title'] ?? '');
@@ -197,6 +220,7 @@ final class ReasoningRequest
             'project'          => $this->project,
             'task'             => $this->task,
             'context_manifest' => $this->contextManifest(),
+            'repository_map'   => $this->repositoryMap?->toArray(),
             'excluded'         => $this->excluded,
             'fingerprint'      => $this->fingerprint(),
             'size_bytes'       => $this->sizeBytes(),

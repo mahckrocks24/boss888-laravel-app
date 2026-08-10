@@ -330,9 +330,17 @@ class MultiProjectValidationTest extends TestCase
     {
         if ($fileChanges === []) { $fileChanges = ['app/Greeter.php' => "<?php\n// changed\n"]; }
 
+        // ACTION create, NOT update.
+        //
+        // These fixtures exist to test COVERAGE CITATION and OWNERSHIP, and the
+        // action was incidental — but it was also false: none of the files named
+        // here exist in the fixture repository, and `update` is a claim that they
+        // do. The 2026-08-10 repair added a rule that checks exactly that claim,
+        // which is how a five-year-old inaccuracy in the fixture surfaced. The
+        // scenario is corrected; not one assertion below changed.
         $changes = [];
         foreach ($fileChanges as $path => $content) {
-            $changes[] = ['path' => $path, 'action' => 'update', 'content' => $content,
+            $changes[] = ['path' => $path, 'action' => 'create', 'content' => $content,
                           'rationale' => 'fixture'];
         }
 
@@ -341,7 +349,7 @@ class MultiProjectValidationTest extends TestCase
             'assumptions'             => [], 'unknowns' => [],
             'implementation_strategy' => 'Write the declared content.',
             'files_affected'          => array_map(
-                fn ($c) => ['path' => $c['path'], 'action' => 'update', 'why' => 'the target'], $changes),
+                fn ($c) => ['path' => $c['path'], 'action' => 'create', 'why' => 'the target'], $changes),
             'migrations'              => ['required' => false, 'detail' => 'none'],
             'risks'                   => [], 'testing_strategy' => 'the project suite',
             'rollback'                => 'SafeInstaller backup',

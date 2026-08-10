@@ -331,8 +331,16 @@ final class ReasoningEngine
             (int) ($context['min_score'] ?? 1),
         );
 
-        return $builder->build($project, $task,
+        $request = $builder->build($project, $task,
             array_merge($this->revisionContext($revision), $extraItems));
+
+        // DISCOVERY. Deterministic, bounded, and read from the project's own
+        // repository — not Engineer888's. Without it the provider receives the
+        // repository as a path string and has to invent a structure to design
+        // against, which is exactly what happened on 2026-08-10.
+        return $request->withRepositoryMap(
+            RepositoryMap::discover((string) $project->repository_path)
+        );
     }
 
     /**
