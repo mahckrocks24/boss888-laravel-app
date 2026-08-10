@@ -419,8 +419,20 @@ final class ActionCardService
             }
 
             // Only now, on evidence the mutation exists.
+            //
+            // THE DOMAIN ACTION NAMES ITS OWN OUTCOME. The transport passes a
+            // default, and for an approval or a rejection "executed" is a fair
+            // description of what just happened. For an execution trigger it is
+            // not: the press queues a workflow, and the install, the
+            // verification and the recovery are all still ahead of it. So an
+            // executor may return its own `result`, and a card that says QUEUED
+            // is a card that means it.
+            $recorded = is_string($outcome['result'] ?? null) && $outcome['result'] !== ''
+                ? $outcome['result']
+                : $result;
+
             ChatOwner::scope(DB::table('e888_action_cards')->where('uuid', $cardUuid))
-                ->update(['consumed_result' => $result, 'updated_at' => now()]);
+                ->update(['consumed_result' => $recorded, 'updated_at' => now()]);
 
             return ['card' => ChatOwner::scope(
                 DB::table('e888_action_cards')->where('uuid', $cardUuid)

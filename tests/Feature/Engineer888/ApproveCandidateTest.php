@@ -493,7 +493,6 @@ class ApproveCandidateTest extends TestCase
         $this->candidate();
 
         foreach ([
-            ActionCardService::EXECUTE_TASK,
             ActionCardService::APPROVE_RECOVERY,
             ActionCardService::APPROVE_MIGRATION,
             ActionCardService::REVOKE_APPROVAL,
@@ -504,6 +503,24 @@ class ApproveCandidateTest extends TestCase
             $this->assertFalse($out['ok'], $type . ' must not report success');
             $this->assertSame(ActionCardExecutor::NOT_IMPLEMENTED, $out['reason']);
         }
+    }
+
+    /**
+     * EXECUTE_TASK left that list in E2. It is wired now — and it still fails
+     * closed, which is the property the list was protecting.
+     */
+    public function test_execute_task_is_wired_and_still_fails_closed(): void
+    {
+        $card = (object) ['action_type' => ActionCardService::EXECUTE_TASK,
+                          'candidate_uuid' => null, 'task_uuid' => null,
+                          'conversation_id' => null, 'uuid' => 'x'];
+
+        $out = app(ActionCardExecutor::class)->execute($this->req(), $card, []);
+
+        $this->assertFalse($out['ok'], 'a card naming no task must never report success');
+        $this->assertNotSame(ActionCardExecutor::NOT_IMPLEMENTED, $out['reason'],
+            'the action has domain wiring now');
+        $this->assertSame(ActionCardExecutor::TASK_NOT_FOUND, $out['reason']);
     }
 
     public function test_rejection_still_works_alongside_approval(): void

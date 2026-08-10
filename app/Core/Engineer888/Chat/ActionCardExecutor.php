@@ -5,6 +5,8 @@ namespace App\Core\Engineer888\Chat;
 use App\Core\Engineer888\Approval\ApprovalBinding;
 use App\Core\Engineer888\Approval\ApprovalLedger;
 use App\Core\Engineer888\Approval\ApprovalState;
+use App\Core\Engineer888\Reasoning\CandidateStore;
+use App\Jobs\Engineer888WorkflowJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -58,6 +60,39 @@ final class ActionCardExecutor
 
     /** The bytes moved between the screen and the press. */
     public const FINGERPRINT_MISMATCH = 'FINGERPRINT_MISMATCH';
+
+    /**
+     * The only success this card may report.
+     *
+     * NOT "executed". A press hands the task to the queue; the workflow then
+     * takes the repository lock, re-proves the approval, checks for drift,
+     * opens an audit attempt, persists a recovery manifest, installs and
+     * verifies — none of which has happened yet when this returns. Saying
+     * "executed" here would be the 2026-08-05 defect in a new costume: a card
+     * reporting an effect that has not occurred.
+     */
+    public const QUEUED = 'QUEUED';
+
+    /** The card names a task that is not there. */
+    public const TASK_NOT_FOUND = 'TASK_NOT_FOUND';
+
+    /** The task's project row is gone, so there is no repository to act on. */
+    public const PROJECT_NOT_FOUND = 'PROJECT_NOT_FOUND';
+
+    /** The conversation the card was issued in no longer exists. */
+    public const CONVERSATION_NOT_FOUND = 'CONVERSATION_NOT_FOUND';
+
+    /** Nobody has approved this task's candidate. */
+    public const NOT_APPROVED = 'NOT_APPROVED';
+
+    /** An approval exists but the ledger refuses to let it execute. */
+    public const APPROVAL_NOT_EXECUTABLE = 'APPROVAL_NOT_EXECUTABLE';
+
+    /** A run is already queued or in flight for this task. */
+    public const WORKFLOW_ALREADY_RUNNING = 'WORKFLOW_ALREADY_RUNNING';
+
+    /** The queue would not take the job. Nothing is claimed on a lie. */
+    public const DISPATCH_FAILED = 'DISPATCH_FAILED';
 
     public function __construct(private ApprovalLedger $ledger) {}
 
@@ -113,6 +148,7 @@ final class ActionCardExecutor
         return match ($card->action_type) {
             ActionCardService::APPROVE_CANDIDATE => $this->approveCandidate($request, $card, $input),
             ActionCardService::REJECT_CANDIDATE => $this->rejectCandidate($request, $card, $input),
+            ActionCardService::EXECUTE_TASK => $this->executeTask($request, $card, $input),
             default => $this->refuse(self::NOT_IMPLEMENTED,
                 "no domain wiring exists for {$card->action_type}; the card must not report success"),
         };
@@ -333,6 +369,144 @@ final class ActionCardExecutor
                 'approver_name' => (string) $after->approver_name,
                 'statement_recorded' => (string) $after->statement,
                 'comment' => $after->comment,
+            ],
+        ];
+    }
+
+    /**
+     * Hand an approved task to the engine. Nothing more.
+     *
+     * THIS METHOD PERFORMS NO ENGINEERING WORK. It does not install, verify,
+     * lock, check drift, capture recovery or write a repository byte. Every one
+     * of those is owned by the workflow that E1-A to E1-G built and proved, and
+     * a second implementation here would be a second source of truth about when
+     * a write is safe — which is the failure this whole module exists to avoid.
+     *
+     * What it does own is the question "may this be handed over at all", and it
+     * answers it by asking the existing records rather than by reasoning about
+     * them. The ledger's own enforce() decides whether the approval is live,
+     * unexpired, unrevoked, unsuperseded and still bound to these exact bytes —
+     * including the E1-A pre-image. This class does not re-derive any of that.
+     *
+     * THE CLAIM IS ATOMIC AND IT IS NOT THE CARD'S. ActionCardService has
+     * already claimed the card, which stops two presses of the SAME card. It
+     * does not stop two different cards, or a card and the Command Center, from
+     * queueing the same task twice. So the task row is claimed here with a
+     * conditional UPDATE — the same shape the chat dispatcher already uses —
+     * and the repository lock remains the final backstop inside the workflow.
+     */
+    private function executeTask(?Request $request, object $card, array $input): array
+    {
+        $taskUuid = trim((string) ($card->task_uuid ?? ''));
+
+        if ($taskUuid === '') {
+            return $this->refuse(self::TASK_NOT_FOUND, 'the card names no task');
+        }
+
+        $conversation = DB::table('e888_conversations')->where('id', $card->conversation_id)->first();
+
+        if ($conversation === null) {
+            return $this->refuse(self::CONVERSATION_NOT_FOUND,
+                'the conversation this card was issued in no longer exists');
+        }
+
+        $task = DB::table('engineering_tasks')->where('uuid', $taskUuid)->first();
+
+        if ($task === null) {
+            return $this->refuse(self::TASK_NOT_FOUND, 'the task named by this card no longer exists');
+        }
+
+        $project = DB::table('engineering_projects')->where('id', $task->project_id)->first();
+
+        if ($project === null) {
+            return $this->refuse(self::PROJECT_NOT_FOUND,
+                'the task has no project, so there is no repository to execute against');
+        }
+
+        // The approval the LEDGER holds for this task — not the one the card
+        // remembers. If a newer candidate superseded the approved one, the
+        // ledger says so and the card is answering about the wrong bytes.
+        $approval = $this->ledger->activeFor((int) $task->id);
+
+        if ($approval === null) {
+            return $this->refuse(self::NOT_APPROVED,
+                'no approved candidate exists for this task; execution is never authorised by a press alone');
+        }
+
+        $candidateUuid = (string) $approval->candidate_uuid;
+
+        if (($card->candidate_uuid ?? null) !== null
+            && ! hash_equals($candidateUuid, (string) $card->candidate_uuid)) {
+            return $this->refuse(self::CANDIDATE_NOT_CURRENT,
+                'the approved candidate is not the one this card was issued for');
+        }
+
+        $candidate = (new CandidateStore())->candidateByUuid($candidateUuid);
+
+        if ($candidate === null) {
+            return $this->refuse(self::CANDIDATE_NOT_CURRENT,
+                'the approved candidate could not be loaded');
+        }
+
+        // THE LEDGER'S OWN GATE, asked before anything is queued. Approval
+        // state, expiry, revocation, supersession and the full binding —
+        // candidate, task, project, provider, model, every file hash and the
+        // E1-A pre-image — are all decided here, by the class that owns them.
+        $enforcement = $this->ledger->enforce($candidate, $candidateUuid, $task, $project);
+
+        if (! $enforcement->permitted) {
+            return $this->refuse(self::APPROVAL_NOT_EXECUTABLE,
+                $enforcement->summary . ' — ' . $enforcement->detail());
+        }
+
+        // ATOMIC TRIGGER CLAIM. Two callers race on the database, not in PHP.
+        $claimed = DB::table('engineering_tasks')
+            ->where('id', $task->id)
+            ->whereNotIn('status', ['queued', 'running', 'recovering'])
+            ->update(['status' => 'queued', 'updated_at' => now()]);
+
+        if ($claimed !== 1) {
+            return $this->refuse(self::WORKFLOW_ALREADY_RUNNING,
+                'a run is already queued or in flight for this task; a second would contend for the '
+                . 'repository lock and be refused there anyway');
+        }
+
+        // DISPATCHED ON COMMIT, NOT BEFORE.
+        //
+        // This runs inside ActionCardService::consume()'s transaction, and the
+        // queue is Redis with after_commit disabled — so an ordinary dispatch
+        // would push the job immediately and survive a rollback, leaving a
+        // workflow running for a card that was never consumed. afterCommit()
+        // ties the push to the same commit that records the claim: either both
+        // happen or neither does.
+        try {
+            Engineer888WorkflowJob::dispatch($taskUuid, false, 'chat:' . ChatOwner::USER_ID)
+                ->afterCommit();
+        } catch (\Throwable $e) {
+            return $this->refuse(self::DISPATCH_FAILED,
+                'the workflow could not be queued: ' . $e->getMessage());
+        }
+
+        return [
+            'ok' => true,
+            'reason' => null,
+            // The card records what actually happened. The transport's default
+            // of "executed" would describe work that has not started.
+            'result' => self::QUEUED,
+            'evidence' => [
+                'domain' => 'engineer888_workflow',
+                'status' => self::QUEUED,
+                'task_uuid' => $taskUuid,
+                'candidate_uuid' => $candidateUuid,
+                'project_key' => (string) $project->key,
+                'approval_id' => (int) $approval->id,
+                'approval_fingerprint' => (string) $approval->fingerprint,
+                'approved_at' => (string) $approval->approved_at,
+                'expires_at' => (string) $approval->expires_at,
+                'pre_image_bound' => $candidate->hasBoundPreImage(),
+                'enforcement' => $enforcement->toArray(),
+                'task_status' => 'queued',
+                'dispatched_on_commit' => true,
             ],
         ];
     }
