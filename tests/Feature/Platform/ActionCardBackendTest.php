@@ -3,6 +3,7 @@
 namespace Tests\Feature\Platform;
 
 use App\Core\Engineer888\Access\Engineer888Access;
+use App\Core\Engineer888\Approval\ApprovalState;
 use App\Core\Engineer888\Chat\ActionCardExecutor;
 use App\Core\Engineer888\Chat\ActionCardService;
 use App\Core\Engineer888\Chat\CardIssuanceService;
@@ -61,6 +62,39 @@ class ActionCardBackendTest extends TestCase
         $this->assertContains(ActionCardService::REJECT_CANDIDATE, $types);
     }
 
+    public function test_a_pending_approval_row_does_not_suppress_the_approve_card(): void
+    {
+        // FOUND IN THE BROWSER, 2026-08-10, not by this suite.
+        //
+        // RequestApprovalStage records an approval row in state PENDING when it
+        // ASKS for a decision — "recorded, not yet answered". Issuance block A
+        // means to skip candidates with "no decision recorded against it yet",
+        // but it tested for the ROW rather than for a DECISION, so the request
+        // for approval was mistaken for the approval itself.
+        //
+        // The effect was total: every task that reached REQUEST_APPROVAL through
+        // the real workflow became unapprovable from chat, because the card that
+        // would have taken the decision was never offered. It survived this file
+        // because every fixture here inserts an ALREADY-DECIDED approval; none
+        // reproduced the state the workflow actually writes.
+        $c = $this->candidate();
+
+        DB::table('engineering_candidate_approvals')->insert([
+            'candidate_id' => $c->id, 'candidate_uuid' => $c->uuid,
+            'task_id' => $c->task_id, 'project_id' => $this->projectId,
+            'state' => ApprovalState::PENDING,
+            'fingerprint' => $c->content_fingerprint,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $types = collect($this->issuer()->reconcile($this->req(), $this->conversation))
+            ->pluck('action_type')->all();
+
+        $this->assertContains(ActionCardService::APPROVE_CANDIDATE, $types,
+            'a PENDING row is the request for a decision, not the decision — the card must still be offered');
+        $this->assertNotContains(ActionCardService::EXECUTE_TASK, $types,
+            'and nothing may be executable while the decision is still outstanding');
+    }
     public function test_no_live_candidate_issues_no_card(): void
     {
         $this->assertSame([], $this->issuer()->reconcile($this->req(), $this->conversation));

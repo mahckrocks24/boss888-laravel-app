@@ -3,6 +3,7 @@
 namespace App\Core\Engineer888\Chat;
 
 use App\Core\Engineer888\Access\Engineer888Access;
+use App\Core\Engineer888\Approval\ApprovalState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -130,10 +131,19 @@ final class CardIssuanceService
 
         // ── A. Candidate awaiting exact review ───────────────────────────
         // VALIDATED, not superseded, and no decision recorded against it yet.
+        //
+        // A PENDING row is NOT a decision. RequestApprovalStage writes one when
+        // it asks for the decision — ApprovalState::PENDING is "recorded, not
+        // yet answered" — so joining it here made the request for approval
+        // suppress the card that would answer it, and every task that reached
+        // REQUEST_APPROVAL through the workflow became unapprovable from chat.
+        // Found in the browser on 2026-08-10; the fixtures in this area had only
+        // ever inserted already-decided approvals.
         $awaiting = DB::table('engineering_candidates as c')
             ->leftJoin('engineering_candidate_approvals as a', function ($j) {
                 $j->on('a.candidate_id', '=', 'c.id')
-                  ->whereNull('a.revoked_at')->whereNull('a.superseded_at');
+                  ->whereNull('a.revoked_at')->whereNull('a.superseded_at')
+                  ->where('a.state', '!=', ApprovalState::PENDING);
             })
             ->join('engineering_tasks as t', 't.id', '=', 'c.task_id')
             ->whereNull('c.superseded_at')
