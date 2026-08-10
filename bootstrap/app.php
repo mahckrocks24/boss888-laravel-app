@@ -501,6 +501,32 @@ return Application::configure(basePath: dirname(__DIR__))
             '*/book',
         ]);
 
+        // PLATFORM SECURITY 1.0 (2026-08-03) — lu_admin_at crosses middleware groups.
+        //
+        // The cookie is WRITTEN by /api/auth/login, which is in the `api` group
+        // and carries no EncryptCookies. It is READ on /admin/*, which is in the
+        // `web` group and does. Without this exemption EncryptCookies calls
+        // decrypt() on a plaintext JWT, throws DecryptException, and nulls the
+        // cookie before AdminSessionIdentity ever sees it — so a request holding
+        // a VALID token is bounced to the login page, which sets the same cookie
+        // again. An infinite login loop, and no way into the admin console.
+        //
+        // Proven on 2026-08-03 before activation: middleware alone returned 200;
+        // EncryptCookies in front of it returned 302 for the same valid token.
+        // The direct-invocation tests could not see it because they never cross
+        // the real HTTP pipeline.
+        //
+        // The token is not weakened by the exemption. It is a signed JWT verified
+        // by RefreshTokenService, HttpOnly, Secure, SameSite=Lax and scoped to
+        // /admin — it already carries its own integrity proof, which is the thing
+        // cookie encryption would have been adding.
+        //
+        // The name is read from the middleware's own constant so the write side,
+        // the read side and this exemption can never drift apart.
+        $middleware->encryptCookies(except: [
+            \App\Http\Middleware\AdminSessionIdentity::COOKIE,
+        ]);
+
         $middleware->alias([
             'auth.jwt'        => \App\Http\Middleware\JwtAuthMiddleware::class,
             // Phase 2B-R2 — MFA step-up for privileged control-plane ops. Self-
