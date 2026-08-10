@@ -2,7 +2,9 @@
 
 namespace App\Core\Engineer888\Workflow;
 
+use App\Core\Engineer888\Audit\ExecutionAttempt;
 use App\Core\Engineer888\Coordination\OwnershipManifest;
+use App\Core\Engineer888\Recovery\DurableRecovery;
 use App\Core\Engineer888\Recovery\RecoveryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -167,7 +169,7 @@ final class WorkflowEngine
         }
 
         try {
-            return $this->lifecycle($task, $project, $uuid, $dryRun);
+            return $this->lifecycle($task, $project, $uuid, $dryRun, $lock);
         } finally {
             $lock->release();
         }
@@ -178,9 +180,24 @@ final class WorkflowEngine
      *
      * @return array<string,mixed>
      */
-    private function lifecycle(object $task, object $project, string $uuid, bool $dryRun): array
-    {
+    private function lifecycle(
+        object $task,
+        object $project,
+        string $uuid,
+        bool $dryRun,
+        ?RepositoryExecutionLock $lock = null,
+    ): array {
         $context = new WorkflowContext($task, $project, $project->repository_path);
+
+        // OPENED INSIDE THE LOCK, BEFORE THE TRAIL IS TOUCHED.
+        //
+        // The line below deletes this task's entire stage history, which is why
+        // the stage table can never be the record of an execution: the run that
+        // would investigate a crash is the run that erases its evidence. The
+        // attempt row is append-only and survives that, and survives the process
+        // ending outright, which the stage trail and the in-memory context do not.
+        $attempt = ExecutionAttempt::open($task, $project, $lock, $dryRun);
+        $context->set('execution.attempt', $attempt);
 
         // Re-running clears prior stage records so the trail describes THIS run.
         DB::table('engineering_task_stages')->where('task_id', $task->id)->delete();
@@ -232,6 +249,8 @@ final class WorkflowEngine
 
         DB::table('engineering_tasks')->where('id', $task->id)
             ->update(['status' => $status, 'updated_at' => now()]);
+
+        $this->closeAttempt($attempt, $context, $status, $halted, $results, $recovery);
 
         return [
             'task'    => $this->task($uuid),
@@ -372,6 +391,72 @@ final class WorkflowEngine
         ]);
 
         return $evidence;
+    }
+
+    /**
+     * Close the attempt, and settle the durable recovery evidence with it.
+     *
+     * Both are best-effort at this point and neither may break the run: the
+     * work is already done and the caller is entitled to its result. A failure
+     * to close is logged and leaves the attempt open, which is exactly how an
+     * abandoned execution should look to whoever reads the table next.
+     *
+     * @param array<int,array<string,mixed>> $results
+     * @param array<string,mixed>|null       $recovery
+     */
+    private function closeAttempt(
+        ExecutionAttempt $attempt,
+        WorkflowContext $context,
+        string $status,
+        ?string $halted,
+        array $results,
+        ?array $recovery,
+    ): void {
+        $failure = null;
+        foreach ($results as $entry) {
+            if ($entry['result']->failure !== null) {
+                $failure = $entry['stage'] . ': ' . $entry['result']->failure;
+            }
+        }
+
+        $recovered = $recovery !== null && ($recovery['status'] ?? '') === RecoveryService::RECOVERED;
+
+        $result = match (true) {
+            $recovery !== null => $recovered ? ExecutionAttempt::RECOVERED : ExecutionAttempt::RECOVERY_BLOCKED,
+            $halted === null   => ExecutionAttempt::COMPLETED,
+            $status === 'blocked' => ExecutionAttempt::BLOCKED,
+            default            => ExecutionAttempt::FAILED,
+        };
+
+        // The evidence stops being outstanding only when its own question has
+        // been answered: either a rollback happened, or none was needed. A
+        // process that dies before this line leaves it outstanding, which is
+        // the whole point of storing it.
+        $record = $context->get('implement.recovery_record');
+
+        if (is_string($record) && $record !== '') {
+            try {
+                if ($recovery !== null) {
+                    DurableRecovery::markRecovered($record,
+                        $recovered ? DurableRecovery::RECOVERED : DurableRecovery::RECOVERY_BLOCKED,
+                        $recovery);
+                } else {
+                    DurableRecovery::markComplete($record);
+                }
+            } catch (\Throwable $e) {
+                Log::error('[engineer888] could not settle the durable recovery evidence', [
+                    'record' => $record, 'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        try {
+            $attempt->close($result, $halted, $failure);
+        } catch (\Throwable $e) {
+            Log::error('[engineer888] could not close the execution attempt', [
+                'attempt' => $attempt->uuid, 'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function recordStage(int $taskId, Stage $stage, int $position, StageResult $result, int $durationMs): void

@@ -6,7 +6,9 @@ use App\Core\Engineer888\Approval\ApprovalLedger;
 use App\Core\Engineer888\Approval\ApprovedPreImageGuard;
 use App\Core\Engineer888\Coordination\GovernedFiles;
 use App\Core\Engineer888\Coordination\OwnershipManifest;
+use App\Core\Engineer888\Audit\ExecutionAttempt;
 use App\Core\Engineer888\Install\SafeInstaller;
+use App\Core\Engineer888\Recovery\DurableRecovery;
 use App\Core\Engineer888\Recovery\RecoveryManifest;
 use App\Core\Engineer888\Reasoning\ReasoningEngine;
 
@@ -30,7 +32,7 @@ final class ImplementStage extends BaseStage
     public function name(): string { return 'IMPLEMENT'; }
     public function purpose(): string { return 'Apply the exact approved change set through SafeInstaller, with provenance, ownership and backup.'; }
     public function inputs(): array { return ['approval ledger', 'files.owned', 'task.change_set or the approved candidate']; }
-    public function outputs(): array { return ['implement.decisions', 'implement.origin', 'implement.enforcement', 'implement.drift', 'implement.recovery_manifest']; }
+    public function outputs(): array { return ['implement.decisions', 'implement.origin', 'implement.enforcement', 'implement.drift', 'implement.recovery_manifest', 'implement.recovery_record']; }
     public function failureModes(): array {
         return [
             'no approval exists, or it is rejected, revoked, superseded or expired',
@@ -41,6 +43,7 @@ final class ImplementStage extends BaseStage
             'the source file is missing',
             'a write fails verification after the fact',
             'the pre-write state of a destination cannot be proved, so a clean undo cannot be promised',
+            'the recovery evidence cannot be stored durably, so an undo would not survive this process',
         ];
     }
     public function verification(): string { return 'the approval binding is recomputed from the candidate and compared field by field before any write; SafeInstaller then re-hashes each destination after writing and refuses on mismatch'; }
@@ -114,6 +117,15 @@ final class ImplementStage extends BaseStage
                     ['drift' => $drift->toArray()]);
             }
 
+            // The attempt now knows what it is executing: which candidate, which
+            // approval, which pre-image and which files. Recorded once — an
+            // attempt asked to name a second candidate refuses rather than
+            // overwrite the first.
+            $attempt = $context->get('execution.attempt');
+            if ($attempt instanceof ExecutionAttempt) {
+                $attempt->bind($candidate, $candidateUuid, $enforcement?->approval, $candidate->paths());
+            }
+
             $changeSet = $candidate->asChangeSet();
             $origin = 'reasoning:' . $candidate->provider . '/' . $candidate->model
                     . ' [candidate ' . substr($candidateUuid, 0, 8) . ']';
@@ -176,6 +188,34 @@ final class ImplementStage extends BaseStage
 
         $context->set('implement.recovery_manifest', $manifest);
 
+        // THE UNDO MUST OUTLIVE THIS PROCESS.
+        //
+        // capture() has already hashed every destination and taken a verified
+        // backup, but until now that manifest existed only in this request's
+        // memory. Every ordinary failure was covered, because the same process
+        // handled the halt; the case that was not covered is the process ending
+        // outright — a SIGKILL, an OOM kill, the worker's own timeout signal —
+        // between the install and the halt handler, which took the only record
+        // of what had just been written.
+        //
+        // Stored BEFORE the write and read back to prove it reconstructs. If it
+        // cannot be made durable, nothing is written at all: an undo that only
+        // exists in one process is not an undo anybody can perform later.
+        $attemptForRecovery = $context->get('execution.attempt');
+
+        try {
+            $recoveryRecord = DurableRecovery::persist(
+                $manifest,
+                $attemptForRecovery instanceof ExecutionAttempt ? $attemptForRecovery->uuid : null,
+                $context->repoPath
+            );
+        } catch (\Throwable $e) {
+            return StageResult::failed('recovery evidence is not durable',
+                'nothing was written. ' . $e->getMessage());
+        }
+
+        $context->set('implement.recovery_record', $recoveryRecord);
+
         $installer = new SafeInstaller($context->repoPath);
         $decisions = [];
         $failure = null;
@@ -198,6 +238,11 @@ final class ImplementStage extends BaseStage
 
         $context->set('implement.decisions', $decisions);
         $context->set('implement.origin', $origin);
+
+        // What the installer actually did, attached to the durable evidence.
+        // Recorded even when the loop broke part-way: a partial write is exactly
+        // the case a later operator needs this for.
+        DurableRecovery::recordDecisions($recoveryRecord, $decisions);
 
         if ($failure !== null) {
             return StageResult::failed('implementation halted', $failure, ['decisions' => $decisions]);
