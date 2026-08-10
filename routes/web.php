@@ -24,9 +24,40 @@ Route::prefix('admin')->group(function () {
         return view('admin.login');
     })->name('admin.login');
 
-    Route::get('/{any?}', function () {
-        return view('admin.app');
-    })->where('any', '.*')->name('admin.app');
+    // PLATFORM SECURITY 1.0 (2026-08-04) — ending the session server-side.
+    //
+    // POST, never GET: a GET that destroys a session can be fired by any <img>
+    // on any site. The web group's CSRF validation covers this route, so only
+    // the console's own origin can call it.
+    //
+    // Declared ABOVE the catchall and carrying no AdminSessionIdentity: an
+    // expired or already-cleared session must still be able to sign out, which
+    // is the moment this route matters most.
+    Route::post('/logout', [\App\Http\Controllers\Admin\AdminLogoutController::class, 'logout'])
+        ->name('admin.logout');
+
+    // ── Multi-page admin (2026-07-29) ────────────────────────────────────────
+    // Every menu item is its own URL, resolved from config/admin_pages.php.
+    //
+    // This replaces a catchall that returned the same 359KB view for every
+    // /admin/* URL and booted a hardcoded dashboard: /admin/users returned 200
+    // and showed the dashboard, and so did /admin/nonsense. An unknown slug now
+    // 404s. `.*` is retained so nested slugs (ads/status, engineering/health)
+    // match; the optional parameter lets bare /admin redirect to the dashboard.
+    // PLATFORM SECURITY 1.0 (2026-08-03) — server-side identity, applied here.
+    //
+    // /admin/login is declared ABOVE this line and stays outside the middleware
+    // on purpose: gating the login page behind identity is how a platform locks
+    // everybody out. Route declaration order is what keeps it outside, so the
+    // login route must never be moved below this one.
+    //
+    // The cookie this reads is written by /api/auth/login (api group) and read
+    // here (web group). Those groups disagree about cookie encryption, which is
+    // why bootstrap/app.php exempts lu_admin_at from EncryptCookies. Remove that
+    // exemption and every request below becomes an infinite redirect to login.
+    Route::middleware(\App\Http\Middleware\AdminSessionIdentity::class)
+        ->get('/{slug?}', [\App\Http\Controllers\Admin\AdminPageController::class, 'show'])
+        ->where('slug', '.*')->name('admin.page');
 });
 
 // ── SaaS App (React SPA) ──────────────────────────────────────────────────────
