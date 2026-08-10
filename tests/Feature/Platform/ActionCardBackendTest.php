@@ -365,14 +365,14 @@ class ActionCardBackendTest extends TestCase
         // test_two_presses_produce_exactly_one_domain_effect, which counts
         // ledger rows rather than card writes.
         $c = $this->candidate();
-        $this->approve($c);
-        $card = $this->cardOfType(ActionCardService::EXECUTE_TASK);
+        $this->blockedRecovery($c);
+        $card = $this->cardOfType(ActionCardService::APPROVE_RECOVERY);
 
         $ok = 0;
         foreach ([1, 2] as $_) {
             try {
                 app(ActionCardService::class)
-                    ->consume($this->req(), $card->uuid, ActionCardService::EXECUTE_TASK, 'executed');
+                    ->consume($this->req(), $card->uuid, ActionCardService::APPROVE_RECOVERY, 'approved');
                 $ok++;
             } catch (HttpException) {
                 // expected
@@ -459,14 +459,14 @@ class ActionCardBackendTest extends TestCase
     public function test_an_unimplemented_action_fails_closed_and_never_reports_success(): void
     {
         $c = $this->candidate();
-        $this->approve($c);
-        $card = $this->cardOfType(ActionCardService::EXECUTE_TASK);
+        $this->blockedRecovery($c);
+        $card = $this->cardOfType(ActionCardService::APPROVE_RECOVERY);
 
         try {
             app(ActionCardService::class)->consume(
-                $this->req(), $card->uuid, ActionCardService::EXECUTE_TASK, 'executed', []
+                $this->req(), $card->uuid, ActionCardService::APPROVE_RECOVERY, 'approved', []
             );
-            $this->fail('execute_task has no domain wiring and must refuse');
+            $this->fail('approve_recovery has no domain wiring and must refuse');
         } catch (HttpException) {
             // expected
         }
@@ -593,6 +593,26 @@ class ActionCardBackendTest extends TestCase
         ]);
     }
 
+    /**
+     * A blocked recovery, which issues the current exemplar of an UNWIRED
+     * action card.
+     *
+     * These tests used execute_task until 2026-08-10, when it was wired to the
+     * governed workflow engine. The invariant they protect was never about
+     * execute_task: it is that an action with no domain branch must refuse and
+     * must say so. So the exemplar moves to an action that is still unwired
+     * rather than the assertion being softened. approve_recovery,
+     * request_revision, revoke_approval and approve_migration all still fall
+     * through to ActionCardExecutor's default refusal.
+     */
+    private function blockedRecovery(object $candidate): void
+    {
+        DB::table('engineering_recoveries')->insert([
+            'task_uuid' => $this->taskUuid($candidate), 'candidate_uuid' => $candidate->uuid,
+            'fingerprint' => 'recovery-fp', 'status' => 'FAILED_RECOVERY_BLOCKED',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
     private function taskUuid(object $candidate): string
     {
         return (string) DB::table('engineering_tasks')->where('id', $candidate->task_id)->value('uuid');
