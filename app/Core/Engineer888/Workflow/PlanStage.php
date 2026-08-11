@@ -75,6 +75,36 @@ final class PlanStage extends BaseStage
         } elseif ($changeSet === []) {
             // 3. Nothing approved, nothing supplied — reason.
             $reasoning = $engine->propose($context->project, $context->task);
+
+            // ONE VALIDATOR-DRIVEN REVISION, AND ONLY ONE.
+            //
+            // retryForViolations() has existed since Sprint 7, complete with its
+            // eligibility list and the shared revision cap, and nothing had ever
+            // called it. The measurement that made it worth wiring: twelve
+            // consecutive candidates for the same task understood the
+            // persistence requirement and checked every save(), and every one of
+            // them was refused for the same single unchecked write in the
+            // constructor. The provider was not missing the architecture; it was
+            // missing one deterministic finding it never got to see.
+            //
+            // The cap is not enforced here. revise() refuses a second attempt
+            // through CandidateStore::revisionCount(), so a third provider call
+            // is impossible whatever this stage does. An ineligible violation
+            // returns UNAVAILABLE and the original rejection stands, which is
+            // how a governance refusal keeps meaning what it meant.
+            if ($reasoning->status === ReasoningOutcome::REJECTED) {
+                $retry = $engine->retryForViolations(
+                    $context->project, $context->task,
+                    (string) $reasoning->candidateUuid, $reasoning->violations
+                );
+
+                if ($retry->status !== ReasoningOutcome::UNAVAILABLE) {
+                    $context->set('reasoning.revised', true);
+                    $context->set('reasoning.first_pass_violations', $reasoning->violations);
+                    $reasoning = $retry;
+                }
+            }
+
             $context->set('reasoning.outcome', $reasoning);
 
             if (! $reasoning->isValidated()) {

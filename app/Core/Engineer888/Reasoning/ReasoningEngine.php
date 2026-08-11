@@ -199,6 +199,11 @@ final class ReasoningEngine
         'forbidden_test_database', 'unjustified_non_testable',
         'missing_section', 'unjustified_blank', 'wrong_type', 'bad_confidence',
         'unknown_leaked_into_code', 'not_php', 'empty_content', 'bad_action',
+        // Added 2026-08-11. Each is a concrete, mechanical property of the bytes
+        // returned — exactly the kind a provider can fix once it is told, and
+        // none of them is a judgement about whether the change is right.
+        'unchecked_write', 'placeholder_body', 'markup_without_content',
+        'elided_content', 'test_without_assertions', 'update_target_missing',
     ];
 
     /**

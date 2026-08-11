@@ -162,7 +162,10 @@ final class BugRepository
     {
         $bugs = $this->all();
         $bugs[] = $bug;
-        file_put_contents($this->path, json_encode($bugs, JSON_PRETTY_PRINT));
+
+        if (file_put_contents($this->path, json_encode($bugs, JSON_PRETTY_PRINT)) === false) {
+            throw new \RuntimeException('could not write ' . $this->path);
+        }
     }
 }
 PHP);
@@ -300,6 +303,100 @@ PHP);
         }
     }
 
+    public function test_a_write_whose_result_is_discarded_is_refused(): void
+    {
+        // CANDIDATE 99b22fb9, 2026-08-11. On a clean clone the storage directory
+        // is absent, file_put_contents returned false, and the page returned
+        // HTTP 200 having lost the record. The only trace was three warnings in
+        // the server log.
+        //
+        // The standard covering this was registered with its reproduction the
+        // day before and was honoured in two runs out of three. A rule followed
+        // two times in three is not a rule, so it became a gate.
+        $ownLine = <<<'PHP'
+        <?php
+        class B {
+            private function save($bugs) {
+                file_put_contents($this->path, json_encode($bugs));
+            }
+        }
+        PHP;
+
+        $sharedLine = <<<'PHP'
+        <?php
+        class B { function f(){ mkdir(dirname($this->path), 0775, true); } }
+        PHP;
+
+        $afterSemicolon = <<<'PHP'
+        <?php
+        class B { function f(){ $d = 'x'; file_put_contents($d, 'y'); } }
+        PHP;
+
+        foreach (['own line' => $ownLine, 'shared line' => $sharedLine,
+                  'after a semicolon' => $afterSemicolon] as $shape => $content) {
+            $this->assertContains('unchecked_write', $this->rules('app/BugTracker.php', $content),
+                "a discarded write cannot report failure ({$shape})");
+        }
+    }
+
+    public function test_a_write_whose_result_is_read_is_accepted(): void
+    {
+        // The ask is only that somebody looks at the answer. What the caller
+        // then does with it is the caller's business, and this must not become
+        // an opinion about how failure should be handled.
+        $thrownOn = <<<'PHP'
+        <?php
+        class B {
+            public function save($bugs): void {
+                if (file_put_contents($this->path, json_encode($bugs)) === false) {
+                    throw new \RuntimeException('could not write the store');
+                }
+            }
+        }
+        PHP;
+
+        $assigned = <<<'PHP'
+        <?php
+        class B { function f(){ $ok = file_put_contents($this->path, 'x'); return $ok !== false; } }
+        PHP;
+
+        $returned = <<<'PHP'
+        <?php
+        class B { function f(){ return file_put_contents($this->path, 'x'); } }
+        PHP;
+
+        $negated = <<<'PHP'
+        <?php
+        class B { function f(){ if (! @mkdir($d, 0775, true) && ! is_dir($d)) { throw new \RuntimeException('no dir'); } } }
+        PHP;
+
+        $ternary = <<<'PHP'
+        <?php
+        class B { function f(){ return file_put_contents($this->path, 'x') === false ? 'no' : 'yes'; } }
+        PHP;
+
+        $inComment = <<<'PHP'
+        <?php
+        class B {
+            // file_put_contents() is checked below
+            function f(){ return (bool) file_put_contents($this->path, 'x'); }
+        }
+        PHP;
+
+        foreach (['thrown on' => $thrownOn, 'assigned' => $assigned, 'returned' => $returned,
+                  'negated' => $negated, 'ternary' => $ternary, 'in a comment' => $inComment] as $shape => $content) {
+            $this->assertSame([], $this->rules('app/B.php', $content),
+                "a checked write must not be refused ({$shape})");
+        }
+
+        $fixture = <<<'PHP'
+        <?php
+        class T { function setUp(): void { file_put_contents($this->tmp, '[]'); } }
+        PHP;
+
+        $this->assertSame([], $this->rules('tests/BugTest.php', $fixture),
+            'a test fixture writing its own scratch file fails visibly anyway');
+    }
     public function test_an_interface_is_not_mistaken_for_an_empty_implementation(): void
     {
         $rules = $this->rules('app/BugStore.php', <<<'PHP'

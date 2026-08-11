@@ -70,11 +70,24 @@ final class CandidateSubstanceValidator
     ];
 
     /**
+     * Write calls whose return value decides whether the data survived.
+     *
+     * Each of these returns false on failure and emits a PHP warning nobody
+     * reads. A statement that calls one and discards the answer cannot report
+     * failure, so the caller carries on and the user is told everything worked.
+     */
+    public const UNCHECKED_WRITES = [
+        'file_put_contents', 'mkdir', 'rename', 'copy', 'unlink', 'fwrite', 'touch',
+    ];
+
+    /**
      * @return array<int,array{rule:string,detail:string}>
      */
     public function violations(string $path, string $content): array
     {
         $out = [];
+
+        foreach ($this->uncheckedWrites($path, $content) as $found) { $out[] = $found; }
 
         foreach ($this->elisions($content) as $phrase) {
             $out[] = ['rule' => 'elided_content',
@@ -86,6 +99,57 @@ final class CandidateSubstanceValidator
             $out = array_merge($out, $this->phpViolations($path, $content));
         } elseif ($this->isMarkup($path)) {
             $out = array_merge($out, $this->markupViolations($content));
+        }
+
+        return $out;
+    }
+
+    /**
+     * A persistence call standing alone as a statement, with nothing reading it.
+     *
+     * WHY THIS IS A GATE AND NOT ADVICE. The standard "a write path creates what
+     * it needs, or fails where the user can see it" was registered on 2026-08-11
+     * with its reproduction attached, and the very next runs honoured it twice
+     * and ignored it once: candidate 99b22fb9 on a clean clone returned HTTP 200,
+     * lost the record, and left three file_put_contents warnings in the server
+     * log. A rule followed two times in three is not a rule.
+     *
+     * Deliberately narrow. It fires only when the call IS the whole statement —
+     * `file_put_contents($p, $j);` — and never when the result is assigned,
+     * returned, tested, negated or thrown on. Checking the answer is the entire
+     * ask; what the caller then does with it is the caller's business.
+     *
+     * Tests are exempt: a fixture that writes its own scratch file and would
+     * fail visibly anyway is not the failure mode this exists for.
+     *
+     * @return array<int,array{rule:string,detail:string}>
+     */
+    private function uncheckedWrites(string $path, string $content): array
+    {
+        if (! str_ends_with($path, '.php') || $this->isTest($path)) { return []; }
+
+        // A STATEMENT BOUNDARY, NOT A LINE START.
+        //
+        // Keying on the start of a line missed `function f(){ mkdir($d); }`,
+        // where the call is a whole statement that happens to share its line.
+        // The call is unchecked when it directly follows a `;`, a `{`, a `}` or
+        // the start of the file: anything else — `= `, `return `, `if (`, `! `,
+        // `throw ` — is something reading the answer.
+        $out = [];
+        $stripped = preg_replace(['~/\*.*?\*/~s', '~//[^
+]*~', '~^\s*#[^
+]*~m'], '', $content) ?? $content;
+
+        foreach (self::UNCHECKED_WRITES as $fn) {
+            $pattern = '/(?:^|[;{}])\s*@?' . preg_quote($fn, '/') . '\s*\(/';
+            if (preg_match_all($pattern, $stripped, $m, PREG_OFFSET_CAPTURE) < 1) { continue; }
+
+            $line = substr_count($stripped, "\n", 0, $m[0][0][1]) + 1;
+            $out[] = ['rule' => 'unchecked_write',
+                      'detail' => $fn . '() near line ' . $line . ' is called as a statement and its result is '
+                                . 'discarded. It returns false when the write fails — usually because the '
+                                . 'directory is not there on a fresh checkout — and a caller that does not look '
+                                . 'reports success while the data is gone'];
         }
 
         return $out;

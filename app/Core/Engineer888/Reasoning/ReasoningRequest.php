@@ -167,6 +167,29 @@ final class ReasoningRequest
         $out[] = 'DO NOT return a diff, a patch, or only the part that changed.';
         $out[] = 'DO NOT use placeholders such as "...existing code..." or "rest unchanged".';
         $out[] = '';
+        // THE ONE REFUSAL WORTH SPELLING OUT.
+        //
+        // The standard "check the result of the write" was registered with its
+        // reproduction and delivered in every prompt, and six consecutive
+        // candidates were still refused for the same thing — five wrote every
+        // store unchecked, and the sixth checked its save() and missed the one
+        // line in the constructor that seeds an empty file. The rule was being
+        // read as advice about saving rather than as a property of every write.
+        //
+        // Naming the gate is not coaching the answer: the model is told which
+        // mechanical check will refuse it, not what to build. It still chooses
+        // the architecture, the persistence and the failure behaviour.
+        $out[] = 'EVERY WRITE IS CHECKED, INCLUDING ONE THAT ONLY CREATES AN EMPTY STORE.';
+        $out[] = 'file_put_contents(), mkdir(), rename(), copy(), unlink(), fwrite() and touch()';
+        $out[] = 'return false on failure. A statement that throws that answer away cannot report';
+        $out[] = 'anything, so the caller carries on and the user is told it worked.';
+        $out[] = '';
+        $out[] = '  file_put_contents($path, json_encode([]));                       <- REFUSED';
+        $out[] = '  if (file_put_contents($path, json_encode([])) === false) { … }   <- accepted';
+        $out[] = '';
+        $out[] = 'One unchecked write refuses the entire candidate, wherever it appears —';
+        $out[] = 'initialising a store counts, and so does creating its directory.';
+        $out[] = '';
         $out[] = 'FEWER FILES, FULLY IMPLEMENTED, BEATS MORE FILES LEFT EMPTY. If the budget';
         $out[] = 'is tight, reduce the number of files — never the completeness of one.';
         $out[] = 'Spend your output on content; keep the prose sections short.';
