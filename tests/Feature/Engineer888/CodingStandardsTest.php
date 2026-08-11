@@ -165,6 +165,29 @@ class CodingStandardsTest extends TestCase
             . 'context is the task that silently loses its engineering rules');
     }
 
+    public function test_no_standard_is_dropped_by_the_per_source_cap(): void
+    {
+        // MEASURED, NOT ASSUMED. max_items_per_source is 6. On 2026-08-11 the
+        // ninth standard was registered and three vanished from the prompt —
+        // the documented-command rule, the error-rendering rule and the
+        // write-path rule — chosen for deletion by insertion order.
+        //
+        // A knowledge source is sampled because more examples add little. A
+        // standard is not an example: every one is a rule that has to hold.
+        for ($i = 0; $i < 9; $i++) {
+            $this->standard('Standard number ' . $i . ' about a distinct engineering concern',
+                'A rule that must hold.', 'reproduced against running code', (int) $this->project->id);
+        }
+
+        $prompt = $this->promptFor('Add a bug tracker', 'Build a small bug tracker.');
+
+        for ($i = 0; $i < 9; $i++) {
+            $this->assertStringContainsString('Standard number ' . $i . ' about a distinct engineering concern',
+                $prompt, "standard {$i} was dropped; a cap that silently deletes an engineering rule is worse "
+                . 'than no rule, because nobody can tell which ones applied');
+        }
+    }
+
     public function test_another_projects_standard_does_not_leak(): void
     {
         $other = (new WorkflowEngine())->registerProject([

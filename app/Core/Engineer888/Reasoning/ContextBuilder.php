@@ -80,8 +80,23 @@ final class ContextBuilder
         // vocabulary could drop the very correction the revision exists to make.
         // grounded_source leads: it is the exact bytes the proposal must
         // reproduce, so a summary is dropped long before a target file is.
+        // coding_standards is exempt from the PER-SOURCE CAP, which is what the
+        // structural list actually controls alongside scoring.
+        //
+        // This exemption was added once before on the assumption that scoring
+        // would drop a standard, could not be demonstrated at any byte budget,
+        // and was reverted rather than kept as insurance nobody could measure.
+        // The evidence arrived when the ninth standard was registered on
+        // 2026-08-11: max_items_per_source is 6, so three of the nine — the
+        // documented-command rule, the error-rendering rule and the write-path
+        // rule — were silently absent from the prompt.
+        //
+        // A knowledge source is sampled because more examples add little. A
+        // standard is not an example: every one of them is a rule that has to
+        // hold, and the six that survive a cap are chosen by insertion order,
+        // which is to say by accident.
         $always = ['grounded_source', 'verified_tests', 'ownership_boundaries', 'test_constraints',
-                   'deployment_constraints', 'code_surface', 'revision_instruction'];
+                   'deployment_constraints', 'code_surface', 'revision_instruction', 'coding_standards'];
         $pool = array_merge(
             $pool,
             $extraItems,
