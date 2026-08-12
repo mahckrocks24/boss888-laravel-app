@@ -3001,6 +3001,7 @@
     _svInitVideoPool();
     _svPreloadImages();
     _svFitCanvasToViewport();
+    _svInstallCanvasRefit();
 
     _svWireTopbar();
     _svWireLeftTabs();
@@ -4430,7 +4431,20 @@
         VE.root.querySelectorAll('.sv-view-btn').forEach(function(x){ x.classList.remove('active'); });
         b.classList.add('active');
         VE.viewMode = b.getAttribute('data-view');
-        _svFitCanvasToViewport();
+        // Apply the real project dimensions for the chosen aspect so the canvas,
+        // inspector and exported video all agree. 16:9=landscape, 9:16=reels, 1:1=square.
+        var DIMS = { reels:[1080,1920], square:[1080,1080], landscape:[1920,1080] };
+        var d = DIMS[VE.viewMode];
+        if (d && (VE.vd.canvas_width !== d[0] || VE.vd.canvas_height !== d[1])) {
+          VE.vd.canvas_width = d[0]; VE.vd.canvas_height = d[1];
+          if (VE.canvas) { VE.canvas.width = d[0]; VE.canvas.height = d[1]; }
+          _svFitCanvasToViewport();
+          _svRenderProps();
+          _svDrawFrame(VE.playhead);
+          _svMarkDirty(); _svAutoSaveSoon();
+        } else {
+          _svFitCanvasToViewport();
+        }
       };
     });
   }
@@ -4447,6 +4461,26 @@
     var z = Math.min(avail.w / W, avail.h / H, 1);
     VE.canvas.style.width  = (W * z) + 'px';
     VE.canvas.style.height = (H * z) + 'px';
+  }
+
+  // One refit system for the VE editor: re-fit the canvas whenever the canvas
+  // workspace or window changes size (init layout-not-ready, responsive resize,
+  // panel collapse). Debounced via rAF; observes the WRAP (layout-driven, never
+  // resized by the fit itself) so it cannot loop. Disconnects any prior instance
+  // so a remount never stacks observers.
+  function _svInstallCanvasRefit(){
+    if (VE._refitRO) { try { VE._refitRO.disconnect(); } catch(_){} VE._refitRO = null; }
+    if (VE._refitOnResize) { window.removeEventListener('resize', VE._refitOnResize); VE._refitOnResize = null; }
+    var schedule = function(){
+      if (VE._refitRaf) return;
+      VE._refitRaf = requestAnimationFrame(function(){ VE._refitRaf = null; _svFitCanvasToViewport(); });
+    };
+    var wrap = document.getElementById('sv-canvas-wrap');
+    if (wrap && window.ResizeObserver) { VE._refitRO = new ResizeObserver(schedule); VE._refitRO.observe(wrap); }
+    VE._refitOnResize = schedule;
+    window.addEventListener('resize', VE._refitOnResize);
+    schedule();            // catch layout-not-ready at first paint
+    setTimeout(schedule, 120);
   }
 
   // ── History ───────────────────────────────────────────────
@@ -4575,7 +4609,7 @@
       '.sv-btn-wide:disabled{opacity:.5;cursor:default}',
       '.sv-btn-danger{color:#EF4444;border-color:rgba(239,68,68,.4);background:transparent}',
 
-      '.sv-shell{flex:1;display:grid;grid-template-columns:240px 1fr 300px;min-height:0;overflow:hidden}',
+      '.sv-shell{flex:1;display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:minmax(0,1fr);grid-template-areas:"tools canvas props";min-height:0;overflow:hidden}',
       '.sv-left{border-right:1px solid var(--bd,#1f2330);background:var(--s1,#0F1218);overflow:hidden;display:flex;flex-direction:column}',
       '.sv-tabs{display:flex;border-bottom:1px solid var(--bd,#1f2330);flex-shrink:0;overflow-x:auto}',
       '.sv-tab{flex:1;background:transparent;border:none;color:var(--t3,#64748B);padding:10px 4px;font-size:10px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;white-space:nowrap}',
