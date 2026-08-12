@@ -5,7 +5,9 @@ namespace App\Http\Middleware;
 use App\Core\Engineer888\Access\AccessAudit;
 use App\Core\Engineer888\Access\Engineer888Access;
 use Closure;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * The only door into Engineer888.
@@ -32,7 +34,7 @@ final class RequireEngineer888Access
         AccessAudit::record($request, $capability, $decision);
 
         if (! $decision['allowed']) {
-            return $this->absent();
+            return $this->absent($request);
         }
 
         // Downstream controllers re-ask the policy rather than trusting these.
@@ -52,8 +54,39 @@ final class RequireEngineer888Access
      * revoked grant, missing capability, machine credential. Any variation
      * between them is an oracle.
      */
-    private function absent()
+    private function absent(Request $request)
     {
-        return response()->json(['message' => 'Not Found'], (int) config('engineer888_access.deny_status', 404));
+        $status = (int) config('engineer888_access.deny_status', 404);
+
+        if ($status !== 404) {
+            return response()->json(['message' => 'Not Found'], $status);
+        }
+
+        // INDISTINGUISHABLE, NOT MERELY REFUSED (2026-08-12).
+        //
+        // This used to return its own {"message":"Not Found"} body. The status
+        // matched a real 404, so the HTML path was byte-identical — but the
+        // JSON path was not: Laravel's own miss says "The route X could not be
+        // found.", and a hand-rolled body that says something else is an
+        // oracle. An admin who may not use Engineer888 could sweep
+        // /api/admin/engineer888/* and read off which routes exist from the
+        // shape of the refusal, which is the disclosure the 404 convention
+        // exists to prevent.
+        //
+        // Rendering the exception Laravel's own router throws, through the
+        // handler that renders it, means the body, the headers and the status
+        // for "you may not" and for "there is nothing here" are produced by one
+        // code path and cannot drift apart. The message is built from the
+        // request path exactly as RouteCollection builds it.
+        //
+        // Rendered rather than thrown: this middleware returns a response, and
+        // several callers hold it to that. Throwing would have moved the
+        // decision into the exception handler and changed a contract this
+        // sprint has no reason to change — the identical bytes are the point,
+        // not the mechanism.
+        return app(ExceptionHandler::class)->render(
+            $request,
+            new NotFoundHttpException(sprintf('The route %s could not be found.', $request->path()))
+        );
     }
 }

@@ -100,8 +100,53 @@ class AccessEnforcementTest extends TestCase
         $response = $this->passThrough($build($this), Engineer888Capability::VIEW);
 
         $this->assertSame(404, $response->getStatusCode(), $label . ' reached Engineer888');
-        $this->assertSame('{"message":"Not Found"}', $response->getContent(),
-            $label . ' received a body that differs from every other refusal — that is an oracle');
+
+        // Compared against a 404 the framework really produced, not against a
+        // string this module chose. The literal that used to be asserted here
+        // was `{"message":"Not Found"}`, which matched no other 404 on the
+        // platform: the status said "nothing here" while the body said "this
+        // is the guarded thing", and sweeping /api/admin/engineer888/* told an
+        // unauthorised admin exactly which routes existed. The claim worth
+        // making is indistinguishability, so indistinguishability is what is
+        // measured.
+        $this->assertSame($this->genuineMiss()->getContent(), $response->getContent(),
+            $label . ' received a body that differs from a route that genuinely does not exist — that is an oracle');
+    }
+
+    /**
+     * The refusal must be indistinguishable in JSON too.
+     *
+     * The HTML 404 page carries no path, so an HTML-only comparison would pass
+     * even if the JSON bodies disagreed — and JSON is what the console and the
+     * companion actually receive. Here the framework's own message names the
+     * path, so the genuine miss is fetched for a neighbouring URL and only the
+     * path token is substituted.
+     */
+    public function test_the_refusal_is_indistinguishable_in_json_as_well(): void
+    {
+        $this->grantCanonical();
+
+        $request = $this->requestAs(['id' => 2, 'email' => 'other.admin@levelupgrowth.io']);
+        $request->headers->set('Accept', 'application/json');
+
+        $denied = $this->passThrough($request, Engineer888Capability::VIEW);
+
+        $absentPath = 'api/admin/engineer888/tasks-9f2a-does-not-exist';
+        $genuine    = $this->getJson('/' . $absentPath);
+
+        $this->assertSame(404, $denied->getStatusCode());
+        $this->assertSame(404, $genuine->getStatusCode());
+        $this->assertSame(
+            str_replace($absentPath, 'api/admin/engineer888/tasks', $genuine->getContent()),
+            $denied->getContent(),
+            'the JSON refusal differs from the JSON the framework returns for a route that is not there'
+        );
+    }
+
+    /** A 404 the framework produced, for a route that genuinely does not exist. */
+    private function genuineMiss()
+    {
+        return $this->get('/api/admin/engineer888/tasks-9f2a-does-not-exist')->baseResponse;
     }
 
     public static function unauthorisedIdentities(): array

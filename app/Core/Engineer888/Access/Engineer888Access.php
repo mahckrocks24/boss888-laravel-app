@@ -34,6 +34,19 @@ final class Engineer888Access
     public const CANONICAL_USER_ID = 1;
     public const CANONICAL_EMAIL = 'admin@levelupgrowth.io';
 
+    /**
+     * The credential types that represent a person signing in.
+     *
+     * `jwt` is the API bearer path (JwtAuthMiddleware), `jwt_cookie` the admin
+     * console session (AdminSessionIdentity). `api_key` is deliberately absent
+     * rather than listed-and-denied, and so is every value that does not exist
+     * yet. Approval is attributed to a named human; a credential that cannot
+     * name one cannot approve.
+     *
+     * @var array<int,string>
+     */
+    public const HUMAN_CREDENTIALS = ['jwt', 'jwt_cookie'];
+
     // Every reason access can be refused, named. A denial that says only
     // "forbidden" teaches nobody anything and hides the one that is a bug.
     public const DENY_NO_SESSION = 'NO_AUTHENTICATED_HUMAN';
@@ -65,9 +78,23 @@ final class Engineer888Access
         // checked here as well as by DenyApiKeyAuth on the routes: the two are
         // deliberately redundant, because one of them will eventually be
         // omitted from a new route.
+        //
+        // ALLOWLIST, NOT DENYLIST (2026-08-12). This previously refused
+        // `api_key` and admitted everything else, which inverts the rule this
+        // module is built on: a credential type nobody has classified was
+        // treated as human. Today only three values are ever set —
+        // JwtAuthMiddleware sets `jwt` and `api_key`, AdminSessionIdentity sets
+        // `jwt_cookie` — so the two forms agree on every request that exists
+        // now. They disagree about the request that does not exist yet: the
+        // next authentication path someone adds arrives unclassified, and the
+        // denylist would have admitted it silently. Adding a human credential
+        // here is a deliberate act; forgetting to add a machine one is no
+        // longer an opening.
         $via = $request->attributes->get('auth_via');
-        if ($via === 'api_key') {
-            return $this->deny(self::DENY_MACHINE, 'API keys represent a machine, not a person');
+        if (! in_array($via, self::HUMAN_CREDENTIALS, true)) {
+            return $this->deny(self::DENY_MACHINE, $via === 'api_key'
+                ? 'API keys represent a machine, not a person'
+                : 'the credential type is not a recognised human sign-in');
         }
 
         if ($request->attributes->get('auth_via_claim') === 'shared_admin_token') {

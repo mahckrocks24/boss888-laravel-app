@@ -97,14 +97,66 @@ class CommandCenterTest extends TestCase
         }
     }
 
-    public function test_engineer888_is_not_exposed_outside_the_admin_prefix(): void
+    /**
+     * Two mounts, both named, both behind the same door.
+     *
+     * This asserted "only under api/admin" and had been failing since the
+     * companion group was added: twelve exec-api/engineer888/* routes are a
+     * deliberate second mount, not a leak. A red test cannot tell a real
+     * escape from a known one, so the invariant is restated as what actually
+     * matters — a route may live outside api/admin only if this list says so,
+     * and it is then held to exactly the same gate.
+     */
+    public function test_engineer888_is_exposed_only_through_its_two_named_mounts(): void
     {
-        $leaked = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn ($r) => str_contains($r->uri(), 'engineer888') && ! str_starts_with($r->uri(), 'api/admin/'))
+        $mounts = ['api/admin/engineer888', 'exec-api/engineer888'];
+
+        $all = collect(Route::getRoutes()->getRoutes())
+            ->filter(fn ($r) => str_contains($r->uri(), 'engineer888'));
+
+        $this->assertNotEmpty($all, 'the Engineer888 route module is not registered');
+
+        $unaccounted = $all
+            ->reject(fn ($r) => str_starts_with($r->uri(), $mounts[0]) || str_starts_with($r->uri(), $mounts[1]))
             ->map(fn ($r) => $r->uri())
+            ->values()
             ->all();
 
-        $this->assertSame([], $leaked, 'Engineer888 must exist only under api/admin');
+        $this->assertSame([], $unaccounted,
+            'an Engineer888 route appeared outside both named mounts. Adding a mount is a decision; '
+            . 'arriving at one by accident is how a private module stops being private.');
+    }
+
+    /**
+     * The companion mount is not the weaker door.
+     *
+     * It is the one a phone reaches, which is exactly why it is worth stating
+     * that it carries the same gate as the console — and that it does NOT gate
+     * on plan:app888, because a billing entitlement must never be a step
+     * towards an internal engineering department.
+     */
+    public function test_the_companion_mount_is_gated_exactly_like_the_console(): void
+    {
+        $companion = collect(Route::getRoutes()->getRoutes())
+            ->filter(fn ($r) => str_starts_with($r->uri(), 'exec-api/engineer888'));
+
+        $this->assertNotEmpty($companion, 'the companion mount is not registered');
+
+        foreach ($companion as $route) {
+            $middleware = $route->gatherMiddleware();
+
+            $this->assertContains(\App\Http\Middleware\DenyApiKeyAuth::class, $middleware,
+                "{$route->uri()} is reachable by a machine credential");
+
+            $this->assertTrue(
+                collect($middleware)->contains(fn ($m) => str_starts_with((string) $m,
+                    \App\Http\Middleware\RequireEngineer888Access::class)),
+                "{$route->uri()} is not behind the canonical gate");
+
+            $this->assertNotContains('plan:app888', $middleware,
+                "{$route->uri()} gates on a subscription. Engineer888 belongs to one human, "
+                . 'not to whoever bought a plan.');
+        }
     }
 
     public function test_the_admin_page_is_registered_and_separate_from_platform_engineering(): void

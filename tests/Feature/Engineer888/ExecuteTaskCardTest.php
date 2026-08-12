@@ -451,6 +451,16 @@ class ExecuteTaskCardTest extends TestCase
         $request = Request::create('/api/admin/engineer888/chat', 'POST');
         $request->setUserResolver(fn () => User::find(1));
 
+        // What JwtAuthMiddleware sets on every request that reaches these
+        // routes. It was omitted here, which made the fixture a request no
+        // middleware had ever touched — and Engineer888Access now refuses an
+        // unclassified credential rather than assuming it is human, so the
+        // omission showed up as fourteen refusals that production cannot
+        // produce. `Request::create` appears nowhere in app/: every real
+        // request through this service comes from the HTTP kernel, and every
+        // authenticating path there sets this attribute.
+        $request->attributes->set('auth_via', 'jwt');
+
         return $request;
     }
 
