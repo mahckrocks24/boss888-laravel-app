@@ -138,6 +138,20 @@
     _mountGallery();
   };
   window.openStudioVideo = function(){ window.studioVideoLoad(null); };
+  // Open a specific video design directly in the video editor (routes
+  // html_animated → animated editor, clip_json → timeline editor). Used when
+  // a video design is opened from the main Studio gallery.
+  window.studioVideoOpenDesign = function(id, rootEl){
+    _rootEl = rootEl || _rootEl || document.getElementById('studio-root') || document.body;
+    try { _rootEl.style.position = 'relative'; } catch(_){}
+    _svOpenClipEditor(id);
+  };
+  // Create + open a video design from a video template, in the video editor.
+  window.studioVideoUseTemplate = function(slug, name, rootEl){
+    _rootEl = rootEl || _rootEl || document.getElementById('studio-root') || document.body;
+    try { _rootEl.style.position = 'relative'; } catch(_){}
+    _newTemplateDesign(slug, name || 'Untitled Video');
+  };
 
   // ── CSS ──────────────────────────────────────────────────────
   (function injectCss(){
@@ -414,6 +428,10 @@
         _designId = d.design_id;
         _designName = name;
         if (tpl.template_type === 'html_animated') {
+          _vd = d.video_data || {};
+          if (!_vd.fields) _vd.fields = {};
+          if (!_vd.palette_vars) _vd.palette_vars = {};
+          _svAnimLastExport = null;
           _mountHtmlAnimatedEditor(tpl);
         } else if (typeof window._svOpenClipEditor === 'function') {
           window._svOpenClipEditor(_designId);
@@ -452,7 +470,9 @@
 
     var host = _host();
     var w = tpl.canvas_width || 1080, h = tpl.canvas_height || 1920;
-    var url = tpl.template_html_path || '';
+    var url = _svAnimTemplateUrl(tpl);
+    var animDur = parseFloat(tpl.duration_seconds || (_svAnimManifest && _svAnimManifest.duration_seconds) || 15) || 15;
+    _svAnimDur = animDur;
 
     // Reuse the REGULAR video editor's shell: .sv-topbar + .sv-shell grid.
     // Grid override collapses to 2 columns (tools | canvas) and single row —
@@ -478,8 +498,16 @@
           '<div class="sv-tab-body" id="sv-anim-body"><div style="color:rgba(255,255,255,0.4);padding:10px">Loading manifest\u2026</div></div>' +
         '</div>' +
         '<div class="sv-canvas-wrap" id="sv-canvas-wrap">' +
-          '<div class="sv-canvas-frame" id="sv-canvas-frame" style="overflow:hidden">' +
+          '<div class="sv-vid-badge">\u{1F3AC} VIDEO · ' + _esc(tpl.format || 'reels') + ' · ' + (Math.round(animDur*10)/10) + 's</div>' +
+          '<div class="sv-canvas-frame" id="sv-canvas-frame" style="overflow:hidden;position:relative">' +
             '<iframe id="sv-anim-iframe" src="' + _esc(url) + '" style="width:' + w + 'px;height:' + h + 'px;border:0;display:block;transform-origin:top left"></iframe>' +
+            '<div class="sv-anim-loading" id="sv-anim-loading">Loading preview…</div>' +
+          '</div>' +
+          '<div class="sv-preview-bar" id="sv-preview-bar">' +
+            '<button class="sv-pv-btn" id="sv-pv-play" title="Play / Pause">▶</button>' +
+            '<button class="sv-pv-btn" id="sv-pv-replay" title="Replay from start">↻</button>' +
+            '<div class="sv-pv-track" id="sv-pv-track"><div class="sv-pv-fill" id="sv-pv-fill"></div><div class="sv-pv-head" id="sv-pv-head"></div></div>' +
+            '<span class="sv-pv-time" id="sv-pv-time">0.0s / ' + (Math.round(animDur*10)/10) + 's</span>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -503,12 +531,43 @@
       window._svAnimSetTab(el.getAttribute('data-tab'));
     };
 
-    // Fit the iframe frame. Runs now, on iframe load, and on window resize.
+    // Video preview controls (play/pause/replay/seek over the CSS animation)
+    _svAnimWirePreview();
+
+    // Fit the iframe frame — robustly. The canvas area may not have a measured
+    // size on the first synchronous pass, so we re-fit via rAF, a short
+    // interval, and a ResizeObserver until it lands. Prevents a "scaled to
+    // nothing" (empty) canvas from a layout-timing race.
     _svAnimFit();
-    var ifr = document.getElementById('sv-anim-iframe');
-    if (ifr) ifr.addEventListener('load', _svAnimFit);
-    // requestAnimationFrame pass to catch late layout (sv-tools mounting, etc.)
     requestAnimationFrame(function(){ _svAnimFit(); });
+    var _fitN = 0;
+    var _fitTimer = setInterval(function(){
+      _svAnimFit();
+      if (++_fitN > 30 || !document.getElementById('sv-anim-iframe')) clearInterval(_fitTimer);
+    }, 150);
+    try {
+      if (window.ResizeObserver) {
+        var _ro = new ResizeObserver(function(){ _svAnimFit(); });
+        _ro.observe(document.getElementById('sv-canvas-wrap'));
+      }
+    } catch (_e) {}
+
+    var ifr = document.getElementById('sv-anim-iframe');
+    if (ifr) {
+      ifr.addEventListener('load', function(){ _svAnimFit(); if (!ifr._svLoadHandled) { ifr._svLoadHandled = true; _svAnimOnIframeLoad(); } });
+      // If the template was cached, 'load' may have already fired (or fire
+      // before this listener) — detect an already-ready iframe and run the
+      // load handler once so the preview substitutes + plays.
+      var _loadTries = 0;
+      var _loadCheck = setInterval(function(){
+        var doc = null; try { doc = ifr.contentDocument; } catch (_e) {}
+        var ready = doc && doc.querySelector && doc.querySelector('[data-field]');
+        if (ready) {
+          clearInterval(_loadCheck);
+          if (!ifr._svLoadHandled) { ifr._svLoadHandled = true; _svAnimFit(); _svAnimOnIframeLoad(); }
+        } else if (++_loadTries > 40) { clearInterval(_loadCheck); }
+      }, 150);
+    }
     if (!window._svAnimResizeWired){
       window._svAnimResizeWired = true;
       window.addEventListener('resize', function(){
@@ -522,8 +581,78 @@
       _svAnimApplySavedToIframe();
     });
 
+    // If this design was rendered before, surface the result (play + download).
+    _svAnimMaybeShowLastRender();
+
     // Listen to postMessage from iframe (field-changed)
     window.addEventListener('message', _svAnimOnMessage);
+  }
+
+  // ── Video preview (play/pause/replay/seek over the CSS animation) ──
+  var _svAnimDur = 15, _svAnimT = 0, _svAnimPlaying = false, _svAnimTimer = null, _svAnimLast = 0;
+  function _svAnimTemplateUrl(tpl){
+    var slug = (tpl && tpl.slug) || '';
+    return '/storage/studio-video-templates/' + encodeURIComponent(slug) + '/template.html';
+  }
+  function _svAnimIframeDoc(){ try { var f = document.getElementById('sv-anim-iframe'); return f && f.contentDocument; } catch (_e) { return null; } }
+  function _svAnimEnsureStyle(){
+    var doc = _svAnimIframeDoc(); if (!doc || !doc.head) return null;
+    var st = doc.getElementById('sv-anim-ctrl-style');
+    if (!st){ st = doc.createElement('style'); st.id = 'sv-anim-ctrl-style';
+      st.textContent = 'html.sv-anim-paused *,html.sv-anim-paused *::before,html.sv-anim-paused *::after{animation-play-state:paused !important}' +
+        'html.sv-anim-seek *,html.sv-anim-seek *::before,html.sv-anim-seek *::after{animation-delay:calc(-1 * var(--sv-seek,0s)) !important}';
+      doc.head.appendChild(st); }
+    return st;
+  }
+  function _svAnimSetPlayState(paused){
+    var doc = _svAnimIframeDoc(); if (!doc || !doc.documentElement) return;
+    _svAnimEnsureStyle();
+    doc.documentElement.classList.toggle('sv-anim-paused', !!paused);
+  }
+  function _svAnimSetBtn(){
+    var b = document.getElementById('sv-pv-play'); if (b) b.textContent = _svAnimPlaying ? '⏸' : '▶';
+  }
+  function _svAnimRenderTime(){
+    var t = Math.max(0, Math.min(_svAnimDur, _svAnimT));
+    var pct = _svAnimDur > 0 ? (t / _svAnimDur * 100) : 0;
+    var fill = document.getElementById('sv-pv-fill'); if (fill) fill.style.width = pct + '%';
+    var head = document.getElementById('sv-pv-head'); if (head) head.style.left = pct + '%';
+    var tm = document.getElementById('sv-pv-time'); if (tm) tm.textContent = (Math.round(t*10)/10) + 's / ' + (Math.round(_svAnimDur*10)/10) + 's';
+  }
+  function _svAnimStopTimer(){ if (_svAnimTimer){ cancelAnimationFrame(_svAnimTimer); _svAnimTimer = null; } }
+  function _svAnimTick(ts){
+    if (!_svAnimPlaying) return;
+    if (!_svAnimLast) _svAnimLast = ts;
+    var dt = (ts - _svAnimLast) / 1000; _svAnimLast = ts;
+    _svAnimT += dt;
+    if (_svAnimT >= _svAnimDur){ _svAnimT = _svAnimDur; _svAnimRenderTime(); _svAnimPause(); return; } // stop at end
+    _svAnimRenderTime();
+    _svAnimTimer = requestAnimationFrame(_svAnimTick);
+  }
+  function _svAnimPlay(){
+    _svAnimPlaying = true; _svAnimLast = 0; _svAnimSetPlayState(false); _svAnimSetBtn();
+    _svAnimStopTimer(); _svAnimTimer = requestAnimationFrame(_svAnimTick);
+  }
+  function _svAnimPause(){ _svAnimPlaying = false; _svAnimSetPlayState(true); _svAnimSetBtn(); _svAnimStopTimer(); }
+  function _svAnimTogglePlay(){ if (_svAnimPlaying) _svAnimPause(); else _svAnimPlay(); }
+  function _svAnimSeek(t){
+    _svAnimT = Math.max(0, Math.min(_svAnimDur, t));
+    var doc = _svAnimIframeDoc();
+    if (doc && doc.documentElement){ _svAnimEnsureStyle(); doc.documentElement.style.setProperty('--sv-seek', _svAnimT + 's'); doc.documentElement.classList.add('sv-anim-seek'); }
+    _svAnimRenderTime();
+  }
+  function _svAnimWirePreview(){
+    var play = document.getElementById('sv-pv-play'); if (play) play.onclick = _svAnimTogglePlay;
+    var rep = document.getElementById('sv-pv-replay'); if (rep) rep.onclick = function(){ _svAnimT = 0; _svAnimReplay(); _svAnimPlay(); };
+    var track = document.getElementById('sv-pv-track');
+    if (track) track.onclick = function(ev){ var r = track.getBoundingClientRect(); var f = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); _svAnimSeek(f * _svAnimDur); };
+    _svAnimSetBtn(); _svAnimRenderTime();
+  }
+  function _svAnimOnIframeLoad(){
+    var ld = document.getElementById('sv-anim-loading'); if (ld) ld.style.display = 'none';
+    _svAnimApplySavedToIframe(); // substitute {{tokens}} → field values (defaults + edits)
+    // fresh load = animation restarts at 0; autoplay
+    _svAnimT = 0; _svAnimPlay();
   }
 
   // Scale the iframe to fit the canvas viewport.
@@ -546,6 +675,9 @@
     var H = _svAnimTpl.canvas_height || 1920;
     var availW = wrap.clientWidth  - 60;
     var availH = wrap.clientHeight - 60;
+    // Layout not ready yet — don't mis-size; a ResizeObserver / re-fit interval
+    // will call us again once the canvas area has a real measured size.
+    if (availW <= 40 || availH <= 40) return;
     var s = Math.min(availW / W, availH / H, 1);
     if (!isFinite(s) || s <= 0) s = 1;
 
@@ -569,6 +701,27 @@
     return '<style>' +
       // 2-column grid override: tools | canvas, no props, no timeline
       '.sv-shell.sv-shell-anim{grid-template-columns:340px 1fr;grid-template-rows:1fr;grid-template-areas:"tools canvas"}' +
+      // Video preview: badge, loading, control bar
+      '.sv-canvas-wrap{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}' +
+      '.sv-vid-badge{position:absolute;top:12px;left:12px;z-index:40;background:linear-gradient(135deg,#7C3AED,#A78BFA);color:#fff;font:700 10px/1 inherit;padding:5px 9px;border-radius:10px;letter-spacing:.5px;box-shadow:0 2px 8px rgba(124,58,237,.4)}' +
+      '.sv-anim-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0b0b12;color:rgba(255,255,255,0.5);font-size:13px;z-index:5}' +
+      '.sv-preview-bar{display:flex;align-items:center;gap:10px;padding:9px 14px;margin-top:12px;width:min(520px,80%);background:#0F0F16;border:1px solid rgba(255,255,255,0.10);border-radius:10px}' +
+      '.sv-pv-btn{background:#1b1b28;border:1px solid rgba(255,255,255,0.14);color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:14px;flex-shrink:0}' +
+      '.sv-pv-btn:hover{border-color:#7C3AED}' +
+      '.sv-pv-track{position:relative;flex:1;height:8px;background:rgba(255,255,255,0.14);border-radius:5px;cursor:pointer}' +
+      '.sv-pv-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#7C3AED,#A78BFA);border-radius:5px;width:0}' +
+      '.sv-pv-head{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);left:0;pointer-events:none}' +
+      '.sv-pv-time{font:600 12px/1 inherit;color:rgba(255,255,255,0.85);min-width:96px;text-align:right}' +
+      // Render UX states
+      '.sv-anim-status{max-height:62vh;overflow:auto}' +
+      '.sv-rx-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}' +
+      '.sv-rx-queued{background:#F59E0B}.sv-rx-proc{background:#3B82F6;animation:svpulse 1s infinite}.sv-rx-ok{background:#22C55E}.sv-rx-fail{background:#EF4444}' +
+      '@keyframes svpulse{0%,100%{opacity:1}50%{opacity:.35}}' +
+      '.sv-rx-bar{height:6px;background:rgba(255,255,255,0.14);border-radius:4px;margin-top:8px;overflow:hidden}' +
+      '.sv-rx-fill{height:100%;background:linear-gradient(90deg,#3B82F6,#7C3AED);border-radius:4px;transition:width .4s}' +
+      '.sv-rx-result{margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}' +
+      '.sv-rx-video{width:150px;max-height:260px;border-radius:8px;background:#000;border:1px solid rgba(255,255,255,0.12)}' +
+      '.sv-rx-dl,.sv-rx-retry{background:#6C5CE7;color:#fff;border:none;padding:8px 14px;border-radius:8px;font:600 12px/1 inherit;cursor:pointer;text-decoration:none;display:inline-block}' +
       // Info stripe under status when shown
       '.sv-anim-status{display:none;padding:10px 16px;border-top:1px solid rgba(255,255,255,0.08);background:#0F0F16;color:rgba(255,255,255,0.7);font-size:12px;position:absolute;left:0;right:0;bottom:0;z-index:50}' +
       // Field form inside the left tools tab body — reuses .sv-tab-body padding
@@ -719,35 +872,33 @@
   window._svAnimFieldChange = function(inp){
     var field = inp.getAttribute('data-field');
     var val   = inp.value;
+    if (!_vd) _vd = {};
     if (!_vd.fields) _vd.fields = {};
     _vd.fields[field] = val;
-    // Push to iframe
-    var f = document.getElementById('sv-anim-iframe');
-    if (f && f.contentWindow){
-      try { f.contentWindow.postMessage({ type: 'studio-update-field', field: field, value: val }, '*'); } catch(_){}
-    }
+    _svAnimApplyFieldDom(field, val); // direct DOM substitution (no template bridge)
     _svAnimDebouncedSave();
   };
 
   window._svAnimColorChange = function(inp){
     var k = inp.getAttribute('data-var');
     var v = inp.value;
+    if (!_vd) _vd = {};
     if (!_vd.palette_vars) _vd.palette_vars = {};
     _vd.palette_vars[k] = v;
-    var f = document.getElementById('sv-anim-iframe');
-    if (f && f.contentWindow){
-      var vars = {}; vars[k] = v;
-      try { f.contentWindow.postMessage({ type: 'apply-palette', vars: vars }, '*'); } catch(_){}
-    }
+    var doc = _svAnimIframeDoc();
+    if (doc) { try { doc.documentElement.style.setProperty(k, v); } catch(_){} }
     _svAnimDebouncedSave();
   };
 
   window._svAnimApplyPreset = function(idx){
     var preset = _svAnimPresets[idx]; if (!preset) return;
+    if (!_vd) _vd = {};
     if (!_vd.palette_vars) _vd.palette_vars = {};
     Object.keys(preset.vars).forEach(function(k){ _vd.palette_vars[k] = preset.vars[k]; });
+    var doc = _svAnimIframeDoc();
+    if (doc) { try { Object.keys(preset.vars).forEach(function(k){ doc.documentElement.style.setProperty(k, preset.vars[k]); }); } catch(_){} }
     var f = document.getElementById('sv-anim-iframe');
-    if (f && f.contentWindow){
+    if (false && f && f.contentWindow){
       try { f.contentWindow.postMessage({ type: 'apply-palette', vars: preset.vars }, '*'); } catch(_){}
     }
     // Re-render colors tab so picker inputs reflect the new values
@@ -781,31 +932,45 @@
   function _svAnimReplay(){
     var f = document.getElementById('sv-anim-iframe');
     var tpl = _svAnimTpl; if (!f || !tpl) return;
-    f.src = (tpl.template_html_path || '') + '?t=' + Date.now();
+    f.src = _svAnimTemplateUrl(tpl) + '?t=' + Date.now();
     f.addEventListener('load', function onload(){
       f.removeEventListener('load', onload);
       _svAnimApplySavedToIframe();
     });
   }
 
-  // Push saved fields + palette into the iframe once it's ready.
+  // The template HTML has [data-field] elements with {{token}} text and NO
+  // bridge script — so postMessage does nothing. We substitute directly in the
+  // (same-origin) iframe DOM: set each [data-field]'s textContent, and set
+  // palette CSS vars on the root. Same model the image editor uses.
+  function _svAnimApplyFieldDom(field, value){
+    var doc = _svAnimIframeDoc(); if (!doc) return;
+    try { Array.prototype.forEach.call(doc.querySelectorAll('[data-field="' + field + '"]'), function(el){ el.textContent = value; }); } catch(_){}
+  }
+  function _svAnimCurrentFields(){
+    var vars = (_svAnimManifest && _svAnimManifest.variables) || {};
+    var saved = (_vd && _vd.fields) || {};
+    var out = {};
+    Object.keys(vars).forEach(function(k){ out[k] = (saved[k] != null ? saved[k] : (vars[k] && vars[k].default != null ? vars[k].default : '')); });
+    Object.keys(saved).forEach(function(k){ if (out[k] == null) out[k] = saved[k]; });
+    return out;
+  }
+  function _svAnimApplyAllFieldsDom(){
+    var doc = _svAnimIframeDoc(); if (!doc) return;
+    var fields = _svAnimCurrentFields();
+    Object.keys(fields).forEach(function(k){ _svAnimApplyFieldDom(k, fields[k]); });
+    var vars = (_vd && _vd.palette_vars) || {};
+    try { Object.keys(vars).forEach(function(k){ doc.documentElement.style.setProperty(k, vars[k]); }); } catch(_){}
+  }
+  // Substitute fields into the iframe once its [data-field] elements exist.
   function _svAnimApplySavedToIframe(){
-    var f = document.getElementById('sv-anim-iframe');
-    if (!f || !f.contentWindow) return;
-    var send = function(){
-      try {
-        var fields = (_vd && _vd.fields) || {};
-        Object.keys(fields).forEach(function(k){
-          f.contentWindow.postMessage({ type: 'studio-update-field', field: k, value: fields[k] }, '*');
-        });
-        var vars = (_vd && _vd.palette_vars) || {};
-        if (Object.keys(vars).length){
-          f.contentWindow.postMessage({ type: 'apply-palette', vars: vars }, '*');
-        }
-      } catch(_){}
+    var tries = 0;
+    var apply = function(){
+      var doc = _svAnimIframeDoc();
+      if (!doc || !doc.querySelector('[data-field]')){ if (tries++ < 25) setTimeout(apply, 200); return; }
+      _svAnimApplyAllFieldsDom();
     };
-    // Run once now + once on next load just in case
-    setTimeout(send, 300);
+    apply();
   }
 
   function _svAnimOnMessage(e){
@@ -830,39 +995,59 @@
     studioVideoLoad(_rootEl);
   };
 
+  var _svAnimLastExport = null;
+  function _svAnimSetStatus(html, color){
+    var s = document.getElementById('sv-anim-export-status'); if (!s) return;
+    s.style.display = 'block'; s.style.color = color || '#CBD5E1'; s.innerHTML = html;
+  }
+  function _svAnimShowDone(url, label){
+    var btn = document.getElementById('sv-anim-export'); if (btn){ btn.disabled = false; btn.textContent = '⬇ Export MP4'; }
+    _svAnimSetStatus('<span class="sv-rx-dot sv-rx-ok"></span> <strong>' + _esc(label || 'Done.') + '</strong> Your MP4 is ready.' +
+      '<div class="sv-rx-result"><video src="' + _esc(url) + '" controls playsinline preload="metadata" class="sv-rx-video"></video>' +
+      '<a class="sv-rx-dl" href="' + _esc(url) + '" download>⬇ Download MP4</a></div>', '#9AE6B4');
+  }
+  // Show the previous render result (if any) when a design is reopened —
+  // fetch export-status directly (reliable) rather than trusting a stale row.
+  function _svAnimMaybeShowLastRender(){
+    if (!_designId) return;
+    _fetchJson('/studio/video/designs/' + _designId + '/export-status').then(function(d){
+      var st = (d && d.status || '').toLowerCase();
+      if ((st === 'done' || st === 'completed') && d.video_url) _svAnimShowDone(d.video_url, 'Last export ready.');
+    }).catch(function(){});
+  }
   function _svAnimExport(){
-    var s = document.getElementById('sv-anim-export-status');
-    if (s) { s.style.display = 'block'; s.textContent = 'Queuing export\u2026'; }
+    // Save current edits first so the render reflects them, then queue.
+    try { _svAnimSaveNow(false); } catch (_e) {}
+    _svAnimSetStatus('<span class="sv-rx-dot sv-rx-queued"></span> Queued \u2014 sending to renderer\u2026', '#CBD5E1');
+    var btn = document.getElementById('sv-anim-export'); if (btn){ btn.disabled = true; btn.textContent = 'Rendering\u2026'; }
     _fetchJson('/studio/video/designs/' + _designId + '/export', { method: 'POST' }).then(function(d){
       if (!d.success) throw new Error(d.error || 'export_failed');
-      if (s) s.textContent = 'Rendering\u2026 (screen-record can take 1\u20132 minutes for a ' + (d.duration || 12) + 's reel)';
+      _svAnimSetStatus('<span class="sv-rx-dot sv-rx-proc"></span> Processing\u2026 screen-recording your reel (usually 1\u20132 min)<div class="sv-rx-bar"><div class="sv-rx-fill" id="sv-rx-fill" style="width:5%"></div></div>', '#CBD5E1');
       _svAnimPoll();
     }).catch(function(err){
-      if (s) { s.style.color = '#FFA4A4'; s.textContent = 'Export failed: ' + err.message; }
+      _svAnimRenderFailed(err.message);
     });
   }
+  function _svAnimRenderFailed(msg){
+    _svAnimSetStatus('<span class="sv-rx-dot sv-rx-fail"></span> Render failed: ' + _esc(String(msg||'unknown')) +
+      ' <button class="sv-rx-retry" onclick="window._svAnimRetry()">\u21bb Retry</button>', '#FFA4A4');
+    var btn = document.getElementById('sv-anim-export'); if (btn){ btn.disabled = false; btn.textContent = '\u2b07 Export MP4'; }
+  }
+  window._svAnimRetry = function(){ _svAnimExport(); };
   function _svAnimPoll(){
     clearTimeout(_pollTimer);
     _pollTimer = setTimeout(function(){
       _fetchJson('/studio/video/designs/' + _designId + '/export-status').then(function(d){
-        var s = document.getElementById('sv-anim-export-status');
-        if (!s) return;
-        // 2026-07-03 FIX (#2) \u2014 export-status returns status/progress_pct/video_url/
-        // error (not the raw DB column names). Reading the old names left st='' \u2192
-        // polled forever + download href undefined. Now aligned with the backend.
+        if (!document.getElementById('sv-anim-export-status')) return;
         var st = (d.status || '').toLowerCase();
         var pct = d.progress_pct || 0;
-        if (st === 'done' && d.video_url) {
-          s.style.color = '#9AE6B4';
-          s.innerHTML = '\u2714 Exported. <a href="' + _esc(d.video_url) + '" download style="color:#6C5CE7;font-weight:600">Download MP4</a>';
+        if ((st === 'done' || st === 'completed') && d.video_url) {
+          _svAnimShowDone(d.video_url, 'Done.');
           return;
         }
-        if (st === 'failed') {
-          s.style.color = '#FFA4A4';
-          s.textContent = 'Render failed: ' + (d.error || 'unknown');
-          return;
-        }
-        s.textContent = 'Rendering\u2026 ' + pct + '% (may take 1\u20132 minutes)';
+        if (st === 'failed') { _svAnimRenderFailed(d.error || 'unknown'); return; }
+        var f = document.getElementById('sv-rx-fill'); if (f) f.style.width = Math.max(5, pct) + '%';
+        else _svAnimSetStatus('<span class="sv-rx-dot sv-rx-proc"></span> Processing\u2026 ' + pct + '%<div class="sv-rx-bar"><div class="sv-rx-fill" id="sv-rx-fill" style="width:' + Math.max(5,pct) + '%"></div></div>', '#CBD5E1');
         _svAnimPoll();
       }).catch(function(){ _svAnimPoll(); });
     }, 2500);
@@ -1386,36 +1571,20 @@
       var dur = parseInt(document.getElementById('sv-ai-dur').value, 10) || 6;
       if (!prompt){ _toast('Prompt required', 'error'); return; }
       var st = document.getElementById('sv-ai-status');
-      st.textContent = '\u2726 Generating\u2026 (45\u2013120s typical)';
       var btn = document.getElementById('sv-ai-gen');
       if (btn) btn.disabled = true;
-      // 2026-07-03 (#3) \u2014 ASYNC: create returns a task_id instantly, then the CLIENT
-      // polls minimax-status. Replaces the 180s server-side sync call that 504'd
-      // behind the 100s Cloudflare / 120s PHP-FPM caps.
-      _fetchJson('/studio/video/generate-minimax', {
-        method:'POST', body: JSON.stringify({ prompt: prompt, duration_seconds: dur })
-      }).then(function(d){
-        if (!d.success || !d.task_id) throw new Error((d && d.error) || 'create_failed');
-        var t0 = Date.now();
-        (function poll(){
-          if (Date.now() - t0 > 5*60*1000){ st.textContent = '\u2717 Timed out after 5 min'; if (btn) btn.disabled = false; return; }
-          st.textContent = '\u2726 Generating\u2026 (' + Math.round((Date.now()-t0)/1000) + 's; 45\u2013120s typical)';
-          _fetchJson('/studio/video/minimax-status?task_id=' + encodeURIComponent(d.task_id)).then(function(s){
-            if (s && s.status === 'done' && s.clip_url){
-              _myClips.push({ id:'ai_'+Date.now(), name:'AI: ' + prompt.substring(0,30), url:s.clip_url, duration:s.duration||dur, type:'video', width:s.width, height:s.height });
-              st.textContent = '\u2713 Generated \u2014 added to My Clips';
-              if (btn) btn.disabled = false;
-              _switchTab('clips'); _toast('AI video ready', 'success');
-              return;
-            }
-            if (s && s.status === 'failed'){ st.textContent = '\u2717 ' + (s.error || 'generation failed'); if (btn) btn.disabled = false; _toast('AI gen failed', 'error'); return; }
-            setTimeout(poll, 5000); // still processing
-          }).catch(function(){ setTimeout(poll, 5000); }); // transient \u2014 keep polling
-        })();
-      }).catch(function(err){
-        st.textContent = '\u2717 ' + err.message;
-        if (btn) btn.disabled = false;
-        _toast('AI gen failed: ' + err.message, 'error');
+      // Canonical governed path (no direct provider call): POST /creative/generate/video
+      // \u2192 EngineKernel \u2192 CreativeService \u2192 MiniMax \u2192 completion worker, then poll status.
+      _svGenerateGovernedVideo({
+        prompt: prompt, aspect_ratio: '16:9', duration: dur,
+        onStatus: function(kind, msg){ if (st) st.textContent = (kind==='failed'?'\u2717 ':kind==='completed'?'\u2713 ':'\u2726 ') + msg; },
+        onApproval: function(){ if (btn) btn.disabled = false; _toast('Submitted \u2014 awaiting approval', 'info'); },
+        onComplete: function(url, d){
+          _myClips.push({ id:'ai_'+Date.now(), name:'AI: ' + prompt.substring(0,30), url:url, duration:d, type:'video' });
+          if (btn) btn.disabled = false;
+          _switchTab('clips'); _toast('AI video ready', 'success');
+        },
+        onFail: function(msg){ if (btn) btn.disabled = false; _toast('AI gen failed: ' + msg, 'error'); }
       });
     };
   }
@@ -2763,13 +2932,24 @@
   // Swap in as window._svOpenClipEditor so the gallery routes here.
   function _svOpenClipEditor(designId){
     if (!designId) { _svToast('No design id', 'error'); return; }
-    VE.designId = designId;
     _svInjectCss();
     _fetchJson('/studio/designs/' + designId).then(function(r){
       var row = r.design || r; // handle both response shapes
       if (!row || !row.id) throw new Error('not_found');
       var vd = {};
       try { vd = typeof row.video_data === 'string' ? JSON.parse(row.video_data || '{}') : (row.video_data || {}); } catch(_){}
+      // html_animated designs reopen in the ANIMATED editor (not the clip editor)
+      var slug = vd.template_slug || vd.slug;
+      if (vd.source === 'html_animated' && slug){
+        _designId = designId; _designName = row.name || 'Animated Design';
+        _vd = vd; if (!_vd.fields) _vd.fields = {}; if (!_vd.palette_vars) _vd.palette_vars = {};
+        _svAnimLastExport = { status: row.export_status, url: row.exported_video_url };
+        return _fetchJson('/studio/video/templates/' + encodeURIComponent(slug)).then(function(td){
+          var tpl = (td && td.template) || { slug: slug, canvas_width: row.canvas_width, canvas_height: row.canvas_height, duration_seconds: vd.duration || 15, name: row.name, format: row.format };
+          _mountHtmlAnimatedEditor(tpl);
+        });
+      }
+      VE.designId = designId;
       if (row.layers_json && !vd.clips) { try { vd = JSON.parse(row.layers_json); } catch(_){} }
       VE.vd = _svNormalizeVd(vd, row);
       _svMountEditor(row);
@@ -3945,9 +4125,93 @@
 
   function _svTabAi(h){
     h.innerHTML =
-      '<div class="sv-empty">LevelUpGrowth Video / Arthur AI video generation ships in Phase 4.</div>' +
-      '<textarea rows="3" class="sv-ai-prompt" placeholder="e.g. cinematic shot of a sunrise over mountains..." disabled></textarea>' +
-      '<button class="sv-btn-wide" disabled>\u2726 Generate Video (Phase 4)</button>';
+      '<div class="sv-section-label">Generate video with AI</div>' +
+      '<textarea id="sv-ai-prompt" rows="4" class="sv-ai-prompt" style="width:100%;box-sizing:border-box;background:#12151d;border:1px solid #2a2f3a;color:#fff;border-radius:8px;padding:10px;font:inherit;resize:vertical" placeholder="Describe the video, e.g. cinematic wide shot of a sunrise over calm ocean"></textarea>' +
+      '<div class="sv-ai-row" style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
+        '<label style="min-width:64px;font-size:12px;color:rgba(255,255,255,.6)">Aspect</label>' +
+        '<select id="sv-ai-aspect" style="flex:1;background:#12151d;border:1px solid #2a2f3a;color:#fff;border-radius:6px;padding:7px">' +
+          '<option value="16:9">16:9 \u00b7 Landscape</option><option value="9:16">9:16 \u00b7 Vertical</option><option value="1:1">1:1 \u00b7 Square</option>' +
+        '</select></div>' +
+      '<div class="sv-ai-row" style="display:flex;align-items:center;gap:8px;margin-top:8px">' +
+        '<label style="min-width:64px;font-size:12px;color:rgba(255,255,255,.6)">Duration</label>' +
+        '<select id="sv-ai-dur" style="flex:1;background:#12151d;border:1px solid #2a2f3a;color:#fff;border-radius:6px;padding:7px">' +
+          '<option value="6" selected>6 seconds</option><option value="10">10 seconds</option>' +
+        '</select></div>' +
+      '<div style="margin:12px 0 6px;font-size:12px;color:rgba(255,255,255,.55)">Cost: <b style="color:#fff">8 credits</b> \u00b7 governed generation</div>' +
+      '<button class="sv-btn-wide" id="sv-ai-generate">\u2726 Generate video</button>' +
+      '<div id="sv-ai-status" style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5"></div>';
+    var btn = document.getElementById('sv-ai-generate');
+    btn.onclick = function(){
+      var prompt = (document.getElementById('sv-ai-prompt').value || '').trim();
+      var aspect = document.getElementById('sv-ai-aspect').value || '16:9';
+      var dur    = parseInt(document.getElementById('sv-ai-dur').value, 10) || 6;
+      var st     = document.getElementById('sv-ai-status');
+      if (!prompt){ _svToast('Prompt required', 'error'); return; }
+      btn.disabled = true;
+      _svGenerateGovernedVideo({
+        prompt: prompt, aspect_ratio: aspect, duration: dur,
+        onStatus: function(kind, msg){ if (st) st.textContent = (kind==='failed'?'\u2717 ':kind==='completed'?'\u2713 ':'\u2726 ') + msg; },
+        onApproval: function(){ btn.disabled = false; _svToast('Submitted \u2014 awaiting approval', 'info'); },
+        onComplete: function(url, d){
+          btn.disabled = false;
+          _svAddClip('video', url, d);
+          _svToast('AI video ready \u2014 added to timeline', 'success');
+          VE.tabActive = 'clips';
+          if (VE.root){ VE.root.querySelectorAll('.sv-tab').forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-tab')==='clips'); }); }
+          _svRenderLeftPanel('clips');
+        },
+        onFail: function(msg){ btn.disabled = false; _svToast('Generation failed: ' + msg, 'error'); }
+      });
+    };
+  }
+
+  // \u2500\u2500 One canonical governed AI-video path (used by both video editors) \u2500\u2500
+  // POST /api/creative/generate/video (EngineKernel \u2192 approval \u2192 CreativeService
+  // \u2192 ScenePlanner \u2192 MiniMax-Hailuo-02 \u2192 completion worker), then poll
+  // /api/creative/video/jobs/{assetId}/status. NO direct provider call.
+  function _svExtractAssetId(d){
+    if (!d) return null;
+    return d.asset_id || (d.data && (d.data.asset_id || d.data.id)) || d.id || null;
+  }
+  function _svGenerateGovernedVideo(opts){
+    opts = opts || {};
+    var prompt = (opts.prompt || '').trim();
+    var aspect = opts.aspect_ratio || '16:9';
+    var dur    = parseInt(opts.duration, 10) || 6;
+    var setStatus = opts.onStatus || function(){};
+    if (!prompt){ if (opts.onFail) opts.onFail('Prompt required'); return; }
+    setStatus('submitting', 'Submitting\u2026');
+    _fetchJson('/creative/generate/video', {
+      method: 'POST',
+      body: JSON.stringify({ prompt: prompt, aspect_ratio: aspect, duration: dur })
+    }).then(function(d){
+      if (d && (d.code === 'AWAITING_APPROVAL' || d.pending_approval)){
+        setStatus('awaiting_approval', 'Awaiting approval \u2014 track it in Production');
+        if (opts.onApproval) opts.onApproval(d.approval_id || null);
+        return;
+      }
+      if (d && (d.success === false || d.error)){
+        throw new Error(d.error || d.message || 'generation_failed');
+      }
+      var assetId = _svExtractAssetId(d);
+      if (!assetId) throw new Error((d && (d.error || d.message)) || 'no_asset_id');
+      setStatus('generating', 'Generating\u2026 (45\u2013120s typical)');
+      var t0 = Date.now();
+      (function poll(){
+        if (Date.now() - t0 > 6 * 60 * 1000){ setStatus('timeout', 'Still processing \u2014 check Production shortly'); if (opts.onFail) opts.onFail('timeout'); return; }
+        _fetchJson('/creative/video/jobs/' + encodeURIComponent(assetId) + '/status').then(function(s){
+          var stt = s && s.status;
+          if (stt === 'completed' && s.url){ setStatus('completed', 'Completed'); if (opts.onComplete) opts.onComplete(s.url, dur, assetId); return; }
+          if (stt === 'failed'){ setStatus('failed', 'Generation failed'); if (opts.onFail) opts.onFail('failed'); return; }
+          var done = (s && s.scenes_done) || 0, total = (s && s.scenes_total) || 0;
+          setStatus('generating', 'Generating\u2026' + (total ? ' (' + done + '/' + total + ' scenes)' : '') + ' \u00b7 ' + Math.round((Date.now() - t0) / 1000) + 's');
+          setTimeout(poll, 5000);
+        }).catch(function(){ setTimeout(poll, 5000); });
+      })();
+    }).catch(function(err){
+      setStatus('failed', (err && err.message) || 'failed');
+      if (opts.onFail) opts.onFail((err && err.message) || 'failed');
+    });
   }
 
   // ── CONTINUED IN PART 5 ──
