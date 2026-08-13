@@ -49,7 +49,10 @@ final class EngineeringFrame
         'repository' => '/\b(repo|repositor|branch|head|commit|file|structure|architect)\b/i',
     ];
 
-    public function __construct(private readonly array $limits = []) {}
+    public function __construct(
+        private readonly array $limits = [],
+        private readonly ?\App\Core\Engineer888\Access\Engineer888AccessContext $ctx = null,
+    ) {}
 
     /**
      * @return array{text:string,blocks:array<int,string>,chars:int}
@@ -167,6 +170,39 @@ final class EngineeringFrame
 
     private function candidates(object $conversation): string
     {
+        // ONE SOURCE OF TRUTH.
+        //
+        // This block used to count raw PENDING approval rows and tell the model
+        // there were 30 candidates waiting, while DecisionProjection said 2 and
+        // the header said 25. The model repeated the number it was handed, so
+        // Boss was told "30 candidates" by an assistant reading from a
+        // different source than the interface sitting next to it.
+        //
+        // Whatever the header and the Decisions surface say, this says.
+        if ($this->ctx !== null) {
+            $projectId = $conversation->active_project_id === null
+                ? null : (int) $conversation->active_project_id;
+
+            $items = (new \App\Core\Engineer888\Decisions\DecisionProjection())
+                ->current($this->ctx, $projectId);
+
+            if ($items === []) { return ''; }
+
+            $lines = [];
+            foreach ($items as $i) {
+                $lines[] = '- ' . mb_strimwidth((string) $i['title'], 0, 64, '...')
+                    . ' (' . $i['file_count'] . ' files, ' . $i['confidence'] . ' confidence'
+                    . ($i['history'] ? ', ' . count($i['history']) . ' earlier attempts' : '')
+                    . ')';
+            }
+
+            return "DECISIONS AWAITING BOSS (" . count($items) . " in total)\n"
+                . implode("\n", $lines) . "\n"
+                . "This is the authoritative count. Repeated attempts at the same brief are folded "
+                . "into one decision and earlier attempts are history, not separate work. Never "
+                . "quote a larger number from anywhere else.";
+        }
+
         $max = (int) ($this->limits['max_candidates'] ?? 5);
 
         $rows = DB::table('engineering_candidates as c')

@@ -428,7 +428,62 @@ window.page = async function () {
             + ' <button data-retry="' + esc(m.__key) + '">Retry</button>'
             + '<button data-drop="' + esc(m.__key) + '">Discard</button></div>'
           : '')
-      + extra + '</div>';
+      + extra + presentationHtml(m) + '</div>';
+  }
+
+  /**
+   * Decisions Boss has closed, keyed by turn + logical decision.
+   *
+   * Close is presentation only. It removes the card from THIS turn and nothing
+   * else: the approval stays pending, the card stays unconsumed, and the
+   * decision stays in Decisions. Held here so the 15-second poll cannot reopen
+   * something he has just dismissed - which it otherwise would, because the
+   * server keeps returning the reference for as long as the decision is real.
+   */
+  var CLOSED = {};
+
+  function closedKey(messageId, logicalKey) { return messageId + '::' + logicalKey; }
+
+  /**
+   * The compact card.
+   *
+   * Everything drawn here came from the server's own hydration of a logical
+   * decision reference. The page composes no governed field: the uuid on the
+   * Review button was resolved server-side, now, from the live card table, and
+   * is never what the message remembered.
+   */
+  function presentationHtml(m) {
+    var list = m.presentations;
+
+    if (!list || !list.length) { return ''; }
+
+    var out = '';
+
+    list.forEach(function (p) {
+      var d = p.decision || {};
+      if (CLOSED[closedKey(m.id, p.logical_key)]) { return; }
+
+      var bits = [];
+      if (d.file_count !== null && d.file_count !== undefined) {
+        bits.push(d.file_count + ' file' + (d.file_count === 1 ? '' : 's'));
+      }
+      if (d.confidence) { bits.push(esc(d.confidence) + ' confidence'); }
+      if (d.earlier) { bits.push(d.earlier + ' earlier attempt' + (d.earlier === 1 ? '' : 's')); }
+
+      out += '<div class="e8c-card" data-pres="' + esc(closedKey(m.id, p.logical_key)) + '">'
+        + '<div class="e8c-card-b">'
+        + '<div class="e8c-card-t">Candidate ready</div>'
+        + '<div class="e8c-card-h">' + esc(d.title || 'Engineering change') + '</div>'
+        + '<div class="e8c-card-s">' + bits.join(' &middot; ') + '</div>'
+        + '<div class="e8c-acts">'
+        + (d.review_card
+            ? '<button class="e8c-btn" data-review="' + esc(d.review_card) + '">Review</button>'
+            : '<span class="e8c-card-s" style="margin:0">Reopening this decision - refresh in a moment.</span>')
+        + '<button class="e8c-btn q" data-close="' + esc(closedKey(m.id, p.logical_key)) + '">Close</button>'
+        + '</div></div></div>';
+    });
+
+    return out;
   }
 
   // The last thing render() was given. A failed send redraws the same
@@ -475,6 +530,12 @@ window.page = async function () {
   var DECISIONS = [];
   var OTHER_PROJECT_COUNT = 0;
 
+  // The authoritative count, published by the server from
+  // DecisionProjection. Null until a payload carries one; the badge
+  // stays hidden rather than guessing from the card list, which is what
+  // made it say 25 when there were 2 decisions.
+  var DECISION_COUNT = null;
+
   /**
    * The counter.
    *
@@ -486,9 +547,9 @@ window.page = async function () {
     var btn = el('e8c-decisions');
     if (!btn) { return; }
 
-    var n = DECISIONS.length;
+    var n = DECISION_COUNT;
 
-    if (n === 0) { btn.style.display = 'none'; return; }
+    if (n === null || n === 0) { btn.style.display = 'none'; return; }
 
     btn.style.display = '';
     btn.textContent = n === 1 ? '1 decision waiting' : n + ' decisions waiting';
@@ -681,6 +742,15 @@ window.page = async function () {
     Array.prototype.forEach.call(root.querySelectorAll('[data-act]'), function (b) {
       b.onclick = function () {
         pressCard(b.getAttribute('data-act'), b.getAttribute('data-route'), b.getAttribute('data-label'), b);
+      };
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-close]'), function (b) {
+      b.onclick = function () {
+        // Presentation only. Nothing is sent to the server: no consume, no
+        // reject, no revoke. The decision is untouched and still in Decisions.
+        CLOSED[b.getAttribute('data-close')] = true;
+        var card = b.closest('[data-pres]');
+        if (card) { card.remove(); }
       };
     });
     Array.prototype.forEach.call(root.querySelectorAll('[data-review]'), function (b) {
@@ -984,6 +1054,7 @@ window.page = async function () {
       var d = await api('/engineer888/chat/bootstrap');
       if (!d) { showError('Chat failed to load.'); return; }
       showError(null);
+      if (d.decisions !== undefined) { DECISION_COUNT = d.decisions; }
       applyConversation(d.conversation, d.projects);
       var h = await api('/engineer888/chat/messages');
       if (h) { CURSOR = h.cursor; render(h.messages || [], d.cards || []); }
@@ -1018,6 +1089,7 @@ window.page = async function () {
     }
 
     var ev = await api('/engineer888/chat/events' + (CURSOR ? '?cursor=' + CURSOR : ''));
+    if (ev && ev.decisions !== undefined) { DECISION_COUNT = ev.decisions; }
     render(h.messages || [], (ev && ev.cards) || []);
     statusBar(ev);
   }

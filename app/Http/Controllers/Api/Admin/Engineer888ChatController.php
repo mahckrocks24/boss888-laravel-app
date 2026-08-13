@@ -61,6 +61,11 @@ class Engineer888ChatController
             'cards' => $this->liveCards($request, $conversation),
             'projects' => $this->projects->registry(),
             'unread' => $this->conversations->unreadCount($request),
+            // The header reads THIS, not the card list. Cards are a transport
+            // for a decision, and counting them counted repeated attempts at
+            // the same brief as separate work - 25 in the header while the
+            // projection said 2.
+            'decisions' => $this->decisionCount($request, $conversation),
             'capabilities' => [
                 // What this surface may offer, answered by the policy rather
                 // than assumed from the fact that the page loaded.
@@ -97,12 +102,54 @@ class Engineer888ChatController
 
         $conversation = $this->conversations->forOwner($request);
 
-        return response()->json($this->messages->history(
+        return response()->json($this->withPresentations($request, $conversation, $this->messages->history(
             $request,
             $conversation->uuid,
             isset($data['after_id']) ? (int) $data['after_id'] : null,
             (int) ($data['limit'] ?? 200)
-        ));
+        )));
+    }
+
+    /**
+     * Resolve each turn's persisted decision references into live objects.
+     *
+     * TURN-SCOPED, AND RESOLVED NOW. A message remembers only which LOGICAL
+     * decisions it asked to show; the current governed card is looked up on
+     * every read. Cards rotate on a 30-minute TTL — the live table emptied
+     * itself through expiry on 2026-08-13 while the decisions were untouched —
+     * so a presentation that cached a card uuid would silently break minutes
+     * after it was created.
+     *
+     * A reference whose decision has since been taken hydrates to nothing and
+     * is not drawn. Reopening an old conversation must not resurrect a decision
+     * that has already been made.
+     */
+    /** How many decisions a human actually has to make, from the one source. */
+    private function decisionCount(Request $request, object $conversation): int
+    {
+        return app(\App\Core\Engineer888\Decisions\DecisionProjection::class)->count(
+            \App\Core\Engineer888\Access\Engineer888AccessContext::fromRequest($request),
+            $conversation->active_project_id === null ? null : (int) $conversation->active_project_id
+        );
+    }
+
+    private function withPresentations(Request $request, object $conversation, array $history): array
+    {
+        $resolver = app(\App\Core\Engineer888\Decisions\DecisionPresentationResolver::class);
+        $ctx = \App\Core\Engineer888\Access\Engineer888AccessContext::fromRequest($request);
+        $projectId = $conversation->active_project_id === null ? null : (int) $conversation->active_project_id;
+
+        $history['messages'] = array_map(function (array $m) use ($resolver, $ctx, $projectId) {
+            $refs = $m['metadata']['presentations'] ?? null;
+
+            if (! is_array($refs) || $refs === []) { return $m; }
+
+            $m['presentations'] = $resolver->hydrate($ctx, $refs, $projectId);
+
+            return $m;
+        }, $history['messages'] ?? []);
+
+        return $history;
     }
 
     /**
@@ -134,7 +181,7 @@ class Engineer888ChatController
         return response()->json([
             'intent' => $result['intent'],
             'blocked_action' => $result['blocked_action'],
-            'messages' => $result['messages'],
+            'messages' => $this->withPresentations($request, $fresh, ['messages' => $result['messages']])['messages'],
             'cards' => $this->liveCards($request, $fresh),
             'conversation' => $this->conversationPayload($fresh, $this->projects->active($fresh)),
         ]);
@@ -181,10 +228,13 @@ class Engineer888ChatController
             200
         );
 
+        $history = $this->withPresentations($request, $conversation, $history);
+
         return response()->json([
             'messages' => $history['messages'],
             'cursor' => $history['cursor'],
             'unread' => $this->conversations->unreadCount($request),
+            'decisions' => $this->decisionCount($request, $conversation),
             'active_project' => $this->projects->active($conversation),
             'cards' => $this->liveCards($request, $conversation),
         ]);

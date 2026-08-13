@@ -53,6 +53,12 @@ final class DecisionProjection
      *
      * @return array<int,array> newest work item first
      */
+    /** A candidate whose bytes nobody has judged yet. */
+    public const KIND_REVIEW = 'review';
+
+    /** An approved candidate nobody has run yet. */
+    public const KIND_EXECUTE = 'execute';
+
     public function current(Engineer888AccessContext $ctx, ?int $projectId = null): array
     {
         // ONE POLICY, ONE CALL. checkContext() already requires the canonical
@@ -107,6 +113,7 @@ final class DecisionProjection
                 // the current decision is the most recent attempt at this work.
                 $items[$key] = [
                     'work_key'       => $key,
+                    'kind'           => self::KIND_REVIEW,
                     'title'          => $r->title,
                     'project_id'     => (int) $r->project_id,
                     'project'        => $r->project_name,
@@ -132,6 +139,59 @@ final class DecisionProjection
                     'raised_at'      => $r->candidate_at,
                 ];
             }
+        }
+
+        // ── APPROVED, AND STILL WAITING ──────────────────────────────
+        //
+        // A decision is not finished when it is approved. Somebody approved
+        // these bytes and nothing has run them, so the next move is still
+        // Boss's — and until this block existed the projection said there was
+        // nothing waiting while two live execute_task cards sat unpressed.
+        //
+        // Found 2026-08-13, immediately after two candidates were approved in
+        // the browser: awaiting-review went to 2 and the two approved items
+        // vanished from every surface rather than moving to the next state.
+        $approved = DB::table('engineering_candidate_approvals as a')
+            ->join('engineering_candidates as c', 'c.id', '=', 'a.candidate_id')
+            ->join('engineering_tasks as t', 't.id', '=', 'a.task_id')
+            ->join('engineering_projects as p', 'p.id', '=', 't.project_id')
+            ->whereNotNull('a.approved_at')
+            ->whereNull('a.revoked_at')
+            ->whereNull('a.superseded_at')
+            ->whereNull('c.superseded_at')
+            ->whereNotIn('t.status', ['completed', 'failed'])
+            ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
+            ->orderByDesc('a.id')
+            ->get([
+                'c.uuid as candidate_uuid', 'c.file_count', 'c.confidence',
+                'a.approved_at', 't.uuid as task_uuid', 't.title', 't.description',
+                't.current_stage', 'p.id as project_id', 'p.name as project_name',
+            ]);
+
+        foreach ($approved as $r) {
+            // Keyed apart from the review entry: the same work can legitimately
+            // have one candidate approved and awaiting execution while a later
+            // one awaits review. Two different decisions, two different asks.
+            $key = 'exec:' . $this->key($r);
+
+            if (isset($items[$key])) { continue; }
+
+            $items[$key] = [
+                'work_key'       => $key,
+                'kind'           => self::KIND_EXECUTE,
+                'title'          => $r->title,
+                'project_id'     => (int) $r->project_id,
+                'project'        => $r->project_name,
+                'task_uuid'      => $r->task_uuid,
+                'candidate_uuid' => $r->candidate_uuid,
+                'file_count'     => $r->file_count === null ? null : (int) $r->file_count,
+                'confidence'     => $r->confidence,
+                'stage'          => $r->current_stage,
+                'decided_at'     => $r->approved_at,
+                'raised_at'      => $r->approved_at,
+                'attempts'       => 1,
+                'history'        => [],
+            ];
         }
 
         return array_values($items);

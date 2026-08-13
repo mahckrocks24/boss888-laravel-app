@@ -170,7 +170,8 @@ final class MessageService
         $engine = ConversationEngine::make();
 
         if ($engine->available()) {
-            $reply = $engine->respond($conversation, $body, $this->situationFor($intent));
+            $reply = $engine->respond($conversation, $body, $this->situationFor($intent),
+                \App\Core\Engineer888\Access\Engineer888AccessContext::fromRequest($request));
 
             if (! $reply->failed()) {
                 // ── THE MODEL MAY ESCALATE TO GOVERNANCE, NEVER AWAY FROM IT ──
@@ -207,6 +208,60 @@ final class MessageService
                     // The model's sentence leads; the engine's record follows.
                     // Narration never replaces the record — it introduces it.
                     return [trim($reply->text) . "\n\n" . $text, $meta + ['spoken' => true], $uuid];
+                }
+
+                // ── PRESENTATION: THE MODEL ASKS, THE SERVER ANSWERS ─────
+                //
+                // Boss asked to SEE the decisions. Before this existed the only
+                // channel a reply had was text, so the model did the only thing
+                // it could and wrote the records out as a numbered list — which
+                // is what prompted this work.
+                //
+                // What gets persisted is the LOGICAL DECISION, never a card
+                // uuid. Cards rotate on a 30-minute TTL; the live table went
+                // from 52 rows to 0 through expiry alone on 2026-08-13 while
+                // the decisions themselves were untouched. A presentation that
+                // remembered a card would break by itself minutes later.
+                if (in_array($reply->proposedIntent, ['SHOW_DECISIONS', 'SHOW_DECISION'], true)) {
+                    $refs = app(\App\Core\Engineer888\Decisions\DecisionPresentationResolver::class)
+                        ->referencesFor(
+                            \App\Core\Engineer888\Access\Engineer888AccessContext::fromRequest($request),
+                            $reply->proposedIntent,
+                            $reply->intentSubject,
+                            $this->activeProjectId($conversation)
+                        );
+
+                    // A CARD IS NOT AN ANSWER ON ITS OWN.
+                    //
+                    // Measured in the browser: asked to show one decision the
+                    // model emitted the intent line and no prose, so stripping
+                    // the sentinel left an empty message and Boss got a card
+                    // under a blank turn. Prompting alone cannot guarantee a
+                    // sentence, so the floor is deterministic - and it states
+                    // only what is being shown, never anything about state.
+                    $spoken = trim($reply->text);
+
+                    if ($spoken === '') {
+                        $spoken = count($refs) === 1
+                            ? 'Here it is.'
+                            : (count($refs) === 0
+                                ? "I couldn't find a decision matching that."
+                                : 'Here they are.');
+                    }
+
+                    return [$spoken, [
+                        'kind' => 'conversation',
+                        'provider' => $reply->provider,
+                        'presentations' => $refs,
+                    ], null];
+                }
+
+                if ($reply->proposedIntent === 'OPEN_DECISIONS') {
+                    return [$reply->text, [
+                        'kind' => 'conversation',
+                        'provider' => $reply->provider,
+                        'open_decisions' => true,
+                    ], null];
                 }
 
                 return [$reply->text, ['kind' => 'conversation', 'provider' => $reply->provider], null];
@@ -281,6 +336,14 @@ final class MessageService
         }
 
         return trim($reply->text);
+    }
+
+    /** The project this conversation is pointed at, re-read rather than trusted. */
+    private function activeProjectId(object $conversation): ?int
+    {
+        $row = DB::table('e888_conversations')->where('id', $conversation->id)->first(['active_project_id']);
+
+        return $row?->active_project_id === null ? null : (int) $row->active_project_id;
     }
 
     /**

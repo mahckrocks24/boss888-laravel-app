@@ -70,7 +70,15 @@ ADVISORY INTENT
 When the turn calls for it, end your reply with ONE final line of the form:
 @@INTENT: <NAME> | <one line of detail>
 
-The three names you may use:
+The names you may use:
+
+SHOW_DECISIONS — he is asking to SEE what needs his approval here, in the conversation. "Show me what needs approval", "paste them here one by one", "list the ones waiting on me". Say one short sentence naming how many there are, then emit the line. Do NOT write the decisions out yourself: never a numbered list, never a table, never bold headings pretending to be cards. The interface draws the real ones. Writing them out as text is the specific failure this line exists to prevent.
+
+SHOW_DECISION — he is asking for ONE specific thing. "Show me the Bug Tracker candidate", "let me review that one". Put whatever he called it after the pipe, in his words; the server works out which decision that is. If you cannot tell which he means, ask instead of guessing.
+
+OPEN_DECISIONS — he wants the Decisions surface itself rather than cards in the chat.
+
+A bare question like "what needs my approval?" is answered conversationally with a count and does not need any of these. Reach for SHOW_DECISIONS when he asks to SEE them.
 
 CREATE_TASK — he is asking you to DO engineering work: investigate, diagnose, fix, build, implement, refactor, test, audit something. Be decisive here. "Investigate the two baseline test failures" is an instruction, not a question; emit it and say you are starting, rather than asking permission you were already given. Only withhold it when you genuinely cannot tell whether he wants the work done or only discussed, and then ask which, in one sentence.
 
@@ -112,7 +120,8 @@ TXT;
      * @param string $turn         what the human just said
      * @param string $situation    optional deterministic note prepended to the frame
      */
-    public function respond(object $conversation, string $turn, string $situation = ''): ConversationReply
+    public function respond(object $conversation, string $turn, string $situation = '',
+        ?\App\Core\Engineer888\Access\Engineer888AccessContext $ctx = null): ConversationReply
     {
         if (! $this->registry->enabled()) {
             return ConversationReply::failure('disabled', 'none', 'conversation is disabled by configuration');
@@ -129,7 +138,14 @@ TXT;
                 (string) $provider->unavailableReason());
         }
 
-        $built = $this->frame->build($conversation, $turn);
+        // The frame reads governed state, so it needs the same access context the
+        // rest of the turn uses. Without one it falls back to the blocks that
+        // require no policy, rather than inventing an identity.
+        $frame = $ctx === null
+            ? $this->frame
+            : new EngineeringFrame($this->registry->contextLimits(), $ctx);
+
+        $built = $frame->build($conversation, $turn);
         $frameText = $situation === '' ? $built['text'] : $situation . "\n\n" . $built['text'];
 
         $request = new ConversationRequest(
