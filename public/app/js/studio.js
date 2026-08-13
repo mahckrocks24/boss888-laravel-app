@@ -281,12 +281,10 @@
   }
 
   window._stCreate = function (kind) {
+    // Call the real actions. Driving the old gallery dropdown by synthesising a
+    // click was fragile and depended on a control the shell has since retired.
     if (kind === 'video') { _studioOpenVideo(); return; }
-    _stGo('designs');
-    setTimeout(function () {
-      var b = document.getElementById('st2-create-btn');
-      if (b) b.click();
-    }, 350);
+    _st2StartImageDesign();
   };
 
   window._stGo = function (view) {
@@ -473,14 +471,9 @@
       '<div class="st2-root st-shell-root" id="st2-root">' +
         _stShellHeader('designs') +
         '<div class="st2-topbar">' +
-          '<div class="st2-create-wrap">' +
-            '<button class="st2-btn-primary" id="st2-create-btn">+ Create new <span style="opacity:.7">\u25be</span></button>' +
-            '<div class="st2-menu" id="st2-create-menu" style="display:none">' +
-              '<button data-action="image" class="st2-menu-item">\u{1F5BC} Image design</button>' +
-              '<button data-action="video" class="st2-menu-item">\u{1F3AC} Video</button>' +
-              '<button data-action="ai" class="st2-menu-item">\u2726 Generate with AI</button>' +
-            '</div>' +
-          '</div>' +
+          // Create lives in the shell header now — a second entry point here made
+          // Designs look like a different product with its own creation flow.
+          '' +
           '<input class="st2-search" id="st2-search" placeholder="Search designs and templates..."/>' +
           '<div class="st2-seg" id="st2-filter">' +
             '<button class="active" data-f="all">All</button>' +
@@ -490,7 +483,9 @@
           '</div>' +
           // STUDIO888 Phase P — first-class AI Edit entry (Studio is now the single editing surface).
           '<button class="st2-btn-ghost" id="st-ai-edit-entry" onclick="studioAiEditPicker()" title="AI-edit one of your images" style="border-color:var(--p,#6C5CE7)">✦ AI Edit</button>' +
-          '<button class="st2-btn-ghost" onclick="_studioClose()">Close</button>' +
+          // "Close Studio" lives in the shell header; two Close buttons on one
+          // screen is the duplication the shell exists to remove.
+          '' +
         '</div>' +
 
         '<div class="st2-ai-card">' +
@@ -534,22 +529,26 @@
 
   // ── Top bar wiring ─────────────────────────────────────────
   function _st2WireTopbar(){
+    // Retired in Wave 1B — the shell header owns Create. Guarded rather than
+    // deleted so the surrounding menu wiring stays intact if it is ever restored.
     var createBtn = document.getElementById('st2-create-btn');
     var menu      = document.getElementById('st2-create-menu');
-    createBtn.onclick = function(e){
+    if (createBtn && menu) createBtn.onclick = function(e){
       e.stopPropagation();
       menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
     };
-    document.addEventListener('click', function(){ menu.style.display = 'none'; });
-    menu.querySelectorAll('.st2-menu-item').forEach(function(b){
-      b.onclick = function(){
-        menu.style.display = 'none';
-        var act = b.getAttribute('data-action');
-        if (act === 'image') _st2StartImageDesign();
-        else if (act === 'video') _studioOpenVideo();
-        else if (act === 'ai') document.getElementById('st2-ai-prompt').focus();
-      };
-    });
+    if (menu) {
+      document.addEventListener('click', function(){ menu.style.display = 'none'; });
+      menu.querySelectorAll('.st2-menu-item').forEach(function(b){
+        b.onclick = function(){
+          menu.style.display = 'none';
+          var act = b.getAttribute('data-action');
+          if (act === 'image') _st2StartImageDesign();
+          else if (act === 'video') _studioOpenVideo();
+          else if (act === 'ai') { var p = document.getElementById('st2-ai-prompt'); if (p) p.focus(); }
+        };
+      });
+    }
     var filter = document.getElementById('st2-filter');
     filter.querySelectorAll('button').forEach(function(b){
       b.onclick = function(){
