@@ -639,6 +639,25 @@
     return '/storage/studio-video-templates/' + encodeURIComponent(slug) + '/template.html';
   }
   function _svAnimIframeDoc(){ try { var f = document.getElementById('sv-anim-iframe'); return f && f.contentDocument; } catch (_e) { return null; } }
+  // Each template is also meant to be viewable standalone in a browser tab, so it
+  // carries its own responsive downscale: @media(max-width:1160px){.sw{scale(.46)}}.
+  // The editor stage is a 1080px-wide iframe, which trips that rule — the template
+  // shrank itself to 46% and _svAnimFit then scaled it AGAIN, leaving the reel at
+  // ~13% marooned in a black frame. Inside the editor the fitter is the only
+  // scaling authority, so pin the template to its native canvas size. Idempotent;
+  // applies to all 40 templates, which share this markup.
+  function _svAnimNeutraliseSelfScale(){
+    var doc = _svAnimIframeDoc(); if (!doc || !doc.head) return;
+    if (doc.getElementById('sv-anim-stage-style')) return;
+    var st = doc.createElement('style');
+    st.id = 'sv-anim-stage-style';
+    st.textContent =
+      'html,body{width:var(--w,1080px)!important;height:var(--h,1920px)!important;overflow:hidden!important}' +
+      '.scene{display:block!important;min-height:0!important;height:var(--h,1920px)!important;padding:0!important}' +
+      '.sw{transform:none!important;width:var(--w,1080px)!important;height:var(--h,1920px)!important;display:block!important}';
+    doc.head.appendChild(st);
+  }
+
   function _svAnimEnsureStyle(){
     var doc = _svAnimIframeDoc(); if (!doc || !doc.head) return null;
     var st = doc.getElementById('sv-anim-ctrl-style');
@@ -715,6 +734,11 @@
     var frame  = document.getElementById('sv-canvas-frame');
     var iframe = document.getElementById('sv-anim-iframe');
     if (!wrap || !frame || !iframe || !_svAnimTpl) return;
+    // Must run before measuring: the template otherwise scales itself and the
+    // two scales multiply. Cheap + idempotent, and the iframe doc may only become
+    // reachable on a later fit pass (load / resize / poll all call us).
+    _svAnimNeutraliseSelfScale();
+
     var W = _svAnimTpl.canvas_width  || 1080;
     var H = _svAnimTpl.canvas_height || 1920;
     var availW = wrap.clientWidth  - 60;

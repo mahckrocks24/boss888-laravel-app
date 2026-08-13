@@ -89,6 +89,18 @@ async function recordTemplate(args) {
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await page.goto(templateUrl, { waitUntil: 'networkidle0', timeout: 30000 });
 
+    // The capture surface is a FIXED stage, not a responsive page. Each template
+    // also ships a standalone-preview downscale — @media(max-width:1160px){.sw{
+    // transform:scale(.46)}} — and our viewport is the canvas width (1080 for a
+    // reel), which trips it. Left alone the template renders at 46% and we clip
+    // the full 1080x1920, so every exported MP4 shows the reel small on black.
+    // Pin it to its native canvas size; the viewport is the only sizing authority.
+    await page.addStyleTag({ content:
+      'html,body{width:var(--w,' + width + 'px)!important;height:var(--h,' + height + 'px)!important;overflow:hidden!important}' +
+      '.scene{display:block!important;min-height:0!important;height:var(--h,' + height + 'px)!important;padding:0!important}' +
+      '.sw{transform:none!important;width:var(--w,' + width + 'px)!important;height:var(--h,' + height + 'px)!important;display:block!important}'
+    });
+
     // Wait for custom fonts to be ready.
     try { await page.evaluate(() => document.fonts.ready); } catch (_e) {}
     await new Promise(r => setTimeout(r, 500));
