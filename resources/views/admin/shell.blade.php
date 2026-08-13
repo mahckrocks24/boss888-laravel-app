@@ -30,6 +30,15 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"></noscript>
   <title>{{ $page['title'] }} — LevelUp Admin</title>
   <link rel="stylesheet" href="/css/admin.css?v={{ $v }}">
+  <style>
+    /* Engineer888 is the specialist on its own pages. Bella stays available and
+       unchanged - same button, same panel, same permissions - but stops
+       competing for attention while Boss is talking to Engineering. Smallest
+       mechanism the shell already offers: one body class, one opacity rule. */
+    body.e888-workspace .bella-toggle{opacity:.28;transform:scale(.82);
+      transition:opacity .2s,transform .2s}
+    body.e888-workspace .bella-toggle:hover{opacity:1;transform:none}
+  </style>
 </head>
 <body>
 
@@ -102,5 +111,12 @@
     })();
   </script>
 
+  <script>
+    // Path-based, so it covers every /admin/engineer888/* page rather than only
+    // the one view that happened to carry the rule.
+    if (location.pathname.indexOf('/admin/engineer888') === 0) {
+      document.body.classList.add('e888-workspace');
+    }
+  </script>
 </body>
 </html>
