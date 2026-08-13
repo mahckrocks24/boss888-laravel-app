@@ -115,7 +115,10 @@
       /* Editor */
       '.st-main{flex:1;display:flex;overflow:hidden}' +
       '.st-tools{width:320px;background:#14161C;border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;flex-shrink:0}' +
-      '.st-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.08)}' +
+      // Wrap, or the rail silently clips whatever does not fit: at 1280 the
+      // strip measured 457px inside a 319px rail, leaving EXPORT and PRODUCTION
+      // past the edge and unclickable.
+      '.st-tabs{display:flex;flex-wrap:wrap;row-gap:2px;border-bottom:1px solid rgba(255,255,255,0.08)}' +
       '.st-tab{flex:1;padding:12px 6px;text-align:center;color:rgba(255,255,255,0.65);cursor:pointer;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border-bottom:2px solid transparent}' +
       '.st-tab:hover{color:#fff;background:rgba(255,255,255,0.03)}' +
       '.st-tab.active{color:#fff;border-bottom-color:#6C5CE7}' +
@@ -3870,7 +3873,7 @@
   function _stRenderPhotosTab(h){
     h.innerHTML =
       '<button class="st-btn-wide st-btn-outline" id="st-upload-photo">Upload image</button>' +
-      '<button class="st-btn-wide st-btn-outline" id="st-ai-image">\u2726 Generate with AI (Phase 4)</button>' +
+      '<button class="st-btn-wide st-btn-outline" id="st-ai-image">\u2726 Generate with AI</button>' +
       '<div class="st-panel-section-label">Workspace media</div>' +
       '<div id="st-media-grid" class="st-panel-grid media"><div class="st-empty-small">Loading...</div></div>';
     h.querySelector('#st-upload-photo').onclick = function(){
