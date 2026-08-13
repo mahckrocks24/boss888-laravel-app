@@ -123,18 +123,6 @@ class ConversationTest extends TestCase
 
     public function test_a_work_request_creates_exactly_one_task(): void
     {
-        // HARNESS GAP, NOT A PRODUCT GAP. Engineer888Access::allows() refuses
-        // CREATE_TASK for this synthetic owner even with a grant row inserted,
-        // so the capability re-check inside createTask() 404s before the task
-        // is written. The behaviour under test IS proven in the browser - task
-        // 89 was created from "Investigate the two baseline failures" on
-        // 2026-08-13 - but it is not proven here, and a test that cannot
-        // establish its own preconditions must say so rather than be deleted.
-        $this->markTestSkipped(
-            'capability grant for a synthetic canonical owner is not yet '
-            . 'reproducible under RefreshDatabase; covered by browser evidence'
-        );
-
         $this->selectProject();
         ScriptedConversationProvider::script([
             "I'll start on that now.\n@@INTENT: CREATE_TASK | investigate the failures",
@@ -275,6 +263,15 @@ class ConversationTest extends TestCase
                 'name' => 'Mark',
                 'email' => \App\Core\Engineer888\Access\Engineer888Access::CANONICAL_EMAIL,
                 'password' => bcrypt('irrelevant-for-this-test'),
+                // The policy checks status and platform-admin as separate
+                // conditions from identity, so a user row that omits them is
+                // the canonical account with no capabilities - which denies
+                // NOT_PLATFORM_ADMIN on any capability check, while identity-
+                // only paths still pass. That asymmetry is what made this look
+                // like a harness limitation twice.
+                'status' => 'active',
+                'is_platform_admin' => true,
+                'is_admin' => true,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
             $user = \App\Models\User::find(\App\Core\Engineer888\Access\Engineer888Access::CANONICAL_USER_ID);
@@ -302,6 +299,11 @@ class ConversationTest extends TestCase
 
         $request = \Illuminate\Http\Request::create('/api/admin/engineer888/chat/messages', 'POST');
         $request->setUserResolver(fn () => $user);
+
+        // Provenance, declared explicitly. This is what was missing when this
+        // harness was wrongly written off as a limitation: the policy refuses a
+        // caller that cannot say how it authenticated, and it was right to.
+        $request->attributes->set('auth_via', 'jwt');
 
         return $request;
     }

@@ -66,9 +66,9 @@ final class Engineer888Access
      *
      * @return array{allowed:bool,reason:?string,detail:string,actor:?array,mfa:array}
      */
-    public function check(?Request $request, string $capability): array
+    public function checkContext(Engineer888AccessContext $ctx, string $capability): array
     {
-        $user = $request?->user();
+        $user = $ctx->user;
 
         if ($user === null) {
             return $this->deny(self::DENY_NO_SESSION, 'no authenticated human session');
@@ -90,14 +90,14 @@ final class Engineer888Access
         // denylist would have admitted it silently. Adding a human credential
         // here is a deliberate act; forgetting to add a machine one is no
         // longer an opening.
-        $via = $request->attributes->get('auth_via');
+        $via = $ctx->authVia;
         if (! in_array($via, self::HUMAN_CREDENTIALS, true)) {
             return $this->deny(self::DENY_MACHINE, $via === 'api_key'
                 ? 'API keys represent a machine, not a person'
                 : 'the credential type is not a recognised human sign-in');
         }
 
-        if ($request->attributes->get('auth_via_claim') === 'shared_admin_token') {
+        if ($ctx->authViaClaim === 'shared_admin_token') {
             return $this->deny(self::DENY_SHARED_TOKEN,
                 'the shared admin token attributes every action to user 1 regardless of who used it');
         }
@@ -162,6 +162,24 @@ final class Engineer888Access
             ],
             'mfa'     => $mfa,
         ];
+    }
+
+    /**
+     * The HTTP path, unchanged in behaviour.
+     *
+     * Builds the context from the request exactly as the policy used to read it
+     * itself, then asks the one implementation. Every real request decides the
+     * same way it did before this indirection existed; the parity tests assert
+     * that rather than assume it.
+     */
+    public function check(?Request $request, string $capability): array
+    {
+        return $this->checkContext(Engineer888AccessContext::fromRequest($request), $capability);
+    }
+
+    public function allowsContext(Engineer888AccessContext $ctx, string $capability): bool
+    {
+        return $this->checkContext($ctx, $capability)['allowed'];
     }
 
     public function allows(?Request $request, string $capability): bool
