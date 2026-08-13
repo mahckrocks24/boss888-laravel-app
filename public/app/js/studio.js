@@ -46,7 +46,9 @@
     }
     _rootEl = rootEl || document.getElementById('studio-root') || document.body;
     try { _rootEl.style.position = 'relative'; } catch(_){}
-    _mountGallery();
+    // Wave 1B — Studio opens on its shell Home. The gallery is one destination
+    // (Designs), not the whole application.
+    _stGo('home');
   };
   // Manual invocation fallback — same as studioLoad with auto-resolved root.
   window.openStudio = function () { window.studioLoad(null); };
@@ -202,13 +204,275 @@
   // studio-phase1-gallery — full-width SPA gallery (v5.0.0)
   // Replaces the single-list template picker with a Canva-style landing:
   //   top bar + AI Create + My Designs + Templates (tab-categorized)
+
+  // ═══════════════════════════════════════════════════════════════
+  // WAVE 1B — ENTERPRISE SHELL
+  // ═══════════════════════════════════════════════════════════════
+  // Studio had no shell: it opened straight into a design gallery, Production
+  // lived as a tab inside the image editor, and there was no Assets destination
+  // at all. One nav now spans the media workflows, and every surface below is
+  // rendered into the same host so navigation never rebuilds the page.
+  //
+  // Truthful vocabulary, which Studio previously conflated:
+  //   DESIGNS    editable Studio documents (studio_designs)
+  //   ASSETS     reusable generated/uploaded media (Wave 2 owns the library)
+  //   PRODUCTION the real job history (creative_jobs + assets)
+
+  var _stView = 'home';
+
+  var _ST_NAV = [
+    { id: 'home',       label: 'Home' },
+    { id: 'designs',    label: 'Designs' },
+    { id: 'assets',     label: 'Assets' },
+    { id: 'production', label: 'Production' },
+  ];
+
+  function _stShellHeader(active) {
+    return '' +
+      '<header class="st-shell-head">' +
+        '<div class="st-shell-brand">Studio</div>' +
+        '<nav class="st-shell-nav" aria-label="Studio sections">' +
+          _ST_NAV.map(function (n) {
+            var on = n.id === active;
+            return '<button type="button" class="st-navbtn' + (on ? ' active' : '') + '"' +
+                   ' data-view="' + n.id + '"' +
+                   (on ? ' aria-current="page"' : '') +
+                   ' onclick="_stGo(\'' + n.id + '\')">' + _esc(n.label) + '</button>';
+          }).join('') +
+        '</nav>' +
+        '<div class="st-shell-actions">' +
+          '<button type="button" class="st-btn st-btn-primary" onclick="_stCreate(\'image\')">Create image</button>' +
+          '<button type="button" class="st-btn st-btn-primary" onclick="_stCreate(\'video\')">Create video</button>' +
+          '<button type="button" class="st-btn st-btn-ghost" onclick="_studioClose()">Close Studio</button>' +
+        '</div>' +
+      '</header>' +
+      '<div class="st-shell-ctx" id="st-shell-ctx" aria-live="polite"></div>';
+  }
+
+  // The workspace chip is the shell's tenant proof. It reads /auth/me, which as
+  // of d7fc09b reports the workspace the request is actually scoped to, so the
+  // shell can never name a different tenant than the one being served.
+  function _stRenderContext() {
+    var el = document.getElementById('st-shell-ctx');
+    if (!el) return;
+    el.innerHTML = '<span class="st-chip st-chip-load">Loading workspace…</span>';
+    _fetchJson('/auth/me').then(function (me) {
+      var ws = (me.workspaces || []).filter(function (w) { return w.id === me.current_workspace_id; })[0];
+      if (!ws) { el.innerHTML = '<span class="st-chip st-chip-warn">No active workspace</span>'; return; }
+      el.innerHTML =
+        '<span class="st-chip" title="Active workspace">' + _esc(ws.name) + '</span>' +
+        '<span class="st-chip st-chip-plan">' + _esc(String(ws.plan || 'free').toUpperCase()) + '</span>' +
+        '<span class="st-chip st-chip-sub" id="st-chip-credits">— credits</span>';
+      _fetchJson('/workspace/status').then(function (st) {
+        var c = document.getElementById('st-chip-credits');
+        if (!c) return;
+        // The endpoint returns credit_balance (a string) and monthly_credit_limit.
+        var bal = st && st.credit_balance != null ? Number(st.credit_balance) : null;
+        var lim = st && st.monthly_credit_limit != null ? Number(st.monthly_credit_limit) : null;
+        if (bal == null || isNaN(bal)) { c.textContent = 'credits unavailable'; return; }
+        c.textContent = Math.round(bal) + (lim ? (' / ' + Math.round(lim)) : '') + ' credits';
+      }).catch(function () {
+        var c = document.getElementById('st-chip-credits');
+        if (c) c.textContent = 'credits unavailable';
+      });
+    }).catch(function () {
+      el.innerHTML = '<span class="st-chip st-chip-warn">Workspace unavailable</span>';
+    });
+  }
+
+  window._stCreate = function (kind) {
+    if (kind === 'video') { _studioOpenVideo(); return; }
+    _stGo('designs');
+    setTimeout(function () {
+      var b = document.getElementById('st2-create-btn');
+      if (b) b.click();
+    }, 350);
+  };
+
+  window._stGo = function (view) {
+    if (!_ST_NAV.some(function (n) { return n.id === view; })) view = 'home';
+    _stView = view;
+    if (view === 'designs')    { _mountGallery(); return; }
+    if (view === 'assets')     { _stMountAssets(); return; }
+    if (view === 'production') { _stMountProduction(); return; }
+    _stMountHome();
+  };
+
+  function _stShellFrame(active, inner) {
+    var host = _getOrCreateHost();
+    _prodInjectCss();
+    _stInjectShellCss();
+    host.innerHTML =
+      '<div class="st2-root st-shell-root">' +
+        _stShellHeader(active) +
+        inner +
+      '</div>';
+    _stRenderContext();
+  }
+
+  // ── HOME ──────────────────────────────────────────────────────────────────
+  // Real state only. Counts come from the same endpoints the destinations use;
+  // a count that cannot be read says so rather than showing a comforting zero.
+  function _stMountHome() {
+    _stShellFrame('home',
+      '<section class="st-hero">' +
+        '<h1 class="st-h1">What are you making?</h1>' +
+        '<p class="st-sub">Generate, edit and produce images and video for this workspace.</p>' +
+        '<div class="st-hero-actions">' +
+          '<button type="button" class="st-tile st-tile-cta" onclick="_stCreate(\'image\')">' +
+            '<span class="st-tile-t">Create image</span>' +
+            '<span class="st-tile-d">Start from a template or generate with AI</span>' +
+          '</button>' +
+          '<button type="button" class="st-tile st-tile-cta" onclick="_stCreate(\'video\')">' +
+            '<span class="st-tile-t">Create video</span>' +
+            '<span class="st-tile-d">Motion templates and AI video generation</span>' +
+          '</button>' +
+        '</div>' +
+      '</section>' +
+      '<section class="st-sec">' +
+        '<h2 class="st-h2">Your work</h2>' +
+        '<div class="st-grid3">' +
+          '<button type="button" class="st-tile" onclick="_stGo(\'designs\')">' +
+            '<span class="st-tile-t">Designs</span>' +
+            '<span class="st-tile-n" id="st-n-designs">…</span>' +
+            '<span class="st-tile-d">Editable Studio documents</span>' +
+          '</button>' +
+          '<button type="button" class="st-tile" onclick="_stGo(\'production\')">' +
+            '<span class="st-tile-t">Production</span>' +
+            '<span class="st-tile-n" id="st-n-prod">…</span>' +
+            '<span class="st-tile-d">Generation and edit job history</span>' +
+          '</button>' +
+          '<button type="button" class="st-tile" onclick="_stGo(\'assets\')">' +
+            '<span class="st-tile-t">Assets</span>' +
+            '<span class="st-tile-n">—</span>' +
+            '<span class="st-tile-d">Reusable generated media</span>' +
+          '</button>' +
+        '</div>' +
+      '</section>');
+
+    _fetchJson('/studio/designs').then(function (d) {
+      var n = ((d && (d.designs || d)) || []).length;
+      var el = document.getElementById('st-n-designs');
+      if (el) el.textContent = String(n);
+    }).catch(function () {
+      var el = document.getElementById('st-n-designs');
+      if (el) el.textContent = 'unavailable';
+    });
+
+    _fetchJson('/studio/production/jobs?limit=60').then(function (d) {
+      var el = document.getElementById('st-n-prod');
+      if (el) el.textContent = String((d && d.jobs ? d.jobs.length : 0));
+    }).catch(function () {
+      var el = document.getElementById('st-n-prod');
+      if (el) el.textContent = 'unavailable';
+    });
+  }
+
+  // ── ASSETS (Wave 1B shell destination only) ──────────────────────────────
+  // Wave 2 owns the media library. This states the real situation instead of
+  // fabricating a grid from studio_designs or any unrelated record — the known
+  // gap is that GET /api/creative/assets returns [] while real generated media
+  // exists and is visible in Production.
+  function _stMountAssets() {
+    _stShellFrame('assets',
+      '<section class="st-sec">' +
+        '<h2 class="st-h2">Assets</h2>' +
+        '<div class="st-empty-card">' +
+          '<div class="st-empty-t">The media library is not available yet</div>' +
+          '<p class="st-empty-d">' +
+            'Assets are the reusable images and videos this workspace has generated. ' +
+            'They are produced and tracked today — you can see every generated item, ' +
+            'with its status and lineage, in Production.' +
+          '</p>' +
+          '<p class="st-empty-d st-empty-note">' +
+            'A browsable library lands in the next stage of the Studio rebuild. ' +
+            'Nothing is missing or lost in the meantime.' +
+          '</p>' +
+          '<div class="st-empty-actions">' +
+            '<button type="button" class="st-btn st-btn-primary" onclick="_stGo(\'production\')">Open Production</button>' +
+            '<button type="button" class="st-btn st-btn-ghost" onclick="_stGo(\'designs\')">Browse Designs</button>' +
+          '</div>' +
+        '</div>' +
+      '</section>');
+  }
+
+  // ── PRODUCTION (shell level) ─────────────────────────────────────────────
+  // The same real job list that previously existed only inside the image
+  // editor's Production tab, now reachable from the shell.
+  function _stMountProduction() {
+    _stShellFrame('production',
+      '<section class="st-sec">' +
+        '<h2 class="st-h2">Production</h2>' +
+        '<p class="st-sub">Every generation and edit job for this workspace.</p>' +
+        '<div class="st-prod-chips">' +
+          '<button type="button" class="st-prod-chip active" data-f="all" onclick="_studioProdFilter(\'all\')">All</button>' +
+          '<button type="button" class="st-prod-chip" data-f="running" onclick="_studioProdFilter(\'running\')">Running</button>' +
+          '<button type="button" class="st-prod-chip" data-f="completed" onclick="_studioProdFilter(\'completed\')">Completed</button>' +
+          '<button type="button" class="st-prod-chip" data-f="failed" onclick="_studioProdFilter(\'failed\')">Failed</button>' +
+        '</div>' +
+        '<div id="st-prod-list"><div class="st-empty">Loading…</div></div>' +
+      '</section>');
+    _loadProductionJobs('all');
+  }
+
+  function _stInjectShellCss() {
+    if (document.getElementById('st-shell-css')) return;
+    var s = document.createElement('style');
+    s.id = 'st-shell-css';
+    s.textContent = [
+      '.st-shell-root{max-width:1360px;margin:0 auto;padding:0 28px 56px}',
+      '.st-shell-head{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:20px 0 14px;border-bottom:1px solid var(--bd,rgba(255,255,255,.08))}',
+      '.st-shell-brand{font-family:var(--fh,Syne,sans-serif);font-size:22px;font-weight:700;letter-spacing:-.02em;color:var(--t1,#E8EDF5)}',
+      '.st-shell-nav{display:flex;gap:2px;flex-wrap:wrap}',
+      '.st-navbtn{background:transparent;border:0;color:var(--t2,#8B97B0);font:600 13px/1 var(--fb,"DM Sans",system-ui,sans-serif);padding:9px 14px;border-radius:8px;cursor:pointer;transition:background .12s,color .12s}',
+      '.st-navbtn:hover{background:var(--s2,#1E2230);color:var(--t1,#E8EDF5)}',
+      '.st-navbtn.active{background:var(--ps,rgba(108,92,231,.14));color:#fff}',
+      '.st-navbtn:focus-visible,.st-btn:focus-visible,.st-tile:focus-visible,.st-prod-chip:focus-visible{outline:2px solid var(--p,#6C5CE7);outline-offset:2px}',
+      '.st-shell-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}',
+      '.st-btn{border-radius:8px;padding:9px 16px;font:600 13px/1 var(--fb,"DM Sans",system-ui,sans-serif);cursor:pointer;border:1px solid var(--bd2,rgba(255,255,255,.13));transition:background .12s,border-color .12s}',
+      '.st-btn-primary{background:var(--p,#6C5CE7);border-color:var(--p,#6C5CE7);color:#fff}',
+      '.st-btn-primary:hover{background:#7B6BF0}',
+      '.st-btn-ghost{background:transparent;color:var(--t2,#8B97B0)}',
+      '.st-btn-ghost:hover{background:var(--s2,#1E2230);color:var(--t1,#E8EDF5)}',
+      '.st-shell-ctx{display:flex;gap:8px;flex-wrap:wrap;padding:12px 0 0}',
+      '.st-chip{background:var(--s2,#1E2230);border:1px solid var(--bd,rgba(255,255,255,.08));color:var(--t1,#E8EDF5);font:600 11px/1 var(--fb,system-ui,sans-serif);padding:6px 10px;border-radius:999px}',
+      '.st-chip-plan{background:var(--ps,rgba(108,92,231,.16));border-color:transparent;color:#C7BEFF}',
+      '.st-chip-sub{color:var(--t2,#8B97B0);font-weight:500}',
+      '.st-chip-warn{color:#F8B4B4;border-color:rgba(248,113,113,.4)}',
+      '.st-chip-load{color:var(--t2,#8B97B0)}',
+      '.st-hero{padding:34px 0 8px}',
+      '.st-h1{font-family:var(--fh,Syne,sans-serif);font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--t1,#E8EDF5);margin:0 0 6px}',
+      '.st-h2{font-family:var(--fh,Syne,sans-serif);font-size:17px;font-weight:600;color:var(--t1,#E8EDF5);margin:0 0 4px}',
+      '.st-sub{font:400 13px/1.5 var(--fb,system-ui,sans-serif);color:var(--t2,#8B97B0);margin:0 0 18px}',
+      '.st-sec{padding:26px 0 0}',
+      '.st-hero-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:18px}',
+      '.st-grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:14px}',
+      '.st-tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;background:var(--s1,#171A26);border:1px solid var(--bd,rgba(255,255,255,.08));border-radius:14px;padding:20px;cursor:pointer;transition:border-color .12s,background .12s,transform .12s}',
+      '.st-tile:hover{border-color:var(--p,#6C5CE7);background:var(--s2,#1E2230);transform:translateY(-1px)}',
+      '.st-tile-cta{background:linear-gradient(140deg,rgba(108,92,231,.20),rgba(108,92,231,.05));border-color:rgba(108,92,231,.35);min-height:104px;justify-content:center}',
+      '.st-tile-t{font:600 15px/1.2 var(--fb,system-ui,sans-serif);color:var(--t1,#E8EDF5)}',
+      '.st-tile-n{font-family:var(--fh,Syne,sans-serif);font-size:26px;font-weight:700;color:#fff;line-height:1}',
+      '.st-tile-d{font:400 12px/1.45 var(--fb,system-ui,sans-serif);color:var(--t2,#8B97B0)}',
+      '.st-empty-card{background:var(--s1,#171A26);border:1px solid var(--bd,rgba(255,255,255,.08));border-radius:14px;padding:28px;max-width:640px}',
+      '.st-empty-t{font:600 15px/1.3 var(--fb,system-ui,sans-serif);color:var(--t1,#E8EDF5);margin-bottom:10px}',
+      '.st-empty-d{font:400 13px/1.6 var(--fb,system-ui,sans-serif);color:var(--t2,#8B97B0);margin:0 0 10px}',
+      '.st-empty-note{color:var(--t3,#64748B)}',
+      '.st-empty-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}',
+      '.st-prod-chips{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 16px}',
+      '.st-prod-chip{background:var(--s2,#1E2230);border:1px solid var(--bd,rgba(255,255,255,.08));color:var(--t2,#8B97B0);font:600 12px/1 var(--fb,system-ui,sans-serif);padding:8px 14px;border-radius:999px;cursor:pointer}',
+      '.st-prod-chip.active{background:var(--p,#6C5CE7);border-color:var(--p,#6C5CE7);color:#fff}',
+      '@media(max-width:820px){.st-shell-root{padding:0 16px 40px}.st-shell-actions{margin-left:0;width:100%}.st-h1{font-size:24px}}',
+    ].join('');
+    document.head.appendChild(s);
+  }
+
   function _mountGallery() {
     window.removeEventListener('message', _handleIframeMsg);
     var host = _getOrCreateHost();
     host.innerHTML =
-      '<div class="st2-root" id="st2-root">' +
+      '<div class="st2-root st-shell-root" id="st2-root">' +
+        _stShellHeader('designs') +
         '<div class="st2-topbar">' +
-          '<div class="st2-title">Studio</div>' +
           '<div class="st2-create-wrap">' +
             '<button class="st2-btn-primary" id="st2-create-btn">+ Create new <span style="opacity:.7">\u25be</span></button>' +
             '<div class="st2-menu" id="st2-create-menu" style="display:none">' +
@@ -234,7 +498,7 @@
             '<span class="st2-ai-sparkle">\u2726</span>' +
             '<div>' +
               '<div class="st2-ai-title">Describe what you want to create</div>' +
-              '<div class="st2-ai-sub">Arthur will pick a template and fill in the copy. Images generated on demand.</div>' +
+              '<div class="st2-ai-sub">Studio picks a matching template and writes the copy. Images are generated on demand.</div>' +
             '</div>' +
           '</div>' +
           '<textarea class="st2-ai-prompt" id="st2-ai-prompt" rows="2" ' +
@@ -331,7 +595,7 @@
     var prompt = (document.getElementById('st2-ai-prompt').value || '').trim();
     if (!prompt) { _toast('Describe what you want to create first.', 'warning'); return; }
     var btn = document.getElementById('st2-ai-go');
-    btn.disabled = true; btn.textContent = '\u2726 Arthur is designing...';
+    btn.disabled = true; btn.textContent = '\u2726 Designing\u2026';
     try {
       var fmt = _st2Formats.find(function(f){ return f.slug === _st2SelectedFormat; }) || _st2Formats[0];
       var d = await _fetchJson('/studio/ai/generate-design', {
@@ -345,10 +609,10 @@
       });
       if (!d.success) {
         if (d.error === 'api_key_missing') _toast('AI needs DEEPSEEK_API_KEY in .env', 'error');
-        else _toast('Arthur failed: ' + (d.message || d.error || 'unknown'), 'error');
+        else _toast('Could not generate a design: ' + (d.message || d.error || 'unknown'), 'error');
         return;
       }
-      _toast('\u2726 Arthur picked ' + d.template_slug + '. Opening...', 'success');
+      _toast('\u2726 Design ready. Opening\u2026', 'success');
       _designId = d.design_id; _designName = prompt.substring(0, 60);
       // P4: remember Arthur's hero prompt so the editor can offer the hero-image CTA.
       if (d.hero_image_prompt) { (window._st2HeroPrompts = window._st2HeroPrompts || {})[d.design_id] = d.hero_image_prompt; }
@@ -2433,11 +2697,11 @@
 
   function _stAiFabHtml(){
     return (
-      '<button class="st-ai-fab" id="st-ai-fab" title="Arthur AI">\u2726</button>' +
+      '<button class="st-ai-fab" id="st-ai-fab" title="Design assistant">\u2726</button>' +
       '<div class="st-ai-drawer hidden" id="st-ai-drawer">' +
-        '<div class="st-ai-header">Arthur \u2014 Design AI<button id="st-ai-close">\u2715</button></div>' +
-        '<div class="st-ai-chat" id="st-ai-chat"><div class="st-ai-welcome">Hi, I\u2019m Arthur. Select an element or ask me to edit the whole design.</div></div>' +
-        '<div class="st-ai-input-wrap"><textarea id="st-ai-input" rows="2" placeholder="Ask Arthur..."></textarea><button id="st-ai-send">Send</button></div>' +
+        '<div class="st-ai-header">Design assistant<button id="st-ai-close" aria-label="Close design assistant">\u2715</button></div>' +
+        '<div class="st-ai-chat" id="st-ai-chat"><div class="st-ai-welcome">Hi. Select an element or ask me to edit the whole design.</div></div>' +
+        '<div class="st-ai-input-wrap"><textarea id="st-ai-input" rows="2" placeholder="Ask for an edit…"></textarea><button id="st-ai-send">Send</button></div>' +
         '<div class="st-ai-quick">' +
           ['Apply my brand colors','Make the design more bold','Make it luxury and premium','Change to dark theme','Rewrite all the text'].map(function(p){
             return '<button data-p="' + _esc(p) + '">' + _esc(p) + '</button>';
@@ -4238,7 +4502,7 @@
       if (!data.success) {
         var errMsg = data.error === 'api_key_missing'
           ? 'AI requires a LevelUpGrowth LLM API key in .env.'
-          : ('Arthur failed: ' + (data.message || data.error || 'unknown'));
+          : ('Could not apply that edit: ' + (data.message || data.error || 'unknown'));
         _stAiBubble(errMsg, 'ai');
         return;
       }
