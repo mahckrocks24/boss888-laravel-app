@@ -56,6 +56,13 @@
             padding:6px 10px;font-size:12.5px;font-family:inherit;max-width:230px}
   .e8c-lnk{color:#8d97ad;font-size:12.5px;text-decoration:none;padding:6px 9px;border-radius:8px}
   .e8c-lnk:hover{color:#dbe1ef;background:#151b28}
+  /* The decision counter. Quiet by design: it states that something is waiting
+     and gets out of the way. It is hidden entirely at zero - an empty badge is
+     noise that trains the reader to ignore the badge. */
+  .e8c-dec{background:rgba(91,110,245,.13);color:#93a3f7;border:1px solid rgba(91,110,245,.3);
+           border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;
+           font-family:inherit;white-space:nowrap}
+  .e8c-dec:hover{background:rgba(91,110,245,.22);color:#c3ccff}
 
   /* conversation */
   .e8c-log{flex:1;overflow-y:auto;overflow-x:hidden;padding:26px 20px 8px}
@@ -207,6 +214,7 @@
     <div class="e8c-id"><span class="e8c-orb"></span>Engineer888</div>
     <div class="e8c-state"><span class="e8c-dot" id="e8c-dot"></span><span id="e8c-status">Idle</span></div>
     <div class="e8c-hd-r">
+      <button class="e8c-dec" id="e8c-decisions" style="display:none"></button>
       <select class="e8c-proj" id="e8c-project"><option value="">Select a project...</option></select>
       <a class="e8c-lnk" href="/admin/engineer888">Evidence</a>
     </div>
@@ -461,6 +469,55 @@ window.page = async function () {
 
   var LAST_SIG = null;
 
+  // The decisions currently waiting on this project, canonical first, and the
+  // count belonging to other projects. Held here rather than drawn into the
+  // conversation; see the note in render().
+  var DECISIONS = [];
+  var OTHER_PROJECT_COUNT = 0;
+
+  /**
+   * The counter.
+   *
+   * Hidden at zero. A badge that is always present, showing nothing, is a badge
+   * the reader stops seeing - and this one has to still mean something on the
+   * day it says a candidate is waiting.
+   */
+  function paintDecisionCount() {
+    var btn = el('e8c-decisions');
+    if (!btn) { return; }
+
+    var n = DECISIONS.length;
+
+    if (n === 0) { btn.style.display = 'none'; return; }
+
+    btn.style.display = '';
+    btn.textContent = n === 1 ? '1 decision waiting' : n + ' decisions waiting';
+    btn.title = OTHER_PROJECT_COUNT
+      ? OTHER_PROJECT_COUNT + ' more on other projects'
+      : 'Review the current decision';
+  }
+
+  /**
+   * Open the canonical decision.
+   *
+   * The canonical one is the most recent for the active project - the same
+   * relevance the server already applies when it decides which cards to issue.
+   * Older decisions on the same project remain pending and reachable; they are
+   * simply not what "review the decision" means right now.
+   */
+  function openCanonicalDecision() {
+    if (!DECISIONS.length) { return; }
+
+    var g = DECISIONS[0];
+    var review = null;
+
+    g.actions.forEach(function (c) {
+      if (c.action_type === 'approve_candidate') { review = c.uuid; }
+    });
+
+    if (review) { openReview(review); }
+  }
+
   function render(messages, cards, force) {
     var sig = signature(messages, cards);
 
@@ -551,51 +608,36 @@ window.page = async function () {
       if (!seen[n.getAttribute('data-k')]) { n.remove(); }
     });
 
-    // ── CARDS: add, update and retire individually ───────────────────
+    // ── GOVERNED DECISIONS DO NOT LIVE IN THE TRANSCRIPT ─────────────
+    //
+    // They used to. Every pending decision was drawn into the conversation, so
+    // a chat with 79 messages carried a stack of identical "Candidate ready for
+    // review / Build a small internal Bug Tracker application from scratch"
+    // cards and stopped reading as a conversation at all. Scoping them to the
+    // active project and capping the inline count made the stack smaller; it
+    // did not make it belong there.
+    //
+    // A decision is not a remark. It is a thing with its own lifecycle that
+    // outlives the sentence that produced it, and it belongs on its own
+    // surface. What the conversation carries now is the fact that one is
+    // waiting - a counter in the header - and nothing else.
+    //
+    // NOTHING ABOUT GOVERNANCE MOVED. The counter and the drawer consume the
+    // same server-issued cards, with the same required_statement, the same
+    // fingerprint and the same consumption rules. This is presentation.
+    DECISIONS = inline.concat(older);     // same project, canonical first
+    OTHER_PROJECT_COUNT = elsewhere.length;
+    paintDecisionCount();
+
+    // Any card left in the transcript from a previous render is removed. A
+    // decision that is mid-confirmation is left alone rather than yanked out
+    // from under the person using it.
     var slot = thread.querySelector('.e8c-card-slot');
-    if (!slot) {
-      slot = document.createElement('div');
-      slot.className = 'e8c-card-slot';
-      slot.style.display = 'contents';
-      thread.appendChild(slot);
-    }
-
-    var live = {};
-    inline.forEach(function (g) {
-      live[g.key] = true;
-      var want = cardHtml(g);
-      var node = slot.querySelector('[data-group="' + CSS.escape(g.key) + '"]');
-
-      if (!node) {
-        var h = document.createElement('div');
-        h.innerHTML = want;
-        var fresh = h.firstChild;
-        fresh.setAttribute('data-sig', String(want.length));
-        slot.appendChild(fresh);
-        wire(fresh);
-        return;
-      }
-
-      // Untouched unless this card's own content moved. A card mid-confirmation
-      // is never rebuilt underneath the person using it.
-      if (node.getAttribute('data-sig') !== String(want.length) && !node.querySelector('[data-armed="1"]')) {
-        var h3 = document.createElement('div');
-        h3.innerHTML = want;
-        var f3 = h3.firstChild;
-        f3.setAttribute('data-sig', String(want.length));
-        node.replaceWith(f3);
-        wire(f3);
-      }
+    if (slot && !slot.querySelector('[data-armed="1"]')) { slot.remove(); }
+    ['older', 'elsewhere'].forEach(function (k) {
+      var n = log.querySelector('[data-more="' + k + '"]');
+      if (n) { n.remove(); }
     });
-
-    Array.prototype.forEach.call(slot.querySelectorAll('[data-group]'), function (n) {
-      if (!live[n.getAttribute('data-group')] && !n.querySelector('[data-armed="1"]')) { n.remove(); }
-    });
-
-    // ── COLLAPSED SECTIONS: rebuilt only when their count changes, and
-    //    their open state is carried across.
-    renderMore(log, 'older', older, 'earlier pending action', ' on this project');
-    renderMore(log, 'elsewhere', elsewhere, 'pending action', ' on other projects');
 
     // ── SCROLL ───────────────────────────────────────────────────────
     if (atBottom) {
@@ -1055,6 +1097,7 @@ window.page = async function () {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
   el('e8c-project').onchange = function () { selectProject(this.value); };
+  el('e8c-decisions').onclick = openCanonicalDecision;
 
   await bootstrap();
 
