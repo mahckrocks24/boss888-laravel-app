@@ -7,6 +7,7 @@ use App\Engines\Creative\Services\CreativeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\Helpers\Boss888TestHelper;
 use Tests\TestCase;
 
@@ -100,7 +101,21 @@ class CreativeVideoLifecycleTest extends TestCase
     /** @test */
     public function polling_completes_the_mock_scene_and_finishes_the_asset(): void
     {
-        Http::fake(['*' => Http::response('', 200)]);
+        // phpunit.xml isolates the DATABASE (levelup_test) but not the filesystem —
+        // without this the durable-persistence step writes a real MP4 into the live
+        // storage/app/public disk on every run. Fake the disk so the test proves the
+        // behaviour without leaving artefacts on the server.
+        Storage::fake('public');
+
+        // D1 (2026-08-13) — completion now requires that we actually HOLD the video
+        // bytes. The previous fixture returned an empty 200 for every request, which
+        // this test read as a finished video; that is precisely the fabricated
+        // success D1 removes. Serve real bytes for the scene URL so the fixture
+        // represents a provider that genuinely delivered a file.
+        Http::fake([
+            'storage.googleapis.com/*' => Http::response(str_repeat('m', 4096), 200, ['Content-Type' => 'video/mp4']),
+            '*'                        => Http::response('', 200),
+        ]);
         $wsId = $this->testWorkspace->id;
 
         $res = $this->svc()->generateVideo($wsId, ['prompt' => 'a comet streaking by', 'duration' => 5]);
@@ -114,6 +129,13 @@ class CreativeVideoLifecycleTest extends TestCase
         $asset = DB::table('assets')->where('id', $assetId)->first();
         $this->assertSame('completed', $asset->status);
         $this->assertNotEmpty($asset->url);
+
+        // D1 — the customer-facing URL must be OURS. The provider's link expires;
+        // serving it as the finished asset is what stranded playback before.
+        $this->assertNotEmpty($asset->storage_path, 'Completed video must be stored on our own disk.');
+        $this->assertStringNotContainsString('storage.googleapis.com', (string) $asset->url);
+        $this->assertStringContainsString('/storage/ai-videos/', (string) $asset->url);
+        $this->assertSame(4096, (int) $asset->file_size);
 
         $this->assertSame('completed', $this->jobs($assetId)->first()->status);
     }

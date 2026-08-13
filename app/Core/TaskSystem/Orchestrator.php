@@ -777,6 +777,21 @@ class Orchestrator
         $connectorName = $capability['connector'];
         $connectorAction = $capability['action'];
 
+        // 2026-08-11 ASYNC VIDEO RECONCILIATION — generate_video must run through
+        // the governed CreativeService → ScenePlannerService → generateVideoViaProvider
+        // → MiniMax path (the one hardened with the P0 mock gate, single-scene
+        // constraint and the video:finalize-pending completion worker). The
+        // CapabilityMap marks its connector as 'creative', which would send it to
+        // CreativeConnector::execute('generate_video') → the legacy generateVideo()
+        // that POSTs connectors.creative.base_url (localhost:8000) — a phantom path
+        // that never reaches MiniMax. Route it to the SAME internal service dispatch
+        // that creative/generate_image already uses, so there is ONE authoritative
+        // provider path. Governance (kernel → approval → async task → Orchestrator →
+        // credits → creative_jobs → asset lineage) is untouched.
+        if ($task->engine === 'creative' && $action === 'generate_video') {
+            $connectorName = null;
+        }
+
         // Idempotent step check
         $stepHash = $this->idempotency->generateStepHash($task->id, $action, $stepIndex);
         $cached = $this->idempotency->checkStepCompleted($stepHash);
@@ -1379,6 +1394,25 @@ class Orchestrator
                                              ->generateImage($wsId, array_merge($this->ensureImagePrompt($wsId, $params), ['quality' => 'mini'])),
             'creative/generate_image_high' => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
                                              ->generateImage($wsId, array_merge($this->ensureImagePrompt($wsId, $params), ['quality' => 'high'])),
+
+            // 2026-08-11 — ASYNC VIDEO RECONCILIATION. The approved-async
+            // generate_video path is routed here (executeStep forces
+            // connectorName=null for creative/generate_video) so it runs the SAME
+            // governed provider path as the sync kernel path (EES:805):
+            // CreativeService::generateVideo → ScenePlannerService → MiniMax. Returns
+            // {status:'in_progress', asset_id, job_ids}; the normalizer treats
+            // in_progress as success and the video:finalize-pending worker completes
+            // it. Supersedes the phantom CreativeConnector::generateVideo() HTTP path.
+            // D2 (2026-08-13) — pass the task id through. Orchestrator links the
+            // observational CreativeJob to its asset by looking the asset up via
+            // assets.task_id (see 'Phase I — finalize the observational CreativeJob'
+            // below). CreativeService::generateVideo() never received the task id, so
+            // assets.task_id stayed NULL, the lookup returned NULL, creative_jobs
+            // .asset_id stayed NULL and CreativeJobService::complete() never
+            // back-filled assets.creative_job_id — a real generated video was
+            // orphaned from Production and Assets.
+            'creative/generate_video'      => fn() => app(\App\Engines\Creative\Services\CreativeService::class)
+                                             ->generateVideo($wsId, $params + ['task_id' => $task->id]),
 
             // 2026-07-07 — BULK resolver: fan out featured-image tasks for every
             // article missing one (backend finds the real ids — Sarah never guesses).

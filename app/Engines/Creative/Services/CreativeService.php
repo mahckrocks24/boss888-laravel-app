@@ -308,10 +308,18 @@ class CreativeService
             'aspect_ratio'=> $params['aspect_ratio'] ?? '16:9',
         ]);
 
+        // D2/D3 (2026-08-13) — carry the originating task AND the requested aspect
+        // onto the asset. task_id is what lets the Orchestrator link this asset to
+        // its CreativeJob (assets.task_id lookup). aspect_ratio matters because
+        // createAsset() defaults it to '1:1': the scene job recorded the true 16:9
+        // while the asset reported square, so the editor, Production and Assets all
+        // disagreed with what the customer actually asked for.
         $asset   = $this->createAsset($wsId, [
-            'type'     => 'video',
-            'prompt'   => $prompt,
-            'metadata' => ['scene_count' => count($scenes), 'duration' => $params['duration'] ?? 10],
+            'type'         => 'video',
+            'prompt'       => $prompt,
+            'task_id'      => $params['task_id'] ?? null,
+            'aspect_ratio' => $params['aspect_ratio'] ?? '16:9',
+            'metadata'     => ['scene_count' => count($scenes), 'duration' => $params['duration'] ?? 10],
         ]);
         $assetId = $asset['asset_id'];
 
@@ -353,9 +361,36 @@ class CreativeService
         if ($jobStatus['status'] === 'completed') {
             $stitch = $this->scenePlanner->stitchScenes($assetId);
             if ($stitch['success'] && !empty($stitch['url'])) {
-                $this->completeAsset($assetId, ['url' => $stitch['url'], 'mime_type' => 'video/mp4']);
+                // D1 (2026-08-13) — the customer must never be handed the provider's
+                // expiring CDN URL. Persist the finished MP4 onto our own disk first.
+                $durable = $this->persistVideoDurably($assetId, (int) $asset->workspace_id, $stitch['url']);
+
+                if (! ($durable['success'] ?? false)) {
+                    // Do NOT complete on a failed download. The scene jobs stay
+                    // 'completed', so the next video:finalize-pending tick retries the
+                    // DOWNLOAD only — never a second provider generation and never a
+                    // second charge. Reporting completion here would be a fabricated
+                    // success: a 'completed' asset whose bytes we do not hold.
+                    \Illuminate\Support\Facades\Log::warning('[Video D1] completion deferred — durable persist failed', [
+                        'asset' => $assetId, 'reason' => $durable['error'] ?? 'unknown',
+                    ]);
+                    return $this->sanitize([
+                        'status'        => 'in_progress',
+                        'asset_id'      => $assetId,
+                        'scenes_total'  => $jobStatus['total'],
+                        'scenes_done'   => $jobStatus['completed'],
+                        'scenes_failed' => $jobStatus['failed'],
+                    ]);
+                }
+
+                $this->completeAsset($assetId, [
+                    'url'          => $durable['url'],
+                    'storage_path' => $durable['storage_path'],
+                    'file_size'    => $durable['file_size'],
+                    'mime_type'    => 'video/mp4',
+                ]);
                 $this->engineIntel->recordToolUsage('creative', 'poll_video', 0.9);
-                return $this->sanitize(['status' => 'completed', 'url' => $stitch['url'], 'asset_id' => $assetId]);
+                return $this->sanitize(['status' => 'completed', 'url' => $durable['url'], 'asset_id' => $assetId]);
             }
         }
 
@@ -371,6 +406,104 @@ class CreativeService
             'scenes_done'   => $jobStatus['completed'],
             'scenes_failed' => $jobStatus['failed'],
         ]);
+    }
+
+    /**
+     * D1 (2026-08-13) — DURABLE VIDEO PERSISTENCE.
+     *
+     * MiniMax returns a short-lived Aliyun CDN URL (video-product.cdn.minimax.io).
+     * Storing that as the customer-facing asset URL meant the paid asset pointed at
+     * a link that expires, is not same-origin, and could force a download rather
+     * than playing inline. We download the finished MP4 exactly once onto the SAME
+     * public disk the image pipeline already uses (storage/app/public, served by
+     * nginx at /storage), which supports byte ranges natively — verified HTTP 206
+     * with 'accept-ranges: bytes'. No new storage layer and no new controller.
+     *
+     * Idempotent by design: if the asset already has a storage_path whose file
+     * exists, the provider is never contacted again. A browser poll and the
+     * video:finalize-pending worker may both run without double-downloading.
+     */
+    /** Hard ceiling for a downloaded video (48 MB). A Hailuo-02 clip is single-digit MB. */
+    private const MAX_VIDEO_BYTES = 50331648;
+
+    private function persistVideoDurably(int $assetId, int $wsId, string $providerUrl): array
+    {
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+
+        // ── Already durable? Never download twice. ──
+        $row = DB::table('assets')->where('id', $assetId)->first(['storage_path', 'file_size']);
+        if ($row && ! empty($row->storage_path) && $disk->exists($row->storage_path)) {
+            return [
+                'success'      => true,
+                'url'          => $disk->url($row->storage_path),
+                'storage_path' => $row->storage_path,
+                'file_size'    => $row->file_size ?: $disk->size($row->storage_path),
+                'reused'       => true,
+            ];
+        }
+
+        if (stripos($providerUrl, 'https://') !== 0) {
+            return ['success' => false, 'error' => 'provider_url_not_https'];
+        }
+
+        $storagePath = 'ai-videos/' . $wsId . '/' . md5($assetId . '|' . $providerUrl) . '.mp4';
+
+        try {
+            $resp = \Illuminate\Support\Facades\Http::timeout(180)
+                ->withOptions(['allow_redirects' => ['max' => 3]])
+                ->get($providerUrl);
+
+            if (! $resp->successful()) {
+                return ['success' => false, 'error' => 'provider_download_http_' . $resp->status()];
+            }
+
+            // Reject an oversized payload from its DECLARED length before reading it
+            // into memory — this host runs memory_limit=128M, so a hostile or
+            // mistaken Content-Length must not be allowed to OOM the worker.
+            $declared = (int) ($resp->header('Content-Length') ?: 0);
+            if ($declared > self::MAX_VIDEO_BYTES) {
+                return ['success' => false, 'error' => 'provider_download_too_large'];
+            }
+
+            $mime = strtolower((string) ($resp->header('Content-Type') ?: ''));
+            if ($mime !== '' && strpos($mime, 'video/') !== 0 && strpos($mime, 'octet-stream') === false) {
+                return ['success' => false, 'error' => 'provider_returned_non_video'];
+            }
+
+            $body  = (string) $resp->body();
+            $bytes = strlen($body);
+            if ($bytes < 1024) {
+                return ['success' => false, 'error' => 'provider_download_too_small'];
+            }
+            if ($bytes > self::MAX_VIDEO_BYTES) {
+                return ['success' => false, 'error' => 'provider_download_too_large'];
+            }
+
+            // VERIFY the write. Storage::put() returns false on a silent failure
+            // (permissions, full disk) WITHOUT throwing; unchecked, that produces a
+            // 'completed' asset with a broken URL that the customer already paid for.
+            $stored = $disk->put($storagePath, $body);
+
+            if (! $stored || ! $disk->exists($storagePath) || (int) $disk->size($storagePath) !== $bytes) {
+                \Illuminate\Support\Facades\Log::warning('[Video D1] durable write did not persist', [
+                    'asset' => $assetId, 'path' => $storagePath,
+                ]);
+                return ['success' => false, 'error' => 'durable_write_failed'];
+            }
+
+            return [
+                'success'      => true,
+                'url'          => $disk->url($storagePath),
+                'storage_path' => $storagePath,
+                'file_size'    => $bytes,
+                'reused'       => false,
+            ];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Video D1] durable persist failed', [
+                'asset' => $assetId, 'error' => $e->getMessage(),
+            ]);
+            return ['success' => false, 'error' => 'durable_persist_exception'];
+        }
     }
 
     // ═══════════════════════════════════════════════════════
