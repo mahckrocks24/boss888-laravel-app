@@ -155,10 +155,22 @@ class AuthService
         }
     }
 
-    public function me(User $user): array
+    public function me(User $user, ?int $activeWorkspaceId = null): array
     {
         $workspaces = $user->workspaces()->with('subscription.plan')->get();
-        $currentWs = $workspaces->first();
+
+        // AUTHORITATIVE ACTIVE WORKSPACE (2026-08-13). JwtAuthMiddleware scopes
+        // every request from the token's `ws` claim and has already validated it
+        // against live membership, so that claim — not the order of the
+        // membership list — is the tenant the caller is actually in. Reporting
+        // $workspaces->first() meant that after a workspace switch /auth/me kept
+        // naming the first membership: the UI showed one tenant's identity while
+        // every API call was scoped to another, so plan, credits and entitlements
+        // silently belonged to a different workspace. Proven live: JWT ws=999926
+        // (BUILDER888 Journey A3) vs /auth/me current_workspace_id=2 (Chef Red).
+        $currentWs = $activeWorkspaceId !== null
+            ? ($workspaces->firstWhere('id', $activeWorkspaceId) ?? $workspaces->first())
+            : $workspaces->first();
 
         // 2026-05-28 — Per-user preferences (sidebar visibility mode, etc.).
         // Pulled directly via DB::table so we don't have to add preferences_json
@@ -181,7 +193,9 @@ class AuthService
                 'role' => $ws->pivot->role,
                 'plan' => $ws->subscription?->plan?->slug ?? 'free',
             ])->toArray(),
-            'current_workspace_id' => $currentWs?->id,
+            // The request's resolved workspace wins. Falling back to the first
+            // membership only when the caller had no resolved scope at all.
+            'current_workspace_id' => $activeWorkspaceId ?? $currentWs?->id,
             'preferences' => $prefs,
         ];
     }

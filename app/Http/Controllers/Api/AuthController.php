@@ -90,7 +90,18 @@ class AuthController
 
     public function me(Request $request): JsonResponse
     {
-        return response()->json($this->authService->me($request->user()));
+        // Carry the request's resolved workspace through. JwtAuthMiddleware has
+        // already decoded the token's `ws` claim and checked it against live
+        // membership, so it is the single authoritative answer to "which
+        // workspace am I in?" — me() must not re-derive it from the membership
+        // list, which is what let the UI name a different tenant than the one
+        // the API was scoped to.
+        $activeWs = $request->attributes->get('workspace_id');
+
+        return response()->json($this->authService->me(
+            $request->user(),
+            is_numeric($activeWs) ? (int) $activeWs : null,
+        ));
     }
 
     public function switchWorkspace(Request $request): JsonResponse
