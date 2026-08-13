@@ -426,9 +426,47 @@ window.page = async function () {
   // The last thing render() was given. A failed send redraws the same
   // conversation with one entry marked, without going back to the network.
   var LAST = { messages: [], cards: [] };
-  function redraw() { render(LAST.messages, LAST.cards); }
+  function redraw() { render(LAST.messages, LAST.cards, true); }
 
-  function render(messages, cards) {
+  /**
+   * A stable identity for one message.
+   *
+   * The server sends an id; optimistic entries have not been given one yet and
+   * carry __key instead. Both are stable for the lifetime of the node, which is
+   * the only property that matters here.
+   */
+  function msgKey(m) {
+    return m.id !== undefined && m.id !== null ? 'm' + m.id : (m.__key || 'x' + m.role + ':' + m.body.length);
+  }
+
+  /**
+   * What the server just said, reduced to a comparable string.
+   *
+   * CHAT-FOLLOWUP-001. The poll used to run `log.innerHTML = html` every 15
+   * seconds whether or not anything had changed, which destroyed every piece of
+   * local state the reader owned: open <details>, scroll position, the file
+   * they had expanded in a diff, and their place in it. Nothing was lost from
+   * the database and everything was lost from the screen.
+   *
+   * A signature makes the common case free. Most polls change nothing, and a
+   * poll that changes nothing must now touch no DOM at all.
+   */
+  function signature(messages, cards) {
+    var m = (messages || []).map(function (x) { return msgKey(x) + ':' + (x.body || '').length; }).join(',');
+    var c = (cards || []).map(function (x) {
+      return x.uuid + ':' + (x.workflow_state || '') + ':' + (x.expires_at || '') + ':' + (x.file_count || '');
+    }).join(',');
+    return m + '|' + c + '|' + PENDING.length + ':' + PENDING.filter(function (p) { return p.__failed; }).length;
+  }
+
+  var LAST_SIG = null;
+
+  function render(messages, cards, force) {
+    var sig = signature(messages, cards);
+
+    if (! force && sig === LAST_SIG) { return; }   // nothing changed: touch nothing
+
+    LAST_SIG = sig;
     LAST = { messages: messages || [], cards: cards || [] };
     var log = el('e8c-log');
     var groups = groupCards(cards);
@@ -451,40 +489,147 @@ window.page = async function () {
 
     var all = (messages || []).concat(PENDING);
 
-    var html = '<div class="e8c-thread">';
+    // WAS THE READER AT THE BOTTOM? Decided BEFORE anything moves. Someone
+    // reading back through the conversation must not be yanked forward because
+    // a poll landed; someone sitting at the live edge expects to follow along.
+    var atBottom = (log.scrollHeight - log.scrollTop - log.clientHeight) < 120;
+    var keepTop = log.scrollTop;
+
+    // ── SCAFFOLD, ONCE ───────────────────────────────────────────────
+    var thread = log.querySelector('.e8c-thread');
+    if (!thread) {
+      log.innerHTML = '<div class="e8c-thread"></div>';
+      thread = log.querySelector('.e8c-thread');
+    }
+
     if (!all.length) {
-      html += '<div class="e8c-empty">Ask Engineer888 to investigate, plan or build something.<br>'
+      thread.innerHTML = '<div class="e8c-empty">Ask Engineer888 to investigate, plan or build something.<br>'
         + 'It reads the repository before it answers.</div>';
+      return;
+    }
+
+    var empty = thread.querySelector('.e8c-empty');
+    if (empty) { empty.remove(); }
+
+    // ── MESSAGES: append what is new, leave what is not ──────────────
+    var seen = {};
+    all.forEach(function (m) {
+      var k = msgKey(m);
+      seen[k] = true;
+      var node = thread.querySelector('[data-k="' + k + '"]');
+
+      if (!node) {
+        var holder = document.createElement('div');
+        holder.innerHTML = messageHtml(m);
+        node = holder.firstChild;
+        node.setAttribute('data-k', k);
+        // Cards live after the messages, so a new message is inserted before
+        // them rather than appended to the end of the thread.
+        var firstCard = thread.querySelector('.e8c-card-slot');
+        thread.insertBefore(node, firstCard || null);
+        wire(node);
+        return;
+      }
+
+      // An existing message is rewritten ONLY when its own rendering changed -
+      // a pending bubble that failed, or one the server has now confirmed.
+      var want = messageHtml(m);
+      if (node.getAttribute('data-h') !== String(want.length) || /pending|e8c-fail/.test(node.className + node.innerHTML) !== /pending|e8c-fail/.test(want)) {
+        var h2 = document.createElement('div');
+        h2.innerHTML = want;
+        var fresh = h2.firstChild;
+        fresh.setAttribute('data-k', k);
+        fresh.setAttribute('data-h', String(want.length));
+        node.replaceWith(fresh);
+        wire(fresh);
+      }
+    });
+
+    // Messages the server no longer returns (an optimistic entry that was
+    // discarded). Explicit removal, never a redraw.
+    Array.prototype.forEach.call(thread.querySelectorAll('.e8c-m[data-k]'), function (n) {
+      if (!seen[n.getAttribute('data-k')]) { n.remove(); }
+    });
+
+    // ── CARDS: add, update and retire individually ───────────────────
+    var slot = thread.querySelector('.e8c-card-slot');
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.className = 'e8c-card-slot';
+      slot.style.display = 'contents';
+      thread.appendChild(slot);
+    }
+
+    var live = {};
+    inline.forEach(function (g) {
+      live[g.key] = true;
+      var want = cardHtml(g);
+      var node = slot.querySelector('[data-group="' + CSS.escape(g.key) + '"]');
+
+      if (!node) {
+        var h = document.createElement('div');
+        h.innerHTML = want;
+        var fresh = h.firstChild;
+        fresh.setAttribute('data-sig', String(want.length));
+        slot.appendChild(fresh);
+        wire(fresh);
+        return;
+      }
+
+      // Untouched unless this card's own content moved. A card mid-confirmation
+      // is never rebuilt underneath the person using it.
+      if (node.getAttribute('data-sig') !== String(want.length) && !node.querySelector('[data-armed="1"]')) {
+        var h3 = document.createElement('div');
+        h3.innerHTML = want;
+        var f3 = h3.firstChild;
+        f3.setAttribute('data-sig', String(want.length));
+        node.replaceWith(f3);
+        wire(f3);
+      }
+    });
+
+    Array.prototype.forEach.call(slot.querySelectorAll('[data-group]'), function (n) {
+      if (!live[n.getAttribute('data-group')] && !n.querySelector('[data-armed="1"]')) { n.remove(); }
+    });
+
+    // ── COLLAPSED SECTIONS: rebuilt only when their count changes, and
+    //    their open state is carried across.
+    renderMore(log, 'older', older, 'earlier pending action', ' on this project');
+    renderMore(log, 'elsewhere', elsewhere, 'pending action', ' on other projects');
+
+    // ── SCROLL ───────────────────────────────────────────────────────
+    if (atBottom) {
+      var msgs = thread.querySelectorAll('.e8c-m');
+      if (msgs.length) {
+        var last = msgs[msgs.length - 1];
+        log.scrollTop = Math.max(0, last.offsetTop + last.offsetHeight - log.clientHeight + 24);
+      }
     } else {
-      html += all.map(messageHtml).join('');
-      html += inline.map(cardHtml).join('');
+      log.scrollTop = keepTop;   // reading history: stay exactly where they were
     }
-    html += '</div>';
+  }
 
-    if (older.length) {
-      html += '<details class="e8c-more"><summary>'
-        + esc(older.length) + ' earlier pending action' + (older.length === 1 ? '' : 's')
-        + ' on this project</summary><div class="e8c-more-l">'
-        + older.map(cardHtml).join('') + '</div></details>';
-    }
+  /** One collapsed group, preserving whether the reader had it open. */
+  function renderMore(log, key, groups, noun, suffix) {
+    var existing = log.querySelector('[data-more="' + key + '"]');
 
-    if (elsewhere.length) {
-      html += '<details class="e8c-more"><summary>'
-        + esc(elsewhere.length) + ' pending action' + (elsewhere.length === 1 ? '' : 's')
-        + ' on other projects</summary><div class="e8c-more-l">'
-        + elsewhere.map(cardHtml).join('') + '</div></details>';
-    }
+    if (!groups.length) { if (existing) { existing.remove(); } return; }
 
-    log.innerHTML = html;
-    wire(log);
+    var label = groups.length + ' ' + noun + (groups.length === 1 ? '' : 's') + suffix;
 
-    // Scroll to the last MESSAGE, never to the end of the document. This one
-    // line is the defect: it used to read `log.scrollTop = log.scrollHeight`.
-    var msgs = log.querySelectorAll('.e8c-m');
-    if (msgs.length) {
-      var last = msgs[msgs.length - 1];
-      log.scrollTop = Math.max(0, last.offsetTop + last.offsetHeight - log.clientHeight + 24);
-    }
+    if (existing && existing.getAttribute('data-count') === String(groups.length)) { return; }
+
+    var wasOpen = existing ? existing.open : false;
+    var d = document.createElement('details');
+    d.className = 'e8c-more';
+    d.setAttribute('data-more', key);
+    d.setAttribute('data-count', String(groups.length));
+    d.open = wasOpen;
+    d.innerHTML = '<summary>' + esc(label) + '</summary><div class="e8c-more-l">'
+      + groups.map(cardHtml).join('') + '</div>';
+
+    if (existing) { existing.replaceWith(d); } else { log.appendChild(d); }
+    wire(d);
   }
 
   function wire(root) {
