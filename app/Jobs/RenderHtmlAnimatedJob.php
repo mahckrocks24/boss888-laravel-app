@@ -121,19 +121,24 @@ class RenderHtmlAnimatedJob implements ShouldQueue
         $height   = (int)   ($data['canvas_height']  ?? $tpl->canvas_height  ?? 1920);
         $fps      = (int)   ($data['fps']            ?? 30);
 
-        // Build full template URL.
+        // Build the template source. HTML templates live under
+        // storage/templates/studio/video/{slug}/template.html and are NOT
+        // web-served, so load the file directly via file:// (template assets
+        // are inline or absolute https — Google Fonts). Fixes the prior
+        // malformed-URL bug (app.url + slash-less relative path → bad host,
+        // net::ERR_NAME_NOT_RESOLVED).
         $path = $tpl->template_html_path;
-        $templateUrl = preg_match('#^https?://#', $path)
-            ? $path
-            : rtrim(config('app.url', 'https://staging.levelupgrowth.io'), '/') . $path;
-
-        // Build field and palette overrides from the design's video_data.
-        $fields = [];
-        foreach (($data['fields'] ?? []) as $k => $v) {
-            if (is_string($k) && (is_string($v) || is_numeric($v))) {
-                $fields[$k] = (string) $v;
+        if (preg_match('#^https?://#', $path)) {
+            $templateUrl = $path;
+        } else {
+            $file = storage_path(ltrim($path, '/'));
+            if (is_dir($file) || !preg_match('/\.html?$/i', $file)) {
+                $file = rtrim($file, '/') . '/template.html';
             }
+            $templateUrl = 'file://' . $file;
         }
+
+        $fields = self::buildExportFields($templateUrl, $data);
         $paletteVars = [];
         foreach (($data['palette_vars'] ?? []) as $k => $v) {
             if (is_string($k) && is_string($v) && str_starts_with($k, '--')) {
@@ -205,5 +210,49 @@ class RenderHtmlAnimatedJob implements ShouldQueue
         ]);
 
         return $publicUrl;
+    }
+
+    /**
+     * Build the field map handed to the recorder: MANIFEST DEFAULTS first, then
+     * the customer's saved overrides.
+     *
+     * The templates ship literal {{placeholder}} markup. The editor fills every
+     * field from the template's manifest.json and only then applies the
+     * customer's edits, so a design persists ONLY the fields actually changed.
+     * Building this map from video_data alone left every untouched field unset
+     * and the recorder burned the raw "{{headline_1}}" / "{{cta_label}}" /
+     * "{{stat_1_val}}" text straight into the exported MP4 — preview and export
+     * disagreed completely. The manifest sits beside the template and is the
+     * same source the editor reads, so there is exactly one source of truth.
+     *
+     * @param  string $templateUrl file:// URL of the template (manifest.json is its sibling)
+     * @param  array  $data        the design's decoded video_data
+     * @return array<string,string>
+     */
+    public static function buildExportFields(string $templateUrl, array $data): array
+    {
+        $fields = [];
+
+        if (str_starts_with($templateUrl, 'file://')) {
+            $manifestFile = dirname(substr($templateUrl, 7)) . '/manifest.json';
+            if (is_file($manifestFile)) {
+                $manifest = json_decode((string) file_get_contents($manifestFile), true) ?: [];
+                foreach (($manifest['variables'] ?? []) as $k => $spec) {
+                    $dv = is_array($spec) ? ($spec['default'] ?? null) : null;
+                    if (is_string($k) && (is_string($dv) || is_numeric($dv))) {
+                        $fields[$k] = (string) $dv;
+                    }
+                }
+            }
+        }
+
+        // Customer edits win over defaults.
+        foreach (($data['fields'] ?? []) as $k => $v) {
+            if (is_string($k) && (is_string($v) || is_numeric($v))) {
+                $fields[$k] = (string) $v;
+            }
+        }
+
+        return $fields;
     }
 }
