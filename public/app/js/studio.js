@@ -797,7 +797,7 @@
     if (typeof window.studioVideoUseTemplate === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe7';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe9';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -817,7 +817,7 @@
     if (typeof window.studioVideoLoad === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe7';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe9';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -835,7 +835,7 @@
     if (typeof window.studioVideoOpenDesign === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe7';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe9';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);

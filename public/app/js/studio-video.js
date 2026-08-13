@@ -144,7 +144,51 @@
   window.studioVideoOpenDesign = function(id, rootEl){
     _rootEl = rootEl || _rootEl || document.getElementById('studio-root') || document.body;
     try { _rootEl.style.position = 'relative'; } catch(_){}
-    _svOpenClipEditor(id);
+
+    // THE ONE ROUTER (2026-08-13). Deciding which video surface opens must happen
+    // in THIS closure: _mountHtmlAnimatedEditor, _designId, _vd and
+    // _svAnimLastExport are private to this IIFE. The clip editor is a separate
+    // 'use strict' IIFE and used to carry a copy of this branch referencing these
+    // very symbols, so that copy could only ever throw ReferenceError. This
+    // function also previously called _svOpenClipEditor unconditionally despite
+    // its own comment, so EVERY video design went to the clip editor.
+    _fetchJson('/studio/designs/' + id).then(function(r){
+      var row = (r && r.design) || r;
+      if (!row || !row.id) throw new Error('not_found');
+
+      var vd = {}, meta = {};
+      try { vd   = typeof row.video_data  === 'string' ? JSON.parse(row.video_data  || '{}') : (row.video_data  || {}); } catch(_){}
+      try { meta = typeof row.layers_json === 'string' ? JSON.parse(row.layers_json || '{}') : (row.layers_json || {}); } catch(_){}
+
+      // Legacy animated designs predate the video_data column: the server writes
+      // {template_slug, source} into layers_json at creation and their composition
+      // lives in content_html. Reading the markers from video_data alone stranded
+      // every one of them. Accept either location.
+      var source = vd.source || meta.source;
+      var slug   = vd.template_slug || vd.slug || meta.template_slug || meta.slug;
+
+      if (source === 'html_animated' && slug) {
+        _designId   = row.id;
+        _designName = row.name || 'Animated Design';
+        _vd = vd; if (!_vd.fields) _vd.fields = {}; if (!_vd.palette_vars) _vd.palette_vars = {};
+        // Carry the markers onto video_data so the next save persists them in the
+        // canonical place and the design self-heals. layers_json is left intact.
+        _vd.source = 'html_animated'; _vd.template_slug = slug;
+        _svAnimLastExport = { status: row.export_status, url: row.exported_video_url };
+        return _fetchJson('/studio/video/templates/' + encodeURIComponent(slug)).then(function(td){
+          var tpl = (td && td.template) || {
+            slug: slug, canvas_width: row.canvas_width, canvas_height: row.canvas_height,
+            duration_seconds: row.duration_seconds || 15, name: row.name, format: row.format
+          };
+          _mountHtmlAnimatedEditor(tpl);
+        });
+      }
+
+      if (typeof window._svOpenClipEditor === 'function') { window._svOpenClipEditor(row.id); return; }
+      throw new Error('clip_editor_unavailable');
+    }).catch(function(err){
+      _toast('Load failed: ' + ((err && err.message) ? err.message : err), 'error');
+    });
   };
   // Create + open a video design from a video template, in the video editor.
   window.studioVideoUseTemplate = function(slug, name, rootEl){
@@ -2938,17 +2982,12 @@
       if (!row || !row.id) throw new Error('not_found');
       var vd = {};
       try { vd = typeof row.video_data === 'string' ? JSON.parse(row.video_data || '{}') : (row.video_data || {}); } catch(_){}
-      // html_animated designs reopen in the ANIMATED editor (not the clip editor)
-      var slug = vd.template_slug || vd.slug;
-      if (vd.source === 'html_animated' && slug){
-        _designId = designId; _designName = row.name || 'Animated Design';
-        _vd = vd; if (!_vd.fields) _vd.fields = {}; if (!_vd.palette_vars) _vd.palette_vars = {};
-        _svAnimLastExport = { status: row.export_status, url: row.exported_video_url };
-        return _fetchJson('/studio/video/templates/' + encodeURIComponent(slug)).then(function(td){
-          var tpl = (td && td.template) || { slug: slug, canvas_width: row.canvas_width, canvas_height: row.canvas_height, duration_seconds: vd.duration || 15, name: row.name, format: row.format };
-          _mountHtmlAnimatedEditor(tpl);
-        });
-      }
+
+      // html_animated routing is deliberately NOT done here. It lives in
+      // window.studioVideoOpenDesign, the only closure that owns
+      // _mountHtmlAnimatedEditor and its state. A copy used to sit here and
+      // referenced those out-of-scope symbols, so under this IIFE's 'use strict'
+      // it could only throw ReferenceError. This function is the CLIP editor.
       VE.designId = designId;
       if (row.layers_json && !vd.clips) { try { vd = JSON.parse(row.layers_json); } catch(_){} }
       VE.vd = _svNormalizeVd(vd, row);
