@@ -264,9 +264,21 @@ class CreativeConnector extends BaseConnector
         return match ($provider) {
             'minimax' => $this->minimaxGenerateVideo($prompt, $options),
             'runway'  => ['success' => false, 'error' => 'Runway not configured'],
-            'mock'    => ['success' => true, 'job_id' => 'mock-' . \Illuminate\Support\Str::random(12), 'provider' => 'mock'],
+            'mock'    => $this->mockAllowed()
+                ? ['success' => true, 'job_id' => 'mock-' . \Illuminate\Support\Str::random(12), 'provider' => 'mock']
+                : ['success' => false, 'error' => 'mock_provider_disabled_in_production'],
             default   => ['success' => false, 'error' => "Unknown video provider: {$provider}"],
         };
+    }
+
+    /**
+     * P0 (2026-08-10) — the mock video provider fabricates a completed video
+     * (public sample MP4). Allowed ONLY in local/testing; in production/staging
+     * every mock branch returns a truthful failure instead of fake success.
+     */
+    private function mockAllowed(): bool
+    {
+        return app()->environment(['local', 'testing']);
     }
 
     /**
@@ -277,12 +289,29 @@ class CreativeConnector extends BaseConnector
     {
         return match ($provider) {
             'minimax' => $this->minimaxPollVideo($providerJobId),
-            'mock'    => ['status' => 'completed', 'url' => 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'],
+            'mock'    => $this->mockAllowed()
+                ? ['status' => 'completed', 'url' => 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4']
+                : ['status' => 'failed', 'error' => 'mock_provider_disabled_in_production'],
             default   => ['status' => 'failed', 'error' => "Cannot poll provider: {$provider}"],
         };
     }
 
     // ── MiniMax T2V Implementation ───────────────────────────────
+
+    /**
+     * MiniMax API base host. Defaults to the INTERNATIONAL platform
+     * (api.minimaxi.chat) — this account's key is International and is rejected
+     * (2049 invalid api key) by the mainland host (api.minimax.chat). Override
+     * with MINIMAX_BASE_URL (e.g. https://api.minimax.chat) if the platform
+     * ever changes. Never config:cache — resolved via env() fallback.
+     */
+    private function minimaxBaseUrl(): string
+    {
+        return rtrim((string) config(
+            'services.minimax.base_url',
+            env('MINIMAX_BASE_URL', 'https://api.minimaxi.chat')
+        ), '/');
+    }
 
     private function minimaxGenerateVideo(string $prompt, array $options): array
     {
@@ -293,8 +322,21 @@ class CreativeConnector extends BaseConnector
             return ['success' => false, 'error' => 'MiniMax API key not configured'];
         }
 
-        $model = 'T2V-01';  // Text-to-Video model
-        $url   = "https://api.minimax.chat/v1/text/video_generation";
+        // 2026-08-11 — model is env-configurable. The MiniMax account's token plan
+        // MUST support the chosen model: T2V-01 returned base_resp 2061 "your current
+        // token plan not support model, T2V-01" on this account. Set MINIMAX_MODEL in
+        // .env to a plan-supported model (e.g. MiniMax-Hailuo-02) once confirmed.
+        $model = (string) config('services.minimax.model', env('MINIMAX_MODEL', 'T2V-01'));
+        // 2026-08-10 — MiniMax host is env-configurable, defaulting to the
+        // INTERNATIONAL platform. This account's key is International; the
+        // mainland host (api.minimax.chat) returns 2049 "invalid api key" for
+        // it. Set MINIMAX_BASE_URL to override if the account platform changes.
+        $base  = $this->minimaxBaseUrl();
+        // 2026-08-11 — endpoint fix. The generation path is `/v1/video_generation`
+        // (NOT `/v1/text/video_generation`, which 404s on api.minimaxi.chat —
+        // verified live). Query (`/v1/query/video_generation`) + files/retrieve
+        // are already correct. Model T2V-01 verified valid on International.
+        $url   = "{$base}/v1/video_generation";
 
         try {
             $response = \Illuminate\Support\Facades\Http::timeout(30)
@@ -340,13 +382,14 @@ class CreativeConnector extends BaseConnector
         if (empty($apiKey)) {
             return ['status' => 'failed', 'error' => 'MiniMax API key not configured'];
         }
+        $base = $this->minimaxBaseUrl();
 
         try {
             $response = \Illuminate\Support\Facades\Http::timeout(15)
                 ->withHeaders([
                     'Authorization' => "Bearer {$apiKey}",
                 ])
-                ->get("https://api.minimax.chat/v1/query/video_generation", [
+                ->get("{$base}/v1/query/video_generation", [
                     'task_id' => $taskId,
                 ]);
 
@@ -361,14 +404,14 @@ class CreativeConnector extends BaseConnector
             if ($status === 'Success') {
                 $fileId = $data['file_id'] ?? null;
                 $videoUrl = $fileId
-                    ? "https://api.minimax.chat/v1/files/retrieve?file_id={$fileId}"
+                    ? "{$base}/v1/files/retrieve?file_id={$fileId}"
                     : ($data['video_url'] ?? $data['download_url'] ?? null);
 
                 // If file_id, fetch the actual download URL
                 if ($fileId) {
                     $dlResponse = \Illuminate\Support\Facades\Http::timeout(15)
                         ->withHeaders(['Authorization' => "Bearer {$apiKey}"])
-                        ->get("https://api.minimax.chat/v1/files/retrieve", ['file_id' => $fileId]);
+                        ->get("{$base}/v1/files/retrieve", ['file_id' => $fileId]);
                     if ($dlResponse->ok()) {
                         $dlData = $dlResponse->json();
                         $videoUrl = $dlData['file']['download_url'] ?? $videoUrl;
@@ -393,24 +436,25 @@ class CreativeConnector extends BaseConnector
         }
     }
 
-        private function generateVideo(array $params): array
+        /**
+     * @deprecated 2026-08-11 — DEAD PATH, retired. This POSTed to
+     * connectors.creative.base_url (localhost:8000) /api/creative/generate, which
+     * never reached MiniMax (cURL error 7). Video generation now runs through ONE
+     * authoritative governed path for BOTH sync and async callers:
+     *   CreativeService::generateVideo → ScenePlannerService → generateVideoViaProvider
+     *   → minimaxGenerateVideo (International host).
+     * The async Orchestrator no longer routes generate_video to this connector
+     * (see Orchestrator::executeStep reconciliation). Kept only so a stray
+     * execute('generate_video') fails LOUDLY and truthfully instead of silently
+     * phantom-calling localhost:8000. Do not resurrect.
+     */
+    private function generateVideo(array $params): array
     {
-        $response = $this->client()->post('/api/creative/generate', array_merge($params, [
-            'type' => 'video',
-        ]));
-
-        if ($response->failed()) {
-            return $this->failure('Video generation request failed: ' . $response->body());
-        }
-
-        $data = $response->json();
-        $jobId = $data['job_id'] ?? null;
-
-        if (! $jobId) {
-            return $this->validateAndReturnAsset($data);
-        }
-
-        return $this->pollForCompletion($jobId, 'video');
+        return $this->failure(
+            'generate_video is not served by CreativeConnector; it runs through the '
+            . 'governed CreativeService::generateVideo provider path. The legacy '
+            . 'connectors.creative.base_url (/api/creative/generate) path was retired 2026-08-11.'
+        );
     }
 
     private function getAsset(array $params): array
