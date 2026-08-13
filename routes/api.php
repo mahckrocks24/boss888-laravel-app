@@ -13499,7 +13499,12 @@ HTMLSCRIPT;
         $task->update(['status' => 'pending', 'retry_count' => $task->retry_count + 1, 'error_text' => null]);
         return response()->json(['retried' => true, 'task_id' => $task->id]);
     });
-    Route::get("/creative/assets", fn() => response()->json(["assets" => []]));
+    // REMOVED 2026-08-13 (Wave 2): this hardcoded stub shadowed the real
+    // assets endpoint. studio-01.php:146 defines the genuine route, but it is
+    // required from line ~1051 — so this later registration overwrote it and
+    // every caller got {"assets":[]} while the workspace actually had 398
+    // assets. The Studio Assets surface was starved by a placeholder, not by
+    // a data problem. Do not reintroduce a stub for a route that exists.
     Route::get("/websites", function(\Illuminate\Http\Request $r) { return response()->json(app(\App\Engines\Builder\Services\BuilderService::class)->listWebsites($r->attributes->get("workspace_id"))); });
     // PATCH 3 (2026-05-08): same as /api/builder/wizard above —
     // wizardGenerate() helpers were removed 2026-04-19 and this
