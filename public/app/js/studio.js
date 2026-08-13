@@ -797,7 +797,7 @@
     if (typeof window.studioVideoUseTemplate === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe6';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe7';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -817,7 +817,7 @@
     if (typeof window.studioVideoLoad === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe6';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe7';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -835,7 +835,7 @@
     if (typeof window.studioVideoOpenDesign === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe6';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe7';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -1197,7 +1197,7 @@
       '.st-prod-thumbs{display:flex;gap:8px;margin-top:10px}' +
       '.st-prod-thumb{flex:1;text-align:center}' +
       '.st-prod-thumb span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);margin-bottom:3px}' +
-      '.st-prod-thumb img{width:100%;height:72px;object-fit:cover;border-radius:6px;background:#111;border:1px solid rgba(255,255,255,0.08)}' +
+      '.st-prod-thumb img,.st-prod-thumb video{width:100%;height:72px;object-fit:cover;border-radius:6px;background:#111;border:1px solid rgba(255,255,255,0.08)}' +
       '.st-prod-err{margin-top:8px;font-size:11px;color:#f87171;background:rgba(255,80,80,0.08);border-radius:6px;padding:6px 8px;word-break:break-word}' +
       '.st-prod-actions{display:flex;gap:6px;margin-top:10px}' +
       '.st-prod-actions button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);color:rgba(255,255,255,0.8);font:600 11px/1 inherit;padding:6px 10px;border-radius:6px;cursor:pointer}' +
@@ -1234,8 +1234,21 @@
   function _prodCard(j){
     var q = (j.queue || 'queued').toLowerCase();
     var thumbs = '';
-    if (j.before_url) thumbs += '<div class="st-prod-thumb"><span>Before</span><img loading="lazy" src="' + _esc(j.before_url) + '"></div>';
-    if (j.after_url)  thumbs += '<div class="st-prod-thumb"><span>' + (j.before_url ? 'After' : 'Output') + '</span><img loading="lazy" src="' + _esc(j.after_url) + '"></div>';
+    // A video asset rendered as <img> is a guaranteed broken thumbnail — the
+    // Production log showed exactly that for every generated video. Choose the
+    // element from the media itself (extension first, job type as the fallback
+    // for rows whose URL carries no extension).
+    var _prodIsVideo = function (u) {
+      return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(String(u || ''))
+        || String(j.type || '').toLowerCase() === 'video';
+    };
+    var _prodMedia = function (u) {
+      return _prodIsVideo(u)
+        ? '<video preload="metadata" controls playsinline src="' + _esc(u) + '"></video>'
+        : '<img loading="lazy" src="' + _esc(u) + '">';
+    };
+    if (j.before_url) thumbs += '<div class="st-prod-thumb"><span>Before</span>' + _prodMedia(j.before_url) + '</div>';
+    if (j.after_url)  thumbs += '<div class="st-prod-thumb"><span>' + (j.before_url ? 'After' : 'Output') + '</span>' + _prodMedia(j.after_url) + '</div>';
     var sub = [_prodCapLabel(j), (j.model || j.provider || '')].filter(Boolean).map(_esc).join(' · ');
     if (j.asset_id) sub += ' · asset #' + j.asset_id + (j.version ? (' v' + j.version) : '');
     var when = _esc(j.completed_at || j.failed_at || j.started_at || j.created_at || '');

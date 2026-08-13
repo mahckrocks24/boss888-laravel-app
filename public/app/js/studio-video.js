@@ -3051,9 +3051,15 @@
           '</div>' +
           '<div class="sv-canvas-wrap" id="sv-canvas-wrap">' +
             '<div class="sv-canvas-toolbar">' +
-              '<button class="sv-view-btn active" data-view="reels">9:16</button>' +
-              '<button class="sv-view-btn" data-view="square">1:1</button>' +
-              '<button class="sv-view-btn" data-view="landscape">16:9</button>' +
+              (function(){
+                var _v = _svViewForDims(VE.vd.canvas_width, VE.vd.canvas_height);
+                VE.viewMode = _v;
+                return ['reels','square','landscape'].map(function(k){
+                  var lbl = { reels: '9:16', square: '1:1', landscape: '16:9' }[k];
+                  return '<button class="sv-view-btn' + (k === _v ? ' active' : '') +
+                         '" data-view="' + k + '">' + lbl + '</button>';
+                }).join('');
+              })() +
               '<div class="sv-toolbar-spacer"></div>' +
               '<button class="sv-icon-btn" id="sv-fit-btn">Fit</button>' +
             '</div>' +
@@ -4448,6 +4454,16 @@
       };
     });
   }
+  // The toolbar's active aspect must be DERIVED from the project's real canvas
+  // dimensions, never assumed. The strip hardcoded 'active' on 9:16, so a
+  // 1920x1080 project opened with 9:16 highlighted while the canvas drew 16:9.
+  function _svViewForDims(w, h){
+    w = w || 1080; h = h || 1920;
+    if (w > h) return 'landscape';
+    if (w < h) return 'reels';
+    return 'square';
+  }
+
   function _svWireCanvasClicks(){
     // Click canvas to deselect (future: hit-test for elements/text)
     VE.canvas.addEventListener('click', function(){ VE.selected = null; _svHighlightSelection(); _svRenderProps(); });
