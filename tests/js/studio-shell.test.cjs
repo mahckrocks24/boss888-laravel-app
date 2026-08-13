@@ -76,18 +76,39 @@ test('the Designs surface renders under the shell nav', () => {
     'the gallery must render the shell header so navigation is always present');
 });
 
-test('Assets does NOT fabricate a media library', () => {
-  const a = stripComments(bodyOf('function _stMountAssets() {'));
-  // It must not build cards from designs or any other record set.
-  ['_st2Designs', '_prodCard', 'st2-card'].forEach(f => {
-    assert.ok(!a.includes(f), 'Assets must not fabricate a grid from ' + f);
-  });
-  assert.ok(!a.includes('_fetchJson'), 'Assets must not claim data it cannot yet serve');
-  assert.ok(/not available yet/i.test(a), 'Assets must state its real status');
-  // The markup is built inside JS string literals, so the file text carries
-  // escaped quotes: _stGo(\'production\').
-  assert.ok(/_stGo\(\\?'production\\?'\)/.test(a),
-    'Assets should point at where media is genuinely visible');
+test('Assets reads the real assets endpoint and fabricates nothing', () => {
+  const mount = stripComments(bodyOf('function _stMountAssets() {'));
+  const load  = stripComments(bodyOf('function _stLoadAssets() {'));
+  const both  = mount + load;
+
+  // Wave 1B shipped an honest placeholder because the endpoint was stubbed.
+  // b15d215 unshadowed it, so honesty now means reading THAT endpoint — and
+  // still never inventing a library from unrelated records.
+  ['_st2Designs', '_prodCard', 'st2-card', '/studio/designs', '/studio/production/jobs']
+    .forEach(f => {
+      assert.ok(!both.includes(f), 'Assets must not fabricate a grid from ' + f);
+    });
+
+  assert.ok(load.includes("_fetchJson('/creative/assets'"),
+    'Assets must read the canonical creative assets endpoint');
+  assert.ok(/d\.assets/.test(load), 'it must render the assets the service returns');
+  assert.ok(/d\.total/.test(load), 'it must use the real total, not a counted page');
+});
+
+test('Assets has explicit loading, empty and error states', () => {
+  const load = stripComments(bodyOf('function _stLoadAssets() {'));
+  assert.ok(/Loading assets/i.test(load), 'a loading state is required');
+  assert.ok(/Nothing here yet/i.test(load), 'an empty state is required');
+  assert.ok(/could not be loaded/i.test(load), 'a failure state is required');
+  assert.ok(load.includes('.catch('), 'a failed fetch must never be silent');
+  assert.ok(!/undefined/.test(load), 'no "undefined" may reach the customer');
+});
+
+test('Assets renders video assets as video, not broken images', () => {
+  const card = stripComments(bodyOf('function _stAssetCard(a) {'));
+  assert.ok(/<video/.test(card), 'video assets need a <video> element');
+  assert.ok(/<img/.test(card), 'image assets still use <img>');
+  assert.ok(/mp4|webm|mov|m4v/.test(card), 'it must detect video by extension too');
 });
 
 test('Production uses the real job list, not a placeholder', () => {

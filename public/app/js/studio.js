@@ -342,7 +342,7 @@
           '</button>' +
           '<button type="button" class="st-tile" onclick="_stGo(\'assets\')">' +
             '<span class="st-tile-t">Assets</span>' +
-            '<span class="st-tile-n">—</span>' +
+            '<span class="st-tile-n" id="st-n-assets">…</span>' +
             '<span class="st-tile-d">Reusable generated media</span>' +
           '</button>' +
         '</div>' +
@@ -364,34 +364,135 @@
       var el = document.getElementById('st-n-prod');
       if (el) el.textContent = 'unavailable';
     });
+
+    _fetchJson('/creative/assets?limit=1').then(function (d) {
+      var el = document.getElementById('st-n-assets');
+      if (el) el.textContent = (d && typeof d.total === 'number') ? String(d.total) : 'unavailable';
+    }).catch(function () {
+      var el = document.getElementById('st-n-assets');
+      if (el) el.textContent = 'unavailable';
+    });
   }
 
-  // ── ASSETS (Wave 1B shell destination only) ──────────────────────────────
-  // Wave 2 owns the media library. This states the real situation instead of
-  // fabricating a grid from studio_designs or any unrelated record — the known
-  // gap is that GET /api/creative/assets returns [] while real generated media
-  // exists and is visible in Production.
+  // ── ASSETS (Wave 2 — the real media library) ─────────────────────────────
+  // Reusable generated media for this workspace, read from GET /creative/assets.
+  // That endpoint was shadowed by a hardcoded stub until b15d215; the data was
+  // always there. This reads the SAME endpoint — no new table, no duplicate
+  // asset state, no fabricated records. listAssets supports `type` and `limit`
+  // (there is no offset), so "Load more" raises the limit and re-reads.
+
+  var _stAssetFilter = 'all';
+  var _stAssetLimit  = 60;
+
+  function _stAssetCard(a) {
+    var url  = String(a.url || '');
+    var isVid = String(a.type || '').toLowerCase() === 'video'
+             || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
+    var media = !url
+      ? '<div class="st-as-none">No preview</div>'
+      : (isVid
+          ? '<video class="st-as-media" preload="metadata" controls playsinline src="' + _esc(url) + '"></video>'
+          : '<img class="st-as-media" loading="lazy" alt="" src="' + _esc(url) + '">');
+    var dims = (a.width && a.height) ? (a.width + '×' + a.height) : '';
+    var dur  = a.duration_seconds ? (a.duration_seconds + 's') : '';
+    var when = String(a.created_at || '').slice(0, 10);
+    var meta = [dims, dur, when].filter(Boolean).join(' · ');
+    return '<figure class="st-as-card">' +
+        '<div class="st-as-thumb">' + media + '</div>' +
+        '<figcaption class="st-as-cap">' +
+          '<span class="st-as-badge">' + _esc(String(a.type || 'asset').toUpperCase()) + '</span>' +
+          '<span class="st-as-title" title="' + _esc(a.title || '') + '">' + _esc(a.title || 'Untitled') + '</span>' +
+          (meta ? '<span class="st-as-meta">' + _esc(meta) + '</span>' : '') +
+        '</figcaption>' +
+      '</figure>';
+  }
+
+  function _stLoadAssets() {
+    var host = document.getElementById('st-as-grid');
+    var note = document.getElementById('st-as-note');
+    if (!host) return;
+    host.innerHTML = '<div class="st-empty">Loading assets…</div>';
+    if (note) note.textContent = '';
+
+    var qs = '?limit=' + _stAssetLimit + (_stAssetFilter === 'all' ? '' : '&type=' + encodeURIComponent(_stAssetFilter));
+    _fetchJson('/creative/assets' + qs).then(function (d) {
+      var items = (d && d.assets) || [];
+      var total = (d && typeof d.total === 'number') ? d.total : null;
+
+      if (!items.length) {
+        host.innerHTML = '<div class="st-empty-card">' +
+          '<div class="st-empty-t">Nothing here yet</div>' +
+          '<p class="st-empty-d">' +
+            (_stAssetFilter === 'all'
+              ? 'Images and videos you generate will collect here.'
+              : 'No ' + _esc(_stAssetFilter) + ' assets in this workspace yet.') +
+          '</p>' +
+          '<div class="st-empty-actions">' +
+            '<button type="button" class="st-btn st-btn-primary" onclick="_stCreate(\'image\')">Create image</button>' +
+            '<button type="button" class="st-btn st-btn-ghost" onclick="_stCreate(\'video\')">Create video</button>' +
+          '</div>' +
+        '</div>';
+        if (note) note.textContent = total === 0 ? '' : '';
+        return;
+      }
+
+      host.innerHTML = items.map(_stAssetCard).join('');
+      if (note) {
+        var shown = items.length;
+        note.textContent = (total !== null && total > shown)
+          ? ('Showing ' + shown + ' of ' + total)
+          : (shown + ' asset' + (shown === 1 ? '' : 's'));
+      }
+      var more = document.getElementById('st-as-more');
+      if (more) more.style.display = (total !== null && total > items.length) ? 'inline-flex' : 'none';
+    }).catch(function (e) {
+      host.innerHTML = '<div class="st-empty-card">' +
+        '<div class="st-empty-t">Assets could not be loaded</div>' +
+        '<p class="st-empty-d">' + _esc((e && e.message) ? e.message : 'The request failed.') + '</p>' +
+        '<div class="st-empty-actions">' +
+          '<button type="button" class="st-btn st-btn-primary" onclick="_stLoadAssets()">Try again</button>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  window._stLoadAssets = _stLoadAssets;
+
+  window._stAssetFilterSet = function (f) {
+    _stAssetFilter = f;
+    _stAssetLimit = 60;
+    var wrap = document.getElementById('st-as-chips');
+    if (wrap) wrap.querySelectorAll('.st-prod-chip').forEach(function (b) {
+      var on = b.getAttribute('data-f') === f;
+      b.classList.toggle('active', on);
+      if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+    });
+    _stLoadAssets();
+  };
+
+  window._stAssetsMore = function () {
+    _stAssetLimit += 60;
+    _stLoadAssets();
+  };
+
   function _stMountAssets() {
     _stShellFrame('assets',
       '<section class="st-sec">' +
         '<h2 class="st-h2">Assets</h2>' +
-        '<div class="st-empty-card">' +
-          '<div class="st-empty-t">The media library is not available yet</div>' +
-          '<p class="st-empty-d">' +
-            'Assets are the reusable images and videos this workspace has generated. ' +
-            'They are produced and tracked today — you can see every generated item, ' +
-            'with its status and lineage, in Production.' +
-          '</p>' +
-          '<p class="st-empty-d st-empty-note">' +
-            'A browsable library lands in the next stage of the Studio rebuild. ' +
-            'Nothing is missing or lost in the meantime.' +
-          '</p>' +
-          '<div class="st-empty-actions">' +
-            '<button type="button" class="st-btn st-btn-primary" onclick="_stGo(\'production\')">Open Production</button>' +
-            '<button type="button" class="st-btn st-btn-ghost" onclick="_stGo(\'designs\')">Browse Designs</button>' +
-          '</div>' +
+        '<p class="st-sub">Reusable images and video this workspace has generated.</p>' +
+        '<div class="st-prod-chips" id="st-as-chips">' +
+          '<button type="button" class="st-prod-chip active" data-f="all" aria-current="true" onclick="_stAssetFilterSet(\'all\')">All</button>' +
+          '<button type="button" class="st-prod-chip" data-f="image" onclick="_stAssetFilterSet(\'image\')">Images</button>' +
+          '<button type="button" class="st-prod-chip" data-f="video" onclick="_stAssetFilterSet(\'video\')">Videos</button>' +
+          '<span class="st-as-note" id="st-as-note" aria-live="polite"></span>' +
+        '</div>' +
+        '<div class="st-as-grid" id="st-as-grid"><div class="st-empty">Loading assets…</div></div>' +
+        '<div class="st-as-morewrap">' +
+          '<button type="button" class="st-btn st-btn-ghost" id="st-as-more" style="display:none" onclick="_stAssetsMore()">Load more</button>' +
         '</div>' +
       '</section>');
+    _stAssetFilter = 'all';
+    _stAssetLimit = 60;
+    _stLoadAssets();
   }
 
   // ── PRODUCTION (shell level) ─────────────────────────────────────────────
@@ -457,6 +558,18 @@
       '.st-empty-note{color:var(--t3,#64748B)}',
       '.st-empty-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}',
       '.st-prod-chips{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 16px}',
+      '.st-as-note{align-self:center;margin-left:6px;font:500 12px/1 var(--fb,system-ui,sans-serif);color:var(--t2,#8B97B0)}',
+      '.st-as-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:4px}',
+      '.st-as-card{margin:0;background:var(--s1,#171A26);border:1px solid var(--bd,rgba(255,255,255,.08));border-radius:12px;overflow:hidden;transition:border-color .12s}',
+      '.st-as-card:hover{border-color:var(--p,#6C5CE7)}',
+      '.st-as-thumb{aspect-ratio:1/1;background:#0C0E16;display:flex;align-items:center;justify-content:center;overflow:hidden}',
+      '.st-as-media{width:100%;height:100%;object-fit:cover;display:block;background:#0C0E16}',
+      '.st-as-none{font:500 12px/1 var(--fb,system-ui,sans-serif);color:var(--t3,#64748B)}',
+      '.st-as-cap{display:flex;flex-direction:column;gap:4px;padding:10px 12px 12px}',
+      '.st-as-badge{align-self:flex-start;font:700 9px/1 var(--fb,system-ui,sans-serif);letter-spacing:.08em;color:#C7BEFF;background:var(--ps,rgba(108,92,231,.16));padding:4px 7px;border-radius:999px}',
+      '.st-as-title{font:600 12px/1.35 var(--fb,system-ui,sans-serif);color:var(--t1,#E8EDF5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.st-as-meta{font:400 11px/1.3 var(--fb,system-ui,sans-serif);color:var(--t3,#64748B)}',
+      '.st-as-morewrap{display:flex;justify-content:center;margin-top:20px}',
       '.st-prod-chip{background:var(--s2,#1E2230);border:1px solid var(--bd,rgba(255,255,255,.08));color:var(--t2,#8B97B0);font:600 12px/1 var(--fb,system-ui,sans-serif);padding:8px 14px;border-radius:999px;cursor:pointer}',
       '.st-prod-chip.active{background:var(--p,#6C5CE7);border-color:var(--p,#6C5CE7);color:#fff}',
       '@media(max-width:820px){.st-shell-root{padding:0 16px 40px}.st-shell-actions{margin-left:0;width:100%}.st-h1{font-size:24px}}',
