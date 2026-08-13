@@ -1117,7 +1117,12 @@ async function nav(view, opts){
     }
   }
   if(view==='creative')   { await luLoadEngine('creative'); var _el=document.getElementById('creative-root'); if(_el && typeof creativeLoad==='function') creativeLoad(_el); }
-  if(view==='manualedit') { await luLoadEngine('manualedit'); var _el=document.getElementById('manualedit-root'); if(_el && typeof manualeditLoad==='function') manualeditLoad(_el); }
+  // RETIRED 2026-08-13 — /app/manualedit rendered a SECOND Studio (its own
+  // Image Design / Video Editor tabs and its own design store). Its nav entry
+  // went in 2026-04-20 but this router line kept it alive for every bookmark,
+  // history entry and deep link. Studio is the single editing surface, so old
+  // URLs now land there instead of executing retired code.
+  if(view==='manualedit') { try { nav('studio'); } catch(_e) {} return; }
   if(view==='automation') { await luLoadEngine('automation'); var _el=document.getElementById('automation-root'); if(_el && typeof automationLoad==='function') automationLoad(_el); }
   if(view==='blog')       { await luLoadEngine('blog'); var _el=document.getElementById('blog-root'); if(_el && typeof blogLoad==='function') blogLoad(_el); }
   if(view==='studio')     {
