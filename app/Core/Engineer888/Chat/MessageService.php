@@ -3,6 +3,7 @@
 namespace App\Core\Engineer888\Chat;
 
 use App\Core\Engineer888\Access\Engineer888Capability as Cap;
+use App\Core\Engineer888\Conversation\ConversationEngine;
 use App\Jobs\Engineer888WorkflowJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -82,8 +83,18 @@ final class MessageService
             $userMessageId = $this->insert($conversation, 'user', $body, $routed['intent']);
 
             // High-risk text is answered, never obeyed.
+            //
+            // The REFUSAL IS DETERMINISTIC AND UNCHANGED: this branch is chosen
+            // by the keyword router before any model is consulted, and nothing
+            // in it can create, approve or execute. What the model is allowed to
+            // do is phrase the answer against real state — "the candidate is
+            // ready and waiting on your approval" reads like a colleague;
+            // "I will not execute from a chat message" reads like a policy
+            // notice, and Boss has had four screens of policy notices.
             if (! $this->router->isSafeForFreeText($routed['intent'])) {
-                $reply = $this->refusalFor($routed['blocked_action']);
+                $reply = $this->spokenRefusal($conversation, $body, $routed['blocked_action'])
+                      ?? $this->refusalFor($routed['blocked_action']);
+
                 $replyId = $this->insert($conversation, 'engineer888', $reply, $routed['intent'], [
                     'blocked_action' => $routed['blocked_action'],
                     'matched_phrase' => $routed['matched'],
@@ -137,6 +148,79 @@ final class MessageService
      */
     private function answer(?Request $request, object $conversation, string $intent, string $body): array
     {
+        // ── LLM FIRST (2026-08-13) ───────────────────────────────────────
+        //
+        // Every safe turn goes to the conversational provider. The keyword
+        // router keeps sole authority over HIGH-RISK classification — that
+        // decision is made before this method is reached and is not delegated
+        // to a model — but it no longer decides what an ordinary sentence
+        // MEANS.
+        //
+        // WHY THE ROUTER'S OWN CREATE_TASK IS NOW ONLY A HINT. Measured
+        // 2026-08-13: "Why is the Bug Tracker waiting for me?" matched the
+        // Tier-3 pattern /\bwhy\s+(is|are|does|do|did)\b/ and created an
+        // engineering task and dispatched a workflow job. Asking a question
+        // filed work. A question is not an instruction, and no list of verbs
+        // was ever going to know the difference reliably.
+        //
+        // So the model decides whether work was requested, and says so on a
+        // single advisory line. It cannot create anything: the task is still
+        // opened here, through the same WorkflowEngine path, with the same
+        // capability check and the same project requirement.
+        $engine = ConversationEngine::make();
+
+        if ($engine->available()) {
+            $reply = $engine->respond($conversation, $body, $this->situationFor($intent));
+
+            if (! $reply->failed()) {
+                // ── THE MODEL MAY ESCALATE TO GOVERNANCE, NEVER AWAY FROM IT ──
+                //
+                // Measured 2026-08-13: "Execute the Bug Tracker." was not
+                // matched by HIGH_RISK_COMMANDS, because that table requires
+                // the verb to land on one of {task, candidate, change,
+                // implementation} and "the Bug Tracker" is none of them.
+                // Nothing executed — free text has no execution path at all —
+                // but Boss got a conversational answer where he should have
+                // been handed the governed decision.
+                //
+                // Widening the regex would have been one synonym behind
+                // forever, which is the failure Sarah's ActionAuthority
+                // documents. So the model is allowed to say "he is asking to
+                // execute", and that claim is ONLY ever able to make the turn
+                // MORE governed: it produces a refusal and surfaces the card.
+                // It cannot approve, execute, or create anything. A model that
+                // is wrong here costs Boss one unnecessary explanation; a
+                // regex that is wrong here costs him the ability to act.
+                if (in_array($reply->proposedIntent, ['EXECUTE_REQUEST', 'APPROVE_REQUEST'], true)) {
+                    return [$reply->text, [
+                        'kind' => 'governed',
+                        'blocked_action' => $reply->proposedIntent === 'EXECUTE_REQUEST'
+                            ? 'EXECUTE_TASK' : 'APPROVE_CANDIDATE',
+                        'escalated_by' => 'conversation',
+                    ], null];
+                }
+
+                // CREATE_TASK is proposed to the server, not to the repository.
+                if ($reply->proposedIntent === 'CREATE_TASK') {
+                    [$text, $meta, $uuid] = $this->createTask($request, $conversation, $body);
+
+                    // The model's sentence leads; the engine's record follows.
+                    // Narration never replaces the record — it introduces it.
+                    return [trim($reply->text) . "\n\n" . $text, $meta + ['spoken' => true], $uuid];
+                }
+
+                return [$reply->text, ['kind' => 'conversation', 'provider' => $reply->provider], null];
+            }
+
+            \Illuminate\Support\Facades\Log::warning('[engineer888] conversation unavailable', [
+                'provider' => $reply->provider, 'error' => $reply->error,
+            ]);
+        }
+
+        // ── DETERMINISTIC FALLBACK ───────────────────────────────────────
+        // Reasoning is unreachable. Answer from records where a record exists,
+        // and otherwise say plainly that analysis is not available. Never a
+        // fabricated sentence about engineering state.
         if ($intent === IntentRouter::CREATE_TASK) {
             return $this->createTask($request, $conversation, $body);
         }
@@ -152,13 +236,76 @@ final class MessageService
             return ["Projects I can work in:\n\n{$lines}", ['kind' => 'projects'], null];
         }
 
-        return [
-            "I can create an engineering task, report status, explain a blocker, or open a "
-            . "candidate for review.\n\nI will not approve, execute, or recover from a chat "
-            . "message — those need a secure action card.",
-            ['kind' => 'general'],
-            null,
-        ];
+        return [ConversationEngine::unavailableText(), ['kind' => 'unavailable'], null];
+    }
+
+    /**
+     * Let the model phrase a refusal that has already been decided.
+     *
+     * THE DECISION IS NOT THE MODEL'S. This is only reached after the keyword
+     * router has classified the turn as high-risk, and the branch that calls it
+     * creates nothing regardless of what comes back. If the provider is
+     * unavailable, or returns nothing, the caller falls back to the fixed
+     * refusal text — the refusal never depends on a model being reachable.
+     *
+     * The model is explicitly forbidden from implying the action happened.
+     */
+    private function spokenRefusal(object $conversation, string $body, ?string $action): ?string
+    {
+        $engine = ConversationEngine::make();
+
+        if (! $engine->available()) { return null; }
+
+        $named = match ($action) {
+            'APPROVE_CANDIDATE' => 'approve a candidate',
+            'EXECUTE_TASK'      => 'execute an approved candidate',
+            'APPROVE_RECOVERY'  => 'approve a recovery',
+            'APPROVE_MIGRATION' => 'approve a migration',
+            'GRANT_ACCESS'      => 'change who may use Engineer888',
+            default             => 'take a governed action',
+        };
+
+        $situation = "SITUATION: he is asking you to {$named}. That cannot happen from a message, and it "
+            . "has NOT happened. Do not refuse formally and do not lecture him about governance. In one or "
+            . "two sentences, tell him the real current state of the thing he named, and that the decision "
+            . "is his to make on the card in this conversation. Never imply the action was taken or queued. "
+            . "Do not emit an intent line.";
+
+        $reply = $engine->respond($conversation, $body, $situation);
+
+        if ($reply->failed() || trim($reply->text) === '') { return null; }
+
+        // A model that talks itself into claiming it acted is not usable here.
+        if (preg_match('/\b(i have (approved|executed|deployed|installed)|done|executed it|approved it)\b/i', $reply->text)) {
+            return null;
+        }
+
+        return trim($reply->text);
+    }
+
+    /**
+     * A deterministic note the model is told before it answers.
+     *
+     * The router's reading of the turn is evidence, not instruction. Passing it
+     * as a situation lets the model use it ("he does seem to be asking for
+     * work") without being bound by it ("...but he is actually asking why").
+     */
+    private function situationFor(string $intent): string
+    {
+        return match ($intent) {
+            IntentRouter::CREATE_TASK =>
+                "SITUATION: the phrasing of this turn resembles a request to start engineering work. "
+                . "Treat that as a hint only. If he is asking a question or thinking aloud, answer him; "
+                . "do not open work.",
+            IntentRouter::TASK_STATUS, IntentRouter::TASK_BLOCKER =>
+                "SITUATION: he appears to be asking about the state of work in progress.",
+            IntentRouter::PROJECT_STATUS =>
+                "SITUATION: he appears to be asking about projects.",
+            IntentRouter::REVIEW_CANDIDATE =>
+                "SITUATION: he appears to be asking to see a proposed change. You may describe it; "
+                . "the diff itself opens from the card in the conversation.",
+            default => '',
+        };
     }
 
     /**

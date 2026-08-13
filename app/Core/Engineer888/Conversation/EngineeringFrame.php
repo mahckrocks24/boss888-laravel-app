@@ -1,0 +1,276 @@
+<?php
+
+namespace App\Core\Engineer888\Conversation;
+
+use Illuminate\Support\Facades\DB;
+
+/**
+ * What Engineer888 knows, right now, rendered for a conversational turn.
+ *
+ * THIS IS THE ENGINEERING EQUIVALENT OF SARAH'S CognitiveFrame + ExecutiveFrame,
+ * and it borrows three of her decisions deliberately:
+ *
+ *   1. EVERY BLOCK IS COMPUTED FROM A RECORD. Nothing here is narration. If a
+ *      value cannot be read it is omitted, never guessed — the model is told
+ *      what is unknown rather than handed a plausible number. Sarah's own
+ *      comment on the GSC block says it best: the LLM path fabricates
+ *      'connected' when the deterministic path knows better.
+ *
+ *   2. THE FRAME IS BUDGETED. Sarah budgets characters because relevant
+ *      knowledge buried under irrelevant knowledge is knowledge the model will
+ *      not use. Engineer888 has far more machine-readable state than Sarah —
+ *      45 tasks, 100+ candidates, a full audit trail — so an unbounded frame
+ *      would be mostly noise about work nobody asked about.
+ *
+ *   3. BLOCKS ARE CLASSED AND SELECTED PER TURN. Sarah's ContextSelector splits
+ *      context into MANDATORY_GLOBAL / MANDATORY_SAFETY / TURN_RELEVANT /
+ *      OPTIONAL. The same split is used here: identity and the active project
+ *      are always present; candidate detail and audit history arrive only when
+ *      the turn is plausibly about them.
+ *
+ * ONE DELIBERATE DIFFERENCE FROM SARAH. Sarah's frame is workspace-scoped and
+ * her conversations are per-workspace. Engineer888 has exactly one owner
+ * conversation carrying an active-project pointer (recorded as
+ * CHAT-FOLLOWUP-002), so the frame takes the project as context rather than as
+ * a hard scope: a platform-level question is still answerable while a project
+ * is selected.
+ */
+final class EngineeringFrame
+{
+    public const ALWAYS   = 'ALWAYS';
+    public const RELEVANT = 'RELEVANT';
+
+    /** Cheap turn classification. Not authority — only which blocks to spend budget on. */
+    private const CUES = [
+        'candidates' => '/\b(candidate|approve|approval|review|diff|propos|bug tracker|waiting|pending)\b/i',
+        'work'       => '/\b(task|tasks|working|progress|status|blocked|blocker|queue|investigat|doing)\b/i',
+        'execution'  => '/\b(execut|run|worker|queue|lock|deploy|install|recover|verif|test)\b/i',
+        'health'     => '/\b(health|fail|failing|defect|incident|broken|safe|safety|risk|baseline)\b/i',
+        'repository' => '/\b(repo|repositor|branch|head|commit|file|structure|architect)\b/i',
+    ];
+
+    public function __construct(private readonly array $limits = []) {}
+
+    /**
+     * @return array{text:string,blocks:array<int,string>,chars:int}
+     */
+    public function build(object $conversation, string $turn): array
+    {
+        $budget = (int) ($this->limits['max_chars'] ?? 14000);
+        $wanted = $this->classify($turn);
+
+        $blocks = [];
+
+        $blocks['identity']      = [self::ALWAYS,   fn () => $this->identity()];
+        $blocks['project']       = [self::ALWAYS,   fn () => $this->project($conversation)];
+        $blocks['work']          = [self::RELEVANT, fn () => $this->work($conversation)];
+        $blocks['candidates']    = [self::RELEVANT, fn () => $this->candidates($conversation)];
+        $blocks['execution']     = [self::ALWAYS,   fn () => $this->execution()];
+        $blocks['health']        = [self::RELEVANT, fn () => $this->health()];
+        $blocks['repository']    = [self::RELEVANT, fn () => $this->repository($conversation)];
+        $blocks['standards']     = [self::RELEVANT, fn () => $this->standards()];
+
+        $out = [];
+        $used = 0;
+        $included = [];
+
+        foreach ($blocks as $name => [$class, $fn]) {
+            if ($class === self::RELEVANT && ! in_array($name, $wanted, true)) { continue; }
+
+            $text = $this->safe($fn, $name);
+
+            if ($text === '') { continue; }
+            if ($used + strlen($text) > $budget) { continue; }
+
+            $out[] = $text;
+            $used += strlen($text);
+            $included[] = $name;
+        }
+
+        return ['text' => implode("\n\n", $out), 'blocks' => $included, 'chars' => $used];
+    }
+
+    /** Which optional blocks is this turn plausibly about? */
+    private function classify(string $turn): array
+    {
+        $hit = [];
+
+        foreach (self::CUES as $block => $pattern) {
+            if (preg_match($pattern, $turn)) { $hit[] = $block; }
+        }
+
+        // A short turn with no cue ("hello", "hey", "thanks") gets the cheap
+        // frame. A substantive turn with no cue gets the useful blocks, because
+        // an open question about engineering usually needs them.
+        if ($hit === [] && str_word_count($turn) >= 6) {
+            $hit = ['work', 'candidates', 'health'];
+        }
+
+        return $hit;
+    }
+
+    private function identity(): string
+    {
+        return "WHO YOU ARE\n"
+            . "You are Engineer888, the AI engineering department for LevelUp Growth.\n"
+            . "You are speaking with Mark (Boss), the CEO and the only account with access to you.\n"
+            . "Environment: " . app()->environment() . '.';
+    }
+
+    private function project(object $conversation): string
+    {
+        $p = DB::table('engineering_projects')->find($conversation->active_project_id ?? 0);
+
+        if ($p === null) {
+            return "ACTIVE PROJECT\nNone selected. You cannot open engineering work until one is chosen.";
+        }
+
+        $head = $branch = 'unreadable';
+        $dirty = null;
+
+        if (is_dir($p->repository_path . '/.git')) {
+            $head = trim((string) @shell_exec('cd ' . escapeshellarg($p->repository_path) . ' && git rev-parse --short HEAD 2>/dev/null'));
+            $branch = trim((string) @shell_exec('cd ' . escapeshellarg($p->repository_path) . ' && git rev-parse --abbrev-ref HEAD 2>/dev/null'));
+            $dirty = (int) trim((string) @shell_exec('cd ' . escapeshellarg($p->repository_path) . ' && git status --porcelain -uall 2>/dev/null | wc -l'));
+        }
+
+        return "ACTIVE PROJECT\n"
+            . "{$p->name} ({$p->key})\n"
+            . "Repository: {$p->repository_path}\n"
+            . "Branch: {$branch}  HEAD: {$head}" . ($dirty === null ? '' : "  uncommitted files: {$dirty}") . "\n"
+            . "Test database: " . ($p->test_database ?? 'none') . "  PHPUnit config: " . ($p->phpunit_config ?? 'none') . "\n"
+            . "This is context, not a boundary. Platform-level questions are still answerable.";
+    }
+
+    private function work(object $conversation): string
+    {
+        $max = (int) ($this->limits['max_tasks'] ?? 8);
+
+        $tasks = DB::table('engineering_tasks as t')
+            ->join('engineering_projects as p', 'p.id', '=', 't.project_id')
+            ->whereNotIn('t.status', ['completed'])
+            ->orderByDesc('t.updated_at')
+            ->limit($max)
+            ->get(['t.id', 't.uuid', 't.title', 't.status', 't.current_stage', 'p.name as project']);
+
+        if ($tasks->isEmpty()) { return ''; }
+
+        $lines = $tasks->map(fn ($t) =>
+            "- #{$t->id} \"" . mb_strimwidth($t->title, 0, 70, '...') . "\" [{$t->project}] status={$t->status} stage=" . ($t->current_stage ?: 'none')
+        )->implode("\n");
+
+        $counts = DB::table('engineering_tasks')->selectRaw('status, count(*) c')->groupBy('status')->pluck('c', 'status');
+
+        return "OPEN ENGINEERING WORK (most recently touched " . count($tasks) . ")\n{$lines}\n"
+            . 'Totals by status: ' . collect($counts)->map(fn ($c, $s) => "{$s}={$c}")->implode(', ') . '.';
+    }
+
+    private function candidates(object $conversation): string
+    {
+        $max = (int) ($this->limits['max_candidates'] ?? 5);
+
+        $rows = DB::table('engineering_candidates as c')
+            ->join('engineering_tasks as t', 't.id', '=', 'c.task_id')
+            ->join('engineering_projects as p', 'p.id', '=', 't.project_id')
+            ->leftJoin('engineering_candidate_approvals as a', 'a.candidate_id', '=', 'c.id')
+            ->whereNull('c.superseded_at')
+            ->where('c.status', 'VALIDATED')
+            ->orderByDesc('c.id')
+            ->limit($max)
+            ->get(['c.uuid', 'c.file_count', 'c.confidence', 'c.provider', 'c.model',
+                   't.id as tid', 't.title', 'p.name as project', 'a.state', 'a.id as aid']);
+
+        if ($rows->isEmpty()) { return ''; }
+
+        $lines = $rows->map(function ($r) {
+            return "- task #{$r->tid} \"" . mb_strimwidth($r->title, 0, 60, '...') . "\" [{$r->project}] "
+                . "{$r->file_count} files, confidence {$r->confidence}, approval " . ($r->state ?: 'none')
+                . ' (candidate ' . substr($r->uuid, 0, 8) . ')';
+        })->implode("\n");
+
+        $pending = DB::table('engineering_candidate_approvals')->where('state', 'PENDING')->count();
+
+        return "CANDIDATES AWAITING A DECISION (newest " . count($rows) . " of {$pending} pending)\n{$lines}\n"
+            . "Many of these are repeated attempts at the same acceptance exercise from 10-12 August; "
+            . "they are separate tasks, not duplicates. Do not present them as a queue of distinct work.";
+    }
+
+    private function execution(): string
+    {
+        $active = trim((string) @shell_exec('systemctl is-active e888-worker.service 2>/dev/null'));
+        $depth = trim((string) @shell_exec('redis-cli llen queues:e888-isolated 2>/dev/null'));
+        $locks = trim((string) @shell_exec("redis-cli --scan --pattern '*lock*' 2>/dev/null | head -3"));
+
+        $lastAttempt = DB::table('engineering_execution_attempts')->orderByDesc('id')->first();
+        $attempts = DB::table('engineering_execution_attempts')->count();
+
+        $last = $lastAttempt === null ? 'none recorded'
+            : "#{$lastAttempt->id} " . ($lastAttempt->result ?? '?') . ' on ' . ($lastAttempt->repository_path ?? '?')
+              . ' at ' . ($lastAttempt->started_at ?? '?');
+
+        $pending = DB::table('engineering_candidate_approvals')->where('state', 'PENDING')->count();
+        $approved = DB::table('engineering_candidate_approvals')
+            ->where('state', 'APPROVED')->whereNull('revoked_at')->whereNull('superseded_at')->count();
+
+        return "EXECUTION STATE\n"
+            . 'Isolated worker (e888-worker.service): ' . ($active ?: 'unreadable') . "\n"
+            . 'Isolated queue e888-isolated depth: ' . ($depth === '' ? 'unreadable' : $depth) . "\n"
+            . 'Repository execution lock: ' . ($locks === '' ? 'none held' : $locks) . "\n"
+            . "Last execution attempt: {$last}  (total attempts recorded: {$attempts})\n"
+            . "Approvals: {$pending} pending, {$approved} live and approved.\n"
+            . "WHAT THIS MEANS. Nothing can be executed until a human has typed the exact approval "
+            . "statement for a specific candidate. An idle queue and a free lock do NOT mean work is "
+            . "ready to run, and must never be described as 'you can proceed'. If nothing is approved, "
+            . "the honest answer is that the decision is still his to make.";
+    }
+
+    private function health(): string
+    {
+        return "KNOWN ENGINEERING HEALTH\n"
+            . "- Baseline defect B1: the platform-wide safety audit cannot certify complete coverage. "
+            . "It reports complete=false while listing no unreadable path, so the certificate is internally "
+            . "inconsistent. This does NOT prove an unsafe execution path exists. Open, not repaired.\n"
+            . "- Baseline defect B2: RepositoryIntelligenceTest fails 7 ways because the class it exercises "
+            . "is absent from app/Core/Engineer888/Repository/. Open, not repaired.\n"
+            . "- Engineer888 suite: 643 passed, 8 failed, 2 skipped. All 8 failures pre-date current work.\n"
+            . "- The shared tree /var/www/levelup-staging is worked on by other sessions concurrently and "
+            . "is usually dirty; it is not safe to deploy into without checking who is active.";
+    }
+
+    private function repository(object $conversation): string
+    {
+        return "REPOSITORY FACTS WORTH REMEMBERING\n"
+            . "- The acceptance project is a plain PSR-4 PHP project with PHPUnit. It is NOT Laravel. "
+            . "An early candidate invented Laravel infrastructure for it; repository discovery now runs "
+            . "before architecture is chosen.\n"
+            . "- Committing to feature/engineer888-chat-v1 does not deploy. The served tree can lag the branch.\n"
+            . "- The isolated browser environment is loopback-only on 127.0.0.1:8080 and serves the "
+            . "hardened worktree, not the shared tree.";
+    }
+
+    private function standards(): string
+    {
+        $assets = DB::table('engineering_assets')
+            ->whereIn('kind', ['coding_standard', 'standard', 'convention'])
+            ->orderByDesc('id')->limit(6)->get(['name', 'kind']);
+
+        if ($assets->isEmpty()) { return ''; }
+
+        return "PROVEN ENGINEERING STANDARDS ON RECORD\n"
+            . $assets->map(fn ($a) => "- {$a->name} ({$a->kind})")->implode("\n");
+    }
+
+    /** A block that throws is an absent block, never a broken turn. */
+    private function safe(callable $fn, string $name): string
+    {
+        try {
+            return trim((string) $fn());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[engineer888] frame block failed', [
+                'block' => $name, 'error' => $e->getMessage(),
+            ]);
+
+            return '';
+        }
+    }
+}

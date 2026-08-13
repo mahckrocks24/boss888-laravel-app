@@ -45,7 +45,22 @@ final class CardIssuanceService
             return [];
         }
 
-        $eligible = $this->eligible($request);
+        // ── RELEVANCE IS A BACKEND CONCERN (2026-08-13) ──────────────────
+        //
+        // Measured before this line existed: eligible() answered globally and
+        // this conversation carried 101 live cards — 52 for the active project
+        // and 49 for projects it was not on — while visibleFor() capped at 50
+        // by id. Which decisions Boss could see was therefore decided by
+        // insertion order.
+        //
+        // Cards are a conversational construct. A decision that belongs to a
+        // repository this conversation is not pointed at is not a decision the
+        // conversation should be minting, so eligibility is scoped to the
+        // active project. Nothing is deleted and nothing is refused: those
+        // decisions remain real, remain in the database, and remain reachable
+        // from the Command Center, which reads tasks and candidates directly
+        // and never depended on chat cards.
+        $eligible = $this->eligible($request, $this->activeProjectId($conversation));
         $wanted = [];
 
         foreach ($eligible as $e) {
@@ -104,7 +119,14 @@ final class CardIssuanceService
             $card = $this->cards->issue(
                 $request,
                 $conversation,
-                null,
+                // THE CONVERSATIONAL ANCHOR (2026-08-13). message_id has
+                // existed since this table was created and was NULL on all
+                // 2117 rows, so every card floated free of the exchange that
+                // caused it. The anchor is the message CARRYING THIS TASK, not
+                // the newest message: a candidate becomes ready many turns
+                // after the request, and attaching its approval to whatever was
+                // said last would put it under an unrelated sentence.
+                $this->anchorMessageId($conversation, $e['task_uuid']),
                 $e['action_type'],
                 $e['task_uuid'],
                 $e['target_uuid']
@@ -124,7 +146,41 @@ final class CardIssuanceService
      *
      * @return array<int,array{action_type:string,task_uuid:?string,target_uuid:?string}>
      */
-    public function eligible(?Request $request): array
+    /**
+     * The project this conversation is pointed at, if any.
+     *
+     * Re-read rather than trusted from the passed object: a selection made on
+     * another surface a moment ago must be honoured, and a stale pointer would
+     * scope cards to the wrong repository.
+     */
+    /**
+     * The message this action belongs under, if the conversation has one.
+     *
+     * Returns null rather than a fallback. A wrong anchor is worse than none:
+     * an approval drawn under an unrelated sentence misrepresents what was
+     * being discussed when the decision arose.
+     */
+    private function anchorMessageId(object $conversation, ?string $taskUuid): ?int
+    {
+        if ($taskUuid === null) { return null; }
+
+        $id = DB::table('e888_messages')
+            ->where('conversation_id', $conversation->id)
+            ->where('task_uuid', $taskUuid)
+            ->orderByDesc('id')
+            ->value('id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    private function activeProjectId(object $conversation): ?int
+    {
+        $row = DB::table('e888_conversations')->where('id', $conversation->id)->first(['active_project_id']);
+
+        return $row?->active_project_id === null ? null : (int) $row->active_project_id;
+    }
+
+    public function eligible(?Request $request, ?int $projectId = null): array
     {
         $access = new Engineer888Access();
         $out = [];
@@ -150,6 +206,22 @@ final class CardIssuanceService
             ->where('c.status', 'VALIDATED')
             ->whereNull('a.id')
             ->whereNotIn('t.status', ['completed', 'failed'])
+            ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
+            // NEWEST CANDIDATE PER TASK ONLY.
+            //
+            // The acceptance loop left 26 tasks with identical titles, each
+            // carrying its own VALIDATED candidate and its own PENDING
+            // approval. None supersedes another because supersession is
+            // per-task and these are separate tasks — so all 26 were
+            // legitimately "awaiting a decision" and all 26 were offered at
+            // once, indistinguishable from each other.
+            //
+            // A task has one current proposal. An older candidate on the same
+            // task is history, not a second decision.
+            ->whereRaw('c.id = (select max(c2.id) from engineering_candidates c2
+                                 where c2.task_id = c.task_id and c2.superseded_at is null
+                                   and c2.status = ?)', ['VALIDATED'])
+            ->orderByDesc('c.id')
             ->select('c.uuid as cuuid', 't.uuid as tuuid')
             ->get();
 
@@ -171,6 +243,7 @@ final class CardIssuanceService
             ->whereNull('a.revoked_at')->whereNull('a.superseded_at')
             ->whereNull('c.superseded_at')
             ->whereNotIn('t.status', ['completed', 'failed'])
+            ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
             ->select('c.uuid as cuuid', 't.uuid as tuuid')
             ->get();
 
@@ -189,10 +262,12 @@ final class CardIssuanceService
         // engineering_recoveries carries no uuid of its own: a recovery is
         // identified by the candidate it is recovering. Selecting a `uuid`
         // column here was a defect — the table has task_uuid and candidate_uuid.
-        $recoveries = DB::table('engineering_recoveries')
-            ->where('status', 'FAILED_RECOVERY_BLOCKED')
-            ->whereNull('approved_at')
-            ->get(['task_uuid', 'candidate_uuid']);
+        $recoveries = DB::table('engineering_recoveries as rc')
+            ->join('engineering_tasks as t', 't.uuid', '=', 'rc.task_uuid')
+            ->where('rc.status', 'FAILED_RECOVERY_BLOCKED')
+            ->whereNull('rc.approved_at')
+            ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
+            ->get(['rc.task_uuid', 'rc.candidate_uuid']);
 
         foreach ($recoveries as $row) {
             if ($access->allows($request, \App\Core\Engineer888\Access\Engineer888Capability::APPROVE_RECOVERY)) {
@@ -208,6 +283,8 @@ final class CardIssuanceService
             ->join('engineering_candidates as c', 'c.uuid', '=', 'r.candidate_uuid')
             ->where('r.status', 'PASSED')
             ->whereNull('c.superseded_at')
+            ->join('engineering_tasks as mt', 'mt.uuid', '=', 'r.task_uuid')
+            ->when($projectId !== null, fn ($q) => $q->where('mt.project_id', $projectId))
             ->select('r.task_uuid', 'r.candidate_uuid')
             ->get();
 
