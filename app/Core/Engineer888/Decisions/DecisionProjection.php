@@ -5,6 +5,7 @@ namespace App\Core\Engineer888\Decisions;
 use App\Core\Engineer888\Access\Engineer888Access;
 use App\Core\Engineer888\Access\Engineer888AccessContext;
 use App\Core\Engineer888\Access\Engineer888Capability as Cap;
+use App\Core\Engineer888\Approval\ApprovalLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -58,6 +59,18 @@ final class DecisionProjection
 
     /** An approved candidate nobody has run yet. */
     public const KIND_EXECUTE = 'execute';
+
+    /**
+     * An approval that lapsed before anything ran it.
+     *
+     * Kept apart from KIND_EXECUTE rather than folded into it, because a
+     * surface that only knows "execute" would draw a run button for it.
+     */
+    public const KIND_EXPIRED = 'expired';
+
+    public function __construct(
+        private readonly ApprovalLedger $ledger = new ApprovalLedger(),
+    ) {}
 
     public function current(Engineer888AccessContext $ctx, ?int $projectId = null): array
     {
@@ -114,6 +127,8 @@ final class DecisionProjection
                 $items[$key] = [
                     'work_key'       => $key,
                     'kind'           => self::KIND_REVIEW,
+                    'state'          => DecisionState::REVIEW_REQUIRED,
+                    'executable'     => false,
                     'title'          => $r->title,
                     'project_id'     => (int) $r->project_id,
                     'project'        => $r->project_name,
@@ -151,6 +166,24 @@ final class DecisionProjection
         // Found 2026-08-13, immediately after two candidates were approved in
         // the browser: awaiting-review went to 2 and the two approved items
         // vanished from every surface rather than moving to the next state.
+        //
+        // ── AND THE SECOND HALF OF THAT LESSON (2026-08-14) ──────────
+        //
+        // The query below deliberately does NOT test expiry, and this block
+        // deliberately does NOT decide executability. Both jobs belong to
+        // ApprovalLedger, which already owns them for the execution path.
+        //
+        // The bug that made this necessary: those same two approvals carried a
+        // 12-hour TTL, it lapsed overnight, and this projection went on calling
+        // them execute decisions because it had its own idea of what "approved"
+        // meant — `approved_at IS NOT NULL AND NOT revoked AND NOT superseded`.
+        // ApprovalLedger::enforce() disagreed and would have refused on the
+        // press. Two implementations of one rule; the wrong one was the one
+        // Boss could see.
+        //
+        // So the SQL selects candidates for a decision and the LEDGER says what
+        // each one currently is. There is exactly one place that knows what an
+        // expired approval means, and it is not this file.
         $approved = DB::table('engineering_candidate_approvals as a')
             ->join('engineering_candidates as c', 'c.id', '=', 'a.candidate_id')
             ->join('engineering_tasks as t', 't.id', '=', 'a.task_id')
@@ -164,11 +197,22 @@ final class DecisionProjection
             ->orderByDesc('a.id')
             ->get([
                 'c.uuid as candidate_uuid', 'c.file_count', 'c.confidence',
-                'a.approved_at', 't.uuid as task_uuid', 't.title', 't.description',
+                'a.approved_at', 'a.state', 'a.expires_at', 'a.approver_name',
+                't.uuid as task_uuid', 't.title', 't.description',
                 't.current_stage', 'p.id as project_id', 'p.name as project_name',
             ]);
 
         foreach ($approved as $r) {
+            // THE ONLY SOURCE OF TRUTH FOR "CAN THIS RUN". Same call, same
+            // rule, same class the execution gate uses.
+            $authority  = $this->ledger->authorityState($r);
+            $state      = DecisionState::fromAuthorityState($authority);
+            $executable = DecisionState::isExecutable($state);
+
+            // A terminal ledger state is not a decision. It is history, and it
+            // belongs to the Decisions page's history section, not here.
+            if (! DecisionState::needsAttention($state)) { continue; }
+
             // Keyed apart from the review entry: the same work can legitimately
             // have one candidate approved and awaiting execution while a later
             // one awaits review. Two different decisions, two different asks.
@@ -178,7 +222,9 @@ final class DecisionProjection
 
             $items[$key] = [
                 'work_key'       => $key,
-                'kind'           => self::KIND_EXECUTE,
+                'kind'           => $executable ? self::KIND_EXECUTE : self::KIND_EXPIRED,
+                'state'          => $state,
+                'executable'     => $executable,
                 'title'          => $r->title,
                 'project_id'     => (int) $r->project_id,
                 'project'        => $r->project_name,
@@ -187,7 +233,12 @@ final class DecisionProjection
                 'file_count'     => $r->file_count === null ? null : (int) $r->file_count,
                 'confidence'     => $r->confidence,
                 'stage'          => $r->current_stage,
+                // HISTORY IS NOT REWRITTEN. Who approved it and when stay
+                // exactly as recorded even when the window has closed — the
+                // approval genuinely happened. Only `executable` moved.
                 'decided_at'     => $r->approved_at,
+                'approved_by'    => $r->approver_name,
+                'expires_at'     => $r->expires_at,
                 'raised_at'      => $r->approved_at,
                 'attempts'       => 1,
                 'history'        => [],

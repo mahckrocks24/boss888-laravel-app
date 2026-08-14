@@ -171,7 +171,70 @@ final class ApprovalLedger
             ->where('candidate_uuid', $candidateUuid)->first();
     }
 
-    /** The approval that could permit a write on this task, if any. */
+    /**
+     * Has this approval outlived the window it was granted for?
+     *
+     * THE ONE IMPLEMENTATION OF THE TTL RULE. enforce() asks it before writing
+     * EXPIRED, and authorityState() asks it to answer the same question without
+     * writing anything. Two copies of this comparison is how a projection ends
+     * up disagreeing with the gate — which is exactly what happened on
+     * 2026-08-14 and what this method exists to make impossible.
+     */
+    public function hasLapsed(object $approval): bool
+    {
+        return $approval->expires_at !== null && now()->greaterThan($approval->expires_at);
+    }
+
+    /**
+     * The state this approval EFFECTIVELY has right now. Reads nothing, writes nothing.
+     *
+     * An approval whose stored state is APPROVED but whose TTL has passed is
+     * EXPIRED as far as authority is concerned — enforce() will refuse it and
+     * record that state on the next execution attempt. This method returns the
+     * answer enforce() would give, so a surface can ask "may this run?" without
+     * mutating a governance row to find out.
+     *
+     * ── WHAT THIS IS NOT ────────────────────────────────────────────────
+     *
+     * These are the LEDGER gates only: state and expiry. The binding gate —
+     * candidate, task, project, provider, model, every file hash and the
+     * pre-image — still lives in enforce() and still has to pass. A caller that
+     * treats a permissive answer here as permission to write would be skipping
+     * half the gate. Nothing does; presentation surfaces call this to decide
+     * what to SHOW, and execution goes through enforce() as it always has.
+     */
+    public function authorityState(object $approval): string
+    {
+        $state = (string) $approval->state;
+
+        if ($state === ApprovalState::APPROVED && $this->hasLapsed($approval)) {
+            return ApprovalState::EXPIRED;
+        }
+
+        return $state;
+    }
+
+    /**
+     * Could this approval still permit execution, as of now?
+     *
+     * For presentation. See authorityState() for what this deliberately does
+     * not check.
+     */
+    public function permitsExecutionNow(object $approval): bool
+    {
+        return ApprovalState::permitsExecution($this->authorityState($approval));
+    }
+
+    /**
+     * The approval that could permit a write on this task, if any.
+     *
+     * DELIBERATELY DOES NOT FILTER ON EXPIRY. Its callers hand the row straight
+     * to enforce(), which refuses a lapsed approval AND records EXPIRED onto
+     * the row. Excluding lapsed rows here would make enforce() unreachable for
+     * them, so the state would never be written and the audit trail would stop
+     * saying why a task stopped. Callers that only want to know whether
+     * execution is currently possible must ask permitsExecutionNow().
+     */
     public function activeFor(int $taskId): ?object
     {
         return DB::table('engineering_candidate_approvals')
@@ -230,7 +293,7 @@ final class ApprovalLedger
             );
         }
 
-        if ($approval->expires_at !== null && now()->greaterThan($approval->expires_at)) {
+        if ($this->hasLapsed($approval)) {
             // Recorded as expired so the next read does not have to re-derive it.
             DB::table('engineering_candidate_approvals')->where('id', $approval->id)
                 ->update(['state' => ApprovalState::EXPIRED, 'updated_at' => now()]);

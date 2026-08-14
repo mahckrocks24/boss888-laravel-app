@@ -3,6 +3,7 @@
 namespace App\Core\Engineer888\Chat;
 
 use App\Core\Engineer888\Access\Engineer888Access;
+use App\Core\Engineer888\Approval\ApprovalLedger;
 use App\Core\Engineer888\Approval\ApprovalState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -236,6 +237,20 @@ final class CardIssuanceService
 
         // ── B. Approved candidate awaiting implementation ────────────────
         // An approval that is live, and a task that has not yet run it.
+        //
+        // "LIVE" IS THE LEDGER'S WORD, NOT THIS QUERY'S (2026-08-14). The
+        // predicate below reads `approved_at IS NOT NULL AND NOT revoked AND
+        // NOT superseded`, and for a long time that was the whole test. It does
+        // not catch an approval whose TTL has passed — enforce() writes
+        // state=EXPIRED on such a row, but approved_at stays set and neither
+        // revoked_at nor superseded_at is ever touched, so the row sailed
+        // straight through and this service minted an execute_task card for it.
+        //
+        // A CARD IS AN AUTHORITY. Issuing one against an approval that the gate
+        // will refuse hands Boss a button whose only possible outcome is a
+        // refusal — the exact "control that looks available" failure the header
+        // comment of this class is about. So the rows are fetched, and
+        // ApprovalLedger decides which of them still permit a run.
         $approved = DB::table('engineering_candidate_approvals as a')
             ->join('engineering_candidates as c', 'c.id', '=', 'a.candidate_id')
             ->join('engineering_tasks as t', 't.id', '=', 'a.task_id')
@@ -244,14 +259,25 @@ final class CardIssuanceService
             ->whereNull('c.superseded_at')
             ->whereNotIn('t.status', ['completed', 'failed'])
             ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
-            ->select('c.uuid as cuuid', 't.uuid as tuuid')
+            ->select('c.uuid as cuuid', 't.uuid as tuuid', 'a.state', 'a.expires_at')
             ->get();
 
+        $ledger = new ApprovalLedger();
+
         foreach ($approved as $row) {
+            // Same call the projection makes and the same rule enforce() applies.
+            if (! $ledger->permitsExecutionNow($row)) {
+                continue;
+            }
+
             if ($access->allows($request, \App\Core\Engineer888\Access\Engineer888Capability::EXECUTE)) {
                 $out[] = ['action_type' => ActionCardService::EXECUTE_TASK, 'task_uuid' => $row->tuuid, 'target_uuid' => $row->cuuid];
             }
             // E. The same live approval is revocable while it remains unspent.
+            //
+            // Revocation follows execution deliberately. Withdrawing an
+            // approval that can no longer authorise anything is not a decision
+            // Boss needs offered; the window already did it.
             if ($access->allows($request, \App\Core\Engineer888\Access\Engineer888Capability::APPROVE_CANDIDATE)) {
                 $out[] = ['action_type' => ActionCardService::REVOKE_APPROVAL, 'task_uuid' => $row->tuuid, 'target_uuid' => $row->cuuid];
             }

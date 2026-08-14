@@ -125,6 +125,14 @@ final class DecisionPresentationResolver
 
         return [
             'kind'           => $item['kind'] ?? DecisionProjection::KIND_REVIEW,
+            // WHAT IT IS, AND WHETHER IT CAN RUN — carried straight from the
+            // projection, which got it from ApprovalLedger. The card must be
+            // able to say "this approval expired" instead of drawing a run
+            // button that the gate is going to refuse.
+            'state'          => $item['state'] ?? DecisionState::REVIEW_REQUIRED,
+            'executable'     => (bool) ($item['executable'] ?? false),
+            'approved_by'    => $item['approved_by'] ?? null,
+            'expires_at'     => $item['expires_at'] ?? null,
             'title'          => $item['title'],
             'project'        => $item['project'],
             'file_count'     => $item['file_count'],
