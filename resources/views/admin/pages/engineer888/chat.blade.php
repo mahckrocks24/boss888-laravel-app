@@ -553,30 +553,28 @@ window.page = async function () {
 
     btn.style.display = '';
     btn.textContent = n === 1 ? '1 decision waiting' : n + ' decisions waiting';
-    btn.title = OTHER_PROJECT_COUNT
-      ? OTHER_PROJECT_COUNT + ' more on other projects'
-      : 'Review the current decision';
+    btn.title = 'Open Decisions';
   }
 
   /**
-   * Open the canonical decision.
+   * Open the canonical Decisions surface.
    *
-   * The canonical one is the most recent for the active project - the same
-   * relevance the server already applies when it decides which cards to issue.
-   * Older decisions on the same project remain pending and reachable; they are
-   * simply not what "review the decision" means right now.
+   * THE COUNT AND THE CLICK NOW COME FROM THE SAME PLACE (2026-08-14).
+   *
+   * The badge has read DecisionProjection since the projection existed, but
+   * the click did not: it took DECISIONS[0] from the client-side card
+   * grouping and opened whatever approve_candidate card happened to be first.
+   * So the badge could say "3 decisions waiting" and the click could open one
+   * of them, silently, with no way to reach the other two - and if the first
+   * decision was READY_TO_EXECUTE or APPROVAL_EXPIRED it carried no
+   * approve_candidate card at all and the click did nothing whatsoever.
+   *
+   * A counter that opens the thing it counted is the whole contract. The
+   * Decisions page reads the same projection the badge does, so the number and
+   * the destination cannot disagree.
    */
   function openCanonicalDecision() {
-    if (!DECISIONS.length) { return; }
-
-    var g = DECISIONS[0];
-    var review = null;
-
-    g.actions.forEach(function (c) {
-      if (c.action_type === 'approve_candidate') { review = c.uuid; }
-    });
-
-    if (review) { openReview(review); }
+    window.location.href = '/admin/engineer888/decisions';
   }
 
   function render(messages, cards, force) {

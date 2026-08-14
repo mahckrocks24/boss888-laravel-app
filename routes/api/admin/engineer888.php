@@ -21,6 +21,7 @@
 
 use App\Core\Engineer888\Access\Engineer888Capability as Cap;
 use App\Http\Controllers\Api\Admin\Engineer888Controller;
+use App\Http\Controllers\Api\Admin\Engineer888DecisionsController;
 use App\Http\Middleware\DenyApiKeyAuth;
 use App\Http\Middleware\RequireEngineer888Access as Gate;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,14 @@ Route::prefix('engineer888')->middleware([DenyApiKeyAuth::class])->group(functio
     // ── read ────────────────────────────────────────────────────────────
     Route::get('/bootstrap',         [Engineer888Controller::class, 'bootstrap'])
         ->middleware(Gate::class . ':' . Cap::DISCOVER);
+
+    // The canonical Decisions surface. REVIEW_CANDIDATE rather than VIEW: the
+    // payload carries candidate identity, file counts and live card uuids, and
+    // that is the same bar reading a candidate already sets. It is the exact
+    // capability DecisionProjection itself checks, so the route and the
+    // projection cannot disagree about who may see this.
+    Route::get('/decisions',         [Engineer888DecisionsController::class, 'index'])
+        ->middleware(Gate::class . ':' . Cap::REVIEW_CANDIDATE);
 
     Route::get('/projects',          [Engineer888Controller::class, 'projects'])
         ->middleware(Gate::class . ':' . Cap::VIEW);

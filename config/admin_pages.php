@@ -251,6 +251,24 @@ return [
         'icon'   => '&#128172;',
     ],
 
+    // ── Engineer888 Decisions (2026-08-14) ──────────────────────
+    // The canonical answer to "what is waiting on me". Declared straight
+    // after Chat because that is the order Boss works in: read the
+    // conversation, then act on what it says is waiting.
+    //
+    // Same capability as every other Engineer888 page, so AdminRegistry
+    // filters it server-side through Engineer888Access and an unauthorised
+    // administrator never receives the slug at all.
+    'e888Decisions' => [
+        'capability' => 'engineer888.discover',
+        'slug'   => 'engineer888/decisions',
+        'group'  => 'Engineer888',
+        'label'  => 'Decisions',
+        'title'  => 'Engineer888 — Decisions',
+        'icon'   => '&#9878;',
+        'indent' => true,
+    ],
+
     'e888Tasks' => [
         // Server-side visibility. AdminRegistry filters on this and
         // AdminAccess routes engineer888.* to Engineer888Access, so the

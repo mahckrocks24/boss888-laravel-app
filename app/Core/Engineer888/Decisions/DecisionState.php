@@ -79,6 +79,24 @@ final class DecisionState
         self::REVIEW_REQUIRED, self::READY_TO_EXECUTE, self::APPROVAL_EXPIRED,
     ];
 
+    /**
+     * Task statuses that mean the run has already been triggered.
+     *
+     * ── THE SAME MISTAKE, A SECOND TIME (2026-08-14) ────────────────────
+     *
+     * ActionCardExecutor claims a task with
+     * `whereNotIn('status', ['queued','running','recovering'])` and refuses a
+     * second press with WORKFLOW_ALREADY_RUNNING. The projection did not know
+     * that, so a task Boss had already started still read READY_TO_EXECUTE —
+     * a run button whose only outcome was a refusal, which is exactly the
+     * expiry defect wearing different clothes.
+     *
+     * Found by the Decisions page's own test, before the page shipped.
+     * The list lives here so the projection, the card issuer and the executor
+     * cannot drift apart on what "already running" means.
+     */
+    public const IN_FLIGHT_TASK_STATUSES = ['queued', 'running', 'recovering'];
+
     /** Is this a state a human still has to do something about? */
     public static function needsAttention(string $state): bool
     {

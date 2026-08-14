@@ -155,11 +155,29 @@ class SingleAccountOmissionTest extends TestCase
         $this->assertStringNotContainsString('engineer888', $surface,
             'the nav, the titles and window.ADMIN_PAGES are one list; the module must be absent from all of it');
 
-        foreach (['engineer888', 'engineer888/chat', 'engineer888/projects'] as $slug) {
+        foreach (self::MODULE_SLUGS as $slug) {
             $this->assertNull($registry->keyForSlug($request, $slug),
                 "/admin/{$slug} must be indistinguishable from a typo for this admin");
         }
     }
+
+    /**
+     * Every page the module publishes. Named, not counted.
+     *
+     * A bare count told us a page had been added but not which one, and it
+     * would have passed just as happily if a page had been added AND another
+     * removed. The omission test above walks this same list, so a new
+     * Engineer888 surface cannot ship without something asserting that the
+     * other administrator cannot reach it either.
+     *
+     * `engineer888/decisions` joined on 2026-08-14.
+     */
+    private const MODULE_SLUGS = [
+        'engineer888',
+        'engineer888/chat',
+        'engineer888/decisions',
+        'engineer888/projects',
+    ];
 
     public function test_the_canonical_admin_does_see_the_module(): void
     {
@@ -167,10 +185,16 @@ class SingleAccountOmissionTest extends TestCase
         $request  = $this->requestAsUser($this->canonicalUser());
 
         $slugs = $registry->slugMapFor($request);
-        $e888  = array_filter($slugs, fn ($s) => str_starts_with((string) $s, 'engineer888'));
+        $e888  = array_values(array_filter($slugs, fn ($s) => str_starts_with((string) $s, 'engineer888')));
 
-        $this->assertCount(3, $e888,
-            'this test is the control: if the module is hidden from Mark too, the omission tests prove nothing');
+        sort($e888);
+        $expected = self::MODULE_SLUGS;
+        sort($expected);
+
+        $this->assertSame($expected, $e888,
+            'this test is the control: if the module is hidden from Mark too, the omission tests prove '
+            . 'nothing. It names the pages rather than counting them, so adding one and dropping another '
+            . 'cannot cancel out.');
     }
 
     /**

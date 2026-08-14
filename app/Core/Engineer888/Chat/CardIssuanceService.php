@@ -258,6 +258,12 @@ final class CardIssuanceService
             ->whereNull('a.revoked_at')->whereNull('a.superseded_at')
             ->whereNull('c.superseded_at')
             ->whereNotIn('t.status', ['completed', 'failed'])
+            // AND NOT ONE ALREADY IN FLIGHT. ActionCardExecutor claims a task
+            // with whereNotIn(status, queued|running|recovering) and refuses a
+            // second press with WORKFLOW_ALREADY_RUNNING, so a card issued for
+            // a task that is already going is another button that can only
+            // fail. Same list, one definition.
+            ->whereNotIn('t.status', \App\Core\Engineer888\Decisions\DecisionState::IN_FLIGHT_TASK_STATUSES)
             ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
             ->select('c.uuid as cuuid', 't.uuid as tuuid', 'a.state', 'a.expires_at')
             ->get();

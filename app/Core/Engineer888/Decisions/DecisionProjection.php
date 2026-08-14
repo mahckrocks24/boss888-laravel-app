@@ -195,6 +195,15 @@ final class DecisionProjection
             ->whereNull('a.superseded_at')
             ->whereNull('c.superseded_at')
             ->whereNotIn('t.status', ['completed', 'failed'])
+            // ALREADY TRIGGERED IS NOT AWAITING A TRIGGER. A queued or running
+            // task has had its decision taken; ActionCardExecutor would refuse
+            // a second press with WORKFLOW_ALREADY_RUNNING. It belongs in the
+            // In progress section, which reports rather than offers.
+            //
+            // Same defect as the expiry one, found by the Decisions page's own
+            // test before that page shipped: a control whose only outcome is a
+            // refusal.
+            ->whereNotIn('t.status', DecisionState::IN_FLIGHT_TASK_STATUSES)
             ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
             ->orderByDesc('a.id')
             ->get([
@@ -317,6 +326,109 @@ final class DecisionProjection
     public function needingAttention(Engineer888AccessContext $ctx, ?int $projectId = null): array
     {
         return $this->inStates($ctx, DecisionState::ATTENTION_REQUIRED, $projectId);
+    }
+
+    /**
+     * Work currently moving, which is not a decision.
+     *
+     * The Decisions page shows it so that "nothing needs you" and "nothing is
+     * happening" cannot be confused. Nothing here is actionable — a task that
+     * is queued or running has already been decided, and the next thing to
+     * arrive from it is evidence, not a question.
+     *
+     * @return array<int,array>
+     */
+    public function inProgress(Engineer888AccessContext $ctx, ?int $projectId = null): array
+    {
+        if (! (new Engineer888Access())->allowsContext($ctx, Cap::REVIEW_CANDIDATE)) {
+            return [];
+        }
+
+        return DB::table('engineering_tasks as t')
+            ->join('engineering_projects as p', 'p.id', '=', 't.project_id')
+            ->whereIn('t.status', DecisionState::IN_FLIGHT_TASK_STATUSES)
+            ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
+            ->orderByDesc('t.updated_at')
+            ->limit(20)
+            ->get(['t.uuid as task_uuid', 't.title', 't.status', 't.current_stage',
+                   't.updated_at', 'p.id as project_id', 'p.name as project_name'])
+            ->map(fn ($r) => [
+                'task_uuid'  => $r->task_uuid,
+                'title'      => $r->title,
+                'status'     => $r->status,
+                'stage'      => $r->current_stage,
+                'project'    => $r->project_name,
+                'project_id' => (int) $r->project_id,
+                'since'      => $r->updated_at,
+            ])->all();
+    }
+
+    /**
+     * Decisions already taken. Newest first, never deleted, never rewritten.
+     *
+     * ── WHY HISTORY IS A SECTION AND NOT A FOOTNOTE ─────────────────────
+     *
+     * The acceptance loop left 23 Bug Tracker attempts and this system has
+     * rejected, revoked and superseded plenty besides. current() folds the
+     * repeats away so Boss sees one decision instead of twenty-three, and that
+     * folding is only safe because nothing is lost — the earlier attempts stay
+     * reachable, here and under each item's `history`.
+     *
+     * An expired approval is deliberately NOT here. It is still waiting on
+     * him: he can ask for the task to run again. Terminal means decided, and
+     * "the window closed" is not a decision anybody made.
+     *
+     * @return array<int,array>
+     */
+    public function history(Engineer888AccessContext $ctx, ?int $projectId = null, int $limit = 40): array
+    {
+        if (! (new Engineer888Access())->allowsContext($ctx, Cap::REVIEW_CANDIDATE)) {
+            return [];
+        }
+
+        $rows = DB::table('engineering_candidate_approvals as a')
+            ->join('engineering_candidates as c', 'c.id', '=', 'a.candidate_id')
+            ->join('engineering_tasks as t', 't.id', '=', 'a.task_id')
+            ->join('engineering_projects as p', 'p.id', '=', 't.project_id')
+            ->when($projectId !== null, fn ($q) => $q->where('t.project_id', $projectId))
+            ->orderByDesc('a.id')
+            ->limit(max(1, $limit) * 3)
+            ->get([
+                'a.id as approval_id', 'a.state', 'a.expires_at', 'a.approved_at',
+                'a.decided_at', 'a.revoked_at', 'a.superseded_at', 'a.approver_name',
+                'a.updated_at', 'c.uuid as candidate_uuid', 'c.file_count',
+                't.uuid as task_uuid', 't.title', 't.status as task_status',
+                'p.id as project_id', 'p.name as project_name',
+            ]);
+
+        $out = [];
+
+        foreach ($rows as $r) {
+            $state = $r->task_status === 'completed'
+                ? DecisionState::COMPLETED
+                : DecisionState::fromAuthorityState($this->ledger->authorityState($r));
+
+            // Still waiting on him, so it belongs on the other side of the page.
+            if (DecisionState::needsAttention($state)) { continue; }
+
+            $out[] = [
+                'state'          => $state,
+                'title'          => $r->title,
+                'project'        => $r->project_name,
+                'project_id'     => (int) $r->project_id,
+                'task_uuid'      => $r->task_uuid,
+                'candidate_uuid' => $r->candidate_uuid,
+                'file_count'     => $r->file_count === null ? null : (int) $r->file_count,
+                'approved_by'    => $r->approver_name,
+                'decided_at'     => $r->decided_at ?? $r->revoked_at ?? $r->superseded_at ?? $r->approved_at ?? $r->updated_at,
+                'actions'        => DecisionState::offerableActions($state),
+                'explanation'    => DecisionState::explanation($state),
+            ];
+
+            if (count($out) >= $limit) { break; }
+        }
+
+        return $out;
     }
 
     /**
