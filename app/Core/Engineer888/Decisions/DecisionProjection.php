@@ -129,6 +129,8 @@ final class DecisionProjection
                     'kind'           => self::KIND_REVIEW,
                     'state'          => DecisionState::REVIEW_REQUIRED,
                     'executable'     => false,
+                    'actions'        => DecisionState::offerableActions(DecisionState::REVIEW_REQUIRED),
+                    'explanation'    => DecisionState::explanation(DecisionState::REVIEW_REQUIRED),
                     'title'          => $r->title,
                     'project_id'     => (int) $r->project_id,
                     'project'        => $r->project_name,
@@ -225,6 +227,8 @@ final class DecisionProjection
                 'kind'           => $executable ? self::KIND_EXECUTE : self::KIND_EXPIRED,
                 'state'          => $state,
                 'executable'     => $executable,
+                'actions'        => DecisionState::offerableActions($state),
+                'explanation'    => DecisionState::explanation($state),
                 'title'          => $r->title,
                 'project_id'     => (int) $r->project_id,
                 'project'        => $r->project_name,
@@ -252,6 +256,67 @@ final class DecisionProjection
     public function count(Engineer888AccessContext $ctx, ?int $projectId = null): int
     {
         return count($this->current($ctx, $projectId));
+    }
+
+    /**
+     * The decisions in these states, in projection order.
+     *
+     * ── WHY THE QUESTIONS ARE NOT THE SAME QUESTION ─────────────────────
+     *
+     * "What needs my approval?" and "What can I execute?" have different
+     * answers, and answering both with current() is how a surface ends up
+     * offering a run button for something nobody has read yet — or, as
+     * happened on 2026-08-14, offering one for an approval that lapsed
+     * overnight. The state is already computed from the ledger; this just lets
+     * a caller ask for the slice it means.
+     *
+     * @param  array<int,string> $states
+     * @return array<int,array>
+     */
+    public function inStates(Engineer888AccessContext $ctx, array $states, ?int $projectId = null): array
+    {
+        return array_values(array_filter(
+            $this->current($ctx, $projectId),
+            fn ($i) => in_array($i['state'], $states, true)
+        ));
+    }
+
+    /**
+     * Awaiting a human's judgement of the bytes.
+     *
+     * An expired approval is deliberately NOT here. It is not an active
+     * approval request: nobody can approve it, because approve() refuses any
+     * row that is not PENDING. Presenting it under "what needs my approval"
+     * would be offering a decision that cannot be taken.
+     *
+     * @return array<int,array>
+     */
+    public function awaitingApproval(Engineer888AccessContext $ctx, ?int $projectId = null): array
+    {
+        return $this->inStates($ctx, [DecisionState::REVIEW_REQUIRED], $projectId);
+    }
+
+    /**
+     * Genuinely runnable right now — approved, inside its window, unspent.
+     *
+     * @return array<int,array>
+     */
+    public function executable(Engineer888AccessContext $ctx, ?int $projectId = null): array
+    {
+        return $this->inStates($ctx, [DecisionState::READY_TO_EXECUTE], $projectId);
+    }
+
+    /**
+     * Everything still wanting something from Boss, expired approvals included.
+     *
+     * The expired ones come with an explanation rather than an action. They are
+     * not dropped: the work is real and the approval genuinely happened.
+     *
+     * @return array<int,array>
+     */
+    public function needingAttention(Engineer888AccessContext $ctx, ?int $projectId = null): array
+    {
+        return $this->inStates($ctx, DecisionState::ATTENTION_REQUIRED, $projectId);
     }
 
     /**

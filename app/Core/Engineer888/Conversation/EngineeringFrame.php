@@ -188,19 +188,48 @@ final class EngineeringFrame
 
             if ($items === []) { return ''; }
 
+            // ── STATE, NOT JUST TITLE (2026-08-14) ───────────────────
+            //
+            // "Approved" and "can be run" stopped being the same thing when
+            // the expiry defect was fixed, so the model has to be told which
+            // it is looking at. Without the state on the line it can only
+            // infer, and the inference it would make — approved means ready —
+            // is exactly the one that was wrong.
             $lines = [];
+            $byState = [];
+
             foreach ($items as $i) {
-                $lines[] = '- ' . mb_strimwidth((string) $i['title'], 0, 64, '...')
+                $byState[$i['state']] = ($byState[$i['state']] ?? 0) + 1;
+
+                $line = '- [' . $i['state'] . '] ' . mb_strimwidth((string) $i['title'], 0, 60, '...')
                     . ' (' . $i['file_count'] . ' files, ' . $i['confidence'] . ' confidence'
                     . ($i['history'] ? ', ' . count($i['history']) . ' earlier attempts' : '')
                     . ')';
+
+                if ($i['state'] === \App\Core\Engineer888\Decisions\DecisionState::APPROVAL_EXPIRED) {
+                    $line .= "\n    approved by " . ($i['approved_by'] ?: 'a human')
+                        . ' at ' . $i['decided_at'] . ', window closed ' . $i['expires_at']
+                        . '. NOT executable. The candidate is unchanged and kept as history; '
+                        . 'the only way forward is to run the task again for a fresh candidate, '
+                        . 'and only if Boss asks for that.';
+                }
+
+                $lines[] = $line;
             }
 
-            return "DECISIONS AWAITING BOSS (" . count($items) . " in total)\n"
+            $summary = [];
+            foreach ($byState as $s => $n) { $summary[] = "{$n} {$s}"; }
+
+            return "DECISIONS AWAITING BOSS (" . count($items) . " in total: " . implode(', ', $summary) . ")\n"
                 . implode("\n", $lines) . "\n"
                 . "This is the authoritative count. Repeated attempts at the same brief are folded "
                 . "into one decision and earlier attempts are history, not separate work. Never "
-                . "quote a larger number from anywhere else.";
+                . "quote a larger number from anywhere else.\n"
+                . "REVIEW_REQUIRED needs his judgement of the bytes. READY_TO_EXECUTE is approved, "
+                . "in date and runnable. APPROVAL_EXPIRED was approved but the window closed before "
+                . "anything ran it — it cannot be executed, cannot be approved again, and cannot have "
+                . "its expiry extended. Do not describe an expired approval as awaiting approval, and "
+                . "never count it among what he can execute.";
         }
 
         $max = (int) ($this->limits['max_candidates'] ?? 5);

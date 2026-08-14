@@ -63,10 +63,51 @@ final class DecisionPresentationResolver
         }
 
         if ($intent === 'SHOW_DECISIONS') {
-            return array_map(fn ($i) => $this->ref($i), $this->projection->current($ctx, $projectId));
+            return array_map(
+                fn ($i) => $this->ref($i),
+                $this->projection->inStates($ctx, $this->scopeFor($hint), $projectId)
+            );
         }
 
         return [];
+    }
+
+    /**
+     * Which slice of the projection "show me those" means this time.
+     *
+     * ── THREE QUESTIONS, THREE ANSWERS ──────────────────────────────────
+     *
+     *   "what needs my approval?"   → REVIEW_REQUIRED only
+     *   "what can I execute?"       → READY_TO_EXECUTE only
+     *   "what needs my attention?"  → everything actionable, expired included
+     *
+     * An expired approval is excluded from the approval slice deliberately.
+     * Nobody can approve it — approve() refuses any row that is not PENDING —
+     * so listing it as awaiting approval would be offering a decision that
+     * cannot be taken. It stays in the attention slice, where it belongs,
+     * carrying its explanation.
+     *
+     * THE MODEL SUPPLIES WORDS, NOT A FILTER. What arrives here is whatever
+     * Boss said, passed through unchanged. The mapping below is the server's,
+     * it is total, and its default is the widest honest answer rather than a
+     * guess: if the phrasing does not clearly mean one slice, he is shown
+     * everything that is waiting on him.
+     *
+     * @return array<int,string>
+     */
+    private function scopeFor(?string $hint): array
+    {
+        $h = mb_strtolower(trim((string) $hint));
+
+        if ($h !== '' && preg_match('/\b(execut|run|deploy|install|ship|apply)/', $h)) {
+            return [DecisionState::READY_TO_EXECUTE];
+        }
+
+        if ($h !== '' && preg_match('/\b(approv|sign off|review|judge)/', $h)) {
+            return [DecisionState::REVIEW_REQUIRED];
+        }
+
+        return DecisionState::ATTENTION_REQUIRED;
     }
 
     /**
@@ -121,7 +162,17 @@ final class DecisionPresentationResolver
      */
     private function renderSafe(Engineer888AccessContext $ctx, array $item): array
     {
-        $cards = $this->currentCardsFor($item['candidate_uuid']);
+        $cards   = $this->currentCardsFor($item['candidate_uuid']);
+        $state   = $item['state'] ?? DecisionState::REVIEW_REQUIRED;
+        $actions = $item['actions'] ?? DecisionState::offerableActions($state);
+
+        // A CARD IS EXPOSED ONLY WHERE THE STATE ALLOWS THE ACTION.
+        //
+        // Belt and braces with CardIssuanceService, which no longer mints an
+        // execute card for a lapsed approval. If a stale one is still open in
+        // the table, this will not hand it to the page — the two gates fail
+        // closed independently, so neither has to be the only one that works.
+        $allow = fn (string $a, ?string $uuid) => in_array($a, $actions, true) ? $uuid : null;
 
         return [
             'kind'           => $item['kind'] ?? DecisionProjection::KIND_REVIEW,
@@ -129,8 +180,10 @@ final class DecisionPresentationResolver
             // projection, which got it from ApprovalLedger. The card must be
             // able to say "this approval expired" instead of drawing a run
             // button that the gate is going to refuse.
-            'state'          => $item['state'] ?? DecisionState::REVIEW_REQUIRED,
+            'state'          => $state,
             'executable'     => (bool) ($item['executable'] ?? false),
+            'actions'        => $actions,
+            'explanation'    => $item['explanation'] ?? DecisionState::explanation($state),
             'approved_by'    => $item['approved_by'] ?? null,
             'expires_at'     => $item['expires_at'] ?? null,
             'title'          => $item['title'],
@@ -141,10 +194,24 @@ final class DecisionPresentationResolver
             'earlier'        => count($item['history']),
             'task_uuid'      => $item['task_uuid'],
             'candidate_uuid' => $item['candidate_uuid'],
-            'review_card'    => $cards['approve_candidate'] ?? null,
-            'reject_card'    => $cards['reject_candidate'] ?? null,
-            'stale'          => $cards === [],
+            'review_card'    => $allow(DecisionState::ACTION_APPROVE, $cards['approve_candidate'] ?? null),
+            'reject_card'    => $allow(DecisionState::ACTION_REJECT, $cards['reject_candidate'] ?? null),
+            'execute_card'   => $allow(DecisionState::ACTION_EXECUTE, $cards['execute_task'] ?? null),
+            // "Stale" means there is an action to take and no live card to take
+            // it with. A read-only state has no card by design, so it is never
+            // stale — saying so would be reporting a fault that is not one.
+            'stale'          => $this->needsCard($actions) && $cards === [],
         ];
+    }
+
+    /** Does this state's action set require a card to be actionable at all? */
+    private function needsCard(array $actions): bool
+    {
+        return array_intersect($actions, [
+            DecisionState::ACTION_APPROVE,
+            DecisionState::ACTION_REJECT,
+            DecisionState::ACTION_EXECUTE,
+        ]) !== [];
     }
 
     /**

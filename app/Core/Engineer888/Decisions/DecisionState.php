@@ -91,6 +91,82 @@ final class DecisionState
         return $state === self::READY_TO_EXECUTE;
     }
 
+    // ── WHAT A SURFACE MAY OFFER ────────────────────────────────────────
+    //
+    // Presentation vocabulary, not authority. Naming an action here does not
+    // create permission to take it: approve and execute still go through a card
+    // the server issued against exact evidence, and the two view actions change
+    // nothing at all. What this list decides is what a human is SHOWN, and that
+    // is the thing that was wrong.
+
+    /** Open the candidate and read its bytes. Changes nothing. */
+    public const ACTION_VIEW_CANDIDATE = 'view_candidate';
+
+    /** Read the earlier attempts and the evidence behind them. Changes nothing. */
+    public const ACTION_VIEW_HISTORY = 'view_history';
+
+    /** Approve these exact bytes. Needs a card and a typed statement. */
+    public const ACTION_APPROVE = 'approve';
+
+    /** Refuse these exact bytes. Needs a card. */
+    public const ACTION_REJECT = 'reject';
+
+    /** Run the approved bytes. Needs a card AND a live approval. */
+    public const ACTION_EXECUTE = 'execute';
+
+    /**
+     * What a surface may put in front of Boss for a decision in this state.
+     *
+     * ── APPROVAL_EXPIRED GETS NO ACTION AT ALL ──────────────────────────
+     *
+     * Not execute — the ledger would refuse it. Not approve, renew or extend —
+     * none of those exist. approve() throws on any row that is not PENDING and
+     * record() will not open a second row for the same candidate, so a lapsed
+     * approval is TERMINAL for its candidate. The only forward path is a new
+     * candidate, and that is a task re-run, which is ordinary governed work
+     * that Boss asks for in his own words. It is not a button on a decision
+     * card, because a button here would spend provider budget on a press.
+     *
+     * So an expired decision is explained, not actioned. See explanation().
+     *
+     * @return array<int,string>
+     */
+    public static function offerableActions(string $state): array
+    {
+        return match ($state) {
+            self::REVIEW_REQUIRED => [
+                self::ACTION_VIEW_CANDIDATE, self::ACTION_VIEW_HISTORY,
+                self::ACTION_APPROVE, self::ACTION_REJECT,
+            ],
+            self::READY_TO_EXECUTE => [
+                self::ACTION_VIEW_CANDIDATE, self::ACTION_VIEW_HISTORY,
+                self::ACTION_EXECUTE,
+            ],
+            // APPROVAL_EXPIRED and every terminal state: read-only.
+            default => [self::ACTION_VIEW_CANDIDATE, self::ACTION_VIEW_HISTORY],
+        };
+    }
+
+    /**
+     * Why this decision is in the state it is in, in Boss's language.
+     *
+     * Returned for the states where "what am I looking at" is not obvious from
+     * the label. Null where the label already says it.
+     */
+    public static function explanation(string $state): ?string
+    {
+        return match ($state) {
+            self::APPROVAL_EXPIRED =>
+                'Your approval expired before this candidate was executed. Nothing was changed. '
+                . 'The candidate is preserved for history, but it can no longer be executed. '
+                . 'If you still want to proceed, ask me to run the task again and I will prepare '
+                . 'a fresh candidate for review.',
+            self::REVOKED    => 'This approval was withdrawn after it was given, so it authorises nothing.',
+            self::SUPERSEDED => 'A newer candidate replaced this one, so the approval no longer describes what would be written.',
+            default          => null,
+        };
+    }
+
     /**
      * The decision state an approval row in this ledger state produces.
      *
