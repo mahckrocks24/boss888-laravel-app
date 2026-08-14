@@ -205,5 +205,15 @@
     h += '</div>';
 
     content().innerHTML = h;
+
+    // The shell ships "Loading..." in the topbar and every page is responsible
+    // for replacing it. Left alone it says the page is still loading forever,
+    // which is a small lie in the one place on screen whose whole job is to
+    // report state.
+    var tb = document.getElementById('topbar-status');
+    if (tb) {
+      tb.textContent = (total === 0 ? 'Nothing waiting' : total + ' waiting')
+        + ' . ' + (d.scope && d.scope.project ? d.scope.project : 'All projects');
+    }
   };
 </script>

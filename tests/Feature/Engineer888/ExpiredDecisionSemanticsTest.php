@@ -248,6 +248,113 @@ class ExpiredDecisionSemanticsTest extends TestCase
             'the live card exists, and the state still refuses to hand it over');
     }
 
+    // ── what the model is TOLD about authority ──────────────────────────
+
+    public function test_the_frame_never_calls_a_lapsed_approval_runnable(): void
+    {
+        // Measured in browser QA 2026-08-14. The execution block counted rows
+        // reading state=APPROVED and called them "live and approved". Asked
+        // "What can I execute?" Engineer888 answered "There are 16 approved
+        // candidates ready for execution" and drew no cards, because all 16 had
+        // lapsed and the ledger would refuse every one. True of the table,
+        // false about authority.
+        $this->approvedWork('Lapsed one', now()->subHour());
+        $this->approvedWork('Lapsed two', now()->subHour());
+        $this->pendingWork('Awaiting judgement');
+
+        $frame = (new \App\Core\Engineer888\Conversation\EngineeringFrame(
+            config('engineer888_conversation.context'), $this->ctx()
+        ))->build($this->conversationRow(), 'What can I execute?');
+
+        $this->assertStringNotContainsString('live and approved', $frame['text'],
+            'an approval whose window closed is not live');
+        $this->assertStringContainsString('0 approved and runnable now', $frame['text']);
+        $this->assertStringContainsString('2 approved but expired', $frame['text']);
+        $this->assertStringContainsString('1 awaiting your review', $frame['text']);
+        $this->assertStringContainsString('NOTHING IS RUNNABLE', $frame['text'],
+            'when nothing can run, the frame must say so rather than leave it to be inferred');
+    }
+
+    public function test_the_frame_counts_the_same_project_the_badge_counts(): void
+    {
+        // Measured 2026-08-14: the execution block counted platform-wide while
+        // the badge, the cards and the Decisions page were project-scoped, so
+        // Engineer888 said "There are 11 decisions awaiting your review" above
+        // three cards while the badge read 3. One number means one scope as
+        // well as one source.
+        $other = DB::table('engineering_projects')->insertGetId([
+            'company' => 'Fixture Co', 'key' => 'elsewhere', 'name' => 'Elsewhere',
+            'repository_path' => sys_get_temp_dir() . '/e888-elsewhere-' . getmypid(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->pendingWork('Mine');
+        for ($i = 0; $i < 4; $i++) { $this->pendingWorkIn($other, 'Theirs ' . $i); }
+
+        $conv = $this->conversationRow();
+        $frame = (new \App\Core\Engineer888\Conversation\EngineeringFrame(
+            config('engineer888_conversation.context'), $this->ctx()
+        ))->build($conv, 'What can I execute?');
+
+        $badge = (new DecisionProjection())->count($this->ctx(), $this->projectId);
+
+        $this->assertSame(1, $badge);
+        $this->assertStringContainsString('1 awaiting your review', $frame['text'],
+            'the frame must count this project, not the platform');
+        $this->assertStringNotContainsString('5 awaiting your review', $frame['text']);
+    }
+
+    public function test_the_frame_reports_runnable_work_when_there_is_some(): void
+    {
+        $this->approvedWork('Runnable', now()->addHours(4));
+
+        $frame = (new \App\Core\Engineer888\Conversation\EngineeringFrame(
+            config('engineer888_conversation.context'), $this->ctx()
+        ))->build($this->conversationRow(), 'What can I execute?');
+
+        $this->assertStringContainsString('1 approved and runnable now', $frame['text']);
+        $this->assertStringNotContainsString('NOTHING IS RUNNABLE', $frame['text']);
+    }
+
+    /** @dataProvider prefixCues */
+    public function test_a_prefix_cue_matches_the_whole_word_family(string $turn, string $block): void
+    {
+        // The cue table is written as prefixes on purpose. A closing \b after
+        // the alternation demanded a non-word character straight after the
+        // prefix, so every one of them was dead: "execute" never matched
+        // "execut". Found when "What can I execute?" cued no block at all.
+        $frame = new \App\Core\Engineer888\Conversation\EngineeringFrame([], $this->ctx());
+        $classify = (new \ReflectionClass($frame))->getMethod('classify');
+        $classify->setAccessible(true);
+
+        $this->assertContains($block, $classify->invoke($frame, $turn), "'{$turn}' should cue {$block}");
+    }
+
+    public static function prefixCues(): array
+    {
+        return [
+            ['What can I execute?',                'execution'],
+            ['is it executable yet',               'execution'],
+            ['show me the proposal',               'candidates'],
+            ['investigate the failures',           'work'],
+            ['has it been verified',               'execution'],
+            ['what is in the repository',          'repository'],
+        ];
+    }
+
+    public function test_an_execution_question_also_carries_the_decisions(): void
+    {
+        $this->pendingWork('Awaiting judgement');
+
+        $frame = (new \App\Core\Engineer888\Conversation\EngineeringFrame(
+            config('engineer888_conversation.context'), $this->ctx()
+        ))->build($this->conversationRow(), 'What can I execute?');
+
+        $this->assertContains('candidates', $frame['blocks'],
+            'asking whether something can run is asking about decisions; the model needs the list, not just a count');
+        $this->assertContains('execution', $frame['blocks']);
+    }
+
     // ── nothing is spent, nothing is mutated ────────────────────────────
 
     public function test_projecting_an_expired_decision_starts_no_work_and_writes_nothing(): void
@@ -321,6 +428,33 @@ class ExpiredDecisionSemanticsTest extends TestCase
         return ['taskId' => $taskId, 'candidateUuid' => $uuid, 'approvalId' => $id];
     }
 
+    private function pendingWorkIn(int $projectId, string $title): void
+    {
+        $taskId = DB::table('engineering_tasks')->insertGetId([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(), 'project_id' => $projectId,
+            'title' => $title, 'description' => 'Fixture for ' . $title,
+            'status' => 'blocked', 'current_stage' => 'REQUEST_APPROVAL',
+            'session' => 'expiry-semantics', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $cid = DB::table('engineering_candidates')->insertGetId([
+            'uuid' => $uuid, 'task_id' => $taskId, 'project_id' => $projectId,
+            'provider' => 'scripted', 'model' => 'fixture', 'status' => 'VALIDATED',
+            'request_fingerprint' => substr(hash('sha1', $uuid), 0, 40),
+            'confidence' => 'high', 'file_count' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('engineering_candidate_approvals')->insert([
+            'candidate_id' => $cid, 'candidate_uuid' => $uuid, 'task_id' => $taskId,
+            'project_id' => $projectId, 'state' => ApprovalState::PENDING,
+            'fingerprint' => hash('sha256', $uuid),
+            'binding' => json_encode(['version' => 'e888-approval-v1', 'candidate_uuid' => $uuid]),
+            'approved_paths' => json_encode([]), 'approved_hashes' => json_encode([]),
+            'provider' => 'scripted', 'model' => 'fixture',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
     private function pendingWork(string $title): void
     {
         ['taskId' => $taskId, 'candidateId' => $cid, 'candidateUuid' => $uuid] = $this->candidate($title);
@@ -372,6 +506,18 @@ class ExpiredDecisionSemanticsTest extends TestCase
     private function ctx(): Engineer888AccessContext
     {
         return Engineer888AccessContext::forHuman(User::find(1), 'jwt', 'jwt');
+    }
+
+    /** A conversation row pointed at this test's project. */
+    private function conversationRow(): object
+    {
+        $id = DB::table('e888_conversations')->insertGetId([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(), 'owner_user_id' => 1,
+            'active_project_id' => $this->projectId, 'title' => 'fixture',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return DB::table('e888_conversations')->find($id);
     }
 
     private function seedCanonical(): void

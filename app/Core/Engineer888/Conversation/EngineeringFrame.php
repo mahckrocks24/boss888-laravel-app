@@ -41,12 +41,29 @@ final class EngineeringFrame
     public const RELEVANT = 'RELEVANT';
 
     /** Cheap turn classification. Not authority — only which blocks to spend budget on. */
+    /**
+     * Which optional blocks a turn is plausibly about.
+     *
+     * ── THE TRAILING BOUNDARY WAS EATING HALF OF THESE (2026-08-14) ──
+     *
+     * These alternatives are deliberately written as PREFIXES — execut,
+     * propos, investigat, verif, repositor — so that they catch the whole
+     * family of a word. A closing \b after the group defeats exactly that: it
+     * demands a non-word character straight after the prefix, so "execut"
+     * matched nothing and "execute", "execution" and "executable" all missed.
+     * Every prefix cue in this table was dead.
+     *
+     * Found because "What can I execute?" cued no block at all. The execution
+     * block is ALWAYS-class so it still appeared, which is why this survived
+     * unnoticed — the frame looked reasonable while the classifier was doing
+     * nothing. The prefixes work now; whole words are unaffected.
+     */
     private const CUES = [
-        'candidates' => '/\b(candidate|approve|approval|review|diff|propos|bug tracker|waiting|pending)\b/i',
-        'work'       => '/\b(task|tasks|working|progress|status|blocked|blocker|queue|investigat|doing)\b/i',
-        'execution'  => '/\b(execut|run|worker|queue|lock|deploy|install|recover|verif|test)\b/i',
-        'health'     => '/\b(health|fail|failing|defect|incident|broken|safe|safety|risk|baseline)\b/i',
-        'repository' => '/\b(repo|repositor|branch|head|commit|file|structure|architect)\b/i',
+        'candidates' => '/\b(candidate|approve|approval|review|diff|propos|bug tracker|waiting|pending)/i',
+        'work'       => '/\b(task|tasks|working|progress|status|blocked|blocker|queue|investigat|doing)/i',
+        'execution'  => '/\b(execut|run|worker|queue|lock|deploy|install|recover|verif|test)/i',
+        'health'     => '/\b(health|fail|failing|defect|incident|broken|safe|safety|risk|baseline)/i',
+        'repository' => '/\b(repo|repositor|branch|head|commit|file|structure|architect)/i',
     ];
 
     public function __construct(
@@ -68,7 +85,7 @@ final class EngineeringFrame
         $blocks['project']       = [self::ALWAYS,   fn () => $this->project($conversation)];
         $blocks['work']          = [self::RELEVANT, fn () => $this->work($conversation)];
         $blocks['candidates']    = [self::RELEVANT, fn () => $this->candidates($conversation)];
-        $blocks['execution']     = [self::ALWAYS,   fn () => $this->execution()];
+        $blocks['execution']     = [self::ALWAYS,   fn () => $this->execution($conversation)];
         $blocks['health']        = [self::RELEVANT, fn () => $this->health()];
         $blocks['repository']    = [self::RELEVANT, fn () => $this->repository($conversation)];
         $blocks['standards']     = [self::RELEVANT, fn () => $this->standards()];
@@ -100,6 +117,17 @@ final class EngineeringFrame
 
         foreach (self::CUES as $block => $pattern) {
             if (preg_match($pattern, $turn)) { $hit[] = $block; }
+        }
+
+        // ASKING WHETHER SOMETHING CAN RUN IS ASKING ABOUT DECISIONS.
+        //
+        // "What can I execute?" cued only the execution block, so the model was
+        // handed worker state and a bare approval count and no list of what
+        // those decisions actually are. It answered from the count. The two
+        // blocks belong together: the execution question is a question about
+        // which decisions have reached the point of being runnable.
+        if (in_array('execution', $hit, true) && ! in_array('candidates', $hit, true)) {
+            $hit[] = 'candidates';
         }
 
         // A short turn with no cue ("hello", "hey", "thanks") gets the cheap
@@ -260,7 +288,7 @@ final class EngineeringFrame
             . "they are separate tasks, not duplicates. Do not present them as a queue of distinct work.";
     }
 
-    private function execution(): string
+    private function execution(object $conversation): string
     {
         $active = trim((string) @shell_exec('systemctl is-active e888-worker.service 2>/dev/null'));
         $depth = trim((string) @shell_exec('redis-cli llen queues:e888-isolated 2>/dev/null'));
@@ -273,16 +301,59 @@ final class EngineeringFrame
             : "#{$lastAttempt->id} " . ($lastAttempt->result ?? '?') . ' on ' . ($lastAttempt->repository_path ?? '?')
               . ' at ' . ($lastAttempt->started_at ?? '?');
 
-        $pending = DB::table('engineering_candidate_approvals')->where('state', 'PENDING')->count();
-        $approved = DB::table('engineering_candidate_approvals')
-            ->where('state', 'APPROVED')->whereNull('revoked_at')->whereNull('superseded_at')->count();
+        // ── "LIVE AND APPROVED" WAS A LIE (2026-08-14) ────────────────
+        //
+        // This line counted rows reading state=APPROVED and called them live.
+        // Measured in browser QA: asked "What can I execute?" Engineer888
+        // answered "There are 16 approved candidates ready for execution" and
+        // drew no cards, because all 16 had passed their 12-hour window and
+        // ApprovalLedger would refuse every one of them. The number was true
+        // of the table and false about authority, which is the worse of the
+        // two ways to be wrong.
+        //
+        // It asks the projection now, like every other surface. Approved-but-
+        // lapsed is reported separately rather than folded into either count:
+        // it is neither waiting for judgement nor runnable, and collapsing it
+        // into "approved" is exactly what produced the wrong sentence.
+        $pending = $runnable = $lapsed = null;
+
+        if ($this->ctx !== null) {
+            // SCOPED TO THE CONVERSATION'S PROJECT, like the decisions block,
+            // the header badge and the Decisions page. Measured 2026-08-14:
+            // counted platform-wide, this block said "11 decisions" while the
+            // badge said 3 and three cards were drawn — the model repeated the
+            // 11. One number means one scope as well as one source.
+            $projectId = ($conversation->active_project_id ?? null) === null
+                ? null : (int) $conversation->active_project_id;
+
+            $projection = new \App\Core\Engineer888\Decisions\DecisionProjection();
+            $counts = [];
+
+            foreach ($projection->current($this->ctx, $projectId) as $item) {
+                $counts[$item['state']] = ($counts[$item['state']] ?? 0) + 1;
+            }
+
+            $pending  = $counts[\App\Core\Engineer888\Decisions\DecisionState::REVIEW_REQUIRED] ?? 0;
+            $runnable = $counts[\App\Core\Engineer888\Decisions\DecisionState::READY_TO_EXECUTE] ?? 0;
+            $lapsed   = $counts[\App\Core\Engineer888\Decisions\DecisionState::APPROVAL_EXPIRED] ?? 0;
+        }
+
+        $approvalLine = $pending === null
+            ? "Approvals: not readable without an access context.\n"
+            : "Decisions: {$pending} awaiting your review, {$runnable} approved and runnable now, "
+              . "{$lapsed} approved but expired.\n"
+              . ($runnable === 0
+                  ? "NOTHING IS RUNNABLE. Do not say anything is ready to execute, and never quote a "
+                    . "count of approved rows as a count of runnable work — an approval whose window "
+                    . "closed is not permission.\n"
+                  : '');
 
         return "EXECUTION STATE\n"
             . 'Isolated worker (e888-worker.service): ' . ($active ?: 'unreadable') . "\n"
             . 'Isolated queue e888-isolated depth: ' . ($depth === '' ? 'unreadable' : $depth) . "\n"
             . 'Repository execution lock: ' . ($locks === '' ? 'none held' : $locks) . "\n"
             . "Last execution attempt: {$last}  (total attempts recorded: {$attempts})\n"
-            . "Approvals: {$pending} pending, {$approved} live and approved.\n"
+            . $approvalLine
             . "WHAT THIS MEANS. Nothing can be executed until a human has typed the exact approval "
             . "statement for a specific candidate. An idle queue and a free lock do NOT mean work is "
             . "ready to run, and must never be described as 'you can proceed'. If nothing is approved, "
