@@ -54,18 +54,25 @@ final class DecisionPresentationResolver
         Engineer888AccessContext $ctx,
         string $intent,
         ?string $hint,
-        ?int $projectId
+        ?int $projectId,
+        string $turn = ''
     ): array {
         if ($intent === 'SHOW_DECISION') {
+            // The hint is the right input here: it names WHICH decision, and
+            // naming it is the one thing the model is genuinely better at than
+            // a keyword scan of the whole sentence.
             $item = $this->projection->resolve($ctx, $hint, $projectId);
 
             return $item === null ? [] : [$this->ref($item)];
         }
 
         if ($intent === 'SHOW_DECISIONS') {
+            // The scope is the opposite case: it comes from what Boss actually
+            // typed, because the model paraphrases and a paraphrase that drops
+            // the word "approval" quietly widens what he is shown.
             return array_map(
                 fn ($i) => $this->ref($i),
-                $this->projection->inStates($ctx, $this->scopeFor($hint), $projectId)
+                $this->projection->inStates($ctx, $this->scopeFor($turn !== '' ? $turn : $hint), $projectId)
             );
         }
 

@@ -68,6 +68,13 @@ return [
         'temperature' => 0.4,
         'max_tokens'  => 1200,
         'timeout'     => (int) env('E888_CONVERSATION_TIMEOUT', 60),
+
+        // Ask for the reply and the advisory intent as separate schema fields
+        // rather than as a sentinel line inside the prose. Requires a model
+        // that supports Structured Outputs; gpt-4o-2024-08-06 is the one this
+        // has been proven against. Turning it off falls back to sentinel
+        // parsing, which is measurably unreliable — see ConversationIntent.
+        'structured'  => (bool) env('E888_CONVERSATION_STRUCTURED', true),
     ],
 
     'deepseek' => [

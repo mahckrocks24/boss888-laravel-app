@@ -4,6 +4,7 @@ namespace App\Core\Engineer888\Chat;
 
 use App\Core\Engineer888\Access\Engineer888Capability as Cap;
 use App\Core\Engineer888\Conversation\ConversationEngine;
+use App\Core\Engineer888\Conversation\ConversationIntent;
 use App\Jobs\Engineer888WorkflowJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -192,17 +193,17 @@ final class MessageService
                 // It cannot approve, execute, or create anything. A model that
                 // is wrong here costs Boss one unnecessary explanation; a
                 // regex that is wrong here costs him the ability to act.
-                if (in_array($reply->proposedIntent, ['EXECUTE_REQUEST', 'APPROVE_REQUEST'], true)) {
+                if (in_array($reply->proposedIntent, [ConversationIntent::EXECUTE_REQUEST, ConversationIntent::APPROVE_REQUEST], true)) {
                     return [$reply->text, [
                         'kind' => 'governed',
-                        'blocked_action' => $reply->proposedIntent === 'EXECUTE_REQUEST'
+                        'blocked_action' => $reply->proposedIntent === ConversationIntent::EXECUTE_REQUEST
                             ? 'EXECUTE_TASK' : 'APPROVE_CANDIDATE',
                         'escalated_by' => 'conversation',
                     ], null];
                 }
 
                 // CREATE_TASK is proposed to the server, not to the repository.
-                if ($reply->proposedIntent === 'CREATE_TASK') {
+                if ($reply->proposedIntent === ConversationIntent::CREATE_TASK) {
                     [$text, $meta, $uuid] = $this->createTask($request, $conversation, $body);
 
                     // The model's sentence leads; the engine's record follows.
@@ -222,13 +223,24 @@ final class MessageService
                 // from 52 rows to 0 through expiry alone on 2026-08-13 while
                 // the decisions themselves were untouched. A presentation that
                 // remembered a card would break by itself minutes later.
-                if (in_array($reply->proposedIntent, ['SHOW_DECISIONS', 'SHOW_DECISION'], true)) {
+                if (in_array($reply->proposedIntent, [ConversationIntent::SHOW_DECISIONS, ConversationIntent::SHOW_DECISION], true)) {
                     $refs = app(\App\Core\Engineer888\Decisions\DecisionPresentationResolver::class)
                         ->referencesFor(
                             \App\Core\Engineer888\Access\Engineer888AccessContext::fromRequest($request),
                             $reply->proposedIntent,
                             $reply->intentSubject,
-                            $this->activeProjectId($conversation)
+                            $this->activeProjectId($conversation),
+                            // WHICH SLICE HE MEANT COMES FROM WHAT HE TYPED.
+                            //
+                            // Measured 2026-08-14: asked "what are the tasks
+                            // that need my APPROVAL, paste here one by one",
+                            // the model passed back only "paste here one by
+                            // one" as the subject. Scoping on that found no
+                            // approval word and fell back to showing
+                            // everything, including a lapsed approval he had
+                            // not asked about. The server has his actual
+                            // sentence and never needed the paraphrase.
+                            $body
                         );
 
                     // A CARD IS NOT AN ANSWER ON ITS OWN.
@@ -256,7 +268,7 @@ final class MessageService
                     ], null];
                 }
 
-                if ($reply->proposedIntent === 'OPEN_DECISIONS') {
+                if ($reply->proposedIntent === ConversationIntent::OPEN_DECISIONS) {
                     return [$reply->text, [
                         'kind' => 'conversation',
                         'provider' => $reply->provider,

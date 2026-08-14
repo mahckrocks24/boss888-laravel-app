@@ -434,6 +434,45 @@ class StructuredPresentationTest extends TestCase
         );
     }
 
+    public function test_the_slice_follows_what_boss_typed_not_the_models_paraphrase(): void
+    {
+        // Measured in the browser 2026-08-14. Boss typed "...that need my
+        // APPROVAL, paste here one by one"; the model handed back only "paste
+        // here one by one" as the subject. Scoped on that fragment there is no
+        // approval word, so the widest slice was shown and a lapsed approval he
+        // had not asked about appeared among his approvals.
+        $this->pendingWork('Unjudged');
+        $this->approvedWork('Lapsed one', now()->subHour());
+
+        ScriptedConversationProvider::script([
+            "There is one awaiting your review.\n@@INTENT: SHOW_DECISIONS | paste here one by one",
+        ]);
+        $this->say('What are the tasks that need my approval, paste here one by one');
+
+        $drawn = $this->hydrate($this->lastMetadata()['presentations']);
+
+        $this->assertCount(1, $drawn, 'he asked what needs approval, not what is waiting generally');
+        $this->assertSame('Unjudged', $drawn[0]['decision']['title']);
+        $this->assertSame(DecisionState::REVIEW_REQUIRED, $drawn[0]['decision']['state']);
+    }
+
+    public function test_asking_what_needs_attention_still_widens_to_everything(): void
+    {
+        $this->pendingWork('Unjudged');
+        $this->approvedWork('Lapsed one', now()->subHour());
+
+        ScriptedConversationProvider::script([
+            "Two things.\n@@INTENT: SHOW_DECISIONS | anything",
+        ]);
+        $this->say('what needs my attention?');
+
+        $drawn = $this->hydrate($this->lastMetadata()['presentations']);
+        $states = array_map(fn ($d) => $d['decision']['state'], $drawn);
+
+        $this->assertCount(2, $drawn);
+        $this->assertContains(DecisionState::APPROVAL_EXPIRED, $states);
+    }
+
     // ── 19. logical collapse ────────────────────────────────────────────
 
     public function test_repeated_attempts_at_one_brief_are_one_decision(): void

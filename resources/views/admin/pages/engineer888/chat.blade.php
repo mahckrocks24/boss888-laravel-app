@@ -89,6 +89,11 @@
   .e8c-card-t{font-size:12px;color:#8d97ad;letter-spacing:.03em;margin-bottom:7px}
   .e8c-card-h{font-size:14.5px;color:#eef1f8;font-weight:600;margin-bottom:3px}
   .e8c-card-s{font-size:12.5px;color:#8d97ad;margin-bottom:11px}
+  /* A lapsed approval is not an error and not an offer. Amber, quiet, and it
+     carries its reason rather than a control that cannot work. */
+  .e8c-card.lapsed{border-color:#4a3c1d}
+  .e8c-card-why{font-size:12.5px;line-height:1.6;color:#c9b779;background:rgba(251,191,36,.08);
+                border:1px solid rgba(251,191,36,.24);border-radius:8px;padding:9px 11px;margin-bottom:11px}
   .e8c-acts{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
   .e8c-btn{background:#5b6ef5;color:#fff;border:0;border-radius:9px;padding:8px 15px;
            font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
@@ -469,16 +474,43 @@ window.page = async function () {
       }
       if (d.confidence) { bits.push(esc(d.confidence) + ' confidence'); }
       if (d.earlier) { bits.push(d.earlier + ' earlier attempt' + (d.earlier === 1 ? '' : 's')); }
+      if (d.approved_by) { bits.push('approved by ' + esc(d.approved_by)); }
 
-      out += '<div class="e8c-card" data-pres="' + esc(closedKey(m.id, p.logical_key)) + '">'
+      // -- THE CARD SAYS WHAT THE DECISION IS (2026-08-14) -------------
+      //
+      // It used to say "Candidate ready" for everything and offer Review
+      // whenever a review card existed, otherwise "Reopening this decision".
+      // With APPROVAL_EXPIRED that was wrong twice over: the heading claimed
+      // a candidate was ready to act on, and the missing Review button was
+      // explained as a temporary glitch that would clear on refresh. It never
+      // clears. The approval lapsed, and no card will ever be issued for it.
+      //
+      // The state and the explanation come from the server, which got the
+      // state from ApprovalLedger. The page decides layout and nothing else.
+      var expired = d.state === 'APPROVAL_EXPIRED';
+      var heading = expired ? 'Approval expired'
+                  : (d.state === 'READY_TO_EXECUTE' ? 'Approved, ready to run' : 'Candidate ready');
+
+      var action;
+      if (expired) {
+        // Said in words. A greyed-out button still reads as "this would work
+        // if I had permission", and here nothing would make it work.
+        action = '<span class="e8c-card-s" style="margin:0">No action available on this decision.</span>';
+      } else if (d.review_card) {
+        action = '<button class="e8c-btn" data-review="' + esc(d.review_card) + '">Review</button>';
+      } else {
+        action = '<span class="e8c-card-s" style="margin:0">Reopening this decision - refresh in a moment.</span>';
+      }
+
+      out += '<div class="e8c-card' + (expired ? ' lapsed' : '') + '" data-pres="' + esc(closedKey(m.id, p.logical_key)) + '"'
+        + ' data-state="' + esc(d.state || '') + '">'
         + '<div class="e8c-card-b">'
-        + '<div class="e8c-card-t">Candidate ready</div>'
+        + '<div class="e8c-card-t">' + esc(heading) + '</div>'
         + '<div class="e8c-card-h">' + esc(d.title || 'Engineering change') + '</div>'
         + '<div class="e8c-card-s">' + bits.join(' &middot; ') + '</div>'
+        + (d.explanation ? '<div class="e8c-card-why">' + esc(d.explanation) + '</div>' : '')
         + '<div class="e8c-acts">'
-        + (d.review_card
-            ? '<button class="e8c-btn" data-review="' + esc(d.review_card) + '">Review</button>'
-            : '<span class="e8c-card-s" style="margin:0">Reopening this decision - refresh in a moment.</span>')
+        + action
         + '<button class="e8c-btn q" data-close="' + esc(closedKey(m.id, p.logical_key)) + '">Close</button>'
         + '</div></div></div>';
     });
