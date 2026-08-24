@@ -108,6 +108,30 @@ class Orchestrator
                 return;
             }
 
+            // ── 1b. Launch-scope enforcement (MISSION-018 WS-1, RISK-0039) ──
+            // The sync path (EngineExecutionService::execute) blocks removed
+            // capabilities "regardless of how it was reached"; this async path —
+            // ~95% of task volume — did not, so a removed-capability task row
+            // created by any path other than the (now-hardened, RISK-0038)
+            // TaskService::create would execute. Enforce here too, keyed on the
+            // task's engine AND the engine the capability map derives, so a
+            // mislabelled row cannot slip through either. Unlike the b27
+            // agent-capability check above (shadow — the grant table can lag
+            // reality), launch scope is a hard product boundary: a removed
+            // capability is FAILED, never run.
+            $__derivedEngine = ($this->capabilityMap->resolve($task->action)['engine'] ?? null);
+            foreach (array_unique(array_filter([(string) $task->engine, (string) $__derivedEngine])) as $__eng) {
+                $__scopeDenied = \App\Core\LaunchScope\LaunchScopePolicy::deniedReason($__eng, (string) $task->action, [], []);
+                if ($__scopeDenied !== null) {
+                    \Illuminate\Support\Facades\Log::warning('[LaunchScope] async execution refused', [
+                        'task_id' => $task->id, 'engine' => $__eng, 'action' => $task->action, 'reason' => $__scopeDenied,
+                    ]);
+                    $this->taskService->markFailed($task, "LAUNCH_SCOPE: removed capability {$__eng}/{$task->action}", terminal: true);
+                    $this->idempotency->releaseLock($idemKey);
+                    return;
+                }
+            }
+
             // ── 2. Resolve capability ────────────────────────────────────
             $capability = $this->capabilityMap->resolve($task->action);
             if (! $capability) {
