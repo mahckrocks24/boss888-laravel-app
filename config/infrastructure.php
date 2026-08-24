@@ -24,12 +24,30 @@ return [
      | until a real provider is deliberately configured — an unconfigured provider
      | must never half-work.
      */
-    'connectors' => [
+    // array_filter: an unset connector must be ABSENT, not present-and-null.
+    // A null entry still counts as a configured capability to anything that
+    // iterates this map, which made 'registrar' look declared while being
+    // unresolvable.
+    'connectors' => array_filter([
+
+        // Domain registrar. Namecheap is the first adapter; it resolves only
+        // when explicitly selected, so the default remains unset and loud.
+        // 2026-08-11. This line set Namecheap as the DEFAULT, contradicting the
+        // comment directly above it ("resolves only when explicitly selected, so
+        // the default remains unset and loud"). The comment was right.
+        //
+        // NamecheapClient takes seven required constructor arguments and has no
+        // container binding, so resolving the registrar threw
+        // BindingResolutionException instead of the RuntimeException the
+        // resolver contract promises - an unconfigured capability that failed
+        // in the wrong shape rather than loudly. Opt in with the env var.
+        "registrar" => env("INFRA_REGISTRAR_CONNECTOR"),
+
         'hosting'         => env('INFRA_HOSTING_CONNECTOR', NullHostingConnector::class),
         'custom_hostname' => env('INFRA_CUSTOM_HOSTNAME_CONNECTOR', NullCustomHostnameConnector::class),
         // registrar / email / backup / monitoring are intentionally absent until
         // their modules are built (Phase 1C / 1D). Resolving them throws, loudly.
-    ],
+    ]),
 
     /*
      |--------------------------------------------------------------------------

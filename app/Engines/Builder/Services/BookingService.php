@@ -174,6 +174,12 @@ class BookingService
             if ($mailerOk) {
                 try {
                     Mail::raw($ownerBody, function ($m) use ($contactEmail, $ownerSubject, $email, $name) {
+                        // EM-3: booking mail is transactional and must stay off the
+                        // broadcast stream - a customer who unsubscribes from marketing
+                        // still needs their booking confirmation.
+                        $m->getSymfonyMessage()->getHeaders()
+                            ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'booking');
+
                         $m->to($contactEmail)->subject($ownerSubject);
                         if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
                             $m->replyTo($email, $name !== '' ? $name : null);
@@ -214,6 +220,9 @@ class BookingService
             if ($mailerOk) {
                 try {
                     Mail::raw($custBody, function ($m) use ($email, $name, $custSubject, $contactEmail, $businessName) {
+                        $m->getSymfonyMessage()->getHeaders()
+                            ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'booking');
+
                         $m->to($email, $name !== '' ? $name : null)->subject($custSubject);
                         if (!empty($contactEmail) && filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
                             $m->replyTo($contactEmail, $businessName);

@@ -12,6 +12,39 @@ use Illuminate\Support\Str;
 class BellaController
 {
     /**
+     * ─────────────────────────────────────────────────────────────────────
+     * GD-002 MIGRATION NOTE — `query_database` REMOVED 2026-07-26 (P0-B)
+     * ─────────────────────────────────────────────────────────────────────
+     * The `query_database` action, its handler `actionQueryDatabase()`, the
+     * SQL executor `executeSafeQuery()`, and `getSchemaMap()` were REMOVED by
+     * Platform Owner decision GD-002.
+     *
+     * WHY, precisely:
+     *   The action accepted arbitrary SELECT behind a keyword DENYLIST with no
+     *   table or column restriction and no tenant scoping, so
+     *   `SELECT password, mfa_secret_encrypted FROM users` and
+     *   `SELECT key FROM api_keys` were structurally permitted.
+     *
+     *   It was non-functional only by ACCIDENT: `DB::select(DB::raw($sql))`
+     *   raises a TypeError on Laravel 11 ("Argument #1 ($query) must be of
+     *   type string, Illuminate\Database\Query\Expression given"), which the
+     *   catch block converted into a harmless error string. That is a
+     *   coincidence of a framework upgrade, NOT a security control.
+     *
+     * ⚠️ DO NOT REPAIR. DO NOT REPLACE WITH UNRESTRICTED SQL.
+     * ⚠️ DO NOT REINTRODUCE UNDER ANOTHER NAME.
+     *   The broken line looks like a trivial bug. Repairing it would arm
+     *   unrestricted database reads. The correct action is deletion.
+     *
+     * Future governed data access occurs through dedicated services and
+     * approved runtime tools with explicit table/column allowlists and tenant
+     * scoping — see CAPABILITY-REGISTRY.md `data.governed_read`.
+     *
+     * Bella remains DORMANT and is unchanged in every other respect (GD-001:
+     * govern and gate — never retire, never expose).
+     * ─────────────────────────────────────────────────────────────────────
+     */
+    /**
      * Hands-vs-brain (PATCH 4, 2026-05-08): DeepSeekConnector injection
      * removed — `$this->llm` was never actually called in this class.
      * `$this->runtime` has been the active LLM path since Phase 2L.5.
@@ -85,8 +118,11 @@ class BellaController
             // ── 3. Gather real-time platform context ─────────────────────
             $context = $this->gatherPlatformContext();
 
-            // ── 4. Build schema map for database querying ────────────────
-            $schemaMap = $this->getSchemaMap();
+            // ── 4. Schema map REMOVED (GD-002, 2026-07-26) ───────────────
+            // The schema map existed solely so the model could author SQL for
+            // injecting the database schema into the prompt is now pure
+            // information disclosure with no function.
+            $schemaMap = '';
 
             // ── 5. Build system prompt ───────────────────────────────────
             $systemPrompt = $this->buildSystemPrompt($context, $contextRequest, $memoryEntries, $schemaMap);
@@ -408,77 +444,6 @@ class BellaController
     //  SCHEMA MAP FOR DYNAMIC QUERYING
     // =====================================================================
 
-    private function getSchemaMap(): string
-    {
-        return Cache::remember('bella_schema_map', 3600, function () {
-            $columns = DB::select("
-                SELECT TABLE_NAME, COLUMN_NAME
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = ?
-                ORDER BY TABLE_NAME, ORDINAL_POSITION
-            ", [config('database.connections.mysql.database', 'boss888')]);
-
-            $tables = [];
-            foreach ($columns as $col) {
-                $tables[$col->TABLE_NAME][] = $col->COLUMN_NAME;
-            }
-
-            $lines = [];
-            foreach ($tables as $table => $cols) {
-                $lines[] = "{$table}: " . implode(', ', $cols);
-            }
-
-            return implode("\n", $lines);
-        });
-    }
-
-    private function executeSafeQuery(string $sql): array
-    {
-        // ── Safety checks ────────────────────────────────────────────
-        $normalized = strtoupper(trim($sql));
-
-        // Must start with SELECT
-        if (!str_starts_with($normalized, 'SELECT')) {
-            return ['error' => 'Only SELECT queries are allowed.'];
-        }
-
-        // Block dangerous keywords
-        $forbidden = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'TRUNCATE', 'CREATE', 'REPLACE', 'GRANT', 'REVOKE', 'EXEC', 'EXECUTE', 'CALL', 'INTO OUTFILE', 'INTO DUMPFILE', 'LOAD_FILE'];
-        foreach ($forbidden as $keyword) {
-            if (preg_match('/\b' . preg_quote($keyword, '/') . '\b/', $normalized)) {
-                return ['error' => "Forbidden keyword detected: {$keyword}. Only SELECT queries are allowed."];
-            }
-        }
-
-        // Block multiple statements (semicolons not at end)
-        $stripped = rtrim(trim($sql), ';');
-        if (str_contains($stripped, ';')) {
-            return ['error' => 'Multiple statements are not allowed.'];
-        }
-
-        // Enforce LIMIT
-        if (!preg_match('/\bLIMIT\b/i', $sql)) {
-            $sql = rtrim(rtrim($sql), ';') . ' LIMIT 100';
-        }
-
-        try {
-            // 5 second timeout via MySQL session variable
-            DB::statement('SET SESSION MAX_EXECUTION_TIME = 5000');
-            $results = DB::select(DB::raw($sql));
-
-            // Cap at 100 rows
-            $results = array_slice($results, 0, 100);
-
-            return [
-                'success'   => true,
-                'row_count' => count($results),
-                'data'      => $results,
-            ];
-        } catch (\Throwable $e) {
-            return ['error' => 'Query failed: ' . $e->getMessage()];
-        }
-    }
-
     // =====================================================================
     //  PLATFORM CONTEXT GATHERING
     // =====================================================================
@@ -538,6 +503,15 @@ class BellaController
         return $ctx;
     }
 
+    /**
+     * E0.5 — log content is UNTRUSTED DATA.
+     *
+     * These lines can contain arbitrary strings a customer caused to be logged.
+     * They are wrapped and labelled before entering the prompt so the model
+     * treats them as evidence to read, never as instructions to follow. This is
+     * defence in depth only — `gateAction()` is the actual control, because a
+     * prompt instruction is not a security boundary.
+     */
     private function getRecentLogErrors(int $limit): array
     {
         $logPath = storage_path('logs/laravel.log');
@@ -675,19 +649,15 @@ Available actions:
 - **list_users** — List users (params: limit, search)
 - **get_analytics** — Get platform analytics overview (params: days)
 - **get_workspace** — Get workspace detail (params: id)
-- **adjust_credits** — Adjust workspace credits (params: workspace_id, amount, reason)
 - **get_queue** — Get queue health stats
 - **generate_report** — Generate a platform report (params: type — one of: overview, users, tasks, credits, engines)
 - **get_audit_logs** — Get recent audit logs (params: limit)
 - **get_engine_status** — Get engine registry status
-- **suspend_user** — Suspend a user account (params: user_id, reason)
-- **query_database** — Execute a safe SELECT query against the database (params: sql). Use this to look up any data — users, payments, subscriptions, workspace details, etc.
 - **remember** — Store a fact in persistent memory (params: category [fact/preference/insight/note], key, value)
 - **forget** — Remove a memory entry (params: category, key)
 
 ### Database Querying Guidelines
 
-When you need specific data not in your context above, use the query_database action. Write efficient SQL SELECT queries. Only SELECT is allowed — no INSERT, UPDATE, DELETE, or DDL.
 
 **Database Schema (all tables and columns):**
 {$schemaMap}
@@ -715,30 +685,148 @@ SYSTEM;
     //  ACTION EXECUTION
     // =====================================================================
 
+    /**
+     * ─────────────────────────────────────────────────────────────────────
+     * E0.5 — CAPABILITIES REMOVED 2026-07-27
+     * ─────────────────────────────────────────────────────────────────────
+     * `adjust_credits` and `suspend_user` were removed. They mutated billing
+     * (`credits.balance` + `credit_transactions`) and user access
+     * (`users.status`) with NO approval, NO governance call, NO MFA and NO cap,
+     * and were dispatched by regex-scanning model output while customer-
+     * influenceable log content sat in the prompt.
+     *
+     * PermissionRegistry already declared both as CRITICAL / approval-required /
+     * MFA-required and machine-may-request-but-never-execute. This controller
+     * never called GovernanceService, so that policy was entirely bypassed.
+     *
+     * Removal is therefore HARD, not policy-based: it does not depend on
+     * GOVERNANCE_MODE and holds in shadow, enforce, disabled, missing and
+     * malformed configuration alike.
+     *
+     * ⚠️ DO NOT REINTRODUCE. DO NOT ADD AN ALIAS. DO NOT "FIX" THIS.
+     * Legitimate human admin equivalents remain, correctly gated, at
+     *   POST /api/admin/workspaces/{id}/credits  (AdminController@adjustCredits)
+     *   POST /api/admin/users/{id}/suspend       (AdminController@suspendUser)
+     * ─────────────────────────────────────────────────────────────────────
+     */
+    private const REMOVED_CAPABILITIES = [
+        'adjust_credits', 'adjustcredits', 'adjust_credit', 'credit_adjust',
+        'add_credits', 'addcredits', 'deduct_credits', 'deductcredits',
+        'modify_balance', 'modifybalance', 'set_credits', 'setcredits',
+        'update_credits', 'updatecredits', 'grant_credits', 'refund_credits',
+        'suspend_user', 'suspenduser', 'suspend_account', 'suspendaccount',
+        'disable_user', 'disableuser', 'deactivate_user', 'deactivateuser',
+        'ban_user', 'banuser', 'block_user', 'blockuser', 'revoke_user',
+    ];
+
+    /**
+     * Normalise a model-supplied action name before any comparison.
+     *
+     * The model is never the authority on whether a capability exists. Casing,
+     * whitespace, punctuation and separator variants all collapse to one form
+     * so that "Adjust Credits", "adjust-credits" and " ADJUST_CREDITS " cannot
+     * evade the check.
+     */
+    private function normaliseActionName(mixed $action): string
+    {
+        if (!is_string($action)) {
+            return '';
+        }
+
+        $n = strtolower(trim($action));
+        $n = preg_replace('/[\s\-.]+/', '_', $n);      // spaces, hyphens, dots → _
+        $n = preg_replace('/[^a-z0-9_]/', '', $n);      // drop anything else
+        $n = preg_replace('/_+/', '_', $n);             // collapse repeats
+
+        return trim((string) $n, '_');
+    }
+
+    /**
+     * Authoritative backend gate. Runs AFTER model-output interpretation and
+     * BEFORE any execution. Fails closed on anything it does not recognise.
+     *
+     * @return array{ok:bool, action:string, code:?string, message:?string}
+     */
+    private function gateAction(mixed $rawAction): array
+    {
+        $action = $this->normaliseActionName($rawAction);
+
+        if ($action === '') {
+            return ['ok' => false, 'action' => '', 'code' => 'CAPABILITY_INVALID',
+                    'message' => 'No valid capability was requested.'];
+        }
+
+        if (in_array($action, self::REMOVED_CAPABILITIES, true)) {
+            return ['ok' => false, 'action' => $action, 'code' => 'CAPABILITY_DISABLED',
+                    'message' => 'That capability has been permanently disabled and cannot be performed here.'];
+        }
+
+        if (!in_array($action, $this->allowedActions(), true)) {
+            return ['ok' => false, 'action' => $action, 'code' => 'CAPABILITY_UNKNOWN',
+                    'message' => 'That capability is not available.'];
+        }
+
+        return ['ok' => true, 'action' => $action, 'code' => null, 'message' => null];
+    }
+
+    /** Audit a refused capability without mutating anything. */
+    private function auditRefusal(string $action, string $code, ?int $userId, string $sessionId): void
+    {
+        try {
+            DB::table('audit_logs')->insert([
+                'workspace_id'  => null,
+                'user_id'       => $userId,
+                'action'        => 'bella.capability_refused',
+                'entity_type'   => 'bella_action',
+                'entity_id'     => null,
+                'metadata_json' => json_encode([
+                    'attempted_capability' => $action,
+                    'code'                 => $code,
+                    'session_id'           => $sessionId,
+                    'phase'                => 'E0.5',
+                ]),
+                'created_at'    => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Bella: refusal audit failed', ['error' => $e->getMessage()]);
+        }
+    }
+
     private function allowedActions(): array
     {
         return [
             'list_users',
             'get_analytics',
             'get_workspace',
-            'adjust_credits',
             'get_queue',
             'generate_report',
             'get_audit_logs',
             'get_engine_status',
-            'suspend_user',
-            'query_database',
             'remember',
             'forget',
         ];
     }
 
+    /**
+     * E0.5 — extraction is deliberately CONSERVATIVE.
+     *
+     * The model's text is a suggestion, never an authority. If the response is
+     * ambiguous — more than one action block, or a nested action object — we
+     * refuse rather than guess, because guessing is how an injected string
+     * becomes an executed capability. `gateAction()` is still the final word.
+     */
     private function extractActionBlock(string $content): ?array
     {
+        // More than one action block in a single response is ambiguous. Refuse.
+        if (preg_match_all('/"action"\s*:/', $content) > 1) {
+            Log::warning('Bella: multiple action blocks in one response — refused');
+            return null;
+        }
+
         // Look for JSON block in ```json ... ``` or raw { ... }
         if (preg_match('/```json\s*(\{.*?\})\s*```/s', $content, $matches)) {
             $decoded = json_decode($matches[1], true);
-            if ($decoded && isset($decoded['action'])) {
+            if ($decoded && isset($decoded['action']) && is_string($decoded['action'])) {
                 return $decoded;
             }
         }
@@ -756,18 +844,23 @@ SYSTEM;
 
     private function executeAction(string $action, array $params): array
     {
+        // E0.5: the gate is authoritative. Anything not explicitly allowed
+        // fails closed here, before any handler is reached.
+        $gate = $this->gateAction($action);
+        if (!$gate['ok']) {
+            return ['error' => $gate['message'], 'code' => $gate['code'], 'executed' => false];
+        }
+        $action = $gate['action'];
+
         try {
             return match ($action) {
                 'list_users'       => $this->actionListUsers($params),
                 'get_analytics'    => $this->actionGetAnalytics($params),
                 'get_workspace'    => $this->actionGetWorkspace($params),
-                'adjust_credits'   => $this->actionAdjustCredits($params),
                 'get_queue'        => $this->actionGetQueue(),
                 'generate_report'  => $this->actionGenerateReport($params),
                 'get_audit_logs'   => $this->actionGetAuditLogs($params),
                 'get_engine_status'=> $this->actionGetEngineStatus(),
-                'suspend_user'     => $this->actionSuspendUser($params),
-                'query_database'   => $this->actionQueryDatabase($params),
                 'remember'         => $this->actionRemember($params),
                 'forget'           => $this->actionForget($params),
                 default            => ['error' => "Unknown action: {$action}"],
@@ -779,16 +872,6 @@ SYSTEM;
     }
 
     // ── New Action Handlers ──────────────────────────────────────────────
-
-    private function actionQueryDatabase(array $params): array
-    {
-        $sql = $params['sql'] ?? '';
-        if (empty($sql)) {
-            return ['error' => 'SQL query is required'];
-        }
-
-        return $this->executeSafeQuery($sql);
-    }
 
     private function actionRemember(array $params): array
     {
@@ -915,51 +998,6 @@ SYSTEM;
         ];
     }
 
-    private function actionAdjustCredits(array $params): array
-    {
-        $workspaceId = (int) ($params['workspace_id'] ?? 0);
-        $amount      = (int) ($params['amount'] ?? 0);
-        $reason      = $params['reason'] ?? 'Admin adjustment via Bella';
-
-        if (!$workspaceId || !$amount) {
-            return ['error' => 'workspace_id and amount are required'];
-        }
-
-        $credits = DB::table('credits')->where('workspace_id', $workspaceId)->first();
-        if (!$credits) {
-            return ['error' => "No credit record for workspace #{$workspaceId}"];
-        }
-
-        $newBalance = $credits->balance + $amount;
-
-        DB::table('credits')->where('workspace_id', $workspaceId)->update([
-            'balance'    => $newBalance,
-            'updated_at' => now(),
-        ]);
-
-        DB::table('credit_transactions')->insert([
-            'workspace_id'   => $workspaceId,
-            'type'           => $amount > 0 ? 'credit' : 'debit',
-            'amount'         => $amount,
-            'reference_type' => 'admin_bella',
-            'reference_id'   => null,
-            'metadata_json'  => json_encode([
-                'reason'        => $reason,
-                'balance_after' => $newBalance,
-                'source'        => 'bella_admin_assistant',
-            ]),
-            'created_at'     => now(),
-        ]);
-
-        return [
-            'success'         => true,
-            'workspace_id'    => $workspaceId,
-            'previous_balance'=> $credits->balance,
-            'adjustment'      => $amount,
-            'new_balance'     => $newBalance,
-            'reason'          => $reason,
-        ];
-    }
 
     private function actionGetQueue(): array
     {
@@ -1084,37 +1122,6 @@ SYSTEM;
         ];
     }
 
-    private function actionSuspendUser(array $params): array
-    {
-        $userId = (int) ($params['user_id'] ?? 0);
-        $reason = $params['reason'] ?? 'Suspended via Bella admin assistant';
-
-        if (!$userId) {
-            return ['error' => 'user_id is required'];
-        }
-
-        $user = DB::table('users')->where('id', $userId)->first();
-        if (!$user) {
-            return ['error' => "User #{$userId} not found"];
-        }
-
-        if ($user->is_platform_admin) {
-            return ['error' => 'Cannot suspend a platform admin'];
-        }
-
-        DB::table('users')->where('id', $userId)->update([
-            'status'     => 'suspended',
-            'updated_at' => now(),
-        ]);
-
-        return [
-            'success' => true,
-            'user_id' => $userId,
-            'name'    => $user->name,
-            'email'   => $user->email,
-            'reason'  => $reason,
-        ];
-    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // BELLA SESSION 3 — Image generation intent detection + execution

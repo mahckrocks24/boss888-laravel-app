@@ -57,6 +57,7 @@ class ArthurEditService
         }
         $sections = json_decode($page->sections_json ?? '[]', true) ?: [];
         $currentJson = json_encode($sections, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $websiteId = (int) ($page->website_id ?? 0);
 
         // 2. Build runtime prompt.
         $allowedTypes = implode(', ', SectionSchema::allowedTypes());
@@ -164,6 +165,28 @@ PROMPT;
         // 6. Snapshot after.
         $this->snapshots->snapshot($pageId, 'arthur_edit_after');
 
+        // 6b. (2026-08-03) MIRROR THE EDIT ONTO THE SERVED PAGE.
+        //
+        // Every Arthur-built site is written to
+        // storage/app/public/sites/{id}/index.html, and PublishedSiteMiddleware
+        // serves that file in preference to BuilderRenderer. Writing only
+        // sections_json therefore changed nothing the customer could see, while
+        // this method still returned success and the endpoint still charged a
+        // credit. Legacy renderer-backed sites (no static file) are unaffected:
+        // syncStaticHtml() no-ops when the file is absent.
+        $sync = $this->syncStaticHtml($websiteId, $newSections, $actions);
+
+        // Never claim a change the visitor cannot see.
+        if ($sync['is_static']) {
+            if ($applied > 0 && $sync['applied'] === 0) {
+                $reply = 'I saved those changes, but I could not apply them to your published page — '
+                       . 'the fields involved have no editable slot in this template. '
+                       . 'Your live site is unchanged.';
+            } elseif (! empty($sync['missed'])) {
+                $reply .= ' (' . count($sync['missed']) . ' of those changes could not be applied to the published page.)';
+            }
+        }
+
         // 7. Bust published cache.
         $this->bustPublishedCache($pageId);
 
@@ -173,6 +196,9 @@ PROMPT;
             'reply'           => $reply,
             'actions_applied' => $applied,
             'errors'          => $errors,
+            'static_applied'  => $sync['applied'],
+            'static_missed'   => $sync['missed'],
+            'visible_on_site' => $sync['is_static'] ? ($sync['applied'] > 0) : true,
         ];
     }
 
@@ -280,6 +306,151 @@ PROMPT;
         $insertAt = ($to > $from) ? $to - 1 : $to;
         array_splice($sections, $insertAt, 0, [$section]);
         return array_values($sections);
+    }
+
+    /**
+     * sections_json field names ("hero.heading") and the static templates'
+     * data-field ids ("hero_title") are different vocabularies, and the id
+     * varies BY TEMPLATE — a features heading is `process_title` on one
+     * template, `services_title` on another. So each pair maps to an ORDERED
+     * CANDIDATE LIST and we take the first id that actually exists in that
+     * site's DOM (updateField reports whether it matched). That degrades
+     * correctly across all 31 templates instead of guessing one name.
+     */
+    private const STATIC_FIELD_MAP = [
+        'hero' => [
+            'heading'            => ['hero_title'],
+            'subheading'         => ['hero_subtitle', 'hero_eyebrow'],
+            'body'               => ['hero_subtitle'],
+            'cta_text'           => ['hero_cta', 'hero_cta_primary'],
+            'cta_secondary_text' => ['hero_cta_secondary'],
+            'background_image'   => ['hero_image'],
+            'image'              => ['hero_image'],
+        ],
+        'features' => [
+            'heading'    => ['features_title', 'services_title', 'process_title', 'why_title', 'why_us_title', 'specialties_title', 'amenities_title', 'programs_title'],
+            'subheading' => ['features_intro', 'services_intro', 'process_intro', 'why_intro', 'why_us_intro'],
+            'body'       => ['features_intro', 'services_intro', 'process_intro', 'why_intro', 'why_us_intro'],
+        ],
+        'services' => [
+            'heading'    => ['services_title', 'features_title', 'process_title', 'menu_title', 'programs_title', 'specialties_title'],
+            'subheading' => ['services_intro', 'features_intro', 'process_intro', 'menu_intro'],
+            'body'       => ['services_intro', 'features_intro', 'process_intro', 'menu_intro'],
+        ],
+        'cta' => [
+            'heading'    => ['cta_banner_title'],
+            'subheading' => ['cta_banner_subtitle'],
+            'body'       => ['cta_banner_subtitle'],
+            'cta_text'   => ['cta_banner_cta'],
+        ],
+        'contact_form' => [
+            'heading'      => ['contact_form_title', 'contact_title', 'booking_title'],
+            'subheading'   => ['contact_intro', 'booking_intro'],
+            'body'         => ['contact_intro', 'booking_intro'],
+            'submit_label' => ['form_submit_text', 'booking_submit'],
+        ],
+        'booking_form' => [
+            'heading'      => ['booking_title', 'contact_form_title', 'contact_title'],
+            'subheading'   => ['booking_intro', 'contact_intro'],
+            'body'         => ['booking_intro', 'contact_intro'],
+            'submit_label' => ['booking_submit', 'form_submit_text'],
+        ],
+        'gallery'      => ['heading' => ['gallery_title'], 'subheading' => ['gallery_intro'], 'body' => ['gallery_intro']],
+        'testimonials' => ['heading' => ['testimonials_title'], 'body' => ['testimonials_intro']],
+        'team'         => ['heading' => ['team_title', 'staff_title', 'doctors_title', 'trainers_title', 'faculty_title'], 'body' => ['team_intro', 'staff_intro', 'doctors_intro']],
+        'faq'          => ['heading' => ['faq_title'], 'body' => ['faq_intro']],
+        'pricing'      => ['heading' => ['pricing_title', 'plans_title'], 'body' => ['pricing_intro']],
+        'stats'        => ['heading' => ['stats_title'], 'body' => ['stats_intro']],
+        'blog_list'    => ['heading' => ['blog_title'], 'subheading' => ['blog_intro'], 'body' => ['blog_intro']],
+        'header'       => ['logo_text' => ['business_name', 'logo'], 'cta_text' => ['nav_cta']],
+        'footer'       => ['copyright' => ['footer_copyright'], 'body' => ['footer_text', 'footer_about', 'footer_tagline']],
+    ];
+
+    /**
+     * Mirror applied actions onto the site's served static HTML.
+     * No-ops (is_static=false) for renderer-backed sites, which read
+     * sections_json directly and were never affected.
+     *
+     * @return array{is_static:bool, applied:int, missed:array<int,string>}
+     */
+    private function syncStaticHtml(int $websiteId, array $sections, array $actions): array
+    {
+        $out = ['is_static' => false, 'applied' => 0, 'missed' => []];
+        if ($websiteId <= 0) {
+            return $out;
+        }
+        if (! file_exists(storage_path("app/public/sites/{$websiteId}/index.html"))) {
+            return $out;   // renderer-backed site — sections_json IS the source of truth
+        }
+        $out['is_static'] = true;
+
+        $templates = app(TemplateService::class);
+
+        foreach ($actions as $action) {
+            $op = (string) ($action['op'] ?? '');
+            if (! in_array($op, ['update_text', 'update_field', 'update_image'], true)) {
+                // Structural ops (add/remove/reorder) cannot be expressed as a
+                // data-field patch. Report them rather than silently dropping.
+                if ($op !== '') {
+                    $out['missed'][] = $op . ' (structural change — not supported on a published template)';
+                }
+                continue;
+            }
+
+            $idx   = isset($action['section_index']) ? (int) $action['section_index'] : null;
+            $field = (string) ($action['field'] ?? ($op === 'update_image' ? 'background_image' : ''));
+            $value = $action['value'] ?? '';
+            if ($idx === null || $field === '' || ! is_scalar($value)) {
+                continue;
+            }
+
+            $type = (string) ($sections[$idx]['type'] ?? 'generic');
+            $done = false;
+            foreach ($this->candidateFieldIds($type, $field) as $candidate) {
+                try {
+                    if ($templates->updateField($websiteId, $candidate, (string) $value)) {
+                        $out['applied']++;
+                        $done = true;
+                        break;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('ArthurEditService: static field patch threw', [
+                        'website_id' => $websiteId, 'candidate' => $candidate, 'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+            if (! $done) {
+                $out['missed'][] = "{$type}.{$field}";
+                Log::info('ArthurEditService: no data-field slot for edit', [
+                    'website_id' => $websiteId, 'type' => $type, 'field' => $field,
+                ]);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Ordered data-field candidates for a (section type, field) pair.
+     * Explicit map first, then conventional guesses, then the raw field name
+     * (templates occasionally use the sections_json name verbatim).
+     */
+    private function candidateFieldIds(string $type, string $field): array
+    {
+        $ids = self::STATIC_FIELD_MAP[$type][$field] ?? [];
+
+        $suffix = match ($field) {
+            'heading'      => '_title',
+            'subheading',
+            'body'         => '_intro',
+            'cta_text'     => '_cta',
+            default        => '_' . $field,
+        };
+        $ids[] = $type . $suffix;
+        $ids[] = $type . '_' . $field;
+        $ids[] = $field;
+
+        return array_values(array_unique(array_filter($ids)));
     }
 
     private function bustPublishedCache(int $pageId): void

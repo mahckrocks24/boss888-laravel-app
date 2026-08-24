@@ -580,6 +580,8 @@ class BuilderRenderer
             $navHtml .= "<a href=\"" . e($url) . "\" style=\"color:{$color};text-decoration:none;font-size:14px;font-weight:{$weight};{$border};padding-bottom:4px;transition:all .2s\">" . e($lbl) . "</a>";
         }
 
+        // BUILDER888 P0-3 (2026-08-09) — header CTA reaches every page.
+        $ctaHref = $this->safeUrl($ctaHref);
         $ctaBtn = $ctaText ? "<a href=\"{$ctaHref}\" style=\"background:{$brand['primary']};color:#fff;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none\">" . e($ctaText) . "</a>" : '';
 
         return <<<HTML
@@ -592,6 +594,40 @@ class BuilderRenderer
 HTML;
     }
 
+    /**
+     * BUILDER888 P0-3 (2026-08-09) — URL scheme allowlist for anything that
+     * lands in an href/src on a published customer site.
+     *
+     * htmlspecialchars() alone does not help here: "javascript:alert(1)"
+     * contains no escapable character, so an escaped value still executes.
+     * Anything not plainly navigable collapses to '#'.
+     */
+    private function safeUrl(?string $url, string $fallback = '#'): string
+    {
+        $url = trim((string) $url);
+        if ($url === '') {
+            return $fallback;
+        }
+
+        // Relative, root-relative, anchor and query links are always fine.
+        if (preg_match('#^(/|\#|\?)#', $url)) {
+            return e($url);
+        }
+
+        // Strip control characters and entities used to smuggle a scheme
+        // past a naive check (e.g. "java\tscript:", "java&#09;script:").
+        $probe = strtolower(preg_replace('/[\x00-\x20]|&#[0-9a-fx]+;?/i', '', $url));
+
+        if (preg_match('/^([a-z][a-z0-9+.-]*):/', $probe, $m)) {
+            if (! in_array($m[1], ['http', 'https', 'mailto', 'tel'], true)) {
+                return $fallback;
+            }
+            return e($url);
+        }
+
+        // No scheme at all — a bare host or path such as "example.com/x".
+        return e($url);
+    }
     private function renderHero(array $sec, array $brand): string
     {
         $style = $sec['style'] ?? [];
@@ -624,6 +660,12 @@ HTML;
         $btnStyle = $variant === 'white'
             ? "background:#fff;color:{$brand['primary']}"
             : "background:{$brand['primary']};color:#fff";
+        // BUILDER888 P0-3 (2026-08-09) — hero heading/subheading were the
+        // most exposed fields on the platform: interpolated raw into the
+        // heredoc. cta_link / components[].href accepted javascript:.
+        $heading = e($heading);
+        $sub     = e($sub);
+        $ctaHref = $this->safeUrl($ctaHref);
         $btn = $ctaText ? "<a href=\"{$ctaHref}\" style=\"{$btnStyle};padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;display:inline-block;margin-top:12px\">" . e($ctaText) . "</a>" : '';
 
         return <<<HTML
@@ -654,6 +696,8 @@ HTML;
         }
         if (!$heading) $heading = $sec['heading'] ?? '';
         if (!$items && isset($sec['items'])) $items = $sec['items'];
+        // BUILDER888 P0-3 (2026-08-09) — heading reaches the heredoc raw.
+        $heading = e($heading);
 
         $cardsHtml = '';
         foreach ($items as $item) {
@@ -691,6 +735,11 @@ HTML;
         if (!$text) $text = $sec['body'] ?? '';
         if (!$btnText) $btnText = $sec['cta_text'] ?? 'Get Started';
 
+        // BUILDER888 P0-3 (2026-08-09) — heading/text were interpolated raw
+        // into the heredoc below and btnHref accepted any scheme.
+        $heading = e($heading);
+        $text    = e($text);
+        $btnHref = $this->safeUrl($btnHref);
         $btn = "<a href=\"{$btnHref}\" style=\"background:#fff;color:{$brand['primary']};padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;display:inline-block\">" . e($btnText) . "</a>";
 
         return <<<HTML

@@ -173,6 +173,9 @@ class PublicChatbotController
             'message'    => 'required|string|max:4000',
             'hp'         => 'nullable|string|max:255',  // honeypot — must be empty
             'started_at' => 'nullable|integer',         // ms epoch widget rendered
+            // P2-C: optional. When absent the service derives a canonical key,
+            // so the guarantee holds without a widget change (clause R-02 /S-03).
+            'idempotency_key' => 'nullable|string|max:191',
         ]);
 
         // Honeypot: if filled, drop silently (return generic 200 to fool bots).
@@ -200,7 +203,11 @@ class PublicChatbotController
             return response()->json(['success' => false, 'error' => 'SESSION_NOT_FOUND'], 404);
         }
 
-        return response()->json($this->responder->handleMessage((int) $data['session_id'], $data['message']));
+        return response()->json($this->responder->handleMessage(
+            (int) $data['session_id'],
+            $data['message'],
+            $data['idempotency_key'] ?? null,
+        ));
     }
 
     /**

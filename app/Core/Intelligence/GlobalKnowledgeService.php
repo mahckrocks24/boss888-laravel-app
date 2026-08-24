@@ -201,8 +201,33 @@ class GlobalKnowledgeService
         ];
     }
 
+    /**
+     * EXPERIENCE888 CONTAINMENT (2026-08-13).
+     *
+     * This method previously promoted ONE workspace's campaign results into
+     * `global_knowledge`, a table with no workspace_id, which is read back for
+     * every other workspace. That is cross-tenant learning leakage.
+     *
+     * Tenant-derived contribution is now refused. `global_knowledge` may only
+     * hold explicitly platform-curated insight, written through recordInsight()
+     * by a curation path that is not derived from a single customer's data.
+     *
+     * The read paths are deliberately left alone: with the tenant write side
+     * closed, they cannot return another tenant's data.
+     */
+    public const TENANT_CONTRIBUTION_CONTAINED = true;
+
     private function contributeToGlobal(string $engine, string $type, array $strategy, array $results, ?string $industry, ?string $region): void
     {
+        \Illuminate\Support\Facades\Log::info('[Experience888] cross-tenant contribution refused', [
+            'engine' => $engine, 'type' => $type, 'industry' => $industry, 'region' => $region,
+            'reason' => 'global_knowledge has no workspace identity; tenant-derived learning '
+                      . 'belongs in workspace-scoped Experience888 stores',
+        ]);
+        return;
+
+        // Unreachable, retained so the original behaviour is auditable rather
+        // than deleted. Do not re-enable without a workspace-scoped destination.
         $effectiveness = $this->calculateEffectiveness($results);
         if ($effectiveness < 0.3) return; // Only learn from reasonably successful campaigns
 

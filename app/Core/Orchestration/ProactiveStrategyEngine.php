@@ -141,6 +141,65 @@ class ProactiveStrategyEngine
             return $this->executePublishReady($wsId, $proposalId);
         }
 
+        // ── SARAH888 — a chat action the owner was asked to approve ────────
+        // Sarah's chat path used to create the task immediately and mark it
+        // requires_approval, so the row (with its credit cost and queue
+        // position) existed before the owner had said anything. The enterprise
+        // contract is that an ASK_FIRST turn creates nothing until a later
+        // explicit authorization, so the proposal now carries the intended
+        // create payload and the task is built HERE, at the moment of consent.
+        //
+        // The payload is replayed exactly as proposed. It is never
+        // reconstructed from the conversation, so what runs is what the owner
+        // saw and agreed to — not a fresh interpretation of their words.
+        if ($type === \App\Core\Sarah888\ChatActionProposal::TYPE) {
+            $payload = app(\App\Core\Sarah888\ChatActionProposal::class)->payloadFor($proposal);
+            if (!$payload) {
+                return ['success' => false, 'error' => 'proposal_payload_missing',
+                        'message' => 'This proposal has no recorded action to run.'];
+            }
+
+            $cost = (int) ($payload['credit_cost'] ?? 0);
+            if ($cost > 0 && ! $this->credits->hasBalance($wsId, $cost)) {
+                DB::table('strategy_proposals')->where('id', $proposalId)
+                    ->update(['status' => 'insufficient_credits', 'updated_at' => now()]);
+                return ['success' => false, 'code' => 'NO_CREDITS',
+                        'error' => "Insufficient credits. Required: {$cost}"];
+            }
+
+            // Consent has been given, so the task may now be created and run.
+            // The marker below is what tells the creation gate this is the
+            // authorised second turn rather than a fresh unauthorised request;
+            // without it the gate would correctly refuse its own proposal.
+            $payload['authorized_by_proposal'] = $proposalId;
+            $payload['requires_approval']      = false;
+            $payload['auto_approve']           = true;
+
+            // Audit trail: which authorization produced this task. The flag
+            // above is a control signal for the creation gate and never
+            // reaches payload_json, so without this the row cannot say who
+            // approved it or against which offer.
+            if (!isset($payload['payload']) || !is_array($payload['payload'])) $payload['payload'] = [];
+            $payload['payload']['authorized_by_proposal'] = $proposalId;
+
+            try {
+                $task = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, $payload);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[Sarah888] approved chat action failed to create', [
+                    'ws' => $wsId, 'proposal' => $proposalId, 'error' => $e->getMessage(),
+                ]);
+                return ['success' => false, 'error' => 'task_creation_failed',
+                        'message' => $e->getMessage()];
+            }
+
+            DB::table('strategy_proposals')->where('id', $proposalId)->update([
+                'status' => 'approved', 'approved_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return ['success' => true, 'type' => $type, 'task_id' => $task->id,
+                    'credits_used' => $cost, 'message' => 'Approved and queued.'];
+        }
+
         // Informational types: no credits, no execution. Just ack.
         if (in_array($type, ['goal_pivot', 'celebrate_goal_achieved', 'budget_warning', 'budget_critical', 'budget_alert'], true)) {
             DB::table('strategy_proposals')->where('id', $proposalId)->update([

@@ -370,11 +370,33 @@ class RuntimeClient
 
         $textLen = strlen($body['output'] ?? '');
         $estTokens = (int) ceil($textLen / 4);
-        $this->logApiUsage('deepseek', $body['model'] ?? 'deepseek-chat', '/ai/run:chat_json', [
-            'tokens_used' => $estTokens,
-            'tokens_in' => (int) ceil(strlen($userPrompt . $system) / 4),
-            'tokens_out' => $estTokens,
-        ], $body['duration_ms'] ?? 0, $context['workspace_id'] ?? null);
+        // ── D-01 / D-02 (2026-07-29) — execution provenance ─────────────
+        //
+        // The runtime returns requested_provider, actual_provider,
+        // requested_model, actual_model, fallback_used, fallback_reason and an
+        // exact usage object. This call site used to discard all of it and log
+        // a hardcoded provider with strlen/4 token estimates, which recorded
+        // OpenAI fallback traffic as DeepSeek and understated reasoning-heavy
+        // output tokens by up to 801x.
+        //
+        // The legacy branch below is unchanged, so with the flag off (default)
+        // behaviour is identical to before this patch. See config/ai_provenance.php.
+        if (config('ai_provenance.enabled')) {
+            $this->logRuntimeExecution(
+                $body,
+                '/ai/run:chat_json',
+                (int) ($body['duration_ms'] ?? 0),
+                $context['workspace_id'] ?? null,
+                ['provider' => 'deepseek', 'model' => null, 'tier' => null],
+                $userPrompt . $system
+            );
+        } else {
+            $this->logApiUsage('deepseek', $body['model'] ?? 'deepseek-chat', '/ai/run:chat_json', [
+                'tokens_used' => $estTokens,
+                'tokens_in' => (int) ceil(strlen($userPrompt . $system) / 4),
+                'tokens_out' => $estTokens,
+            ], $body['duration_ms'] ?? 0, $context['workspace_id'] ?? null);
+        }
 
         return $out;
     }
@@ -575,6 +597,9 @@ class RuntimeClient
                 'prompt' => $prompt,
                 'style'  => $options['style'] ?? null,
                 'size'   => $options['size']  ?? null,
+                'quality'      => $options['quality'] ?? null,
+                'format'       => $options['format'] ?? null,
+                'transparency' => $options['transparency'] ?? null,
             ], fn($v) => $v !== null && $v !== ''), 120);
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::imageGenerate connection failed', ['error' => $e->getMessage()]);
@@ -1200,6 +1225,148 @@ class RuntimeClient
         }
     }
 
+    /**
+     * Record one runtime execution with full provenance and exact usage.
+     *
+     * Added 2026-07-29 (D-01 / D-02). Only reached when
+     * config('ai_provenance.enabled') is true.
+     *
+     * The legacy `provider` and `model` columns are written with the ACTUAL
+     * execution values. `model` already held the actual value — it read the
+     * runtime's response `model`, which the runtime sets to gpt-4o-mini on
+     * fallback — so aligning `provider` removes a contradiction rather than
+     * inventing a new meaning. Nothing is lost: the requested pair is recorded
+     * in its own columns.
+     */
+    private function logRuntimeExecution(
+        array $body,
+        string $endpoint,
+        int $durationMs,
+        ?int $wsId = null,
+        array $requested = [],
+        string $estimateBasis = '',
+        string $status = 'success',
+        ?string $error = null
+    ): void {
+        try {
+            $usage = is_array($body['usage'] ?? null) ? $body['usage'] : [];
+
+            // The runtime's V4 usage keys. completion_tokens ALREADY INCLUDES
+            // reasoning_tokens — DeepSeek bills reasoning as output — so it is
+            // the billable figure and reasoning must NOT be added to it again.
+            $hasExact = array_key_exists('input_tokens', $usage)
+                     || array_key_exists('completion_tokens', $usage);
+
+            if ($hasExact) {
+                $tokensIn    = (int) ($usage['input_tokens'] ?? 0);
+                $tokensOut   = (int) ($usage['completion_tokens'] ?? 0);
+                $total       = (int) ($usage['total_tokens'] ?? ($tokensIn + $tokensOut));
+                $usageSource = 'runtime';
+            } else {
+                // Reached only when the runtime reported no usage at all. The
+                // estimate is retained so a row is still written, but it is
+                // labelled 'estimated' so it can never be mistaken for measured.
+                $tokensOut   = (int) ceil(strlen((string) ($body['output'] ?? '')) / 4);
+                $tokensIn    = (int) ceil(strlen($estimateBasis) / 4);
+                $total       = $tokensIn + $tokensOut;
+                $usageSource = 'estimated';
+            }
+
+            $requestedProvider = $body['requested_provider'] ?? ($requested['provider'] ?? 'deepseek');
+            $actualProvider    = $body['actual_provider']    ?? $requestedProvider;
+            $requestedModel    = $body['requested_model']    ?? ($requested['model'] ?? null);
+            $actualModel       = $body['actual_model']       ?? ($body['model'] ?? null);
+            $fallbackUsed      = (bool) ($body['fallback_used'] ?? $body['fallback'] ?? false);
+
+            [$cost, $pricingSource] = $this->priceExecution(
+                (string) $actualProvider,
+                (string) $actualModel,
+                $tokensIn,
+                $tokensOut,
+                (int) ($usage['cached_tokens'] ?? 0)
+            );
+
+            DB::table('api_usage_logs')->insert([
+                'workspace_id'       => $wsId,
+
+                // Legacy columns — DEFINED as the actual execution (see config).
+                'provider'           => $actualProvider,
+                'model'              => $actualModel,
+
+                'requested_provider' => $requestedProvider,
+                'requested_model'    => $requestedModel,
+                'actual_provider'    => $actualProvider,
+                'actual_model'       => $actualModel,
+
+                'fallback_used'      => $fallbackUsed,
+                'fallback_reason'    => $fallbackUsed
+                                          ? mb_substr((string) ($body['fallback_reason'] ?? ''), 0, 500)
+                                          : null,
+
+                'tier'               => $requested['tier'] ?? null,
+                'runtime_version'    => $body['runtime_version'] ?? null,
+                'correlation_id'     => $body['request_id'] ?? ($body['requestId'] ?? null),
+
+                'endpoint'           => $endpoint,
+                'tokens_in'          => $tokensIn,
+                'tokens_out'         => $tokensOut,
+                'total_tokens'       => $total,
+
+                'prompt_tokens'      => $usage['input_tokens'] ?? null,
+                'completion_tokens'  => $usage['completion_tokens'] ?? null,
+                'reasoning_tokens'   => $usage['reasoning_tokens'] ?? null,
+                'cached_tokens'      => $usage['cached_tokens'] ?? null,
+                'usage_source'       => $usageSource,
+
+                'cost_usd'           => $cost,
+                'pricing_source'     => $pricingSource,
+                'duration_ms'        => $durationMs,
+                'status'             => $status,
+                'error'              => $error,
+                'created_at'         => now(),
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('[ApiUsage] provenance log failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Price by the model that ACTUALLY executed, not the one requested.
+     *
+     * Returns [cost, pricing_source] so every figure can be traced to the rate
+     * that produced it. An unknown model falls through to the legacy estimator
+     * and is labelled 'legacy:<provider>' rather than silently priced at zero.
+     *
+     * @return array{0: float, 1: string}
+     */
+    private function priceExecution(
+        string $provider,
+        string $model,
+        int $tokensIn,
+        int $tokensOut,
+        int $cachedTokens = 0
+    ): array {
+        $rates = config('ai_provenance.pricing')[$model]
+              ?? config('ai_provenance.pricing_historical')[$model]
+              ?? null;
+
+        if (! is_array($rates)) {
+            return [$this->estimateApiCost($provider, $model, $tokensIn, $tokensOut), 'legacy:' . $provider];
+        }
+
+        // Cached input is a SUBSET of input, never an addition to it.
+        $cached = max(0, min($cachedTokens, $tokensIn));
+        $fresh  = max(0, $tokensIn - $cached);
+
+        $cost = ($fresh * $rates['input'] + $tokensOut * $rates['output']) / 1000000;
+
+        if ($cached > 0) {
+            $cachedRate = $rates['cached_input'] ?? $rates['input'];
+            $cost += ($cached * $cachedRate) / 1000000;
+        }
+
+        return [round($cost, 6), $model];
+    }
     private function estimateApiCost(string $provider, string $model, int $tokensIn, int $tokensOut): float
     {
         // Pricing per 1M tokens (approximate)

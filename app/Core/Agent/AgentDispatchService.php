@@ -486,10 +486,28 @@ class AgentDispatchService
         //     safety overlap so boundary-second rows are never lost.
         //     Re-delivery within the overlap is idempotent — web
         //     (_acIsRendered) and mobile both dedup events by id.
+        //
+        // 2026-07-26 (Sarah live-refresh incident) — the overlap was 2s while
+        // the client polls every 2.5s (core.js poll_interval_ms). The lookback
+        // was therefore SMALLER than the poll interval, leaving a 0.5s blind
+        // spot on every tick: a row written in that window satisfied neither
+        // poll's range and was never delivered. Sarah's reply takes 15-47s, so
+        // the poller ticks ~18 times per answer and only had to lose one race
+        // for the reply to never appear until a manual refresh.
+        //
+        // The lookback MUST exceed the client poll interval. 6s covers the
+        // 2.5s interval plus a slow tick, a backgrounded tab resuming, and
+        // second-precision rounding on created_at. Duplicates inside the
+        // overlap are deduped by event id on both clients, so a wider window
+        // is free.
+        //
+        // INVARIANT: EVENT_LOOKBACK_SECONDS > core.js poll_interval_ms / 1000.
+        $lookbackSeconds = 6;
+
         $since = now()->subMinutes(5);
         if ($cursor) {
             try {
-                $since = \Carbon\Carbon::parse(str_replace(' ', '+', $cursor))->subSeconds(2);
+                $since = \Carbon\Carbon::parse(str_replace(' ', '+', $cursor))->subSeconds($lookbackSeconds);
             } catch (\Throwable $e) {
                 $since = now()->subMinutes(5);
             }

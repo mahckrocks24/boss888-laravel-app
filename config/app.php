@@ -66,6 +66,8 @@ return [
          * Application Service Providers...
          */
         App\Providers\AppServiceProvider::class,
+        App\Core\Email888\Email888ServiceProvider::class,
+        App\Engines\Infrastructure\InfrastructureEmailServiceProvider::class,
 
     ],
 

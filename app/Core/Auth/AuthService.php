@@ -263,6 +263,12 @@ class AuthService
                     'expireMin' => 60,
                 ],
                 function ($m) use ($user) {
+                    // EM-3: a password reset is security mail. The purpose pins it to
+                    // the transactional stream, so a marketing unsubscribe can never
+                    // stop a customer regaining access to their account.
+                    $m->getSymfonyMessage()->getHeaders()
+                        ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'password_reset');
+
                     $m->to($user->email, $user->name)
                       ->subject('Reset your LevelUp Growth password')
                       ->from(

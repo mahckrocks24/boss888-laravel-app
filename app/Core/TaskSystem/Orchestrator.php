@@ -1746,7 +1746,8 @@ class Orchestrator
             'studio/export_design'         => 'Design exported.',
             'studio/create_design'         => 'New design started.',
             'studio/publish_social'        => 'Design published to social.',
-            'marketing/send_campaign'      => 'Email campaign sent.',
+            // EM-7/12: the request only ACCEPTS the campaign; the worker sends it.
+            'marketing/send_campaign'      => 'Email campaign accepted for sending.',
             'marketing/schedule_campaign'  => 'Email campaign scheduled.',
             'marketing/update_campaign'    => 'Email campaign updated.',
             'builder/wizard_generate'      => 'Website generated.',

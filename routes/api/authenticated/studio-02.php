@@ -998,9 +998,38 @@ HTMLSCRIPT;
                         $systemPrompt .= $__critique;
                         $instructions .= $__critique;
                     }
-
-
-                    $resp = $runtime->chatJson($systemPrompt, $instructions, [], 600);
+                    // Feature Sprint 6: AI Campaign Creator. When the customer asks to BUILD/CREATE a
+                    // whole landing page / campaign / promotion and the full capability is active, teach
+                    // the model to transform the ENTIRE existing design, tagging each action with the
+                    // section it belongs to. The server groups by section and runs one ProjectionBatch
+                    // per section. A larger output budget is allowed for the page-wide action array.
+                    $__maxTok = 600;
+                    $__campaignIntent = (bool) preg_match('/\b(build|create|make|design|generate|need|want|put together|set up)\b[^.]*\b(landing page|campaign|promotion|promo|sales page|home ?page|web ?site|page for|page selling)\b/i', $message);
+                    if ($__campaignIntent
+                        && ($__saPilotWs === 0 || $wsId === $__saPilotWs)
+                        && config('studio_chat_apply.server_apply_text') === true
+                        && config('studio_chat_apply.server_apply_style') === true
+                        && config('studio_chat_apply.server_apply_brand') === true
+                        && config('studio_chat_apply.server_apply_image') === true) {
+                        $__maxTok = 4000;
+                        $__campClause = " CAMPAIGN / LANDING PAGE: the user wants a complete campaign built on THIS existing design. Transform EVERY editable field the design already has (see the CURRENT TEXT FIELDS listed above) into concise copy that fits the requested theme/industry, and restyle the key elements. Produce ONE actions array containing: an update_field for each existing text field with fresh on-theme copy; update_style where it strengthens the look; apply_brand ONCE if the workspace has brand colours; and AT MOST ONE generate_and_replace_image on the existing image field (a hero that fits the theme). For update_style use ONLY these properties and ONLY simple concrete values: color / background-color as a HEX colour like #1A1A1A (never a gradient, rgb(), hsl(), or url()); font-size as a pixel value like 48px (never rem, em, %, vw, clamp() or calc()); font-weight as a number like 700; text-align as left/center/right; opacity as a number like 0.9. TAG every action with a \"section\" string naming the part of the page it belongs to (for example \"Hero\", \"Statistics\", \"Call to action\"). Use ONLY fields that already exist - NEVER invent a field, a section, spacing, layout, geometry, animation, font-family, letter-spacing, line-height, or a new block. Return every change as an explicit action; do not describe changes you are not actually making.";
+                        $systemPrompt .= $__campClause;
+                        $instructions .= $__campClause;
+                    }
+                    // Feature Sprint 5: AI Section Makeover. When the full makeover capability is
+                    // active (text+style+brand+image all ON, in scope), teach the model to answer a
+                    // makeover/redesign request with a COMBINATION of the already-supported operations
+                    // only - never invented ones. The server-side makeover block executes them atomically.
+                    if (($__saPilotWs === 0 || $wsId === $__saPilotWs)
+                        && config('studio_chat_apply.server_apply_text') === true
+                        && config('studio_chat_apply.server_apply_style') === true
+                        && config('studio_chat_apply.server_apply_brand') === true
+                        && config('studio_chat_apply.server_apply_image') === true) {
+                        $__mkClause = " SECTION MAKEOVER: if the user asks to redesign or 'make over' a section, or to make it feel a certain way (premium, luxury, modern, corporate, startup, industrial, elegant, minimal, professional, healthcare, etc.), respond with a COMBINATION of the SUPPORTED operations described above - typically some of: update_field (a sharper headline or stronger CTA copy on EXISTING fields), update_style (ONLY color, background-color, font-size, font-weight, text-align or opacity on existing fields), apply_brand (the workspace brand colours), and AT MOST ONE generate_and_replace_image (a richer on-theme image on an EXISTING image field). Pick only the operations that genuinely fit the theme - returning just two or three is fine. NEVER invent spacing, padding, margins, layout, positioning, alignment, geometry, responsive changes, animations, font-family, letter-spacing, line-height, new sections or new blocks; those are not supported - omit them silently. Return every change as an explicit action in the actions array and do not describe changes you are not actually making.";
+                        $systemPrompt .= $__mkClause;
+                        $instructions .= $__mkClause;
+                    }
+                    $resp = $runtime->chatJson($systemPrompt, $instructions, [], $__maxTok);
                     if (!empty($resp['success'])) {
                         $parsed = $resp['parsed'] ?? null;
                         if (is_array($parsed)) {
@@ -1079,6 +1108,475 @@ HTMLSCRIPT;
                 return response()->json(['success' => true, 'reply' => $reply, 'actions' => []]);
             }
             $__pilotWs = (int) config('studio_chat_apply.pilot_workspace_id');
+            // ══ Feature Sprint 6: AI Campaign Creator — section-grouped page-wide orchestration ══
+            // Engages when the model TAGGED its actions with >=2 sections OR the message is a campaign
+            // request ("create/build a landing page/campaign") and every present op-group's flag is ON
+            // in scope. Groups actions by section (the model's declared tag when present; otherwise a
+            // deterministic grouping derived from the REAL existing field names / op type - never
+            // fabricated markup, since this design has no data-section boundaries), then runs ONE
+            // ProjectionBatch PER SECTION on a shared adapter (per-section atomicity: a section verifies
+            // wholesale or is skipped - never half-applied; one bad section can NOT sink the rest),
+            // persists the accumulated result ONCE (CAS), and returns a section-grouped truthful reply
+            // (updated sections + skipped sections WITH reasons). The one hero image generation runs
+            // up-front. NO new engine / action type / projection capability / flag. Single-type and
+            // small makeover arrays fall through to the makeover / per-type blocks below.
+            if (!$__isReview && is_array($actions) && count($actions) >= 2) {
+                $__secTag = function ($a) { $s = is_array($a) ? ($a['section'] ?? null) : null; return (is_string($s) && trim($s) !== '') ? trim($s) : null; };
+                $__taggedList = [];
+                foreach ($actions as $a) { $s = $__secTag($a); if ($s !== null && !in_array($s, $__taggedList, true)) { $__taggedList[] = $s; } }
+                $__campIntent = (bool) preg_match('/\b(build|create|make|design|generate|need|want|put together|set up)\b[^.]*\b(landing page|campaign|promotion|promo|sales page|home ?page|web ?site|page for|page selling)\b/i', (string) $message);
+                $__tagged = count($__taggedList) >= 2;
+                if ($__tagged || $__campIntent) {
+                    // resolve the section for each action: the model's tag when tagged, else a deterministic
+                    // group from the field name / op type (real fields only — no invented boundaries).
+                    $__secFromName = function ($name) {
+                        $l = strtolower((string) $name);
+                        if ($l === '') return 'Content';
+                        if (str_contains($l, 'stat') || str_contains($l, 'number')) return 'Statistics';
+                        if (str_contains($l, 'cta') || str_contains($l, 'button') || str_contains($l, 'btn')) return 'Call to action';
+                        if (str_contains($l, 'headline') || str_contains($l, 'hero') || str_contains($l, 'eyebrow') || str_contains($l, 'tag') || str_contains($l, 'logo') || str_contains($l, 'sub') || str_contains($l, 'title') || str_contains($l, 'brand')) return 'Hero';
+                        return 'Content';
+                    };
+                    // Group DETERMINISTICALLY by the real field name / op type (finer + server-controlled
+                    // than the model's free-text tags, and grounded in fields that actually exist). The
+                    // paid image op is ALWAYS isolated in its own section so a sibling text/style failure
+                    // can never sink the generated hero image.
+                    $__secOf = function ($a) use ($__secFromName) {
+                        $t = is_array($a) ? ($a['type'] ?? null) : null;
+                        if ($t === 'generate_and_replace_image' || $t === 'update_image') return 'Hero image';
+                        if ($t === 'apply_brand') return 'Brand colours';
+                        return $__secFromName(is_array($a) ? ($a['name'] ?? '') : '');
+                    };
+                    $__secList = [];
+                    foreach ($actions as $a) { $s = $__secOf($a); if ($s !== '' && !in_array($s, $__secList, true)) { $__secList[] = $s; } }
+
+                    $__cGroupOf = fn ($t) => in_array($t, ['generate_and_replace_image', 'update_image'], true) ? 'image'
+                        : ($t === 'update_field' ? 'text' : ($t === 'update_style' ? 'style' : ($t === 'apply_brand' ? 'brand' : 'other')));
+                    $__cTypes = [];
+                    foreach ($actions as $a) { if (is_array($a) && isset($a['type'])) { $__cTypes[] = $a['type']; } }
+                    $__cSupported = ['update_field', 'update_style', 'apply_brand', 'generate_and_replace_image', 'update_image'];
+                    $__cAllSupported = count($actions) === count(array_filter($__cTypes, fn ($t) => in_array($t, $__cSupported, true)));
+                    $__cGroups = array_values(array_unique(array_map($__cGroupOf, $__cTypes)));
+                    $__cFlag = ['text' => 'server_apply_text', 'style' => 'server_apply_style', 'brand' => 'server_apply_brand', 'image' => 'server_apply_image'];
+                    $__cOk = ($__pilotWs === 0 || $wsId === $__pilotWs) && $__cAllSupported && count($__secList) >= 1;
+                    foreach ($__cGroups as $__g) { if (!isset($__cFlag[$__g]) || config('studio_chat_apply.' . $__cFlag[$__g]) !== true) { $__cOk = false; } }
+                    if ($__cOk) {
+                        // WE OWN the turn: a section-grouped verified campaign (actions:[]) or a truthful decline.
+                        if (!$r->boolean('client_clean')) {
+                            return response()->json(['success' => true, 'reply' => 'Please save your current edits first, then ask me to build the page.', 'actions' => [], 'server_applied' => false]);
+                        }
+                        try {
+                            $__row = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                            if (!$__row) {
+                                return response()->json(['success' => true, 'reply' => 'That design could not be found.', 'actions' => [], 'server_applied' => false]);
+                            }
+                            $__base = (string) ($__row->content_html ?? '');
+                            $__dec = json_decode($__base, true);
+                            $__structured = is_array($__dec) && isset($__dec['template_slug']) && isset($__dec['fields']) && is_array($__dec['fields']);
+                            if ($__structured) {
+                                return response()->json(['success' => true, 'reply' => 'Campaign building is not available for this template type yet, so nothing was changed.', 'actions' => [], 'server_applied' => false]);
+                            }
+
+                            $__lblText = function (string $n): string {
+                                $l = strtolower($n);
+                                if (str_contains($l, 'headline') || str_contains($l, 'title') || str_contains($l, 'heading')) return 'headline';
+                                if (str_contains($l, 'cta') || str_contains($l, 'button') || str_contains($l, 'btn')) return 'call-to-action';
+                                if (str_contains($l, 'stat') || str_contains($l, 'number')) return 'statistic';
+                                if (str_contains($l, 'sub')) return 'subheading';
+                                if (str_contains($l, 'logo') || str_contains($l, 'brand')) return 'brand name';
+                                if (str_contains($l, 'tag') || str_contains($l, 'eyebrow')) return 'tagline';
+                                return 'text';
+                            };
+
+                            $__adapter = \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base);
+                            $__doc = $__adapter->document();
+                            $__props = ['color', 'background-color', 'font-size', 'font-weight', 'text-align', 'opacity'];
+                            $__appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+                            $__trusted = (array) config('studio_chat_apply.image_trusted_hosts', []);
+                            $__secPol = new \App\Engines\Studio\Projection\Html\HtmlProjectionSecurityPolicy();
+                            $__urlApproved = function (string $u) use ($__secPol, $__appHost, $__trusted): bool {
+                                if (!$__secPol->isSafeImageUrl($u)) return false;
+                                if (str_starts_with($u, '/') && !str_starts_with($u, '//')) return true;
+                                $h = strtolower((string) parse_url($u, PHP_URL_HOST));
+                                return $h !== '' && ($h === $__appHost || in_array($h, $__trusted, true));
+                            };
+
+                            // ---- resolve the ONE hero generation up-front + approved update_image urls ----
+                            $__imgResolved = []; $__genMeta = null; $__genOrphan = false;
+                            foreach ($actions as $a) {
+                                if (is_array($a) && ($a['type'] ?? null) === 'generate_and_replace_image') {
+                                    $__gn = (string) ($a['name'] ?? ''); $__gp = trim((string) ($a['prompt'] ?? ''));
+                                    if ($__gn !== '' && $__gp !== '' && $__doc->supports($__gn, 'src')
+                                        && app(\App\Core\Billing\FeatureGateService::class)->canUseAI($wsId)) {
+                                        $__out = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->generate([
+                                            'source' => 'studio', 'platform' => null, 'asset_type' => 'social_post', 'workspace_id' => $wsId,
+                                            'user_prompt' => $__gp, 'style' => 'natural', 'requested_dimensions' => null, 'requested_quality' => 'auto', 'include_text_preference' => 'auto',
+                                        ]);
+                                        if (!empty($__out['success']) && !empty($__out['url']) && $__urlApproved((string) $__out['url'])) {
+                                            $__imgResolved[$__gn] = (string) $__out['url'];
+                                            $__genMeta = ['generated' => true, 'asset_id' => $__out['asset_id'] ?? null, 'quality' => $__out['quality'] ?? null, 'credits' => $__out['credits'] ?? null];
+                                            $__genOrphan = true;
+                                        } elseif (!empty($__out['success']) && !empty($__out['asset_id'])) {
+                                            $__genMeta = ['generated' => true, 'asset_id' => $__out['asset_id'] ?? null];
+                                            $__genOrphan = true;
+                                        }
+                                    }
+                                    break; // exactly one generation per campaign
+                                }
+                            }
+                            foreach ($actions as $a) {
+                                if (is_array($a) && ($a['type'] ?? null) === 'update_image') {
+                                    $__un = $a['name'] ?? null; $__uu = $a['url'] ?? null;
+                                    if (is_string($__un) && $__un !== '' && is_string($__uu) && $__uu !== '' && $__doc->supports($__un, 'src') && $__urlApproved($__uu)) {
+                                        $__imgResolved[$__un] = $__uu;
+                                    }
+                                }
+                            }
+
+                            // ---- process sections in declared order: one atomic batch per section ----
+                            $__brandDone = false; $__updated = []; $__skipped = []; $__totalOps = 0; $__si = 0;
+                            $__norm = new \App\Engines\Studio\Transform\ColorNormalizer();
+                            foreach ($__secList as $__scn) {
+                                $__sActs = array_values(array_filter($actions, fn ($a) => $__secOf($a) === $__scn));
+                                $__reqs = []; $__labels = []; $__secHasBrand = false; $__oi = 0;
+                                foreach ($__sActs as $a) {
+                                    $t = $a['type'] ?? null;
+                                    if ($t === 'update_field') {
+                                        $name = is_string($a['name'] ?? null) ? $a['name'] : '';
+                                        if ($name === '' || !array_key_exists('value', $a) || !(is_string($a['value']) || is_numeric($a['value']))) { continue; }
+                                        if (!$__doc->supports($name, 'text')) { continue; }
+                                        $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                            'schema_version' => 1, 'operation_id' => 'chat-camp-' . $__si . '-t' . $__oi, 'document_id' => (string) $designId,
+                                            'target_id' => (string) $name, 'changed_fields' => ['text'], 'desired_after_state' => ['text' => (string) $a['value']],
+                                            'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                            'correlation_id' => 'chat-camp-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                                        ]);
+                                        $__labels[] = 'rewrote ' . $__lblText($name); $__oi++;
+                                    } elseif ($t === 'update_style') {
+                                        $name = is_string($a['name'] ?? null) ? $a['name'] : '';
+                                        $prop = $a['property'] ?? null;
+                                        if ($name === '' || !in_array($prop, $__props, true) || !array_key_exists('value', $a) || !(is_string($a['value']) || is_numeric($a['value']))) { continue; }
+                                        if (!$__doc->supports($name, 'style.' . $prop)) { continue; }
+                                        $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                            'schema_version' => 1, 'operation_id' => 'chat-camp-' . $__si . '-s' . $__oi, 'document_id' => (string) $designId,
+                                            'target_id' => (string) $name, 'changed_fields' => ['style.' . $prop], 'desired_after_state' => ['style.' . $prop => (string) $a['value']],
+                                            'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                            'correlation_id' => 'chat-camp-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                                        ]);
+                                        $__labels[] = 'restyled ' . $__lblText($name); $__oi++;
+                                    } elseif ($t === 'apply_brand') {
+                                        if ($__brandDone) { continue; }
+                                        $__kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+                                        if (!empty($__kit['is_neutral']) || preg_match_all('/:root\s*\{/', $__base) !== 1) { continue; }
+                                        $__inner = '';
+                                        if (preg_match('/:root\s*\{([^{}]*)\}/', $__base, $__rm)) { $__inner = $__rm[1]; }
+                                        $__bmap = ['--primary' => $__kit['primary_color'] ?? null, '--secondary' => $__kit['secondary_color'] ?? null,
+                                            '--accent' => $__kit['accent_color'] ?? null, '--background' => $__kit['background_color'] ?? null, '--text' => $__kit['text_color'] ?? null];
+                                        $__had = false;
+                                        foreach ($__bmap as $__var => $__col) {
+                                            if (!preg_match('/(?:^|;|\s)' . preg_quote($__var, '/') . '\s*:/', $__inner)) { continue; }
+                                            if (!is_string($__col) || $__col === '') { continue; }
+                                            $__nv = $__norm->normalize($__col); if ($__nv === null) { continue; }
+                                            $__cur = $__doc->get(':root', 'var.' . $__var);
+                                            $__curn = is_string($__cur) ? $__norm->normalize($__cur) : null;
+                                            if ($__curn !== null && strtolower($__curn) === strtolower($__nv)) { continue; }
+                                            $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                                'schema_version' => 1, 'operation_id' => 'chat-camp-' . $__si . '-b' . ltrim($__var, '-'), 'document_id' => (string) $designId,
+                                                'target_id' => ':root', 'changed_fields' => ['var.' . $__var], 'desired_after_state' => ['var.' . $__var => $__nv],
+                                                'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                                'correlation_id' => 'chat-camp-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                                            ]);
+                                            $__had = true;
+                                        }
+                                        if ($__had) { $__labels[] = 'applied brand colours'; $__secHasBrand = true; }
+                                    } elseif ($t === 'generate_and_replace_image' || $t === 'update_image') {
+                                        $name = is_string($a['name'] ?? null) ? $a['name'] : '';
+                                        if ($name !== '' && isset($__imgResolved[$name])) {
+                                            $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                                'schema_version' => 1, 'operation_id' => 'chat-camp-' . $__si . '-img', 'document_id' => (string) $designId,
+                                                'target_id' => (string) $name, 'changed_fields' => ['src'], 'desired_after_state' => ['src' => (string) $__imgResolved[$name]],
+                                                'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                                'correlation_id' => 'chat-camp-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                                            ]);
+                                            $__labels[] = ($t === 'generate_and_replace_image') ? 'regenerated the image' : 'replaced the image';
+                                        }
+                                    }
+                                }
+                                if (empty($__reqs)) { $__skipped[$__scn] = 'no editable fields found'; $__si++; continue; }
+                                $__batch = new \App\Engines\Studio\Projection\ProjectionBatch('chat-camp-' . $designId . '-' . $__si, (string) $designId, $__reqs,
+                                    \App\Engines\Studio\Projection\ProjectionTransactionBoundary::atomic(), null, 'chat-camp-' . $designId);
+                                $__bres = $__adapter->projectBatch($__batch);
+                                $__ok = ($__bres->status === \App\Engines\Studio\Projection\ProjectionStatus::APPLIED) && ($__bres->appliedCount() === count($__reqs));
+                                if ($__ok) { foreach ($__bres->results as $__rr) { if ((($__rr->verification['verified'] ?? false) !== true)) { $__ok = false; break; } } }
+                                if ($__ok) {
+                                    if ($__secHasBrand) { $__brandDone = true; }
+                                    $__updated[$__scn] = $__labels; $__totalOps += count($__labels);
+                                } else {
+                                    $__skipped[$__scn] = 'could not verify the changes';
+                                }
+                                $__si++;
+                            }
+
+                            // ---- ONE final CAS persist of every verified section ----
+                            if (!empty($__updated)) {
+                                $__aff = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                    ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->where('updated_at', $__row->updated_at)
+                                    ->update(['content_html' => (string) $__adapter->payload(), 'updated_at' => now()]);
+                                if ($__aff === 1) {
+                                    $__genOrphan = false;
+                                    register_shutdown_function(function () use ($designId) {
+                                        try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail((int) $designId); } catch (\Throwable $e) {}
+                                    });
+                                    $__lines = "Successfully updated:\n";
+                                    foreach ($__secList as $__scn) { if (isset($__updated[$__scn])) { $__lines .= "\u{2713} " . $__scn . "\n"; } }
+                                    if (!empty($__skipped)) {
+                                        $__lines .= "\nSkipped:\n";
+                                        foreach ($__secList as $__scn) { if (isset($__skipped[$__scn])) { $__lines .= "- " . $__scn . " \u{2014} " . $__skipped[$__scn] . "\n"; } }
+                                    }
+                                    $__nu = count($__updated);
+                                    $__lines .= "\n" . $__totalOps . ' change' . ($__totalOps === 1 ? '' : 's') . ' across ' . $__nu . ' section' . ($__nu === 1 ? '' : 's') . '.';
+                                    return response()->json([
+                                        'success' => true, 'actions' => [], 'server_applied' => true, 'refresh_preview' => true, 'reply' => $__lines,
+                                        'verified' => ['sections_updated' => array_keys($__updated), 'sections_skipped' => array_keys($__skipped),
+                                            'total_ops' => $__totalOps, 'status' => 'applied', 'document_form' => 'raw'] + ($__genMeta ?? []),
+                                    ]);
+                                }
+                                return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                    'reply' => 'Your design changed while I was building the page, so I applied nothing. Please try again.'
+                                        . ($__genOrphan ? ' The new image was generated and is in your Media Library.' : '')]);
+                            }
+                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                'reply' => 'I could not find supported changes to make on this design, so nothing was changed.'
+                                    . ($__genOrphan ? ' (An image was generated and is in your Media Library.)' : '')]);
+                        } catch (\Throwable $__e) {
+                            \Illuminate\Support\Facades\Log::warning('studio.chat server-apply campaign failed: ' . $__e->getMessage());
+                            return response()->json(['success' => true, 'reply' => 'I could not build that page, so nothing was changed.', 'actions' => [], 'server_applied' => false]);
+                        }
+                    }
+                }
+            }
+
+            // ══ Feature Sprint 5: AI Section Makeover — mixed-operation orchestration ═════════
+            // PURE ORCHESTRATION over the already-verified primitives. Engages ONLY when the model
+            // returned a HETEROGENEOUS array (>=2 distinct supported apply GROUPS: text/style/brand/
+            // image), every action is a supported type, and every present group's server-apply flag
+            // is ON for this workspace. It folds update_field + update_style + apply_brand(:root vars)
+            // + ONE generated/replaced image into ONE atomic ProjectionBatch => ONE CAS persist => ONE
+            // preview refresh => ONE aggregated truthful reply (counts ONLY verified operations).
+            // Single-type arrays are UNTOUCHED (they keep their existing per-type blocks below), so
+            // Sprints 1-4/4B behave byte-identically. NO new engine/action/projection capability/flag.
+            // Image GENERATION is the one non-transactional step (a paid side effect): it runs only
+            // AFTER every other target validates, and if the batch/persist then fails the generated
+            // asset stays in the Media Library while NOTHING is placed on the design — the reply says
+            // so. Every DB write is a single atomic CAS update.
+            if (!$__isReview && is_array($actions) && count($actions) >= 2) {
+                $__mkTypesAll = [];
+                foreach ($actions as $a) { $__mkTypesAll[] = is_array($a) ? ($a['type'] ?? null) : null; }
+                $__mkSupported = ['update_field', 'update_style', 'apply_brand', 'generate_and_replace_image', 'update_image'];
+                $__mkAllSupported = count($actions) === count(array_filter($__mkTypesAll, fn ($t) => in_array($t, $__mkSupported, true)));
+                $__mkGroupOf = fn ($t) => in_array($t, ['generate_and_replace_image', 'update_image'], true) ? 'image'
+                    : ($t === 'update_field' ? 'text' : ($t === 'update_style' ? 'style' : ($t === 'apply_brand' ? 'brand' : 'other')));
+                $__mkGroups = array_values(array_unique(array_map($__mkGroupOf, array_filter($__mkTypesAll))));
+                $__mkInScope = ($__pilotWs === 0 || $wsId === $__pilotWs);
+                $__mkFlag = ['text' => 'server_apply_text', 'style' => 'server_apply_style', 'brand' => 'server_apply_brand', 'image' => 'server_apply_image'];
+                $__mkFlagsOk = $__mkInScope && $__mkAllSupported && count($__mkGroups) >= 2;
+                foreach ($__mkGroups as $__g) {
+                    if (!isset($__mkFlag[$__g]) || config('studio_chat_apply.' . $__mkFlag[$__g]) !== true) { $__mkFlagsOk = false; }
+                }
+                if ($__mkFlagsOk) {
+                    // WE OWN the turn: a verified atomic makeover (actions:[]) or a truthful decline.
+                    $__mk = ['success' => true, 'reply' => 'I could not complete that makeover.', 'actions' => [], 'server_applied' => false];
+                    if (!$r->boolean('client_clean')) {
+                        return response()->json(['success' => true, 'reply' => 'Please save your current edits first, then ask me to redesign this section.', 'actions' => [], 'server_applied' => false]);
+                    }
+                    try {
+                        $__row = \Illuminate\Support\Facades\DB::table('studio_designs')
+                            ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                        if (!$__row) {
+                            return response()->json(['success' => true, 'reply' => 'That design could not be found.', 'actions' => [], 'server_applied' => false]);
+                        }
+                        $__base = (string) ($__row->content_html ?? '');
+                        $__dec = json_decode($__base, true);
+                        $__structured = is_array($__dec) && isset($__dec['template_slug']) && isset($__dec['fields']) && is_array($__dec['fields']);
+                        if ($__structured) {
+                            return response()->json(['success' => true, 'reply' => 'Section makeover is not available for this template type yet, so nothing was changed.', 'actions' => [], 'server_applied' => false]);
+                        }
+
+                        // ---- classify actions into buckets ----
+                        $__mkText = []; $__mkStyle = []; $__mkBrand = false; $__mkGen = []; $__mkRep = [];
+                        foreach ($actions as $a) {
+                            if (!is_array($a)) { continue; }
+                            switch ($a['type'] ?? null) {
+                                case 'update_field': $__mkText[] = $a; break;
+                                case 'update_style': $__mkStyle[] = $a; break;
+                                case 'apply_brand': $__mkBrand = true; break;
+                                case 'generate_and_replace_image': $__mkGen[] = $a; break;
+                                case 'update_image': $__mkRep[] = $a; break;
+                            }
+                        }
+                        // image policy: at most ONE image operation total (generation is one-at-a-time)
+                        if (count($__mkGen) + count($__mkRep) > 1) {
+                            return response()->json(['success' => true, 'reply' => 'A makeover can change one image at a time - please keep it to a single hero image.', 'actions' => [], 'server_applied' => false]);
+                        }
+
+                        $__lblText = function (string $n): string {
+                            $l = strtolower($n);
+                            if (str_contains($l, 'headline') || str_contains($l, 'title') || str_contains($l, 'heading')) return 'Headline rewritten';
+                            if (str_contains($l, 'cta') || str_contains($l, 'button') || str_contains($l, 'btn')) return 'CTA strengthened';
+                            if (str_contains($l, 'sub')) return 'Subheading updated';
+                            if (str_contains($l, 'stat') || str_contains($l, 'number')) return 'Statistic sharpened';
+                            return 'Text updated (' . $n . ')';
+                        };
+
+                        $__adapter = \App\Engines\Studio\Projection\Html\HtmlProjectionAdapter::forRawHtml($__base);
+                        $__doc = $__adapter->document();
+                        $__reqs = []; $__labels = []; $__i = 0;
+                        $__props = ['color', 'background-color', 'font-size', 'font-weight', 'text-align', 'opacity'];
+
+                        // ---- TEXT ops (omit any field that does not exist / is not leaf text) ----
+                        foreach ($__mkText as $a) {
+                            $name = is_string($a['name'] ?? null) ? $a['name'] : '';
+                            if ($name === '' || !array_key_exists('value', $a) || !(is_string($a['value']) || is_numeric($a['value']))) { continue; }
+                            if (!$__doc->supports($name, 'text')) { continue; }
+                            $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                'schema_version' => 1, 'operation_id' => 'chat-mk-text-' . $__i, 'document_id' => (string) $designId,
+                                'target_id' => (string) $name, 'changed_fields' => ['text'], 'desired_after_state' => ['text' => (string) $a['value']],
+                                'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                'correlation_id' => 'chat-mk-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                            ]);
+                            $__labels[] = $__lblText($name);
+                            $__i++;
+                        }
+                        // ---- STYLE ops (6 committed props; omit unsupported field/property) ----
+                        foreach ($__mkStyle as $a) {
+                            $name = is_string($a['name'] ?? null) ? $a['name'] : '';
+                            $prop = $a['property'] ?? null;
+                            if ($name === '' || !in_array($prop, $__props, true) || !array_key_exists('value', $a) || !(is_string($a['value']) || is_numeric($a['value']))) { continue; }
+                            if (!$__doc->supports($name, 'style.' . $prop)) { continue; }
+                            $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                'schema_version' => 1, 'operation_id' => 'chat-mk-style-' . $__i, 'document_id' => (string) $designId,
+                                'target_id' => (string) $name, 'changed_fields' => ['style.' . $prop], 'desired_after_state' => ['style.' . $prop => (string) $a['value']],
+                                'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                'correlation_id' => 'chat-mk-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                            ]);
+                            $__labels[] = 'Restyled ' . $name . ' (' . $prop . ')';
+                            $__i++;
+                        }
+                        // ---- BRAND (resolver authoritative; only existing canonical :root vars that differ) ----
+                        if ($__mkBrand) {
+                            $__kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
+                            if (empty($__kit['is_neutral']) && preg_match_all('/:root\s*\{/', $__base) === 1) {
+                                $__inner = '';
+                                if (preg_match('/:root\s*\{([^{}]*)\}/', $__base, $__rm)) { $__inner = $__rm[1]; }
+                                $__norm = new \App\Engines\Studio\Transform\ColorNormalizer();
+                                $__bmap = ['--primary' => $__kit['primary_color'] ?? null, '--secondary' => $__kit['secondary_color'] ?? null,
+                                    '--accent' => $__kit['accent_color'] ?? null, '--background' => $__kit['background_color'] ?? null, '--text' => $__kit['text_color'] ?? null];
+                                $__bvars = [];
+                                foreach ($__bmap as $__var => $__col) {
+                                    if (!preg_match('/(?:^|;|\s)' . preg_quote($__var, '/') . '\s*:/', $__inner)) { continue; }
+                                    if (!is_string($__col) || $__col === '') { continue; }
+                                    $__nv = $__norm->normalize($__col); if ($__nv === null) { continue; }
+                                    $__cur = $__doc->get(':root', 'var.' . $__var);
+                                    $__curn = is_string($__cur) ? $__norm->normalize($__cur) : null;
+                                    if ($__curn !== null && strtolower($__curn) === strtolower($__nv)) { continue; }
+                                    $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                        'schema_version' => 1, 'operation_id' => 'chat-mk-brand-' . ltrim($__var, '-'), 'document_id' => (string) $designId,
+                                        'target_id' => ':root', 'changed_fields' => ['var.' . $__var], 'desired_after_state' => ['var.' . $__var => $__nv],
+                                        'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                        'correlation_id' => 'chat-mk-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                                    ]);
+                                    $__bvars[] = ltrim($__var, '-');
+                                }
+                                if (!empty($__bvars)) { $__labels[] = 'Brand colours applied (' . implode(', ', $__bvars) . ')'; }
+                            }
+                        }
+                        // ---- IMAGE (validate target FIRST; spend a generation only when other ops exist) ----
+                        $__imgField = null; $__imgUrl = null; $__imgLabel = null; $__genMeta = null; $__genOrphan = false;
+                        $__appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+                        $__trusted = (array) config('studio_chat_apply.image_trusted_hosts', []);
+                        $__sec = new \App\Engines\Studio\Projection\Html\HtmlProjectionSecurityPolicy();
+                        $__urlApproved = function (string $u) use ($__sec, $__appHost, $__trusted): bool {
+                            if (!$__sec->isSafeImageUrl($u)) return false;
+                            if (str_starts_with($u, '/') && !str_starts_with($u, '//')) return true;
+                            $h = strtolower((string) parse_url($u, PHP_URL_HOST));
+                            return $h !== '' && ($h === $__appHost || in_array($h, $__trusted, true));
+                        };
+                        if (count($__mkRep) === 1) {
+                            $a = $__mkRep[0]; $name = $a['name'] ?? null; $url = $a['url'] ?? null;
+                            if (is_string($name) && $name !== '' && is_string($url) && $url !== '' && $__doc->supports($name, 'src') && $__urlApproved($url)) {
+                                $__imgField = $name; $__imgUrl = $url; $__imgLabel = 'Image replaced (' . $name . ')';
+                            }
+                        } elseif (count($__mkGen) === 1) {
+                            $a = $__mkGen[0]; $name = (string) ($a['name'] ?? ''); $p2 = trim((string) ($a['prompt'] ?? ''));
+                            // Only spend a generation if there is at least one OTHER buildable change, the
+                            // target image field exists, and the plan allows AI. Otherwise omit the image.
+                            if ($name !== '' && $p2 !== '' && $__doc->supports($name, 'src') && count($__reqs) > 0
+                                && app(\App\Core\Billing\FeatureGateService::class)->canUseAI($wsId)) {
+                                $__out = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->generate([
+                                    'source' => 'studio', 'platform' => null, 'asset_type' => 'social_post', 'workspace_id' => $wsId,
+                                    'user_prompt' => $p2, 'style' => 'natural', 'requested_dimensions' => null, 'requested_quality' => 'auto', 'include_text_preference' => 'auto',
+                                ]);
+                                if (!empty($__out['success']) && !empty($__out['url']) && $__urlApproved((string) $__out['url'])) {
+                                    $__imgField = $name; $__imgUrl = (string) $__out['url']; $__imgLabel = 'Hero image regenerated (' . $name . ')';
+                                    $__genMeta = ['generated' => true, 'asset_id' => $__out['asset_id'] ?? null, 'quality' => $__out['quality'] ?? null, 'credits' => $__out['credits'] ?? null];
+                                    $__genOrphan = true; // cleared once persisted
+                                } elseif (!empty($__out['success']) && !empty($__out['asset_id'])) {
+                                    $__genMeta = ['generated' => true, 'asset_id' => $__out['asset_id'] ?? null];
+                                    $__genOrphan = true;
+                                }
+                            }
+                        }
+                        if ($__imgField !== null && $__imgUrl !== null) {
+                            $__reqs[] = \App\Engines\Studio\Projection\ProjectionRequest::fromArray([
+                                'schema_version' => 1, 'operation_id' => 'chat-mk-img', 'document_id' => (string) $designId,
+                                'target_id' => (string) $__imgField, 'changed_fields' => ['src'], 'desired_after_state' => ['src' => (string) $__imgUrl],
+                                'expected_document_version' => null, 'before_snapshot_hash' => null,
+                                'correlation_id' => 'chat-mk-' . $designId, 'idempotency_key' => null, 'batch_id' => null, 'projection_meta' => [],
+                            ]);
+                            $__labels[] = $__imgLabel;
+                        }
+
+                        if (empty($__reqs)) {
+                            return response()->json(['success' => true, 'actions' => [], 'server_applied' => false,
+                                'reply' => 'I could not find supported changes to make on this section, so nothing was changed.'
+                                    . ($__genOrphan ? ' (An image was generated and is in your Media Library.)' : '')]);
+                        }
+
+                        // ---- ONE atomic batch => ONE CAS persist => ONE preview refresh ----
+                        $__batch = new \App\Engines\Studio\Projection\ProjectionBatch('chat-mk-' . $designId, (string) $designId, $__reqs,
+                            \App\Engines\Studio\Projection\ProjectionTransactionBoundary::atomic(), null, 'chat-mk-' . $designId);
+                        $__bres = $__adapter->projectBatch($__batch);
+                        $__ok = ($__bres->status === \App\Engines\Studio\Projection\ProjectionStatus::APPLIED) && ($__bres->appliedCount() === count($__reqs));
+                        if ($__ok) { foreach ($__bres->results as $__rr) { if ((($__rr->verification['verified'] ?? false) !== true)) { $__ok = false; break; } } }
+                        if ($__ok) {
+                            $__aff = \Illuminate\Support\Facades\DB::table('studio_designs')
+                                ->where('id', $designId)->where('workspace_id', $wsId)->whereNull('deleted_at')->where('updated_at', $__row->updated_at)
+                                ->update(['content_html' => (string) $__adapter->payload(), 'updated_at' => now()]);
+                            if ($__aff === 1) {
+                                $__genOrphan = false;
+                                register_shutdown_function(function () use ($designId) {
+                                    try { app(\App\Engines\Studio\Services\StudioService::class)->generateThumbnail((int) $designId); } catch (\Throwable $e) {}
+                                });
+                                $__n = count($__labels);
+                                $__mk = ['success' => true, 'actions' => [], 'server_applied' => true, 'refresh_preview' => true,
+                                    'reply' => "Successfully verified:\n" . implode("\n", array_map(fn ($l) => "\u{2713} " . $l, $__labels)) . "\n\n" . $__n . ' verified change' . ($__n === 1 ? '' : 's') . '.',
+                                    'verified' => ['count' => $__n, 'status' => $__bres->status, 'document_form' => 'raw', 'operations' => $__labels] + ($__genMeta ?? [])];
+                            } else {
+                                $__mk['reply'] = 'Your design changed while I was working, so I applied nothing. Please try again.'
+                                    . ($__genOrphan ? ' The new image was generated and is in your Media Library.' : '');
+                            }
+                        } else {
+                            $__mk['reply'] = 'I could not verify the full makeover, so nothing on the design was changed.'
+                                . ($__genOrphan ? ' The new image was generated and is in your Media Library.' : '');
+                        }
+                        return response()->json($__mk);
+                    } catch (\Throwable $__e) {
+                        \Illuminate\Support\Facades\Log::warning('studio.chat server-apply makeover failed: ' . $__e->getMessage());
+                        return response()->json(['success' => true, 'reply' => 'I could not complete that makeover, so nothing was changed.', 'actions' => [], 'server_applied' => false]);
+                    }
+                }
+            }
 
             if (config('studio_chat_apply.server_apply_text') === true && ($__pilotWs === 0 || $wsId === $__pilotWs)) {
                 $__ic = null;

@@ -55,7 +55,14 @@ class BuilderService
         if ($totalSites >= $maxWebsites) {
             return [
                 'success' => false,
-                'error' => "Website limit reached ({$maxWebsites} on {$plan->name} plan). Upgrade to create more.",
+                // BUILDER888 P1-6 — $plan can be null when neither an active
+                // subscription nor a 'free' plan row resolves. Dereferencing it
+                // raised "Attempt to read property name on null" and turned a
+                // limit refusal into a 500. State the limit truthfully instead;
+                // never invent a plan name.
+                'error' => $plan?->name
+                    ? "Website limit reached ({$maxWebsites} on {$plan->name} plan). Upgrade to create more."
+                    : "Website limit reached ({$maxWebsites}). Upgrade to create more.",
                 'limit_reached' => true,
                 'current' => $totalSites,
                 'max' => $maxWebsites,
@@ -86,6 +93,16 @@ class BuilderService
             'template'      => $data['template'] ?? null,
             'settings_json' => json_encode($data['settings'] ?? ['theme' => 'modern', 'primary_color' => '#6C5CE7', 'secondary_color' => '#00E5A8', 'accent_color' => '#F4F7FB', 'font_heading' => 'Syne', 'font_body' => 'DM Sans']),
             'seo_json'      => json_encode($data['seo'] ?? []),
+            // BUILDER888 P1-6 — the template representation. Additive and
+            // optional: every pre-existing caller omits these and is unaffected.
+            // Only contract-normalised (flat, scalar) variables may arrive here;
+            // BuilderGenerationDTO refuses anything structured, so raw provider
+            // output cannot reach this column.
+            'type'               => $data['type'] ?? null,
+            'template_industry'  => $data['template_industry'] ?? null,
+            'template_variables' => isset($data['template_variables'])
+                ? json_encode($data['template_variables'])
+                : null,
             'created_by'    => $data['user_id'] ?? null,
             'created_at'    => now(),
             'updated_at'    => now(),
@@ -111,6 +128,50 @@ class BuilderService
         // ────────────────────────────────────────────────────────────────────────
 
         return ['website_id' => $id, 'workspace_id' => $wsId, 'status' => 'draft'];
+    }
+
+    /**
+     * BUILDER888 P1-6 — refresh a site's template representation.
+     *
+     * Exists so callers that legitimately regenerate template variables after
+     * creation (news seeding, logo application) do not have to write the
+     * `websites` table themselves. Law 11: BuilderService stays the sole writer.
+     *
+     * Only contract-normalised flat scalar variables are accepted, so raw
+     * provider output cannot reach the column by this route either.
+     */
+    public function updateTemplateVariables(int $websiteId, array $variables): void
+    {
+        foreach ($variables as $k => $v) {
+            if (! is_string($k) || ! is_string($v)) {
+                throw new \InvalidArgumentException(
+                    'updateTemplateVariables: only flat scalar string variables may be persisted.'
+                );
+            }
+        }
+
+        DB::table('websites')->where('id', $websiteId)->update([
+            'template_variables' => json_encode($variables),
+            'updated_at'         => now(),
+        ]);
+    }
+
+    /**
+     * BUILDER888 P1-6 — set discrete website columns from a domain caller.
+     * Whitelisted so no caller can smuggle arbitrary column writes through it.
+     */
+    public function updateWebsiteFields(int $websiteId, array $fields): void
+    {
+        $allowed = array_intersect_key($fields, array_flip([
+            'name', 'subdomain', 'custom_domain', 'thumbnail_url', 'settings_json', 'seo_json',
+        ]));
+
+        if ($allowed === []) {
+            return;
+        }
+
+        $allowed['updated_at'] = now();
+        DB::table('websites')->where('id', $websiteId)->update($allowed);
     }
 
     public function getWebsite(int $wsId, int $id): ?object
@@ -299,6 +360,55 @@ class BuilderService
         return $slug;
     }
 
+    /**
+     * BUILDER888 P1-6 — page status is domain data, not an arbitrary string.
+     * Unsupported values are refused rather than silently written.
+     */
+    private function creationStatus(?string $requested): string
+    {
+        if ($requested === null || $requested === '') {
+            return 'draft';
+        }
+
+        if (! in_array($requested, \App\Engines\Builder\Support\BuilderGenerationDTO::PAGE_STATUSES, true)) {
+            throw new \InvalidArgumentException("Unsupported page status '{$requested}'.");
+        }
+
+        return $requested;
+    }
+
+    /**
+     * BUILDER888 P1-6-b — one place that decides the stored section shape.
+     *
+     * Accepts a raw list or the canonical wrapped form, always returns the
+     * wrapped form, and never persists a page with no sections: an empty list
+     * renders a blank page, so it falls back to the default schema exactly as
+     * an omitted value does.
+     */
+    private function normalisePageSections(mixed $sections): mixed
+    {
+        if (is_array($sections) && isset($sections[0])) {
+            return ['schemaVersion' => 1, 'sections' => $sections];      // raw list
+        }
+
+        if (is_array($sections)
+            && isset($sections['sections'])
+            && is_array($sections['sections'])
+            && $sections['sections'] !== []) {
+            return $sections + ['schemaVersion' => 1];                    // already wrapped
+        }
+
+        // defaultPageSchema() hands back pre-encoded JSON. Decode it so the
+        // caller's json_encode() cannot double-encode into a string literal.
+        $default = $this->defaultPageSchema();
+        if (is_string($default)) {
+            $decoded = json_decode($default, true);
+            return is_array($decoded) ? $decoded : ['schemaVersion' => 1, 'sections' => []];
+        }
+
+        return $default;
+    }
+
     public function createPage(int $websiteId, array $data): array
     {
         // 2026-06-24 (G15/G5) — rich-template fallback. If no sections were
@@ -307,7 +417,20 @@ class BuilderService
         // buildDefaultSectionsForPage so added pages are NOT thin 1-section
         // stubs. (addPageFromTemplate already passes sections, so this is a
         // no-op for it.)
-        $hasSections = isset($data['sections']) && is_array($data['sections']) && isset($data['sections'][0]);
+        // BUILDER888 P1-6-b — sections arrive in TWO shapes: a raw list
+        // [ {...}, {...} ] and the canonical wrapped form
+        // { schemaVersion, sections: [...] }. This check only recognised the
+        // raw list, so wrapped content (everything Arthur and the generation
+        // DTO produce) fell through to the fallback below and was REPLACED by
+        // a generic scaffold. Recognise both.
+        $suppliedSections = $data['sections'] ?? null;
+        $hasSections = is_array($suppliedSections)
+            && (
+                isset($suppliedSections[0])                                  // raw list
+                || (isset($suppliedSections['sections'])                     // wrapped
+                    && is_array($suppliedSections['sections'])
+                    && $suppliedSections['sections'] !== [])
+            );
         if (! $hasSections) {
             $tpl = strtolower(trim((string) ($data['page_template'] ?? $data['slug'] ?? $data['title'] ?? '')));
             $tpl = preg_replace('/[\s\-]+/', '_', $tpl);
@@ -333,12 +456,11 @@ class BuilderService
             'title' => $data['title'] ?? 'New Page',
             'slug' => $this->uniquePageSlug($websiteId, $data),
             'type' => $data['type'] ?? 'page',
-            'status' => 'draft',
-            'sections_json' => json_encode(
-                (isset($data['sections']) && is_array($data['sections']) && isset($data['sections'][0]))
-                    ? ['schemaVersion' => 1, 'sections' => $data['sections']]  // wrap raw array
-                    : ($data['sections'] ?? $this->defaultPageSchema())         // already wrapped or default
-            ),
+            // BUILDER888 P1-6 — generation must be able to request the status its
+            // representation needs to render. Default is unchanged ('draft'), so no
+            // existing caller is affected. Validated against the domain vocabulary.
+            'status' => $this->creationStatus($data['status'] ?? null),
+            'sections_json' => json_encode($this->normalisePageSections($data['sections'] ?? null)),
             'seo_json' => json_encode($data['seo'] ?? ['title' => $data['title'] ?? '', 'description' => '']),
             'position' => $position + 1,
             'is_homepage' => $data['is_homepage'] ?? false,
@@ -448,8 +570,13 @@ class BuilderService
         }
     }
 
-    public function listPages(int $websiteId): array
+    public function listPages(int $websiteId, ?int $wsId = null): array
     {
+        // BUILDER888 P0-1 (2026-08-09) — workspace scope. Callers that pass a
+        // workspace id get a fail-closed check; the site must belong to it.
+        if ($wsId !== null && !DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->exists()) {
+            return [];
+        }
         $rows = DB::table('pages')->where('website_id', $websiteId)->orderBy('position')->get();
         return $rows->map(function($p) {
             $p->has_content = !empty($p->sections_json) && strlen($p->sections_json) > 50;
@@ -483,9 +610,17 @@ class BuilderService
         })->toArray();
     }
 
-    public function getPage(int $pageId): ?object
+    public function getPage(int $pageId, ?int $wsId = null): ?object
     {
-        return DB::table('pages')->where('id', $pageId)->first();
+        // BUILDER888 P0-1 (2026-08-09) — workspace scope via the pages →
+        // websites join. Without this the endpoint returned any tenant's page.
+        $q = DB::table('pages')->where('pages.id', $pageId);
+        if ($wsId !== null) {
+            $q->join('websites', 'websites.id', '=', 'pages.website_id')
+              ->where('websites.workspace_id', $wsId)
+              ->select('pages.*');
+        }
+        return $q->first();
     }
 
     /**

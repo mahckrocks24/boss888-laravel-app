@@ -144,6 +144,11 @@ class RunSequences extends Command
                 ],
             ],
             function ($m) use ($contact, $subject) {
+                // EM-4: sequence mail is BULK. Declaring the purpose moves it to the
+                // broadcast stream, off the reputation that password resets depend on.
+                $m->getSymfonyMessage()->getHeaders()
+                    ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'sequence');
+
                 $m->to($contact->email, $contact->name ?? null)
                   ->subject($subject)
                   ->from(

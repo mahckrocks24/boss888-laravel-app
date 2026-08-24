@@ -72,12 +72,32 @@ class TemplateService
             ? $variables['logo_url']
             : 'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%2F%3E';
 
+        // BUILDER888 P1-8A (2026-08-10) — `$value ?? ''` guarded null and
+        // nothing else, so the first array-valued variable from the model
+        // raised a TypeError and killed the whole creation journey.
+        // Normalisation policy lives in TemplateVariableNormalizer, not here:
+        // this loop must not become the place where every structured field's
+        // rendering is decided. P1-8B replaces DEFERRED with real markup.
+        $deferred = [];
+
         foreach ($variables as $key => $value) {
-            $html = str_replace(
-                '{{' . $key . '}}',
-                $value ?? '',
-                $html
-            );
+            $n = \App\Engines\Builder\Support\TemplateVariableNormalizer::normalize($value);
+
+            if ($n['disposition'] === \App\Engines\Builder\Support\TemplateVariableNormalizer::DEFERRED) {
+                $deferred[] = $key;
+            }
+
+            $html = str_replace('{{' . $key . '}}', $n['value'], $html);
+        }
+
+        if ($deferred !== []) {
+            // Structured content was omitted rather than guessed at. Recorded
+            // so P1-8B has a real inventory of which fields need a renderer.
+            \Illuminate\Support\Facades\Log::warning('[Builder888] structured template variables omitted (P1-8A containment)', [
+                'industry'   => $industry,
+                'website_id' => $websiteId,
+                'keys'       => $deferred,
+            ]);
         }
 
         // Any unfilled variable that LOOKS like an image reference (appears

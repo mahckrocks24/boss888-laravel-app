@@ -353,3 +353,16 @@ Route::prefix('exec-api')
             ]);
         });
     });
+
+
+/*
+|--------------------------------------------------------------------------
+| Engineer888 companion API — /exec-api/engineer888/*
+|--------------------------------------------------------------------------
+| A SEPARATE GROUP, appended so the customer group above keeps its
+| plan:app888 gate exactly as it is. Engineer888 is an internal department
+| and must not depend on a customer subscription; its authority is
+| Engineer888Access (canonical user 1 only), which is strictly narrower
+| than any plan entitlement.
+*/
+require __DIR__ . '/exec-api/engineer888.php';

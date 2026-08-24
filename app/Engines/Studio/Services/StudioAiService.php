@@ -150,7 +150,13 @@ class StudioAiService
         // WP2 Phase 2.1C — canonical routing gate (default OFF). ON: the Studio
         // generate_image action reasons through the single ImageIntelligence
         // pipeline instead of the legacy string-wrap below. OFF: unchanged.
-        if (config('studio.image_intelligence_enabled', false)) {
+        // WP2 Phase 2.2B — STUDIO-ONLY ACTIVATION.
+        // Either the original global flag OR the Studio-scoped one routes Studio
+        // through ImageIntelligence. CreativeService (blog featured images, Builder,
+        // Bella) reads ONLY the global flag, so activating Studio here cannot move
+        // any non-Studio image path.
+        if (config('studio.image_intelligence_enabled', false)
+            || config('studio.image_intelligence_studio_enabled', false)) {
             $out = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->generate([
                 'source'       => 'studio',
                 'workspace_id' => $wsId,

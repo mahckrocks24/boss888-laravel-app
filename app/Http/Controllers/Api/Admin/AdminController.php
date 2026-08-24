@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use Illuminate\Http\JsonResponse;
+use App\Core\Platform\Connector\WpConnectorSchema;
+use App\Core\Platform\Schema\SignupSourceSchema;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Workspace;
@@ -31,7 +33,16 @@ class AdminController
             $q->where(fn($q2) => $q2->where('name', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%"));
         }
         if ($r->input('status')) $q->where('status', $r->input('status'));
-        if ($r->input('signup_source')) $q->where('signup_source', $r->input('signup_source'));
+        // SIGNUP SOURCE COMPAT (2026-08-04) — users.signup_source has never
+        // existed, so this filter cannot be applied. It is SKIPPED rather than
+        // executed (which would throw) and rather than faked (a fabricated
+        // match would be a lie about data that does not exist). The skip is
+        // reported under ADMIN_SIGNUP_SOURCE_SCHEMA_MISSING so an unfiltered
+        // result is never silently mistaken for a filtered one.
+        if ($r->input('signup_source')
+            && SignupSourceSchema::availableFor('admin.list_users.signup_source_filter')) {
+            $q->where('signup_source', $r->input('signup_source'));
+        }
 
         $users = $q->orderByDesc('created_at')->paginate($r->input('per_page', 25));
 
@@ -39,6 +50,11 @@ class AdminController
         // One user can belong to many workspaces — surface the *primary*
         // workspace's plan/mode (first owned). Cheap N+1 scoped to the
         // 25-row paginated window.
+        // WP CONNECTOR COMPAT (2026-08-04) — resolved ONCE, outside the loop.
+        // The connector schema has never existed on this platform; asking per
+        // row would be N identical answers and N identical log lines.
+        $connector = WpConnectorSchema::availableFor('admin.list_users');
+
         $items = $users->items();
         foreach ($items as $u) {
             $ws = $u->workspaces()->with('subscription.plan')->first();
@@ -49,7 +65,10 @@ class AdminController
             $u->primary_plan       = $plan?->slug;
             $u->primary_mode       = $mode;
             $u->primary_workspace  = $ws ? ['id' => $ws->id, 'name' => $ws->name] : null;
-            $u->wp_sites_count     = $ws
+            // 0 is the truthful answer when the feature has no storage: this
+            // workspace genuinely has no connected sites, because nobody can
+            // have connected one.
+            $u->wp_sites_count     = ($ws && $connector)
                 ? DB::table('wp_site_connections')->where('workspace_id', $ws->id)->count()
                 : 0;
         }
@@ -97,6 +116,12 @@ class AdminController
 
         $workspaces = $q->orderByDesc('created_at')->paginate($r->input('per_page', 25));
 
+        // WP CONNECTOR COMPAT (2026-08-04) — see admin.list_users above.
+        $connector = WpConnectorSchema::availableFor('admin.list_workspaces');
+        // Resolved once for the whole paginated window: one absent column must
+        // not produce one log line per row.
+        $signupSource = SignupSourceSchema::availableFor('admin.list_workspaces');
+
         $items = $workspaces->items();
         foreach ($items as $ws) {
             $sub = Subscription::where('workspace_id', $ws->id)
@@ -110,16 +135,22 @@ class AdminController
             $ws->plan_name         = $plan?->name;
             $ws->mode              = $mode;
             $ws->subscription_status= $sub?->status;
-            $ws->wp_sites_count    = DB::table('wp_site_connections')->where('workspace_id', $ws->id)->count();
-            $ws->wp_active_count   = DB::table('wp_site_connections')
-                ->where('workspace_id', $ws->id)->where('status', 'active')->count();
-            $ws->wp_suspended_count= DB::table('wp_site_connections')
-                ->where('workspace_id', $ws->id)->where('status', 'billing_suspended')->count();
+            $ws->wp_sites_count    = $connector
+                ? DB::table('wp_site_connections')->where('workspace_id', $ws->id)->count() : 0;
+            $ws->wp_active_count   = $connector
+                ? DB::table('wp_site_connections')
+                    ->where('workspace_id', $ws->id)->where('status', 'active')->count() : 0;
+            $ws->wp_suspended_count= $connector
+                ? DB::table('wp_site_connections')
+                    ->where('workspace_id', $ws->id)->where('status', 'billing_suspended')->count() : 0;
             // Owner signup_source — the user with role='owner' on workspace_users.
             $ownerId = DB::table('workspace_users')
                 ->where('workspace_id', $ws->id)->where('role', 'owner')
                 ->value('user_id');
-            $ws->owner_source = $ownerId
+            // null, not "unknown" or "manual": the platform does not know this
+            // workspace's signup source, and inventing a value would be worse
+            // than admitting that.
+            $ws->owner_source = ($ownerId && $signupSource)
                 ? DB::table('users')->where('id', $ownerId)->value('signup_source')
                 : null;
         }
@@ -150,6 +181,24 @@ class AdminController
      */
     public function listConnectorSites(Request $r): JsonResponse
     {
+        // WP CONNECTOR COMPAT (2026-08-04) — an empty list that SAYS it is
+        // empty because the feature is unavailable, rather than an empty list
+        // that looks like "no sites connected yet". The paginator envelope is
+        // preserved so the client renders normally.
+        if (! WpConnectorSchema::availableFor('admin.list_connector_sites')) {
+            return response()->json([
+                'data'                => [],
+                'total'               => 0,
+                'per_page'            => (int) $r->input('per_page', 25),
+                'current_page'        => 1,
+                'last_page'           => 1,
+                'from'                => null,
+                'to'                  => null,
+                'connector_available' => false,
+                'unavailable_reason'  => WpConnectorSchema::MISSING_EVENT,
+            ]);
+        }
+
         $q = DB::table('wp_site_connections as c')
             ->leftJoin('workspaces as w', 'c.workspace_id', '=', 'w.id')
             ->leftJoin('subscriptions as s', function ($j) {
@@ -235,17 +284,26 @@ class AdminController
         $features = $sub?->plan?->features_json ?? [];
         $mode = is_array($features) && isset($features['mode']) && in_array($features['mode'], ['seo','full'], true)
             ? $features['mode'] : 'full';
-        $wpSites = DB::table('wp_site_connections')->where('workspace_id', $id)
-            ->select('id', 'site_url', 'status', 'last_push_at', 'last_push_status', 'created_at')
-            ->get();
-        // api_keys per connection — only counts and metadata, never the hash/raw.
-        $apiKeyCounts = DB::table('api_keys')
-            ->where('workspace_id', $id)
-            ->selectRaw('site_connection_id, COUNT(*) as total, SUM(revoked_at IS NULL) as active')
-            ->groupBy('site_connection_id')->get()->keyBy('site_connection_id');
-        foreach ($wpSites as $s) {
-            $s->api_keys_total  = (int) ($apiKeyCounts[$s->id]->total ?? 0);
-            $s->api_keys_active = (int) ($apiKeyCounts[$s->id]->active ?? 0);
+        // WP CONNECTOR COMPAT (2026-08-04) — BOTH queries are guarded, not just
+        // the first. api_keys.site_connection_id is absent from the same never-
+        // shipped schema, so the aggregation below would throw "Unknown column"
+        // even once the table query was skipped.
+        $connector = WpConnectorSchema::availableFor('admin.get_workspace');
+        $wpSites = collect();
+
+        if ($connector) {
+            $wpSites = DB::table('wp_site_connections')->where('workspace_id', $id)
+                ->select('id', 'site_url', 'status', 'last_push_at', 'last_push_status', 'created_at')
+                ->get();
+            // api_keys per connection — only counts and metadata, never the hash/raw.
+            $apiKeyCounts = DB::table('api_keys')
+                ->where('workspace_id', $id)
+                ->selectRaw('site_connection_id, COUNT(*) as total, SUM(revoked_at IS NULL) as active')
+                ->groupBy('site_connection_id')->get()->keyBy('site_connection_id');
+            foreach ($wpSites as $s) {
+                $s->api_keys_total  = (int) ($apiKeyCounts[$s->id]->total ?? 0);
+                $s->api_keys_active = (int) ($apiKeyCounts[$s->id]->active ?? 0);
+            }
         }
 
         return response()->json([
@@ -254,6 +312,7 @@ class AdminController
             'subscription' => $sub,
             'mode' => $mode,
             'wp_sites' => $wpSites,
+            'connector_available' => $connector,
             'task_count' => $taskCount, 'task_completed' => $taskCompleted,
         ]);
     }

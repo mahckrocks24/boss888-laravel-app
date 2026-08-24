@@ -1473,7 +1473,7 @@ PROMPT;
         ?string $logoUrl = null,
         array $images = [],
         array $colors = []
-    ): array {
+    , ?int $actorId = null): array {
         if ($logoUrl !== null && $logoUrl !== '') {
             $buildData['logo_url']    = $logoUrl;
             $buildData['logo_upload'] = true;
@@ -2623,26 +2623,154 @@ PROMPT;
             );
             $html = \App\Engines\Builder\Support\SectionLibrary::replaceBlock($html, 'services', $bespokeHtml);
         } catch (\Throwable $e) {
-            return ['type' => 'error', 'message' => 'Website rendering failed: ' . $e->getMessage()];
+            // BUILDER888 P1-8B (2026-08-10) — this line showed a customer a raw
+            // PHP TypeError during the frozen Journey A. The internal cause is
+            // logged in full with a correlation id; the customer gets safe wording.
+            $failure = \App\Engines\Builder\Support\BuilderErrorContract::fromThrowable(
+                $e,
+                \App\Engines\Builder\Support\BuilderErrorContract::TEMPLATE_RENDER_FAILED,
+                ['workspace_id' => $wsId ?? null, 'industry' => $industry ?? null, 'stage' => 'template_render']
+            );
+
+            return [
+                'type'           => 'error',
+                'message'        => $failure['build_error'],
+                'error_category' => $failure['error_category'],
+                'correlation_id' => $failure['correlation_id'],
+                'retryable'      => $failure['retryable'],
+            ];
         }
 
         // Create website record
-        $websiteId = DB::table('websites')->insertGetId([
-            'workspace_id' => $wsId,
-            'name' => $name,
-            'type' => 'template',
-            'template_industry' => $industry,
-            'template_variables' => json_encode($variables),
-            'status' => 'draft',
-            'settings_json' => json_encode([
-                'industry' => $industry,
-                'template' => $industry,
-                'generated_by' => 'arthur',
-            ]),
-            'created_by' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // ── BUILDER888 P1-6 · Law 11 ────────────────────────────────────────
+        // Arthur no longer writes Builder tables. It compiles ONE generation
+        // document and hands it to the Builder domain, which persists the
+        // website and every page inside a single transaction.
+        //
+        // Page specs are assembled here (they depend only on $data, never on
+        // $websiteId) so the whole document exists before anything is written.
+        // Ordering, dedupe and positions are preserved exactly as before.
+        $isNewsChannel = ($industry === 'news_channel');
+        $homePos       = 0;
+        $pageSpecs     = [];
+
+        $pageSpecs[] = [
+            'title'       => 'Home',
+            'slug'        => 'home',
+            'type'        => 'page',
+            'status'      => 'published',
+            'position'    => $homePos++,
+            'is_homepage' => true,
+            'sections'    => $this->buildDefaultSectionsForPage('home', $data),
+        ];
+
+        // User-requested pages (wizard state.pages[]), excluding Home + Blog.
+        $extraPages = $data['pages'] ?? [];
+        $seen = ['home' => true, 'blog' => true];
+        if (is_array($extraPages)) {
+            foreach ($extraPages as $p) {
+                $title = trim((string) (is_array($p) ? ($p['title'] ?? $p['name'] ?? '') : $p));
+                if ($title === '') continue;
+                $slug = \Illuminate\Support\Str::slug($title);
+                if ($slug === '' || isset($seen[$slug])) continue;
+                $seen[$slug] = true;
+                $pageSpecs[] = [
+                    'title'       => ucfirst($title),
+                    'slug'        => $slug,
+                    'type'        => 'page',
+                    'status'      => 'published',
+                    'position'    => $homePos++,
+                    'is_homepage' => false,
+                    'sections'    => $this->buildDefaultSectionsForPage($slug, $data),
+                ];
+            }
+        }
+
+        // news_channel sites label this page "News" (slug=news); same type and
+        // sections, only the user-visible label differs.
+        $pageSpecs[] = [
+            'title'       => $isNewsChannel ? 'News' : 'Blog',
+            'slug'        => $isNewsChannel ? 'news' : 'blog',
+            'type'        => 'blog',
+            'status'      => 'published',
+            'position'    => $homePos++,
+            'is_homepage' => false,
+            'sections'    => $this->buildDefaultSectionsForPage('blog', $data),
+        ];
+
+        try {
+            $generation = \App\Engines\Builder\Support\BuilderGenerationDTO::fromArray([
+                'workspace_id'       => $wsId,
+                // BUILDER888 P1-6 — the actor is threaded explicitly from the
+                // authenticated request. Deliberately NOT $data['user_id']: that
+                // arrives from chat/provider payload and must never be able to
+                // forge the owner of a website.
+                'created_by'         => $actorId,
+                'name'               => $name,
+                // Representation convergence is deferred (audit R5): generated
+                // sites stay on the template model until the semantic tree can
+                // carry their fidelity.
+                'type'               => 'template',
+                'template_industry'  => $industry,
+                'template_variables' => $variables,
+                'settings'           => [
+                    'industry'     => $industry,
+                    'template'     => $industry,
+                    'generated_by' => 'arthur',
+                ],
+                'pages'              => $pageSpecs,
+                'generation_meta'    => ['source' => 'arthur_wizard'],
+            ]);
+
+            $persisted = app(\App\Engines\Builder\Services\BuilderApplicationService::class)
+                ->generateWebsite($generation);
+
+            $websiteId = (int) $persisted['website_id'];
+        } catch (\App\Engines\Builder\Exceptions\BuilderRefusedException $e) {
+            // BUILDER888 P1-6-a — a plan/entitlement refusal. Not a fault: the
+            // customer gets the platform's own actionable wording, unchanged.
+            $refusal = \App\Engines\Builder\Support\BuilderErrorContract::failureWithMessage(
+                \App\Engines\Builder\Support\BuilderErrorContract::LIMIT_REACHED,
+                $e->getMessage()
+            );
+
+            \Illuminate\Support\Facades\Log::info('[Builder888] generation refused', [
+                'workspace_id'   => $wsId,
+                'correlation_id' => $refusal['correlation_id'],
+                'limit_reached'  => $e->limitReached,
+            ]);
+
+            return [
+                'type'           => 'error',
+                'message'        => $refusal['build_error'],
+                'error_category' => $refusal['error_category'],
+                'correlation_id' => $refusal['correlation_id'],
+                'retryable'      => false,
+            ];
+        } catch (\Throwable $e) {
+            // Persistence failed atomically — no website, no pages. The AI work
+            // is already paid for and is NOT repeated; the caller is told the
+            // truth via the canonical error contract.
+            $failure = \App\Engines\Builder\Support\BuilderErrorContract::fromThrowable(
+                $e,
+                \App\Engines\Builder\Support\BuilderErrorContract::PERSISTENCE_FAILED,
+                ['workspace_id' => $wsId, 'industry' => $industry, 'stage' => 'generation_persistence']
+            );
+
+            return [
+                'type'           => 'error',
+                'message'        => $failure['build_error'],
+                'error_category' => $failure['error_category'],
+                'correlation_id' => $failure['correlation_id'],
+                'retryable'      => $failure['retryable'],
+            ];
+        }
+
+        // ── post-persistence side effects (audit R9) ────────────────────────
+        // All BEST-EFFORT. The website and its pages are already committed, so
+        // none of these may fail the generation. Each is guarded individually
+        // and records its own failure; caveats are collected for the response.
+        $sideEffectWarnings = [];
 
         // PATCH (Option C, 2026-05-09) — for news_channel sites, seed
         // 6 LLM-generated news articles into the articles table so the
@@ -2653,10 +2781,9 @@ PROMPT;
             try {
                 $seeded = $this->seedNewsArticles($wsId, $name, $data['location'] ?? 'Dubai', $variables);
                 if ($seeded > 0) {
-                    DB::table('websites')->where('id', $websiteId)->update([
-                        'template_variables' => json_encode($variables),
-                        'updated_at' => now(),
-                    ]);
+                    // BUILDER888 P1-6 · Law 11 — the Builder domain owns this write.
+                    app(\App\Engines\Builder\Services\BuilderService::class)
+                        ->updateTemplateVariables($websiteId, $variables);
                     Log::info('[Arthur] news_channel seeded ' . $seeded . ' articles for ws=' . $wsId);
                 }
             } catch (\Throwable $e) {
@@ -2678,10 +2805,9 @@ PROMPT;
                     @unlink($logoTempPath);
                     $permUrl = '/storage/sites/' . $websiteId . '/' . $destName . '?v=' . time();
                     $variables['logo_url'] = $permUrl;
-                    DB::table('websites')->where('id', $websiteId)->update([
-                        'template_variables' => json_encode($variables),
-                        'updated_at' => now(),
-                    ]);
+                    // BUILDER888 P1-6 · Law 11 — the Builder domain owns this write.
+                    app(\App\Engines\Builder\Services\BuilderService::class)
+                        ->updateTemplateVariables($websiteId, $variables);
                     // Re-render with the final URL (transitional render above used temp URL).
                     try {
                         $html = \App\Engines\Builder\Support\TemplateArchetypes::removeBlocks(
@@ -2702,7 +2828,19 @@ PROMPT;
         // canonical sections_json below so BuilderRenderer can serve them.
         // Remove this deploy() call once Chef Red is migrated and arthur-edit
         // closure is rewritten on top of sections_json (Patch 8.5+).
-        $this->templates->deploy($websiteId, $html);
+        // BUILDER888 P1-6 (R9) — was unguarded. The site and its pages are now
+        // already committed, so an unhandled throw here would report total
+        // failure for a website that exists and works. The static export feeds
+        // the Admin draft link only; public serving does not use it.
+        try {
+            $this->templates->deploy($websiteId, $html);
+        } catch (\Throwable $e) {
+            $sideEffectWarnings[] = 'static_export';
+            Log::warning('[Builder888] post-persistence side effect failed', [
+                'effect' => 'template_deploy', 'website_id' => $websiteId,
+                'workspace_id' => $wsId, 'error' => $e->getMessage(),
+            ]);
+        }
 
         // FIX 2 (2026-04-20) — always create default pages: Home (homepage)
         // + Blog for every generated website. Any other pages the wizard
@@ -2713,69 +2851,10 @@ PROMPT;
         // canonical sections_json built from the wizard data so
         // BuilderRenderer can serve the site without falling back to the
         // static index.html. New sites are pure-canonical from now on.
-        try {
-            $builder = app(\App\Engines\Builder\Services\BuilderService::class);
-            $homePos = 0;
-
-            // Home (homepage=1)
-            DB::table('pages')->insert([
-                'website_id'    => $websiteId,
-                'title'         => 'Home',
-                'slug'          => 'home',
-                'type'          => 'page',
-                'status'        => 'published',
-                'position'      => $homePos++,
-                'is_homepage'   => 1,
-                'sections_json' => json_encode($this->buildDefaultSectionsForPage('home', $data)),
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-
-            // User-requested pages (from wizard state.pages[]), excluding Home + Blog which we handle explicitly
-            $extraPages = $data['pages'] ?? [];
-            $seen = ['home' => true, 'blog' => true];
-            if (is_array($extraPages)) {
-                foreach ($extraPages as $p) {
-                    $title = trim((string)(is_array($p) ? ($p['title'] ?? $p['name'] ?? '') : $p));
-                    if ($title === '') continue;
-                    $slug = \Illuminate\Support\Str::slug($title);
-                    if ($slug === '' || isset($seen[$slug])) continue;
-                    $seen[$slug] = true;
-                    DB::table('pages')->insert([
-                        'website_id'    => $websiteId,
-                        'title'         => ucfirst($title),
-                        'slug'          => $slug,
-                        'type'          => 'page',
-                        'status'        => 'published',
-                        'position'      => $homePos++,
-                        'is_homepage'   => 0,
-                        'sections_json' => json_encode($this->buildDefaultSectionsForPage($slug, $data)),
-                        'created_at'    => now(),
-                        'updated_at'    => now(),
-                    ]);
-                }
-            }
-
-            // PATCH (FIX 1, 2026-05-09) — news_channel sites get a "News"
-            // page (slug=news) instead of "Blog" (slug=blog). Same type
-            // and sections — only the user-visible label changes so the
-            // nav reads "News" not "Blog" on a news site.
-            $isNewsChannel = ($industry === 'news_channel');
-            DB::table('pages')->insert([
-                'website_id'    => $websiteId,
-                'title'         => $isNewsChannel ? 'News' : 'Blog',
-                'slug'          => $isNewsChannel ? 'news' : 'blog',
-                'type'          => 'blog',
-                'status'        => 'published',
-                'position'      => $homePos++,
-                'is_homepage'   => 0,
-                'sections_json' => json_encode($this->buildDefaultSectionsForPage('blog', $data)),
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning('[Arthur] page creation failed: ' . $e->getMessage(), ['website_id' => $websiteId]);
-        }
+        // BUILDER888 P1-6 — the three page inserts that lived here are gone.
+        // Pages are now created inside the same transaction as the website by
+        // BuilderApplicationService, from the page specs assembled above.
+        // Law 11: Arthur performs no Builder-owned persistence.
 
         // PATCH (FIX 2, 2026-05-09) — Auto-enable the chatbot widget on
         // every build. chatbot_settings is workspace-UNIQUE (one row per
@@ -2869,7 +2948,7 @@ PROMPT;
         $industryHuman = ucfirst(str_replace('_', ' ', $industry));
         $defaults = [
             'business_name'      => $name,
-            'business_tagline'   => "{$name} — {$industryHuman} · {$location}",
+            'business_tagline'   => "{$industryHuman} · {$location}",
             'hero_title'         => $name,
             'hero_subtitle'      => $data['description'] ?? "Trusted {$industryHuman} in {$location}.",
             'hero_cta'           => 'Get Started',
@@ -2965,7 +3044,7 @@ PROMPT;
             $defaults = array_merge($defaults, $manifestDefaults);
             // Business-specific overrides (computed per-call) win over all.
             $defaults['business_name'] = $name;
-            $defaults['business_tagline'] = $name . ' \u2014 ' . ucfirst(str_replace('_',' ', $industry)) . ' \u00B7 ' . $location;
+            $defaults['business_tagline'] = ucfirst(str_replace('_',' ', $industry)) . ' · ' . $location;
             $defaults['meta_description'] = "{$name} — {$industry} in {$location}.";
             $defaults['contact_email']    = 'info@' . $emailSlug . '.com';
         } catch (\Throwable $e) { /* non-fatal, keep hardcoded $defaults */ }
@@ -3058,7 +3137,7 @@ PROMPT;
                 . "hero_subtitle (one compelling sentence),\n"
                 . "hero_cta (action button appropriate for {$copyIndustry}),\n"
                 . "hero_eyebrow (short badge text),\n"
-                . "business_tagline (short brand tagline for a {$copyIndustry} business),\n"
+                . "business_tagline (short brand tagline for a {$copyIndustry} business; do NOT repeat the business name, it is shown separately),\n"
                 . "about_title, about_text_1, about_text_2, about_text_3 (2-3 sentences each, {$copyIndustry}-appropriate),\n"
                 . "service_1_title, service_1_text, service_2_title, service_2_text, service_3_title, service_3_text "
                 . "(each service MUST be a {$copyIndustry} offering — not a different industry's service),\n"
@@ -3086,7 +3165,29 @@ PROMPT;
             );
 
             if (($result['success'] ?? false) && is_array($result['parsed'] ?? null)) {
-                $merged = array_merge($defaults, array_filter($result['parsed'], fn($v) => $v !== null && $v !== ''));
+                // BUILDER888 P1-8B (2026-08-10) — this is the provider boundary.
+                // Model JSON used to be merged straight into the template
+                // variable map, so the first array-valued key it returned
+                // reached str_replace() and killed the customer's build.
+                // Everything now passes through the canonical contract, which
+                // yields a flat scalar map, expands lists into the indexed
+                // families the templates actually declare, and refuses shapes
+                // it cannot represent rather than guessing at them.
+                $contract = \App\Engines\Builder\Support\GenerationVariableContract::fromProvider(
+                    $result['parsed'],
+                    $this->declaredPlaceholders($industry)
+                );
+
+                if ($contract['expanded'] !== [] || $contract['rejected'] !== []) {
+                    Log::info('[Builder888] provider output normalised', [
+                        'industry' => $industry,
+                        'expanded' => $contract['expanded'],
+                        'rejected' => $contract['rejected'],
+                    ]);
+                }
+
+                $merged = array_merge($defaults, $contract['variables']);
+
                 return $this->overlayUserServices($merged, $data);
             }
         } catch (\Throwable $e) {
@@ -3100,6 +3201,37 @@ PROMPT;
     // (e.g. ["SEO","website design","social media","paid ads"]), overwrite
     // the service_1..6_title slots with those exact services and hide the
     // unused slots. User wins over LLM output and template defaults.
+    /**
+     * BUILDER888 P1-8B — placeholders a template declares, e.g. service_3_title.
+     * Lets the generation contract expand a list only into slots the markup
+     * really lays out. Cached per request; empty set means "accept on faith".
+     *
+     * @return array<string,bool>
+     */
+    private function declaredPlaceholders(string $industry): array
+    {
+        static $cache = [];
+
+        $slug = $this->resolveTemplateSlug($industry);
+        if (isset($cache[$slug])) {
+            return $cache[$slug];
+        }
+
+        $path = storage_path("templates/{$slug}/template.html");
+        if (! is_file($path)) {
+            return $cache[$slug] = [];
+        }
+
+        $html = (string) @file_get_contents($path);
+        preg_match_all('/\{\{([a-z_0-9]+)\}\}/i', $html, $m);
+
+        $set = [];
+        foreach ($m[1] ?? [] as $name) {
+            $set[$name] = true;
+        }
+
+        return $cache[$slug] = $set;
+    }
     private function overlayUserServices(array $vars, array $data): array
     {
         $svc = $data['services'] ?? null;

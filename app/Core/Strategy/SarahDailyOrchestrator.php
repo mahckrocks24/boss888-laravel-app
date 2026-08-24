@@ -4,9 +4,11 @@ namespace App\Core\Strategy;
 
 use App\Connectors\RuntimeClient;
 use App\Core\Agents\AgentMessageService;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * 2026-05-24 FIX 46 — Sarah's daily orchestrator.
@@ -38,12 +40,76 @@ class SarahDailyOrchestrator
     ) {}
 
     /**
+     * SBS-001 T0.2 Part A — correlation id for ONE daily cycle.
+     *
+     * This orchestrator is injected once into SarahMorningBriefCommand and reused
+     * across every workspace in the loop, so the id is re-stamped at the top of
+     * runDaily() rather than cached for the object's lifetime. Every failure
+     * record carries it, which is what makes a single workspace's cycle
+     * reconstructable from the log without guessing at timestamps.
+     */
+    private ?string $cycleId = null;
+
+    private function cycleId(): string
+    {
+        // Lazily generated so the private synthesis methods remain callable in
+        // isolation (tests, probes) without a runDaily() wrapper.
+        return $this->cycleId ??= (string) Str::uuid();
+    }
+
+    /**
+     * SBS-001 T0.2 Part A — durable evidence for EVERY failed synthesis attempt.
+     *
+     * Before this, a 30-second runtime timeout on the dedicated endpoint produced
+     * no record at any level: tryDedicatedEndpoint() returned null on both the
+     * non-2xx and empty-body paths without logging, and only its catch block
+     * logged — at debug, which this installation does not emit. A platform-wide
+     * outage from 2026-07-27 was therefore invisible in the application log.
+     *
+     * Deliberately excludes the prompt, the state payload and any workspace
+     * content: this record is for diagnosing transport and contract failures,
+     * not for reproducing customer data into the log.
+     *
+     * Traces: MP Law 10 (Silence Is a Defect) · SBS-O-001 · SBS-O-003.
+     */
+    private function logSynthesisFailure(int $wsId, string $path, string $classification, array $context = []): void
+    {
+        Log::warning('[SarahDaily] synthesis attempt failed', array_merge([
+            'workspace_id'   => $wsId,
+            'cycle_id'       => $this->cycleId(),
+            // dedicated | fallback
+            'path'           => $path,
+            // not_configured | non_2xx | empty_body | malformed_body | missing_text | exception
+            'classification' => $classification,
+        ], $context));
+    }
+
+    /**
+     * Runtime correlation identifiers, when the response carries them. The
+     * runtime emits x-request-id and Railway adds x-railway-request-id; either
+     * may be absent, and a missing id must not suppress the rest of the record.
+     */
+    private function runtimeCorrelation(Response $resp): array
+    {
+        return [
+            'runtime_request_id' => $resp->header('x-request-id') ?: null,
+            'railway_request_id' => $resp->header('x-railway-request-id') ?: null,
+        ];
+    }
+
+    /**
      * Full daily cycle for one workspace. Designed to be called by
      * `sarah:morning-brief` artisan command (per-workspace iteration).
      */
     public function runDaily(int $wsId): array
     {
-        Log::info('[SarahDaily] starting daily cycle', ['workspace_id' => $wsId]);
+        // T0.2 Part A — one correlation id per workspace cycle (see cycleId()).
+        $this->cycleId = (string) Str::uuid();
+
+        Log::info('[SarahDaily] starting daily cycle', [
+            'workspace_id' => $wsId,
+            'cycle_id'     => $this->cycleId,
+        ]);
 
         // 1. GATHER
         $state = $this->gatherer->gather($wsId);
@@ -156,23 +222,79 @@ class SarahDailyOrchestrator
 
     private function tryDedicatedEndpoint(int $wsId, array $state): ?array
     {
+        $endpoint = '/internal/sarah/synthesize-daily';
+        $startedAt = microtime(true);
+
         try {
-            if (!$this->runtime->isConfigured()) return null;
+            if (!$this->runtime->isConfigured()) {
+                $this->logSynthesisFailure($wsId, 'dedicated', 'not_configured', ['endpoint' => $endpoint]);
+                return null;
+            }
             $cfg = config('services.runtime') ?? [];
             $baseUrl = rtrim((string) ($cfg['url'] ?? env('RUNTIME_URL') ?? ''), '/');
             $secret  = (string) ($cfg['secret'] ?? env('RUNTIME_SECRET') ?? '');
-            if (!$baseUrl || !$secret) return null;
+            if (!$baseUrl || !$secret) {
+                $this->logSynthesisFailure($wsId, 'dedicated', 'not_configured', [
+                    'endpoint'   => $endpoint,
+                    'has_url'    => $baseUrl !== '',
+                    'has_secret' => $secret !== '',
+                ]);
+                return null;
+            }
 
-            $resp = Http::timeout(60)
+            // SBS-001 T0.2 Part B (2026-08-05) — CROSS-COMPONENT TIMEOUT CONTRACT.
+            //
+            // Runtime v2.37.5 gives synthesis workloads a 70s route lane (provider
+            // 55s + 15s to abort, classify, serialise and log). A 60s client budget
+            // here would abandon the call BEFORE the runtime could answer, turning
+            // every dedicated synthesis into a client-side timeout no matter how
+            // healthy the runtime was — the exact inversion this release exists to
+            // remove. 90s sits above the 70s lane with margin and matches the
+            // fallback path's existing aiRun budget; RUNTIME_TIMEOUT=120 remains the
+            // outer bound. Guarded by DedicatedSynthesisTimeoutContractTest.
+            $resp = Http::timeout(90)
                 ->withHeaders(['X-LevelUp-Secret' => $secret])
-                ->post($baseUrl . '/internal/sarah/synthesize-daily', [
+                ->post($baseUrl . $endpoint, [
                     'workspace_id' => $wsId,
                     'state'        => $state,
                 ]);
 
-            if (!$resp->successful()) return null;
-            $body = $resp->json();
-            if (!is_array($body) || empty($body['brief_markdown'])) return null;
+            $elapsedMs = (int) round((microtime(true) - $startedAt) * 1000);
+            $body      = $resp->json();
+
+            // T0.2 — the runtime enforces its own ~30s deadline and answers 503
+            // {"error":"request_timeout"}. Laravel's 60s timeout never fires, so
+            // without this record the failure is indistinguishable from success.
+            if (!$resp->successful()) {
+                $this->logSynthesisFailure($wsId, 'dedicated', 'non_2xx', array_merge([
+                    'endpoint'      => $endpoint,
+                    'http_status'   => $resp->status(),
+                    'elapsed_ms'    => $elapsedMs,
+                    'error_code'    => is_array($body) ? ($body['error'] ?? null) : null,
+                    'error_message' => is_array($body) ? ($body['message'] ?? null) : null,
+                ], $this->runtimeCorrelation($resp)));
+                return null;
+            }
+
+            if (!is_array($body)) {
+                $this->logSynthesisFailure($wsId, 'dedicated', 'malformed_body', array_merge([
+                    'endpoint'    => $endpoint,
+                    'http_status' => $resp->status(),
+                    'elapsed_ms'  => $elapsedMs,
+                    'body_bytes'  => strlen((string) $resp->body()),
+                ], $this->runtimeCorrelation($resp)));
+                return null;
+            }
+
+            if (empty($body['brief_markdown'])) {
+                $this->logSynthesisFailure($wsId, 'dedicated', 'empty_body', array_merge([
+                    'endpoint'    => $endpoint,
+                    'http_status' => $resp->status(),
+                    'elapsed_ms'  => $elapsedMs,
+                    'body_keys'   => array_keys($body),
+                ], $this->runtimeCorrelation($resp)));
+                return null;
+            }
 
             return [
                 'source'           => 'dedicated_endpoint',
@@ -180,7 +302,14 @@ class SarahDailyOrchestrator
                 'proposed_actions' => $body['proposed_actions'] ?? [],
             ];
         } catch (\Throwable $e) {
-            Log::debug('[SarahDaily] dedicated endpoint unavailable: ' . $e->getMessage());
+            // Was Log::debug, which this installation does not emit — a connection
+            // or transport failure left no trace whatsoever.
+            $this->logSynthesisFailure($wsId, 'dedicated', 'exception', [
+                'endpoint'        => $endpoint,
+                'elapsed_ms'      => (int) round((microtime(true) - $startedAt) * 1000),
+                'exception_class' => get_class($e),
+                'exception'       => $e->getMessage(),
+            ]);
             return null;
         }
     }
@@ -192,6 +321,8 @@ class SarahDailyOrchestrator
     private function fallbackViaAiRun(int $wsId, array $state): ?array
     {
         $prompt = $this->buildSynthesisPrompt($state);
+        $startedAt = microtime(true);
+
         try {
             // 2026-05-24 — max_tokens 3000: brief (300-600 tokens) + 5-8
             // structured proposed_actions (~150 tokens each). Lower values
@@ -200,27 +331,52 @@ class SarahDailyOrchestrator
                 'workspace_id' => $wsId,
                 'task'         => 'sarah_daily_synthesis',
             ], 3000);
+
+            $elapsedMs = (int) round((microtime(true) - $startedAt) * 1000);
+            $raw       = is_array($r['raw'] ?? null) ? $r['raw'] : [];
+
             if (empty($r['success']) || empty($r['text'])) {
-                Log::warning('[SarahDaily] aiRun returned empty', [
-                    'workspace_id' => $wsId,
-                    'success'      => $r['success'] ?? null,
-                    'text_len'     => strlen($r['text'] ?? ''),
+                // T0.2 — RuntimeClient::aiRun()'s non-2xx branch returns an array
+                // with NO 'text' key at all, which is why text_len read 0. The
+                // runtime's own request id is not available here because aiRun()
+                // returns the decoded body only; capturing it would require
+                // changing the shared RuntimeClient, which is out of scope for
+                // Part A. Recorded instead: prompt SIZE (never content), elapsed,
+                // and the runtime's structured error.
+                $this->logSynthesisFailure($wsId, 'fallback', empty($r['success']) ? 'non_2xx' : 'missing_text', [
+                    'endpoint'       => '/ai/run',
+                    'elapsed_ms'     => $elapsedMs,
+                    'success'        => $r['success'] ?? null,
+                    'text_len'       => strlen((string) ($r['text'] ?? '')),
+                    'client_error'   => $r['error'] ?? null,
+                    'error_code'     => $raw['error'] ?? null,
+                    'error_message'  => $raw['message'] ?? null,
+                    'max_tokens'     => 3000,
+                    'prompt_bytes'   => strlen($prompt),
                 ]);
                 return null;
             }
 
             $parsed = $this->parseSynthesisResponse((string) $r['text']);
             if (!$parsed) {
-                Log::warning('[SarahDaily] synthesis JSON parse failed', [
-                    'workspace_id' => $wsId,
-                    'text_preview' => mb_substr((string) $r['text'], 0, 300),
+                $this->logSynthesisFailure($wsId, 'fallback', 'malformed_body', [
+                    'endpoint'     => '/ai/run',
+                    'elapsed_ms'   => $elapsedMs,
+                    'text_len'     => strlen((string) $r['text']),
+                    'finish_reason'=> $raw['finish_reason'] ?? null,
+                    'actual_model' => $raw['actual_model'] ?? null,
                 ]);
                 return null;
             }
             $parsed['source'] = 'aiRun_fallback';
             return $parsed;
         } catch (\Throwable $e) {
-            Log::warning('[SarahDaily] aiRun fallback failed: ' . $e->getMessage());
+            $this->logSynthesisFailure($wsId, 'fallback', 'exception', [
+                'endpoint'        => '/ai/run',
+                'elapsed_ms'      => (int) round((microtime(true) - $startedAt) * 1000),
+                'exception_class' => get_class($e),
+                'exception'       => $e->getMessage(),
+            ]);
             return null;
         }
     }

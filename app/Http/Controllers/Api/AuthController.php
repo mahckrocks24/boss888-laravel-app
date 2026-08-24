@@ -72,7 +72,17 @@ class AuthController
             $request->userAgent(),
         );
 
-        return response()->json($result);
+        // PLATFORM SECURITY 1.0 — server-side identity for admin PAGE requests.
+        //
+        // The JSON response is unchanged; the client keeps storing its token
+        // exactly as before. This adds the SAME access token as an HttpOnly
+        // cookie so that a browser document request to /admin/* carries an
+        // identity the server can read. Until then the server rendered every
+        // admin page without knowing who asked, and the only guard was a line
+        // of JavaScript the anonymous visitor had already downloaded.
+        //
+        // Not a second credential: one issuer, one decoder, two transports.
+        return $this->withAdminIdentityCookie(response()->json($result), $result);
     }
 
     public function refresh(Request $request): JsonResponse
@@ -85,7 +95,62 @@ class AuthController
     {
         $request->validate(['refresh_token' => 'required|string']);
         $this->authService->logout($request->input('refresh_token'));
-        return response()->json(['message' => 'Logged out']);
+
+        // The page-identity cookie dies with the session that issued it.
+        // Forgetting this would leave a browser able to render admin pages
+        // after the user believed they had signed out.
+        // withoutCookie() defaults the forget-cookie's path to "/", which cannot
+        // remove a cookie scoped to /admin — the browser simply keeps both. The
+        // deletion must carry the same attributes as the issuance.
+        return response()->json(['message' => 'Logged out'])
+            ->withCookie(\App\Http\Middleware\AdminSessionIdentity::forgetCookie());
+    }
+
+    /**
+     * Attach the admin page-identity cookie to a login response.
+     *
+     * Scoped to /admin so it is never sent with API or marketing requests.
+     * HttpOnly puts it beyond JavaScript's reach, which is strictly better than
+     * the localStorage token it sits alongside. Its lifetime is read from the
+     * token's own `exp` claim rather than a second configured value — two
+     * lifetimes would eventually disagree, and the one that outlived the other
+     * would be the security hole.
+     *
+     * Failing to attach it is never fatal: the JSON contract the client depends
+     * on is already built, and a login that succeeds must not be turned into a
+     * failure by a cookie problem.
+     */
+    private function withAdminIdentityCookie(JsonResponse $response, mixed $result): JsonResponse
+    {
+        try {
+            $payload = is_array($result) ? $result : (array) $result;
+            $token = $payload['access_token'] ?? $payload['token'] ?? ($payload['data']['access_token'] ?? null);
+
+            if (! is_string($token) || substr_count($token, '.') !== 2) {
+                return $response;
+            }
+
+            $claims = json_decode(base64_decode(strtr(explode('.', $token)[1], '-_', '+/')) ?: '{}', true);
+            $seconds = max(60, (int) (($claims['exp'] ?? 0) - time()));
+
+            return $response->cookie(
+                \App\Http\Middleware\AdminSessionIdentity::COOKIE,
+                $token,
+                (int) ceil($seconds / 60),
+                \App\Http\Middleware\AdminSessionIdentity::PATH, // never sent to the API or marketing site
+                null,          // domain — current host only
+                true,          // secure
+                true,          // httpOnly — JavaScript must not be able to read it
+                false,
+                'Lax'          // allows top-level navigation, blocks cross-site POST
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('admin identity cookie not attached', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return $response;
+        }
     }
 
     public function me(Request $request): JsonResponse

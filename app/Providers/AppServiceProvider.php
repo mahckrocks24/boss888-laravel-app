@@ -101,6 +101,18 @@ class AppServiceProvider extends ServiceProvider
         // this every infrastructure policy would silently fail open.
         \App\Engines\Infrastructure\Policies\InfrastructurePolicyRegistrar::register();
 
+        // P0-B GOVERNANCE INTEGRATION (2026-07-26). Registers one Gate per
+        // capability in PermissionRegistry plus the two model-scoped Policies,
+        // following the InfrastructurePolicyRegistrar precedent above rather
+        // than introducing a new ServiceProvider (bootstrap/providers.php does
+        // not exist in this app; see P0-B-IMPACT-MATRIX.md §1).
+        //
+        // SHADOW MODE: gates evaluate and record, but always allow. The
+        // registrar fails OPEN — any exception is logged and swallowed so a
+        // governance defect can never take the platform down.
+        // Kill switch: GOVERNANCE_MODE=off
+        \App\Core\Governance\GovernanceGateRegistrar::register();
+
         // INFRA888 - engine-namespaced console command (not auto-discovered).
         if ($this->app->runningInConsole()) {
             $this->commands([

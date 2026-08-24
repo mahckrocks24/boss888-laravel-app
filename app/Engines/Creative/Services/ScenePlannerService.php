@@ -25,6 +25,8 @@ class ScenePlannerService
 {
     /**
      * Provider waterfall — tried in order, first success wins.
+     * NOTE: 'mock' is filtered out of the production waterfall by
+     * activeProviders() — it must NEVER run outside local/testing.
      */
     private const PROVIDERS = ['minimax', 'runway', 'mock'];
 
@@ -32,6 +34,14 @@ class ScenePlannerService
      * Max poll attempts before marking a job as timed_out.
      */
     private const MAX_POLL_ATTEMPTS = 60;  // 60 × 5s = 5 minutes max
+
+    /**
+     * 2026-08-10 LAUNCH CONSTRAINT — single scene only. stitchScenes() is still
+     * a stub that would silently drop scenes 2..N, so every request is collapsed
+     * to ONE scene rather than generate-and-discard. Raise this only when real
+     * (ffmpeg) multi-scene stitching ships.
+     */
+    private const MAX_LAUNCH_SCENES = 1;
 
     public function __construct(
         private DeepSeekConnector  $llm,
@@ -53,6 +63,8 @@ class ScenePlannerService
         $duration   = $options['duration'] ?? 15;
         $style      = $options['style'] ?? '';
         $sceneCount = max(1, min(6, (int) round($duration / 5)));
+        // Launch constraint: collapse to a single scene (see MAX_LAUNCH_SCENES).
+        $sceneCount = min($sceneCount, self::MAX_LAUNCH_SCENES);
 
         $systemPrompt = "You are a video director. Break the given concept into {$sceneCount} distinct video scenes. Return ONLY valid JSON — no markdown, no explanation.";
 
@@ -138,9 +150,9 @@ EOT;
             'updated_at'    => now(),
         ]);
 
-        // Try providers in waterfall order
+        // Try providers in waterfall order (mock excluded outside local/testing)
         $dispatched = false;
-        foreach (self::PROVIDERS as $provider) {
+        foreach ($this->activeProviders() as $provider) {
             try {
                 $result = $this->dispatchToProvider($provider, $scene, $options);
 
@@ -318,6 +330,22 @@ EOT;
     // ═══════════════════════════════════════════════════════
     // PRIVATE
     // ═══════════════════════════════════════════════════════
+
+    /**
+     * P0 (2026-08-10) — the mock provider fabricates a "completed" video (a
+     * public sample MP4) and would let a real workspace be charged for a fake
+     * asset. It runs ONLY in local/testing. In production/staging the waterfall
+     * is real providers only; if they all fail the job fails truthfully — no
+     * fake asset, no charge, never a silent mock fallback.
+     */
+    private function activeProviders(): array
+    {
+        if (app()->environment(['local', 'testing'])) {
+            return self::PROVIDERS;
+        }
+
+        return array_values(array_filter(self::PROVIDERS, fn ($p) => $p !== 'mock'));
+    }
 
     private function dispatchToProvider(string $provider, array $scene, array $options): array
     {

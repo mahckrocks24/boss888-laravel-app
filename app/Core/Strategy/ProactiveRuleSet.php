@@ -56,6 +56,20 @@ class ProactiveRuleSet
         // RULE 2 — Stale articles (>60 days unmodified, published)
         $stale = $state['seo']['stale_articles'] ?? [];
         foreach (array_slice($stale, 0, 3) as $a) {
+            // SBS-001 T0.1 (2026-08-05) — WorkspaceStateGatherer builds this list with
+            // Collection::toArray(), which yields stdClass rows, not arrays. The array
+            // access below therefore raised "Cannot use object of type stdClass as
+            // array" for every workspace holding a published article older than 60
+            // days, and because emit() is called unguarded by
+            // SarahDailyOrchestrator::runDaily() the entire daily cycle aborted —
+            // ws1 dark from 2026-07-15, ws2 from 2026-07-22, with no log line because
+            // the command reports through $this->error() and the scheduler entry runs
+            // runInBackground(). Normalised HERE, at the consumption boundary: the
+            // gatherer's output shape is deliberately left unchanged because other
+            // consumers depend on it. Both shapes are accepted, so a future upstream
+            // change cannot re-break this rule. See tests/Feature/Sarah.
+            $a = is_array($a) ? $a : (array) $a;
+
             $candidates[] = [
                 'action'             => 'refresh_article',
                 'priority_hint'      => 'medium',

@@ -23,9 +23,26 @@ final class Shell
     private const ENV_STRIP = 'env -u DB_CONNECTION -u DB_HOST -u DB_PORT -u DB_DATABASE'
         . ' -u DB_USERNAME -u DB_PASSWORD -u APP_ENV -u REDIS_HOST -u REDIS_PORT';
 
-    /** @return array{ok:bool, out:string, code:int} */
+    /** @return array{ok:bool, out:string, code:int, err:string} */
     public static function run(string $binary, array $args = [], ?string $cwd = null, int $timeoutSeconds = 15): array
     {
+        // GIT AND REPOSITORY OWNERSHIP.
+        //
+        // The web user does not own the top level of the working tree, and
+        // modern git refuses to operate in a tree whose owner it does not
+        // recognise. Everything an engineer runs by hand is fine — that is
+        // root — so the refusal only appeared when the workflow moved onto the
+        // queue, which runs as www-data, and every git-backed stage failed at
+        // once with "git status failed".
+        //
+        // Declared per invocation rather than in a user or system gitconfig:
+        // this grants no new access (the web user already owns .git and runs
+        // the whole application), leaves no state behind on the box, and is
+        // scoped to the one repository Engineer888 was asked about.
+        if ($binary === 'git' && $cwd !== null) {
+            array_unshift($args, '-c', 'safe.directory=' . $cwd);
+        }
+
         $cmd = escapeshellcmd($binary);
         foreach ($args as $a) {
             $cmd .= ' ' . escapeshellarg((string) $a);
@@ -42,15 +59,34 @@ final class Shell
         // a database target to any child, whatever the command turns out to be.
         // A child that boots Laravel with DB_DATABASE inherited from here is
         // exactly INC-2026-006.
-        $wrapped = self::ENV_STRIP . ' timeout ' . (int) $timeoutSeconds . ' ' . $cmd . ' 2>/dev/null';
-        if ($cwd !== null) {
-            $wrapped = 'cd ' . escapeshellarg($cwd) . ' && ' . $wrapped;
-        }
+        $prefix = $cwd === null ? '' : 'cd ' . escapeshellarg($cwd) . ' && ';
+        $base = $prefix . self::ENV_STRIP . ' timeout ' . (int) $timeoutSeconds . ' ' . $cmd;
 
         $out = [];
         $code = 0;
-        @exec($wrapped, $out, $code);
+        @exec($base . ' 2>/dev/null', $out, $code);
 
-        return ['ok' => $code === 0, 'out' => implode("\n", $out), 'code' => $code];
+        if ($code === 0) {
+            return ['ok' => true, 'out' => implode("\n", $out), 'code' => 0, 'err' => ''];
+        }
+
+        // ONLY ON FAILURE, ask again with stderr attached.
+        //
+        // stdout stays clean on the success path because callers parse it —
+        // git porcelain in particular — and a warning merged into that output
+        // would be read as a changed file. But a failure that says only "git
+        // status failed" costs an engineer a round trip to learn anything, which
+        // it did on 2026-08-02. Re-running a command that has already failed is
+        // cheap; guessing is not.
+        $errOut = [];
+        $errCode = 0;
+        @exec($base . ' 2>&1', $errOut, $errCode);
+
+        return [
+            'ok'   => false,
+            'out'  => implode("\n", $out),
+            'code' => $code,
+            'err'  => trim(implode("\n", array_slice($errOut, 0, 8))),
+        ];
     }
 }

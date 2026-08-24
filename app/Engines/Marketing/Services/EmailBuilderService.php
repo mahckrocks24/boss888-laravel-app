@@ -3,8 +3,11 @@
 namespace App\Engines\Marketing\Services;
 
 use App\Engines\Marketing\EmailBlockLibrary;
-use App\Connectors\EmailConnector;
 use App\Connectors\RuntimeClient;
+use App\Core\Email888\Contracts\SendEmailCommand;
+use App\Core\Email888\EmailDispatcher;
+use App\Engines\Marketing\Support\CampaignDispatchOutcome;
+use App\Engines\Marketing\Support\CampaignLogColumns;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
@@ -30,9 +33,70 @@ use Illuminate\Support\Str;
 class EmailBuilderService
 {
     public function __construct(
-        private EmailConnector $email,
+        // EM-7: EmailConnector injection removed — transport is Email888's.
         private RuntimeClient  $runtime,
+        // EM-7: transport belongs to Email888. This service keeps CONTENT
+        // responsibility - templates, variables, tracking - and nothing else.
+        private EmailDispatcher $dispatcher,
     ) {}
+
+    /**
+     * EM-7 - one message through the canonical outbound path.
+     *
+     * Declares INTENT only. The purpose registry chooses the sender identity and
+     * the stream registry puts campaign content on 'broadcast'; this service
+     * names no provider, no address and no stream.
+     *
+     * A test send uses the SAME purpose as the campaign it previews, so it
+     * travels the same stream from the same sender. A test that takes a
+     * different route than the real thing is not a test of the real thing.
+     *
+     * $idempotencyKey is null for test sends, which are meant to be repeatable.
+     */
+    private function dispatchOne(
+        string $toEmail,
+        string $subject,
+        string $html,
+        ?int $workspaceId,
+        array $metadata = [],
+        ?string $idempotencyKey = null,
+    ): \App\Core\Email888\Contracts\EmailResult {
+        return $this->dispatcher->send(new SendEmailCommand(
+            purpose:        'campaign',
+            recipients:     [$toEmail],
+            subject:        $subject,
+            html:           $html,
+            workspaceId:    $workspaceId,
+            metadata:       $metadata,
+            idempotencyKey: $idempotencyKey,
+        ));
+    }
+
+    /**
+     * EM-7 - deterministic per-recipient idempotency, identical in scheme to
+     * MarketingService so the two campaign paths cannot drift apart. Hashed:
+     * the key reaches a ledger row and an admin screen, and a recipient's
+     * address does not need storing twice.
+     */
+    private function campaignIdempotencyKey(?int $wsId, int $campaignId, string $recipient): string
+    {
+        return sprintf('cmp-%d-%d-%s', (int) $wsId, $campaignId,
+            substr(hash('sha256', strtolower(trim($recipient))), 0, 32));
+    }
+
+    /** Uniform result shape for the two one-off test senders. */
+    private function testSendResult(\App\Core\Email888\Contracts\EmailResult $r): array
+    {
+        return [
+            'success'    => $r->accepted,
+            'message_id' => $r->providerMessageId,
+            // "Accepted" deliberately, never "sent": the provider taking
+            // responsibility is not the same as anyone receiving it.
+            'message'    => $r->accepted
+                ? 'Accepted by the provider - delivery is confirmed separately in the delivery ledger.'
+                : ($r->failureCategory ?? 'refused'),
+        ];
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // TEMPLATE CRUD
@@ -919,14 +983,15 @@ JS;
         $html = $this->renderWithVariables($templateId, $variables);
         $subject = '[TEST] ' . ($tpl->subject ?: ($tpl->name ?: 'Email'));
 
-        $result = $this->email->execute('send_email', [
-            'to' => $toEmail, 'subject' => $subject, 'body' => $html, 'html' => true,
-        ]);
-        return [
-            'success'    => (bool) ($result['success'] ?? false),
-            'message_id' => $result['data']['message_id'] ?? null,
-            'message'    => $result['message'] ?? ($result['error'] ?? 'unknown'),
-        ];
+        try {
+            return $this->testSendResult($this->dispatchOne(
+                $toEmail, $subject, $html,
+                isset($tpl->workspace_id) ? (int) $tpl->workspace_id : null,
+                ['template_id' => $templateId, 'test_send' => true],
+            ));
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message_id' => null, 'message' => $e->getMessage()];
+        }
     }
 
     /** Part 2 — dispatch the queue job after validation. */
@@ -1162,14 +1227,15 @@ JS;
         $html = $this->renderWithVariables((int) $campaign->template_id, $variables);
         $subject = '[TEST] ' . ($campaign->subject ?: 'Test email');
 
-        $result = $this->email->execute('send_email', [
-            'to' => $toEmail, 'subject' => $subject, 'body' => $html, 'html' => true,
-        ]);
-        return [
-            'success'    => (bool) ($result['success'] ?? false),
-            'message_id' => $result['data']['message_id'] ?? null,
-            'message'    => $result['message'] ?? ($result['error'] ?? 'unknown'),
-        ];
+        try {
+            return $this->testSendResult($this->dispatchOne(
+                $toEmail, $subject, $html,
+                isset($campaign->workspace_id) ? (int) $campaign->workspace_id : null,
+                ['campaign_id' => $campaignId, 'test_send' => true],
+            ));
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message_id' => null, 'message' => $e->getMessage()];
+        }
     }
 
     /**
@@ -1186,11 +1252,18 @@ JS;
         if (!$validation['valid']) return ['success' => false, 'errors' => $validation['errors']];
 
         $recipients = json_decode($campaign->recipients_json ?: '[]', true) ?: [];
-        $sent = 0; $failed = 0;
+
+        // EM-7: one shared campaign state contract with MarketingService. There
+        // is deliberately no way to assert "sent" - it is computed from what
+        // actually happened.
+        $outcome = new CampaignDispatchOutcome();
 
         foreach ($recipients as $r) {
             $email = (string) ($r['email'] ?? '');
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $failed++; continue; }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $outcome->refused($email !== '' ? $email : '(blank)', 'invalid_address');
+                continue;
+            }
             $name  = (string) ($r['name']  ?? '');
 
             $logId = DB::table('email_campaigns_log')->insertGetId([
@@ -1208,36 +1281,66 @@ JS;
             $contact = (object) ['first_name' => explode(' ', $name)[0] ?? '', 'last_name' => '', 'email' => $email, 'company' => ''];
             $html    = $this->renderWithVariables((int) $campaign->template_id, $r['variables'] ?? [], $contact, $logId);
 
-            $result = $this->email->execute('send_email', [
-                'to' => $email, 'subject' => $campaign->subject, 'body' => $html, 'html' => true,
-            ]);
-
-            if (!empty($result['success'])) {
-                $sent++;
+            try {
+                $result = $this->dispatchOne(
+                    $email,
+                    (string) $campaign->subject,
+                    $html,
+                    isset($campaign->workspace_id) ? (int) $campaign->workspace_id : null,
+                    ['campaign_id' => $campaignId, 'log_id' => $logId],
+                    $this->campaignIdempotencyKey($campaign->workspace_id ?? null, $campaignId, $email),
+                );
+            } catch (\Throwable $e) {
+                // One unusable recipient must not take the campaign with it, but
+                // it is named and recorded, never silently dropped.
+                $outcome->refused($email, class_basename($e));
                 DB::table('email_campaigns_log')->where('id', $logId)->update([
+                    'status' => 'failed', 'updated_at' => now(),
+                ]);
+                Log::warning('email.campaign.recipient_refused', [
+                    'campaign_id' => $campaignId, 'error' => $e->getMessage(),
+                ]);
+                continue;
+            }
+
+            if ($result->accepted) {
+                $result->deduplicated ? $outcome->duplicated() : $outcome->accepted();
+
+                DB::table('email_campaigns_log')->where('id', $logId)->update([
+                    // 'sent' here means handed over and accepted. Whether it
+                    // arrived is answered by the Email888 ledger, which the
+                    // provider webhook updates.
                     'status'              => 'sent',
                     'sent_at'             => now(),
-                    'postmark_message_id' => $result['data']['message_id'] ?? null,
+                    // Legacy column; the domain concept is provider_message_id.
+                    CampaignLogColumns::PROVIDER_MESSAGE_ID => $result->providerMessageId,
                     'updated_at'          => now(),
                 ]);
             } else {
-                $failed++;
+                $outcome->refused($email, $result->failureCategory ?? 'refused');
+
+                // NOT 'bounced'. A bounce is a terminal verdict from the
+                // receiving server, which cannot possibly be known at the moment
+                // we hand the message over - and recording one here would put a
+                // fictional bounce in the campaign's own history.
                 DB::table('email_campaigns_log')->where('id', $logId)->update([
-                    'status' => 'bounced', 'updated_at' => now(),
+                    'status' => 'failed', 'updated_at' => now(),
                 ]);
             }
         }
 
+        // EM-7: derived from dispatch outcomes, never from the loop finishing.
         DB::table('campaigns')->where('id', $campaignId)->update([
-            'status'  => 'sent',
-            'sent_at' => now(),
-            'stats_json' => json_encode([
-                'sent' => $sent, 'failed' => $failed, 'total' => count($recipients),
-            ]),
+            'status'     => $outcome->status(),
+            'sent_at'    => $outcome->sentAt(),
+            'stats_json' => json_encode($outcome->stats(count($recipients))),
             'updated_at' => now(),
         ]);
 
-        return ['queued' => $sent, 'failed' => $failed, 'count' => count($recipients)];
+        return $outcome->toArray(count($recipients)) + [
+            'queued' => $outcome->dispatched(),
+            'count'  => count($recipients),
+        ];
     }
 
     // ═══════════════════════════════════════════════════════════════════

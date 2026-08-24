@@ -24,14 +24,45 @@ Route::prefix('admin')->group(function () {
         return view('admin.login');
     })->name('admin.login');
 
-    Route::get('/{any?}', function () {
-        return view('admin.app');
-    })->where('any', '.*')->name('admin.app');
+    // PLATFORM SECURITY 1.0 (2026-08-04) — ending the session server-side.
+    //
+    // POST, never GET: a GET that destroys a session can be fired by any <img>
+    // on any site. The web group's CSRF validation covers this route, so only
+    // the console's own origin can call it.
+    //
+    // Declared ABOVE the catchall and carrying no AdminSessionIdentity: an
+    // expired or already-cleared session must still be able to sign out, which
+    // is the moment this route matters most.
+    Route::post('/logout', [\App\Http\Controllers\Admin\AdminLogoutController::class, 'logout'])
+        ->name('admin.logout');
+
+    // ── Multi-page admin (2026-07-29) ────────────────────────────────────────
+    // Every menu item is its own URL, resolved from config/admin_pages.php.
+    //
+    // This replaces a catchall that returned the same 359KB view for every
+    // /admin/* URL and booted a hardcoded dashboard: /admin/users returned 200
+    // and showed the dashboard, and so did /admin/nonsense. An unknown slug now
+    // 404s. `.*` is retained so nested slugs (ads/status, engineering/health)
+    // match; the optional parameter lets bare /admin redirect to the dashboard.
+    // PLATFORM SECURITY 1.0 (2026-08-03) — server-side identity, applied here.
+    //
+    // /admin/login is declared ABOVE this line and stays outside the middleware
+    // on purpose: gating the login page behind identity is how a platform locks
+    // everybody out. Route declaration order is what keeps it outside, so the
+    // login route must never be moved below this one.
+    //
+    // The cookie this reads is written by /api/auth/login (api group) and read
+    // here (web group). Those groups disagree about cookie encryption, which is
+    // why bootstrap/app.php exempts lu_admin_at from EncryptCookies. Remove that
+    // exemption and every request below becomes an infinite redirect to login.
+    Route::middleware(\App\Http\Middleware\AdminSessionIdentity::class)
+        ->get('/{slug?}', [\App\Http\Controllers\Admin\AdminPageController::class, 'show'])
+        ->where('slug', '.*')->name('admin.page');
 });
 
 // ── SaaS App (React SPA) ──────────────────────────────────────────────────────
 Route::get('/app/{any?}', function () {
-    return response()->file(public_path('app/index.html'));
+    return response()->file(public_path('app/index.html'), ['Cache-Control' => 'no-cache, must-revalidate']);
 })->where('any', '.*')->name('app');
 
 // ── Marketing Site (static HTML from plugin) ──────────────────────────────────
@@ -198,6 +229,25 @@ Route::get('/pages/{slug}', function (string $slug) {
     }
     abort(404);
 })->where('slug', '[a-z0-9-]+')->name('marketing.page');
+
+// ── INFRA888 · E7.3 — Business Email mailbox setup (public, token-bound) ──────
+//
+// The customer follows a LEVELUP link and sets their own password on a LEVELUP
+// page. The email provider is never in the conversation — its own invitation
+// email names the vendor, which is why this exists.
+//
+// Unauthenticated by necessity: the recipient has no LevelUp account. The token
+// carries the tenancy, is single-use, expires in 72 hours, and is rate limited.
+// `web` middleware only — no session dependency, no CSRF token to leak into the
+// page, because the POST is authorised by the bearer-like token in the URL.
+Route::get('/business-email/setup/{token}', [\App\Http\Controllers\MailboxSetupController::class, 'show'])
+    ->where('token', '[a-f0-9]{64}')
+    ->name('business-email.setup');
+
+Route::post('/business-email/setup/{token}', [\App\Http\Controllers\MailboxSetupController::class, 'store'])
+    ->where('token', '[a-f0-9]{64}')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('business-email.setup.store');
 
 // Invite acceptance page (public)
 Route::get('/invite/{token}', function (string $token) {

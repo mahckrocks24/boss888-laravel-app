@@ -27,11 +27,22 @@ return [
     | Email (Postmark / SMTP)
     |--------------------------------------------------------------------------
     */
+    /*
+     | EM-7 (2026-08-13) — this block no longer configures a transport.
+     |
+     | It used to carry the Postmark server token and a DEFAULT SENDER of
+     | noreply@levelupgrowth.io. That address is not in the Email888 sender
+     | registry and never was verified: nothing monitors it, so a bounce sent
+     | there is a bounce nobody reads. It survived as a fallback precisely
+     | because a fallback is what you never notice using.
+     |
+     | Sender identity is now resolved exclusively by the sender registry in
+     | config/email888.php, chosen by the message's PURPOSE. There is deliberately
+     | no default here to fall back to — a missing identity must fail loudly
+     | rather than quietly become an address nobody reads.
+     */
     'email' => [
-        'driver' => env('EMAIL_CONNECTOR_DRIVER', 'smtp'),
-        'postmark_token' => env('POSTMARK_TOKEN', ''),
-        'from_email' => env('EMAIL_FROM_ADDRESS', 'noreply@levelupgrowth.io'),
-        'from_name' => env('EMAIL_FROM_NAME', 'LevelUp Growth'),
+        // Intentionally empty. See above.
     ],
 
     /*

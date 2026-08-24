@@ -84,4 +84,25 @@ return [
     */
     'image_intelligence_enabled' => env('STUDIO_IMAGE_INTELLIGENCE_ENABLED', false),
 
+    /*
+    | WP2 PHASE 2.2B — STUDIO-ONLY ACTIVATION.
+    |
+    | `image_intelligence_enabled` above is read by TWO call sites:
+    |   1. StudioAiService::generateImage()          — interactive Studio
+    |   2. CreativeService::getBlueprint() $type==='image' — the Creative engine,
+    |      which is what BackfillFeaturedImagesCommand (blog featured images),
+    |      BuilderService and BellaController reach.
+    |
+    | So that single flag cannot express "Studio only": turning it on would change
+    | blog featured-image generation at the same instant.
+    |
+    | This key gates ONLY call site 1. Call site 2 continues to read
+    | `image_intelligence_enabled`, which stays false, so every non-Studio image
+    | path is byte-for-byte unchanged.
+    |
+    | Studio uses canonical routing when EITHER key is true, so the original global
+    | flag keeps its existing meaning and nothing about it is altered.
+    */
+    'image_intelligence_studio_enabled' => env('STUDIO_IMAGE_INTELLIGENCE_STUDIO_ENABLED', false),
+
 ];

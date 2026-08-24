@@ -817,10 +817,10 @@ class EngineExecutionService
             'create_website' => $svc->createWebsite($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
             'generate_page' => (function() use ($svc, $params, $wsId) { if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) throw new \RuntimeException('Website not found'); return $svc->createPage($params['website_id'], $params); })(),
             'wizard_generate' => $svc->wizardGenerate($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
-            'publish_website' => ['action' => 'published'] + (function() use ($svc, $params) { $svc->publishWebsite($params['website_id']); return []; })(),
+            'publish_website' => ['action' => 'published'] + (function() use ($svc, $params, $wsId) { if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) throw new \RuntimeException('Website not found'); $svc->publishWebsite($params['website_id']); return []; })(),
             // v1.4.4 (2026-05-30) — Phase B landing-page visibility
             'list_builder_pages' => $svc->listWorkspacePages($wsId, $params),
-            'get_builder_page' => $svc->getPage((int) ($params['page_id'] ?? 0)) ?? ['success' => false, 'error' => 'Page not found'],
+            'get_builder_page' => $svc->getPage((int) ($params['page_id'] ?? 0), $wsId) ?? ['success' => false, 'error' => 'Page not found'],
             // v1.4.4 (2026-05-30) — page editing.
             //   update_page → direct mutation via BuilderService (auto-snapshots).
             //   ai_builder_action → hands off to Arthur, who proposes structured

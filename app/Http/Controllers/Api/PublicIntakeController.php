@@ -236,6 +236,11 @@ class PublicIntakeController
         ];
 
         Mail::raw(implode("\n", $lines), function ($m) use ($label, $reference, $data) {
+            // EM-3. The registry gives this purpose no reply-to precisely so the
+            // ->replyTo below survives: answers go to the person who enquired.
+            $m->getSymfonyMessage()->getHeaders()
+                ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'intake');
+
             $m->to(self::NOTIFY_TO)
               ->replyTo($data['email'], $data['name'])
               ->subject("[{$reference}] {$label} — {$data['name']}");

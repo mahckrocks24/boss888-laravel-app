@@ -18,6 +18,36 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
 
+        // EXPERIENCE888 (2026-08-13) - the learning loop must sustain itself.
+        // Ingestion turns authoritative task/approval/commitment rows into typed
+        // experience; it is idempotent via dedupe_key, so an hourly re-read of
+        // the same rows creates nothing and cannot inflate a sample size.
+        // A single workspace failure is caught inside the command and never
+        // aborts the sweep.
+        $schedule->command('experience888:ingest --all')
+            ->name('experience888:ingest')
+            ->hourly()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('experience888:ingest cron failed');
+            });
+
+        // Daily re-evaluation so ageing actually takes effect. Deterministic and
+        // rerunnable: the verdict is a pure function of evidence and dates, so a
+        // second run the same day changes nothing. Nothing is deleted - only
+        // confidence and status move, and every change is logged.
+        $schedule->command('experience888:decay --all')
+            ->name('experience888:decay')
+            ->dailyAt('03:20')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('experience888:decay cron failed');
+            });
+
         // PHASE 1C (2026-07-30) — platform event processing: reap stale claims,
         // fan out recorded events, run due deliveries. ONE command rather than
         // three schedule entries, so the three stages cannot race each other.
@@ -34,6 +64,21 @@ return Application::configure(basePath: dirname(__DIR__))
             ->runInBackground()
             ->onFailure(function () {
                 \Illuminate\Support\Facades\Log::error('platform-events:process cron failed');
+            });
+
+        // 2026-08-10 — video completion worker. Drives in_progress video assets to
+        // completion WITHOUT a browser (poll provider → download → stitch → finalize
+        // → settle credits), so a closed tab can never strand a job or its reserved
+        // credit. Idempotent + bounded (see VideoFinalizePendingCommand). No video
+        // assets in flight ⇒ proven no-op.
+        $schedule->command('video:finalize-pending')
+            ->name('video:finalize-pending')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('video:finalize-pending cron failed');
             });
 
         // 2026-05-24 FIX 53C — removed legacy `sarah:proactive --type=daily`
@@ -499,6 +544,32 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'book',
             '*/book',
+        ]);
+
+        // PLATFORM SECURITY 1.0 (2026-08-03) — lu_admin_at crosses middleware groups.
+        //
+        // The cookie is WRITTEN by /api/auth/login, which is in the `api` group
+        // and carries no EncryptCookies. It is READ on /admin/*, which is in the
+        // `web` group and does. Without this exemption EncryptCookies calls
+        // decrypt() on a plaintext JWT, throws DecryptException, and nulls the
+        // cookie before AdminSessionIdentity ever sees it — so a request holding
+        // a VALID token is bounced to the login page, which sets the same cookie
+        // again. An infinite login loop, and no way into the admin console.
+        //
+        // Proven on 2026-08-03 before activation: middleware alone returned 200;
+        // EncryptCookies in front of it returned 302 for the same valid token.
+        // The direct-invocation tests could not see it because they never cross
+        // the real HTTP pipeline.
+        //
+        // The token is not weakened by the exemption. It is a signed JWT verified
+        // by RefreshTokenService, HttpOnly, Secure, SameSite=Lax and scoped to
+        // /admin — it already carries its own integrity proof, which is the thing
+        // cookie encryption would have been adding.
+        //
+        // The name is read from the middleware's own constant so the write side,
+        // the read side and this exemption can never drift apart.
+        $middleware->encryptCookies(except: [
+            \App\Http\Middleware\AdminSessionIdentity::COOKIE,
         ]);
 
         $middleware->alias([

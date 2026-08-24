@@ -65,7 +65,20 @@ class ChatbotResponseService
      * Handle one user message in a session. Always returns a fully-shaped
      * response payload the widget can render.
      */
-    public function handleMessage(int $sessionId, string $userMessage): array
+    /**
+     * P2-C — one logical request, executed once.
+     *
+     * Wraps the existing pipeline in the P2-B ChatExecutionCoordinator. The
+     * pipeline itself is unchanged; what changes is that a duplicate submission
+     * never reaches it. Idempotency is acquired BEFORE the quota gate and the
+     * credit reservation, so a replay costs nothing and produces no second
+     * message.
+     *
+     * $idempotencyKey is optional. When the widget does not supply one, a
+     * canonical key is derived server-side (see canonicalIdempotencyKey) so the
+     * guarantee holds without a frontend change.
+     */
+    public function handleMessage(int $sessionId, string $userMessage, ?string $idempotencyKey = null): array
     {
         $userMessage = mb_substr(trim($userMessage), 0, self::MAX_USER_LEN);
         if ($userMessage === '') {
@@ -77,6 +90,112 @@ class ChatbotResponseService
             return ['success' => false, 'error' => 'SESSION_NOT_FOUND', 'message' => 'Session not found.'];
         }
         $workspaceId = (int) $session->workspace_id;
+
+        // ── P2-C IDEMPOTENCY ADOPTION ────────────────────────────────────────
+        if (\App\Core\Chat\ChatIdempotencyGate::enabledFor('s8_public_chatbot')) {
+            $key = trim((string) $idempotencyKey) !== ''
+                ? (string) $idempotencyKey
+                : $this->canonicalIdempotencyKey($sessionId, $userMessage);
+
+            return $this->runIdempotent($sessionId, $userMessage, $workspaceId, $key);
+        }
+
+        return $this->executePipeline($sessionId, $userMessage, $workspaceId, $session, null);
+    }
+
+    /**
+     * Deterministic key for a widget that does not send one.
+     *
+     * A double-click or a retry inside the bucket yields the same key, so the
+     * duplicate is caught with no frontend change. The bucket is coarse enough
+     * to catch retries and short enough that a visitor legitimately repeating a
+     * short answer later is not blocked. Trade-off documented in
+     * P2-C-IMPACT-MATRIX.md §4.
+     */
+    private function canonicalIdempotencyKey(int $sessionId, string $message): string
+    {
+        $bucket = (int) floor(time() / 60);
+        $norm   = mb_strtolower(trim(preg_replace('/\s+/u', ' ', $message) ?? $message));
+
+        return 'cb:' . hash('sha256', $sessionId . '|' . $norm . '|' . $bucket);
+    }
+
+    /** Run the pipeline through the shared coordinator. */
+    private function runIdempotent(int $sessionId, string $userMessage, int $workspaceId, string $key): array
+    {
+        $coordinator = app(\App\Core\Chat\ChatExecutionCoordinator::class);
+        $captured    = null;
+
+        $outcome = $coordinator->run([
+            'workspace_id'      => $workspaceId,
+            'surface'           => 's8_public_chatbot',
+            'conversation_type' => 'chatbot_session',
+            'conversation_id'   => (string) $sessionId,
+            'idempotency_key'   => $key,
+            'content'           => $userMessage,
+            'estimated_credits' => self::CREDIT_COST_PER_MESSAGE,
+            // The pipeline below already runs a correct reserve -> commit /
+            // release cycle. Letting the coordinator charge as well would bill
+            // one request twice, which is exactly what the integration test
+            // caught. The coordinator records linkage; the pipeline keeps the
+            // money. Double-charging is prevented by the gate refusing to
+            // re-run the pipeline at all.
+            'delegated'         => true,
+            'message_store'     => 'chatbot_messages',
+        ], [
+            // The pipeline owns its own persistence; the coordinator only needs
+            // to know it happened once. Steps 12-16 run inside execute().
+            'execute' => function (string $correlationId) use ($sessionId, $userMessage, $workspaceId, &$captured) {
+                $session = DB::table('chatbot_sessions')->where('id', $sessionId)->first();
+                $payload = $this->executePipeline($sessionId, $userMessage, $workspaceId, $session, $correlationId);
+                $captured = $payload;
+
+                if (($payload['success'] ?? false) === true) {
+                    return ['ok' => true, 'body' => $payload, 'provider' => 'deepseek'];
+                }
+
+                // A refusal or failure is a settled outcome, not an exception.
+                return [
+                    'ok'          => false,
+                    'body'        => $payload,
+                    'error_code'  => match ($payload['error'] ?? '') {
+                        'INSUFFICIENT_CREDITS'   => 'CHAT_INSUFFICIENT_CREDITS',
+                        'MONTHLY_LIMIT_REACHED'  => 'CHAT_RATE_LIMITED',
+                        default                  => 'CHAT_INTERNAL_ERROR',
+                    },
+                    'retryable'   => ($payload['error'] ?? '') === 'INTERNAL_ERROR',
+                    'http_status' => 200,
+                ];
+            },
+        ]);
+
+        // Replay: return the stored payload verbatim (INV-10).
+        if (($outcome['replay'] ?? false) === true && is_array($outcome['result']['body'] ?? null)) {
+            $body = $outcome['result']['body'];
+            $body['idempotent_replay'] = true;
+            $body['correlation_id']    = $outcome['correlation_id'];
+
+            return $body;
+        }
+
+        if ($captured !== null) {
+            $captured['correlation_id'] = $outcome['correlation_id'];
+
+            return $captured;
+        }
+
+        // Conflict / in-progress — canonical taxonomy, no pipeline run.
+        return [
+            'success'        => false,
+            'error'          => $outcome['error_code'] ?? 'CHAT_INTERNAL_ERROR',
+            'message'        => $outcome['error']['message'] ?? 'That request could not be completed.',
+            'correlation_id' => $outcome['correlation_id'],
+        ];
+    }
+
+    /** The original pipeline, unchanged. */
+    private function executePipeline(int $sessionId, string $userMessage, int $workspaceId, $session, ?string $correlationId): array
+    {
 
         // ── Step 0: monthly message cap ──
         // Plan-defined quota (chatbot_messages_per_month). Short-circuit BEFORE

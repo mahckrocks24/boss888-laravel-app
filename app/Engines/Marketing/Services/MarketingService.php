@@ -2,8 +2,11 @@
 
 namespace App\Engines\Marketing\Services;
 
-use App\Connectors\EmailConnector;
 use App\Connectors\DeepSeekConnector;
+use App\Core\Email888\Contracts\SendEmailCommand;
+use App\Core\Email888\EmailDispatcher;
+use App\Engines\Marketing\Support\CampaignPlanner;
+use App\Jobs\SendEmailCampaignJob;
 use App\Core\Intelligence\EngineIntelligenceService;
 use App\Engines\Creative\Services\CreativeService;
 use Illuminate\Support\Facades\DB;
@@ -14,11 +17,16 @@ use Illuminate\Support\Str;
 class MarketingService
 {
     public function __construct(
-        private EmailConnector            $email,
+        // EM-7: EmailConnector injection removed — no EmailConnector import (EM-7).
         private DeepSeekConnector         $llm,
         private EngineIntelligenceService  $engineIntel,
         private CreativeService            $creative,
         private \App\Connectors\RuntimeClient $runtime,
+        // EM-7: campaign mail dispatches through Email888, never through a
+        // connector. Appended last so no positional caller changes meaning.
+        private EmailDispatcher $dispatcher,
+        // EM-7/12: normalises either campaign shape into one dispatch plan.
+        private CampaignPlanner $planner,
     ) {}
 
     // ── Creative blueprint helper ────────────────────────────────────────────
@@ -130,37 +138,88 @@ class MarketingService
         if (!$campaign) throw new \RuntimeException("Campaign not found");
         if ($campaign->status === 'sent') throw new \RuntimeException("Campaign already sent");
 
-        $recipients = json_decode($campaign->recipients_json ?? '[]', true);
-        if (empty($recipients)) {
-            // Auto-populate from CRM leads with email
-            $recipients = DB::table('leads')->where('workspace_id', $wsId)
-                ->whereNotNull('email')->where('email', '!=', '')
-                ->pluck('email')->toArray();
+        // ── EM-7 PHASE 12 — asynchronous hand-off ─────────────────────
+        // This method used to fan out to every recipient INSIDE the HTTP
+        // request: one `leads` query and one provider call per person. A large
+        // audience therefore coupled customer request latency to provider
+        // latency, risked a request timeout, and — worst — a timeout mid-loop
+        // left a campaign partially sent with the client free to retry it.
+        //
+        // The request now does only bounded work: normalise, record intent,
+        // enqueue. It returns an ACKNOWLEDGEMENT and deliberately cannot report
+        // a send, because at this moment nothing has been sent. Recipient
+        // dispatch, the ledger and the aggregate all belong to the worker.
+
+        // Already in flight: do not queue a second fan-out. Per-recipient
+        // idempotency would stop the duplicate mail anyway, but discovering
+        // that by running the whole campaign again is wasted provider work and
+        // a confusing history.
+        if (in_array($campaign->status, ['pending', 'sending'], true)) {
+            return [
+                'accepted'          => true,
+                'already_in_flight' => true,
+                'campaign_id'       => $id,
+                'status'            => (string) $campaign->status,
+                'queued_recipients' => 0,
+                'sent'              => 0,
+                'failed'            => 0,
+                'total'             => 0,
+                'message'           => 'This campaign is already being processed.',
+            ];
         }
 
-        if (empty($recipients)) throw new \RuntimeException("No recipients");
-
-        DB::table('campaigns')->where('id', $id)->update(['status' => 'sending', 'updated_at' => now()]);
-
-        $sent = 0; $failed = 0;
-        foreach ($recipients as $email) {
-            $body = $this->applyMergeTags($campaign->body_html ?? '', $email, $wsId);
-            try {
-                $this->email->send($email, $campaign->subject ?? '', $body);
-                $sent++;
-            } catch (\Throwable $e) { $failed++; }
-        }
+        // Throws for "not found" and "No recipients" — both BEFORE anything is
+        // queued, so a campaign that cannot be planned is never left looking
+        // in-flight.
+        $plan = $this->planner->plan($id, $wsId);
 
         DB::table('campaigns')->where('id', $id)->update([
-            'status' => 'sent', 'sent_at' => now(),
-            'stats_json' => json_encode(['sent' => $sent, 'delivered' => $sent, 'opened' => 0, 'clicked' => 0, 'bounced' => $failed]),
+            'status'     => 'pending',
+            'sent_at'    => null,
+            'stats_json' => json_encode([
+                'recipients' => $plan->count(),
+                'accepted'   => 0,
+                'duplicate'  => 0,
+                'refused'    => 0,
+                'sent'       => 0,
+                'delivered'  => 0,
+                'delivered_source' => 'email888_delivery_ledger',
+                'failures'   => [],
+            ]),
             'updated_at' => now(),
         ]);
 
-        $this->engineIntel->recordToolUsage('marketing', 'send_campaign', $failed === 0 ? 0.9 : 0.5);
-        return ['sent' => $sent, 'failed' => $failed, 'total' => count($recipients)];
-    }
+        try {
+            SendEmailCampaignJob::dispatch($id)->onQueue('tasks');
+        } catch (\Throwable $e) {
+            // Nothing was queued, so nothing will ever be sent. A campaign left
+            // in 'pending' here would look in-flight forever.
+            DB::table('campaigns')->where('id', $id)->update([
+                'status' => 'failed', 'sent_at' => null, 'updated_at' => now(),
+            ]);
+            Log::error('marketing.campaign.enqueue_failed', [
+                'campaign_id' => $id, 'error' => $e->getMessage(),
+            ]);
 
+            throw new \RuntimeException('Campaign could not be queued for sending.', 0, $e);
+        }
+
+        $this->engineIntel->recordToolUsage('marketing', 'send_campaign', 0.7);
+
+        return [
+            'accepted'          => true,
+            'campaign_id'       => $id,
+            'status'            => 'pending',
+            'queued_recipients' => $plan->count(),
+
+            // Legacy keys, and literally true at this instant: nothing has been
+            // sent and nothing has failed yet. They are not a claim of success.
+            'sent'    => 0,
+            'failed'  => 0,
+            'total'   => $plan->count(),
+            'message' => 'Campaign accepted for processing. Delivery outcomes appear in the Email Delivery ledger.',
+        ];
+    }
     public function deleteCampaign(int $id, ?int $wsId = null): void
     {
         $n = DB::table('campaigns')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update(['deleted_at' => now()]);
@@ -222,72 +281,24 @@ class MarketingService
     // EMAIL SETTINGS
     // ═══════════════════════════════════════════════════════
 
-    public function getEmailSettings(): array
-    {
-        $token   = (string) env('POSTMARK_TOKEN', '');
-        $masked  = $token !== '' ? (str_repeat('*', max(0, strlen($token) - 4)) . substr($token, -4)) : '';
-        return [
-            'configured'     => $token !== '',
-            'driver'         => (string) env('EMAIL_CONNECTOR_DRIVER', env('MAIL_MAILER', 'smtp')),
-            'from_email'     => (string) env('MAIL_FROM_ADDRESS', ''),
-            'from_name'      => (string) env('MAIL_FROM_NAME', ''),
-            'postmark_token' => $masked,
-        ];
-    }
-
-    public function updateEmailSettings(array $data): array
-    {
-        // phase5-settings-aliases — accept legacy field names from existing UI
-        if (array_key_exists('postmark_api_key', $data) && !array_key_exists('postmark_token', $data)) {
-            $data['postmark_token'] = $data['postmark_api_key'];
-        }
-        if (array_key_exists('sender_email', $data) && !array_key_exists('from_email', $data)) {
-            $data['from_email'] = $data['sender_email'];
-        }
-        if (array_key_exists('sender_name', $data) && !array_key_exists('from_name', $data)) {
-            $data['from_name'] = $data['sender_name'];
-        }
-        $path = base_path('.env');
-        if (!is_writable($path)) {
-            return ['success' => false, 'error' => '.env not writable'];
-        }
-        $env = file_get_contents($path);
-
-        $map = [];
-        if (array_key_exists('driver', $data) && $data['driver'] !== '') {
-            $map['MAIL_MAILER']            = (string) $data['driver'];
-            $map['EMAIL_CONNECTOR_DRIVER'] = (string) $data['driver'];
-        }
-        if (array_key_exists('postmark_token', $data) && !str_contains((string) $data['postmark_token'], '*')) {
-            // Only accept a real token — ignore the masked form we return on GET
-            $map['POSTMARK_TOKEN'] = (string) $data['postmark_token'];
-        }
-        if (array_key_exists('from_email', $data) && $data['from_email'] !== '') {
-            $map['MAIL_FROM_ADDRESS'] = (string) $data['from_email'];
-        }
-        if (array_key_exists('from_name', $data) && $data['from_name'] !== '') {
-            $map['MAIL_FROM_NAME'] = '"' . str_replace('"', '\"', (string) $data['from_name']) . '"';
-        }
-
-        foreach ($map as $key => $val) {
-            $line = $key . '=' . $val;
-            if (preg_match('/^' . preg_quote($key, '/') . '=.*$/m', $env)) {
-                $env = preg_replace('/^' . preg_quote($key, '/') . '=.*$/m', $line, $env);
-            } else {
-                $env .= (str_ends_with($env, "
-") ? '' : "
-") . $line . "
-";
-            }
-        }
-        file_put_contents($path, $env);
-
-        // Clear cached config so subsequent requests see the new values
-        try { \Illuminate\Support\Facades\Artisan::call('config:clear'); } catch (\Throwable $e) {}
-
-        return ['success' => true, 'configured' => !empty($map['POSTMARK_TOKEN'] ?? env('POSTMARK_TOKEN'))];
-    }
-
+    /*
+     | EM-7 (2026-08-13) — getEmailSettings()/updateEmailSettings() REMOVED.
+     |
+     | updateEmailSettings() wrote POSTMARK_TOKEN, MAIL_MAILER, MAIL_FROM_ADDRESS
+     | and MAIL_FROM_NAME straight into the platform's .env, then ran
+     | config:clear. Its route carried `auth.jwt` and nothing else — no admin
+     | check, no workspace-owner check — so ANY authenticated user could
+     | substitute the provider credential that every outbound message on the
+     | platform depends on, password resets included, and read them all.
+     |
+     | It also read the token back through getEmailSettings(), which was the last
+     | place outside the provider boundary that touched POSTMARK_TOKEN at all.
+     |
+     | Nothing in public/ or resources/ referenced either endpoint, so removal
+     | costs no surface. If per-workspace email configuration is ever wanted, it
+     | belongs behind admin authorisation, in a governed credential store — never
+     | as a .env write from a workspace-scoped service.
+     */
     // phase5-test-email-alias
     public function sendTestEmail(string $toEmail): array
     {
@@ -296,16 +307,27 @@ class MarketingService
         if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
             return ['success' => false, 'message' => 'Invalid email address'];
         }
-        $result = $this->email->execute('send_email', [
-            'to'      => $toEmail,
-            'subject' => 'LevelUp Growth — test email',
-            'body'    => '<p>This is a test email from your LevelUp Growth marketing engine.</p>'
-                       . '<p>If you received this, Postmark/SMTP is configured correctly.</p>',
-            'html'    => true,
-        ]);
+        // EM-7: unreachable today (the Launch-Scope return above fires first),
+        // converged anyway so that restoring the capability restores the GOVERNED
+        // path rather than a call into a connector that no longer sends.
+        try {
+            $result = $this->dispatcher->send(new SendEmailCommand(
+                purpose:    'campaign',
+                recipients: [$toEmail],
+                subject:    'LevelUp Growth — test email',
+                html:       '<p>This is a test email from your LevelUp Growth marketing engine.</p>'
+                          . '<p>If you received this, outbound email is configured correctly.</p>',
+                metadata:   ['test_send' => true],
+            ));
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+
         return [
-            'success' => (bool) ($result['success'] ?? false),
-            'message' => $result['message'] ?? ($result['error'] ?? 'unknown'),
+            'success' => $result->accepted,
+            'message' => $result->accepted
+                ? 'Accepted by the provider — delivery is confirmed separately in the delivery ledger.'
+                : ($result->failureCategory ?? 'refused'),
         ];
     }
 
@@ -409,28 +431,37 @@ class MarketingService
         $subject = (string) ($action['subject'] ?? 'Message from us');
         $body    = (string) ($action['body']    ?? '');
 
-        Mail::send(
-            'emails.notification',
-            [
-                'notification' => (object) [
-                    'title'      => $subject,
-                    'body'       => $body,
-                    'action_url' => $action['action_url'] ?? null,
+        // EM-7: this declared the purpose (EM-4) but then set ->from() anyway,
+        // with an env fallback. Declaring intent and then choosing the identity
+        // is not governance — whichever won, the registry was not deciding.
+        // It now issues the canonical command and chooses nothing.
+        try {
+            $this->dispatcher->send(new SendEmailCommand(
+                purpose:      'campaign',
+                recipients:   [$email],
+                subject:      $subject,
+                template:     'emails.notification',
+                templateData: [
+                    'notification' => (object) [
+                        'title'      => $subject,
+                        'body'       => $body,
+                        'action_url' => $action['action_url'] ?? null,
+                    ],
+                    'user' => (object) [
+                        'email' => $email,
+                        'name'  => $context['firstname'] ?? $context['name'] ?? null,
+                    ],
                 ],
-                'user' => (object) [
-                    'email' => $email,
-                    'name'  => $context['firstname'] ?? $context['name'] ?? null,
-                ],
-            ],
-            function ($m) use ($email, $context, $subject) {
-                $m->to($email, $context['firstname'] ?? null)
-                  ->subject($subject)
-                  ->from(
-                      config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@levelupgrowth.io')),
-                      config('mail.from.name',    env('MAIL_FROM_NAME',    'LevelUp Growth'))
-                  );
-            }
-        );
+                workspaceId:  isset($automation->workspace_id) ? (int) $automation->workspace_id : null,
+                metadata:     ['automation_id' => isset($automation->id) ? (int) $automation->id : null],
+            ));
+        } catch (\Throwable $e) {
+            // An automation step must not take the whole automation run down.
+            Log::warning('marketing.automation.email_refused', [
+                'automation_id' => $automation->id ?? null,
+                'error'         => $e->getMessage(),
+            ]);
+        }
     }
 
     private function autoNotifyOwner(object $automation, array $action, array $context): void

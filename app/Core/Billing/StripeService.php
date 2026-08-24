@@ -114,10 +114,358 @@ class StripeService
     }
 
     /**
+     * Create a Stripe Checkout session for a ONE-TIME domain purchase.
+     *
+     * Deliberately part of StripeService rather than a parallel billing class:
+     * it reuses this object's secret key, customer resolution and webhook
+     * signature verification. A second Stripe implementation would be a second
+     * place for billing bugs to live.
+     *
+     * Differences from the subscription flow: mode is 'payment', line items are
+     * built from price_data (a domain has no pre-created Stripe Price because
+     * every name costs something different), and metadata carries
+     * order_type=domain so the webhook can route the event.
+     */
+    public function createDomainCheckoutSession(\App\Models\DomainOrder $order, ?int $userId = null): array
+    {
+        if (! $this->enabled) {
+            return ['error' => 'Payments are not configured.', 'code' => 'STRIPE_DISABLED'];
+        }
+
+        $order->loadMissing('items');
+
+        if ($order->items->isEmpty()) {
+            return ['error' => 'Order has no items', 'code' => 'EMPTY_ORDER'];
+        }
+
+        $user = $userId ? User::find($userId) : null;
+
+        try {
+            $stripe = new \Stripe\StripeClient($this->secretKey);
+
+            // Reuse the workspace's existing Stripe customer when there is one,
+            // so a customer's domain purchases and subscription live together.
+            $existingSub = Subscription::where('workspace_id', $order->workspace_id)
+                ->whereNotNull('stripe_customer_id')
+                ->latest()
+                ->first();
+            $customerId = $existingSub?->stripe_customer_id;
+
+            if (! $customerId) {
+                $customer = $stripe->customers->create([
+                    'email'    => $user?->email,
+                    'name'     => $user?->name,
+                    'metadata' => [
+                        'workspace_id' => (string) $order->workspace_id,
+                        'user_id'      => (string) ($userId ?? ''),
+                    ],
+                ]);
+                $customerId = $customer->id;
+            }
+
+            $lineItems = [];
+
+            foreach ($order->items as $item) {
+                $years = (int) $item->years;
+
+                $lineItems[] = [
+                    'quantity'   => 1,
+                    'price_data' => [
+                        'currency'     => strtolower($order->currency ?: 'USD'),
+                        'unit_amount'  => (int) $item->retail_minor,
+                        'product_data' => [
+                            // Customer-facing copy. LevelUp Growth is the seller;
+                            // the registrar and the internal engine are never named.
+                            'name'        => 'Domain registration - ' . $item->domain,
+                            'description' => $years . ' year' . ($years === 1 ? '' : 's')
+                                . ' registration, managed by LevelUp Growth',
+                        ],
+                    ],
+                ];
+            }
+
+            $session = $stripe->checkout->sessions->create([
+                'mode'       => 'payment',
+                'customer'   => $customerId,
+                'line_items' => $lineItems,
+                'payment_intent_data' => [
+                    'description' => 'LevelUp Growth domain registration (order #' . $order->id . ')',
+                    'metadata'    => [
+                        'order_type'      => 'domain',
+                        'domain_order_id' => (string) $order->id,
+                        'workspace_id'    => (string) $order->workspace_id,
+                    ],
+                ],
+                'metadata' => [
+                    'order_type'      => 'domain',
+                    'domain_order_id' => (string) $order->id,
+                    'workspace_id'    => (string) $order->workspace_id,
+                    'user_id'         => (string) ($userId ?? ''),
+                ],
+                'success_url' => config('app.url') . '/app/#domains?purchase=success&order=' . $order->id,
+                'cancel_url'  => config('app.url') . '/app/#domains?purchase=cancelled&order=' . $order->id,
+            ]);
+
+            return [
+                'checkout_url' => $session->url,
+                'session_id'   => $session->id,
+                'customer_id'  => $customerId,
+                'order_id'     => $order->id,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('StripeService::createDomainCheckoutSession failed', [
+                'workspace_id' => $order->workspace_id,
+                'order_id'     => $order->id,
+                'error'        => $e->getMessage(),
+            ]);
+
+            return ['error' => 'Could not start checkout: ' . $e->getMessage()];
+        }
+    }
+
+    /**
      * Handle Stripe webhook events.
      * Idempotent: checks if the event has already been processed before acting.
      */
-    public function handleWebhook(string $payload, string $signature): array
+    /*
+    | ── PHASE 1E.1 OUTCOME CLASSIFICATION ──
+    |
+    | The route maps these to HTTP status codes. Whether a failure can succeed on a
+    | retry is known HERE, by the code that failed; the route only translates it.
+    */
+
+    /** Processed, or safely acknowledged. Stripe must not retry. */
+    public const OUTCOME_OK = 'ok';
+
+    /** Signature did not verify. Rejected — never acknowledged as received. */
+    public const OUTCOME_SIGNATURE_INVALID = 'signature_invalid';
+
+    /** Failed, but a retry can succeed once the cause is cleared. */
+    public const OUTCOME_RETRYABLE = 'retryable';
+
+    public const WEBHOOK_FAILURE_STATE_KEY = 'stripe:domain-webhook-failure';
+    public const WEBHOOK_SUCCESS_STATE_KEY = 'stripe:domain-webhook-success';
+
+    /**
+     * Handle a domain-order checkout completion.
+     *
+     * ── THE PHASE 1E P0 ──
+     *
+     * This branch used to call app(DomainCommerceService::class), which is NOT
+     * container-resolvable: DomainPricingService requires NamecheapRegistrarConnector,
+     * which requires NamecheapClient(string $environment), and nothing binds it. Every
+     * genuine domain payment therefore threw BindingResolutionException, the route
+     * caught it and answered HTTP 200, and Stripe recorded a successful delivery and
+     * never retried. A customer could be charged and the order stay `pending` forever.
+     *
+     * ::make() is the factory every other caller in this codebase already uses.
+     */
+    /**
+     * The single authorised fixture, or null.
+     *
+     * EVERY condition must hold. Any blank value, any mismatch, any missing
+     * precondition returns null and the request is rejected as an invalid signature.
+     * There is no wildcard, no prefix match, and no way for external traffic to reach
+     * this path: it requires a loopback source address that only the local replay
+     * command produces.
+     *
+     * Neither secret is ever logged.
+     */
+    private function verifyAuthorisedFixture(string $payload, string $signature, ?string $sourceIp): ?object
+    {
+        $cfg = (array) config('domains.fixture_replay', []);
+
+        // 1. explicit flag
+        if (($cfg['enabled'] ?? false) !== true) {
+            return null;
+        }
+
+        // 2. approved environment
+        if (! app()->environment((array) ($cfg['environments'] ?? ['staging', 'production']))) {
+            return null;
+        }
+
+        // 3. loopback origin only — external traffic can never reach this path
+        if (! in_array((string) $sourceIp, ['127.0.0.1', '::1'], true)) {
+            return null;
+        }
+
+        // 4. a secret that exists and is NOT the live webhook secret
+        $secret = (string) ($cfg['secret'] ?? '');
+
+        if ($secret === '' || hash_equals($this->webhookSecret, $secret)) {
+            return null;
+        }
+
+        // 5. every authorised identifier must be configured
+        foreach (['event_id', 'session_id', 'payment_intent_id', 'event_type'] as $k) {
+            if (($cfg[$k] ?? '') === '') {
+                return null;
+            }
+        }
+
+        if ((int) ($cfg['order_id'] ?? 0) < 1 || (int) ($cfg['workspace_id'] ?? 0) < 1) {
+            return null;
+        }
+
+        // 6. containment must still be in force
+        if (config('domains.fulfilment.enabled') !== false) {
+            return null;
+        }
+
+        if ((((array) config('platform_events.producers', []))['domain.order.paid'] ?? false) !== true) {
+            return null;
+        }
+
+        // 7. the signature must verify against the FIXTURE secret, using the real
+        //    Stripe verifier — not a hand-rolled comparison.
+        try {
+            $event = \Stripe\Webhook::constructEvent($payload, $signature, $secret);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        // 8. exact event identity, type and test-mode
+        if ((string) ($event->id ?? '') !== (string) $cfg['event_id']) {
+            return null;
+        }
+
+        if ((string) ($event->type ?? '') !== (string) $cfg['event_type']) {
+            return null;
+        }
+
+        if (($event->livemode ?? true) !== false) {
+            return null;
+        }
+
+        // 9. exact session and payment intent
+        $session = $event->data->object ?? null;
+
+        if ($session === null
+            || (string) ($session->id ?? '') !== (string) $cfg['session_id']
+            || (string) ($session->payment_intent ?? '') !== (string) $cfg['payment_intent_id']) {
+            return null;
+        }
+
+        // 10. the session must resolve to the ONE authorised order, in workspace 1
+        $order = \App\Models\DomainOrder::where('stripe_session_id', (string) $session->id)->first();
+
+        if ($order === null
+            || (int) $order->id !== (int) $cfg['order_id']
+            || (int) $order->workspace_id !== (int) $cfg['workspace_id']) {
+            return null;
+        }
+
+        \Illuminate\Support\Facades\Log::warning('[StripeWebhook] AUTHORISED FIXTURE accepted', [
+            'stripe_event_id' => (string) $event->id,
+            'order_id' => (int) $order->id,
+            'workspace_id' => (int) $order->workspace_id,
+            'source_ip' => $sourceIp,
+        ]);
+
+        return $event;
+    }
+
+    private function handleDomainCheckoutCompleted(object $event, object $session): array
+    {
+        $sessionId = (string) ($session->id ?? '');
+        $intentId = (string) ($session->payment_intent ?? '');
+
+        try {
+            $result = \App\Services\Domains\DomainCommerceService::make()
+                ->markPaidAndProvision($sessionId, $intentId);
+        } catch (\Throwable $e) {
+            // A valid payment we could not durably record. NEVER acknowledged as
+            // processed: a false 200 here IS the charged-but-unfulfilled incident.
+            $this->recordWebhookFailure($event, $session, self::OUTCOME_RETRYABLE, $e);
+
+            return [
+                'handled' => false,
+                'outcome' => self::OUTCOME_RETRYABLE,
+                'reason' => 'internal processing failure',
+                'type' => $event->type ?? null,
+            ];
+        }
+
+        // No order for this session. A valid payment that cannot be associated with an
+        // order must fail VISIBLY, so it can be replayed once an operator has fixed the
+        // association — not be silently acknowledged.
+        if (($result['handled'] ?? false) === false) {
+            $this->recordWebhookFailure($event, $session, self::OUTCOME_RETRYABLE, null,
+                (string) ($result['reason'] ?? 'unresolved order'));
+
+            return $result + ['outcome' => self::OUTCOME_RETRYABLE, 'type' => $event->type ?? null];
+        }
+
+        $this->recordWebhookSuccess($event, $session, $result);
+
+        return $result + ['outcome' => self::OUTCOME_OK, 'type' => $event->type ?? null];
+    }
+
+    /**
+     * Durable record of a failed domain-payment webhook, for operator visibility.
+     *
+     * Never throws: bookkeeping about a failure must not be able to mask it. Carries
+     * identifiers and a classification only — no raw body, no signature, no secret.
+     */
+    private function recordWebhookFailure(
+        object $event,
+        object $session,
+        string $outcome,
+        ?\Throwable $e = null,
+        ?string $reason = null,
+    ): void {
+        $detail = [
+            'stripe_event_id' => (string) ($event->id ?? 'unknown'),
+            'stripe_event_type' => (string) ($event->type ?? 'unknown'),
+            'session_reference' => (string) ($session->id ?? ''),
+            'payment_reference' => (string) ($session->payment_intent ?? ''),
+            'order_id' => $session->metadata->domain_order_id ?? null,
+            'classification' => $outcome,
+            'retryable' => $outcome === self::OUTCOME_RETRYABLE,
+            'exception_class' => $e !== null ? $e::class : null,
+            'reason' => $reason ?? ($e !== null ? mb_substr($e->getMessage(), 0, 300) : null),
+            'correlation_id' => (string) \Illuminate\Support\Str::uuid(),
+            'at' => now()->toDateTimeString(),
+        ];
+
+        \Illuminate\Support\Facades\Log::error('[StripeWebhook] domain payment processing failed', $detail);
+
+        try {
+            $existing = \Illuminate\Support\Facades\Cache::get(self::WEBHOOK_FAILURE_STATE_KEY);
+
+            \Illuminate\Support\Facades\Cache::put(self::WEBHOOK_FAILURE_STATE_KEY, [
+                'count' => (int) ($existing['count'] ?? 0) + 1,
+                'retryable_count' => (int) ($existing['retryable_count'] ?? 0) + ($detail['retryable'] ? 1 : 0),
+                'permanent_count' => (int) ($existing['permanent_count'] ?? 0) + ($detail['retryable'] ? 0 : 1),
+                'first_at' => $existing['first_at'] ?? $detail['at'],
+                'last_at' => $detail['at'],
+                'last' => $detail,
+            ], now()->addDays(30));
+        } catch (\Throwable $inner) {
+            \Illuminate\Support\Facades\Log::error('[StripeWebhook] could not record the failure', [
+                'error' => $inner->getMessage(),
+            ]);
+        }
+    }
+
+    /** Records the last SUCCESS separately; it must never erase failure history. */
+    private function recordWebhookSuccess(object $event, object $session, array $result): void
+    {
+        try {
+            \Illuminate\Support\Facades\Cache::put(self::WEBHOOK_SUCCESS_STATE_KEY, [
+                'stripe_event_id' => (string) ($event->id ?? 'unknown'),
+                'stripe_event_type' => (string) ($event->type ?? 'unknown'),
+                'order_id' => $result['order_id'] ?? null,
+                'action' => $result['action'] ?? null,
+                'at' => now()->toDateTimeString(),
+            ], now()->addDays(30));
+        } catch (\Throwable) {
+            // Non-fatal: a missing success marker must never fail a real payment.
+        }
+    }
+
+    public function handleWebhook(string $payload, string $signature, ?string $sourceIp = null): array
     {
         if (! $this->enabled) {
             return ['handled' => false, 'reason' => 'Stripe not configured'];
@@ -125,13 +473,37 @@ class StripeService
 
         try {
             $event = \Stripe\Webhook::constructEvent($payload, $signature, $this->webhookSecret);
+        } catch (\Throwable $liveFailure) {
+            // The live secret did not verify. Before rejecting, consider the ONE
+            // authorised fixture — fail-closed, and only from loopback.
+            $event = $this->verifyAuthorisedFixture($payload, $signature, $sourceIp);
+        }
+
+        try {
+            if ($event === null) {
+                throw new \RuntimeException('unverified');
+            }
         } catch (\Throwable $e) {
-            return ['handled' => false, 'error' => 'Invalid webhook signature'];
+            // Rejected, NOT acknowledged. A wrong or rotated signing secret would
+            // otherwise discard every genuine event silently, with no trace.
+            return [
+                'handled' => false,
+                'outcome' => self::OUTCOME_SIGNATURE_INVALID,
+                'error' => 'Invalid webhook signature',
+            ];
         }
 
         switch ($event->type) {
             case 'checkout.session.completed':
                 $session = $event->data->object;
+
+                // A domain purchase is a one-time payment, not a subscription.
+                // Route it before any subscription logic runs -- the checks
+                // below assume a plan, which a domain order does not have.
+                if ((($session->metadata->order_type ?? null) === 'domain')
+                    || (($session->mode ?? null) === 'payment' && ! empty($session->metadata->domain_order_id))) {
+                    return $this->handleDomainCheckoutCompleted($event, $session);
+                }
 
                 // FIX-A: Idempotency pivoted to session->id (always present at event time).
                 //
@@ -227,10 +599,16 @@ class StripeService
 
         try {
             $stripe = new \Stripe\StripeClient($this->secretKey);
-            $session = $stripe->billingPortal->sessions->create([
+            // USD COMMERCIAL STANDARD: pin an explicit portal configuration.
+            // Without one Stripe falls back to the account default, which can list
+            // every active price on a product -- including the legacy AED Agency
+            // price. Pinning guarantees only USD prices are selectable.
+            $portalConfig = env('STRIPE_PORTAL_CONFIG_ID', '');
+            $session = $stripe->billingPortal->sessions->create(array_filter([
                 'customer'   => $sub->stripe_customer_id,
                 'return_url' => config('app.url') . '/app',
-            ]);
+                'configuration' => $portalConfig ?: null,
+            ]));
 
             return ['success' => true, 'portal_url' => $session->url];
         } catch (\Throwable $e) {
@@ -756,6 +1134,17 @@ class StripeService
      */
     private function suspendBillingForWorkspace(int $workspaceId, string $reason): void
     {
+        // WP CONNECTOR COMPAT (2026-08-04) — connector cleanup is OPTIONAL work
+        // hanging off a billing event. The catch below already stopped it from
+        // failing the webhook, but it was swallowing a "table doesn't exist"
+        // every single time and calling it non-fatal. Returning early makes the
+        // absence explicit and structured, and stops the exception churn.
+        // Billing itself is unaffected either way: the caller has already done
+        // the subscription work before reaching here.
+        if (! \App\Core\Platform\Connector\WpConnectorSchema::availableFor('billing.suspend_connections')) {
+            return;
+        }
+
         try {
             $count = \DB::table('wp_site_connections')
                 ->where('workspace_id', $workspaceId)
@@ -781,6 +1170,13 @@ class StripeService
 
     private function reactivateBillingForWorkspace(int $workspaceId, string $reason): void
     {
+        // WP CONNECTOR COMPAT (2026-08-04) — see suspendBillingForWorkspace.
+        // No connector row is invented here; an absent feature reactivates
+        // nothing, which is the truthful outcome.
+        if (! \App\Core\Platform\Connector\WpConnectorSchema::availableFor('billing.reactivate_connections')) {
+            return;
+        }
+
         try {
             // Restore ONLY billing-suspended; leave user-disconnected and failed alone.
             $count = \DB::table('wp_site_connections')
