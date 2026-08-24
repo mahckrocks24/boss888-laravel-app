@@ -199,6 +199,15 @@ class ApprovalController
                     ->where('batch_id', $row->batch_id)
                     ->when($taskAction, fn ($q) => $q->where('action', $taskAction))
                     ->where('approval_status', 'pending')
+                    // MISSION-018 WS-1 (2026-08-24, RISK-0020): the cascade
+                    // matched on batch_id + action + approval_status only, with
+                    // NO task-status filter, then set status='pending' and
+                    // dispatched. A task that ran and FAILED keeps
+                    // approval_status='pending' (handleTaskFailure never clears
+                    // it), so approving an unrelated sibling later could
+                    // re-queue and RE-RUN failed work. Only genuinely-waiting
+                    // tasks may be revived — never a terminal or in-flight one.
+                    ->whereNotIn('status', ['completed', 'failed', 'cancelled', 'degraded', 'running', 'verifying'])
                     ->where('id', '!=', $row->task_id)  // first task already handled by service
                     ->get();
                 foreach ($siblings as $sib) {
@@ -316,6 +325,13 @@ class ApprovalController
                     ->where('batch_id', $row->batch_id)
                     ->when($taskAction, fn ($q) => $q->where('action', $taskAction))
                     ->where('approval_status', 'pending')
+                    // MISSION-018 WS-1 (2026-08-24, RISK-0020): same guard as the
+                    // approve cascade — the reject cascade also filtered only on
+                    // batch_id + action + approval_status, so it would overwrite
+                    // a task that had already COMPLETED or FAILED to
+                    // status='cancelled', corrupting a terminal state. Touch
+                    // only tasks still genuinely awaiting a decision.
+                    ->whereNotIn('status', ['completed', 'failed', 'cancelled', 'degraded', 'running', 'verifying'])
                     ->where('id', '!=', $row->task_id)
                     ->get();
                 foreach ($siblings as $sib) {
