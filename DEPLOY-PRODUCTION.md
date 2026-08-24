@@ -105,7 +105,7 @@ php artisan route:clear
 php artisan cache:clear
 php artisan view:clear
 
-php artisan config:cache
+# config:cache REMOVED (RISK-0054): never cache config on this deploy — 19 bare env() calls (incl RUNTIME_SECRET) return null when config is cached, causing the 2026-07-21 outage. Config is read live from .env. A DestructiveArtisanGuard now refuses this command.
 php artisan route:cache
 php artisan view:cache
 ```
@@ -274,7 +274,7 @@ php artisan route:clear
 php artisan cache:clear
 php artisan view:clear
 
-php artisan config:cache
+# config:cache REMOVED (RISK-0054): never cache config on this deploy — 19 bare env() calls (incl RUNTIME_SECRET) return null when config is cached, causing the 2026-07-21 outage. Config is read live from .env. A DestructiveArtisanGuard now refuses this command.
 php artisan route:cache
 php artisan view:cache
 ```
@@ -368,7 +368,7 @@ rsync -av --exclude='.env' --exclude='vendor/' --exclude='storage/' $PREV/ /var/
 
 # Clear then rebuild caches
 php artisan config:clear && php artisan route:clear && php artisan cache:clear
-php artisan config:cache && php artisan route:cache
+php artisan route:cache  # config:cache intentionally omitted (RISK-0054) — never cache config here; guard refuses it
 
 # Restart workers
 php artisan queue:restart && sleep 8 && sudo supervisorctl restart levelup-worker:*
@@ -386,7 +386,7 @@ rsync -av --exclude='.env' --exclude='vendor/' $PREV/ /var/www/levelup/
 
 # 3. Clear then rebuild caches and restart
 php artisan config:clear && php artisan route:clear && php artisan cache:clear
-php artisan config:cache && php artisan route:cache
+php artisan route:cache  # config:cache intentionally omitted (RISK-0054) — never cache config here; guard refuses it
 php artisan queue:restart && sleep 8 && sudo supervisorctl restart levelup-worker:*
 ```
 
