@@ -29,11 +29,24 @@ class TaskDispatcher
                 ]);
                 return;
             }
-            // Parent failed/cancelled — also gate; manual unblock can decide.
+            // MISSION-018 WS-1 (2026-08-24, RISK-0041): a parent in a terminal
+            // failure state can never complete, so its child can never receive
+            // the article_id/URL/content it needs. The old code parked the
+            // child in 'blocked' and deferred to a "manual unblock" that does
+            // not exist anywhere in the codebase — the completion waker fires
+            // only on the parent-COMPLETED path, the orphan reaper does not
+            // scan 'blocked', and nothing else moves it. That is an entrance
+            // with no exit: 101 rows were stuck this way. A child that cannot
+            // succeed is marked FAILED (a legal blocked/queued->failed
+            // transition and an honest terminal state), so the task tree
+            // resolves and the customer sees a true status instead of a task
+            // that hangs forever. NOTE: only the parent-FAILED branch changes;
+            // the parent-pending branch above still parks in 'blocked' and is
+            // woken normally when the parent completes.
             if ($parent && in_array($parent->status, ['failed', 'cancelled', 'degraded'], true)) {
                 $task->update([
-                    'status' => 'blocked',
-                    'progress_message' => 'Parent task #' . $task->parent_task_id . ' did not complete (' . $parent->status . ')',
+                    'status' => 'failed',
+                    'progress_message' => 'Parent task #' . $task->parent_task_id . ' did not complete (' . $parent->status . '); this step cannot run without it.',
                 ]);
                 return;
             }
