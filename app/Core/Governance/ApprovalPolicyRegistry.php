@@ -84,13 +84,24 @@ final class ApprovalPolicyRegistry
                 'human_approval_required' => true,
                 'classification'          => 'self_service_confirmation',
             ],
-            'social.social_publish_post' => [
+            // MISSION-018 WS-1 (2026-08-24, RISK-0019): key was 'social_publish_post'
+            // (the capability-map KEY) but forCapability() builds "$engine.$action"
+            // and the runtime action is 'publish_post' — so this entry never matched
+            // and fell to STRICT_DEFAULT (self_approval_allowed=false), leaving a
+            // single-owner workspace unable to confirm its own publish. Keyed to the
+            // action the runtime produces. human_approval_required stays true — this
+            // restores owner self-confirmation, it does not remove the human gate.
+            'social.publish_post' => [
                 'approval_roles'          => [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_MEMBER, self::ROLE_PLATFORM_ADMIN],
                 'self_approval_allowed'   => true,
                 'human_approval_required' => true,
                 'classification'          => 'self_service_confirmation',
             ],
-            'content.content_publish_pack' => [
+            // MISSION-018 WS-1 (2026-08-24, RISK-0019): key was 'content_publish_pack';
+            // runtime action is 'publish_pack'. Same mis-key as social.publish_post
+            // above — corrected so single-owner workspaces can self-confirm a
+            // content-pack publish (human_approval_required stays true).
+            'content.publish_pack' => [
                 'approval_roles'          => [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_MEMBER, self::ROLE_PLATFORM_ADMIN],
                 'self_approval_allowed'   => true,
                 'human_approval_required' => true,

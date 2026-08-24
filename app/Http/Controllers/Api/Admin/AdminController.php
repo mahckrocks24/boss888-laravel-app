@@ -324,7 +324,23 @@ class AdminController
     public function updateWorkspace(Request $r, int $id): JsonResponse
     {
         $ws = Workspace::findOrFail($id);
-        $ws->update($r->only(['name', 'business_name', 'industry', 'settings_json']));
+        // MISSION-018 WS-1 (2026-08-24, RISK-0026): settings_json is shared by
+        // three subsystems, and a wholesale replace deletes any key the PUT does
+        // not carry forward. One of those keys, sarah_autonomy, does NOT fail
+        // safe — only the literal 'off' disables autonomous execution, so an
+        // absent key reads as 'bounded' and Sarah resumes. An unrelated admin
+        // edit could therefore silently re-enable autonomy an operator had turned
+        // off. Merge top-level keys instead of replacing (ExperienceEligibility:
+        // "Merge, never replace: settings_json is shared with unrelated features").
+        // NOT changed here: the autonomy default itself (absent => bounded) — that
+        // is a product decision reserved to the Owner (RISK-0026 decision half).
+        $data = $r->only(['name', 'business_name', 'industry']);
+        if ($r->has('settings_json')) {
+            $existing = is_array($ws->settings_json) ? $ws->settings_json : [];
+            $incoming = $r->input('settings_json');
+            $data['settings_json'] = is_array($incoming) ? array_merge($existing, $incoming) : $incoming;
+        }
+        $ws->update($data);
         return response()->json(['workspace' => $ws->fresh()]);
     }
 
