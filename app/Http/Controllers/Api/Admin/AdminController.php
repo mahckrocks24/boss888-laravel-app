@@ -253,17 +253,21 @@ class AdminController
      */
     public function revokeApiKey(Request $r, int $id): JsonResponse
     {
+        // MISSION-018 WS-1 (2026-08-24, RISK-0070): read and wrote
+        // api_keys.revoked_at, a column that does not exist — the write threw
+        // on every real revoke, so a key could never actually be revoked. The
+        // schema's enable flag is is_active; revoking sets it false.
         $key = DB::table('api_keys')->where('id', $id)->first();
         if (! $key) {
             return response()->json(['error' => 'not found'], 404);
         }
-        if ($key->revoked_at) {
+        if (! $key->is_active) {
             return response()->json(['ok' => true, 'already_revoked' => true]);
         }
-        DB::table('api_keys')->where('id', $id)->update(['revoked_at' => now()]);
+        DB::table('api_keys')->where('id', $id)->update(['is_active' => 0, 'updated_at' => now()]);
         return response()->json([
             'ok' => true,
-            'revoked_at' => now()->toIso8601String(),
+            'revoked' => true,
             'key_id' => $id,
         ]);
     }
@@ -379,10 +383,13 @@ class AdminController
 
     public function assignPlan(Request $r, int $id): JsonResponse
     {
+        // MISSION-018 WS-1 (2026-08-24, RISK-0070): wrote 'started_at', which
+        // is not a subscriptions column — the table has 'starts_at' — so this
+        // threw on every use. Fixed to the real column name.
         $r->validate(['plan_id' => 'required|exists:plans,id']);
         Subscription::updateOrCreate(
             ['workspace_id' => $id, 'status' => 'active'],
-            ['plan_id' => $r->input('plan_id'), 'started_at' => now()]
+            ['plan_id' => $r->input('plan_id'), 'starts_at' => now()]
         );
         return response()->json(['success' => true]);
     }
