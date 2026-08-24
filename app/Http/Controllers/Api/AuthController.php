@@ -16,9 +16,17 @@ class AuthController
 
     public function register(Request $request): JsonResponse
     {
-        // 2026-05-11: signups blocked on production hostnames only.
-        // staging.levelupgrowth.io and other hosts still accept registrations.
-        if (in_array($request->getHost(), ['levelupgrowth.io', 'www.levelupgrowth.io'], true)) {
+        // MISSION-018 WS launch-switch (2026-08-24): the pre-launch signup gate
+        // is now driven by config('marketing.public_launched') — the flag the
+        // whole launch is premised on, which until now was read by NO code, so
+        // flipping PLATFORM_PUBLIC_LAUNCHED=true changed nothing. Semantics:
+        // once launched, public signups are open everywhere; before launch they
+        // are closed on the public marketing hostnames but stay open on staging
+        // and other hosts for testing (preserving the 2026-05-11 behaviour).
+        // This is the actual launch switch: flip the flag and signups open.
+        $launched = (bool) config('marketing.public_launched');
+        $onPublicHost = in_array($request->getHost(), ['levelupgrowth.io', 'www.levelupgrowth.io'], true);
+        if (! $launched && $onPublicHost) {
             abort(403, 'Signups are temporarily disabled.');
         }
 
