@@ -88,6 +88,15 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // MISSION-018 WS-0 (2026-08-24). Refuses db:wipe / migrate:fresh /
+        // migrate:reset / config:cache — each has already caused a production
+        // incident here (2026-07-30 wipe; 2026-07-21 config:cache outage,
+        // RISK-0054). Registered FIRST so no later boot failure can leave the
+        // guard unarmed. Follows the registrar precedent below rather than a
+        // new ServiceProvider (bootstrap/providers.php does not exist in this
+        // app). Fails CLOSED, no config kill switch — see the class docblock.
+        \App\Core\Safety\DestructiveArtisanGuard::register();
+
         \Illuminate\Support\Facades\RateLimiter::for("api", function (\Illuminate\Http\Request $request) {
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
