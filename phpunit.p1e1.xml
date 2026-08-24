@@ -1,0 +1,78 @@
+<!--
+    INFRA888 Phase 1D section 9: reproducible committed test configuration.
+
+    WHAT WAS BROKEN
+    The previous configuration declared DB_CONNECTION=sqlite with :memory:, but
+    the hosts this project runs on have NO sqlite PHP extension (php -m shows
+    neither sqlite3 nor pdo_sqlite). Every database backed test errored before
+    reaching an assertion. Separately, mockery/mockery was absent from
+    composer.json require-dev, so RefreshDatabase failed with
+    "Class Mockery not found" even where sqlite was available.
+
+    WHY MYSQL RATHER THAN INSTALLING THE SQLITE EXTENSION
+    Installing php-sqlite3 would be a system level change to the same PHP that
+    serves live traffic, and sqlite would not exercise the engine limits that
+    matter. The 3072 byte key limit and 64 character identifier limit that broke
+    the clean install chain are MySQL constraints sqlite does not enforce, which
+    is exactly how those defects stayed invisible.
+
+    ISOLATION
+    Every value below uses force="true" so a stray .env cannot leak production
+    resources into a test run: dedicated test database, array cache and session,
+    sync queue, array mailer, Null infrastructure connectors, and blanked
+    provider credentials.
+
+    SETUP AND COMMAND: see TESTING.md
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="Infrastructure">
+            <directory suffix="Test.php">./tests/Feature/Infrastructure</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory suffix="Test.php">./tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+    </source>
+
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+
+        <!-- Dedicated test database. NEVER the staging/production database. -->
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_DATABASE" value="levelup_p1e1_test" force="true"/>
+
+        <!-- No production Redis, no real queue workers, no real mail. -->
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="REDIS_CLIENT" value="phpredis" force="true"/>
+
+        <!-- Providers must never be contacted from a test run. -->
+        <env name="INFRA_HOSTING_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullHostingConnector" force="true"/>
+        <env name="INFRA_CUSTOM_HOSTNAME_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullCustomHostnameConnector" force="true"/>
+        <env name="INFRA_NULL_OUTCOME" value="success" force="true"/>
+        <env name="SOCIAL_MOCK_MODE" value="true" force="true"/>
+        <env name="CLOUDFLARE_API_TOKEN" value="" force="true"/>
+        <env name="CLOUDFLARE_ZONE_ID" value="" force="true"/>
+        <env name="BELLA_ADMIN_TOKEN" value="" force="true"/>
+        <env name="STRIPE_SECRET" value="" force="true"/>
+        <env name="POSTMARK_TOKEN" value="" force="true"/>
+        <env name="OPENAI_API_KEY" value="" force="true"/>
+        <env name="DEEPSEEK_API_KEY" value="" force="true"/>
+        <env name="RUNTIME_URL" value="" force="true"/>
+
+        <env name="BOSS888_DEBUG_ENABLED" value="true" force="true"/>
+    </php>
+</phpunit>

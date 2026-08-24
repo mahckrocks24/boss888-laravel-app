@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         stopOnFailure="false"
+         cacheDirectory=".phpunit.cache.b888">
+    <!--
+        BUILDER888 Phase 13 regression suite.
+
+        Dedicated database (levelup_builder888_test) and dedicated cache dir so
+        this suite can never collide with another session's run. Explicit file
+        paths only; never a substring filter.
+    -->
+    <testsuites>
+        <testsuite name="Builder888">
+            <directory>tests/Feature/Builder888</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_DATABASE" value="levelup_builder888_test" force="true"/>
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+    </php>
+</phpunit>

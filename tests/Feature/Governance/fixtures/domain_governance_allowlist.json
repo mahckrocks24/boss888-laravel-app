@@ -1,0 +1,128 @@
+{
+  "_meta": {
+    "purpose": "Temporary, dated exceptions for mutating domain routes that do not yet flow through a governed entry point (BaseEngineController -> EngineExecutionService).",
+    "created": "2026-07-29",
+    "authority": "BOSS888-DOMAIN-COMMERCE-REALIGNMENT-MASTERPLAN.md, Phase 0 authorisation 2026-07-29",
+    "rules": [
+      "Every entry MUST carry: route, controller, method, capability_key, reason, risk, owner, removal_milestone, expires.",
+      "An entry whose expires date has passed FAILS the build. Extending it requires an explicit, reviewed diff.",
+      "A mutating domain route with no entry FAILS the build.",
+      "An entry whose route/controller/method no longer matches the live route table is STALE and FAILS the build.",
+      "These are exceptions, not architecture. Do not add to this file to make a new violation pass."
+    ],
+    "not_grandfathered": "CustomerDomainController::setAutoRenew() calls the registrar connector directly from a controller. It is listed here as a VIOLATION with an owner and a removal date. It is not accepted architecture."
+  },
+
+  "route_exceptions": [
+    {
+      "route": "POST api/domains/orders",
+      "controller": "App\\Http\\Controllers\\Api\\CustomerDomainController",
+      "method": "createOrder",
+      "capability_key": "domain.register",
+      "reason": "Creates a commercial order and freezes server-side pricing. Predates the governed pipeline. Re-routing it through TaskService is Phase 4 and must not change payment or pricing behaviour.",
+      "risk": "high",
+      "owner": "Mark",
+      "removal_milestone": "Phase 4 - route purchase through TaskService",
+      "expires": "2026-10-31"
+    },
+    {
+      "route": "POST api/domains/orders/{orderId}/checkout",
+      "controller": "App\\Http\\Controllers\\Api\\CustomerDomainController",
+      "method": "checkout",
+      "capability_key": "domain.register",
+      "reason": "Creates a Stripe payment session. Payment logic is explicitly out of scope for Phase 0.",
+      "risk": "high",
+      "owner": "Mark",
+      "removal_milestone": "Phase 4 - route purchase through TaskService",
+      "expires": "2026-10-31"
+    },
+    {
+      "route": "POST api/domains/{id}/sync",
+      "controller": "App\\Http\\Controllers\\Api\\CustomerDomainController",
+      "method": "sync",
+      "capability_key": "domain.sync",
+      "reason": "Dispatches a read-only registrar refresh job directly instead of via TaskService. Low risk: no mutation at the provider.",
+      "risk": "low",
+      "owner": "Mark",
+      "removal_milestone": "Phase 4 - route purchase through TaskService",
+      "expires": "2026-10-31"
+    },
+    {
+      "route": "POST api/domains/{id}/auto-renew",
+      "controller": "App\\Http\\Controllers\\Api\\CustomerDomainController",
+      "method": "setAutoRenew",
+      "capability_key": "domain.autorenew.update",
+      "reason": "VIOLATION - calls the registrar connector DIRECTLY from a controller, bypassing both the governed pipeline and the engine layer. Recorded as debt, explicitly NOT grandfathered.",
+      "risk": "medium",
+      "owner": "Mark",
+      "removal_milestone": "Phase 4 - route purchase through TaskService",
+      "expires": "2026-10-31"
+    },
+    {
+      "route": "POST api/admin/domains/items/{itemId}/retry",
+      "controller": "App\\Http\\Controllers\\Api\\Admin\\DomainAdminController",
+      "method": "retry",
+      "capability_key": "domain.register",
+      "reason": "Operator retry of a failed registration. Re-dispatches the job directly. Safe today because the adapter re-checks ownership before spending, but ungoverned.",
+      "risk": "high",
+      "owner": "Mark",
+      "removal_milestone": "Phase 4 - route purchase through TaskService",
+      "expires": "2026-10-31"
+    },
+    {
+      "route": "POST api/admin/domains/{id}/sync",
+      "controller": "App\\Http\\Controllers\\Api\\Admin\\DomainAdminController",
+      "method": "sync",
+      "capability_key": "domain.sync",
+      "reason": "Operator-triggered read-only refresh. Ungoverned but non-mutating at the provider.",
+      "risk": "low",
+      "owner": "Mark",
+      "removal_milestone": "Phase 4 - route purchase through TaskService",
+      "expires": "2026-10-31"
+    },
+    {
+      "route": "POST api/admin/domains/sync-all",
+      "controller": "App\\Http\\Controllers\\Api\\Admin\\DomainAdminController",
+      "method": "syncAll",
+      "capability_key": "domain.sync",
+      "reason": "Bulk read-only refresh, capped at 200 domains. Ungoverned but non-mutating at the provider.",
+      "risk": "low",
+      "owner": "Mark",
+      "removal_milestone": "Phase 4 - route purchase through TaskService",
+      "expires": "2026-10-31"
+    }
+  ],
+
+  "direct_provider_access": [
+    {
+      "file": "app/Http/Controllers/Api/CustomerDomainController.php",
+      "symbol": "setAutoRenew",
+      "capability_key": "domain.autorenew.update",
+      "reason": "Controller resolves NamecheapRegistrarConnector directly. A controller must never reach a provider; this belongs behind the engine layer.",
+      "risk": "medium",
+      "owner": "Mark",
+      "removal_milestone": "Phase 4 - route purchase through TaskService",
+      "expires": "2026-10-31"
+    },
+    {
+      "file": "app/Http/Controllers/Api/Admin/RegistrarAdminController.php",
+      "symbol": "status",
+      "capability_key": "domain.sync",
+      "reason": "Admin health surface calls the connector directly for a read-only healthCheck. Read-only, but still a controller-to-provider dependency.",
+      "risk": "low",
+      "owner": "Mark",
+      "removal_milestone": "Phase 5 - retire duplication",
+      "expires": "2026-12-31"
+    },
+    {
+      "file": "app/Http/Controllers/Api/Admin/RegistrarAdminController.php",
+      "symbol": "domains",
+      "capability_key": "domain.list",
+      "reason": "Admin inventory calls the connector directly for a read-only listDomains. Read-only controller-to-provider dependency.",
+      "risk": "low",
+      "owner": "Mark",
+      "removal_milestone": "Phase 5 - retire duplication",
+      "expires": "2026-12-31"
+    }
+  ]
+}

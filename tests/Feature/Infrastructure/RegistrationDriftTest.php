@@ -57,7 +57,27 @@ class RegistrationDriftTest extends TestCase
         $resolver = app(InfrastructureConnectorResolver::class);
 
         foreach (array_keys(config('infrastructure.connectors')) as $capability) {
-            $connector = $resolver->resolve($capability);
+            // 2026-08-11. Not every connector can be built out of thin air any
+            // more. A GOVERNED adapter (email) obtains its credential from
+            // ProviderResolutionService, so with no provider declared, healthy
+            // and credentialled it MUST refuse - and this class touches no
+            // database by design, so it cannot declare one.
+            //
+            // Refusing is therefore a pass, but only in the right shape. A
+            // RuntimeException means the wiring is sound and governance said no.
+            // A BindingResolutionException means the class is registered but
+            // unconstructible - exactly the drift this file exists to catch,
+            // and exactly what the Namecheap registrar default was doing.
+            try {
+                $connector = $resolver->resolve($capability);
+            } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
+                $this->fail(
+                    "Connector for '{$capability}' is registered but cannot be constructed: "
+                    . $e->getMessage()
+                );
+            } catch (\RuntimeException $e) {
+                continue;
+            }
 
             $this->assertSame(
                 $capability,

@@ -1,0 +1,71 @@
+<!--
+    phpunit.email888.xml — EMAIL888 outbound delivery observability.
+
+    WHY ANOTHER DATABASE
+    The E1–E6 databases are the recorded evidence for those Business Email
+    milestones. EMAIL888 adds two new tables and re-runs the full migration
+    replay, which drops and recreates everything; reusing an E-series database
+    would make a future EMAIL888 failure indistinguishable from an E-series
+    regression on the same schema.
+
+    Off-limits, each owned by another work package: levelup_test,
+    levelup_p1e1_test, levelup_chat_test, levelup_builder888_test,
+    levelup_e888_test (Engineer888 — NOT this suite despite the name),
+    levelup_infra_e1..e6_*_test, levelup_infra_s84_998fd8c8_test.
+
+    USE:
+      php artisan test -c phpunit.email888.xml tests/Feature/Email888/<File>.php
+
+    MAIL_MAILER=array is load-bearing here, not incidental. The array transport
+    still fires MessageSending and MessageSent, which is precisely what these
+    tests exercise — Mail::fake() would bypass both and prove nothing.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         stopOnFailure="false"
+         cacheDirectory=".phpunit.cache.email888">
+    <testsuites>
+        <testsuite name="Email888">
+            <directory suffix="Test.php">./tests/Feature/Email888</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">./app/Core/Email888</directory>
+        </include>
+    </source>
+
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_DATABASE" value="levelup_infra_email888_b41c7d92_test" force="true"/>
+        <env name="DB_USERNAME" value="levelup_tester" force="true"/>
+        <env name="DB_PASSWORD" value="eyi0ZVuBIbj6CeP1Vo0G0Ocd" force="true"/>
+
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="REDIS_CLIENT" value="phpredis" force="true"/>
+        <env name="REDIS_HOST" value="127.0.0.1" force="true"/>
+        <env name="REDIS_PORT" value="59999" force="true"/>
+
+        <!-- No provider may be contacted from a test run. An empty Postmark
+             token also proves the reconciler declines to poll rather than
+             failing, which is its documented behaviour. -->
+        <env name="POSTMARK_TOKEN" value="" force="true"/>
+        <env name="CLOUDFLARE_API_TOKEN" value="" force="true"/>
+        <env name="STRIPE_SECRET" value="" force="true"/>
+        <env name="OPENAI_API_KEY" value="" force="true"/>
+        <env name="DEEPSEEK_API_KEY" value="" force="true"/>
+        <env name="RUNTIME_URL" value="" force="true"/>
+        <env name="SOCIAL_MOCK_MODE" value="true" force="true"/>
+
+        <env name="BOSS888_DEBUG_ENABLED" value="true" force="true"/>
+    </php>
+</phpunit>

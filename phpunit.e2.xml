@@ -1,0 +1,81 @@
+<!--
+    phpunit.e2.xml — dedicated configuration for INFRA888 E2 (Business Email
+    provider contract + fake adapter).
+
+    WHY A SECOND EMAIL DATABASE, WHEN E1 ALREADY HAS ONE
+    E2 changes migrations' consumers, not the migrations themselves, but it
+    re-runs the full replay suite and therefore drops and recreates every table.
+    E1's database is the recorded evidence for the E1 milestone; reusing it would
+    mean an E2 failure could no longer be distinguished from an E1 regression on
+    the same schema. Cheap to separate, expensive to disentangle later.
+
+    Off-limits, each owned by another work package: levelup_test,
+    levelup_p1e1_test, levelup_chat_test, levelup_e888_test,
+    levelup_infra_s84_998fd8c8_test, levelup_infra_e1_7c3f21a4_test.
+
+    USE:
+      php artisan test -c phpunit.e2.xml <explicit test file path>
+
+    PROVIDER ISOLATION. There is still deliberately NO INFRA_EMAIL_CONNECTOR.
+    E2's fake is injected per-test through InfrastructureConnectorResolver::fake(),
+    which is the existing test seam. It is never registered in configuration,
+    because a fake reachable from configuration is one env var away from being
+    reachable in production.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="BusinessEmail">
+            <directory suffix="Test.php">./tests/Feature/Infrastructure/Email</directory>
+        </testsuite>
+        <testsuite name="Infrastructure">
+            <directory suffix="Test.php">./tests/Feature/Infrastructure</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+    </source>
+
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+
+        <!-- Dedicated E2 database. NEVER levelup_staging, never another
+             session's or another milestone's database. -->
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_DATABASE" value="levelup_infra_e2_9b4d17e6_test" force="true"/>
+        <env name="DB_USERNAME" value="levelup_tester" force="true"/>
+        <env name="DB_PASSWORD" value="eyi0ZVuBIbj6CeP1Vo0G0Ocd" force="true"/>
+
+        <!-- No production Redis, no real queue workers, no real mail. -->
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="REDIS_CLIENT" value="phpredis" force="true"/>
+        <env name="REDIS_HOST" value="127.0.0.1" force="true"/>
+        <env name="REDIS_PORT" value="59999" force="true"/>
+
+        <!-- Providers must never be contacted from a test run. -->
+        <env name="INFRA_HOSTING_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullHostingConnector" force="true"/>
+        <env name="INFRA_CUSTOM_HOSTNAME_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullCustomHostnameConnector" force="true"/>
+        <env name="INFRA_NULL_OUTCOME" value="success" force="true"/>
+        <env name="SOCIAL_MOCK_MODE" value="true" force="true"/>
+        <env name="CLOUDFLARE_API_TOKEN" value="" force="true"/>
+        <env name="CLOUDFLARE_ZONE_ID" value="" force="true"/>
+        <env name="BELLA_ADMIN_TOKEN" value="" force="true"/>
+        <env name="STRIPE_SECRET" value="" force="true"/>
+        <env name="POSTMARK_TOKEN" value="" force="true"/>
+        <env name="OPENAI_API_KEY" value="" force="true"/>
+        <env name="DEEPSEEK_API_KEY" value="" force="true"/>
+        <env name="RUNTIME_URL" value="" force="true"/>
+
+        <env name="BOSS888_DEBUG_ENABLED" value="true" force="true"/>
+    </php>
+</phpunit>

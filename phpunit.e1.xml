@@ -1,0 +1,88 @@
+<!--
+    phpunit.e1.xml — dedicated configuration for INFRA888 E1 (Business Email
+    Foundation).
+
+    WHY THIS EXISTS
+    Same reason as phpunit.e888.xml and phpunit.s84.xml. On 2026-07-30 three
+    suites failed 22/22 against the shared `levelup_test` because a concurrent
+    session was creating tables in it at the same moment. On 2026-08-04 (this
+    run) `ps` showed a live `php artisan test -c phpunit.e888.xml` and a Studio
+    session writing app/Engines/Studio/Execution/** while E1 was starting.
+
+    E1 replays migrations from zero and rolls them back. That is destructive by
+    definition, so it may not be pointed at any database another session could
+    be using. `levelup_test`, `levelup_e888_test`, `levelup_p1e1_test`,
+    `levelup_chat_test` and `levelup_infra_s84_998fd8c8_test` are all owned by
+    other work packages and are therefore off-limits.
+
+    USE:
+      php artisan test -c phpunit.e1.xml <explicit test file path>
+
+    Everything except the database name and the suite definitions is inherited
+    verbatim from phpunit.s84.xml, which inherits from phpunit.xml.
+
+    PROVIDER ISOLATION. There is deliberately NO INFRA_EMAIL_CONNECTOR here.
+    E1 has no adapter and no Null email connector; resolving the `email`
+    capability must throw, and the engine must translate that into an honest
+    "not configured" result. Setting a connector here would let a test pass
+    against something that does not exist.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="BusinessEmail">
+            <directory suffix="Test.php">./tests/Feature/Infrastructure/Email</directory>
+        </testsuite>
+        <testsuite name="Infrastructure">
+            <directory suffix="Test.php">./tests/Feature/Infrastructure</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+    </source>
+
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+
+        <!-- Dedicated E1 database. NEVER levelup_staging, and deliberately not
+             any shared or other-session test database. -->
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_DATABASE" value="levelup_infra_e1_7c3f21a4_test" force="true"/>
+        <!-- A MySQL user whose grants cannot reach production even if every
+             other safeguard were bypassed. -->
+        <env name="DB_USERNAME" value="levelup_tester" force="true"/>
+        <env name="DB_PASSWORD" value="eyi0ZVuBIbj6CeP1Vo0G0Ocd" force="true"/>
+
+        <!-- No production Redis, no real queue workers, no real mail. -->
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="REDIS_CLIENT" value="phpredis" force="true"/>
+        <env name="REDIS_HOST" value="127.0.0.1" force="true"/>
+        <env name="REDIS_PORT" value="59999" force="true"/>
+
+        <!-- Providers must never be contacted from a test run. -->
+        <env name="INFRA_HOSTING_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullHostingConnector" force="true"/>
+        <env name="INFRA_CUSTOM_HOSTNAME_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullCustomHostnameConnector" force="true"/>
+        <env name="INFRA_NULL_OUTCOME" value="success" force="true"/>
+        <env name="SOCIAL_MOCK_MODE" value="true" force="true"/>
+        <env name="CLOUDFLARE_API_TOKEN" value="" force="true"/>
+        <env name="CLOUDFLARE_ZONE_ID" value="" force="true"/>
+        <env name="BELLA_ADMIN_TOKEN" value="" force="true"/>
+        <env name="STRIPE_SECRET" value="" force="true"/>
+        <env name="POSTMARK_TOKEN" value="" force="true"/>
+        <env name="OPENAI_API_KEY" value="" force="true"/>
+        <env name="DEEPSEEK_API_KEY" value="" force="true"/>
+        <env name="RUNTIME_URL" value="" force="true"/>
+
+        <env name="BOSS888_DEBUG_ENABLED" value="true" force="true"/>
+    </php>
+</phpunit>

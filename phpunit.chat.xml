@@ -1,0 +1,79 @@
+<!--
+    phpunit.chat.xml — dedicated configuration for the CHAT CONTRACT v1
+    conformance harness.
+
+    WHY THIS EXISTS
+    The shared phpunit.xml forces every suite onto `levelup_test`. When two
+    sessions run RefreshDatabase suites concurrently against that one database,
+    each drops tables while the other is creating them, and both runs fail with
+    "Base table or view already exists" / "migrations doesn't exist". That
+    happened on 2026-07-26 between this chat harness and a STUDIO888 session
+    (risk CR-22) and produced 20 spurious failures in a suite that is green when
+    it has the database to itself.
+
+    A conformance harness whose results depend on who else is running tests is
+    not a measurement instrument. This config gives the chat suite its own
+    database so its results are reproducible regardless of concurrent work.
+
+    USE:
+      php artisan test -c phpunit.chat.xml tests/Feature/Chat
+
+    Everything else — isolation, blanked provider credentials, array cache,
+    sync queue, Null connectors — is inherited verbatim from phpunit.xml so the
+    two configurations cannot drift in what they permit a test to reach.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="Chat">
+            <directory suffix="Test.php">./tests/Feature/Chat</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+    </source>
+
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+
+        <!-- Dedicated chat-harness database. NEVER levelup_staging, and
+             deliberately NOT levelup_test (which other suites share). -->
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_DATABASE" value="levelup_chat_test" force="true"/>
+        <!-- P2-C: a dedicated MySQL user with grants ONLY on the two test
+             databases. Even if every other safeguard were bypassed, these
+             credentials cannot reach production. -->
+        <env name="DB_USERNAME" value="levelup_tester" force="true"/>
+        <env name="DB_PASSWORD" value="eyi0ZVuBIbj6CeP1Vo0G0Ocd" force="true"/>
+
+        <!-- No production Redis, no real queue workers, no real mail. -->
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="REDIS_CLIENT" value="phpredis" force="true"/>
+
+        <!-- Providers must never be contacted from a test run. -->
+        <env name="INFRA_HOSTING_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullHostingConnector" force="true"/>
+        <env name="INFRA_CUSTOM_HOSTNAME_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullCustomHostnameConnector" force="true"/>
+        <env name="INFRA_NULL_OUTCOME" value="success" force="true"/>
+        <env name="SOCIAL_MOCK_MODE" value="true" force="true"/>
+        <env name="CLOUDFLARE_API_TOKEN" value="" force="true"/>
+        <env name="CLOUDFLARE_ZONE_ID" value="" force="true"/>
+        <env name="BELLA_ADMIN_TOKEN" value="" force="true"/>
+        <env name="STRIPE_SECRET" value="" force="true"/>
+        <env name="POSTMARK_TOKEN" value="" force="true"/>
+        <env name="OPENAI_API_KEY" value="" force="true"/>
+        <env name="DEEPSEEK_API_KEY" value="" force="true"/>
+        <env name="RUNTIME_URL" value="" force="true"/>
+
+        <env name="BOSS888_DEBUG_ENABLED" value="true" force="true"/>
+    </php>
+</phpunit>
