@@ -313,7 +313,14 @@ class CreditService
         // under concurrent load (5 supervisor workers). Str::uuid() is cryptographically
         // random (RFC 4122 v4) — collision probability negligible at any scale.
         $ref = 'res_' . \Illuminate\Support\Str::uuid()->toString();
-        $this->reserveCredits($workspaceId, $amount, "engine_reservation", null, $ref);
+        // MISSION-018 WS-1 (2026-08-24, RISK-0042): $reason was accepted from
+        // twelve subsystems ("{engine}/{action}", "seo_assistant:{action}",
+        // "meeting_strategy", "proposal:{id}", …) and then DROPPED — every
+        // reservation filed as the constant 'engine_reservation'. It now flows
+        // into reference_type, so the ledger records what each reservation was
+        // for. Falls back to the old constant only when no reason is supplied.
+        $refType = $reason !== '' ? mb_substr($reason, 0, 255) : 'engine_reservation';
+        $this->reserveCredits($workspaceId, $amount, $refType, null, $ref);
         return $ref;
     }
 
