@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { seo, write, creative, marketing, social, builder, calendar, sarah, approvals as approvalsApi, workspace as wsApi, team, tasks } from '../../services/api'
 import { PageHeader, Card, Badge, Button, Input, Select, Modal, Loading, Empty, StatCard, Alert, statusBadge } from '../../components/ui/index.jsx'
 import { useAuth } from '../../context/AuthContext'
+
+// STUDIO888 Phase O — the canvas editor is lazy-loaded so it adds ZERO weight to
+// the initial application bundle; its code loads only when a user opens an edit.
+const CreativeEditor = lazy(() => import('../creative/editor/CreativeEditor.jsx'))
 
 // ── Shared hook ───────────────────────────────────────────────────────────────
 function useEngine(loader) {
@@ -134,6 +138,9 @@ export function CreativePage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError]   = useState('')
+  const [editingAsset, setEditingAsset] = useState(null)   // Phase O — open canvas editor
+
+  const reloadAssets = () => creative.listAssets({}).then(r => { if (r?.ok) setAssets(r.data?.assets || []) })
 
   useEffect(() => {
     Promise.all([creative.listAssets({}), creative.brand()]).then(([aRes, bRes]) => {
@@ -153,6 +160,14 @@ export function CreativePage() {
   }
 
   if (loading) return <Loading />
+
+  // Phase O — full-surface canvas editor (not a fragile modal). Returning to the
+  // gallery reloads assets so newly-created edit versions appear immediately.
+  if (editingAsset) return (
+    <Suspense fallback={<Loading />}>
+      <CreativeEditor asset={editingAsset} api={creative} onClose={() => { setEditingAsset(null); reloadAssets() }} />
+    </Suspense>
+  )
 
   return (
     <div>
@@ -183,9 +198,15 @@ export function CreativePage() {
         {assets.length === 0 ? <Empty icon="🖼️" title="No assets yet" description="Generate your first image above." /> :
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
             {assets.slice(0, 12).map(a => (
-              <div key={a.id} style={{ background: 'var(--s2)', borderRadius: '10px', overflow: 'hidden' }}>
+              <div key={a.id} style={{ background: 'var(--s2)', borderRadius: '10px', overflow: 'hidden', position: 'relative' }}>
                 {a.url ? <img src={a.url} alt={a.title} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }} /> :
                   <div style={{ width: '100%', aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: '24px' }}>{a.status === 'in_progress' ? '⏳' : '🖼️'}</div>}
+                {a.type === 'image' && a.status === 'completed' && a.url && (
+                  <button data-testid="edit-asset" onClick={() => setEditingAsset(a)}
+                    style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(13,20,36,0.85)', color: '#fff', border: '1px solid #2d5cff', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer' }}>
+                    ✎ Edit
+                  </button>
+                )}
                 <div style={{ padding: '8px', fontSize: '11px', color: 'var(--muted)' }}>{a.type} · {a.status}</div>
               </div>
             ))}

@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/send-request.schema.json",
+  "title": "Chat Send Request v1",
+  "description": "Canonical send request. Clause R-01..R-06.",
+  "type": "object",
+  "required": ["contract_version", "message"],
+  "properties": {
+    "contract_version": { "type": "string", "const": "1.0", "description": "S-04 negotiation" },
+    "conversation_id":  { "type": ["string", "null"] },
+    "agent_id":         { "type": ["string", "null"], "description": "R-04 authorized against the workspace" },
+    "message": {
+      "type": "object",
+      "required": ["content"],
+      "properties": {
+        "client_message_id": { "type": ["string", "null"] },
+        "idempotency_key":   { "type": ["string", "null"], "description": "R-02 / I-01" },
+        "content":           { "type": "string", "minLength": 1, "description": "R-01 empty or whitespace-only MUST be rejected" },
+        "content_type":      { "type": "string", "enum": ["text", "markdown"], "default": "text" },
+        "attachments":       { "type": "array", "items": { "$ref": "attachment.schema.json" } }
+      },
+      "additionalProperties": false
+    },
+    "context":  { "type": ["object", "null"], "description": "R-05 hint only; never trusted for authz/ownership/billing" },
+    "metadata": { "type": ["object", "null"] }
+  },
+  "additionalProperties": false,
+  "not": {
+    "description": "R-03 authoritative fields MUST NOT be settable by a client",
+    "anyOf": [
+      { "required": ["workspace_id"] },
+      { "required": ["owner_user_id"] },
+      { "required": ["sender_type"] },
+      { "required": ["role"] },
+      { "required": ["status"] },
+      { "required": ["credits"] },
+      { "required": ["usage"] },
+      { "required": ["provider"] },
+      { "required": ["model"] }
+    ]
+  }
+}

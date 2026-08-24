@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex,nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Maison Rouge — Private Medical Care</title>
+<meta name="title" content="Maison Rouge — Private Medical Care">
+<meta name="description" content="Maison Rouge — a modern French bistro in Dubai serving seasonal small plates, natural wines, and an intimate eight-seat chef's counter.">
+<link rel="canonical" href="https://restaurant.example.com">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://restaurant.example.com">
+<meta property="og:title" content="Maison Rouge">
+<meta property="og:description" content="Maison Rouge — a modern French bistro in Dubai serving seasonal small plates, natural wines, and an intimate eight-seat chef's counter.">
+<meta property="og:site_name" content="Maison Rouge">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="/storage/builder-heroes/restaurant.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Maison Rouge">
+<meta name="twitter:description" content="Maison Rouge — a modern French bistro in Dubai serving seasonal small plates, natural wines, and an intimate eight-seat chef's counter.">
+<meta name="twitter:image" content="/storage/builder-heroes/restaurant.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --chalk: #FFFFFF;
+  --chalk-soft: #F7FAFC;
+  --carbon: #0F1A2A;
+  --carbon-soft: #344458;
+  --medical: #C0392B;
+  --medical-deep: #8E2A20;
+  --sage: #E8B89C;
+  --sage-soft: #D6E4DD;
+  --warm-grey: #6B7A8F;
+  --divider: #E2E8F0;
+  --fh: 'Source Serif Pro', Georgia, serif;
+  --fb: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--fb); background: var(--chalk); color: var(--carbon); line-height: 1.55; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; color: var(--carbon); }
+
+.section { padding: 6.5rem 2rem; max-width: 1240px; margin: 0 auto; }
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 1rem; }
+.section-h2 { font-size: clamp(2rem, 3.2vw, 2.8rem); line-height: 1.18; font-weight: 500; color: var(--carbon); margin-bottom: 1.2rem; letter-spacing: -0.01em; }
+.section-h2 em { font-style: italic; color: var(--medical); font-weight: 500; }
+
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.8s cubic-bezier(.2,.8,.2,1), transform 0.8s cubic-bezier(.2,.8,.2,1); }
+.reveal.visible { opacity: 1; transform: none; }
+.reveal-delay-1 { transition-delay: 0.08s; }
+.reveal-delay-2 { transition-delay: 0.16s; }
+.reveal-delay-3 { transition-delay: 0.24s; }
+.reveal-delay-4 { transition-delay: 0.32s; }
+
+/* ── NAV ──────────────────────────────────────────────────── */
+#main-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem 2.5rem;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: border-bottom .3s, padding .3s, background .3s;
+}
+#main-nav.scrolled { border-bottom-color: var(--divider); padding: 0.75rem 2.5rem; }
+.nav-logo { font-family: var(--fh); font-size: 1.3rem; font-weight: 600; color: var(--carbon); letter-spacing: -0.005em; }
+.nav-links { display: flex; gap: 2.25rem; list-style: none; }
+.nav-links a { font-size: 0.85rem; color: var(--carbon-soft); font-weight: 500; transition: color .2s; }
+.nav-links a:hover { color: var(--medical); }
+.nav-cta {
+  display: inline-block; padding: 0.75rem 1.4rem;
+  background: var(--medical); color: #fff;
+  font-size: 0.82rem; font-weight: 600; letter-spacing: -0.005em;
+  border-radius: 8px; transition: background .2s, transform .2s;
+}
+.nav-cta:hover { background: var(--medical-deep); transform: translateY(-1px); }
+.nav-burger { display: none; background: none; border: none; padding: 0; cursor: pointer; }
+.nav-burger span { display: block; width: 24px; height: 2px; background: var(--carbon); margin: 5px 0; border-radius: 1px; }
+
+/* ── HERO ─────────────────────────────────────────────────── */
+.hero { position: relative; min-height: 92vh; display: flex; align-items: center; overflow: hidden; background: var(--chalk-soft); }
+.hero-media { position: absolute; inset: 0; z-index: 0; }
+.hero-media img { width: 100%; height: 100%; object-fit: cover; opacity: 0.28; }
+.hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, rgba(255,255,255,.92) 0%, rgba(255,255,255,.75) 55%, rgba(255,255,255,.45) 100%); z-index: 1; pointer-events: none; }
+.hero-inner { position: relative; z-index: 2; max-width: 1240px; margin: 0 auto; padding: 0 2.5rem; width: 100%; }
+.hero-eyebrow { font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 1.3rem; }
+.hero-h1 { font-family: var(--fh); font-size: clamp(2.6rem, 5vw, 4.4rem); line-height: 1.08; font-weight: 500; color: var(--carbon); letter-spacing: -0.02em; margin-bottom: 1.6rem; max-width: 17ch; }
+.hero-h1 em { font-style: italic; color: var(--medical); font-weight: 500; }
+.hero-sub { font-size: 1.1rem; color: var(--carbon-soft); max-width: 52ch; margin-bottom: 2.2rem; line-height: 1.6; }
+.hero-actions { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.btn-primary {
+  display: inline-block; padding: 1rem 1.8rem;
+  background: var(--medical); color: #fff;
+  font-size: 0.9rem; font-weight: 600; border-radius: 10px;
+  transition: background .2s, transform .2s;
+}
+.btn-primary:hover { background: var(--medical-deep); transform: translateY(-1px); }
+.btn-ghost {
+  display: inline-block; padding: 1rem 1.8rem;
+  border: 1px solid var(--divider); color: var(--carbon);
+  font-size: 0.9rem; font-weight: 600; border-radius: 10px;
+  transition: border-color .2s, color .2s;
+}
+.btn-ghost:hover { border-color: var(--medical); color: var(--medical); }
+.hero-trust { font-size: 0.78rem; color: var(--warm-grey); letter-spacing: 0.02em; }
+
+/* ── STATS ────────────────────────────────────────────────── */
+.stats-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+  padding: 3.5rem 2.5rem;
+  background: var(--chalk-soft);
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+}
+.stat-item { padding: 1rem 2rem; border-right: 1px solid var(--divider); text-align: left; }
+.stat-item:last-child { border-right: none; }
+.stat-num { display: block; font-family: var(--fh); font-size: clamp(2rem, 3.2vw, 2.8rem); font-weight: 500; color: var(--medical); line-height: 1; margin-bottom: 0.4rem; }
+.stat-label { display: block; font-size: 0.78rem; color: var(--warm-grey); font-weight: 500; }
+
+/* ── SERVICES ─────────────────────────────────────────────── */
+.services { padding: 7rem 2.5rem; max-width: 1240px; margin: 0 auto; }
+.services-hdr { margin-bottom: 3.5rem; max-width: 640px; }
+.services-intro { font-size: 1rem; color: var(--carbon-soft); line-height: 1.65; margin-top: 0.5rem; }
+.service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+.service-card { background: var(--chalk); border: 1px solid var(--divider); border-radius: 12px; padding: 2rem 1.8rem; transition: border-color .2s, box-shadow .25s, transform .25s; }
+.service-card:hover { border-color: var(--medical); box-shadow: 0 12px 32px rgba(30,111,191,0.08); transform: translateY(-2px); }
+.service-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--sage-soft); display: flex; align-items: center; justify-content: center; color: var(--medical-deep); font-size: 22px; margin-bottom: 1.2rem; font-weight: 600; }
+.service-title { font-family: var(--fh); font-size: 1.35rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.7rem; }
+.service-desc { font-size: 0.92rem; color: var(--carbon-soft); line-height: 1.6; margin-bottom: 1.2rem; }
+.service-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.service-tag { font-size: 0.7rem; color: var(--medical); padding: 0.25rem 0.65rem; background: var(--sage-soft); border-radius: 20px; font-weight: 500; }
+
+/* ── DOCTORS ──────────────────────────────────────────────── */
+.doctors { background: var(--chalk-soft); padding: 7rem 2.5rem; border-top: 1px solid var(--divider); }
+.doctors-inner { max-width: 1240px; margin: 0 auto; }
+.doctors-hdr { margin-bottom: 3.5rem; max-width: 640px; }
+.doctors-intro { font-size: 1rem; color: var(--carbon-soft); line-height: 1.65; margin-top: 0.5rem; }
+.doctor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+.doctor-card { background: var(--chalk); border-radius: 14px; overflow: hidden; border: 1px solid var(--divider); transition: transform .25s, box-shadow .25s; }
+.doctor-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(15,26,42,0.1); }
+.doctor-photo { aspect-ratio: 1/1; overflow: hidden; background: var(--sage-soft); }
+.doctor-photo img { width: 100%; height: 100%; object-fit: cover; }
+.doctor-info { padding: 1.25rem 1.25rem 1.5rem; }
+.doctor-specialty { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 0.5rem; }
+.doctor-name { font-family: var(--fh); font-size: 1.15rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.15rem; }
+.doctor-role { font-size: 0.82rem; color: var(--warm-grey); margin-bottom: 0.8rem; font-weight: 500; }
+.doctor-bio { font-size: 0.85rem; color: var(--carbon-soft); line-height: 1.55; }
+
+/* ── PROCESS ──────────────────────────────────────────────── */
+.process { padding: 7rem 2.5rem; max-width: 1240px; margin: 0 auto; }
+.process-hdr { margin-bottom: 3.5rem; max-width: 640px; }
+.process-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; position: relative; }
+.process-step { position: relative; padding: 2rem 1.5rem 1.5rem; background: var(--chalk); border: 1px solid var(--divider); border-radius: 12px; }
+.process-num { font-family: var(--fh); font-style: italic; font-size: 2.2rem; font-weight: 500; color: var(--medical); line-height: 1; margin-bottom: 0.8rem; }
+.process-title { font-family: var(--fh); font-size: 1.2rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.6rem; }
+.process-desc { font-size: 0.9rem; color: var(--carbon-soft); line-height: 1.6; }
+
+/* ── TESTIMONIALS ─────────────────────────────────────────── */
+.testimonials { background: var(--chalk-soft); padding: 7rem 2.5rem; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider); }
+.testimonials-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+.testimonial-track { position: relative; min-height: 240px; margin-top: 2rem; }
+.testimonial-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .55s; display: flex; flex-direction: column; justify-content: center; }
+.testimonial-slide.active { opacity: 1; position: relative; }
+.testimonial-quote { font-family: var(--fh); font-style: italic; font-size: clamp(1.25rem, 1.9vw, 1.55rem); line-height: 1.5; color: var(--carbon); margin-bottom: 1.8rem; max-width: 44ch; margin-left: auto; margin-right: auto; }
+.testimonial-author { font-size: 0.88rem; color: var(--carbon); font-weight: 600; }
+.testimonial-condition { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-top: 0.25rem; }
+.testimonial-dots { display: flex; gap: 0.4rem; justify-content: center; margin-top: 1.5rem; }
+.testimonial-dot { width: 24px; height: 3px; background: var(--divider); border: none; padding: 0; cursor: pointer; border-radius: 2px; transition: background .3s; }
+.testimonial-dot.active { background: var(--medical); }
+
+/* ── CERTIFICATIONS ───────────────────────────────────────── */
+.certifications { padding: 6rem 2.5rem; max-width: 1240px; margin: 0 auto; }
+.cert-hdr { text-align: center; margin-bottom: 3rem; }
+.cert-hdr .eyebrow { justify-content: center; }
+.cert-heading { font-family: var(--fh); font-size: 1.8rem; font-weight: 500; color: var(--carbon); margin-bottom: 0.7rem; }
+.cert-intro { font-size: 0.95rem; color: var(--carbon-soft); max-width: 50ch; margin: 0 auto; }
+.cert-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.cert-item { background: var(--chalk); border: 1px solid var(--divider); border-radius: 10px; padding: 1.4rem 1.3rem; display: flex; gap: 1rem; align-items: flex-start; transition: border-color .2s; }
+.cert-item:hover { border-color: var(--sage); }
+.cert-check { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--sage-soft); color: var(--medical-deep); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
+.cert-body { flex: 1; }
+.cert-name { font-size: 0.98rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.25rem; }
+.cert-desc { font-size: 0.82rem; color: var(--carbon-soft); line-height: 1.5; }
+
+/* ── CTA BANNER ───────────────────────────────────────────── */
+.cta-banner { background: var(--medical); color: #fff; padding: 5rem 2.5rem; text-align: center; }
+.cta-banner-inner { max-width: 720px; margin: 0 auto; }
+.cta-eyebrow { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sage-soft); font-weight: 600; margin-bottom: 1rem; }
+.cta-title { font-family: var(--fh); font-size: clamp(1.9rem, 3.2vw, 2.6rem); font-weight: 500; color: #fff; line-height: 1.15; margin-bottom: 1rem; }
+.cta-subtitle { font-size: 1rem; color: rgba(255,255,255,.92); max-width: 48ch; margin: 0 auto 1.8rem; line-height: 1.6; }
+.cta-button {
+  display: inline-block; padding: 1rem 2rem;
+  background: #fff; color: var(--medical-deep);
+  font-size: 0.9rem; font-weight: 600; border-radius: 10px;
+  transition: transform .2s, background .2s;
+}
+.cta-button:hover { background: var(--chalk-soft); transform: translateY(-1px); }
+
+/* ── CONTACT ──────────────────────────────────────────────── */
+.contact { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; padding: 7rem 2.5rem; max-width: 1240px; margin: 0 auto; }
+.contact-intro { font-size: 1rem; color: var(--carbon-soft); line-height: 1.65; margin-bottom: 2rem; max-width: 40ch; }
+.contact-info { display: flex; flex-direction: column; gap: 1.3rem; margin-bottom: 1.5rem; }
+.contact-item { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 1rem; border-bottom: 1px solid var(--divider); }
+.contact-item-label { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--warm-grey); font-weight: 600; }
+.contact-item-value { font-size: 1rem; color: var(--carbon); }
+.contact-emergency { background: var(--sage-soft); color: var(--medical-deep); padding: 0.9rem 1.2rem; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; border-left: 3px solid var(--medical); }
+
+.contact-right { background: var(--chalk-soft); padding: 2.5rem 2.2rem; border-radius: 14px; border: 1px solid var(--divider); }
+.contact-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+.form-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.form-field.full { grid-column: 1 / -1; }
+.form-field label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--warm-grey); font-weight: 600; }
+.form-field input, .form-field select, .form-field textarea {
+  padding: 0.8rem 1rem;
+  background: var(--chalk);
+  border: 1px solid var(--divider);
+  color: var(--carbon);
+  font-family: inherit;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  transition: border-color .2s;
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus { outline: none; border-color: var(--medical); }
+.form-field textarea { min-height: 110px; resize: vertical; }
+.form-submit {
+  grid-column: 1 / -1;
+  padding: 1rem 2rem;
+  background: var(--medical); color: #fff;
+  border: none; border-radius: 10px;
+  font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; transition: background .2s, transform .2s;
+  font-family: inherit;
+}
+.form-submit:hover { background: var(--medical-deep); transform: translateY(-1px); }
+#form-success { grid-column: 1 / -1; color: var(--medical); font-size: 0.9rem; margin-top: 1rem; font-weight: 500; }
+
+/* ── BOOKING ──────────────────────────────────────────────── */
+.booking-section { padding: 6rem 2.5rem; max-width: 780px; margin: 0 auto; }
+.booking-h2 { margin-bottom: 1.2rem; }
+.booking-intro { font-size: 1rem; color: var(--carbon-soft); margin-bottom: 2rem; max-width: 46ch; line-height: 1.65; }
+.booking-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; background: var(--chalk-soft); padding: 2rem; border-radius: 14px; border: 1px solid var(--divider); }
+.booking-form .form-field.full { grid-column: 1 / -1; }
+.booking-time-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.booking-slot { padding: 0.85rem 0.6rem; background: var(--chalk); border: 1px solid var(--divider); border-radius: 8px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+.booking-slot input { display: none; }
+.booking-slot:has(input:checked) { border-color: var(--medical); background: var(--sage-soft); }
+.booking-slot-label { font-size: 0.88rem; color: var(--carbon); font-weight: 600; }
+.booking-slot-time { font-size: 0.7rem; color: var(--warm-grey); margin-top: 0.2rem; }
+.booking-submit {
+  grid-column: 1 / -1;
+  padding: 1rem 2rem;
+  background: var(--medical); color: #fff;
+  border: none; border-radius: 10px;
+  font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; transition: background .2s;
+  font-family: inherit;
+}
+.booking-submit:hover { background: var(--medical-deep); }
+
+/* ── FOOTER ───────────────────────────────────────────────── */
+footer { background: var(--carbon); color: #fff; padding: 4.5rem 2.5rem 2.5rem; }
+.footer-inner { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 3rem; padding-bottom: 2.5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.footer-brand { max-width: 32ch; }
+.footer-logo { font-family: var(--fh); font-size: 1.4rem; font-weight: 600; color: #fff; margin-bottom: 0.8rem; }
+.footer-tagline { font-size: 0.9rem; color: rgba(255,255,255,.55); line-height: 1.6; }
+.footer-col h4 { font-family: var(--fb); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sage); font-weight: 600; margin-bottom: 0.9rem; }
+.footer-links { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }
+.footer-links a { font-size: 0.9rem; color: rgba(255,255,255,.55); transition: color .2s; }
+.footer-links a:hover { color: #fff; }
+.footer-social { display: flex; gap: 1rem; margin-top: 0.4rem; }
+.footer-social a { font-size: 0.82rem; color: rgba(255,255,255,.55); transition: color .2s; }
+.footer-social a:hover { color: var(--sage); }
+.footer-copy { text-align: center; padding-top: 2rem; font-size: 0.8rem; color: rgba(255,255,255,.45); }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 900px) {
+  #main-nav { padding: 0.9rem 1.3rem; }
+  .nav-links, .nav-cta { display: none; }
+  .nav-burger { display: block; }
+  .hero-inner { padding: 0 1.3rem; }
+  .section, .services, .doctors-inner, .process, .certifications { padding: 4.5rem 1.3rem; }
+  .stats-strip { grid-template-columns: 1fr 1fr; padding: 2.5rem 1.3rem; }
+  .stat-item:nth-child(2n) { border-right: none; }
+  .stat-item:nth-child(-n+2) { border-bottom: 1px solid var(--divider); }
+  .service-grid, .doctor-grid, .cert-grid { grid-template-columns: 1fr; }
+  .process-steps { grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .contact, .booking-form, .contact-form { grid-template-columns: 1fr; gap: 2rem; padding-left: 1.3rem; padding-right: 1.3rem; }
+  .contact-right { padding: 2rem 1.5rem; }
+  .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
+}
+</style>
+</head>
+<body><div style="position:fixed;top:0;left:0;right:0;z-index:2147483000;background:#111;color:#fff;font:600 11px/1.4 system-ui,sans-serif;padding:6px 10px;text-align:center;letter-spacing:.03em">ADS888 PREVIEW &#183; restaurant &#183; the interstitial opens automatically &nbsp;<button onclick="luModal('1x1')" style="margin-left:6px;background:#6C5CE7;color:#fff;border:0;border-radius:3px;padding:3px 8px;font:600 11px system-ui,sans-serif;cursor:pointer">1:1 square</button> <button onclick="luModal('3x4')" style="margin-left:6px;background:#6C5CE7;color:#fff;border:0;border-radius:3px;padding:3px 8px;font:600 11px system-ui,sans-serif;cursor:pointer">3:4 portrait</button></div>
+
+<!-- ═══ NAV ═══ -->
+<nav id="main-nav" data-block="nav">
+  <a href="#" class="nav-logo" data-field="business_name">Maison Rouge</a>
+  <ul class="nav-links">
+    <li><a href="#services">Menu</a></li>
+    <li><a href="#doctors">The Chef</a></li>
+    <li><a href="#process">Reservations</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#contact">Contact</a></li>
+        <li><a href="/blog">Blog</a></li>
+  </ul>
+  <a href="#booking" class="nav-cta" data-field="nav_cta">Reserve a Table</a>
+  <button class="nav-burger" id="burger" aria-label="Menu" onclick="toggleMob()"><span></span><span></span><span></span></button>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" data-block="hero">
+  <div class="hero-media"><img src="/storage/builder-heroes/restaurant.jpg" alt="Maison Rouge" loading="eager"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow" data-field="hero_eyebrow">Modern French Bistro · Dubai</div>
+    <h1 class="hero-h1" data-field="hero_title">Honest food,<br><em>generous hospitality.</em></h1>
+    <p class="hero-sub" data-field="hero_subtitle">An intimate forty-seat bistro built around a daily-changing menu, a curated natural wine list, and an open kitchen where you can watch every plate leave the pass.</p>
+    <div class="hero-actions">
+      <a href="#booking" class="btn-primary" data-field="hero_cta">Reserve a Table</a>
+      <a href="#doctors" class="btn-ghost" data-field="hero_cta_secondary">View the Menu</a>
+    </div>
+    <div class="hero-trust" data-field="hero_trust_badge">✓ Reservations · Open 7 Days · Walk-Ins After 9pm</div>
+  </div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<div class="stats-strip" data-block="stats">
+  <div class="stat-item reveal"><span class="stat-num" data-field="stat_1_value">18</span><span class="stat-label" data-field="stat_1_label">Seats</span></div>
+  <div class="stat-item reveal reveal-delay-1"><span class="stat-num" data-field="stat_2_value">4</span><span class="stat-label" data-field="stat_2_label">Courses Daily</span></div>
+  <div class="stat-item reveal reveal-delay-2"><span class="stat-num" data-field="stat_3_value">96%</span><span class="stat-label" data-field="stat_3_label">Repeat Guests</span></div>
+  <div class="stat-item reveal reveal-delay-3"><span class="stat-num" data-field="stat_4_value">4.8★</span><span class="stat-label" data-field="stat_4_label">Diner Rating</span></div>
+</div>
+
+<!-- ═══ SERVICES / SPECIALTIES ═══ -->
+<section class="services" id="services" data-block="services">
+  <div class="services-hdr">
+    <div class="eyebrow reveal"><span data-field="services_eyebrow">The Menu</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="services_title">Honest food,<br><em>seasonally driven.</em></h2>
+    <p class="services-intro reveal reveal-delay-2" data-field="services_intro">A short, daily-changing menu — six small plates, four mains, two desserts. Built around what arrived from the market that morning.</p>
+  </div>
+  <div class="service-grid">
+    <div class="service-card reveal">
+      <div class="service-icon">+</div>
+      <div class="service-title" data-field="service_1_title">Small Plates</div>
+      <p class="service-desc" data-field="service_1_text">Six rotating small plates designed for the table to share — from confit duck rillette to Andalusian gambas al ajillo.</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_1_tag_1">Snacks</span>
+        <span class="service-tag" data-field="service_1_tag_2">Share</span>
+        <span class="service-tag" data-field="service_1_tag_3">Daily</span>
+      </div>
+    </div>
+    <div class="service-card reveal reveal-delay-1">
+      <div class="service-icon">♥</div>
+      <div class="service-title" data-field="service_2_title">Seasonal Mains</div>
+      <p class="service-desc" data-field="service_2_text">Four mains anchored by an open-fire grill — line-caught fish, dry-aged ribeye, slow-roasted lamb shoulder, plus a daily vegetarian.</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_2_tag_1">Fish</span>
+        <span class="service-tag" data-field="service_2_tag_2">Beef</span>
+        <span class="service-tag" data-field="service_2_tag_3">Veggie</span>
+      </div>
+    </div>
+    <div class="service-card reveal reveal-delay-2">
+      <div class="service-icon">◎</div>
+      <div class="service-title" data-field="service_3_title">Open-Kitchen Tasting</div>
+      <p class="service-desc" data-field="service_3_text">An eight-course chef's counter tasting for two — six seats, two seatings nightly, no menu given in advance.</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_3_tag_1">Tasting</span>
+        <span class="service-tag" data-field="service_3_tag_2">Counter</span>
+        <span class="service-tag" data-field="service_3_tag_3">Surprise</span>
+      </div>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-icon">☼</div>
+      <div class="service-title" data-field="service_4_title">Natural Wine List</div>
+      <p class="service-desc" data-field="service_4_text">A 90-bottle natural wine list weighted toward small French and Lebanese producers, with a rotating by-the-glass programme.</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_4_tag_1">Natural</span>
+        <span class="service-tag" data-field="service_4_tag_2">French</span>
+        <span class="service-tag" data-field="service_4_tag_3">By-Glass</span>
+      </div>
+    </div>
+    <div class="service-card reveal reveal-delay-1">
+      <div class="service-icon">◈</div>
+      <div class="service-title" data-field="service_5_title">Pâtisserie</div>
+      <p class="service-desc" data-field="service_5_text">Two house-made desserts changing weekly, plus a serious cheese trolley featuring three Frenchies and one local Beqaa Valley.</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_5_tag_1">Dessert</span>
+        <span class="service-tag" data-field="service_5_tag_2">Cheese</span>
+        <span class="service-tag" data-field="service_5_tag_3">Weekly</span>
+      </div>
+    </div>
+    <div class="service-card reveal reveal-delay-2">
+      <div class="service-icon">◉</div>
+      <div class="service-title" data-field="service_6_title">Brunch Service</div>
+      <p class="service-desc" data-field="service_6_text">Saturday and Sunday brunch — eggs, pastries, and a boozy brunch menu with bottomless rosé until 3pm.</p>
+      <div class="service-tags">
+        <span class="service-tag" data-field="service_6_tag_1">Eggs</span>
+        <span class="service-tag" data-field="service_6_tag_2">Pastries</span>
+        <span class="service-tag" data-field="service_6_tag_3">Bottomless</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DOCTORS ═══ -->
+<section class="doctors" id="doctors" data-block="doctors">
+  <div class="doctors-inner">
+    <div class="doctors-hdr">
+      <div class="eyebrow reveal"><span data-field="doctors_eyebrow">The Team</span></div>
+      <h2 class="section-h2 reveal reveal-delay-1" data-field="doctors_title">The chefs<br><em>behind the pass.</em></h2>
+      <p class="doctors-intro reveal reveal-delay-2" data-field="doctors_intro">A small kitchen brigade of five — every dish is plated by the chef who cooked it, and every guest is greeted by the same maître d' on the door.</p>
+    </div>
+    <div class="doctor-grid">
+      <div class="doctor-card reveal">
+        <div class="doctor-photo"><img src="/storage/builder-heroes/restaurant.jpg" alt="Marc Belanger" loading="lazy"></div>
+        <div class="doctor-info">
+          <div class="doctor-specialty" data-field="doctor_1_specialty">French Cuisine</div>
+          <div class="doctor-name" data-field="doctor_1_name">Marc Belanger</div>
+          <div class="doctor-role" data-field="doctor_1_title">Head Chef</div>
+          <p class="doctor-bio" data-field="doctor_1_bio">Twelve years across Paris and Lyon — Septime, Frenchie, and Le Comptoir du Relais.</p>
+        </div>
+      </div>
+      <div class="doctor-card reveal reveal-delay-1">
+        <div class="doctor-photo"><img src="/storage/builder-heroes/restaurant.jpg" alt="Layla Khouri" loading="lazy"></div>
+        <div class="doctor-info">
+          <div class="doctor-specialty" data-field="doctor_2_specialty">Open Fire</div>
+          <div class="doctor-name" data-field="doctor_2_name">Layla Khouri</div>
+          <div class="doctor-role" data-field="doctor_2_title">Sous Chef</div>
+          <p class="doctor-bio" data-field="doctor_2_bio">Trained at Mourad in San Francisco — runs the grill section, makes most of the bread.</p>
+        </div>
+      </div>
+      <div class="doctor-card reveal reveal-delay-2">
+        <div class="doctor-photo"><img src="/storage/builder-heroes/restaurant.jpg" alt="Rémi Dufour" loading="lazy"></div>
+        <div class="doctor-info">
+          <div class="doctor-specialty" data-field="doctor_3_specialty">Pâtisserie</div>
+          <div class="doctor-name" data-field="doctor_3_name">Rémi Dufour</div>
+          <div class="doctor-role" data-field="doctor_3_title">Pastry Chef</div>
+          <p class="doctor-bio" data-field="doctor_3_bio">Pierre Hermé alumnus — quietly responsible for the now-famous chocolate fondant.</p>
+        </div>
+      </div>
+      <div class="doctor-card reveal reveal-delay-3">
+        <div class="doctor-photo"><img src="/storage/builder-heroes/restaurant.jpg" alt="Sophie Allaire" loading="lazy"></div>
+        <div class="doctor-info">
+          <div class="doctor-specialty" data-field="doctor_4_specialty">Natural Wine</div>
+          <div class="doctor-name" data-field="doctor_4_name">Sophie Allaire</div>
+          <div class="doctor-role" data-field="doctor_4_title">Sommelier</div>
+          <p class="doctor-bio" data-field="doctor_4_bio">Ten years across Paris bistros — runs the natural wine programme and the cheese trolley.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PROCESS ═══ -->
+<section class="process" id="process" data-block="process">
+  <div class="process-hdr">
+    <div class="eyebrow reveal"><span data-field="process_eyebrow">Your Visit</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="process_title">From booking<br><em>to bill.</em></h2>
+  </div>
+  <div class="process-steps">
+    <div class="process-step reveal">
+      <div class="process-num">01</div>
+      <div class="process-title" data-field="process_1_title">Reserve</div>
+      <p class="process-desc" data-field="process_1_text">Book online or call — we keep the last twelve seats for walk-ins after 9pm every night.</p>
+    </div>
+    <div class="process-step reveal reveal-delay-1">
+      <div class="process-num">02</div>
+      <div class="process-title" data-field="process_2_title">Arrive</div>
+      <p class="process-desc" data-field="process_2_text">Brought to your table by name. The aperitif arrives before the menu — a glass of house cocktail is on us.</p>
+    </div>
+    <div class="process-step reveal reveal-delay-2">
+      <div class="process-num">03</div>
+      <div class="process-title" data-field="process_3_title">Eat</div>
+      <p class="process-desc" data-field="process_3_text">The kitchen sends what's running well that night. Speak to your server about allergies, preferences, or anything you'd rather skip.</p>
+    </div>
+    <div class="process-step reveal reveal-delay-3">
+      <div class="process-num">04</div>
+      <div class="process-title" data-field="process_4_title">Linger</div>
+      <p class="process-desc" data-field="process_4_text">We don't turn tables — your reservation is yours for the evening. Coffee, digestifs, the cheese trolley.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section class="testimonials" data-block="testimonials">
+  <div class="testimonials-inner">
+    <div class="eyebrow"><span data-field="testimonials_eyebrow">Patient Stories</span></div>
+    <h2 class="section-h2" data-field="testimonials_title">Patients,<br><em>in their words.</em></h2>
+    <div class="testimonial-track">
+      <div class="testimonial-slide active">
+        <p class="testimonial-quote" data-field="testimonial_1_quote">Dr. Rahman took the time to actually listen — the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense.</p>
+        <div class="testimonial-author" data-field="testimonial_1_author">Hana Y. — Dubai Marina</div>
+        <div class="testimonial-condition" data-field="testimonial_1_condition">Family Medicine</div>
+      </div>
+      <div class="testimonial-slide">
+        <p class="testimonial-quote" data-field="testimonial_2_quote">Brought our six-month-old in for a rash at 9pm on a Saturday. Dr. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable.</p>
+        <div class="testimonial-author" data-field="testimonial_2_author">Ahmed & Laila K.</div>
+        <div class="testimonial-condition" data-field="testimonial_2_condition">Paediatrics</div>
+      </div>
+      <div class="testimonial-slide">
+        <p class="testimonial-quote" data-field="testimonial_3_quote">Heart palpitations had three previous doctors shrug and send me home. Dr. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week.</p>
+        <div class="testimonial-author" data-field="testimonial_3_author">Roberto P. — JLT</div>
+        <div class="testimonial-condition" data-field="testimonial_3_condition">Cardiology</div>
+      </div>
+    </div>
+    <div class="testimonial-dots">
+      <button class="testimonial-dot active" onclick="goToSlide(0)"></button>
+      <button class="testimonial-dot" onclick="goToSlide(1)"></button>
+      <button class="testimonial-dot" onclick="goToSlide(2)"></button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CERTIFICATIONS ═══ -->
+<section class="certifications" id="certifications" data-block="certifications">
+  <div class="cert-hdr">
+    <div class="eyebrow reveal"><span data-field="cert_eyebrow">Recognition</span></div>
+    <h2 class="cert-heading reveal reveal-delay-1" data-field="cert_title">What people are saying</h2>
+    <p class="cert-intro reveal reveal-delay-2" data-field="cert_intro">Press, awards, and the occasional surprise.</p>
+  </div>
+  <div class="cert-grid">
+    <div class="cert-item reveal"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_1_name">Time Out 100</div><div class="cert-desc" data-field="cert_1_desc">One of Time Out Dubai's 100 best restaurants, 2025</div></div></div>
+    <div class="cert-item reveal reveal-delay-1"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_2_name">La Liste</div><div class="cert-desc" data-field="cert_2_desc">Listed in La Liste's Top 1000 restaurants worldwide</div></div></div>
+    <div class="cert-item reveal reveal-delay-2"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_3_name">Gault & Millau</div><div class="cert-desc" data-field="cert_3_desc">12/20 in the 2025 Gault & Millau guide</div></div></div>
+    <div class="cert-item reveal"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_4_name">Wine Spectator</div><div class="cert-desc" data-field="cert_4_desc">Award of Excellence — natural wine programme</div></div></div>
+    <div class="cert-item reveal reveal-delay-1"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_5_name">Time Out Editor's Pick</div><div class="cert-desc" data-field="cert_5_desc">Best Open Kitchen, 2025</div></div></div>
+    <div class="cert-item reveal reveal-delay-2"><div class="cert-check">✓</div><div class="cert-body"><div class="cert-name" data-field="cert_6_name">Tatler Dining</div><div class="cert-desc" data-field="cert_6_desc">Featured in Tatler Dining Notes, March 2025</div></div></div>
+  </div>
+</section>
+
+<!-- ═══ CTA BANNER ═══ -->
+<section class="cta-banner" data-block="cta_banner">
+  <div class="cta-banner-inner">
+    <div class="cta-eyebrow" data-field="cta_banner_eyebrow">Same-day appointments</div>
+    <h2 class="cta-title" data-field="cta_banner_title">Ready when you are.</h2>
+    <p class="cta-subtitle" data-field="cta_banner_subtitle">Get in touch — we'll respond within an hour during business hours.</p>
+    <a href="#booking" class="cta-button" data-field="cta_banner_cta">Reserve a Table</a>
+  </div>
+</section>
+
+<!-- ═══ GALLERY ═══ -->
+<section class="section gallery-section" id="gallery" data-block="gallery">
+  <div class="eyebrow reveal" data-field="gallery_eyebrow">Gallery</div>
+  <h2 class="section-h2 reveal reveal-delay-1" data-field="gallery_title">From the<br><em>archive.</em></h2>
+  <p class="gallery-intro reveal reveal-delay-2" data-field="gallery_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">Recent moments — captured for posterity.</p>
+  <div class="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+    <div class="gallery-item reveal" data-field="gallery_1" style="aspect-ratio:1/1;background-image:url('/storage/template-images/restaurant/gallery_1.jpg');background-size:cover;background-position:center;border-radius:14px;"></div>
+    <div class="gallery-item reveal reveal-delay-1" data-field="gallery_2" style="aspect-ratio:1/1;background-image:url('/storage/template-images/restaurant/gallery_2.jpg');background-size:cover;background-position:center;border-radius:14px;"></div>
+    <div class="gallery-item reveal reveal-delay-2" data-field="gallery_3" style="aspect-ratio:1/1;background-image:url('/storage/template-images/restaurant/gallery_3.jpg');background-size:cover;background-position:center;border-radius:14px;"></div>
+    <div class="gallery-item reveal reveal-delay-3" data-field="gallery_4" style="aspect-ratio:1/1;background-image:url('/storage/template-images/restaurant/gallery_4.jpg');background-size:cover;background-position:center;border-radius:14px;"></div>
+    <div class="gallery-item reveal reveal-delay-4" data-field="gallery_5" style="aspect-ratio:1/1;background-image:url('/storage/template-images/restaurant/gallery_5.jpg');background-size:cover;background-position:center;border-radius:14px;"></div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section class="contact" id="contact" data-block="contact">
+  <div class="contact-left">
+    <div class="eyebrow reveal"><span data-field="contact_eyebrow">Contact</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="contact_title">Visit or<br><em>call us.</em></h2>
+    <p class="contact-intro reveal reveal-delay-2" data-field="contact_intro">We reply to all enquiries within thirty minutes during opening hours.</p>
+    <div class="contact-info">
+      <div class="contact-item reveal"><span class="contact-item-label">Email</span><span class="contact-item-value" data-field="contact_email">reception@atrium-clinic.ae</span></div>
+      <div class="contact-item reveal reveal-delay-1"><span class="contact-item-label">Phone</span><span class="contact-item-value" data-field="contact_phone">+971 4 000 0000</span></div>
+      <div class="contact-item reveal reveal-delay-2"><span class="contact-item-label">Address</span><span class="contact-item-value" data-field="contact_address">Dubai Healthcare City, Block F, Floor 3</span></div>
+      <div class="contact-item reveal reveal-delay-3"><span class="contact-item-label">Hours</span><span class="contact-item-value" data-field="contact_hours">Mon–Sat · 8am–8pm  ·  Sun · 10am–4pm</span></div>
+    </div>
+    <div class="contact-emergency reveal" data-field="contact_emergency">For medical emergencies dial 998 (Dubai Police / Ambulance).</div>
+  </div>
+  <div class="contact-right">
+    <div class="eyebrow">Callback</div>
+    <h3 class="section-h2" style="font-size:1.6rem;margin-bottom:1.3rem" data-field="contact_form_title">Request a<br><em>callback.</em></h3>
+    <form class="contact-form" onsubmit="handleSubmit(event)">
+      <div class="form-field"><label>First Name</label><input type="text" name="first_name" required></div>
+      <div class="form-field"><label>Last Name</label><input type="text" name="last_name" required></div>
+      <div class="form-field full"><label>Email</label><input type="email" name="email" required></div>
+      <div class="form-field"><label>Phone</label><input type="tel" name="phone"></div>
+      <div class="form-field"><label>Specialty</label><select name="specialty"><option value="">Select…</option><option>Family Medicine</option><option>Cardiology</option><option>Paediatrics</option><option>Dermatology</option><option>Dental</option><option>Physiotherapy</option><option>Other</option></select></div>
+      <div class="form-field full"><label>How can we help?</label><textareaname="message"  name="message" placeholder="Briefly describe your symptoms or the reason for the visit."></textarea></div>
+      <button type="submit" class="form-submit" data-field="form_submit_text">Request Callback →</button>
+      <div id="form-success" style="display:none" data-field="form_success_message">✓ Thank you. Reception will call you back within thirty minutes.</div>
+    </form>
+  </div>
+</section>
+
+<!-- ═══ BOOKING ═══ -->
+<section class="booking-section" id="booking" data-block="booking" style="">
+  <div class="eyebrow reveal"><span>Consultation</span></div>
+  <h2 class="section-h2 booking-h2 reveal reveal-delay-1" data-field="booking_title">Book a<br><em>consultation.</em></h2>
+  <p class="booking-intro reveal reveal-delay-2" data-field="booking_intro">Choose a specialty, a doctor if you have a preference, and a time that suits you. We'll confirm within thirty minutes.</p>
+  <form class="booking-form" onsubmit="handleBookingSubmit(event)">
+    <div class="form-field full"><label>Service</label><select name="service"><option>Family Medicine</option><option>Cardiology</option><option>Paediatrics</option><option>Dermatology</option><option>Dental</option><option>Physiotherapy</option></select></div>
+    <div class="form-field full"><label>Preferred Doctor</label><select name="doctor"><option value="">Any available</option><option>Dr. Aisha Rahman</option><option>Dr. Omar Al-Sayed</option><option>Dr. Sarah Nakamura</option><option>Dr. James Whitfield</option></select></div>
+    <div class="form-field"><label>Preferred Date</label><input type="date" name="preferred_date" required></div>
+    <div class="form-field"><label>Insurance Provider</label><input type="text" name="insurance" placeholder="e.g. AXA, Bupa, Cigna"></div>
+    <div class="form-field full"><label>Preferred Time</label>
+      <div class="booking-time-slots">
+        <label class="booking-slot"><input type="radio" name="preferred_time" value="morning" required><div class="booking-slot-label">Morning</div><div class="booking-slot-time">8am – 12pm</div></label>
+        <label class="booking-slot"><input type="radio" name="preferred_time" value="afternoon"><div class="booking-slot-label">Afternoon</div><div class="booking-slot-time">12pm – 5pm</div></label>
+        <label class="booking-slot"><input type="radio" name="preferred_time" value="evening"><div class="booking-slot-label">Evening</div><div class="booking-slot-time">5pm – 8pm</div></label>
+      </div>
+    </div>
+    <div class="form-field"><label>Name</label><input type="text" name="name" required></div>
+    <div class="form-field"><label>Phone</label><input type="tel" name="phone" required></div>
+    <button type="submit" class="booking-submit" data-field="booking_cta">Book Consultation</button>
+  </form>
+  <div id="booking-success" style="display:none;margin-top:1.5rem;padding:1rem 1.25rem;background:var(--sage-soft);border-left:3px solid var(--medical);color:var(--carbon);border-radius:6px">Thank you. Reception will confirm your appointment within thirty minutes during opening hours.</div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<!-- ═══ BLOG ═══ -->
+<section class="section blog-section" id="blog" data-block="blog">
+  <div class="eyebrow reveal" data-field="blog_eyebrow">Insights</div>
+  <h2 class="section-h2 reveal reveal-delay-1" data-field="blog_title">From the<br><em>journal.</em></h2>
+  <p class="blog-intro reveal reveal-delay-2" data-field="blog_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">Practical guides, expert opinion, and behind-the-scenes notes — written by our team.</p>
+  <div class="blog-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;">
+    <a href="/blog/first-appointment" class="blog-card reveal" style="display:block;padding:1.75rem;background:var(--chalk-soft,#F7FAFC);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;transition:transform .2s,border-color .2s;">
+      <h3 class="blog-card-title" data-field="blog_post_1_title" style="font-family:var(--fh,Georgia,serif);font-size:1.25rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">What to expect at your first appointment</h3>
+      <p class="blog-card-excerpt" data-field="blog_post_1_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">A short walk-through of the first visit — from arrival to follow-up — so you know exactly what to expect.</p>
+    </a>
+    <a href="/blog/five-questions" class="blog-card reveal reveal-delay-1" style="display:block;padding:1.75rem;background:var(--chalk-soft,#F7FAFC);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;transition:transform .2s,border-color .2s;">
+      <h3 class="blog-card-title" data-field="blog_post_2_title" style="font-family:var(--fh,Georgia,serif);font-size:1.25rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">Five questions worth asking your provider</h3>
+      <p class="blog-card-excerpt" data-field="blog_post_2_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">The questions that should be standard — but rarely are. Use this as a checklist before any consultation.</p>
+    </a>
+    <a href="/blog/unhurried" class="blog-card reveal reveal-delay-2" style="display:block;padding:1.75rem;background:var(--chalk-soft,#F7FAFC);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;transition:transform .2s,border-color .2s;">
+      <h3 class="blog-card-title" data-field="blog_post_3_title" style="font-family:var(--fh,Georgia,serif);font-size:1.25rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">The case for unhurried appointments</h3>
+      <p class="blog-card-excerpt" data-field="blog_post_3_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">Why a thirty-minute consultation isn't a luxury — it's the bare minimum for thoughtful care.</p>
+    </a>
+  </div>
+  <div style="margin-top:2rem;text-align:center;">
+    <a href="/blog" class="blog-cta" data-field="blog_cta" style="display:inline-block;padding:0.9rem 1.6rem;border:1px solid var(--medical,#0F172A);color:var(--medical,#0F172A);font-size:0.92rem;font-weight:600;border-radius:10px;transition:background .2s,color .2s;">Read More →</a>
+  </div>
+</section>
+
+<!-- ═══ CONTACT (Phase 9E retrofit — canonical form) ═══ -->
+<section class="section contact-canonical" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+  <div class="container" style="max-width:720px;margin:0 auto;">
+    <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
+    <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
+    <form class="contact-form-canonical" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+        <input type="text"  name="firstname" placeholder="Your Name"     required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="tel"   name="phone"     placeholder="Phone Number"           class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="subject"   placeholder="Subject"                class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+      </div>
+      <textarea name="message" placeholder="Your message..." rows="5" required class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
+      <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
+      <div id="contact-canonical-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
+      <div id="contact-canonical-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>
+    </form>
+  </div>
+</section>
+
+<script>
+async function handleContactSubmit(e) {
+  e.preventDefault();
+  var form = e.target;
+  var subdomain = (window.location.hostname || '').split('.')[0];
+  var data = {
+    firstname: form.firstname.value,
+    email:     form.email.value,
+    phone:     (form.phone && form.phone.value) || '',
+    message:   form.message.value
+  };
+  if (form.subject && form.subject.value) {
+    data.message = '[' + form.subject.value + ']\n' + data.message;
+  }
+  try {
+    var r = await fetch('/api/public/contact/' + subdomain, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    });
+    if (r.ok) {
+      var s = document.getElementById('contact-canonical-success'); if (s) s.style.display = 'block';
+      var er = document.getElementById('contact-canonical-error');  if (er) er.style.display = 'none';
+      form.reset();
+    } else {
+      var er2 = document.getElementById('contact-canonical-error'); if (er2) er2.style.display = 'block';
+    }
+  } catch(err) {
+    var er3 = document.getElementById('contact-canonical-error'); if (er3) er3.style.display = 'block';
+  }
+}
+</script>
+<footer data-block="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo" data-field="business_name">Maison Rouge</div>
+      <div class="footer-tagline" data-field="footer_tagline">Restaurant — Modern French Bistro · Dubai.</div>
+    </div>
+    <div class="footer-col">
+      <h4>The Restaurant</h4>
+      <ul class="footer-links">
+        <li><a href="#services">Specialties</a></li>
+        <li><a href="#doctors">Doctors</a></li>
+        <li><a href="#process">How It Works</a></li>
+        <li><a href="#certifications">Accreditations</a></li>
+          <li><a href="/blog">Blog</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Visit Us</h4>
+      <ul class="footer-links">
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="#booking">Book Consultation</a></li>
+      </ul>
+      <div class="footer-social">
+        <a href="#" data-field="social_facebook" target="_blank" rel="noopener">Facebook</a>
+        <a href="#" data-field="social_instagram" target="_blank" rel="noopener">Instagram</a>
+        <a href="#" data-field="social_linkedin" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="#" data-field="social_twitter" target="_blank" rel="noopener">X / Twitter</a>
+        <a href="#" data-field="social_youtube" target="_blank" rel="noopener">YouTube</a>
+        <a href="#" data-field="social_tiktok" target="_blank" rel="noopener">TikTok</a>
+        <a href="#" data-field="social_whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-copy" data-field="footer_text">© 2026 Maison Rouge. All rights reserved.</div>
+</footer>
+
+<script>
+var nav = document.getElementById('main-nav');
+window.addEventListener('scroll', function(){ nav.classList.toggle('scrolled', window.scrollY > 40); }, { passive: true });
+
+function toggleMob(){
+  var s = document.getElementById('burger').querySelectorAll('span');
+  s[0].style.transform = s[0].style.transform ? '' : 'rotate(45deg) translate(5px,5px)';
+  s[1].style.opacity = s[1].style.opacity === '0' ? '1' : '0';
+  s[2].style.transform = s[2].style.transform ? '' : 'rotate(-45deg) translate(5px,-5px)';
+}
+
+var revEls = document.querySelectorAll('.reveal');
+var revObs = new IntersectionObserver(function(entries){
+  entries.forEach(function(e){ if (e.isIntersecting) { e.target.classList.add('visible'); revObs.unobserve(e.target); } });
+}, { threshold: 0.1 });
+revEls.forEach(function(el){ revObs.observe(el); });
+
+var slides = document.querySelectorAll('.testimonial-slide');
+var dots = document.querySelectorAll('.testimonial-dot');
+var currentSlide = 0;
+function goToSlide(n){
+  if (!slides.length) return;
+  slides[currentSlide].classList.remove('active');
+  dots[currentSlide].classList.remove('active');
+  currentSlide = n;
+  slides[currentSlide].classList.add('active');
+  dots[currentSlide].classList.add('active');
+}
+setInterval(function(){ goToSlide((currentSlide + 1) % slides.length); }, 6500);
+
+function handleSubmit(e){
+  e.preventDefault();
+  var f = e.target;
+  var btn = f.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending\u2026'; }
+  var host = window.location.hostname.toLowerCase();
+  var sub;
+  if (host.endsWith('.levelupgrowth.io')) { sub = host.split('.levelupgrowth.io')[0]; }
+  else if (window.LU_SITE_SUBDOMAIN) { sub = window.LU_SITE_SUBDOMAIN; }
+  else {
+    // Custom-domain fallback: ask the API to resolve by Host header.
+    sub = 'by-host';
+  }
+  var fd = new FormData(f);
+  var firstname = (fd.get('firstname') || fd.get('first_name') || fd.get('name') || '').toString().trim();
+  var lastname  = (fd.get('lastname')  || fd.get('last_name')  || '').toString().trim();
+  var email     = (fd.get('email')     || '').toString().trim();
+  var phone     = (fd.get('phone')     || '').toString().trim();
+  var subject   = (fd.get('service')   || fd.get('subject')   || fd.get('specialty') || '').toString().trim();
+  var body      = (fd.get('message')   || '').toString().trim();
+  var message   = (subject ? '['+subject+'] ' : '') + body;
+  var url = 'https://staging.levelupgrowth.io/api/public/contact/' + encodeURIComponent(sub);
+  fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify({firstname: firstname + (lastname ? ' '+lastname : ''), email: email, phone: phone, message: message || 'Contact form submission'})
+  }).then(function(r){ return r.json().catch(function(){return {success:false};}); })
+    .then(function(res){
+      if (res && res.success !== false) {
+        f.style.display = 'none';
+        var ok = document.getElementById('form-success'); if (ok) ok.style.display = 'block';
+      } else {
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry \u2192'; }
+        alert('Submission failed: ' + ((res && res.message) || 'please try again.'));
+      }
+    })
+    .catch(function(){
+      if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry \u2192'; }
+      alert('Network error \u2014 please try again.');
+    });
+}
+
+function handleBookingSubmit(e){
+  e.preventDefault();
+  var f = e.target, fd = new FormData(f), d = {};
+  fd.forEach(function(v,k){ d[k] = v; });
+  fetch('/book', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(d) })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res && res.ok) { f.style.display = 'none'; document.getElementById('booking-success').style.display = 'block'; }
+      else { alert('Submission failed: ' + ((res && res.error) || 'please try again.')); }
+    })
+    .catch(function(){ alert('Network error — please try again.'); });
+}
+</script>
+
+<!-- LevelUp Ads -->
+<style>.lu-ad-slot{position:fixed;left:0;right:0;bottom:0;z-index:99990;display:flex;align-items:center;justify-content:center;gap:8px;
+min-height:50px;padding:4px 84px 4px 8px;box-sizing:border-box;
+background:#fff;border-top:1px solid rgba(0,0,0,.12);box-shadow:0 -1px 6px rgba(0,0,0,.08);
+font:400 12px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333}
+.lu-ad-slot[hidden]{display:none}
+/* A position:fixed bar permanently covers the last 50/90px of the page, so a
+   visitor scrolled to the bottom loses the end of the tenant's footer.
+   Measured: 50px occluded at 390px, 99px at 1280px. The tag adds
+   .lu-ad-filled to <html> ONLY when a creative actually renders, so a site with
+   no fill gets no dead space. Bottom padding extends the scrollable area
+   without moving anything already on screen — no layout shift. Injected last in
+   the document, so it wins source order against a template's own body rule at
+   equal specificity. */
+html.lu-ad-filled body{padding-bottom:50px}
+.lu-ad-label{flex:0 0 auto;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a8a;
+background:rgba(0,0,0,.04);border-radius:2px;padding:2px 5px}
+.lu-ad-body{flex:1 1 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;max-height:60px}
+.lu-ad-body a{display:inline-flex;align-items:center;gap:6px;color:inherit;text-decoration:none}
+.lu-ad-body img{display:block;max-width:100%;max-height:60px;height:auto}
+@media(min-width:768px){.lu-ad-slot{min-height:90px}.lu-ad-body,.lu-ad-body img{max-height:90px}
+html.lu-ad-filled body{padding-bottom:90px}}
+@media(prefers-color-scheme:dark){.lu-ad-slot{background:#15171c;color:#e8e8e8;border-top-color:rgba(255,255,255,.12)}
+.lu-ad-label{color:#9aa0a6;background:rgba(255,255,255,.06)}}
+/* ── Session interstitial ──────────────────────────────────────────────────
+   A modal is blocking by definition, so it sits ABOVE the chatbot bubble
+   (99999) rather than beside it. Square is width-constrained, portrait is
+   height-constrained — sizing both identically would push a 3:4 creative off
+   a short viewport. aspect-ratio reserves the box before the asset loads, so
+   the modal does not resize as the image arrives. */
+.lu-ad-modal-backdrop{position:fixed;inset:0;z-index:2147482000;
+display:flex;align-items:center;justify-content:center;padding:20px;
+background:radial-gradient(130% 120% at 50% 38%,rgba(9,10,14,.58) 0%,rgba(6,7,10,.88) 100%);
+-webkit-backdrop-filter:blur(7px) saturate(.86);backdrop-filter:blur(7px) saturate(.86);
+opacity:0;visibility:hidden;pointer-events:none;
+transition:opacity .24s cubic-bezier(.2,.8,.25,1),visibility 0s linear .24s}
+.lu-ad-modal-backdrop.on{opacity:1;visibility:visible;pointer-events:auto;transition-delay:0s}
+.lu-ad-modal{position:relative;max-width:100%;max-height:100%;border-radius:14px;overflow:hidden;
+background:#0d0e11;transform:scale(.965) translateY(6px);opacity:0;
+box-shadow:0 0 0 1px rgba(255,255,255,.07),0 2px 4px rgba(0,0,0,.24),0 28px 70px -14px rgba(0,0,0,.62);
+transition:transform .3s cubic-bezier(.2,.8,.25,1),opacity .22s ease}
+.lu-ad-modal-backdrop.on .lu-ad-modal{transform:none;opacity:1}
+.lu-ad-modal-media{display:block;width:auto;height:auto}
+.lu-ad-modal-media[data-ar="1:1"]{aspect-ratio:1/1;max-width:min(86vw,540px);max-height:80vh}
+.lu-ad-modal-media[data-ar="3:4"]{aspect-ratio:3/4;max-width:min(86vw,620px);max-height:82vh}
+.lu-ad-modal-media[data-ar="4:5"]{aspect-ratio:4/5;max-width:min(86vw,600px);max-height:82vh}
+.lu-ad-modal-media a{display:block;width:100%;height:100%;outline-offset:-2px}
+.lu-ad-modal-media img,.lu-ad-modal-media video{display:block;width:100%;height:100%;object-fit:cover;background:#0d0e11}
+/* Disclosure: legible on any creative without a heavy slab — a translucent,
+   blurred surface reads on both a white product shot and a dark video frame. */
+.lu-ad-modal-label{position:absolute;top:12px;left:12px;z-index:3;
+font:600 9.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.94);
+background:rgba(16,17,21,.42);border:1px solid rgba(255,255,255,.13);border-radius:5px;
+padding:5px 8px;-webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3);
+text-shadow:0 1px 2px rgba(0,0,0,.34)}
+/* Close control: the remaining seconds, then an X. Nothing else — no ring, no
+   disc, no chrome. 44px hit area is kept for accessibility while the mark
+   itself stays light; a drop shadow is what makes it legible over any creative
+   rather than a background shape. The two states are stacked in one grid cell
+   and cross-faded, so the control never shifts position as it swaps. */
+.lu-ad-modal-close{position:absolute;top:8px;right:8px;z-index:3;
+width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;
+background:transparent;cursor:default;-webkit-tap-highlight-color:transparent;
+appearance:none;-webkit-appearance:none}
+.lu-ad-modal-backdrop:focus{outline:none}
+.lu-ad-modal-close:focus{outline:none}
+.lu-ad-modal-close:focus-visible{outline:2px solid rgba(255,255,255,.92);outline-offset:-6px;border-radius:4px}
+.lu-ad-modal-close[data-ready="1"]{cursor:pointer}
+.lu-ad-modal-close .lu-count{grid-area:1/1;
+font:600 16px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+font-variant-numeric:tabular-nums;color:rgba(255,255,255,.97);
+text-shadow:0 1px 4px rgba(0,0,0,.6),0 0 1px rgba(0,0,0,.5);
+transition:opacity .18s ease}
+.lu-ad-modal-close .lu-x{grid-area:1/1;width:19px;height:19px;display:block;opacity:0;
+stroke:rgba(255,255,255,.97);stroke-width:1.9;stroke-linecap:round;fill:none;
+filter:drop-shadow(0 1px 4px rgba(0,0,0,.6));transition:opacity .18s ease}
+.lu-ad-modal-close[data-ready="1"] .lu-count{opacity:0}
+.lu-ad-modal-close[data-ready="1"] .lu-x{opacity:1}
+.lu-ad-modal-close[data-ready="1"]:hover .lu-x{stroke:#fff;transform:scale(1.08)}
+@media(prefers-reduced-motion:reduce){
+.lu-ad-modal-backdrop,.lu-ad-modal{transition:none}
+.lu-ad-modal{transform:none}
+.lu-ad-modal-close .lu-count,.lu-ad-modal-close .lu-x{transition:none}}</style>
+<div id="lu-ad-slot" class="lu-ad-slot" data-lu-slot="footer_sticky" data-lu-site="0" >
+  <span class="lu-ad-label">Sponsored</span>
+  <div class="lu-ad-body"><a href="#" onclick="return false"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3MjgiIGhlaWdodD0iOTAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzZDNUNFNyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwRTVBOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI3MjgiIGhlaWdodD0iOTAiIHJ4PSI0IiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iMjQiIHk9IjQyIiBmb250LWZhbWlseT0iU2Vnb2UgVUksSGVsdmV0aWNhLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiPllvdXIgYWR2ZXJ0aXNlbWVudCBoZXJlPC90ZXh0Pjx0ZXh0IHg9IjI0IiB5PSI2NiIgZm9udC1mYW1pbHk9IlNlZ29lIFVJLEhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LC44NSkiPlBsYWNlaG9sZGVyIGNyZWF0aXZlICYjMTgzOyA3MjgmIzIxNTs5MCBsZWFkZXJib2FyZDwvdGV4dD48L3N2Zz4=" alt="Placeholder advertisement" width="728" height="90"></a></div>
+</div>
+
+
+<script>(function(){function r(){var e=document.getElementById('lu-ad-slot');if(!e||e.hidden)return;var h=e.offsetHeight;if(h>0)document.body.style.paddingBottom=h+'px';}document.documentElement.classList.add('lu-ad-filled');if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',r);}else{r();}var t=null;window.addEventListener('resize',function(){clearTimeout(t);t=setTimeout(r,150);});window.addEventListener('load',r);})();</script>
+</body>
+</html>
+
+<div class="lu-ad-modal-backdrop" id="lu-modal-backdrop" role="dialog" aria-modal="true" tabindex="-1" aria-label="Sponsored message">
+  <div class="lu-ad-modal">
+    <span class="lu-ad-modal-label">Sponsored</span>
+    <button class="lu-ad-modal-close" id="lu-modal-close" type="button" aria-disabled="true">
+      <span class="lu-count" id="lu-count" aria-hidden="true">6</span>
+      <svg class="lu-x" viewBox="0 0 19 19" aria-hidden="true" focusable="false">
+        <path d="M4 4 L15 15 M15 4 L4 15"></path>
+      </svg>
+    </button>
+    <div class="lu-ad-modal-media" id="lu-modal-media" data-ar="1:1">
+      <a href="#" onclick="return false"><img id="lu-modal-img" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjEwODAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0ibSIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzZDNUNFNyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwRTVBOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjEwODAiIGZpbGw9InVybCgjbSkiLz48dGV4dCB4PSI1MCUiIHk9IjQ2JSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IlNlZ29lIFVJLEhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjY0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5Zb3VyIGFkdmVydGlzZW1lbnQ8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI1NCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzOCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwuOSkiPjE6MSAmIzE4MzsgMTA4MCYjMjE1OzEwODA8L3RleHQ+PC9zdmc+" alt="Placeholder advertisement"></a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SQ = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjEwODAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0ibSIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzZDNUNFNyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwRTVBOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjEwODAiIGZpbGw9InVybCgjbSkiLz48dGV4dCB4PSI1MCUiIHk9IjQ2JSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IlNlZ29lIFVJLEhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjY0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5Zb3VyIGFkdmVydGlzZW1lbnQ8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI1NCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzOCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwuOSkiPjE6MSAmIzE4MzsgMTA4MCYjMjE1OzEwODA8L3RleHQ+PC9zdmc+", PT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjE0NDAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0ibSIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzZDNUNFNyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwRTVBOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjE0NDAiIGZpbGw9InVybCgjbSkiLz48dGV4dCB4PSI1MCUiIHk9IjQ2JSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IlNlZ29lIFVJLEhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjY0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5Zb3VyIGFkdmVydGlzZW1lbnQ8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI1NCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzOCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwuOSkiPjM6NCAmIzE4MzsgMTA4MCYjMjE1OzE0NDA8L3RleHQ+PC9zdmc+";
+  var DELAY = 6000;
+
+  var bd = document.getElementById('lu-modal-backdrop');
+  var media = document.getElementById('lu-modal-media');
+  var img = document.getElementById('lu-modal-img');
+  var btn = document.getElementById('lu-modal-close');
+  var count = document.getElementById('lu-count');
+  var lastFocus = null, unlocked = false, timer = null;
+
+  function unlock(){
+    unlocked = true;
+    btn.setAttribute('data-ready', '1');
+    btn.removeAttribute('aria-disabled');
+    btn.setAttribute('aria-label', 'Close advertisement');
+    count.textContent = '';
+  }
+
+  function startCountdown(){
+    unlocked = false;
+    btn.removeAttribute('data-ready');
+    btn.setAttribute('aria-disabled', 'true');
+    if (timer) clearTimeout(timer);
+    if (DELAY <= 0) { unlock(); return; }
+    var secs = Math.ceil(DELAY / 1000);
+    count.textContent = String(secs);
+    btn.setAttribute('aria-label', 'Advertisement — closes in ' + secs + ' seconds');
+    var startedAt = Date.now();
+    (function tick(){
+      var left = Math.max(0, Math.ceil((DELAY - (Date.now() - startedAt)) / 1000));
+      if (left <= 0) { unlock(); return; }
+      if (count.textContent !== String(left)) {
+        count.textContent = String(left);
+        btn.setAttribute('aria-label', 'Advertisement — closes in ' + left + ' seconds');
+      }
+      timer = setTimeout(tick, 200);
+    })();
+  }
+
+  window.luModal = function(ratio){
+    lastFocus = document.activeElement;
+    var portrait = ratio === '3x4';
+    media.setAttribute('data-ar', portrait ? '3:4' : '1:1');
+    img.src = portrait ? PT : SQ;
+    bd.classList.add('on');
+    document.body.style.overflow = 'hidden';
+    startCountdown();
+    bd.focus();   /* the dialog, not the button — see the tag's buildModal() */
+  };
+
+  /* Every dismissal path is gated on the same countdown — gating only the
+     button would leave ESC and the backdrop as ways around it. */
+  function close(){
+    if (!unlocked) return;
+    if (timer) clearTimeout(timer);
+    bd.classList.remove('on');
+    document.body.style.overflow = '';
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  btn.addEventListener('click', close);
+  bd.addEventListener('click', function(e){ if (e.target === bd) close(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && bd.classList.contains('on')) close();
+  });
+
+  /* Open it automatically, because that is what an interstitial DOES — waiting
+     for someone to find a button is not a preview of the format. The delay
+     stands in for the real dwell threshold. Ratio comes from ?ratio=3x4 so a
+     link can point straight at either variant.
+     In production the trigger is far stricter: second pageview or later, past
+     the dwell, and never when the visitor arrived from a search engine. */
+  var initial = (location.search.match(/ratio=(1x1|3x4)/) || [])[1] || '1x1';
+  setTimeout(function(){ window.luModal(initial); }, 1200);
+})();
+</script>

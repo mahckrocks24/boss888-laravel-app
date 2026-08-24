@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/attachment.schema.json",
+  "title": "Chat Attachment v1",
+  "description": "Clause AT-01..AT-04.",
+  "type": "object",
+  "required": ["id", "type", "name"],
+  "properties": {
+    "id":         { "type": "string", "minLength": 1 },
+    "type":       { "type": "string", "minLength": 1, "description": "MIME type" },
+    "name":       { "type": "string", "minLength": 1, "description": "AT-04 MUST be escaped before any HTML interpolation" },
+    "size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+    "url":        { "type": ["string", "null"], "description": "AT-02 MUST be authorization-checked; MUST NOT grant cross-workspace access" },
+    "status":     { "type": "string", "enum": ["pending", "stored", "rejected"], "default": "stored" },
+    "metadata":   { "type": ["object", "null"] }
+  },
+  "additionalProperties": false
+}

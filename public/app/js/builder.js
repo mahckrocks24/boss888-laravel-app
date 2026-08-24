@@ -7,6 +7,15 @@ function _bldSafeText(v){
 }
 function bld_esc(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function bld_escH(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// BUILDER888 P1 (2026-08-09) — was called by wsOpenSite() but never defined,
+// so opening any website's page list threw ReferenceError and every site
+// showed "Failed to load pages.". Mirrors core.js::ensureArray, but kept
+// self-contained so it cannot depend on script load order.
+function bld_ensureArray(val) {
+  if (Array.isArray(val)) return val;
+  if (val && typeof val === 'object') return Object.values(val);
+  return [];
+}
 function bld_safeUrl(base, id) {
   if (id === undefined || id === null || id === "" || id === "undefined") {
     console.warn("[bld] blocked fetch with undefined id:", base);
@@ -482,6 +491,23 @@ function bld_aiAddMsg(role, content, opts={}) {
   const wrap = document.createElement('div');
   wrap.className = `ai-msg ai-msg-${role}`;
 
+  // CR-01 (2026-07-26) — errors render as a structured notice, never as an
+  // assistant bubble (CHAT-CONTRACT-v1 clause X-08/G-06).
+  if (role === 'error') {
+    wrap.innerHTML = '<div class="ai-msg-error" role="alert" style="display:flex;gap:8px;align-items:flex-start;'
+      + 'padding:10px 12px;border-radius:10px;background:rgba(239,68,68,.08);'
+      + 'border:1px solid rgba(239,68,68,.25);color:var(--t1);font-size:13px;line-height:1.5">'
+      + '<span class="ai-msg-error-ic" style="flex-shrink:0;display:inline-flex;color:#EF4444"></span>'
+      + '<span class="ai-msg-error-text"></span></div>';
+    var _eIc = wrap.querySelector('.ai-msg-error-ic');
+    var _eTx = wrap.querySelector('.ai-msg-error-text');
+    if (_eIc) _eIc.innerHTML = window.icon('warning', 14);
+    if (_eTx) _eTx.textContent = content;
+    feed.appendChild(wrap);
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
   if (role === 'assistant' || role === 'agent') {
     const name = opts.agentName ? `${opts.agentEmoji||'✦'} ${opts.agentName}` : '✦ Assistant';
     const color = opts.agentColor ? `style="color:${opts.agentColor}"` : '';
@@ -575,7 +601,10 @@ async function bld_sendAssistant() {
     }
   } catch(e) {
     bld_aiHideTyping();
-    bld_aiAddMsg('assistant', ''+window.icon("warning",14)+' ' + (e.message||'Something went wrong. Please try again.'));
+    // CR-01 (2026-07-26): a failure is not something the agent said. It renders
+    // as a structured error now — icon as an element, message as text — so a
+    // literal "<svg>" arriving in an error string stays inert.
+    bld_aiAddMsg('error', (e.message||'Something went wrong. Please try again.'));
   } finally {
     bld_aiBusy = false;
     document.getElementById('ai-send').disabled = false;
@@ -1131,25 +1160,91 @@ function _t3LogoFileChosen(ev) {
   });
 }
 
-function _t3FlushSaves() {
-  var token = localStorage.getItem('lu_token') || '';
-  Object.keys(_t3PendingFields).forEach(function(field) {
-    var p = _t3PendingFields[field];
-    fetch('/api/builder/websites/' + p.websiteId + '/fields/' + field, {
-      method: 'PUT',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value: p.value })
+// BUILDER888 P1-6-c — truthful save contract.
+//
+// The previous implementation fired requests without awaiting them, cleared
+// the dirty map BEFORE any response arrived, and showed "saved" regardless of
+// outcome. A failed save silently discarded the customer's edit while the UI
+// claimed success. Now: await every request, keep failed fields dirty so they
+// can be retried, and report only what actually happened.
+//
+// Returns { ok, saved, failed, attempted } — never throws.
+var _t3SaveInFlight = null;
+
+async function _t3FlushSaves() {
+  // Coalesce concurrent presses/autosaves onto one in-flight run.
+  if (_t3SaveInFlight) { return _t3SaveInFlight; }
+
+  var fields = Object.keys(_t3PendingFields);
+  if (!fields.length) {
+    return { ok: true, saved: 0, failed: 0, attempted: 0, nothingToSave: true };
+  }
+
+  _t3SaveInFlight = (async function () {
+    var token = localStorage.getItem('lu_token') || '';
+    var saved = 0, failed = 0;
+    var stillDirty = {};
+
+    var results = await Promise.all(fields.map(async function (field) {
+      var p = _t3PendingFields[field];
+      try {
+        var res = await fetch('/api/builder/websites/' + p.websiteId + '/fields/' + field, {
+          method: 'PUT',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: p.value })
+        });
+        if (!res.ok) { return { field: field, ok: false, status: res.status }; }
+        return { field: field, ok: true, status: res.status };
+      } catch (e) {
+        return { field: field, ok: false, status: 'network' };
+      }
+    }));
+
+    results.forEach(function (r) {
+      if (r.ok) { saved++; }
+      else {
+        failed++;
+        // A field that did not persist stays dirty so it can be retried.
+        stillDirty[r.field] = _t3PendingFields[r.field];
+        try { console.warn('[Builder888] field save failed', r.field, r.status); } catch (e) {}
+      }
     });
-  });
-  _t3PendingFields = {};
-  // Show saved indicator
-  var ind = document.getElementById('t3-saved');
-  if (ind) { ind.style.display = 'block'; setTimeout(function() { ind.style.display = 'none'; }, 2000); }
+
+    _t3PendingFields = stillDirty;
+
+    var ind = document.getElementById('t3-saved');
+    if (ind && failed === 0) {
+      ind.style.display = 'block';
+      setTimeout(function () { ind.style.display = 'none'; }, 2000);
+    }
+
+    return { ok: failed === 0, saved: saved, failed: failed, attempted: results.length };
+  })();
+
+  try { return await _t3SaveInFlight; }
+  finally { _t3SaveInFlight = null; }
 }
 
-function wsSaveAllEdits(websiteId) {
-  _t3FlushSaves();
-  if (typeof showToast === 'function') showToast('Changes saved', 'success');
+async function wsSaveAllEdits(websiteId) {
+  var btn = (typeof event !== 'undefined' && event && event.target) ? event.target : null;
+  var label = btn ? btn.textContent : null;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  var r = { ok: false, saved: 0, failed: 0, attempted: 0 };
+  try {
+    r = await _t3FlushSaves();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label || 'Save'; }
+  }
+
+  if (typeof showToast !== 'function') { return r; }
+
+  if (r.nothingToSave)      { showToast('No changes to save', 'info'); }
+  else if (r.ok)            { showToast(r.saved === 1 ? '1 change saved' : r.saved + ' changes saved', 'success'); }
+  else if (r.saved > 0)     { showToast(r.saved + ' saved, ' + r.failed + " couldn't be saved — still unsaved, please try again", 'error'); }
+  else                      { showToast("We couldn't save your changes. They're still here — please try again.", 'error'); }
+
+  return r;
 }
 
 async function _t3ArthurSend(websiteId) {

@@ -368,7 +368,36 @@ async function cancelInvite(id) {
   } catch(e) { showToast('Error.', 'error'); }
 }
 
+// ── PLATFORM888 Phase 6: governed background-service lifecycle (luBg) ──
+// Non-critical pollers/badges REGISTER here and START only after the primary
+// route is interactive (auth + workspace resolved), instead of firing during
+// the blocking boot. Singleton per service; stopped on logout/session-loss.
+// This is a start/stop registry, not a scheduler — no arbitrary setTimeouts.
+window.luBg = window.luBg || (function(){
+  var svcs = {}, interactive = false;
+  var api = {
+    register: function(name, def){ if(svcs[name]) return; svcs[name]={start:def.start, stop:def.stop||function(){}, started:false, auto:def.auto!==false}; if(interactive && svcs[name].auto) api.start(name); },
+    start: function(name){ var x=svcs[name]; if(!x||x.started) return; x.started=true; try{ x.start(); }catch(e){ x.started=false; console.warn('[luBg] start '+name, e); } },
+    stop: function(name){ var x=svcs[name]; if(!x||!x.started) return; x.started=false; try{ x.stop(); }catch(e){} },
+    stopAll: function(){ Object.keys(svcs).forEach(function(n){ api.stop(n); }); },
+    restartAll: function(){ Object.keys(svcs).forEach(function(n){ if(svcs[n].auto){ api.stop(n); api.start(n); } }); },
+    markInteractive: function(){ if(interactive) return; interactive=true; Object.keys(svcs).forEach(function(n){ if(svcs[n].auto) api.start(n); }); },
+    isInteractive: function(){ return interactive; },
+    _svcs: svcs
+  };
+  return api;
+})();
+
 function luLogout() {
+  if (window.luBg) window.luBg.stopAll();
+  try {
+    if (typeof _cmdcStopPolling === 'function') _cmdcStopPolling();
+    if (typeof _acStopEventPoll === 'function') _acStopEventPoll();
+    if (typeof _aqStopPolling === 'function') _aqStopPolling();
+    if (typeof _previewAutoRefreshStop === 'function') _previewAutoRefreshStop();
+    if (window._poller) { clearInterval(window._poller); window._poller = null; }
+    if (window._luCreditPollTimer) { clearInterval(window._luCreditPollTimer); window._luCreditPollTimer = null; }
+  } catch (_e) {}
   localStorage.removeItem('lu_token');
   localStorage.removeItem('lu_refresh_token');
   localStorage.removeItem('lu_user_id');
@@ -2356,9 +2385,12 @@ function _acHandleEvents(events, drawerSlug, primed){
       if(_acIsRendered(drawerSlug,rowId) || _acIsRendered(drawerSlug,ev.id)) continue;
       _acMark(drawerSlug,rowId); _acMark(drawerSlug,ev.id);
       // a live reply means any in-flight two-phase "working…"/typing UI is done
-      var w=document.getElementById('agent-still-working'); if(w) w.remove();
+      /* 1A.2: indicators are per-turn now — sweep by prefix, not by fixed id */
+try{ document.querySelectorAll('[id^="agent-still-working"]').forEach(function(_w){ _w.remove(); }); }catch(_e){}
       var ti=document.getElementById('agent-typing-indicator'); if(ti) ti.remove();
       _acRenderAgentBubble(drawerSlug, ev.content, ev.timestamp?Date.parse(ev.timestamp):Date.now(), !!(ev.data&&ev.data.error));
+      // D4 — rendered live in an open drawer, therefore read.
+      try { if(typeof window._msgMarkRead==='function') window._msgMarkRead(_acNorm(drawerSlug)==='dmm'?'sarah':drawerSlug); } catch(e){}
     } else {
       // Task lifecycle. Only render cards for activity that happened AFTER the
       // drawer opened (primed) — the first poll's backlog (cursor=null returns
@@ -2452,6 +2484,13 @@ function openAgentDrawer(id){
   // with the mobile companion app). Renders async agent replies + task cards
   // inline while the drawer is open. Stopped by closeAgentDrawer.
   try { _acStartEventPoll(id); } catch (e) { console.warn('[AgentChat] live poll start failed', e); }
+  // 2026-07-26 (chat forensic D3) — the drawer never marked anything read,
+  // so the floater badge survived every conversation held here. Reading a
+  // thread must clear it, exactly as the messages widget does.
+  try {
+    var _rdSlug = (id === 'dmm') ? 'sarah' : id;
+    if (typeof window._msgMarkRead === 'function') window._msgMarkRead(_rdSlug);
+  } catch (e) {}
 }
 function closeAgentDrawer(){
   document.getElementById('drawer-bg').classList.remove('visible');
@@ -2830,20 +2869,40 @@ async function sendAgentMessage(quickAction, overrideMessage){
       var ti0 = document.getElementById('agent-typing-indicator');
       if (ti0) ti0.remove();
 
+      // ── SARAH888 PHASE 1A SLICE 1A.2 — BIND THE REPLY TO ITS QUESTION ──
+      // The server now stamps every row with the originating user_message_id
+      // and an execution_id (slice 1A.1). This turn records its own anchor and
+      // renders into a dedicated container, so a reply that completes late
+      // lands next to the question that produced it instead of at the bottom
+      // of the feed under whatever was asked most recently. That bottom-append
+      // behaviour, combined with the "newest row after ack_id" match below, is
+      // what produced the systematic one-turn lag in the F1 stress test.
+      var myUserMessageId = d.user_message_id || null;
+      var myExecutionId   = d.execution_id || null;
+      var turnAnchor = document.createElement('div');
+      turnAnchor.className = 'agent-turn-anchor';
+      turnAnchor.style.cssText = 'display:flex;flex-direction:column;gap:6px;align-self:stretch';
+      if (myUserMessageId) turnAnchor.setAttribute('data-user-message-id', String(myUserMessageId));
+      if (myExecutionId)   turnAnchor.setAttribute('data-execution-id', myExecutionId);
+      feed.appendChild(turnAnchor);
+
       // Render the ack as Sarah's first bubble
       var ackDiv = document.createElement('div');
       ackDiv.className = 'msg-from-agent msg-from-agent-ack';
       ackDiv.style.alignSelf = 'flex-start';
       ackDiv.style.opacity = '0.92';
       ackDiv.innerHTML = '<div style="font-size:9px;font-weight:700;color:'+(ag.color||'var(--t2)')+';margin-bottom:3px">'+(d.agent_name||ag.name||currentAgent)+'</div>'+fmt(d.ack)+'<div class="msg-ts">'+new Date().toLocaleTimeString()+'</div>';
-      feed.appendChild(ackDiv);
+      turnAnchor.appendChild(ackDiv);
 
       // Add a small "still working" footer with continuous pulse
       var workDiv = document.createElement('div');
-      workDiv.id = 'agent-still-working';
+      // Per-turn id. This was a fixed 'agent-still-working', so with two turns
+      // in flight the second turn's poll removed the FIRST turn's indicator and
+      // left the first turn looking finished while it was still running.
+      workDiv.id = 'agent-still-working-' + (myUserMessageId || ('t' + Date.now()));
       workDiv.style.cssText = 'align-self:flex-start;display:flex;gap:6px;align-items:center;padding:6px 12px;font-size:11px;color:var(--t3);opacity:.8';
       workDiv.innerHTML = '<div style="display:flex;gap:3px"><div style="width:5px;height:5px;border-radius:50%;background:'+(ag.color||'var(--t2)')+';animation:typePulse .9s ease-in-out infinite"></div><div style="width:5px;height:5px;border-radius:50%;background:'+(ag.color||'var(--t2)')+';animation:typePulse .9s ease-in-out .2s infinite"></div><div style="width:5px;height:5px;border-radius:50%;background:'+(ag.color||'var(--t2)')+';animation:typePulse .9s ease-in-out .4s infinite"></div></div><span>working…</span>';
-      feed.appendChild(workDiv);
+      turnAnchor.appendChild(workDiv);
       feed.scrollTop = feed.scrollHeight;
 
       // Start polling for the final reply
@@ -2868,31 +2927,60 @@ async function sendAgentMessage(quickAction, overrideMessage){
         polls++;
         if (polls > maxPolls) {
           // Timeout fallback
-          var w = document.getElementById('agent-still-working');
+          var w = document.getElementById(workDiv.id);
           if (w) w.innerHTML = '<span style="color:var(--am)">Took longer than expected — refresh to see the latest reply if it arrived.</span>';
           delete window._agentChatActivePoll[pollKey];
           return;
         }
         try {
-          var msgs = await get(API+'agents/'+currentAgent+'/messages');
+          // Slice 1A.5 — poll forward only. This used to refetch the newest 100
+          // rows (bodies included) every 2.5s per in-flight turn; measured, that
+          // load was itself inflating chat latency. after_id returns only what
+          // has appeared since this turn's ack — normally nothing, then one row.
+          var msgs = await get(API+'agents/'+currentAgent+'/messages?after_id='+ackId);
           if (Array.isArray(msgs)) {
             for (var i = 0; i < msgs.length; i++) {
               var m = msgs[i];
-              if (m && m.id && m.id > ackId && (m.phase === 'final' || (!m.is_ack && (m.role === 'agent' || m.from !== 'user' && m.from !== 'User')))) {
+              if (!m || !m.id) continue;
+              var looksFinal = (m.phase === 'final' || (!m.is_ack && (m.role === 'agent' || m.from !== 'user' && m.from !== 'User')));
+              if (!looksFinal) continue;
+              // Slice 1A.2 — correlation is authoritative when present.
+              // A row carrying an envelope belongs to exactly one turn, so a
+              // reply can no longer be claimed by a turn that did not cause it.
+              var hasEnvelope = (m.execution_id != null) || (m.user_message_id != null);
+              var mine;
+              if (hasEnvelope) {
+                mine = (myExecutionId && m.execution_id === myExecutionId) ||
+                       (myUserMessageId && m.user_message_id === myUserMessageId);
+              } else {
+                // Legacy row written before 1A.1 shipped, or by a producer that
+                // does not stamp (e.g. the daily brief). Fall back to the old
+                // ordering heuristic ONLY here, and only if this turn itself has
+                // no anchor to bind with — otherwise an unstamped row could
+                // still be mis-claimed, which is the bug we are removing.
+                mine = !myExecutionId && !myUserMessageId && m.id > ackId;
+              }
+              if (mine) {
                 delete window._agentChatActivePoll[pollKey];
                 // 2026-06-15 — register the final row id so the event poller
                 // dedups it (whichever channel renders first wins).
                 try{ if(window._agentChatRendered && window._agentChatRendered[currentAgent]) window._agentChatRendered[currentAgent].add(String(m.id)); }catch(_e){}
-                var w = document.getElementById('agent-still-working');
+                var w = document.getElementById(workDiv.id);
                 if (w) w.remove();
                 var finalDiv = document.createElement('div');
                 finalDiv.className = 'msg-from-agent';
                 finalDiv.style.alignSelf = 'flex-start';
                 var finalColor = m.error ? 'var(--rd,#dc2626)' : (ag.color||'var(--t2)');
-                var finalHtml = '<div style="font-size:9px;font-weight:700;color:'+finalColor+';margin-bottom:3px">'+(ag.name||currentAgent)+(m.error?' · error':'')+'</div>'+fmt(m.content||'')+'<div class="msg-ts">'+new Date().toLocaleTimeString()+'</div>';
+                // If this reply arrives after the user has already asked
+                // something else, say so rather than letting it read as an
+                // answer to the newest question.
+                var isLate = (turnAnchor.parentNode && turnAnchor !== feed.lastElementChild);
+                var lateTag = isLate ? ' · reply to your earlier message' : '';
+                var finalHtml = '<div style="font-size:9px;font-weight:700;color:'+finalColor+';margin-bottom:3px">'+(ag.name||currentAgent)+(m.error?' · error':'')+lateTag+'</div>'+fmt(m.content||'')+'<div class="msg-ts">'+new Date().toLocaleTimeString()+'</div>';
                 finalDiv.innerHTML = finalHtml;
-                feed.appendChild(finalDiv);
-                feed.scrollTop = feed.scrollHeight;
+                // Render into THIS turn's anchor, not the end of the feed.
+                turnAnchor.appendChild(finalDiv);
+                if (!isLate) feed.scrollTop = feed.scrollHeight;
                 return;
               }
             }
@@ -2933,7 +3021,9 @@ async function sendAgentMessage(quickAction, overrideMessage){
   }catch(e){
     var ti2=document.getElementById('agent-typing-indicator');
     if(ti2) ti2.remove();
-    var ws2 = document.getElementById('agent-still-working');
+    /* 1A.2: per-turn ids — sweep by prefix instead of a single fixed id */
+    try{ document.querySelectorAll('[id^="agent-still-working"]').forEach(function(_w){ _w.remove(); }); }catch(_e){}
+    var ws2 = null;
     if(ws2) ws2.remove();
     console.error('[sendAgentMessage] POST failed', e);
     if (typeof showToast === 'function') showToast('Error: '+e.message,'error');
@@ -3071,13 +3161,18 @@ async function loadAgentStats(){
 // stays undefined, allTasks stays empty, drawCanvas paints 0 paths, cards
 // show 0/0/0. User has to click another tab + back to trigger the data
 // load. This bootstrap forces it on initial DOMContentLoaded.
+window.luDefer = window.luDefer || function (fn) {
+  var run = function () { try { fn(); } catch (e) { console.warn('[luDefer]', e); } };
+  if (typeof window.requestIdleCallback === 'function') { window.requestIdleCallback(run, { timeout: 3000 }); }
+  else { setTimeout(run, 1500); }
+};
 document.addEventListener('DOMContentLoaded', function () {
   function bootWorkspace() {
     console.log('[bootstrap] firing initial workspace data load + agent-node loader');
     try { document.dispatchEvent(new CustomEvent('lu:bootstrap-complete')); } catch (e) {}
     try { if (typeof window._loadWorkspaceAgents === 'function') window._loadWorkspaceAgents(); } catch (e) { console.error('[bootstrap] _loadWorkspaceAgents threw:', e); }
-    try { if (typeof loadAgentStats === 'function') loadAgentStats(); } catch (e) { console.error('[bootstrap] loadAgentStats threw:', e); }
-    try { if (typeof loadTasks === 'function') loadTasks(); } catch (e) { console.error('[bootstrap] loadTasks threw:', e); }
+    window.luDefer(function () { try { if (typeof loadAgentStats === 'function') loadAgentStats(); } catch (e) { console.error('[bootstrap] loadAgentStats threw:', e); } });
+    window.luDefer(function () { try { if (typeof loadTasks === 'function') loadTasks(); } catch (e) { console.error('[bootstrap] loadTasks threw:', e); } });
   }
   setTimeout(bootWorkspace, 400);
 
@@ -4137,7 +4232,7 @@ function prefill(text){var ta=document.getElementById('cmd-input');ta.value=text
 let execMode = 'approval'; // 'approval' or 'autopilot'
 
 // Fetch mode from server on load
-;(async function(){try{var r=await get(API+'exec/mode');execMode=r.mode||'approval';_updateModeUI();}catch(e){}})();
+;window.luDefer(function(){(async function(){try{var r=await get(API+'exec/mode');execMode=r.mode||'approval';_updateModeUI();}catch(e){}})();});
 
 function _updateModeUI(){
   // Badge removed per user request — mode still functional via Settings
@@ -4640,7 +4735,30 @@ function fmt(t){
   return s;
 }
 async function post(url,data){var r=await fetch(url,{method:'POST',headers:_lgscAuthForFetch({'Content-Type':'application/json','Accept':'application/json'}),body:JSON.stringify(data)});var d=await r.json();if(!r.ok){if(d.code==='PLAN_GATED'||d.code==='NO_CREDITS'){showPlanGate(d.error||d.message||'This feature requires a plan upgrade.');return d;}throw new Error(d.message||d.error||'Request failed');}return d;}
-async function get(url){var r=await fetch(url,{cache:'no-store',headers:_lgscAuthForFetch({'Accept':'application/json'})});return r.json();}
+// ── PLATFORM888 Phase 2: in-flight GET coalescing (shared request registry) ──
+// Concurrent GETs to the same URL within the SAME workspace reuse ONE in-flight
+// Promise instead of issuing parallel requests. COALESCING ONLY — the registry
+// entry is deleted the instant the request settles (success OR failure), so a
+// failed request never poisons future calls and nothing is cached long-term.
+// POST/PUT/DELETE are never coalesced (mutations, auth/refresh). Auth is
+// preserved (each real request still sends current headers); tenancy is
+// preserved (the key includes lu_workspace_id, so a workspace switch never
+// shares a response across tenants).
+window.__luInflight = window.__luInflight || new Map();
+window.__luCoalesceStats = window.__luCoalesceStats || { hits: 0, misses: 0 };
+function _luCoalesceGet(url, doFetch){
+  var key = 'GET ' + url + ' ws=' + (localStorage.getItem('lu_workspace_id') || '');
+  var m = window.__luInflight;
+  if (m.has(key)) { window.__luCoalesceStats.hits++; return m.get(key); }
+  window.__luCoalesceStats.misses++;
+  var tracked = Promise.resolve().then(doFetch).then(
+    function(v){ m.delete(key); return v; },
+    function(e){ m.delete(key); throw e; }
+  );
+  m.set(key, tracked);
+  return tracked;
+}
+async function get(url){ return _luCoalesceGet(url, function(){ return fetch(url,{cache:'no-store',headers:_lgscAuthForFetch({'Accept':'application/json'})}).then(function(r){ return r.json(); }); }); }
 
 // ── File upload ────────────────────────────────────────────────────────────
 let pendingAttachments = [];
@@ -5190,7 +5308,7 @@ var arthurContext = null;
 // are already registered in nav() — this only fetches external ones.
 window._lu_engine_loaders = {};
 
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() { window.luDefer(async function() {
   try {
     // Fix: use authHeader() spread so X-WP-Nonce is sent correctly in WP Admin context
     var res = await fetch(window.luApi + 'engines', { headers: authHeader() });
@@ -5242,7 +5360,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   } catch (e) {
     console.warn('[LevelUp] Engine bootstrap failed:', e.message);
   }
-});
+}); });
 
 // ═══════════════════════════════════════════════════════════════════
 // PHASE 3A — TASK 3: DESIGN TOKEN CONSUMPTION
@@ -5755,17 +5873,26 @@ function _appEnterDashboard() {
   var appShell = document.querySelector('.app');
   if (appShell) appShell.style.display = 'flex';
   // Run trial check once + poll every 30s for credit refresh (Wave 47g).
-  _checkTrialStatus();
-  if (!window._luCreditPollTimer) {
-    window._luCreditPollTimer = setInterval(function () {
-      // Only poll when the tab is visible to avoid burning quota in background.
-      if (document.visibilityState !== 'hidden') {
-        _checkTrialStatus();
+  // PLATFORM888 Phase 6: trial + notifications are background services that
+  // start only after the primary route is interactive (governed by luBg).
+  window.luBg.register('trial', {
+    start: function () {
+      _checkTrialStatus();
+      if (!window._luCreditPollTimer) {
+        window._luCreditPollTimer = setInterval(function () {
+          if (document.visibilityState !== 'hidden') { _checkTrialStatus(); }
+        }, 30000);
       }
-    }, 30000);
-  }
-  // Start notification polling
-  _notifStartPolling();
+    },
+    stop: function () { if (window._luCreditPollTimer) { clearInterval(window._luCreditPollTimer); window._luCreditPollTimer = null; } }
+  });
+  window.luBg.register('notifications', {
+    start: _notifStartPolling,
+    stop: function () { if (_notifPollTimer) { clearInterval(_notifPollTimer); _notifPollTimer = null; } }
+  });
+  // Primary route is now interactive (auth + workspace resolved) — release the
+  // governed background services on the next idle tick.
+  (window.requestIdleCallback||function(f){setTimeout(f,400);})(function(){ if (window.luBg) window.luBg.markInteractive(); });
   // Signal that bootstrap is complete (consumers like the workspace canvas loader rely on this)
   document.dispatchEvent(new Event('lu:bootstrap-complete'));
 

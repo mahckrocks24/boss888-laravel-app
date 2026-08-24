@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/credits.schema.json",
+  "title": "Chat Credits v1",
+  "description": "Credit lifecycle result. Clause K-01..K-09.",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status":          { "type": "string", "enum": ["not_applicable", "estimated", "reserved", "charged", "released", "refused"] },
+    "required":        { "type": ["number", "null"], "minimum": 0 },
+    "available":       { "type": ["number", "null"] },
+    "reserved":        { "type": ["number", "null"], "minimum": 0 },
+    "charged":         { "type": ["number", "null"], "minimum": 0 },
+    "released":        { "type": ["number", "null"], "minimum": 0 },
+    "transaction_ref": { "type": ["string", "integer", "null"], "description": "K-07 charge must be attributable to a message" },
+    "message_id":      { "type": ["string", "null"], "description": "K-07 the message this charge belongs to" },
+    "service":         { "type": ["string", "null"], "description": "K-09 which CreditService implementation produced this (P1 measures the divergence)" },
+    "batched": {
+      "type": ["object", "null"],
+      "description": "K-08 batched metering must be disclosed",
+      "required": ["counter", "threshold"],
+      "properties": {
+        "counter":        { "type": "integer", "minimum": 0 },
+        "threshold":      { "type": "integer", "minimum": 1 },
+        "debited":        { "type": ["boolean", "null"] },
+        "effective_cost": { "type": ["string", "number", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

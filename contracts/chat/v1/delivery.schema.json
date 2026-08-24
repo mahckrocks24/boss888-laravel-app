@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/delivery.schema.json",
+  "title": "Chat Delivery Descriptor v1",
+  "description": "Transport-independent delivery statement. Clause T-02, A-02..A-07.",
+  "type": "object",
+  "required": ["status", "continues", "mechanism"],
+  "properties": {
+    "status":    { "type": "string", "enum": ["accepted", "pending", "delivered", "failed", "unknown"] },
+    "continues": { "type": "boolean", "description": "A-02 whether processing continues after this response" },
+    "mechanism": { "type": "string", "enum": ["inline", "poll", "stream", "push"], "description": "T-02 / A-03 declared, not assumed" },
+    "poll": {
+      "type": ["object", "null"],
+      "description": "A-04 REQUIRED when mechanism=poll",
+      "required": ["url", "interval_ms", "deadline_ms"],
+      "properties": {
+        "url":         { "type": "string", "minLength": 1 },
+        "interval_ms": { "type": "integer", "minimum": 250 },
+        "deadline_ms": { "type": "integer", "minimum": 1000, "description": "A-06 exceeding it is NOT a failure" },
+        "after_id":    { "type": ["string", "integer", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "estimate_ms": { "type": ["integer", "null"], "description": "A-05 measured percentile only; never a guess" },
+    "estimate_basis": { "type": ["string", "null"], "enum": ["p50", "p90", "p95", null] }
+  },
+  "additionalProperties": false
+}

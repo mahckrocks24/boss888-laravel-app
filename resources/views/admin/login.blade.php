@@ -86,11 +86,23 @@
     // Enter key
     document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 
-    // Redirect if already logged in
-    const token = localStorage.getItem('lu_admin_token');
-    if (token && window.location.pathname === '/admin/login') {
-      window.location.href = '/admin';
-    }
+    // PLATFORM SECURITY 1.0 (2026-08-03) — the legacy auto-redirect was REMOVED.
+    //
+    // It read lu_admin_token from localStorage and, when present, sent the
+    // browser straight to /admin. Once /admin/* is gated server-side that token
+    // is no longer what grants page access — the HttpOnly lu_admin_at cookie is,
+    // and JavaScript cannot read it. So a browser holding a stale token but no
+    // valid cookie bounced forever: the server sent /admin to /admin/login, and
+    // this block sent it back to /admin. The login FORM was never reachable.
+    //
+    // NOTHING REPLACES IT, deliberately. No sessionStorage flag, no client-side
+    // guard: client state must not influence admin navigation at all. The server
+    // decides on every request. An administrator who is already signed in and
+    // lands here simply signs in again, which costs one form submission.
+    //
+    // localStorage still carries the bearer token for admin API calls. Retiring
+    // that transport is recorded security debt — ADMIN TOKEN TRANSPORT
+    // MODERNIZATION — and is not in scope here.
   </script>
 </body>
 </html>

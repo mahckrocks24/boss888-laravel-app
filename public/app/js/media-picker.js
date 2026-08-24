@@ -1,5 +1,5 @@
 /**
- * Unified Media Picker — BOSS888 / LevelUp Growth
+ * Unified Media Picker — LevelUp Growth
  * Added 2026-04-19 as part of Phase 3.
  *
  * Public entry point:

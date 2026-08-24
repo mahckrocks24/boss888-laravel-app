@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/usage.schema.json",
+  "title": "Chat Usage v1",
+  "description": "Provider usage measurement. Clause O-03, F-02, F-03.",
+  "type": "object",
+  "properties": {
+    "provider":         { "type": ["string", "null"] },
+    "model":            { "type": ["string", "null"] },
+    "tokens_in":        { "type": ["integer", "null"], "minimum": 0 },
+    "tokens_out":       { "type": ["integer", "null"], "minimum": 0 },
+    "reasoning_tokens": { "type": ["integer", "null"], "minimum": 0, "description": "DeepSeek V4 counts these inside completion_tokens" },
+    "latency_ms":       { "type": ["integer", "null"], "minimum": 0 },
+    "attempt":          { "type": ["integer", "null"], "minimum": 1 }
+  },
+  "additionalProperties": false
+}

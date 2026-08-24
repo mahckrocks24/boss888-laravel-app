@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex,nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>The Gulf Tribune — News</title>
+<meta name="description" content="The Gulf Tribune — premium online news channel covering politics, business, technology, sports, and culture across the Gulf region.">
+<link rel="canonical" href="https://thegulftribune.com">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://thegulftribune.com">
+<meta property="og:title" content="The Gulf Tribune">
+<meta property="og:description" content="The Gulf Tribune — premium online news channel covering politics, business, technology, sports, and culture across the Gulf region.">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="/storage/builder-heroes/news_channel.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Gulf Tribune">
+<meta name="twitter:description" content="The Gulf Tribune — premium online news channel covering politics, business, technology, sports, and culture across the Gulf region.">
+<meta name="twitter:image" content="/storage/builder-heroes/news_channel.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --primary: #C41E3A;
+  --secondary: #1A1A2E;
+  --accent: #F5A623;
+  --bg: #F8F8F8;
+  --ink: #1F1F2A;
+  --muted: #6B6B78;
+  --border: #E4E4ED;
+  --fh: 'Playfair Display', Georgia, serif;
+  --fb: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--fb); background: var(--bg); color: var(--ink); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+h1,h2,h3,h4 { font-family: var(--fh); font-weight: 700; line-height: 1.15; color: var(--secondary); letter-spacing: -0.01em; }
+.container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+/* ── BREAKING TICKER ───────────────────────────────────────── */
+.ticker {
+  background: var(--primary); color: #fff;
+  font-family: var(--fb); font-weight: 600; font-size: 13px;
+  display: flex; align-items: center; height: 40px;
+  overflow: hidden;
+}
+.ticker-label {
+  background: rgba(0,0,0,0.18); padding: 8px 18px;
+  font-size: 11px; letter-spacing: 0.15em; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.ticker-label::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  background: #fff; animation: pulse 1.4s ease-in-out infinite;
+}
+.ticker-track { overflow: hidden; flex: 1; position: relative; }
+.ticker-text {
+  white-space: nowrap; padding-left: 100%;
+  animation: marquee 50s linear infinite;
+  display: inline-block;
+}
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* ── NAVIGATION ───────────────────────────────────────── */
+.nav {
+  background: #fff; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1000;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; gap: 24px; }
+.nav-logo { font-family: var(--fh); font-weight: 900; font-size: 28px; color: var(--secondary); letter-spacing: -0.02em; }
+.nav-links { display: flex; align-items: center; gap: 28px; list-style: none; }
+.nav-links li a { font-size: 14px; font-weight: 500; color: var(--ink); transition: color .15s; }
+.nav-links li a:hover { color: var(--primary); }
+.nav-cta {
+  background: var(--primary); color: #fff; font-weight: 600; font-size: 13px;
+  padding: 10px 20px; border-radius: 4px; transition: background .15s;
+}
+.nav-cta:hover { background: #A8182F; }
+.nav-burger { display: none; background: none; border: 0; font-size: 22px; cursor: pointer; color: var(--secondary); }
+
+/* ── HERO STORY ───────────────────────────────────────── */
+.hero { padding: 40px 0 56px; }
+.hero-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: center; }
+.hero-media { position: relative; aspect-ratio: 16/10; border-radius: 4px; overflow: hidden; background: #ddd; }
+.hero-media img { width: 100%; height: 100%; object-fit: cover; }
+.hero-cat-tag {
+  position: absolute; top: 16px; left: 16px;
+  background: var(--primary); color: #fff;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  padding: 6px 12px;
+}
+.hero-live {
+  position: absolute; top: 16px; right: 16px;
+  background: rgba(0,0,0,0.78); color: #fff;
+  padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.hero-live::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--primary); animation: pulse 1.2s ease-in-out infinite;
+}
+.hero-content .eyebrow { font-size: 11px; letter-spacing: 0.2em; color: var(--primary); font-weight: 700; margin-bottom: 16px; }
+.hero-content h1 {
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  margin-bottom: 18px; color: var(--secondary);
+  font-weight: 900;
+}
+.hero-content .hero-sub { font-size: 17px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+.hero-meta { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+.hero-meta-divider { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+.hero-byline { font-weight: 600; color: var(--secondary); }
+.hero-cta {
+  display: inline-block; background: var(--secondary); color: #fff;
+  padding: 14px 26px; font-size: 14px; font-weight: 600;
+  border-radius: 4px; transition: background .15s;
+}
+.hero-cta:hover { background: var(--primary); }
+
+/* ── TOP STORIES GRID ───────────────────────────────────────── */
+.stories { padding: 64px 0; border-top: 1px solid var(--border); background: #fff; }
+.section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 36px; gap: 16px; flex-wrap: wrap; }
+.section-eyebrow { font-size: 11px; letter-spacing: 0.2em; color: var(--primary); font-weight: 700; margin-bottom: 8px; }
+.section-h2 { font-size: clamp(1.6rem, 2.6vw, 2.4rem); font-weight: 900; color: var(--secondary); }
+.stories-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.story-card { display: flex; flex-direction: column; gap: 14px; cursor: pointer; transition: transform .2s; }
+.story-card:hover { transform: translateY(-3px); }
+.story-image {
+  aspect-ratio: 16/10; background: #ddd; border-radius: 4px; overflow: hidden;
+  position: relative;
+}
+.story-image img { width: 100%; height: 100%; object-fit: cover; }
+.story-cat-tag {
+  position: absolute; top: 10px; left: 10px;
+  background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  padding: 4px 9px;
+}
+.story-card h3 {
+  font-size: 1.25rem; font-weight: 700; color: var(--secondary);
+  line-height: 1.3; transition: color .15s;
+}
+.story-card:hover h3 { color: var(--primary); }
+.story-card p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.story-meta {
+  display: flex; gap: 8px; align-items: center;
+  font-size: 12px; color: var(--muted);
+  border-top: 1px solid var(--border); padding-top: 10px;
+}
+.story-meta .by { font-weight: 600; color: var(--secondary); }
+.story-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+
+/* ── CATEGORY STRIPS ───────────────────────────────────────── */
+.cat-strips { padding: 64px 0; background: var(--bg); }
+.cat-strip { margin-bottom: 32px; padding: 24px; background: #fff; border: 1px solid var(--border); border-radius: 4px; }
+.cat-strip-head {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 2px solid var(--primary); padding-bottom: 12px; margin-bottom: 16px;
+}
+.cat-strip-head h3 { font-size: 1.5rem; font-weight: 900; color: var(--secondary); }
+.cat-strip-head .cat-tagline { font-size: 12px; color: var(--muted); font-style: italic; }
+.cat-strip-head a.see-all { font-size: 12px; font-weight: 600; color: var(--primary); letter-spacing: 0.05em; }
+
+/* ── FEATURED VIDEO ───────────────────────────────────────── */
+.video-section { padding: 64px 0; background: var(--secondary); color: #fff; }
+.video-section h2 { color: #fff; }
+.video-section .section-eyebrow { color: var(--accent); }
+.video-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: center; }
+.video-thumb {
+  aspect-ratio: 16/9; background: #000; border-radius: 4px; overflow: hidden;
+  position: relative; cursor: pointer;
+}
+.video-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+.video-play {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 64px; color: #fff;
+}
+.video-play::before {
+  content: ''; width: 84px; height: 84px; border-radius: 50%;
+  background: var(--primary); display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 32px rgba(196,30,58,0.45);
+}
+.video-play::after {
+  content: '▶'; position: absolute; font-size: 28px; color: #fff; padding-left: 8px;
+}
+.video-section h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); margin-bottom: 16px; }
+.video-section p { color: rgba(255,255,255,0.78); font-size: 16px; line-height: 1.6; max-width: 480px; }
+
+/* ── OPINION ───────────────────────────────────────── */
+.opinion { padding: 80px 0; background: #fff; border-top: 1px solid var(--border); }
+.opinion-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 48px; }
+.columnist { display: flex; gap: 24px; align-items: flex-start; }
+.columnist-photo {
+  width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+  background: #ddd;
+}
+.columnist-photo img { width: 100%; height: 100%; object-fit: cover; }
+.columnist-meta { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.columnist-meta strong { color: var(--primary); font-weight: 700; }
+.columnist h3 {
+  font-size: 1.4rem; line-height: 1.3; margin-bottom: 10px;
+  color: var(--secondary); font-weight: 700;
+}
+.columnist p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+/* ── NEWSLETTER ───────────────────────────────────────── */
+.newsletter { background: var(--primary); color: #fff; padding: 80px 0; text-align: center; }
+.newsletter-eyebrow { font-size: 11px; letter-spacing: 0.2em; color: rgba(255,255,255,0.85); font-weight: 700; margin-bottom: 12px; }
+.newsletter h2 { color: #fff; font-size: clamp(2rem, 3.4vw, 3rem); font-weight: 900; margin-bottom: 14px; }
+.newsletter p { font-size: 16px; color: rgba(255,255,255,0.85); max-width: 560px; margin: 0 auto 28px; line-height: 1.6; }
+.newsletter-form { display: flex; gap: 12px; max-width: 520px; margin: 0 auto; flex-wrap: wrap; }
+.newsletter-form input {
+  flex: 1; min-width: 220px; padding: 14px 18px;
+  border: 0; border-radius: 4px; font-size: 14px; font-family: var(--fb);
+  background: #fff; color: var(--ink); outline: none;
+}
+.newsletter-form button {
+  background: var(--secondary); color: #fff;
+  padding: 14px 26px; border: 0; border-radius: 4px;
+  font-size: 14px; font-weight: 600; font-family: var(--fb);
+  cursor: pointer; transition: background .15s;
+}
+.newsletter-form button:hover { background: #000; }
+
+/* ── FOOTER ───────────────────────────────────────── */
+.footer { background: var(--secondary); color: rgba(255,255,255,0.85); padding: 64px 0 32px; }
+.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 36px; margin-bottom: 48px; }
+.footer-logo { font-family: var(--fh); font-weight: 900; font-size: 26px; color: #fff; margin-bottom: 14px; letter-spacing: -0.02em; }
+.footer-about { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.65); }
+.footer h4 { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: #fff; font-weight: 600; margin-bottom: 16px; font-family: var(--fb); }
+.footer-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-links a { font-size: 14px; color: rgba(255,255,255,0.65); transition: color .15s; }
+.footer-links a:hover { color: var(--primary); }
+.footer-social { display: flex; gap: 12px; flex-wrap: wrap; }
+.footer-social a {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.85); transition: all .15s; font-size: 14px;
+}
+.footer-social a:hover { background: var(--primary); color: #fff; }
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 24px;
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  font-size: 12px; color: rgba(255,255,255,0.55);
+}
+
+/* ── RESPONSIVE ───────────────────────────────────────── */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-burger { display: inline-block; }
+  .hero-grid, .video-grid, .opinion-grid { grid-template-columns: 1fr; gap: 32px; }
+  .stories-grid { grid-template-columns: 1fr; gap: 24px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .nav-cta { display: none; }
+  .ticker-label { padding: 8px 12px; font-size: 10px; }
+}
+</style>
+</head>
+<body><div style="position:fixed;top:0;left:0;right:0;z-index:2147483000;background:#111;color:#fff;font:600 11px/1.4 system-ui,sans-serif;padding:6px 10px;text-align:center;letter-spacing:.03em">ADS888 PREVIEW &#183; news_channel &#183; the interstitial opens automatically &nbsp;<button onclick="luModal('1x1')" style="margin-left:6px;background:#6C5CE7;color:#fff;border:0;border-radius:3px;padding:3px 8px;font:600 11px system-ui,sans-serif;cursor:pointer">1:1 square</button> <button onclick="luModal('3x4')" style="margin-left:6px;background:#6C5CE7;color:#fff;border:0;border-radius:3px;padding:3px 8px;font:600 11px system-ui,sans-serif;cursor:pointer">3:4 portrait</button></div>
+
+<!-- ── BREAKING TICKER ── -->
+<div class="ticker" data-section="ticker">
+  <span class="ticker-label" data-field="ticker_label">BREAKING</span>
+  <div class="ticker-track">
+    <span class="ticker-text" data-field="ticker_text">Markets close higher on tech rally  ·  Cabinet approves new digital economy law  ·  Dubai metro extension breaks ground  ·  COP31 negotiators reach climate-finance deal  ·  Champions League draw confirmed</span>
+  </div>
+</div>
+
+<!-- ── NAVIGATION ── -->
+<nav class="nav" data-section="nav">
+  <div class="nav-inner container">
+    <a href="/" class="nav-logo" data-field="business_name">The Gulf Tribune</a>
+    <ul class="nav-links">
+      <li><a href="#politics" data-field="nav_link_1">Politics</a></li>
+      <li><a href="#business" data-field="nav_link_2">Business</a></li>
+      <li><a href="#tech" data-field="nav_link_3">Technology</a></li>
+      <li><a href="#sports" data-field="nav_link_4">Sports</a></li>
+      <li><a href="#culture" data-field="nav_link_5">Culture</a></li>
+      <li><a href="#opinion" data-field="nav_link_6">Opinion</a></li>
+        <li><a href="/news">News</a></li>
+    </ul>
+    <a href="#newsletter" class="nav-cta" data-field="nav_cta">Subscribe</a>
+    <button class="nav-burger" aria-label="Menu">☰</button>
+  </div>
+</nav>
+
+<!-- ── HERO STORY ── -->
+<section class="hero" data-section="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-media">
+        <img src="/storage/builder-heroes/news_channel.jpg" alt="Cabinet votes to overhaul digital economy framework" data-field="hero_image">
+        <span class="hero-cat-tag" data-field="hero_category">POLITICS</span>
+        <span class="hero-live">LIVE</span>
+      </div>
+      <div class="hero-content">
+        <div class="eyebrow" data-field="hero_eyebrow">LIVE COVERAGE</div>
+        <h1 data-field="hero_title">Cabinet votes to overhaul digital economy framework</h1>
+        <p class="hero-sub" data-field="hero_subtitle">The reforms — among the most significant in a decade — set new licensing rules, AI-governance standards, and protections for cross-border data flows. Implementation begins in Q3.</p>
+        <div class="hero-meta">
+          <span class="hero-byline" data-field="hero_byline">By Layla Al-Mansoori</span>
+          <span class="hero-meta-divider"></span>
+          <span data-field="hero_date">2 hours ago</span>
+          <span class="hero-meta-divider"></span>
+          <span data-field="hero_reading_time">6 min read</span>
+        </div>
+        <a href="#" class="hero-cta" data-field="hero_cta">Read the full story</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TOP STORIES GRID ── -->
+<section class="stories" data-section="top_stories">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow" data-field="stories_eyebrow">TODAY'S COVERAGE</div>
+        <h2 class="section-h2" data-field="stories_title">Top Stories</h2>
+      </div>
+      <a href="#" class="see-all">See all stories →</a>
+    </div>
+
+    <div class="stories-grid" id="news-stories-grid">
+      <article class="story-card">
+        <div class="story-image"><img src="/storage/builder-heroes/news_channel.jpg" alt="Markets close higher as tech sector leads regional rally" data-field="story_1_image"><span class="story-cat-tag" data-field="story_1_category">BUSINESS</span></div>
+        <h3 data-field="story_1_title">Markets close higher as tech sector leads regional rally</h3>
+        <p data-field="story_1_excerpt">Strong earnings from cloud and semiconductor names lift the index for a third straight session.</p>
+        <div class="story-meta"><span class="by" data-field="story_1_byline">Karim Hashem</span><span class="story-meta-dot"></span><span data-field="story_1_date">3 hours ago</span><span class="story-meta-dot"></span><span data-field="story_1_reading_time">4 min</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="/storage/builder-heroes/news_channel.jpg" alt="AI safety regulators to publish new audit framework next month" data-field="story_2_image"><span class="story-cat-tag" data-field="story_2_category">TECHNOLOGY</span></div>
+        <h3 data-field="story_2_title">AI safety regulators to publish new audit framework next month</h3>
+        <p data-field="story_2_excerpt">The framework will require independent evaluations for high-risk frontier models.</p>
+        <div class="story-meta"><span class="by" data-field="story_2_byline">Sara Bouchareb</span><span class="story-meta-dot"></span><span data-field="story_2_date">5 hours ago</span><span class="story-meta-dot"></span><span data-field="story_2_reading_time">7 min</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="/storage/builder-heroes/news_channel.jpg" alt="Champions League draw confirms heavyweight quarter-finals" data-field="story_3_image"><span class="story-cat-tag" data-field="story_3_category">SPORTS</span></div>
+        <h3 data-field="story_3_title">Champions League draw confirms heavyweight quarter-finals</h3>
+        <p data-field="story_3_excerpt">First legs to be played in early April; broadcasters confirm regional kick-off times.</p>
+        <div class="story-meta"><span class="by" data-field="story_3_byline">Tarek Younes</span><span class="story-meta-dot"></span><span data-field="story_3_date">6 hours ago</span><span class="story-meta-dot"></span><span data-field="story_3_reading_time">3 min</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="/storage/builder-heroes/news_channel.jpg" alt="Sharjah Biennial opens with focus on diaspora archives" data-field="story_4_image"><span class="story-cat-tag" data-field="story_4_category">CULTURE</span></div>
+        <h3 data-field="story_4_title">Sharjah Biennial opens with focus on diaspora archives</h3>
+        <p data-field="story_4_excerpt">Forty-three artists from twenty-one countries are showing across five venues.</p>
+        <div class="story-meta"><span class="by" data-field="story_4_byline">Noor Al-Khatib</span><span class="story-meta-dot"></span><span data-field="story_4_date">Yesterday</span><span class="story-meta-dot"></span><span data-field="story_4_reading_time">5 min</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="/storage/builder-heroes/news_channel.jpg" alt="Foreign ministers convene ahead of UN climate summit" data-field="story_5_image"><span class="story-cat-tag" data-field="story_5_category">POLITICS</span></div>
+        <h3 data-field="story_5_title">Foreign ministers convene ahead of UN climate summit</h3>
+        <p data-field="story_5_excerpt">Working groups will draft a joint position on the loss-and-damage fund this week.</p>
+        <div class="story-meta"><span class="by" data-field="story_5_byline">Yousef Daher</span><span class="story-meta-dot"></span><span data-field="story_5_date">Yesterday</span><span class="story-meta-dot"></span><span data-field="story_5_reading_time">8 min</span></div>
+      </article>
+      <article class="story-card">
+        <div class="story-image"><img src="/storage/builder-heroes/news_channel.jpg" alt="Logistics group lists $1.2bn green-bond tranche" data-field="story_6_image"><span class="story-cat-tag" data-field="story_6_category">BUSINESS</span></div>
+        <h3 data-field="story_6_title">Logistics group lists $1.2bn green-bond tranche</h3>
+        <p data-field="story_6_excerpt">Proceeds will fund electrified fleets and warehouse solar across the GCC.</p>
+        <div class="story-meta"><span class="by" data-field="story_6_byline">Karim Hashem</span><span class="story-meta-dot"></span><span data-field="story_6_date">2 days ago</span><span class="story-meta-dot"></span><span data-field="story_6_reading_time">4 min</span></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ── CATEGORY STRIPS ── -->
+<section class="cat-strips" data-section="category_strips">
+  <div class="container">
+    <div class="cat-strip">
+      <div class="cat-strip-head">
+        <div><h3 data-field="cat_1_name">Politics</h3><div class="cat-tagline" data-field="cat_1_tagline">Power, policy, and the people who shape them.</div></div>
+        <a href="#" class="see-all">See all →</a>
+      </div>
+    </div>
+    <div class="cat-strip">
+      <div class="cat-strip-head">
+        <div><h3 data-field="cat_2_name">Business</h3><div class="cat-tagline" data-field="cat_2_tagline">Markets, deals, and the regional economy.</div></div>
+        <a href="#" class="see-all">See all →</a>
+      </div>
+    </div>
+    <div class="cat-strip">
+      <div class="cat-strip-head">
+        <div><h3 data-field="cat_3_name">Technology</h3><div class="cat-tagline" data-field="cat_3_tagline">AI, startups, and the fight for digital sovereignty.</div></div>
+        <a href="#" class="see-all">See all →</a>
+      </div>
+    </div>
+    <div class="cat-strip">
+      <div class="cat-strip-head">
+        <div><h3 data-field="cat_4_name">Culture</h3><div class="cat-tagline" data-field="cat_4_tagline">Art, ideas, and the stories behind the headlines.</div></div>
+        <a href="#" class="see-all">See all →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURED VIDEO ── -->
+<section class="video-section" data-section="video">
+  <div class="container">
+    <div class="video-grid">
+      <div class="video-thumb"><img src="/storage/builder-heroes/news_channel.jpg" alt="Live: Special address from the Council of Ministers" data-field="video_thumbnail"><div class="video-play"></div></div>
+      <div>
+        <div class="section-eyebrow" data-field="video_eyebrow">WATCH</div>
+        <h2 data-field="video_title">Live: Special address from the Council of Ministers</h2>
+        <p data-field="video_subtitle">Coverage begins at 19:00 GST. Watch on the Tribune live channel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── OPINION ── -->
+<section class="opinion" data-section="opinion" id="opinion">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-eyebrow" data-field="opinion_eyebrow">OPINION</div>
+        <h2 class="section-h2" data-field="opinion_title">From Our Columnists</h2>
+      </div>
+    </div>
+    <div class="opinion-grid">
+      <article class="columnist">
+        <div class="columnist-photo"><img src="/storage/builder-heroes/news_channel.jpg" alt="Dr. Hala Saleh" data-field="opinion_1_image"></div>
+        <div>
+          <div class="columnist-meta"><strong data-field="opinion_1_name">Dr. Hala Saleh</strong> · <span data-field="opinion_1_role">Foreign Affairs</span></div>
+          <h3 data-field="opinion_1_title">The case for a Gulf-led mediation track on Sudan</h3>
+          <p data-field="opinion_1_excerpt">Two years into the conflict, the diplomatic vacuum is becoming the story.</p>
+        </div>
+      </article>
+      <article class="columnist">
+        <div class="columnist-photo"><img src="/storage/builder-heroes/news_channel.jpg" alt="Tariq El-Amin" data-field="opinion_2_image"></div>
+        <div>
+          <div class="columnist-meta"><strong data-field="opinion_2_name">Tariq El-Amin</strong> · <span data-field="opinion_2_role">Markets</span></div>
+          <h3 data-field="opinion_2_title">Why the next IPO wave will be quieter — and bigger</h3>
+          <p data-field="opinion_2_excerpt">Strategic listings, not retail FOMO, are reshaping the regional pipeline.</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ── NEWSLETTER ── -->
+<section class="newsletter" data-section="newsletter" id="newsletter">
+  <div class="container">
+    <div class="newsletter-eyebrow" data-field="newsletter_eyebrow">STAY INFORMED</div>
+    <h2 data-field="newsletter_title">The Morning Brief</h2>
+    <p data-field="newsletter_subtitle">Get the day's headlines in your inbox before 8am — Sunday through Thursday.</p>
+    <form class="newsletter-form" action="/api/public/contact" method="post">
+      <input type="email" name="email" placeholder="your@email.com" required>
+      <button type="submit" data-field="newsletter_cta">Subscribe</button>
+    </form>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="footer" data-section="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo" data-field="business_name">The Gulf Tribune</div>
+        <p class="footer-about" data-field="footer_about">Independent reporting for the Gulf and the broader region. Trusted, fearless, on the ground.</p>
+      </div>
+      <div>
+        <h4>Sections</h4>
+        <ul class="footer-links">
+          <li><a href="#" data-field="cat_1_name">Politics</a></li>
+          <li><a href="#" data-field="cat_2_name">Business</a></li>
+          <li><a href="#" data-field="cat_3_name">Technology</a></li>
+          <li><a href="#" data-field="cat_4_name">Culture</a></li>
+          <li><a href="/news">News</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Newsroom</h4>
+        <ul class="footer-links">
+          <li><a href="mailto:newsroom@thegulftribune.com" data-field="contact_email">newsroom@thegulftribune.com</a></li>
+          <li><a href="tel:+971 4 000 0000" data-field="contact_phone">+971 4 000 0000</a></li>
+          <li><span data-field="contact_address">Dubai Media City, Dubai, UAE</span></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Follow</h4>
+        <div class="footer-social">
+          <a href=""  aria-label="Facebook"  data-field="facebook_url"  data-conditional="facebook_url">f</a>
+          <a href=""   aria-label="X"         data-field="twitter_url"   data-conditional="twitter_url">𝕏</a>
+          <a href="" aria-label="Instagram" data-field="instagram_url" data-conditional="instagram_url">◉</a>
+          <a href=""  aria-label="LinkedIn"  data-field="linkedin_url"  data-conditional="linkedin_url">in</a>
+          <a href=""   aria-label="YouTube"   data-field="youtube_url"   data-conditional="youtube_url">▶</a>
+          <a href=""    aria-label="TikTok"    data-field="tiktok_url"    data-conditional="tiktok_url">♪</a>
+          <a href=""  aria-label="Telegram"  data-field="telegram_url"  data-conditional="telegram_url">✈</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span data-field="footer_text">© 2026 The Gulf Tribune. All rights reserved.</span>
+      <span data-field="footer_legal">Privacy · Terms · Editorial Standards · Contact</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Mobile burger menu toggle
+document.querySelector('.nav-burger')?.addEventListener('click', function(){
+  var links = document.querySelector('.nav-links');
+  if (links) links.style.display = (links.style.display === 'flex') ? 'none' : 'flex';
+});
+// Hide social links with no URL
+document.querySelectorAll('[data-conditional]').forEach(function(el){
+  if (!el.getAttribute('href') || el.getAttribute('href') === '') el.style.display = 'none';
+});
+
+// ── PROGRESSIVE ENHANCEMENT — fetch live stories from the platform's
+//    public news API and swap the static seed with the latest articles.
+//    Silent fall-through to the static seed if the API call fails or
+//    returns no posts (keeps SEO + zero-empty-state behaviour intact).
+(function(){
+  var grid = document.getElementById('news-stories-grid');
+  if (!grid) return;
+
+  // The widget is served from a tenant subdomain (e.g. thegulftribune.
+  // levelupgrowth.io). Subdomain → workspace lookup happens server-side.
+  var host = location.hostname || '';
+  var sub  = host.split('.')[0];
+  if (!sub || ['www','staging','app','api','localhost'].indexOf(sub) !== -1) return;
+
+  // Platform API origin. For tenant subdomains under levelupgrowth.io we
+  // call back to the parent. For custom domains, we hardcode staging.
+  var apiOrigin = 'https://staging.levelupgrowth.io';
+  if (host.endsWith('.levelupgrowth.io')) {
+    apiOrigin = location.protocol + '//' + 'staging.levelupgrowth.io';
+  }
+
+  function escHtml(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function fmtDate(iso){
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d)) return '';
+      return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+    } catch (_) { return ''; }
+  }
+  var heroFloor = document.querySelector('.hero-media img');
+  var fallbackImg = (heroFloor && heroFloor.getAttribute('src')) || '/storage/builder-heroes/news_channel.jpg';
+
+  fetch(apiOrigin + '/api/public/news/' + encodeURIComponent(sub) + '/stories?limit=6', {
+    method: 'GET',
+    credentials: 'omit',
+  })
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(data){
+    if (!data || !Array.isArray(data.posts) || data.posts.length === 0) return; // keep static seed
+    grid.innerHTML = data.posts.slice(0, 6).map(function(p){
+      var img = p.featured_image_url || fallbackImg;
+      return '<article class="story-card">' +
+        '<div class="story-image">' +
+          '<img src="' + escHtml(img) + '" alt="' + escHtml(p.title) + '">' +
+          '<span class="story-cat-tag">' + escHtml((p.category || 'NEWS').toUpperCase()) + '</span>' +
+        '</div>' +
+        '<h3>' + escHtml(p.title) + '</h3>' +
+        '<p>' + escHtml(p.excerpt || '') + '</p>' +
+        '<div class="story-meta">' +
+          '<span class="by">' + escHtml(p.author || 'Staff') + '</span>' +
+          '<span class="story-meta-dot"></span>' +
+          '<span>' + escHtml(fmtDate(p.published_iso || p.published_at)) + '</span>' +
+          '<span class="story-meta-dot"></span>' +
+          '<span>' + escHtml(p.read_time || '3 min read') + '</span>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+  })
+  .catch(function(){ /* silent — static seed remains visible */ });
+})();
+</script>
+
+<!-- LevelUp Ads -->
+<style>.lu-ad-slot{position:fixed;left:0;right:0;bottom:0;z-index:99990;display:flex;align-items:center;justify-content:center;gap:8px;
+min-height:50px;padding:4px 84px 4px 8px;box-sizing:border-box;
+background:#fff;border-top:1px solid rgba(0,0,0,.12);box-shadow:0 -1px 6px rgba(0,0,0,.08);
+font:400 12px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333}
+.lu-ad-slot[hidden]{display:none}
+/* A position:fixed bar permanently covers the last 50/90px of the page, so a
+   visitor scrolled to the bottom loses the end of the tenant's footer.
+   Measured: 50px occluded at 390px, 99px at 1280px. The tag adds
+   .lu-ad-filled to <html> ONLY when a creative actually renders, so a site with
+   no fill gets no dead space. Bottom padding extends the scrollable area
+   without moving anything already on screen — no layout shift. Injected last in
+   the document, so it wins source order against a template's own body rule at
+   equal specificity. */
+html.lu-ad-filled body{padding-bottom:50px}
+.lu-ad-label{flex:0 0 auto;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a8a;
+background:rgba(0,0,0,.04);border-radius:2px;padding:2px 5px}
+.lu-ad-body{flex:1 1 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;max-height:60px}
+.lu-ad-body a{display:inline-flex;align-items:center;gap:6px;color:inherit;text-decoration:none}
+.lu-ad-body img{display:block;max-width:100%;max-height:60px;height:auto}
+@media(min-width:768px){.lu-ad-slot{min-height:90px}.lu-ad-body,.lu-ad-body img{max-height:90px}
+html.lu-ad-filled body{padding-bottom:90px}}
+@media(prefers-color-scheme:dark){.lu-ad-slot{background:#15171c;color:#e8e8e8;border-top-color:rgba(255,255,255,.12)}
+.lu-ad-label{color:#9aa0a6;background:rgba(255,255,255,.06)}}
+/* ── Session interstitial ──────────────────────────────────────────────────
+   A modal is blocking by definition, so it sits ABOVE the chatbot bubble
+   (99999) rather than beside it. Square is width-constrained, portrait is
+   height-constrained — sizing both identically would push a 3:4 creative off
+   a short viewport. aspect-ratio reserves the box before the asset loads, so
+   the modal does not resize as the image arrives. */
+.lu-ad-modal-backdrop{position:fixed;inset:0;z-index:2147482000;
+display:flex;align-items:center;justify-content:center;padding:20px;
+background:radial-gradient(130% 120% at 50% 38%,rgba(9,10,14,.58) 0%,rgba(6,7,10,.88) 100%);
+-webkit-backdrop-filter:blur(7px) saturate(.86);backdrop-filter:blur(7px) saturate(.86);
+opacity:0;visibility:hidden;pointer-events:none;
+transition:opacity .24s cubic-bezier(.2,.8,.25,1),visibility 0s linear .24s}
+.lu-ad-modal-backdrop.on{opacity:1;visibility:visible;pointer-events:auto;transition-delay:0s}
+.lu-ad-modal{position:relative;max-width:100%;max-height:100%;border-radius:14px;overflow:hidden;
+background:#0d0e11;transform:scale(.965) translateY(6px);opacity:0;
+box-shadow:0 0 0 1px rgba(255,255,255,.07),0 2px 4px rgba(0,0,0,.24),0 28px 70px -14px rgba(0,0,0,.62);
+transition:transform .3s cubic-bezier(.2,.8,.25,1),opacity .22s ease}
+.lu-ad-modal-backdrop.on .lu-ad-modal{transform:none;opacity:1}
+.lu-ad-modal-media{display:block;width:auto;height:auto}
+.lu-ad-modal-media[data-ar="1:1"]{aspect-ratio:1/1;max-width:min(86vw,540px);max-height:80vh}
+.lu-ad-modal-media[data-ar="3:4"]{aspect-ratio:3/4;max-width:min(86vw,620px);max-height:82vh}
+.lu-ad-modal-media[data-ar="4:5"]{aspect-ratio:4/5;max-width:min(86vw,600px);max-height:82vh}
+.lu-ad-modal-media a{display:block;width:100%;height:100%;outline-offset:-2px}
+.lu-ad-modal-media img,.lu-ad-modal-media video{display:block;width:100%;height:100%;object-fit:cover;background:#0d0e11}
+/* Disclosure: legible on any creative without a heavy slab — a translucent,
+   blurred surface reads on both a white product shot and a dark video frame. */
+.lu-ad-modal-label{position:absolute;top:12px;left:12px;z-index:3;
+font:600 9.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.94);
+background:rgba(16,17,21,.42);border:1px solid rgba(255,255,255,.13);border-radius:5px;
+padding:5px 8px;-webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3);
+text-shadow:0 1px 2px rgba(0,0,0,.34)}
+/* Close control: the remaining seconds, then an X. Nothing else — no ring, no
+   disc, no chrome. 44px hit area is kept for accessibility while the mark
+   itself stays light; a drop shadow is what makes it legible over any creative
+   rather than a background shape. The two states are stacked in one grid cell
+   and cross-faded, so the control never shifts position as it swaps. */
+.lu-ad-modal-close{position:absolute;top:8px;right:8px;z-index:3;
+width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;
+background:transparent;cursor:default;-webkit-tap-highlight-color:transparent;
+appearance:none;-webkit-appearance:none}
+.lu-ad-modal-backdrop:focus{outline:none}
+.lu-ad-modal-close:focus{outline:none}
+.lu-ad-modal-close:focus-visible{outline:2px solid rgba(255,255,255,.92);outline-offset:-6px;border-radius:4px}
+.lu-ad-modal-close[data-ready="1"]{cursor:pointer}
+.lu-ad-modal-close .lu-count{grid-area:1/1;
+font:600 16px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+font-variant-numeric:tabular-nums;color:rgba(255,255,255,.97);
+text-shadow:0 1px 4px rgba(0,0,0,.6),0 0 1px rgba(0,0,0,.5);
+transition:opacity .18s ease}
+.lu-ad-modal-close .lu-x{grid-area:1/1;width:19px;height:19px;display:block;opacity:0;
+stroke:rgba(255,255,255,.97);stroke-width:1.9;stroke-linecap:round;fill:none;
+filter:drop-shadow(0 1px 4px rgba(0,0,0,.6));transition:opacity .18s ease}
+.lu-ad-modal-close[data-ready="1"] .lu-count{opacity:0}
+.lu-ad-modal-close[data-ready="1"] .lu-x{opacity:1}
+.lu-ad-modal-close[data-ready="1"]:hover .lu-x{stroke:#fff;transform:scale(1.08)}
+@media(prefers-reduced-motion:reduce){
+.lu-ad-modal-backdrop,.lu-ad-modal{transition:none}
+.lu-ad-modal{transform:none}
+.lu-ad-modal-close .lu-count,.lu-ad-modal-close .lu-x{transition:none}}</style>
+<div id="lu-ad-slot" class="lu-ad-slot" data-lu-slot="footer_sticky" data-lu-site="0" >
+  <span class="lu-ad-label">Sponsored</span>
+  <div class="lu-ad-body"><a href="#" onclick="return false"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3MjgiIGhlaWdodD0iOTAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzZDNUNFNyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwRTVBOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI3MjgiIGhlaWdodD0iOTAiIHJ4PSI0IiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iMjQiIHk9IjQyIiBmb250LWZhbWlseT0iU2Vnb2UgVUksSGVsdmV0aWNhLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiPllvdXIgYWR2ZXJ0aXNlbWVudCBoZXJlPC90ZXh0Pjx0ZXh0IHg9IjI0IiB5PSI2NiIgZm9udC1mYW1pbHk9IlNlZ29lIFVJLEhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LC44NSkiPlBsYWNlaG9sZGVyIGNyZWF0aXZlICYjMTgzOyA3MjgmIzIxNTs5MCBsZWFkZXJib2FyZDwvdGV4dD48L3N2Zz4=" alt="Placeholder advertisement" width="728" height="90"></a></div>
+</div>
+
+
+<script>(function(){function r(){var e=document.getElementById('lu-ad-slot');if(!e||e.hidden)return;var h=e.offsetHeight;if(h>0)document.body.style.paddingBottom=h+'px';}document.documentElement.classList.add('lu-ad-filled');if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',r);}else{r();}var t=null;window.addEventListener('resize',function(){clearTimeout(t);t=setTimeout(r,150);});window.addEventListener('load',r);})();</script>
+</body>
+</html>
+
+<div class="lu-ad-modal-backdrop" id="lu-modal-backdrop" role="dialog" aria-modal="true" tabindex="-1" aria-label="Sponsored message">
+  <div class="lu-ad-modal">
+    <span class="lu-ad-modal-label">Sponsored</span>
+    <button class="lu-ad-modal-close" id="lu-modal-close" type="button" aria-disabled="true">
+      <span class="lu-count" id="lu-count" aria-hidden="true">6</span>
+      <svg class="lu-x" viewBox="0 0 19 19" aria-hidden="true" focusable="false">
+        <path d="M4 4 L15 15 M15 4 L4 15"></path>
+      </svg>
+    </button>
+    <div class="lu-ad-modal-media" id="lu-modal-media" data-ar="1:1">
+      <a href="#" onclick="return false"><img id="lu-modal-img" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjEwODAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0ibSIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzZDNUNFNyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwRTVBOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjEwODAiIGZpbGw9InVybCgjbSkiLz48dGV4dCB4PSI1MCUiIHk9IjQ2JSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IlNlZ29lIFVJLEhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjY0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5Zb3VyIGFkdmVydGlzZW1lbnQ8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI1NCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzOCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwuOSkiPjE6MSAmIzE4MzsgMTA4MCYjMjE1OzEwODA8L3RleHQ+PC9zdmc+" alt="Placeholder advertisement"></a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SQ = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjEwODAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0ibSIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzZDNUNFNyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwRTVBOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjEwODAiIGZpbGw9InVybCgjbSkiLz48dGV4dCB4PSI1MCUiIHk9IjQ2JSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IlNlZ29lIFVJLEhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjY0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5Zb3VyIGFkdmVydGlzZW1lbnQ8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI1NCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzOCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwuOSkiPjE6MSAmIzE4MzsgMTA4MCYjMjE1OzEwODA8L3RleHQ+PC9zdmc+", PT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjE0NDAiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0ibSIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzZDNUNFNyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwRTVBOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjE0NDAiIGZpbGw9InVybCgjbSkiLz48dGV4dCB4PSI1MCUiIHk9IjQ2JSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IlNlZ29lIFVJLEhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjY0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5Zb3VyIGFkdmVydGlzZW1lbnQ8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI1NCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzOCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwuOSkiPjM6NCAmIzE4MzsgMTA4MCYjMjE1OzE0NDA8L3RleHQ+PC9zdmc+";
+  var DELAY = 6000;
+
+  var bd = document.getElementById('lu-modal-backdrop');
+  var media = document.getElementById('lu-modal-media');
+  var img = document.getElementById('lu-modal-img');
+  var btn = document.getElementById('lu-modal-close');
+  var count = document.getElementById('lu-count');
+  var lastFocus = null, unlocked = false, timer = null;
+
+  function unlock(){
+    unlocked = true;
+    btn.setAttribute('data-ready', '1');
+    btn.removeAttribute('aria-disabled');
+    btn.setAttribute('aria-label', 'Close advertisement');
+    count.textContent = '';
+  }
+
+  function startCountdown(){
+    unlocked = false;
+    btn.removeAttribute('data-ready');
+    btn.setAttribute('aria-disabled', 'true');
+    if (timer) clearTimeout(timer);
+    if (DELAY <= 0) { unlock(); return; }
+    var secs = Math.ceil(DELAY / 1000);
+    count.textContent = String(secs);
+    btn.setAttribute('aria-label', 'Advertisement — closes in ' + secs + ' seconds');
+    var startedAt = Date.now();
+    (function tick(){
+      var left = Math.max(0, Math.ceil((DELAY - (Date.now() - startedAt)) / 1000));
+      if (left <= 0) { unlock(); return; }
+      if (count.textContent !== String(left)) {
+        count.textContent = String(left);
+        btn.setAttribute('aria-label', 'Advertisement — closes in ' + left + ' seconds');
+      }
+      timer = setTimeout(tick, 200);
+    })();
+  }
+
+  window.luModal = function(ratio){
+    lastFocus = document.activeElement;
+    var portrait = ratio === '3x4';
+    media.setAttribute('data-ar', portrait ? '3:4' : '1:1');
+    img.src = portrait ? PT : SQ;
+    bd.classList.add('on');
+    document.body.style.overflow = 'hidden';
+    startCountdown();
+    bd.focus();   /* the dialog, not the button — see the tag's buildModal() */
+  };
+
+  /* Every dismissal path is gated on the same countdown — gating only the
+     button would leave ESC and the backdrop as ways around it. */
+  function close(){
+    if (!unlocked) return;
+    if (timer) clearTimeout(timer);
+    bd.classList.remove('on');
+    document.body.style.overflow = '';
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  btn.addEventListener('click', close);
+  bd.addEventListener('click', function(e){ if (e.target === bd) close(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && bd.classList.contains('on')) close();
+  });
+
+  /* Open it automatically, because that is what an interstitial DOES — waiting
+     for someone to find a button is not a preview of the format. The delay
+     stands in for the real dwell threshold. Ratio comes from ?ratio=3x4 so a
+     link can point straight at either variant.
+     In production the trigger is far stricter: second pageview or later, past
+     the dwell, and never when the visitor arrived from a search engine. */
+  var initial = (location.search.match(/ratio=(1x1|3x4)/) || [])[1] || '1x1';
+  setTimeout(function(){ window.luModal(initial); }, 1200);
+})();
+</script>

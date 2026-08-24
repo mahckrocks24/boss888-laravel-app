@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/read-state.schema.json",
+  "title": "Chat Read State v1",
+  "description": "Server-authoritative read state. Clause RD-01..RD-09.",
+  "type": "object",
+  "required": ["contract_version", "scope", "total_unread"],
+  "properties": {
+    "contract_version": { "type": "string", "const": "1.0" },
+    "scope": {
+      "type": "string",
+      "enum": ["workspace", "user"],
+      "description": "RD-08/RD-09 a surface whose store cannot express per-user read state MUST declare scope=workspace. It MUST NOT be reported as per-user conformant."
+    },
+    "scope_limitation": {
+      "type": ["string", "null"],
+      "description": "RD-09 human-readable statement of the limitation, e.g. 'agent_messages has no user_id column'"
+    },
+    "total_unread": { "type": "integer", "minimum": 0 },
+    "by_conversation": {
+      "type": ["object", "null"],
+      "description": "RD-05 MUST sum to total_unread",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "marked": { "type": ["integer", "null"], "minimum": 0, "description": "rows affected by the last mark operation" },
+    "operation": { "type": ["string", "null"], "enum": ["mark_conversation", "mark_agent", "mark_all", "aggregate", null] }
+  },
+  "additionalProperties": false
+}

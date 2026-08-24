@@ -1,5 +1,5 @@
 /**
- * INFRA888 — Infrastructure engine SPA module.
+ * LevelUp Growth Infrastructure — customer SPA module.
  *
  * Phase 3B adds the ENTERPRISE INTELLIGENCE INTERFACE on top of the Phase 1D
  * hosting request workflow. It consumes the six real, workspace-scoped
@@ -200,7 +200,7 @@
   // Customer vocabulary. The underlying distinction is preserved exactly —
   // "connected" (we monitor it, we did not create it) is never presented as
   // "set up by us". Internal engine codenames must never reach a customer
-  // surface, so INFRA888 is rendered as LevelUp.
+  // surface, so the internal engine name is never rendered.
   var MODE_LABEL = {
     adopted: 'Connected', provisioned: 'Set up by LevelUp',
     managed_externally: 'Managed elsewhere', managed_by_infra888: 'Managed by LevelUp'
@@ -665,8 +665,8 @@
     var rec = null;
     if (origin === 'external' && !live) { rec = { t: 'Complete setup', d: 'Finish bringing this website into LevelUp.', cta: 'Continue setup', act: 'infra-rec-setup' }; }
     else if (!live) { rec = { t: 'Launch this website', d: 'Publish it in the Builder to take it live.', cta: 'Open in Builder', act: 'infra-rec-builder' }; }
-    else if (!hasCustom) { rec = { t: 'Connect a custom domain', d: 'Show your own domain instead of a levelupgrowth.io address.', cta: 'Go to Domain', act: 'infra-rec-domain' }; }
-    else if (managedAvailable) { rec = { t: 'Upgrade to Managed Hosting', d: 'Dedicated runtime, backups and priority deployment.', cta: 'See Hosting', act: 'infra-rec-hosting' }; }
+    else if (!hasCustom) { rec = { t: 'Custom domains \u2014 coming soon', d: 'Your site is live on its levelupgrowth.io address with SSL included. Connecting your own domain is not available yet.', cta: 'See details', act: 'infra-rec-domain' }; }
+    else if (managedAvailable) { rec = { t: 'Managed Hosting \u2014 coming soon', d: 'A dedicated runtime with automated backups and priority deployment. Not available yet.', cta: 'See details', act: 'infra-rec-hosting' }; }
 
     var recCard = rec ? '<div style="background:var(--ps);border:1px solid var(--pg);border-radius:var(--rg);padding:var(--sp-5);margin-top:var(--sp-4);">' +
       '<div style="font:600 12px var(--fb);color:var(--p);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Recommended next step</div>' +
@@ -700,8 +700,8 @@
 
     // Managed upgrade — clearly an UPGRADE, never active before the connector.
     var managedRow = managedAvailable
-      ? '<button class="infra-btn" id="infra-upgrade-managed" style="' + btnStyle('primary') + '">Upgrade to Managed Hosting</button>'
-      : '<span style="font:600 11px var(--fb);color:var(--t3);white-space:nowrap;padding:0 var(--sp-3);">Available on Pro &amp; Agency</span>';
+      ? '<button class="infra-btn" id="infra-upgrade-managed" style="' + btnStyle('primary') + 'opacity:.5;" disabled aria-disabled="true" title="Managed Hosting is not available yet">Upgrade to Managed Hosting</button>'
+      : '<span style="font:600 11px var(--fb);color:var(--t3);white-space:nowrap;padding:0 var(--sp-3);">Coming soon</span>';
     var managed = card(
       '<div style="font:600 15px var(--fh);color:var(--t1);margin-bottom:6px;">Managed Hosting</div>' +
       '<div style="font:400 13px var(--fb);color:var(--t2);margin-bottom:var(--sp-4);line-height:1.5;">A dedicated, faster runtime with automated backups, monitoring and priority deployment — an upgrade from included shared hosting.</div>' +
@@ -797,6 +797,7 @@
       // finalized" notice plus a preview of the DNS change they'll make.
       body = card(
         '<div style="font:600 15px var(--fh);color:var(--t1);margin-bottom:6px;">Connect your own domain</div>' +
+        '<div style="display:inline-block;font:600 11px var(--fb);color:#F59E0B;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:100px;padding:3px 10px;margin-bottom:10px;">Coming soon \u2014 not available yet</div>' +
         '<div style="font:400 13px var(--fb);color:var(--t2);margin-bottom:var(--sp-4);line-height:1.5;">Use a domain you already own — like <span style="color:var(--t1);">www.yourbrand.com</span> — so visitors see your brand instead of a levelupgrowth.io address. We’ll issue a free SSL certificate automatically.</div>' +
         '<label for="infra-domain-input" style="font:600 12px var(--fb);color:var(--t3);">Your domain</label>' +
         '<input id="infra-domain-input" type="text" inputmode="url" autocomplete="off" placeholder="www.yourbrand.com" ' +
@@ -1768,7 +1769,7 @@
     return intelHeader('Asset inventory',
         'Select an asset to see its relationships, incidents, reliability and blast radius. Modes are labelled exactly as recorded — adopted is not provisioned.', asOf) +
       filters +
-      '<div role="table" aria-label="Infrastructure assets" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);overflow:hidden;">' +
+      '<div role="table" aria-label="Website assets" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);overflow:hidden;">' +
         rowsHead + rows + '</div>';
   }
 
@@ -1826,8 +1827,8 @@
       '</div>' +
       '<dl style="display:grid;grid-template-columns:auto 1fr;gap:8px var(--sp-5);margin:var(--sp-5) 0 0;font:400 13px var(--fb);">' +
         defRow('Management mode', modeTag(a.management_mode) +
-          (a.management_mode === 'adopted' ? ' <span style="color:var(--t3);font-size:12px;">observed, not provisioned by INFRA888</span>' :
-           a.management_mode === 'managed_externally' ? ' <span style="color:var(--t3);font-size:12px;">not managed by INFRA888</span>' : '')) +
+          (a.management_mode === 'adopted' ? ' <span style="color:var(--t3);font-size:12px;">observed, not provisioned by LevelUp Growth</span>' :
+           a.management_mode === 'managed_externally' ? ' <span style="color:var(--t3);font-size:12px;">not managed by LevelUp Growth</span>' : '')) +
         defRow('Lifecycle', esc(a.lifecycle_state || '—')) +
         defRow('Health', HEALTH_LABEL[a.health_state] || 'Unknown') +
         defRow('Last observed', esc(a.health_checked_at ? fmtTime(a.health_checked_at) + ' (' + fmtAgo(a.health_checked_at) + ')' : 'Not yet observed')) +
@@ -2398,6 +2399,31 @@
 
   // Domains landing — real data (custom domains already connected via websites).
   function loadDomains() {
+    // The full domain experience (search, cart, checkout, detail, timeline)
+    // lives in its own module so this file stays the infrastructure shell. It
+    // is handed our design helpers and authenticated transport rather than
+    // duplicating either, so both surfaces stay visually identical.
+    if (window.luDomains && typeof window.luDomains.mount === 'function') {
+      window.luDomains.mount({
+        paintBody: paintBody,
+        pageShell: pageShell,
+        card: card,
+        button: button,
+        esc: esc,
+        req: req,
+        statusPill: statusPill,
+        loadingState: loadingState,
+        errorState: errorState,
+        metricStrip: metricStrip,
+        sectionTitle: sectionTitle,
+        fmtTime: fmtTime,
+        ICONS: ICONS
+      });
+      return;
+    }
+
+    // Fallback: the previous connected-domains view, kept so the tab still
+    // renders something meaningful if the module fails to load.
     var entitled = !!(_entitlement && _entitlement.domains && _entitlement.domains.available);
     function paint(connected) {
       var body;
@@ -2431,6 +2457,34 @@
 
   // Email landing — enterprise empty state (business email not yet built).
   function loadEmail() {
+    // INFRA888 E4 — the customer Business Email portal lives in its own module,
+    // mounted the same way Domains is (see loadDomains above), so this file
+    // stays the infrastructure shell rather than growing a second product.
+    //
+    // The module renders the SAME coming-soon state below when the API reports
+    // Business Email unavailable — which it does on every installation today.
+    // Delegating therefore changes nothing a customer can observe until the
+    // feature is switched on.
+    if (window.luBusinessEmail && typeof window.luBusinessEmail.mount === 'function') {
+      window.luBusinessEmail.mount({
+        paintBody: paintBody,
+        pageShell: pageShell,
+        card: card,
+        button: button,
+        esc: esc,
+        req: req,
+        statusPill: statusPill,
+        loadingState: loadingState,
+        errorState: errorState,
+        metricStrip: metricStrip,
+        sectionTitle: sectionTitle,
+        enterpriseEmpty: enterpriseEmpty,
+        fmtTime: fmtTime,
+        ICONS: ICONS
+      });
+      return;
+    }
+
     paintBody(pageShell({
       breadcrumb: [{ label: 'Hosting' }, { label: 'Email Accounts' }],
       title: 'Email Accounts',

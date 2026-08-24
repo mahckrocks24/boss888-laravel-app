@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/error.schema.json",
+  "title": "Chat Structured Error v1",
+  "description": "Closed error taxonomy. Clause X-01..X-09.",
+  "type": "object",
+  "required": ["code", "message", "retryable", "correlation_id", "provider_called"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "X-01 closed taxonomy",
+      "enum": [
+        "CHAT_VALIDATION_FAILED",
+        "CHAT_UNAUTHENTICATED",
+        "CHAT_FORBIDDEN",
+        "CHAT_AGENT_FORBIDDEN",
+        "CHAT_CONVERSATION_NOT_FOUND",
+        "CHAT_CONVERSATION_CONFLICT",
+        "CHAT_INSUFFICIENT_CREDITS",
+        "CHAT_RATE_LIMITED",
+        "CHAT_PROVIDER_TIMEOUT",
+        "CHAT_PROVIDER_UNAVAILABLE",
+        "CHAT_PROVIDER_MALFORMED_RESPONSE",
+        "CHAT_DELIVERY_FAILED",
+        "CHAT_ATTACHMENT_REJECTED",
+        "CHAT_TOOL_FAILED",
+        "CHAT_APPROVAL_REQUIRED",
+        "CHAT_CANCELLED",
+        "CHAT_INTERNAL_ERROR"
+      ]
+    },
+    "message":        { "type": "string", "minLength": 1, "description": "X-02 user-safe plain language" },
+    "retryable":      { "type": "boolean", "description": "X-03" },
+    "correlation_id": { "type": "string", "minLength": 1 },
+    "diagnostic_ref": { "type": ["string", "null"] },
+    "provider_called":{ "type": "boolean", "description": "X-04 billing-dispute evidence" },
+    "persistence": {
+      "type": "object",
+      "description": "X-05 truthful statement about whether the user's words survived",
+      "required": ["user_message_saved"],
+      "properties": {
+        "user_message_saved":      { "type": "boolean" },
+        "assistant_message_saved": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "credits": {
+      "type": "object",
+      "properties": {
+        "reserved": { "type": "number" },
+        "charged":  { "type": "number" },
+        "released": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "action": {
+      "type": ["object", "null"],
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "href":  { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "details": { "type": ["object", "null"], "description": "X-06 allowlist only" }
+  },
+  "additionalProperties": false
+}

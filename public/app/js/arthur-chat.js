@@ -201,7 +201,9 @@ window._arthurSend = async function() {
             setTimeout(function(){ _arthurShowConfirmActions(bd); }, 100);
         }
         // type='complete' OR legacy ready_to_build → website was built
-        else if (d.type === 'complete' || d.ready_to_build === true) {
+        // BUILDER888 P1-8B — a failed build now truthfully reports type='error'
+        // instead of 'complete'; the renderer below shows the safe message.
+        else if (d.type === 'complete' || d.type === 'error' || d.ready_to_build === true) {
             _arthurRenderBuildResult(d);
         }
     } catch (e) {
@@ -1036,7 +1038,19 @@ function _arthurShowBuilding() {
     steps.forEach(function(id, i) {
         setTimeout(function() {
             var el = document.getElementById(id);
-            if (el) { el.textContent = ""+window.icon('check',18)+"" + el.textContent.substring(1); el.classList.add("done"); }
+            // CR-01 (2026-07-26): this used to assign window.icon()'s SVG STRING
+            // to .textContent, which renders the raw <svg …> tag as visible
+            // characters. An icon is a UI component and never message text.
+            if (el) {
+                var _label = el.textContent.substring(1);
+                el.textContent = '';
+                var _ic = document.createElement('span');
+                _ic.style.cssText = 'display:inline-flex;vertical-align:-3px;margin-right:6px';
+                _ic.innerHTML = window.icon('check', 18);
+                el.appendChild(_ic);
+                el.appendChild(document.createTextNode(_label));
+                el.classList.add("done");
+            }
         }, delays[i]);
     });
 }

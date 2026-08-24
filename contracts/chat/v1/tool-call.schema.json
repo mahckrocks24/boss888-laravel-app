@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/tool-call.schema.json",
+  "title": "Chat Tool Call v1",
+  "description": "Clause TC-01..TC-04. No surface currently claims support; schema exists as the P2+ target.",
+  "type": "object",
+  "required": ["id", "capability_key", "status"],
+  "properties": {
+    "id":             { "type": "string", "minLength": 1 },
+    "capability_key": { "type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$", "description": "TC-02 native engine.action idiom" },
+    "status":         { "type": "string", "enum": ["requested", "approved", "running", "succeeded", "failed", "denied", "cancelled"] },
+    "arguments":      { "type": ["object", "null"] },
+    "result":         { "type": ["object", "array", "string", "number", "boolean", "null"] },
+    "error":          { "oneOf": [{ "$ref": "error.schema.json" }, { "type": "null" }] },
+    "governance": {
+      "type": ["object", "null"],
+      "description": "TC-04 a conversational surface MUST NOT be a governance bypass",
+      "properties": {
+        "decision":  { "type": "string", "enum": ["allow", "deny", "require_approval", "shadow_allow", "shadow_deny"] },
+        "mode":      { "type": "string", "enum": ["off", "shadow", "audit", "enforce"] },
+        "reason":    { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "started_at":  { "type": ["string", "null"], "format": "date-time" },
+    "finished_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false
+}

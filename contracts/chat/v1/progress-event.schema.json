@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/progress-event.schema.json",
+  "title": "Chat Progress Event v1",
+  "description": "Intermediate progress. Transport-independent. Clause T-01, M-01 (type=progress).",
+  "type": "object",
+  "required": ["contract_version", "correlation_id", "conversation_id", "parent_message_id", "stage", "created_at"],
+  "properties": {
+    "contract_version":  { "type": "string", "const": "1.0" },
+    "correlation_id":    { "type": "string", "minLength": 1 },
+    "conversation_id":   { "type": "string", "minLength": 1 },
+    "parent_message_id": { "type": "string", "minLength": 1, "description": "the user message this progress belongs to" },
+    "stage":             { "type": "string", "enum": ["queued", "thinking", "calling_tool", "generating", "persisting"] },
+    "label":             { "type": ["string", "null"], "description": "user-safe; MUST NOT contain markup (G-05)" },
+    "percent":           { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+    "tool":              { "type": ["string", "null"], "description": "capability key in engine.action idiom (TC-02)" },
+    "created_at":        { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

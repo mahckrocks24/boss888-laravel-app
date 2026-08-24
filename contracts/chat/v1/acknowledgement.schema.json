@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/acknowledgement.schema.json",
+  "title": "Chat Acknowledgement v1",
+  "description": "Acceptance of a user message. NOT the final answer. Clause A-01..A-07.",
+  "type": "object",
+  "required": ["contract_version", "ok", "correlation_id", "message", "delivery"],
+  "properties": {
+    "contract_version": { "type": "string", "const": "1.0" },
+    "ok":               { "type": "boolean", "const": true },
+    "correlation_id":   { "type": "string", "minLength": 1, "description": "E-02" },
+    "conversation":     { "$ref": "conversation.schema.json" },
+    "message":          { "$ref": "message.schema.json", "description": "A-02 the accepted USER message" },
+    "acknowledgement": {
+      "description": "A-01 optional agent-authored holding line. MUST NOT be treated as the final answer.",
+      "oneOf": [{ "$ref": "message.schema.json" }, { "type": "null" }]
+    },
+    "delivery":         { "$ref": "delivery.schema.json" },
+    "usage":            { "oneOf": [{ "$ref": "usage.schema.json" }, { "type": "null" }] },
+    "credits":          { "oneOf": [{ "$ref": "credits.schema.json" }, { "type": "null" }] },
+    "error":            { "type": "null", "description": "E-01 ok=true implies error=null" }
+  },
+  "additionalProperties": false
+}

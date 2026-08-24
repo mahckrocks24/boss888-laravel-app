@@ -12,6 +12,29 @@ function _msgE(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 function _msgAgo(ts){if(!ts)return'';var d=(typeof window!=='undefined'&&window._luParseTs)?window._luParseTs(ts):new Date(ts.replace(' ','T')+'Z');var m=Math.round((Date.now()-d)/60000);if(m<1)return'now';if(m<60)return m+'m ago';if(m<1440)return Math.floor(m/60)+'h ago';return Math.floor(m/1440)+'d ago';}
 function _msgApi(method,path,body){var t=localStorage.getItem('lu_token')||'';var o={method:method,headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':'Bearer '+t}};if(body)o.body=JSON.stringify(body);return fetch('/api'+path,o).then(function(r){return r.json();});}
 
+// ── 2026-07-26 READ/UNREAD STATE MACHINE ──────────────────────────────────
+// D2: six call sites used to blank the badge locally, then _msgPollUnread
+// restored the server truth 10s later — a visible clear-then-reappear
+// flicker. The badge is now SERVER-AUTHORITATIVE: mark read, then re-poll.
+// Nothing may set the badge by hand.
+function _msgMarkRead(slug){
+  if(!slug) return Promise.resolve();
+  return _msgApi('POST','/messages/'+slug+'/read')
+    .then(function(){ if(window._msgPollUnread) return window._msgPollUnread(); })
+    .catch(function(){});
+}
+window._msgMarkRead=_msgMarkRead;
+
+// D6 — clear the entire workspace. Wired to the modal header control.
+window._msgMarkAllRead=function(){
+  return _msgApi('POST','/messages/read-all')
+    .then(function(){
+      if(window._msgPollUnread) window._msgPollUnread();
+      if(_msg.open) _msgLoadConversations();
+    })
+    .catch(function(){});
+};
+
 // ── Floater Button ─────────────────────────────────────────────────────────
 function _msgCreateFloater(){
   if(document.getElementById('lu-messages-floater'))return;
@@ -50,6 +73,7 @@ function _msgCreateModal(){
   modal.innerHTML='<div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bd);flex-shrink:0">'
     +'<span style="font-size:16px;margin-right:8px">'+window.icon("message",14)+'</span>'
     +'<span style="font-weight:700;font-size:14px;color:var(--t1);flex:1">Messages</span>'
+    +'<button onclick="_msgMarkAllRead()" title="Mark all as read" style="background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:4px 8px;margin-right:4px">Mark all read</button>'
     +'<button onclick="_msgToggle()" style="background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;padding:4px">\u2715</button>'
     +'</div>'
     +'<div style="display:flex;flex:1;min-height:0">'
@@ -75,8 +99,7 @@ async function _msgLoadConversations(){
     }
     _msgLoadThread(_msg.agent);
     // Mark current agent as read when modal opens
-    _msgApi("POST","/messages/"+_msg.agent+"/read").catch(function(){});
-    var _fb=document.getElementById("lu-messages-badge");if(_fb){_fb.classList.remove("visible");_fb.textContent="";}
+    _msgMarkRead(_msg.agent);   // server-authoritative (was: local badge blanking)
   }catch(e){console.error('[Messages]',e);}
 }
 
@@ -99,12 +122,15 @@ window._msgSelectAgent=function(slug){
   _msgRenderAgentList();
   _msgLoadThread(slug);
   // Mark as read
-  _msgApi('POST','/messages/'+slug+'/read').then(function(){if(window._msgPollUnread)window._msgPollUnread();}).catch(function(){});var _fb=document.getElementById('lu-messages-badge');if(_fb){_fb.classList.remove('visible');_fb.textContent='';}
+  _msgMarkRead(slug);   // server-authoritative
 };
 
-async function _msgLoadThread(slug){
+async function _msgLoadThread(slug, silent){
   var feed=document.getElementById('lu-msg-feed');if(!feed)return;
-  feed.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">Loading...</div>';
+  // 2026-07-26 live-refresh fix — `silent` is used by the background poller so
+  // a routine refresh neither flashes "Loading..." nor jumps the scroll.
+  var _stick = silent ? ((feed.scrollHeight - (feed.scrollTop + feed.clientHeight)) < 60) : true;
+  if(!silent) feed.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">Loading...</div>';
   var uiSlug=slug==='sarah'?'dmm':slug;
   try{
     var msgs=await _msgApi('GET','/agents/'+uiSlug+'/messages');
@@ -126,10 +152,124 @@ async function _msgLoadThread(slug){
     // 2026-05-22 FIX 12 — was scrollIntoView({block:'start'}) which yanked
     // the last message to the TOP of the feed (chat history shifted out of
     // view). Scroll to bottom to match standard chat-app conventions.
-    feed.scrollTop = feed.scrollHeight;
-  }catch(e){feed.innerHTML='<div style="color:var(--rd);padding:20px;font-size:12px">Failed to load messages</div>';}
+    if(!silent || _stick) feed.scrollTop = feed.scrollHeight;
+  }catch(e){ if(!silent) feed.innerHTML='<div style="color:var(--rd);padding:20px;font-size:12px">Failed to load messages</div>'; }
 }
 
+// ── 2026-07-26 LIVE REFRESH ───────────────────────────────────────────────
+// The widget previously polled only the unread badge, so an open thread never
+// updated until the modal was reopened. This re-checks the open conversation
+// and re-renders ONLY when it actually changed.
+async function _msgRefreshOpenThread(){
+  try{
+    if(!_msg.open || !_msg.agent) return;                 // modal closed
+    if(typeof document!=='undefined' && document.hidden) return;  // tab backgrounded
+    if(document.getElementById('lu-msg-typing')) return;   // send in flight
+    var feed=document.getElementById('lu-msg-feed'); if(!feed) return;
+
+    var uiSlug=_msg.agent==='sarah'?'dmm':_msg.agent;
+    var msgs=await _msgApi('GET','/agents/'+uiSlug+'/messages');
+    if(!Array.isArray(msgs)) return;
+
+    var cur=_msg.messages||[];
+    var lastNew=msgs.length?msgs[msgs.length-1]:null;
+    var lastCur=cur.length?cur[cur.length-1]:null;
+    var changed = msgs.length!==cur.length
+      || (lastNew&&lastCur&&String(lastNew.id||lastNew.ts)!==String(lastCur.id||lastCur.ts));
+    if(!changed) return;                                   // nothing new — no DOM work
+
+    _msgLoadThread(_msg.agent, true);
+    // D4 — thread is open and visible, so new arrivals are read.
+    _msgMarkRead(_msg.agent);
+  }catch(e){ /* transient — next tick retries */ }
+}
+window._msgRefreshOpenThread=_msgRefreshOpenThread;
+
+// ── 2026-07-26 TWO-PHASE PARITY ───────────────────────────────────────────
+// POST /agents/{slug}/messages answers {pending, ack, ack_message_id, ...} —
+// NOT {reply}. core.js handled this; this file did not, so replies never
+// rendered here. Shared by the floater modal and the full-page view so the two
+// surfaces cannot drift apart again.
+function _msgTwoPhase(feed, resp, uiSlug, opts){
+  opts = opts || {};
+  var big       = !!opts.big;
+  var typingId  = opts.typingId  || 'lu-msg-typing';
+  var workingId = opts.workingId || 'lu-msg-working';
+  if(!feed || !resp || !resp.pending || !resp.ack) return false;
+
+  var t=document.getElementById(typingId); if(t) t.remove();
+
+  var pad  = big ? '12px 16px' : '10px 14px';
+  var rad  = big ? '14px' : '12px';
+  var fs   = big ? '14px' : '13px';
+  var mb   = big ? '10px' : '8px';
+  var aname = resp.agent_name || _msg.agent || 'Agent';
+
+  // Phase 1 — the instant acknowledgement.
+  feed.innerHTML += '<div style="display:flex;justify-content:flex-start;margin-bottom:'+mb+'">'
+    + '<div style="max-width:80%;padding:'+pad+';border-radius:'+rad+';background:var(--s2);color:var(--t1);'
+    + 'font-size:'+fs+';line-height:1.5;border:1px solid var(--bd);opacity:.92">'
+    + '<div style="font-size:9px;font-weight:700;color:var(--t3);margin-bottom:3px">'+_msgE(aname)+'</div>'
+    + ((typeof fmt==='function')?fmt(resp.ack):_msgE(resp.ack))
+    + '</div></div>';
+
+  // "working…" pulse, mirroring the agent drawer.
+  feed.innerHTML += '<div id="'+workingId+'" style="display:flex;align-items:center;gap:6px;'
+    + 'padding:6px 12px;font-size:11px;color:var(--t3);opacity:.8;margin-bottom:'+mb+'">working…</div>';
+  feed.scrollTop = feed.scrollHeight;
+
+  // Phase 2 — bounded poll for the final row (same cadence/cap as core.js).
+  var ackId    = resp.ack_message_id || 0;
+  var everyMs  = resp.poll_interval_ms || 2500;
+  var maxPolls = Math.ceil(90000 / everyMs);
+  var polls    = 0;
+  var key      = uiSlug + ':' + ackId;
+  _msg.activePoll = _msg.activePoll || {};
+  _msg.activePoll[key] = true;
+
+  var tick = async function(){
+    if(!_msg.activePoll[key]) return;
+    polls++;
+    if(polls > maxPolls){
+      var w0=document.getElementById(workingId);
+      if(w0) w0.innerHTML='<span style="color:var(--am,#F59E0B)">Taking longer than usual — reopen the chat to see the reply.</span>';
+      delete _msg.activePoll[key];
+      return;
+    }
+    try{
+      var msgs = await _msgApi('GET','/agents/'+uiSlug+'/messages');
+      if(Array.isArray(msgs)){
+        for(var i=0;i<msgs.length;i++){
+          var m=msgs[i];
+          var isFinal = m && m.id && m.id > ackId && !m.is_ack
+                        && (m.role==='agent' || (m.from!=='User' && m.from!=='user'));
+          if(isFinal){
+            delete _msg.activePoll[key];
+            var w=document.getElementById(workingId); if(w) w.remove();
+            var stick=(feed.scrollHeight-(feed.scrollTop+feed.clientHeight))<80;
+            var col = m.error ? 'var(--rd,#dc2626)' : 'var(--t3)';
+            feed.innerHTML += '<div style="display:flex;justify-content:flex-start;margin-bottom:'+mb+'">'
+              + '<div style="max-width:80%;padding:'+pad+';border-radius:'+rad+';background:var(--s2);color:var(--t1);'
+              + 'font-size:'+fs+';line-height:1.5;border:1px solid var(--bd)">'
+              + '<div style="font-size:9px;font-weight:700;color:'+col+';margin-bottom:3px">'+_msgE(aname)+(m.error?' · error':'')+'</div>'
+              + ((typeof fmt==='function')?fmt(m.content||''):_msgE(m.content||''))
+              + '</div></div>';
+            if(stick) feed.scrollTop = feed.scrollHeight;
+            // keep the silent refresher's snapshot in step so it does not re-render
+            _msg.messages = msgs;
+            // D4 — you are looking at it, so it is read.
+            _msgMarkRead(_msg.agent);
+            return;
+          }
+        }
+      }
+    }catch(e){ /* transient — next tick retries */ }
+    setTimeout(tick, everyMs);
+  };
+  setTimeout(tick, everyMs);
+  return true;
+}
+window._msgTwoPhase=_msgTwoPhase;
 window._msgSend=async function(){
   var inp=document.getElementById('lu-msg-input');if(!inp)return;
   var msg=inp.value.trim();if(!msg)return;
@@ -167,6 +307,13 @@ window._msgSend=async function(){
     // Now: remove typing, append the agent's reply directly from the
     // response (same pattern Aria/sendAssistant uses).
     var typing=document.getElementById('lu-msg-typing');if(typing)typing.remove();
+    // 2026-07-26 — two-phase first; legacy `reply` retained below for
+    // quick_action / image / non-fpm responses that still answer synchronously.
+    if (_msgTwoPhase(feed, _msgResp, uiSlug, {typingId:'lu-msg-typing', workingId:'lu-msg-working'})) {
+      _msgApi("POST","/messages/"+_msg.agent+"/read").catch(function(){});
+      var _fb0=document.getElementById("lu-messages-badge");if(_fb0){_fb0.classList.remove("visible");_fb0.textContent="";}
+      return;
+    }
     if (feed && _msgResp && _msgResp.reply) {
       var aname = (_msgResp.agent_name || _msg.agent || 'Agent');
       var rendered = (typeof fmt === 'function') ? fmt(_msgResp.reply) : _msgE(_msgResp.reply);
@@ -179,8 +326,7 @@ window._msgSend=async function(){
       feed.scrollTop = feed.scrollHeight;
     }
     // Mark current agent as read when modal opens
-    _msgApi("POST","/messages/"+_msg.agent+"/read").catch(function(){});
-    var _fb=document.getElementById("lu-messages-badge");if(_fb){_fb.classList.remove("visible");_fb.textContent="";}
+    _msgMarkRead(_msg.agent);   // server-authoritative (was: local badge blanking)
     // Poll badge immediately after send
     setTimeout(function(){if(window._msgPollUnread)window._msgPollUnread();},500);
   }catch(e){
@@ -250,7 +396,7 @@ window._msgPageSelect=function(slug){
   _msg.agent=slug;
   _msgRenderPageAgents();
   _msgLoadPageThread(slug);
-  _msgApi('POST','/messages/'+slug+'/read').then(function(){if(window._msgPollUnread)window._msgPollUnread();}).catch(function(){});var _fb=document.getElementById('lu-messages-badge');if(_fb){_fb.classList.remove('visible');_fb.textContent='';}
+  _msgMarkRead(slug);   // server-authoritative; exactly once per action (RD-07)
 };
 
 async function _msgLoadPageThread(slug){
@@ -317,6 +463,10 @@ window._msgPageSend=async function(){
     // 2026-05-22 FIX 12 — same pattern as _msgSend: append agent reply
     // directly from POST response instead of rebuilding the entire feed.
     var typing=document.getElementById('lu-msg-page-typing');if(typing)typing.remove();
+    // 2026-07-26 — same two-phase parity as the floater modal.
+    if (_msgTwoPhase(feed, _msgResp, uiSlug, {big:true, typingId:'lu-msg-page-typing', workingId:'lu-msg-page-working'})) {
+      return;
+    }
     if (feed && _msgResp && _msgResp.reply) {
       var aname = (_msgResp.agent_name || _msg.agent || 'Agent');
       var rendered = (typeof fmt === 'function') ? fmt(_msgResp.reply) : _msgE(_msgResp.reply);
@@ -335,12 +485,20 @@ window._msgPageSend=async function(){
 };
 
 // ── Init ───────────────────────────────────────────────────────────────────
-function _msgInit(){
-  _msgCreateFloater();
+function _msgInit(){ _msgCreateFloater(); }
+// PLATFORM888 Phase 6: badge/thread polling is a governed background service.
+// Starts after the primary route is interactive (luBg); singleton; pauses
+// while the tab is hidden; refreshes the thread only when one is open.
+function _msgStartPolling(){
+  if(_msg.pollTimer) return;
   _msgPollUnread();
-  _msg.pollTimer=setInterval(_msgPollUnread,10000);
+  _msg.pollTimer=setInterval(function(){ if(!document.hidden) _msgPollUnread(); },10000);
+  _msg.threadTimer=setInterval(function(){ if(_msg.open && !document.hidden) _msgRefreshOpenThread(); },5000);
 }
+function _msgStopPolling(){ if(_msg.pollTimer){clearInterval(_msg.pollTimer);_msg.pollTimer=null;} if(_msg.threadTimer){clearInterval(_msg.threadTimer);_msg.threadTimer=null;} }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_msgInit);
 else _msgInit();
+if(window.luBg){ window.luBg.register('messages',{start:_msgStartPolling,stop:_msgStopPolling}); }
+else { (window.requestIdleCallback||function(f){setTimeout(f,1500);})(_msgStartPolling); }
 
 })();

@@ -1,0 +1,7 @@
+{{-- SEO Overview — /admin/seo
+     Renderer for the 'seoAdmin' page, extracted from the single-file admin
+     on 2026-07-29. Data comes from the /api/admin/* JSON API, unchanged.
+     Shared helpers and global handlers live in /js/admin-shared.js. --}}
+<script>
+  window.page = (async function () { setContent('<div class="loading">Loading...</div>'); const data = await api('/seo-overview'); if(!data) return; setContent('<div class="stats-grid" style="margin-bottom:16px"><div class="stat-card"><div class="stat-value" style="color:var(--bl)">'+(data.total_keywords||0)+'</div><div class="stat-label">Keywords</div></div><div class="stat-card"><div class="stat-value" style="color:var(--am)">'+(data.total_audits||0)+'</div><div class="stat-label">Audits</div></div><div class="stat-card"><div class="stat-value" style="color:var(--ac)">'+(data.total_goals||0)+'</div><div class="stat-label">Goals</div></div><div class="stat-card"><div class="stat-value" style="color:var(--p)">'+(data.total_links||0)+'</div><div class="stat-label">Links</div></div></div><div class="card"><div class="card-title">Recent Audits</div>'+((data.recent_audits||[]).length===0?'<div style="padding:10px;color:var(--muted)">No audits</div>':'<table><thead><tr><th>URL</th><th>Score</th><th>Created</th></tr></thead><tbody>'+(data.recent_audits||[]).map(a=>'<tr><td>'+(a.url||'-')+'</td><td>'+(a.score||'-')+'</td><td>'+ts(a.created_at)+'</td></tr>').join('')+'</tbody></table>')+'</div>'); }).bind(window.pages);
+</script>

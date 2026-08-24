@@ -12,6 +12,27 @@ function getToken() {
   return localStorage.getItem('lu_token') || ''
 }
 
+function wipeSession() {
+  localStorage.removeItem('lu_token')
+  localStorage.removeItem('lu_user')
+  window.location.href = '/app'
+}
+
+// STUDIO888 Phase O — C2 fix. A raw session probe that does NOT recurse through
+// request() (so a genuinely-expired /auth/me can still trigger logout without a
+// loop). Returns true if the session is still valid at the auth layer.
+async function sessionStillValid() {
+  try {
+    const r = await fetch(`${BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${getToken()}`, Accept: 'application/json' },
+    })
+    return r.status === 200
+  } catch {
+    // Network error — do NOT destroy the session over a transient failure.
+    return true
+  }
+}
+
 async function request(method, path, body = null) {
   const opts = {
     method,
@@ -26,9 +47,20 @@ async function request(method, path, body = null) {
   const res = await fetch(`${BASE}${path}`, opts)
 
   if (res.status === 401) {
-    localStorage.removeItem('lu_token')
-    localStorage.removeItem('lu_user')
-    window.location.href = '/app'
+    // STUDIO888 Phase O — C2 fix: an ISOLATED endpoint 401 must not wipe the
+    // whole session (previously it always did, destroying open editor work).
+    // The /auth/me probe itself is authoritative for expiry: if it 401s the
+    // session is genuinely dead → log out; otherwise this was a per-resource
+    // 401 → surface it to the caller and keep the user (and their draft) intact.
+    if (path === '/auth/me') {
+      wipeSession()
+      return null
+    }
+    if (await sessionStillValid()) {
+      const data = await res.json().catch(() => ({}))
+      return { ok: false, status: 401, data, isolated401: true }
+    }
+    wipeSession()
     return null
   }
 

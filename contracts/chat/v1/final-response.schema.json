@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://levelupgrowth.io/contracts/chat/v1/final-response.schema.json",
+  "title": "Chat Final Response v1",
+  "description": "Transport-independent final answer envelope. Clause E-01..E-06, F-01..F-07.",
+  "type": "object",
+  "required": ["contract_version", "ok", "correlation_id", "message", "delivery"],
+  "properties": {
+    "contract_version": { "type": "string", "const": "1.0", "description": "E-03" },
+    "ok":               { "type": "boolean", "description": "E-01 must agree with error" },
+    "correlation_id":   { "type": "string", "minLength": 1, "description": "E-02" },
+    "conversation":     { "$ref": "conversation.schema.json" },
+    "message":          { "$ref": "message.schema.json", "description": "F-01 stable id, terminal status, content, content_type" },
+    "delivery":         { "$ref": "delivery.schema.json" },
+    "usage":            { "oneOf": [{ "$ref": "usage.schema.json" }, { "type": "null" }], "description": "F-03" },
+    "credits":          { "oneOf": [{ "$ref": "credits.schema.json" }, { "type": "null" }], "description": "F-03" },
+    "error":            { "oneOf": [{ "$ref": "error.schema.json" }, { "type": "null" }], "description": "F-05 retryable required when failed" }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if":   { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+      "then": { "properties": { "error": { "$ref": "error.schema.json" } }, "required": ["error"] }
+    }
+  ]
+}
