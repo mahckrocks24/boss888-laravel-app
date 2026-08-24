@@ -78,7 +78,20 @@ Route::get('/verify-email/{id}/{hash}', function (\Illuminate\Http\Request $requ
 })->middleware('signed')->name('verification.verify');
 
 // ── SaaS App (React SPA) ──────────────────────────────────────────────────────
-Route::get('/app/{any?}', function () {
+Route::get('/app/{any?}', function (\Illuminate\Http\Request $request) {
+    // MISSION-018 WS launch-switch (2026-08-24): the SPA-shell guard the
+    // marketing config names ("re-enable the SPA-shell guard flag") did not
+    // exist — /app served the shell unconditionally, so on a production host
+    // pre-launch anyone typing levelupgrowth.io/app entered the app, bypassing
+    // the marketing gate the blades enforce on their own CTAs. Now: pre-launch,
+    // the production marketing hosts redirect /app to the marketing home;
+    // staging, the server IP and customer subdomains are unaffected, and once
+    // public_launched flips the app is reachable everywhere.
+    $launched = (bool) config('marketing.public_launched', false);
+    $productionHosts = (array) config('marketing.production_hosts', []);
+    if (! $launched && in_array($request->getHost(), $productionHosts, true)) {
+        return redirect('/');
+    }
     return response()->file(public_path('app/index.html'), ['Cache-Control' => 'no-cache, must-revalidate']);
 })->where('any', '.*')->name('app');
 
