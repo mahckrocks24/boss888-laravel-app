@@ -8300,7 +8300,15 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\DenyApiKeyAuth::class])
         Route::post('/enrol',            [$mfa, 'enrol']);
         Route::post('/confirm',          [$mfa, 'confirm']);
         Route::post('/verify',           [$mfa, 'verify']);
-        Route::post('/recovery-codes',   [$mfa, 'regenerateRecoveryCodes']);
+        // MISSION-018 WS-1 (2026-08-24, RISK-0027): recovery-code regeneration
+        // overwrites the owner's codes and returns a working set — a full MFA
+        // reset. It was the one MFA surface never wired for step-up, so on the
+        // day governance activates mfa.stepup (two MFA admins), the ads route
+        // and the other admin route below flip into enforcement while THIS one
+        // stayed open. Wired now to match those two anticipatory wirings;
+        // inert today because RequireMfaStepUp self-disables pre-activation,
+        // correct on activation.
+        Route::post('/recovery-codes',   [$mfa, 'regenerateRecoveryCodes'])->middleware('mfa.stepup');
     });
 // EMAIL888 (2026-08-11) — public Postmark delivery webhook. Top-level and
 // unauthenticated by design; the controller verifies a path secret and refuses

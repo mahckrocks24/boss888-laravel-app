@@ -1050,7 +1050,7 @@ POST|api/admin/infrastructure/providers/{id}/probe||App\Engines\Infrastructure\H
 POST|api/admin/mfa/enrol||App\Http\Controllers\Auth\MfaController@enrol||App\Http\Middleware\DenyApiKeyAuth,api,auth.jwt
 POST|api/admin/mfa/confirm||App\Http\Controllers\Auth\MfaController@confirm||App\Http\Middleware\DenyApiKeyAuth,api,auth.jwt
 POST|api/admin/mfa/verify||App\Http\Controllers\Auth\MfaController@verify||App\Http\Middleware\DenyApiKeyAuth,api,auth.jwt
-POST|api/admin/mfa/recovery-codes||App\Http\Controllers\Auth\MfaController@regenerateRecoveryCodes||App\Http\Middleware\DenyApiKeyAuth,api,auth.jwt
+POST|api/admin/mfa/recovery-codes||App\Http\Controllers\Auth\MfaController@regenerateRecoveryCodes||App\Http\Middleware\DenyApiKeyAuth,api,auth.jwt,mfa.stepup
 POST|api/webhooks/email/{provider}/{secret}|email888.webhook.provider|App\Core\Email888\Http\ProviderWebhookController||App\Core\Email888\Http\Middleware\RecordThrottledIngress,api,throttle:120,1
 GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS|api/webhooks/email/{provider}/{unmatched?}|email888.webhook.unmatched|App\Core\Email888\Http\WebhookIngressFallbackController||App\Core\Email888\Http\Middleware\RecordThrottledIngress,api,throttle:60,1
 GET,HEAD|storage/thumbnails/{path}||App\Http\Controllers\ThumbnailController@serve||web
