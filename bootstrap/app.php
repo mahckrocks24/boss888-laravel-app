@@ -98,6 +98,18 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('Trial expiry cron failed');
             });
 
+        // MISSION-018 WS-2 (2026-08-24) — the ops tripwire. Scans the recent
+        // log window + failed_jobs and emails admin@ on threshold crossings;
+        // 60-minute per-reason cooldown lives in the command. Proven live:
+        // quiet window silent, forced crossing sent (Postmark accepted),
+        // immediate repeat suppressed by cooldown.
+        $schedule->command('ops:log-alert')
+            ->everyTenMinutes()
+            ->withoutOverlapping()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('ops:log-alert scheduler run failed');
+            });
+
         // DFS-F1 (2026-06-21) — rank tracking moved daily→WEEKLY (Mon 02:00 UTC,
         // ahead of the week's sarah:weekly-review). seo:track-ranks is the SINGLE
         // consolidated rank-position command (depth 20, see TrackKeywordRanksCommand).
