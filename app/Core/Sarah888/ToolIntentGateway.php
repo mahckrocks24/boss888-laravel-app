@@ -29,6 +29,15 @@ use Illuminate\Support\Facades\Log;
  */
 final class ToolIntentGateway
 {
+    /**
+     * Informational READ executors exempt from the launch-scope gate in
+     * handle() — see the dated comment there and EV-0590 for the evidence.
+     * Adding an entry here requires the same standard: a documented product
+     * rationale and proof the policy's denial targets a different tool or an
+     * outbound action this executor does not perform.
+     */
+    private const SCOPE_EXEMPT_READS = ['get_queue', 'list_campaigns'];
+
     public function __construct(
         private CapabilityManifest $manifest,
         private ChatActionProposal $proposals,
@@ -62,6 +71,36 @@ final class ToolIntentGateway
         if (!$cap['registry_active']) {
             return $sim(ToolResult::unavailable($intent->capabilityId,
                 'That capability is registered but not active.'));
+        }
+
+        // MISSION-018 WS-1 (2026-08-24, RISK-0035): this gateway consulted no
+        // launch-scope predicate anywhere, so a removed capability wired here
+        // would execute while four other layers existed to stop it. The policy
+        // is now consulted on every call, keyed on the MANIFEST's engine —
+        // never on caller input (RISK-0038's lesson).
+        //
+        // Two named exceptions, deliberately, with the evidence:
+        //   - get_queue: Sarah's TASK-queue read. It collides by NAME with the
+        //     removed standalone-social queue tool id in REMOVED_TOOLS; the
+        //     policy's denial is about the other tool. Same-name-two-meanings
+        //     is the RISK-0038 class, recorded in EV-0590.
+        //   - list_campaigns: a read of existing workspace data. Refusing it
+        //     is the exact defect the ChefRed transcript exposed (turn 26):
+        //     Sarah told the owner the capability "isn't wired up" when the
+        //     true answer was "you have no campaigns". Reads of what exists
+        //     are platform intelligence (DEC-0021), not the removed outbound
+        //     capability; create/send/schedule stay removed and unwired.
+        // When the activation registry (MISSION-018 §C4) flips capabilities
+        // back on, this gate follows the policy automatically.
+        if (!in_array($intent->capabilityId, self::SCOPE_EXEMPT_READS, true)) {
+            $scopeDenial = \App\Core\LaunchScope\LaunchScopePolicy::isRemovedTool($intent->capabilityId)
+                ? 'LAUNCH_SCOPE_REMOVED_TOOL'
+                : \App\Core\LaunchScope\LaunchScopePolicy::deniedReason(
+                    (string) ($cap['engine'] ?? ''), $intent->capabilityId, $intent->parameters, []);
+            if ($scopeDenial !== null) {
+                return $sim(ToolResult::unavailable($intent->capabilityId,
+                    'That capability is outside the current launch scope (' . $scopeDenial . ').'));
+            }
         }
         if (!$cap['provider_ready']) {
             return $sim(ToolResult::misconfigured($intent->capabilityId,
