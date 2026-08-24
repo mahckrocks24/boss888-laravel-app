@@ -77,7 +77,10 @@ use Illuminate\Support\Facades\Route;
             );
         });
         Route::post('/links/{id}/dismiss', [$c, 'dismissLink']);
-        Route::get('/outbound', [$c, 'outboundLinks']);
+        // REMOVED 2026-08-24 (MISSION-018 WS-1, RISK-0005 census):
+        // GET /outbound here was shadowed by the 2026-05-12 FIX 6 closure at
+        // the bottom of this file (reads seo_outbound_links), which is the
+        // one that serves and the one intended. One registration remains.
         Route::post('/outbound/check', [$c, 'checkOutbound']);
 
         // Goals (5)

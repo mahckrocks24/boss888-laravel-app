@@ -18,7 +18,12 @@ class EngineServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Load engine routes
-        $this->loadRoutesFrom(__DIR__ . '/Http/Routes.php');
+        // REMOVED 2026-08-24 (MISSION-018 WS-1, RISK-0005 census): this loaded
+        // Http/Routes.php, whose only two registrations (GET+POST api/crm/leads
+        // via LeadController) were both fully shadowed by the later
+        // crm-01.php registrations (CrmController) and could never serve.
+        // Proven by the registration-time census (tools/route-registration-census.php)
+        // before removal; the serving routes are unchanged.
 
         // Register engine manifest (deferred to avoid DB calls during boot if DB not ready)
         $this->app->booted(function () {

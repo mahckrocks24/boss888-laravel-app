@@ -2451,7 +2451,10 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])
 
         // Media Library admin actions (T3.1D)
         Route::post  ('/media/generate', [\App\Http\Controllers\Api\Admin\AdminMediaController::class, 'generate']);
-        Route::delete('/media/{id}',     [\App\Http\Controllers\Api\Admin\AdminMediaController::class, 'destroy'])->where('id', '[0-9]+');
+        // REMOVED 2026-08-24 (MISSION-018 WS-1, RISK-0005 census): DELETE
+        // /media/{id} was registered here AND in the media group ~160 lines
+        // below, same controller@method. The later registration is the one
+        // that serves and remains; this earlier one could never fire.
 
         // ── Connector / API-key admin (Recovery 2026-05-05 / §1 SEO_ONLY) ────
         Route::get ('/connector-sites',      [$c, 'listConnectorSites']);
