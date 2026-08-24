@@ -60,6 +60,23 @@ Route::prefix('admin')->group(function () {
         ->where('slug', '.*')->name('admin.page');
 });
 
+// ── Email verification (MISSION-018 WS-2, 2026-08-24) ────────────────────────
+// Clicked from the address-confirmation email queued at registration. The
+// 'signed' middleware validates the 72-hour temporary signature; the hash
+// pins the link to the address it was issued for, so a changed email
+// invalidates old links. Idempotent: a second click is a friendly no-op.
+Route::get('/verify-email/{id}/{hash}', function (\Illuminate\Http\Request $request, int $id, string $hash) {
+    $user = \App\Models\User::findOrFail($id);
+    if (!hash_equals(sha1($user->email), $hash)) {
+        abort(403, 'This verification link does not match this account.');
+    }
+    if ($user->email_verified_at === null) {
+        $user->email_verified_at = now();
+        $user->save();
+    }
+    return redirect('/app?verified=1');
+})->middleware('signed')->name('verification.verify');
+
 // ── SaaS App (React SPA) ──────────────────────────────────────────────────────
 Route::get('/app/{any?}', function () {
     return response()->file(public_path('app/index.html'), ['Cache-Control' => 'no-cache, must-revalidate']);

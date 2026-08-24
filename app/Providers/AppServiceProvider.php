@@ -104,6 +104,8 @@ class AppServiceProvider extends ServiceProvider
         // Register middleware alias
         $router = $this->app['router'];
         $router->aliasMiddleware('auth.jwt', \App\Http\Middleware\JwtAuthMiddleware::class);
+        // MISSION-018 WS-2 (2026-08-24): money-path email-verification gate.
+        $router->aliasMiddleware('verified.email', \App\Http\Middleware\EnsureEmailVerified::class);
 
         // INFRA888 - explicit policy registration. Engine-namespaced models are
         // NOT discovered by Laravel's App\Policies naming convention, so without

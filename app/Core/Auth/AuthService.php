@@ -63,7 +63,42 @@ class AuthService
 
         $this->auditLogService->log($workspace->id, $user->id, 'user.registered');
 
+        // MISSION-018 WS-2 (2026-08-24): registration previously issued a
+        // usable token with NO verification step anywhere in the journey
+        // (REPORT-0012 §1b). The email is queued so signup latency never
+        // waits on the mail provider; delivery failure is logged, never
+        // allowed to break registration itself.
+        $this->sendVerificationEmail($user);
+
         return $this->buildAuthResponse($user, $workspace, $tokens);
+    }
+
+    /**
+     * Queue the address-confirmation email carrying a 72-hour signed URL.
+     * Safe to call repeatedly (resend); a no-op for already-verified users.
+     */
+    public function sendVerificationEmail(User $user): bool
+    {
+        if ($user->email_verified_at !== null) {
+            return false;
+        }
+
+        try {
+            $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                'verification.verify',
+                now()->addHours(72),
+                ['id' => $user->id, 'hash' => sha1($user->email)]
+            );
+            Mail::to($user->email)->queue(
+                new \App\Core\Auth\Mail\VerifyEmailAddress($user->name ?? 'there', $url)
+            );
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('verification email queue failed', [
+                'user_id' => $user->id, 'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 
     public function login(string $email, string $password, ?string $ip = null, ?string $ua = null): array

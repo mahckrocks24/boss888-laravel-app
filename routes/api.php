@@ -613,6 +613,17 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+    // MISSION-018 WS-2 (2026-08-24): re-queue the address-confirmation email.
+    // Throttled hard — this endpoint sends real mail on request.
+    Route::post('/auth/resend-verification', function (\Illuminate\Http\Request $r) {
+        $sent = app(\App\Core\Auth\AuthService::class)->sendVerificationEmail($r->user());
+        return response()->json([
+            'success' => true,
+            'sent'    => $sent,
+            'message' => $sent ? 'Verification email sent — check your inbox.'
+                               : 'This email address is already verified.',
+        ]);
+    })->middleware('throttle:3,60');
 
     // 2026-05-28 — Per-user preferences (sidebar visibility mode, etc.).
     // Whitelisted keys only so users.preferences_json doesn't become a
@@ -2283,13 +2294,16 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     });
 
     // ── Billing Actions (Stripe) ─────────────────────────────────
+    // verified.email (MISSION-018 WS-2): the top of the money funnel refuses
+    // accounts that never confirmed their address. Deliberately NOT a wall in
+    // front of the whole app — the Owner's journey is meet-Sarah-first (§7).
     Route::post('/billing/checkout', function (\Illuminate\Http\Request $r) {
         $r->validate(['plan_id' => 'required|exists:plans,id']);
         $stripe = app(\App\Core\Billing\StripeService::class);
         return response()->json($stripe->createCheckoutSession(
             $r->attributes->get('workspace_id'), $r->input('plan_id'), $r->user()->id
         ));
-    });
+    })->middleware('verified.email');
 
     Route::post('/billing/upgrade', function (\Illuminate\Http\Request $r) {
         $r->validate(['plan_id' => 'required|exists:plans,id']);
