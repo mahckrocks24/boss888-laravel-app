@@ -30,6 +30,16 @@ class TaskService
     {
         $action = $data['action'];
         $engine = $data['engine'] ?? $this->resolveEngineSlug($action);
+        // MISSION-018 WS-1 (2026-08-24, RISK-0038): the launch-scope refusal
+        // below keyed on $engine, which a caller supplies as a free string
+        // (TaskController validates 'engine' => 'required|string', no whitelist).
+        // So relabelling a removed action under another engine — engine=builder,
+        // action=create_campaign — passed every refusal, because
+        // REMOVED_ACTIONS[builder] does not contain create_campaign. The engine
+        // the capability map DERIVES from the action is authoritative; the scope
+        // check now refuses if the action is removed under EITHER the caller's
+        // engine OR the derived one, so mislabelling cannot bypass it.
+        $derivedEngine = $this->resolveEngineSlug($action);
 
         // ── SARAH888 S1J-N01 — STAMP THE CORRELATION ENVELOPE ───────────────
         // Every agent_messages row has carried an execution_id since Phase 1A
@@ -63,7 +73,8 @@ class TaskService
         // retained blog-article-share passes because its payload/source carry the
         // article-share context marker that LaunchScopePolicy explicitly allows.
         $lsParams  = is_array($data['payload'] ?? null) ? $data['payload'] : [];
-        if (\App\Core\LaunchScope\LaunchScopePolicy::isRemoved($engine, $action, $lsParams, $data)) {
+        if (\App\Core\LaunchScope\LaunchScopePolicy::isRemoved($engine, $action, $lsParams, $data)
+            || \App\Core\LaunchScope\LaunchScopePolicy::isRemoved($derivedEngine, $action, $lsParams, $data)) {
             \Illuminate\Support\Facades\Log::warning('[LaunchScope] task creation refused', [
                 'workspace_id' => $workspaceId, 'engine' => $engine, 'action' => $action,
                 'source' => $data['source'] ?? null,
