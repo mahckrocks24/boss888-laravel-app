@@ -32,6 +32,7 @@ class OpsLogAlertCommand extends Command
                             {--window=10 : minutes of log to scan}
                             {--error-threshold=10 : ERROR lines in window that trigger}
                             {--webhook-threshold=1 : unhandled-webhook warnings that trigger}
+                            {--stub-threshold=25 : STUB_UNIMPLEMENTED hits in window that trigger}
                             {--to= : override recipient (default ops address)}';
 
     protected $description = 'Scan recent log + failed_jobs and email ops on threshold crossings (cooldown-limited)';
@@ -49,6 +50,7 @@ class OpsLogAlertCommand extends Command
             // ── log window scan ──────────────────────────────────────────
             $path = storage_path('logs/laravel.log');
             $errorCount = 0;
+            $stubCount = 0;
             $webhookCount = 0;
             if (is_readable($path)) {
                 // Rotation keeps this file small (daily x14, WS-0); a bounded
@@ -65,6 +67,9 @@ class OpsLogAlertCommand extends Command
                     if (str_contains($line, 'Stripe webhook not handled')) {
                         $webhookCount++;
                     }
+                    if (str_contains($line, 'STUB_UNIMPLEMENTED')) {
+                        $stubCount++;
+                    }
                 }
             }
 
@@ -73,6 +78,9 @@ class OpsLogAlertCommand extends Command
             }
             if ($webhookCount >= (int) $this->option('webhook-threshold')) {
                 $alerts['webhook_unhandled'] = "{$webhookCount} 'Stripe webhook not handled' warning(s) in the last {$window} minutes — check STRIPE_WEBHOOK_SECRET and the event types Stripe is sending.";
+            }
+            if ($stubCount >= (int) $this->option('stub-threshold')) {
+                $alerts['unimplemented_stub'] = "{$stubCount} STUB_UNIMPLEMENTED hit(s) in the last {$window} minutes — the Runtime is calling internal bridges that are not implemented; a capability may be reaching customers as a silent no-op.";
             }
 
             // ── failed jobs ──────────────────────────────────────────────

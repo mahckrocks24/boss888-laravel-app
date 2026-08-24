@@ -3204,62 +3204,62 @@ Route::prefix('internal')->group(function () {
 
         // ── Notifications — STUB — needs real dispatcher (Phase 4.5 / 11) ──
         Route::post('/notifications', function (\Illuminate\Http\Request $r) {
-            \Illuminate\Support\Facades\Log::info('runtime/notifications stub hit', $r->all());
-            return response()->json(['ok' => true, 'stub' => true, 'path' => '/api/internal/notifications']);
+            \Illuminate\Support\Facades\Log::warning('STUB_UNIMPLEMENTED runtime/notifications stub hit', $r->all());
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'path' => '/api/internal/notifications']);
         });
 
         // ── Tools status — STUB — engine_intelligence layer integration TODO
         Route::get('/tools/status', function () {
-            return response()->json(['ok' => true, 'stub' => true, 'path' => '/api/internal/tools/status']);
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'path' => '/api/internal/tools/status']);
         });
         Route::get('/tool-registry/stats', function () {
-            return response()->json(['ok' => true, 'stub' => true, 'path' => '/api/internal/tool-registry/stats']);
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'path' => '/api/internal/tool-registry/stats']);
         });
         Route::post('/tools/execute', function (\Illuminate\Http\Request $r) {
-            \Illuminate\Support\Facades\Log::info('runtime/tools/execute stub hit', $r->all());
-            return response()->json(['ok' => true, 'stub' => true, 'path' => '/api/internal/tools/execute']);
+            \Illuminate\Support\Facades\Log::warning('STUB_UNIMPLEMENTED runtime/tools/execute stub hit', $r->all());
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'path' => '/api/internal/tools/execute']);
         });
 
         // ── Site pages (for SEO insights / scanner) — STUB ─────────────────
         Route::get('/site/pages', function (\Illuminate\Http\Request $r) {
-            return response()->json(['ok' => true, 'stub' => true, 'pages' => []]);
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'pages' => []]);
         });
 
         // ── CRM / Marketing / Automation — STUBS ───────────────────────────
         Route::get('/crm/leads', function (\Illuminate\Http\Request $r) {
-            return response()->json(['ok' => true, 'stub' => true, 'leads' => []]);
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'leads' => []]);
         });
         Route::get('/campaigns', function (\Illuminate\Http\Request $r) {
-            return response()->json(['ok' => true, 'stub' => true, 'campaigns' => []]);
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'campaigns' => []]);
         });
         Route::post('/campaign/send', function (\Illuminate\Http\Request $r) {
-            \Illuminate\Support\Facades\Log::info('runtime/campaign/send stub hit', $r->all());
-            return response()->json(['ok' => true, 'stub' => true]);
+            \Illuminate\Support\Facades\Log::warning('STUB_UNIMPLEMENTED runtime/campaign/send stub hit', $r->all());
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false]);
         });
         Route::get('/automation/sequences', function (\Illuminate\Http\Request $r) {
-            return response()->json(['ok' => true, 'stub' => true, 'sequences' => []]);
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'sequences' => []]);
         });
         Route::post('/automation/runs', function (\Illuminate\Http\Request $r) {
-            \Illuminate\Support\Facades\Log::info('runtime/automation/runs stub hit', $r->all());
-            return response()->json(['ok' => true, 'stub' => true, 'run_id' => null]);
+            \Illuminate\Support\Facades\Log::warning('STUB_UNIMPLEMENTED runtime/automation/runs stub hit', $r->all());
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'run_id' => null]);
         });
         Route::put('/automation/runs/{id}', function (\Illuminate\Http\Request $r, $id) {
-            \Illuminate\Support\Facades\Log::info('runtime/automation/runs/' . $id . ' stub hit', $r->all());
-            return response()->json(['ok' => true, 'stub' => true]);
+            \Illuminate\Support\Facades\Log::warning('STUB_UNIMPLEMENTED runtime/automation/runs/' . $id . ' stub hit', $r->all());
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false]);
         });
 
         // ── Governance — STUB — Phase 1.0 / Phase 5 governance work ────────
         Route::post('/governance/flag', function (\Illuminate\Http\Request $r) {
-            \Illuminate\Support\Facades\Log::info('runtime/governance/flag stub hit', $r->all());
-            return response()->json(['ok' => true, 'stub' => true]);
+            \Illuminate\Support\Facades\Log::warning('STUB_UNIMPLEMENTED runtime/governance/flag stub hit', $r->all());
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false]);
         });
 
         // ── Write streaming — STUB — Phase 2C streaming work ───────────────
         Route::post('/write/stream-chunk', function (\Illuminate\Http\Request $r) {
-            return response()->json(['ok' => true, 'stub' => true]);
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false]);
         });
         Route::get('/write/stream-poll', function (\Illuminate\Http\Request $r) {
-            return response()->json(['ok' => true, 'stub' => true, 'chunks' => []]);
+            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'chunks' => []]);
         });
     });
 })->withoutMiddleware('auth.jwt');
