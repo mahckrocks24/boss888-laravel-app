@@ -1,9 +1,0 @@
-<?php
-
-namespace App\Core\Engineer888\Support;
-
-/** Sprint 10 fixture — the version that existed before the workflow. */
-final class Sprint10Fixture
-{
-    public const MARKER = 'original';
-}
