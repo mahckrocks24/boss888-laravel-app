@@ -72,10 +72,16 @@ class LaunchScopePolicy
             'enroll_sequence', 'create_sequence', 'update_sequence', 'delete_sequence',
             'toggle_sequence', 'add_step', 'remove_step',
         ],
-        // ── Content pack cross-surface publish (email/social distribution) ──
-        'content' => [
-            'content_publish_pack',
-        ],
+        // ── Content pack publish — REMOVED FROM THIS EXCLUSION 2026-08-24 ──
+        // OWNER DECISION (CONF-0003, DEC-0019): content-pack publishing IS in
+        // the launch product, ALLOWED-WITH-APPROVAL. The old
+        // 'content' => ['content_publish_pack'] exclusion was already dead
+        // (mis-keyed vs the runtime action 'publish_pack', RISK-0046) and
+        // already contradicted by the 2026-07-22 "Content Publisher retained"
+        // scope-change note directly below and by ApprovalPolicyRegistry, which
+        // governs content.publish_pack as a self-service-confirmation (human
+        // approval still required). Exclusion removed so the code states one
+        // intent; the approval/authorization controls remain the gate.
     ];
 
     /**
