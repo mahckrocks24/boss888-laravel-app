@@ -2693,7 +2693,6 @@ window.luSwipeToClose = luSwipeToClose;
             <div class="nav-item" onclick="nav('chatbot')" id="ni-chatbot">
         <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H8l-4 3v-3H5a2 2 0 01-2-2V5z"/><circle cx="7" cy="9" r="0.8" fill="currentColor"/><circle cx="10" cy="9" r="0.8" fill="currentColor"/><circle cx="13" cy="9" r="0.8" fill="currentColor"/></svg></span>Chatbot</div>
             <!-- ni-manualedit (also labeled "Studio") removed 2026-04-20 — Studio (studio.js) is now the single image-creation surface. ManualEdit JS files + view-manualedit container preserved for back-end compatibility. -->
-            <div class="nav-item" onclick="nav('pipeline')" id="ni-pipeline" style="display:none !important" data-removed="2026-05-12-moved-to-seo-tab"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14M3 10h14M3 15h9"/><circle cx="16" cy="15" r="2"/></svg></span>Pipeline</div>
             <div class="nav-item" onclick="nav('calendar')" id="ni-calendar">
         <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="14" rx="2"/><path d="M2 9h16M6 2v4M14 2v4"/></svg></span>Calendar</div>
             
@@ -2701,7 +2700,7 @@ window.luSwipeToClose = luSwipeToClose;
             
             
       <div class="nav-section">Hosting</div>
-      <div class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Websites</div>
+      <div class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosted Sites</div>
       <div class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('domains'):nav('infrastructure'))" id="ni-infra-domains" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c1.9 2 3 4.7 3 7.5s-1.1 5.5-3 7.5c-1.9-2-3-4.7-3-7.5s1.1-5.5 3-7.5z"/></svg></span>Domains</div>
       <div class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('email'):nav('infrastructure'))" id="ni-infra-email" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5 7-5"/></svg></span>Email Accounts</div>
       <div class="nav-section">Data</div>
@@ -4600,7 +4599,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.0-mobile-scroll',marketing:'/app/js/marketing.js?v=4.12.0-decomposed',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.36.0-orphan-align',write:'/app/js/write.js?v=apifix-20260703',creative:'/app/js/creative.js?v=apifix-20260703',blog:'/app/js/blog.js?v=1.0.7-btn-feedback',studio:'/app/js/studio.js?v=w3img-20260813a','studio-video':'/app/js/studio-video.js?v=stage-20260813a',pipeline:'/app/js/pipeline.js?v=1.0.2-blocked-retry',automation:'/app/js/automation.js?v=1.0.2-meeting-cta',projects:'/app/js/projects.js?v=1.0.1-mutations',mentions:'/app/js/mentions.js?v=1.0.4-progress-bar',infrastructure:'/app/js/infrastructure.js?v=1.8.0-domains-20260729'}};
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.0-mobile-scroll',marketing:'/app/js/marketing.js?v=4.12.0-decomposed',social:'/app/js/social.js',calendar:'/app/js/calendar.js',seo:'/app/js/seo.js?v=5.36.0-orphan-align',write:'/app/js/write.js?v=apifix-20260703',creative:'/app/js/creative.js?v=apifix-20260703',blog:'/app/js/blog.js?v=1.0.7-btn-feedback',studio:'/app/js/studio.js?v=w3img-20260813a','studio-video':'/app/js/studio-video.js?v=stage-20260813a',automation:'/app/js/automation.js?v=1.0.2-meeting-cta',projects:'/app/js/projects.js?v=1.0.1-mutations',mentions:'/app/js/mentions.js?v=1.0.4-progress-bar',infrastructure:'/app/js/infrastructure.js?v=1.8.0-domains-20260729'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
