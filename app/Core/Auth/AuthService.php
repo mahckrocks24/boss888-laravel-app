@@ -52,6 +52,23 @@ class AuthService
             ]);
         }
 
+        // MISSION-018 WS-2 (2026-08-24): the Owner's policy is that NEW
+        // ACCOUNTS receive the 3-day / 50-credit trial (MISSION-018 §11).
+        // TrialService shipped complete in May — activation guards, trialing
+        // Growth subscription, ledgered credits, a scheduled expiry sweep —
+        // and was never called here; the only trigger was first website
+        // creation (the historical accident REPORT-0012 §15 measured:
+        // is_trial=0 on all 47 workspaces ever). This is the one-line switch:
+        // to move the trigger, remove this call — the BuilderService call
+        // remains and the already_trialed guard prevents doubles.
+        try {
+            app(\App\Core\Billing\TrialService::class)->activateTrial($workspace->id);
+        } catch (\Throwable $e) {
+            Log::error('trial activation at registration failed', [
+                'workspace_id' => $workspace->id, 'error' => $e->getMessage(),
+            ]);
+        }
+
         // Sarah is the only agent attached at signup. Additional specialists
         // unlock as the user progresses onboarding / upgrades plan.
         $sarah = Agent::where('slug', 'sarah')->where('status', 'active')->first();

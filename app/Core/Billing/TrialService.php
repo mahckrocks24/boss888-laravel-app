@@ -90,12 +90,21 @@ class TrialService
                 ]);
             }
 
-            // Credit the trial credits into the workspace balance
+            // Credit the trial credits into the workspace balance.
+            // FIXED 2026-08-24 (MISSION-018 WS-2): this call passed a
+            // descriptive STRING as CreditService::credit()'s ?int $refId,
+            // throwing a TypeError on EVERY activation since the signature
+            // changed — caught by the catch below, rolled back, and reported
+            // only as reason:'error'. This, not the trigger, is why is_trial
+            // was 0 on all 47 workspaces while 10 websites (the historical
+            // trigger) existed. The description now rides in $meta where the
+            // ledger keeps it.
             $this->credits->credit(
                 $wsId,
                 self::TRIAL_CREDITS,
                 'trial_activation',
-                'Trial activation — ' . self::TRIAL_CREDITS . ' credits for ' . self::TRIAL_DAYS . ' days'
+                null,
+                ['note' => 'Trial activation — ' . self::TRIAL_CREDITS . ' credits for ' . self::TRIAL_DAYS . ' days']
             );
 
             DB::commit();
@@ -233,6 +242,17 @@ class TrialService
             DB::table('credits')
                 ->where('workspace_id', $wsId)
                 ->update(['balance' => 0, 'reserved_balance' => 0, 'updated_at' => now()]);
+
+            // FIXED 2026-08-24 (MISSION-018 WS-2): expiry cancelled the
+            // subscription and zeroed credits but left the workspace flags
+            // standing — is_trial stayed 1 forever and every reader of the
+            // workspace row saw an eternal trial. Clear them with the same
+            // Schema guards activation uses.
+            $flagUpdate = ['trial_credits' => 0, 'updated_at' => now()];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('workspaces', 'is_trial')) {
+                $flagUpdate['is_trial'] = 0;
+            }
+            DB::table('workspaces')->where('id', $wsId)->update($flagUpdate);
 
             // MEDIUM-03 FIX: Bust any cached credit balance so the UI reflects 0 immediately
             try {
