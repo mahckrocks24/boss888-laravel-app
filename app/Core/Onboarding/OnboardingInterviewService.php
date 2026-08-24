@@ -95,14 +95,29 @@ class OnboardingInterviewService
     {
         [$known, $standings] = $this->currentState($workspaceId);
 
-        $out = $this->runtime->chatJson(
+        // PASS 1 — Sarah's conversational reply. One job: sound like a person
+        // and ask the right next thing. Its "recognised" is a bonus, not the
+        // authority — a model juggling tone, memory and extraction in one call
+        // under-extracts (EV-0594: 4 of ~8 stated facts on deepseek-v4-flash).
+        $reply = $this->runtime->chatJson(
             $this->brief($known, $standings),
             $this->transcript($history, $message),
             [],
             1200
         );
 
-        return $this->interpret($workspaceId, $out, applyFacts: true);
+        // PASS 2 — a dedicated extractor with ONE job: pull every stated fact
+        // from THIS message. No conversational load, a tighter prompt, and the
+        // outstanding list front-and-centre. This is where completeness comes
+        // from; the two passes' recognised sets are then merged.
+        $extract = $this->runtime->chatJson(
+            $this->extractionBrief($known, $standings),
+            $this->transcript($history, $message),
+            [],
+            800
+        );
+
+        return $this->interpretTwoPass($workspaceId, $reply, $extract);
     }
 
     /** What is already on record for this workspace, in the interview's shape. */
@@ -198,6 +213,64 @@ class OnboardingInterviewService
     }
 
     /**
+     * The PASS-2 extractor prompt. No persona, no conversation — one job:
+     * find every criterion the client stated in their latest message, with a
+     * quote. Freed of the reply's cognitive load, this recovers the facts a
+     * single combined call drops (EV-0594).
+     */
+    private function extractionBrief(array $known, array $standings): string
+    {
+        $factLines = [];
+        foreach (self::BUSINESS_FACTS as $key => $desc) {
+            $factLines[] = "  - {$key}: {$desc}";
+        }
+        $assetLines = [];
+        foreach (self::PRESENCE_ASSETS as $key => $desc) {
+            $assetLines[] = "  - {$key}: {$desc} (customer_owned or absent)";
+        }
+        $facts = implode("\n", $factLines);
+        $assets = implode("\n", $assetLines);
+        $alreadyKnown = ($known === [] && $standings === [])
+            ? 'nothing yet'
+            : json_encode(['business' => array_keys($known), 'infrastructure' => array_keys($standings)]);
+
+        return <<<PROMPT
+        You are a precise information extractor. You are NOT having a conversation.
+        Read the client's LATEST message and extract EVERY item below that they stated
+        in it — a client routinely states four or five in one sentence. Miss nothing
+        they actually said; invent nothing they did not.
+
+        BUSINESS FACTS to look for:
+        {$facts}
+
+        INFRASTRUCTURE to look for:
+        {$assets}
+
+        ALREADY ON RECORD (do not re-extract these keys unless the client restated them):
+        {$alreadyKnown}
+
+        For each item the client stated in their latest message, output it with the
+        client's exact words as the quote. If they did not state an item, omit it.
+        A location like "Portland" is a location. "coffee roastery" is both what_it_does
+        and industry. "selling X to Y" gives what_it_sells (X) AND who_it_serves (Y).
+        "we want more online orders" is primary_goal. "we have a website" is
+        website=customer_owned; "no analytics" is analytics=absent.
+
+        OUTPUT — strict JSON only, no prose, no markdown:
+        {
+          "recognised": [
+            {"kind":"business","key":"<fact key>","value":"<what they said>","quote":"<their exact words>"},
+            {"kind":"infrastructure","key":"<asset key>","value":"customer_owned or absent","quote":"<their exact words>"}
+          ],
+          "context": [{"note":"<other useful business context they stated>","quote":"<their words>"}]
+        }
+
+        Every entry MUST carry a quote from the latest message. recognised/context may
+        be empty only if the client genuinely stated nothing extractable.
+        PROMPT;
+    }
+
+    /**
      * @param  list<array{role:string,content:string}>  $history
      */
     private function transcript(array $history, string $message): string
@@ -214,8 +287,8 @@ class OnboardingInterviewService
     }
 
     /**
-     * Read the Runtime envelope, refuse anything unverifiable, persist what
-     * survives. `chatJson` returns ['success','parsed','text','raw'].
+     * The greeting path: one envelope, no fact application.
+     * `chatJson` returns ['success','parsed','text','raw'].
      */
     private function interpret(int $workspaceId, array $out, bool $applyFacts): array
     {
@@ -234,19 +307,67 @@ class OnboardingInterviewService
         }
 
         $parsed = $out['parsed'];
-        $reply = is_string($parsed['reply'] ?? null) ? $parsed['reply'] : '';
         $recognised = is_array($parsed['recognised'] ?? null) ? $parsed['recognised'] : [];
         $context = is_array($parsed['context'] ?? null) ? $parsed['context'] : [];
-        $sufficient = ($parsed['sufficient'] ?? false) === true;
-
-        $accepted = [];
-        if ($applyFacts) {
-            $accepted = $this->persist($workspaceId, $recognised, $context);
-        }
 
         return [
             'ok' => true,
-            'reply' => $reply,
+            'reply' => is_string($parsed['reply'] ?? null) ? $parsed['reply'] : '',
+            'recognised' => $applyFacts ? $this->persist($workspaceId, $recognised, $context) : [],
+            'sufficient' => ($parsed['sufficient'] ?? false) === true,
+        ];
+    }
+
+    /**
+     * Merge the conversational pass (reply + its recognised) with the dedicated
+     * extractor pass, then persist the union. The reply pass owns tone and the
+     * "sufficient" judgement; the extractor pass owns completeness. If the
+     * reply pass fails we still have Sarah's turn from a fallback; if the
+     * extractor fails we keep the reply pass's recognised set — neither pass
+     * alone silently loses the customer's turn.
+     */
+    private function interpretTwoPass(int $workspaceId, array $reply, array $extract): array
+    {
+        $replyOk = ($reply['success'] ?? false) === true && is_array($reply['parsed'] ?? null);
+        $extractOk = ($extract['success'] ?? false) === true && is_array($extract['parsed'] ?? null);
+
+        if (!$replyOk && !$extractOk) {
+            Log::warning('onboarding interview: both passes unusable', ['workspace_id' => $workspaceId]);
+            return ['ok' => false, 'reply' => "I'm having trouble hearing you — could you say that again?", 'recognised' => [], 'sufficient' => false];
+        }
+
+        $rp = $replyOk ? $reply['parsed'] : [];
+        $ep = $extractOk ? $extract['parsed'] : [];
+
+        // Union of recognised, keyed by kind+key so the extractor fills gaps the
+        // reply pass left without duplicating what both found. First quote wins.
+        $merged = [];
+        foreach ([$rp['recognised'] ?? [], $ep['recognised'] ?? []] as $set) {
+            if (!is_array($set)) continue;
+            foreach ($set as $entry) {
+                if (!is_array($entry)) continue;
+                $k = ($entry['kind'] ?? '').'/'.($entry['key'] ?? '');
+                if (!isset($merged[$k])) $merged[$k] = $entry;
+            }
+        }
+        $context = array_merge(
+            is_array($rp['context'] ?? null) ? $rp['context'] : [],
+            is_array($ep['context'] ?? null) ? $ep['context'] : [],
+        );
+
+        $accepted = $this->persist($workspaceId, array_values($merged), $context);
+
+        // Re-evaluate sufficiency from the record itself, not the model's claim:
+        // enough is when every business fact and every presence asset is known.
+        [$known, $standings] = $this->currentState($workspaceId);
+        $sufficient = count($known) === count(self::BUSINESS_FACTS)
+            && count($standings) === count(self::PRESENCE_ASSETS);
+
+        return [
+            'ok' => true,
+            'reply' => $replyOk && is_string($rp['reply'] ?? null) && $rp['reply'] !== ''
+                ? $rp['reply']
+                : 'Got it — tell me a little more about your business.',
             'recognised' => $accepted,
             'sufficient' => $sufficient,
         ];
