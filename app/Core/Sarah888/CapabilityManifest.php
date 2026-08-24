@@ -252,6 +252,17 @@ final class CapabilityManifest
      */
     public function forWorkspace(int $wsId): array
     {
+        // MISSION-018 WS-1 (2026-08-24, RISK-0045): the MAX(is_active) GROUP BY
+        // tool_id below is DELIBERATE and correct — this is the SARAH-LEVEL
+        // manifest ("does this workspace have this capability at all"), not a
+        // per-agent one. Collapsing the agent dimension is the intended
+        // question here. Per-agent is_active REVOCATION is enforced downstream,
+        // where it actually gates execution: AgentCapabilityService::canUse()
+        // and ::getCapabilities() both filter
+        // where('agent_slug', $agent)->where('is_active', true), so a tool
+        // deactivated for one agent is refused to that agent even while this
+        // Sarah manifest shows the workspace has the capability. Verified
+        // 2026-08-24; RISK-0045's "it's undocumented" is the fix — now it isn't.
         $rows = DB::table('agent_capabilities')
             ->selectRaw('tool_id, GROUP_CONCAT(DISTINCT agent_slug) agents, MAX(is_active) any_active')
             ->groupBy('tool_id')->orderBy('tool_id')->get();
