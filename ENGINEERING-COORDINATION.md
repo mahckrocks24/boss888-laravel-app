@@ -135,3 +135,56 @@ Report the conflict and name the smallest coordination point that would unblock 
   2026-08-01: docs-only, work preserved, and rewriting history is the larger risk.
 - **`levelup_test`** was dropped on 2026-07-30 during another engineer's run. Nothing
   was permanently lost; the controls above exist so it cannot recur.
+
+---
+
+## 2026-08-05 — SAFETY NOTICE → INFRA888 Business Email  (OPEN)
+
+The platform execution-safety audit is RED. Four in-process `Artisan::call('migrate:fresh')`
+calls in `tests/Feature/Infrastructure/Email/BusinessEmailMigrationReplayTest.php`
+(lines 44, 55, 95, 130) fail `ExecutionSafetyTest::test_no_unsafe_execution_path_exists_anywhere_in_the_platform`.
+
+INC-2026-006 defect class. Owned by INFRA888 Business Email — Engineer888 did not modify
+the file, add an exception, or weaken the rule. Full notice and required evidence:
+
+  .engineer888/notices/2026-08-05-INFRA888-BUSINESS-EMAIL-UNSAFE-MIGRATE-FRESH.md
+
+Engineer888 Chat V1 development proceeds in parallel; its CERTIFICATION is blocked until
+this audit returns zero UNSAFE findings.
+
+---
+
+## 2026-08-05 — INC-ENGINEERING-COORDINATION-DENYAPIKEYAUTH-OVERWRITE  (OPEN)
+
+Engineer888 ACCIDENTALLY OVERWROTE `app/Http/Middleware/DenyApiKeyAuth.php` (INFRA888
+control C6 / directive 1C §5) and restored it from HEAD `8c7cc1e`.
+
+Current file: sha256 `8b4aab02…`, clean against HEAD, syntax PASS, runtime healthy.
+NO pre-write mtime or backup was captured, so **uncommitted INFRA888 edits that may have
+existed before the overwrite cannot be ruled out or recovered.**
+
+Engineer888's mistaken replacement is retained at `/tmp/e888_mistaken_DenyApiKeyAuth.php`
+for forensic comparison ONLY.
+
+Root cause: incomplete discovery output (`grep` truncated by `head`) was treated as proof
+of absence. A truncated ls/grep result is never evidence that a file does not exist.
+
+INFRA888 action requested — see:
+  .engineer888/notices/2026-08-05-INFRA888-DENYAPIKEYAUTH-OVERWRITE.md
+
+Engineer888 will not edit, compare or merge that file again without INFRA888 authorization.
+Chat service-layer work is PAUSED pending INFRA888 confirmation.
+
+---
+
+## 2026-08-05 — ADMIN_REGISTRY_VISIBILITY_ASSUMPTION_BROKEN → INFRA888 Business Email  (OPEN)
+
+Eight `business_email.*` admin pages declare `capability: business_email.read`, but
+`AdminAccess` has no resolver for that prefix and fails closed. The pages are invisible to
+every administrator including the canonical one (57 of 65 visible), and
+`AdminIdentityTest::test_the_canonical_admin_sees_the_whole_registry` now fails.
+
+Engineer888 did NOT modify those pages, AdminAccess, or that test, and will not add a
+permissive resolver on another subsystem's behalf. Full notice:
+
+  .engineer888/notices/2026-08-05-INFRA888-BUSINESS-EMAIL-UNROUTABLE-CAPABILITY.md

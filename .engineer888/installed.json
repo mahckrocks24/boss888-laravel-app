@@ -1,6 +1,17 @@
 {
     "manifest_version": 1,
     "entries": {
+        ".engineer888/sprints/2026-08-01-coordination-hardening.json": {
+            "component": "platform/admin-identity",
+            "source_path": "platform-security-shared-declaration",
+            "source_hash": "a09dad6a95b9a41691fa0068c7654dae7a3b9d78",
+            "destination_hash": "a09dad6a95b9a41691fa0068c7654dae7a3b9d78",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T10:59:43+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
         "app/Console/Commands/BaselineCommand.php": {
             "component": "engineer888/baseline",
             "source_path": "s5-3.php",
@@ -56,6 +67,28 @@
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
         },
+        "app/Console/Commands/EngineeringReasonCommand.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "caed1a53ea52acf9cb41d25f4b9fe7c6690faada",
+            "destination_hash": "caed1a53ea52acf9cb41d25f4b9fe7c6690faada",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:02+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Console/Commands/EngineeringTaskCommand.php": {
+            "component": "engineer888/workflow",
+            "source_path": "s6-fix.php",
+            "source_hash": "165f51e55bcbcb4c9bcf9c569d16ec582b14e6b7",
+            "destination_hash": "165f51e55bcbcb4c9bcf9c569d16ec582b14e6b7",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:43:53+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
         "app/Console/Commands/RepositoryIntelligenceCommand.php": {
             "component": "engineer888",
             "source_path": "adopted from disk (P0.5 reconciliation)",
@@ -74,6 +107,105 @@
             "destination_hash": "fefd8f707c49862a71d261a6c64d7c9680789723",
             "installer_version": "1.0.0",
             "installed_at": "2026-08-02T08:50:53+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Access/AccessAudit.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.4-enforcement",
+            "source_hash": "b6a5abab83a770f64ed07660194928fa161cb501",
+            "destination_hash": "b6a5abab83a770f64ed07660194928fa161cb501",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T06:36:16+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Access/Engineer888Access.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.3-access-boundary",
+            "source_hash": "26b0325d41e5da2f7658ed867c0a4141fea5652e",
+            "destination_hash": "26b0325d41e5da2f7658ed867c0a4141fea5652e",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T05:57:04+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Access/Engineer888Capability.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.3-access-boundary",
+            "source_hash": "4a6ecc9a933b3410f826babf4ab7375b45663017",
+            "destination_hash": "4a6ecc9a933b3410f826babf4ab7375b45663017",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T05:57:04+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Approval/ApprovalBinding.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10.2-rehearsal-gate",
+            "source_hash": "abef828a6ca8090324dd54fd1153541a02d822f3",
+            "destination_hash": "abef828a6ca8090324dd54fd1153541a02d822f3",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T18:59:22+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Approval/ApprovalLedger.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "e19abdbc1294ef9577e17432df24d67d8db83335",
+            "destination_hash": "e19abdbc1294ef9577e17432df24d67d8db83335",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:22+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Approval/ApprovalState.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "63357064565d588fdd52744c93b0a43e099ba217",
+            "destination_hash": "63357064565d588fdd52744c93b0a43e099ba217",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:21+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Approval/EnforcementResult.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "3095bc6f8001206a70fe5ce4df2026e5c77e46c6",
+            "destination_hash": "3095bc6f8001206a70fe5ce4df2026e5c77e46c6",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:21+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Audit/TreeScan.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-execution-safety",
+            "source_hash": "b7d2b7fa0060711d68249afaafb819b9aab6afec",
+            "destination_hash": "b7d2b7fa0060711d68249afaafb819b9aab6afec",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:04+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Audit/WriteBoundary.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-boundary-false-positive-fix",
+            "source_hash": "ef91f335c1d636297f24e274e16a3832b0706791",
+            "destination_hash": "ef91f335c1d636297f24e274e16a3832b0706791",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:35:59+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -328,6 +460,237 @@
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
         },
+        "app/Core/Engineer888/Migration/MigrationClassifier.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10",
+            "source_hash": "44383e606b3fd6d97b716542dba166160d6ab13b",
+            "destination_hash": "44383e606b3fd6d97b716542dba166160d6ab13b",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:05:24+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Migration/MigrationRehearsal.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10.2-rehearsal-hygiene",
+            "source_hash": "1307a67194f3bc99e277df24fbdb71b4965af552",
+            "destination_hash": "1307a67194f3bc99e277df24fbdb71b4965af552",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T19:01:08+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Migration/RehearsalGate.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10.2-rehearsal-gate",
+            "source_hash": "b8d754593014ab9262cd4f1ae0f7cdb2a1740c14",
+            "destination_hash": "b8d754593014ab9262cd4f1ae0f7cdb2a1740c14",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T18:59:21+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/CandidateImplementation.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10-test-contract",
+            "source_hash": "833493b7eb175dd17c0c290ae06d94344dcdf863",
+            "destination_hash": "833493b7eb175dd17c0c290ae06d94344dcdf863",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:05:25+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/CandidateStore.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "2a64635ab2c241a7fd40e7e5cfa15785933fd9d0",
+            "destination_hash": "2a64635ab2c241a7fd40e7e5cfa15785933fd9d0",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:22+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/CandidateValidator.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.4-enforcement",
+            "source_hash": "d1bd48c22c6c700eb4fe552556687239444d021f",
+            "destination_hash": "d1bd48c22c6c700eb4fe552556687239444d021f",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T06:36:16+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/ContextBuilder.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "99af041139721400f315c505fc47abafc0904929",
+            "destination_hash": "99af041139721400f315c505fc47abafc0904929",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:22+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/KnowledgeBase.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-patch",
+            "source_hash": "09d6ba77ef2895bdd734395ae42447dfa47a0e28",
+            "destination_hash": "09d6ba77ef2895bdd734395ae42447dfa47a0e28",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:54:45+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/ProviderReadiness.php": {
+            "component": "engineer888/workflow",
+            "source_path": "workflow task 1cc89200-089f-4473-9bc4-740112aab3c1 (reasoning:openai/gpt-4o-2024-08-06)",
+            "source_hash": "6f2a3c6f1d1f91b013bf042fc6fe8202a902e73a",
+            "destination_hash": "6f2a3c6f1d1f91b013bf042fc6fe8202a902e73a",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:58:17+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/ProviderRegistry.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "da6d10d1cd5462ed08311616bd1ca81b281c22fb",
+            "destination_hash": "da6d10d1cd5462ed08311616bd1ca81b281c22fb",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:00+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/ProviderResponse.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "f31c4d30fb6b116b9760c274ff6f09eee73fdab6",
+            "destination_hash": "f31c4d30fb6b116b9760c274ff6f09eee73fdab6",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:00+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/Providers/DeepSeekReasoningProvider.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-patch",
+            "source_hash": "2c7dca7b5f200cf40e58551cdf3592182b968d69",
+            "destination_hash": "2c7dca7b5f200cf40e58551cdf3592182b968d69",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:37:20+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/Providers/NullReasoningProvider.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "3c06d551be06590cecb37e64aa149638fcac4719",
+            "destination_hash": "3c06d551be06590cecb37e64aa149638fcac4719",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:01+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/Providers/OpenAiReasoningProvider.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "3efd82c76836f67a977e673e37935d6907038235",
+            "destination_hash": "3efd82c76836f67a977e673e37935d6907038235",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:00+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/Providers/ScriptedReasoningProvider.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "8249c048ecb52322c66c5b38054661d4fc526bda",
+            "destination_hash": "8249c048ecb52322c66c5b38054661d4fc526bda",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:01+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/README.md": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "7af25d900b265a2d3311ddae22822a5ef7efecbe",
+            "destination_hash": "7af25d900b265a2d3311ddae22822a5ef7efecbe",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:00+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/ReasoningEngine.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10-guided-retry",
+            "source_hash": "cce9f71d005f89f1e2474099d007eba46836f90b",
+            "destination_hash": "cce9f71d005f89f1e2474099d007eba46836f90b",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:05:25+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/ReasoningOutcome.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "2903b069a09f86f900f5c2ed9eeae972a9989344",
+            "destination_hash": "2903b069a09f86f900f5c2ed9eeae972a9989344",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:22+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/ReasoningProvider.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "dc5a43263696664260aef39be6a529c09bf4fc0b",
+            "destination_hash": "dc5a43263696664260aef39be6a529c09bf4fc0b",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:00+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/ReasoningRequest.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "290f7abdaf6136995c66b2c6c626df840766288a",
+            "destination_hash": "290f7abdaf6136995c66b2c6c626df840766288a",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:00+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Reasoning/TestContract.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10.1-unknown-is-not-a-filename",
+            "source_hash": "2ee4549e13b1e4594c18f1ba5699c7bc5c11013b",
+            "destination_hash": "2ee4549e13b1e4594c18f1ba5699c7bc5c11013b",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T18:32:06+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
         "app/Core/Engineer888/Recommendations.php": {
             "component": "engineer888",
             "source_path": "adopted from disk (P0.5 reconciliation)",
@@ -335,6 +698,61 @@
             "destination_hash": "0d39dca566485a56ec7e88aebac05555476e5570",
             "installer_version": "1.0.0",
             "installed_at": "2026-08-02T08:52:30+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Recovery/ManualRecovery.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10",
+            "source_hash": "733b51cb63597dd38b20d8b730edb8b66403cb04",
+            "destination_hash": "733b51cb63597dd38b20d8b730edb8b66403cb04",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:05:24+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Recovery/RecoveryActionHelper.php": {
+            "component": "engineer888/workflow",
+            "source_path": "workflow task f2f40a64-cde9-41b3-9e33-398e8782361a (reasoning:openai/gpt-4o-2024-08-06 [candidate 7bd22868])",
+            "source_hash": "0903bdd82753acd3cdca18aac71d4e6e95aee329",
+            "destination_hash": "0903bdd82753acd3cdca18aac71d4e6e95aee329",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T07:33:51+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Recovery/RecoveryCandidate.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10",
+            "source_hash": "50fa68d105fd282b737bb66a6ee0f2b7200c5265",
+            "destination_hash": "50fa68d105fd282b737bb66a6ee0f2b7200c5265",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:05:24+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Recovery/RecoveryManifest.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-execution-safety",
+            "source_hash": "d9ff82afe4f338354a14cb18bf8c0bed01d7b7b0",
+            "destination_hash": "d9ff82afe4f338354a14cb18bf8c0bed01d7b7b0",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:04+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Recovery/RecoveryService.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-execution-safety",
+            "source_hash": "85c11ecfba5e1027e889715644c2be28847d2d77",
+            "destination_hash": "85c11ecfba5e1027e889715644c2be28847d2d77",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:04+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -362,12 +780,12 @@
             "overrides": []
         },
         "app/Core/Engineer888/Repository/DependencyGraph.php": {
-            "component": "engineer888",
-            "source_path": "adopted from disk (P0.5 reconciliation)",
-            "source_hash": "3ef405a0079cd13b8aec00b73149087ab51614fa",
-            "destination_hash": "3ef405a0079cd13b8aec00b73149087ab51614fa",
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-queue-readability",
+            "source_hash": "eb68be73d636e923dc0cbdae89fdbf0d53046042",
+            "destination_hash": "eb68be73d636e923dc0cbdae89fdbf0d53046042",
             "installer_version": "1.0.0",
-            "installed_at": "2026-08-02T08:52:30+00:00",
+            "installed_at": "2026-08-02T13:34:53+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -412,6 +830,17 @@
             "destination_hash": "43eb18770f8259372dfd272e2f10d6250b72fe56",
             "installer_version": "1.0.0",
             "installed_at": "2026-08-02T08:52:30+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Runtime/Workspace.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-execution-safety",
+            "source_hash": "fa2c66d972755ecbb3720a10ea7a6fd1c8030400",
+            "destination_hash": "fa2c66d972755ecbb3720a10ea7a6fd1c8030400",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:04+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -461,12 +890,12 @@
             "overrides": []
         },
         "app/Core/Engineer888/Signals/Shell.php": {
-            "component": "engineer888",
-            "source_path": "adopted from disk (P0.5 reconciliation)",
-            "source_hash": "d5fcfdbfd51c26af9e755d5ee2e21748fa994e0a",
-            "destination_hash": "d5fcfdbfd51c26af9e755d5ee2e21748fa994e0a",
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-queue-git-and-stderr",
+            "source_hash": "fc73e6b22ee5e1b06ec32e1d6ea3eb74ed759ebe",
+            "destination_hash": "fc73e6b22ee5e1b06ec32e1d6ea3eb74ed759ebe",
             "installer_version": "1.0.0",
-            "installed_at": "2026-08-02T08:52:30+00:00",
+            "installed_at": "2026-08-02T13:24:55+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -489,6 +918,413 @@
             "destination_hash": "3e5565da72de1dd4c4f1a7560c8dd60cb44fb5c2",
             "installer_version": "1.0.0",
             "installed_at": "2026-08-02T08:52:30+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Support/Sprint10Fixture.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10-demo",
+            "source_hash": "7c28f56a0fce805969c6332a1aa3df1256a60eb1",
+            "destination_hash": "7c28f56a0fce805969c6332a1aa3df1256a60eb1",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:30:32+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Support/Sprint9FixtureA.php": {
+            "component": "engineer888/workflow",
+            "source_path": "workflow task d003233d-e012-4dbc-964c-4b047a09b122 (human)",
+            "source_hash": "aba9fb3a1fecdd02a789be0f4357a79d411cc4c8",
+            "destination_hash": "aba9fb3a1fecdd02a789be0f4357a79d411cc4c8",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T15:23:38+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Support/Sprint9FixtureB.php": {
+            "component": "engineer888/workflow",
+            "source_path": "workflow task e7b5760e-e2db-47b0-9b5d-357343cdc78f (human)",
+            "source_hash": "3c463c05b77ebe324edb5f1da5e53ddd8dfb8c24",
+            "destination_hash": "3c463c05b77ebe324edb5f1da5e53ddd8dfb8c24",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T15:23:39+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Support/StageVocabulary.php": {
+            "component": "engineer888/workflow",
+            "source_path": "workflow task 524ad842-04f2-45ff-8f57-3b3ae17ee9f7 (reasoning:openai/gpt-4o-2024-08-06 [candidate 16704296])",
+            "source_hash": "697e0f07f2f13adccf675ed48f01284b39fbbd65",
+            "destination_hash": "697e0f07f2f13adccf675ed48f01284b39fbbd65",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:45:17+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Support/UnifiedDiff.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-patch",
+            "source_hash": "2f57c53b71967a88c2060e9a2bfa66c7b3e459ce",
+            "destination_hash": "2f57c53b71967a88c2060e9a2bfa66c7b3e459ce",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:07:33+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Verification/VerificationPlan.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-covering-group",
+            "source_hash": "f7b590eef92acc86b2aa4235dec20842f131f16d",
+            "destination_hash": "f7b590eef92acc86b2aa4235dec20842f131f16d",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T15:00:17+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/AnalyzeStage.php": {
+            "component": "engineer888/workflow",
+            "source_path": "split from Stages.php",
+            "source_hash": "f8634f701c320500eb1ca51852554bdeefda813d",
+            "destination_hash": "f8634f701c320500eb1ca51852554bdeefda813d",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:44:52+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/BaseStage.php": {
+            "component": "engineer888/workflow",
+            "source_path": "split from Stages.php",
+            "source_hash": "0bda8aa765d1a72f1c5062c46b4db8c0ea26b8d0",
+            "destination_hash": "0bda8aa765d1a72f1c5062c46b4db8c0ea26b8d0",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:44:51+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/DeployVerifyStage.php": {
+            "component": "engineer888/workflow",
+            "source_path": "split from Stages.php",
+            "source_hash": "b190b27c14073326ff28044b9c320fe7843b7aa2",
+            "destination_hash": "b190b27c14073326ff28044b9c320fe7843b7aa2",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:44:52+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/DocumentStage.php": {
+            "component": "engineer888/workflow",
+            "source_path": "split from Stages.php",
+            "source_hash": "0544d096078652d771d2602425c26fa65ef9d848",
+            "destination_hash": "0544d096078652d771d2602425c26fa65ef9d848",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:44:53+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/EstimateStage.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "acb58370aef0a196b2bbb27f58948686ccbb052a",
+            "destination_hash": "acb58370aef0a196b2bbb27f58948686ccbb052a",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:01+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/IdentifyFilesStage.php": {
+            "component": "engineer888/workflow",
+            "source_path": "split from Stages.php",
+            "source_hash": "4ce374c2a2ddcd8f7ffac3fbf083c021110008ad",
+            "destination_hash": "4ce374c2a2ddcd8f7ffac3fbf083c021110008ad",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:44:52+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/IdentifyRisksStage.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "e71528b8225c9361f2ef7bd816d8e6e7fc594acc",
+            "destination_hash": "e71528b8225c9361f2ef7bd816d8e6e7fc594acc",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:01+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/ImplementStage.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-recovery-manifest",
+            "source_hash": "042860dfe9de51fe69f670515a5c40dd6b975f06",
+            "destination_hash": "042860dfe9de51fe69f670515a5c40dd6b975f06",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:32+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/LearnStage.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "bf837074230d8127661889279c61a364dd39e2dd",
+            "destination_hash": "bf837074230d8127661889279c61a364dd39e2dd",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:01+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/PlanStage.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "44a54883cf37d19a2e83a7574bb57dd139575ac3",
+            "destination_hash": "44a54883cf37d19a2e83a7574bb57dd139575ac3",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:22+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/PromoteStage.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "2a62eeb65055cae635f4aeaf8c391abfa9d662f1",
+            "destination_hash": "2a62eeb65055cae635f4aeaf8c391abfa9d662f1",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:01+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/RECIPE.md": {
+            "component": "engineer888/workflow",
+            "source_path": "workflow task e79f8afa-3ac3-4b6b-aec8-6828b5f2d8a2",
+            "source_hash": "fe5e33975cc65936a1483450b33eff34fb25609b",
+            "destination_hash": "fe5e33975cc65936a1483450b33eff34fb25609b",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:46:16+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/ReceiveStage.php": {
+            "component": "engineer888/workflow",
+            "source_path": "split from Stages.php",
+            "source_hash": "7058a351e303ad412c0ddf1cdcb502d43d42ed24",
+            "destination_hash": "7058a351e303ad412c0ddf1cdcb502d43d42ed24",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:44:51+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/RequestApprovalStage.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10.2-rehearsal-gate",
+            "source_hash": "077427a176992b06526c2b2530e9ee095d18a719",
+            "destination_hash": "077427a176992b06526c2b2530e9ee095d18a719",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T18:59:22+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/Stage.php": {
+            "component": "engineer888/workflow",
+            "source_path": "s6-1.php",
+            "source_hash": "8f75484a9d369ad744ee2b2361fa0fb575db1076",
+            "destination_hash": "8f75484a9d369ad744ee2b2361fa0fb575db1076",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:42:11+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/StageResult.php": {
+            "component": "engineer888/workflow",
+            "source_path": "s6-1.php",
+            "source_hash": "45ebd05270a3a114fbe4297645ba8d56241a0dfd",
+            "destination_hash": "45ebd05270a3a114fbe4297645ba8d56241a0dfd",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:42:11+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/Stages.php": {
+            "component": "engineer888/workflow",
+            "source_path": "s6-2.php",
+            "source_hash": "09960e8591121eb3175e5cc84c45153b61026993",
+            "destination_hash": "09960e8591121eb3175e5cc84c45153b61026993",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:42:11+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/UnderstandStage.php": {
+            "component": "engineer888/workflow",
+            "source_path": "split from Stages.php",
+            "source_hash": "ddcf46a18ac64dabfe1b8c4a3db9a90c3281e9a1",
+            "destination_hash": "ddcf46a18ac64dabfe1b8c4a3db9a90c3281e9a1",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:44:52+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/VerifyStage.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-structure-first",
+            "source_hash": "b7466ab2c43095a4a3467e0736f89191c863abff",
+            "destination_hash": "b7466ab2c43095a4a3467e0736f89191c863abff",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T15:11:04+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/WorkflowContext.php": {
+            "component": "engineer888/workflow",
+            "source_path": "s6-1.php",
+            "source_hash": "2f1379aa2071caf4fc6ab896382e32ae7885287e",
+            "destination_hash": "2f1379aa2071caf4fc6ab896382e32ae7885287e",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:42:11+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Engineer888/Workflow/WorkflowEngine.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-recovery",
+            "source_hash": "4d7490a096586934741bdece0649ed372d271d0c",
+            "destination_hash": "4d7490a096586934741bdece0649ed372d271d0c",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:32+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Platform/Admin/AdminAccess.php": {
+            "component": "platform/admin-identity",
+            "source_path": "platform-security-1.0",
+            "source_hash": "61680ef7924bbc27c81c4a6bb82314e6eb4352ae",
+            "destination_hash": "61680ef7924bbc27c81c4a6bb82314e6eb4352ae",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T08:16:39+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Core/Platform/Admin/AdminRegistry.php": {
+            "component": "platform/admin-identity",
+            "source_path": "platform-security-1.0",
+            "source_hash": "4a73c541ad29d845c1a18148628c0f24f4c2aa5a",
+            "destination_hash": "4a73c541ad29d845c1a18148628c0f24f4c2aa5a",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T08:16:39+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Http/Controllers/Api/Admin/Engineer888Controller.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10-recovery-api",
+            "source_hash": "8cbf4511b90e05f1c9688c602eda58f69cfc0748",
+            "destination_hash": "8cbf4511b90e05f1c9688c602eda58f69cfc0748",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:15:51+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Http/Controllers/Api/AuthController.php": {
+            "component": "platform/admin-identity",
+            "source_path": "platform-security-1.0-phase-1-2",
+            "source_hash": "de79e6f8730e16f9f43319a12401d3fa60f9281b",
+            "destination_hash": "de79e6f8730e16f9f43319a12401d3fa60f9281b",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T10:59:43+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Http/Middleware/AdminSessionIdentity.php": {
+            "component": "platform/admin-identity",
+            "source_path": "platform-security-1.0",
+            "source_hash": "adfa4cf6409d3d5b23e05d196bfd57f541dc1d10",
+            "destination_hash": "adfa4cf6409d3d5b23e05d196bfd57f541dc1d10",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T08:16:40+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Http/Middleware/RequireEngineer888Access.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.4-enforcement",
+            "source_hash": "4456d3a9c391c8ae204588f601c6f69430235703",
+            "destination_hash": "4456d3a9c391c8ae204588f601c6f69430235703",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T06:36:16+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "app/Jobs/Engineer888WorkflowJob.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "b9463c36d43c1342279bcefd6d896a03512cff13",
+            "destination_hash": "b9463c36d43c1342279bcefd6d896a03512cff13",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:23+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "config/admin_pages.php": {
+            "component": "platform/admin-identity",
+            "source_path": "platform-security-1.0-phase-1-3",
+            "source_hash": "923bceeb2594262f7f427c2171015f6ff30b93d8",
+            "destination_hash": "923bceeb2594262f7f427c2171015f6ff30b93d8",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T10:58:58+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "config/engineer888_access.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.3-access-boundary",
+            "source_hash": "2b2ec7cfc6a83e6996b9346d183c37fdc7f9d0b0",
+            "destination_hash": "2b2ec7cfc6a83e6996b9346d183c37fdc7f9d0b0",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T05:57:04+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "config/engineer888_reasoning.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-patch",
+            "source_hash": "e7cc1ea6b0afd2b101b28b11226200cfc29ee8f0",
+            "destination_hash": "e7cc1ea6b0afd2b101b28b11226200cfc29ee8f0",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:37:20+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -537,6 +1373,171 @@
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
         },
+        "database/migrations/2026_08_02_120000_create_engineering_workflow_tables.php": {
+            "component": "engineer888/workflow",
+            "source_path": "s6-1.php",
+            "source_hash": "e9629c2079ab052977a91926b6feac07c5f7f7f2",
+            "destination_hash": "e9629c2079ab052977a91926b6feac07c5f7f7f2",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T10:42:11+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "database/migrations/2026_08_02_160000_create_engineering_reasoning_tables.php": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-ere",
+            "source_hash": "bad54c2de2ee129f4f16a1eb3476d14bf92c0392",
+            "destination_hash": "bad54c2de2ee129f4f16a1eb3476d14bf92c0392",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:02+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "database/migrations/2026_08_02_180000_create_engineer888_approval_tables.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "8b0df53eeceef26f8848c7a8268a2cc2268bad4b",
+            "destination_hash": "8b0df53eeceef26f8848c7a8268a2cc2268bad4b",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:23+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "database/migrations/2026_08_02_200000_create_engineer888_recovery_tables.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-execution-safety",
+            "source_hash": "1276a6dec90f21c9d6f6fd6160581487c0182508",
+            "destination_hash": "1276a6dec90f21c9d6f6fd6160581487c0182508",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:31+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "database/migrations/2026_08_02_220000_create_engineer888_sprint10_tables.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10",
+            "source_hash": "cb6c327f5ec1d72a7d1dcdb672e2a317a75c38f9",
+            "destination_hash": "cb6c327f5ec1d72a7d1dcdb672e2a317a75c38f9",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:05:25+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "database/migrations/2026_08_02_233000_add_rehearsal_binding_columns.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10.2-rehearsal-gate",
+            "source_hash": "61bc864e95a21bfafc6b66241293a48883e2bfe0",
+            "destination_hash": "61bc864e95a21bfafc6b66241293a48883e2bfe0",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T18:59:22+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "database/migrations/2026_08_03_020000_create_engineer888_access_grants.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.3-access-boundary",
+            "source_hash": "5159da1429cf48314a476b42923ec912293b1ddd",
+            "destination_hash": "5159da1429cf48314a476b42923ec912293b1ddd",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T05:57:04+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "database/migrations/2026_08_03_040000_create_engineer888_access_audit.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.4-enforcement",
+            "source_hash": "b8d75d934290fb3d394753a144010b30411cacf6",
+            "destination_hash": "b8d75d934290fb3d394753a144010b30411cacf6",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T06:36:16+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "phpunit.e888.xml": {
+            "component": "engineer888/reasoning",
+            "source_path": "sprint-7-test-provider",
+            "source_hash": "e4a529a9218d0713880462e8d01cd9cf5804059a",
+            "destination_hash": "e4a529a9218d0713880462e8d01cd9cf5804059a",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T11:34:00+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "resources/views/admin/pages/engineer888.blade.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.3-protected-policy",
+            "source_hash": "7aa3ce940e7b5f7426c7212f03d6bac238588a0f",
+            "destination_hash": "7aa3ce940e7b5f7426c7212f03d6bac238588a0f",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T05:57:54+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "resources/views/admin/pages/engineer888/projects.blade.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "c2475a56a9d0d7092a4da3a1e963348b15894946",
+            "destination_hash": "c2475a56a9d0d7092a4da3a1e963348b15894946",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:23+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "routes/api.php": {
+            "component": "engineer888/ui",
+            "source_path": "sprint-8-command-center",
+            "source_hash": "ecee9a5b1375322a073feec367a95584689e16a7",
+            "destination_hash": "ecee9a5b1375322a073feec367a95584689e16a7",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T13:00:21+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "routes/api/admin/engineer888.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.4-enforcement",
+            "source_hash": "9ddaca8ef0af183646ce21ae316405e0bc890e5b",
+            "destination_hash": "9ddaca8ef0af183646ce21ae316405e0bc890e5b",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T06:36:16+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "tests/Feature/Engineer888/AccessBoundaryTest.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.3-fixture-columns",
+            "source_hash": "be319019529fa646c3231d7cba11240cbd3efe1d",
+            "destination_hash": "be319019529fa646c3231d7cba11240cbd3efe1d",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T06:05:01+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "tests/Feature/Engineer888/AccessEnforcementTest.php": {
+            "component": "engineer888/access",
+            "source_path": "sprint-10.4-enforcement",
+            "source_hash": "49a130dace7df1977c8398b0130a7b2fae5dbb4c",
+            "destination_hash": "49a130dace7df1977c8398b0130a7b2fae5dbb4c",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T06:36:16+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
         "tests/Feature/Engineer888/BaselineTest.php": {
             "component": "engineer888/baseline",
             "source_path": "s5-test.php (corrected)",
@@ -544,6 +1545,17 @@
             "destination_hash": "b572f60544e2a91f07374ea1b9f5566044f18f3b",
             "installer_version": "1.0.0",
             "installed_at": "2026-08-02T09:46:39+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "tests/Feature/Engineer888/CommandCenterTest.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10-test-contract-fixtures",
+            "source_hash": "44093b4efd7f8449cb82174a24cd429a285052d2",
+            "destination_hash": "44093b4efd7f8449cb82174a24cd429a285052d2",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:21:43+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -592,13 +1604,24 @@
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
         },
-        "tests/Feature/Engineer888/ExecutionSafetyTest.php": {
-            "component": "engineer888",
-            "source_path": "adopted from disk (P0.5 reconciliation)",
-            "source_hash": "8b1b4d3923c2a8363033e8b17002e62327cab3a1",
-            "destination_hash": "8b1b4d3923c2a8363033e8b17002e62327cab3a1",
+        "tests/Feature/Engineer888/ExecutionRecoveryTest.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10-fixture-coverage",
+            "source_hash": "c650d7194e5fcd6aff270bd59a06236c4cee368b",
+            "destination_hash": "c650d7194e5fcd6aff270bd59a06236c4cee368b",
             "installer_version": "1.0.0",
-            "installed_at": "2026-08-02T08:52:30+00:00",
+            "installed_at": "2026-08-02T17:30:31+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "tests/Feature/Engineer888/ExecutionSafetyTest.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-queue-user",
+            "source_hash": "1315b486ef8ee862cf2571080c078da9abdedead",
+            "destination_hash": "1315b486ef8ee862cf2571080c078da9abdedead",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:33+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -614,6 +1637,39 @@
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
         },
+        "tests/Feature/Engineer888/ReasoningEngineTest.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10-test-contract-fixtures",
+            "source_hash": "4c334cd6508ef22d3d22d0bcbfb1c9f9ab86e5fb",
+            "destination_hash": "4c334cd6508ef22d3d22d0bcbfb1c9f9ab86e5fb",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:21:43+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "tests/Feature/Engineer888/RecoveryActionHelperTest.php": {
+            "component": "engineer888/workflow",
+            "source_path": "workflow task f2f40a64-cde9-41b3-9e33-398e8782361a (reasoning:openai/gpt-4o-2024-08-06 [candidate 7bd22868])",
+            "source_hash": "f2712082079f36e2d887f6d7551a05d1b297f092",
+            "destination_hash": "f2712082079f36e2d887f6d7551a05d1b297f092",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T07:33:51+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "tests/Feature/Engineer888/RecoveryApprovalTest.php": {
+            "component": "engineer888/sprint10",
+            "source_path": "sprint-10-incomplete-fixture",
+            "source_hash": "0e3e219726dacc418270e214764812ce19fac789",
+            "destination_hash": "0e3e219726dacc418270e214764812ce19fac789",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T17:10:51+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
         "tests/Feature/Engineer888/RepositoryIntelligenceTest.php": {
             "component": "engineer888/baseline",
             "source_path": "s5-fixtest.php",
@@ -625,13 +1681,35 @@
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
         },
-        "tools/exec-safety-audit.php": {
-            "component": "engineer888",
-            "source_path": "adopted from disk (P0.5 reconciliation)",
-            "source_hash": "0f1134fe17a16e7eec894ca11aa44f95f598313b",
-            "destination_hash": "0f1134fe17a16e7eec894ca11aa44f95f598313b",
+        "tests/Feature/Engineer888/WorkflowEngineTest.php": {
+            "component": "engineer888/workflow",
+            "source_path": "s6-test.php",
+            "source_hash": "a632f40e25615fae14283fd11518a1c9935f585b",
+            "destination_hash": "a632f40e25615fae14283fd11518a1c9935f585b",
             "installer_version": "1.0.0",
-            "installed_at": "2026-08-02T08:52:30+00:00",
+            "installed_at": "2026-08-02T10:42:12+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "tests/Feature/Platform/AdminIdentityTest.php": {
+            "component": "platform/admin-identity",
+            "source_path": "platform-security-1.0",
+            "source_hash": "73787c4ca4a30f52fd82b3d02838b2da43a654bb",
+            "destination_hash": "73787c4ca4a30f52fd82b3d02838b2da43a654bb",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-03T08:16:40+00:00",
+            "installed_by": "e888",
+            "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
+            "overrides": []
+        },
+        "tools/exec-safety-audit.php": {
+            "component": "engineer888/recovery",
+            "source_path": "sprint-9-scan-honesty",
+            "source_hash": "7b741a5c0f6fe03e2a125d948204fa28a607809e",
+            "destination_hash": "7b741a5c0f6fe03e2a125d948204fa28a607809e",
+            "installer_version": "1.0.0",
+            "installed_at": "2026-08-02T14:22:33+00:00",
             "installed_by": "e888",
             "ownership_manifest": ".engineer888/sprints/2026-08-01-coordination-hardening.json",
             "overrides": []
@@ -648,5 +1726,5 @@
             "overrides": []
         }
     },
-    "updated_at": "2026-08-02T09:59:27+00:00"
+    "updated_at": "2026-08-03T10:59:43+00:00"
 }

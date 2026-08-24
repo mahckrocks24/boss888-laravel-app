@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>{{business_name}} — {{business_tagline}}</title>
+<title>{{business_name}} — Private Medical Care</title>
 <meta name="title" content="{{business_name}} — Private Medical Care">
 <meta name="description" content="{{meta_description}}">
 <link rel="canonical" href="{{canonical_url}}">
@@ -302,12 +302,12 @@ footer { background: var(--carbon); color: #fff; padding: 4.5rem 2.5rem 2.5rem; 
 <nav id="main-nav" data-block="nav">
   <a href="#" class="nav-logo" data-field="business_name">{{business_name}}</a>
   <ul class="nav-links">
-    <li><a href="#services">Suites</a></li>
-    <li><a href="#doctors">Spa & Dining</a></li>
-    <li><a href="#process">Activities</a></li>
-    <li><a href="#gallery">Gallery</a></li>
-    <li><a href="#contact">Book Now</a></li>
-        <li><a href="/blog">Stories</a></li>
+    <li><a href="#services">Services</a></li>
+    <li><a href="#doctors">Gallery</a></li>
+    <li><a href="#process">How It Works</a></li>
+    <li><a href="#gallery">Quote</a></li>
+    <li><a href="#contact">Contact</a></li>
+        <li><a href="/blog">Blog</a></li>
   </ul>
   <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
   <button class="nav-burger" id="burger" aria-label="Menu" onclick="toggleMob()"><span></span><span></span><span></span></button>
@@ -696,17 +696,17 @@ async function handleContactSubmit(e) {
       <div class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</div>
     </div>
     <div class="footer-col">
-      <h4>The Resort</h4>
+      <h4>The Company</h4>
       <ul class="footer-links">
         <li><a href="#services">Specialties</a></li>
         <li><a href="#doctors">Doctors</a></li>
         <li><a href="#process">How It Works</a></li>
         <li><a href="#certifications">Accreditations</a></li>
-          <li><a href="/blog">Stories</a></li>
+          <li><a href="/blog">Blog</a></li>
       </ul>
     </div>
     <div class="footer-col">
-      <h4>Plan Your Stay</h4>
+      <h4>Get a Quote</h4>
       <ul class="footer-links">
         <li><a href="#contact">Contact</a></li>
         <li><a href="#booking">Book Consultation</a></li>
@@ -760,24 +760,20 @@ function handleSubmit(e){
   var f = e.target;
   var btn = f.querySelector('button[type="submit"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Sending\u2026'; }
+  // Resolve subdomain: prefer the *.levelupgrowth.io host part, else the
+  // window.LU_SITE_SUBDOMAIN injected by the publish workflow, else null.
   var host = window.location.hostname.toLowerCase();
-  var sub;
-  if (host.endsWith('.levelupgrowth.io')) { sub = host.split('.levelupgrowth.io')[0]; }
-  else if (window.LU_SITE_SUBDOMAIN) { sub = window.LU_SITE_SUBDOMAIN; }
-  else {
-    // Custom-domain fallback: ask the API to resolve by Host header.
-    sub = 'by-host';
-  }
+  var sub = (host.endsWith('.levelupgrowth.io') ? host.split('.levelupgrowth.io')[0] : (window.LU_SITE_SUBDOMAIN || ''));
+  if (!sub) { alert('Form misconfigured — missing site identifier. Email us directly instead.'); if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry \u2192'; } return; }
   var fd = new FormData(f);
-  var firstname = (fd.get('firstname') || fd.get('first_name') || fd.get('name') || '').toString().trim();
-  var lastname  = (fd.get('lastname')  || fd.get('last_name')  || '').toString().trim();
-  var email     = (fd.get('email')     || '').toString().trim();
-  var phone     = (fd.get('phone')     || '').toString().trim();
-  var subject   = (fd.get('service')   || fd.get('subject')   || fd.get('specialty') || '').toString().trim();
-  var body      = (fd.get('message')   || '').toString().trim();
-  var message   = (subject ? '['+subject+'] ' : '') + body;
-  var url = 'https://staging.levelupgrowth.io/api/public/contact/' + encodeURIComponent(sub);
-  fetch(url, {
+  var firstname = (fd.get('firstname')||'').toString().trim();
+  var lastname  = (fd.get('lastname') ||'').toString().trim();
+  var email     = (fd.get('email')    ||'').toString().trim();
+  var phone     = (fd.get('phone')    ||'').toString().trim();
+  var service   = (fd.get('service')  ||'').toString().trim();
+  var body      = (fd.get('message')  ||'').toString().trim();
+  var message   = (service ? '['+service+'] ' : '') + body;
+  fetch('https://staging.levelupgrowth.io/api/public/contact/' + encodeURIComponent(sub), {
     method: 'POST',
     headers: {'Content-Type':'application/json','Accept':'application/json'},
     body: JSON.stringify({firstname: firstname + (lastname ? ' '+lastname : ''), email: email, phone: phone, message: message || 'Contact form submission'})
@@ -785,7 +781,7 @@ function handleSubmit(e){
     .then(function(res){
       if (res && res.success !== false) {
         f.style.display = 'none';
-        var ok = document.getElementById('form-success'); if (ok) ok.style.display = 'block';
+        document.getElementById('form-success').style.display = 'block';
       } else {
         if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry \u2192'; }
         alert('Submission failed: ' + ((res && res.message) || 'please try again.'));

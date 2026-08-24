@@ -1,0 +1,9 @@
+<?php
+
+namespace App\Core\Engineer888\Support;
+
+/** Sprint 9 fixture B — the version that was here before the workflow. */
+final class Sprint9FixtureB
+{
+    public const MARKER = 'original';
+}

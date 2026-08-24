@@ -19,13 +19,40 @@
         "app/Console/Commands/CoordinationCommand.php",
         "app/Console/Commands/DeployVerifyCommand.php",
         "app/Console/Commands/EngineeringBriefCommand.php",
+        "app/Console/Commands/EngineeringReasonCommand.php",
+        "app/Console/Commands/EngineeringTaskCommand.php",
         "app/Console/Commands/RepositoryIntelligenceCommand.php",
         "app/Console/Commands/SafeInstallCommand.php",
+        "app/Core/Platform/Admin/AdminAccess.php",
+        "app/Core/Platform/Admin/AdminRegistry.php",
+        "app/Core/Platform/Connector/WpConnectorSchema.php",
+        "app/Core/Platform/Schema/SignupSourceSchema.php",
+        "app/Http/Controllers/Api/Admin/Engineer888Controller.php",
+        "app/Http/Middleware/AdminSessionIdentity.php",
+        "app/Http/Middleware/RequireEngineer888Access.php",
+        "app/Jobs/Engineer888WorkflowJob.php",
+        "config/engineer888_access.php",
+        "config/engineer888_reasoning.php",
         "config/governed_files.php",
         "database/migrations/2026_07_30_120000_create_engineering_snapshots_table.php",
         "database/migrations/2026_07_30_140000_create_engineering_execution_tables.php",
         "database/migrations/2026_08_01_120000_create_engineering_deployment_tables.php",
+        "database/migrations/2026_08_02_120000_create_engineering_workflow_tables.php",
+        "database/migrations/2026_08_02_160000_create_engineering_reasoning_tables.php",
+        "database/migrations/2026_08_02_180000_create_engineer888_approval_tables.php",
+        "database/migrations/2026_08_02_200000_create_engineer888_recovery_tables.php",
+        "database/migrations/2026_08_02_220000_create_engineer888_sprint10_tables.php",
+        "database/migrations/2026_08_02_233000_add_rehearsal_binding_columns.php",
+        "database/migrations/2026_08_03_020000_create_engineer888_access_grants.php",
+        "database/migrations/2026_08_03_040000_create_engineer888_access_audit.php",
         "phpunit.e888.xml",
+        "resources/views/admin/pages/engineer888.blade.php",
+        "resources/views/admin/pages/engineer888/projects.blade.php",
+        "routes/api/admin/engineer888.php",
+        "tests/Feature/Platform/AdminCookiePipelineTest.php",
+        "tests/Feature/Platform/AdminIdentityTest.php",
+        "tests/Feature/Platform/SignupSourceGuardTest.php",
+        "tests/Feature/Platform/WpConnectorSchemaGuardTest.php",
         "tools/exec-safety-audit.php",
         "tools/install-integrity-audit.php"
     ],
@@ -46,10 +73,27 @@
         },
         {
             "path": "bootstrap/app.php",
-            "policy": "ANNOUNCE BEFORE EDIT",
-            "reason": "Added one scheduler entry for engineering:brief via an anchored insertion. Scheduler count verified 34 -> 35 with every other engineer's entry intact.",
+            "policy": "ANNOUNCE BEFORE EDIT \u2014 HIGH BLAST RADIUS",
+            "reason": "Laravel 11 registers scheduled commands AND middleware-group configuration only in this file. Two separate, additive, anchored edits \u2014 see edits[].",
             "backup": "storage/app/ads-backups/bootstrap-app.php.before-e888-schedule-20260730-122422",
-            "unavoidable_because": "Laravel 11 registers scheduled commands only in this file"
+            "unavoidable_because": "encryptCookies() exemptions have no other registration point in Laravel 11",
+            "edits": [
+                {
+                    "sprint": "2026-08-01-coordination-hardening",
+                    "change": "One scheduler entry for engineering:brief via anchored insertion. Scheduler count verified 34 -> 35.",
+                    "backup": "storage/app/ads-backups/bootstrap-app.php.before-e888-schedule-20260730-122422"
+                },
+                {
+                    "sprint": "platform-security-1.0-repair",
+                    "at": "2026-08-03T12:20:38Z",
+                    "change": "Exempted AdminSessionIdentity::COOKIE from EncryptCookies. The cookie is written by the api group (no EncryptCookies) and read by the web group (which decrypts), so decrypt() threw and nulled it before the middleware ran. Anchored insertion after validateCsrfTokens: +26 lines, 0 removed.",
+                    "backup": "storage/app/ads-backups/bootstrap-app.php.before-cookie-exempt-20260803-122038",
+                    "backup_sha256": "e7dda4e0dbf14d0ae453212b021d1a580fb7f2ca2268a7fb0ee8b4e0a84478a5",
+                    "result_sha256": "9865bf58f8fa7c9244e8e272158529f8364120af6c25e48c52d4c2331809f1cd",
+                    "authorised_by": "CEO, explicitly and narrowly, 2026-08-03",
+                    "proof": "tests/Feature/Platform/AdminCookiePipelineTest.php \u2014 18 tests through the real HTTP kernel. Mutation-tested: removing the exemption fails 2 tests."
+                }
+            ]
         },
         {
             "path": "INCIDENT-REGISTER.md",
@@ -57,6 +101,88 @@
             "reason": "Appended INC-2026-006 and its sweep closure. No existing content was modified.",
             "backup": "none required \u2014 append-only edit",
             "unavoidable_because": "it is the platform's incident register"
+        },
+        {
+            "path": "config/admin_pages.php",
+            "policy": "ANNOUNCE BEFORE EDIT",
+            "reason": "The admin page registry is the single source of truth for the sidebar, titles and routes; every engineer adding an admin screen edits it. Sprint 8 renamed the \"Engineering\" group to \"Platform Engineering\" and appended two Engineer888 entries. No existing key, slug or label was altered, and the change is verified by comparing every prior key and slug before and after.",
+            "unavoidable_because": "a page that is not in the registry has no route, no title and no sidebar entry"
+        },
+        {
+            "path": "routes/api.php",
+            "policy": "ANNOUNCE BEFORE EDIT \u2014 HIGH BLAST RADIUS",
+            "reason": "Sprint 8 added one require line for routes/api/admin/engineer888.php inside the existing admin group, CR-22B style, so the module carries its own routes. Every pre-existing require is counted before and after.",
+            "unavoidable_because": "route modules must be required from the parent to exist at all"
+        },
+        {
+            "path": "app/Http/Controllers/Api/AuthController.php",
+            "policy": "ANNOUNCE BEFORE EDIT",
+            "reason": "Platform Security 1.0 attaches an HttpOnly lu_admin_at cookie to the existing login response and clears it on logout. The JSON contract every client depends on is unchanged; the only addition is a Set-Cookie header and one private helper.",
+            "unavoidable_because": "the login endpoint is the only place that holds a freshly issued access token"
+        },
+        {
+            "path": "app/Http/Controllers/Admin/AdminPageController.php",
+            "policy": "ANNOUNCE BEFORE EDIT \u2014 ATOMIC WITH routes/web.php",
+            "reason": "Phase 4 switches the page controller to the capability-filtered registry. It MUST land in the same patch as the routes/web.php middleware: without server-side identity the filtered registry is empty and every admin page 404s.",
+            "unavoidable_because": "the controller is what emits the sidebar and window.ADMIN_PAGES"
+        },
+        {
+            "path": "routes/web.php",
+            "policy": "ANNOUNCE BEFORE EDIT \u2014 HIGH BLAST RADIUS \u2014 ATOMIC WITH AdminPageController",
+            "reason": "Phase 4 attaches AdminSessionIdentity to the admin page route. /admin/login is declared above it and stays outside. This is the change that forces one re-login for every administrator.",
+            "unavoidable_because": "middleware must be attached at the route to run before rendering"
+        },
+        {
+            "path": "resources/views/admin/login.blade.php",
+            "policy": "ANNOUNCE BEFORE EDIT \u2014 LOCKOUT-CRITICAL",
+            "reason": "Platform Security 1.0 removed the legacy localStorage auto-redirect. The page read lu_admin_token and, if present, navigated to /admin. Once /admin/* is gated server-side that token no longer grants page access \u2014 the HttpOnly lu_admin_at cookie does \u2014 so a browser holding a stale token but no valid cookie bounced between /admin and /admin/login forever and could never reach the sign-in FORM. Pure removal: 5 lines deleted, nothing added but explanation. Nothing replaces it; client state must not influence admin navigation.",
+            "backup": "storage/app/ads-backups/admin-login.blade.php.before-remove-autoredirect-20260803-133405",
+            "backup_sha256": "ab86cc0afc369dbaf66f5d9794a174f8de766eb17f5c3fa884c12d1cc0418ef5",
+            "result_sha256": "71f4e8768a8c701ee6dade04130e2b8b3329efcc746670860e91eddf93a16271",
+            "authorised_by": "CEO, explicitly, 2026-08-03 \u2014 including the direction to REMOVE rather than guard with sessionStorage",
+            "unavoidable_because": "this page is the terminus of every refusal the middleware issues; if it navigates away, the platform cannot be signed into",
+            "proof": "tests/Feature/Platform/AdminCookiePipelineTest.php \u2014 the login page is asserted terminal and usable after every refusal, after logout, and across a full sign-in round trip.",
+            "residual_debt": "ADMIN TOKEN TRANSPORT MODERNIZATION \u2014 localStorage still carries the bearer token for admin API calls."
+        },
+        {
+            "path": "app/Http/Controllers/Api/Admin/AdminController.php",
+            "policy": "ANNOUNCE BEFORE EDIT",
+            "reason": "Emergency compatibility remediation 2026-08-04: four call sites queried wp_site_connections (and api_keys.site_connection_id), neither of which has ever existed. GET /api/admin/users and /api/admin/workspaces had returned 500 since 2026-05-05. Each site now consults the single WpConnectorSchema capability check and degrades to truthful zeros. No behaviour changes when the schema is present.",
+            "backup": "storage/app/ads-backups/AdminController.php.before-wpconnector-guard-20260804-131534",
+            "backup_sha256": "3bc2086725ecfde2193034175616e7ee5e220c3bfa4546fc7dbaf91d6d249843",
+            "result_sha256": "a69adb5b806f8bd2636d726104f54e01611a2fe792d1c865c753d41c0e4f4bd4",
+            "authorised_by": "CEO, 2026-08-04 \u2014 Option B, guard only; migration explicitly withheld",
+            "unavoidable_because": "the failing queries are in this file",
+            "edits": [
+                {
+                    "sprint": "wp-connector-schema-guard",
+                    "at": "2026-08-04T13:15:34Z",
+                    "change": "Four connector call sites guarded through WpConnectorSchema.",
+                    "backup": "storage/app/ads-backups/AdminController.php.before-wpconnector-guard-20260804-131534",
+                    "from_sha256": "3bc2086725ecfde2193034175616e7ee5e220c3bfa4546fc7dbaf91d6d249843",
+                    "to_sha256": "a69adb5b806f8bd2636d726104f54e01611a2fe792d1c865c753d41c0e4f4bd4"
+                },
+                {
+                    "sprint": "signup-source-schema-guard",
+                    "at": "2026-08-04T14:02:46Z",
+                    "change": "Two users.signup_source call sites guarded through SignupSourceSchema, deliberately SEPARATE from WpConnectorSchema. owner_source degrades to null; the signup_source filter is skipped and the skip reported.",
+                    "backup": "storage/app/ads-backups/AdminController.php.before-signupsource-guard-20260804-140246",
+                    "from_sha256": "a69adb5b806f8bd2636d726104f54e01611a2fe792d1c865c753d41c0e4f4bd4",
+                    "to_sha256": "4c4ce659663afab3d4fd2a8ed185d6ee809c4ccb30785958629a256733e96531",
+                    "authorised_by": "CEO, 2026-08-04 \u2014 guard only, no migration"
+                }
+            ]
+        },
+        {
+            "path": "app/Core/Billing/StripeService.php",
+            "policy": "ANNOUNCE BEFORE EDIT \u2014 HIGH BLAST RADIUS \u2014 CARRIED ANOTHER SESSION'S UNCOMMITTED WORK",
+            "reason": "Emergency compatibility remediation 2026-08-04: suspendBillingForWorkspace and reactivateBillingForWorkspace queried the never-shipped wp_site_connections and referenced the never-shipped App\\Models\\WpSiteConnection. Their existing catch(\\Throwable) already kept billing non-fatal, so this changes no billing outcome \u2014 it replaces a swallowed exception on every subscription event with an explicit, deduplicated, structured signal. Two early-return guards added; NOTHING removed (verified: 0 lines deleted against the pre-edit backup).",
+            "backup": "storage/app/ads-backups/StripeService.php.before-wpconnector-guard-20260804-131534",
+            "backup_sha256": "52e97e0ae7d128b2168398ffe3a0d60974eb547e191aedb93c0dcd0344ca10cc",
+            "result_sha256": "63b0f0276e8bbc74174dda710371a51daa952270801816d4daefb87922f0b961",
+            "authorised_by": "CEO, 2026-08-04",
+            "concurrency_note": "This file was already M (uncommitted) at session start, mtime 2026-07-30, carrying another engineer's work. It was NOT touched for 5 days before this edit and not during it. The patch is additive and anchored so their work is preserved; diffs against HEAD will show their changes as well as these two guards.",
+            "unavoidable_because": "the failing queries are in this file"
         }
     ],
     "exclusions": [
@@ -73,6 +199,102 @@
         "Observed 2026-08-01 10:17:40 UTC, DURING this sprint: the Domains/Stripe engineer created app/Console/Commands/ReplayTestWebhookCommand.php (PHASE 1E.2 signed-webhook replay). It appeared six minutes after this sprint's concurrency refresh, which is the reason the refresh is required immediately before a consequential action rather than once at the start. The ownership control classified it UNKNOWN and refused it with no prior knowledge of the file. Left untouched.",
         "SPRINT 4.1: the Sprint 4 migration was absent from owned_files, so `engineering:coordination --owns` correctly reported UNKNOWN for a file this sprint authored. Added. The lesson is that a manifest is only as good as its upkeep: the control did its job and the declaration had drifted behind the work.",
         "P0.5: SafeInstaller refused to install its own command and audit tool because they were undeclared. Ownership is checked before provenance, so an undeclared file is never written regardless of whether it would have been safe to write.",
-        "SPRINT 5 (2026-08-02): production baseline. Observed active engineers during this sprint \u2014 Studio888 (ImageReasoningService.php, StudioFallbackQualityTest.php) and a Hosting engineer (ReconcileHostingCommand.php, new). Their files are classified EXTERNALLY_OWNED and are not committed."
-    ]
+        "SPRINT 5 (2026-08-02): production baseline. Observed active engineers during this sprint \u2014 Studio888 (ImageReasoningService.php, StudioFallbackQualityTest.php) and a Hosting engineer (ReconcileHostingCommand.php, new). Their files are classified EXTERNALLY_OWNED and are not committed.",
+        "SPRINT 6 (2026-08-02): Engineering Workflow Engine. app/Core/Engineer888/Workflow/** is covered by the existing owned_paths glob."
+    ],
+    "sprint_7": {
+        "name": "engineering-reasoning-engine",
+        "opened_at": "2026-08-02T11:34:00Z",
+        "note": "Reasoning providers contribute reasoning only. Engineer888 owns workflow, governance, memory, standards, verification and promotion."
+    },
+    "sprint_8": {
+        "name": "command-center-v1",
+        "opened_at": "2026-08-02T12:59:41Z",
+        "note": "Exact-content approval. An approval binds to a candidate UUID, a fingerprint over every proposed byte, the paths, the provider, the model, the project and the task. IMPLEMENT recomputes all of it and refuses on any difference."
+    },
+    "sprint_9": {
+        "name": "execution-safety-and-recovery",
+        "opened_at": "2026-08-02T14:22:30Z",
+        "note": "A write is never made without a proved undo. A failed VERIFY restores the exact pre-task state, and refuses rather than overwrite a concurrent change."
+    },
+    "sprint_10": {
+        "name": "recovery-completion-and-test-aware-implementation",
+        "opened_at": "2026-08-02T17:05:24Z",
+        "note": "Blocked recovery is approvable in Command Center against the exact current state. Candidates that change behaviour must bring their own tests. Migrations are classified and rehearsed against the assigned isolated database; production migration execution remains out of scope."
+    },
+    "sprint_10_2": {
+        "name": "rehearsal-gated-approval",
+        "opened_at": "2026-08-02T18:59:21Z"
+    },
+    "sprint_10_3": {
+        "name": "engineer888-access-boundary",
+        "opened_at": "2026-08-03T05:57:04Z",
+        "note": "Engineer888 is private to user #1 in V1. The access policy and the grant table are outside Engineer888 write authority."
+    },
+    "sprint_10_4": {
+        "name": "security-boundary-enforcement",
+        "opened_at": "2026-08-03T06:36:15Z",
+        "note": "One door. Every Engineer888 route delegates to Engineer888Access; unauthorised callers get an undifferentiated 404."
+    },
+    "platform_security_1_0": {
+        "name": "server-side-admin-identity",
+        "opened_at": "2026-08-03T08:16:39Z",
+        "note": "PLATFORM sprint, not Engineer888. Steps 1-5 only: services and middleware built and tested, NOT wired. routes/web.php, config/admin_pages.php, AdminPageController and AuthController are ANNOUNCED but untouched until compatibility is proven and deployment timing is agreed.",
+        "announced_shared_files": [
+            "routes/web.php",
+            "config/admin_pages.php",
+            "app/Http/Controllers/Admin/AdminPageController.php",
+            "app/Http/Controllers/Api/AuthController.php"
+        ],
+        "repair": {
+            "name": "cookie-transport-pipeline-repair",
+            "opened_at": "2026-08-03T12:18:32Z",
+            "note": "ACTIVATION HELD on 2026-08-03. Pre-flight proved that attaching AdminSessionIdentity would have locked every administrator out: EncryptCookies (web group) nulled the plaintext cookie written by the api group, so a VALID token was answered with a redirect to a login page that reissued the same cookie. The direct-invocation suite could not see it \u2014 the defect is in the composition, not in handle(). Repaired in bootstrap/app.php and certified through the real HTTP kernel before any activation.",
+            "still_not_wired": [
+                "routes/web.php",
+                "app/Http/Controllers/Admin/AdminPageController.php"
+            ],
+            "second_lockout_path": {
+                "found_at": "2026-08-03T12:48:00Z",
+                "note": "Independent of the cookie-encryption defect and equally fatal. Found before activation by reading what the login page does when the server starts refusing. Both blockers shared one shape: each half correct, the composition not.",
+                "file": "resources/views/admin/login.blade.php"
+            }
+        }
+    },
+    "updated_at": "2026-08-04T14:10:00Z",
+    "updated_by": "Release Engineer (Platform Security 1.0 activation session)",
+    "wp_connector_compatibility_guard": {
+        "name": "wp-connector-schema-guard",
+        "opened_at": "2026-08-04T13:11:00Z",
+        "classification": "EMERGENCY COMPATIBILITY REMEDIATION \u2014 TEMPORARY",
+        "note": "Surfaced by the Platform Security browser certification, unrelated to it. The WP Connector consumer code shipped 2026-05-05 without table, column or model. Six call sites guarded through one capability check; absence reported as WP_CONNECTOR_SCHEMA_MISSING. This is NOT the fix.",
+        "permanent_work": {
+            "task": "WP Connector Schema Recovery",
+            "status": "BLOCKED_PENDING_AUTHORITATIVE_SPEC",
+            "document": ".engineer888/tasks/WP-CONNECTOR-SCHEMA-RECOVERY.md"
+        },
+        "separate_defect_reported_not_fixed": {
+            "object": "users.signup_source",
+            "state": "never existed; no migration; absent from every backup",
+            "impact": "listWorkspaces reads it unconditionally, so GET /api/admin/workspaces still 500s in production",
+            "status": "REPORTED \u2014 outside the authorised scope of this remediation"
+        }
+    },
+    "signup_source_compatibility_guard": {
+        "name": "signup-source-schema-guard",
+        "opened_at": "2026-08-04T14:00:13Z",
+        "classification": "EMERGENCY COMPATIBILITY REMEDIATION \u2014 TEMPORARY",
+        "note": "users.signup_source has never existed. Its unconditional read in listWorkspaces kept GET /api/admin/workspaces at 500 after the connector guard fixed everything else on that endpoint. Two call sites guarded; owner_source degrades to null, never to a fabricated value.",
+        "deliberately_separate_from": "WpConnectorSchema \u2014 different features, shared cause, must be able to end independently",
+        "permanent_work": {
+            "task": "Signup Source Schema Recovery",
+            "status": "BLOCKED_PENDING_AUTHORITATIVE_SPEC",
+            "document": ".engineer888/tasks/SIGNUP-SOURCE-SCHEMA-RECOVERY.md"
+        },
+        "open_judgement_call": "The listUsers signup_source filter is SKIPPED when the column is absent (and the skip is logged) rather than returning zero rows. Requirement 4 did not specify filter behaviour. Worth CEO review.",
+        "observed_but_not_acted_on": [
+            "owner_source has no frontend consumer in resources/views/admin/ or public/js/",
+            "no code anywhere WRITES users.signup_source \u2014 the feature appears never to have been completed"
+        ]
+    }
 }

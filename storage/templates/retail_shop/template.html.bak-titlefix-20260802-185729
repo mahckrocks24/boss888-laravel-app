@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>{{business_name}} — {{business_tagline}}</title>
+<title>{{business_name}} — Private Medical Care</title>
 <meta name="title" content="{{business_name}} — Private Medical Care">
 <meta name="description" content="{{meta_description}}">
 <link rel="canonical" href="{{canonical_url}}">
@@ -302,12 +302,12 @@ footer { background: var(--carbon); color: #fff; padding: 4.5rem 2.5rem 2.5rem; 
 <nav id="main-nav" data-block="nav">
   <a href="#" class="nav-logo" data-field="business_name">{{business_name}}</a>
   <ul class="nav-links">
-    <li><a href="#services">Suites</a></li>
-    <li><a href="#doctors">Spa & Dining</a></li>
-    <li><a href="#process">Activities</a></li>
-    <li><a href="#gallery">Gallery</a></li>
-    <li><a href="#contact">Book Now</a></li>
-        <li><a href="/blog">Stories</a></li>
+    <li><a href="#services">The Shop</a></li>
+    <li><a href="#doctors">Categories</a></li>
+    <li><a href="#process">Visit</a></li>
+    <li><a href="#gallery">Stories</a></li>
+    <li><a href="#contact">Contact</a></li>
+        <li><a href="/blog">Blog</a></li>
   </ul>
   <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
   <button class="nav-burger" id="burger" aria-label="Menu" onclick="toggleMob()"><span></span><span></span><span></span></button>
@@ -696,17 +696,17 @@ async function handleContactSubmit(e) {
       <div class="footer-tagline" data-field="footer_tagline">{{footer_tagline}}</div>
     </div>
     <div class="footer-col">
-      <h4>The Resort</h4>
+      <h4>The Shop</h4>
       <ul class="footer-links">
         <li><a href="#services">Specialties</a></li>
         <li><a href="#doctors">Doctors</a></li>
         <li><a href="#process">How It Works</a></li>
         <li><a href="#certifications">Accreditations</a></li>
-          <li><a href="/blog">Stories</a></li>
+          <li><a href="/blog">Blog</a></li>
       </ul>
     </div>
     <div class="footer-col">
-      <h4>Plan Your Stay</h4>
+      <h4>Visit Us</h4>
       <ul class="footer-links">
         <li><a href="#contact">Contact</a></li>
         <li><a href="#booking">Book Consultation</a></li>

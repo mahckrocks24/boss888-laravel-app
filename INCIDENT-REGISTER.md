@@ -525,3 +525,41 @@ refused. It is now invoked at two points — `setUpTraits()` (before RefreshData
 - The cross-check compares against grep, which cannot tell code from comments. Its four
   remaining discrepancies are all the word "exec"/"system" in prose, individually verified.
 - Third-party code under `vendor/` was not audited.
+
+## INC-ENGINEERING-COORDINATION-DENYAPIKEYAUTH-OVERWRITE — 2026-08-05
+
+**Class:** cross-engineer overwrite
+**Owner of affected file:** INFRA888 (control C6 / directive 1C §5)
+**File:** app/Http/Middleware/DenyApiKeyAuth.php
+**By:** Engineer888 (Chat V1 sprint)
+
+Engineer888 overwrote a tracked, INFRA888-owned middleware after a truncated discovery
+command led it to conclude the file did not exist. Restored from HEAD 8c7cc1e; current
+sha256 8b4aab02…, clean, syntax PASS, runtime healthy. No pre-write mtime or backup was
+captured, so loss of uncommitted INFRA888 edits cannot be excluded.
+
+**Root cause:** incomplete discovery output treated as proof of absence.
+
+**Permanent control:** before creating or overwriting ANY path, prove git cat-file -e
+HEAD:<path>, git status -- <path>, stat/mtime, current hash, ownership manifest, recent
+commits, recent file activity, and take a verified backup. A truncated ls/grep result is
+never evidence of absence.
+
+**Status:** OPEN — awaiting INFRA888 verification.
+
+## ACTION_CARD_CONSUMED_WITHOUT_DOMAIN_EFFECT — 2026-08-05
+
+Engineer888 Chat action card `1ea47471` was pressed in the browser, accepted, and consumed
+(`consumed_result=executed`, 19:34:38). Candidate `6d7b6f68` remained `VALIDATED` with
+`superseded_at=null` and zero approval/rejection rows. Replacement card `3268d2b8` was
+correctly re-issued at 19:34:40 because the decision was still due.
+
+Root cause: ActionCardService::consume() validates bindings and consumes the card but never
+invokes any engineering service. Its docblock claimed delegation that was never implemented.
+
+Tests did not catch it: 23 passing tests asserted card lifecycle only, never domain effect.
+
+Invariant adopted: no card may report success unless the expected domain effect exists.
+Historical rows retained unchanged as evidence.
+
+Full record: .engineer888/notices/2026-08-05-ACTION-CARD-CONSUMED-WITHOUT-DOMAIN-EFFECT.md

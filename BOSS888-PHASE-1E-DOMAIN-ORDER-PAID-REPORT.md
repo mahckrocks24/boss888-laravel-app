@@ -751,3 +751,263 @@ queued registration jobs 0
 3. **`domain.order.paid` is enabled for workspace 1 with an empty event table.** Harmless, but the configuration and the data no longer tell the same story.
 4. **Shared-host isolation.** My session's test isolation held perfectly; the wipe came from a command run against the default connection. A guard on `db:wipe`/`migrate:fresh` when the target is `levelup_staging` would have prevented this outright — the same fail-closed pattern already applied to test suites.
 5. Carried forward: `OutboxDispatcher` retirement, `status` → `dispatcher_status`, and the five internal orders (now gone).
+
+---
+---
+
+# PHASE 1E.2 (RE-ISSUE, 2026-08-01) — BLOCKED AT PART A
+
+**Status:** ⏸️ **NOT RUN — the five internal test orders no longer exist**
+**Setup command: not executed · Fixture: not authorised · Replay: not sent · Images/provider calls: 0**
+
+This brief was executed once already, on **2026-07-30**, and succeeded (§C–D above). The
+**production wipe at ~13:50 that day** rolled `levelup_staging` back to the 01:00 backup,
+destroying every row of that evidence. This section covers the re-issue against today's
+state.
+
+---
+
+## Part A — precondition fails
+
+The brief requires selecting one of *"the five existing internal test orders"* and says
+explicitly **"Do not create another order."** Both cannot hold: there are none.
+
+```
+id  ws  status     paid_at              stripe_session_id                  internal_test
+1   1   completed  2026-07-29 12:00:32  cs_test_a1LHA4FBhIyF9g6dhO4Ikk…    NULL
+2   2   completed  2026-07-29 13:11:46  cs_test_a19AhOzLt1vcXPiQsMvb5T…    NULL
+
+total domain_orders : 2
+internal_test orders: 0
+```
+
+Orders **3–7** — created in Phase 1C, marked `internal_test`, unpaid — were destroyed by
+the wipe. Neither survivor is eligible under any rule: order 1 is not `internal_test` and
+is already paid; order 2 is in **workspace 2** and already paid.
+
+All Phase 1E.2 database evidence is likewise gone: `platform_events` 0,
+`platform_event_deliveries` 0, event-generated audit rows 0, setup governance records 0.
+
+## The governed controls survive, and were proven to refuse
+
+Every control built on 2026-07-30 is intact on disk: `AttachTestSessionCommand`,
+`ReplayTestWebhookCommand`, the `fixture_replay` config block, `verifyAuthorisedFixture`
+in `StripeService`, and both test suites.
+
+Exercised read-only against production, in dry-run:
+
+```
+order 1 → REFUSED: order 1 is NOT marked internal_test — a fixture must never touch a customer order
+order 2 → REFUSED: order 2 belongs to workspace 2; only workspace 1 is permitted
+order 3 → REFUSED: order 3 does not exist
+replay  → REFUSED: fixture replay is not enabled
+```
+
+Nothing was written: `domain_orders` unchanged (2 rows, both still `completed`),
+`audit_logs` 7,703 unchanged, `platform_events` 0.
+
+That is requirements 3, 4, 5 and 7 of the test list demonstrated **in production**, not
+just in the suite.
+
+## A defect of mine, found and fixed
+
+`OutboxArchitectureTest::test_only_the_outbox_service_touches_the_outbox_table` failed:
+
+```
+These files reference the platform_events table directly:
+  - app/Console/Commands/ReplayTestWebhookCommand.php
+```
+
+I introduced that on 2026-07-30 — the replay command printed a convenience count by
+querying `platform_events` directly — and never caught it, because the wipe interrupted
+the final full-suite run. The invariant is that only `Outbox` touches that table.
+
+**Fixed:** the count line is gone (the command already prints order status, `paid_at` and
+the payment reference, which is the meaningful evidence), and the now-unused `DB` import
+was removed. A convenience count is not a good enough reason to become a second reader of
+the outbox.
+
+## Verification after the fix
+
+```
+platform events suite (isolated)  OK (277 tests, 4548 assertions)
+FixtureControlsTest               OK (29 tests, 64 assertions)
+PaymentWebhookRemediationTest     OK (21 tests, 90 assertions)
+platform-events:verify            PASS — 15 checks, 0 failures
+isolated database                 levelup_p1e1_test
+```
+
+## Current production state
+
+```
+platform_events.enabled                   true
+producers[domain.order.created]           true
+producers[domain.order.paid]              true    ← see discrepancy below
+producer_workspace_allowlist              [1]
+fanout / delivery / platform.audit        true / true / true
+domains.fulfilment.enabled                false
+domains.fixture_replay.enabled            false   (every value blank)
+queued registration jobs                  0
+platform_events / deliveries / audit      0 / 0 / 0
+```
+
+**Discrepancy, reported not silently corrected:** the brief's safety baseline states
+*"domain.order.paid producer initially disabled"*, but it is currently **true** — left
+enabled after the 2026-07-30 validation, per that run's agreed final state. Nothing can
+produce (no eligible order exists), so it is inert. I have not flipped it, because the two
+briefs disagree and the choice is yours.
+
+## Concurrency
+
+No overlap. No modifications to webhook, payment, domain-commerce, event-registry, routes
+or scheduler files in the last 90 minutes. One unrelated test process from the other
+session was running. The shared `levelup_test` was not touched.
+
+## What is required to run this phase
+
+One of:
+
+1. **Authorise creating a replacement internal test order** in workspace 1, marked
+   `internal_test`, unpaid — the brief currently forbids this. It is the smallest unblock:
+   the setup and replay commands, the fixture control and all 27 tests are already built
+   and passing.
+2. **Restore orders 3–7 from the pre-wipe state.** They are not in the 01:00 backup
+   (they were created at 06:29–06:34 that morning, after it was taken), so this would mean
+   reconstructing them — effectively option 1 with extra steps.
+3. **Accept the 2026-07-30 run as the validation of record**, using the captured evidence
+   in §C–D, and treat the missing rows as a casualty of the wipe rather than re-running.
+
+Option 1 is the honest path to live evidence. Option 3 is defensible only if the captured
+outputs are accepted as sufficient — they are detailed, but the rows behind them no longer
+exist and cannot be re-inspected.
+
+---
+---
+
+# REPLACEMENT ORDER + REVALIDATION (2026-08-01) — STOPPED AT THE PRECONDITION
+
+**Status:** ⏸️ **NO REPLACEMENT ORDER CREATED — the Phase 1F containment does not exist**
+**Production data writes: 0 · Namecheap calls: 0 · Stripe calls: 0 · Orders created: 0**
+**One instructed, risk-reducing config correction applied (see §4).**
+
+---
+
+## 1. Why the prior rows were unavailable
+
+Orders 3–7 were created 2026-07-30 at 06:29–06:34 and destroyed by the wipe at ~13:50.
+The restore used `db-20260730-0100.sql.gz`, taken at 01:00 — **before** they existed — so
+they are in no backup. All Phase 1E.2 evidence went with them: `platform_events` 0,
+deliveries 0, event-generated audit 0, setup governance records 0.
+
+## 2. Why orders 1 and 2 were refused
+
+Demonstrated in production, read-only, via the governed command's dry-run:
+
+```
+order 1 → REFUSED: order 1 is NOT marked internal_test — a fixture must never touch a customer order
+order 2 → REFUSED: order 2 belongs to workspace 2; only workspace 1 is permitted
+order 3 → REFUSED: order 3 does not exist
+replay  → REFUSED: fixture replay is not enabled
+```
+
+Both survivors are also already `completed` and paid. Nothing was written.
+
+## 3. ⛔ PRECONDITION FAILURE — Phase 1F containment does not exist
+
+The brief requires, before any production write, that *"the production database-wipe
+containment from Phase 1F is active"*, and to **stop if it is not proven**.
+
+**It is not proven, because Phase 1F was never carried out.** I recommended a `db:wipe`
+guard in the 30 July incident report; it was never authorised or built.
+
+| Check | Result |
+|---|---|
+| `BOSS888-PHASE-1F*` report in the repo | **none** |
+| Guard on `db:wipe` / `migrate:fresh` / `dropAllTables` | **none** — the only match anywhere is a *comment* in `Engineer888/Execution/TestSelector.php` describing the incident |
+| `ProductionDatabaseGuard` scope | **phpunit only** — invoked at `tests/TestCase.php:40,65` and in chat safety tests. **No console command calls it.** |
+| `php artisan db:wipe` | still available: *"Drop all tables, views, and types"* |
+
+**The exact failure mode that wiped production on 30 July is still open.** Creating a
+replacement order and a paid event into an unprotected database would be rebuilding
+evidence on the same ground that swallowed the last set.
+
+Secondary preconditions: no destructive process running (0); production has 204 tables,
+created 2026-07-30 13:57–13:59, i.e. the restore and **no reset since**; isolated test
+database `levelup_p1e1_test` active with 201 tables. Those are fine — the containment is
+the failure.
+
+## 4. Flag correction — applied
+
+The brief's baseline requires `domain.order.paid` disabled during order preparation; it
+was `true`, left enabled after the 30 July run. Disabling it **reduces** risk, is
+explicitly instructed, is not a destructive operation and does not depend on the wipe
+containment, so it was applied.
+
+```
+BEFORE  foundation=true created=true paid=true  fanout=true delivery=true audit=true allow=[1] fulfil=false fixture=false
+AFTER   foundation=true created=true paid=false fanout=true delivery=true audit=true allow=[1] fulfil=false fixture=false
+```
+
+`platform-events:verify` **PASS 15/15** after the change. No other configuration touched.
+
+## 5. ⛔ PARALLEL-SESSION OVERLAP
+
+The brief requires stopping on overlap. There is overlap.
+
+| File | Owner / mtime | Assessment |
+|---|---|---|
+| `tests/TestCase.php` | www-data, **2026-08-01 10:43** | **Another session is editing it now**, and `config/governed_files.php:18` **declares their ownership of it**. My `Tests\Support\IsolatedDatabase` guard depends on its behaviour (`ProductionDatabaseGuard` is invoked there). |
+| `config/governed_files.php`, `Engineer888/Coordination/{DatabaseAssignment,GovernedFiles,OwnershipManifest}.php`, `Execution/PreflightCheck.php`, `CoordinationCommand.php` | modified within the hour | They are building a coordination/ownership system — active, adjacent work |
+| migration `2026_07_29_130000_add_execution_provenance_to_api_usage_logs` | **Pending** | Theirs, unapplied. Schema is not in a settled state. |
+
+**Change classification, as required:**
+
+1. **This session's changes:** `PLATFORM_EVENTS_DOMAIN_ORDER_PAID=false` (§4); the
+   `ReplayTestWebhookCommand` architecture fix (§6). Nothing else.
+2. **Pre-existing:** everything from Phases 1C–1E.1 and WP2 2.2B.
+3. **Concurrent (other session):** `tests/TestCase.php`, `config/governed_files.php`, the
+   whole `app/Core/Engineer888/**` tree, one pending migration.
+4. **Unresolved ownership:** `tests/TestCase.php` — they claim it; my test isolation
+   depends on it. This needs settling before I run suites that rely on its guard.
+
+## 6. Architecture defect fix — preserved and proven
+
+```
+DB::table('platform_events') occurrences in ReplayTestWebhookCommand.php : 0
+platform events suite (isolated)                                          : OK (277 tests, 4548 assertions)
+platform-events:verify                                                    : PASS — 15 checks, 0 failures
+```
+
+No allow-list exception was added to hide the violation — the direct read was removed, not
+permitted. `OutboxArchitectureTest` is green on its own terms.
+
+## 7. Final state — unchanged except the flag
+
+```
+platform_events.enabled                  true
+producers[domain.order.created]          true
+producers[domain.order.paid]             false   ← corrected to baseline
+producer_workspace_allowlist             [1]
+fanout / delivery / platform.audit       true / true / true
+domains.fulfilment.enabled               false
+domains.fixture_replay.enabled           false   (all values blank, secret absent)
+domain_orders                            2       (no replacement order created)
+platform_events / deliveries / audit     0 / 0 / 0
+queued registration jobs                 0
+isolated test database                   levelup_p1e1_test
+```
+
+## 8. What must happen before this phase can run
+
+1. **Build and prove the Phase 1F containment** — a fail-closed guard on `db:wipe`,
+   `migrate:fresh` and `migrate:refresh` when the resolved database is `levelup_staging`,
+   mirroring `ProductionDatabaseGuard` but at the **console-command** boundary rather than
+   the phpunit boundary. This is the one change that would have prevented 30 July, and it
+   is currently the only thing standing between us and a repeat.
+2. **Settle ownership of `tests/TestCase.php`** with the other session, or confirm their
+   edits do not weaken `ProductionDatabaseGuard::assertSafeTestTarget()`.
+3. **Let their pending migration land**, so the schema is settled before production writes.
+
+Only then: create the single replacement order and resume the approved 11-step flow. Every
+control it needs — setup command, fixture verifier, replay command, 27 tests — is built,
+green and waiting.

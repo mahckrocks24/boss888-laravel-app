@@ -1,5 +1,10 @@
 <?php
 
+// TreeScan lives in the application namespace: one set of readability
+// rules for every Engineer888 walker, rather than a third private copy.
+$e888Autoload = __DIR__ . '/../vendor/autoload.php';
+if (is_file($e888Autoload)) { require_once $e888Autoload; }
+
 /**
  * INC-2026-006 — Engineering Safety Sweep.
  *
@@ -74,7 +79,23 @@ usort($findings, function ($a, $b) {
 });
 
 if ($json) {
-    echo json_encode(['findings' => $findings, 'files_scanned' => count($files)], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), "\n";
+    global $E888_SCAN;
+    $coverage = $E888_SCAN instanceof App\Core\Engineer888\Audit\TreeScan
+        ? $E888_SCAN->coverage()
+        : ['complete' => false, 'required_unreadable' => [['path' => '?', 'class' => 'REQUIRED',
+                                                           'reason' => 'the scan did not run']]];
+
+    echo json_encode([
+        'findings'      => $findings,
+        'files_scanned' => count($files),
+        // A verdict is only as good as its coverage, so they travel together.
+        // A caller that reads `findings` without reading `complete` is reading
+        // "0 unsafe" from a scan that may have skipped the application.
+        'complete'      => $coverage['complete'],
+        'coverage'      => $coverage,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), "\n";
+
+    if (! $coverage['complete']) { exit(2); }
 } else {
     report($findings, count($files));
     if ($crosscheck) { crosscheck($root, $findings); }
@@ -100,21 +121,18 @@ function phpFiles(string $root): array
     // separately as dead code rather than pretending they do not exist: 43 of
     // the first run's 72 UNKNOWN findings came from copies of files that no
     // longer execute, which buried the ~20 that do.
-    $skip = ['/vendor/', '/node_modules/', '/.git/', '/public/build/', '/storage/', '/_backup/'];
+    // Walked through TreeScan so that readability is an OUTCOME rather than an
+    // accident. Filtering happens at descent, and anything unreadable is
+    // recorded with its class instead of throwing (2026-08-02: as the queue
+    // user this function produced nothing and the failure was invisible).
+    global $E888_SCAN;
+    $E888_SCAN = new App\Core\Engineer888\Audit\TreeScan($root);
 
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
-    );
-
-    foreach ($iterator as $item) {
-        if (! $item->isFile()) { continue; }
-        $full = str_replace('\\', '/', $item->getPathname());
-        if (! str_ends_with($full, '.php')) { continue; }
+    foreach ($E888_SCAN->files() as $relative) {
         // .bak AND .backup- AND .before- : the first sweep missed .backup-
         // files because the pattern only covered .bak.
-        if (preg_match('/\.(bak|backup|orig|old|save)[-.\d]*$|\.before-|~$/i', $full)) { continue; }
-        foreach ($skip as $fragment) { if (str_contains($full, $fragment)) { continue 2; } }
-        $out[] = ltrim(substr($full, strlen($root)), '/');
+        if (preg_match('/\.(bak|backup|orig|old|save)[-.\d]*$|\.before-|~$/i', $relative)) { continue; }
+        $out[] = $relative;
     }
 
     sort($out);

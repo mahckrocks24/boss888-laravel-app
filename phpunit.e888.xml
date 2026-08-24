@@ -85,6 +85,12 @@
         <env name="DEEPSEEK_API_KEY" value="" force="true"/>
         <env name="RUNTIME_URL" value="" force="true"/>
 
+        <!-- Reasoning is pinned to the provider that reaches nothing and
+             proposes nothing. A test that wants a proposal configures the
+             scripted provider itself, so no suite depends on a network
+             call, a bill, or a model's mood. -->
+        <env name="E888_REASONING_PROVIDER" value="null" force="true"/>
+
         <env name="BOSS888_DEBUG_ENABLED" value="true" force="true"/>
     </php>
 </phpunit>
