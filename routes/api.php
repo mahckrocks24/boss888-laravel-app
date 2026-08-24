@@ -1335,8 +1335,35 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::get('/canvases', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listCanvases($r->attributes->get('workspace_id'))));
         Route::post('/canvases', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'manualedit', 'create_canvas', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         Route::get('/canvases/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getCanvas($r->attributes->get('workspace_id'), $id)));
-        Route::put('/canvases/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['saved' => true]) && app($s)->saveCanvas($id, $r->input('state', []), $r->input('operations', [])));
-        Route::delete('/canvases/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => true]) && app($s)->deleteCanvas($id));
+        // MISSION-018 WS-1 (2026-08-24, RISK-0043 class, NEW): saveCanvas and
+        // deleteCanvas take a bare canvas id and NO workspace — the service
+        // signatures have no workspace param — so any authenticated user could
+        // overwrite or delete any workspace's canvas. getCanvas three lines up
+        // already scopes on canvas_states.workspace_id; save/delete never did.
+        // Same '&&' response bug as the traffic rules: the original returned
+        // boolean false as the body. Ownership checked at the route, then the
+        // real JSON is returned. Found by the RISK-0005 sibling-route sweep,
+        // not the original audit.
+        Route::put('/canvases/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $owned = \Illuminate\Support\Facades\DB::table('canvas_states')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)->exists();
+            if (!$owned) {
+                return response()->json(['saved' => false, 'error' => 'not_found_or_not_yours'], 404);
+            }
+            app($s)->saveCanvas((int) $id, $r->input('state', []), $r->input('operations', []));
+            return response()->json(['saved' => true]);
+        });
+        Route::delete('/canvases/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $owned = \Illuminate\Support\Facades\DB::table('canvas_states')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)->exists();
+            if (!$owned) {
+                return response()->json(['deleted' => false, 'error' => 'not_found_or_not_yours'], 404);
+            }
+            app($s)->deleteCanvas((int) $id);
+            return response()->json(['deleted' => true]);
+        });
     });
 
     // Campaign send alias (JS calls /api/campaign/send)
