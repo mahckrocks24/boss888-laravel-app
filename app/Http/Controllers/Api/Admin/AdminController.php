@@ -326,17 +326,55 @@ class AdminController
 
     public function adjustCredits(Request $r, int $id): JsonResponse
     {
-        $r->validate(['amount' => 'required|integer', 'reason' => 'required|string']);
-        $credit = Credit::firstOrCreate(['workspace_id' => $id], ['balance' => 0, 'reserved_balance' => 0]);
-        $credit->increment('balance', $r->input('amount'));
-
-        DB::table('credit_transactions')->insert([
-            'workspace_id' => $id, 'type' => 'admin_adjustment', 'amount' => $r->input('amount'),
-            'reference_type' => 'admin', 'reference_id' => $r->user()->id,
-            'created_at' => now(), 'updated_at' => now(),
+        // MISSION-018 WS-1 (2026-08-24, RISK-0069). This method had five faults,
+        // three of them dangerous: it inserted type='admin_adjustment' (not in
+        // the enum) and an 'updated_at' column that does not exist — so the
+        // ledger insert always THREW — AND it incremented the balance on the
+        // line before, outside any transaction, so a call changed the balance,
+        // then 500'd, and a retry compounded it. It also placed no bound on the
+        // amount and validated a reason it never stored. All fixed:
+        //  - atomic: balance change + ledger row in one DB::transaction, so a
+        //    failed insert rolls the balance back (no more change-then-throw);
+        //  - valid enum type (credit for a top-up, debit for a deduction);
+        //  - the reason is stored in metadata_json (the column that exists),
+        //    with the acting admin's id as reference_id;
+        //  - the amount is bounded and must be non-zero.
+        $v = $r->validate([
+            'amount' => 'required|integer|not_in:0|between:-1000000,1000000',
+            'reason' => 'required|string|max:500',
         ]);
+        $amount = (int) $v['amount'];
 
-        return response()->json(['balance' => $credit->fresh()->balance]);
+        $balance = DB::transaction(function () use ($id, $amount, $v, $r) {
+            $credit = Credit::firstOrCreate(
+                ['workspace_id' => $id],
+                ['balance' => 0, 'reserved_balance' => 0]
+            );
+            // Never let an adjustment drive the balance negative.
+            if ($amount < 0 && (int) $credit->balance + $amount < 0) {
+                abort(422, 'Adjustment would take the balance below zero (current: ' . (int) $credit->balance . ').');
+            }
+            $credit->increment('balance', $amount);
+
+            DB::table('credit_transactions')->insert([
+                'workspace_id'   => $id,
+                'type'           => $amount >= 0 ? 'credit' : 'debit',
+                'amount'         => abs($amount),
+                'reference_type' => 'admin_adjustment',
+                'reference_id'   => $r->user()->id,
+                'metadata_json'  => json_encode([
+                    'reason'       => $v['reason'],
+                    'signed_amount'=> $amount,
+                    'admin_id'     => $r->user()->id,
+                    'at'           => now()->toIso8601String(),
+                ]),
+                'created_at'     => now(),
+            ]);
+
+            return (int) $credit->fresh()->balance;
+        });
+
+        return response()->json(['balance' => $balance]);
     }
 
     public function assignPlan(Request $r, int $id): JsonResponse
