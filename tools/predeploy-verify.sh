@@ -37,6 +37,11 @@ EQ=$(php artisan test tests/Feature/Routes/RouteEquivalenceTest.php \
 if printf '%s' "$EQ" | grep -q 'FAIL\|Error\|Skipped'; then say "EQUIVALENCE FAIL/SKIP:"; printf '%s\n' "$EQ" | tail -8; FAIL=1;
 else printf '%s\n' "$EQ" | grep -E 'Tests:|passed' | tail -1; say "OK — route baseline matches"; fi
 
+step "3b/6 tenancy regression suite (RISK-0022/0043/0037 + canvas P0)"
+TEN=$(php artisan test tests/Feature/Infrastructure/TenancyRegressionTest.php 2>&1)
+if printf '%s' "$TEN" | grep -q 'FAIL\|Error\|Skipped'; then say "TENANCY FAIL/SKIP:"; printf '%s\n' "$TEN" | tail -8; FAIL=1;
+else printf '%s\n' "$TEN" | grep -E 'Tests:|passed' | tail -1; say "OK — cross-workspace isolation holds"; fi
+
 step "4/5 targeted secret scan (tracked files under app/ routes/ config/)"
 GIT=$(command -v git || echo /usr/bin/git)
 SECRETS=$("$GIT" --no-optional-locks grep -nIE \
