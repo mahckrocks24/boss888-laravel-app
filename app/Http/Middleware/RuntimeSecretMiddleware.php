@@ -37,12 +37,18 @@ class RuntimeSecretMiddleware
             ?: env('LARAVEL_RUNTIME_SECRET', '');
 
         if (empty($secret)) {
-            // No secret configured — deny all internal requests in production
-            if (app()->isProduction()) {
-                return response()->json(['error' => 'Internal endpoint not configured'], 503);
+            // MISSION-018 WS-1 (2026-08-24, RISK-0028): this branch used to
+            // deny only when isProduction() — and this deployment's APP_ENV is
+            // 'staging' while staging IS production, so the one environment
+            // value actually deployed was exactly the one that skipped the
+            // deny. A missing/mistyped RUNTIME_SECRET silently opened every
+            // /api/internal/* route to unauthenticated callers. FAIL CLOSED
+            // everywhere except the two environments this deployment can
+            // never be.
+            if (app()->environment('local', 'testing')) {
+                return $next($request);
             }
-            // In local/staging: allow without secret (for development convenience)
-            return $next($request);
+            return response()->json(['error' => 'Internal endpoint not configured'], 503);
         }
 
         // Accept any of the 4 header aliases that the runtime might send.
