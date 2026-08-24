@@ -110,25 +110,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Support\Facades\Log::error('ops:log-alert scheduler run failed');
             });
 
-        // MISSION-018 WS-1 (2026-08-24, RISK-0047) — the orphan reaper's
-        // schedule. TaskStateMachine::recoverOrphans has claimed a 15-minute
-        // schedule in its docblock since it was written, but no scheduler entry
-        // ever existed and its predicate targeted statuses holding zero rows.
-        // Predicate corrected (started_at + non-terminal + stale); now actually
-        // scheduled, so a task orphaned by a dead worker is failed within ~15m
-        // instead of hanging forever. Default 30-min staleness threshold.
-        $schedule->call(function () {
-            $n = app(\App\Core\Orchestration\TaskStateMachine::class)->recoverOrphans(30);
-            if ($n > 0) {
-                \Illuminate\Support\Facades\Log::warning("orphan reaper recovered {$n} started-but-stalled task(s)");
-            }
-        })
-            ->name('tasks:recover-orphans')
-            ->everyFifteenMinutes()
-            ->withoutOverlapping()
-            ->onFailure(function () {
-                \Illuminate\Support\Facades\Log::error('tasks:recover-orphans run failed');
-            });
+        // MISSION-018 WS-1 (2026-08-24, RISK-0047): NO schedule added here — a
+        // tasks:recover-orphans entry ALREADY exists below (added after the
+        // RISK-0047 record was written, which is why the record's "no scheduler
+        // entry" claim is stale). The real and only defect was the predicate,
+        // fixed in TaskStateMachine::detectOrphans; the pre-existing schedule
+        // now actually recovers orphans through the corrected predicate.
 
         // DFS-F1 (2026-06-21) — rank tracking moved daily→WEEKLY (Mon 02:00 UTC,
         // ahead of the week's sarah:weekly-review). seo:track-ranks is the SINGLE
