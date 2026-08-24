@@ -90,7 +90,16 @@ use Illuminate\Support\Facades\Route;
         return response()->json(['pending' => ($counts['pending'] ?? 0) + ($counts['queued'] ?? 0) + ($counts['awaiting_approval'] ?? 0), 'running' => ($counts['running'] ?? 0) + ($counts['verifying'] ?? 0), 'completed' => $counts['completed'] ?? 0, 'failed' => ($counts['failed'] ?? 0) + ($counts['cancelled'] ?? 0)]);
     });
         Route::put('/tasks/{id}/status', function (\Illuminate\Http\Request $r, $id) {
-        $task = \App\Models\Task::findOrFail($id);
+        // MISSION-018 WS-1 (2026-08-24, RISK-0022): this closure resolved a
+        // task by bare id with no workspace filter while every sibling route
+        // in this file scopes. Confined to the caller's workspace, matching
+        // the /tasks/{id}/retry pattern below: cross-workspace ids get the
+        // same 404 as nonexistent ones, so existence is not leaked either.
+        $task = \App\Models\Task::find((int) $id);
+        $callerWs = (int) $r->attributes->get('workspace_id');
+        if (!$task || (int) $task->workspace_id !== $callerWs) {
+            return response()->json(['success' => false, 'error' => 'not_found_or_not_yours'], 404);
+        }
         $newStatus = $r->input('status');
         // Map kanban statuses to task table enum values
         $statusMap = [

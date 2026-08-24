@@ -2134,15 +2134,17 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     Route::get("/workspace/context", function(\Illuminate\Http\Request $r) { $ws = \App\Models\Workspace::find($r->attributes->get("workspace_id")); return response()->json(["business_name" => $ws->business_name ?? null, "industry" => $ws->industry ?? null, "location" => $ws->location ?? null]); });
     Route::get("/workspace/profile/status", function(\Illuminate\Http\Request $r) { $ws = \App\Models\Workspace::find($r->attributes->get("workspace_id")); return response()->json(["complete" => (bool)($ws && $ws->industry), "industry" => $ws->industry ?? null]); });
     Route::get("/p5/tasks/{id}", fn($r, $id) => response()->json(["task" => null]));
-    Route::post("/p5/tasks/{id}/retry", fn($r, $id) => response()->json(["retried" => true]));
-    Route::post("/tasks/{id}/retry", function (\Illuminate\Http\Request $r, $id) {
-        $task = \App\Models\Task::findOrFail($id);
-        if ($task->status !== 'failed') {
-            return response()->json(['error' => 'Only failed tasks can be retried'], 422);
-        }
-        $task->update(['status' => 'pending', 'retry_count' => $task->retry_count + 1, 'error_text' => null]);
-        return response()->json(['retried' => true, 'task_id' => $task->id]);
-    });
+    // REMOVED 2026-08-24 (MISSION-018 WS-1, RISK-0044): two registrations
+    // deleted here. (1) POST /tasks/{id}/retry — an inline closure resolving a
+    // task by BARE ID with no workspace check, which registered after and
+    // therefore silently shadowed the workspace-scoped, TaskRetryService-backed
+    // implementation at routes/api/authenticated/projects-01.php (2026-05-25).
+    // Reflection proof before this removal: the serving closure was
+    // routes/api.php:2138. Any authenticated user could retry any workspace's
+    // task through it. (2) POST /p5/tasks/{id}/retry — a stub answering
+    // {"retried": true} while retrying NOTHING; a fabricated success. Same
+    // class as the Studio assets stub removed 2026-08-13 below: do not
+    // reintroduce a stub for a route that exists.
     // REMOVED 2026-08-13 (Wave 2): this hardcoded stub shadowed the real
     // assets endpoint. studio-01.php:146 defines the genuine route, but it is
     // required from line ~1051 — so this later registration overwrote it and
