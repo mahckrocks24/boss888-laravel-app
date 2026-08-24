@@ -295,6 +295,28 @@ class AgentDispatchService
     }
 
     /**
+     * MISSION-018 WS-1 (2026-08-24, RISK-0037). The single authority for
+     * which agent threads a customer may see: agents registered AND enabled
+     * for the workspace, minus launch-scope removals — the exact predicate
+     * the web /messages/conversations route already applied. Before this
+     * existed, listConversations grouped over EVERY slug in agent_messages
+     * and getConversation opened ANY slug by name, so the sarah-shadow
+     * transcript (310 rows, no agents-table entry) rendered as a titleless
+     * thread in the mobile inbox. One declaration, three consumers: this
+     * list, getConversation below, and the web unread-count badge.
+     */
+    public static function visibleAgentSlugs(int $workspaceId): array
+    {
+        return \Illuminate\Support\Facades\DB::table('agents')
+            ->join('workspace_agents', 'agents.id', '=', 'workspace_agents.agent_id')
+            ->where('workspace_agents.workspace_id', $workspaceId)
+            ->where('workspace_agents.enabled', true)
+            ->whereNotIn('agents.slug', \App\Core\LaunchScope\LaunchScopePolicy::REMOVED_AGENTS)
+            ->pluck('agents.slug')
+            ->all();
+    }
+
+    /**
      * List conversations for a user in a workspace.
      * v1.4.4 — Reads from agent_messages so mobile + web SPA see the same
      * threads. Conversation id == agent_slug (one thread per agent per
@@ -327,6 +349,8 @@ class AgentDispatchService
                 \Illuminate\Support\Facades\DB::raw('COUNT(*) as msg_count')
             )
             ->where('am.workspace_id', $workspaceId)
+            // RISK-0037: registered-and-enabled agents only (see visibleAgentSlugs)
+            ->whereIn('am.agent_slug', self::visibleAgentSlugs($workspaceId))
             ->groupBy('am.agent_slug')
             ->orderByDesc('last_message_time')
             ->limit(50)
@@ -438,6 +462,16 @@ class AgentDispatchService
     public function getConversation(int $workspaceId, string $conversationId): array
     {
         $slug = $conversationId === 'dmm' ? 'sarah' : $conversationId;
+
+        // RISK-0037 (2026-08-24): previously opened ANY slug the caller named,
+        // workspace-scoped but with no registered-agent gate — the shadow
+        // transcript was readable by name. Unregistered slugs now return the
+        // same empty-thread shape a never-messaged agent returns, so no
+        // client breaks and existence is not leaked.
+        if (!in_array($slug, self::visibleAgentSlugs($workspaceId), true)) {
+            return ['id' => $slug, 'title' => $slug, 'messages' => []];
+        }
+
         $agent = Agent::where('slug', $slug)->first();
 
         $rows = \Illuminate\Support\Facades\DB::table('agent_messages')

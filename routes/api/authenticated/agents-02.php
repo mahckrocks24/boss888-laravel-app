@@ -48,6 +48,12 @@ use Illuminate\Support\Facades\Route;
         try {
             $counts = \Illuminate\Support\Facades\DB::table('agent_messages')
                 ->where('workspace_id', $wsId)
+                // MISSION-018 WS-1 (2026-08-24, RISK-0037): the badge counted
+                // every slug in agent_messages — shadow rows included — so the
+                // floater promised messages no inbox surface could show. Same
+                // predicate as the conversations list now: registered, enabled,
+                // not launch-removed (AgentDispatchService::visibleAgentSlugs).
+                ->whereIn('agent_slug', \App\Core\Agent\AgentDispatchService::visibleAgentSlugs((int) $wsId))
                 ->where('role', 'agent')
                 ->whereNull('read_at')
                 ->selectRaw('agent_slug, COUNT(*) as cnt')
