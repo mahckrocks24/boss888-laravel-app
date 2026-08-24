@@ -477,7 +477,7 @@ $withCorr = function (array $meta) use ($corr) {
                     ],
                     'expected_seconds' => 15,
                     'poll_url'         => "/agents/{$slug}/messages",
-                    'poll_interval_ms' => 2500,
+                    'poll_interval_ms' => (int) config('chat.poll_interval_ms', 2500), // RISK-0050: single source (config/chat.php); the event lookback is derived from this value
                     'poll_after_id'    => $earlyAckMessageId,
                     // Slice 1A.1 — the anchor the client should bind the final
                     // reply to. poll_after_id is retained for backward

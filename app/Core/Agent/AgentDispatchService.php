@@ -535,8 +535,17 @@ class AgentDispatchService
         // overlap are deduped by event id on both clients, so a wider window
         // is free.
         //
-        // INVARIANT: EVENT_LOOKBACK_SECONDS > core.js poll_interval_ms / 1000.
-        $lookbackSeconds = 6;
+        // INVARIANT: EVENT_LOOKBACK_SECONDS > client poll interval / 1000.
+        // MISSION-018 WS-1 (2026-08-24, RISK-0050): the invariant used to be held
+        // only by this comment while both numbers were hardcoded in two files
+        // (the lookback here, poll_interval_ms in agents-01.php). It is now
+        // DERIVED from the same config the client poll interval is served from
+        // (config/chat.php), so the two cannot diverge: lookback = ceil(poll/1000)
+        // + margin, always strictly greater than the poll interval by the margin.
+        // At the default 2500ms poll + 3s margin this is 3 + 3 = 6s — identical
+        // to the previous hardcoded value, but now impossible to break silently.
+        $pollMs = (int) config('chat.poll_interval_ms', 2500);
+        $lookbackSeconds = (int) ceil($pollMs / 1000) + (int) config('chat.event_lookback_margin_seconds', 3);
 
         $since = now()->subMinutes(5);
         if ($cursor) {
