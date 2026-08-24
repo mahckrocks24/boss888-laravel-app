@@ -1,0 +1,36 @@
+{
+  "manifest_version": 1,
+  "engineer": "Sarah888",
+  "session": "s888",
+  "sprint": "2026-08-06-sarah888-phase1a",
+  "opened_at": "2026-08-06T12:00:00Z",
+  "test_database": "levelup_s888_test",
+  "phpunit_config": "phpunit.s888.xml",
+  "owned_paths": [
+    "tests/Feature/Sarah888/**"
+  ],
+  "owned_files": [
+    "routes/api/authenticated/agents-01.php",
+    "public/app/js/core.js",
+    "app/Core/Sarah888/**"
+  ],
+  "shared_files": [
+    {
+      "path": "app/Core/TaskSystem/TaskService.php",
+      "policy": "ANNOUNCE BEFORE EDIT",
+      "reason": "Phase 1E cost governance must gate EVERY paid task creation path, and this is the single funnel all of them pass through.",
+      "backup": "app/Core/TaskSystem/TaskService.php.bak-s888-1E2-*",
+      "unavoidable_because": "Gating only the chat route left WriteService::fillMissingImages ungated \u2014 that is the exact path that produced F1-D07. A per-call-site gate would have to be remembered by every future caller; the choke point cannot be forgotten."
+    }
+  ],
+  "exclusions": [
+    "storage/**",
+    "app/Core/Engineer888/**"
+  ],
+  "coordination_notes": [
+    "Phase 1A \u2014 message correlation. Traces to F1-D02/D03/D11.",
+    "agents-01.php is untracked by repo convention (whole routes/api/authenticated/ dir is). Rollback is the .bak-s888-1A1-* copy, not git.",
+    "No file here appears in the open e888 manifest owned_paths/owned_files/shared_files.",
+    "core.js is dirty since 2026-07-29 from another session; slice 1A.1 does NOT touch it. Client binding is slice 1A.2 and will re-check ownership first."
+  ]
+}

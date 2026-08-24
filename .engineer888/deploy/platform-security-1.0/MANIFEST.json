@@ -1,0 +1,44 @@
+{
+    "artifact": "platform-security-1.0",
+    "generated_at": "2026-08-03T12:39:17Z",
+    "generated_by": "Release Engineer (activation session)",
+    "authorised_by": "CEO, 2026-08-03",
+    "atomicity": "Both files are written in one pass after BOTH have been hash-verified and syntax-checked. AdminPageController without the route middleware returns an empty registry and 404s every admin page; the route middleware without the controller leaves the slug map unfiltered. Neither may land alone.",
+    "preconditions": {
+        "0": "bootstrap/app.php exempts AdminSessionIdentity::COOKIE from EncryptCookies",
+        "bootstrap_app_sha256": "9865bf58f8fa7c9244e8e272158529f8364120af6c25e48c52d4c2331809f1cd",
+        "1": "tests/Feature/Platform/AdminCookiePipelineTest.php passes (18 tests)"
+    },
+    "forces_relogin": true,
+    "files": [
+        {
+            "source_path": "routes/web.php",
+            "current_live_sha256": "510117bdb8fd93d37fa4a1063f63d60f66136a2235b88c0ca6d959404c9bd842",
+            "intended_sha256": "8df6186c5c2399a58e923c4251bc74e40c9beba8fe40269ee420b8026e10d8d3",
+            "artifact_sha256": "8df6186c5c2399a58e923c4251bc74e40c9beba8fe40269ee420b8026e10d8d3",
+            "rollback_sha256": "510117bdb8fd93d37fa4a1063f63d60f66136a2235b88c0ca6d959404c9bd842",
+            "unique_anchors": [
+                "Route::get('/{slug?}', [\\App\\Http\\Controllers\\Admin\\AdminPageController::class, 'show'])"
+            ],
+            "lines_added": 12,
+            "lines_removed": 0,
+            "syntax_result": "PASS",
+            "generated_at": "2026-08-03T12:39:17Z"
+        },
+        {
+            "source_path": "app/Http/Controllers/Admin/AdminPageController.php",
+            "current_live_sha256": "2126a82267c109d50f1cbe93689f31031b5cdf06f827159b47e3a7613b8bb824",
+            "intended_sha256": "1bf929a8288933fc673f9a6ed81fcad1223b4e3332794e90a3b86b679867b039",
+            "artifact_sha256": "1bf929a8288933fc673f9a6ed81fcad1223b4e3332794e90a3b86b679867b039",
+            "rollback_sha256": "2126a82267c109d50f1cbe93689f31031b5cdf06f827159b47e3a7613b8bb824",
+            "unique_anchors": [
+                "$pages = config('admin_pages', []);",
+                "use Illuminate\\Http\\Request;"
+            ],
+            "lines_added": 9,
+            "lines_removed": 0,
+            "syntax_result": "PASS",
+            "generated_at": "2026-08-03T12:39:17Z"
+        }
+    ]
+}
