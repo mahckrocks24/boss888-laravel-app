@@ -566,9 +566,17 @@ class AdminController
 
     public function retryTask(int $id): JsonResponse
     {
+        // MISSION-018 WS-1 (2026-08-24, RISK-0040): this set status='queued' and
+        // returned success but NEVER dispatched, and nothing polls 'queued' to
+        // run it — every reader of that status is a counter or dashboard. So the
+        // task sat until the orphan reaper failed it ~30 min later with a
+        // misleading reason: an admin "retry" that silently did nothing. Now it
+        // resets the task and actually re-dispatches through TaskDispatcher (the
+        // same path the scoped user retry uses), which enqueues the job.
         $task = Task::findOrFail($id);
-        $task->update(['status' => 'queued', 'retry_count' => 0]);
-        return response()->json(['success' => true]);
+        $task->update(['retry_count' => 0, 'error_text' => null]);
+        app(\App\Core\TaskSystem\TaskDispatcher::class)->dispatch($task->fresh());
+        return response()->json(['success' => true, 'dispatched' => true, 'task_id' => $task->id]);
     }
 
     public function cancelTask(int $id): JsonResponse
