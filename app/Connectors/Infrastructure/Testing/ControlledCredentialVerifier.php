@@ -53,9 +53,15 @@ final class ControlledCredentialVerifier implements CredentialVerifier
         private readonly ?\DateTimeInterface $expiresAt = null,
     ) {
         // Safeguard 3. Deliberately an exception.
-        if (function_exists('app') && app()->environment('production')) {
+        // MISSION-018 WS-1 (2026-08-24, RISK-0028 class sweep): this guarded on
+        // environment('production') only, but this deployment's APP_ENV is
+        // 'staging' while staging IS production and serves live customers — so a
+        // verifier that "certifies credentials without evidence" could be
+        // constructed on the live deployment. Fail closed: allowed only in
+        // local/testing (where the suite runs), refused everywhere else.
+        if (function_exists('app') && ! app()->environment('local', 'testing')) {
             throw new RuntimeException(
-                'ControlledCredentialVerifier must never be constructed in production. '
+                'ControlledCredentialVerifier must never be constructed outside local/testing. '
                 . 'It simulates verification and would certify credentials without evidence.'
             );
         }
