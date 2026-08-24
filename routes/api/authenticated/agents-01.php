@@ -2092,6 +2092,17 @@ $withCorr = function (array $meta) use ($corr) {
                 // shot at firing. The assistant() endpoint does not know our
                 // schema, so chatJson with the closed schema is what surfaces
                 // tool_calls.
+                // MISSION-018 WS-1 (2026-08-24, RISK-0024): $negated is read
+                // below inside the `if ($needTaskExtract)` block (the hallucination
+                // guard on the re-extract reply) but was assigned only inside the
+                // `if (!$needTaskExtract …)` block, so whenever $needTaskExtract was
+                // already true on entry the assignment never ran and the read threw
+                // "Undefined variable $negated" — a live fatal on ~0.7% of Sarah
+                // turns (31 recorded occurrences). Hoisted to a single definition
+                // in scope so both readers are always safe; the in-block copy below
+                // is removed.
+                $negated = '/\b(no|not|never|nothing|didn\'t|did not|haven\'t|have not|won\'t|will not|cannot|can\'t)\b[^.!?]{0,40}\b(record|task|tasks|created|queued|started|delegated|done)\b/i';
+
                 $needTaskExtract = (empty($createTasks) && empty($toolCalls)) && (
                     !$assistReply
                     || preg_match('/\b(create|generate|run|publish|schedule|write|build|launch|start|assign|post|send|audit|analyze|how many|how much|list|show|count|status|balance|websites|leads|campaigns|tasks)\b/i', $userPrompt)
@@ -2122,7 +2133,7 @@ $withCorr = function (array $meta) use ($corr) {
                     // fire when the sentence is negated. The protection is
                     // pinned by tests in both directions: innocuous replies must
                     // NOT trigger, genuine false claims MUST still trigger.
-                    $negated = '/\b(no|not|never|nothing|didn\'t|did not|haven\'t|have not|won\'t|will not|cannot|can\'t)\b[^.!?]{0,40}\b(record|task|tasks|created|queued|started|delegated|done)\b/i';
+                    // ($negated is now defined once above — RISK-0024.)
                     $proseClaims = '/\b(kicking off|kicking it off|delegated to|delegating to|'
                         . 'priya is writing|priya will write|james will|elena will|'
                         . 'already done|already in progress|just created|are queued|queued up|'
