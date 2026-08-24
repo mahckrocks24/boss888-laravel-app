@@ -25,8 +25,15 @@ class DebugScenarioController
      */
     public function runScenario(Request $request): JsonResponse
     {
-        if (app()->environment('production') && ! config('execution.debug_enabled', false)) {
-            return response()->json(['error' => 'Debug routes disabled in production'], 403);
+        // MISSION-018 WS-1 (2026-08-24, RISK-0031): these debug endpoints mutate
+        // live state — run-scenario can open the 'creative' circuit breaker for
+        // the WHOLE deployment (singleton, connector-keyed). The old guard only
+        // blocked when environment()==='production', but this deployment's
+        // APP_ENV is 'staging' while staging IS production, so the guard was
+        // bypassed and the endpoint was live-reachable (same class as RISK-0028).
+        // Fail closed: allow ONLY in local/testing, or when explicitly enabled.
+        if (! app()->environment('local', 'testing') && ! config('execution.debug_enabled', false)) {
+            return response()->json(['error' => 'Debug routes are disabled on this deployment'], 403);
         }
 
         $scenario = $request->input('scenario');
@@ -48,8 +55,15 @@ class DebugScenarioController
      */
     public function validationReport(): JsonResponse
     {
-        if (app()->environment('production') && ! config('execution.debug_enabled', false)) {
-            return response()->json(['error' => 'Debug routes disabled in production'], 403);
+        // MISSION-018 WS-1 (2026-08-24, RISK-0031): these debug endpoints mutate
+        // live state — run-scenario can open the 'creative' circuit breaker for
+        // the WHOLE deployment (singleton, connector-keyed). The old guard only
+        // blocked when environment()==='production', but this deployment's
+        // APP_ENV is 'staging' while staging IS production, so the guard was
+        // bypassed and the endpoint was live-reachable (same class as RISK-0028).
+        // Fail closed: allow ONLY in local/testing, or when explicitly enabled.
+        if (! app()->environment('local', 'testing') && ! config('execution.debug_enabled', false)) {
+            return response()->json(['error' => 'Debug routes are disabled on this deployment'], 403);
         }
 
         return response()->json($this->reportService->generate());
