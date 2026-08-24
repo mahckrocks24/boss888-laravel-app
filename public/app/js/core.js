@@ -5850,7 +5850,7 @@ async function _appBootstrap() {
         return;
       }
       // step 1 or 2 → render Step 2 (collect business info)
-      _renderOnboardingStep2(s.workspace_data || {});
+      _renderMeetSarah();
       return;
     }
   } catch(_) { /* fall through to legacy path */ }
@@ -5861,9 +5861,9 @@ async function _appBootstrap() {
       localStorage.setItem('lu_onboarded', '1');
       _appEnterDashboard();
     } else {
-      _renderOnboardingStep2({});
+      _renderMeetSarah();
     }
-  } catch(_) { _renderOnboardingStep2({}); }
+  } catch(_) { _renderMeetSarah(); }
 }
 
 function _appEnterDashboard() {
