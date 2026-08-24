@@ -120,30 +120,43 @@ class TaskStateMachine
     }
 
     /**
-     * Tasks stuck in `running` / `queued` longer than $minutes are likely
-     * orphaned (worker crashed, redis flushed, machine bounced).
+     * A task that DEMONSTRABLY STARTED (started_at stamped) but is still
+     * non-terminal and has not been touched for $minutes is orphaned — the
+     * worker crashed, redis was flushed, or the machine bounced mid-execution.
+     *
+     * MISSION-018 WS-1 (2026-08-24, RISK-0047): this used to query
+     * whereIn('status', ['running','queued']) — statuses the application never
+     * parks a task in (measured 0 of 4,307 rows), so the reaper and the health
+     * surface built on it could never see an orphan. started_at IS the real
+     * signal: 3,148 of 4,415 rows carry it, and a started, non-terminal, stale
+     * row is exactly a task that began and never finished. Tasks that never
+     * started — pending / awaiting_approval waiting on a human — are correctly
+     * excluded, so a legitimate approval wait is never reaped.
      */
     public function detectOrphans(int $minutes = 30): Collection
     {
         return DB::table('tasks')
-            ->whereIn('status', ['running', 'queued'])
+            ->whereNotNull('started_at')
+            ->whereNotIn('status', ['completed', 'failed', 'cancelled', 'degraded'])
             ->where('updated_at', '<', now()->subMinutes($minutes))
             ->get();
     }
 
     /**
-     * Mark stale running/queued tasks as failed with a clear reason. The
-     * scheduler calls this every 15 minutes.
+     * Mark started-but-stalled tasks as failed with a clear reason. Scheduled
+     * every 15 minutes (bootstrap/app.php) — the schedule the docblock long
+     * claimed but the codebase never had (RISK-0047).
      */
     public function recoverOrphans(int $minutes = 30): int
     {
         $orphans = $this->detectOrphans($minutes);
         $recovered = 0;
         foreach ($orphans as $row) {
-            // Run through the normal validated path so timestamps + log line stay consistent.
-            $next = $row->status === 'queued' ? 'failed' : 'failed';
-            $applied = $this->transition((int)$row->id, $next, [
-                'error' => "Auto-recovered: stuck in {$row->status} > {$minutes} min",
+            // Run through the normal validated path so timestamps + log line stay
+            // consistent. ->failed is a legal transition from every non-terminal
+            // status in the map, so a started orphan in any of them is recoverable.
+            $applied = $this->transition((int)$row->id, 'failed', [
+                'error' => "Auto-recovered: started but stalled in {$row->status} > {$minutes} min (orphan reaper)",
                 'progress_message' => "orphan reaper @ " . now()->toDateTimeString(),
             ]);
             if ($applied !== null) $recovered++;
