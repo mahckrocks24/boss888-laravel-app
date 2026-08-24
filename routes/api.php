@@ -2251,6 +2251,39 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     // routes below (kept for back-compat with older core.js paths).
     Route::post('/onboarding/business-info', [\App\Http\Controllers\Api\OnboardingController::class, 'businessInfo']);
     Route::get('/onboarding/status', [\App\Http\Controllers\Api\OnboardingController::class, 'status']);
+
+    // MISSION-018 WS-4 (2026-08-24): "meet Sarah" — the conversational
+    // onboarding that replaces the Owner-rejected quiz. Real LLM via the
+    // Runtime; recognised facts persisted, unquoted facts refused. The quiz
+    // endpoints above remain for back-compat until the SPA is cut over.
+    Route::post('/onboarding/interview/open', function (\Illuminate\Http\Request $r) {
+        $svc = app(\App\Core\Onboarding\OnboardingInterviewService::class);
+        try {
+            return response()->json($svc->open((int) $r->attributes->get('workspace_id')));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('onboarding interview open failed', ['error' => $e->getMessage()]);
+            return response()->json(['ok' => false, 'reply' => "Give me one moment — I'll be right with you.", 'recognised' => [], 'sufficient' => false], 200);
+        }
+    });
+    Route::post('/onboarding/interview/message', function (\Illuminate\Http\Request $r) {
+        $v = $r->validate([
+            'message'          => 'required|string|max:4000',
+            'history'          => 'sometimes|array',
+            'history.*.role'   => 'required_with:history|string|in:agent,user',
+            'history.*.content'=> 'required_with:history|string|max:8000',
+        ]);
+        $svc = app(\App\Core\Onboarding\OnboardingInterviewService::class);
+        try {
+            return response()->json($svc->respondTo(
+                (int) $r->attributes->get('workspace_id'),
+                $v['message'],
+                $v['history'] ?? []
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('onboarding interview message failed', ['error' => $e->getMessage()]);
+            return response()->json(['ok' => false, 'reply' => "Sorry — I lost that. Could you say it once more?", 'recognised' => [], 'sufficient' => false], 200);
+        }
+    });
     Route::post('/onboarding/complete', [\App\Http\Controllers\Api\OnboardingController::class, 'complete']);
 
     // CR-22B: workspace-01 extracted to routes/api/authenticated/workspace-01.php (was lines 13599-13738); position, scope and order preserved.
