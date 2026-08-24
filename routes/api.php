@@ -1286,8 +1286,34 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $exec = \App\Core\EngineKernel\EngineExecutionService::class;
         Route::get('/rules', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listRules($r->attributes->get('workspace_id'))));
         Route::post('/rules', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'traffic', 'create_rule', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
-        Route::post('/rules/{id}/toggle', fn(\Illuminate\Http\Request $r, $id) => response()->json(['toggled' => true]) && app($s)->toggleRule($id, $r->boolean('enabled')));
-        Route::delete('/rules/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => true]) && app($s)->deleteRule($id));
+        // MISSION-018 WS-1 (2026-08-24, RISK-0043): toggle and delete took a
+        // bare rule id with no workspace filter, three lines below reads that
+        // scope correctly — any authenticated user could disable another
+        // workspace's blocking rules. The originals were also broken as
+        // responses: `response()->json(...) && $svc->call(...)` evaluated the
+        // side effect and returned boolean false to the client (empty 200).
+        // Both defects fixed together; cross-workspace ids 404 like
+        // nonexistent ones.
+        Route::post('/rules/{id}/toggle', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $owned = \Illuminate\Support\Facades\DB::table('traffic_rules')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)->exists();
+            if (!$owned) {
+                return response()->json(['success' => false, 'error' => 'not_found_or_not_yours'], 404);
+            }
+            app($s)->toggleRule((int) $id, $r->boolean('enabled'));
+            return response()->json(['toggled' => true]);
+        });
+        Route::delete('/rules/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $owned = \Illuminate\Support\Facades\DB::table('traffic_rules')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)->exists();
+            if (!$owned) {
+                return response()->json(['success' => false, 'error' => 'not_found_or_not_yours'], 404);
+            }
+            app($s)->deleteRule((int) $id);
+            return response()->json(['deleted' => true]);
+        });
         Route::get('/stats', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getStats($r->attributes->get('workspace_id'), $r->input('days', 7))));
     });
 
