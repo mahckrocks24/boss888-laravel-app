@@ -22,6 +22,27 @@
   var startedAt = Date.now(); // ms epoch when widget rendered (for anti-bot check)
   var dark      = (THEME === 'dark') || (THEME === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
+  // --- Contrast intelligence (Owner): text on the brand color must stay readable, and
+  // a very-light brand color must not vanish on a white host page. WCAG-optimal choice
+  // of black/white text by contrast ratio; a light-color guard adds a subtle border. ---
+  function cb888Lum(hex) {
+    hex = String(hex || '').replace('#', '');
+    if (hex.length === 3) { hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2]; }
+    if (hex.length !== 6 || /[^0-9a-fA-F]/.test(hex)) { return 0.5; }
+    var r = parseInt(hex.slice(0,2),16)/255, g = parseInt(hex.slice(2,4),16)/255, b = parseInt(hex.slice(4,6),16)/255;
+    var f = function (c) { return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+    return 0.2126*f(r) + 0.7152*f(g) + 0.0722*f(b);
+  }
+  function cb888On(hex) {
+    var L = cb888Lum(hex);
+    var whiteRatio = 1.05 / (L + 0.05);      // contrast of #fff on hex
+    var blackRatio = (L + 0.05) / 0.05;      // contrast of #000 on hex
+    return blackRatio >= whiteRatio ? '#111111' : '#ffffff';
+  }
+  var FG_ON = cb888On(COLOR);
+  var LIGHT = cb888Lum(COLOR) > 0.82;
+  var bubbleBorder = LIGHT ? '1px solid rgba(0,0,0,.18)' : 'none';
+
   // --- API helper (sends X-CHATBOT-TOKEN header, not body/query) ---
   function api(method, path, body) {
     var opts = {
@@ -50,17 +71,17 @@
   var posSide = (POSITION === 'bottom-left') ? 'left' : 'right';
 
   var css = [
-    '#cb888-bubble{position:fixed;bottom:24px;' + posSide + ':24px;z-index:99999;width:56px;height:56px;border-radius:50%;background:' + COLOR + ';cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:transform .2s;}',
+    '#cb888-bubble{position:fixed;bottom:24px;' + posSide + ':24px;z-index:99999;width:56px;height:56px;border-radius:50%;background:' + COLOR + ';border:' + bubbleBorder + ';cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:transform .2s;}',
     '#cb888-bubble:hover{transform:scale(1.08);}',
-    '#cb888-bubble svg{width:26px;height:26px;fill:#fff;}',
+    '#cb888-bubble svg{width:26px;height:26px;fill:' + FG_ON + ';}',
     '#cb888-panel{position:fixed;bottom:92px;' + posSide + ':24px;z-index:99998;width:360px;max-width:calc(100vw - 48px);height:520px;max-height:calc(100vh - 120px);background:' + bg + ';border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.25);display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:' + fg + ';}',
     '#cb888-header{background:' + COLOR + ';padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}',
-    '#cb888-header-title{color:#fff;font-weight:600;font-size:15px;}',
-    '#cb888-close{background:none;border:none;color:#fff;cursor:pointer;font-size:20px;line-height:1;padding:0;opacity:.85;}',
+    '#cb888-header-title{color:' + FG_ON + ';font-weight:600;font-size:15px;}',
+    '#cb888-close{background:none;border:none;color:' + FG_ON + ';cursor:pointer;font-size:20px;line-height:1;padding:0;opacity:.85;}',
     '#cb888-close:hover{opacity:1;}',
     '#cb888-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}',
     '.cb888-msg{max-width:80%;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.5;word-break:break-word;white-space:pre-wrap;}',
-    '.cb888-msg.user{align-self:flex-end;background:' + COLOR + ';color:#fff;border-bottom-right-radius:4px;}',
+    '.cb888-msg.user{align-self:flex-end;background:' + COLOR + ';color:' + FG_ON + ';border-bottom-right-radius:4px;}',
     '.cb888-msg.assistant{align-self:flex-start;background:' + msgBg + ';color:' + fg + ';border-bottom-left-radius:4px;}',
     '.cb888-msg.error{align-self:center;background:transparent;color:#c0392b;font-size:12px;font-style:italic;}',
     '.cb888-typing{display:flex;gap:4px;align-items:center;padding:10px 14px;background:' + msgBg + ';border-radius:12px;border-bottom-left-radius:4px;align-self:flex-start;}',
@@ -73,7 +94,7 @@
     '#cb888-input:focus{border-color:' + COLOR + ';}',
     '#cb888-send{background:' + COLOR + ';border:none;border-radius:8px;width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}',
     '#cb888-send:disabled{opacity:.5;cursor:not-allowed;}',
-    '#cb888-send svg{width:18px;height:18px;fill:#fff;}',
+    '#cb888-send svg{width:18px;height:18px;fill:' + FG_ON + ';}',
     '#cb888-powered{text-align:center;font-size:10px;color:' + poweredColor + ';padding:6px 0;letter-spacing:.04em;}',
     '#cb888-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}'
   ].join('\n');
@@ -147,12 +168,17 @@
   // !important so the override beats the original rule from line 53+.
   function applyColor(c) {
     if (!c || c === COLOR) return;
+    var on = cb888On(c);
+    var light = cb888Lum(c) > 0.82;
     var s = document.createElement('style');
     s.textContent =
       '#cb888-bubble,#cb888-header,#cb888-send,.cb888-msg.user{background:' + c + ' !important}' +
+      '#cb888-header-title,#cb888-close,.cb888-msg.user{color:' + on + ' !important}' +
+      '#cb888-bubble svg,#cb888-send svg{fill:' + on + ' !important}' +
+      '#cb888-bubble{border:' + (light ? '1px solid rgba(0,0,0,.18)' : 'none') + ' !important}' +
       '#cb888-input:focus{border-color:' + c + ' !important}';
     document.head.appendChild(s);
-    COLOR = c;
+    COLOR = c; FG_ON = on;
   }
 
   function loadConfig() {

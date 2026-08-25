@@ -457,6 +457,10 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
   var API_BASE = {$apiBaseJs};
   var GREETING = {$greetingJs};
   var COLOR    = {$colorJs};
+  function cbLum(h){h=String(h||'').replace('#','');if(h.length===3){h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];}if(h.length!==6){return 0.5;}var r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;var lf=function(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);};return 0.2126*lf(r)+0.7152*lf(g)+0.0722*lf(b);}
+  function cbOn(h){var L=cbLum(h);return ((L+0.05)/0.05)>=(1.05/(L+0.05))?'#111111':'#ffffff';}
+  var FGON=cbOn(COLOR);
+  var CBLIGHT=cbLum(COLOR)>0.82;
   var THEME    = {$themeJs};
 
   function api(method, path, body){
@@ -473,7 +477,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
   function makeBubble(){
     bubble = document.createElement('div');
     bubble.id = 'lu-cb-bubble';
-    bubble.style.cssText = 'position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:'+COLOR+';color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:2147483647;font-size:24px;line-height:1;border:none;transition:transform .15s';
+    bubble.style.cssText = 'position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:'+COLOR+';color:'+FGON+';display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:2147483647;font-size:24px;line-height:1;border:'+(CBLIGHT?'1px solid rgba(0,0,0,.18)':'none')+';transition:transform .15s';
     bubble.innerHTML = '\u{1F4AC}';
     bubble.onmouseenter = function(){ bubble.style.transform = 'scale(1.06)'; };
     bubble.onmouseleave = function(){ bubble.style.transform = 'scale(1)'; };
@@ -492,14 +496,14 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     var bd   = dark ? '#2a2a33' : '#e5e7eb';
     panel.style.cssText = 'position:fixed;bottom:20px;right:20px;width:360px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 60px);background:'+bg+';color:'+fg+';border:1px solid '+bd+';border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.4);z-index:2147483647;font-family:system-ui,-apple-system,sans-serif';
     panel.innerHTML =
-      '<div style="padding:14px 16px;background:'+COLOR+';color:#fff;display:flex;align-items:center;justify-content:space-between">' +
+      '<div style="padding:14px 16px;background:'+COLOR+';color:'+FGON+';display:flex;align-items:center;justify-content:space-between">' +
         '<div style="font-size:14px;font-weight:600">Chat with us</div>' +
-        '<button id="lu-cb-close" style="background:none;border:none;color:#fff;cursor:pointer;font-size:18px;padding:0;line-height:1">×</button>' +
+        '<button id="lu-cb-close" style="background:none;border:none;color:'+FGON+';cursor:pointer;font-size:18px;padding:0;line-height:1">×</button>' +
       '</div>' +
       '<div id="lu-cb-feed" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5"></div>' +
       '<div style="padding:10px;border-top:1px solid '+bd+';display:flex;gap:8px">' +
         '<input id="lu-cb-input" placeholder="Type a message…" style="flex:1;background:transparent;border:1px solid '+bd+';border-radius:8px;color:'+fg+';padding:9px 12px;font-size:13px;font-family:inherit;outline:none">' +
-        '<button id="lu-cb-send" style="background:'+COLOR+';color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer">Send</button>' +
+        '<button id="lu-cb-send" style="background:'+COLOR+';color:'+FGON+';border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer">Send</button>' +
       '</div>';
     document.body.appendChild(panel);
     bubble.style.display = 'none';
@@ -524,7 +528,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
   function addBubble(who, text){
     var d = document.createElement('div');
     var isUser = (who === 'user');
-    d.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:10px;align-self:'+(isUser?'flex-end':'flex-start')+';background:'+(isUser?COLOR:'rgba(127,127,127,0.12)')+';color:'+(isUser?'#fff':'inherit')+';white-space:pre-wrap';
+    d.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:10px;align-self:'+(isUser?'flex-end':'flex-start')+';background:'+(isUser?COLOR:'rgba(127,127,127,0.12)')+';color:'+(isUser?FGON:'inherit')+';white-space:pre-wrap';
     d.textContent = text;
     feed.appendChild(d);
     feed.scrollTop = feed.scrollHeight;
