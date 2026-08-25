@@ -182,6 +182,34 @@ class TemplateService
             }
         }
 
+        // BUILDER888 SEO/polish: add twitter card, theme-color, and a branded
+        // contrast-aware favicon (business initial on the brand color) — none of which
+        // the templates carried. Guarded: skip anything already present. Relative
+        // twitter:image is absolutized at serve time (absolutizeSocialMeta).
+        if (stripos($html, '</head>') !== false) {
+            $primary = trim((string) ($variables['primary_color'] ?? ''));
+            if ($primary === '') { $primary = '#1F2937'; }
+            if ($primary[0] !== '#') { $primary = '#' . $primary; }
+            $bn = trim((string) ($variables['business_name'] ?? $variables['site_name'] ?? 'Website'));
+            $ogimg = trim((string) ($variables['og_image'] ?? $variables['hero_image'] ?? ''));
+            $add = '';
+            if (stripos($html, 'twitter:card') === false) {
+                $add .= '<meta name="twitter:card" content="summary_large_image">';
+                if ($bn !== '') { $add .= '<meta name="twitter:title" content="' . htmlspecialchars($bn, ENT_QUOTES) . '">'; }
+                if ($ogimg !== '') { $add .= '<meta name="twitter:image" content="' . htmlspecialchars($ogimg, ENT_QUOTES) . '">'; }
+            }
+            if (stripos($html, 'theme-color') === false) {
+                $add .= '<meta name="theme-color" content="' . htmlspecialchars($primary, ENT_QUOTES) . '">';
+            }
+            if (stripos($html, 'rel="icon"') === false && stripos($html, "rel='icon'") === false) {
+                $initial = strtoupper(mb_substr($bn !== '' ? $bn : 'W', 0, 1));
+                $letter = $this->readableOn($primary);
+                $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="' . $primary . '"/><text x="50" y="55" font-family="Arial,Helvetica,sans-serif" font-size="60" font-weight="bold" fill="' . $letter . '" text-anchor="middle" dominant-baseline="central">' . htmlspecialchars($initial, ENT_QUOTES) . '</text></svg>';
+                $add .= '<link rel="icon" href="data:image/svg+xml;base64,' . base64_encode($svg) . '">';
+            }
+            if ($add !== '') { $html = str_ireplace('</head>', $add . "\n</head>", $html); }
+        }
+
         return $html;
     }
 
@@ -222,6 +250,18 @@ class TemplateService
      * @param string $industry
      * @return array|null
      */
+    /** Contrast-aware text color (#111 or #fff) for text/icon on a brand color. */
+    private function readableOn(string $hex): string
+    {
+        $h = ltrim(strtolower(trim($hex)), '#');
+        if (strlen($h) === 3) { $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2]; }
+        if (strlen($h) !== 6 || ! ctype_xdigit($h)) { return '#ffffff'; }
+        $r = hexdec(substr($h,0,2))/255; $g = hexdec(substr($h,2,2))/255; $b = hexdec(substr($h,4,2))/255;
+        $f = function ($c) { return $c <= 0.03928 ? $c/12.92 : pow(($c+0.055)/1.055, 2.4); };
+        $L = 0.2126*$f($r) + 0.7152*$f($g) + 0.0722*$f($b);
+        return (($L+0.05)/0.05) >= (1.05/($L+0.05)) ? '#111111' : '#ffffff';
+    }
+
     public function getManifest(string $industry): ?array
     {
         $industry = preg_replace('/[^a-z0-9_]/', '', strtolower($industry)); // slug-guard (path traversal)
