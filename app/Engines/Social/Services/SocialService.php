@@ -207,6 +207,10 @@ class SocialService
             'industry'      => $kit['industry'],
             'audience'      => $kit['target_audience'],
             'brand_context' => $bpCtx ?: null,
+            // Unlocks RuntimeClient::aiRun auto-enrichment: business_name, tracked
+            // SEO keywords, prior article titles (avoid repeating Write's topics),
+            // and the cross-agent workspace_knowledge block (shared brain).
+            'workspace_id'  => $wsId,
             'business'      => !empty($params['context']) ? json_encode($params['context']) : null,
         ], fn($v) => $v !== null && $v !== '');
 
