@@ -4643,9 +4643,10 @@ use Illuminate\Support\Facades\Route;
 
         Route::get('/ctr-analysis', function (\Illuminate\Http\Request $r) {
             $wsId  = $r->attributes->get('workspace_id');
-            // 2026-05-13 Phase 1 — read computed CTR potential from
-            // seo_content_index. Populated by scoreCtrPotential() during
-            // fetchAndIndexUrl. Real GSC integration comes in Phase 2.
+            // DataForSEO<->GSC relationship: prefer REAL Google Search Console data
+            // (gsc_metrics) when the workspace has synced it, enriching each page with
+            // real clicks/impressions/ctr/position; fall back to the computed
+            // ctr_potential_score estimate (seo_content_index) when GSC is not connected.
             $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
                 ->where('workspace_id', $wsId)
                 ->whereNotNull('ctr_potential_score')
@@ -4653,13 +4654,43 @@ use Illuminate\Support\Facades\Route;
                 ->limit(50)
                 ->get(['url', 'title', 'ctr_potential_score', 'ctr_label',
                        'meta_title', 'meta_description', 'intent', 'content_score']);
+            // Real GSC per-page aggregate (authoritative performance) keyed by URL.
+            $gsc = \Illuminate\Support\Facades\DB::table('gsc_metrics')
+                ->where('workspace_id', $wsId)
+                ->selectRaw('page, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
+                ->groupBy('page')
+                ->get()
+                ->keyBy('page');
+            $gscConnected = $gsc->isNotEmpty();
+            if ($gscConnected) {
+                foreach ($pages as $p) {
+                    $g = $gsc[$p->url] ?? null;
+                    if ($g) {
+                        $imp = (int) $g->impressions; $clk = (int) $g->clicks;
+                        $p->gsc_clicks      = $clk;
+                        $p->gsc_impressions = $imp;
+                        $p->gsc_ctr         = $imp > 0 ? round($clk / $imp, 4) : 0.0;
+                        $p->gsc_position    = round((float) $g->position, 1);
+                    }
+                }
+            }
             $avg = $pages->avg('ctr_potential_score');
+            // Real average CTR across all GSC rows for the workspace (if connected).
+            $realAvgCtr = null;
+            if ($gscConnected) {
+                $tot = \Illuminate\Support\Facades\DB::table('gsc_metrics')->where('workspace_id', $wsId)
+                    ->selectRaw('SUM(clicks) c, SUM(impressions) i')->first();
+                if ($tot && (int) $tot->i > 0) { $realAvgCtr = round(((int) $tot->c) / ((int) $tot->i), 4); }
+            }
             return response()->json([
-                'success'   => true,
-                'pages'     => $pages,
-                'avg_score' => $avg ? (int) round($avg) : null,
-                'total'     => $pages->count(),
-                'message'   => $pages->isEmpty()
+                'success'       => true,
+                'pages'         => $pages,
+                'avg_score'     => $avg ? (int) round($avg) : null,
+                'total'         => $pages->count(),
+                'gsc_connected' => $gscConnected,
+                'source'        => $gscConnected ? 'gsc+estimate' : 'estimate',
+                'real_avg_ctr'  => $realAvgCtr,
+                'message'       => $pages->isEmpty()
                     ? 'Run a deep audit or scan-pages to populate CTR potential scores.'
                     : null,
             ]);
