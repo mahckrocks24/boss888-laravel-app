@@ -87,7 +87,9 @@ class TemplateService
                 $deferred[] = $key;
             }
 
-            $html = str_replace('{{' . $key . '}}', $n['value'], $html);
+            // G-SEC2 (2026-08-25): escape/scheme-guard every substituted value (stored XSS defence).
+            $safe = \App\Engines\Builder\Support\TemplateVariableNormalizer::forHtml((string) $key, $n['value']);
+            $html = str_replace('{{' . $key . '}}', $safe, $html);
         }
 
         if ($deferred !== []) {

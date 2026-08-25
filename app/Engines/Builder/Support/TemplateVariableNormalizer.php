@@ -82,6 +82,36 @@ final class TemplateVariableNormalizer
         return self::deferred();
     }
 
+    /**
+     * G-SEC2 (2026-08-25) — the render-boundary XSS defence.
+     * Every template variable is AI- or client-supplied and is substituted into
+     * served HTML. HTML-escape it by default (ENT_QUOTES covers both element and
+     * attribute context). URL-shaped keys additionally get scheme-validated so a
+     * javascript:/data:/vbscript: URL cannot execute from an href/src; the value
+     * is still escaped afterwards so a quote cannot break out of the attribute.
+     * The template variable inventory (99 files) is entirely text + URL keys —
+     * none carry intentional markup — so escaping introduces no visible change
+     * for legitimate content while neutralising stored XSS.
+     */
+    public static function forHtml(string $key, string $value): string
+    {
+        $k = strtolower($key);
+        $isUrl = str_ends_with($k, '_url') || str_ends_with($k, '_image')
+              || str_starts_with($k, 'social_')
+              || in_array($k, ['canonical_url', 'og_image', 'hero_image', 'footer_url', 'logo_url'], true);
+
+        if ($isUrl) {
+            $v = trim($value);
+            // Drop dangerous URL schemes; allow http(s), protocol-relative, root/relative, mailto, tel.
+            if ($v !== '' && preg_match('#^\s*(javascript|data|vbscript|file)\s*:#i', $v)) {
+                $v = '';
+            }
+            return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+        }
+
+        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    }
+
     private static function allScalar(array $list): bool
     {
         foreach ($list as $item) {
