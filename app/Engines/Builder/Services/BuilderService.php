@@ -320,7 +320,9 @@ class BuilderService
             throw new \RuntimeException("Website not found: {$id}");
         }
         $this->invalidatePublishedCache($id);
-        DB::table('websites')->where('id', $id)->update(['deleted_at' => now()]);
+        // Free the subdomain on soft-delete: releases it for reuse and prevents
+        // the soft-deleted row from squatting the UNIQUE(subdomain) key on reclaim.
+        DB::table('websites')->where('id', $id)->update(['deleted_at' => now(), 'subdomain' => null]);
     }
 
     /**

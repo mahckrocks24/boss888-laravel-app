@@ -3555,10 +3555,15 @@ Route::post('/builder/websites/{id}/set-subdomain', function (\Illuminate\Http\R
         return response()->json(['error' => 'That web address is already taken. Try another.'], 422);
     }
 
-    \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->update([
-        'subdomain'  => $fullSub,
-        'updated_at' => now(),
-    ]);
+    try {
+        \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->update([
+            'subdomain'  => $fullSub,
+            'updated_at' => now(),
+        ]);
+    } catch (\Illuminate\Database\QueryException $e) {
+        // UNIQUE(subdomain): lost a concurrent claim race — report cleanly, no 500.
+        return response()->json(['error' => 'That web address is already taken. Try another.'], 422);
+    }
 
     return response()->json([
         'success'   => true,
