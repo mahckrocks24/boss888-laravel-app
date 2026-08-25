@@ -385,6 +385,46 @@ class BuilderService
      * renders a blank page, so it falls back to the default schema exactly as
      * an omitted value does.
      */
+    /**
+     * G-SEC3 write-path guard: strip unambiguous active-content XSS vectors
+     * (<script>, on* event handlers, javascript:/vbscript: URL schemes) from any
+     * raw_document section before it is stored. raw_document is served VERBATIM by
+     * BuilderRenderer, so this is the write-side complement to CSP (G-SEC1). Legit
+     * embeds/forms/styles are preserved (that is CSP's job, not a strip's).
+     */
+    private function stripActiveContentFromRawDoc(string $html): string
+    {
+        $html = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $html) ?? $html;
+        $html = preg_replace('#<script\b[^>]*/?>#is', '', $html) ?? $html;
+        $html = preg_replace('#\son[a-z]+\s*=\s*"[^"]*"#i', '', $html) ?? $html;
+        $html = preg_replace("#\son[a-z]+\s*=\s*'[^']*'#i", '', $html) ?? $html;
+        $html = preg_replace('#\son[a-z]+\s*=\s*[^\s>]+#i', '', $html) ?? $html;
+        $html = preg_replace('#(href|src|action)\s*=\s*("|\x27)\s*(?:javascript|vbscript):[^"\x27]*\2#i', '$1=$2#$2', $html) ?? $html;
+        return $html;
+    }
+
+    /** Apply the raw_document write guard across a page section list (either shape). */
+    private function sanitizeSectionsForWrite(mixed $sections): mixed
+    {
+        if (! is_array($sections)) { return $sections; }
+        if (isset($sections['sections']) && is_array($sections['sections'])) {
+            foreach ($sections['sections'] as &$sec) {
+                if (is_array($sec) && ($sec['type'] ?? '') === 'raw_document' && isset($sec['html']) && is_string($sec['html'])) {
+                    $sec['html'] = $this->stripActiveContentFromRawDoc($sec['html']);
+                }
+            }
+            unset($sec);
+            return $sections;
+        }
+        foreach ($sections as &$sec) {
+            if (is_array($sec) && ($sec['type'] ?? '') === 'raw_document' && isset($sec['html']) && is_string($sec['html'])) {
+                $sec['html'] = $this->stripActiveContentFromRawDoc($sec['html']);
+            }
+        }
+        unset($sec);
+        return $sections;
+    }
+
     private function normalisePageSections(mixed $sections): mixed
     {
         if (is_array($sections) && isset($sections[0])) {
@@ -460,7 +500,7 @@ class BuilderService
             // representation needs to render. Default is unchanged ('draft'), so no
             // existing caller is affected. Validated against the domain vocabulary.
             'status' => $this->creationStatus($data['status'] ?? null),
-            'sections_json' => json_encode($this->normalisePageSections($data['sections'] ?? null)),
+            'sections_json' => json_encode($this->sanitizeSectionsForWrite($this->normalisePageSections($data['sections'] ?? null))),
             'seo_json' => json_encode($data['seo'] ?? ['title' => $data['title'] ?? '', 'description' => '']),
             'position' => $position + 1,
             'is_homepage' => $data['is_homepage'] ?? false,
@@ -532,7 +572,7 @@ class BuilderService
 
         $update = array_intersect_key($data, array_flip(['title', 'slug', 'type', 'status', 'is_homepage', 'position']));
         if (isset($data['sections_json']) && !isset($data['sections'])) { $data['sections'] = is_string($data['sections_json']) ? json_decode($data['sections_json'], true) : $data['sections_json']; }
-        if (isset($data['sections'])) $update['sections_json'] = json_encode($data['sections']);
+        if (isset($data['sections'])) $update['sections_json'] = json_encode($this->sanitizeSectionsForWrite($data['sections']));
         if (isset($data['seo'])) $update['seo_json'] = json_encode($data['seo']);
         $update['updated_at'] = now();
         DB::table('pages')->where('id', $pageId)->update($update);
