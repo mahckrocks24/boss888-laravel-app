@@ -656,6 +656,24 @@ HTML;
         // No scheme at all — a bare host or path such as "example.com/x".
         return e($url);
     }
+
+    /**
+     * Make a user-supplied CSS value safe to interpolate inside a double-quoted
+     * style="..." attribute. Strips the chars that enable HTML-attribute breakout
+     * or CSS-structure injection, then HTML-escapes for the attribute context.
+     * Preserves #hex, rgb()/hsl(), and linear-gradient(...).
+     */
+    private function safeCss(?string $v, string $fallback = ''): string
+    {
+        $v = trim((string) $v);
+        if ($v === '') { return $fallback; }
+        $v = str_replace(['<', '>', '"', "'", '\\', ';', '{', '}'], '', $v);
+        $probe = strtolower($v);
+        foreach (['expression(', 'javascript:', 'vbscript:', 'behavior:', '@import'] as $bad) {
+            if (strpos($probe, $bad) !== false) { return $fallback; }
+        }
+        return e($v);
+    }
     private function renderHero(array $sec, array $brand): string
     {
         $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
@@ -674,10 +692,11 @@ HTML;
         }
 
         $bgCss = '';
-        if ($bgImg) {
-            $bgCss = "background-image:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.6)),url({$bgImg});background-size:cover;background-position:center;";
+        $safeBgImg = $bgImg ? $this->safeUrl($bgImg, '') : '';
+        if ($safeBgImg !== '' && $safeBgImg !== '#') {
+            $bgCss = "background-image:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.6)),url({$safeBgImg});background-size:cover;background-position:center;";
         } elseif (!empty($style['gradient'])) {
-            $bgCss = "background:{$style['gradient']};";
+            $bgCss = "background:" . $this->safeCss((string) $style['gradient']) . ";";
         } else {
             $bgCss = "background:linear-gradient(135deg, {$brand['primary']} 0%, {$brand['secondary']} 100%);";
         }
@@ -710,7 +729,7 @@ HTML;
 
     private function renderFeatures(array $sec, array $brand): string
     {
-        $bg = $sec['style']['bg'] ?? '#ffffff';
+        $bg = $this->safeCss((string) ($sec['style']['bg'] ?? ''), '#ffffff');
         $isLight = $this->isLight($bg);
         $headColor = $isLight ? '#1a1a2e' : '#ffffff';
         $textColor = $isLight ? '#5a5f72' : 'rgba(255,255,255,.7)';
@@ -749,7 +768,7 @@ HTML;
     private function renderCta(array $sec, array $brand): string
     {
         $style = $sec['style'] ?? [];
-        $bgCss = !empty($style['gradient']) ? "background:{$style['gradient']};" : "background:linear-gradient(135deg, {$brand['primary']} 0%, {$brand['secondary']} 100%);";
+        $bgCss = !empty($style['gradient']) ? ("background:" . $this->safeCss((string) $style['gradient']) . ";") : "background:linear-gradient(135deg, {$brand['primary']} 0%, {$brand['secondary']} 100%);";
 
         $heading = '';
         $text = '';
@@ -784,7 +803,7 @@ HTML;
 
     private function renderContact(array $sec, array $brand, array $website = []): string
     {
-        $bg = $sec['style']['bg'] ?? '#ffffff';
+        $bg = $this->safeCss((string) ($sec['style']['bg'] ?? ''), '#ffffff');
         $isLight = $this->isLight($bg);
         $headColor = $isLight ? '#1a1a2e' : '#ffffff';
         $textColor = $isLight ? '#5a5f72' : 'rgba(255,255,255,.7)';
@@ -1519,7 +1538,7 @@ HTML;
 
     private function renderGeneric(array $sec, array $brand): string
     {
-        $bg = $sec['style']['bg'] ?? '#ffffff';
+        $bg = $this->safeCss((string) ($sec['style']['bg'] ?? ''), '#ffffff');
         $isLight = $this->isLight($bg);
         $headColor = $isLight ? '#1a1a2e' : '#ffffff';
         $textColor = $isLight ? '#5a5f72' : 'rgba(255,255,255,.7)';
