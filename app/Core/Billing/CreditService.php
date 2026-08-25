@@ -280,7 +280,19 @@ class CreditService
         $origWs = $workspaceId;
         $poolWs = $this->poolWorkspaceId($workspaceId);
         return DB::transaction(function () use ($origWs, $poolWs, $amount, $refType, $refId, $meta) {
-            $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->firstOrFail();
+            // Crediting must not fail when the wallet does not exist yet (e.g. a
+            // brand-new workspace's first-website trial activation). Create it, then
+            // lock+increment. Debit/reserve/commit/release keep firstOrFail: you cannot
+            // spend a wallet that is not there.
+            $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->first();
+            if (! $credit) {
+                try {
+                    Credit::create(['workspace_id' => $poolWs, 'balance' => 0, 'reserved_balance' => 0]);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // concurrent create raced us on the UNIQUE(workspace_id) — fall through
+                }
+                $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->firstOrFail();
+            }
             $credit->increment('balance', $amount);
 
             return CreditTransaction::create([
