@@ -60,13 +60,9 @@ class LaunchScopePolicy
         // ── Social AUTOMATION / INTELLIGENCE (standalone composing) ──
         // The retained blog-share CRUD lives in RETAINED_SOCIAL_ACTIONS below;
         // everything here is the removed broad-social surface.
-        'social' => [
-            'social_ai_post', 'social_ai_generate', 'ai_generate_post',
-            'social_image', 'social_image_gen',
-            'hashtag_suggestions', 'generate_hashtags',
-            'social_platform_adapt',
-            'record_social_analytics',
-        ],
+        // Social automation un-gated for launch (DEC-0028, 2026-08-25). mention (listening/
+        // sentiment) stays fully removed via REMOVED_ENGINES.
+        'social' => [],
         // ── CRM email-sequence / drip (email marketing under crm engine) ──
         'crm' => [
             'enroll_sequence', 'create_sequence', 'update_sequence', 'delete_sequence',
@@ -112,7 +108,7 @@ class LaunchScopePolicy
      * routed, or suggested.
      */
     public const REMOVED_AGENTS = [
-        'marcus', 'jordan', 'tyler', 'zara', 'zoe', 'maya', // social
+        'jordan', 'tyler', 'zara', 'zoe', 'maya', // social (marcus restored for launch — DEC-0028)
         'vera', 'kai',                                        // email
         'chris', 'leo',                                       // locked: video/ad-copy specialists
     ];
@@ -162,13 +158,7 @@ class LaunchScopePolicy
      * (generate_image/generate_video), CRM (create_lead) are NOT here — retained.
      */
     public const REMOVED_TOOLS = [
-        // social
-        'create_post', 'social_create_post', 'update_post', 'list_posts',
-        'schedule_post', 'social_schedule_post', 'social_schedule',
-        'publish_post', 'social_publish_post', 'get_queue',
-        'record_social_analytics', 'social_analytics',
-        'social_ai_post', 'ai_generate_social_post', 'social_image', 'social_image_gen',
-        'hashtag_suggestions', 'generate_hashtags', 'social_platform_adapt',
+        // social tools un-gated for launch (DEC-0028, 2026-08-25) — no longer removed.
         // email / marketing
         'create_campaign', 'update_campaign', 'delete_campaign', 'list_campaigns',
         'schedule_campaign', 'send_campaign', 'create_automation', 'toggle_automation',
@@ -209,13 +199,13 @@ class LaunchScopePolicy
             return 'LAUNCH_SCOPE_REMOVED_ENGINE';
         }
 
-        // 2. Retained blog-share sliver — allow social CRUD ONLY in article-share context.
+        // 2. Social automation is IN launch (DEC-0028, 2026-08-25). These actions are allowed
+        //    standalone; safety rests on the protected/review approval gate, workspace-scoping,
+        //    honest truthfulness (SocialService requires a real external_id + !mock to mark
+        //    published), and mock_mode. The article-share HMAC path (ArticleShareToken) still
+        //    works for blog-shares; it is simply no longer REQUIRED for standalone social.
         if (in_array($act, self::RETAINED_SOCIAL_ACTIONS, true)) {
-            if (self::isArticleShareContext($params, $context)) {
-                return null; // permitted retained exception
-            }
-            // standalone social composing/publishing — removed
-            return 'LAUNCH_SCOPE_STANDALONE_SOCIAL_REMOVED';
+            return null; // social automation permitted (DEC-0028)
         }
 
         // 3. Individually-removed actions per engine.
