@@ -374,6 +374,7 @@ class BuilderRenderer
      */
     private function renderBookingForm(array $sec, array $brand): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $primary  = $brand['primary_color']   ?? '#7C3AED';
         $heading  = htmlspecialchars((string) ($sec['heading'] ?? 'Book a time'),  ENT_QUOTES, 'UTF-8');
         $sub      = htmlspecialchars((string) ($sec['subheading'] ?? ''),         ENT_QUOTES, 'UTF-8');
@@ -426,7 +427,7 @@ class BuilderRenderer
 .book-row label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
 .book-row input,.book-row select,.book-row textarea{width:100%;padding:12px 14px;font-size:15px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;font-family:inherit}
 .book-row input:focus,.book-row select:focus,.book-row textarea:focus{outline:none;border-color:{$primary};box-shadow:0 0 0 3px rgba(124,58,237,.1)}
-.book-submit{margin-top:8px;width:100%;padding:14px 24px;font-size:16px;font-weight:600;background:{$primary};color:#fff;border:none;border-radius:8px;cursor:pointer;transition:opacity .15s}
+.book-submit{margin-top:8px;width:100%;padding:14px 24px;font-size:16px;font-weight:600;background:{$primary};color:{$onPrimary};border:none;border-radius:8px;cursor:pointer;transition:opacity .15s}
 .book-submit:hover{opacity:.92}
 .book-success{display:none;background:#ecfdf5;color:#065f46;padding:16px;border-radius:8px;margin-bottom:16px}
 .book-success.active{display:block}
@@ -458,6 +459,7 @@ class BuilderRenderer
      */
     private function renderEventsCalendar(array $sec, array $brand): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $primary  = $brand['primary_color']   ?? '#7C3AED';
         $heading  = htmlspecialchars((string) ($sec['heading'] ?? 'Upcoming events'), ENT_QUOTES, 'UTF-8');
         $sub      = htmlspecialchars((string) ($sec['subheading'] ?? ''),             ENT_QUOTES, 'UTF-8');
@@ -501,13 +503,13 @@ class BuilderRenderer
       <h3 style=\"margin:0;font-size:18px;font-weight:700\">{$title}</h3>" .
       ($loc ? "<div style=\"font-size:13px;color:#6b7280\">📍 {$loc}</div>" : '') .
       ($desc ? "<p style=\"margin:8px 0 0;color:#4b5563;font-size:14px;line-height:1.6;flex:1\">{$desc}</p>" : '') . "
-      <a href=\"{$ctaU}\" style=\"margin-top:14px;align-self:flex-start;padding:8px 16px;background:{$primary};color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600\">{$ctaT}</a>
+      <a href=\"{$ctaU}\" style=\"margin-top:14px;align-self:flex-start;padding:8px 16px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:6px;font-size:14px;font-weight:600\">{$ctaT}</a>
     </div>
   </article>";
         }
 
         $bottomCta = ($ctaText && $ctaUrl)
-            ? "<div style=\"text-align:center;margin-top:32px\"><a href=\"{$ctaUrl}\" style=\"padding:12px 24px;background:{$primary};color:#fff;text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a></div>"
+            ? "<div style=\"text-align:center;margin-top:32px\"><a href=\"{$ctaUrl}\" style=\"padding:12px 24px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a></div>"
             : '';
 
         return "
@@ -525,6 +527,7 @@ class BuilderRenderer
 
     private function renderHeader(array $sec, array $brand, array $allPages, string $currentSlug): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $comps = $sec['components'] ?? [];
         $brandName = '';
         $navText = '';
@@ -607,7 +610,7 @@ class BuilderRenderer
 
         // BUILDER888 P0-3 (2026-08-09) — header CTA reaches every page.
         $ctaHref = $this->safeUrl($ctaHref);
-        $ctaBtn = $ctaText ? "<a href=\"{$ctaHref}\" style=\"background:{$brand['primary']};color:#fff;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none\">" . e($ctaText) . "</a>" : '';
+        $ctaBtn = $ctaText ? "<a href=\"{$ctaHref}\" style=\"background:{$brand['primary']};color:{$onPrimary};padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none\">" . e($ctaText) . "</a>" : '';
 
         return <<<HTML
 <nav style="background:rgba(15,17,23,0.97);border-bottom:1px solid rgba(255,255,255,.06);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)">
@@ -655,6 +658,7 @@ HTML;
     }
     private function renderHero(array $sec, array $brand): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $style = $sec['style'] ?? [];
         $comps = $sec['components'] ?? [];
         $heading = $sec['heading'] ?? '';
@@ -684,7 +688,7 @@ HTML;
         }
         $btnStyle = $variant === 'white'
             ? "background:#fff;color:{$brand['primary']}"
-            : "background:{$brand['primary']};color:#fff";
+            : "background:{$brand['primary']};color:{$onPrimary}";
         // BUILDER888 P0-3 (2026-08-09) — hero heading/subheading were the
         // most exposed fields on the platform: interpolated raw into the
         // heredoc. cta_link / components[].href accepted javascript:.
@@ -924,6 +928,7 @@ HTML;
      */
     private function renderGrid(array $sec, array $brand): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $primary  = $brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED';
         $heading  = htmlspecialchars((string) ($sec['heading'] ?? ''),    ENT_QUOTES, 'UTF-8');
         $sub      = htmlspecialchars((string) ($sec['subheading'] ?? ''), ENT_QUOTES, 'UTF-8');
@@ -956,7 +961,7 @@ HTML;
                 $tagsHtml .= "<span style=\"display:inline-block;padding:3px 9px;font-size:11px;background:#eef0f4;color:#374151;border-radius:99px;margin:0 4px 4px 0\">{$tgEsc}</span>";
             }
 
-            $badgeHtml = $badge ? "<span style=\"position:absolute;top:12px;left:12px;background:{$primary};color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;letter-spacing:.3px;text-transform:uppercase;z-index:1\">{$badge}</span>" : '';
+            $badgeHtml = $badge ? "<span style=\"position:absolute;top:12px;left:12px;background:{$primary};color:{$onPrimary};font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;letter-spacing:.3px;text-transform:uppercase;z-index:1\">{$badge}</span>" : '';
             $imgBlock  = $img ? "<div style=\"width:100%;height:180px;background:url('{$img}') center/cover no-repeat\"></div>" : '';
 
             $cards .= "
@@ -968,13 +973,13 @@ HTML;
       ($stitle ? "<div style=\"font-size:13px;color:#6b7280\">{$stitle}</div>" : '') .
       ($price ? "<div style=\"margin-top:4px;font-size:18px;font-weight:700;color:{$primary}\">{$price}</div>" : '') .
       ($tagsHtml ? "<div style=\"margin-top:10px\">{$tagsHtml}</div>" : '') . "
-      <a href=\"{$cU}\" style=\"margin-top:14px;align-self:flex-start;padding:8px 16px;background:{$primary};color:#fff;text-decoration:none;border-radius:6px;font-size:13px;font-weight:600\">{$cT}</a>
+      <a href=\"{$cU}\" style=\"margin-top:14px;align-self:flex-start;padding:8px 16px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:6px;font-size:13px;font-weight:600\">{$cT}</a>
     </div>
   </article>";
         }
 
         $bottomCta = ($ctaText && $ctaUrl)
-            ? "<div style=\"text-align:center;margin-top:36px\"><a href=\"{$ctaUrl}\" style=\"padding:12px 24px;background:{$primary};color:#fff;text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a></div>"
+            ? "<div style=\"text-align:center;margin-top:36px\"><a href=\"{$ctaUrl}\" style=\"padding:12px 24px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a></div>"
             : '';
 
         return "
@@ -1208,6 +1213,7 @@ HTML;
      */
     private function renderCartSummary(array $sec, array $brand): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $primary  = $brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED';
         $heading  = htmlspecialchars((string) ($sec['heading'] ?? 'Your cart'),    ENT_QUOTES, 'UTF-8');
         $sub      = htmlspecialchars((string) ($sec['subheading'] ?? ''),           ENT_QUOTES, 'UTF-8');
@@ -1223,7 +1229,7 @@ HTML;
 <section class=\"cart-summary\" style=\"padding:80px 24px;text-align:center;font-family:inherit\">
   <h2 style=\"font-size:30px;margin:0 0 12px;letter-spacing:-.5px\">{$heading}</h2>
   <p style=\"color:#6b7280;font-size:16px;margin-bottom:24px\">{$empty}</p>
-  <a href=\"{$contUrl}\" style=\"display:inline-block;padding:12px 28px;background:{$primary};color:#fff;text-decoration:none;border-radius:8px;font-weight:600\">Continue shopping</a>
+  <a href=\"{$contUrl}\" style=\"display:inline-block;padding:12px 28px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:8px;font-weight:600\">Continue shopping</a>
 </section>";
         }
 
@@ -1269,7 +1275,7 @@ HTML;
     ($sub ? "<div style=\"color:#6b7280;font-size:14px;margin-bottom:8px\">{$sub}</div>" : '') . "
     <div style=\"margin-top:16px\">{$rows}</div>
     <div style=\"margin-top:20px\">{$totals}{$totalRow}</div>
-    <a href=\"{$ctaUrl}\" style=\"display:block;text-align:center;margin-top:24px;padding:14px 24px;background:{$primary};color:#fff;text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a>
+    <a href=\"{$ctaUrl}\" style=\"display:block;text-align:center;margin-top:24px;padding:14px 24px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a>
     <a href=\"{$contUrl}\" style=\"display:block;text-align:center;margin-top:8px;padding:10px;color:#6b7280;text-decoration:none;font-size:14px\">← Continue shopping</a>
   </div>
 </section>
@@ -1284,6 +1290,7 @@ HTML;
      */
     private function renderCheckoutForm(array $sec, array $brand): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $primary  = $brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED';
         $heading  = htmlspecialchars((string) ($sec['heading'] ?? 'Checkout'), ENT_QUOTES, 'UTF-8');
         $sub      = htmlspecialchars((string) ($sec['subheading'] ?? ''),      ENT_QUOTES, 'UTF-8');
@@ -1362,7 +1369,7 @@ HTML;
       <form id=\"checkout-form\" onsubmit=\"event.preventDefault();document.getElementById('checkout-success').style.display='block';this.style.display='none';\" style=\"background:#fff;padding:32px;border-radius:14px;border:1px solid #eef0f4\">
         {$methodsHtml}
         {$sectionsHtml}
-        <button type=\"submit\" style=\"width:100%;padding:14px 24px;font-size:16px;font-weight:600;background:{$primary};color:#fff;border:none;border-radius:8px;cursor:pointer\">{$submit}</button>
+        <button type=\"submit\" style=\"width:100%;padding:14px 24px;font-size:16px;font-weight:600;background:{$primary};color:{$onPrimary};border:none;border-radius:8px;cursor:pointer\">{$submit}</button>
       </form>
       {$sidebarHtml}
     </div>
@@ -1377,6 +1384,7 @@ HTML;
      */
     private function renderAccountNav(array $sec, array $brand): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $primary = $brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED';
         $heading = htmlspecialchars((string) ($sec['heading'] ?? 'Your account'), ENT_QUOTES, 'UTF-8');
         $sub     = htmlspecialchars((string) ($sec['subheading'] ?? ''),           ENT_QUOTES, 'UTF-8');
@@ -1394,7 +1402,7 @@ HTML;
             $lbl    = htmlspecialchars((string) ($it['label'] ?? ''), ENT_QUOTES, 'UTF-8');
             $url    = htmlspecialchars((string) ($it['url']   ?? '#'), ENT_QUOTES, 'UTF-8');
             $active = !empty($it['active']);
-            $bg     = $active ? "background:{$primary};color:#fff" : 'background:transparent;color:#374151';
+            $bg     = $active ? "background:{$primary};color:{$onPrimary}" : 'background:transparent;color:#374151';
             $border = $orient === 'top' ? '' : 'border-radius:8px;';
             $navItems .= "<a href=\"{$url}\" style=\"display:block;padding:10px 16px;{$border}font-size:14px;font-weight:600;text-decoration:none;margin-bottom:4px;{$bg}\">{$lbl}</a>";
         }
@@ -1428,6 +1436,7 @@ HTML;
      */
     private function renderAccountPanel(array $sec, array $brand): string
     {
+        $onPrimary = $this->isLight((string) ($brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED')) ? '#111111' : '#ffffff';
         $primary   = $brand['primary_color'] ?? $brand['primary'] ?? '#7C3AED';
         $heading   = htmlspecialchars((string) ($sec['heading'] ?? 'Your activity'), ENT_QUOTES, 'UTF-8');
         $sub       = htmlspecialchars((string) ($sec['subheading'] ?? ''),            ENT_QUOTES, 'UTF-8');
@@ -1438,7 +1447,7 @@ HTML;
         $ctaUrl    = htmlspecialchars((string) ($sec['cta_url']  ?? ''),              ENT_QUOTES, 'UTF-8');
 
         if (empty($items)) {
-            $emptyCta = ($ctaText && $ctaUrl) ? "<a href=\"{$ctaUrl}\" style=\"display:inline-block;margin-top:16px;padding:10px 22px;background:{$primary};color:#fff;text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a>" : '';
+            $emptyCta = ($ctaText && $ctaUrl) ? "<a href=\"{$ctaUrl}\" style=\"display:inline-block;margin-top:16px;padding:10px 22px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a>" : '';
             return "
 <section class=\"account-panel\" style=\"padding:48px 24px;font-family:inherit\">
   <h2 style=\"font-size:24px;margin:0 0 8px;letter-spacing:-.3px\">{$heading}</h2>" .
