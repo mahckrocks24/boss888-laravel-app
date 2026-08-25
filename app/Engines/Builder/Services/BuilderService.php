@@ -44,6 +44,12 @@ class BuilderService
             ?? DB::table('workspace_users')->where('workspace_id', $wsId)->where('role', 'owner')->value('user_id')
             ?: DB::table('workspaces')->where('id', $wsId)->value('created_by') ?: 0);
         $billingWs = (int) (DB::table('workspaces')->where('id', $wsId)->value('billing_workspace_id') ?: $wsId);
+        // RISK-0093 fix: serialize concurrent creates on the billing family so the
+        // max_websites check + insert cannot race, and so a failed insert after
+        // provisioning rolls back the seeded workspace (no orphan). lockForUpdate on
+        // the billing workspace row is the serialization point.
+        return DB::transaction(function () use ($wsId, $data, $ownerUserId, $billingWs) {
+        DB::table('workspaces')->where('id', $billingWs)->lockForUpdate()->first();
         $plan = \App\Models\Plan::find(
             \App\Models\Subscription::where('workspace_id', $billingWs)
                 ->where('status', 'active')->latest()->value('plan_id')
@@ -98,7 +104,7 @@ class BuilderService
             // Only contract-normalised (flat, scalar) variables may arrive here;
             // BuilderGenerationDTO refuses anything structured, so raw provider
             // output cannot reach this column.
-            'type'               => $data['type'] ?? null,
+            'type'               => $data['type'] ?? 'builder',
             'template_industry'  => $data['template_industry'] ?? null,
             'template_variables' => isset($data['template_variables'])
                 ? json_encode($data['template_variables'])
@@ -128,6 +134,7 @@ class BuilderService
         // ────────────────────────────────────────────────────────────────────────
 
         return ['website_id' => $id, 'workspace_id' => $wsId, 'status' => 'draft'];
+        });
     }
 
     /**
