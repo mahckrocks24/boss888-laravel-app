@@ -68,6 +68,34 @@ class TenancyTest extends TestCase
         return app(BuilderService::class);
     }
 
+    /**
+     * EV-0718: websites.subdomain must be globally unique. A read-then-write
+     * (TOCTOU) claim previously let two workspaces write the same subdomain, so the
+     * published-site middleware's subdomain ->first() could route one tenant's
+     * visitors to another tenant's site. The DB UNIQUE index is the authoritative guard.
+     */
+    public function test_subdomain_is_globally_unique(): void
+    {
+        $siteA = DB::table('websites')->insertGetId([
+            'workspace_id' => $this->wsA, 'name' => 'A', 'type' => 'template',
+            'status' => 'draft', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $sub = 'shared-' . bin2hex(random_bytes(4)) . '.levelupgrowth.io';
+        DB::table('websites')->where('id', $siteA)->update(['subdomain' => $sub]);
+
+        $threw = false;
+        try {
+            DB::table('websites')->where('id', $this->siteB)->update(['subdomain' => $sub]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            $threw = true;
+        }
+        $this->assertTrue($threw, 'duplicate subdomain claim must be rejected by the DB');
+        $this->assertNull(
+            DB::table('websites')->where('id', $this->siteB)->value('subdomain'),
+            'victim site must not have acquired the duplicate subdomain'
+        );
+    }
+
     /** The victim's durable state, for before/after comparison. */
     private function victimState(): array
     {
