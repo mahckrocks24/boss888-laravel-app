@@ -148,7 +148,10 @@ class CapabilityMapService
         // gated at backend + frontend + Sarah's destructive list.
         'publish_website'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'publish_website',     'approval_mode'=>'protected', 'credit_cost'=>0],
         // PATCH v1.0.1: wizard_generate was missing — hit fallback (was zero-cost passthrough, now INVALID_ACTION)
-        'wizard_generate'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'wizard_generate',     'approval_mode'=>'auto',      'credit_cost'=>1],
+        // RISK-0091 (2026-08-25): wizard_generate now routes to the SAME buildFromChat as
+        // full_site_generation (identical operation: a full multi-page site build). Aligned to the
+        // canonical full-site price 10cr + review (was 1cr/auto — a stale underprice of the same work).
+        'wizard_generate'     => ['engine'=>'builder',   'connector'=>null,       'action'=>'wizard_generate',     'approval_mode'=>'review',    'credit_cost'=>10],
 
         // -- INFRA888 (2026-07-18) ------------------------------------------
         // Infrastructure mutations are ALWAYS protected and NEVER cost AI

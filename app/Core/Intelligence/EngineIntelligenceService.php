@@ -345,7 +345,7 @@ class EngineIntelligenceService
                 'social_publish_post' => ['description' => 'Publish a draft post immediately to connected accounts.', 'metadata' => ['credit_cost' => 0]],
             ],
             'builder' => [
-                'wizard_generate' => ['description' => 'Arthur AI website wizard. Input: business name, industry, goal. Generates complete website with pages.', 'metadata' => ['credit_cost' => 5]],
+                'wizard_generate' => ['description' => 'Arthur AI website wizard. Input: business name, industry, goal. Generates complete website with pages.', 'metadata' => ['credit_cost' => 10]],
                 'create_website' => ['description' => 'Create empty website. Add pages, sections, elements manually or via AI.', 'metadata' => ['credit_cost' => 0]],
                 'create_page' => ['description' => 'Create a new page inside a website. Schema v1 (sections, containers, elements).', 'metadata' => ['credit_cost' => 0]],
                 'publish_website' => ['description' => 'Publish a website to live URL. Triggers deploy pipeline.', 'metadata' => ['credit_cost' => 0]],
