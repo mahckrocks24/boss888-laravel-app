@@ -4080,6 +4080,42 @@ PROMPT;
                     ['type' => 'footer'],
                 ];
 
+            case 'gallery':
+            case 'galleries':
+            case 'photos':
+            case 'photo_gallery':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero', 'heading' => 'Gallery', 'body' => 'A look at our work.'],
+                    ['type' => 'gallery', 'heading' => 'Our work'],
+                    ['type' => 'cta', 'heading' => 'Like what you see?', 'body' => 'Get in touch to start your project.'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'team':
+            case 'our_team':
+            case 'staff':
+            case 'people':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero', 'heading' => 'Meet the team', 'body' => 'The people behind ' . $businessName . '.'],
+                    ['type' => 'team', 'heading' => 'Our team'],
+                    ['type' => 'testimonials', 'heading' => 'What our clients say'],
+                    ['type' => 'cta', 'heading' => 'Work with us', 'body' => 'Get in touch to learn more.'],
+                    ['type' => 'footer'],
+                ];
+
+            case 'testimonials':
+            case 'reviews':
+                return [
+                    ['type' => 'header'],
+                    ['type' => 'hero', 'heading' => 'What our clients say', 'body' => 'Real results from real people.'],
+                    ['type' => 'testimonials', 'heading' => 'Client stories'],
+                    ['type' => 'cta', 'heading' => 'Ready to join them?', 'body' => 'Get in touch today.'],
+                    ['type' => 'contact_form', 'heading' => 'Contact us'],
+                    ['type' => 'footer'],
+                ];
+
             case 'legal':
             case 'privacy':
             case 'privacy_policy':
