@@ -760,6 +760,12 @@ class StripeService
      */
     public function addChatbotAddon(int $workspaceId, int $userId): array
     {
+        // DEC-0027 (2026-08-25): the chatbot add-on is retired. Chatbot is a TIER
+        // feature included in every $49+ plan (FeatureGateService::canAccessChatbot).
+        // Refuse new add-on purchases so no customer buys an entitlement the gate no
+        // longer honours. (Existing add-on item_ids are harmless — access comes from tier.)
+        return ['success' => false, 'error' => 'The chatbot is already included in your plan tier ($49 and up) — no separate add-on is needed.'];
+
         $sub = Subscription::where('workspace_id', $workspaceId)
             ->whereIn('status', ['active', 'trialing'])
             ->latest()->first();

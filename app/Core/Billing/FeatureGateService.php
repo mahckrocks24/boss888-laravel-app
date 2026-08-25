@@ -398,10 +398,8 @@ class FeatureGateService
      *
      * Three paths to YES:
      *   1. plans.features_json.chatbot_included === true (pro/agency/seo_only)
-     *   2. plans.price >= 99 (safety fallback if features_json missing the key —
-     *      spec 2026-06-23: $69 WP + $99 Laravel+ have chatbot; the flag is the
-     *      source of truth, this just catches new plans missing the flag)
-     *   3. subscriptions.chatbot_addon_item_id is non-null (add-on purchased)
+     *   2. plans.price >= 49 (DEC-0027: chatbot included in the $49 tier and up)
+     *   (the add-on path is retired per DEC-0027 — chatbot is a tier feature)
      */
     public function canAccessChatbot(int $wsId): bool
     {
@@ -412,16 +410,15 @@ class FeatureGateService
         $features = is_array($plan->features_json ?? null) ? $plan->features_json : [];
         if (! empty($features['chatbot_included'])) return true;
 
-        // Path 2 — price-based safety net for new plans without the flag set
-        // (2026-06-23 — lowered 199→99 per spec: $99 Laravel / $69 WP both have
-        // chatbot; $69 WP plans carry the explicit flag, caught by Path 1.)
-        if ((float) $plan->price >= 99.0) return true;
+        // Path 2 — price-based tier entitlement. DEC-0027 (2026-08-25): chatbot is
+        // included in the $49 tier and above (incl. the $69 WP tier). Lowered 99→49.
+        if ((float) $plan->price >= 49.0) return true;
 
-        // Path 3 — add-on purchased on the active subscription
-        $sub = \App\Models\Subscription::where('workspace_id', $wsId)
-            ->whereIn('status', ['active', 'trialing'])
-            ->latest()->first();
-        return $sub && ! empty($sub->chatbot_addon_item_id);
+        // DEC-0027: the chatbot ADD-ON model is retired — chatbot is a tier feature,
+        // not a separate purchase. No Path 3. (The two live add-on subscriptions are
+        // on pro/$199, which carries chatbot_included=true, so they retain access via
+        // Path 1 — removing the add-on path revokes no one.)
+        return false;
     }
 
     public function canUseChatbotBooking(int $wsId): bool
