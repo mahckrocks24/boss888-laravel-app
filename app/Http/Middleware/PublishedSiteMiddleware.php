@@ -220,6 +220,7 @@ class PublishedSiteMiddleware
                     }
                     $html = $this->injectBlogLinkStyling($html);
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
+                    $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
@@ -288,6 +289,7 @@ class PublishedSiteMiddleware
         }
 
         $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) ($website->id ?? 0));
+        $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
 
         return response($html, 200)
             ->header('Content-Type', 'text/html; charset=utf-8')
@@ -887,6 +889,26 @@ class PublishedSiteMiddleware
      * has the chatbot enabled. Runs AFTER the cached HTML is retrieved so a
      * settings toggle takes effect without needing to bust the page cache.
      */
+    /**
+     * SEO/social: fill empty canonical + og:url with the page's canonical URL and make
+     * relative og:image/twitter:image absolute (Open Graph requires absolute URLs).
+     * Generated sites served empty canonical + relative og:image -> broken previews.
+     * Canonical host = custom domain if set, else the *.levelupgrowth.io subdomain.
+     */
+    private function absolutizeSocialMeta(string $html, $website, string $slug): string
+    {
+        $host = '';
+        if (! empty($website->custom_domain)) { $host = strtolower(trim((string) $website->custom_domain, ' /')); }
+        elseif (! empty($website->subdomain)) { $host = strtolower(trim((string) $website->subdomain, ' /')); }
+        if ($host === '') { return $html; }
+        $base = 'https://' . $host;
+        $pageUrl = $base . (($slug === '' || $slug === 'home') ? '/' : '/' . ltrim($slug, '/'));
+        $html = preg_replace('#(<link\\s+rel=["\']canonical["\']\\s+href=)["\'][^"\']*["\']#i', '$1"' . e($pageUrl) . '"', $html, 1);
+        $html = preg_replace('#(<meta\\s+property=["\']og:url["\']\\s+content=)["\'][^"\']*["\']#i', '$1"' . e($pageUrl) . '"', $html, 1);
+        $html = preg_replace_callback('#(<meta\\s+(?:property|name)=["\'](?:og:image|twitter:image)["\']\\s+content=)["\'](/[^"\']*)["\']#i', function ($m) use ($base) { return $m[1] . '"' . $base . $m[2] . '"'; }, $html);
+        return $html;
+    }
+
     private function injectChatbotWidget(string $html, int $workspaceId, int $websiteId): string
     {
         if ($workspaceId <= 0) return $html;
