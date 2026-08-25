@@ -801,6 +801,7 @@ HTML;
         $subdomainAttr  = e($subdomain);
         $websiteId      = (int) ($website['id'] ?? 0);
         $primaryColor   = $brand['primary'] ?? '#6C5CE7';
+        $onPrimary      = $this->isLight($primaryColor) ? '#111111' : '#ffffff';
         $headingSafe    = e($heading);
         $textSafe       = e($text);
         $submitLabelSafe = e($submitLabel);
@@ -813,18 +814,18 @@ HTML;
     <p style="color:{$textColor};text-align:center;margin-bottom:32px">{$textSafe}</p>
     <form class="contact-form" id="contact-form-{$websiteId}" data-subdomain="{$subdomainAttr}" onsubmit="luSubmitContact(event, this)">
       <div style="margin-bottom:16px">
-        <input type="text"  name="firstname" placeholder="Your name"  required maxlength="100" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
+        <input type="text"  name="firstname" aria-label="Your name" placeholder="Your name"  required maxlength="100" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
       </div>
       <div style="margin-bottom:16px">
-        <input type="email" name="email"     placeholder="you@email.com" required maxlength="255" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
+        <input type="email" name="email"     aria-label="Email address" placeholder="you@email.com" required maxlength="255" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
       </div>
       <div style="margin-bottom:16px">
-        <input type="tel"   name="phone"     placeholder="Your phone (optional)" maxlength="50" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
+        <input type="tel"   name="phone"     aria-label="Phone number (optional)" placeholder="Your phone (optional)" maxlength="50" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit">
       </div>
       <div style="margin-bottom:16px">
-        <textarea name="message" placeholder="Your message" rows="4" required maxlength="2000" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+        <textarea name="message" aria-label="Your message" placeholder="Your message" rows="4" required maxlength="2000" style="width:100%;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
       </div>
-      <button type="submit" style="background:{$primaryColor};color:#fff;border:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;width:100%">{$submitLabelSafe}</button>
+      <button type="submit" style="background:{$primaryColor};color:{$onPrimary};border:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;width:100%">{$submitLabelSafe}</button>
       <div class="lu-contact-success" style="display:none;margin-top:16px;padding:12px;background:#d4edda;color:#155724;border-radius:8px;text-align:center">&#10003; Thank you! We will get back to you soon.</div>
       <div class="lu-contact-error" style="display:none;margin-top:16px;padding:12px;background:#f8d7da;color:#721c24;border-radius:8px;text-align:center">Something went wrong. Please try again.</div>
     </form>
