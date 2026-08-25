@@ -161,6 +161,27 @@ class TemplateService
             }
         }
 
+        // BUILDER888 SEO: inject LocalBusiness JSON-LD into the static export head so
+        // freshly-generated sites carry structured data (the dynamic renderer already
+        // emits it; the template export did not). Guarded: only when absent + a name
+        // exists. JSON_HEX_TAG blocks any </script> breakout from a variable value.
+        if (stripos($html, 'application/ld+json') === false && stripos($html, '</head>') !== false) {
+            $bizName = trim((string) ($variables['business_name'] ?? $variables['site_name'] ?? ''));
+            if ($bizName !== '') {
+                $schema = array_filter([
+                    '@context'    => 'https://schema.org',
+                    '@type'       => 'LocalBusiness',
+                    'name'        => $bizName,
+                    'description' => trim((string) ($variables['meta_description'] ?? $variables['hero_subheading'] ?? '')),
+                    'image'       => trim((string) ($variables['hero_image'] ?? $variables['og_image'] ?? '')),
+                ], fn($v) => $v !== '' && $v !== null);
+                $json = json_encode($schema, JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                if ($json !== false) {
+                    $html = str_ireplace('</head>', '  <script type="application/ld+json">' . $json . '</script>' . "\n</head>", $html);
+                }
+            }
+        }
+
         return $html;
     }
 
