@@ -396,17 +396,58 @@ class SocialService
      */
     public function queuePost(int $wsId, array $data): array
     {
-        $post = $this->createPost($wsId, array_merge([
-            'status'    => 'draft',
-            'source'    => 'studio',
-            'platform'  => $data['platform'] ?? 'instagram',
-            'content'   => $data['caption'] ?? '',
-        ], $data));
+        // Studio -> Social bridge. Normalise the Studio payload so nothing is lost:
+        // video-or-image media, schedule alias, and one post per chosen platform
+        // (social_posts.platform is single-valued). Studio provenance -> source_type.
+        $platforms = array_values(array_filter(
+            (array) ($data['platforms'] ?? [$data['platform'] ?? 'instagram']),
+            fn($p) => $p !== null && $p !== ''
+        ));
+        if (! $platforms) { $platforms = ['instagram']; }
+
+        // Media: explicit array wins; else VIDEO takes precedence over image so a
+        // Studio video is carried through (Owner: studio supplies images AND videos).
+        $media = [];
+        if (! empty($data['media']) && is_array($data['media'])) {
+            $media = $data['media'];
+        } elseif (! empty($data['video_url'])) {
+            $media = [['type' => 'video', 'url' => (string) $data['video_url']]];
+        } elseif (! empty($data['image_url'])) {
+            $media = [['type' => 'image', 'url' => (string) $data['image_url']]];
+        }
+
+        $scheduledAt = $data['scheduled_at'] ?? $data['schedule_at'] ?? null;
+        $caption     = $data['caption'] ?? $data['content'] ?? '';
+
+        $postIds = [];
+        foreach ($platforms as $platform) {
+            $post = $this->createPost($wsId, [
+                'platform'     => $platform,
+                'content'      => $caption,
+                'media'        => $media,
+                'hashtags'     => $data['hashtags'] ?? [],
+                'scheduled_at' => $scheduledAt,
+                'account_id'   => $data['account_id'] ?? null,
+            ]);
+            $pid = $post['post_id'] ?? null;
+            if ($pid) {
+                DB::table('social_posts')->where('id', $pid)->where('workspace_id', $wsId)->update([
+                    'source_type' => 'studio',
+                    'status'      => $scheduledAt ? 'scheduled' : 'draft',
+                    'updated_at'  => now(),
+                ]);
+                $postIds[] = $pid;
+            }
+        }
+
         return [
             'success'   => true,
-            'post_id'   => $post['post_id'] ?? null,
-            'status'    => 'queued',
-            'message'   => 'Post queued from Studio — visible in calendar for review/scheduling.',
+            'post_ids'  => $postIds,
+            'post_id'   => $postIds[0] ?? null,   // back-compat with single-id callers
+            'platforms' => $platforms,
+            'media'     => $media,
+            'status'    => $scheduledAt ? 'scheduled' : 'queued',
+            'message'   => count($postIds) . ' post(s) queued from Studio — visible in the calendar for review/scheduling.',
         ];
     }
 
