@@ -194,10 +194,17 @@ class BuilderService
     {
         $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')
             ->orderByDesc('created_at')->get();
-        $websites = $sites->map(function($s) {
+        // B6 no-N+1: aggregate page counts for all sites in ONE query, then map.
+        $siteIds = $sites->pluck('id')->all();
+        $pageCounts = empty($siteIds) ? [] : DB::table('pages')
+            ->whereIn('website_id', $siteIds)
+            ->selectRaw('website_id, COUNT(*) AS c')
+            ->groupBy('website_id')
+            ->pluck('c', 'website_id')->all();
+        $websites = $sites->map(function($s) use ($pageCounts) {
             $s->title = $s->name;
             $s->slug = \Illuminate\Support\Str::slug($s->name ?? '');
-            $s->page_count = DB::table('pages')->where('website_id', $s->id)->count();
+            $s->page_count = (int) ($pageCounts[$s->id] ?? 0);
             $s->publish_state = $s->published_at ? 'published' : 'draft';
             $s->description = $s->description ?? '';
             return $s;
