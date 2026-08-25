@@ -1717,71 +1717,60 @@ class SeoService
 
     public function checkOutbound(int $wsId, array $params = []): array
     {
-        $links = DB::table('seo_links')->where('workspace_id', $wsId)->where('type', 'outbound')->get();
-        $checked = 0; $broken = 0; $healthy = 0;
+        // Real outbound links live in seo_outbound_links (also the /outbound display).
+        // (seo_links type=outbound was empty, so the old scan checked nothing.) Batch to
+        // bound HTTP work; prioritise never-checked then stalest. SSRF-guarded HEADs.
+        $limit = (int) ($params['limit'] ?? 50);
+        if ($limit < 1 || $limit > 200) { $limit = 50; }
+        $links = DB::table('seo_outbound_links')
+            ->where('workspace_id', $wsId)
+            ->orderByRaw('last_checked_at IS NULL DESC, last_checked_at ASC')
+            ->limit($limit)
+            ->get();
+
+        $checked = 0; $broken = 0; $healthy = 0; $skipped = 0;
         $details = [];
 
         foreach ($links as $link) {
+            $targetUrl = (string) ($link->target_url ?? '');
+            $host   = strtolower((string) (parse_url($targetUrl, PHP_URL_HOST) ?: ''));
+            $scheme = strtolower((string) (parse_url($targetUrl, PHP_URL_SCHEME) ?: ''));
+            $blocked = $host === '' || ! in_array($scheme, ['http', 'https'], true)
+                || $host === 'localhost'
+                || preg_match('/^(127\.|10\.|192\.168\.|169\.254\.|::1|172\.(1[6-9]|2[0-9]|3[0-1])\.)/', $host);
+            if ($blocked) { $skipped++; continue; }
+
             $checked++;
-            $targetUrl = $link->target_url ?? '';
-            $httpStatus = null;
-            $isHealthy = false;
-
-            if (!empty($targetUrl) && filter_var($targetUrl, FILTER_VALIDATE_URL)) {
-                try {
-                    $response = Http::timeout(5)->head($targetUrl);
-                    $httpStatus = $response->status();
-                    $isHealthy = $httpStatus >= 200 && $httpStatus < 400;
-                } catch (\Throwable $e) {
-                    $httpStatus = 0;
-                    $isHealthy = false;
-                    Log::debug('SeoService: Outbound link check failed', [
-                        'url' => $targetUrl,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            } else {
-                // Non-URL or empty — mark as broken
-                $httpStatus = 0;
-                $isHealthy = false;
-            }
-
-            if ($isHealthy) {
-                $healthy++;
-            } else {
-                $broken++;
-            }
-
-            // Update seo_links with actual HTTP status
+            $httpStatus = 0; $isHealthy = false;
             try {
-                DB::table('seo_links')->where('id', $link->id)->update([
-                    'http_status' => $httpStatus,
+                $response = Http::timeout(5)->head($targetUrl);
+                $httpStatus = $response->status();
+                $isHealthy = $httpStatus >= 200 && $httpStatus < 400;
+            } catch (\Throwable $e) {
+                Log::debug('SeoService: Outbound link check failed', ['url' => $targetUrl, 'error' => $e->getMessage()]);
+            }
+            $isHealthy ? $healthy++ : $broken++;
+
+            try {
+                DB::table('seo_outbound_links')->where('id', $link->id)->where('workspace_id', $wsId)->update([
+                    'status'          => $isHealthy ? 'ok' : 'broken',
+                    'http_status'     => $httpStatus,
                     'last_checked_at' => now(),
-                    'updated_at' => now(),
+                    'updated_at'      => now(),
                 ]);
             } catch (\Throwable $e) {
-                // Column may not exist yet — non-fatal
-                Log::debug('SeoService: Could not update link http_status', ['error' => $e->getMessage()]);
+                Log::debug('SeoService: Could not update outbound link status', ['error' => $e->getMessage()]);
             }
 
-            $details[] = [
-                'id' => $link->id,
-                'url' => $targetUrl,
-                'http_status' => $httpStatus,
-                'healthy' => $isHealthy,
-            ];
+            $details[] = ['id' => $link->id, 'url' => $targetUrl, 'http_status' => $httpStatus, 'healthy' => $isHealthy];
         }
 
         $this->engineIntel->recordToolUsage('seo', 'check_outbound');
-
-        // Log activity
         $this->logActivity($wsId, null, 'check_outbound', 'links', null, [
-            'checked' => $checked,
-            'broken' => $broken,
-            'healthy' => $healthy,
+            'checked' => $checked, 'broken' => $broken, 'healthy' => $healthy, 'skipped' => $skipped,
         ]);
 
-        return ['checked' => $checked, 'broken' => $broken, 'healthy' => $healthy, 'details' => $details];
+        return ['checked' => $checked, 'broken' => $broken, 'healthy' => $healthy, 'skipped' => $skipped, 'details' => $details, 'limit' => $limit];
     }
 
     // ═══════════════════════════════════════════════════════════
