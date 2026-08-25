@@ -41,9 +41,11 @@ class SecurityHeadersMiddleware
         // Permissions policy — disable browser features not needed
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
 
-        // HSTS — force HTTPS for 1 year (set only in production)
-        if (config('app.env') === 'production') {
-            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+        // HSTS — force HTTPS. Staging IS the production deployment (APP_ENV=staging),
+        // so enable there too. 'preload' omitted deliberately: it is an irreversible
+        // domain-wide commitment (an Owner/infra decision, not a code default).
+        if (in_array(config('app.env'), ['production', 'staging'], true)) {
+            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
         // Content Security Policy
