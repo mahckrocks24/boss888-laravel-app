@@ -1688,6 +1688,33 @@ class SeoService
             ->get()->toArray();
     }
 
+    /**
+     * Keyword research for the AGENT path (James/Sarah). Mirrors POST /keywords/research
+     * (DataForSeoConnector::relatedKeywords). Credits are reserved by EngineExecutionService
+     * per the cap-map (credit_cost=1), so this does NOT reserve inline.
+     */
+    public function keywordResearch(int $wsId, array $params): array
+    {
+        $kw = trim((string) ($params['seed_keyword'] ?? $params['keyword'] ?? $params['topic'] ?? $params['seed'] ?? ''));
+        if ($kw === '') { return ['success' => false, 'error' => 'seed keyword required', 'ideas' => []]; }
+        $locCode = (int) ($params['location_code'] ?? 0);
+        if (! $locCode) {
+            $map = ['USA' => 2840, 'UK' => 2826, 'UAE' => 2784, 'US' => 2840, 'GB' => 2826, 'AE' => 2784];
+            $locCode = $map[(string) ($params['market'] ?? $params['location'] ?? '')] ?? 2840;
+        }
+        try {
+            $conn = new \App\Connectors\DataForSeoConnector();
+            $res = $conn->relatedKeywords($kw, $locCode, 'en', 30);
+            if (empty($res['success'])) {
+                return ['success' => false, 'error' => 'Keyword research temporarily unavailable.', 'ideas' => []];
+            }
+            return ['success' => true, 'keyword' => $res['keyword'] ?? $kw, 'ideas' => $res['items'] ?? [], 'data' => $res['items'] ?? []];
+        } catch (\Throwable $e) {
+            Log::warning('SeoService keywordResearch failed', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'Keyword research temporarily unavailable.', 'ideas' => []];
+        }
+    }
+
     public function checkOutbound(int $wsId, array $params = []): array
     {
         $links = DB::table('seo_links')->where('workspace_id', $wsId)->where('type', 'outbound')->get();

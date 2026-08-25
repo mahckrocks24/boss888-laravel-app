@@ -745,8 +745,8 @@ class EngineExecutionService
             // ToolSchemaService::executeToolCall -> EngineExecutionService)
             // works for them, not just the async Orchestrator dispatch.
             'list_keywords' => $svc->listKeywords($wsId, $params),
-            'keyword_research' => ['success' => false, 'not_implemented' => true, 'message' => 'keyword_research is in the catalog but not yet wired to a service. Use add_keyword + serp_analysis as a workaround.'],
-            'keywords_suggest' => ['success' => false, 'not_implemented' => true, 'message' => 'keywords_suggest is in the catalog but not yet wired to a service.'],
+            'keyword_research' => $svc->keywordResearch($wsId, $params),
+            'keywords_suggest' => $svc->keywordResearch($wsId, $params),
             'keyword_check' => ['success' => false, 'not_implemented' => true, 'message' => 'keyword_check is in the catalog but not yet wired to a service. Use serp_analysis for ranking lookups.'],
             'link_suggestions', 'generate_links' => $svc->generateLinkSuggestions($wsId, $params),
             'insert_link' => ['inserted' => $svc->insertLink($wsId, $params['link_id'] ?? 0)],
