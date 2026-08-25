@@ -364,9 +364,18 @@ class SocialService
         return DB::table('social_accounts')->where('workspace_id', $wsId)->get()->toArray();
     }
 
-    public function disconnectAccount(int $accountId): void
+    public function disconnectAccount(int $wsId, int $accountId): bool
     {
-        DB::table('social_accounts')->where('id', $accountId)->update(['status' => 'disconnected', 'updated_at' => now()]);
+        // Tenancy + correctness fix: the route calls disconnectAccount($wsId, $id),
+        // but the old signature took only ($accountId) so PHP bound $accountId=$wsId
+        // and discarded the real id -> wrong row, NO workspace scoping (cross-tenant
+        // IDOR), and a void return that made the route always report disconnected:false.
+        // Scope by BOTH workspace_id and id; return whether a row was actually updated.
+        $n = DB::table('social_accounts')
+            ->where('id', $accountId)
+            ->where('workspace_id', $wsId)
+            ->update(['status' => 'disconnected', 'updated_at' => now()]);
+        return $n > 0;
     }
 
     // ═══════════════════════════════════════════════════════
