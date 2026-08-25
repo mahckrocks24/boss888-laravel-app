@@ -1299,6 +1299,9 @@ class Orchestrator
                                             ->wizardGenerate($wsId, $params),
             'builder/publish_website'   => fn() => app(\App\Engines\Builder\Services\BuilderService::class)
                                             ->publishWebsite($params['website_id']),
+            // RISK-0088 (2026-08-25): async full-site build via the proven Arthur path.
+            'builder/full_site_generation' => fn() => app(\App\Engines\Builder\Services\ArthurService::class)
+                                            ->buildFromChat($wsId, $params['build_data'] ?? $params, $params['logo_url'] ?? null, $params['images'] ?? [], $params['colors'] ?? [], $params['user_id'] ?? null),
 
             // A1 (2026-06-23) — async handler for agent/approved Arthur page edits.
             // EngineExecutionService::execute had this inline, but approved tasks

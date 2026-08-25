@@ -839,6 +839,12 @@ class EngineExecutionService
                 ),
             // v1.4.4 Phase D-1 (2026-05-30) — add new page from universal template.
             'add_page_from_template' => $svc->addPageFromTemplate($wsId, $params),
+            // RISK-0088 (2026-08-25): full_site_generation was a governed 10cr row
+            // with NO executor (DISCONNECTED). Wire it to the PROVEN Arthur build
+            // (buildFromChat -> generateWebsite) so Sarah's website capability does
+            // real work instead of throwing "Unknown Builder action".
+            'full_site_generation' => app(\App\Engines\Builder\Services\ArthurService::class)
+                ->buildFromChat($wsId, $params['build_data'] ?? $params, $params['logo_url'] ?? null, $params['images'] ?? [], $params['colors'] ?? [], $ctx['user_id'] ?? null),
             default => throw new \RuntimeException("Unknown Builder action: {$action}"),
         };
     }
