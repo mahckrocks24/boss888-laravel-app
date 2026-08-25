@@ -145,15 +145,25 @@ class SyncProposalApprovalsCommand extends Command
             ->where('a.status', 'pending')
             ->where('p.status', '!=', 'pending_approval')
             ->when($wsFilter, fn ($q) => $q->where('a.workspace_id', (int) $wsFilter))
-            ->get(['a.id as approval_id', 'p.status as proposal_status']);
+            ->get(['a.id as approval_id', 'a.workspace_id as ws_id', 'a.proposal_id as prop_id', 'p.status as proposal_status']);
 
         foreach ($stale as $s) {
             $newStatus = in_array($s->proposal_status, ['declined', 'insufficient_credits'], true) ? 'rejected' : 'approved';
+            // RISK-0056 (2026-08-25): a reconciler decision is NOT a person's. Attribute it
+            // honestly — actor_type='system' + a note naming the cause + an audit row — so the
+            // governance record can distinguish automated reconciliation from a real decision
+            // instead of a silent status flip with no decider anywhere.
             DB::table('approvals')->where('id', $s->approval_id)->update([
-                'status'     => $newStatus,
-                'decided_at' => now(),
-                'updated_at' => now(),
+                'status'              => $newStatus,
+                'decided_at'          => now(),
+                'decision_actor_type' => 'system',
+                'decision_note'       => 'Auto-reconciled from proposal #' . $s->prop_id . ' status "' . $s->proposal_status . '" by SyncProposalApprovalsCommand',
+                'updated_at'          => now(),
             ]);
+            app(\App\Core\Audit\AuditLogService::class)->log(
+                (int) $s->ws_id, null, 'approval.' . $newStatus, 'Approval', (int) $s->approval_id,
+                ['source' => 'SyncProposalApprovalsCommand', 'proposal_id' => (int) $s->prop_id, 'proposal_status' => $s->proposal_status, 'actor_type' => 'system']
+            );
             $reconciled++;
         }
 
