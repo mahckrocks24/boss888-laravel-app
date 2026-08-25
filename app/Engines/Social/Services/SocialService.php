@@ -210,8 +210,30 @@ class SocialService
             'business'      => !empty($params['context']) ? json_encode($params['context']) : null,
         ], fn($v) => $v !== null && $v !== '');
 
+        // Experience888 retrieval — "gaining experience for better output in the
+        // future": consult confidence-graded, workspace-scoped learnings so past
+        // results guide new content. Degrades to a no-op when nothing is proven.
+        try {
+            $patterns = app(\App\Core\Experience888\ExperienceRetriever::class)
+                ->relevantPatterns($wsId, trim("{$platform} {$topic} " . ($kit['industry'] ?? '') . " social post"), 4);
+            $learned = [];
+            foreach ($patterns as $p) {
+                $learned[] = trim(rtrim((string) $p->statement, '.'))
+                    . " (confidence {$p->confidence_level}, {$p->positive_count}/{$p->sample_size})";
+            }
+            if ($learned) { $context['learned_patterns'] = $learned; }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug('SocialService: experience retrieval skipped', ['error' => $e->getMessage()]);
+        }
+
         $userPrompt = "Generate a {$platform} post about: {$topic}\n"
                     . "Tone: {$tone}";
+        if (!empty($context['learned_patterns'])) {
+            // Fold learnings into the prompt directly so they reach the model even
+            // if the runtime task ignores unknown context keys.
+            $userPrompt .= "\n\nWhat has worked before for this brand (apply where relevant):\n- "
+                        . implode("\n- ", $context['learned_patterns']);
+        }
 
         $result = $this->runtime->aiRun('social_post', $userPrompt, $context, 600);
 

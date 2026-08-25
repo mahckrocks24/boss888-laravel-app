@@ -442,7 +442,7 @@ class EngineExecutionService
                     $workspace = \App\Models\Workspace::find($wsId);
                     app(\App\Core\Intelligence\AgentExperienceService::class)
                         ->recordTaskCompletion($agent->id, $engine, $action, $workspace?->industry, [
-                            'success' => true, 'tokens_used' => $result['usage']['total_tokens'] ?? 0,
+                            'success' => ($result['success'] ?? true), 'tokens_used' => $result['usage']['total_tokens'] ?? 0,
                         ]);
                 }
             }
@@ -451,7 +451,7 @@ class EngineExecutionService
             // Converts outcome into an effectiveness score and feeds it back
             // to EngineIntelligenceService::recordToolUsage (which is now self-healing).
             app(\App\Core\Intelligence\ToolFeedbackService::class)->record($engine, $action, [
-                'success' => true,
+                'success' => ($result['success'] ?? true),
                 'workspace_id' => $wsId,
                 'duration_ms' => $result['duration_ms'] ?? null,
                 'tokens_used' => $result['usage']['total_tokens'] ?? null,
