@@ -4242,6 +4242,17 @@ Route::post('/builder/websites/{id}/logo', function (\Illuminate\Http\Request $r
         // Remove any prior logo files (any extension)
         foreach (glob($dir . '/logo.*') as $old) { @unlink($old); }
         $file->move($dir, 'logo.' . $ext);
+        // G-SEC4 (2026-08-25): sanitize uploaded SVG active content — a raw SVG served from
+        // this origin is same-origin stored XSS. Mirrors the logo-upload-temp endpoint
+        // (BUILDER888 P0-4). Refuse if nothing usable survives.
+        if ($ext === 'svg') {
+            $clean = \App\Engines\Builder\Support\SvgSanitizer::sanitize((string) @file_get_contents($dir . '/logo.svg'));
+            if ($clean === null) {
+                @unlink($dir . '/logo.svg');
+                return response()->json(['success' => false, 'error' => 'That SVG could not be processed safely. Use PNG, JPG or WEBP.'], 422);
+            }
+            file_put_contents($dir . '/logo.svg', $clean);
+        }
         $logoUrl = '/storage/sites/' . $id . '/logo.' . $ext . '?v=' . time();
     }
 
