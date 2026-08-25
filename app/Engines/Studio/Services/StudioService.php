@@ -620,22 +620,29 @@ class StudioService
         $caption   = (string) ($data['caption'] ?? '');
         $scheduleAt = $data['schedule_at'] ?? null;
 
+        // Studio supplies images AND videos: a video design publishes its exported
+        // video (image/thumbnail becomes the poster); an image design publishes its
+        // exported image. Either way, an unexported asset is gated honestly.
+        $isVideo  = ($design->design_type ?? 'image') === 'video';
+        $videoUrl = $isVideo ? ($design->exported_video_url ?: null) : null;
         $imageUrl = $design->exported_url ?: $design->thumbnail_url;
-        if (!$imageUrl) return ['success' => false, 'error' => 'no_export', 'message' => 'Export the design before publishing.'];
+        if ($isVideo && !$videoUrl) return ['success' => false, 'error' => 'no_export', 'message' => 'Export the video before publishing.'];
+        if (!$isVideo && !$imageUrl) return ['success' => false, 'error' => 'no_export', 'message' => 'Export the design before publishing.'];
 
         // Delegate to Social engine when available
         if (class_exists(\App\Engines\Social\Services\SocialService::class)) {
             try {
                 $social = app(\App\Engines\Social\Services\SocialService::class);
                 if (method_exists($social, 'queuePost')) {
-                    $jobId = $social->queuePost($wsId, [
+                    $jobId = $social->queuePost($wsId, array_filter([
                         'platforms'   => $platforms,
                         'caption'     => $caption,
-                        'image_url'   => $imageUrl,
+                        'video_url'   => $videoUrl,
+                        'image_url'   => $isVideo ? ($imageUrl ?: null) : $imageUrl, // poster for video
                         'schedule_at' => $scheduleAt,
                         'source'      => 'studio',
                         'design_id'   => $designId,
-                    ]);
+                    ], fn($v) => $v !== null));
                     DB::table('studio_designs')->where('id', $designId)->update(['published_to_social' => 1, 'updated_at' => now()]);
                     return ['success' => true, 'queued' => true, 'job_id' => $jobId, 'message' => 'Queued to Social engine'];
                 }
