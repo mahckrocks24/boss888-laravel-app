@@ -81,8 +81,17 @@ class BuilderRenderer
             $footerHtml = '';
             $bodyHtml   = '';
             foreach ($secs as $sec) {
-                $t = $sec['type'] ?? '';
-                $rendered = $this->renderSection($sec, $tokens, $website, $allPages, $page['slug'] ?? 'home');
+                $t = is_array($sec) ? ($sec['type'] ?? '') : '';
+                // Broken-page resilience: a malformed section (wrong-typed field, etc.)
+                // must not crash the whole page. Skip + log the offender, render the rest.
+                try {
+                    $rendered = $this->renderSection($sec, $tokens, $website, $allPages, $page['slug'] ?? 'home');
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[BuilderRenderer] section render failed, skipping', [
+                        'type' => $t, 'website_id' => $website['id'] ?? null, 'error' => $e->getMessage(),
+                    ]);
+                    $rendered = '';
+                }
                 if ($t === 'header') {
                     $headerHtml .= $rendered;
                 } elseif ($t === 'footer') {
