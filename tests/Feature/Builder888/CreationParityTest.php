@@ -87,6 +87,40 @@ class CreationParityTest extends TestCase
         $this->assertSame('construction', $dto->templateIndustry);
     }
 
+    /**
+     * EV-0721: regeneration must NEVER silently clobber an edited page. createPage
+     * uniquifies an existing slug instead of overwriting, so a re-generated page for a
+     * slug the customer already edited lands as a NEW page and the edit is preserved.
+     */
+    public function test_regeneration_never_clobbers_an_edited_page(): void
+    {
+        $svc = app(BuilderService::class);
+        $w = $svc->createWebsite($this->ws, ['name' => 'Clobber Test', 'type' => 'template', 'user_id' => $this->uid]);
+        $wid = (int) ($w['website_id'] ?? 0);
+        $this->assertGreaterThan(0, $wid);
+
+        $p1 = $svc->createPage($wid, ['title' => 'Home', 'slug' => 'home',
+            'sections' => ['schemaVersion' => 1, 'sections' => [['type' => 'hero', 'heading' => 'ORIGINAL']]]]);
+        $p1id = (int) ($p1['page_id'] ?? 0);
+        $realSlug = (string) DB::table('pages')->where('id', $p1id)->value('slug');
+
+        // customer edits the page
+        $svc->updatePage($p1id, ['sections' => ['schemaVersion' => 1,
+            'sections' => [['type' => 'hero', 'heading' => 'CUSTOMER EDIT']]]], $this->ws);
+
+        // regeneration emits a page for the SAME slug
+        $p2 = $svc->createPage($wid, ['title' => 'Home', 'slug' => $realSlug,
+            'sections' => ['schemaVersion' => 1, 'sections' => [['type' => 'hero', 'heading' => 'REGEN']]]]);
+        $p2id = (int) ($p2['page_id'] ?? 0);
+
+        $this->assertNotSame($p1id, $p2id, 'regeneration must create a distinct page');
+        $this->assertNotSame($realSlug, (string) DB::table('pages')->where('id', $p2id)->value('slug'),
+            'the new page slug must be uniquified, not overwrite the existing slug');
+        $this->assertStringContainsString('CUSTOMER EDIT',
+            (string) DB::table('pages')->where('id', $p1id)->value('sections_json'),
+            'the customer edit must be preserved');
+    }
+
     public function test_structured_template_variables_are_refused(): void
     {
         // The P1-8 failure shape: raw provider output bypassing the contract.
