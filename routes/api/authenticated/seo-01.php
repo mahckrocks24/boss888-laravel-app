@@ -3398,6 +3398,32 @@ use Illuminate\Support\Facades\Route;
         // Outbound scan — aliases for the existing /outbound/check endpoint
         Route::post('/scan-outbound', [$c, 'checkOutbound']);
 
+        // Frontend<->backend alignment: seo.js re-scans a single outbound link
+        // (/scan-outbound/{id}). Re-check that one seo_outbound_links row via HTTP HEAD.
+        // SSRF-guarded: only public http(s) hosts (no localhost/private ranges).
+        Route::post('/scan-outbound/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = $r->attributes->get('workspace_id');
+            $link = \Illuminate\Support\Facades\DB::table('seo_outbound_links')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)->first();
+            if (! $link) { return response()->json(['success' => false, 'error' => 'Link not found'], 404); }
+            $url = (string) ($link->target_url ?? '');
+            $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?: ''));
+            $scheme = strtolower((string) (parse_url($url, PHP_URL_SCHEME) ?: ''));
+            $blocked = $host === '' || ! in_array($scheme, ['http', 'https'], true)
+                || $host === 'localhost' || preg_match('/^(127\.|10\.|192\.168\.|169\.254\.|::1|172\.(1[6-9]|2[0-9]|3[0-1])\.)/', $host);
+            if ($blocked) { return response()->json(['success' => false, 'error' => 'URL not scannable'], 422); }
+            $status = 'broken'; $code = 0;
+            try {
+                $resp = \Illuminate\Support\Facades\Http::timeout(5)->head($url);
+                $code = $resp->status();
+                $status = ($code >= 200 && $code < 400) ? 'ok' : 'broken';
+            } catch (\Throwable $e) { $status = 'broken'; $code = 0; }
+            \Illuminate\Support\Facades\DB::table('seo_outbound_links')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)
+                ->update(['status' => $status, 'http_status' => $code, 'last_checked_at' => now(), 'updated_at' => now()]);
+            return response()->json(['success' => true, 'status' => $status, 'http_status' => $code]);
+        });
+
         // NOTE: /connector/save-meta (PATCH) is a separate-prefix route and
         // can't be aliased from inside this seo group. UI fallback already
         // exists — most callers retry the bare /save-meta endpoint which
@@ -3502,6 +3528,22 @@ use Illuminate\Support\Facades\Route;
                 ->delete();
             return response()->json(["deleted" => $deleted > 0, "id" => $id]);
         });
+
+        // Frontend<->backend alignment: seo.js edits a redirect (PATCH /redirects/{id},
+        // was "NOT implemented yet"). Tenancy-scoped update of source/target/type.
+        Route::patch('/redirects/{id}', function ($id, \Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $data = array_filter([
+                'source_url' => $r->input('from_url', $r->input('from', $r->input('source_url'))),
+                'target_url' => $r->input('to_url', $r->input('to', $r->input('target_url'))),
+                'type'       => $r->input('type'),
+            ], function ($v) { return $v !== null && $v !== ''; });
+            if (empty($data)) { return response()->json(['success' => false, 'error' => 'No fields to update'], 422); }
+            $data['updated_at'] = now();
+            $updated = \Illuminate\Support\Facades\DB::table('seo_redirects')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)->update($data);
+            return response()->json(['success' => $updated > 0, 'updated' => (int) $updated, 'id' => $id]);
+        });
         Route::get("/404-log", function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
             $entries = \Illuminate\Support\Facades\DB::table('seo_404_log')
@@ -3510,6 +3552,23 @@ use Illuminate\Support\Facades\Route;
                 ->limit(200)
                 ->get();
             return response()->json(["entries" => $entries]);
+        });
+
+        // Frontend<->backend alignment: seo.js has a delete-404 button (was "NOT
+        // implemented yet"). Tenancy-scoped delete of one 404-log entry.
+        Route::delete('/404-log/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = $r->attributes->get('workspace_id');
+            $deleted = \Illuminate\Support\Facades\DB::table('seo_404_log')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)->delete();
+            return response()->json(['success' => $deleted > 0, 'deleted' => (int) $deleted]);
+        });
+
+        // Frontend<->backend alignment: seo.js "Purge all 404 logs" (DELETE /404-log,
+        // was "NOT wired"). Tenancy-scoped bulk delete.
+        Route::delete('/404-log', function (\Illuminate\Http\Request $r) {
+            $wsId = $r->attributes->get('workspace_id');
+            $deleted = \Illuminate\Support\Facades\DB::table('seo_404_log')->where('workspace_id', $wsId)->delete();
+            return response()->json(['success' => true, 'deleted' => (int) $deleted]);
         });
 
         // SEO Settings (DB-backed)
@@ -4568,6 +4627,18 @@ use Illuminate\Support\Facades\Route;
                 'links'   => $links,
                 'total'   => $links->count(),
             ]);
+        });
+
+        // Frontend<->backend alignment: seo.js "mark OK" on an outbound link
+        // (PATCH /outbound/{id}, was "NOT implemented yet"). Tenancy-scoped status set.
+        Route::patch('/outbound/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = $r->attributes->get('workspace_id');
+            $status = strtolower((string) $r->input('status', 'ok'));
+            if (! in_array($status, ['ok', 'broken', 'ignored', 'pending'], true)) { $status = 'ok'; }
+            $updated = \Illuminate\Support\Facades\DB::table('seo_outbound_links')
+                ->where('id', (int) $id)->where('workspace_id', $wsId)
+                ->update(['status' => $status, 'updated_at' => now()]);
+            return response()->json(['success' => $updated > 0, 'updated' => (int) $updated, 'status' => $status]);
         });
 
         Route::get('/ctr-analysis', function (\Illuminate\Http\Request $r) {
