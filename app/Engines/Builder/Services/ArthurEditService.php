@@ -55,7 +55,14 @@ class ArthurEditService
         if (! $page) {
             throw new \RuntimeException("Page {$pageId} not found");
         }
-        $sections = json_decode($page->sections_json ?? '[]', true) ?: [];
+        $raw = json_decode($page->sections_json ?? '[]', true) ?: [];
+        // BUILDER888: sections_json may be stored wrapped ({schemaVersion,sections}) by
+        // createPage/updatePage, or as a flat list. Edit the flat list and re-wrap on
+        // save so the validate loop never receives the schemaVersion int (was a
+        // TypeError into SectionSchema::validate) and the stored shape is preserved.
+        $wrapped = is_array($raw) && isset($raw['sections']) && is_array($raw['sections']);
+        $schemaVersion = $wrapped ? ($raw['schemaVersion'] ?? 1) : 1;
+        $sections = $wrapped ? $raw['sections'] : (is_array($raw) ? $raw : []);
         $currentJson = json_encode($sections, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $websiteId = (int) ($page->website_id ?? 0);
 
@@ -129,7 +136,7 @@ PROMPT;
         $applied = 0;
         $newSections = $sections;
 
-        DB::transaction(function () use ($pageId, &$newSections, $actions, &$errors, &$applied) {
+        DB::transaction(function () use ($pageId, &$newSections, $actions, &$errors, &$applied, $wrapped, $schemaVersion) {
             foreach ($actions as $action) {
                 try {
                     $newSections = $this->applyAction($newSections, $action);
@@ -157,7 +164,7 @@ PROMPT;
             }
 
             DB::table('pages')->where('id', $pageId)->update([
-                'sections_json' => json_encode($newSections),
+                'sections_json' => json_encode($wrapped ? ['schemaVersion' => $schemaVersion, 'sections' => $newSections] : $newSections),
                 'updated_at'    => now(),
             ]);
         });
