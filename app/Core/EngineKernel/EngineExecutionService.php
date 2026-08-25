@@ -836,6 +836,8 @@ class EngineExecutionService
             'wizard_generate' => app(\App\Engines\Builder\Services\ArthurService::class)
                 ->buildFromChat($wsId, $params['build_data'] ?? $params, $params['logo_url'] ?? null, $params['images'] ?? [], $params['colors'] ?? [], $ctx['user_id'] ?? null),
             'publish_website' => ['action' => 'published'] + (function() use ($svc, $params, $wsId) { if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) throw new \RuntimeException('Website not found'); $svc->publishWebsite($params['website_id']); return []; })(),
+            'publish_builder_page' => ['action' => 'published'] + (function() use ($svc, $params, $wsId) { return $svc->publishPage((int) ($params['page_id'] ?? 0), $wsId); })(),
+            'import_html_page' => (function() use ($svc, $params, $wsId) { return $svc->importHtmlPage((int) ($params['website_id'] ?? 0), $params, $wsId); })(),
             // v1.4.4 (2026-05-30) — Phase B landing-page visibility
             'list_builder_pages' => $svc->listWorkspacePages($wsId, $params),
             'get_builder_page' => $svc->getPage((int) ($params['page_id'] ?? 0), $wsId) ?? ['success' => false, 'error' => 'Page not found'],

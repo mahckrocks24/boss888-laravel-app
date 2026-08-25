@@ -244,6 +244,69 @@ class BuilderService
         return ['published' => true];
     }
 
+
+    /**
+     * Page-level publish (cap-action publish_builder_page). Flips ONE page to
+     * published, invalidates its served cache, and re-indexes the site into SEO
+     * (fail-open). Tenancy-checked: a page whose website is not in $wsId is "not
+     * found". Complements publishWebsite (whole-site).
+     */
+    public function publishPage(int $pageId, ?int $wsId = null): array
+    {
+        $page = DB::table('pages')
+            ->join('websites', 'websites.id', '=', 'pages.website_id')
+            ->where('pages.id', $pageId)
+            ->select('pages.id', 'pages.slug', 'pages.website_id', 'websites.workspace_id', 'websites.subdomain')
+            ->first();
+        if (! $page) { throw new \RuntimeException("Page not found: {$pageId}"); }
+        if ($wsId !== null && (int) $page->workspace_id !== (int) $wsId) {
+            throw new \RuntimeException("Page not found: {$pageId}");
+        }
+        DB::table('pages')->where('id', $pageId)->update([
+            'status' => 'published', 'updated_at' => now(),
+        ]);
+        if ($page->subdomain) {
+            $sub = str_replace('.levelupgrowth.io', '', $page->subdomain);
+            \Illuminate\Support\Facades\Cache::forget("published_site:{$sub}:{$page->slug}");
+            \Illuminate\Support\Facades\Cache::forget("published_site:{$sub}:home");
+        }
+        try {
+            $website = DB::table('websites')->where('id', $page->website_id)
+                ->first(['id', 'workspace_id', 'subdomain', 'domain', 'name']);
+            if ($website && $website->workspace_id) {
+                app(\App\Engines\SEO\Services\BuilderPageIndexer::class)
+                    ->indexWebsite((int) $website->workspace_id, $website);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[BuilderService] post-page-publish index failed', [
+                'page_id' => $pageId, 'error' => $e->getMessage(),
+            ]);
+        }
+        return ['published' => true, 'page_id' => $pageId, 'status' => 'published'];
+    }
+
+    /**
+     * import_html_page CONSOLIDATED onto createPage: stores the supplied HTML as a
+     * single raw_document section. That section passes through the G-SEC3 write-guard
+     * (sanitizeSectionsForWrite) so imported markup cannot carry inline script,
+     * event handlers, or javascript: URLs.
+     * This replaces the dead-ended import_html_page executor with the one real
+     * create path instead of a second, unvalidated ingestion path.
+     */
+    public function importHtmlPage(int $websiteId, array $params, ?int $wsId = null): array
+    {
+        if ($wsId !== null && ! DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->exists()) {
+            throw new \RuntimeException("Website not found: {$websiteId}");
+        }
+        $html = (string) ($params['html'] ?? $params['content'] ?? '');
+        if (trim($html) === '') { throw new \RuntimeException('import_html_page requires non-empty html'); }
+        return $this->createPage($websiteId, [
+            'title'    => $params['title'] ?? 'Imported Page',
+            'slug'     => $params['slug'] ?? null,
+            'sections' => ['schemaVersion' => 1, 'sections' => [['type' => 'raw_document', 'html' => $html]]],
+        ]);
+    }
+
     public function deleteWebsite(int $id, ?int $wsId = null): void
     {
         if ($wsId !== null && !DB::table('websites')->where('id', $id)->where('workspace_id', $wsId)->exists()) {

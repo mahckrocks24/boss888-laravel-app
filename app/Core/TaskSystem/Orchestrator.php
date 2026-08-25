@@ -1017,6 +1017,8 @@ class Orchestrator
             'builder/generate_page'    => ['params_hint' => 'website_id (required), section_brief'],
             'builder/wizard_generate'  => ['params_hint' => 'website_id (required), prompt'],
             'builder/publish_website'  => ['params_hint' => 'website_id (required)'],
+            'builder/publish_builder_page' => ['params_hint' => 'page_id (required)'],
+            'builder/import_html_page' => ['params_hint' => 'website_id + html (required)'],
             // ── Calendar / Creative / Misc ──────────────────────────
             'calendar/create_event'    => ['params_hint' => 'title, start_at, end_at (required)'],
             'creative/generate_image'      => ['params_hint' => 'article_id (required, or explicit prompt), aspect (optional)'],
@@ -1318,6 +1320,14 @@ class Orchestrator
                     throw new \RuntimeException('Website not found');
                 }
                 return app(\App\Engines\Builder\Services\BuilderService::class)->publishWebsite($params['website_id']);
+            },
+            'builder/publish_builder_page' => function () use ($wsId, $params) {
+                return app(\App\Engines\Builder\Services\BuilderService::class)
+                    ->publishPage((int) ($params['page_id'] ?? 0), $wsId);
+            },
+            'builder/import_html_page' => function () use ($wsId, $params) {
+                return app(\App\Engines\Builder\Services\BuilderService::class)
+                    ->importHtmlPage((int) ($params['website_id'] ?? 0), $params, $wsId);
             },
             // RISK-0088 (2026-08-25): async full-site build via the proven Arthur path.
             'builder/full_site_generation' => fn() => app(\App\Engines\Builder\Services\ArthurService::class)
@@ -1803,6 +1813,8 @@ class Orchestrator
             'builder/add_page_from_template' => 'New page added from template.',
             'builder/update_page'          => 'Page updated.',
             'builder/publish_website'      => 'Website published.',
+            'builder/publish_builder_page' => 'Page published.',
+            'builder/import_html_page'     => 'HTML page imported.',
             'calendar/create_event'        => 'Event added to calendar.',
             'tasks/retry_blocked'          => 'Blocked tasks retried.',
         ];
