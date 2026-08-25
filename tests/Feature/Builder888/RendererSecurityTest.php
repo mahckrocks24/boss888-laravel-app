@@ -109,6 +109,33 @@ class RendererSecurityTest extends TestCase
         $this->assertStringNotContainsString('onmouseover="alert(1)"', $html);
     }
 
+    /**
+     * EV-0715: section background_image / style.gradient / style.bg were interpolated
+     * RAW into style="..." across renderHero/renderCta/account_panel — a double-quote
+     * breaks out of the attribute and injects live HTML on the published site. Fixed
+     * with safeCss() (bg/gradient) + safeUrl() (background_image). This locks it in.
+     */
+    public function test_css_background_fields_cannot_break_out(): void
+    {
+        foreach (['hero', 'cta', 'account_panel'] as $type) {
+            $html = $this->render([
+                'type'             => $type,
+                'heading'          => 'H',
+                'background_image' => 'x");}</style><img src=a onerror=alert(1)>',
+                'style'            => [
+                    'gradient' => 'red;}</section><script>alert(1)</script>',
+                    'bg'       => '#fff"><svg onload=alert(1)>',
+                ],
+            ]);
+            // A breakout requires an unescaped live payload tag; safeCss/safeUrl strip
+            // or escape the '<' and the attribute-terminating '"'.
+            $this->assertStringNotContainsString('<img src=a onerror', $html, "{$type}: img breakout");
+            $this->assertStringNotContainsString('<svg onload', $html, "{$type}: svg breakout");
+            $this->assertStringNotContainsString('<script>alert(1)', $html, "{$type}: script breakout");
+            $this->assertNotExecutable($html, "{$type} css background fields");
+        }
+    }
+
     public function test_legitimate_urls_still_work(): void
     {
         // A sanitiser that rejects everything is not a sanitiser.
