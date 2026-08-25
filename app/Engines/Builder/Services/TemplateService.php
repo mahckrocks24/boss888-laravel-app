@@ -17,6 +17,7 @@ class TemplateService
      */
     public function render(string $industry, array $variables, ?int $websiteId = null): string
     {
+        $industry = preg_replace('/[^a-z0-9_]/', '', strtolower($industry)); // slug-guard (path traversal)
         $path = storage_path("templates/{$industry}/template.html");
         if (!file_exists($path)) {
             throw new \Exception("Template not found: {$industry}");
@@ -202,6 +203,7 @@ class TemplateService
      */
     public function getManifest(string $industry): ?array
     {
+        $industry = preg_replace('/[^a-z0-9_]/', '', strtolower($industry)); // slug-guard (path traversal)
         $path = storage_path("templates/{$industry}/manifest.json");
         if (!file_exists($path)) {
             return null;
