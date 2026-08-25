@@ -754,6 +754,13 @@ class EngineExecutionService
             'check_outbound' => $svc->checkOutbound($wsId, $params),
             // RISK-0091 (2026-08-25): outbound_links was cap-mapped (2cr) with NO executor. Wired to the real method.
             'outbound_links' => $svc->outboundLinks($wsId, $params),
+            // Sarah/agent<->SEO alignment: these status/read caps are in the capability
+            // map + granted to James/Sarah but had NO executeSeoAction arm -> agents hit
+            // "Unknown SEO action". Wire them to the same SeoService methods the HTTP
+            // controller uses.
+            'ai_status' => $svc->aiStatus($wsId),
+            'list_goals' => $svc->listGoals($wsId),
+            'agent_status' => $svc->agentStatus($wsId),
             'create_goal', 'autonomous_goal' => $svc->createGoal($wsId, $params),
             'pause_goal' => ['paused' => $svc->pauseGoal($wsId, $params['goal_id'] ?? 0)],
             'resume_goal' => ['resumed' => $svc->resumeGoal($wsId, $params['goal_id'] ?? 0)],
