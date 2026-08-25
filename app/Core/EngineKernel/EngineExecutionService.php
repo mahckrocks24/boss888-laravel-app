@@ -758,6 +758,11 @@ class EngineExecutionService
             // v1.4.4 (2026-05-30) — Phase B competitive intelligence
             'competitor_serp' => $svc->competitorSerp($wsId, $params),
             'competitor_gaps' => $svc->competitorGaps($wsId, $params),
+            // RISK-0091 (2026-08-25): these were async-only; sync tool_calls threw. Mirror the
+            // proven Orchestrator routing so the same action works on both paths.
+            'link_suggestions' => $svc->generateLinkSuggestions($wsId, $params),
+            'fix_orphans'      => $svc->fixOrphans($wsId, $params),
+            'gsc_sync'         => app(\App\Engines\SEO\Services\GscSyncService::class)->sync($wsId, $params),
             default => throw new \RuntimeException("Unknown SEO action: {$action}"),
         };
     }
@@ -803,6 +808,11 @@ class EngineExecutionService
             // (which just makes a DB row with status=pending).
             'generate_image' => $svc->generateImage($wsId, $params),
             'generate_video' => $svc->generateVideo($wsId, $params),
+            // RISK-0091 (2026-08-25): mini/high were async-only; sync tool_calls threw
+            // "Unknown Creative action". Route to the same real image generation (tier is
+            // metered via the cap-map; quality handling is Runtime-side, RISK-0090).
+            'generate_image_mini' => $svc->generateImage($wsId, $params),
+            'generate_image_high' => $svc->generateImage($wsId, $params),
             // STUDIO888 Phase O — masked/local image editing (non-destructive child version).
             'edit_image'     => $svc->editImage($wsId, $params),
             'create_asset'   => $svc->createAsset($wsId, $params),

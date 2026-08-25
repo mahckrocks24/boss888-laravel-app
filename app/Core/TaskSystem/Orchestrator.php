@@ -1162,6 +1162,12 @@ class Orchestrator
                                         ->fixOrphans($wsId, $params),
             'seo/gsc_sync'         => fn() => app(\App\Engines\SEO\Services\GscSyncService::class)
                                         ->sync($wsId, $params),
+            // RISK-0091 (2026-08-25): competitor_serp/gaps were sync-only; add async so an
+            // approved-plan task doesn't throw. Mirror the sync SeoService routing.
+            'seo/competitor_serp'  => fn() => app(\App\Engines\SEO\Services\SeoService::class)
+                                        ->competitorSerp($wsId, $params),
+            'seo/competitor_gaps'  => fn() => app(\App\Engines\SEO\Services\SeoService::class)
+                                        ->competitorGaps($wsId, $params),
             'seo/insert_link'      => function () use ($wsId, $params, $task) {
                 // Wave 38c — chain mode: when article_id is set (parent_task passthrough)
                 // and link_id is not, insert ALL pending seo_links suggestions for
