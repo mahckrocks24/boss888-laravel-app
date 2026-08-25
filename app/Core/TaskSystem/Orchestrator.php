@@ -1241,6 +1241,8 @@ class Orchestrator
                                         ->dismissLink($wsId, $params['link_id'] ?? 0)],
             'seo/check_outbound'   => fn() => app(\App\Engines\SEO\Services\SeoService::class)
                                         ->checkOutbound($wsId, $params),
+            'seo/outbound_links'   => fn() => app(\App\Engines\SEO\Services\SeoService::class)
+                                        ->outboundLinks($wsId, $params),
             'seo/autonomous_goal'  => fn() => app(\App\Engines\SEO\Services\SeoService::class)
                                         ->createGoal($wsId, $params),
             'seo/pause_goal'       => fn() => ['paused' => app(\App\Engines\SEO\Services\SeoService::class)

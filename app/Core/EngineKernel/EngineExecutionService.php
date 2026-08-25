@@ -752,6 +752,8 @@ class EngineExecutionService
             'insert_link' => ['inserted' => $svc->insertLink($wsId, $params['link_id'] ?? 0)],
             'dismiss_link' => ['dismissed' => $svc->dismissLink($wsId, $params['link_id'] ?? 0)],
             'check_outbound' => $svc->checkOutbound($wsId, $params),
+            // RISK-0091 (2026-08-25): outbound_links was cap-mapped (2cr) with NO executor. Wired to the real method.
+            'outbound_links' => $svc->outboundLinks($wsId, $params),
             'create_goal', 'autonomous_goal' => $svc->createGoal($wsId, $params),
             'pause_goal' => ['paused' => $svc->pauseGoal($wsId, $params['goal_id'] ?? 0)],
             'resume_goal' => ['resumed' => $svc->resumeGoal($wsId, $params['goal_id'] ?? 0)],
