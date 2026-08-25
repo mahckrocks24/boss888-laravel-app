@@ -1487,7 +1487,7 @@ PROMPT;
                 array_filter($colors, fn($v) => is_string($v) && $v !== '')
             );
         }
-        return $this->generateWebsite($workspaceId, $buildData);
+        return $this->generateWebsite($workspaceId, $buildData, $actorId);
     }
 
     /**
@@ -2030,8 +2030,17 @@ PROMPT;
         return $newWsId;
     }
 
-    private function generateWebsite(int $wsId, array $data): array
+    private function generateWebsite(int $wsId, array $data, ?int $actorId = null): array
     {
+        // BUILDER888 fix: $actorId is the authenticated actor threaded from the caller
+        // (buildFromChat). It was referenced below (created_by) but never declared here,
+        // raising "Undefined variable $actorId" -> PERSISTENCE_FAILED on every build.
+        // When absent, derive the workspace OWNER (never the payload user_id, which the
+        // security note below forbids as a forgeable owner source).
+        if ($actorId === null) {
+            $ownerId = DB::table('workspace_users')->where('workspace_id', $wsId)->where('role', 'owner')->value('user_id');
+            $actorId = $ownerId ? (int) $ownerId : null;
+        }
         $name = $data['business_name'] ?? 'My Business';
 
         // ── P1 (2026-06-24): WEBSITE = ITS OWN WORKSPACE ────────────────────
