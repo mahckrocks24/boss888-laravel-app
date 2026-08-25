@@ -73,7 +73,7 @@ class AgentCapabilityService
             // v1.4.4 (2026-05-30): added 'update_page' (direct edit) so Sarah
             // can rewrite page sections herself when no Arthur reasoning is
             // needed (rare — most edits go through ai_builder_action).
-            'list_builder_pages', 'get_builder_page', 'update_page', 'ai_builder_action', 'generate_page_layout', 'publish_builder_page', 'import_html_page',
+            'list_builder_pages', 'get_builder_page', 'update_page', 'ai_builder_action', 'full_site_generation', 'publish_builder_page', 'import_html_page',
             // v1.4.4 Phase D-1 (2026-05-30) — Sarah can add pages too
             'generate_page', 'add_page_from_template',
             // Site intelligence
@@ -145,7 +145,7 @@ class AgentCapabilityService
             // Calendar
             'list_events', 'check_availability', 'create_event', 'update_event',
             // Builder — content generation
-            'list_builder_pages', 'get_builder_page', 'ai_builder_action', 'generate_page_layout',
+            'list_builder_pages', 'get_builder_page', 'ai_builder_action',
             // Site intelligence — read only
             'get_site_pages', 'get_site_page', 'search_site_content',
             // Funnel
@@ -163,7 +163,7 @@ class AgentCapabilityService
             // Calendar
             'list_events', 'check_availability', 'create_event', 'update_event',
             // Builder — landing page for social campaigns
-            'list_builder_pages', 'generate_page_layout',
+            'list_builder_pages',
             // System
             'system_health_check', 'memory_context',
         ],
@@ -225,7 +225,7 @@ class AgentCapabilityService
             'serp_analysis', 'ai_report', 'deep_audit', 'ai_status', 'list_goals', 'agent_status',
             'write_article', 'improve_draft',
             'create_post', 'list_posts', 'update_post',
-            'list_builder_pages', 'get_builder_page', 'generate_page_layout',
+            'list_builder_pages', 'get_builder_page',
             'get_site_pages', 'get_site_page', 'search_site_content', 'scan_site_url',
             'analyze_funnel_structure',
         ],
@@ -265,7 +265,7 @@ class AgentCapabilityService
             'create_campaign', 'update_campaign', 'list_campaigns',
             'create_template', 'list_templates', 'create_automation',
             'list_posts',
-            'list_builder_pages', 'get_builder_page', 'generate_page_layout',
+            'list_builder_pages', 'get_builder_page',
             'get_site_pages', 'get_site_page', 'search_site_content',
             'generate_funnel_blueprint', 'analyze_funnel_structure',
         ],
@@ -339,7 +339,7 @@ class AgentCapabilityService
             'create_template', 'list_templates', 'create_automation', 'record_metric',
             'send_campaign', 'test_send_email',
             // Builder — landing-page experiments
-            'list_builder_pages', 'get_builder_page', 'ai_builder_action', 'generate_page_layout',
+            'list_builder_pages', 'get_builder_page', 'ai_builder_action',
             // Funnel intelligence
             'generate_funnel_blueprint', 'analyze_funnel_structure',
             'get_site_pages', 'get_site_page', 'search_site_content', 'scan_site_url',

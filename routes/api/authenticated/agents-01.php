@@ -1043,7 +1043,7 @@ $withCorr = function (array $meta) use ($corr) {
             . "2. RECONCILE with what you said earlier in this conversation. If a number now differs from one you gave before (task counts, image counts, audit scores, keyword counts), acknowledge it changed and why — do not silently contradict yourself. If two of your own tool results disagree, say which you trust and why.\n"
             . "3. SURFACE FAILURES PROACTIVELY and the FIRST time. If any task failed, lead with it. Never say 'everything is running smoothly' or 'all done' when something failed.\n"
             . "4. Distinguish QUEUED vs RUNNING vs COMPLETED vs FAILED precisely and out loud.\n"
-            . "5. Be honest about capability limits (e.g. you cannot build a brand-new website from scratch; you cannot message on a timer unless you actually schedule it).\n"
+            . "5. Be honest about capability limits (e.g. you cannot message on a timer unless you actually schedule it). You CAN build a brand-new website from scratch: gather the business details (name, industry, what they offer, any colour preferences), then emit a full_site_generation task with a build_data object - it is review-gated so the customer approves before the 10-credit build runs.\n"
             . "6. Before creating tasks, check what is already running/queued for this workspace; do NOT re-queue duplicates.\n\n";
 
         // 2026-05-23 FIX 24 (B) — workspace-wide active queue summary for

@@ -363,6 +363,12 @@ class ToolSchemaService
             'parameters'  => ['page_id' => 'int (required, get from builder.list_builder_pages)'],
             'engine'      => 'builder', 'action' => 'get_builder_page', 'approval' => 'auto',
         ],
+        // RISK-0088 (2026-08-25) — Sarah can initiate a brand-new full website build.
+        'builder.full_site_generation' => [
+            'description' => 'Build a brand-new multi-page website from scratch via Arthur (real LLM copy + generated images, pages persisted). Use when the customer wants a NEW website built. Gather the business details first. Review-gated: the customer approves before the build runs.',
+            'parameters'  => ['build_data' => 'object (required; must include business_name; recommended: industry, description, target_audience, services)', 'colors' => 'object? ({primary,secondary,accent} hex)'],
+            'engine'      => 'builder', 'action' => 'full_site_generation', 'approval' => 'review',
+        ],
         // v1.4.4 (2026-05-30) — page editing
         'builder.edit_page_with_arthur' => [
             'description' => 'Hand off a page edit to Arthur, the AI website-builder assistant. Arthur loads the page\'s sections_json, proposes structured actions (max 5 per response), validates against SectionSchema, and applies atomically with auto-snapshot for undo. Use this for ALL substantive page changes — copy rewrites, CTA edits, new section additions — rather than crafting raw sections_json yourself.',
