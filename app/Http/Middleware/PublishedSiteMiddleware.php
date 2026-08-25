@@ -899,8 +899,16 @@ class PublishedSiteMiddleware
         // on every page render.
         $key = "chatbot_enabled_ws_{$workspaceId}";
         $enabled = Cache::remember($key, 60, function () use ($workspaceId) {
+            // CHATBOT888 entitlement-first (DEC-0027 / Owner): the chatbot is included
+            // on the $49+ tier, so an entitled workspace gets it BY DEFAULT — including
+            // fresh sites with no chatbot_settings row yet. A workspace can opt out with
+            // chatbot_settings.enabled = 0; a non-entitled (< $49) workspace never gets it
+            // even if a stale enabled=1 row lingers after a downgrade.
+            if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessChatbot($workspaceId)) {
+                return false;
+            }
             $row = DB::table('chatbot_settings')->where('workspace_id', $workspaceId)->first();
-            return (bool) ($row && $row->enabled);
+            return $row === null ? true : (bool) $row->enabled;
         });
         if (! $enabled) return $html;
 
