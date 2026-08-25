@@ -75,9 +75,25 @@ class BuilderRenderer
             $content = (new \App\Engines\Builder\Services\AmgTravelTheme())
                 ->renderBody($secs, $tokens, $website, $page);
         } else {
+            // Semantic landmarks (a11y/SEO): nav/header -> <header>, content -> <main>,
+            // footer section already emits <footer>. Split the flat section list by role.
+            $headerHtml = '';
+            $footerHtml = '';
+            $bodyHtml   = '';
             foreach ($secs as $sec) {
-                $content .= $this->renderSection($sec, $tokens, $website, $allPages, $page['slug'] ?? 'home');
+                $t = $sec['type'] ?? '';
+                $rendered = $this->renderSection($sec, $tokens, $website, $allPages, $page['slug'] ?? 'home');
+                if ($t === 'header') {
+                    $headerHtml .= $rendered;
+                } elseif ($t === 'footer') {
+                    $footerHtml .= $rendered;
+                } else {
+                    $bodyHtml .= $rendered;
+                }
             }
+            $content = ($headerHtml !== '' ? '<header>' . $headerHtml . '</header>' : '')
+                     . '<main>' . $bodyHtml . '</main>'
+                     . $footerHtml;
         }
 
         // Build SEO context
