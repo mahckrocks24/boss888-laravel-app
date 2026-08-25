@@ -1301,12 +1301,24 @@ class Orchestrator
             // ── Builder ───────────────────────────────────────────────────────
             'builder/create_website'    => fn() => app(\App\Engines\Builder\Services\BuilderService::class)
                                             ->createWebsite($wsId, $params),
-            'builder/generate_page'     => fn() => app(\App\Engines\Builder\Services\BuilderService::class)
-                                            ->createPage($params['website_id'], $params),
+            // RISK-0092 (2026-08-25): async builder writes MUST verify the client-supplied
+            // website_id belongs to the task's workspace — the sync twin (EngineExecutionService
+            // :830/:838) already does; without it a task with a foreign website_id writes/publishes
+            // another workspace's site (cross-tenant).
+            'builder/generate_page'     => function () use ($wsId, $params) {
+                if (! \Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) {
+                    throw new \RuntimeException('Website not found');
+                }
+                return app(\App\Engines\Builder\Services\BuilderService::class)->createPage($params['website_id'], $params);
+            },
             'builder/wizard_generate'   => fn() => app(\App\Engines\Builder\Services\ArthurService::class)
                                             ->buildFromChat($wsId, $params['build_data'] ?? $params, $params['logo_url'] ?? null, $params['images'] ?? [], $params['colors'] ?? [], $params['user_id'] ?? null),
-            'builder/publish_website'   => fn() => app(\App\Engines\Builder\Services\BuilderService::class)
-                                            ->publishWebsite($params['website_id']),
+            'builder/publish_website'   => function () use ($wsId, $params) {
+                if (! \Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) {
+                    throw new \RuntimeException('Website not found');
+                }
+                return app(\App\Engines\Builder\Services\BuilderService::class)->publishWebsite($params['website_id']);
+            },
             // RISK-0088 (2026-08-25): async full-site build via the proven Arthur path.
             'builder/full_site_generation' => fn() => app(\App\Engines\Builder\Services\ArthurService::class)
                                             ->buildFromChat($wsId, $params['build_data'] ?? $params, $params['logo_url'] ?? null, $params['images'] ?? [], $params['colors'] ?? [], $params['user_id'] ?? null),
