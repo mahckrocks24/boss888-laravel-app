@@ -105,7 +105,7 @@ class AuthorizationBinder
      * @return array{outcome:string, proposal:object|null, reason:string,
      *               message:string, pending:int}
      */
-    public function bind(int $wsId, ?string $conversationId, string $userMessage): array
+    public function bind(int $wsId, ?string $conversationId, string $userMessage, ?int $userId = null): array
     {
         $out = fn(string $o, string $msg, ?object $p = null, string $reason = '', int $pending = 0) =>
             ['outcome' => $o, 'proposal' => $p, 'reason' => $reason,
@@ -123,7 +123,7 @@ class AuthorizationBinder
         if (preg_match(self::CANCELLATION, $this->withdrawalText($msg))) {
             if (!$pending) return $out(self::NOT_AUTHORIZATION, '');
             $ids = array_map(fn($p) => (int) $p->id, $pending);
-            $this->withdraw($wsId, $ids);
+            $this->withdraw($wsId, $ids, $userId);
             $n = count($ids);
             return $out(self::CANCELLED,
                 $n === 1 ? "Cancelled — nothing was created or charged."
@@ -263,7 +263,7 @@ class AuthorizationBinder
     }
 
     /** Withdraw offers the owner has declined, so a later "yes" cannot revive them. */
-    private function withdraw(int $wsId, array $proposalIds): void
+    private function withdraw(int $wsId, array $proposalIds, ?int $userId = null): void
     {
         if (!$proposalIds) return;
 
@@ -272,12 +272,29 @@ class AuthorizationBinder
             ->update(['status' => 'rejected', 'superseded_reason' => 'owner_cancelled',
                       'updated_at' => now()]);
 
+        // RISK-0056 (2026-08-25): the owner declining in chat is a REAL human decision.
+        // Capture WHO decided + actor_type + an audit row, not just a Log::info that
+        // dropped the user — so a decline is attributable in the governance record.
+        $apprIds = DB::table('approvals')->where('workspace_id', $wsId)
+            ->whereIn('proposal_id', $proposalIds)->where('status', 'pending')->pluck('id')->all();
+
         DB::table('approvals')->where('workspace_id', $wsId)
             ->whereIn('proposal_id', $proposalIds)->where('status', 'pending')
-            ->update(['status' => 'rejected', 'decided_at' => now(), 'updated_at' => now()]);
+            ->update(['status' => 'rejected', 'decided_at' => now(),
+                      'decision_by' => $userId, 'decision_actor_type' => $userId ? 'user' : 'system',
+                      'decision_note' => 'Owner declined in Sarah chat', 'updated_at' => now()]);
+
+        if ($apprIds) {
+            $audit = app(\App\Core\Audit\AuditLogService::class);
+            foreach ($apprIds as $aid) {
+                $audit->log($wsId, $userId, 'approval.rejected', 'Approval', (int) $aid,
+                    ['source' => 'AuthorizationBinder::withdraw', 'reason' => 'owner_cancelled',
+                     'actor_type' => $userId ? 'user' : 'system']);
+            }
+        }
 
         Log::info('[Sarah888] pending authorizations withdrawn by the owner', [
-            'workspace_id' => $wsId, 'proposal_ids' => $proposalIds,
+            'workspace_id' => $wsId, 'proposal_ids' => $proposalIds, 'user_id' => $userId,
         ]);
     }
 

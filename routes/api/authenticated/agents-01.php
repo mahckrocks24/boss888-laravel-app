@@ -866,7 +866,7 @@ $withCorr = function (array $meta) use ($corr) {
             // The owner's own words, before the legacy confirmation shim
             // above rewrites $content into a directive sentence.
             $__ownerSaid = trim((string) $r->input('content', ''));
-            $__ab  = app($__abC)->bind((int) $wsId, $corr['conversation_id'] ?? null, $__ownerSaid);
+            $__ab  = app($__abC)->bind((int) $wsId, $corr['conversation_id'] ?? null, $__ownerSaid, $userId > 0 ? $userId : null);
 
             $__terminal = null;
 
