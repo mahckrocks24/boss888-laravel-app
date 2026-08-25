@@ -805,6 +805,16 @@ class BuilderService
         if ($wsId !== null && !DB::table('pages')->join('websites', 'websites.id', '=', 'pages.website_id')->where('pages.id', $pageId)->where('websites.workspace_id', $wsId)->exists()) {
             throw new \RuntimeException("Page not found: {$pageId}");
         }
+        // Recovery: pages are hard-deleted (no deleted_at column; full soft-delete is a
+        // 43-site read sweep tracked separately). Snapshot the content first so a delete
+        // is not permanent data loss — canvas_states has no FK to pages, so the snapshot
+        // survives the row deletion and the content remains recoverable.
+        try {
+            app(\App\Engines\Builder\Services\BuilderSnapshotService::class)
+                ->snapshot($pageId, 'pre_delete');
+        } catch (\Throwable $e) {
+            Log::warning('[Builder] pre-delete snapshot failed', ['page_id' => $pageId, 'error' => $e->getMessage()]);
+        }
         DB::table('pages')->where('id', $pageId)->delete();
     }
 
