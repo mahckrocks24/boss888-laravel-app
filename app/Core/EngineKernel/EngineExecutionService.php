@@ -911,8 +911,8 @@ class EngineExecutionService
         $svc = app(\App\Engines\Social\Services\SocialService::class);
         return match ($action) {
             'social_create_post', 'create_post' => $svc->createPost($wsId, $params),
-            'social_schedule_post'              => ['scheduled' => true] + (function() use ($svc, $params, $wsId) { $svc->schedulePost($params['post_id'], $params['scheduled_at'], $wsId); return []; })(),
-            'social_publish_post'               => $svc->publishPost($params['post_id'], $wsId),   // PATCH v1.0.1: was missing → RuntimeException
+            'social_schedule_post', 'schedule_post' => ['scheduled' => true] + (function() use ($svc, $params, $wsId) { $svc->schedulePost((int) ($params['post_id'] ?? 0), (string) ($params['scheduled_at'] ?? ''), $wsId); return []; })(),
+            'social_publish_post', 'publish_post' => $svc->publishPost((int) ($params['post_id'] ?? 0), $wsId),
             // v1.4.4 (2026-05-30) — Phase B social queue visibility
             'get_queue' => $svc->getCalendarPosts($wsId, $params['from'] ?? null, $params['to'] ?? null),
             // Sarah × Social Phase 1 — close half-built AI bridge
@@ -920,6 +920,14 @@ class EngineExecutionService
             'hashtag_suggestions', 'generate_hashtags' => $svc->generateHashtags($wsId, $params),
             'social_image' => app(\App\Engines\Creative\Services\CreativeService::class)
                 ->generateImage($wsId, array_merge(['style' => 'social_post', 'aspect' => '1:1'], $params)),
+            // Sarah/Marcus<->Social alignment: these caps are granted to agents + cap-mapped
+            // but lacked an executor arm -> agents hit "Unknown Social action".
+            'list_posts'  => $svc->listPosts($wsId, $params),
+            'update_post' => $svc->updatePost((int) ($params['post_id'] ?? $params['id'] ?? 0), $params, $wsId),
+            'delete_post' => (function() use ($svc, $params, $wsId) { $svc->deletePost((int) ($params['post_id'] ?? $params['id'] ?? 0), $wsId); return ['deleted' => true]; })(),
+            // No analytics recorder exists (and there is no connected platform yet) — return
+            // a TRUTHFUL not-implemented rather than a hard "Unknown action" for the agent.
+            'record_social_analytics' => ['success' => false, 'not_implemented' => true, 'message' => 'Social analytics recording activates once a social platform is connected for this workspace.'],
             default => throw new \RuntimeException("Unknown Social action: {$action}"),
         };
     }
