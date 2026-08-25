@@ -148,7 +148,10 @@ use Illuminate\Support\Facades\Route;
             }
             return response()->json(["deleted" => true, "page_id" => (int) $id]);
         });
-        Route::post("/clone", fn(\Illuminate\Http\Request $r) => response()->json(["cloned" => true, "message" => "Clone not yet implemented"]));
+        // BUILDER888 no-fake-success: URL-based website cloning is not implemented.
+        // Return a truthful 501 instead of {cloned:true} (which falsely signalled success).
+        // (Real URL cloning would also need SSRF protection — deferred, out of hardening scope.)
+        Route::post("/clone", fn(\Illuminate\Http\Request $r) => response()->json(["cloned" => false, "error" => "URL-based website cloning is not implemented."], 501));
         Route::post("/ai", fn() => response()->json(["reply" => "The AI builder assistant has been retired. Use the Strategy Room instead.", "status" => "deprecated"]));
         Route::delete("/websites/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => app($s)->deleteWebsite((int)$id, (int)$r->attributes->get("workspace_id"))]));
         Route::get("/stats", function(\Illuminate\Http\Request $r) {
