@@ -340,6 +340,29 @@ class BuilderService
         \Illuminate\Support\Facades\Cache::forget("published_site:{$subdomain}:home");
     }
 
+    /**
+     * BUILDER888 no-fake-success: remove the edited page's static export file(s) so
+     * PublishedSiteMiddleware falls back to the CURRENT dynamic render instead of
+     * serving a stale pre-rendered page. Surgical — only the edited page's file(s);
+     * other pages keep their static export; site image assets are untouched.
+     */
+    private function invalidateStaticExport(int $websiteId, ?string $slug, bool $isHomepage): void
+    {
+        $dir = storage_path("app/public/sites/{$websiteId}");
+        if (! is_dir($dir)) { return; }
+        $targets = [];
+        if ($isHomepage || ! $slug || $slug === 'home') {
+            $targets[] = "{$dir}/index.html";
+        }
+        if ($slug && $slug !== 'home') {
+            $targets[] = "{$dir}/{$slug}.html";
+            $targets[] = "{$dir}/{$slug}/index.html";
+        }
+        foreach ($targets as $t) {
+            if (is_file($t)) { @unlink($t); }
+        }
+    }
+
     // ═══════════════════════════════════════════════════════
     // PAGES
     // ═══════════════════════════════════════════════════════
@@ -662,6 +685,21 @@ class BuilderService
                     'page_id' => $pageId,
                     'error'   => $e->getMessage(),
                 ]);
+            }
+        }
+
+        // BUILDER888 no-fake-success: a direct sections edit updates sections_json but
+        // NOT the static export (sites/{id}/*.html) that PublishedSiteMiddleware serves
+        // in preference — the live page would show stale content while the save reported
+        // success. Invalidate the edited page's static export so it re-serves fresh.
+        if ($isSectionsEdit) {
+            try {
+                $pg = DB::table('pages')->where('id', $pageId)->first(['website_id', 'slug', 'is_homepage']);
+                if ($pg && $pg->website_id) {
+                    $this->invalidateStaticExport((int) $pg->website_id, $pg->slug ?? null, (bool) ($pg->is_homepage ?? false));
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[Builder] static export invalidation failed', ['page_id' => $pageId, 'error' => $e->getMessage()]);
             }
         }
 
