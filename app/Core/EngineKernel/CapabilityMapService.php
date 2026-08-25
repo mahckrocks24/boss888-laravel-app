@@ -71,7 +71,6 @@ class CapabilityMapService
         // Sarah cross-engine campaign drafting (Batch 4 — activates ContentPackService) /* b4-sarah-capmap */
         'sarah_draft_campaign' => ['engine'=>'sarah',     'connector'=>null,       'action'=>'draft_campaign',      'approval_mode'=>'auto',      'credit_cost'=>0],
         // Wave 23 — Canonical realignment additions.
-        'write_article_image' => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article_image', 'approval_mode'=>'review',    'credit_cost'=>2],
         'generate_image_mini' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_mini', 'approval_mode'=>'auto',      'credit_cost'=>1],
         'generate_image_high' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_high', 'approval_mode'=>'auto',      'credit_cost'=>4],
         // [Phase G Fix 3 · 2026-07-25] Disabled dead capability: no engine implements the
@@ -87,8 +86,6 @@ class CapabilityMapService
         'ai_reply_suggestion' => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_reply_suggestion', 'approval_mode'=>'auto',      'credit_cost'=>1],
         'ai_lead_scoring'     => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_lead_scoring',     'approval_mode'=>'auto',      'credit_cost'=>1],
         'ai_campaign_copy'    => ['engine'=>'marketing', 'connector'=>null,       'action'=>'ai_campaign_copy',    'approval_mode'=>'review',    'credit_cost'=>1],
-        'builder_page_copy'   => ['engine'=>'builder',   'connector'=>null,       'action'=>'builder_page_copy',   'approval_mode'=>'auto',      'credit_cost'=>1],
-        'builder_page_image'  => ['engine'=>'builder',   'connector'=>'creative', 'action'=>'builder_page_image',  'approval_mode'=>'auto',      'credit_cost'=>1],
         'full_site_generation'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'full_site_generation','approval_mode'=>'review',    'credit_cost'=>10],
         'chatbot_ai_session'  => ['engine'=>'chatbot',   'connector'=>null,       'action'=>'chatbot_ai_session',  'approval_mode'=>'auto',      'credit_cost'=>1],
         // Sarah × Studio wiring 2026-06-03 — generate_design produces drafts; review before social publish.

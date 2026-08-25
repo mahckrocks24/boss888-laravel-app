@@ -131,7 +131,7 @@ class AgentCapabilityService
             // Featured images for her own articles. generate_image* are creative
             // engine; Sarah also holds them (she orchestrates), priya needs them
             // because the planner delegates article imagery to her.
-            'write_article_image', 'generate_image', 'generate_image_mini', 'generate_image_high',
+            'generate_image', 'generate_image_mini', 'generate_image_high',
             // publish_article is approval_mode=protected — granting the capability
             // does NOT bypass PublishGateService or plan gating, it only lets the
             // Content specialist be the one to carry out an approved publish.
