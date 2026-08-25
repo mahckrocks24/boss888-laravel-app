@@ -3215,9 +3215,26 @@ Route::prefix('internal')->group(function () {
         Route::get('/tool-registry/stats', function () {
             return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'path' => '/api/internal/tool-registry/stats']);
         });
+        // Tools execute - RISK-0087 (2026-08-25): FAIL-CLOSED, never fake success.
+        // Live customer execution is Laravel-native (Sarah chatJson -> intent ->
+        // TaskService -> Orchestrator->execute -> engines; EV-0635). This Runtime->
+        // Laravel dispatch bridge is intentionally NOT implemented. The runtime's
+        // registry.execute maps any non-2xx to success:false, so real tool calls
+        // return 501 to force an HONEST failure instead of the old 200 that was
+        // read as success. Health probes (no tool_id) still get a benign 200.
         Route::post('/tools/execute', function (\Illuminate\Http\Request $r) {
-            \Illuminate\Support\Facades\Log::warning('STUB_UNIMPLEMENTED runtime/tools/execute stub hit', $r->all());
-            return response()->json(['ok' => true, 'stub' => true, 'implemented' => false, 'path' => '/api/internal/tools/execute']);
+            if (! $r->filled('tool_id')) {
+                return response()->json(['ok' => true, 'probe' => true, 'implemented' => false, 'path' => '/api/internal/tools/execute']);
+            }
+            \Illuminate\Support\Facades\Log::warning('TOOLS_EXECUTE_NOT_IMPLEMENTED runtime tool dispatch refused (fail-closed)', [
+                'tool_id' => $r->input('tool_id'), 'agent_id' => $r->input('agent_id'),
+            ]);
+            return response()->json([
+                'ok' => false, 'success' => false, 'implemented' => false,
+                'error' => 'TOOL_EXECUTE_NOT_IMPLEMENTED',
+                'message' => 'Runtime->Laravel tool-execution bridge is not implemented; execution is Laravel-native. This path must never report success.',
+                'path' => '/api/internal/tools/execute',
+            ], 501);
         });
 
         // ── Site pages (for SEO insights / scanner) — STUB ─────────────────
