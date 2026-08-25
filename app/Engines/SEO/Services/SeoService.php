@@ -2103,6 +2103,17 @@ class SeoService
             $settingsStatus = ['configured' => false, 'keys_set' => 0];
         }
 
+        // DataForSEO<->GSC: surface real Search Console traffic on the dashboard when
+        // the workspace has synced GSC (gsc_metrics). Site-url-filterable like the KPIs.
+        $gscQ = DB::table('gsc_metrics')->where('workspace_id', $wsId);
+        if ($siteUrl) { $gscQ->where('site_url', $siteUrl); }
+        $gscAgg = (clone $gscQ)->selectRaw('SUM(clicks) c, SUM(impressions) i, AVG(position) p, COUNT(*) n')->first();
+        $gscConnected = $gscAgg && (int) $gscAgg->n > 0;
+        $gscClicks = $gscConnected ? (int) $gscAgg->c : null;
+        $gscImpr   = $gscConnected ? (int) $gscAgg->i : null;
+        $gscCtr    = ($gscConnected && $gscImpr > 0) ? round($gscClicks / $gscImpr, 4) : null;
+        $gscPos    = $gscConnected ? round((float) $gscAgg->p, 1) : null;
+
         return [
             'keywords_tracked' => $kwCount,
             'avg_rank' => $avgRank ? round($avgRank, 1) : null,
@@ -2117,6 +2128,11 @@ class SeoService
             'inserted_links' => $insertedLinks,
             'score_trend' => $recentSnapshots,
             'settings_status' => $settingsStatus,
+            'gsc_connected' => $gscConnected,
+            'gsc_clicks' => $gscClicks,
+            'gsc_impressions' => $gscImpr,
+            'gsc_ctr' => $gscCtr,
+            'gsc_avg_position' => $gscPos,
         ];
     }
 
