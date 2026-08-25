@@ -363,7 +363,7 @@ class EngineExecutionService
         } catch (\Throwable $e) {
             // Release credits on failure
             if (isset($reservationId)) $this->creditService->release($wsId, $reservationId);
-            Log::error("EngineExecution failed: {$engine}/{$action}", ['error' => $e->getMessage(), 'ws' => $wsId]);
+            Log::error("EngineExecution failed: {$engine}/{$action}", ['error' => $e->getMessage(), 'ws' => $wsId, 'user_id' => $userId, 'agent_id' => $agentId, 'source' => $source]);
 
             // T_NOTIF — flag task failure to workspace owner (agent-driven only)
             if ($source === 'agent') {
