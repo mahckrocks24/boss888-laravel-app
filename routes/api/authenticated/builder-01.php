@@ -158,7 +158,24 @@ use Illuminate\Support\Facades\Route;
                 "pages" => \Illuminate\Support\Facades\DB::table("pages")->whereIn("website_id", \Illuminate\Support\Facades\DB::table("websites")->where("workspace_id", $wsId)->pluck("id"))->count(),
             ]);
         });
-        Route::get("/preview/{id}", fn($r, $id) => response()->json(["preview_html" => "", "page_id" => $id]));
+        Route::get("/preview/{id}", function (\Illuminate\Http\Request $r, $id) use ($s) {
+            // BUILDER888: real preview — render the CURRENT page (draft or published)
+            // via BuilderRenderer so the create->edit->preview->publish walk works.
+            // Tenancy-checked: getPage returns null when the page is not in the caller ws.
+            $wsId = (int) $r->attributes->get("workspace_id");
+            $page = app($s)->getPage((int) $id, $wsId);
+            if (! $page) { return response()->json(["error" => "Page not found"], 404); }
+            $website = \Illuminate\Support\Facades\DB::table("websites")->where("id", $page->website_id)->first();
+            if (! $website) { return response()->json(["error" => "Website not found"], 404); }
+            try {
+                $html = app(\App\Engines\Builder\Services\BuilderRenderer::class)
+                    ->renderPage((array) $website, (array) $page, []);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("[Builder] preview render failed", ["page_id" => (int) $id, "error" => $e->getMessage()]);
+                return response()->json(["error" => "Preview render failed"], 500);
+            }
+            return response()->json(["preview_html" => $html, "page_id" => (int) $id]);
+        });
         Route::get("/library", fn() => response()->json(["blocks" => [], "templates" => []]));
         Route::get("/sections/{id}", fn($r, $id) => response()->json(["section" => null]));
         Route::get("/components/{id}", fn($r, $id) => response()->json(["component" => null]));
