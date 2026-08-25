@@ -816,7 +816,13 @@ class EngineExecutionService
         return match ($action) {
             'create_website' => $svc->createWebsite($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
             'generate_page' => (function() use ($svc, $params, $wsId) { if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) throw new \RuntimeException('Website not found'); return $svc->createPage($params['website_id'], $params); })(),
-            'wizard_generate' => $svc->wizardGenerate($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
+            // RISK-0091 (2026-08-25): wizard_generate is advertised (EngineIntelligence) as the
+            // website wizard but BuilderService::wizardGenerate returns 'gone' (retired 2026-04-19).
+            // Route it to the SAME proven Arthur build as full_site_generation so the advertised
+            // wizard actually builds instead of dead-ending. (Cost reconciliation vs full_site_generation
+            // is a noted follow-up.)
+            'wizard_generate' => app(\App\Engines\Builder\Services\ArthurService::class)
+                ->buildFromChat($wsId, $params['build_data'] ?? $params, $params['logo_url'] ?? null, $params['images'] ?? [], $params['colors'] ?? [], $ctx['user_id'] ?? null),
             'publish_website' => ['action' => 'published'] + (function() use ($svc, $params, $wsId) { if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) throw new \RuntimeException('Website not found'); $svc->publishWebsite($params['website_id']); return []; })(),
             // v1.4.4 (2026-05-30) — Phase B landing-page visibility
             'list_builder_pages' => $svc->listWorkspacePages($wsId, $params),

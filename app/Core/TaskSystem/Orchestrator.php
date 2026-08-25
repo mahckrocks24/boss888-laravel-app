@@ -1295,8 +1295,8 @@ class Orchestrator
                                             ->createWebsite($wsId, $params),
             'builder/generate_page'     => fn() => app(\App\Engines\Builder\Services\BuilderService::class)
                                             ->createPage($params['website_id'], $params),
-            'builder/wizard_generate'   => fn() => app(\App\Engines\Builder\Services\BuilderService::class)
-                                            ->wizardGenerate($wsId, $params),
+            'builder/wizard_generate'   => fn() => app(\App\Engines\Builder\Services\ArthurService::class)
+                                            ->buildFromChat($wsId, $params['build_data'] ?? $params, $params['logo_url'] ?? null, $params['images'] ?? [], $params['colors'] ?? [], $params['user_id'] ?? null),
             'builder/publish_website'   => fn() => app(\App\Engines\Builder\Services\BuilderService::class)
                                             ->publishWebsite($params['website_id']),
             // RISK-0088 (2026-08-25): async full-site build via the proven Arthur path.
