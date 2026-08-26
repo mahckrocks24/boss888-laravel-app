@@ -466,4 +466,42 @@ class RendererSecurityTest extends TestCase
         $this->assertSame('Inter', $m->invoke($renderer, 'Inter', 'X'));
         $this->assertSame('FB', $m->invoke($renderer, 'evil" onmouseover=x', 'FB'));
     }
+
+    /**
+     * BLOG SERVE INJECTION (2026-08-26) — PublishedSiteMiddleware::renderArticleIntoTemplate
+     * injects DB article fields into blog cards at serve time. Prove every field is e()-escaped
+     * (no stored XSS via a blog title/excerpt/category) and that a content-derived truncated
+     * excerpt renders a real ellipsis, not the literal backslash-u-2026 string.
+     */
+    public function test_serve_time_blog_injection_is_escaped_and_ellipsis_correct(): void
+    {
+        $mw = app(\App\Http\Middleware\PublishedSiteMiddleware::class);
+        $m = new \ReflectionMethod($mw, 'renderArticleIntoTemplate');
+        $m->setAccessible(true);
+        $tpl = '<a href="/blog/x" class="post-card-link"><article class="post-card"><img src="/o.jpg" alt="o"><h3>old</h3><p class="excerpt">old</p><div class="post-cat">old</div></article></a>';
+
+        // Malicious fields must be HTML-ESCAPED and carry no raw executable construct. (Assert
+        // the escaped forms; a broad /<img onerror/ regex would false-match the escaped text that
+        // legitimately sits inside an escaped alt="" attribute.)
+        $xss = (object) [
+            'slug' => 's"><script>alert(1)</script>', 'title' => '<img src=x onerror=alert(1)>',
+            'featured_image_url' => '/real.jpg', 'meta_description' => '', 'excerpt' => '<script>alert(2)</script>',
+            'blog_category' => '"><script>alert(3)</script>', 'word_count' => 10, 'content' => 'x', 'published_at' => '2026-01-01',
+        ];
+        $card = $m->invoke($mw, $tpl, $xss);
+        $this->assertStringNotContainsString('<script>alert', $card, 'raw <script> from a blog field');
+        $this->assertStringNotContainsString('"><script', $card, 'attribute breakout from a blog field');
+        $this->assertStringContainsString('&lt;img src=x onerror=alert(1)&gt;', $card, 'title was not HTML-escaped');
+        $this->assertStringContainsString('&lt;script&gt;alert(2)', $card, 'excerpt was not HTML-escaped');
+
+        // Ellipsis: content-derived truncated excerpt uses a real U+2026, not the literal
+        // 6-char "backslash u 2026" string.
+        $long = (object) [
+            'slug' => 's', 'title' => 'T', 'featured_image_url' => '', 'meta_description' => '', 'excerpt' => '',
+            'blog_category' => 'News', 'word_count' => 500, 'content' => str_repeat('word ', 80), 'published_at' => '2026-01-01',
+        ];
+        $c2 = $m->invoke($mw, $tpl, $long);
+        $this->assertStringNotContainsString('\u' . '2026', $c2, 'literal backslash-u-2026 leaked into a blog excerpt');
+        $this->assertStringContainsString("\u{2026}", $c2, 'real ellipsis missing from a truncated excerpt');
+    }
 }

@@ -505,7 +505,7 @@ class PublishedSiteMiddleware
         elseif (!empty($article->content)) {
             $text = trim(preg_replace('/\s+/', ' ', strip_tags($article->content)));
             $excerpt = mb_substr($text, 0, 200);
-            if (mb_strlen($text) > 200) $excerpt = rtrim($excerpt, ',. !?:;') . '\u2026';
+            if (mb_strlen($text) > 200) $excerpt = rtrim($excerpt, ',. !?:;') . "\u{2026}";
         }
         if ($excerpt !== '') {
             $card = preg_replace('#(<p[^>]*class="[^"]*excerpt[^"]*"[^>]*>).+?(</p>)#is', '$1' . e($excerpt) . '$2', $card, 1);
