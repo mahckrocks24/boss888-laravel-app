@@ -42,6 +42,18 @@ class ArthurEditController
             return response()->json(['error' => 'Page not found'], 404);
         }
 
+        // RISK-0100 — opt-in optimistic lock (parity with the direct save path). If
+        // the caller sent the base_version it loaded (sha1 of sections_json), refuse a
+        // stale AI edit with 409 BEFORE reserving credits or calling the runtime, so a
+        // concurrent change is never silently overwritten. No base_version => unchanged.
+        $baseVersion = (string) $request->input('base_version', '');
+        if ($baseVersion !== '' && ! hash_equals(sha1((string) $page->sections_json), $baseVersion)) {
+            return response()->json([
+                'error'    => 'This page was changed by someone else since you opened it. Reload to get the latest version, then re-apply your change.',
+                'conflict' => true,
+            ], 409);
+        }
+
         // Refuse legacy static-HTML pages — Patch 8.6 (Chef Red migration) handles those.
         if (empty($page->sections_json) || $page->sections_json === '[]' || strlen($page->sections_json) < 5) {
             return response()->json([
