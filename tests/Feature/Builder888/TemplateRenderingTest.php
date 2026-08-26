@@ -182,4 +182,64 @@ class TemplateRenderingTest extends TestCase
             'a non-image placeholder survived rendering'
         );
     }
+
+    /**
+     * PHANTOM CARDS (2026-08-26) — a repeated personnel/item slot the customer did not
+     * fill kept the industry-DEFAULT photo (its *_image token defaults to a non-empty URL,
+     * so the empty-src strip never fired) with an empty name: a fabricated team member with
+     * a stock photo and a blank name, plus an empty-alt image. Regression for
+     * stripEmptyPhantomCards().
+     */
+    public function test_unfilled_personnel_slots_do_not_render_phantom_cards(): void
+    {
+        $html = app(TemplateService::class)->render('dental', [
+            'business_name'      => 'Bright Smile Dental',
+            'doctor_1_name'      => 'Dr. Jane Smith',
+            'doctor_1_specialty' => 'Cosmetic', 'doctor_1_title' => 'DDS', 'doctor_1_bio' => 'Bio.',
+            'doctor_2_name'      => 'Dr. John Lee',
+            'doctor_2_specialty' => 'Ortho', 'doctor_2_title' => 'DDS', 'doctor_2_bio' => 'Bio.',
+            // doctor_3 / doctor_4 intentionally omitted (a 2-dentist practice)
+        ]);
+
+        // No image may render with an empty alt (the phantom default photos).
+        preg_match_all('/<img\b[^>]*>/i', $html, $imgs);
+        foreach ($imgs[0] as $img) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/\balt=(""|\x27\x27)/', $img,
+                'a phantom personnel photo rendered with an empty alt: ' . $img
+            );
+        }
+        // No doctor-card wrapper may carry an empty name field.
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-field="doctor_[0-9]+_name"[^>]*>\s*<\/div>/i', $html,
+            'a phantom doctor card (empty name) survived'
+        );
+        // No empty certification badge (a check-mark next to a blank name).
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-field="cert_[0-9]+_name"[^>]*>\s*<\/div>/i', $html,
+            'a phantom certification badge (empty name) survived'
+        );
+        // The two REAL dentists must still be present.
+        $this->assertStringContainsString('Dr. Jane Smith', $html);
+        $this->assertStringContainsString('Dr. John Lee', $html);
+    }
+
+    /**
+     * The phantom-card removal must NOT delete filled cards.
+     */
+    public function test_fully_filled_personnel_and_certs_are_all_preserved(): void
+    {
+        $html = app(TemplateService::class)->render('dental', [
+            'business_name' => 'Bright Smile Dental',
+            'doctor_1_name' => 'Dr. A', 'doctor_1_specialty' => 'X', 'doctor_1_title' => 'DDS', 'doctor_1_bio' => 'b',
+            'doctor_2_name' => 'Dr. B', 'doctor_2_specialty' => 'X', 'doctor_2_title' => 'DDS', 'doctor_2_bio' => 'b',
+            'doctor_3_name' => 'Dr. C', 'doctor_3_specialty' => 'X', 'doctor_3_title' => 'DDS', 'doctor_3_bio' => 'b',
+            'doctor_4_name' => 'Dr. D', 'doctor_4_specialty' => 'X', 'doctor_4_title' => 'DDS', 'doctor_4_bio' => 'b',
+            'cert_1_name'   => 'Board Certified', 'cert_1_desc' => 'ADA',
+            'cert_2_name'   => 'Invisalign Provider', 'cert_2_desc' => 'Elite',
+        ]);
+        foreach (['Dr. A', 'Dr. B', 'Dr. C', 'Dr. D', 'Board Certified', 'Invisalign Provider'] as $needle) {
+            $this->assertStringContainsString($needle, $html, 'filled content was wrongly removed: ' . $needle);
+        }
+    }
 }

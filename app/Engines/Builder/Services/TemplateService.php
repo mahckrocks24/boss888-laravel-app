@@ -149,6 +149,10 @@ class TemplateService
         $html = preg_replace('/<img\b(?![^>]*data-field="logo_url")[^>]*\bsrc=(""|\'\')[^>]*\/?>/i', '', $html);
         // Also handle edge case: src attribute literally missing (not just empty).
         $html = preg_replace('/<img\b(?![^>]*\bsrc=)[^>]*\/?>/i', '', $html);
+        // Remove PHANTOM personnel/item cards: a repeated *-card the customer left
+        // unfilled still carried the industry-default photo (non-empty src survives the
+        // strip above) with an EMPTY name — a fabricated team member. See EV (phantom-cards).
+        $html = $this->stripEmptyPhantomCards($html);
         // Decode HTML entities (fixes &RARR; showing as literal text)
         $html = str_replace(['&RARR;', '&rarr;', '&amp;rarr;'], '→', $html);
         $html = str_replace(['&LARR;', '&larr;', '&amp;larr;'], '←', $html);
@@ -217,6 +221,70 @@ class TemplateService
      * Build the CHATBOT888 widget snippet for a website, or '' when not entitled / not configured.
      * Mirrors BuilderRenderer::injectChatbotWidget so both render paths gate identically.
      */
+    /**
+     * Remove phantom personnel/item cards. A repeated card slot the customer did not
+     * fill keeps the industry-DEFAULT image (its *_image token defaults to a non-empty
+     * URL, so the empty-src strip never fires) while every text field resolves empty.
+     * Rendering it advertises a fabricated team member with a stock photo and blank name
+     * (an enterprise-quality + a11y defect). Detect an empty primary name field
+     * (data-field="*_name" with no content) whose enclosing *-card wrapper contains an
+     * <img>, and cut that wrapper with a balanced <div> scan (regex cannot match the
+     * nested card structure reliably). Real, filled cards are untouched.
+     */
+    private function stripEmptyPhantomCards(string $html): string
+    {
+        if (!preg_match_all('/data-field="[a-z0-9_]+_name"[^>]*>\s*<\/div>/i', $html, $m, PREG_OFFSET_CAPTURE)) {
+            return $html;
+        }
+        for ($i = count($m[0]) - 1; $i >= 0; $i--) {
+            $namePos = $m[0][$i][1];
+            $open = $this->findEnclosingCardOpen($html, $namePos);
+            if ($open === null) { continue; }
+            $close = $this->matchDivClose($html, $open);
+            if ($close === null || $close <= $namePos) { continue; }
+            $card = substr($html, $open, $close - $open);
+            // Remove only when the card has NO real content: strip tags + non-alnum
+            // decorations (a lone â check, punctuation). The industry-default <img> and its
+            // empty alt contribute no text, so a phantom photo card collapses to '' and is
+            // cut; a card with a real quote/desc but a blank name keeps its content and stays.
+            $text = preg_replace('/[^\p{L}\p{N}]+/u', '', (string) strip_tags($card));
+            if ($text !== '' && $text !== null) { continue; }
+            $html = substr($html, 0, $open) . substr($html, $close);
+        }
+        return $html;
+    }
+
+    private function findEnclosingCardOpen(string $html, int $pos): ?int
+    {
+        if (!preg_match_all('/<div\b[^>]*class="[^"]*(?:card|member|team|item)[^"]*"[^>]*>/i', $html, $mm, PREG_OFFSET_CAPTURE)) {
+            return null;
+        }
+        $best = null;
+        foreach ($mm[0] as $mo) {
+            $off = $mo[1];
+            if ($off >= $pos) { break; }
+            $best = $off;
+        }
+        return $best;
+    }
+
+    private function matchDivClose(string $html, int $openPos): ?int
+    {
+        $len = strlen($html);
+        $i = strpos($html, '>', $openPos);
+        if ($i === false) { return null; }
+        $i++;
+        $depth = 1;
+        while ($i < $len && $depth > 0) {
+            $lt = strpos($html, '<div', $i);
+            $gt = strpos($html, '</div>', $i);
+            if ($gt === false) { return null; }
+            if ($lt !== false && $lt < $gt) { $depth++; $i = $lt + 4; }
+            else { $depth--; $i = $gt + 6; }
+        }
+        return $depth === 0 ? $i : null;
+    }
+
     private function buildChatbotWidget(int $websiteId): string
     {
         $website = DB::table('websites')->where('id', $websiteId)->first();
