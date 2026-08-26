@@ -201,6 +201,9 @@ class TemplateService
             $primary = trim((string) ($variables['primary_color'] ?? ''));
             if ($primary === '') { $primary = '#1F2937'; }
             if ($primary[0] !== '#') { $primary = '#' . $primary; }
+            // B7 defense-in-depth: theme-color/favicon fill must be a valid hex color,
+            // never a brand-kit value carrying CSS/HTML metacharacters.
+            if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $primary)) { $primary = '#1F2937'; }
             $bn = trim((string) ($variables['business_name'] ?? $variables['site_name'] ?? 'Website'));
             $ogimg = trim((string) ($variables['og_image'] ?? $variables['hero_image'] ?? ''));
             $add = '';

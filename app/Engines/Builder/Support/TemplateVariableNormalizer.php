@@ -109,6 +109,18 @@ final class TemplateVariableNormalizer
             return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
         }
 
+        // CSS-context keys (colors/fonts) land inside <style> blocks. htmlspecialchars
+        // neutralises </style> (no XSS) but leaves { } ; which break out of a CSS rule/
+        // declaration -> CSS injection (defacement / CSS-exfil). Strip the rule-breakout
+        // chars while preserving hex / rgb() / gradients / named colors.
+        $isCss = str_ends_with($k, '_color') || str_ends_with($k, '_muted')
+              || str_starts_with($k, 'font_')
+              || in_array($k, ['hero_cta_primary', 'hero_cta_secondary'], true);
+        if ($isCss) {
+            $v = preg_replace('/[{};"\'\\<>]/', '', $value) ?? '';
+            return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+        }
+
         return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
     }
 

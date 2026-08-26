@@ -358,4 +358,41 @@ class TemplateRenderingTest extends TestCase
         $this->assertCount(2, $links[0], 'exactly the two configured social links should remain');
         $this->assertStringContainsString('footer-social', $html2, 'the social container should remain when links exist');
     }
+
+    /**
+     * TEMPLATE CSS INJECTION (2026-08-26) — brand color/font tokens ({{primary_color}} etc.)
+     * land in <style> CSS contexts (news_channel: `--primary: {{primary_color}}`). forHtml
+     * html-escaped them (blocking </style> — no XSS) but left { } ; which break out of a CSS
+     * rule/declaration -> CSS injection (defacement / CSS-exfil), self-scoped. forHtml now
+     * strips those chars for color/font keys; the theme-color/favicon meta is hex-validated.
+     */
+    public function test_brand_color_tokens_cannot_inject_css(): void
+    {
+        $svc = app(TemplateService::class);
+        $bad = 'red;} body{background:url(//evil/x)} .a{color:red';
+
+        // forHtml strips CSS rule-breakout chars for color/font keys, preserves legit values.
+        $this->assertStringNotContainsString('}', \App\Engines\Builder\Support\TemplateVariableNormalizer::forHtml('primary_color', $bad));
+        $this->assertStringNotContainsString(';', \App\Engines\Builder\Support\TemplateVariableNormalizer::forHtml('font_heading', $bad));
+        $this->assertSame('#6C5CE7', \App\Engines\Builder\Support\TemplateVariableNormalizer::forHtml('primary_color', '#6C5CE7'));
+        $this->assertSame('rgb(108,92,231)', \App\Engines\Builder\Support\TemplateVariableNormalizer::forHtml('accent_color', 'rgb(108,92,231)'));
+
+        // news_channel is the template that uses a color token inside a <style> block.
+        $html = $svc->render('news_channel', ['business_name' => 'T', 'primary_color' => $bad]);
+        if (preg_match_all('#<style[^>]*>(.*?)</style>#is', $html, $m)) {
+            foreach ($m[1] as $css) {
+                $this->assertDoesNotMatchRegularExpression('/\}\s*body\s*\{background:url\(\/\/evil/', $css,
+                    'brand color broke out of a CSS rule in a <style> block');
+            }
+        }
+        // Legit hex reaches the CSS custom property.
+        $ok = $svc->render('news_channel', ['business_name' => 'T', 'primary_color' => '#6C5CE7']);
+        $this->assertStringContainsString('#6C5CE7', $ok, 'legit brand color was dropped from the CSS');
+
+        // theme-color meta is always a valid hex color, never an injected literal.
+        $themed = $svc->render('dental', ['business_name' => 'T', 'primary_color' => $bad]);
+        if (preg_match('/theme-color" content="([^"]*)"/', $themed, $tm)) {
+            $this->assertMatchesRegularExpression('/^#[0-9a-fA-F]{3,8}$/', $tm[1], 'theme-color carried an injected literal');
+        }
+    }
 }
