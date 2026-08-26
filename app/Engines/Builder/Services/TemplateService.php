@@ -264,6 +264,10 @@ class TemplateService
             },
             $html
         );
+        // Drop any now-empty <li></li> a removed nav anchor left behind.
+        if (is_string($out)) {
+            $out = preg_replace('~<li\b[^>]*>\s*</li>~i', '', $out) ?? $out;
+        }
         return is_string($out) ? $out : $html;
     }
 
@@ -339,7 +343,7 @@ class TemplateService
     {
         // Drop <a ... href="" ... data-field="social_*" ...>...</a> (icon may nest svg).
         $html = preg_replace(
-            '~<a\b(?=[^>]*\bhref="")(?=[^>]*\bdata-field="social_[a-z0-9_]+")[^>]*>.*?</a>\s*~is',
+            '~<a\b(?=[^>]*\bhref="#?")(?=[^>]*\bdata-field="social_[a-z0-9_]+")[^>]*>.*?</a>\s*~is',
             '',
             $html
         ) ?? $html;
@@ -529,6 +533,88 @@ class TemplateService
 
         $path = $dir . '/index.html';
         file_put_contents($path, $html);
+
+        // Also deploy a static /blog index that reuses THIS page's chrome + theme
+        // so /blog shares the same top menu and colours instead of falling to the
+        // bare dynamic renderer. Fail-open: never let it break the main deploy.
+        try {
+            $this->deployBlogIndex($websiteId, $html);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TemplateService] blog index deploy failed: ' . $e->getMessage());
+        }
+
+        return $path;
+    }
+
+    /**
+     * Build + write sites/{id}/blog/index.html from the home page's chrome so the
+     * blog listing shares the same <head> (theme/CSS), top nav, and footer. In-page
+     * #anchors in the nav/footer are rewritten to /#anchor (they target home
+     * sections). The home's blog section (its post-card grid) becomes the listing
+     * body so styling matches and the serve-time article injector (Wave 63) has a
+     * post-card template to clone. Returns the path, or null if no <head> found.
+     */
+    public function deployBlogIndex(int $websiteId, string $homeHtml): ?string
+    {
+        if (!preg_match('/<head\b[^>]*>.*?<\/head>/is', $homeHtml, $hm)) {
+            return null;
+        }
+        $head = $hm[0];
+        // The reused home <head> carries the HOME <title>; give /blog its own.
+        $siteName = preg_match('/<title>\\s*([^<|\xe2\x80\x94-]+)/iu', $head, $tn)
+            ? trim($tn[1]) : 'Blog';
+        $head = preg_replace('/<title>.*?<\\/title>/is', '<title>Blog \xe2\x80\x94 ' . e($siteName) . '</title>', $head, 1) ?? $head;
+
+        $nav = '';
+        if (preg_match('/<nav\b[^>]*id="main-nav"[^>]*>.*?<\/nav>/is', $homeHtml, $nm)) {
+            $nav = $nm[0];
+        } elseif (preg_match('/<header\b[^>]*>.*?<\/header>/is', $homeHtml, $nm2)) {
+            $nav = $nm2[0];
+        }
+
+        $footer = '';
+        if (preg_match('/<footer\b[^>]*>.*?<\/footer>/is', $homeHtml, $fm)) {
+            $footer = $fm[0];
+        }
+
+        // The home's blog section is the themed listing body (contains post-cards).
+        $blog = '';
+        if (preg_match('/<section\b[^>]*(?:blog|insights|articles)[^>]*>.*?<\/section>/is', $homeHtml, $bm)) {
+            $blog = $bm[0];
+        }
+
+        // Rewrite in-page anchors so the shared nav/footer navigate back to home.
+        $toHome = function (string $frag): string {
+            $frag = preg_replace('/href="#"/i', 'href="/"', $frag);
+            $frag = preg_replace('/href="#([a-z0-9\-]+)"/i', 'href="/#$1"', $frag);
+            return (string) $frag;
+        };
+        $nav = $toHome($nav);
+        $footer = $toHome($footer);
+
+        // Fallback listing when the template has no blog section — still on-brand,
+        // still carries a post-card template for the serve-time injector.
+        if ($blog === '') {
+            $blog = '<section class="blog" id="blog" data-block="blog">'
+                . '<div style="max-width:1240px;margin:0 auto;padding:6rem 2.5rem">'
+                . '<h2 class="section-h2">From the Blog</h2>'
+                . '<div class="post-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.5rem;margin-top:2rem">'
+                . '<a href="/blog/welcome" class="post-card-link"><article class="post-card">'
+                . '<h3>Articles coming soon</h3><p class="excerpt">Fresh posts are on the way — check back shortly.</p>'
+                . '<div class="post-cat">News</div></article></a>'
+                . '</div></div></section>';
+        }
+
+        $lang = preg_match('/<html\b[^>]*lang="([^"]+)"/i', $homeHtml, $lm) ? $lm[1] : 'en';
+        $doc = '<!doctype html><html lang="' . e($lang) . '">' . $head . '<body>'
+             . $nav . '<main>' . $blog . '</main>' . $footer . '</body></html>';
+
+        $dir = storage_path("app/public/sites/{$websiteId}/blog");
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $path = $dir . '/index.html';
+        file_put_contents($path, $doc);
 
         return $path;
     }
