@@ -143,4 +143,38 @@ PHP);
             'Arthur legitimately reads Builder/media tables; the guard governs writes only.'
         );
     }
+
+    /**
+     * TEMPLATE SLUG HYGIENE (2026-08-26) — resolveTemplateSlug() step 1 replaced only
+     * whitespace/hyphens, so an industry like "../dental" leaked a slug containing ../ that
+     * flows into templates/{slug}/template.html paths (declaredPlaceholders et al.). Not
+     * exploitable today (the traversal target does not exist and no content is disclosed),
+     * but hardened to [a-z0-9_] at the source. Assert the invariant + that legit resolution
+     * is unchanged.
+     */
+    public function test_resolve_template_slug_never_returns_traversal_characters(): void
+    {
+        $svc = app(\App\Engines\Builder\Services\ArthurService::class);
+        $m = new \ReflectionMethod($svc, 'resolveTemplateSlug');
+        $m->setAccessible(true);
+
+        $adversarial = [
+            '../dental', '../../../../etc/passwd', '../../config/../dental',
+            'dental/../../../etc', '..%2f..%2fdental', "dental\x00", 'a/b/c',
+        ];
+        foreach ($adversarial as $industry) {
+            $slug = $m->invoke($svc, $industry);
+            $this->assertMatchesRegularExpression(
+                '/^[a-z0-9_]+$/', $slug,
+                "resolveTemplateSlug('$industry') returned a non-clean slug: '$slug'"
+            );
+        }
+
+        // Legit industries still resolve to their expected templates.
+        $this->assertSame('dental', $m->invoke($svc, 'dental'));
+        $this->assertSame('restaurant', $m->invoke($svc, 'restaurant'));
+        $this->assertSame('cafe', $m->invoke($svc, 'a coffee shop'));
+        // The traversal form of a real template collapses to the clean template.
+        $this->assertSame('dental', $m->invoke($svc, '../dental'));
+    }
 }

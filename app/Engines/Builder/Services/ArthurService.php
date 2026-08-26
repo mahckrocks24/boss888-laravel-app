@@ -854,7 +854,9 @@ class ArthurService
         if ($industry === '') return 'consulting';
 
         // 1. Direct disk-template match (e.g. user passed 'aesthetic_clinic')
-        $direct = preg_replace('/[\s-]+/', '_', $industry);
+        // Traversal hygiene: keep the slug to [a-z0-9_] so a returned slug can never carry
+        // ../ into a templates/{slug}/... path (declaredPlaceholders et al.). Behaviour-preserving.
+        $direct = preg_replace('/[^a-z0-9_]/', '', preg_replace('/[\s-]+/', '_', $industry));
         if ($this->templates->getManifest($direct)) return $direct;
 
         // 2. Longest-match-wins keyword search
