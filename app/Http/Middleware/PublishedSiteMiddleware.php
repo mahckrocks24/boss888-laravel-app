@@ -356,6 +356,32 @@ class PublishedSiteMiddleware
 
         $latest = $articles->first();
 
+        // RISK-0101 — blog-card template family (generated Builder sites have no
+        // post-card markup). The deploy step embeds a hidden <template
+        // class="lu-blog-card-tpl"> styled card; populate it from live articles and
+        // replace the honest empty-state line. Fresh per request (no re-deploy).
+        if (preg_match('#<template[^>]*class="[^"]*lu-blog-card-tpl[^"]*"[^>]*>(.*?)</template>#is', $html, $tm)) {
+            $tpl = $tm[1];
+            $cards = '';
+            foreach ($articles as $a) {
+                $c = $tpl;
+                $c = preg_replace('#href="/blog/[^"]*"#i', 'href="/blog/' . e($a->slug) . '"', $c, 1);
+                $c = preg_replace_callback('#(<h3[^>]*class="[^"]*blog-card-title[^"]*"[^>]*>).*?(</h3>)#is',
+                    fn($mm) => $mm[1] . e((string) $a->title) . $mm[2], $c, 1);
+                $c = preg_replace_callback('#(<p[^>]*class="[^"]*blog-card-excerpt[^"]*"[^>]*>).*?(</p>)#is',
+                    fn($mm) => $mm[1] . e((string) ($a->excerpt ?? $a->meta_description ?? '')) . $mm[2], $c, 1);
+                $cards .= $c;
+            }
+            if ($cards !== '') {
+                $out = preg_replace('#<p[^>]*class="[^"]*blog-empty[^"]*"[^>]*>.*?</p>#is', $cards, $html, 1, $g);
+                if ($g && $out !== null) return $out;
+                // No empty line to replace — inject the cards just before the template.
+                $out = preg_replace('#(<template[^>]*class="[^"]*lu-blog-card-tpl)#i', $cards . '$1', $html, 1, $g2);
+                return ($g2 && $out !== null) ? $out : $html;
+            }
+            return $html;
+        }
+
         // Detect post-card template (for grid injection).
         $cardTpl = null;
         if (preg_match('#(<a\s[^>]*href="/blog/[^"]+/?"[^>]*class="post-card-link"[^>]*>\s*<article\s[^>]*class="post-card"[^>]*>.*?</article>\s*</a>)#is', $html, $m)) {

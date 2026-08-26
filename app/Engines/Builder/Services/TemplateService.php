@@ -531,19 +531,21 @@ class TemplateService
             if (stripos($html, 'blog-card') === false && stripos($html, 'blog-grid') === false) {
                 return $html;
             }
-            $wsId = (int) \Illuminate\Support\Facades\DB::table('websites')
-                ->where('id', $websiteId)->value('workspace_id');
-            if ($wsId <= 0) return $html;
-            $hasArticles = \Illuminate\Support\Facades\DB::table('articles')
-                ->where('workspace_id', $wsId)->where('status', 'published')
-                ->whereNull('deleted_at')->exists();
-            if ($hasArticles) return $html; // real content — leave for the injector
-            // Remove the placeholder cards (each is <a class="blog-card ...">...</a>,
-            // no nested <a>) then drop one honest line into the grid.
+            // Capture the first styled placeholder card as a reusable template — the
+            // serve-time injector populates it from live articles. There is no
+            // .blog-card CSS rule (styling is inline), so a real styled card must be kept.
+            if (! preg_match('#<a\s[^>]*class="[^"]*blog-card[^"]*"[^>]*>.*?</a>#is', $html, $m)) {
+                return $html;
+            }
+            $firstCard = $m[0];
+            // Strip ALL placeholder cards (fake titles + dead /blog/{slug} hrefs).
             $stripped = preg_replace('#<a\s[^>]*class="[^"]*blog-card[^"]*"[^>]*>.*?</a>#is', '', $html, -1, $n);
             if (! $n || $stripped === null) return $html;
+            // Honest empty-state line (shown when there are 0 real articles) + the
+            // hidden card template (a <template> does not render, so it is invisible).
             $msg = '<p class="blog-empty" data-field="blog_empty" style="color:var(--carbon-soft,#475569);'
                 . 'font-size:1.05rem;line-height:1.6;">New articles are on the way — check back soon.</p>';
+            $msg .= '<template class="lu-blog-card-tpl">' . $firstCard . '</template>';
             $out = preg_replace('#(<div\s[^>]*class="[^"]*blog-grid[^"]*"[^>]*>)#i', '$1' . $msg, $stripped, 1, $g);
             return ($g && $out !== null) ? $out : $stripped;
         } catch (\Throwable $e) {
