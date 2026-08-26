@@ -518,6 +518,40 @@ class TemplateService
     }
 
     /**
+     * RISK-0101 — honest blog section. If the website's workspace has NO published
+     * articles, strip the baked placeholder blog cards (whose /blog/{slug} hrefs are
+     * template defaults that 302 to /blog) and leave a single honest 'coming soon'
+     * line inside the grid, so a generated site never advertises articles that do not
+     * exist. When real articles exist the html is returned unchanged (the serve-time
+     * injector owns that case). Fail-open: any error returns the html untouched.
+     */
+    private function honestBlogSection(int $websiteId, string $html): string
+    {
+        try {
+            if (stripos($html, 'blog-card') === false && stripos($html, 'blog-grid') === false) {
+                return $html;
+            }
+            $wsId = (int) \Illuminate\Support\Facades\DB::table('websites')
+                ->where('id', $websiteId)->value('workspace_id');
+            if ($wsId <= 0) return $html;
+            $hasArticles = \Illuminate\Support\Facades\DB::table('articles')
+                ->where('workspace_id', $wsId)->where('status', 'published')
+                ->whereNull('deleted_at')->exists();
+            if ($hasArticles) return $html; // real content — leave for the injector
+            // Remove the placeholder cards (each is <a class="blog-card ...">...</a>,
+            // no nested <a>) then drop one honest line into the grid.
+            $stripped = preg_replace('#<a\s[^>]*class="[^"]*blog-card[^"]*"[^>]*>.*?</a>#is', '', $html, -1, $n);
+            if (! $n || $stripped === null) return $html;
+            $msg = '<p class="blog-empty" data-field="blog_empty" style="color:var(--carbon-soft,#475569);'
+                . 'font-size:1.05rem;line-height:1.6;">New articles are on the way — check back soon.</p>';
+            $out = preg_replace('#(<div\s[^>]*class="[^"]*blog-grid[^"]*"[^>]*>)#i', '$1' . $msg, $stripped, 1, $g);
+            return ($g && $out !== null) ? $out : $stripped;
+        } catch (\Throwable $e) {
+            return $html;
+        }
+    }
+
+    /**
      * Deploy rendered HTML to the sites directory.
      *
      * @param int    $websiteId
@@ -526,6 +560,11 @@ class TemplateService
      */
     public function deploy(int $websiteId, string $html): string
     {
+        // RISK-0101 — never ship placeholder blog cards that link nowhere. When the
+        // workspace has no real articles, replace the baked sample cards with an
+        // honest empty state (applies to the home export AND, via deployBlogIndex
+        // below which receives this same $html, the /blog index).
+        $html = $this->honestBlogSection($websiteId, $html);
         $dir = storage_path("app/public/sites/{$websiteId}");
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -563,7 +602,7 @@ class TemplateService
         // The reused home <head> carries the HOME <title>; give /blog its own.
         $siteName = preg_match('/<title>\\s*([^<|\xe2\x80\x94-]+)/iu', $head, $tn)
             ? trim($tn[1]) : 'Blog';
-        $head = preg_replace('/<title>.*?<\\/title>/is', '<title>Blog \xe2\x80\x94 ' . e($siteName) . '</title>', $head, 1) ?? $head;
+        $head = preg_replace('/<title>.*?<\\/title>/is', '<title>Blog — ' . e($siteName) . '</title>', $head, 1) ?? $head;
 
         $nav = '';
         if (preg_match('/<nav\b[^>]*(?:id="main-nav"|data-block="nav")[^>]*>.*?<\/nav>/is', $homeHtml, $nm)) {
@@ -583,6 +622,16 @@ class TemplateService
         $blog = '';
         if (preg_match('/<section\b[^>]*(?:blog|insights|articles)[^>]*>.*?<\/section>/is', $homeHtml, $bm)) {
             $blog = $bm[0];
+        }
+
+        // RISK-0101 — on /blog the blog title is the page's main heading: promote the
+        // blog_title <h2> to <h1> so the listing page has exactly one top-level heading.
+        if ($blog !== '') {
+            $blog = preg_replace(
+                '#<h2(\s[^>]*data-field="blog_title"[^>]*)>(.*?)</h2>#is',
+                '<h1$1>$2</h1>',
+                $blog, 1
+            ) ?? $blog;
         }
 
         // Rewrite in-page anchors so the shared nav/footer navigate back to home.
