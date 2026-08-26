@@ -271,11 +271,50 @@ class ChatbotResponseService
                 }
             }
 
+            // SCOPE GATE (regression fix — Boss "dog dentist"): the regex
+            // classifier can match a commitment intent (booking/callback/
+            // lead_capture) on wording alone ("appointment") without knowing
+            // whether the request is something this business actually offers, so
+            // the LLM scope-guardrail never runs for a booking. Verify in-scope
+            // BEFORE asking for the visitor's details; an out-of-scope commitment
+            // (e.g. a pet at a people-serving clinic) is answered with a controlled
+            // redirect and NO lead capture (Step 6 short-circuit below).
+            $scopeRedirect = null;
+            $commitmentIntents = ['booking', 'reservation', 'callback', 'lead_capture'];
+            if (in_array($classified['intent'], $commitmentIntents, true)) {
+                $scope = $this->commitmentScopeCheck($ctx, $userMessage);
+                if ($scope['in_scope'] === false) {
+                    $scopeRedirect = $scope['redirect'];
+                }
+            }
+
             // Step 5: state transition
             $merged = $classified['captured_fields'];  // already merged with $fsmState['captured']
             $transition = $this->fsm->transition($fsmState['state'], $classified['intent'], $merged);
 
             // Step 6: run the chosen action
+            if ($scopeRedirect !== null) {
+                // Out-of-scope commitment: deterministic redirect, no lead capture,
+                // never routed through the escalate path (which would ask for contact).
+                $payload = [[
+                    'success' => true,
+                    'data' => [
+                        'message'          => (string) $scopeRedirect,
+                        'intent'           => 'out_of_scope',
+                        'needs_contact'    => false,
+                        'needs_booking'    => false,
+                        'capture_fields'   => [],
+                        'booking_proposal' => null,
+                    ],
+                    'meta' => [
+                        'session_id'   => $ctx['session_id'],
+                        'credits_used' => self::CREDIT_COST_PER_MESSAGE,
+                        'kb_hits'      => $ctx['kb_hits_count'] ?? 0,
+                        'classifier'   => 'scope_gate',
+                    ],
+                ], 'out_of_scope', 'scope_gate'];
+                [$payload, $finalIntent, $classifierSource] = $payload;
+            } else {
             [$payload, $finalIntent, $classifierSource] = match ($transition['action']) {
                 ChatbotSessionStateService::ACTION_FINALISE_LEAD     => $this->actionFinaliseLead($sessionId, $merged, $ctx),
                 ChatbotSessionStateService::ACTION_FINALISE_BOOKING  => $this->actionFinaliseBooking($sessionId, $merged, $ctx),
@@ -284,6 +323,7 @@ class ChatbotResponseService
                 ChatbotSessionStateService::ACTION_ESCALATE          => $this->actionEscalate($sessionId, $userMessage, $classified, $ctx),
                 default                                              => $this->actionAnswer($ctx, $userMessage, $classified, $merged),
             };
+            }
 
             // Step 7: persist assistant message
             DB::table('chatbot_messages')->insert([
@@ -385,6 +425,56 @@ class ChatbotResponseService
      * Returns the extracted value as a string, or null if the visitor
      * refused / asked another question / clearly didn't answer.
      */
+    /**
+     * SCOPE GATE. For a commitment intent, decide whether the request is something
+     * this business genuinely offers. Returns ['in_scope'=>bool, 'redirect'=>string].
+     * in_scope=false ONLY when the runtime is confident the request is out of scope
+     * (a different industry's service, or a service for an ineligible subject such
+     * as a pet at a people-serving business). Fail-OPEN (in_scope=true) on any
+     * uncertainty or runtime unavailability so a real customer is never blocked.
+     */
+    private function commitmentScopeCheck(array $ctx, string $userMessage): array
+    {
+        $open = ['in_scope' => true, 'redirect' => ''];
+        if (! $this->runtime->isConfigured()) return $open;
+        $business = (string) ($ctx['business_name'] ?? 'this business');
+        $industry = (string) ($ctx['industry'] ?? 'general');
+        $services = trim((string) ($ctx['services_csv'] ?? ''));
+        $system = "You are a strict scope checker for {$business}, a {$industry}."
+            . ($services !== '' ? " Its services: {$services}." : '')
+            . "\nDecide if the visitor's request is something THIS business genuinely"
+            . " offers to its normal clientele."
+            . "\nOut of scope = a service from a DIFFERENT industry, OR a service for an"
+            . " ineligible subject (for example a business that serves PEOPLE being asked"
+            . " to serve a pet or animal)."
+            . "\nA normal request for this industry's own services (including for the"
+            . " visitor themselves) is IN scope."
+            . "\nWhen genuinely unsure, answer in_scope=true (never block a real customer)."
+            . "\nIf out of scope, write 'redirect' as ONE short, warm sentence that politely"
+            . " says {$business} does not offer that and points them to what it DOES offer."
+            . " Do NOT offer to take their details."
+            . "\nReturn ONLY this JSON: {\"in_scope\": true|false, \"redirect\": \"...\"}.";
+        $user = "Visitor request: \"{$userMessage}\"";
+        try {
+            $r = $this->runtime->chatJson($system, $user, ['task' => 'chatbot_scope_gate'], 160);
+            if (! ($r['success'] ?? false)) return $open;
+            $p = $r['parsed'] ?? null;
+            if (! is_array($p) || ! array_key_exists('in_scope', $p)) return $open;
+            $inScope = (bool) $p['in_scope'];
+            $redirect = trim((string) ($p['redirect'] ?? ''));
+            if (! $inScope && $redirect === '') {
+                $redirect = "I'm sorry, but {$business} doesn't offer that "
+                    . "— is there something we can help you with instead?";
+            }
+            return ['in_scope' => $inScope, 'redirect' => $redirect];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[chatbot] scope gate failed (fail-open)', [
+                'workspace_id' => $ctx['workspace_id'] ?? null, 'error' => $e->getMessage(),
+            ]);
+            return $open;
+        }
+    }
+
     private function extractFieldViaLLM(string $userMessage, string $field, array $alreadyCaptured): ?string
     {
         if (!$this->runtime->isConfigured()) return null;
