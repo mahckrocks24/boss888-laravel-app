@@ -210,6 +210,11 @@ class PublishedSiteMiddleware
                     // Wave 63 — auto-inject DB articles into static blog index.
                     if (preg_match('#/blog/index\.html$|/blog\.html$#i', $staticPath)) {
                         $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0));
+                    } elseif ($slug === 'home') {
+                        // RISK-0101 — the home "From the Blog" preview: show up to 3
+                        // recent real articles (blog-card branch only) instead of the
+                        // empty-state line when the workspace has articles.
+                        $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0), 3, true);
                     }
                     // Wave 73b — guarantee related-articles internal links on every blog post.
                     if (preg_match('#/blog/[^/]+/(?:index\.html)?$#i', $staticPath) && !preg_match('#/blog/(?:index\.html)?$#i', $staticPath)) {
@@ -336,7 +341,7 @@ class PublishedSiteMiddleware
         return $out;
     }
 
-    private function injectDynamicBlogPosts(string $html, int $workspaceId): string
+    private function injectDynamicBlogPosts(string $html, int $workspaceId, int $cardLimit = 0, bool $blogCardOnly = false): string
     {
         if ($workspaceId <= 0) return $html;
 
@@ -363,7 +368,8 @@ class PublishedSiteMiddleware
         if (preg_match('#<template[^>]*class="[^"]*lu-blog-card-tpl[^"]*"[^>]*>(.*?)</template>#is', $html, $tm)) {
             $tpl = $tm[1];
             $cards = '';
-            foreach ($articles as $a) {
+            $list = $cardLimit > 0 ? $articles->take($cardLimit) : $articles;
+            foreach ($list as $a) {
                 $c = $tpl;
                 $c = preg_replace('#href="/blog/[^"]*"#i', 'href="/blog/' . e($a->slug) . '"', $c, 1);
                 $c = preg_replace_callback('#(<h3[^>]*class="[^"]*blog-card-title[^"]*"[^>]*>).*?(</h3>)#is',
@@ -381,6 +387,10 @@ class PublishedSiteMiddleware
             }
             return $html;
         }
+
+        // Home preview requests only the contained blog-card branch — never the
+        // post-card featured/grid rotation below.
+        if ($blogCardOnly) return $html;
 
         // Detect post-card template (for grid injection).
         $cardTpl = null;
