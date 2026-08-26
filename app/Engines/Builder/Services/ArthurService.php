@@ -2624,6 +2624,31 @@ PROMPT;
             }
         } catch (\Throwable $e) { /* non-fatal */ }
 
+        // NEVER A FAKE PERSON (B3, generalises EV-0757). Some manifests ship SAMPLE
+        // personnel names as the variable default (e.g. consulting member_1_name
+        // "Tariq Al-Sayed"); FIX-3 re-defaulting applies them and they slip past the
+        // coverage-pass blanking. If a personnel _N_name still equals its manifest
+        // sample default, the customer supplied no real team -> blank it, and phantom-
+        // card + empty-section stripping removes the fabricated person. A real name or
+        // LLM value never equals the sample default, so this is safe.
+        try {
+            $mfPeople = $mf ?? ($this->templates->getManifest($industry) ?: []);
+            $personRx = '/^(doctor|dentist|physician|surgeon|therapist|trainer|'
+                . 'instructor|coach|staff|team|member|attorney|lawyer|agent|broker|'
+                . 'realtor|stylist|barber|nurse|faculty|advisor|consultant|specialist|'
+                . 'expert|leader|principal|partner|founder)_\\d+_name$/i';
+            foreach (($mfPeople['variables'] ?? []) as $mk => $mspec) {
+                if (! preg_match($personRx, (string) $mk)) {
+                    continue;
+                }
+                $def = is_array($mspec) ? trim((string) ($mspec['default'] ?? '')) : '';
+                $cur = trim((string) ($variables[$mk] ?? ''));
+                if ($cur !== '' && $cur === $def) {
+                    $variables[$mk] = '';
+                }
+            }
+        } catch (\Throwable $e) { /* non-fatal */ }
+
         // Render template — TemplateService also carries industry-scoped
         // image defaults so even variables unknown to the manifest won't
         // render as hollow sections.

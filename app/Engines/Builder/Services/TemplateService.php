@@ -566,10 +566,12 @@ class TemplateService
         $head = preg_replace('/<title>.*?<\\/title>/is', '<title>Blog \xe2\x80\x94 ' . e($siteName) . '</title>', $head, 1) ?? $head;
 
         $nav = '';
-        if (preg_match('/<nav\b[^>]*id="main-nav"[^>]*>.*?<\/nav>/is', $homeHtml, $nm)) {
+        if (preg_match('/<nav\b[^>]*(?:id="main-nav"|data-block="nav")[^>]*>.*?<\/nav>/is', $homeHtml, $nm)) {
             $nav = $nm[0];
         } elseif (preg_match('/<header\b[^>]*>.*?<\/header>/is', $homeHtml, $nm2)) {
             $nav = $nm2[0];
+        } elseif (preg_match('/<nav\b[^>]*>.*?<\/nav>/is', $homeHtml, $nm3)) {
+            $nav = $nm3[0];
         }
 
         $footer = '';
