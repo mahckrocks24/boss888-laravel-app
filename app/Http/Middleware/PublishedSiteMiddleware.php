@@ -220,6 +220,7 @@ class PublishedSiteMiddleware
                     }
                     $html = $this->injectBlogLinkStyling($html);
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
+                    $html = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($html, (int) $website->id);
                     $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
                     $html = $this->injectLandmarks($html);
                     return response($html, 200)
@@ -250,6 +251,7 @@ class PublishedSiteMiddleware
                 }
                 if ($dynHtml !== null) {
                     $dynHtml = $this->injectChatbotWidget($dynHtml, (int) ($website->workspace_id ?? 0), (int) $website->id);
+                    $dynHtml = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($dynHtml, (int) $website->id);
                     return response($dynHtml, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
@@ -290,6 +292,7 @@ class PublishedSiteMiddleware
         }
 
         $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) ($website->id ?? 0));
+        $html = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($html, (int) ($website->id ?? 0));
         $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
 
         return response($html, 200)
