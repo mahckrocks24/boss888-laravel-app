@@ -211,4 +211,47 @@ class RendererSecurityTest extends TestCase
         );
         $this->assertStringContainsString('https://example.com/x', $ok, 'a legitimate https cta_url was stripped');
     }
+
+    /**
+     * FULL HREF SWEEP (2026-08-26) — after fixing cta_url (EV-0743) and the remaining
+     * nav/account/logout href fields (EV-0744), assert the invariant directly: NO section
+     * type may emit an href with a javascript:/vbscript:/data: scheme, no matter which url
+     * field the attacker controls. Renders every dispatched section type with the payload
+     * planted in every plausible url field (section-level and nested items/events/listings/
+     * components) and scans the output.
+     */
+    public function test_no_section_type_emits_an_executable_scheme_href(): void
+    {
+        $renderer = app(BuilderRenderer::class);
+        $types = [
+            'header', 'hero', 'features', 'cta', 'contact_form', 'blog_list', 'footer',
+            'services', 'team', 'testimonials', 'faq', 'pricing', 'gallery', 'stats',
+            'booking_form', 'events_calendar', 'grid', 'filter_bar', 'map', 'related_listings',
+            'trust_signals', 'cart_summary', 'checkout_form', 'account_nav', 'account_panel', 'generic',
+        ];
+        $p = 'javascript:alert(1)';
+        $item = [
+            'label' => 'L', 'name' => 'N', 'title' => 'T', 'text' => 'x', 'url' => $p, 'href' => $p,
+            'cta_url' => $p, 'link' => $p, 'image' => $p, 'price' => '$1', 'ref' => 'R', 'date' => 'd',
+            'status' => 's', 'total' => '$1', 'slug' => 's',
+        ];
+        foreach ($types as $t) {
+            $section = [
+                'type' => $t, 'heading' => 'H', 'cta_text' => 'Go', 'cta_url' => $p, 'cta_link' => $p,
+                'url' => $p, 'href' => $p, 'link' => $p, 'continue_shopping_url' => $p, 'logout_url' => $p,
+                'map_url' => $p, 'image' => $p, 'bg_image' => $p, 'background_image' => $p,
+                'items' => [$item, $item], 'events' => [$item], 'listings' => [$item],
+                'components' => [['type' => 'button', 'text' => 'B', 'href' => $p]], 'tab' => 'wishlist',
+            ];
+            try {
+                $html = $renderer->renderSection($section, self::BRAND, ['name' => 'T'], [], 'home');
+            } catch (\Throwable $e) {
+                continue; // a type that refuses this shape is not a vuln
+            }
+            $this->assertDoesNotMatchRegularExpression(
+                '/href="\s*(?:javascript|vbscript|data):/i', $html,
+                "section type '$t' emitted an executable-scheme href"
+            );
+        }
+    }
 }

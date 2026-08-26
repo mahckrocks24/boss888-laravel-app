@@ -605,7 +605,7 @@ class BuilderRenderer
             $color  = $active ? $brand['primary'] : 'rgba(255,255,255,.8)';
             $weight = $active ? '700' : '500';
             $border = $active ? "border-bottom:2px solid {$brand['primary']}" : 'border-bottom:2px solid transparent';
-            $navHtml .= "<a href=\"" . e($url) . "\" style=\"color:{$color};text-decoration:none;font-size:14px;font-weight:{$weight};{$border};padding-bottom:4px;transition:all .2s\">" . e($lbl) . "</a>";
+            $navHtml .= "<a href=\"" . $this->safeUrl((string) $url) . "\" style=\"color:{$color};text-decoration:none;font-size:14px;font-weight:{$weight};{$border};padding-bottom:4px;transition:all .2s\">" . e($lbl) . "</a>";
         }
 
         // BUILDER888 P0-3 (2026-08-09) — header CTA reaches every page.
@@ -1414,12 +1414,12 @@ HTML;
             ['label' => 'Wishlist',  'url' => '/account/wishlist'],
         ];
         $orient  = (string) ($sec['orientation'] ?? 'vertical');
-        $logout  = htmlspecialchars((string) ($sec['logout_url'] ?? '/logout'), ENT_QUOTES, 'UTF-8');
+        $logout  = $this->safeUrl((string) ($sec['logout_url'] ?? '/logout'), '/logout');
 
         $navItems = '';
         foreach ($items as $it) {
             $lbl    = htmlspecialchars((string) ($it['label'] ?? ''), ENT_QUOTES, 'UTF-8');
-            $url    = htmlspecialchars((string) ($it['url']   ?? '#'), ENT_QUOTES, 'UTF-8');
+            $url    = $this->safeUrl((string) ($it['url'] ?? '#'), '#');
             $active = !empty($it['active']);
             $bg     = $active ? "background:{$primary};color:{$onPrimary}" : 'background:transparent;color:#374151';
             $border = $orient === 'top' ? '' : 'border-radius:8px;';
@@ -1500,7 +1500,7 @@ HTML;
                     $n   = htmlspecialchars((string) ($it['name']  ?? ''), ENT_QUOTES, 'UTF-8');
                     $img = htmlspecialchars((string) ($it['image'] ?? ''), ENT_QUOTES, 'UTF-8');
                     $p   = htmlspecialchars((string) ($it['price'] ?? ''), ENT_QUOTES, 'UTF-8');
-                    $u   = htmlspecialchars((string) ($it['url']   ?? '#'), ENT_QUOTES, 'UTF-8');
+                    $u   = $this->safeUrl((string) ($it['url'] ?? '#'), '#');
                     $thumb = $img ? "<div style=\"width:100%;height:140px;background:url('{$img}') center/cover no-repeat\"></div>" : '';
                     $rows .= "<a href=\"{$u}\" style=\"text-decoration:none;color:inherit;background:#fff;border:1px solid #eef0f4;border-radius:12px;overflow:hidden;display:block\">{$thumb}<div style=\"padding:14px\"><div style=\"font-weight:600;color:#111827\">{$n}</div>" . ($p ? "<div style=\"font-size:14px;color:{$primary};margin-top:4px;font-weight:700\">{$p}</div>" : '') . "</div></a>";
                 }
@@ -1514,7 +1514,7 @@ HTML;
                     $date   = htmlspecialchars((string) ($it['date']   ?? ''), ENT_QUOTES, 'UTF-8');
                     $status = htmlspecialchars((string) ($it['status'] ?? ''), ENT_QUOTES, 'UTF-8');
                     $total  = htmlspecialchars((string) ($it['total']  ?? ''), ENT_QUOTES, 'UTF-8');
-                    $u      = htmlspecialchars((string) ($it['url']    ?? '#'), ENT_QUOTES, 'UTF-8');
+                    $u      = $this->safeUrl((string) ($it['url'] ?? '#'), '#');
                     $rows .= "<a href=\"{$u}\" style=\"display:flex;justify-content:space-between;align-items:center;padding:18px 24px;text-decoration:none;color:inherit;border-bottom:1px solid #eef0f4\">
         <div>
           <div style=\"font-weight:700;color:#111827\">{$ref}</div>
