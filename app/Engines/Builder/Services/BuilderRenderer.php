@@ -245,6 +245,18 @@ class BuilderRenderer
      * rgb(a)/hsl(a) with only numeric inner chars, and bare named colours; anything
      * else (containing " < ; ( outside those forms) falls back to the default.
      */
+    /**
+     * Coerce a brand font family to safe font-name characters so it cannot break out of a
+     * style="font-family:'...'" attribute (B7). Valid CSS family names are letters, digits,
+     * spaces, hyphens and underscores; anything else (" ' < ; } etc.) falls back to the default.
+     */
+    private function sanitizeFontName(?string $f, string $default): string
+    {
+        $f = trim((string) $f);
+        if ($f === '') { return $default; }
+        return preg_match('/^[a-zA-Z0-9 _-]{1,50}$/', $f) ? $f : $default;
+    }
+
     private function sanitizeCssColor(?string $c, string $default): string
     {
         $c = trim((string) $c);
@@ -264,7 +276,9 @@ class BuilderRenderer
         $accent    = $b['accent_color'] ?? $b['accent']          ?? '#F4F7FB';
         $accent = $this->sanitizeCssColor($accent, '#F4F7FB'); // B7: block style-attr breakout via brand colors
         $fh        = $b['font_heading'] ?? $b['heading_font']    ?? 'Syne';
+        $fh = $this->sanitizeFontName($fh, 'Syne'); // B7: block style-attr breakout via font names
         $fb        = $b['font_body']    ?? $b['body_font']       ?? 'DM Sans';
+        $fb = $this->sanitizeFontName($fb, 'DM Sans'); // B7: block style-attr breakout via font names
         return array_merge($b, [
             'primary' => $primary, 'primary_color' => $primary,
             'secondary' => $secondary, 'secondary_color' => $secondary,
@@ -1626,7 +1640,9 @@ HTML;
         public function getFullHtml(string $content, array $brand, string $siteName, string $pageTitle, array $seo = [], array $website = []): string
     {
         $fh = $brand['font_heading'] ?? 'Syne';
+        $fh = $this->sanitizeFontName($fh, 'Syne');
         $fb = $brand['font_body'] ?? 'DM Sans';
+        $fb = $this->sanitizeFontName($fb, 'DM Sans');
         $gfonts = urlencode($fh) . ':wght@400;700&family=' . urlencode($fb) . ':wght@400;500;600';
 
         $primary = $brand['primary'] ?? '#6C5CE7';

@@ -427,4 +427,43 @@ class RendererSecurityTest extends TestCase
         $this->assertStringContainsString('#6C5CE7', $ok, 'a legit hex brand color was dropped');
         $this->assertStringContainsString('rgb(0,229,168)', $ok, 'a legit rgb brand color was dropped');
     }
+
+    /**
+     * BRAND-FONT XSS (2026-08-26) — sibling of the brand-color fix: font_heading/font_body
+     * (workspace brand kit) were interpolated raw into style="font-family:'{$fh}',..." across
+     * section renderers + getFullHtml. A font of 'Inter" onmouseover="alert(1)' broke out of
+     * the style attribute (proven 6/7 sections + head). normaliseBrand now sanitizeFontName()s
+     * them ([a-zA-Z0-9 _-] only, else default).
+     */
+    public function test_brand_font_names_cannot_break_out_of_style_attributes(): void
+    {
+        $renderer = app(BuilderRenderer::class);
+        $types = ['hero', 'features', 'cta', 'header', 'footer', 'pricing', 'grid', 'testimonials', 'faq'];
+        foreach (['font_heading', 'font_body'] as $field) {
+            foreach (['Inter" onmouseover="alert(1)', 'Inter"><script>alert(1)</script>'] as $payload) {
+                $brand = ['primary' => '#111',
+                          'font_heading' => $field === 'font_heading' ? $payload : 'Inter',
+                          'font_body'    => $field === 'font_body' ? $payload : 'Inter'];
+                foreach ($types as $t) {
+                    try {
+                        $html = $renderer->renderSection(['type' => $t, 'heading' => 'H', 'cta_text' => 'Go',
+                            'items' => [['title' => 'a', 'text' => 'b']]], $brand, ['name' => 'T'], [], 'home');
+                    } catch (\Throwable $e) { continue; }
+                    $this->assertDoesNotMatchRegularExpression(
+                        '/on[a-z]+="alert\(1\)|"><script>alert\(1\)/i', $html,
+                        "brand font broke out of a style attribute on '$t' via $field: $payload"
+                    );
+                }
+            }
+        }
+
+        // Legit fonts survive (verify the sanitizer directly — hero renderSection emits only
+        // font_heading, so a section render is not a reliable probe for font_body).
+        $m = new \ReflectionMethod($renderer, 'sanitizeFontName');
+        $m->setAccessible(true);
+        $this->assertSame('DM Sans', $m->invoke($renderer, 'DM Sans', 'X'));
+        $this->assertSame('Playfair Display', $m->invoke($renderer, 'Playfair Display', 'X'));
+        $this->assertSame('Inter', $m->invoke($renderer, 'Inter', 'X'));
+        $this->assertSame('FB', $m->invoke($renderer, 'evil" onmouseover=x', 'FB'));
+    }
 }
