@@ -685,6 +685,17 @@ class BuilderService
         $oldSectionsForSync = [];
         if ($isSectionsEdit) {
             $existingRaw = DB::table('pages')->where('id', $pageId)->value('sections_json');
+            // RISK-0100 — opt-in optimistic lock. If the caller sent the base_version
+            // it loaded, refuse the save (409) when the stored content has changed
+            // since, instead of silently overwriting a concurrent edit. No base_version
+            // => backward-compatible last-write-wins (still snapshot-recoverable).
+            $baseVersion = $data['base_version'] ?? null;
+            if ($baseVersion !== null && $baseVersion !== '') {
+                $currentVersion = sha1((string) ($existingRaw ?? ''));
+                if (! hash_equals($currentVersion, (string) $baseVersion)) {
+                    throw new \App\Engines\Builder\Exceptions\BuilderConflictException();
+                }
+            }
             $existing = $existingRaw ? json_decode($existingRaw, true) : [];
             $oldSectionsForSync = isset($existing['sections']) && is_array($existing['sections'])
                 ? $existing['sections'] : (is_array($existing) ? $existing : []);
@@ -823,7 +834,13 @@ class BuilderService
               ->where('websites.workspace_id', $wsId)
               ->select('pages.*');
         }
-        return $q->first();
+        $page = $q->first();
+        if ($page) {
+            // RISK-0100 — optimistic-lock token: a content hash the editor can echo
+            // back on save so a concurrent overwrite is detected (see updatePage).
+            $page->version = sha1((string) ($page->sections_json ?? ''));
+        }
+        return $page;
     }
 
     /**

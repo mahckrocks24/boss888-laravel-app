@@ -68,6 +68,9 @@ use Illuminate\Support\Facades\Route;
             // which evaluated to a bool and threw the JSON response away.
             try {
                 app($s)->updatePage((int) $id, $r->all(), (int) $r->attributes->get('workspace_id'));
+            } catch (\App\Engines\Builder\Exceptions\BuilderConflictException $e) {
+                // RISK-0100 — concurrent overwrite refused truthfully.
+                return response()->json(['error' => $e->getMessage(), 'conflict' => true], 409);
             } catch (\RuntimeException $e) {
                 return response()->json(['error' => 'Page not found'], 404);
             }
