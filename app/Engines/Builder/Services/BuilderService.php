@@ -229,6 +229,18 @@ class BuilderService
 
     public function publishWebsite(int $websiteId): array
     {
+        // B8/B14 — never publish a URL-less site ("published but no address").
+        // The canonical UI route 422s on a missing subdomain, but the
+        // publish_website capability (Sarah/agent) + async Orchestrator call this
+        // service directly and the capability wrapper hard-codes action:published;
+        // enforce the URL requirement HERE so every path fails truthfully.
+        $wRow = DB::table('websites')->where('id', $websiteId)
+            ->first(['subdomain', 'custom_domain', 'domain_verified']);
+        $hasUrl = $wRow && (! empty($wRow->subdomain)
+            || (! empty($wRow->custom_domain) && (bool) ($wRow->domain_verified ?? false)));
+        if (! $hasUrl) {
+            throw new \RuntimeException('Cannot publish: set a web address (subdomain) or a verified custom domain first.');
+        }
         DB::table('websites')->where('id', $websiteId)->update([
             'status' => 'published', 'published_at' => now(), 'updated_at' => now(),
         ]);
