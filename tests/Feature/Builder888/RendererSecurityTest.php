@@ -348,4 +348,47 @@ class RendererSecurityTest extends TestCase
             $this->assertSame($legit, $m->invoke($bs, $legit), "legit HTML was altered: $legit");
         }
     }
+
+    /**
+     * HEAD XSS (2026-08-26) — getFullHtml built the served-page <head> with $fullTitle
+     * (meta_title + business name) raw in <title>/og:title/twitter:title, $heroImg raw in
+     * og:image/twitter:image, and JSON-LD via json_encode WITHOUT JSON_HEX_TAG. So a business
+     * name / meta_title of "</title><script>", a javascript: hero image, or a name/AEO JSON
+     * containing "</script>" was auto-executing stored XSS on every served page. Fixed
+     * (e() title, safeUrl() hero image, JSON_HEX_TAG on both JSON-LD encodes).
+     */
+    public function test_served_page_head_cannot_be_injected(): void
+    {
+        $renderer = app(BuilderRenderer::class);
+        $m = new \ReflectionMethod($renderer, 'getFullHtml');
+        $m->setAccessible(true);
+        $brand = ['primary' => '#111', 'font_heading' => 'Inter', 'font_body' => 'Inter'];
+
+        $siteName = '</title><script>alert(document.cookie)</script>';
+        $seo = [
+            'meta_title'       => 'X"><script>alert(1)</script>',
+            'meta_description' => '"><script>alert(2)</script>',
+            'hero_image'       => 'javascript:alert(3)',
+            'page_url'         => 'https://a.levelupgrowth.io/',
+            'jsonld_json'      => json_encode(['@type' => 'Article', 'headline' => '</script><script>alert(4)</script>']),
+        ];
+        $html = $m->invoke($renderer, '<main>b</main>', $brand, $siteName, 'Home', $seo, []);
+        $head = substr($html, 0, stripos($html, '</head>') ?: 3000);
+
+        $this->assertStringNotContainsStringIgnoringCase('</title><script>', $head);
+        $this->assertDoesNotMatchRegularExpression('/<script>alert/i', $head, 'raw <script> in head');
+        $this->assertStringNotContainsString('"><script', $head, 'attribute breakout in head');
+        $this->assertDoesNotMatchRegularExpression('/og:image"\s+content="\s*javascript:/i', $head, 'javascript: og:image');
+        $this->assertDoesNotMatchRegularExpression('#</script><script>alert#i', $head, 'JSON-LD </script> breakout');
+
+        // Legit head is preserved.
+        $ok = $m->invoke($renderer, '<main>b</main>', $brand, 'Acme Dental', 'Home', [
+            'meta_title' => 'Best Dentist in Austin', 'meta_description' => 'We care.',
+            'hero_image' => '/storage/hero.jpg', 'page_url' => 'https://acme.levelupgrowth.io/',
+        ], []);
+        $okHead = substr($ok, 0, stripos($ok, '</head>') ?: 3000);
+        $this->assertStringContainsString('Best Dentist in Austin', $okHead);
+        $this->assertStringContainsString('content="/storage/hero.jpg"', $okHead);
+        $this->assertStringContainsString('Acme Dental', $okHead, 'business name missing from JSON-LD');
+    }
 }

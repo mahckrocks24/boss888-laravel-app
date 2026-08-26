@@ -1611,11 +1611,11 @@ HTML;
         $gfonts = urlencode($fh) . ':wght@400;700&family=' . urlencode($fb) . ':wght@400;500;600';
 
         $primary = $brand['primary'] ?? '#6C5CE7';
-        $fullTitle = ($seo['meta_title'] ?? $pageTitle) . ' — ' . $siteName;
+        $fullTitle = e(($seo['meta_title'] ?? $pageTitle) . ' — ' . $siteName); // B7: escape into <title>/og:title/twitter:title
         $desc = e($seo['meta_description'] ?? '');
         $pageUrl = $seo['page_url'] ?? '';
         $siteUrl = $seo['site_url'] ?? '';
-        $heroImg = $seo['hero_image'] ?? '';
+        $heroImg = $this->safeUrl((string) ($seo['hero_image'] ?? ''), ''); // B7: scheme-guard + escape for og:image/twitter:image content
         $initial = mb_strtoupper(mb_substr($siteName, 0, 1));
 
         // Primary meta
@@ -1658,7 +1658,7 @@ HTML;
             'url' => $siteUrl ?: $pageUrl,
         ];
         if ($desc) $schema['description'] = html_entity_decode($desc);
-        $schemaJson = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $schemaJson = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG); // B7: block </script> breakout
         $metaHtml .= "    <script type=\"application/ld+json\">{$schemaJson}</script>\n";
 
         // Wave 45 — page-level Article/FAQPage JSON-LD from aeo_enrich.
@@ -1669,7 +1669,7 @@ HTML;
             // Validate it's parseable JSON before injecting.
             $decoded = json_decode($aeoJsonld, true);
             if (is_array($decoded)) {
-                $aeoOut = json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+                $aeoOut = json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG); // B7: block </script> breakout
                 $metaHtml .= "    <script type=\"application/ld+json\">{$aeoOut}</script>\n";
             }
         }
