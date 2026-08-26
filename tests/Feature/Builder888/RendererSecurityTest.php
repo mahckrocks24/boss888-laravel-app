@@ -391,4 +391,40 @@ class RendererSecurityTest extends TestCase
         $this->assertStringContainsString('content="/storage/hero.jpg"', $okHead);
         $this->assertStringContainsString('Acme Dental', $okHead, 'business name missing from JSON-LD');
     }
+
+    /**
+     * BRAND-COLOR XSS (2026-08-26) — $primary/$secondary/$accent (from the workspace brand
+     * kit) were interpolated raw into style="...{$primary}..." attributes across every section
+     * renderer. A brand color of 'red" onmouseover="alert(1)' or 'red"><script>...' broke out
+     * of the style attribute -> event-handler / <script> injection (proven 7/7). normaliseBrand
+     * now sanitizeCssColor()s them (hex / rgb(a) / hsl(a) / named, else default). Detection is
+     * payload-specific so it does not trip on legitimate hardcoded hover onmouseover handlers.
+     */
+    public function test_brand_colors_cannot_break_out_of_style_attributes(): void
+    {
+        $renderer = app(BuilderRenderer::class);
+        $types = ['hero', 'features', 'cta', 'header', 'footer', 'pricing', 'grid',
+                  'testimonials', 'faq', 'stats', 'gallery', 'team', 'cart_summary', 'account_nav'];
+        foreach (['red" onmouseover="alert(1)', 'red"><script>alert(1)</script>', 'red;background:url(x)'] as $payload) {
+            $brand = ['primary' => $payload, 'secondary' => $payload, 'accent' => $payload,
+                      'font_heading' => 'Inter', 'font_body' => 'Inter'];
+            foreach ($types as $t) {
+                try {
+                    $html = $renderer->renderSection(['type' => $t, 'heading' => 'H', 'cta_text' => 'Go',
+                        'items' => [['title' => 'a', 'text' => 'b']]], $brand, ['name' => 'T'], [], 'home');
+                } catch (\Throwable $e) { continue; }
+                $this->assertDoesNotMatchRegularExpression(
+                    '/on[a-z]+="alert\(1\)|"><script>alert\(1\)/i', $html,
+                    "brand color broke out of a style attribute on section type '$t': $payload"
+                );
+            }
+        }
+
+        // Legit colors are preserved (hex + rgb + named).
+        $ok = $renderer->renderSection(['type' => 'hero', 'heading' => 'H'],
+            ['primary' => '#6C5CE7', 'secondary' => 'rgb(0,229,168)', 'accent' => 'red',
+             'font_heading' => 'Inter', 'font_body' => 'Inter'], ['name' => 'T'], [], 'home');
+        $this->assertStringContainsString('#6C5CE7', $ok, 'a legit hex brand color was dropped');
+        $this->assertStringContainsString('rgb(0,229,168)', $ok, 'a legit rgb brand color was dropped');
+    }
 }

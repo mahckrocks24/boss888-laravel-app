@@ -239,11 +239,30 @@ class BuilderRenderer
     // match arm → they fell to renderGeneric, which reads only heading/body and
     // SILENTLY DROPPED items[]/tiers[]/members[]. Proven live 2026-07-02.
 
+    /**
+     * Coerce a brand colour to a SAFE CSS colour so it cannot break out of a
+     * style="..." attribute (B7: 'red" onmouseover="alert(1)' etc.). Allows hex,
+     * rgb(a)/hsl(a) with only numeric inner chars, and bare named colours; anything
+     * else (containing " < ; ( outside those forms) falls back to the default.
+     */
+    private function sanitizeCssColor(?string $c, string $default): string
+    {
+        $c = trim((string) $c);
+        if ($c === '') { return $default; }
+        if (preg_match('/^#[0-9a-fA-F]{3,8}$/', $c)) { return $c; }
+        if (preg_match('/^(?:rgb|rgba|hsl|hsla)\(\s*[0-9.,%\s\/]+\)$/i', $c)) { return $c; }
+        if (preg_match('/^[a-zA-Z]{1,30}$/', $c)) { return $c; }
+        return $default;
+    }
+
     private function normaliseBrand(array $b): array
     {
         $primary   = $b['primary']      ?? $b['primary_color']   ?? '#6C5CE7';
+        $primary = $this->sanitizeCssColor($primary, '#6C5CE7'); // B7: block style-attr breakout via brand colors
         $secondary = $b['secondary']    ?? $b['secondary_color'] ?? '#00E5A8';
+        $secondary = $this->sanitizeCssColor($secondary, '#00E5A8'); // B7: block style-attr breakout via brand colors
         $accent    = $b['accent_color'] ?? $b['accent']          ?? '#F4F7FB';
+        $accent = $this->sanitizeCssColor($accent, '#F4F7FB'); // B7: block style-attr breakout via brand colors
         $fh        = $b['font_heading'] ?? $b['heading_font']    ?? 'Syne';
         $fb        = $b['font_body']    ?? $b['body_font']       ?? 'DM Sans';
         return array_merge($b, [
@@ -1611,6 +1630,7 @@ HTML;
         $gfonts = urlencode($fh) . ':wght@400;700&family=' . urlencode($fb) . ':wght@400;500;600';
 
         $primary = $brand['primary'] ?? '#6C5CE7';
+        $primary = $this->sanitizeCssColor($primary, '#6C5CE7');
         $fullTitle = e(($seo['meta_title'] ?? $pageTitle) . ' — ' . $siteName); // B7: escape into <title>/og:title/twitter:title
         $desc = e($seo['meta_description'] ?? '');
         $pageUrl = $seo['page_url'] ?? '';
