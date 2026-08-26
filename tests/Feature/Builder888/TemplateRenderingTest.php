@@ -288,4 +288,35 @@ class TemplateRenderingTest extends TestCase
             'an empty repeated-item grid survived'
         );
     }
+
+    /**
+     * DUPLICATE IDs (2026-08-26) — 13 templates rendered duplicate id attributes (a
+     * contact-info section and a contact-form section both id="contact"; interior_design
+     * had id="contact-form" twice). Duplicate ids are invalid HTML and break #anchor
+     * navigation, getElementById and ARIA references. Estate-wide guard: every template
+     * must render a unique id set.
+     */
+    public function test_no_template_renders_duplicate_id_attributes(): void
+    {
+        $dirs = glob(storage_path('templates/*'), GLOB_ONLYDIR);
+        $this->assertNotEmpty($dirs, 'no templates found');
+        $svc = app(TemplateService::class);
+        $offenders = [];
+        foreach ($dirs as $dir) {
+            $ind = basename($dir);
+            if (!is_file($dir . '/template.html')) { continue; }
+            try {
+                $html = $svc->render($ind, ['business_name' => 'Regression Fixture'], null);
+            } catch (\Throwable $e) {
+                continue; // a missing/invalid template is a separate concern
+            }
+            preg_match_all('/\sid="([^"]+)"/i', $html, $m);
+            $counts = array_count_values($m[1]);
+            $dups = array_filter($counts, fn ($c) => $c > 1);
+            if ($dups) {
+                $offenders[] = $ind . ': ' . implode(',', array_keys($dups));
+            }
+        }
+        $this->assertSame([], $offenders, "templates rendered duplicate ids:\n" . implode("\n", $offenders));
+    }
 }
