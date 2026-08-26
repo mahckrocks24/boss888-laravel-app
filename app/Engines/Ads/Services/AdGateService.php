@@ -88,7 +88,12 @@ final class AdGateService
             $planSlug = $this->planSlug($workspaceId);
             $eligible = array_map('strval', $this->settings->array(AdSettings::ELIGIBLE_PLAN_SLUGS));
 
-            if (! in_array($planSlug, $eligible, true)) {
+            // Owner directive: ads show on free sites AND on not-yet-paying TRIALS.
+            // A trialing account resolves to the paid plan slug it is trialing, so
+            // slug-eligibility alone would wrongly exempt it. Allow it while it is
+            // trialing; the moment the trial converts to a paid/active sub the slug
+            // check applies again and ads stop.
+            if (! in_array($planSlug, $eligible, true) && ! $this->isTrialing($workspaceId)) {
                 return $this->deny(self::DENY_PLAN_NOT_ELIGIBLE, $workspaceId, $planSlug);
             }
 
@@ -120,6 +125,24 @@ final class AdGateService
     public function allows(int $websiteId): bool
     {
         return $this->evaluate($websiteId)['allowed'];
+    }
+
+    /**
+     * True when the workspace has a live TRIALING subscription (not yet paying).
+     * Such accounts are ad-eligible per the Owner directive even though their
+     * plan slug is the paid plan they are trialing.
+     */
+    private function isTrialing(int $workspaceId): bool
+    {
+        try {
+            return DB::table('subscriptions')
+                ->where('workspace_id', $workspaceId)
+                ->where('status', 'trialing')
+                ->whereNull('cancelled_at')
+                ->exists();
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     /**
