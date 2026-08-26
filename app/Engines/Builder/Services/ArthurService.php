@@ -3878,6 +3878,31 @@ PROMPT;
     public function buildDefaultSectionsForPage(string $slug, array $data): array
     {
         $sections = $this->buildRawPageSections($slug, $data);
+        // RISK-0097 residue — carry the industry hero image into hero sections so the
+        // dynamic renderer (structural-edit fallback) shows a hero image like the
+        // static template, not an imageless hero. Runs on the always-built skeleton.
+        // Leading-slash-normalized (some builder_default_assets rows lack it).
+        try {
+            $heroUrl = trim((string) ($data['hero_image'] ?? ''));
+            if ($heroUrl === '') {
+                $ind = $this->confidentSlugFromText((string) ($data['industry'] ?? '')) ?: '';
+                if ($ind !== '') {
+                    $heroUrl = (string) DB::table('builder_default_assets')
+                        ->where('asset_type', 'hero')->where('industry', $ind)->value('url');
+                }
+            }
+            if ($heroUrl !== '') {
+                if ($heroUrl[0] !== '/' && ! preg_match('#^https?://#', $heroUrl)) {
+                    $heroUrl = '/' . ltrim($heroUrl, '/');
+                }
+                foreach ($sections as &$sec) {
+                    if (($sec['type'] ?? '') === 'hero' && empty($sec['background_image'])) {
+                        $sec['background_image'] = $heroUrl;
+                    }
+                }
+                unset($sec);
+            }
+        } catch (\Throwable $e) { /* non-fatal: hero stays imageless */ }
         try {
             $sections = $this->enrichPageSections($sections, $data, $slug);
         } catch (\Throwable $e) {
