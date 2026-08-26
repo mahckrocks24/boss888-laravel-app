@@ -667,6 +667,16 @@ class BuilderService
         // recorded in canvas_states so it can be undone via
         // /api/builder/pages/{id}/restore/{stateId}.
         $isSectionsEdit = isset($data['sections']) || isset($data['sections_json']);
+        // RISK-0097: snapshot the pre-edit sections so the static export can be patched
+        // in place (below) rather than deleted (which drops the site to the sparser
+        // dynamic renderer).
+        $oldSectionsForSync = [];
+        if ($isSectionsEdit) {
+            $existingRaw = DB::table('pages')->where('id', $pageId)->value('sections_json');
+            $existing = $existingRaw ? json_decode($existingRaw, true) : [];
+            $oldSectionsForSync = isset($existing['sections']) && is_array($existing['sections'])
+                ? $existing['sections'] : (is_array($existing) ? $existing : []);
+        }
         if ($isSectionsEdit) {
             try {
                 app(\App\Engines\Builder\Services\BuilderSnapshotService::class)
@@ -710,12 +720,29 @@ class BuilderService
         // success. Invalidate the edited page's static export so it re-serves fresh.
         if ($isSectionsEdit) {
             try {
-                $pg = DB::table('pages')->where('id', $pageId)->first(['website_id', 'slug', 'is_homepage']);
+                $pg = DB::table('pages')->where('id', $pageId)->first(['website_id', 'slug', 'is_homepage', 'sections_json']);
                 if ($pg && $pg->website_id) {
-                    $this->invalidateStaticExport((int) $pg->website_id, $pg->slug ?? null, (bool) ($pg->is_homepage ?? false));
+                    // RISK-0097 — patch the static export IN PLACE (preserve the polished
+                    // template + reflect the edit). Only delete the export (fall back to
+                    // the dynamic renderer) when the patch cannot cover every change
+                    // (structural) or there is no static export to patch.
+                    $newRaw  = $pg->sections_json ? json_decode($pg->sections_json, true) : [];
+                    $newFlat = isset($newRaw['sections']) && is_array($newRaw['sections'])
+                        ? $newRaw['sections'] : (is_array($newRaw) ? $newRaw : []);
+                    $sync = app(\App\Engines\Builder\Services\ArthurEditService::class)
+                        ->syncStaticFromSections((int) $pg->website_id, $oldSectionsForSync, $newFlat);
+                    if (! ($sync['is_static'] ?? false) || ! empty($sync['missed'])) {
+                        $this->invalidateStaticExport((int) $pg->website_id, $pg->slug ?? null, (bool) ($pg->is_homepage ?? false));
+                    }
                 }
             } catch (\Throwable $e) {
-                Log::warning('[Builder] static export invalidation failed', ['page_id' => $pageId, 'error' => $e->getMessage()]);
+                Log::warning('[Builder] static export sync/invalidate failed', ['page_id' => $pageId, 'error' => $e->getMessage()]);
+                try {
+                    $pgF = DB::table('pages')->where('id', $pageId)->first(['website_id', 'slug', 'is_homepage']);
+                    if ($pgF && $pgF->website_id) {
+                        $this->invalidateStaticExport((int) $pgF->website_id, $pgF->slug ?? null, (bool) ($pgF->is_homepage ?? false));
+                    }
+                } catch (\Throwable $e2) { /* give up safely */ }
             }
         }
 

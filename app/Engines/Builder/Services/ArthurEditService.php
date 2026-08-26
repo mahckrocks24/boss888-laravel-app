@@ -394,6 +394,46 @@ PROMPT;
      *
      * @return array{is_static:bool, applied:int, missed:array<int,string>}
      */
+    /**
+     * RISK-0097 — reflect a direct sections save (BuilderService::updatePage) on the
+     * static export IN PLACE (template polish preserved). Diffs changed top-level
+     * scalar fields between old and new sections into update_text/update_image actions
+     * and reuses syncStaticHtml/TemplateService::updateField. Returns
+     * {is_static,applied,missed}; is_static=false (no static export) or a non-empty
+     * missed[] tells the caller to fall back to a dynamic re-serve for those changes.
+     */
+    public function syncStaticFromSections(int $websiteId, array $oldSections, array $newSections): array
+    {
+        $actions = [];
+        foreach ($newSections as $idx => $sec) {
+            if (! is_array($sec)) {
+                continue;
+            }
+            $old = (is_array($oldSections) && isset($oldSections[$idx]) && is_array($oldSections[$idx]))
+                ? $oldSections[$idx] : [];
+            foreach ($sec as $field => $val) {
+                if (! is_scalar($val) || $val === '') {
+                    continue;
+                }
+                $oldVal = $old[$field] ?? null;
+                if (is_scalar($oldVal) && (string) $oldVal === (string) $val) {
+                    continue;
+                }
+                $op = (is_string($field) && stripos($field, 'image') !== false) ? 'update_image' : 'update_text';
+                $actions[] = ['op' => $op, 'section_index' => (int) $idx, 'field' => (string) $field, 'value' => $val];
+            }
+        }
+        // Also treat added/removed sections as a structural change the in-place patcher
+        // cannot represent -> force a dynamic fallback.
+        if (count($newSections) !== count($oldSections)) {
+            return ['is_static' => true, 'applied' => 0, 'missed' => ['structural: section count changed']];
+        }
+        if (empty($actions)) {
+            return ['is_static' => false, 'applied' => 0, 'missed' => []];
+        }
+        return $this->syncStaticHtml($websiteId, $newSections, $actions);
+    }
+
     private function syncStaticHtml(int $websiteId, array $sections, array $actions): array
     {
         $out = ['is_static' => false, 'applied' => 0, 'missed' => []];
