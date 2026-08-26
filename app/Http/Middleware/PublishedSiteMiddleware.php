@@ -271,6 +271,12 @@ class PublishedSiteMiddleware
                     return redirect($redirect['target'], $redirect['code'])
                         ->header('X-Served-By', 'seo-redirect');
                 }
+
+                // No published article for this slug and no redirect. Do NOT fall
+                // through to $next — that serves the PLATFORM blog SPA and leaks the
+                // platform brand ("LevelUpGrowth Blog") onto the tenant's domain.
+                // Send the visitor to the tenant's OWN on-brand blog index instead.
+                return redirect('/blog', 302)->header('X-Served-By', 'blog-article-not-found');
             }
         }
 
