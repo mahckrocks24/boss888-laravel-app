@@ -299,4 +299,53 @@ class RendererSecurityTest extends TestCase
                 "section type '$t' emitted a raw <script> from user text");
         }
     }
+
+    /**
+     * RAW_DOCUMENT WRITE-GUARD (2026-08-26) — import_html_page is auto-approved and its
+     * raw_document is served verbatim (no CSP), so BuilderService::stripActiveContentFromRawDoc
+     * is the XSS defense. It leaked slash-separated event handlers (<img/onerror=...>,
+     * <svg/onload=...> — auto-executing), meta-refresh-to-javascript, data:text/html hrefs,
+     * and iframe/object/embed. Hardened (RISK-0095 interim). Assert the bypasses are stripped
+     * and legitimate imported HTML (inline data:image, normal links/imgs) is preserved.
+     */
+    public function test_raw_document_write_guard_strips_known_bypasses(): void
+    {
+        $bs = app(\App\Engines\Builder\Services\BuilderService::class);
+        $m = new \ReflectionMethod($bs, 'stripActiveContentFromRawDoc');
+        $m->setAccessible(true);
+
+        $bypasses = [
+            '<script>alert(1)</script>',
+            '<img src=x onerror=alert(1)>',
+            '<img/src=x/onerror=alert(1)>',
+            '<svg/onload=alert(1)>',
+            '<svg onload="alert(1)">',
+            '<a href="javascript:alert(1)">x</a>',
+            '<a href="data:text/html,x">x</a>',
+            '<meta http-equiv="refresh" content="0;url=javascript:alert(1)">',
+            '<iframe src="javascript:alert(1)"></iframe>',
+            '<iframe src="https://evil.tld"></iframe>',
+            '<body onload=alert(1)>',
+        ];
+        foreach ($bypasses as $html) {
+            $out = $m->invoke($bs, $html);
+            $this->assertDoesNotMatchRegularExpression('/\bon[a-z]+\s*=/i', $out, "event handler survived: $html");
+            $this->assertStringNotContainsStringIgnoringCase('<script', $out, "script survived: $html");
+            $this->assertDoesNotMatchRegularExpression('#(?:href|src|action)\s*=\s*["\']?\s*javascript:#i', $out, "javascript: url survived: $html");
+            $this->assertStringNotContainsStringIgnoringCase('data:text/html', $out, "data:text/html survived: $html");
+            $this->assertDoesNotMatchRegularExpression('/<(?:iframe|object|embed)/i', $out, "embedding tag survived: $html");
+            $this->assertDoesNotMatchRegularExpression('/http-equiv\s*=\s*["\']?\s*refresh/i', $out, "meta refresh survived: $html");
+        }
+
+        // Legitimate imported HTML must be preserved unchanged.
+        foreach ([
+            '<img src="data:image/png;base64,iVBORw0KGgo=">',
+            '<a href="/about" class="btn">About</a>',
+            '<img src="/storage/hero.jpg" alt="Hero">',
+            '<div class="online-now">We are online</div>',
+            '<h1>Title</h1><p>Body text here.</p>',
+        ] as $legit) {
+            $this->assertSame($legit, $m->invoke($bs, $legit), "legit HTML was altered: $legit");
+        }
+    }
 }

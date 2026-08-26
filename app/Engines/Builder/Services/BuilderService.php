@@ -498,10 +498,17 @@ class BuilderService
     {
         $html = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $html) ?? $html;
         $html = preg_replace('#<script\b[^>]*/?>#is', '', $html) ?? $html;
-        $html = preg_replace('#\son[a-z]+\s*=\s*"[^"]*"#i', '', $html) ?? $html;
-        $html = preg_replace("#\son[a-z]+\s*=\s*'[^']*'#i", '', $html) ?? $html;
-        $html = preg_replace('#\son[a-z]+\s*=\s*[^\s>]+#i', '', $html) ?? $html;
+        // Dangerous embedding / redirect tags (served verbatim, no CSP) — RISK-0095 interim.
+        $html = preg_replace('#<(iframe|object|embed|base)\b[^>]*>.*?</\1\s*>#is', '', $html) ?? $html;
+        $html = preg_replace('#<(iframe|object|embed|base)\b[^>]*/?>#is', '', $html) ?? $html;
+        $html = preg_replace('#<meta\b[^>]*http-equiv\s*=\s*("|\x27)?\s*refresh\b[^>]*>#is', '', $html) ?? $html;
+        // Event handlers: allow a WHITESPACE **or SLASH** separator (<img/onerror=...>).
+        $html = preg_replace('#[\s/]on[a-z]+\s*=\s*"[^"]*"#i', ' ', $html) ?? $html;
+        $html = preg_replace("#[\s/]on[a-z]+\s*=\s*'[^']*'#i", ' ', $html) ?? $html;
+        $html = preg_replace('#[\s/]on[a-z]+\s*=\s*[^\s>]+#i', ' ', $html) ?? $html;
+        // Executable + text/html schemes in url attrs (data:image/* etc. preserved).
         $html = preg_replace('#(href|src|action)\s*=\s*("|\x27)\s*(?:javascript|vbscript):[^"\x27]*\2#i', '$1=$2#$2', $html) ?? $html;
+        $html = preg_replace('#(href|src|action)\s*=\s*("|\x27)\s*data:text/html[^"\x27]*\2#i', '$1=$2#$2', $html) ?? $html;
         return $html;
     }
 
