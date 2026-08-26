@@ -319,4 +319,43 @@ class TemplateRenderingTest extends TestCase
         }
         $this->assertSame([], $offenders, "templates rendered duplicate ids:\n" . implode("\n", $offenders));
     }
+
+    /**
+     * DEAD SOCIAL LINKS (2026-08-26) — social-icon links (<a href="{{social_x}}"
+     * data-field="social_x">) rendered as dead href="" links when the business did not
+     * configure that network (social handles are never fabricated). A dead <a href="">
+     * reloads the page. stripEmptySocialLinks() drops the empty ones and any social
+     * container left with no links; configured networks are preserved.
+     */
+    public function test_unconfigured_social_links_do_not_render_as_dead_links(): void
+    {
+        $svc = app(TemplateService::class);
+
+        // No socials configured: no dead social link, no empty social container survives.
+        $html = $svc->render('dental', ['business_name' => 'Test Co'], null);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<a\b[^>]*data-field="social_[^"]*"[^>]*href=""/i', $html,
+            'a social link rendered with data-field before an empty href'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<a\b[^>]*href=""[^>]*data-field="social_/i', $html,
+            'a social link rendered with an empty href'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '#<div class="[^"]*footer-socials?[^"]*">\s*</div>#i', $html,
+            'an empty social container survived'
+        );
+
+        // Two configured: exactly those two survive, container stays.
+        $html2 = $svc->render('dental', [
+            'business_name'    => 'Test Co',
+            'social_facebook'  => 'https://facebook.com/testco',
+            'social_instagram' => 'https://instagram.com/testco',
+        ], null);
+        $this->assertStringContainsString('https://facebook.com/testco', $html2);
+        $this->assertStringContainsString('https://instagram.com/testco', $html2);
+        preg_match_all('/<a\b[^>]*data-field="social_[^"]*"[^>]*>/i', $html2, $links);
+        $this->assertCount(2, $links[0], 'exactly the two configured social links should remain');
+        $this->assertStringContainsString('footer-social', $html2, 'the social container should remain when links exist');
+    }
 }

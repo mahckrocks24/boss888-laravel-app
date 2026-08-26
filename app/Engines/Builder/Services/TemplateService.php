@@ -156,6 +156,10 @@ class TemplateService
         // A section whose entire repeated-item grid is now empty (e.g. a business
         // with no certifications) would render as a lone heading over nothing.
         $html = $this->stripEmptySections($html);
+        // Social icons whose URL the business did not set resolve to href="" —
+        // a dead link that reloads the page. Drop them (social handles are never
+        // fabricated), and any social container left with no links.
+        $html = $this->stripEmptySocialLinks($html);
         // Decode HTML entities (fixes &RARR; showing as literal text)
         $html = str_replace(['&RARR;', '&rarr;', '&amp;rarr;'], '→', $html);
         $html = str_replace(['&LARR;', '&larr;', '&amp;larr;'], '←', $html);
@@ -282,6 +286,40 @@ class TemplateService
                 $q = preg_quote($idm[1], '~');
                 $html = preg_replace('~<a\b[^>]*href="#' . $q . '"[^>]*>.*?</a>\s*~is', '', $html) ?? $html;
             }
+        }
+        return $html;
+    }
+
+    /**
+     * Remove dead social-icon links. A social anchor whose href resolved empty
+     * (<a href="" ... data-field="social_*">) is a dead link that reloads the page;
+     * social handles are customer data that is never fabricated, so an unset network
+     * simply should not render. After removing the empty ones, a social container
+     * (class contains "social") left with no <a> children is removed too so no empty
+     * icon row remains.
+     */
+    private function stripEmptySocialLinks(string $html): string
+    {
+        // Drop <a ... href="" ... data-field="social_*" ...>...</a> (icon may nest svg).
+        $html = preg_replace(
+            '~<a\b(?=[^>]*\bhref="")(?=[^>]*\bdata-field="social_[a-z0-9_]+")[^>]*>.*?</a>\s*~is',
+            '',
+            $html
+        ) ?? $html;
+        // Remove a now-empty social container. The estate uses exactly two social-link
+        // container classes (footer-social / footer-socials) and no other "social" class,
+        // so this cannot hit a social-proof/testimonial block. Flat (no nested div) in the
+        // templates; a couple of passes cover any minor nesting.
+        for ($i = 0; $i < 3; $i++) {
+            $new = preg_replace_callback(
+                '~<(div|ul|nav)\b[^>]*class="[^"]*footer-socials?[^"]*"[^>]*>(.*?)</\1>\s*~is',
+                function ($m) {
+                    return stripos($m[2], '<a') === false ? '' : $m[0];
+                },
+                $html
+            );
+            if ($new === null || $new === $html) { break; }
+            $html = $new;
         }
         return $html;
     }
