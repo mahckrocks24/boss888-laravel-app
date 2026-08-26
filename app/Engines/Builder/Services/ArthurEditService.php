@@ -55,6 +55,20 @@ class ArthurEditService
         if (! $page) {
             throw new \RuntimeException("Page {$pageId} not found");
         }
+        // TENANCY (B2/B7 IDOR): when a workspace context is supplied the page MUST
+        // belong to it. Mirrors BuilderService::updatePage + the RISK-0092 sibling
+        // guards (publish_website/generate_page/update_page). Without this the
+        // ai_builder_action capability would LLM-edit + save a FOREIGN workspace's
+        // page. Conditional on workspace_id so callers that legitimately omit it
+        // (and pre-check ownership themselves, e.g. ArthurEditController) still work.
+        $wsCtx = (int) ($context['workspace_id'] ?? 0);
+        if ($wsCtx > 0 && ! DB::table('pages')
+                ->join('websites', 'websites.id', '=', 'pages.website_id')
+                ->where('pages.id', $pageId)
+                ->where('websites.workspace_id', $wsCtx)
+                ->exists()) {
+            throw new \RuntimeException("Page {$pageId} not found");
+        }
         $raw = json_decode($page->sections_json ?? '[]', true) ?: [];
         // BUILDER888: sections_json may be stored wrapped ({schemaVersion,sections}) by
         // createPage/updatePage, or as a flat list. Edit the flat list and re-wrap on
