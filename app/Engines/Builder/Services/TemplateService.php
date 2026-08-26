@@ -153,6 +153,9 @@ class TemplateService
         // unfilled still carried the industry-default photo (non-empty src survives the
         // strip above) with an EMPTY name — a fabricated team member. See EV (phantom-cards).
         $html = $this->stripEmptyPhantomCards($html);
+        // A section whose entire repeated-item grid is now empty (e.g. a business
+        // with no certifications) would render as a lone heading over nothing.
+        $html = $this->stripEmptySections($html);
         // Decode HTML entities (fixes &RARR; showing as literal text)
         $html = str_replace(['&RARR;', '&rarr;', '&amp;rarr;'], '→', $html);
         $html = str_replace(['&LARR;', '&larr;', '&amp;larr;'], '←', $html);
@@ -250,6 +253,35 @@ class TemplateService
             $text = preg_replace('/[^\p{L}\p{N}]+/u', '', (string) strip_tags($card));
             if ($text !== '' && $text !== null) { continue; }
             $html = substr($html, 0, $open) . substr($html, $close);
+        }
+        return $html;
+    }
+
+    /**
+     * Remove a section that has become empty after phantom-card removal. A section is
+     * empty when its inner HTML contains an empty *grid/*list container (all repeated
+     * items were stripped) AND no <img> (so a section with other imagery is never cut).
+     * Sections in these templates are flat (never nested), so a non-greedy match to the
+     * first </section> is exact. Works for id'd sections (drop the matching nav anchor
+     * link too) and id-less sections (nothing can anchor to them, so just cut).
+     */
+    private function stripEmptySections(string $html): string
+    {
+        if (!preg_match_all('#<section\b[^>]*>(.*?)</section>#is', $html, $secs, PREG_SET_ORDER)) {
+            return $html;
+        }
+        foreach ($secs as $sec) {
+            $full  = $sec[0];
+            $inner = $sec[1];
+            if (stripos($inner, '<img') !== false) { continue; }
+            if (!preg_match('#<div class="[^"]*(?:grid|list)[^"]*">\s*</div>#i', $inner)) { continue; }
+            $pos = strpos($html, $full);
+            if ($pos === false) { continue; }
+            $html = substr_replace($html, '', $pos, strlen($full));
+            if (preg_match('/\bid="([^"]+)"/i', $full, $idm)) {
+                $q = preg_quote($idm[1], '~');
+                $html = preg_replace('~<a\b[^>]*href="#' . $q . '"[^>]*>.*?</a>\s*~is', '', $html) ?? $html;
+            }
         }
         return $html;
     }

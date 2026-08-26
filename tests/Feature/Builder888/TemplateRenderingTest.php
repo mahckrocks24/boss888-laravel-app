@@ -242,4 +242,50 @@ class TemplateRenderingTest extends TestCase
             $this->assertStringContainsString($needle, $html, 'filled content was wrongly removed: ' . $needle);
         }
     }
+
+    /**
+     * EMPTY SECTIONS (2026-08-26) — after phantom-card removal, a section whose entire
+     * repeated-item grid is empty (a business with no certifications) would render as a
+     * lone heading over nothing. stripEmptySections() removes the section AND its nav
+     * anchor link so the nav never points at a deleted target. Realistic case: a
+     * 2-dentist practice that lists no certifications.
+     */
+    public function test_a_section_with_no_items_is_removed_with_its_nav_link(): void
+    {
+        $html = app(TemplateService::class)->render('dental', [
+            'business_name'      => 'Bright Smile Dental',
+            'doctor_1_name'      => 'Dr. Jane Smith',
+            'doctor_1_specialty' => 'Cosmetic', 'doctor_1_title' => 'DDS', 'doctor_1_bio' => 'Bio.',
+            'doctor_2_name'      => 'Dr. John Lee',
+            'doctor_2_specialty' => 'Ortho', 'doctor_2_title' => 'DDS', 'doctor_2_bio' => 'Bio.',
+            // no certifications supplied
+        ]);
+
+        // The certifications section and its nav link are gone.
+        $this->assertDoesNotMatchRegularExpression(
+            '/<section[^>]*\bid="certifications"/i', $html,
+            'an empty certifications section was rendered as a lone heading'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/href="#certifications"/i', $html,
+            'a nav link still points at the removed certifications section'
+        );
+        // The doctors section (2 real cards) is untouched.
+        $this->assertMatchesRegularExpression('/<section[^>]*\bid="doctors"/i', $html);
+        $this->assertStringContainsString('Dr. Jane Smith', $html);
+
+        // No nav anchor may point at a missing id (no broken in-page links).
+        preg_match_all('/href="#([a-z0-9_-]+)"/i', $html, $links);
+        preg_match_all('/\bid="([a-z0-9_-]+)"/i', $html, $ids);
+        $idset = array_flip($ids[1]);
+        foreach (array_unique($links[1]) as $target) {
+            $this->assertArrayHasKey($target, $idset, "nav anchor #$target has no matching id");
+        }
+
+        // No empty grid/list container survives anywhere.
+        $this->assertDoesNotMatchRegularExpression(
+            '#<div class="[^"]*(?:grid|list)[^"]*">\s*</div>#i', $html,
+            'an empty repeated-item grid survived'
+        );
+    }
 }
