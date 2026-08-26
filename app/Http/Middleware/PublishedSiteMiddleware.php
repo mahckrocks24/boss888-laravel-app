@@ -221,6 +221,7 @@ class PublishedSiteMiddleware
                     $html = $this->injectBlogLinkStyling($html);
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
                     $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
+                    $html = $this->injectLandmarks($html);
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
@@ -307,6 +308,25 @@ class PublishedSiteMiddleware
      * Skips silently if the file's structure doesn't contain a recognizable
      * card template.
      */
+    /**
+     * A11y landmarks for static-template output. Templates are uniformly
+     * <body><nav>...</nav> ...content... <footer>...</footer></body> with no
+     * <main>/<header> (EV-0737 / EV-0680). Wrap the single nav in <header> and the
+     * content between it and the footer in <main>. Skipped when the page already has a
+     * <main> (the dynamic BuilderRenderer and the amg bespoke theme emit their own).
+     */
+    private function injectLandmarks(string $html): string
+    {
+        if (stripos($html, '<main') !== false) { return $html; }
+        if (stripos($html, '<nav') === false || stripos($html, '<footer') === false) { return $html; }
+        $n = 0;
+        $out = preg_replace('#(<nav\\b[^>]*>.*?</nav>)#is', '<header>$1</header>', $html, 1, $n);
+        if ($n === 0 || $out === null) { return $html; }
+        $out = preg_replace('#</header>#i', '</header><main>', $out, 1) ?? $out;
+        $out = preg_replace('#(<footer\\b)#i', '</main>$1', $out, 1) ?? $out;
+        return $out;
+    }
+
     private function injectDynamicBlogPosts(string $html, int $workspaceId): string
     {
         if ($workspaceId <= 0) return $html;
