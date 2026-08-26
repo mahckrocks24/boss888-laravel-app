@@ -2633,6 +2633,10 @@ PROMPT;
                 $removeBlocks
             );
             $html = \App\Engines\Builder\Support\SectionLibrary::replaceBlock($html, 'services', $bespokeHtml);
+            // removeBlocks can delete a whole section (e.g. certifications) AFTER
+            // TemplateService::render already ran its in-render anchor cleanup, orphaning
+            // that section's nav links. Re-run the dangling-anchor pass on the FINAL html.
+            $html = $this->templates->stripDanglingNavAnchors($html);
         } catch (\Throwable $e) {
             // BUILDER888 P1-8B (2026-08-10) — this line showed a customer a raw
             // PHP TypeError during the frozen Journey A. The internal cause is
@@ -2826,6 +2830,10 @@ PROMPT;
                             $removeBlocks
                         );
                         $html = \App\Engines\Builder\Support\SectionLibrary::replaceBlock($html, 'services', $bespokeHtml);
+            // removeBlocks can delete a whole section (e.g. certifications) AFTER
+            // TemplateService::render already ran its in-render anchor cleanup, orphaning
+            // that section's nav links. Re-run the dangling-anchor pass on the FINAL html.
+            $html = $this->templates->stripDanglingNavAnchors($html);
                     } catch (\Throwable $_e) { /* keep previous html */ }
                 }
             } catch (\Throwable $e) {
@@ -3604,8 +3612,28 @@ PROMPT;
         }
         if (empty($toFill)) return $variables;
 
+        // NEVER FABRICATE PEOPLE. Numbered personnel-card fields
+        // (doctor_1_name / team_2_name / staff_3_bio / attorney_1_title / ...)
+        // are EXCLUDED from the LLM pass — asking for "realistic names" invents
+        // fake individuals, whose photos injectImagesToTemplate then fills with
+        // mismatched, often-broken cross-industry pool images. Left unfilled the
+        // deterministic net below blanks them, and phantom-card + empty-section
+        // stripping removes the card/section so the customer adds their REAL team
+        // in the editor. Product/service/business names are NOT personnel and
+        // stay in the LLM pass.
+        $personnelKey = '/^(doctor|dentist|physician|surgeon|therapist|trainer|'
+            . 'instructor|coach|staff|team|member|attorney|lawyer|agent|broker|'
+            . 'realtor|stylist|barber|nurse|faculty|advisor|consultant|specialist)'
+            . '_\\d+_(name|title|specialty|speciality|bio|role|credential|'
+            . 'qualification|position)/i';
+        $llmToFill = array_filter(
+            $toFill,
+            fn ($k) => ! preg_match($personnelKey, (string) $k),
+            ARRAY_FILTER_USE_KEY
+        );
+
         // Regenerate in chunks so a large template stays reliable.
-        foreach (array_chunk($toFill, 35, true) as $chunk) {
+        foreach (array_chunk($llmToFill, 35, true) as $chunk) {
             $lines = [];
             foreach ($chunk as $k => $label) $lines[] = "- {$k}: {$label}";
             $sys = "You are a website copywriter for '{$name}', a {$copyIndustry} in {$location}. "

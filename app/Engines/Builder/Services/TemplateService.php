@@ -160,6 +160,7 @@ class TemplateService
         // a dead link that reloads the page. Drop them (social handles are never
         // fabricated), and any social container left with no links.
         $html = $this->stripEmptySocialLinks($html);
+        $html = $this->stripDanglingNavAnchors($html);
         // Decode HTML entities (fixes &RARR; showing as literal text)
         $html = str_replace(['&RARR;', '&rarr;', '&amp;rarr;'], '→', $html);
         $html = str_replace(['&LARR;', '&larr;', '&amp;larr;'], '←', $html);
@@ -241,9 +242,34 @@ class TemplateService
      * <img>, and cut that wrapper with a balanced <div> scan (regex cannot match the
      * nested card structure reliably). Real, filled cards are untouched.
      */
+    /**
+     * Remove dead in-page nav links. A section stripped as empty/fabricated
+     * (e.g. certifications) can leave its <a href="#id"> in the header/footer
+     * nav — a dead anchor that jumps nowhere. Collect every id present, then drop
+     * any nav anchor (with its <li> wrapper, if any) whose #target is absent.
+     * A bare href="#" and real/external hrefs are never touched.
+     */
+    public function stripDanglingNavAnchors(string $html): string
+    {
+        $ids = [];
+        if (preg_match_all('/\bid="([^"]+)"/i', $html, $idm)) {
+            foreach ($idm[1] as $id) { $ids[strtolower($id)] = true; }
+        }
+        $out = preg_replace_callback(
+            '~(?:<li\b[^>]*>\s*)?<a\b[^>]*href="#([^"]+)"[^>]*>.*?</a>(?:\s*</li>)?\s*~is',
+            function ($mm) use ($ids) {
+                $target = strtolower($mm[1]);
+                if ($target === '' || isset($ids[$target])) { return $mm[0]; }
+                return ''; // dangling — the target section no longer exists
+            },
+            $html
+        );
+        return is_string($out) ? $out : $html;
+    }
+
     private function stripEmptyPhantomCards(string $html): string
     {
-        if (!preg_match_all('/data-field="[a-z0-9_]+_name"[^>]*>\s*<\/div>/i', $html, $m, PREG_OFFSET_CAPTURE)) {
+        if (!preg_match_all('/data-field="([a-z0-9_]+)_name"[^>]*>\s*<\/div>/i', $html, $m, PREG_OFFSET_CAPTURE)) {
             return $html;
         }
         for ($i = count($m[0]) - 1; $i >= 0; $i--) {
@@ -257,8 +283,16 @@ class TemplateService
             // decorations (a lone â check, punctuation). The industry-default <img> and its
             // empty alt contribute no text, so a phantom photo card collapses to '' and is
             // cut; a card with a real quote/desc but a blank name keeps its content and stays.
-            $text = preg_replace('/[^\p{L}\p{N}]+/u', '', (string) strip_tags($card));
-            if ($text !== '' && $text !== null) { continue; }
+            // A PERSONNEL card (doctor/team/staff/... _N) with an empty NAME is a
+            // fake person regardless of any leftover default specialty/bio text — cut
+            // it. For a non-personnel card (e.g. a testimonial with a real quote but a
+            // blank author) keep the old rule: cut only when it has no text at all.
+            $prefix = strtolower((string) ($m[1][$i][0] ?? ''));
+            $isPersonnel = (bool) preg_match('/^(doctor|dentist|physician|surgeon|therapist|trainer|instructor|coach|staff|team|member|attorney|lawyer|agent|broker|realtor|stylist|barber|nurse|faculty|advisor|consultant|specialist)(_\d+)?$/', $prefix);
+            if (! $isPersonnel) {
+                $text = preg_replace('/[^\p{L}\p{N}]+/u', '', (string) strip_tags($card));
+                if ($text !== '' && $text !== null) { continue; }
+            }
             $html = substr($html, 0, $open) . substr($html, $close);
         }
         return $html;
