@@ -254,4 +254,49 @@ class RendererSecurityTest extends TestCase
             );
         }
     }
+
+    /**
+     * RAW USER HTML (2026-08-26) — the P0-3 escape pass covered hero/features/cta/etc. but
+     * MISSED the header ($brandInner text fallback) and footer ($brandName/$tagline/$copyright)
+     * chrome renderers, which echoed user brand/footer text raw -> a brand name of
+     * "<img src=x onerror=...>" auto-executed on the published page. Assert the invariant for
+     * every section type: no user text field (scalar or component) may emit a raw executable
+     * tag. Detection is payload-specific so it does not trip on legitimate inline scripts
+     * (e.g. the contact form's submit handler).
+     */
+    public function test_no_section_type_emits_raw_user_html(): void
+    {
+        $renderer = app(BuilderRenderer::class);
+        $x  = '<img src=x onerror=alert(1)>';
+        $sx = '<script>alert(31337)</script>';
+        $types = [
+            'header', 'hero', 'features', 'cta', 'contact_form', 'blog_list', 'footer', 'services',
+            'team', 'testimonials', 'faq', 'pricing', 'gallery', 'stats', 'events_calendar', 'grid',
+            'filter_bar', 'map', 'related_listings', 'trust_signals', 'cart_summary', 'checkout_form',
+            'account_nav', 'account_panel', 'generic',
+        ];
+        $comps = [
+            ['type' => 'heading', 'text' => $x],
+            ['type' => 'text', 'text' => $x . ' · ' . $x],
+            ['type' => 'text', 'text' => '© ' . $sx],
+        ];
+        foreach ($types as $t) {
+            $section = [
+                'type' => $t, 'components' => $comps, 'logo_text' => $x, 'heading' => $sx,
+                'subheading' => $x, 'body' => $x, 'tagline' => $x, 'copyright' => $sx,
+                'items' => [['title' => $x, 'text' => $x, 'name' => $sx]],
+            ];
+            try {
+                $html = $renderer->renderSection($section, self::BRAND, ['name' => 'T'], [], 'home');
+            } catch (\Throwable $e) {
+                continue;
+            }
+            $this->assertDoesNotMatchRegularExpression(
+                '/<img[^>]*onerror/i', $html,
+                "section type '$t' emitted a raw <img onerror> from user text"
+            );
+            $this->assertStringNotContainsString('<script>alert(31337)</script>', $html,
+                "section type '$t' emitted a raw <script> from user text");
+        }
+    }
 }

@@ -542,7 +542,7 @@ class BuilderRenderer
 
         if ($brandName === '') $brandName = $sec['logo_text'] ?? '';
         $logoImg = trim((string) ($sec['logo_image'] ?? $sec['logo_url'] ?? ($brand['logo_url'] ?? '')));
-        $brandInner = $logoImg !== '' ? '<img src="' . e($logoImg) . '" alt="' . e($brandName) . '" style="height:46px;width:auto;display:block">' : $brandName;
+        $brandInner = $logoImg !== '' ? '<img src="' . e($logoImg) . '" alt="' . e($brandName) . '" style="height:46px;width:auto;display:block">' : e($brandName);
         if ($ctaText === '' && !empty($sec['cta_text'])) { $ctaText = $sec['cta_text']; $ctaHref = $sec['cta_url'] ?? $ctaHref; }
 
         $slugMap = ['home'=>'home','about'=>'about','about us'=>'about','services'=>'services','contact'=>'contact','blog'=>'blog','portfolio'=>'portfolio'];
@@ -923,6 +923,11 @@ HTML;
             $slug = $slugMap[strtolower($item)] ?? strtolower(str_replace(' ', '-', $item));
             return "<a href=\"/{$slug}\" style=\"color:#6B7280;text-decoration:none;font-size:13px\">" . e($item) . "</a>";
         }, $navLinks));
+
+        // Escape user-supplied brand/footer text (raw heredoc interpolation).
+        $brandName = e($brandName);
+        $tagline   = e($tagline);
+        $copyright = e($copyright);
 
         return <<<HTML
 <footer style="background:#0B0E14;padding:60px 24px 40px">
