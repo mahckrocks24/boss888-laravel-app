@@ -168,4 +168,47 @@ class RendererSecurityTest extends TestCase
         // Ampersands must be escaped, not dropped.
         $this->assertMatchesRegularExpression('/Sails\s*&(amp;|#0?38;)\s*Rigging/i', $html);
     }
+
+    /**
+     * STORED XSS (2026-08-26) — cta_url / continue_shopping_url on the grid,
+     * events_calendar and cart_summary section renderers were htmlspecialchars()-only,
+     * which escapes quotes but does NOT block a javascript:/vbscript:/data: scheme, so a
+     * malicious value rendered as href="javascript:alert(1)" on a published page (a
+     * click-triggered stored XSS). They now route through safeUrl(). Regression across the
+     * affected section types and every executable-scheme smuggling form.
+     */
+    public function test_cta_url_cannot_carry_an_executable_scheme(): void
+    {
+        $renderer = app(BuilderRenderer::class);
+        $payloads = [
+            'javascript:alert(1)',
+            'JaVaScRiPt:alert(document.cookie)',
+            'vbscript:msgbox(1)',
+            "java\tscript:alert(1)",
+            'data:text/html,<script>alert(1)</script>',
+        ];
+        foreach (['grid', 'events_calendar', 'cart_summary', 'account_panel', 'cart', 'events'] as $type) {
+            foreach ($payloads as $p) {
+                $section = [
+                    'type' => $type, 'heading' => 'H', 'cta_text' => 'Go',
+                    'cta_url' => $p, 'continue_shopping_url' => $p,
+                    'items'  => [['title' => 'a', 'text' => 'b', 'cta_url' => $p, 'cta_text' => 'x']],
+                    'events' => [['title' => 'E', 'date' => '2026-01-01', 'cta_url' => $p, 'cta_text' => 'Book']],
+                ];
+                $html = $renderer->renderSection($section, self::BRAND, ['name' => 'T'], [], 'home');
+                $this->assertDoesNotMatchRegularExpression(
+                    '/href="\s*(?:javascript|vbscript|data):/i', $html,
+                    "cta_url payload reached an executable href on section type '$type': $p"
+                );
+            }
+        }
+
+        // Legitimate URL schemes must still render into the href.
+        $ok = $renderer->renderSection(
+            ['type' => 'grid', 'heading' => 'H', 'cta_text' => 'Go', 'cta_url' => 'https://example.com/x',
+             'items' => [['title' => 'a', 'text' => 'b']]],
+            self::BRAND, ['name' => 'T'], [], 'home'
+        );
+        $this->assertStringContainsString('https://example.com/x', $ok, 'a legitimate https cta_url was stripped');
+    }
 }

@@ -469,7 +469,7 @@ class BuilderRenderer
         $max      = isset($sec['max_events']) ? max(1, (int) $sec['max_events']) : count($events);
         $events   = array_slice($events, 0, $max);
         $ctaText  = htmlspecialchars((string) ($sec['cta_text'] ?? ''),               ENT_QUOTES, 'UTF-8');
-        $ctaUrl   = htmlspecialchars((string) ($sec['cta_url']  ?? ''),               ENT_QUOTES, 'UTF-8');
+        $ctaUrl   = $this->safeUrl((string) ($sec['cta_url'] ?? ''), '');
 
         if (empty($events)) {
             return "
@@ -493,7 +493,7 @@ class BuilderRenderer
             $desc  = htmlspecialchars((string) ($ev['description'] ?? ''), ENT_QUOTES, 'UTF-8');
             $img   = htmlspecialchars((string) ($ev['image']   ?? ''),    ENT_QUOTES, 'UTF-8');
             $ctaT  = htmlspecialchars((string) ($ev['cta_text'] ?? 'RSVP'), ENT_QUOTES, 'UTF-8');
-            $ctaU  = htmlspecialchars((string) ($ev['cta_url']  ?? '#'),   ENT_QUOTES, 'UTF-8');
+            $ctaU  = $this->safeUrl((string) ($ev['cta_url'] ?? '#'), '#');
 
             $cards .= "
   <article style=\"background:#fff;border:1px solid #eef0f4;border-radius:14px;overflow:hidden;display:flex;flex-direction:column\">" .
@@ -956,7 +956,7 @@ HTML;
         $columns  = max(2, min(4, (int) ($sec['columns'] ?? 3)));
         $style    = (string) ($sec['style'] ?? 'card');
         $ctaText  = htmlspecialchars((string) ($sec['cta_text'] ?? ''),   ENT_QUOTES, 'UTF-8');
-        $ctaUrl   = htmlspecialchars((string) ($sec['cta_url'] ?? ''),    ENT_QUOTES, 'UTF-8');
+        $ctaUrl   = $this->safeUrl((string) ($sec['cta_url'] ?? ''), '');
         $gridId   = 'grid-' . substr(md5($heading . count($items)), 0, 8);
 
         if (empty($items)) {
@@ -972,7 +972,7 @@ HTML;
             $badge  = htmlspecialchars((string) ($it['badge'] ?? ''),    ENT_QUOTES, 'UTF-8');
             $tags   = is_array($it['tags'] ?? null) ? $it['tags'] : [];
             $cT     = htmlspecialchars((string) ($it['cta_text'] ?? 'View details'), ENT_QUOTES, 'UTF-8');
-            $cU     = htmlspecialchars((string) ($it['cta_url'] ?? '#'), ENT_QUOTES, 'UTF-8');
+            $cU     = $this->safeUrl((string) ($it['cta_url'] ?? '#'), '#');
 
             $tagsHtml = '';
             foreach ($tags as $tg) {
@@ -1137,7 +1137,7 @@ HTML;
             $st    = htmlspecialchars((string) ($it['subtitle'] ?? ''), ENT_QUOTES, 'UTF-8');
             $img   = htmlspecialchars((string) ($it['image'] ?? ''),    ENT_QUOTES, 'UTF-8');
             $price = htmlspecialchars((string) ($it['price'] ?? ''),    ENT_QUOTES, 'UTF-8');
-            $cU    = htmlspecialchars((string) ($it['cta_url'] ?? '#'), ENT_QUOTES, 'UTF-8');
+            $cU    = $this->safeUrl((string) ($it['cta_url'] ?? '#'), '#');
             $imgBlock = $img ? "<div style=\"width:100%;height:140px;background:url('{$img}') center/cover no-repeat\"></div>" : '';
             $cards .= "
   <a href=\"{$cU}\" style=\"text-decoration:none;color:inherit\">
@@ -1239,8 +1239,8 @@ HTML;
         $items    = is_array($sec['items'] ?? null) ? $sec['items'] : [];
         $currency = (string) ($sec['currency'] ?? 'AED');
         $ctaText  = htmlspecialchars((string) ($sec['cta_text'] ?? 'Proceed to checkout'), ENT_QUOTES, 'UTF-8');
-        $ctaUrl   = htmlspecialchars((string) ($sec['cta_url']  ?? '/checkout'),   ENT_QUOTES, 'UTF-8');
-        $contUrl  = htmlspecialchars((string) ($sec['continue_shopping_url'] ?? '/shop'), ENT_QUOTES, 'UTF-8');
+        $ctaUrl   = $this->safeUrl((string) ($sec['cta_url'] ?? '/checkout'), '/checkout');
+        $contUrl  = $this->safeUrl((string) ($sec['continue_shopping_url'] ?? '/shop'), '/shop');
         $empty    = htmlspecialchars((string) ($sec['empty_message'] ?? 'Your cart is empty.'), ENT_QUOTES, 'UTF-8');
 
         if (empty($items)) {
@@ -1463,7 +1463,7 @@ HTML;
         $items     = is_array($sec['items'] ?? null) ? $sec['items'] : [];
         $empty     = htmlspecialchars((string) ($sec['empty_message'] ?? 'Nothing here yet.'), ENT_QUOTES, 'UTF-8');
         $ctaText   = htmlspecialchars((string) ($sec['cta_text'] ?? ''),              ENT_QUOTES, 'UTF-8');
-        $ctaUrl    = htmlspecialchars((string) ($sec['cta_url']  ?? ''),              ENT_QUOTES, 'UTF-8');
+        $ctaUrl    = $this->safeUrl((string) ($sec['cta_url'] ?? ''), '');
 
         if (empty($items)) {
             $emptyCta = ($ctaText && $ctaUrl) ? "<a href=\"{$ctaUrl}\" style=\"display:inline-block;margin-top:16px;padding:10px 22px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:8px;font-weight:600\">{$ctaText}</a>" : '';
