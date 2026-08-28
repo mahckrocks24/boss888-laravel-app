@@ -673,6 +673,25 @@ class TemplateService
     }
 
     /**
+     * RISK-0103 — DOMDocument::saveHTML() encodes every non-ASCII character to an
+     * HTML entity (● -> &#9679;, → -> &rarr;, curly quotes, em-dashes,
+     * accents). That is harmless in HTML text (entities render) but FATAL inside
+     * <style>/CSS `content:` values, where entities are not decoded — so a single
+     * field save corrupted every template bullet/arrow site-wide. This restores
+     * literal UTF-8 for all entities EXCEPT the five structural ones (&amp; &lt;
+     * &gt; &quot; and the apostrophe forms), which must stay escaped for valid
+     * markup. Also self-heals an already-corrupted file on the next save (the
+     * literal &#9679; text decodes back to ●).
+     */
+    private function restoreUtf8Entities(string $html): string
+    {
+        $keep = ['&amp;' => "A", '&lt;' => "L", '&gt;' => "G", '&quot;' => "Q", '&#39;' => "P", '&apos;' => "P"];
+        $html = strtr($html, $keep);
+        $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return strtr($html, ["A" => '&amp;', "L" => '&lt;', "G" => '&gt;', "Q" => '&quot;', "P" => '&#39;']);
+    }
+
+    /**
      * Update a single field in a deployed site's HTML using data-field attributes.
      *
      * @param int    $websiteId
@@ -740,7 +759,7 @@ class TemplateService
         }
 
         if ($found) {
-            file_put_contents($path, $dom->saveHTML());
+            file_put_contents($path, $this->restoreUtf8Entities($dom->saveHTML()));
         }
 
         return $found;
