@@ -689,7 +689,7 @@ async function wsLoadSites(){
 }
 
 function wsUpdateStats(){
-  const total=wsSites.length,pub=wsSites.filter(s=>s.publish_state==='published'||s.status==='published').length,dom=wsSites.filter(s=>s.domain).length;
+  const total=wsSites.length,pub=wsSites.filter(s=>s.publish_state==='published'||s.status==='published').length,dom=wsSites.filter(s=>s.custom_domain||s.domain).length;
   const el=id=>document.getElementById(id);
   // PATCH (plan-limit, 2026-05-09) — show "X / MAX" when wsMaxWebsites
   // is known (set by _luUpdateWebsiteUsage from /api/websites response).
@@ -1330,7 +1330,8 @@ async function _t3ArthurSend(websiteId) {
       if (feed) feed.innerHTML += '<div style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid #00E5A8"><div style="color:var(--t1);font-size:13px">' + bld_escH(d.message) + '</div><div style="color:rgba(255,255,255,0.3);font-size:10px;margin-top:4px">arthur \u00b7 tier 4</div></div>';
       if (d.reload_preview) {
         var iframe = document.getElementById('t3-preview');
-        if (iframe) iframe.src = iframe.src;
+        if (typeof window._luPageEditorReloadHook === 'function') { window._luPageEditorReloadHook(); }
+        else if (iframe) iframe.src = iframe.src;
       }
       if (typeof wsLoadSites === 'function' && (d.action === 'page_added' || d.action === 'page_deleted' || d.action === 'page_duplicated')) {
         wsLoadSites();
@@ -1342,7 +1343,8 @@ async function _t3ArthurSend(websiteId) {
       // Reload iframe
       if (d.reload_preview) {
         var iframe = document.getElementById('t3-preview');
-        if (iframe) iframe.src = iframe.src.split('?')[0] + '?v=' + Date.now();
+        if (typeof window._luPageEditorReloadHook === 'function') { window._luPageEditorReloadHook(); }
+        else if (iframe) iframe.src = iframe.src.split('?')[0] + '?v=' + Date.now();
       }
     }
   } catch (e) {
@@ -1747,22 +1749,167 @@ function wsGenNowClick() {
   console.warn('[Builder] wsGenNowClick() called but regeneration has been removed.');
 }
 
+// ── PAGE EDITOR (structured + legacy pages) ── BUILDER888 D0 fix, 2026-08-28 ──
+// Replaces the dead canvas-editor shell (#view-builder / bld-editor-state) whose
+// handlers (bldOpenEditor, bldLeftTab, bldRenderCanvas, …) were removed on
+// 2026-04-17 and stubbed on 2026-05-05: "Edit Page" left the customer on a
+// permanent "Loading page…" canvas with a ReferenceError on every open.
+// The editing model for non-template sites is Arthur (POST /builder/pages/{id}/
+// arthur-edit → pages.sections_json); the preview is the same BuilderRenderer
+// output the published site uses (GET /builder/preview/{id}). Legacy static-HTML
+// pages (one raw <html> section) are deliberately not editable (decision
+// 2026-07-02) — say so instead of pretending.
+var _wsPageEditor = { pageId: null, siteId: null, legacy: false };
+
 function wsEditSitePage(pageId) {
-  // Track that we came from websites
-  window._wsReturnToSite = wsCurrentSite ? wsCurrentSite.id : null;
-  // Pre-load website pages for the Pages panel
-  _bldWebsitePages = []; // clear so panel fetches fresh
-  // Update back button to say "← Website"
-  var backBtn = document.getElementById('bld-back-btn');
-  if (backBtn) backBtn.textContent = '\u2190 Website';
-  // Hide websites view, show builder editor
-  document.getElementById('view-websites').style.display = 'none';
-  document.getElementById('view-builder').style.display = 'flex';
-  document.getElementById('bld-list-state').style.display = 'none';
-  document.getElementById('bld-editor-state').style.display = 'flex';
-  bldOpenEditor(pageId, 'standalone');
-  // Auto-open Pages tab so user sees sibling pages
-  setTimeout(function() { bldLeftTab('pages'); }, 300);
+  var site = wsCurrentSite || { id: null, title: 'Website' };
+  window._wsReturnToSite = site.id || null;
+  _wsShowPageEditor(site, pageId);
+}
+
+function _wsShowPageEditor(site, pageId) {
+  _wsClosePageEditor();
+  _wsPageEditor = { pageId: pageId, siteId: site.id, legacy: false };
+  // Canonical Arthur path keys off bldCurrentPageId (see _t3ArthurSend).
+  bldCurrentPageId = pageId;
+  var siteName = bld_escH(site.title || site.name || 'Website');
+  var pubName = JSON.stringify(site.title || site.name || 'Website').replace(/"/g, '&quot;');
+  var devBtn = function (key, label, glyph, on) {
+    return '<button type="button" id="pe-dev-' + key + '" onclick="_wsPageEditorSetDevice(\'' + key + '\')" aria-label="' + label + ' preview" aria-pressed="' + (on ? 'true' : 'false') + '" title="' + label + '" ' +
+      'style="padding:5px 10px;border:none;background:' + (on ? 'var(--pu)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--t2)') + ';cursor:pointer;font-size:13px">' + glyph + '</button>';
+  };
+  var html =
+    '<div id="page-editor-view" role="dialog" aria-modal="true" aria-label="Page editor" style="position:fixed;inset:0;z-index:9000;background:#0F1117;display:flex;flex-direction:column">' +
+      '<div style="height:52px;background:var(--s1,#161927);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">' +
+        '<button type="button" id="pe-back" onclick="_wsClosePageEditor()" style="background:none;border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">← Pages</button>' +
+        '<span style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
+        '<span id="pe-page-title" style="color:var(--t3);font-size:12px"></span>' +
+        '<span style="flex:1"></span>' +
+        '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden">' +
+          devBtn('desktop', 'Desktop', '🖥', true) + devBtn('tablet', 'Tablet', '▭', false) + devBtn('mobile', 'Mobile', '📱', false) +
+        '</div>' +
+        '<span id="pe-status" style="color:var(--t3);font-size:11px">Changes made by Arthur save automatically</span>' +
+        '<button type="button" id="pe-refresh" onclick="_wsPageEditorReload()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">Refresh preview</button>' +
+        '<button type="button" id="pe-publish" onclick="wsPublishFromEditor(' + (site.id || 0) + ', ' + pubName + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Publish</button>' +
+      '</div>' +
+      '<div style="flex:1;display:flex;overflow:hidden">' +
+        '<div style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
+          '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">' + window.icon('ai', 18) + '</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
+            '<div style="color:var(--t3);font-size:11px">Describe the change you want on this page</div>' +
+          '</div>' +
+          '<div id="pe-legacy-banner" role="alert" style="display:none;margin:10px;padding:10px 12px;border-radius:8px;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);color:#FBBF24;font-size:12px;line-height:1.5">' +
+            'This page is a legacy static layout, so Arthur can’t edit it here. Rebuild it with the Website Wizard to unlock editing. Your live site is unaffected.' +
+          '</div>' +
+          '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
+            '<div style="background:var(--s2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--t2)">Try: "Change the hero heading to …" or "Make the call-to-action say …"</div>' +
+          '</div>' +
+          '<div style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">' +
+            '<input id="t3-arthur-input" type="text" aria-label="Message Arthur" placeholder="Ask Arthur..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);padding:7px 10px;font-size:12px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\'){_t3ArthurSend(' + (site.id || 0) + ')}">' +
+            '<button type="button" id="pe-send" aria-label="Send to Arthur" onclick="_t3ArthurSend(' + (site.id || 0) + ')" style="background:var(--p);border:none;color:#fff;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px">→</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="pe-frame-wrap" style="flex:1;position:relative;display:flex;justify-content:center;background:#0B0D13;overflow:auto">' +
+          // sandbox WITHOUT allow-same-origin: the page's own scripts run in an opaque
+          // origin and cannot read the app's localStorage token (RISK-0095 class).
+          '<iframe id="t3-preview" title="Page preview" sandbox="allow-scripts allow-forms allow-popups" style="width:100%;height:100%;border:none;background:#fff;transition:width .2s"></iframe>' +
+          '<div id="pe-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,17,23,.85);color:var(--t2);font-size:13px">Loading preview…</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.addEventListener('keydown', _wsPageEditorKey);
+  window._luPageEditorReloadHook = _wsPageEditorReload;
+  var inp = document.getElementById('t3-arthur-input');
+  if (inp) inp.focus();
+  _wsPageEditorLoad();
+}
+
+function _wsPageEditorKey(e) {
+  if (e.key === 'Escape') { e.preventDefault(); _wsClosePageEditor(); }
+}
+
+function _wsClosePageEditor() {
+  var v = document.getElementById('page-editor-view');
+  if (v) v.remove();
+  document.removeEventListener('keydown', _wsPageEditorKey);
+  window._luPageEditorReloadHook = null;
+  bldCurrentPageId = null;
+  _wsPageEditor = { pageId: null, siteId: null, legacy: false };
+}
+
+function _wsPageEditorSetDevice(key) {
+  var widths = { desktop: '100%', tablet: '820px', mobile: '390px' };
+  var iframe = document.getElementById('t3-preview');
+  if (iframe) iframe.style.width = widths[key] || '100%';
+  ['desktop', 'tablet', 'mobile'].forEach(function (k) {
+    var b = document.getElementById('pe-dev-' + k);
+    if (!b) return;
+    var on = k === key;
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.style.background = on ? 'var(--pu)' : 'transparent';
+    b.style.color = on ? '#fff' : 'var(--t2)';
+  });
+}
+
+async function _wsPageEditorLoad() {
+  var pageId = _wsPageEditor.pageId;
+  var H = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
+  try {
+    var pr = await fetch(API + 'builder/pages/' + pageId, { headers: H });
+    var page = pr.ok ? await pr.json() : null;
+    if (page) {
+      var tEl = document.getElementById('pe-page-title');
+      if (tEl) tEl.textContent = '— ' + (page.title || 'Page') + (page.slug ? ' (/' + page.slug + ')' : '');
+      var secs = page.sections_json;
+      if (typeof secs === 'string') { try { secs = JSON.parse(secs || '[]'); } catch (_e) { secs = []; } }
+      if (!Array.isArray(secs)) secs = page.sections || [];
+      var legacy = Array.isArray(secs) && secs.length === 1 && secs[0] && typeof secs[0].html === 'string' && /<html[\s>]/i.test(secs[0].html);
+      _wsPageEditor.legacy = legacy;
+      if (legacy) {
+        var ban = document.getElementById('pe-legacy-banner'); if (ban) ban.style.display = 'block';
+        var inp = document.getElementById('t3-arthur-input');
+        if (inp) { inp.disabled = true; inp.placeholder = 'Editing unavailable for legacy pages'; }
+        var snd = document.getElementById('pe-send'); if (snd) snd.disabled = true;
+        var st = document.getElementById('pe-status'); if (st) st.textContent = 'Read-only preview';
+      }
+    }
+  } catch (_e) { /* preview still loads below */ }
+  await _wsPageEditorReload();
+}
+
+async function _wsPageEditorReload() {
+  var pageId = _wsPageEditor.pageId;
+  if (!pageId) return;
+  var wrap = document.getElementById('pe-frame-wrap');
+  var iframe = document.getElementById('t3-preview');
+  var loading = document.getElementById('pe-loading');
+  if (loading) { loading.style.display = 'flex'; loading.textContent = 'Loading preview…'; }
+  var err = document.getElementById('pe-error'); if (err) err.remove();
+  try {
+    var r = await fetch(API + 'builder/preview/' + pageId, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' } });
+    var d = null; try { d = await r.json(); } catch (_j) { d = null; }
+    if (!r.ok || !d || typeof d.preview_html !== 'string') {
+      throw new Error((d && d.error) ? d.error : ('Preview unavailable (HTTP ' + r.status + ')'));
+    }
+    if (iframe) {
+      // Keep the overlay until the document actually paints: a sandboxed srcdoc
+      // frame blocks on its render-blocking font CSS and can sit white for seconds.
+      iframe.onload = function () { if (loading) loading.style.display = 'none'; };
+      iframe.srcdoc = d.preview_html;
+      setTimeout(function () { if (loading) loading.style.display = 'none'; }, 20000);
+    } else if (loading) { loading.style.display = 'none'; }
+  } catch (e) {
+    if (loading) loading.style.display = 'none';
+    if (wrap) {
+      wrap.insertAdjacentHTML('beforeend',
+        '<div id="pe-error" role="alert" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0F1117;color:var(--t2);font-size:13px">' +
+          '<div style="color:#F87171">' + bld_escH(e.message || 'Preview failed') + '</div>' +
+          '<button type="button" onclick="_wsPageEditorReload()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px">Try again</button>' +
+        '</div>');
+    }
+    if (typeof showToast === 'function') showToast(e.message || 'Preview failed', 'error');
+  }
 }
 
 async function wsAddPageToSite() {
