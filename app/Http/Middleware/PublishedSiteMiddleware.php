@@ -229,6 +229,7 @@ class PublishedSiteMiddleware
                     $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
                     $html = $this->injectLandmarks($html);
                     $html = $this->injectA11yNames($html);
+                    $html = $this->injectAccentContrast($html);
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
@@ -330,6 +331,65 @@ class PublishedSiteMiddleware
      * content between it and the footer in <main>. Skipped when the page already has a
      * <main> (the dynamic BuilderRenderer and the amg bespoke theme emit their own).
      */
+    /**
+     * RISK-0102 (WCAG 1.4.3 AA) — ensure the .eyebrow accent labels meet 4.5:1 contrast.
+     * They use var(--medical), a bright brand accent that often fails on light grounds.
+     * If the tenant's --medical fails AA vs white, derive a darker same-hue variant and
+     * override .eyebrow color. Only the eyebrow text changes; the accent stays for
+     * buttons/fills. Fires only on failure; fail-open.
+     */
+    private function injectAccentContrast(string $html): string
+    {
+        try {
+            if (stripos($html, 'eyebrow') === false || stripos($html, '--medical') === false) {
+                return $html;
+            }
+            if (! preg_match('/--medical:\s*(#[0-9a-fA-F]{6})/', $html, $m)) return $html;
+            $hex = $m[1];
+            if ($this->contrastVsWhite($hex) >= 4.5) return $html; // already accessible
+            $safe = $this->darkenToContrast($hex, 4.6); // small margin for near-white grounds
+            if ($safe === null) return $html;
+            $css = '<style id="lu-a11y-accent">.eyebrow{color:' . $safe . ' !important}</style>';
+            $out = preg_replace('#</head>#i', $css . '</head>', $html, 1, $n);
+            return ($n && $out !== null) ? $out : $html;
+        } catch (\Throwable $e) {
+            return $html;
+        }
+    }
+
+    /** WCAG relative luminance of a #rrggbb colour. */
+    private function relLum(string $hex): float
+    {
+        $hex = ltrim($hex, '#');
+        $out = 0.0; $coef = [0.2126, 0.7152, 0.0722];
+        foreach ([0, 2, 4] as $i => $off) {
+            $v = hexdec(substr($hex, $off, 2)) / 255;
+            $lin = $v <= 0.03928 ? $v / 12.92 : pow(($v + 0.055) / 1.055, 2.4);
+            $out += $coef[$i] * $lin;
+        }
+        return $out;
+    }
+
+    /** Contrast ratio of a colour against white. */
+    private function contrastVsWhite(string $hex): float
+    {
+        return round(1.05 / ($this->relLum($hex) + 0.05), 2);
+    }
+
+    /** Darken a colour (uniform RGB scale -> hue preserved) until it meets the target
+     *  contrast vs white; near-black fallback always passes. */
+    private function darkenToContrast(string $hex, float $target): ?string
+    {
+        $hex = ltrim($hex, '#');
+        $r = hexdec(substr($hex, 0, 2)); $g = hexdec(substr($hex, 2, 2)); $b = hexdec(substr($hex, 4, 2));
+        for ($k = 100; $k >= 0; $k -= 2) {
+            $f = $k / 100;
+            $nhex = sprintf('#%02x%02x%02x', (int) round($r * $f), (int) round($g * $f), (int) round($b * $f));
+            if ($this->contrastVsWhite($nhex) >= $target) return $nhex;
+        }
+        return '#0f172a';
+    }
+
     /**
      * RISK-0102 (WCAG 4.1.2) — give unnamed carousel/indicator dot buttons an accessible
      * name. Generated templates emit empty <button class="...dot..." onclick="goToSlide(i)">
