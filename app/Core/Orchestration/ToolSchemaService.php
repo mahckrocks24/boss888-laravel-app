@@ -576,7 +576,7 @@ class ToolSchemaService
             'explicit_id'       => $explicitId ?: null,
             'explicit_name'     => $context['explicit_name'] ?? null,
             'active_website_id' => isset($context['active_website_id']) ? (int) $context['active_website_id'] : null,
-            'ui_site_url'       => $context['ui_site_url'] ?? null,
+            'ui_site_url'       => $context['ui_site_url'] ?? $this->requestSiteUrl(),
         ];
 
         $res = app(\App\Core\Sarah888\WebsiteTargetResolver::class)->resolve($websites, $signals);
@@ -599,6 +599,24 @@ class ToolSchemaService
         // Resolved: pin the website_id as a hard scope for the tool.
         $params['website_id'] = (int) $res['website_id'];
         return null;
+    }
+
+    /**
+     * UI/site context from the current HTTP request — the site the customer is working on
+     * (site_url input or X-Lgse-Active-Site header). Null when absent (CLI/jobs/no value).
+     * RISK-0105 S4a. Read defensively so a missing request never throws.
+     */
+    private function requestSiteUrl(): ?string
+    {
+        try {
+            $req = app('request');
+            if (!$req) { return null; }
+            $v = $req->input('site_url');
+            if (!is_string($v) || $v === '') { $v = $req->header('X-Lgse-Active-Site'); }
+            return (is_string($v) && $v !== '') ? $v : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     public function executeToolCall(string $toolId, array $params, int $wsId, string $agentSlug, array $context = []): array

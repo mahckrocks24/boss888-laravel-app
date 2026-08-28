@@ -90,13 +90,28 @@ ok('15 active target pinned to AMG', ($p['website_id'] ?? 0) === $amg);
 [$ret, $p] = $enforce('builder.edit_page_with_arthur', ['page_id' => 2000000001], []);
 ok('16 foreign/absent page_id -> CLARIFY', is_array($ret) && ($ret['code'] ?? '') === 'CLARIFY_TARGET');
 
+// S4a — UI/site context derived from the request (site_url) resolves precisely by host
+app('request')->merge(['site_url' => 'https://r0105-bpa-999992.levelupgrowth.io/menu']);
+[$ret, $p] = $enforce('publish_website', [], []);
+ok('17 request site_url -> proceed (UI context)', $ret === null, 'ret=' . json_encode($ret));
+ok('18 request site_url pinned to BPA', ($p['website_id'] ?? 0) === $bpa);
+// a foreign/unknown site_url must NOT resolve -> CLARIFY (never guess)
+app('request')->merge(['site_url' => 'https://someone-elses-site.example.com']);
+[$ret, $p] = $enforce('publish_website', [], []);
+ok('19 foreign site_url -> CLARIFY', is_array($ret) && ($ret['code'] ?? '') === 'CLARIFY_TARGET');
+// explicit $context.ui_site_url overrides the request value
+app('request')->merge(['site_url' => 'https://r0105-bpa-999992.levelupgrowth.io']);
+[$ret, $p] = $enforce('publish_website', [], ['ui_site_url' => 'https://r0105-amg-999992.levelupgrowth.io']);
+ok('20 context ui_site_url overrides request -> AMG', $ret === null && ($p['website_id'] ?? 0) === $amg);
+app('request')->replace([]);
+
 // ---- cleanup ----
 DB::table('pages')->where('id', $page)->delete();
 DB::table('websites')->where('workspace_id', WS)->delete();
 DB::table('workspaces')->whereIn('id', [WS, WS2])->delete();
 $leftW = DB::table('websites')->where('workspace_id', WS)->count();
 $leftWs = DB::table('workspaces')->whereIn('id', [WS, WS2])->count();
-ok('17 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
+ok('21 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n", $pass, $pass + $fail, $fail);
 exit($fail === 0 ? 0 : 1);
