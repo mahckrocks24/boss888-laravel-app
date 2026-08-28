@@ -124,13 +124,22 @@ $enforce('builder.create_page', ['website_id' => $bpa], [], true);              
 ok('25 explicit name overrides cached active -> AMG', $ret === null && ($p['website_id'] ?? 0) === $amg);
 \Illuminate\Support\Facades\Cache::forget($CONV);
 
+// PUBLIC executeToolCall integration — the gate fires at the public entry, before routing/authz,
+// and short-circuits WITHOUT engine execution. (Reflection above proved enforceTarget; this proves
+// the wiring.) Uses a site-scoped tool that IS in TOOL_DEFINITIONS so it reaches the gate.
+\Illuminate\Support\Facades\Cache::forget($CONV);
+$pub = $svc->executeToolCall('builder.add_page_from_template', [], WS, 'sarah');
+ok('26 PUBLIC executeToolCall site-scoped ambiguous -> CLARIFY_TARGET (no execution)', ($pub['code'] ?? '') === 'CLARIFY_TARGET', 'got=' . json_encode($pub['code'] ?? $pub));
+$pubRead = $svc->executeToolCall('platform.list_articles', [], WS, 'sarah');
+ok('27 PUBLIC executeToolCall non-site-scoped read -> NOT gated', ($pubRead['code'] ?? '') !== 'CLARIFY_TARGET');
+
 // ---- cleanup ----
 DB::table('pages')->where('id', $page)->delete();
 DB::table('websites')->where('workspace_id', WS)->delete();
 DB::table('workspaces')->whereIn('id', [WS, WS2])->delete();
 $leftW = DB::table('websites')->where('workspace_id', WS)->count();
 $leftWs = DB::table('workspaces')->whereIn('id', [WS, WS2])->count();
-ok('26 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
+ok('28 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n", $pass, $pass + $fail, $fail);
 exit($fail === 0 ? 0 : 1);
