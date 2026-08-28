@@ -156,7 +156,14 @@ use Illuminate\Support\Facades\Route;
         // (Real URL cloning would also need SSRF protection — deferred, out of hardening scope.)
         Route::post("/clone", fn(\Illuminate\Http\Request $r) => response()->json(["cloned" => false, "error" => "URL-based website cloning is not implemented."], 501));
         Route::post("/ai", fn() => response()->json(["reply" => "The AI builder assistant has been retired. Use the Strategy Room instead.", "status" => "deprecated"]));
-        Route::delete("/websites/{id}", fn(\Illuminate\Http\Request $r, $id) => response()->json(["deleted" => app($s)->deleteWebsite((int)$id, (int)$r->attributes->get("workspace_id"))]));
+        Route::delete("/websites/{id}", function (\Illuminate\Http\Request $r, $id) use ($s) {
+            try {
+                app($s)->deleteWebsite((int)$id, (int)$r->attributes->get("workspace_id"));
+            } catch (\RuntimeException $e) {
+                return response()->json(["error" => "Website not found"], 404);
+            }
+            return response()->json(["deleted" => true, "id" => (int)$id]);
+        });
         Route::get("/stats", function(\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get("workspace_id");
             return response()->json([
