@@ -229,6 +229,7 @@ class PublishedSiteMiddleware
                     $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
                     $html = $this->injectLandmarks($html);
                     $html = $this->injectA11yNames($html);
+                    $html = $this->injectFormLabels($html);
                     $html = $this->injectAccentContrast($html);
                     $html = $this->injectMobileNav($html);
                     return response($html, 200)
@@ -421,6 +422,36 @@ class PublishedSiteMiddleware
      * with no text/aria-label, so screen readers announce a bare "button". Additive and
      * idempotent (skips any button that already has aria-label). Fail-open on error.
      */
+    /**
+     * RISK-0115 (WCAG 4.1.2/3.3.2) — generated forms use visual labels not associated with
+     * their inputs, so date/time/select fields have no accessible name. Add aria-label
+     * (humanised from the name attribute) to id-less unlabelled form controls. Skips controls
+     * that already have aria-label, have an id (likely a <label for>), or are hidden/submit/
+     * button. Additive, fail-open.
+     */
+    private function injectFormLabels(string $html): string
+    {
+        try {
+            if (stripos($html, '<input') === false && stripos($html, '<select') === false && stripos($html, '<textarea') === false) {
+                return $html;
+            }
+            $out = preg_replace_callback('#<(input|select|textarea)\b([^>]*)>#i', function (array $m): string {
+                $tag = $m[1];
+                $attrs = $m[2];
+                if (preg_match('#\baria-label\s*=#i', $attrs)) return $m[0];
+                if (preg_match('#\bid\s*=#i', $attrs)) return $m[0];
+                if (preg_match('#\btype\s*=\s*"(hidden|submit|button|image|reset)"#i', $attrs)) return $m[0];
+                if (! preg_match('#\bname\s*=\s*"([^"]+)"#i', $attrs, $nm)) return $m[0];
+                $label = ucfirst(trim((string) preg_replace('/[_\-]+/', ' ', $nm[1])));
+                if ($label === '') return $m[0];
+                return '<' . $tag . ' aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"' . $attrs . '>';
+            }, $html);
+            return $out ?? $html;
+        } catch (\Throwable $e) {
+            return $html;
+        }
+    }
+
     private function injectA11yNames(string $html): string
     {
         try {
