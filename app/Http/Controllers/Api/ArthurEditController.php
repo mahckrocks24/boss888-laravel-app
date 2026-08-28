@@ -100,6 +100,12 @@ class ArthurEditController
                 $credits->releaseReservedCredits($reservationRef);
                 $result['credits_used'] = 0;
             }
+            // RISK-0100 — return the post-edit optimistic-lock token so the editor can
+            // advance base_version after an applied edit (field-saves do not touch
+            // sections_json, so this only changes on arthur-edit/updatePage).
+            if (($result['success'] ?? false)) {
+                $result['version'] = sha1((string) \Illuminate\Support\Facades\DB::table('pages')->where('id', $pageId)->value('sections_json'));
+            }
             return response()->json($result);
         } catch (\Throwable $e) {
             if ($reservationRef) {
