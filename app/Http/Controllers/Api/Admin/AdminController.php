@@ -840,8 +840,12 @@ class AdminController
             'name' => $r->input('name'),
             'email' => $r->input('email'),
             'password' => Hash::make($r->input('password')),
-            'is_platform_admin' => $r->boolean('is_platform_admin', false),
         ]);
+        // RISK-0122 — is_platform_admin is guarded from mass-assignment; set it explicitly here.
+        // This endpoint is already platform-admin-gated (AdminMiddleware).
+        if ($r->boolean('is_platform_admin', false)) {
+            $user->forceFill(['is_platform_admin' => true])->save();
+        }
 
         // Create a default workspace for the new user
         $workspace = Workspace::create([

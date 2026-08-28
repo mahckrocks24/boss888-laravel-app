@@ -11,7 +11,9 @@ class User extends Authenticatable
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'email', 'password', 'avatar', 'is_platform_admin', 'status', 'account_classification'];
+    // RISK-0122 — is_platform_admin is NOT mass-assignable; set it only via forceFill in the
+    // platform-admin-gated appoint/revoke paths (AdminGovernanceService / AdminController).
+    protected $fillable = ['name', 'email', 'password', 'avatar', 'status', 'account_classification'];
 
     protected $hidden = ['password', 'mfa_secret_encrypted', 'mfa_recovery_codes_encrypted'];
 
