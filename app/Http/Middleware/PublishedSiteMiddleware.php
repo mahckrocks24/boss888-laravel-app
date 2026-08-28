@@ -583,6 +583,39 @@ class PublishedSiteMiddleware
             return $html;
         }
 
+        // RISK-0109 (aspect 2) — div-card templates use indexed placeholders
+        // data-field="blog_N_title/excerpt/cat/image/link" (N=1..3) with no lu-blog-card-tpl.
+        // Populate the pre-built cards from live articles; hide unused ones. Targeted
+        // single-element regexes (the card fields hold single text nodes, no nesting).
+        if (stripos($html, 'lu-blog-card-tpl') === false
+            && preg_match('#data-field="blog_1_title"#i', $html)) {
+            $list = $articles->take(3)->values();
+            $any = false;
+            for ($i = 1; $i <= 3; $i++) {
+                $a = $list->get($i - 1);
+                if (! $a) { continue; }
+                $any = true;
+                $slug    = e((string) $a->slug);
+                $title   = e((string) $a->title);
+                $excerpt = e((string) ($a->excerpt ?? $a->meta_description ?? ''));
+                $cat     = e((string) ($a->blog_category ?? 'Article'));
+                $img     = e((string) ($a->featured_image_url ?? ''));
+                $html = preg_replace('#(data-field="blog_' . $i . '_title"[^>]*>).*?(</[a-z0-9]+>)#is',  '${1}' . $title . '${2}', $html, 1);
+                $html = preg_replace('#(data-field="blog_' . $i . '_excerpt"[^>]*>).*?(</[a-z0-9]+>)#is', '${1}' . $excerpt . '${2}', $html, 1);
+                $html = preg_replace('#(data-field="blog_' . $i . '_cat"[^>]*>).*?(</[a-z0-9]+>)#is',    '${1}' . $cat . '${2}', $html, 1);
+                $html = preg_replace('#<a[^>]*data-field="blog_' . $i . '_link"[^>]*>.*?</a>#is', '<a href="/blog/' . $slug . '" class="blog-link" data-field="blog_' . $i . '_link">Read more</a>', $html, 1);
+                if ($img !== '') {
+                    $html = preg_replace_callback('#(<[^>]*data-field="blog_' . $i . '_image"[^>]*style="[^"]*background-image:url\()[^)]*(\)[^"]*")#i', function ($mm) use ($img) { return $mm[1] . "'" . $img . "'" . $mm[2]; }, $html, 1);
+                }
+            }
+            if ($any) {
+                // hide any card still pointing at the placeholder '#'
+                $css = '<style id="lu-blog-divcard">.blog-card:has(a.blog-link[href="#"]){display:none}</style>';
+                $out = preg_replace('#</head>#i', $css . '</head>', $html, 1, $n);
+                return ($n && $out !== null) ? $out : $html;
+            }
+        }
+
         // Home preview requests only the contained blog-card branch — never the
         // post-card featured/grid rotation below.
         if ($blogCardOnly) return $html;
