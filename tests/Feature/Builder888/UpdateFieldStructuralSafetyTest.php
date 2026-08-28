@@ -24,7 +24,8 @@ class UpdateFieldStructuralSafetyTest extends TestCase
     private const FIXTURE = <<<'HTML'
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>D4 fixture</title>
-<style>.hero{background-image:url('/storage/builder-heroes/cafe.jpg')}</style></head>
+<style>.hero{padding:10px;background-image:linear-gradient(rgba(253,246,236,0.82) 0%,rgba(253,246,236,0.92) 100%),url('/storage/builder-heroes/cafe.jpg');background-size:cover}
+@media(max-width:600px){.hero{padding:4px}}</style></head>
 <body>
 <section class="hero" data-block="hero" data-field="hero_image">
   <div class="wrap">
@@ -76,9 +77,9 @@ HTML;
         $this->assertStringContainsString('data-field="hero_subtitle"', $html);
         $this->assertStringContainsString('data-field="hero_form_submit"', $html);
         $this->assertMatchesRegularExpression(
-            '#<section[^>]*data-field="hero_image"[^>]*style="[^"]*background-image:url\(\'/storage/template-images/cafe/gallery_2\.jpg\'\)#',
+            '#<section[^>]*data-field="hero_image"[^>]*style="[^"]*background-image:linear-gradient\(rgba\(253,246,236,0\.82\) 0%,rgba\(253,246,236,0\.92\) 100%\),url\(\'/storage/template-images/cafe/gallery_2\.jpg\'\)#',
             $html,
-            'the wrapper must get an inline background-image (inline beats the class rule)'
+            'the wrapper must get an inline background-image that KEEPS the class rule\'s wash layer (D3) with the url swapped'
         );
         $this->assertStringNotContainsString('>/storage/template-images/cafe/gallery_2.jpg<', $html, 'the URL must never appear as text content');
     }
@@ -117,7 +118,7 @@ HTML;
         $this->svc()->updateField(self::SITE_ID, 'hero_image', "x.jpg') ; color:red; background:url('evil");
         $html = file_get_contents($this->path);
         $this->assertMatchesRegularExpression(
-            "#data-field=\"hero_image\"[^>]*style=\"background-image:url\\('[^'()]*'\\)\"#",
+            "#data-field=\"hero_image\"[^>]*style=\"background-image:(?:linear-gradient\\([^\"]*\\),)?url\\('[^'()]*'\\)\"#",
             $html,
             'exactly one well-formed url() with no quote/paren breakout'
         );

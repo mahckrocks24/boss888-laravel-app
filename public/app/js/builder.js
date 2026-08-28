@@ -1109,6 +1109,11 @@ function _t3ReplaceImage(websiteId, field, url) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json().catch(function(){ return {}; });
   }).then(function(d){
+    if (d && d.saved && d.export_patched === false) {
+      // BUILDER888 D3/D4 — the value is stored but the served page could not be patched.
+      if (typeof showToast === 'function') showToast('Saved, but the live page could not be updated for this element. Please refresh the preview and try again.', 'error');
+      return;
+    }
     if (typeof showToast === 'function') showToast(url ? 'Image updated' : 'Image removed', 'success');
   }).catch(function(err){
     if (typeof showToast === 'function') showToast('Save failed: ' + err.message, 'error');

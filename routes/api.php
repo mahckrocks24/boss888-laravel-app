@@ -3840,7 +3840,11 @@ document.addEventListener("DOMContentLoaded",function(){
         if (innerImg) {
           innerImg.src = effectiveSrc;
         } else {
-          el.style.backgroundImage = url ? "url(\"" + url + "\")" : "";
+          // BUILDER888 D3 — keep the class rule gradient/wash layers; swap only the url().
+          var _cur = "";
+          try { _cur = window.getComputedStyle(el).backgroundImage || ""; } catch(_c) {}
+          if (url && /url\(/.test(_cur)) { el.style.backgroundImage = _cur.replace(/url\([^)]*\)/i, "url(\"" + url + "\")"); }
+          else { el.style.backgroundImage = url ? "url(\"" + url + "\")" : ""; }
         }
       }
       if (field === "logo_url") {

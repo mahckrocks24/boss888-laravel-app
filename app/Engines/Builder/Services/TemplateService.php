@@ -745,7 +745,24 @@ class TemplateService
         // close the url()/style attribute (CSS injection into the served page).
         $cssUrl = str_replace(["'", '"', '(', ')', ';', '\\', "\n", "\r"], '', $value);
 
-        $applyImg = function (\DOMElement $el, string $value) use ($cssUrl) {
+        // BUILDER888 D3 (2026-08-28) — templates keep hero text legible with a wash layered
+        // over the photo IN THE CLASS RULE (.hero{background-image:linear-gradient(...),url(...)}).
+        // Writing a bare inline url() replaces the whole layer list, drops the wash and leaves
+        // dark text on a busy photo. Reuse the class rule's declaration with the url swapped.
+        $bgDecl = function (\DOMElement $el) use ($original): ?string {
+            if (! preg_match_all('/<style[^>]*>(.*?)<\/style>/is', (string) $original, $m)) return null;
+            $css = implode("\n", $m[1]);
+            foreach (preg_split('/\s+/', trim((string) $el->getAttribute('class'))) ?: [] as $c) {
+                if ($c === '') continue;
+                if (! preg_match_all('/(?:^|[\s,}])\.' . preg_quote($c, '/') . '\s*\{([^}]*)\}/s', $css, $rules)) continue;
+                foreach ($rules[1] as $body) {
+                    if (preg_match('/background(?:-image)?\s*:\s*([^;}]*url\([^;}]*)/i', $body, $b)) return trim($b[1]);
+                }
+            }
+            return null;
+        };
+
+        $applyImg = function (\DOMElement $el, string $value) use ($cssUrl, $bgDecl) {
             $done = false;
             if (strtolower($el->nodeName) === 'img') {
                 $el->setAttribute('src', $value);
@@ -774,7 +791,9 @@ class TemplateService
             if (! $done && ($el->getElementsByTagName('*')->length > 0 || trim((string) $el->textContent) !== '')) {
                 $style = trim((string) $el->getAttribute('style'));
                 if ($style !== '' && ! str_ends_with($style, ';')) $style .= ';';
-                $el->setAttribute('style', $style . "background-image:url('" . $cssUrl . "')");
+                $decl = $bgDecl($el);
+                $bg = $decl ? preg_replace('/url\([^)]*\)/i', "url('" . $cssUrl . "')", $decl) : "url('" . $cssUrl . "')";
+                $el->setAttribute('style', $style . 'background-image:' . $bg);
                 $done = true;
             }
             return $done;
