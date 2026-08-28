@@ -43,9 +43,11 @@ $rEnabled = new ReflectionMethod($svc, 'targetResolutionEnabled'); $rEnabled->se
 $rEnforce = new ReflectionMethod($svc, 'enforceTarget');           $rEnforce->setAccessible(true);
 $rConst   = (new ReflectionClass($svc))->getConstant('SITE_SCOPED_TOOLS');
 
-$enforce = function (string $tool, array $params, array $ctx) use ($rEnforce, $svc) {
+$CONV = 'sarah:tgt:ws' . WS . ':sarah';
+$enforce = function (string $tool, array $params, array $ctx, bool $keepCache = false) use ($rEnforce, $svc, $CONV) {
+    if (!$keepCache) { \Illuminate\Support\Facades\Cache::forget($CONV); }  // isolate base scenarios
     $p = $params;                       // by-ref: enforceTarget may pin website_id into $p
-    $args = [$tool, &$p, WS, $ctx];
+    $args = [$tool, &$p, WS, 'sarah', $ctx];   // agentSlug='sarah'
     $ret = $rEnforce->invokeArgs($svc, $args);
     return [$ret, $p];
 };
@@ -105,13 +107,30 @@ app('request')->merge(['site_url' => 'https://r0105-bpa-999992.levelupgrowth.io'
 ok('20 context ui_site_url overrides request -> AMG', $ret === null && ($p['website_id'] ?? 0) === $amg);
 app('request')->replace([]);
 
+// S4b — implicit continuation: a resolve remembers the active target; a later bare request uses it.
+\Illuminate\Support\Facades\Cache::forget($CONV);
+[$ret, $p] = $enforce('builder.create_page', ['website_id' => $bpa], [], true);   // resolve BPA, keep cache
+ok('21 seed active via explicit BPA', $ret === null && ($p['website_id'] ?? 0) === $bpa);
+[$ret, $p] = $enforce('publish_website', [], [], true);                            // bare -> cached active
+ok('22 bare request continues on BPA (cached active)', $ret === null && ($p['website_id'] ?? 0) === $bpa);
+$enforce('builder.create_page', ['website_id' => $amg], [], true);                 // switch active to AMG
+[$ret, $p] = $enforce('publish_website', [], [], true);
+ok('23 switch A->B then bare -> AMG', $ret === null && ($p['website_id'] ?? 0) === $amg);
+\Illuminate\Support\Facades\Cache::forget($CONV);                                  // simulate staleness/expiry
+[$ret, $p] = $enforce('publish_website', [], [], true);
+ok('24 stale/expired active -> CLARIFY', is_array($ret) && ($ret['code'] ?? '') === 'CLARIFY_TARGET');
+$enforce('builder.create_page', ['website_id' => $bpa], [], true);                 // seed BPA active
+[$ret, $p] = $enforce('builder.add_page_from_template', [], ['explicit_name' => 'AMG Travel'], true);
+ok('25 explicit name overrides cached active -> AMG', $ret === null && ($p['website_id'] ?? 0) === $amg);
+\Illuminate\Support\Facades\Cache::forget($CONV);
+
 // ---- cleanup ----
 DB::table('pages')->where('id', $page)->delete();
 DB::table('websites')->where('workspace_id', WS)->delete();
 DB::table('workspaces')->whereIn('id', [WS, WS2])->delete();
 $leftW = DB::table('websites')->where('workspace_id', WS)->count();
 $leftWs = DB::table('workspaces')->whereIn('id', [WS, WS2])->count();
-ok('21 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
+ok('26 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n", $pass, $pass + $fail, $fail);
 exit($fail === 0 ? 0 : 1);

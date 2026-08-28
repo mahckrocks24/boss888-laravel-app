@@ -553,8 +553,10 @@ class ToolSchemaService
      * CLARIFY result that short-circuits execution. Never guesses. RISK-0105.
      * @return array<string,mixed>|null null => proceed; array => clarify (do not execute).
      */
-    private function enforceTarget(string $toolId, array &$params, int $wsId, array $context): ?array
+    private function enforceTarget(string $toolId, array &$params, int $wsId, string $agentSlug, array $context): ?array
     {
+        // RISK-0105 S4b — per-conversation active target (cache; TTL = staleness window).
+        $convKey = 'sarah:tgt:ws' . $wsId . ':' . $agentSlug;
         $websites = \Illuminate\Support\Facades\DB::table('websites')
             ->where('workspace_id', $wsId)
             ->whereNull('deleted_at')
@@ -575,7 +577,7 @@ class ToolSchemaService
         $signals = [
             'explicit_id'       => $explicitId ?: null,
             'explicit_name'     => $context['explicit_name'] ?? null,
-            'active_website_id' => isset($context['active_website_id']) ? (int) $context['active_website_id'] : null,
+            'active_website_id' => isset($context['active_website_id']) ? (int) $context['active_website_id'] : $this->cachedActiveTarget($convKey),
             'ui_site_url'       => $context['ui_site_url'] ?? $this->requestSiteUrl(),
         ];
 
@@ -596,9 +598,25 @@ class ToolSchemaService
             ];
         }
 
-        // Resolved: pin the website_id as a hard scope for the tool.
+        // Resolved: pin the website_id as a hard scope for the tool, and remember it as this
+        // conversation's active target for implicit continuation next turn. RISK-0105 S4b.
         $params['website_id'] = (int) $res['website_id'];
+        try {
+            \Illuminate\Support\Facades\Cache::put($convKey, (int) $res['website_id'], now()->addMinutes(30));
+        } catch (\Throwable $e) {
+        }
         return null;
+    }
+
+    /** Most-recent resolved target for this conversation (cache; null if none/expired). RISK-0105 S4b. */
+    private function cachedActiveTarget(string $convKey): ?int
+    {
+        try {
+            $v = \Illuminate\Support\Facades\Cache::get($convKey);
+            return (is_numeric($v) && (int) $v > 0) ? (int) $v : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
@@ -635,7 +653,7 @@ class ToolSchemaService
         // Flag-gated per workspace (default OFF => unchanged behaviour). When ON, a site-specific
         // tool with an ambiguous target returns CLARIFY instead of executing on a guessed site.
         if ($this->targetResolutionEnabled($wsId) && in_array($toolId, self::SITE_SCOPED_TOOLS, true)) {
-            $clarify = $this->enforceTarget($toolId, $params, $wsId, $context);
+            $clarify = $this->enforceTarget($toolId, $params, $wsId, $agentSlug, $context);
             if ($clarify !== null) {
                 return $clarify;
             }
