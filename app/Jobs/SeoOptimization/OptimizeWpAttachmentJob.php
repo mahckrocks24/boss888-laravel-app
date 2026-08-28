@@ -68,6 +68,10 @@ class OptimizeWpAttachmentJob implements ShouldQueue
             return;
         }
         $base = rtrim($siteUrl, '/');
+        if (\App\Support\SsrfGuard::isBlockedUrl($base)) {
+            \Illuminate\Support\Facades\Log::warning('[OptimizeWpAttachment] fetch blocked (SSRF guard)', ['url' => $base]);
+            return;
+        }
 
         // ── 2. FETCH original bytes from WP via connector ───────────────
         try {

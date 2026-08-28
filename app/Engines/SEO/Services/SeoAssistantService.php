@@ -2909,6 +2909,10 @@ class SeoAssistantService
                 'secret'             => $webhookSecret,
             ];
             $wpUrl = rtrim((string) $siteUrl, '/') . '/wp-json/lgsc/v1/update-post';
+            if (\App\Support\SsrfGuard::isBlockedUrl($wpUrl)) {
+                Log::warning('[SEO Assistant] WP update-post blocked (SSRF guard)', ['workspace_id' => $wsId, 'url' => $wpUrl]);
+                return false;
+            }
             $r = Http::timeout(30)->post($wpUrl, $payload);
             if (!$r->successful()) {
                 Log::warning('[SEO Assistant] WP update-post HTTP error', [
