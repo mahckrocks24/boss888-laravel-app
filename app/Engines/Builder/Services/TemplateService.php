@@ -748,12 +748,18 @@ class TemplateService
             return $done;
         };
 
+        // RISK-0104 — the editor posts innerHTML (entity-encoded); textContent
+        // re-encodes on saveHTML, so a typed "&" would double-escape to
+        // "&amp;amp;". Decode once for text writes. XSS-safe: textContent +
+        // saveHTML re-escape <>& so decoded markup serialises back inert.
+        $textValue = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
         foreach ($xpath->query("//*[@data-field='{$fieldId}']") as $el) {
             if ($isImg) {
                 if ($applyImg($el, $value)) $found = true;
-                else { $el->textContent = $value; $found = true; } // fallback (e.g. alt/text logo)
+                else { $el->textContent = $textValue; $found = true; } // fallback (e.g. alt/text logo)
             } else {
-                $el->textContent = $value;
+                $el->textContent = $textValue;
                 $found = true;
             }
         }
