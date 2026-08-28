@@ -228,6 +228,7 @@ class PublishedSiteMiddleware
                     $html = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($html, (int) $website->id);
                     $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
                     $html = $this->injectLandmarks($html);
+                    $html = $this->injectA11yNames($html);
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
@@ -329,6 +330,34 @@ class PublishedSiteMiddleware
      * content between it and the footer in <main>. Skipped when the page already has a
      * <main> (the dynamic BuilderRenderer and the amg bespoke theme emit their own).
      */
+    /**
+     * RISK-0102 (WCAG 4.1.2) — give unnamed carousel/indicator dot buttons an accessible
+     * name. Generated templates emit empty <button class="...dot..." onclick="goToSlide(i)">
+     * with no text/aria-label, so screen readers announce a bare "button". Additive and
+     * idempotent (skips any button that already has aria-label). Fail-open on error.
+     */
+    private function injectA11yNames(string $html): string
+    {
+        try {
+            if (stripos($html, 'dot') === false && stripos($html, 'indicator') === false) {
+                return $html;
+            }
+            $out = preg_replace_callback(
+                '#<button\b(?![^>]*aria-label)([^>]*class="[^"]*(?:dot|indicator)[^"]*"[^>]*)>(\s*)</button>#i',
+                function ($m) {
+                    $attrs = $m[1];
+                    $n = 1;
+                    if (preg_match('#goToSlide\((\d+)\)#i', $attrs, $gm)) { $n = (int) $gm[1] + 1; }
+                    return '<button aria-label="Go to slide ' . $n . '"' . $attrs . '>' . $m[2] . '</button>';
+                },
+                $html
+            );
+            return $out ?? $html;
+        } catch (\Throwable $e) {
+            return $html;
+        }
+    }
+
     private function injectLandmarks(string $html): string
     {
         if (stripos($html, '<main') !== false) { return $html; }
