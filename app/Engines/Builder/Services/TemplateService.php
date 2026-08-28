@@ -721,10 +721,11 @@ class TemplateService
         if ($fp === false) return false;
         if (! flock($fp, LOCK_EX)) { fclose($fp); return false; }
 
+        $original = stream_get_contents($fp);   // RISK-0107 — pre-edit content, for backup
         $dom = new \DOMDocument();
         libxml_use_internal_errors(true);
         @$dom->loadHTML(
-            stream_get_contents($fp),
+            $original,
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
         libxml_clear_errors();
@@ -782,6 +783,24 @@ class TemplateService
         }
 
         if ($found) {
+            // RISK-0107 — preserve the pre-edit served content so a bad inline edit is recoverable.
+            // Best-effort: a backup failure must NEVER block the edit. Rolling last-10 under .history.
+            try {
+                $histDir = storage_path("app/public/sites/{$websiteId}/.history");
+                if (! is_dir($histDir)) { @mkdir($histDir, 0775, true); }
+                if (is_dir($histDir) && is_string($original) && $original !== '') {
+                    $stamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+                    @file_put_contents($histDir . "/index-{$stamp}.html", $original);
+                    $backups = glob($histDir . '/index-*.html') ?: [];
+                    if (count($backups) > 10) {
+                        sort($backups);   // zero-padded stamp -> lexicographic == chronological
+                        foreach (array_slice($backups, 0, count($backups) - 10) as $old) { @unlink($old); }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[TemplateService] RISK-0107 pre-edit backup failed: ' . $e->getMessage());
+            }
+
             $new = $this->restoreUtf8Entities($dom->saveHTML());
             rewind($fp);
             ftruncate($fp, 0);
