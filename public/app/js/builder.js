@@ -456,7 +456,7 @@ function bld_updateAiContext() {
   if (!quick) return;
   const btns = BLD_AI_QUICK_BY_VIEW[currentView] || BLD_AI_QUICK_BY_VIEW.workspace;
   quick.innerHTML = btns.map(([label, prompt]) =>
-    `<button class="ai-q-btn" onclick="bld_aiQuick(${JSON.stringify(prompt)})">${label}</button>`
+    `<button class="ai-q-btn" onclick="bld_aiQuick(${JSON.stringify(prompt).replace(/"/g,'&quot;')})">${label}</button>`
   ).join('');
 }
 
@@ -887,7 +887,7 @@ function _wsShowTemplateEditor(site) {
       '<span style="flex:1"></span>' +
       '<span style="color:var(--t3);font-size:11px">Click any text to edit</span>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
-      '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
+      '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
     // Main
     '<div style="flex:1;display:flex;overflow:hidden">' +

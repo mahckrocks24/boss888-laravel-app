@@ -5080,7 +5080,7 @@ function updateAiContext() {
   if (!quick) return;
   var btns = AI_QUICK_BY_VIEW[currentView] || AI_QUICK_BY_VIEW.workspace;
   quick.innerHTML = btns.map(([label, prompt]) =>
-    `<button class="ai-q-btn" onclick="aiQuick(${JSON.stringify(prompt)})">${label}</button>`
+    `<button class="ai-q-btn" onclick="aiQuick(${JSON.stringify(prompt).replace(/"/g,'&quot;')})">${label}</button>`
   ).join('');
 }
 
