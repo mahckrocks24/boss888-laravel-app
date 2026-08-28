@@ -44,6 +44,7 @@ class MediaController
 
         $file       = $request->file('file');
         $mimeUpload = $file->getClientMimeType();
+        $realMime   = (string) $file->getMimeType();   // RISK-0119 — magic bytes, not spoofable
 
         // Resolve effective kind, preferring an explicit hint from the
         // mobile companion (which knows what the user picked).
@@ -88,7 +89,40 @@ class MediaController
             ], 422);
         }
 
-        $name = Str::random(16) . '.' . $file->getClientOriginalExtension();
+        // RISK-0119 (P0) — the 'public' disk is web-served and EXECUTES PHP, so an arbitrary
+        // extension/content is RCE/stored-XSS. Block actual script/markup content by magic bytes
+        // (defeats a spoofed image/png Content-Type on a PHP/HTML/SVG payload)...
+        $dangerMimes = [
+            'text/html', 'application/xhtml+xml', 'image/svg+xml',
+            'text/x-php', 'application/x-httpd-php', 'application/x-php',
+            'application/javascript', 'text/javascript',
+            'application/x-sh', 'text/x-shellscript', 'text/x-python', 'application/x-perl',
+        ];
+        if (in_array($realMime, $dangerMimes, true)) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'That file was rejected for security reasons.',
+            ], 422);
+        }
+
+        // ...and NEVER store the client-supplied extension: derive a safe one from the validated
+        // type. Every value here is an inert extension, so no executable/markup file can be created.
+        $extForMime = [
+            'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp',
+            'image/heic' => 'heic', 'image/heif' => 'heif',
+            'video/mp4' => 'mp4', 'video/quicktime' => 'mov', 'video/webm' => 'webm',
+            'video/x-matroska' => 'mkv', 'video/3gpp' => '3gp',
+            'audio/mpeg' => 'mp3', 'audio/mp4' => 'm4a', 'audio/aac' => 'aac', 'audio/wav' => 'wav', 'audio/webm' => 'weba',
+            'application/pdf' => 'pdf', 'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            'application/vnd.ms-excel' => 'xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+            'application/vnd.ms-powerpoint' => 'ppt',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx',
+            'text/csv' => 'csv', 'text/plain' => 'txt', 'application/zip' => 'zip', 'application/json' => 'json',
+        ];
+        $safeExt = $extForMime[$mimeUpload] ?? ($extForMime[$realMime] ?? 'bin');
+        $name = Str::random(16) . '.' . $safeExt;
         $path = $file->storeAs('uploads', $name, 'public');
 
         $wsId    = (int) ($request->attributes->get('workspace_id') ?? 0) ?: null;
