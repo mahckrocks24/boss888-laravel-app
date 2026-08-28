@@ -706,6 +706,12 @@ class TemplateService
             return false;
         }
 
+        // RISK-0113 (defence-in-depth) — reject a non-identifier field name so it can never be
+        // interpolated into the XPath below. The route validates too; this guards other callers.
+        if (! preg_match('/^[A-Za-z0-9_-]{1,64}$/', $fieldId)) {
+            return false;
+        }
+
         // RISK-0112 — serialise concurrent field-saves with an exclusive file lock.
         // This is read-modify-write on the deployed static file; without a lock two
         // concurrent saves (customer+Arthur, two tabs, a rapid multi-field flush) both
@@ -764,6 +770,8 @@ class TemplateService
         $textValue = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
         foreach ($xpath->query("//*[@data-field='{$fieldId}']") as $el) {
+            // RISK-0113 — never write into a <script>/<style> node (raw serialisation = XSS).
+            if (in_array(strtolower($el->nodeName), ['script', 'style'], true)) { continue; }
             if ($isImg) {
                 if ($applyImg($el, $value)) $found = true;
                 else { $el->textContent = $textValue; $found = true; } // fallback (e.g. alt/text logo)

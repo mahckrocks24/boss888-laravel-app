@@ -4165,6 +4165,11 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     $value = $r->input('value', '');
     $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
     if ($__ow !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
+    // RISK-0113 — {field} is interpolated into an XPath in updateField; validate it strictly
+    // (identifier only) so a crafted name cannot break out and select <script>/<style> nodes
+    // (whose content saveHTML serialises raw = stored XSS). RISK-0114 — cap the value length.
+    if (! preg_match('/^[A-Za-z0-9_-]{1,64}$/', (string) $field)) return response()->json(['saved' => false, 'field' => $field, 'error' => 'Invalid field name.'], 422);
+    if (strlen((string) $value) > 65536) return response()->json(['saved' => false, 'field' => $field, 'error' => 'Value too large (max 64KB).'], 422);
     $ts = new \App\Engines\Builder\Services\TemplateService();
     // updateField now patches text AND image fields SURGICALLY in the deployed
     // index.html (src / background-image), so we no longer full-re-render for
