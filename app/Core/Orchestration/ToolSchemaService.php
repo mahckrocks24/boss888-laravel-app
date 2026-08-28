@@ -563,15 +563,28 @@ class ToolSchemaService
             ->get(['id', 'name', 'subdomain', 'custom_domain'])
             ->map(fn ($w) => (array) $w)->all();
 
-        // Explicit id from params, or derived from an explicit page_id (validated to this workspace).
+        // Explicit id from params, or derived from an explicit page_id — validated to THIS workspace
+        // and excluding soft-deleted sites. RISK-0105 hardening.
         $explicitId = (int) ($params['website_id'] ?? 0);
-        if ($explicitId <= 0 && !empty($params['page_id'])) {
-            $wid = (int) \Illuminate\Support\Facades\DB::table('pages')
+        $pageId     = (int) ($params['page_id'] ?? 0);
+        $explicitProvided = ($explicitId > 0 || $pageId > 0);
+        if ($explicitId <= 0 && $pageId > 0) {
+            $explicitId = (int) \Illuminate\Support\Facades\DB::table('pages')
                 ->join('websites as w', 'w.id', '=', 'pages.website_id')
-                ->where('pages.id', (int) $params['page_id'])
+                ->where('pages.id', $pageId)
                 ->where('w.workspace_id', $wsId)
+                ->whereNull('w.deleted_at')
                 ->value('pages.website_id');
-            if ($wid > 0) { $explicitId = $wid; }
+        }
+
+        // RISK-0105 hardening — a caller that explicitly names a target (website_id or page_id) must
+        // hit THAT website or be asked; never silently substitute a different site.
+        $eligibleIds = array_map(static fn ($w) => (int) $w['id'], $websites);
+        if ($explicitProvided && !in_array($explicitId, $eligibleIds, true)) {
+            return $this->clarifyResult(
+                array_map(static fn ($w) => ['id' => (int) $w['id'], 'name' => (string) ($w['name'] ?? '')], $websites),
+                'explicit target is not an eligible website'
+            );
         }
 
         $signals = [
@@ -584,18 +597,7 @@ class ToolSchemaService
         $res = app(\App\Core\Sarah888\WebsiteTargetResolver::class)->resolve($websites, $signals);
 
         if (($res['status'] ?? '') === \App\Core\Sarah888\WebsiteTargetResolver::CLARIFY) {
-            $names = array_map(static fn ($c) => (string) ($c['name'] ?? ''), $res['candidates'] ?? []);
-            $names = array_values(array_filter($names));
-            $ask = empty($names)
-                ? 'Which website would you like me to work on? I could not find an eligible website.'
-                : ('Which website would you like me to update — ' . implode(', ', $names) . '?');
-            return [
-                'success'    => false,
-                'code'       => 'CLARIFY_TARGET',
-                'error'      => $ask,
-                'candidates' => $res['candidates'] ?? [],
-                'reason'     => $res['reason'] ?? '',
-            ];
+            return $this->clarifyResult($res['candidates'] ?? [], $res['reason'] ?? '');
         }
 
         // Resolved: pin the website_id as a hard scope for the tool, and remember it as this
@@ -617,6 +619,23 @@ class ToolSchemaService
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    /** Build a CLARIFY_TARGET result from candidate {id,name} rows. RISK-0105. */
+    private function clarifyResult(array $candidates, string $reason): array
+    {
+        $names = array_values(array_filter(array_map(
+            static fn ($c) => (string) ($c['name'] ?? ''), $candidates)));
+        $ask = empty($names)
+            ? 'Which website would you like me to work on? I could not find an eligible website.'
+            : ('Which website would you like me to update — ' . implode(', ', $names) . '?');
+        return [
+            'success'    => false,
+            'code'       => 'CLARIFY_TARGET',
+            'error'      => $ask,
+            'candidates' => $candidates,
+            'reason'     => $reason,
+        ];
     }
 
     /**

@@ -133,13 +133,28 @@ ok('26 PUBLIC executeToolCall site-scoped ambiguous -> CLARIFY_TARGET (no execut
 $pubRead = $svc->executeToolCall('platform.list_articles', [], WS, 'sarah');
 ok('27 PUBLIC executeToolCall non-site-scoped read -> NOT gated', ($pubRead['code'] ?? '') !== 'CLARIFY_TARGET');
 
+// HARDENING — an explicitly named target that is foreign/soft-deleted must CLARIFY, never silently
+// substitute a different site (the dangerous case is a workspace with exactly ONE eligible site).
+\Illuminate\Support\Facades\Cache::forget($CONV);
+[$ret, $p] = $enforce('builder.create_page', ['website_id' => 987654321], []);   // foreign id, multi-site
+ok('28 foreign website_id -> CLARIFY (not substituted to a valid site)', is_array($ret) && ($ret['code'] ?? '') === 'CLARIFY_TARGET' && !in_array((int) ($p['website_id'] ?? 0), [$chefred, $bpa, $amg], true));
+// soft-delete Chef Red + AMG so only BPA remains eligible
+DB::table('websites')->whereIn('id', [$chefred, $amg])->update(['deleted_at' => now()]);
+[$ret, $p] = $enforce('builder.edit_page_with_arthur', ['page_id' => $page], []); // page on soft-deleted Chef Red
+ok('29 page_id on soft-deleted site -> CLARIFY (not sole-eligible BPA)', is_array($ret) && ($ret['code'] ?? '') === 'CLARIFY_TARGET' && ($p['website_id'] ?? 0) !== $bpa);
+[$ret, $p] = $enforce('builder.create_page', ['website_id' => $chefred], []);     // explicit soft-deleted id
+ok('30 explicit soft-deleted website_id, sole-eligible exists -> CLARIFY (no substitution)', is_array($ret) && ($ret['code'] ?? '') === 'CLARIFY_TARGET');
+[$ret, $p] = $enforce('builder.create_page', [], []);                             // control: bare, sole eligible
+ok('31 bare request, sole eligible BPA -> resolves BPA (no regression)', $ret === null && ($p['website_id'] ?? 0) === $bpa);
+DB::table('websites')->whereIn('id', [$chefred, $amg])->update(['deleted_at' => null]); // restore
+
 // ---- cleanup ----
 DB::table('pages')->where('id', $page)->delete();
 DB::table('websites')->where('workspace_id', WS)->delete();
 DB::table('workspaces')->whereIn('id', [WS, WS2])->delete();
 $leftW = DB::table('websites')->where('workspace_id', WS)->count();
 $leftWs = DB::table('workspaces')->whereIn('id', [WS, WS2])->count();
-ok('28 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
+ok('32 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n", $pass, $pass + $fail, $fail);
 exit($fail === 0 ? 0 : 1);
