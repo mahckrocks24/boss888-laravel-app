@@ -4074,6 +4074,7 @@ document.addEventListener("DOMContentLoaded",function(){
     console.log("[edit] _enterEdit called with", target);
     if (!target || _editingEl === target) return;
     _editingEl = target;
+    if (target.dataset.luBase === undefined) target.dataset.luBase = target.innerHTML; // D10 conflict base
     target.setAttribute("contenteditable", "true");
     target.setAttribute("spellcheck", "false");
     target.style.cursor = "text";
@@ -4106,9 +4107,11 @@ document.addEventListener("DOMContentLoaded",function(){
         type: "field-changed",
         websiteId: ' . (int)$id . ',
         field: t.getAttribute("data-field"),
-        value: t.innerHTML
+        value: t.innerHTML,
+        base: t.dataset.luBase
       }, "*");
     } catch(_e){}
+    try { delete t.dataset.luBase; } catch(_db){}
     _editingEl = null;
     // Restore orange selection overlay if the element is still the selected one.
     if (_selEl) {
@@ -4144,7 +4147,8 @@ document.addEventListener("DOMContentLoaded",function(){
         type: "field-changed",
         websiteId: ' . (int)$id . ',
         field: _editingEl.getAttribute("data-field"),
-        value: _editingEl.innerHTML
+        value: _editingEl.innerHTML,
+        base: _editingEl.dataset.luBase
       }, "*");
     }
   }, true);
@@ -4177,6 +4181,24 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     $value = $r->input('value', '');
     $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
     if ($__ow !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
+    // BUILDER888 D10 (2026-08-29) — per-field optimistic concurrency. Two tabs (or a teammate)
+    // editing the same field: the later, stale save used to overwrite the earlier one and
+    // report "✓ Saved". When the editor sends the value it started from (base_value) and the
+    // stored value has moved on, refuse with 409 + the current value; the editor asks the
+    // customer to overwrite or keep. force=true (after an explicit "Overwrite") bypasses.
+    if ($r->has('base_value') && ! $r->boolean('force')) {
+        $__norm = function ($v) { return trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags((string) $v), ENT_QUOTES | ENT_HTML5, 'UTF-8'))); };
+        $__cur = json_decode((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('template_variables'), true);
+        if (is_array($__cur) && array_key_exists($field, $__cur) && is_string($__cur[$field])) {
+            $__c = $__norm($__cur[$field]); $__b = $__norm($r->input('base_value')); $__v = $__norm($value);
+            if ($__c !== $__b && $__c !== $__v) {
+                return response()->json([
+                    'saved' => false, 'conflict' => true, 'field' => $field, 'current' => $__cur[$field],
+                    'error' => 'This text was changed elsewhere since you opened the page.',
+                ], 409);
+            }
+        }
+    }
     // RISK-0113 — {field} is interpolated into an XPath in updateField; validate it strictly
     // (identifier only) so a crafted name cannot break out and select <script>/<style> nodes
     // (whose content saveHTML serialises raw = stored XSS). RISK-0114 — cap the value length.

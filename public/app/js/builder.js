@@ -963,7 +963,8 @@ function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data
     _t3ShowImagePanel(e.data);
     return;
   }
-  if (e.data.type === "field-changed") {    _t3PendingFields[e.data.field] = { value: e.data.value, websiteId: e.data.websiteId };
+  if (e.data.type === "field-changed") {    var _prev = _t3PendingFields[e.data.field];
+    _t3PendingFields[e.data.field] = { value: e.data.value, websiteId: e.data.websiteId, base: (_prev && _prev.base !== undefined) ? _prev.base : e.data.base, force: !!(_prev && _prev.force) };
     // Debounce save — 2 seconds after last edit
     clearTimeout(_t3SaveTimer);
     _t3SaveTimer = setTimeout(_t3FlushSaves, 2000);
@@ -1245,11 +1246,12 @@ async function _t3FlushSaves(opts) {
         var res = await fetch('/api/builder/websites/' + p.websiteId + '/fields/' + field, {
           method: 'PUT',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ value: p.value }),
+          body: JSON.stringify(Object.assign({ value: p.value }, (p.base !== undefined ? { base_value: p.base } : {}), (p.force ? { force: true } : {}))),
           keepalive: _keepalive   // BUILDER888 D9 — let a flush started on unload complete
         });
         if (!res.ok) {
           var _j = null; try { _j = await res.json(); } catch (_je) {}
+          if (res.status === 409 && _j && _j.conflict) { return { field: field, ok: false, status: 409, conflict: true, current: _j.current, p: p }; }
           return { field: field, ok: false, status: res.status, error: _j && (_j.error || _j.message) || null };
         }
         return { field: field, ok: true, status: res.status };
@@ -1258,8 +1260,10 @@ async function _t3FlushSaves(opts) {
       }
     }));
 
+    var conflicts = results.filter(function (r) { return r && r.conflict; });
     results.forEach(function (r) {
       if (r.ok) { saved++; }
+      else if (r.conflict) { /* resolved with the customer below */ }
       else {
         failed++;
         // RISK-0116 — a 4xx is a permanent client error (invalid field / value too large);
@@ -1273,6 +1277,24 @@ async function _t3FlushSaves(opts) {
 
     _t3PendingFields = stillDirty;
 
+    // BUILDER888 D10 — a field changed elsewhere: never silently overwrite, never silently drop.
+    var reflush = false, needReload = false;
+    for (var ci = 0; ci < conflicts.length; ci++) {
+      var c = conflicts[ci];
+      var cur = String(c.current || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 140);
+      var overwrite = false;
+      try {
+        overwrite = await luConfirm('Changed elsewhere', 'This text was changed in another tab or by a teammate. It now reads: \u201C' + cur + '\u201D. Overwrite it with your version?', { okLabel: 'Overwrite', cancelLabel: 'Keep current', danger: true });
+      } catch (_ce) {}
+      if (overwrite) { _t3PendingFields[c.field] = Object.assign({}, c.p, { force: true }); reflush = true; }
+      else { needReload = true; }
+    }
+    if (reflush) { setTimeout(function () { _t3FlushSaves(); }, 0); }
+    if (needReload) {
+      if (typeof window._luPageEditorReloadHook === 'function') { window._luPageEditorReloadHook(); }
+      else { var _ifr = document.getElementById('t3-preview'); if (_ifr && _ifr.src) _ifr.src = _ifr.src; }
+    }
+
     var ind = document.getElementById('t3-saved');
     if (ind && failed === 0) {
       ind.style.display = 'block';
@@ -1282,7 +1304,7 @@ async function _t3FlushSaves(opts) {
       showToast(failed + " change" + (failed === 1 ? "" : "s") + " couldn't be saved" + (firstError ? ": " + firstError : ". Please try again."), "error");
     }
 
-    return { ok: failed === 0, saved: saved, failed: failed, attempted: results.length };
+    return { ok: failed === 0 && conflicts.length === 0, saved: saved, failed: failed, attempted: results.length, conflicts: conflicts.length };
   })();
 
   try { return await _t3SaveInFlight; }
@@ -1303,6 +1325,7 @@ async function wsSaveAllEdits(websiteId) {
 
   if (typeof showToast !== 'function') { return r; }
 
+  if (r.conflicts)          { return r; } // the conflict dialog already spoke
   if (r.nothingToSave)      { showToast('No changes to save', 'info'); }
   else if (r.ok)            { showToast(r.saved === 1 ? '1 change saved' : r.saved + ' changes saved', 'success'); }
   else if (r.saved > 0)     { showToast(r.saved + ' saved, ' + r.failed + " couldn't be saved — still unsaved, please try again", 'error'); }
