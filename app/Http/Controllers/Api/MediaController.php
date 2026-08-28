@@ -335,7 +335,20 @@ class MediaController
         // T3.1 — `use_count` column does not exist in schema; tracking via
         // used_in JSON only. If a use_count column is later added,
         // re-introduce the increment here.
-        $row = DB::table('media')->where('id', $mediaId)->first(['id', 'used_in']);
+        $wsId = (int) ($request->attributes->get('workspace_id') ?? 0);
+        if (!$wsId) return response()->json(['success' => false, 'error' => 'Workspace context missing'], 400);
+
+        // RISK-0121 — tenancy: a workspace may only track its OWN media or SHARED assets (the same
+        // AI-generated/platform source-types the shared library exposes, per the 2026-05-15 owner
+        // directive). This blocks cross-workspace read/write of another workspace's PRIVATE uploads
+        // via media_id enumeration.
+        $entitled = function ($q) use ($wsId) {
+            $q->where('workspace_id', $wsId)
+              ->orWhere('is_platform_asset', 1)
+              ->orWhereIn('source', ['dalle', 'dall-e', 'dall-e-3', 'creative_engine', 'seo_featured_image', 'platform']);
+        };
+
+        $row = DB::table('media')->where('id', $mediaId)->where($entitled)->first(['id', 'used_in']);
         if (!$row) return response()->json(['success' => false, 'error' => 'Not found'], 404);
 
         $used = [];
@@ -347,7 +360,7 @@ class MediaController
             $used[] = $context;
         }
 
-        DB::table('media')->where('id', $mediaId)->update([
+        DB::table('media')->where('id', $mediaId)->where($entitled)->update([
             'used_in'    => !empty($used) ? json_encode($used) : null,
             'updated_at' => now(),
         ]);
