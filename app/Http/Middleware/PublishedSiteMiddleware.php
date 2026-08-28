@@ -514,6 +514,20 @@ class PublishedSiteMiddleware
                 $out = preg_replace('#</head>#i', $css . '</head>', $html, 1, $n);
                 if ($n && $out !== null) return $out;
             }
+            // RISK-0109 — the /blog INDEX (not the home preview) of a 0-article div-card site:
+            // hide the placeholder cards and show an honest empty-state in the grid.
+            if (! $blogCardOnly
+                && stripos($html, 'lu-blog-card-tpl') === false
+                && stripos($html, 'blog-card') !== false
+                && stripos($html, 'blog-grid') !== false) {
+                $msg = '<p class="lu-blog-empty" style="grid-column:1/-1;text-align:center;padding:40px 0;color:#64748b;font-size:1.05rem">New articles are on the way — check back soon.</p>';
+                $withMsg = preg_replace('#(<div[^>]*class="[^"]*blog-grid[^"]*"[^>]*>)#i', '$1' . $msg, $html, 1, $g);
+                if ($g && $withMsg !== null) {
+                    $css2 = '<style id="lu-blog-empty-hide">.blog-grid .blog-card{display:none}</style>';
+                    $out2 = preg_replace('#</head>#i', $css2 . '</head>', $withMsg, 1, $n2);
+                    return ($n2 && $out2 !== null) ? $out2 : $withMsg;
+                }
+            }
             return $html;
         }
 
