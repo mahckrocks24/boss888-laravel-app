@@ -602,17 +602,44 @@ class PublishedSiteMiddleware
                 $img     = e((string) ($a->featured_image_url ?? ''));
                 $html = preg_replace('#(data-field="blog_' . $i . '_title"[^>]*>).*?(</[a-z0-9]+>)#is',  '${1}' . $title . '${2}', $html, 1);
                 $html = preg_replace('#(data-field="blog_' . $i . '_excerpt"[^>]*>).*?(</[a-z0-9]+>)#is', '${1}' . $excerpt . '${2}', $html, 1);
-                $html = preg_replace('#(data-field="blog_' . $i . '_cat"[^>]*>).*?(</[a-z0-9]+>)#is',    '${1}' . $cat . '${2}', $html, 1);
+                // category: cafe uses blog_N_cat; event_venue/it_services use blog_N_category.
+                $html = preg_replace('#(data-field="blog_' . $i . '_cat"[^>]*>).*?(</[a-z0-9]+>)#is',      '${1}' . $cat . '${2}', $html, 1);
+                $html = preg_replace('#(data-field="blog_' . $i . '_category"[^>]*>).*?(</[a-z0-9]+>)#is', '${1}' . $cat . '${2}', $html, 1);
+                // link: only where the template has a blog_N_link anchor (cafe/training_center).
                 $html = preg_replace('#<a[^>]*data-field="blog_' . $i . '_link"[^>]*>.*?</a>#is', '<a href="/blog/' . $slug . '" class="blog-link" data-field="blog_' . $i . '_link">Read more</a>', $html, 1);
+                // image: <img data-field src> (event_venue/it_services), a background-image div
+                // (cafe), or an <img> with no src.
                 if ($img !== '') {
-                    $html = preg_replace_callback('#(<[^>]*data-field="blog_' . $i . '_image"[^>]*style="[^"]*background-image:url\()[^)]*(\)[^"]*")#i', function ($mm) use ($img) { return $mm[1] . "'" . $img . "'" . $mm[2]; }, $html, 1);
+                    $html = preg_replace_callback(
+                        '#<(img|div|span)([^>]*\bdata-field="blog_' . $i . '_image"[^>]*)>#i',
+                        function ($mm) use ($img) {
+                            $attrs = $mm[2];
+                            if (preg_match('#\bsrc="#i', $attrs)) {
+                                $attrs = preg_replace('#\bsrc="[^"]*"#i', 'src="' . $img . '"', $attrs, 1);
+                            } elseif (stripos($attrs, 'background-image') !== false) {
+                                $attrs = preg_replace('#background-image:url\([^)]*\)#i', "background-image:url('" . $img . "')", $attrs, 1);
+                            } elseif (strtolower($mm[1]) === 'img') {
+                                $attrs .= ' src="' . $img . '"';
+                            }
+                            return '<' . $mm[1] . $attrs . '>';
+                        },
+                        $html, 1
+                    );
                 }
             }
             if ($any) {
-                // hide any card still pointing at the placeholder '#'
-                $css = '<style id="lu-blog-divcard">.blog-card:has(a.blog-link[href="#"]){display:none}</style>';
-                $out = preg_replace('#</head>#i', $css . '</head>', $html, 1, $n);
-                return ($n && $out !== null) ? $out : $html;
+                // hide unpopulated cards robustly (across all 4 div-card templates) by targeting
+                // each unused card via its title data-field, which every div-card template has.
+                $hide = [];
+                for ($j = 1; $j <= 3; $j++) {
+                    if (! $list->get($j - 1)) { $hide[] = '.blog-card:has([data-field="blog_' . $j . '_title"])'; }
+                }
+                if (! empty($hide)) {
+                    $css = '<style id="lu-blog-divcard">' . implode(',', $hide) . '{display:none}</style>';
+                    $out = preg_replace('#</head>#i', $css . '</head>', $html, 1, $n);
+                    if ($n && $out !== null) return $out;
+                }
+                return $html;
             }
         }
 
