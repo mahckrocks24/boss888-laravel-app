@@ -3591,7 +3591,19 @@ class SeoService
         }
         $fetchStart = microtime(true);
         try {
-            $response = Http::timeout(15)->withHeaders(['User-Agent' => 'LevelUpSEO/1.0 (indexer)'])->get($url);
+            $response = Http::timeout(15)
+                ->withHeaders(['User-Agent' => 'LevelUpSEO/1.0 (indexer)'])
+                ->withOptions(['allow_redirects' => [
+                    'max'       => 5,
+                    'protocols' => ['http', 'https'],
+                    'on_redirect' => function ($req, $resp, $uri) {
+                        // RISK-0120 — re-validate each redirect hop; abort on an internal target.
+                        if ($this->isBlockedFetchUrl((string) $uri)) {
+                            throw new \RuntimeException('blocked_redirect_target');
+                        }
+                    },
+                ]])
+                ->get($url);
         } catch (\Throwable $e) {
             return ['success' => false, 'error' => 'Could not fetch: ' . $e->getMessage()];
         }
