@@ -446,6 +446,29 @@ class PublishedSiteMiddleware
                 if ($label === '') return $m[0];
                 return '<' . $tag . ' aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"' . $attrs . '>';
             }, $html);
+
+            // RISK-0115 residual — name-less <select>: label from its first (placeholder) option.
+            $out = preg_replace_callback(
+                '#<select\\b(?![^>]*aria-label)(?![^>]*\\bid\\s*=)(?![^>]*\\bname\\s*=)([^>]*)>(\\s*<option[^>]*>)([^<]{1,60})(</option>)#i',
+                function ($mm) {
+                    $label = trim($mm[3]);
+                    if ($label === '') return $mm[0];
+                    return '<select aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '"' . $mm[1] . '>' . $mm[2] . $mm[3] . $mm[4];
+                },
+                $out ?? $html
+            ) ?? ($out ?? $html);
+
+            // RISK-0115 residual — name-less typed inputs (date/time/email/tel): label from type.
+            $out = preg_replace_callback(
+                '#<input\\b(?![^>]*aria-label)(?![^>]*\\bid\\s*=)(?![^>]*\\bname\\s*=)([^>]*\\btype\\s*=\\s*"(date|time|datetime-local|email|tel|search)"[^>]*)>#i',
+                function ($mm) {
+                    $map = ['date' => 'Date', 'time' => 'Time', 'datetime-local' => 'Date and time', 'email' => 'Email', 'tel' => 'Phone', 'search' => 'Search'];
+                    $label = $map[strtolower($mm[2])] ?? 'Field';
+                    return '<input aria-label="' . $label . '"' . $mm[1] . '>';
+                },
+                $out
+            ) ?? $out;
+
             return $out ?? $html;
         } catch (\Throwable $e) {
             return $html;
