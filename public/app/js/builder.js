@@ -1204,8 +1204,10 @@ async function _t3FlushSaves() {
       if (r.ok) { saved++; }
       else {
         failed++;
-        // A field that did not persist stays dirty so it can be retried.
-        stillDirty[r.field] = _t3PendingFields[r.field];
+        // RISK-0116 — a 4xx is a permanent client error (invalid field / value too large);
+        // dropping it avoids an infinite silent retry loop. 5xx/network stays dirty for retry.
+        var permanent = (typeof r.status === 'number' && r.status >= 400 && r.status < 500);
+        if (!permanent) { stillDirty[r.field] = _t3PendingFields[r.field]; }
         try { console.warn('[Builder888] field save failed', r.field, r.status); } catch (e) {}
       }
     });
@@ -1216,6 +1218,9 @@ async function _t3FlushSaves() {
     if (ind && failed === 0) {
       ind.style.display = 'block';
       setTimeout(function () { ind.style.display = 'none'; }, 2000);
+    } else if (failed > 0 && typeof showToast === 'function') {
+      // RISK-0116 — surface the failure instead of only console.warn.
+      showToast(failed + " change" + (failed === 1 ? "" : "s") + " couldn't be saved. Please try again.", "error");
     }
 
     return { ok: failed === 0, saved: saved, failed: failed, attempted: results.length };
