@@ -706,10 +706,19 @@ class TemplateService
             return false;
         }
 
+        // RISK-0112 — serialise concurrent field-saves with an exclusive file lock.
+        // This is read-modify-write on the deployed static file; without a lock two
+        // concurrent saves (customer+Arthur, two tabs, a rapid multi-field flush) both
+        // read the same base and the later write clobbers the earlier field — a silent
+        // lost edit that still returned 200. LOCK_EX makes each save read the latest state.
+        $fp = @fopen($path, 'r+');
+        if ($fp === false) return false;
+        if (! flock($fp, LOCK_EX)) { fclose($fp); return false; }
+
         $dom = new \DOMDocument();
         libxml_use_internal_errors(true);
         @$dom->loadHTML(
-            file_get_contents($path),
+            stream_get_contents($fp),
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
         libxml_clear_errors();
@@ -765,9 +774,15 @@ class TemplateService
         }
 
         if ($found) {
-            file_put_contents($path, $this->restoreUtf8Entities($dom->saveHTML()));
+            $new = $this->restoreUtf8Entities($dom->saveHTML());
+            rewind($fp);
+            ftruncate($fp, 0);
+            fwrite($fp, $new);
+            fflush($fp);
         }
 
+        flock($fp, LOCK_UN);
+        fclose($fp);
         return $found;
     }
 }
