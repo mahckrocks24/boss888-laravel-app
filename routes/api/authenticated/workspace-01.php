@@ -88,7 +88,11 @@ use Illuminate\Support\Facades\Route;
     Route::get('/workspace/status', function (\Illuminate\Http\Request $r) {
         $ws = \App\Models\Workspace::findOrFail($r->attributes->get('workspace_id'));
         $planRules = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($ws->id);
-        $credit = \App\Models\Credit::where('workspace_id', $ws->id)->first();
+        // BUILDER888 D11 (2026-08-29) — website = workspace: a wizard-built site's workspace has no
+        // credit row of its own; credits live in the billing pool (workspaces.billing_workspace_id,
+        // see CreditService). Reading by workspace_id showed "0 of 900" in every new site's workspace.
+        $__poolWs = (int) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $ws->id)->value('billing_workspace_id') ?: $ws->id);
+        $credit = \App\Models\Credit::where('workspace_id', $__poolWs)->first();
         $websiteCount = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $ws->id)->whereNull('deleted_at')->count();
         return response()->json([
             'workspace' => $ws, 'plan' => $planRules,
@@ -104,7 +108,9 @@ use Illuminate\Support\Facades\Route;
     // ── Workspace Credits ────────────────────────────────────────
     Route::get('/workspace/credits', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
-        $credit = \App\Models\Credit::where('workspace_id', $wsId)->first();
+        // BUILDER888 D11 — balance comes from the billing pool (see /workspace/status).
+        $__poolWs = (int) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('billing_workspace_id') ?: $wsId);
+        $credit = \App\Models\Credit::where('workspace_id', $__poolWs)->first();
         $planRules = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($wsId);
         $used = \App\Models\CreditTransaction::where('workspace_id', $wsId)->where('type', 'commit')->sum('amount');
         return response()->json([
