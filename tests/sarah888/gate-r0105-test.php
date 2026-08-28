@@ -157,4 +157,6 @@ $leftWs = DB::table('workspaces')->whereIn('id', [WS, WS2])->count();
 ok('32 scratch rows cleaned up', $leftW === 0 && $leftWs === 0);
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n", $pass, $pass + $fail, $fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail === 0 ? 0 : 1);

@@ -34,4 +34,6 @@ ok('8 nonexistent backup -> not_found', ($bad3['restored']??true)===false && ($b
 array_map('unlink',glob("$hist/*")?:[]); @rmdir($hist); @unlink($idx); @rmdir($dir);
 ok('9 cleaned up', !is_dir($dir));
 printf("\n==== %d/%d PASS, %d FAIL ====\n",$pass,$pass+$fail,$fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail===0?0:1);

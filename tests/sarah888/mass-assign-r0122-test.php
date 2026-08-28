@@ -34,4 +34,6 @@ ok('4 normal registration user is not admin', ! $u3->is_platform_admin);
 DB::table('users')->whereIn('email',$emails)->delete();
 ok('5 scratch users cleaned', DB::table('users')->whereIn('email',$emails)->count()===0);
 printf("\n==== %d/%d PASS, %d FAIL ====\n",$pass,$pass+$fail,$fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail===0?0:1);

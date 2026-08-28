@@ -86,4 +86,6 @@ $check('E7 explicit BPA overrides active=Chef Red', $R->resolve($THREE, ['explic
 $check('E8 no websites in workspace',        $R->resolve([], []), 'clarify');
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n", $pass, $n, $fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail === 0 ? 0 : 1);

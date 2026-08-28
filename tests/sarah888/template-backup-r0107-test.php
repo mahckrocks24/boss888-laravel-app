@@ -55,4 +55,6 @@ array_map('unlink', glob("$hist/*") ?: []); @rmdir($hist); @unlink($idx); @rmdir
 ok('11 scratch site dir cleaned up', !is_dir($dir));
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n", $pass, $pass + $fail, $fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail === 0 ? 0 : 1);

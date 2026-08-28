@@ -33,4 +33,6 @@ ok('3 no metadata leaked', strpos(json_encode($r), 'meta-data') === false || ($r
 $cleanup();
 ok('4 scratch rows cleaned', DB::table('seo_content_index')->where('workspace_id',WS)->count() === 0);
 printf("\n==== %d/%d PASS, %d FAIL ====\n",$pass,$pass+$fail,$fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail===0?0:1);

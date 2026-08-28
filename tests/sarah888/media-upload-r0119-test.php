@@ -74,4 +74,6 @@ $deleted = DB::table('media')->where('workspace_id', WS)->delete();
 ok('8 scratch media rows cleaned up', DB::table('media')->where('workspace_id', WS)->count() === 0, "deleted=$deleted");
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n", $pass, $pass + $fail, $fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail === 0 ? 0 : 1);

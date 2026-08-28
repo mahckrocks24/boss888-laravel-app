@@ -24,4 +24,6 @@ foreach ([
 ] as $u) { ok("allow $u", ! $blocked($u)); }
 
 printf("\n==== %d/%d PASS, %d FAIL ====\n",$pass,$pass+$fail,$fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail===0?0:1);

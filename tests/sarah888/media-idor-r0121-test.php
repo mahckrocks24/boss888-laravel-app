@@ -49,4 +49,6 @@ ok('5 shared dalle asset -> success (shared library policy)', ($r3['data']['succ
 $cleanup();
 ok('6 scratch media cleaned', DB::table('media')->whereIn('workspace_id',[A,B])->count()===0);
 printf("\n==== %d/%d PASS, %d FAIL ====\n",$pass,$pass+$fail,$fail);
+printf("%d passed, %d failed
+", $pass, $fail);
 exit($fail===0?0:1);
