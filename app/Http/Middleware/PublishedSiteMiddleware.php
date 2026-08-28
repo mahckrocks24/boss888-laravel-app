@@ -230,6 +230,7 @@ class PublishedSiteMiddleware
                     $html = $this->injectLandmarks($html);
                     $html = $this->injectA11yNames($html);
                     $html = $this->injectAccentContrast($html);
+                    $html = $this->injectMobileNav($html);
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
@@ -338,6 +339,30 @@ class PublishedSiteMiddleware
      * override .eyebrow color. Only the eyebrow text changes; the accent stays for
      * buttons/fills. Fires only on failure; fail-open.
      */
+    /**
+     * RISK-0108 (B5 responsive) — generated templates ship a desktop-only .nav-links row
+     * with no mobile breakpoint and no hamburger, so every served site overflows
+     * horizontally on phones. Inject a max-width:820px rule that lets the nav wrap onto
+     * tidy rows. flex-wrap only reflows when the links do not fit, so wide navs are
+     * untouched. Additive, idempotent, fail-open.
+     */
+    private function injectMobileNav(string $html): string
+    {
+        try {
+            if (stripos($html, 'nav-links') === false) {
+                return $html;
+            }
+            if (stripos($html, 'lu-mobile-nav') !== false) {
+                return $html; // already injected
+            }
+            $css = '<style id="lu-mobile-nav">@media(max-width:820px){nav .inner,.nav .inner{flex-wrap:wrap!important}.nav-links{flex-wrap:wrap!important;justify-content:center;row-gap:10px;column-gap:14px;max-width:100%}}</style>';
+            $out = preg_replace('#</head>#i', $css . '</head>', $html, 1, $n);
+            return ($n && $out !== null) ? $out : $html;
+        } catch (\Throwable $e) {
+            return $html;
+        }
+    }
+
     private function injectAccentContrast(string $html): string
     {
         try {
