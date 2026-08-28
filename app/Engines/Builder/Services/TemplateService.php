@@ -743,7 +743,7 @@ class TemplateService
 
         // BUILDER888 D4 (2026-08-28) — a value written into a CSS url() must not be able to
         // close the url()/style attribute (CSS injection into the served page).
-        $cssUrl = str_replace(["'", '"', '(', ')', '\\', "\n", "\r"], '', $value);
+        $cssUrl = str_replace(["'", '"', '(', ')', ';', '\\', "\n", "\r"], '', $value);
 
         $applyImg = function (\DOMElement $el, string $value) use ($cssUrl) {
             $done = false;
