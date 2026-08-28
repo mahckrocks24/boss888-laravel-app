@@ -3552,6 +3552,25 @@ class SeoService
     /**
      * Fetch a URL and index its SEO data into seo_content_index.
      */
+    /** RISK-0120 — block SSRF to internal/reserved hosts (incl. hostnames that resolve to them). */
+    private function isBlockedFetchUrl(string $url): bool
+    {
+        $host   = strtolower((string) (parse_url($url, PHP_URL_HOST) ?: ''));
+        $scheme = strtolower((string) (parse_url($url, PHP_URL_SCHEME) ?: ''));
+        if ($host === '' || ! in_array($scheme, ['http', 'https'], true)) { return true; }
+        if ($host === 'localhost'
+            || preg_match('/^(127\.|10\.|192\.168\.|169\.254\.|::1|172\.(1[6-9]|2[0-9]|3[0-1])\.)/', $host)) {
+            return true;
+        }
+        // Resolve the host and block private/reserved IPs. gethostbyname returns the input
+        // unchanged on failure -> treated as non-public -> blocked (safe-fail).
+        $ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : @gethostbyname($host);
+        if (! $ip || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return true;
+        }
+        return false;
+    }
+
     public function fetchAndIndexUrl(int $wsId, string $url): array
     {
         // 2026-05-12: normalize URL to a single canonical form so
@@ -3566,6 +3585,10 @@ class SeoService
             if (!empty($parts['fragment'])) { $url .= '#' . $parts['fragment']; }
         }
 
+        // RISK-0120 — SSRF guard: never fetch an internal/reserved address.
+        if ($this->isBlockedFetchUrl($url)) {
+            return ['success' => false, 'error' => 'blocked_url', 'message' => 'That URL is not fetchable.'];
+        }
         $fetchStart = microtime(true);
         try {
             $response = Http::timeout(15)->withHeaders(['User-Agent' => 'LevelUpSEO/1.0 (indexer)'])->get($url);
