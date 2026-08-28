@@ -525,7 +525,83 @@ class ToolSchemaService
      * Execute a single tool call. Platform info → direct DB read.
      * Engine tools → EngineExecutionService::execute() with correct argument order.
      */
-    public function executeToolCall(string $toolId, array $params, int $wsId, string $agentSlug): array
+    /** RISK-0105 S3 — site-specific tools that MUST resolve an unambiguous website target. */
+    private const SITE_SCOPED_TOOLS = [
+        'builder.edit_page_with_arthur',
+        'builder.update_page',
+        'builder.add_page_from_template',
+        'builder.create_page',
+        'publish_website',
+    ];
+
+    /** Per-workspace opt-in (workspaces.settings_json.sarah_target_resolution === true). Default OFF. */
+    private function targetResolutionEnabled(int $wsId): bool
+    {
+        if ($wsId <= 0) return false;
+        try {
+            $raw = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('settings_json');
+        } catch (\Throwable $e) {
+            return false;
+        }
+        if (!is_string($raw) || $raw === '') return false;
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) && (($decoded['sarah_target_resolution'] ?? false) === true);
+    }
+
+    /**
+     * For a site-specific tool: resolve a unique website_id (pinned into $params) or return a
+     * CLARIFY result that short-circuits execution. Never guesses. RISK-0105.
+     * @return array<string,mixed>|null null => proceed; array => clarify (do not execute).
+     */
+    private function enforceTarget(string $toolId, array &$params, int $wsId, array $context): ?array
+    {
+        $websites = \Illuminate\Support\Facades\DB::table('websites')
+            ->where('workspace_id', $wsId)
+            ->whereNull('deleted_at')
+            ->get(['id', 'name', 'subdomain', 'custom_domain'])
+            ->map(fn ($w) => (array) $w)->all();
+
+        // Explicit id from params, or derived from an explicit page_id (validated to this workspace).
+        $explicitId = (int) ($params['website_id'] ?? 0);
+        if ($explicitId <= 0 && !empty($params['page_id'])) {
+            $wid = (int) \Illuminate\Support\Facades\DB::table('pages')
+                ->join('websites as w', 'w.id', '=', 'pages.website_id')
+                ->where('pages.id', (int) $params['page_id'])
+                ->where('w.workspace_id', $wsId)
+                ->value('pages.website_id');
+            if ($wid > 0) { $explicitId = $wid; }
+        }
+
+        $signals = [
+            'explicit_id'       => $explicitId ?: null,
+            'explicit_name'     => $context['explicit_name'] ?? null,
+            'active_website_id' => isset($context['active_website_id']) ? (int) $context['active_website_id'] : null,
+            'ui_site_url'       => $context['ui_site_url'] ?? null,
+        ];
+
+        $res = app(\App\Core\Sarah888\WebsiteTargetResolver::class)->resolve($websites, $signals);
+
+        if (($res['status'] ?? '') === \App\Core\Sarah888\WebsiteTargetResolver::CLARIFY) {
+            $names = array_map(static fn ($c) => (string) ($c['name'] ?? ''), $res['candidates'] ?? []);
+            $names = array_values(array_filter($names));
+            $ask = empty($names)
+                ? 'Which website would you like me to work on? I could not find an eligible website.'
+                : ('Which website would you like me to update — ' . implode(', ', $names) . '?');
+            return [
+                'success'    => false,
+                'code'       => 'CLARIFY_TARGET',
+                'error'      => $ask,
+                'candidates' => $res['candidates'] ?? [],
+                'reason'     => $res['reason'] ?? '',
+            ];
+        }
+
+        // Resolved: pin the website_id as a hard scope for the tool.
+        $params['website_id'] = (int) $res['website_id'];
+        return null;
+    }
+
+    public function executeToolCall(string $toolId, array $params, int $wsId, string $agentSlug, array $context = []): array
     {
         if (!isset(self::TOOL_DEFINITIONS[$toolId])) {
             return [
@@ -536,6 +612,16 @@ class ToolSchemaService
         }
 
         $def = self::TOOL_DEFINITIONS[$toolId];
+
+        // RISK-0105 S3 — deterministic execution-target resolution for site-specific tools.
+        // Flag-gated per workspace (default OFF => unchanged behaviour). When ON, a site-specific
+        // tool with an ambiguous target returns CLARIFY instead of executing on a guessed site.
+        if ($this->targetResolutionEnabled($wsId) && in_array($toolId, self::SITE_SCOPED_TOOLS, true)) {
+            $clarify = $this->enforceTarget($toolId, $params, $wsId, $context);
+            if ($clarify !== null) {
+                return $clarify;
+            }
+        }
 
         if ($def['engine'] === 'platform') {
             return $this->executePlatformTool($toolId, $params, $wsId);
