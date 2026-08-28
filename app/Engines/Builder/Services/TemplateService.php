@@ -741,7 +741,11 @@ class TemplateService
         $isImg = str_ends_with($fieldId, '_image') || $fieldId === 'logo_url'
               || str_contains($fieldId, 'image_') || str_contains($fieldId, '_img');
 
-        $applyImg = function (\DOMElement $el, string $value) {
+        // BUILDER888 D4 (2026-08-28) — a value written into a CSS url() must not be able to
+        // close the url()/style attribute (CSS injection into the served page).
+        $cssUrl = str_replace(["'", '"', '(', ')', '\\', "\n", "\r"], '', $value);
+
+        $applyImg = function (\DOMElement $el, string $value) use ($cssUrl) {
             $done = false;
             if (strtolower($el->nodeName) === 'img') {
                 $el->setAttribute('src', $value);
@@ -756,9 +760,21 @@ class TemplateService
             if ($el->hasAttribute('style') && stripos($el->getAttribute('style'), 'background') !== false) {
                 $el->setAttribute('style', preg_replace(
                     '/background-image\s*:\s*url\([^)]*\)/i',
-                    "background-image:url('" . $value . "')",
+                    "background-image:url('" . $cssUrl . "')",
                     $el->getAttribute('style')
                 ));
+                $done = true;
+            }
+            // BUILDER888 D4 (2026-08-28) — a background wrapper whose image comes from a CSS
+            // class (no inline style) used to fall through to the TEXT branch below, which
+            // replaced the wrapper's ENTIRE subtree (hero h1, subtitle, trust items, booking
+            // form) with the URL string — on the published site, while returning "saved".
+            // Any non-<img> element that carries content gets an inline background-image
+            // instead (inline wins over the class rule), and its children are preserved.
+            if (! $done && ($el->getElementsByTagName('*')->length > 0 || trim((string) $el->textContent) !== '')) {
+                $style = trim((string) $el->getAttribute('style'));
+                if ($style !== '' && ! str_ends_with($style, ';')) $style .= ';';
+                $el->setAttribute('style', $style . "background-image:url('" . $cssUrl . "')");
                 $done = true;
             }
             return $done;
@@ -773,12 +789,19 @@ class TemplateService
         foreach ($xpath->query("//*[@data-field='{$fieldId}']") as $el) {
             // RISK-0113 — never write into a <script>/<style> node (raw serialisation = XSS).
             if (in_array(strtolower($el->nodeName), ['script', 'style'], true)) { continue; }
+            // BUILDER888 D4 — a text write into an element that wraps OTHER fields would
+            // destroy them (the wrapper's subtree is replaced by a text node). Refuse and
+            // leave the served file untouched; the durable value still lands in
+            // template_variables and the route reports export_patched=false (degraded).
+            $wrapsOtherFields = $xpath->query(".//*[@data-field]", $el)->length > 0;
             if ($isImg) {
-                if ($applyImg($el, $value)) $found = true;
-                else { $el->textContent = $textValue; $found = true; } // fallback (e.g. alt/text logo)
-            } else {
+                if ($applyImg($el, $value)) { $found = true; }
+                elseif (! $wrapsOtherFields) { $el->textContent = $textValue; $found = true; } // empty text logo
+            } elseif (! $wrapsOtherFields) {
                 $el->textContent = $textValue;
                 $found = true;
+            } else {
+                \Illuminate\Support\Facades\Log::warning('[Builder] updateField refused: text write would destroy nested fields', ['website_id' => $websiteId, 'field' => $fieldId]);
             }
         }
 
