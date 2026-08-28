@@ -1047,7 +1047,7 @@ function _t3ImgPasteUrl() {
   if (!url) return;
   url = url.trim();
   if (!/^https?:\/\//.test(url) && !/^\//.test(url)) {
-    alert('URL must start with http(s):// or /');
+    showToast('URL must start with http(s):// or /', 'error');
     return;
   }
   _t3HideImagePanel();
@@ -1126,12 +1126,12 @@ function _t3LogoFileChosen(ev) {
   var file = ev.target.files && ev.target.files[0];
   if (!info || !file) return;
   if (file.size > 2 * 1024 * 1024) {
-    alert('Logo must be under 2MB.');
+    showToast('Logo must be under 2MB.', 'error');
     return;
   }
   var allowed = ['image/png','image/jpeg','image/svg+xml','image/webp'];
   if (allowed.indexOf(file.type) === -1) {
-    alert('Logo must be PNG, JPG, SVG, or WEBP.');
+    showToast('Logo must be PNG, JPG, SVG, or WEBP.', 'error');
     return;
   }
   var websiteId = info.websiteId;
