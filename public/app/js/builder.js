@@ -885,7 +885,12 @@ function _wsShowTemplateEditor(site) {
       '<button onclick="wsCloseTemplateEditor()" style="background:none;border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">\u2190 Back</button>' +
       '<span style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
       '<span style="flex:1"></span>' +
-      '<span style="color:var(--t3);font-size:11px">Click any text to edit</span>' +
+      '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden">' +
+        '<button type="button" id="t3-dev-desktop" onclick="_wsTplSetDevice(\'desktop\')" aria-label="Desktop preview" aria-pressed="true" title="Desktop" style="padding:5px 10px;border:none;background:var(--pu);color:#fff;cursor:pointer;font-size:13px">\uD83D\uDDA5</button>' +
+        '<button type="button" id="t3-dev-tablet" onclick="_wsTplSetDevice(\'tablet\')" aria-label="Tablet preview" aria-pressed="false" title="Tablet" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\u25AD</button>' +
+        '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
+      '</div>' +
+      '<span style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it</span>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
@@ -919,6 +924,29 @@ function _wsShowTemplateEditor(site) {
 function wsCloseTemplateEditor() {
   var v = document.getElementById('template-editor-view');
   if (v) v.remove();
+}
+
+// BUILDER888 D6 (2026-08-28) - desktop / tablet / mobile preview for the template editor
+// (the editor had no responsive view at all; the image panel keeps anchoring to the
+// iframe rect so click-to-replace still lines up).
+function _wsTplSetDevice(key) {
+  var widths = { desktop: '100%', tablet: '820px', mobile: '390px' };
+  var iframe = document.getElementById('t3-preview');
+  if (iframe) {
+    iframe.style.width = widths[key] || '100%';
+    iframe.style.display = 'block';
+    iframe.style.margin = '0 auto';
+    iframe.style.background = '#fff';
+    if (iframe.parentElement) iframe.parentElement.style.background = key === 'desktop' ? '' : '#0B0D13';
+  }
+  ['desktop', 'tablet', 'mobile'].forEach(function (k) {
+    var b = document.getElementById('t3-dev-' + k);
+    if (!b) return;
+    var on = k === key;
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.style.background = on ? 'var(--pu)' : 'transparent';
+    b.style.color = on ? '#fff' : 'var(--t2)';
+  });
 }
 
 function _t3InitEditing(iframe) {
@@ -1040,10 +1068,11 @@ function _t3ImgChoose() {
   });
 }
 
-function _t3ImgPasteUrl() {
+async function _t3ImgPasteUrl() {
   var info = _t3ImgPanelInfo;
   if (!info) return;
-  var url = prompt('Paste image URL:', info.currentSrc || '');
+  // BUILDER888 D5 (2026-08-28) - native prompt()/confirm() block the page; use the app dialogs.
+  var url = await luPrompt('Use image from URL', info.currentSrc || '', 'https://example.com/photo.jpg');
   if (!url) return;
   url = url.trim();
   if (!/^https?:\/\//.test(url) && !/^\//.test(url)) {
@@ -1056,10 +1085,10 @@ function _t3ImgPasteUrl() {
   });
 }
 
-function _t3ImgRemove() {
+async function _t3ImgRemove() {
   var info = _t3ImgPanelInfo;
   if (!info) return;
-  if (!confirm('Remove this image?')) return;
+  if (!(await luConfirm('Remove image', 'Remove this image from the page?', { okLabel: 'Remove', cancelLabel: 'Keep', danger: true }))) return;
   _t3HideImagePanel();
   _t3ReplaceImage(info.websiteId, info.field, '');
 }
@@ -1076,7 +1105,7 @@ function _t3CheckImageDims(url, rec, proceed) {
             + 'Recommended: ' + rw + '×' + rh
             + (rec.aspect_ratio ? ' (' + rec.aspect_ratio + ')' : '')
             + '.\n\nUse it anyway?';
-    if (confirm(msg)) proceed();
+    luConfirm('Image size', msg.replace(/\n\nUse it anyway\?$/, ''), { okLabel: 'Use it anyway', cancelLabel: 'Choose another' }).then(function (ok) { if (ok) proceed(); });
   };
   img.onerror = function() { proceed(); };
   img.src = url;

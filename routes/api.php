@@ -3766,6 +3766,14 @@ document.addEventListener("DOMContentLoaded",function(){
     // attached listeners it is the click target so the panel anchors
     // near where the user actually clicked).
     function _luFireImageClick(imgEl, anchorEl, ev) {
+      // BUILDER888 D2 (2026-08-28) - the hero section IS the hero_image field, so this
+      // capture listener fired for every click on the heading / subtitle / form inside it
+      // and opened the image panel instead of letting the text be edited. A click whose
+      // target sits in a different, non-image [data-field] belongs to that text field.
+      try {
+        var _tf = ev && ev.target && ev.target.closest ? ev.target.closest("[data-field]") : null;
+        if (_tf && _tf !== imgEl && _tf.tagName !== "IMG" && !_imgSelectors.some(function(sel){ try { return _tf.matches(sel); } catch(_m) { return false; } })) return;
+      } catch(_tx) {}
       ev.preventDefault();
       ev.stopPropagation();
       var field = imgEl.getAttribute("data-field");
