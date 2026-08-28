@@ -674,7 +674,7 @@ function _arthurRenderBuildResult(d) {
     }
     if (d.website_id) {
         var bdata = d.build_data || window._arthurBuildData || {};
-        _arthurShowWebsiteCard(d.website_id, bdata.business_name || 'Your Website', bdata.industry || '');
+        _arthurShowWebsiteCard(d.website_id, bdata.business_name || 'Your Website', bdata.industry || '', d.workspace_id || null);
         try {
             window.dispatchEvent(new CustomEvent('lu:website-generated', {
                 detail: {
@@ -985,9 +985,51 @@ function _arthurUpdateProgress(progress) {
     }).join('');
 }
 
-function _arthurShowWebsiteCard(websiteId, name, industry) {
+// BUILDER888 D1 (2026-08-28) — website = workspace: an additional site is provisioned in
+// its OWN workspace (ArthurService::provisionWebsiteWorkspace) and the build response
+// carries that workspace_id ("FE switches to it"). The FE never did: "Open in Editor"
+// ran wsOpenSite() inside the OLD workspace, whose tenancy filter returned no pages,
+// and the customer was shown "No pages yet / + Add First Page" for a site that had
+// just been built. Now: switch the session to the site's workspace (fresh token, same
+// mechanism as the SEO workspace switcher), then deep-link to /app/websites/{id}.
+function _arthurCurrentWs() {
+    try {
+        var t = localStorage.getItem('lu_token') || '';
+        var p = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return parseInt(p.ws || p.workspace_id || 0, 10) || 0;
+    } catch (_e) { return 0; }
+}
+window._arthurOpenBuiltSite = function (websiteId, workspaceId) {
+    var m = document.getElementById('arthur-modal'); if (m) m.remove();
+    var target = parseInt(workspaceId || 0, 10) || 0;
+    if (!target || target === _arthurCurrentWs()) {
+        if (typeof wsOpenSite === 'function') wsOpenSite(websiteId);
+        return;
+    }
+    if (typeof showToast === 'function') showToast('Opening your new website…', 'info');
+    fetch(window.location.origin + '/api/auth/switch-workspace', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ workspace_id: target }),
+        cache: 'no-store'
+    }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d && d.access_token) {
+            localStorage.setItem('lu_token', d.access_token);
+            if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token);
+            try { localStorage.setItem('lu_workspace_id', String(d.current_workspace_id || target)); } catch (_e) {}
+            window.location.href = '/app/websites/' + websiteId;
+        } else if (typeof showToast === 'function') {
+            showToast('We couldn’t switch to the new website’s workspace. Please try again.', 'error');
+        }
+    }).catch(function () {
+        if (typeof showToast === 'function') showToast('We couldn’t switch to the new website’s workspace. Please try again.', 'error');
+    });
+};
+
+function _arthurShowWebsiteCard(websiteId, name, industry, workspaceId) {
     var feed = document.getElementById('arthur-feed');
     if (!feed) return;
+    var switching = !!(workspaceId && parseInt(workspaceId, 10) !== _arthurCurrentWs());
 
     var card = '<div style="background:linear-gradient(135deg,rgba(108,92,231,.1),rgba(59,130,246,.1));border:1px solid rgba(108,92,231,.3);border-radius:16px;padding:20px;margin-top:8px">'
         + '<div style="font-size:13px;color:var(--pu);font-weight:600;margin-bottom:8px">⚡ Website Created</div>'
@@ -995,7 +1037,8 @@ function _arthurShowWebsiteCard(websiteId, name, industry) {
         + '<div style="font-size:12px;color:var(--t3);margin-bottom:16px">' + bld_escH(industry) + ' website \u2022 draft</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
         + '<a href="/storage/sites/' + websiteId + '/index.html" target="_blank" rel="noopener" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px">'+window.icon('eye',18)+' Preview</a>'
-        + '<button onclick="(function(){var m=document.getElementById(\'arthur-modal\');if(m)m.remove();if(typeof wsOpenSite===\'function\')wsOpenSite(' + websiteId + ');})()" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">'+window.icon('edit',18)+' Open in Editor</button>'
+        + (switching ? '<div style="font-size:12px;color:var(--t2);margin:-8px 0 12px">This website lives in its own workspace \u2014 opening it switches you there.</div>' : '')
+        + '<button onclick="_arthurOpenBuiltSite(' + websiteId + ', ' + (parseInt(workspaceId || 0, 10) || 0) + ')" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">'+window.icon('edit',18)+' Open in Editor</button>'
         + '</div></div>';
 
     feed.innerHTML += card;

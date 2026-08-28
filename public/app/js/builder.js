@@ -1507,7 +1507,23 @@ async function wsCreate(){
 }
 
 async function wsOpenSite(siteId){
-  var site = wsSites.find(function(s){ return s.id === siteId; }) || {id:siteId, title:'Website'};
+  var site = (Array.isArray(wsSites) ? wsSites : []).find(function(s){ return s.id === siteId; });
+  // BUILDER888 D1b (2026-08-28) — if the site is not in the loaded grid (deep link before
+  // the grid loaded, or a site in another workspace) fetch its record instead of guessing
+  // {title:'Website'} with no type, which routed template sites into the pages list and
+  // showed a false "No pages yet".
+  if (!site) {
+    try {
+      var _r = await fetch(API + 'builder/websites/' + siteId, {headers:{'Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'}});
+      var _j = _r.ok ? await _r.json() : null;
+      var _w = _j && (_j.website || _j.data || _j);
+      if (_w && _w.id) { site = _w; if (!site.title) site.title = site.name || 'Website'; }
+    } catch (_e) {}
+  }
+  if (!site) {
+    if (typeof showToast === 'function') showToast("This website isn’t in your current workspace.", 'error');
+    return;
+  }
   wsCurrentSite = site;
 
   // Template websites — show template view
