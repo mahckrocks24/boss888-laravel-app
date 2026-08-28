@@ -812,4 +812,60 @@ class TemplateService
         fclose($fp);
         return $found;
     }
+
+    /** RISK-0107 — list a template site's pre-edit backups (newest first). */
+    public function listHistory(int $websiteId): array
+    {
+        $dir = storage_path("app/public/sites/{$websiteId}/.history");
+        if (! is_dir($dir)) { return []; }
+        $out = [];
+        foreach (glob($dir . '/index-*.html') ?: [] as $path) {
+            $out[] = [
+                'file'     => basename($path),
+                'size'     => (int) (@filesize($path) ?: 0),
+                'saved_at' => date('c', (int) (@filemtime($path) ?: time())),
+            ];
+        }
+        usort($out, fn ($a, $b) => strcmp($b['file'], $a['file'])); // zero-padded stamp => newest first
+        return $out;
+    }
+
+    /**
+     * RISK-0107 — restore a template site's served index.html from a .history backup. Backs up the
+     * CURRENT served content first (so the restore is itself reversible), under LOCK_EX. The backup
+     * filename is strictly validated (no path traversal).
+     * @return array{restored:bool, restored_from?:string, prior_backup?:string, error?:string}
+     */
+    public function restoreFromHistory(int $websiteId, string $file): array
+    {
+        if (! preg_match('/^index-\d{8}-\d{6}-[0-9a-f]{4}\.html$/', $file)) {
+            return ['restored' => false, 'error' => 'invalid_backup'];
+        }
+        $dir    = storage_path("app/public/sites/{$websiteId}/.history");
+        $src    = $dir . '/' . $file;
+        $target = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (! is_file($src) || ! is_file($target)) { return ['restored' => false, 'error' => 'not_found']; }
+        $restoreBytes = @file_get_contents($src);
+        if ($restoreBytes === false || $restoreBytes === '') { return ['restored' => false, 'error' => 'empty_backup']; }
+
+        $fp = @fopen($target, 'r+');
+        if ($fp === false) { return ['restored' => false, 'error' => 'lock_failed']; }
+        if (! flock($fp, LOCK_EX)) { fclose($fp); return ['restored' => false, 'error' => 'lock_failed']; }
+        $current  = stream_get_contents($fp);
+        $preStamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+        if (is_string($current) && $current !== '') { @file_put_contents($dir . "/index-{$preStamp}.html", $current); }
+        rewind($fp);
+        ftruncate($fp, 0);
+        fwrite($fp, $restoreBytes);
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+
+        $backups = glob($dir . '/index-*.html') ?: [];
+        if (count($backups) > 10) {
+            sort($backups);
+            foreach (array_slice($backups, 0, count($backups) - 10) as $old) { @unlink($old); }
+        }
+        return ['restored' => true, 'restored_from' => $file, 'prior_backup' => "index-{$preStamp}.html"];
+    }
 }

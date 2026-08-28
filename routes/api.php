@@ -4223,6 +4223,22 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     ]);
 })->middleware('auth.jwt');
 
+// RISK-0107 — recovery: list + restore a template site's pre-edit backups (tenancy-scoped).
+Route::get('/builder/websites/{id}/history', function (\Illuminate\Http\Request $r, $id) {
+    $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
+    if ($__ow !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
+    return response()->json(['history' => (new \App\Engines\Builder\Services\TemplateService())->listHistory((int) $id)]);
+})->middleware('auth.jwt');
+
+Route::post('/builder/websites/{id}/restore', function (\Illuminate\Http\Request $r, $id) {
+    $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
+    if ($__ow !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
+    $res = (new \App\Engines\Builder\Services\TemplateService())->restoreFromHistory((int) $id, (string) $r->input('file', ''));
+    if (! ($res['restored'] ?? false)) return response()->json($res, 422);
+    try { \App\Http\Controllers\PublishedSiteController::invalidateCache((int) $id); } catch (\Throwable $e) {}
+    return response()->json($res);
+})->middleware('auth.jwt');
+
 // Logo upload — multipart/form-data with optional `logo` file.
 // Empty / missing file = clear (also reachable via PUT /fields/logo_url with value='').
 Route::post('/builder/websites/{id}/logo', function (\Illuminate\Http\Request $r, $id) {
