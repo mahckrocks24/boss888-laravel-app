@@ -471,7 +471,20 @@ class PublishedSiteMiddleware
         } catch (\Throwable $e) {
             return $html;
         }
-        if ($articles->isEmpty()) return $html;
+        if ($articles->isEmpty()) {
+            // RISK-0109 — div-card templates have no lu-blog-card-tpl, so a 0-article site would
+            // show empty placeholder blog cards. On the HOME preview, hide the empty blog section.
+            // a-card sites carry the honest empty-state (lu-blog-card-tpl present) and are untouched.
+            if ($blogCardOnly
+                && stripos($html, 'lu-blog-card-tpl') === false
+                && stripos($html, 'blog-card') !== false
+                && stripos($html, 'data-block="blog"') !== false) {
+                $css = '<style id="lu-blog-empty-hide">[data-block="blog"]{display:none}</style>';
+                $out = preg_replace('#</head>#i', $css . '</head>', $html, 1, $n);
+                if ($n && $out !== null) return $out;
+            }
+            return $html;
+        }
 
         $latest = $articles->first();
 
