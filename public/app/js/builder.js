@@ -900,10 +900,10 @@ function _wsShowTemplateEditor(site) {
       '<div style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
         '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
-          '<div style="color:var(--t3);font-size:11px">Ask me to change colors, layout, or generate images</div>' +
+          '<div style="color:var(--t3);font-size:11px">Edit text and images directly in the preview. Arthur restyling for templates is coming.</div>' +
         '</div>' +
         '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
-          '<div style="background:var(--s2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--t2)">Try: "Change colors to dark blue" or "Make the hero taller"</div>' +
+          '<div style="background:var(--s2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--t2)">Tip: double-click a heading to rewrite it \u00B7 click the hero to swap its photo \u00B7 changes save automatically</div>' +
         '</div>' +
         '<div style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">' +
           '<input id="t3-arthur-input" type="text" placeholder="Ask Arthur..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);padding:7px 10px;font-size:12px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')_t3ArthurSend(' + wsId + ')">' +
@@ -922,6 +922,7 @@ function _wsShowTemplateEditor(site) {
 }
 
 function wsCloseTemplateEditor() {
+  try { if (Object.keys(_t3PendingFields).length) { clearTimeout(_t3SaveTimer); _t3FlushSaves(); } } catch (_e) {}
   var v = document.getElementById('template-editor-view');
   if (v) v.remove();
 }
@@ -1205,9 +1206,27 @@ function _t3LogoFileChosen(ev) {
 // Returns { ok, saved, failed, attempted } — never throws.
 var _t3SaveInFlight = null;
 
-async function _t3FlushSaves() {
+// BUILDER888 D9 (2026-08-29) — the editor autosaves 2 s after the last keystroke. A reload,
+// tab close or "Back" inside that window silently discarded the edit (no guard, no flush):
+// the customer saw "✓ Saved" for earlier edits and assumed the last one landed too.
+// Flush immediately on pagehide (keepalive fetch) and warn on beforeunload while dirty.
+window.addEventListener('pagehide', function () {
+  try { if (Object.keys(_t3PendingFields).length) { clearTimeout(_t3SaveTimer); _t3FlushSaves({ unload: true }); } } catch (_e) {}
+});
+window.addEventListener('beforeunload', function (e) {
+  var dirty = false;
+  try { dirty = Object.keys(_t3PendingFields).length > 0 || !!_t3SaveInFlight; } catch (_e) {}
+  if (!dirty) return;
+  try { clearTimeout(_t3SaveTimer); _t3FlushSaves({ unload: true }); } catch (_e) {}
+  e.preventDefault();
+  e.returnValue = '';
+});
+
+async function _t3FlushSaves(opts) {
   // Coalesce concurrent presses/autosaves onto one in-flight run.
   if (_t3SaveInFlight) { return _t3SaveInFlight; }
+  // fetch keepalive caps the body at 64 KiB, so use it ONLY for the unload flush (D9).
+  var _keepalive = !!(opts && opts.unload);
 
   var fields = Object.keys(_t3PendingFields);
   if (!fields.length) {
@@ -1218,6 +1237,7 @@ async function _t3FlushSaves() {
     var token = localStorage.getItem('lu_token') || '';
     var saved = 0, failed = 0;
     var stillDirty = {};
+    var firstError = null;
 
     var results = await Promise.all(fields.map(async function (field) {
       var p = _t3PendingFields[field];
@@ -1225,9 +1245,13 @@ async function _t3FlushSaves() {
         var res = await fetch('/api/builder/websites/' + p.websiteId + '/fields/' + field, {
           method: 'PUT',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ value: p.value })
+          body: JSON.stringify({ value: p.value }),
+          keepalive: _keepalive   // BUILDER888 D9 — let a flush started on unload complete
         });
-        if (!res.ok) { return { field: field, ok: false, status: res.status }; }
+        if (!res.ok) {
+          var _j = null; try { _j = await res.json(); } catch (_je) {}
+          return { field: field, ok: false, status: res.status, error: _j && (_j.error || _j.message) || null };
+        }
         return { field: field, ok: true, status: res.status };
       } catch (e) {
         return { field: field, ok: false, status: 'network' };
@@ -1242,6 +1266,7 @@ async function _t3FlushSaves() {
         // dropping it avoids an infinite silent retry loop. 5xx/network stays dirty for retry.
         var permanent = (typeof r.status === 'number' && r.status >= 400 && r.status < 500);
         if (!permanent) { stillDirty[r.field] = _t3PendingFields[r.field]; }
+        if (!firstError && r.error) firstError = r.error;
         try { console.warn('[Builder888] field save failed', r.field, r.status); } catch (e) {}
       }
     });
@@ -1254,7 +1279,7 @@ async function _t3FlushSaves() {
       setTimeout(function () { ind.style.display = 'none'; }, 2000);
     } else if (failed > 0 && typeof showToast === 'function') {
       // RISK-0116 — surface the failure instead of only console.warn.
-      showToast(failed + " change" + (failed === 1 ? "" : "s") + " couldn't be saved. Please try again.", "error");
+      showToast(failed + " change" + (failed === 1 ? "" : "s") + " couldn't be saved" + (firstError ? ": " + firstError : ". Please try again."), "error");
     }
 
     return { ok: failed === 0, saved: saved, failed: failed, attempted: results.length };
@@ -1341,7 +1366,15 @@ async function _t3ArthurSend(websiteId) {
         }
       }
     }
-    if (!triedCanonical || (r && r.status === 422 && d && d.legacy === true)) {
+    if (!pid) {
+      // BUILDER888 D8 (2026-08-28) — the template editor has no page context, so no request
+      // is made at all; the old branch then told every new customer their brand-new site was
+      // a "legacy static layout". There is no template-scoped Arthur edit endpoint
+      // (POST /builder/websites/{id}/arthur-edit was removed 2026-07-02); the structured
+      // page path would edit the 2-section skeleton behind the polished export (RISK-0097).
+      // Say what works instead of pretending.
+      d = { error: "Arthur can\u2019t restyle this template yet. Double-click any text in the preview to change it, or click an image to replace it." };
+    } else if (!triedCanonical || (r && r.status === 422 && d && d.legacy === true)) {
       // Legacy static-HTML edit path REMOVED 2026-07-02 — manual/legacy editing is
       // dead; only structured Arthur vibe editing is supported. A static-HTML page
       // (e.g. the old Chef Red layout) must be rebuilt as structured sections to edit.
