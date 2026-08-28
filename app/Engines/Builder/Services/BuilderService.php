@@ -367,6 +367,9 @@ class BuilderService
      * serving a stale pre-rendered page. Surgical — only the edited page's file(s);
      * other pages keep their static export; site image assets are untouched.
      */
+    /** RISK-0097 D12 — what the last updatePage() did to the static export (callers may surface it). */
+    public array $lastStaticSync = ['preserved' => false, 'missed' => []];
+
     private function invalidateStaticExport(int $websiteId, ?string $slug, bool $isHomepage): void
     {
         $dir = storage_path("app/public/sites/{$websiteId}");
@@ -380,7 +383,14 @@ class BuilderService
             $targets[] = "{$dir}/{$slug}/index.html";
         }
         foreach ($targets as $t) {
-            if (is_file($t)) { @unlink($t); }
+            if (! is_file($t)) { continue; }
+            // RISK-0107/0097 — never destroy a served file without a recoverable copy.
+            try {
+                $hist = "{$dir}/.history";
+                if (! is_dir($hist)) { @mkdir($hist, 0775, true); }
+                @copy($t, $hist . '/' . basename(dirname($t) === $dir ? $t : dirname($t) . '-' . basename($t)) . '.invalidated-' . date('Ymd-His') . '.html');
+            } catch (\Throwable $e) { /* best effort */ }
+            @unlink($t);
         }
     }
 
@@ -755,7 +765,25 @@ class BuilderService
                     $sync = app(\App\Engines\Builder\Services\ArthurEditService::class)
                         ->syncStaticFromSections((int) $pg->website_id, $oldSectionsForSync, $newFlat);
                     if (! ($sync['is_static'] ?? false) || ! empty($sync['missed'])) {
-                        $this->invalidateStaticExport((int) $pg->website_id, $pg->slug ?? null, (bool) ($pg->is_homepage ?? false));
+                        // RISK-0097 SAFEGUARD (2026-08-29, BUILDER888 D12) — on a template site the
+                        // static export IS the polished, customer-edited website (template_variables
+                        // + surgical field patches). Deleting it on a structural miss re-served the
+                        // 5-section skeleton from sections_json: the live site silently collapsed to
+                        // a bare render. Owner invariant: never silently destroy/degrade the polished
+                        // website. Keep the export; record the unsupported change; the customer keeps
+                        // what they published. (Renderer-backed sites are unchanged: sections_json is
+                        // their source of truth, so a stale export must still be invalidated.)
+                        $__wsType = (string) (DB::table('websites')->where('id', (int) $pg->website_id)->value('type') ?? '');
+                        if ($__wsType === 'template' && ($sync['is_static'] ?? false)) {
+                            Log::warning('[Builder] RISK-0097 safeguard: structural change NOT applied to the published template export (export preserved)', [
+                                'page_id' => $pageId, 'website_id' => (int) $pg->website_id, 'missed' => $sync['missed'] ?? [],
+                            ]);
+                            $this->lastStaticSync = ['preserved' => true, 'missed' => $sync['missed'] ?? []];
+                        } else {
+                            $this->invalidateStaticExport((int) $pg->website_id, $pg->slug ?? null, (bool) ($pg->is_homepage ?? false));
+                        }
+                    } else {
+                        $this->lastStaticSync = ['preserved' => false, 'missed' => []];
                     }
                 }
             } catch (\Throwable $e) {
