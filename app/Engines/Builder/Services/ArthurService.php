@@ -1072,7 +1072,7 @@ class ArthurService
         }
 
         $userPrompt = "Generate 6 realistic news headlines and excerpts for a news channel called '{$businessName}' "
-            . "based in {$location}. One article per category. Categories: "
+            . ($location !== '' ? "based in {$location}. " : '') . "One article per category. Categories: "
             . implode(', ', $categories) . ".\n\n"
             . "Return JSON with the word json — an object with key \"articles\" containing an array of 6 items, "
             . "each shaped: {\"title\": \"verb-led news headline, ~10 words\", "
@@ -1778,7 +1778,7 @@ Return a JSON object (include the word "json") with these keys. Use null for fie
   * property / real estate → "real_estate"
   * wedding / events → "events"
 - services: array of short strings (e.g. ["SEO","website design","social media","paid ads"])
-- location: string (city, e.g. "Dubai")
+- location: string — ONLY a city/area the user actually wrote; if none was stated, return "" (never guess, never copy an example)
 - target_market: string (who the business serves — e.g. "small and medium sized businesses")
 - colors: object {primary: string|null, secondary: string|null} — named color or hex
 - pages: array of page names if the user lists them (e.g. ["home","about","services","testimonials","blog","contact"])
@@ -1812,6 +1812,17 @@ PROMPT;
         // LLM output (e.g. "marketing" for a digital marketing agency) is
         // corrected before it reaches the template system.
         $state['industry'] = $this->normalizeIndustry($state['industry'] ?? null, $message);
+        // ARTHUR-3 (2026-08-29): a location is kept only when the owner actually wrote it somewhere in
+        // this conversation — the model must not invent a city ("Austin, Texas" shipped on a site whose
+        // owner never named one). Compare on the first word (city) so "Brighton, UK" ≈ "brighton".
+        $loc = trim((string) ($state['location'] ?? ''));
+        if ($loc !== '') {
+            $hay = mb_strtolower($message . ' ' . implode(' ', array_map(fn($h) => is_array($h) ? (string) ($h['content'] ?? $h['message'] ?? '') : (string) $h, (array) $history)));
+            $firstWord = mb_strtolower(trim(preg_split('/[,\s]+/', $loc)[0] ?? ''));
+            if ($firstWord === '' || !str_contains($hay, $firstWord)) {
+                $state['location'] = '';
+            }
+        }
         $state['ready'] = !empty($state['business_name']) && !empty($state['industry']);
         return $state;
     }
@@ -2975,7 +2986,7 @@ PROMPT;
         private function generateContent(array $data, string $industry): array
     {
         $name = $data['business_name'] ?? 'Our Business';
-        $location = $data['location'] ?? 'Dubai';
+        $location = $data['location'] ?? '';  // ARTHUR-3 (2026-08-29): never invent a city
         // BUG 2 FIX — services may arrive as an array from extractAllFields();
         // join into a comma-separated list for the LLM copy prompt.
         $servicesRaw = $data['services'] ?? 'various services';
@@ -2992,15 +3003,15 @@ PROMPT;
         $industryHuman = ucfirst(str_replace('_', ' ', $industry));
         $defaults = [
             'business_name'      => $name,
-            'business_tagline'   => "{$industryHuman} · {$location}",
+            'business_tagline'   => $location !== '' ? "{$industryHuman} · {$location}" : $industryHuman,
             'hero_title'         => $name,
-            'hero_subtitle'      => $data['description'] ?? "Trusted {$industryHuman} in {$location}.",
+            'hero_subtitle'      => $data['description'] ?? ($location !== '' ? "Trusted {$industryHuman} in {$location}." : "Trusted {$industryHuman}."),
             'hero_cta'           => 'Get Started',
             'hero_cta_secondary' => 'Learn More',
-            'hero_eyebrow'       => "{$industryHuman} · {$location}",
+            'hero_eyebrow'       => $location !== '' ? "{$industryHuman} · {$location}" : $industryHuman,
             'about_eyebrow'      => 'About Us',
             'about_title'        => 'About Us',
-            'about_text_1'       => "At {$name}, we are committed to delivering exceptional quality to our clients in {$location}.",
+            'about_text_1'       => "At {$name}, we are committed to delivering exceptional quality to our clients" . ($location !== '' ? " in {$location}" : '') . ".",
             'about_text_2'       => 'With years of experience, we bring expertise and dedication to every engagement.',
             'about_text_3'       => "Our commitment to excellence sets us apart.",
             'about_signature'    => $name,
@@ -3055,7 +3066,7 @@ PROMPT;
             'contact_email'      => 'info@' . $emailSlug . '.com',
             'contact_website'    => strtolower(str_replace([' ', "'"], ['', ''], $name)) . '.com',
             'contact_service_area' => $location,
-            'contact_availability_text' => "Currently accepting new clients in {$location}.",
+            'contact_availability_text' => 'Currently accepting new clients' . ($location !== '' ? " in {$location}" : '') . '.',
             // Neutral blog title — LLM overwrites with industry-appropriate
             // (e.g. 'Health Tips' for medical, 'Training Tips' for gym).
             'blog_section_title' => 'Our Blog',
@@ -3068,7 +3079,7 @@ PROMPT;
             'blog_3_title'       => '',
             'blog_3_excerpt'     => '',
             'blog_3_category'    => '',
-            'meta_description'   => "{$name} — {$industryHuman} in {$location}.",
+            'meta_description'   => $location !== '' ? "{$name} — {$industryHuman} in {$location}." : "{$name} — {$industryHuman}.",
             'footer_text'        => '© ' . date('Y') . ' ' . $name . '. All rights reserved.',
         ];
 
@@ -3088,9 +3099,14 @@ PROMPT;
             $defaults = array_merge($defaults, $manifestDefaults);
             // Business-specific overrides (computed per-call) win over all.
             $defaults['business_name'] = $name;
-            $defaults['business_tagline'] = ucfirst(str_replace('_',' ', $industry)) . ' · ' . $location;
-            $defaults['meta_description'] = "{$name} — {$industry} in {$location}.";
+            $defaults['business_tagline'] = ucfirst(str_replace('_',' ', $industry)) . ($location !== '' ? ' · ' . $location : '');
+            $defaults['meta_description'] = $location !== '' ? "{$name} — {$industry} in {$location}." : "{$name} — {$industry}.";
             $defaults['contact_email']    = 'info@' . $emailSlug . '.com';
+            // ARTHUR-3 (2026-08-29): with no known location, strip the dangling " in ." / " · " artefacts
+            // any default copy would otherwise carry. Never invent a city.
+            if ($location === '') {
+                $defaults = array_map(fn($v) => is_string($v) ? preg_replace(['/ in \.(\s|$)/', '/\s*·\s*$/', '/ in \s*,/'], ['.$1', '', ','], $v) : $v, $defaults);
+            }
         } catch (\Throwable $e) { /* non-fatal, keep hardcoded $defaults */ }
 
         if (!$this->runtime->isConfigured()) {
@@ -3529,7 +3545,7 @@ PROMPT;
         if (!$this->runtime->isConfigured()) return [];
         $name     = (string) ($data['business_name'] ?? 'the business');
         $industry = (string) ($data['industry'] ?? 'business');
-        $location = (string) ($data['location'] ?? 'Dubai');
+        $location = (string) ($data['location'] ?? '');  // ARTHUR-3 (2026-08-29): never invent a city
         $services = is_array($data['services'] ?? null) ? implode(', ', $data['services']) : (string) ($data['services'] ?? '');
         $sys = "You write website content for '{$name}', a {$industry} in {$location}. Every item must be specific "
              . "and realistic for a {$industry} — never placeholders. Return ONLY valid JSON (include the word json).";
@@ -3920,7 +3936,7 @@ PROMPT;
         if (!$this->runtime->isConfigured()) return [];
         $name     = (string) ($data['business_name'] ?? 'the business');
         $industry = trim((string) ($data['industry'] ?? 'business')) ?: 'business';
-        $location = (string) ($data['location'] ?? 'Dubai');
+        $location = (string) ($data['location'] ?? '');  // ARTHUR-3 (2026-08-29): never invent a city
         $services = is_array($data['services'] ?? null) ? implode(', ', $data['services']) : (string) ($data['services'] ?? '');
         $spec = [
             'about'    => 'story_body (2-3 sentences on how this business started and what it stands for), value_1_title (2-3 words), value_1_body (1 sentence), value_2_title, value_2_body, value_3_title, value_3_body, team_heading (short), reviews_heading (short), cta_heading (short), cta_body (1 sentence), cta_text (2-3 words)',

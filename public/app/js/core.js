@@ -3026,6 +3026,23 @@ async function sendAgentMessage(quickAction, overrideMessage){
     var ws2 = null;
     if(ws2) ws2.remove();
     console.error('[sendAgentMessage] POST failed', e);
+    // CHAT-402: an out-of-credits refusal is a real, saved reply — render it as the agent's bubble
+    // instead of a passing toast (it used to appear only after a refresh).
+    if (e && e.status === 402 && e.body && e.body.reason === 'insufficient_credits') {
+      try {
+        var feed402 = document.getElementById('msgs-feed-container');
+        var ag402 = (window.agentsMeta && window.agentsMeta[currentAgent]) || {};
+        if (feed402) {
+          var nd = document.createElement('div');
+          nd.className = 'msg-from-agent msg-from-agent-notice';
+          nd.style.alignSelf = 'flex-start';
+          nd.innerHTML = '<div style="font-size:9px;font-weight:700;color:'+(ag402.color||'var(--t2)')+';margin-bottom:3px">'+_luEsc(ag402.name||currentAgent)+'</div>'+fmt(e.body.error||e.message)
+            + '<div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="if(window.nav)nav(\'billing\')">'+_luEsc(e.body.action_label||'Top up credits')+'</button></div>'
+            + '<div class="msg-ts">'+new Date().toLocaleTimeString()+'</div>';
+          feed402.appendChild(nd); feed402.scrollTop = feed402.scrollHeight;
+        }
+      } catch(_n) {}
+    } else
     if (typeof showToast === 'function') showToast('Error: '+e.message,'error');
     else alert('Error: '+e.message);
   }
@@ -4734,7 +4751,7 @@ function fmt(t){
        .replace(/\n/g,'<br>');
   return s;
 }
-async function post(url,data){var r=await fetch(url,{method:'POST',headers:_lgscAuthForFetch({'Content-Type':'application/json','Accept':'application/json'}),body:JSON.stringify(data)});var d=await r.json();if(!r.ok){if(d.code==='PLAN_GATED'||d.code==='NO_CREDITS'){showPlanGate(d.error||d.message||'This feature requires a plan upgrade.');return d;}throw new Error(d.message||d.error||'Request failed');}return d;}
+async function post(url,data){var r=await fetch(url,{method:'POST',headers:_lgscAuthForFetch({'Content-Type':'application/json','Accept':'application/json'}),body:JSON.stringify(data)});var d=await r.json();if(!r.ok){if(d.code==='PLAN_GATED'||d.code==='NO_CREDITS'){showPlanGate(d.error||d.message||'This feature requires a plan upgrade.');return d;}var __pe=new Error(d.message||d.error||'Request failed');__pe.status=r.status;__pe.body=d;throw __pe;}return d;}
 // ── PLATFORM888 Phase 2: in-flight GET coalescing (shared request registry) ──
 // Concurrent GETs to the same URL within the SAME workspace reuse ONE in-flight
 // Promise instead of issuing parallel requests. COALESCING ONLY — the registry

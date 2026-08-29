@@ -681,7 +681,11 @@ class StripeService
             'plan_price'             => (float) ($sub?->plan?->price ?? 0),
             'status'                 => $sub?->status ?? 'active',
             'stripe_connected'       => !empty($sub?->stripe_subscription_id),
-            'stripe_customer_id'     => $sub?->stripe_customer_id,
+            // MONEY-2 (2026-08-29, RISK-0127 d): after a cancel the entitled row is the Free row (no customer
+            // id) but the Stripe customer still exists — keep "Manage billing" reachable via the latest row
+            // that carries one, so invoices/cards stay accessible and re-subscribing reuses the customer.
+            'stripe_customer_id'     => $sub?->stripe_customer_id
+                ?: Subscription::where('workspace_id', $workspaceId)->whereNotNull('stripe_customer_id')->orderByDesc('id')->value('stripe_customer_id'),
             'starts_at'              => $sub?->starts_at?->toISOString(),
             'ends_at'                => $sub?->ends_at?->toISOString(),
             'current_period_end'     => $currentPeriodEnd,
