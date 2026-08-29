@@ -25,6 +25,10 @@ class WebsiteScopeIsolationTest extends TestCase
     {
         parent::setUp();
         DB::table('websites')->where('workspace_id', self::WS)->delete();
+        DB::table('workspaces')->where('id', self::WS)->delete();
+        DB::table('users')->where('email', 'iso-test-owner@example.test')->delete();
+        $uid = (int) DB::table('users')->insertGetId(['name' => 'Iso Owner', 'email' => 'iso-test-owner@example.test', 'password' => bcrypt('x'), 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('workspaces')->insert(['id' => self::WS, 'name' => 'Iso Test WS', 'slug' => 'iso-test-ws-' . self::WS, 'created_by' => $uid, 'created_at' => now(), 'updated_at' => now()]);
         $this->siteA = (int) DB::table('websites')->insertGetId(['workspace_id' => self::WS, 'name' => 'Iso Site A', 'subdomain' => 'iso-site-a.levelupgrowth.io', 'custom_domain' => 'iso-a.example', 'type' => 'template', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
         $this->siteB = (int) DB::table('websites')->insertGetId(['workspace_id' => self::WS, 'name' => 'Iso Site B', 'subdomain' => 'iso-site-b.levelupgrowth.io', 'type' => 'template', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
         $kb = app(ChatbotKnowledgeService::class);
@@ -38,6 +42,8 @@ class WebsiteScopeIsolationTest extends TestCase
         DB::table('chatbot_knowledge_sources')->where('workspace_id', self::WS)->delete();
         DB::table('chatbot_widget_tokens')->where('workspace_id', self::WS)->delete();
         DB::table('websites')->where('workspace_id', self::WS)->delete();
+        DB::table('workspaces')->where('id', self::WS)->delete();
+        DB::table('users')->where('email', 'iso-test-owner@example.test')->delete();
         parent::tearDown();
     }
 
