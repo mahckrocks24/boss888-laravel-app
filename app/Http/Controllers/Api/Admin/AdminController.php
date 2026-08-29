@@ -226,7 +226,7 @@ class AdminController
         foreach ($rows->items() as $row) {
             $row->api_keys_active = DB::table('api_keys')
                 ->where('site_connection_id', $row->id)
-                ->whereNull('revoked_at')
+                ->where('is_active', 1) // ADM-1 (2026-08-29): api_keys has no revoked_at; active flag is the truth
                 ->count();
             $row->api_keys_total = DB::table('api_keys')
                 ->where('site_connection_id', $row->id)
