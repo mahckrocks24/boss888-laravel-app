@@ -74,7 +74,7 @@ class PlanMiddleware
 
             'video'    => $this->gate->canUseVideo($wsId)
                 ? [true, null, null]
-                : [false, 'pro', 'Video generation requires Pro plan or above'],
+                : [false, 'ai-lite', 'Video generation is part of the AI plans — AI Lite ($49/month) and up'], // VIDEO-4
 
             'api'      => $this->checkApiAccess($wsId),
 

@@ -38,10 +38,12 @@ class PlanGatingService
             }
         }
 
-        // 2b. Video generation — Pro+ only (Growth can generate images, not video)
+        // 2b. Video generation — VIDEO-4 (2026-08-29): part of every AI plan. ADR-0012: from $49 up plans
+        // differ by CAPACITY (credits), not capability; only the Companion app is excluded at $49. The old
+        // gate borrowed the companion_app flag as a "Pro+" proxy and locked AI Lite/Growth out of video.
         if (in_array($action, ['generate_video', 'create_scene_plan', 'stitch_video'])) {
-            if (!$plan->companion_app) {  // companion_app = Pro+ flag
-                return $this->deny('Video generation requires Pro plan or above');
+            if (($plan->ai_access ?? 'none') !== 'full') {
+                return $this->deny('Video generation is part of the AI plans — AI Lite ($49/month) and up');
             }
         }
 

@@ -317,8 +317,14 @@ class TrialService
 
     private function isOnPaidPlan(int $wsId): bool
     {
+        // MONEY-4 (2026-08-29): the platform's own 3-day trial is a 'trialing' row on a paid plan WITHOUT a
+        // Stripe subscription — it is not a paid plan. Counting it here made isInTrial() false for every
+        // fresh signup, so the billing card read "9/month · Renews" instead of "Free 3-day trial".
         return Subscription::where('workspace_id', $wsId)
-            ->whereIn('status', ['active', 'trialing'])
+            ->where(function ($q) {
+                $q->where('status', 'active')
+                  ->orWhere(function ($q2) { $q2->where('status', 'trialing')->whereNotNull('stripe_subscription_id'); });
+            })
             ->whereHas('plan', function ($q) {
                 $q->where('price', '>', 0);
             })

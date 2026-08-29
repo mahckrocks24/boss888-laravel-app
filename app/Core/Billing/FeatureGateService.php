@@ -477,13 +477,16 @@ class FeatureGateService
 
     public function canUseVideo(int $wsId): bool
     {
+        // VIDEO-4 (2026-08-29): video is an AI tool — every AI plan (ADR-0012), capacity via credits.
         $plan = $this->getActivePlan($wsId);
-        return $plan && (bool) $plan->companion_app;  // Pro+ flag
+        return $plan && (($plan->ai_access ?? 'none') === 'full');
     }
 
     public function canUseApp888(int $wsId): bool
     {
-        return $this->canUseVideo($wsId);  // same gate: Pro+
+        // The Companion app stays a Pro+ (companion_app) entitlement — the Owner's explicit exclusion at $49.
+        $plan = $this->getActivePlan($wsId);
+        return $plan && (bool) $plan->companion_app;
     }
 
     public function agentQuotaReached(int $wsId): bool

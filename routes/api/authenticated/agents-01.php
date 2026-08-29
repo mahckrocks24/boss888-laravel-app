@@ -3656,10 +3656,15 @@ $withCorr = function (array $meta) use ($corr) {
         // Enforced here, at the point the promise is made, for the same reason
         // ForbiddenOfferGuard is: the offer exists only in the sentence, so no
         // creation-time gate can see it.
+        // SARAH-CCG (2026-08-29): a promise backed by tasks created IN THIS TURN is not unbacked. The
+        // guard used to replace "I'll queue Priya…" with "nothing is queued" in the same reply that ended
+        // "✅ Queued 2 tasks · 2 credits reserved" (AI Lite pass, ws 999995). Skip it when work was queued.
         try {
-            $__ccg = app(\App\Core\Sarah888\ConfirmationClaimGuard::class)
-                        ->validate((string) $reply, (int) $wsId, $corr['conversation_id'] ?? null);
-            $reply = $__ccg['reply'];
+            if ((int) ($taskSummaryCreated ?? 0) === 0) {
+                $__ccg = app(\App\Core\Sarah888\ConfirmationClaimGuard::class)
+                            ->validate((string) $reply, (int) $wsId, $corr['conversation_id'] ?? null);
+                $reply = $__ccg['reply'];
+            }
         } catch (\Throwable $__ccgErr) {
             \Illuminate\Support\Facades\Log::warning('[Sarah888] ConfirmationClaimGuard failed: ' . $__ccgErr->getMessage(), ['ws' => $wsId]);
         }
