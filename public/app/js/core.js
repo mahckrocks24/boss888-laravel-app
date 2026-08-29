@@ -7550,7 +7550,7 @@ function _billPlanFeatures(p) {
   else                    items.push('LevelUp subdomain');
   if (p.ai_access === 'full') {
     items.push('Sarah + specialist AI agents');
-    items.push('All AI tools (SEO, content, images, chatbot)');
+    items.push('All AI tools (SEO, content, images, video, social, chatbot)'); // zz: video + social are AI tools from $49 up (ADR-0012)
   } else if (p.ai_access === 'research') {
     items.push('AI research tools');
   } else {

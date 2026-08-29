@@ -102,7 +102,7 @@ use Illuminate\Support\Facades\Route;
             if (!$_credits->hasBalance($_wsId, 8)) {
                 return response()->json(['success' => false, 'error' => 'Not enough credits — strategy meeting costs 8 credits.', 'required_credits' => 8], 402);
             }
-            $_credits->debit($_wsId, 8, 'sarah/strategy_meeting');
+            // ss (2026-08-30): the engine reserves→commits the meeting's credits itself; a route-level debit here charged the customer TWICE.
             $r->validate(['goal' => 'required|string']);
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             $result = $engine->startMeeting(
@@ -151,7 +151,7 @@ use Illuminate\Support\Facades\Route;
             if (!$_credits->hasBalance($_wsId, 8)) {
                 return response()->json(['success' => false, 'error' => 'Not enough credits — strategy meeting costs 8 credits.', 'required_credits' => 8], 402);
             }
-            $_credits->debit($_wsId, 8, 'sarah/strategy_meeting');
+            // ss (2026-08-30): the engine reserves→commits the meeting's credits itself; a route-level debit here charged the customer TWICE.
             $r->validate(['goal' => 'required|string']);
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             return response()->json($engine->runFullMeeting(

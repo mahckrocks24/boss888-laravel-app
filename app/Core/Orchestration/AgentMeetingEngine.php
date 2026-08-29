@@ -658,7 +658,8 @@ class AgentMeetingEngine
 
         $meeting->update([
             'status'             => 'closed',
-            'total_credits_used' => $creditCost,
+            // ss: what was actually committed from the reservation — the ledger figure, not an estimate.
+            'total_credits_used' => ($reservationRef && $creditCost > 0) ? $creditCost : 0,
         ]);
 
         $this->createTasksFromPlan($meeting);

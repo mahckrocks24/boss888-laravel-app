@@ -637,6 +637,28 @@ class StripeService
     /**
      * Get current subscription and billing status for a workspace.
      */
+
+    /**
+     * xx (2026-08-30) — a plan allocation is a ledger event, not just a balance write. Records the
+     * allocation as a 'credit' row so the Billing history matches the balance the customer sees.
+     */
+    private function ledgerAllocation(int $wsId, Plan $plan, string $reason): void
+    {
+        try {
+            \Illuminate\Support\Facades\DB::table('credit_transactions')->insert([
+                'workspace_id'   => $wsId,
+                'type'           => 'credit',
+                'amount'         => (int) $plan->credit_limit,
+                'reference_type' => 'plan/allocation',
+                'reference_id'   => (int) $plan->id,
+                'metadata_json'  => json_encode(['reason' => $reason, 'plan_slug' => $plan->slug, 'balance_set_to' => (int) $plan->credit_limit]),
+                'created_at'     => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('StripeService::ledgerAllocation failed', ['ws' => $wsId, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function getBillingStatus(int $workspaceId): array
     {
         $sub = Subscription::where('workspace_id', $workspaceId)
@@ -963,6 +985,7 @@ class StripeService
                     ? Credit::where('workspace_id', $wsId)
                         ->update(['balance' => $plan->credit_limit, 'reserved_balance' => 0, 'updated_at' => now()])
                     : Credit::create(['workspace_id' => $wsId, 'balance' => $plan->credit_limit, 'reserved_balance' => 0]);
+                $this->ledgerAllocation($wsId, $plan, 'checkout_completed');
             }
         });
 
@@ -1056,6 +1079,7 @@ class StripeService
             Credit::where('workspace_id', $wsId)->lockForUpdate()->first()
                 ? Credit::where('workspace_id', $wsId)->update(['balance' => $plan->credit_limit, 'reserved_balance' => 0, 'updated_at' => now()])
                 : Credit::create(['workspace_id' => $wsId, 'balance' => $plan->credit_limit, 'reserved_balance' => 0]);
+            $this->ledgerAllocation($wsId, $plan, 'subscription_created');
         });
         if (! $provisioned) return ['handled' => true, 'action' => 'already_provisioned', 'type' => 'customer.subscription.created'];
 
@@ -1132,6 +1156,7 @@ class StripeService
         if ($plan) {
             Credit::where('workspace_id', $sub->workspace_id)
                 ->update(['balance' => $plan->credit_limit, 'updated_at' => now()]);
+            $this->ledgerAllocation((int) $sub->workspace_id, $plan, 'invoice_paid_renewal');
         }
 
         Log::info("Credits refreshed for workspace {$sub->workspace_id} on invoice.paid");
@@ -1384,6 +1409,7 @@ class StripeService
                 ['workspace_id' => $wsId],
                 ['balance' => $plan->credit_limit, 'reserved_balance' => 0]
             );
+            $this->ledgerAllocation($wsId, $plan, 'plan_assigned');
         }
 
         // T_NOTIF — dev-mode plan activation (no billing event, info severity)

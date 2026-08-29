@@ -59,8 +59,8 @@ use Illuminate\Support\Facades\Route;
         $goal = $r->input('topic', $r->input('goal', 'Strategy discussion'));
         $result = $engine->startMeeting($_wsId, $r->user()->id, $goal, $r->input('agents', []));
         if (!empty($result['meeting_id']) && empty($result['error'])) {
-            $_credits->debit($_wsId, 8, 'sarah/strategy_meeting');
-            $result['credits_charged'] = 8;
+            // ss (2026-08-30): the engine's reserve→commit is the ONE charge (no route-level debit — that doubled it).
+            $result['credits_charged'] = (int) ($result['credit_cost'] ?? 0);
         }
         return response()->json($result);
     });
