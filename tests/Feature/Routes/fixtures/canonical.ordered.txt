@@ -698,7 +698,7 @@ GET,HEAD|api/onboarding/status||App\Http\Controllers\Api\OnboardingController@st
 POST|api/onboarding/interview/open||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/onboarding/interview/message||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/onboarding/complete||App\Http\Controllers\Api\OnboardingController@complete||api,auth.jwt,connector.brand,traffic.defense
-PUT|api/workspace/settings||Closure||api,auth.jwt,connector.brand,traffic.defense
+PUT,POST|api/workspace/settings||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/workspace/onboarding||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/workspace/complete-onboarding||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/workspace/status||Closure||api,auth.jwt,connector.brand,traffic.defense
