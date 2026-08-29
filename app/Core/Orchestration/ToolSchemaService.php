@@ -656,6 +656,31 @@ class ToolSchemaService
         }
     }
 
+    /**
+     * RISK-0123 / RISK-0105 parity (2026-08-29) — the S3 gate only guarded executeToolCall(); Sarah's
+     * primary delegation path (chat create_tasks -> tasks table -> Orchestrator) bypassed it, so a
+     * guessed page_id=1 became a task. Same gate, same resolver, callable from that path.
+     * @return array|null null => proceed (params pinned); array => CLARIFY_TARGET result (do not create)
+     */
+    public function resolveTaskTarget(string $toolId, array &$params, int $wsId, string $agentSlug, array $context = []): ?array
+    {
+        if (! $this->targetResolutionEnabled($wsId)) return null;
+        if (! in_array($toolId, self::SITE_SCOPED_TOOLS, true)) return null;
+        return $this->enforceTarget($toolId, $params, $wsId, $agentSlug, $context);
+    }
+
+    /** Which of the workspace's website NAMES the text mentions (case-insensitive). RISK-0123. */
+    public function websiteNamesMentioned(int $wsId, string $text): array
+    {
+        $out = [];
+        $t = mb_strtolower($text);
+        foreach (\Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->get(['id', 'name']) as $w) {
+            $n = mb_strtolower(trim((string) $w->name));
+            if ($n !== '' && mb_strlen($n) >= 3 && str_contains($t, $n)) $out[] = ['id' => (int) $w->id, 'name' => (string) $w->name];
+        }
+        return $out;
+    }
+
     public function executeToolCall(string $toolId, array $params, int $wsId, string $agentSlug, array $context = []): array
     {
         if (!isset(self::TOOL_DEFINITIONS[$toolId])) {

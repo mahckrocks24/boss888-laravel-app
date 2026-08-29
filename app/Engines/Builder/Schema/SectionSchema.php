@@ -32,7 +32,7 @@ class SectionSchema
         ],
         'hero' => [
             'required' => ['heading'],
-            'optional' => ['subheading', 'body', 'cta_text', 'cta_url', 'cta_secondary_text', 'cta_secondary_url', 'background_image', 'overlay_opacity', 'image'],
+            'optional' => ['eyebrow', 'subheading', 'body', 'cta_text', 'cta_url', 'cta_secondary_text', 'cta_secondary_url', 'background_image', 'overlay_opacity', 'image'],
         ],
         'features' => [
             'required' => ['heading'],

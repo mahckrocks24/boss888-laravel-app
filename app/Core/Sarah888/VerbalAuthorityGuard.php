@@ -474,8 +474,20 @@ final class VerbalAuthorityGuard
             ->get(['id', 'engine', 'action', 'category', 'status', 'payload_json',
                    'created_at', 'updated_at']);
 
+        // RISK-0123 (2026-08-29) — work created in THIS execution is, by construction, the work the
+        // reply is talking about. The verb/entity model could not see a builder edit
+        // ("ai_builder_action" carries no queue/run verb), so the guard answered NO_MATCH and
+        // rewrote "I've updated the hero subtitle" into "I haven't started anything yet" while the
+        // task ran to completion and the live site changed.
+        $__execId = null;
+        try { $__execId = app(\App\Core\Sarah888\CorrelationContext::class)->executionId(); } catch (\Throwable $e) {}
+
         $matched = [];
         foreach ($rows as $r) {
+            if ($__execId) {
+                $__p = json_decode((string) ($r->payload_json ?? '{}'), true) ?: [];
+                if (($__p['execution_id'] ?? null) === $__execId) { $matched[] = $r; continue; }
+            }
             if ($this->taskMatchesClaim($r, $claim)) $matched[] = $r;
         }
 
@@ -561,8 +573,12 @@ final class VerbalAuthorityGuard
         // unresolvable must not be credited with matching, but neither should a
         // vague claim ("I'll publish them") be refused a genuine publish task.
         $taskEntities = $this->entitiesIn(str_replace('_', ' ', $action));
+        // RISK-0123 (2026-08-29) — a page IS part of a website: "update_page" queued for "the website"
+        // was refused as NO_MATCH, so the guard told the owner "nothing is queued" in the same reply
+        // that ended "✅ Queued 1 tasks". Compare at the site family level.
+        $fam = static fn (array $es) => array_unique(array_map(static fn ($e) => in_array($e, ['page', 'website'], true) ? 'site' : $e, $es));
         if ($claim['entities'] && $taskEntities
-            && !array_intersect($taskEntities, $claim['entities'])) return false;
+            && !array_intersect($fam($taskEntities), $fam($claim['entities']))) return false;
 
         // A specific id on both sides must agree.
         if ($claim['ids']) {

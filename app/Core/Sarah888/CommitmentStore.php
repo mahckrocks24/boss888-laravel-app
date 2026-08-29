@@ -376,7 +376,14 @@ class CommitmentStore
 
         $out = "EXECUTIVE COMMITMENT RECORD (durable, workspace-scoped, and NOT limited to the recent conversation.\n"
              . "This is the source of truth for what the owner has committed to. Trust it over your recollection of chat.\n"
-             . "If the owner asks about something that is NOT in this record, say you have no record of it — do NOT assert that it never happened.)\n";
+             . "If the owner asks about something that is NOT in this record, say you have no record of it — do NOT assert that it never happened.\n"
+             // RISK-0123 (2026-08-29) — an owner's request that was RECORDED here but never turned into a task
+             // read back to Sarah as work that existed: she told the owner the edit was "already queued and
+             // awaiting execution" while the tasks table was empty, and emitted no create_tasks. A commitment
+             // is an intent on the record, never proof of queued work.
+             . "A COMMITMENT IS A RECORDED INTENT, NOT QUEUED WORK. Only the ACTIVE QUEUE block proves that a task exists. "
+             . "Never say something is queued, in progress, or being handled on the strength of this record. "
+             . "An entry marked NOT QUEUED has NO task: if the owner asks for it (or asks again), create the work THIS turn with create_tasks.)\n";
 
         // DETAIL IS RATIONED BY RELEVANCE, NOT BY POSITION.
         // Rendering 60 full records cost 4,542 characters and pushed the
@@ -430,6 +437,8 @@ class CommitmentStore
             elseif (!empty($c->deadline_text)) $bits[] = 'due: ' . $c->deadline_text;
             if (($c->priority ?? 'medium') !== 'medium') $bits[] = 'priority: ' . $c->priority;
             if ($c->status !== 'active') $bits[] = 'status: ' . $c->status;
+            // RISK-0123 — say plainly when nothing was ever queued for this intent.
+            if (empty($c->related_task_id) && (($c->actor ?? '') === 'user')) $bits[] = 'NOT QUEUED (no task exists)';
             $out .= '  - [#' . $c->id . '] ' . $c->title . ($bits ? ' | ' . implode(' | ', $bits) : '') . "\n";
         }
         if ($summary) {

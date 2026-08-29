@@ -59,8 +59,17 @@ class SpendPolicy
      * statement default and was treated as though no work had been requested —
      * the owner asked for a deliverable and the turn was logged as idle chat.
      */
-    private const DIRECTIVE = '/\b(?:create|generate|write|draft|design|produce|prepare|compose|outline|'
+    // RISK-0123 (2026-08-29) — the plain EDIT verbs were missing, so the most common Builder
+    // instruction of all ("change the hero subtitle to …", "replace the hero image", "rename the
+    // page") classified as a STATEMENT and task creation was refused (UNCOMMISSIONED_TURN) even
+    // with the website named. Base forms only (no -ed/-ing), so "we changed our mind" still reads
+    // as a statement; ambiguous verbs (move, set, apply, link, improve, increase) stay out.
+    // A verb right after a determiner is a NOUN ("the edit you made", "our launch", "that change").
+    private const DIRECTIVE = '/(?<!\bthe )(?<!\ban )(?<!\ba )(?<!\byour )(?<!\bthis )(?<!\bthat )(?<!\bmy )(?<!\bour )(?<!\blast )(?<!\bevery )(?<!\bthe )(?<!\bnext )\b(?:create|generate|write|draft|design|produce|prepare|compose|outline|'
         . 'build|make|run|queue|start|launch|publish|send|fix|update|add|assign|delegate|schedule|'
+        . 'change|edit|replace|rename|remove|delete|modify|rewrite|swap|revise|correct|translate|'
+        . 'resize|reorder|upload|insert|restore|revert|undo|redirect|switch|enable|disable|'
+        . 'turn (?:on|off)|connect|disconnect|install|configure|unpublish|republish|'
         . 'set up|put together|do it|go ahead|proceed|handle it|sort (?:it|them) out|'
         . 'get (?:it|them) done|please do)\b/i';
 
@@ -144,6 +153,15 @@ class SpendPolicy
             return ['specifies_action' => $__specifies, 'authorized' => false,
                     'reason' => 'the owner is challenging a claimed approval, not granting one',
                     'classification' => 'question'];
+        }
+
+        // RISK-0123 — a NEGATED approval is not an approval ("that change was not approved",
+        // "this was never approved", "I haven't approved anything"): EXPLICIT_AUTH matches the bare
+        // word and would authorise spend on the strength of the owner withdrawing it.
+        if (preg_match('/\b(?:not|never|wasn\'?t|isn\'?t|hasn\'?t|haven\'?t|didn\'?t|don\'?t|do not|did not|have not|has not|was not|is not)\s+(?:been\s+|yet\s+)?(?:approved?|authoris\w+|authoriz\w+|proceed|go ahead)\b/i', $m)) {
+            return ['specifies_action' => $__specifies, 'authorized' => false,
+                    'reason' => 'the owner is withholding or withdrawing approval, not granting it',
+                    'classification' => 'statement'];
         }
 
         // An explicit authorisation wins outright — "yes, do it" after a

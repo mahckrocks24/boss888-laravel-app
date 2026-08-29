@@ -342,6 +342,7 @@ PROMPT;
         'hero' => [
             'heading'            => ['hero_title'],
             'subheading'         => ['hero_subtitle', 'hero_eyebrow'],
+            'eyebrow'            => ['hero_eyebrow'],
             'body'               => ['hero_subtitle'],
             'cta_text'           => ['hero_cta', 'hero_cta_primary'],
             'cta_secondary_text' => ['hero_cta_secondary'],

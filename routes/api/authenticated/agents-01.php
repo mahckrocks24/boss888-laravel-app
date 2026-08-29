@@ -1027,7 +1027,20 @@ $withCorr = function (array $meta) use ($corr) {
         $__shapeIsExecutive = false;
         if ($slug === 'sarah') {
             try {
-                $__shapeIsExecutive = app(\App\Core\Sarah888\RouterIntent::class)
+                // RISK-0123 (2026-08-29) — RouterIntent only knows STATUS vs ANALYSIS; it was asked
+                // about EVERY turn, so a bare "Go ahead." (an authorisation of the previous request)
+                // came back ANALYSIS and the turn was composed WITHOUT tools ("you are NOT creating
+                // or queueing work on this turn"). Sarah then said "kicking off now" with nothing
+                // queued. A turn that commissions or authorises work is never analytical.
+                $__turnShape = app(\App\Core\Sarah888\SpendPolicy::class)->assessTurn((string) $__ownerMessage);
+                $__isWorkTurn = !empty($__turnShape['authorized'])
+                    || in_array($__turnShape['classification'] ?? '', ['directive', 'directive-question', 'authorisation'], true);
+                if ($__isWorkTurn) {
+                    \Illuminate\Support\Facades\Log::info('[Sarah888] work/authorisation turn — analytical shape skipped (RISK-0123)', [
+                        'ws' => $wsId, 'classification' => $__turnShape['classification'] ?? null,
+                    ]);
+                }
+                $__shapeIsExecutive = $__isWorkTurn ? false : app(\App\Core\Sarah888\RouterIntent::class)
                                         ->isAnalysis($__ownerMessage, (int) $wsId);
             } catch (\Throwable $__shapeErr) {
                 // Brevity on failure: the safe default is today's behaviour.
@@ -2767,6 +2780,55 @@ $withCorr = function (array $meta) use ($corr) {
                                 'user_request' => $content,
                             ], $ctParams);
 
+                            // ── RISK-0123 (2026-08-29) — BUILDER PAGE EDITS FROM CHAT ──────────────
+                            // (1) `builder/update_page` has NO Orchestrator handler (task failed "This
+                            //     action isn't supported yet") and the tool guidance already says content
+                            //     edits go through Arthur: route it to ai_builder_action with the owner's
+                            //     words as the brief.
+                            // (2) RISK-0105 parity: the target gate guarded only executeToolCall(); this
+                            //     path created a task with a GUESSED page_id (1). Resolve the website
+                            //     deterministically (explicit name in the message > conversation's active
+                            //     site > single-site workspace); ambiguous => ASK, create nothing.
+                            if ($taskEngine === 'builder' && in_array($taskAction, ['update_page', 'ai_builder_action', 'publish_builder_page', 'generate_page', 'add_page_from_template'], true)) {
+                                if ($taskAction === 'update_page') {
+                                    $taskAction = 'ai_builder_action';
+                                    $payload['command'] = trim((string) ($payload['command'] ?? ''))
+                                        ?: trim((string) $content);
+                                    \Illuminate\Support\Facades\Log::info('[Sarah888] chat update_page routed to Arthur (no task handler for update_page)', ['ws' => $wsId]);
+                                }
+                                try {
+                                    $__tss = app(\App\Core\Orchestration\ToolSchemaService::class);
+                                    $__wsSites = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->get(['id', 'name'])->map(fn ($w) => (array) $w)->all();
+                                    // A page_id that does not belong to this workspace is a guess — drop it.
+                                    if (!empty($payload['page_id'])) {
+                                        $__pgWs = (int) \Illuminate\Support\Facades\DB::table('pages')->join('websites', 'websites.id', '=', 'pages.website_id')
+                                            ->where('pages.id', (int) $payload['page_id'])->where('websites.workspace_id', $wsId)->whereNull('websites.deleted_at')->value('pages.website_id');
+                                        if ($__pgWs <= 0) { unset($payload['page_id']); }
+                                        elseif (empty($payload['website_id'])) { $payload['website_id'] = $__pgWs; }
+                                    }
+                                    $__named = $__tss->websiteNamesMentioned((int) $wsId, (string) $content);
+                                    $__ctx = [];
+                                    if (count($__named) === 1) { $__ctx['explicit_name'] = $__named[0]['name']; }
+                                    $__toolId = 'builder.' . ($taskAction === 'ai_builder_action' ? 'edit_page_with_arthur' : $taskAction);
+                                    $__clar = $__tss->resolveTaskTarget($__toolId, $payload, (int) $wsId, 'sarah', $__ctx);
+                                    if (is_array($__clar)) {
+                                        // Ambiguous target: ask, do not execute. The question replaces the reply.
+                                        \Illuminate\Support\Facades\Log::warning('[Sarah888] RISK-0105 task-path CLARIFY — builder task not created', ['ws' => $wsId, 'action' => $taskAction, 'reason' => $__clar['reason'] ?? null]);
+                                        $reply = (string) ($__clar['error'] ?? 'Which website would you like me to update?');
+                                        $__clarifyAsked = true;
+                                        continue;
+                                    }
+                                    // Pinned website: a page_id from another site of this workspace is still a guess.
+                                    if (!empty($payload['website_id']) && !empty($payload['page_id'])) {
+                                        $__ok = \Illuminate\Support\Facades\DB::table('pages')->where('id', (int) $payload['page_id'])->where('website_id', (int) $payload['website_id'])->exists();
+                                        if (!$__ok) { unset($payload['page_id']); }
+                                    }
+                                    if (empty($payload['website_id']) && count($__wsSites) === 1) { $payload['website_id'] = (int) $__wsSites[0]['id']; }
+                                } catch (\Throwable $__tgtErr) {
+                                    \Illuminate\Support\Facades\Log::warning('[Sarah888] task-path target resolution failed', ['ws' => $wsId, 'error' => $__tgtErr->getMessage()]);
+                                }
+                            }
+
                             // PATCH (Intel Fix 2a) — TaskService is the canonical path.
                             // Wave 36c — auto-approve chain tasks when caller is the WP plugin
                             // (X-API-KEY context). Laravel app users still see the approval queue.
@@ -3178,7 +3240,14 @@ $withCorr = function (array $meta) use ($corr) {
         }
 
         // ── Store agent response ──
-        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+        // RISK-0123 (2026-08-29) — this row is the LLM's conversation history (the last 20
+        // agent.direct_message rows are replayed as "what Sarah said"). It was written HERE, before
+        // every reply guard below, so the history kept the RAW hallucinations ("there are multiple
+        // queued tasks…", "it was already queued…") that the guards had stripped from what the
+        // owner actually saw. Sarah then trusted her own stripped fabrication on the next turn and
+        // told the owner the edit was "already queued" — twice — with an empty tasks table.
+        // The row is rewritten with the FINAL, guarded reply just before it is returned.
+        $__auditRowId = \Illuminate\Support\Facades\DB::table('audit_logs')->insertGetId([
             'workspace_id' => $wsId,
             'action' => 'agent.direct_message',
             'entity_type' => 'Agent',
@@ -3577,6 +3646,17 @@ $withCorr = function (array $meta) use ($corr) {
                 }
             } else {
                 \Illuminate\Support\Facades\Log::warning('[SarahChat] schedule_followup skipped (delay out of 10s..24h bounds)', ['delay_sec' => $delaySec]);
+            }
+        }
+
+        // RISK-0123 — history must hold what the owner actually read (post-guard), never the raw draft.
+        if (!empty($__auditRowId)) {
+            try {
+                \Illuminate\Support\Facades\DB::table('audit_logs')->where('id', (int) $__auditRowId)->update([
+                    'metadata_json' => json_encode(['agent_slug' => $slug, 'from' => $agent->name, 'content' => $reply, 'guarded' => true]),
+                ]);
+            } catch (\Throwable $__ae) {
+                \Illuminate\Support\Facades\Log::warning('[Sarah888] could not rewrite history row with guarded reply', ['id' => $__auditRowId, 'error' => $__ae->getMessage()]);
             }
         }
 

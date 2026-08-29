@@ -53,6 +53,12 @@ class AgentClaimValidator
         '/\bI\'?ll\s+(confirm|update you|let you know|report back|notify you)\b[^.!?\n]*\b(when|as soon as|once)\b/i',
         '/\bworking on (it|that|them) now\b/i',
         '/\bshould be done in\b[^.!?\n]*\bminutes?\b/i',
+        // RISK-0123 (2026-08-29) — impersonal/passive queue claims slipped through every pattern above:
+        // "The task to change the hero subtitle … is already queued and awaiting execution." — said twice
+        // to the owner while the tasks table was empty. A claim that work is queued is a claim, whoever
+        // the grammatical subject is.
+        '/\b(is|are|was|were|has been|have been|got|gets)\s+(already\s+|now\s+)?(queued|in the queue|scheduled|awaiting execution|in progress|underway|in flight|being handled|being processed|lined up)\b/i',
+        '/\balready (queued|scheduled|in progress|underway|in flight|being handled)\b/i',
     ];
 
     /**
