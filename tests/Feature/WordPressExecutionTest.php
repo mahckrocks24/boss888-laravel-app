@@ -22,6 +22,10 @@ class WordPressExecutionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // RISK-0127 cc (2026-08-30): this suite exercises the retired pluginconnector888 WordPress flow
+        // (no such path exists in app/ any more); its Http::fake patterns never match and the pipeline test
+        // burns ~3 minutes in real retries. WordPress is covered by tests/Feature/WordPress (LGSC plugin).
+        $this->markTestSkipped('legacy pluginconnector888 flow retired — see tests/Feature/WordPress');
         $this->setUpBoss888();
     }
 
