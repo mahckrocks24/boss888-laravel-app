@@ -217,7 +217,7 @@ footer{background:var(--teal-deep);color:var(--ivory);padding:80px 0 36px}
         <div class="hero-form-eyebrow" data-field="hero_form_eyebrow">{{hero_form_eyebrow}}</div>
         <div class="hero-form-title" data-field="hero_form_title">{{hero_form_title}}</div>
         <div class="hero-form-sub" data-field="hero_form_sub">{{hero_form_sub}}</div>
-        <form onsubmit="event.preventDefault();alert('Thank you! Our reservations desk will confirm availability within the hour.');">
+        <form onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thank you! Our reservations desk will confirm availability within the hour.">
           <div>
             <label data-field="hero_form_checkin_label">{{hero_form_checkin_label}}</label>
             <input type="date" required>
@@ -491,7 +491,7 @@ footer{background:var(--teal-deep);color:var(--ivory);padding:80px 0 36px}
     <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
   </div>
   <div class="wrap-narrow" style="position:relative;z-index:2">
-    <form class="booking-form" onsubmit="event.preventDefault();alert('Thank you! Your reservation request has been received. Our concierge will confirm shortly.');">
+    <form class="booking-form" onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thank you! Your reservation request has been received. Our concierge will confirm shortly.">
       <div>
         <label data-field="booking_room_label">{{booking_room_label}}</label>
         <select name="room_type" required>

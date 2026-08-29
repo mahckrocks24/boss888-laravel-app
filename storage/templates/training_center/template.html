@@ -225,7 +225,7 @@ footer{background:var(--navy-soft);border-top:1px solid var(--divider);padding:6
         <div class="hero-form-eyebrow" data-field="hero_form_eyebrow">{{hero_form_eyebrow}}</div>
         <div class="hero-form-title" data-field="hero_form_title">{{hero_form_title}}</div>
         <div class="hero-form-sub" data-field="hero_form_sub">{{hero_form_sub}}</div>
-        <form onsubmit="event.preventDefault();alert('Thanks! Our admissions team will reach out within 24 hours.');">
+        <form onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thanks! Our admissions team will reach out within 24 hours.">
           <div>
             <label data-field="hero_form_name_label">{{hero_form_name_label}}</label>
             <input type="text" required placeholder="Alia Hassan">
@@ -562,7 +562,7 @@ async function handleContactSubmit(e) {
     <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
   </div>
   <div class="wrap-narrow" style="position:relative;z-index:2">
-    <form class="booking-form" onsubmit="event.preventDefault();alert('Thanks! Your campus tour is being scheduled. We\u2019ll email confirmation shortly.');">
+    <form class="booking-form" onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thanks! Your campus tour is being scheduled. We\u2019ll email confirmation shortly.">
       <div>
         <label data-field="booking_program_label">{{booking_program_label}}</label>
         <select name="program_interest" required>

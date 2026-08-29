@@ -433,7 +433,7 @@ footer{background:var(--teal-deep);color:var(--white);padding:60px 0 32px}
       <h2 class="h-section" data-field="booking_title">{{booking_title}}</h2>
       <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
     </div>
-    <form class="booking-form" onsubmit="event.preventDefault();alert('Thanks! We\u2019ll confirm your appointment within one hour during clinic hours.');">
+    <form class="booking-form" onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thanks! We\u2019ll confirm your appointment within one hour during clinic hours.">
       <div>
         <label data-field="booking_service_type_label">{{booking_service_type_label}}</label>
         <select name="service_type" required>

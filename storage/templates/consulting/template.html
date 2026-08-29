@@ -477,7 +477,7 @@ footer{background:#070F1D;border-top:1px solid var(--divider);padding:64px 0 34p
       <h2 class="h-section" data-field="booking_title">{{booking_title}}</h2>
       <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
     </div>
-    <form class="booking-form" onsubmit="event.preventDefault();alert('Thanks! We\u2019ll confirm your strategy session within one business day.');">
+    <form class="booking-form" onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thanks! We\u2019ll confirm your strategy session within one business day.">
       <div>
         <label data-field="booking_consulting_area_label">{{booking_consulting_area_label}}</label>
         <select name="consulting_area" required>

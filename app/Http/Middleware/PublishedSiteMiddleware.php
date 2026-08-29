@@ -224,6 +224,7 @@ class PublishedSiteMiddleware
                         $html = $this->normalizeFaqSections($html);
                     }
                     $html = $this->injectBlogLinkStyling($html);
+                    $html = $this->injectBookingForms($html); // LEAD-1
                     $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) $website->id);
                     $html = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($html, (int) $website->id);
                     $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
@@ -306,6 +307,7 @@ class PublishedSiteMiddleware
             return $this->render404();
         }
 
+        $html = $this->injectBookingForms($html); // LEAD-1
         $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) ($website->id ?? 0));
         $html = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($html, (int) ($website->id ?? 0));
         $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
@@ -1227,6 +1229,92 @@ class PublishedSiteMiddleware
         $html = preg_replace('#(<meta\\s+property=["\']og:url["\']\\s+content=)["\'][^"\']*["\']#i', '$1"' . e($pageUrl) . '"', $html, 1);
         $html = preg_replace_callback('#(<meta\\s+(?:property|name)=["\'](?:og:image|twitter:image)["\']\\s+content=)["\'](/[^"\']*)["\']#i', function ($m) use ($base) { return $m[1] . '"' . $base . $m[2] . '"'; }, $html);
         return $html;
+    }
+
+    /**
+     * LEAD-1 (2026-08-29, EV-0870) — template booking / reservation / quote forms shipped with
+     * `onsubmit="event.preventDefault();alert('Your table is reserved! …')"`: a fabricated success for
+     * the customer's visitors (no lead, no booking, no email). Every served page rewrites those
+     * handlers to a real submission (POST /api/public/booking/by-host → lead + pending booking +
+     * owner notification) with an honest inline reply. Covers sites exported before the template
+     * sources were fixed; new exports carry `onsubmit="return luSubmitBooking(event)"` already.
+     */
+    private function injectBookingForms(string $html): string
+    {
+        if (stripos($html, '<form') === false) return $html;
+        $html = preg_replace_callback(
+            '/onsubmit="event\x2epreventDefault\x28\x29;\s*alert\x28\x27((?:[^\x27\x5c]|\x5c.)*)\x27\x29;?"/i',
+            function ($m) {
+                $thanks = htmlspecialchars(stripslashes($m[1]), ENT_QUOTES, 'UTF-8');
+                return 'onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="' . $thanks . '"';
+            },
+            $html
+        ) ?? $html;
+        if (! str_contains($html, 'luSubmitBooking')) return $html;
+        if (str_contains($html, 'id="lu-booking-js"')) return $html;
+        $js = <<<'JS'
+<script id="lu-booking-js">
+(function(){
+  if (window.luSubmitBooking) return;
+  function fieldKey(el, idx){
+    var n = (el.getAttribute('name') || el.id || '').toLowerCase();
+    var t = (el.getAttribute('type') || el.tagName).toLowerCase();
+    var ph = (el.getAttribute('placeholder') || '').toLowerCase();
+    var lab = '';
+    try { var l = el.closest('div,label'); lab = l ? (l.querySelector('label') ? l.querySelector('label').textContent : '').toLowerCase() : ''; } catch(e){}
+    var hint = n + ' ' + ph + ' ' + lab;
+    if (n === 'email' || t === 'email' || /e-?mail/.test(hint)) return 'email';
+    if (n === 'phone' || t === 'tel' || /phone|mobile|tel/.test(hint)) return 'phone';
+    if (n === 'name' || /name|full name|your name/.test(hint) && !/company|business/.test(hint)) return 'name';
+    if (t === 'date' || /date/.test(hint)) return 'preferred_date';
+    if (t === 'time' || /time/.test(hint)) return 'preferred_time';
+    if (/party|guests|people|size/.test(hint)) return 'party_size';
+    if (/service|occasion|treatment|package|interest|reason/.test(hint)) return 'service';
+    if (el.tagName === 'TEXTAREA' || /note|message|details|comments/.test(hint)) return 'notes';
+    return 'x_' + (n || (t + '_' + idx));
+  }
+  window.luSubmitBooking = function(e){
+    e.preventDefault();
+    var form = e.target, btn = form.querySelector('button[type=submit],button:not([type]),input[type=submit]');
+    var payload = { form: form.getAttribute('data-lu-form') || 'booking', extra: {}, hp: '' };
+    var els = form.querySelectorAll('input,select,textarea');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i]; if (!el || el.type === 'submit' || el.type === 'button') continue;
+      var k = fieldKey(el, i), v = (el.value || '').trim(); if (!v) continue;
+      if (k.indexOf('x_') === 0) payload.extra[k.slice(2)] = v; else if (!payload[k]) payload[k] = v; else payload.extra[k + '_' + i] = v;
+    }
+    if (!payload.email && !payload.phone) {
+      var need = form.querySelector('[data-lu-contact]');
+      if (!need) {
+        need = document.createElement('div'); need.setAttribute('data-lu-contact', '1'); need.style.cssText = 'margin:8px 0;display:flex;flex-direction:column;gap:6px';
+        need.innerHTML = '<label style="font-size:.85em">Email or phone so we can confirm</label><input type="email" name="email" placeholder="you@example.com" required style="padding:.6em;border:1px solid #ccc;border-radius:6px">';
+        (btn && btn.parentNode === form ? form.insertBefore(need, btn) : form.appendChild(need));
+        need.querySelector('input').focus();
+        return false;
+      }
+    }
+    var old = btn ? btn.textContent : ''; if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    var msg = form.querySelector('[data-lu-msg]');
+    if (!msg) { msg = document.createElement('div'); msg.setAttribute('data-lu-msg', '1'); msg.setAttribute('role', 'status'); msg.style.cssText = 'margin-top:10px;font-size:.95em'; form.appendChild(msg); }
+    fetch('/api/public/booking/by-host', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(payload) })
+      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(res){
+        if (res.ok && res.j && res.j.success) {
+          msg.style.color = '#15803d'; msg.textContent = res.j.message || 'Request received — we will confirm with you shortly.';
+          form.reset(); if (btn) { btn.textContent = 'Request sent'; }
+        } else {
+          msg.style.color = '#b91c1c'; msg.textContent = (res.j && res.j.message) || 'We could not send your request — please call or email us.';
+          if (btn) { btn.disabled = false; btn.textContent = old; }
+        }
+      })
+      .catch(function(){ msg.style.color = '#b91c1c'; msg.textContent = 'We could not send your request — please call or email us.'; if (btn) { btn.disabled = false; btn.textContent = old; } });
+    return false;
+  };
+})();
+</script>
+JS;
+        return str_contains($html, '</body>') ? str_replace('</body>', $js . "
+</body>", $html) : $html . $js;
     }
 
     private function injectChatbotWidget(string $html, int $workspaceId, int $websiteId): string

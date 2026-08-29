@@ -1277,6 +1277,38 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // SECURITY 2026-07-23: these were already workspace-scoped, but the `&&` chain
         // discarded the JsonResponse and a cross-workspace/missing id surfaced as a 500.
         // Same safe denial (404) for missing, foreign, and otherwise inaccessible ids.
+        // LEAD-1 (2026-08-29): the owner's reply to a booking / callback request. The event and the
+        // CRM lead move together; nothing is emailed to the visitor automatically (that stays the
+        // owner's call) — the UI says exactly that.
+        Route::get('/events/{id}', function (\Illuminate\Http\Request $r, $id) {
+            $ev = \Illuminate\Support\Facades\DB::table('calendar_events')->where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first();
+            return $ev ? response()->json(['event' => $ev]) : response()->json(['error' => 'Event not found'], 404);
+        })->where('id', '[0-9]+');
+        Route::post('/events/{id}/decision', function (\Illuminate\Http\Request $r, $id) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $decision = (string) $r->input('decision');
+            if (! in_array($decision, ['confirm', 'decline'], true)) return response()->json(['success' => false, 'error' => 'decision must be confirm or decline'], 422);
+            $ev = \Illuminate\Support\Facades\DB::table('calendar_events')->where('id', (int) $id)->where('workspace_id', $wsId)->first();
+            if (! $ev) return response()->json(['success' => false, 'error' => 'Event not found'], 404);
+            if (! preg_match('/^(booking|callback)_/', (string) $ev->category)) return response()->json(['success' => false, 'error' => 'Not a booking or callback request'], 422);
+            $kind = explode('_', (string) $ev->category)[0];
+            $newCat = $kind . '_' . ($decision === 'confirm' ? 'confirmed' : 'declined');
+            $desc = preg_replace('/\n?Status:.*$/m', '', (string) $ev->description) . "\nStatus: " . ($decision === 'confirm' ? 'CONFIRMED' : 'DECLINED') . ' by ' . ($r->user()?->name ?? 'owner') . ' on ' . now()->format('Y-m-d H:i');
+            \Illuminate\Support\Facades\DB::table('calendar_events')->where('id', (int) $id)->update([
+                'category' => $newCat, 'color' => $decision === 'confirm' ? '#22C55E' : '#94A3B8', 'description' => $desc, 'updated_at' => now(),
+            ]);
+            if ($ev->reference_type === 'Lead' && $ev->reference_id) {
+                \Illuminate\Support\Facades\DB::table('leads')->where('id', (int) $ev->reference_id)->where('workspace_id', $wsId)
+                    ->update(['status' => $decision === 'confirm' ? 'qualified' : 'contacted', 'updated_at' => now()]);
+            }
+            try {
+                \Illuminate\Support\Facades\DB::table('booking_submissions')->where('meta_json->event_id', (int) $id)->update(['status' => $decision === 'confirm' ? 'confirmed' : 'cancelled', 'updated_at' => now()]);
+            } catch (\Throwable) {}
+            try {
+                app(\App\Core\Audit\AuditLogService::class)->log($wsId, $r->user()?->id, 'calendar.booking_' . ($decision === 'confirm' ? 'confirmed' : 'declined'), 'calendar_event', (int) $id, ['lead_id' => $ev->reference_id]);
+            } catch (\Throwable) {}
+            return response()->json(['success' => true, 'event_id' => (int) $id, 'category' => $newCat, 'lead_id' => $ev->reference_id]);
+        })->where('id', '[0-9]+');
         Route::put('/events/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
             try {
                 app($s)->updateEvent((int) $id, $r->all(), (int) $r->attributes->get('workspace_id'));
@@ -3667,6 +3699,12 @@ Route::middleware(['throttle:10,1'])->group(function () {
     Route::post(
         '/public/contact/by-host',
         [\App\Http\Controllers\Api\PublicContactController::class, 'submitByHost']
+    );
+    // LEAD-1 (2026-08-29): real destination for the template booking / reservation / quote forms
+    // (they used to alert() a fake confirmation). See PublicBookingController.
+    Route::post(
+        '/public/booking/by-host',
+        [\App\Http\Controllers\Api\PublicBookingController::class, 'submitByHost']
     );
 
     Route::post(

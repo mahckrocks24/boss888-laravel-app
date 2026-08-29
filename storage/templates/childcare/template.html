@@ -484,7 +484,7 @@ footer{background:var(--ink);color:#CBD5E1;padding:60px 0 32px;border-top:6px so
     <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
   </div>
   <div class="wrap-narrow" style="position:relative;z-index:2">
-    <form class="booking-form" onsubmit="event.preventDefault();alert('Thank you! Our admissions team will call within 1 business day to confirm your tour.');">
+    <form class="booking-form" onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thank you! Our admissions team will call within 1 business day to confirm your tour.">
       <div>
         <label data-field="booking_child_age_label">{{booking_child_age_label}}</label>
         <select name="child_age" required>

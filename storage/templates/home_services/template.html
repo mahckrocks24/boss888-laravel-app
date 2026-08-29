@@ -248,7 +248,7 @@ footer{background:var(--ink);color:#D9E2EC;padding:58px 0 30px}
         <div class="hero-form-eyebrow" data-field="hero_form_eyebrow">{{hero_form_eyebrow}}</div>
         <div class="hero-form-title" data-field="hero_form_title">{{hero_form_title}}</div>
         <div class="hero-form-sub" data-field="hero_form_sub">{{hero_form_sub}}</div>
-        <form onsubmit="event.preventDefault();alert('Thanks! We will text you a quote within 1 hour.');">
+        <form onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thanks! We will text you a quote within 1 hour.">
           <div>
             <label data-field="hero_form_name_label">{{hero_form_name_label}}</label>
             <input type="text" required placeholder="Your full name">
@@ -527,7 +527,7 @@ footer{background:var(--ink);color:#D9E2EC;padding:58px 0 30px}
     <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
   </div>
   <div class="wrap-narrow" style="position:relative;z-index:2">
-    <form class="booking-form" onsubmit="event.preventDefault();alert('Thanks! Your free quote is on its way within 1 hour.');">
+    <form class="booking-form" onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thanks! Your free quote is on its way within 1 hour.">
       <div>
         <label data-field="booking_service_type_label">{{booking_service_type_label}}</label>
         <select name="service_type" required>

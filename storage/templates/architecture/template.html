@@ -250,7 +250,7 @@ footer{background:var(--graphite);color:var(--white);padding:80px 0 40px}
         <div class="hero-form-eyebrow" data-field="hero_form_eyebrow">{{hero_form_eyebrow}}</div>
         <div class="hero-form-title" data-field="hero_form_title">{{hero_form_title}}</div>
         <div class="hero-form-sub" data-field="hero_form_sub">{{hero_form_sub}}</div>
-        <form onsubmit="event.preventDefault();alert('Thank you — a partner will reach out within two business days.');">
+        <form onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thank you — a partner will reach out within two business days.">
           <div>
             <label data-field="hero_form_name_label">{{hero_form_name_label}}</label>
             <input type="text" required placeholder="Your name">
@@ -537,7 +537,7 @@ footer{background:var(--graphite);color:var(--white);padding:80px 0 40px}
     <p class="booking-intro" data-field="booking_intro">{{booking_intro}}</p>
   </div>
   <div class="wrap-narrow" style="position:relative;z-index:2">
-    <form class="booking-form" onsubmit="event.preventDefault();alert('Thank you — a partner will reach out within two business days.');">
+    <form class="booking-form" onsubmit="return luSubmitBooking(event)" data-lu-form="booking" data-lu-thanks="Thank you — a partner will reach out within two business days.">
       <div>
         <label data-field="booking_project_label">{{booking_project_label}}</label>
         <select name="project_type" required>
