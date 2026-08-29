@@ -181,7 +181,7 @@ class TrialService
                 'trial_credits' => 0,
                 'days_remaining'=> 0,
                 'expires_at'    => null,
-                'trigger'       => 'Create your first website to start your 3-day free trial',
+                'trigger'       => 'Your 3-day free trial starts automatically with your account', // MONEY-3 (2026-08-29, RISK-0127 i): trial activates at signup (AuthService), not on first website
             ];
         }
 

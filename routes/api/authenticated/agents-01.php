@@ -3315,6 +3315,16 @@ $withCorr = function (array $meta) use ($corr) {
                             $byAgentParts[] = "$agentSlug: $n";
                         }
                         $byAgentStr = !empty($byAgentParts) ? ' (' . implode(', ', $byAgentParts) . ')' : '';
+                        // SARAH-COST (2026-08-29, RISK-0127 a): the credit figure the customer reads comes from
+                        // the LEDGER of what was actually queued (tasks.credit_cost), not from the model's guess.
+                        $__costLine = '';
+                        try {
+                            $__ids = array_values(array_filter(array_map('intval', $createdTaskIds ?? [])));
+                            if ($__ids) {
+                                $__sum = (int) \Illuminate\Support\Facades\DB::table('tasks')->whereIn('id', $__ids)->sum('credit_cost');
+                                $__costLine = $__sum > 0 ? " · {$__sum} credit" . ($__sum === 1 ? '' : 's') . " reserved" : " · no credits charged";
+                            }
+                        } catch (\Throwable) { $__costLine = ''; }
                         if ($taskSummaryCreated === 0 && $taskSummaryFailed > 0) {
                             // MONEY-1: nothing was queued — the reply must not read as "On it!"
                             $reply .= "\n\n⛔ I could not queue this:";
@@ -3322,10 +3332,10 @@ $withCorr = function (array $meta) use ($corr) {
                                 $reply .= "\n  • " . ($count > 1 ? "({$count}x) " : '') . $reason;
                             }
                         } elseif ($taskSummaryCreated > 0 && $taskSummaryFailed === 0) {
-                            $reply .= "\n\n✅ Queued {$taskSummaryCreated} tasks{$byAgentStr}.";
+                            $reply .= "\n\n✅ Queued {$taskSummaryCreated} tasks{$byAgentStr}{$__costLine}.";
                         } elseif ($taskSummaryCreated > 0) {
                             $total = $taskSummaryCreated + $taskSummaryFailed;
-                            $reply .= "\n\n✅ Queued {$taskSummaryCreated}/{$total} tasks{$byAgentStr}.";
+                            $reply .= "\n\n✅ Queued {$taskSummaryCreated}/{$total} tasks{$byAgentStr}{$__costLine}.";
                             $reply .= "\n⚠️ {$taskSummaryFailed} task(s) failed to create:";
                             foreach ($taskSummaryFailReasons as $reason => $count) {
                                 $reply .= "\n  • ({$count}x) {$reason}";
