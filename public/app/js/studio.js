@@ -287,6 +287,18 @@
     // Call the real actions. Driving the old gallery dropdown by synthesising a
     // click was fragile and depended on a control the shell has since retired.
     if (kind === 'video') { _studioOpenVideo(); return; }
+    // STUDIO-1 (2026-08-29, EV-0871): on the Home shell the templates grid is not mounted, so
+    // _st2StartImageDesign() found nothing to filter or scroll to — the primary "Create image"
+    // CTA did nothing but toast "Pick an image template". Mount the gallery first.
+    if (!document.getElementById('st2-tpl-section')) {
+      _stGo('designs');
+      var tries = 0;
+      (function waitGrid() {
+        if (document.getElementById('st2-tpl-section')) { _st2StartImageDesign(); return; }
+        if (++tries < 40) setTimeout(waitGrid, 150);
+      })();
+      return;
+    }
     _st2StartImageDesign();
   };
 
