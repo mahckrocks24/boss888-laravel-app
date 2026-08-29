@@ -621,6 +621,7 @@
     { key: 'hosting', label: 'Hosting' },
     { key: 'domain', label: 'Domain' },
     { key: 'activity', label: 'Activity' },
+    { key: 'versions', label: 'Versions' },
     { key: 'settings', label: 'Settings' }
   ];
 
@@ -639,6 +640,7 @@
     if (_detailTab === 'hosting')       { body = detailHosting(site, entitlement, live, addr); }
     else if (_detailTab === 'domain')   { body = detailDomain(site, entitlement); }
     else if (_detailTab === 'activity') { body = '<div id="infra-activity-slot">' + loadingState('Loading activity…') + '</div>'; }
+    else if (_detailTab === 'versions') { body = '<div id="infra-versions-slot">' + loadingState('Loading versions…') + '</div>'; }
     else if (_detailTab === 'settings') { body = detailSettings(site, origin); }
     else                                { body = detailOverview(site, entitlement, origin, live, addr); }
 
@@ -1029,6 +1031,8 @@
 
     // Activity tab loads real operations for this workspace, translated.
     if (_detailTab === 'activity') { loadWebsiteActivity(); }
+    // RESTORE-1: Versions tab lists the site's saved versions and restores one on request.
+    if (_detailTab === 'versions') { loadWebsiteVersions(site); }
     // Domain tab wires the custom-domain lifecycle (connect/check/disconnect).
     if (_detailTab === 'domain') { bindDomainTab(site); }
   }
@@ -1041,6 +1045,67 @@
     rejected: 'Request declined', cancelled: 'Request cancelled',
     failed_retryable: 'Temporary problem — retrying', failed_terminal: 'Setup failed', timed_out: 'Setup timed out'
   };
+  // RESTORE-1 (2026-08-30) — saved versions of a LevelUp-built website, restorable by the customer.
+  function loadWebsiteVersions(site) {
+    var slot = document.getElementById('infra-versions-slot');
+    if (!slot || !site || !site.id) { return; }
+    if (siteOrigin(site) !== 'native') {
+      slot.innerHTML = enterpriseEmpty(ICONS.hosting, 'Versions live on your own platform',
+        'This website is hosted elsewhere, so its version history is kept there — nothing to restore from here.', []);
+      return;
+    }
+    req('GET', 'builder/websites/' + encodeURIComponent(site.id) + '/history')
+      .then(function (r) {
+        var slot2 = document.getElementById('infra-versions-slot');
+        if (!slot2) { return; }
+        var items = (r.json && (r.json.history || (r.json.data && r.json.data.history))) || [];
+        if (!Array.isArray(items) || !items.length) {
+          slot2.innerHTML = enterpriseEmpty(ICONS.hosting, 'No saved versions yet',
+            'Every publish keeps the previous version here so you can go back to it in one click.', []);
+          return;
+        }
+        slot2.innerHTML = '<div style="max-width:760px;display:flex;flex-direction:column;gap:2px;">' +
+          '<div style="font:400 13px var(--fb);color:var(--t2);margin-bottom:var(--sp-3);">Restoring puts that version live again and keeps the current one in this list.</div>' +
+          items.slice(0, 40).map(function (v, i) {
+            var kb = Math.max(1, Math.round((Number(v.size) || 0) / 1024));
+            return '<div style="display:flex;gap:var(--sp-4);padding:var(--sp-3) 0;border-bottom:1px solid var(--bd);align-items:center;">' +
+              '<div style="min-width:0;flex:1;"><div style="font:600 13px var(--fb);color:var(--t1);">' + esc(fmtTime(v.saved_at)) + (i === 0 ? ' <span style="font:600 11px var(--fb);color:var(--t3);">· most recent saved version</span>' : '') + '</div>' +
+              '<div style="font:400 12px var(--fb);color:var(--t3);">' + esc(kb + ' KB') + '</div></div>' +
+              '<button class="infra-btn infra-restore-version" data-file="' + esc(v.file) + '" style="' + btnStyle() + 'flex:none;">Restore this version</button></div>';
+          }).join('') + '</div>';
+        Array.prototype.forEach.call(slot2.querySelectorAll('.infra-restore-version'), function (b) {
+          b.addEventListener('click', function () {
+            var file = b.getAttribute('data-file');
+            var ask = window.luConfirm ? window.luConfirm('Put this saved version live now? Your current version stays in the list, so you can come back to it.', 'Restore version', 'Restore', 'Keep current')
+                                       : Promise.resolve(window.confirm('Put this saved version live now?'));
+            Promise.resolve(ask).then(function (ok) {
+              if (!ok) { return; }
+              b.disabled = true; b.textContent = 'Restoring…';
+              req('POST', 'builder/websites/' + encodeURIComponent(site.id) + '/restore', { file: file })
+                .then(function (rr) {
+                  var j = rr.json || {};
+                  if (rr.ok && j.restored) {
+                    if (typeof showToast === 'function') { showToast('Restored — that version is live now.', 'success'); }
+                    loadWebsiteVersions(site);
+                  } else {
+                    b.disabled = false; b.textContent = 'Restore this version';
+                    if (typeof showToast === 'function') { showToast('Not restored: ' + (j.error || j.message || ('HTTP ' + rr.status)), 'error'); }
+                  }
+                })
+                .catch(function (e) {
+                  b.disabled = false; b.textContent = 'Restore this version';
+                  if (typeof showToast === 'function') { showToast('Not restored: ' + (e && e.message ? e.message : 'request failed'), 'error'); }
+                });
+            });
+          });
+        });
+      })
+      .catch(function () {
+        var slot3 = document.getElementById('infra-versions-slot');
+        if (slot3) { slot3.innerHTML = errorState('Could not load versions right now.'); }
+      });
+  }
+
   function loadWebsiteActivity() {
     req('GET', 'infrastructure/operations')
       .then(function (r) {
