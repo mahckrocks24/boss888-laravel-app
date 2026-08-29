@@ -58,6 +58,11 @@ class LaunchScopeRoutes
         'api/marketing/campaigns',
         'api/marketing/campaigns/*',
 
+        // ── Email marketing: templates (DEC-0028 HIDDEN; no launch surface calls them and the
+        //    id-addressed mutations carry no workspace filter — closed 2026-08-29, MK-1) ──
+        'api/marketing/templates',
+        'api/marketing/templates/*',
+
         // ── Email marketing: sequences / drip ──
         'api/marketing/sequences',
         'api/marketing/sequences/*',

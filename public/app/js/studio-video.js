@@ -1131,8 +1131,10 @@
       _designId = d.design_id;
       _designName = 'Untitled Video';
       _vd = _normalizeVideoData(d.video_data);
+      // VIDEO-2: the VE clip editor mounts asynchronously; hand it the tab the customer chose.
+      window._svPendingTab = (start === 'ai') ? 'ai' : 'clips';
       _mountEditor();
-      // Preselect a tab based on how they started
+      // Preselect a tab based on how they started (legacy Slice-A editor only)
       if (start === 'clips')  _switchTab('clips');
       if (start === 'images') _switchTab('clips');
       if (start === 'ai')     _switchTab('ai');
@@ -3068,6 +3070,12 @@
 
     _svWireTopbar();
     _svWireLeftTabs();
+    // VIDEO-2: honour the tab the hub tile asked for ("Generate with AI" → AI tab).
+    if (window._svPendingTab) {
+      VE.tabActive = window._svPendingTab; window._svPendingTab = null;
+      var __tabs = document.querySelectorAll('.sv-tab');
+      __tabs.forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-tab') === VE.tabActive); });
+    }
     _svRenderLeftPanel(VE.tabActive);
     _svWirePlaybackControls();
     _svWireCanvasClicks();
@@ -4017,7 +4025,8 @@
 
   function _svAddClip(type, url, dur, extra){
     var total = _svTotalDuration();
-    var newStart = total;
+    // VIDEO-2: an empty design starts its first clip at 0, not after the default canvas duration.
+    var newStart = VE.vd.clips.length ? total : 0;
     dur = Number(dur) || 3;
     if (newStart + dur > MAX_DURATION) { _svToast('60s limit', 'warning'); return; }
     var clip = Object.assign({
@@ -4027,7 +4036,7 @@
       transition_in: { type:'fade', duration: 0.4 },
     }, extra || {});
     VE.vd.clips.push(clip);
-    VE.vd.duration = Math.min(MAX_DURATION, newStart + dur);
+    VE.vd.duration = Math.min(MAX_DURATION, VE.vd.clips.length === 1 ? dur : Math.max(VE.vd.duration || 0, newStart + dur));
     if (type === 'video') { var v = document.createElement('video'); v.src = url; v.muted = true; v.preload='auto'; v.crossOrigin='anonymous'; v.playsInline=true; VE.videoPool[clip.id] = v; v.load(); }
     if (type === 'image') { var img = new Image(); img.crossOrigin='anonymous'; img.src = url; VE.imageCache[url] = img; img.onload = function(){ VE.needsRedraw = true; }; }
     _svSaveHistory(); _svMarkDirty(); _svAutoSaveSoon();
@@ -4210,6 +4219,12 @@
       '<div style="margin:12px 0 6px;font-size:12px;color:rgba(255,255,255,.55)">Cost: <b style="color:#fff">8 credits</b> \u00b7 governed generation</div>' +
       '<button class="sv-btn-wide" id="sv-ai-generate">\u2726 Generate video</button>' +
       '<div id="sv-ai-status" style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5"></div>';
+    // VIDEO-2: propose the aspect that matches this design's canvas.
+    try {
+      var __w = (VE.vd && VE.vd.canvas_width) || 1080, __h = (VE.vd && VE.vd.canvas_height) || 1920;
+      var __asp = __w > __h ? '16:9' : (__w < __h ? '9:16' : '1:1');
+      var __sel = document.getElementById('sv-ai-aspect'); if (__sel) __sel.value = __asp;
+    } catch(_){}
     var btn = document.getElementById('sv-ai-generate');
     btn.onclick = function(){
       var prompt = (document.getElementById('sv-ai-prompt').value || '').trim();
@@ -4640,9 +4655,55 @@
       });
     }).then(function(r){ return r ? r.json() : null; }).then(function(d){
       if (!d) return;
-      if (d.success) _svToast('Export queued. Check the gallery when done.', 'success');
+      if (d.success) { _svShowExportPanel('Queued\u2026', 3); _svPollExportStatus(0); }
       else _svToast('Export failed: ' + (d.error || 'unknown'), 'error');
     }).catch(function(e){ _svToast('Export error: ' + e.message, 'error'); });
+  }
+
+  // VIDEO-2 (2026-08-29) — the export is a server-side FFmpeg job; the editor now follows it to the
+  // end and hands the customer the file. Before this, the only feedback was a 3-second toast.
+  function _svShowExportPanel(msg, pct, html){
+    var wrap = document.getElementById('sv-canvas-wrap'); if (!wrap) return;
+    var ov = document.getElementById('sv-export-panel');
+    if (!ov) {
+      ov = document.createElement('div'); ov.id = 'sv-export-panel';
+      ov.style.cssText = 'position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(5,7,12,.82);backdrop-filter:blur(6px)';
+      wrap.style.position = wrap.style.position || 'relative';
+      wrap.appendChild(ov);
+    }
+    ov.innerHTML =
+      '<div style="width:min(380px,90%);background:#12151d;border:1px solid #2a2f3a;border-radius:12px;padding:20px 22px;color:#fff;font-family:inherit;text-align:center">' +
+        '<div style="font-size:15px;font-weight:600;margin-bottom:8px">Exporting your video</div>' +
+        '<div id="sv-export-msg" style="font-size:12px;color:rgba(255,255,255,.7);min-height:18px">' + msg + '</div>' +
+        '<div style="height:6px;background:#1f2330;border-radius:3px;margin:12px 0;overflow:hidden"><div id="sv-export-fill" style="height:100%;width:' + Math.max(3, pct|0) + '%;background:#6C5CE7;transition:width .4s"></div></div>' +
+        '<div id="sv-export-actions" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' + (html || '<button class="sv-btn" onclick="document.getElementById(\'sv-export-panel\').remove()">Hide</button>') + '</div>' +
+      '</div>';
+  }
+  function _svPollExportStatus(n){
+    if (!document.getElementById('sv-export-panel')) return;         // customer hid it
+    if (n > 150) { _svShowExportPanel('Still rendering \u2014 it will appear in the Studio gallery when done.', 90); return; }
+    fetch(_svApi() + '/studio/video/designs/' + VE.designId + '/export-status', { headers: { 'Authorization': 'Bearer ' + _svTok() } })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var st = d && d.status;
+        if (st === 'done' && d.video_url) {
+          var url = d.video_url;
+          _svShowExportPanel('Your MP4 is ready.', 100,
+            '<a class="sv-btn-primary" href="' + url + '" download target="_blank" rel="noopener" style="text-decoration:none">\u2B07 Download MP4</a>' +
+            '<button class="sv-btn" onclick="document.getElementById(\'sv-export-panel\').remove()">Close</button>');
+          _svToast('Video ready', 'success');
+          return;
+        }
+        if (st === 'failed') {
+          _svShowExportPanel('Export failed: ' + (d.error || 'unknown error'), 100,
+            '<button class="sv-btn" onclick="document.getElementById(\'sv-export-panel\').remove()">Close</button>');
+          _svToast('Export failed', 'error');
+          return;
+        }
+        _svShowExportPanel(st === 'processing' ? 'Processing with FFmpeg\u2026 ' + (d.progress_pct || 0) + '%' : 'Queued\u2026', d.progress_pct || 5);
+        setTimeout(function(){ _svPollExportStatus(n + 1); }, 2000);
+      })
+      .catch(function(){ setTimeout(function(){ _svPollExportStatus(n + 1); }, 3000); });
   }
 
   function _svRequestExit(){

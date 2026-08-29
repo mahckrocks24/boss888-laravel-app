@@ -2688,80 +2688,19 @@ HTMLSCRIPT;
             ]);
         });
 
-        // POST /api/studio/video/generate-minimax — AI video generation (ASYNC create)
-        // 2026-07-03 (#3) — was a 180s SYNCHRONOUS long-poll that 504s behind the
-        // 100s Cloudflare / 120s PHP-FPM caps. Now returns task_id immediately;
-        // the client polls GET /video/minimax-status. Stateless (task_id = MiniMax handle).
-        Route::post('/video/generate-minimax', function (\Illuminate\Http\Request $r) {
-            $prompt = trim((string) $r->input('prompt', ''));
-            if ($prompt === '') return response()->json(['success'=>false,'error'=>'missing_prompt'], 422);
-            $key = env('MINIMAX_API_KEY');
-            if (!$key) return response()->json(['success'=>false,'error'=>'MiniMax AI video is not configured yet (missing MINIMAX_API_KEY).'], 503);
+        // VIDEO-1 (2026-08-29) — the legacy direct-MiniMax closures (hardcoded mainland host,
+        // raw Http::post, bypassing EngineKernel / approval / credits / creative_jobs lineage /
+        // the completion worker) are RETIRED. No frontend calls them. The ONE governed path is
+        // POST /api/creative/generate/video + GET /api/creative/video/jobs/{assetId}/status
+        // (kernel -> CreativeService -> ScenePlanner -> MiniMax-Hailuo-02 -> video:finalize-pending).
+        $__videoRetired = fn() => response()->json([
+            'success' => false,
+            'error'   => 'endpoint_retired',
+            'message' => 'This endpoint was retired. Generate AI video through POST /api/creative/generate/video and poll GET /api/creative/video/jobs/{assetId}/status.',
+        ], 410);
+        Route::post('/video/generate-minimax', $__videoRetired);
+        Route::get('/video/minimax-status', $__videoRetired);
 
-            $resp = \Illuminate\Support\Facades\Http::withToken($key)->timeout(30)
-                ->post('https://api.minimax.chat/v1/video_generation', [
-                    'model'      => 'MiniMax-Hailuo-02',
-                    'prompt'     => $prompt,
-                    'duration'   => (int) min(10, max(5, $r->input('duration_seconds', 6))),
-                    'resolution' => $r->input('resolution', '1080P'),
-                ]);
-            if (!$resp->ok()) return response()->json(['success'=>false,'error'=>'minimax_create_failed','detail'=>mb_substr($resp->body(),0,400)], 502);
-            $taskId = $resp->json('task_id');
-            if (!$taskId) return response()->json(['success'=>false,'error'=>'no_task_id','detail'=>mb_substr($resp->body(),0,400)], 502);
-
-            return response()->json(['success'=>true,'status'=>'processing','task_id'=>$taskId]);
-        });
-
-        // GET /api/studio/video/minimax-status?task_id=X — poll MiniMax; on success
-        // retrieve + download + persist the clip. Idempotent (hashed by task_id+file_id).
-        Route::get('/video/minimax-status', function (\Illuminate\Http\Request $r) {
-            $wsId   = (int) $r->attributes->get('workspace_id');
-            $taskId = trim((string) $r->input('task_id', ''));
-            if ($taskId === '') return response()->json(['success'=>false,'error'=>'missing_task_id'], 422);
-            $key   = env('MINIMAX_API_KEY');
-            $group = env('MINIMAX_GROUP_ID');
-            if (!$key) return response()->json(['success'=>false,'error'=>'MiniMax not configured.'], 503);
-
-            $poll = \Illuminate\Support\Facades\Http::withToken($key)->timeout(15)
-                ->get('https://api.minimax.chat/v1/query/video_generation', ['task_id' => $taskId]);
-            if (!$poll->ok()) return response()->json(['success'=>true,'status'=>'processing']); // transient — keep polling
-            $st = $poll->json('status');
-            if (in_array($st, ['Fail','Failed','fail'], true)) {
-                return response()->json(['success'=>false,'status'=>'failed','error'=>$poll->json('base_resp.status_msg') ?: 'minimax_failed'], 200);
-            }
-            if ($st !== 'Success') return response()->json(['success'=>true,'status'=>'processing']);
-            $fileId = $poll->json('file_id');
-            if (!$fileId) return response()->json(['success'=>true,'status'=>'processing']);
-
-            $dir  = storage_path('app/public/video-clips/minimax');
-            if (!is_dir($dir)) @mkdir($dir, 0775, true);
-            $hash = substr(hash('sha256', $taskId . $fileId), 0, 16);
-            $dest = $dir . '/' . $hash . '.mp4';
-            $publicUrl = '/storage/video-clips/minimax/' . $hash . '.mp4';
-            if (!is_file($dest)) {
-                $fileResp = \Illuminate\Support\Facades\Http::withToken($key)->timeout(15)
-                    ->get('https://api.minimax.chat/v1/files/retrieve', array_filter(['file_id'=>$fileId,'GroupId'=>$group]));
-                $downloadUrl = $fileResp->json('file.download_url');
-                if (!$downloadUrl) return response()->json(['success'=>false,'status'=>'failed','error'=>'minimax_no_download'], 200);
-                $bin = @file_get_contents($downloadUrl);
-                if ($bin === false || strlen($bin) < 10000) return response()->json(['success'=>false,'status'=>'failed','error'=>'minimax_dl_failed'], 200);
-                file_put_contents($dest, $bin);
-                try {
-                    \Illuminate\Support\Facades\DB::table('media')->insert([
-                        'workspace_id'=>$wsId,'url'=>$publicUrl,'mime_type'=>'video/mp4',
-                        'source'=>'minimax','is_platform_asset'=>0,
-                        'created_at'=>now(),'updated_at'=>now(),
-                    ]);
-                } catch (\Throwable $_e) {}
-            }
-            $probe = [];
-            @exec('/usr/bin/ffprobe -v error -select_streams v:0 -show_entries stream=width,height,duration -of json ' . escapeshellarg($dest), $probe);
-            $s = (json_decode(implode('', $probe), true)['streams'][0] ?? []);
-            return response()->json([
-                'success'=>true,'status'=>'done','clip_url'=>$publicUrl,
-                'width'=>(int)($s['width']??0),'height'=>(int)($s['height']??0),'duration'=>(float)($s['duration']??0),
-            ]);
-        });
         // DELETE /api/studio/video/designs/{id} — soft delete
         Route::delete('/video/designs/{id}', function (\Illuminate\Http\Request $r, $id) {
             $wsId = (int) $r->attributes->get('workspace_id');
