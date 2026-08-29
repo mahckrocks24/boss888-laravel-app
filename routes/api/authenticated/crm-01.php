@@ -140,12 +140,48 @@ use Illuminate\Support\Facades\Route;
             $leadsList = collect($leads['leads'] ?? []);
             $stages = \Illuminate\Support\Facades\DB::table('pipeline_stages')->where('workspace_id', $wsId)->orderBy('position')->get();
             $todayActivities = \Illuminate\Support\Facades\DB::table('activities')->where('workspace_id', $wsId)->where('created_at', '>=', now()->startOfDay())->count();
+
+            // CRM-2 (2026-08-29): the widgets crm.js renders. Leads carry a status (new/contacted/
+            // qualified/…), not a pipeline stage id, so "Leads by Stage" is the status funnel — labelled
+            // with the workspace's stage names when they line up by position, else the status itself.
+            $statusOrder = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'converted', 'lost'];
+            $byStatus = $leadsList->groupBy(fn($l) => strtolower((string) ($l['status'] ?? $l->status ?? 'new')))->map->count();
+            $leadsByStage = [];
+            foreach ($statusOrder as $st) {
+                $n = (int) ($byStatus[$st] ?? 0);
+                if ($n === 0 && !in_array($st, ['new', 'contacted', 'qualified'], true)) continue;
+                $leadsByStage[] = ['name' => ucfirst($st), 'status' => $st, 'count' => $n];
+            }
+            foreach ($byStatus as $st => $n) {
+                if (!in_array($st, $statusOrder, true)) $leadsByStage[] = ['name' => ucfirst((string) $st), 'status' => $st, 'count' => (int) $n];
+            }
+            $leadsBySource = $leadsList->groupBy(fn($l) => (string) (($l['source'] ?? $l->source ?? '') ?: 'unknown'))
+                ->map(fn($g, $src) => ['source' => $src, 'source_website' => $src, 'count' => $g->count()])->values()->all();
+            $todayTasks = \Illuminate\Support\Facades\DB::table('activities')
+                ->where('workspace_id', $wsId)->where('type', 'task')->where('completed', 0)
+                ->whereNotNull('scheduled_at')->where('scheduled_at', '<', now()->endOfDay())
+                ->orderBy('scheduled_at')->limit(20)
+                ->get(['id', 'subject', 'description', 'scheduled_at', 'activitable_id', 'activitable_type'])
+                ->map(fn($t) => ['id' => $t->id, 'title' => $t->subject ?: mb_substr((string) $t->description, 0, 80), 'due_date' => $t->scheduled_at,
+                                 'status' => 'open', 'lead_id' => $t->activitable_type === 'Lead' ? $t->activitable_id : null])->all();
+            $upcoming = \Illuminate\Support\Facades\DB::table('calendar_events')
+                ->where('workspace_id', $wsId)->where('starts_at', '>=', now())
+                ->whereNotIn('category', ['booking_declined', 'cancelled'])
+                ->orderBy('starts_at')->limit(8)
+                ->get(['id', 'title', 'starts_at', 'ends_at', 'category', 'reference_type', 'reference_id'])
+                ->map(fn($e) => ['id' => $e->id, 'title' => $e->title, 'starts_at' => $e->starts_at, 'start_at' => $e->starts_at, 'ends_at' => $e->ends_at,
+                                 'category' => $e->category, 'lead_id' => ($e->reference_type === 'Lead' || $e->reference_type === 'lead') ? $e->reference_id : null])->all();
+
             return response()->json([
                 'total_leads' => $leads['total'] ?? $leadsList->count(),
                 'pipeline_value' => $leadsList->sum('deal_value'),
                 'stages_count' => $stages->count(),
                 'today_activities' => $todayActivities,
                 'recent_leads' => $leadsList->take(5)->toArray(),
+                'leads_by_stage' => $leadsByStage,
+                'leads_by_source' => $leadsBySource,
+                'today_tasks' => $todayTasks,
+                'upcoming_appointments' => $upcoming,
             ]);
         });
 

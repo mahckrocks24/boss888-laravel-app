@@ -302,6 +302,12 @@ class CrmService
             $this->logActivityInternal($lead->workspace_id, 'Lead', $lead->id, 'status_changed',
                 "Status changed: {$oldStatus} → {$update['status']}", $userId);
         }
+        // CRM-2 (2026-08-29, RISK-0127 w): a note passed with the update (Sarah/Elena update_lead, the
+        // lead drawer) becomes a real activity on the lead instead of vanishing.
+        $note = trim((string) ($data['note'] ?? $data['notes'] ?? $data['comment'] ?? $data['activity_note'] ?? ''));
+        if ($note !== '') {
+            $this->logActivityInternal($lead->workspace_id, 'Lead', $lead->id, 'note', mb_substr($note, 0, 2000), $userId);
+        }
 
         return $lead->fresh();
     }
