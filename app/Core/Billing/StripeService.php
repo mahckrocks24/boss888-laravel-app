@@ -73,6 +73,20 @@ class StripeService
                 $customerId = $customer->id;
             }
 
+            // MONEY-1 (2026-08-29): ONE 3-day trial per workspace. The platform grants it at signup
+            // (TrialService); a workspace that already used it must not get a second free 3 days
+            // from Stripe at checkout — that was a silent revenue leak on every upgrade.
+            $subscriptionData = [
+                'metadata' => [
+                    'workspace_id' => (string) $workspaceId,
+                    'plan_id'      => (string) $planId,
+                    'plan_slug'    => (string) $plan->slug,
+                ],
+            ];
+            if (! app(\App\Core\Billing\TrialService::class)->hasHadTrial($workspaceId)) {
+                $subscriptionData['trial_period_days'] = 3;
+            }
+
             // Step 2: create the Checkout Session using the pre-created Price
             $session = $stripe->checkout->sessions->create([
                 'mode'        => 'subscription',
@@ -81,22 +95,17 @@ class StripeService
                     'price'    => $plan->stripe_price_id,
                     'quantity' => 1,
                 ]],
-                'subscription_data' => [
-                    'trial_period_days' => 3,
-                    'metadata' => [
-                        'workspace_id' => (string) $workspaceId,
-                        'plan_id'      => (string) $planId,
-                        'plan_slug'    => (string) $plan->slug,
-                    ],
-                ],
+                'subscription_data' => $subscriptionData,
                 'metadata' => [
                     'workspace_id' => (string) $workspaceId,
                     'plan_id'      => (string) $planId,
                     'user_id'      => (string) $userId,
                     'plan_slug'    => (string) $plan->slug,
                 ],
-                'success_url' => config('app.url') . '/app/#billing?success=1&session={CHECKOUT_SESSION_ID}',
-                'cancel_url'  => config('app.url') . '/app/#billing?cancelled=1',
+                // MONEY-1 (2026-08-29): '/app/#billing?…' landed on the Workspace view (the SPA routes by
+                // path, not hash) and the success toast never showed. Return to the billing PAGE.
+                'success_url' => config('app.url') . '/app/billing?checkout=success&session={CHECKOUT_SESSION_ID}',
+                'cancel_url'  => config('app.url') . '/app/billing?checkout=cancelled',
             ]);
 
             return [
@@ -535,6 +544,14 @@ class StripeService
             case 'customer.subscription.deleted':
                 return $this->handleSubscriptionCancelled($event->data->object);
 
+            // MONEY-1 (2026-08-29): the endpoint subscribes to customer.subscription.created but nothing
+            // handled it — a subscription created outside Checkout (Stripe Dashboard by support, API,
+            // a migrated customer) never provisioned a plan; the customer paid and stayed on Free.
+            // Provision from the subscription's own metadata (workspace_id + plan_id, written by
+            // createCheckoutSession and by any operator who follows the same contract).
+            case 'customer.subscription.created':
+                return $this->handleSubscriptionCreated($event->data->object);
+
             case 'customer.subscription.updated':
                 return $this->handleSubscriptionUpdated($event->data->object);
 
@@ -552,8 +569,8 @@ class StripeService
     {
         $newPlan = Plan::findOrFail($newPlanId);
         $currentSub = Subscription::where('workspace_id', $workspaceId)
-            ->where('status', 'active')
-            ->first();
+            ->whereIn('status', Subscription::ENTITLED_STATUSES) // MONEY-1: a Stripe trial is a live sub
+            ->orderByDesc('id')->first();
 
         if (! $this->enabled || ! ($currentSub?->stripe_subscription_id)) {
             // Dev mode or no Stripe subscription — direct swap
@@ -589,9 +606,9 @@ class StripeService
         }
 
         $sub = Subscription::where('workspace_id', $workspaceId)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'trialing', 'past_due']) // MONEY-1: portal must work while trialing / past due
             ->whereNotNull('stripe_customer_id')
-            ->first();
+            ->orderByDesc('id')->first();
 
         if (! $sub) {
             return ['success' => false, 'error' => 'No Stripe subscription found. Please subscribe to a plan first.'];
@@ -644,8 +661,20 @@ class StripeService
             }
         }
 
+        // MONEY-1 (2026-08-29): the platform's own 3-day trial (TrialService, provider=trial) has no
+        // Stripe subscription, so the card said "Renews 9/1 · 46 / 300 credits" for a trial that
+        // EXPIRES on 9/1 with a 50-credit grant. Report the trial as a trial.
+        $platformTrial = null;
+        try {
+            $t = app(TrialService::class)->getTrialStatus($workspaceId);
+            if (! empty($t['active'])) $platformTrial = $t;
+        } catch (\Throwable) {}
+        if ($platformTrial && ! $trialEndsAt) $trialEndsAt = $platformTrial['expires_at'] ?? null;
+
         return [
             'has_subscription'       => $sub !== null,
+            'is_platform_trial'      => $platformTrial !== null,
+            'trial_credits'          => $platformTrial ? (int) ($platformTrial['trial_credits'] ?? 0) : null,
             'plan'                   => $sub?->plan?->name ?? 'Free',
             'plan_slug'              => $sub?->plan?->slug ?? 'free',
             'plan_id'                => $sub?->plan?->id,
@@ -661,7 +690,7 @@ class StripeService
             'credit_balance'         => (int) ($credit?->balance ?? 0),
             'credit_reserved'        => (int) ($credit?->reserved_balance ?? 0),
             'credit_available'       => max(0, (int)($credit?->balance ?? 0) - (int)($credit?->reserved_balance ?? 0)),
-            'monthly_credit_limit'   => (int) ($sub?->plan?->credit_limit ?? 0),
+            'monthly_credit_limit'   => $platformTrial ? (int) ($platformTrial['trial_credits'] ?? 0) : (int) ($sub?->plan?->credit_limit ?? 0),
             'stripe_configured'      => $this->enabled,
         ];
     }
@@ -671,7 +700,10 @@ class StripeService
      */
     public function cancel(int $workspaceId): array
     {
-        $sub = Subscription::where('workspace_id', $workspaceId)->where('status', 'active')->first();
+        // MONEY-1 (2026-08-29): a trialing subscription (platform trial or Stripe trial) can be cancelled too.
+        // A past-due subscription must be cancellable too — the customer whose card was declined
+        // is exactly the one who may want out.
+        $sub = Subscription::where('workspace_id', $workspaceId)->whereIn('status', ['active', 'trialing', 'past_due'])->orderByDesc('id')->first();
         if (! $sub) {
             return ['success' => false, 'error' => 'No active subscription'];
         }
@@ -683,16 +715,10 @@ class StripeService
 
         $sub->update(['status' => 'cancelled', 'cancelled_at' => now()]);
 
-        // Downgrade to free plan
-        $freePlan = Plan::where('slug', 'free')->first();
-        if ($freePlan) {
-            Subscription::create([
-                'workspace_id' => $workspaceId,
-                'plan_id' => $freePlan->id,
-                'status' => 'active',
-                'starts_at' => now(),
-            ]);
-        }
+        // Downgrade to free plan — MONEY-1 (2026-08-29): the Stripe cancel above triggers
+        // customer.subscription.deleted, whose handler ALSO creates a Free row; observed live as
+        // two active Free subscriptions (#140 manual + #141 system). One is enough.
+        $this->ensureFreeSubscription((int) $workspaceId, 'manual');
 
         // T_NOTIF — manual cancel (user-facing, email-required)
         $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')
@@ -723,7 +749,7 @@ class StripeService
      */
     public function addAgentAddon(int $workspaceId, string $agentSlug): array
     {
-        $sub = Subscription::where('workspace_id', $workspaceId)->where('status', 'active')->with('plan')->first();
+        $sub = Subscription::where('workspace_id', $workspaceId)->whereIn('status', Subscription::ENTITLED_STATUSES)->with('plan')->orderByDesc('id')->first();
         if (! $sub || ! $sub->plan) {
             return ['success' => false, 'error' => 'No active subscription'];
         }
@@ -940,6 +966,11 @@ class StripeService
             return ['handled' => true, 'action' => 'already_processed_concurrent', 'type' => 'checkout.session.completed'];
         }
 
+        // MONEY-1: a paying customer is no longer on the platform trial — clear the flags the sidebar
+        // and TrialService read, or "Growth trial · ends …" survives the upgrade.
+        \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->where('is_trial', 1)
+            ->update(['is_trial' => 0, 'trial_credits' => 0, 'updated_at' => now()]);
+
         $this->auditLog->log($wsId, $userId, 'billing.subscription_created', 'Plan', $planId, [
             'plan'           => $plan?->name,
             'stripe_session' => $session->id ?? null,
@@ -971,10 +1002,126 @@ class StripeService
         return ['handled' => true, 'action' => 'subscription_created', 'plan' => $plan?->slug];
     }
 
+    /**
+     * Provision a plan for a Stripe subscription that did not come through Checkout.
+     * Idempotent on stripe_subscription_id; a subscription already provisioned by
+     * checkout.session.completed (same id) is left alone.
+     */
+    private function handleSubscriptionCreated(object $subscription): array
+    {
+        $wsId   = (int) ($subscription->metadata->workspace_id ?? 0);
+        $planId = (int) ($subscription->metadata->plan_id ?? 0);
+        if (! $wsId || ! $planId) {
+            // No contract metadata: nothing to provision. Acknowledged, not an error.
+            return ['handled' => false, 'reason' => 'no_workspace_metadata', 'type' => 'customer.subscription.created'];
+        }
+        if (Subscription::where('stripe_subscription_id', $subscription->id)->exists()) {
+            return ['handled' => true, 'action' => 'already_provisioned', 'type' => 'customer.subscription.created'];
+        }
+        $plan = Plan::find($planId);
+        if (! $plan) return ['handled' => false, 'reason' => 'unknown_plan'];
+
+        $status = match ($subscription->status ?? 'active') {
+            'trialing' => 'trialing', 'past_due' => 'past_due', 'canceled' => 'cancelled', default => 'active',
+        };
+        $provisioned = false;
+        \Illuminate\Support\Facades\DB::transaction(function () use ($wsId, $planId, $plan, $subscription, $status, &$provisioned) {
+            $inserted = \Illuminate\Support\Facades\DB::table('subscriptions')->insertOrIgnore([
+                'workspace_id'             => $wsId,
+                'plan_id'                  => $planId,
+                'provider'                 => 'stripe',
+                'status'                   => $status,
+                'starts_at'                => now(),
+                'ends_at'                  => ! empty($subscription->trial_end) && $status === 'trialing' ? date('Y-m-d H:i:s', (int) $subscription->trial_end) : null,
+                'provider_subscription_id' => 'stripe_sub:' . $subscription->id,   // idempotency anchor
+                'stripe_subscription_id'   => $subscription->id,
+                'stripe_customer_id'       => $subscription->customer ?? null,
+                'created_at'               => now(),
+                'updated_at'               => now(),
+            ]);
+            if ($inserted === 0) return;
+            $provisioned = true;
+            // NULL-safe (same trap as v5.5.5): the platform trial row has stripe_subscription_id NULL and
+            // `NULL != 'sub_x'` is NULL in MySQL — the first live run left the trial row 'trialing'.
+            Subscription::where('workspace_id', $wsId)
+                ->whereIn('status', ['active', 'trialing'])
+                ->where(function ($q) use ($subscription) {
+                    $q->whereNull('stripe_subscription_id')->orWhere('stripe_subscription_id', '!=', $subscription->id);
+                })
+                ->update(['status' => 'superseded']);
+            Credit::where('workspace_id', $wsId)->lockForUpdate()->first()
+                ? Credit::where('workspace_id', $wsId)->update(['balance' => $plan->credit_limit, 'reserved_balance' => 0, 'updated_at' => now()])
+                : Credit::create(['workspace_id' => $wsId, 'balance' => $plan->credit_limit, 'reserved_balance' => 0]);
+        });
+        if (! $provisioned) return ['handled' => true, 'action' => 'already_provisioned', 'type' => 'customer.subscription.created'];
+
+        // The platform trial, if still running, is over: the customer is now a paying subscriber.
+        \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->where('is_trial', 1)
+            ->update(['is_trial' => 0, 'trial_credits' => 0, 'updated_at' => now()]);
+
+        $this->auditLog->log($wsId, null, 'billing.subscription_created', 'Plan', $planId, [
+            'plan' => $plan->name, 'stripe_subscription' => $subscription->id, 'via' => 'customer.subscription.created',
+        ]);
+        $this->reactivateBillingForWorkspace($wsId, 'subscription_created_via_stripe');
+        $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')->where('workspace_id', $wsId)->where('role', 'owner')->value('user_id');
+        if ($ownerId) {
+            try {
+                $this->notifications->dispatch(
+                    type: \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_CREATED,
+                    userId: (int) $ownerId, title: 'Subscription activated', workspaceId: $wsId,
+                    body: "Your {$plan->name} plan is now active.", severity: 'success', actionUrl: '/billing'
+                );
+            } catch (\Throwable $e) {
+                Log::warning('BILLING_SUBSCRIPTION_CREATED notification failed (subscription.created)', ['error' => $e->getMessage()]);
+            }
+        }
+        return ['handled' => true, 'action' => 'subscription_created', 'plan' => $plan->slug, 'status' => $status];
+    }
+
+    /**
+     * MONEY-1 (2026-08-29): which subscription does this invoice belong to?
+     *
+     * The webhook endpoint runs on Stripe API 2026-03-25 (dahlia). From 2025-03-31.basil onwards
+     * `invoice.subscription` no longer exists — it moved to `invoice.parent.subscription_details.subscription`.
+     * Both handlers below read the old field, so EVERY invoice.paid (renewal credit refresh) and
+     * EVERY invoice.payment_failed (past_due) was dropped with "subscription_not_found" — observed live
+     * twice on 2026-08-29 (10:57:07, 11:00:22). Renewals never refreshed credits; failed payments
+     * never suspended anything.
+     */
+    private function invoiceSubscriptionId(object $invoice): ?string
+    {
+        $id = $invoice->subscription ?? null;
+        if (is_object($id)) $id = $id->id ?? null;
+        if (! $id) $id = $invoice->parent->subscription_details->subscription ?? null;
+        if (is_object($id)) $id = $id->id ?? null;
+        if (! $id) {
+            foreach (($invoice->lines->data ?? []) as $line) {
+                $lid = $line->subscription ?? ($line->parent->subscription_item_details->subscription ?? null);
+                if ($lid) { $id = is_object($lid) ? ($lid->id ?? null) : $lid; break; }
+            }
+        }
+        return $id ? (string) $id : null;
+    }
+
     private function handleInvoicePaid(object $invoice): array
     {
         // Monthly credit refresh on renewal
-        $sub = Subscription::where('stripe_subscription_id', $invoice->subscription ?? '')->first();
+        $invoiceSubId = $this->invoiceSubscriptionId($invoice);
+        $sub = Subscription::where('stripe_subscription_id', $invoiceSubId ?? '')->first();
+        if (! $sub && $invoiceSubId && $this->enabled) {
+            // MONEY-1 (2026-08-29): Stripe delivers invoice.paid BEFORE customer.subscription.created
+            // (observed live: 10:57:07 vs 10:57:08). Provision from the subscription itself rather
+            // than dropping the first paid invoice on the floor.
+            try {
+                $stripeSub = (new \Stripe\StripeClient($this->secretKey))->subscriptions->retrieve($invoiceSubId);
+                $created = $this->handleSubscriptionCreated($stripeSub);
+                if (! empty($created['handled'])) {
+                    $sub = Subscription::where('stripe_subscription_id', $invoiceSubId)->first();
+                }
+            } catch (\Throwable $e) {
+                Log::warning('handleInvoicePaid: could not provision from subscription', ['error' => $e->getMessage()]);
+            }
+        }
         if (! $sub) return ['handled' => false, 'reason' => 'subscription_not_found'];
 
         $plan = Plan::find($sub->plan_id);
@@ -989,7 +1136,7 @@ class StripeService
 
     private function handlePaymentFailed(object $invoice): array
     {
-        $sub = Subscription::where('stripe_subscription_id', $invoice->subscription ?? '')->first();
+        $sub = Subscription::where('stripe_subscription_id', $this->invoiceSubscriptionId($invoice) ?? '')->first();
         if ($sub) {
             $sub->update(['status' => 'past_due']);
             Log::warning("Payment failed for workspace {$sub->workspace_id}");
@@ -1018,23 +1165,30 @@ class StripeService
         return ['handled' => true, 'action' => 'subscription_past_due'];
     }
 
+    /** Exactly one active Free subscription after a downgrade, whichever path got there first. */
+    private function ensureFreeSubscription(int $workspaceId, string $provider): void
+    {
+        $freePlan = Plan::where('slug', 'free')->first();
+        if (! $freePlan) return;
+        $exists = Subscription::where('workspace_id', $workspaceId)->where('status', 'active')->where('plan_id', $freePlan->id)->exists();
+        if ($exists) return;
+        Subscription::create([
+            'workspace_id' => $workspaceId,
+            'plan_id'      => $freePlan->id,
+            'provider'     => $provider,
+            'status'       => 'active',
+            'starts_at'    => now(),
+        ]);
+    }
+
     private function handleSubscriptionCancelled(object $subscription): array
     {
         $sub = Subscription::where('stripe_subscription_id', $subscription->id)->first();
         if ($sub) {
             $sub->update(['status' => 'cancelled', 'cancelled_at' => now()]);
 
-            // Downgrade to free plan
-            $freePlan = Plan::where('slug', 'free')->first();
-            if ($freePlan) {
-                Subscription::create([
-                    'workspace_id' => $sub->workspace_id,
-                    'plan_id'      => $freePlan->id,
-                    'provider'     => 'system',
-                    'status'       => 'active',
-                    'starts_at'    => now(),
-                ]);
-            }
+            // Downgrade to free plan (idempotent with cancel())
+            $this->ensureFreeSubscription((int) $sub->workspace_id, 'system');
 
             // Zero credits
             Credit::where('workspace_id', $sub->workspace_id)
@@ -1121,7 +1275,10 @@ class StripeService
             }
 
             // LB-Engine17-D — fire on status transitions worth surfacing
-            if ($previousStatus !== $newStatus) {
+            // MONEY-1 (2026-08-29): this fired "Your subscription has been upgraded." on EVERY
+            // transition — observed live right after a declined renewal (active → past_due), one
+            // line under "Payment failed". Only a transition INTO an entitled state is an upgrade.
+            if ($previousStatus !== $newStatus && in_array($newStatus, ['active', 'trialing'], true)) {
                 $this->notifications->send($sub->workspace_id, 'billing', 'subscription.upgraded', [
                     'subscription_id'        => $sub->id,
                     'stripe_subscription_id' => $sub->stripe_subscription_id,

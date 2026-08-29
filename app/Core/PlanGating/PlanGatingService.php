@@ -147,17 +147,9 @@ class PlanGatingService
 
     private function getActivePlan(int $workspaceId): ?Plan
     {
-        $subscription = Subscription::where('workspace_id', $workspaceId)
-            ->where('status', 'active')
-            ->latest()
-            ->first();
-
-        if ($subscription) {
-            return Plan::find($subscription->plan_id);
-        }
-
-        // Default to free plan
-        return Plan::where('slug', 'free')->first();
+        // MONEY-1 (2026-08-29): 'active' only ignored the 3-day trial (status 'trialing') and the
+        // billing pool -> trial customers were gated as Free. One resolver now (Subscription).
+        return Subscription::entitledPlanFor($workspaceId);
     }
 
     private function isAiAction(string $action): bool

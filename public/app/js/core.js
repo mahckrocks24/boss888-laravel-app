@@ -6250,13 +6250,16 @@ async function _checkTrialStatus() {
       var subEl = document.getElementById('sb-credit-sub');
       var badgeEl = document.getElementById('sb-plan-badge');
       if (valEl) valEl.textContent = Math.round(balance);
-      if (subEl) subEl.textContent = limit > 0 ? 'of ' + limit + ' monthly limit' : 'credits available';
+      // MONEY-1: during the 3-day trial the meter is the trial grant, and the customer should see when it ends.
+      if (subEl) subEl.textContent = s.is_trial
+        ? ('trial credits · ends ' + (s.trial_expires_at ? new Date(s.trial_expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'soon'))
+        : (limit > 0 ? 'of ' + limit + ' monthly limit' : 'credits available');
       if (barEl) {
         var pct = limit > 0 ? Math.min(100, (balance / limit) * 100) : (balance > 0 ? 100 : 0);
         barEl.style.width = pct + '%';
         barEl.style.background = pct < 20 ? 'var(--rd)' : pct < 50 ? 'var(--am)' : 'var(--ac)';
       }
-      if (badgeEl) badgeEl.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+      if (badgeEl) badgeEl.textContent = (plan.charAt(0).toUpperCase() + plan.slice(1)) + (s.is_trial ? ' trial' : '');
     }
 
     // Low credit warning (once per session)
@@ -7445,7 +7448,10 @@ function _billRender(status, plans) {
     var statusClass = status.status === 'trialing' ? 'cmd-chip-pending' : (status.status === 'active' ? 'cmd-chip-approved' : 'cmd-chip-default');
     var renewalLine = '';
     if (status.trial_ends_at) {
-      renewalLine = '<span style="color:var(--am)">Trial ends ' + new Date(status.trial_ends_at).toLocaleDateString() + '</span>';
+      renewalLine = '<span style="color:var(--am)">Trial ends ' + new Date(status.trial_ends_at).toLocaleDateString() + (status.is_platform_trial ? ' — upgrade to keep Sarah and your AI team' : '') + '</span>';
+    } else if (status.status === 'past_due') {
+      // MONEY-1: say what happened and what restores access — "Renews 9/29" was the only line shown.
+      renewalLine = '<span style="color:var(--rd)">Your last payment failed — AI features are paused. Update your card under Manage billing to restore them.</span>';
     } else if (status.cancel_at_period_end) {
       renewalLine = '<span style="color:var(--rd)">Cancels on ' + (status.current_period_end ? new Date(status.current_period_end).toLocaleDateString() : '—') + '</span>';
     } else if (status.current_period_end) {
@@ -7463,8 +7469,9 @@ function _billRender(status, plans) {
           '<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);letter-spacing:-0.01em">' + _cmdcEsc(status.plan || 'Free') +
           ' <span class="cmd-chip ' + statusClass + '" style="margin-left:6px">' + _cmdcEsc(window.LU_statusLabel ? window.LU_statusLabel(status.status || 'active') : (status.status || 'active')) + '</span></div>' +
           '<div style="font-size:13px;color:var(--t2);margin-top:4px">' +
-            (status.plan_price ? '$' + status.plan_price + '/month · ' : '') +
-            (creditLimit ? creditLimit + ' credits/month' : 'Free tier') +
+            (status.is_platform_trial
+              ? 'Free 3-day trial · ' + creditLimit + ' trial credits · nothing to pay'
+              : (status.plan_price ? '$' + status.plan_price + '/month · ' : '') + (creditLimit ? creditLimit + ' credits/month' : 'Free tier')) +
           '</div>' +
           (renewalLine ? '<div style="font-size:12px;color:var(--t3);margin-top:6px">' + renewalLine + '</div>' : '') +
         '</div>' +
@@ -7477,7 +7484,7 @@ function _billRender(status, plans) {
       (creditLimit > 0 ? (
         '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
-            '<span style="font-size:12px;color:var(--t2)">Credits this month</span>' +
+            '<span style="font-size:12px;color:var(--t2)">' + (status.is_platform_trial ? 'Trial credits left' : 'Credits this month') + '</span>' +
             '<span style="font-size:12px;font-weight:700;color:var(--t1)">' + credits + ' / ' + creditLimit + '</span>' +
           '</div>' +
           '<div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + (pct < 20 ? 'var(--rd)' : pct < 50 ? 'var(--am)' : 'var(--ac)') + '"></div></div>' +
@@ -7515,11 +7522,24 @@ function _billRender(status, plans) {
 }
 
 function _billPlanFeatures(p) {
+  // MONEY-1 (2026-08-29): the cards said "1 website" and nothing else for Free AND Starter — the
+  // customer could not see what $19 buys, nor that $49 is the full AI Growth OS.
   var items = [];
-  if (+p.credit_limit > 0) items.push((+p.credit_limit) + ' AI credits/month');
+  var f = p.features_json || {};
   if (+p.max_websites)    items.push((+p.max_websites) + ' website' + (+p.max_websites === 1 ? '' : 's'));
+  if (f.custom_domain)    items.push('Custom domain');
+  else                    items.push('LevelUp subdomain');
+  if (p.ai_access === 'full') {
+    items.push('Sarah + specialist AI agents');
+    items.push('All AI tools (SEO, content, images, chatbot)');
+  } else if (p.ai_access === 'research') {
+    items.push('AI research tools');
+  } else {
+    items.push('No ongoing AI (build with Arthur only)');
+  }
+  if (+p.credit_limit > 0) items.push((+p.credit_limit) + ' AI credits/month');
   if (+p.agent_count)     items.push((+p.agent_count) + ' specialist agent' + (+p.agent_count === 1 ? '' : 's'));
-  if (p.companion_app)    items.push('Mobile companion app');
+  items.push(p.companion_app ? 'Mobile companion app' : 'No companion app');
   if (p.white_label)      items.push('White-label');
   if (p.priority_processing) items.push('Priority processing');
   if (!items.length)      items.push('Free tier');
@@ -7558,31 +7578,75 @@ async function _billOpenPortal() {
 }
 
 async function _billDowngradeToFree() {
-  if (!confirm('Cancel your current plan? You will be downgraded to Free at the end of the current period.')) return;
+  // MONEY-1 (2026-08-29): the old copy promised "at the end of the current period" and toasted
+  // "Cancellation scheduled" — but POST /billing/cancel cancels and downgrades to Free NOW (the
+  // Stripe subscription is cancelled immediately; AI access and paid credits stop). Say so, and
+  // use the app dialog (native confirm() deadlocks automation and breaks the shell's look).
+  var ok = await _billConfirm('Cancel your plan and move to Free now?',
+    'Your paid plan ends immediately: AI agents, tools and paid credits stop right away and your website(s) stay on the Free tier limits. This cannot be undone from here — you would need to subscribe again.',
+    'Cancel plan now', 'Keep my plan');
+  if (!ok) return;
   try {
     var r = await _luFetch('POST', '/billing/cancel');
     var d = await r.json();
-    if (d.success) { showToast('Cancellation scheduled.', 'success'); _billFetchAndRender(); }
+    if (d.success) { showToast('Your plan is cancelled — you are now on Free.', 'success'); _billFetchAndRender(); }
     else showToast('Cancel failed: ' + (d.error || 'Unknown'), 'error');
   } catch (e) {
     showToast('Cancel error: ' + (e.message || 'Unknown'), 'error');
   }
 }
 
+function _billConfirm(title, message, okLabel, cancelLabel) {
+  // RISK-0124: three luConfirm signatures exist; media-picker's luDialog is the richest and is
+  // loaded in the app shell, core's luConfirm(msg,title,ok,cancel) is the fallback.
+  try {
+    if (typeof window.luDialog === 'function') {
+      return Promise.resolve(window.luDialog({ type: 'confirm', title: title, message: message, okLabel: okLabel, cancelLabel: cancelLabel, danger: true }));
+    }
+    if (typeof luConfirm === 'function') return luConfirm(message, title, okLabel, cancelLabel);
+  } catch (e) {}
+  return Promise.resolve(window.confirm(title + '\n\n' + message));
+}
+
+async function _billConfirmUpgradeLanded() {
+  showToast('Payment received — confirming your plan with Stripe…', 'info');
+  var landed = null;
+  for (var i = 0; i < 8; i++) {                       // ~16 s: Stripe webhooks usually land in < 5 s
+    try {
+      var r = await _luFetch('GET', '/billing/status');
+      var st = await r.json();
+      if (st && st.stripe_connected && st.plan_slug && st.plan_slug !== 'free') { landed = st; break; }
+    } catch (e) {}
+    await new Promise(function (res) { setTimeout(res, 2000); });
+  }
+  if (landed) {
+    showToast('Your ' + landed.plan + ' plan is active' + (landed.trial_ends_at ? ' (trial until ' + new Date(landed.trial_ends_at).toLocaleDateString() + ')' : '') + '.', 'success');
+    if (typeof _billFetchAndRender === 'function') _billFetchAndRender();
+    if (typeof loadWorkspaceStatus === 'function') { try { loadWorkspaceStatus(); } catch (e) {} }
+  } else {
+    showToast('Stripe accepted the payment but we have not received its confirmation yet. Your plan will update within a few minutes — refresh this page to check.', 'warning');
+  }
+}
+
 function _billCheckReturnFlags() {
   // Handle return from Stripe Checkout via hash query params.
   // URL shape: /app/#billing?success=1&session=cs_test_abc
+  // MONEY-1: Stripe now returns to /app/billing?checkout=success|cancelled (path form); the legacy
+  // hash form is still honoured for any session created before the change.
+  var params = new URLSearchParams(window.location.search || '');
   var hash = window.location.hash || '';
   var qIx = hash.indexOf('?');
-  if (qIx < 0) return;
-  var params = new URLSearchParams(hash.substring(qIx + 1));
-  if (params.get('success') === '1') {
-    showToast('Payment successful! Your plan has been upgraded.', 'success');
-  } else if (params.get('cancelled') === '1') {
-    showToast('Checkout cancelled.', 'info');
+  if (!params.get('checkout') && qIx >= 0) params = new URLSearchParams(hash.substring(qIx + 1));
+  if (!params.get('checkout') && !params.get('success') && !params.get('cancelled')) return;
+  if (params.get('checkout') === 'success' || params.get('success') === '1') {
+    // MONEY-1 (2026-08-29): the URL only proves Stripe redirected us back. The plan changes when
+    // the checkout.session.completed webhook lands — poll /billing/status and tell the truth.
+    _billConfirmUpgradeLanded();
+  } else if (params.get('checkout') === 'cancelled' || params.get('cancelled') === '1') {
+    showToast('Checkout cancelled — nothing was charged.', 'info');
   }
   // Clean the URL so a refresh doesn't re-toast
-  history.replaceState(null, '', '#billing');
+  history.replaceState(null, '', '/app/billing');
 }
 
 

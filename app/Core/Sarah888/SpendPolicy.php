@@ -71,10 +71,17 @@ class SpendPolicy
         . 'resize|reorder|upload|insert|restore|revert|undo|redirect|switch|enable|disable|'
         . 'turn (?:on|off)|connect|disconnect|install|configure|unpublish|republish|'
         . 'set up|put together|do it|go ahead|proceed|handle it|sort (?:it|them) out|'
+        // MONEY-1 (2026-08-29): "Please commission the sourdough article again now — I authorise it"
+        // was classified as a STATEMENT and every task was REFUSED (UNCOMMISSIONED_TURN): none of
+        // commission / retry / try again / re-run / execute / kick off / resume were directive verbs.
+        . 'commission|retry|re-?run|re-?try|try (?:[\w-]+ ){0,6}?again|kick off|execute|'
+        . 'carry on|resume|get (?:going|started)|'
         . 'get (?:it|them) done|please do)\b/i';
 
     /** Phrases that authorise spend explicitly, even inside a question. */
-    private const EXPLICIT_AUTH = '/\b(?:yes,? (?:do|go|please)|go ahead|do it|approved?|proceed|make it so|run it|queue (?:it|them)|say the word|add the missing images)\b/i';
+    private const EXPLICIT_AUTH = '/\b(?:yes,? (?:do|go|please)|go ahead|do it|approved?|proceed|make it so|run it|queue (?:it|them)|say the word|add the missing images'
+        // MONEY-1 (2026-08-29): first-person authorisation is the clearest spend authority there is.
+        . '|i (?:hereby )?authori[sz]e|you have my (?:approval|authori[sz]ation|go-?ahead|permission)|green ?light|go for it|run (?:it |them |all )?(?:now|again)|run all)\b/i';
 
     /**
      * @return array{authorized:bool, reason:string, classification:string}

@@ -514,14 +514,8 @@ class FeatureGateService
         // this fix every paid customer is blocked from connector + AI for the
         // first 3 days post-signup. This was a pre-existing latent bug that
         // seo_only would have exposed immediately — fixed now.
-        $sub = Subscription::where('workspace_id', $wsId)
-            ->whereIn('status', ['active', 'trialing'])
-            ->latest()
-            ->first();
-
-        if ($sub) return Plan::find($sub->plan_id);
-
-        return Plan::where('slug', 'free')->first();
+        // MONEY-1 (2026-08-29): shared resolver (also follows billing_workspace_id).
+        return Subscription::entitledPlanFor($wsId);
     }
 
     private function getCreditInfo(int $wsId, Plan $plan): array

@@ -50,10 +50,7 @@ class BuilderService
         // the billing workspace row is the serialization point.
         return DB::transaction(function () use ($wsId, $data, $ownerUserId, $billingWs) {
         DB::table('workspaces')->where('id', $billingWs)->lockForUpdate()->first();
-        $plan = \App\Models\Plan::find(
-            \App\Models\Subscription::where('workspace_id', $billingWs)
-                ->where('status', 'active')->latest()->value('plan_id')
-        ) ?? \App\Models\Plan::where('slug', 'free')->first();
+        $plan = \App\Models\Subscription::entitledPlanFor($billingWs); // MONEY-1: counts trialing
         $maxWebsites = (int) ($plan->max_websites ?? 1);
         $userWsIds = DB::table('workspaces')->where('billing_workspace_id', $billingWs)->pluck('id')->all();
         if (empty($userWsIds)) $userWsIds = [$billingWs];
@@ -211,10 +208,7 @@ class BuilderService
         })->toArray();
 
         // ── Usage metadata for frontend limit display ───────────────
-        $plan = \App\Models\Plan::find(
-            \App\Models\Subscription::where('workspace_id', $wsId)
-                ->where('status', 'active')->latest()->value('plan_id')
-        ) ?? \App\Models\Plan::where('slug', 'free')->first();
+        $plan = \App\Models\Subscription::entitledPlanFor($wsId); // MONEY-1: counts trialing + pool
         // ────────────────────────────────────────────────────────────
 
         return [

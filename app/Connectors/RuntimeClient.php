@@ -487,7 +487,12 @@ class RuntimeClient
     {
         try {
             // Long-form article generation can run 60-90s — override the default 30s timeout.
-            $resp = $this->post('/internal/write/draft', $params, 120);
+            // MONEY-1 (2026-08-29): the 120s HTTP timeout here was moot — the runtime (v2.37.5+
+            // workload lanes) put /internal/write/draft on the 30s INTERACTIVE lane and answered
+            // 503 runtime_deadline at 30.0s on every full-length article (task 31810: 3/3 attempts,
+            // customer's first AI job failed). The lane middleware honours body.workload=synthesis
+            // (70s lane, lu-middleware.js resolveLane) — declare the workload for what it is.
+            $resp = $this->post('/internal/write/draft', $params + ['workload' => 'synthesis'], 120);
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::writeDraft connection failed', ['error' => $e->getMessage()]);
             return ['success' => false, 'error' => 'connection_failed: ' . $e->getMessage()];
@@ -526,7 +531,8 @@ class RuntimeClient
         try {
             // Improve passes can also run long on multi-thousand-word inputs.
             $resp = $this->post('/internal/write/improve', array_merge($params, [
-                'content' => $content,
+                'content'  => $content,
+                'workload' => 'synthesis', // MONEY-1: 70s lane (see writeDraft)
             ]), 120);
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::writeImprove connection failed', ['error' => $e->getMessage()]);

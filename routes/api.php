@@ -2443,7 +2443,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     Route::get('/billing/plans', function () {
         // W6: the Plan model has no $hidden, so features_json shipped raw. Filter
     // removed capability keys out of every customer-facing plan payload.
-    $plans = \App\Models\Plan::orderBy('price')->get()->map(function ($p) {
+    // MONEY-1 (2026-08-29): the picker rendered the four wp_* rows as "Not yet configured" cards.
+    // The Owner's decision: WordPress is part of the Websites/Hosting ecosystem on the normal
+    // subscription ladder — there is NO separate WP price ladder to sell. Public plans only.
+    $plans = \App\Models\Plan::where('is_public', 1)->orderBy('price')->get()->map(function ($p) {
         $arr = $p->toArray();
         $arr['features_json'] = \App\Core\LaunchScope\LaunchScopePolicy::filterPlanFeatures($p->features_json ?? []);
         return $arr;

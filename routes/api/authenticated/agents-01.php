@@ -2961,6 +2961,35 @@ $withCorr = function (array $meta) use ($corr) {
                             // chosen tier monthly cap. Skip silently for
                             // chain-child tasks (parent_task_id set) — only
                             // count PARENT actions against the cap.
+                            // ── MONEY-1 (2026-08-29) — CREDIT PRE-FLIGHT ─────────
+                            // Measured live (ws 999994, balance 0): Sarah said "This will
+                            // cost 3 credits. On it! ✅ Queued 1 tasks", the task died in
+                            // the worker with "Insufficient credits for reservation" and
+                            // the customer was never told. Paid work the wallet cannot
+                            // cover is refused HERE, with the number and the way out.
+                            // credit_cost is only pre-set for bundles; otherwise TaskService resolves it
+                            // from the capability map at creation — resolve it the same way here.
+                            $__need = (int) ($createPayload['credit_cost'] ?? 0);
+                            if ($__need <= 0 && empty($createPayload['parent_task_id'])) {
+                                try { $__need = (int) app(\App\Core\EngineKernel\CapabilityMapService::class)->getCreditCost($taskAction); } catch (\Throwable) { $__need = 0; }
+                            }
+                            if (empty($createPayload['parent_task_id']) && $__need > 0) {
+                                try {
+                                    $__bal = app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId);
+                                    $__avail = (int) ($__bal['available'] ?? 0);
+                                    if ($__avail < $__need) {
+                                        $taskSummaryFailed++;
+                                        $failFriendly = "not enough credits — it needs {$__need}, you have {$__avail}. Upgrade your plan or wait for your monthly renewal";
+                                        $taskSummaryFailReasons[$failFriendly] = ($taskSummaryFailReasons[$failFriendly] ?? 0) + 1;
+                                        \Illuminate\Support\Facades\Log::info('[SarahChat] credit pre-flight refused task', [
+                                            'workspace_id' => $wsId, 'action' => $taskAction, 'needs' => $__need, 'available' => $__avail,
+                                        ]);
+                                        continue;
+                                    }
+                                } catch (\Throwable $__ce) {
+                                    \Illuminate\Support\Facades\Log::warning('[SarahChat] credit pre-flight failed (allowing): ' . $__ce->getMessage());
+                                }
+                            }
                             if (empty($createPayload['parent_task_id'])) {
                                 try {
                                     $cadenceCheck = app(\App\Core\Strategy\CadenceGuardService::class)
@@ -3210,7 +3239,13 @@ $withCorr = function (array $meta) use ($corr) {
                             $byAgentParts[] = "$agentSlug: $n";
                         }
                         $byAgentStr = !empty($byAgentParts) ? ' (' . implode(', ', $byAgentParts) . ')' : '';
-                        if ($taskSummaryCreated > 0 && $taskSummaryFailed === 0) {
+                        if ($taskSummaryCreated === 0 && $taskSummaryFailed > 0) {
+                            // MONEY-1: nothing was queued — the reply must not read as "On it!"
+                            $reply .= "\n\n⛔ I could not queue this:";
+                            foreach ($taskSummaryFailReasons as $reason => $count) {
+                                $reply .= "\n  • " . ($count > 1 ? "({$count}x) " : '') . $reason;
+                            }
+                        } elseif ($taskSummaryCreated > 0 && $taskSummaryFailed === 0) {
                             $reply .= "\n\n✅ Queued {$taskSummaryCreated} tasks{$byAgentStr}.";
                         } elseif ($taskSummaryCreated > 0) {
                             $total = $taskSummaryCreated + $taskSummaryFailed;

@@ -4490,10 +4490,7 @@ class SeoService
      */
     private function getPlanFeature(int $wsId, string $feature, mixed $default = null): mixed
     {
-        $plan = \App\Models\Plan::find(
-            \App\Models\Subscription::where('workspace_id', $wsId)
-                ->where('status', 'active')->latest()->value('plan_id')
-        ) ?? \App\Models\Plan::where('slug', 'free')->first();
+        $plan = \App\Models\Subscription::entitledPlanFor($wsId); // MONEY-1: counts trialing + pool
 
         if (!$plan) return $default;
 

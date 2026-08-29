@@ -69,6 +69,48 @@ class Subscription extends Model
         static::deleted($forget);
     }
 
+    /**
+     * MONEY-1 (2026-08-29) — the ONE place that answers "which plan is this workspace entitled to?".
+     *
+     * Before: PlanGatingService (the execution kernel's gate), BuilderService (website limit) and
+     * SeoService each re-implemented the lookup with `status = 'active'` only, while
+     * FeatureGateService and ArthurService counted 'trialing' too. A 3-day-trial customer (trialing
+     * Growth, 50 credits) therefore asked Sarah for an article and got task 31809 FAILED with
+     * "AI features require AI Lite plan or above" — the trial that exists to sell the AI tier could
+     * not use AI. Website-workspaces (billing_workspace_id) were also resolved against their own
+     * inherited row, which goes stale on upgrade; the pool workspace is the truth.
+     */
+    public const ENTITLED_STATUSES = ['active', 'trialing'];
+
+    /** Subscriptions that currently confer entitlement (a trial only until it ends). */
+    public function scopeEntitled($query)
+    {
+        return $query->whereIn('status', self::ENTITLED_STATUSES)
+            ->where(function ($w) {
+                $w->where('status', 'active')->orWhereNull('ends_at')->orWhere('ends_at', '>', now());
+            });
+    }
+
+    /** The workspace whose subscription/credits govern $wsId (website = workspace architecture). */
+    public static function billingWorkspaceIdFor(int $wsId): int
+    {
+        $pool = (int) \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('billing_workspace_id');
+        return $pool > 0 ? $pool : $wsId;
+    }
+
+    public static function entitledFor(int $wsId): ?self
+    {
+        return static::where('workspace_id', self::billingWorkspaceIdFor($wsId))->entitled()->orderByDesc('id')->first();
+    }
+
+    /** Entitled plan, defaulting to Free. Never null when a Free plan row exists. */
+    public static function entitledPlanFor(int $wsId): ?Plan
+    {
+        $sub  = self::entitledFor($wsId);
+        $plan = $sub ? Plan::find($sub->plan_id) : null;
+        return $plan ?: Plan::where('slug', 'free')->first();
+    }
+
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);

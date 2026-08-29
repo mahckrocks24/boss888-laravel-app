@@ -137,6 +137,11 @@ class TrialService
     {
         $ws = Workspace::find($wsId);
         if (!$ws || !$ws->trial_started_at) return false;
+        // MONEY-1 (2026-08-29): the trial ended the moment the customer paid (is_trial cleared by the
+        // Stripe handlers) or the cron expired it. The date alone kept a paying AI Lite customer on
+        // "AI-lite trial · ends Sep 1 · 0 trial credits" in the sidebar and the billing card.
+        if (\Illuminate\Support\Facades\Schema::hasColumn('workspaces', 'is_trial') && ! $ws->is_trial) return false;
+        if ($this->isOnPaidPlan($wsId)) return false;
 
         return now()->lt(
             \Carbon\Carbon::parse($ws->trial_started_at)->addDays(self::TRIAL_DAYS)

@@ -134,7 +134,8 @@ class CreditService
             $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->firstOrFail();
 
             if ($credit->available() < $amount) {
-                abort(402, 'Insufficient credits for reservation');
+                // MONEY-1 (2026-08-29): this string is what the customer reads on the failed task.
+                abort(402, "Not enough credits: this needs {$amount}, " . max(0, (int) $credit->balance - (int) $credit->reserved_balance) . " available. Upgrade your plan or wait for your monthly renewal.");
             }
 
             // Per-workspace allocation cap (agency overspend guard). Opt-in via

@@ -94,10 +94,17 @@ use Illuminate\Support\Facades\Route;
         $__poolWs = (int) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $ws->id)->value('billing_workspace_id') ?: $ws->id);
         $credit = \App\Models\Credit::where('workspace_id', $__poolWs)->first();
         $websiteCount = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $ws->id)->whereNull('deleted_at')->count();
+        // MONEY-1 (2026-08-29): a trial customer holds the trial grant (50), not the mimicked plan's
+        // monthly limit (300). The sidebar read "50 of 300 monthly limit" — a promise nothing honours.
+        $__trial = app(\App\Core\Billing\TrialService::class)->getTrialStatus((int) $__poolWs);
+        $__onTrial = ! empty($__trial['active']);
         return response()->json([
             'workspace' => $ws, 'plan' => $planRules,
             'credit_balance' => $credit?->balance ?? 0,
-            'monthly_credit_limit' => $planRules['credit_limit'],
+            'monthly_credit_limit' => $__onTrial ? (int) ($__trial['trial_credits'] ?? $planRules['credit_limit']) : $planRules['credit_limit'],
+            'is_trial' => $__onTrial,
+            'trial_expires_at' => $__onTrial ? ($__trial['expires_at'] ?? null) : null,
+            'trial_days_remaining' => $__onTrial ? (int) ($__trial['days_remaining'] ?? 0) : null,
             'website_count' => $websiteCount,
             'business_name' => $ws->business_name,
             'industry' => $ws->industry,
