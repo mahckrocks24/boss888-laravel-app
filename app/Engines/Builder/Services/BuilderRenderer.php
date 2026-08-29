@@ -147,10 +147,13 @@ class BuilderRenderer
             ->where('status', 'published')->first();
         if (!$website) return null;
 
+        $websiteId = (int) $website->id;
         $article = DB::table('articles')
             ->where('workspace_id', $website->workspace_id)
             ->where('slug', $slug)->where('status', 'published')
-            ->where('is_marketing_blog', 1)->whereNull('deleted_at')->first();
+            ->where('is_marketing_blog', 1)->whereNull('deleted_at')
+            ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } })
+            ->first();
         if (!$article) return null;
 
         $settings = $website->settings_json ?? '{}';
@@ -168,8 +171,18 @@ class BuilderRenderer
             $content = (new \App\Engines\Builder\Services\AmgTravelTheme())
                 ->renderArticle((array) $article, (array) $website);
         } else {
-            $body = (string) ($article->content ?? '');
-            $content = '<section style="padding:90px 24px"><div style="max-width:760px;margin:0 auto;line-height:1.8"><h1 style="margin-bottom:20px">' . e($article->title) . '</h1>' . $body . '</div></section>';
+            // CONTENT-2: the page renders the title once; drop the body's own leading <h1>; show the hero.
+            $body = preg_replace('#^\s*<h1\b[^>]*>.*?</h1>\s*#is', '', (string) ($article->content ?? ''), 1) ?? (string) ($article->content ?? '');
+            $hero = !empty($article->featured_image_url)
+                ? '<img src="' . e($article->featured_image_url) . '" alt="' . e($article->featured_image_alt ?: $article->title) . '" style="width:100%;height:auto;border-radius:14px;margin:0 0 28px;display:block">'
+                : '';
+            $when = !empty($article->published_at) ? \Carbon\Carbon::parse($article->published_at)->format('F j, Y') : '';
+            $content = '<section style="padding:90px 24px"><div style="max-width:820px;margin:0 auto;line-height:1.75">'
+                . '<h1 style="margin:0 0 12px;font-size:2.4rem;line-height:1.15">' . e($article->title) . '</h1>'
+                . ($when !== '' ? '<div style="opacity:.7;margin-bottom:24px;font-size:.9rem">' . e($when) . '</div>' : '')
+                . $hero . '<div class="post-page-body">' . $body . '</div>'
+                . '<a href="/blog" style="display:inline-block;margin-top:40px;font-weight:600;text-decoration:none">&larr; Back to the blog</a>'
+                . '</div></section>';
         }
 
         $sub = str_replace('.levelupgrowth.io', '', (string) ($website->subdomain ?? ''));
@@ -1597,8 +1610,10 @@ HTML;
     private function renderBlogList(array $website, array $brand): string
     {
         $workspaceId = $website['workspace_id'] ?? 0;
+        $websiteId   = (int) ($website['id'] ?? 0);
         $articles = DB::table('articles')
             ->where('workspace_id', $workspaceId)
+            ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } })
             ->where('is_marketing_blog', 1)
             ->where('status', 'published')
             ->whereNull('deleted_at')

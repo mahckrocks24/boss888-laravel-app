@@ -209,12 +209,12 @@ class PublishedSiteMiddleware
                     $html = file_get_contents($staticPath);
                     // Wave 63 — auto-inject DB articles into static blog index.
                     if (preg_match('#/blog/index\.html$|/blog\.html$#i', $staticPath)) {
-                        $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0));
+                        $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0), 0, false, (int) $website->id);
                     } elseif ($slug === 'home') {
                         // RISK-0101 — the home "From the Blog" preview: show up to 3
                         // recent real articles (blog-card branch only) instead of the
                         // empty-state line when the workspace has articles.
-                        $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0), 3, true);
+                        $html = $this->injectDynamicBlogPosts($html, (int) ($website->workspace_id ?? 0), 3, true, (int) $website->id);
                     }
                     // Wave 73b — guarantee related-articles internal links on every blog post.
                     if (preg_match('#/blog/[^/]+/(?:index\.html)?$#i', $staticPath) && !preg_match('#/blog/(?:index\.html)?$#i', $staticPath)) {
@@ -511,7 +511,7 @@ class PublishedSiteMiddleware
         return $out;
     }
 
-    private function injectDynamicBlogPosts(string $html, int $workspaceId, int $cardLimit = 0, bool $blogCardOnly = false): string
+    private function injectDynamicBlogPosts(string $html, int $workspaceId, int $cardLimit = 0, bool $blogCardOnly = false, int $websiteId = 0): string
     {
         if ($workspaceId <= 0) return $html;
 
@@ -521,6 +521,8 @@ class PublishedSiteMiddleware
                 ->where('is_marketing_blog', 1)
                 ->where('status', 'published')
                 ->whereNull('deleted_at')
+                // CONTENT-2: an article belongs to ONE website of the workspace (NULL = legacy/unassigned).
+                ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } })
                 ->orderByDesc('published_at')
                 ->orderByDesc('id')
                 ->get(['id', 'title', 'slug', 'featured_image_url', 'meta_description', 'excerpt', 'blog_category', 'word_count', 'content', 'published_at']);
@@ -844,6 +846,29 @@ class PublishedSiteMiddleware
      * template, then swaps title, image, body, meta to the requested
      * article's data. Returns null if no template or no matching article.
      */
+    /**
+     * CONTENT-2 — build an article-page template from a template site's blog/index.html: keep everything
+     * outside <main>…</main> (nav, header, footer, styles) and put an article skeleton inside.
+     */
+    private function articleChromeFromBlogIndex(string $indexPath): ?string
+    {
+        $html = @file_get_contents($indexPath);
+        if (!$html) return null;
+        $skeleton = '<main><article class="lu-post" style="max-width:820px;margin:0 auto;padding:72px 24px 56px;line-height:1.75">'
+            . '<div class="post-page-cat" style="font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;opacity:.7;margin-bottom:12px">Article</div>'
+            . '<h1 class="post-page-title" style="font-size:2.4rem;line-height:1.15;margin:0 0 14px">Article</h1>'
+            . '<div class="post-page-meta" style="font-size:.9rem;opacity:.75;margin-bottom:26px"><span class="post-date">Today</span></div>'
+            . '<img class="post-hero-img" src="" alt="" style="width:100%;height:auto;border-radius:14px;margin:0 0 30px;display:block">'
+            . '<div class="post-page-body">Body</div>'
+            . '<a class="post-page-back" href="/blog" style="display:inline-block;margin-top:40px;text-decoration:none;font-weight:600">&larr; Back to the blog</a>'
+            . '</article></main>';
+        $out = preg_replace('#<main\b[^>]*>.*?</main>#is', $skeleton, $html, 1, $n);
+        if ($n === 1 && $out !== null) return $out;
+        // No <main>: wrap the article between the first </nav>/</header> and <footer>.
+        $out = preg_replace('#(</header>|</nav>)(.*?)(<footer\b)#is', '$1' . $skeleton . '$3', $html, 1, $n);
+        return ($n === 1 && $out !== null) ? $out : null;
+    }
+
     private function renderDynamicArticlePage(int $workspaceId, int $websiteId, string $slug): ?string
     {
         if ($workspaceId <= 0 || $websiteId <= 0 || $slug === '') return null;
@@ -854,6 +879,7 @@ class PublishedSiteMiddleware
                 ->where('slug', $slug)
                 ->where('status', 'published')
                 ->whereNull('deleted_at')
+                ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } })
                 ->first(['id', 'title', 'slug', 'content', 'featured_image_url', 'featured_image_alt',
                          'meta_title', 'meta_description', 'seo_json', 'jsonld_json',
                          'blog_category', 'word_count', 'published_at', 'updated_at']);
@@ -866,9 +892,17 @@ class PublishedSiteMiddleware
         $siteRoot = storage_path('app/public/sites/' . $websiteId . '/blog');
         if (!is_dir($siteRoot)) return null;
         $candidates = glob($siteRoot . '/*/index.html');
-        if (empty($candidates)) return null;
-        $tplPath = $candidates[0];
-        $tpl = @file_get_contents($tplPath);
+        $tpl = null;
+        if (!empty($candidates)) {
+            $tpl = @file_get_contents($candidates[0]);
+        }
+        if (!$tpl) {
+            // CONTENT-2 (2026-08-29): template sites have no per-article static file. Use the site's OWN
+            // blog index page as chrome (nav/header/footer, fonts, colours) and swap its <main> for a real
+            // article layout carrying the hooks the substitutions below expect. Before this the article
+            // fell through to a bare BuilderRenderer section: duplicate H1, no chrome, no featured image.
+            $tpl = $this->articleChromeFromBlogIndex($siteRoot . '/index.html');
+        }
         if (!$tpl) return null;
 
         $html = $tpl;
@@ -907,6 +941,10 @@ class PublishedSiteMiddleware
             $html = preg_replace('#(<img[^>]*src=)"[^"]*"([^>]*class="[^"]*post-hero-img[^"]*")#i', '$1"' . e($imgUrl) . '"$2', $html, 1);
         }
         $html = preg_replace('#(<img[^>]*class="[^"]*post-hero-img[^"]*"[^>]*\s)alt="[^"]*"#i', '$1alt="' . e($imgAlt) . '"', $html, 1);
+        if (!$imgUrl) {
+            // CONTENT-2: no featured image → no empty/broken hero.
+            $html = preg_replace('#<img[^>]*class="[^"]*post-hero-img[^"]*"[^>]*>#i', '', $html, 1);
+        }
 
         // Article title <h1 class="post-page-title">
         $html = preg_replace('#(<h1[^>]*class="[^"]*post-page-title[^"]*"[^>]*>).+?(</h1>)#is', '$1' . e($title) . '$2', $html, 1);
@@ -925,7 +963,7 @@ class PublishedSiteMiddleware
 
         // Wave 73b — append "Related Reading" section before body injection
         // so dynamic-rendered articles get guaranteed internal links too.
-        $bodyAppend = $this->buildRelatedArticlesHtml($workspaceId, $slug);
+        $bodyAppend = $this->buildRelatedArticlesHtml($workspaceId, $slug, $websiteId);
         $article->content = ((string) $article->content) . $bodyAppend;
 
         // Article body — REPLACE everything inside <div class="post-page-body">.
@@ -934,7 +972,8 @@ class PublishedSiteMiddleware
         // and other templates may vary. Anchor on either the post-page-back
         // back-link OR the closing </article> tag instead, which are
         // universally present in any blog-post template.
-        $bodyContent = (string) $article->content;
+        // CONTENT-2: the page renders the title once; drop the body's own leading <h1>.
+        $bodyContent = preg_replace('#^\s*<h1\b[^>]*>.*?</h1>\s*#is', '', (string) $article->content, 1) ?? (string) $article->content;
         $replaced = false;
         // 1st attempt: anchor on post-page-back link.
         $tmp = preg_replace_callback(
@@ -1003,14 +1042,15 @@ class PublishedSiteMiddleware
      * published articles in the workspace. Returns empty string if there
      * are fewer than 1 other articles to link to.
      */
-    private function buildRelatedArticlesHtml(int $workspaceId, ?string $excludeSlug = null): string
+    private function buildRelatedArticlesHtml(int $workspaceId, ?string $excludeSlug = null, int $websiteId = 0): string
     {
         if ($workspaceId <= 0) return '';
         try {
             $q = DB::table('articles')
                 ->where('workspace_id', $workspaceId)
                 ->where('status', 'published')
-                ->whereNull('deleted_at');
+                ->whereNull('deleted_at')
+                ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } });
             if ($excludeSlug) $q->where('slug', '!=', $excludeSlug);
             $related = $q->orderByDesc('published_at')
                 ->orderByDesc('id')

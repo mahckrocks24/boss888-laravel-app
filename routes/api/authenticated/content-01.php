@@ -280,6 +280,8 @@ use Illuminate\Support\Facades\Route;
                         // but this raw publish endpoint didn't, so articles published
                         // here rendered "Article Not Found" on the live blog.
                         'is_marketing_blog' => 1,
+                        // CONTENT-2: the site this publish targets — sibling sites no longer list it.
+                        'website_id'   => $laravelSite->id,
                         'updated_at'   => now(),
                     ]);
 

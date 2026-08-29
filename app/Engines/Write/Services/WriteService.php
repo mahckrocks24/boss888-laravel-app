@@ -247,6 +247,20 @@ class WriteService
         // First-time publish — set published_at
         if (isset($update['status']) && $update['status'] === 'published' && $article->status !== 'published') {
             $update['published_at'] = now();
+            // CONTENT-2: bind the article to ONE website (the workspace's newest published LevelUp site) so
+            // sibling sites of the same workspace do not list it. Explicit website_id in $data wins.
+            if (empty($article->website_id)) {
+                $__wid = isset($data['website_id']) ? (int) $data['website_id'] : 0;
+                if ($__wid <= 0) {
+                    try {
+                        $__wid = (int) (DB::table('websites')->where('workspace_id', (int) $article->workspace_id)
+                            ->where('status', 'published')->whereNull('deleted_at')
+                            ->where(fn($q) => $q->whereNull('platform')->orWhere('platform', '!=', 'wordpress'))
+                            ->orderByDesc('id')->value('id') ?? 0);
+                    } catch (\Throwable) { $__wid = 0; }
+                }
+                if ($__wid > 0) $update['website_id'] = $__wid;
+            }
         }
 
         $update['updated_at'] = now();
