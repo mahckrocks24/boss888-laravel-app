@@ -2843,10 +2843,25 @@ class SeoService
 
             $seoJson = json_decode((string) ($article->seo_json ?? '{}'), true) ?: [];
 
-            $siteUrl = DB::table('seo_settings')->where('workspace_id', $wsId)
-                ->where('key', 'site_url')->value('value');
-            if (!$siteUrl) { return; }
-            $url = rtrim($siteUrl, '/') . '/' . ltrim($article->slug, '/');
+            // RISK-0127 qq (2026-08-30): the index must hold REAL page URLs. An article bound to a LevelUp
+            // website lives at https://{host}/blog/{slug}; an article that was published INTO WordPress is
+            // indexed by the publish path with its real permalink (never site_url + Laravel slug, which
+            // produced phantom rows like http://127.0.0.1:8093/<laravel-slug>); only a workspace with no
+            // LevelUp site falls back to the legacy seo_settings site_url.
+            $url = null;
+            $websiteId = (int) ($article->website_id ?? 0);
+            if ($websiteId > 0) {
+                $site = DB::table('websites')->where('id', $websiteId)->first(['custom_domain', 'domain', 'subdomain', 'domain_verified']);
+                $host = $site ? (($site->custom_domain && (int) $site->domain_verified === 1) ? $site->custom_domain : ($site->domain ?: $site->subdomain)) : null;
+                if ($host) { $url = 'https://' . preg_replace('#^https?://#', '', rtrim((string) $host, '/')) . '/blog/' . ltrim($article->slug, '/'); }
+            }
+            if ($url === null && !empty($article->wp_post_id)) { return; }
+            if ($url === null) {
+                $siteUrl = DB::table('seo_settings')->where('workspace_id', $wsId)
+                    ->where('key', 'site_url')->value('value');
+                if (!$siteUrl) { return; }
+                $url = rtrim($siteUrl, '/') . '/' . ltrim($article->slug, '/');
+            }
 
             // Extract H1 from content if present, else title
             $content = (string) ($article->content ?? '');
