@@ -68,8 +68,7 @@ use Illuminate\Support\Facades\Route;
                 return response()->json(['success' => false, 'error' => 'article_not_found'], 404);
             }
             $creditSvc = app(\App\Core\Billing\CreditService::class);
-            $balance = (int) \Illuminate\Support\Facades\DB::table('credits')
-                ->where('workspace_id', $wsId)->value('balance') ?: 0;
+            $balance = (int) ($creditSvc->getBalance($wsId)['available'] ?? 0); // AEO-1b: pooled balance
             if ($balance < 1) {
                 return response()->json([
                     'success' => false, 'error' => 'insufficient_credits',
@@ -215,8 +214,7 @@ use Illuminate\Support\Facades\Route;
 
             if ($aeoOn && $isAiGenerated && !$alreadyEnriched) {
                 $autoEnrichSvc = app(\App\Core\Billing\CreditService::class);
-                $autoBalance = (int) \Illuminate\Support\Facades\DB::table('credits')
-                    ->where('workspace_id', $wsId)->value('balance') ?: 0;
+                $autoBalance = (int) ($autoEnrichSvc->getBalance($wsId)['available'] ?? 0); // AEO-1b: pooled balance
                 if ($autoBalance >= 1) {
                     $autoResv = $autoEnrichSvc->reserveCredits($wsId, 1, 'Article', $articleId, 'auto_aeo_pub_' . uniqid());
                     try {

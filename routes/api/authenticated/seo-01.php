@@ -490,13 +490,15 @@ use Illuminate\Support\Facades\Route;
 
             // Wave 47 — AEO plan gate inline check.
             $_ws = (int) $r->attributes->get('workspace_id');
-            $_planSlug = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws)['plan_slug'] ?? 'free';
-            $_price = (float) \Illuminate\Support\Facades\DB::table('plans')->where('slug', $_planSlug)->value('price') ?: 0.0;
-            if ($_price < 69.0) {
+            // AEO-1 (2026-08-29): AEO is part of every AI plan (ADR-0012 — capacity, not capability, from $49 up).
+            // The old "$69 WP Bundle" price gate is exactly the assumption the Owner said not to resurrect.
+            $_rules = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws);
+            $_planSlug = $_rules['plan_slug'] ?? 'free';
+            if (($_rules['ai_access'] ?? 'none') !== 'full') {
                 return response()->json([
                     'success' => false,
                     'error' => 'aeo_plan_required',
-                    'message' => 'AEO Mode requires WP Bundle ($69) or higher.',
+                    'message' => 'AEO Mode is part of the AI plans — AI Lite ($49/month) and up.',
                     'current_plan_slug' => $_planSlug,
                 ], 402);
             }
@@ -521,13 +523,15 @@ use Illuminate\Support\Facades\Route;
 
             // Wave 47 — AEO plan gate inline check.
             $_ws = (int) $r->attributes->get('workspace_id');
-            $_planSlug = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws)['plan_slug'] ?? 'free';
-            $_price = (float) \Illuminate\Support\Facades\DB::table('plans')->where('slug', $_planSlug)->value('price') ?: 0.0;
-            if ($_price < 69.0) {
+            // AEO-1 (2026-08-29): AEO is part of every AI plan (ADR-0012 — capacity, not capability, from $49 up).
+            // The old "$69 WP Bundle" price gate is exactly the assumption the Owner said not to resurrect.
+            $_rules = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws);
+            $_planSlug = $_rules['plan_slug'] ?? 'free';
+            if (($_rules['ai_access'] ?? 'none') !== 'full') {
                 return response()->json([
                     'success' => false,
                     'error' => 'aeo_plan_required',
-                    'message' => 'AEO Mode requires WP Bundle ($69) or higher.',
+                    'message' => 'AEO Mode is part of the AI plans — AI Lite ($49/month) and up.',
                     'current_plan_slug' => $_planSlug,
                 ], 402);
             }
@@ -1091,13 +1095,15 @@ use Illuminate\Support\Facades\Route;
 
             // Wave 47 — AEO plan gate inline check.
             $_ws = (int) $r->attributes->get('workspace_id');
-            $_planSlug = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws)['plan_slug'] ?? 'free';
-            $_price = (float) \Illuminate\Support\Facades\DB::table('plans')->where('slug', $_planSlug)->value('price') ?: 0.0;
-            if ($_price < 69.0) {
+            // AEO-1 (2026-08-29): AEO is part of every AI plan (ADR-0012 — capacity, not capability, from $49 up).
+            // The old "$69 WP Bundle" price gate is exactly the assumption the Owner said not to resurrect.
+            $_rules = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($_ws);
+            $_planSlug = $_rules['plan_slug'] ?? 'free';
+            if (($_rules['ai_access'] ?? 'none') !== 'full') {
                 return response()->json([
                     'success' => false,
                     'error' => 'aeo_plan_required',
-                    'message' => 'AEO Mode requires WP Bundle ($69) or higher.',
+                    'message' => 'AEO Mode is part of the AI plans — AI Lite ($49/month) and up.',
                     'current_plan_slug' => $_planSlug,
                 ], 402);
             }
@@ -1111,8 +1117,8 @@ use Illuminate\Support\Facades\Route;
             // no-op (parse failure or recently_enriched cache). Commit only
             // on a real enrichment.
             $creditSvc = app(\App\Core\Billing\CreditService::class);
-            $balance = (int) \Illuminate\Support\Facades\DB::table('credits')
-                ->where('workspace_id', $wsId)->value('balance') ?: 0;
+            // AEO-1b: pooled, reservation-aware balance (a child workspace bills through its parent).
+            $balance = (int) ($creditSvc->getBalance($wsId)['available'] ?? 0);
             if ($balance < 1) {
                 return response()->json([
                     'success' => false,
@@ -4918,8 +4924,7 @@ use Illuminate\Support\Facades\Route;
 
             // 2. Credit pre-check (0.5 per page)
             $cost    = $optimizer->creditPerPage();
-            $credits = (float) (\Illuminate\Support\Facades\DB::table('credits')
-                ->where('workspace_id', $wsId)->value('balance') ?? 0);
+            $credits = (float) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0); // AEO-1b: pooled balance
             if ($credits < $cost) {
                 return response()->json([
                     'success'   => false,
@@ -5010,8 +5015,8 @@ use Illuminate\Support\Facades\Route;
             }
 
             // 7. Charge credit ONLY if AI executed (which it did — we're here)
-            \Illuminate\Support\Facades\DB::table('credits')
-                ->where('workspace_id', $wsId)->decrement('balance', $cost);
+            // AEO-1b: charge through the ledger (pooled workspace, credit_transactions row) — not a raw decrement.
+            app(\App\Core\Billing\CreditService::class)->debit($wsId, $cost, 'seo/meta_optimize');
 
             return response()->json([
                 'success'           => true,

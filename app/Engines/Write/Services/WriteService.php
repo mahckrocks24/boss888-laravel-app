@@ -1053,6 +1053,18 @@ class WriteService
             ];
         }
 
+        // AEO-2 (2026-08-29): no body, no enrichment, no charge. A stub article (meeting-created draft,
+        // empty create_article) used to be "enriched" into "The article text was not provided" for 1 credit.
+        $__words = str_word_count(trim(strip_tags((string) ($article->content ?? ''))));
+        if ($__words < 60) {
+            return [
+                'article_id' => $articleId,
+                'enriched'   => false,
+                'reason'     => 'article_has_no_body',
+                'message'    => "This article has no body yet ({$__words} words) — write it first; AEO enrichment needs text to summarise. Nothing was charged.",
+            ];
+        }
+
         // Workspace context for the Organization JSON-LD (author/publisher).
         $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['name', 'business_name']);
         $businessName = $ws->business_name ?? $ws->name ?? 'LevelUp Growth';
