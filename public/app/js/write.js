@@ -1615,7 +1615,7 @@ function _wrShowCopyToolbar(blocks, anchorEl) {
 
     var makeBtn = function(label, onClick) {
         var btn = document.createElement('button');
-        btn.textContent = label;
+        btn.innerHTML = label;
         btn.style.cssText = 'background:var(--s3,#252a3a);border:1px solid var(--bd,#2a2d3e);color:var(--t2,#ccc);border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;';
         btn.onclick = onClick;
         return btn;
@@ -1625,7 +1625,7 @@ function _wrShowCopyToolbar(blocks, anchorEl) {
         navigator.clipboard.writeText(text).then(function() {
             btn.textContent = '✓ Copied!';
             btn.style.color = 'var(--ac,#00E5A8)';
-            setTimeout(function() { btn.textContent = label; btn.style.color = ''; }, 2000);
+            setTimeout(function() { btn.innerHTML = label; btn.style.color = ''; }, 2000);
         }).catch(function() {
             // Fallback for older browsers
             var ta = document.createElement('textarea');
