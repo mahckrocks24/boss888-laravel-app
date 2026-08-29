@@ -204,6 +204,7 @@
         '<div style="background:#15151A;border:1px solid #2A2A33;border-radius:12px;padding:18px 20px">' +
           '<div style="font-size:14px;font-weight:600;color:var(--t1);margin-bottom:6px">Add knowledge</div>' +
           '<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Paste any FAQ, policy, or info the bot should know. Each entry is split into chunks for retrieval.</div>' +
+          '<select id="cb-kb-website" aria-label="Website this knowledge belongs to" style="display:none;width:100%;background:#0d0d0d;border:1px solid #2A2A33;border-radius:8px;padding:8px 10px;color:var(--t1);font-size:12px;margin-bottom:8px"></select>' +
           '<input type="text" id="cb-kb-title" placeholder="Title (e.g. Pricing FAQ)" style="width:100%;background:#0d0d0d;border:1px solid #2A2A33;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:inherit;outline:none;margin-bottom:8px">' +
           '<textarea id="cb-kb-text" rows="5" placeholder="Paste content here…" style="width:100%;background:#0d0d0d;border:1px solid #2A2A33;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;font-family:inherit;resize:vertical;outline:none"></textarea>' +
           '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">' +
@@ -222,8 +223,17 @@
 
   function _refreshKnowledge() {
     _api('GET', '/knowledge').then(function(r){
-      var list = (r.data && r.data.data) || [];
+      // RISK-0118 — the route returns {data:{sources,websites,...}}; the tab read r.data.data as the
+      // list and always showed "No entries yet". Sources carry website_id/website_name now.
+      var d = (r.data && r.data.data) || {};
+      var list = Array.isArray(d) ? d : (d.sources || []);
       state.knowledge = list;
+      state.kbWebsites = d.websites || [];
+      var sel = document.getElementById('cb-kb-website');
+      if (sel && state.kbWebsites.length > 1 && !sel.options.length) {
+        state.kbWebsites.forEach(function(w){ var o=document.createElement('option'); o.value=w.id; o.textContent=w.name; sel.appendChild(o); });
+        sel.style.display = '';
+      }
       var el = document.getElementById('cb-kb-list');
       if (!el) return;
       if (!list.length) {
@@ -234,15 +244,15 @@
         return '<div style="background:#15151A;border:1px solid #2A2A33;border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px">' +
           '<div style="flex:1;min-width:0">' +
             '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">' + _h(k.title || '(untitled)') + '</div>' +
-            '<div style="font-size:11px;color:var(--t3)">' + _h(k.source_type || 'text') + ' · ' + (k.chunk_count || 0) + ' chunks · added ' + _h((k.created_at || '').substring(0,10)) + '</div>' +
+            '<div style="font-size:11px;color:var(--t3)">' + _h(k.source_type || 'text') + ' · ' + (k.website_name ? '<span style="color:#a78bfa">' + _h(k.website_name) + '</span> · ' : '<span style="color:#F59E0B">unassigned website</span> · ') +  + (k.chunk_count || 0) + ' chunks · added ' + _h((k.created_at || '').substring(0,10)) + '</div>' +
           '</div>' +
           '<button data-id="' + _h(k.id) + '" class="cb-kb-del" style="background:none;border:1px solid #444;color:#aaa;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer">Delete</button>' +
         '</div>';
       }).join('');
       el.querySelectorAll('.cb-kb-del').forEach(function(b){
         b.onclick = function(){
-          if (!confirm('Delete this knowledge entry?')) return;
-          _api('DELETE', '/knowledge/' + b.getAttribute('data-id')).then(function(){ _refreshKnowledge(); });
+          var go = (typeof window.luConfirm === 'function') ? window.luConfirm('Delete knowledge', 'Remove this entry from the chatbot knowledge base?', { okLabel: 'Delete', cancelLabel: 'Keep', danger: true }) : Promise.resolve(confirm('Delete this knowledge entry?'));
+          Promise.resolve(go).then(function(ok){ if (!ok) return; _api('DELETE', '/knowledge/' + b.getAttribute('data-id')).then(function(){ _refreshKnowledge(); }); });
         };
       });
     });
@@ -254,7 +264,10 @@
     var status = document.getElementById('cb-kb-status');
     if (!title || !text) { status.textContent = 'Title + text required'; status.style.color = '#F87171'; return; }
     status.textContent = 'Adding…'; status.style.color = 'var(--t3)';
-    _api('POST', '/knowledge/text', { title: title, text: text }).then(function(r){
+    var wsel = document.getElementById('cb-kb-website');
+    var payload = { label: title, title: title, text: text };
+    if (wsel && wsel.style.display !== 'none' && wsel.value) payload.website_id = parseInt(wsel.value, 10);
+    _api('POST', '/knowledge/text', payload).then(function(r){
       if (r.data && r.data.success) {
         status.textContent = '✓ Added'; status.style.color = '#10b981';
         document.getElementById('cb-kb-title').value = '';

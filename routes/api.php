@@ -7680,27 +7680,45 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
 
     Route::get('/chatbot/knowledge', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
-        $sources = \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')
-            ->where('workspace_id', $wsId)
-            ->orderByDesc('created_at')
-            ->get(['id','label','source_type','mime_type','size_bytes','chunk_count','status','error_message','created_at']);
+        // RISK-0118 — every source is shown with the website it belongs to.
+        $sources = \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources as s')
+            ->leftJoin('websites as w', 'w.id', '=', 's.website_id')
+            ->where('s.workspace_id', $wsId)
+            ->orderByDesc('s.created_at')
+            ->get(['s.id','s.label','s.source_type','s.mime_type','s.size_bytes','s.chunk_count','s.status','s.error_message','s.created_at','s.website_id','w.name as website_name']);
+        $websites = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->orderBy('id')->get(['id','name']);
         $gate = app(\App\Core\Billing\FeatureGateService::class);
         return response()->json([
             'success' => true,
             'data'    => [
                 'sources'   => $sources,
+                'websites'  => $websites,
                 'doc_count' => $sources->count(),
                 'doc_limit' => $gate->chatbotKbDocLimit($wsId),
             ],
         ]);
     });
 
-    Route::post('/chatbot/knowledge', function (\Illuminate\Http\Request $r) {
+    // RISK-0118 — resolve the website a knowledge source belongs to: explicit website_id (must be this
+    // workspace's), else the workspace's only website, else null + WEBSITE_REQUIRED for multi-site.
+    $__cbWebsiteFor = function (\Illuminate\Http\Request $r, int $wsId): array {
+        $sites = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->pluck('id')->map(fn ($i) => (int) $i)->all();
+        $given = (int) $r->input('website_id', 0);
+        if ($given > 0) return in_array($given, $sites, true) ? [$given, null] : [null, 'WEBSITE_NOT_IN_WORKSPACE'];
+        if (count($sites) === 1) return [$sites[0], null];
+        if (count($sites) === 0) return [null, null];
+        return [null, 'WEBSITE_REQUIRED'];
+    };
+
+    Route::post('/chatbot/knowledge', function (\Illuminate\Http\Request $r) use ($__cbWebsiteFor) {
         $wsId = $r->attributes->get('workspace_id');
         $r->validate([
             'file'  => 'required|file|max:10240', // 10 MB
             'label' => 'nullable|string|max:255',
+            'website_id' => 'nullable|integer',
         ]);
+        [$__wid, $__werr] = $__cbWebsiteFor($r, (int) $wsId);
+        if ($__werr) return response()->json(['success' => false, 'error' => $__werr, 'message' => 'Choose which website this knowledge belongs to.'], 422);
         $gate = app(\App\Core\Billing\FeatureGateService::class);
         $count = (int) \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')
             ->where('workspace_id', $wsId)->count();
@@ -7714,7 +7732,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         }
         try {
             $sourceId = app(\App\Engines\Chatbot\Services\ChatbotKnowledgeService::class)
-                ->ingestFile($wsId, $r->file('file'), $r->input('label'));
+                ->ingestFile($wsId, $r->file('file'), $r->input('label'), $__wid);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'error' => 'VALIDATION', 'message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
@@ -7729,14 +7747,19 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         ]);
     });
 
-    Route::post('/chatbot/knowledge/text', function (\Illuminate\Http\Request $r) {
+    Route::post('/chatbot/knowledge/text', function (\Illuminate\Http\Request $r) use ($__cbWebsiteFor) {
         $wsId = $r->attributes->get('workspace_id');
+        // The SPA sends `title`; the contract said `label` — accept both (the Knowledge tab was dead).
+        if (! $r->filled('label') && $r->filled('title')) $r->merge(['label' => $r->input('title')]);
         $data = $r->validate([
             'label' => 'required|string|max:255',
             'text'  => 'required|string|max:200000',
+            'website_id' => 'nullable|integer',
         ]);
+        [$__wid, $__werr] = $__cbWebsiteFor($r, (int) $wsId);
+        if ($__werr) return response()->json(['success' => false, 'error' => $__werr, 'message' => 'Choose which website this knowledge belongs to.'], 422);
         $sourceId = app(\App\Engines\Chatbot\Services\ChatbotKnowledgeService::class)
-            ->ingestText($wsId, $data['label'], $data['text']);
+            ->ingestText($wsId, $data['label'], $data['text'], $__wid);
         return response()->json([
             'success' => true,
             'data'    => \Illuminate\Support\Facades\DB::table('chatbot_knowledge_sources')->where('id', $sourceId)->first(),

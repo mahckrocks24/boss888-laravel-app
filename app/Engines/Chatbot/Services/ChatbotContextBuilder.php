@@ -87,9 +87,16 @@ class ChatbotContextBuilder
         // KB retrieval — B1 (2026-06-23) per-website scoping. Prefer the website
         // bound to the widget token (canonical, per-website); fall back to the
         // website resolved from the visitor's page_url. NULL → workspace-wide.
-        $kbWebsiteId = (int) (DB::table('chatbot_widget_tokens')
-            ->where('id', (int) ($session->widget_token_id ?? 0))
-            ->value('website_id') ?? 0);
+        // RISK-0118 (2026-08-29) — the SESSION's website (bound at start from the visitor's host) is
+        // the canonical scope; then the token's website; then the page_url match. Retrieval is STRICT
+        // to that website (no workspace-level fallback): Website A's visitor never sees Website B's
+        // knowledge. Sarah888 stays workspace-wide by design; the chatbot does not.
+        $kbWebsiteId = (int) ($session->website_id ?? 0);
+        if ($kbWebsiteId <= 0) {
+            $kbWebsiteId = (int) (DB::table('chatbot_widget_tokens')
+                ->where('id', (int) ($session->widget_token_id ?? 0))
+                ->value('website_id') ?? 0);
+        }
         if ($kbWebsiteId <= 0 && $website && ! empty($website->id)) {
             $kbWebsiteId = (int) $website->id;
         }

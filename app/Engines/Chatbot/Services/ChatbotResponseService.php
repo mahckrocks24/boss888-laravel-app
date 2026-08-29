@@ -798,10 +798,17 @@ class ChatbotResponseService
             'metadata'=> [
                 'chatbot_session_id' => $sessionId,
                 'page_url'           => $session->page_url,
+                'website_id'         => $session->website_id ?? null,
                 'first_message'      => $this->firstUserMessage($sessionId),
             ],
             'tags' => ['chatbot888'],
         ]);
+        // RISK-0118 — the lead carries the website it came from (provenance, CRM filtering).
+        try {
+            if (! empty($session->website_id) && \Illuminate\Support\Facades\Schema::hasColumn('leads', 'website_id')) {
+                DB::table('leads')->where('id', $lead->id)->update(['website_id' => (int) $session->website_id]);
+            }
+        } catch (\Throwable $e) { /* provenance is best-effort; the lead itself is saved */ }
 
         DB::table('notes')->insert([
             'workspace_id' => $workspaceId,

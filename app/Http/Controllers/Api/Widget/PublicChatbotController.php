@@ -144,8 +144,15 @@ class PublicChatbotController
             'fingerprint' => 'nullable|string|max:128',
         ]);
 
+        // RISK-0118 — bind the session to the website the visitor is actually on (provenance).
+        // Order: the host the widget is served from (Origin/Referer/page_url) > the token's website >
+        // the workspace's only website. NULL only when nothing resolves (multi-site + unknown host).
+        $websiteId = $this->resolveWebsiteId($r, $wsId, (string) ($data['page_url'] ?? ''));
+        if ($websiteId <= 0 && ! empty($tokenRow->website_id)) $websiteId = (int) $tokenRow->website_id;
+
         $sessionId = DB::table('chatbot_sessions')->insertGetId([
             'workspace_id'         => $wsId,
+            'website_id'           => $websiteId > 0 ? $websiteId : null,
             'widget_token_id'      => $tokenRow->id,
             'page_url'             => $data['page_url'] ?? null,
             'visitor_fingerprint'  => $data['fingerprint'] ?? null,
@@ -301,6 +308,29 @@ class PublicChatbotController
      * Validate widget token + Origin header in one shot. Returns
      * [tokenRow, null] on success or [null, JsonResponse] on failure.
      */
+    /** RISK-0118 — which website of this workspace is the visitor on? 0 when it cannot be told. */
+    private function resolveWebsiteId(Request $r, int $wsId, string $pageUrl = ''): int
+    {
+        $hosts = [];
+        foreach ([$r->header('Origin'), $r->header('Referer'), $pageUrl] as $u) {
+            if (! is_string($u) || $u === '') continue;
+            $h = strtolower((string) parse_url($u, PHP_URL_HOST));
+            if ($h !== '') $hosts[] = preg_replace('/^www\./', '', $h);
+        }
+        $platform = ['levelupgrowth.io', 'staging.levelupgrowth.io'];
+        foreach (array_unique($hosts) as $h) {
+            if (in_array($h, $platform, true)) continue;
+            $row = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')
+                ->where(function ($q) use ($h) {
+                    $q->where('subdomain', $h)->orWhere('subdomain', explode('.', $h)[0])
+                      ->orWhere('custom_domain', $h)->orWhere('custom_domain', 'www.' . $h);
+                })->value('id');
+            if ($row) return (int) $row;
+        }
+        $only = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->pluck('id');
+        return $only->count() === 1 ? (int) $only->first() : 0;
+    }
+
     private function authToken(Request $r): array
     {
         $plain = $r->header('X-CHATBOT-TOKEN');
@@ -312,9 +342,9 @@ class PublicChatbotController
             return [null, response()->json(['success' => false, 'error' => 'TOKEN_INVALID'], 401)];
         }
 
-        // Domain origin check — fail-closed.
+        // Domain origin check — fail-closed. RISK-0118: Referer is the fallback for same-origin GETs.
         $origin = $r->header('Origin');
-        if (! $this->tokens->originAllowed($tokenRow, $origin)) {
+        if (! $this->tokens->originAllowed($tokenRow, $origin, $r->header('Referer'))) {
             Log::info('[chatbot] origin denied', [
                 'token_id' => $tokenRow->id,
                 'origin'   => $origin,

@@ -283,7 +283,10 @@ class ChatbotKnowledgeService
         // match THAT website's chunks plus legacy workspace-level chunks
         // (website_id NULL) as a fallback — so each website's chatbot answers
         // from its own knowledge base without breaking pre-migration data.
-        $webSql = $websiteId ? ' AND (website_id = ? OR website_id IS NULL)' : '';
+        // RISK-0118 (2026-08-29) — STRICT: a website-scoped session reads only its own chunks.
+        // Workspace-level (NULL) chunks were back-filled to the single website of single-site
+        // workspaces; in a multi-site workspace an unassigned source is not shared by accident.
+        $webSql = $websiteId ? ' AND website_id = ?' : '';
 
         // FULLTEXT NATURAL LANGUAGE
         try {
@@ -316,9 +319,7 @@ class ChatbotKnowledgeService
         $q = DB::table('chatbot_knowledge_chunks')
             ->where('workspace_id', $workspaceId);
         if ($websiteId) {
-            $q->where(function ($w) use ($websiteId) {
-                $w->where('website_id', $websiteId)->orWhereNull('website_id');
-            });
+            $q->where('website_id', $websiteId);
         }
         foreach ($tokens as $tok) {
             $q->where('chunk_text', 'like', '%' . $tok . '%');

@@ -98,14 +98,47 @@ class ChatbotWidgetTokenService
      * true if the origin matches any allowed entry exactly (host comparison).
      * If allowed_domains is empty → reject (fail-closed, no wildcard).
      */
-    public function originAllowed(object $tokenRow, ?string $originHeader): bool
+    /**
+     * RISK-0118 / chatbot custom-domain 403 (2026-08-29).
+     * - Same-origin GETs from the baked widget on a customer's own domain carry NO Origin header;
+     *   the check was fail-closed on Origin alone, so every custom-domain visitor got 403
+     *   DOMAIN_NOT_ALLOWED on /config. Referer is now the fallback.
+     * - "www." is normalised (www.chefredraymundo.com was refused while chefredraymundo.com passed).
+     * - A host that maps to a non-deleted website of the token's workspace (subdomain / custom
+     *   domain) is allowed even if the token's allow-list predates that domain; a website-bound
+     *   token accepts only ITS website's hosts. Tenancy-bound, deterministic, no wildcard.
+     */
+    public function originAllowed(object $tokenRow, ?string $originHeader, ?string $refererHeader = null): bool
     {
-        if (empty($originHeader)) return false;
-        $originHost = $this->normaliseDomain($originHeader);
+        $originHost = null;
+        if (! empty($originHeader))  $originHost = $this->normaliseDomain($originHeader);
+        if ($originHost === null && ! empty($refererHeader)) $originHost = $this->normaliseDomain($refererHeader);
         if ($originHost === null) return false;
+        $bare = preg_replace('/^www\./i', '', $originHost);
+
         $allowed = json_decode($tokenRow->allowed_domains_json ?: '[]', true) ?: [];
-        if (empty($allowed)) return false;
-        return in_array($originHost, $allowed, true);
+        $allowedBare = array_map(static fn ($d) => preg_replace('/^www\./i', '', strtolower((string) $d)), $allowed);
+        if (in_array($originHost, $allowed, true) || in_array($bare, $allowedBare, true)) return true;
+
+        // Workspace websites are an authoritative allow-list for this tenant.
+        try {
+            $q = \Illuminate\Support\Facades\DB::table('websites')
+                ->where('workspace_id', (int) $tokenRow->workspace_id)
+                ->whereNull('deleted_at');
+            if (! empty($tokenRow->website_id)) $q->where('id', (int) $tokenRow->website_id);
+            foreach ($q->get(['subdomain', 'custom_domain']) as $w) {
+                $hosts = [];
+                foreach ([(string) $w->subdomain, (string) $w->custom_domain] as $h) {
+                    $h = strtolower(trim($h));
+                    if ($h === '') continue;
+                    $hosts[] = $h;
+                    if (! str_contains($h, '.')) $hosts[] = $h . '.levelupgrowth.io';
+                }
+                $hosts = array_map(static fn ($h) => preg_replace('/^www\./i', '', $h), $hosts);
+                if (in_array($bare, $hosts, true)) return true;
+            }
+        } catch (\Throwable $e) { /* fail closed below */ }
+        return false;
     }
 
     public function revoke(int $tokenId): void

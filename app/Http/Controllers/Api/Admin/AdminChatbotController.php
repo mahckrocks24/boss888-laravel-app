@@ -94,6 +94,22 @@ class AdminChatbotController
         ]);
     }
 
+    /**
+     * RISK-0118 (2026-08-29) — which website does a knowledge source belong to?
+     * explicit website_id (must be this workspace's) > the workspace's only website > null.
+     * In a multi-site workspace the caller must choose (WEBSITE_REQUIRED) — never shared by accident.
+     * @return array{0:?int,1:?string}
+     */
+    private function websiteForSource(Request $r, int $wsId): array
+    {
+        $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->pluck('id')->map(fn ($i) => (int) $i)->all();
+        $given = (int) $r->input('website_id', 0);
+        if ($given > 0) return in_array($given, $sites, true) ? [$given, null] : [null, 'WEBSITE_NOT_IN_WORKSPACE'];
+        if (count($sites) === 1) return [$sites[0], null];
+        if (count($sites) === 0) return [null, null];
+        return [null, 'WEBSITE_REQUIRED'];
+    }
+
     public function uploadKnowledge(Request $r): JsonResponse
     {
         $wsId = $this->wsId($r);
@@ -118,7 +134,9 @@ class AdminChatbotController
         }
 
         try {
-            $sourceId = $this->kb->ingestFile($wsId, $r->file('file'), $r->input('label'), $r->input('website_id') !== null ? (int) $r->input('website_id') : null);
+            [$__wid, $__werr] = $this->websiteForSource($r, (int) $wsId);
+            if ($__werr) return response()->json(['success' => false, 'error' => $__werr, 'message' => 'Choose which website this knowledge belongs to.'], 422);
+            $sourceId = $this->kb->ingestFile($wsId, $r->file('file'), $r->input('label'), $__wid);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'error' => 'VALIDATION', 'message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
@@ -136,12 +154,17 @@ class AdminChatbotController
         $wsId = $this->wsId($r);
         if ($denial = $this->planDeny($wsId)) return $denial;
 
+        // The SPA's Knowledge tab sent `title`; the contract required `label` -> every add failed 422
+        // and the tab was dead UI. Accept both.
+        if (! $r->filled('label') && $r->filled('title')) $r->merge(['label' => $r->input('title')]);
         $data = $r->validate([
             'label' => 'required|string|max:255',
             'text'  => 'required|string|max:200000',
             'website_id' => 'nullable|integer',    // 2026-07-02 — per-website KB tagging
         ]);
-        $sourceId = $this->kb->ingestText($wsId, $data['label'], $data['text'], isset($data['website_id']) ? (int) $data['website_id'] : null);
+        [$__wid, $__werr] = $this->websiteForSource($r, (int) $wsId);
+        if ($__werr) return response()->json(['success' => false, 'error' => $__werr, 'message' => 'Choose which website this knowledge belongs to.'], 422);
+        $sourceId = $this->kb->ingestText($wsId, $data['label'], $data['text'], $__wid);
         return response()->json([
             'success' => true,
             'data'    => DB::table('chatbot_knowledge_sources')->where('id', $sourceId)->first(),
@@ -153,14 +176,18 @@ class AdminChatbotController
         $wsId = $this->wsId($r);
         if ($denial = $this->planDeny($wsId)) return $denial;
 
-        $sources = DB::table('chatbot_knowledge_sources')
-            ->where('workspace_id', $wsId)
-            ->orderByDesc('created_at')
-            ->get(['id','label','source_type','mime_type','size_bytes','chunk_count','status','error_message','created_at']);
+        // RISK-0118 — each source is shown with the website it belongs to; websites listed for the picker.
+        $sources = DB::table('chatbot_knowledge_sources as s')
+            ->leftJoin('websites as w', 'w.id', '=', 's.website_id')
+            ->where('s.workspace_id', $wsId)
+            ->orderByDesc('s.created_at')
+            ->get(['s.id','s.label','s.source_type','s.mime_type','s.size_bytes','s.chunk_count','s.status','s.error_message','s.created_at','s.website_id','w.name as website_name']);
+        $websites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->orderBy('id')->get(['id','name']);
         return response()->json([
             'success' => true,
             'data'    => [
                 'sources'   => $sources,
+                'websites'  => $websites,
                 'doc_count' => $sources->count(),
                 'doc_limit' => $this->gate->chatbotKbDocLimit($wsId),
             ],
