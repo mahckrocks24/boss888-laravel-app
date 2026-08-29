@@ -442,6 +442,8 @@
   }
 
   function siteIsLive(s) {
+    // INF-1 (2026-08-29): a connected external site (WordPress via the plugin) is live at its own address.
+    if (s && siteOrigin(s) === 'external') { return String(s.connector_status || '') === 'connected'; }
     return (s && (s.status === 'published' || s.publish_state === 'published')) && !!(s && s.subdomain);
   }
 
@@ -450,6 +452,8 @@
   function siteAddress(s) {
     if (s && s.custom_domain && Number(s.domain_verified) === 1) { return s.custom_domain; }
     if (s && s.subdomain) { return String(s.subdomain).replace(/^https?:\/\//, ''); }
+    // INF-1: an external site's address is where the plugin registered it from.
+    if (s && s.external_url) { return String(s.external_url).replace(/^https?:\/\//, '').replace(/\/+$/, ''); }
     return null;
   }
 
@@ -473,7 +477,14 @@
   // Customer hosting-tier vocabulary (never raw backend states).
   function hostingTier(s, origin, live) {
     if (origin === 'external' && !live) { return { label: 'Setup in progress', tone: 'var(--am)' }; }
+    // INF-1: an external site is hosted where it already lives — never claim Included Hosting for it.
+    if (origin === 'external') { return { label: 'Hosted elsewhere', tone: 'var(--t2)' }; }
     return { label: 'Included Hosting', tone: 'var(--t2)' };
+  }
+  // INF-1: the scheme an external site was registered with (https → SSL is theirs, http → not secured).
+  function externalScheme(s) {
+    var u = String((s && s.external_url) || '');
+    return /^https:/i.test(u) ? 'https' : (/^http:/i.test(u) ? 'http' : 'https');
   }
   function lifecycleState(s, origin, live) {
     if (live) { return { label: 'Live', tone: 'var(--ac)' }; }
@@ -543,7 +554,9 @@
       : '<span style="font:400 13px var(--fb);color:var(--t3);">No address yet</span>';
 
     var facts = '<div style="display:flex;flex-wrap:wrap;gap:var(--sp-4);margin-top:9px;">' +
-      factLine(live, live ? 'SSL secured' : 'SSL when live') +
+      (origin === 'external'
+        ? factLine(externalScheme(s) === 'https', externalScheme(s) === 'https' ? 'SSL on your site' : 'No SSL (http)')
+        : factLine(live, live ? 'SSL secured' : 'SSL when live')) +
       factLine(hasCustom, hasCustom ? ('Custom domain · ' + s.custom_domain) : 'No custom domain yet') +
       factLine(origin === 'native' || live, tier.label) +
       '</div>';
@@ -556,7 +569,7 @@
       primary = '<button class="infra-manage infra-btn" data-site="' + esc(s.id) + '" style="' + btnStyle('primary') + '">Continue setup</button>';
     } else {
       primary = '<button class="infra-manage infra-btn" data-site="' + esc(s.id) + '" style="' + btnStyle('primary') + '">Manage</button>';
-      secondary = '<a class="infra-btn" href="https://' + esc(addr) + '" target="_blank" rel="noopener" style="' + btnStyle() + ';text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Open</a>';
+      secondary = '<a class="infra-btn" href="' + (origin === 'external' ? externalScheme(s) : 'https') + '://' + esc(addr) + '" target="_blank" rel="noopener" style="' + btnStyle() + ';text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Open</a>';
     }
 
     return '<div class="infra-site-row" data-site="' + esc(s.id) + '" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:var(--sp-5);cursor:pointer;transition:border-color var(--dur-fast) var(--ease-out);">' +
