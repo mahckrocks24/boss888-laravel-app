@@ -24,13 +24,15 @@
 (function () {
   'use strict';
 
-  var SCOPE_VERSION = 'w6-2026-07-22';
+  var SCOPE_VERSION = 'dec0028-social-2026-08-29'; // bump purges cached rosters/actions once
 
   /* Views a customer may never reach. */
+  /* DEC-0028 (2026-08-25) put SOCIAL back in launch; RISK-0099 (2026-08-29) applied it here —
+   * this file was the third of four un-mirrored layers that kept social invisible. */
   var REMOVED_VIEWS = [
-    'social', 'mentions', 'marketing', 'campaigns', 'automation',
+    'mentions', 'marketing', 'campaigns', 'automation',
     'inbox', 'engagement', 'listening', 'competitors',
-    'publisher', 'content-publisher', 'composer', 'social-calendar'
+    'publisher', 'content-publisher'
   ];
 
   /* Where a removed view sends the user instead. Never a dead end. */
@@ -38,12 +40,7 @@
 
   /* Tools/actions that must never render as a quick action or chip. */
   var REMOVED_ACTIONS = [
-    'create_post', 'social_create_post', 'update_post', 'list_posts',
-    'schedule_post', 'social_schedule_post', 'social_schedule',
-    'publish_post', 'social_publish_post', 'get_queue',
-    'record_social_analytics', 'social_analytics',
-    'social_ai_post', 'ai_generate_social_post', 'social_image', 'social_image_gen',
-    'hashtag_suggestions', 'generate_hashtags', 'social_platform_adapt',
+    /* social actions restored (DEC-0028) */
     'create_campaign', 'update_campaign', 'delete_campaign', 'list_campaigns',
     'schedule_campaign', 'send_campaign', 'create_automation', 'toggle_automation',
     'ai_campaign_copy', 'create_template', 'list_templates', 'update_template',
@@ -54,23 +51,24 @@
     'reply_comment', 'manage_inbox', 'scan_watchlist', 'competitor_monitor',
     /* Publisher — built, tested, but not customer-visible until provider proof. */
     'publisher_create_draft', 'publisher_publish', 'publisher_schedule',
-    'publisher_connect', 'connect_social_account'
+    'publisher_connect'
   ];
 
   /* Agents removed from the product. Never assignable, never rendered as available. */
   var REMOVED_AGENTS = [
-    'marcus', 'jordan', 'tyler', 'zara', 'zoe', 'maya',
+    /* marcus restored (DEC-0028) — mirrors LaunchScopePolicy::REMOVED_AGENTS */
+    'jordan', 'tyler', 'zara', 'zoe', 'maya',
     'vera', 'kai', 'chris', 'leo'
   ];
 
   /* Nav element ids to strip, and any label text that betrays a removed feature. */
   var REMOVED_NAV_IDS = [
-    'ni-social', 'ni-mentions', 'ni-marketing', 'ni-automation',
+    'ni-mentions', 'ni-marketing', 'ni-automation',
     'ni-campaigns', 'ni-inbox', 'ni-engagement', 'ni-publisher'
   ];
 
   var REMOVED_LABEL_RX = new RegExp(
-    '^\\s*(social(\\s*media)?|social\\s*calendar|social\\s*composer|mentions|marketing' +
+    '^\\s*(mentions|marketing' +
     '|marketing\\s*automation|campaigns?|engagement|inbox|listening|competitors?' +
     '|email\\s*(marketing|campaigns?)|newsletters?|sequences?|publisher|content\\s*publisher)\\s*$',
     'i'
@@ -161,7 +159,7 @@
    * The source has since been cleaned, so this is defence in depth: it also
    * catches anything re-introduced by a stale cached bundle or a server-
    * supplied roster. */
-  var REMOVED_GOALS = ['social', 'email', 'newsletter', 'campaign'];
+  var REMOVED_GOALS = ['email', 'newsletter', 'campaign'];
 
   function elMentionsRemovedAgent(el) {
     var oc = el.getAttribute && el.getAttribute('onclick') || '';
@@ -248,7 +246,7 @@
       /* An onboarding goal naming a removed capability is neutralised, not
        * deleted wholesale — the rest of the user's onboarding survives. */
       var goal = lc(localStorage.getItem('lu_ob_goal'));
-      if (goal && /social|campaign|newsletter|email|post|engagement|follower/.test(goal)) {
+      if (goal && /campaign|newsletter|email/.test(goal)) {
         localStorage.removeItem('lu_ob_goal');
       }
 
@@ -256,7 +254,7 @@
       ['lu_quick_actions', 'lu_cached_actions', 'lu_command_actions'].forEach(function (k) {
         var raw = localStorage.getItem(k);
         if (!raw) return;
-        if (/create_post|publish_post|schedule_post|send_campaign|create_campaign|generate_hashtags/.test(raw)) {
+        if (/send_campaign|create_campaign/.test(raw)) {
           localStorage.removeItem(k);
         }
       });

@@ -1268,24 +1268,34 @@ $withCorr = function (array $meta) use ($corr) {
                 . "address the owner by your own name or by any specialist agent's name.\n\n";
 
             $identityBlock .= "" 
+                // DEC-0028 (2026-08-25) / RISK-0099 (2026-08-29): SOCIAL IS IN THE PRODUCT. This block
+                // was the fifth un-mirrored launch-scope layer — Sarah told a paying customer "Social
+                // media posting and management aren't part of the current LevelUp Growth product" and
+                // queued an unrequested blog article instead (task 31824). Email marketing stays out.
+                // Every existing conversation carries the old refusal ("Social media posting isn't part
+                // of the current LevelUp Growth product") — the folded history reproduced it verbatim
+                // even after the rules changed (ws 999993, 12:04 UTC). The rule below outranks history.
+                . "HISTORY OVERRIDE (SOCIAL): if earlier messages in this conversation — including your "
+                . "own — said that social media posting, scheduling or Marcus were not part of the product, "
+                . "that was BEFORE 2026-08-29 and is no longer true. Do not repeat or defer to those "
+                . "statements. Social posting IS in the product now; act on social requests normally.\n"
+                . "SOCIAL MEDIA (IN THE PRODUCT): you and Marcus (Social Media Manager) can write, "
+                . "generate, schedule and publish social posts (Facebook, Instagram; LinkedIn/X drafts) "
+                . "and suggest hashtags. Publishing to a platform requires the owner's connected account "
+                . "and their approval in the Review Queue — say so truthfully when it applies; drafting "
+                . "and scheduling need neither. Social listening, comment replies, inbox and competitor "
+                . "monitoring are NOT in the product.\n"
                 . "LAUNCH SCOPE — CAPABILITIES NOT IN THIS PRODUCT (HARD RULE): The current "
-                . "product does NOT include social-media management or email marketing. You must "
-                . "NEVER propose, plan, promise, assign, or create a task for any of these — they "
-                . "will be refused by the system and you would be lying to say you can:\n"
-                . "  - social media campaigns, standalone social posts, social content calendars, "
-                . "post scheduling as a social product, hashtags, social images/videos as automation, "
-                . "engagement/replies/comments, social listening, sentiment, competitor social monitoring;\n"
-                . "  - email campaigns, newsletters, email sequences/drips, email automation, "
-                . "subject-line or email-copy generation, list-building as an email-marketing workflow;\n"
-                . "  - the specialists Marcus, Maya, Zara, Tyler, Zoe, Jordan (social) and Vera, Kai "
-                . "(email) and Chris, Leo — they are NOT available; never mention them as active or "
-                . "assign them work.\n"
-                . "If the owner asks for any of the above, say plainly it is not part of the current "
-                . "product, and redirect ONLY to what IS supported: publish a blog article and share "
-                . "its link, create an image or video directly in Studio, write a blog article, run "
-                . "SEO work, or manage a CRM follow-up task. Do NOT imply you can execute the excluded "
-                . "request. Your team is: SEO (James, Alex, Diana, Ryan, Sofia), content/blog (Priya, "
-                . "Nora), CRM (Elena, Max) — and you.\n\n"
+                . "product does NOT include email marketing. You must NEVER propose, plan, promise, "
+                . "assign, or create a task for: email campaigns, newsletters, email sequences/drips, "
+                . "email automation, subject-line or email-copy generation, list-building as an "
+                . "email-marketing workflow; nor social listening/sentiment/inbox/engagement replies. "
+                . "The specialists Maya, Zara, Tyler, Zoe, Jordan and Vera, Kai, Chris, Leo are NOT "
+                . "available; never mention them as active or assign them work.\n"
+                . "If the owner asks for an excluded capability, say plainly it is not part of the "
+                . "current product and redirect ONLY to what IS supported. Do NOT queue a substitute "
+                . "they did not ask for. Your team is: SEO (James, Alex, Diana, Ryan, Sofia), "
+                . "content/blog (Priya, Nora), social (Marcus), CRM (Elena, Max) — and you.\n\n"
                 . "HARD RULE — YOU DELEGATE, THE OWNER DOES NOT: You are the manager. When "
                 . "the owner names a PROBLEM rather than giving a command ('CTR is low', "
                 . "'rankings dropped', 'you better improve the metadata'), that IS the "
@@ -1815,7 +1825,15 @@ $withCorr = function (array $meta) use ($corr) {
                 // chatJson() is the raw model call. An analytical turn needs the
                 // director's reasoning, not a work order assigning it to James.
                 $assist = null;
-                if (!empty($__shapeIsExecutive)) {
+                // RISK-0099 (2026-08-29): the LIVE runtime's /assistant route (v2.37.9) still runs
+                // assistant-tool-router.detectOutOfScope() on the folded prompt — any social/hashtag/
+                // Marcus wording is answered with "Social-media management … is not part of this
+                // product" before the model sees the identity block. Until the Owner deploys runtime
+                // v2.37.10 (package staged, un-gates social), social turns take the raw-model
+                // (chat_json) path, which the router does not touch. Sarah's own prompt already
+                // carries the DEC-0028 truth.
+                $__socialTurn = (bool) preg_match('/\b(social|instagram|facebook|linkedin|tiktok|twitter|hashtags?|marcus)\b/i', (string) $userPrompt);
+                if (!empty($__shapeIsExecutive) || $__socialTurn) {
                     try {
                         $__cjr = $runtime->chatJson($systemPrompt, $userPrompt, [
                             'workspace_id' => $wsId,
@@ -2596,6 +2614,24 @@ $withCorr = function (array $meta) use ($corr) {
                             $taskAgent = $createTask['agent'];
                             $taskEngine = $createTask['engine'] ?? 'marketing';
                             $taskAction = $createTask['action'] ?? 'manual_task';
+                            // RISK-0099 (2026-08-29): the tool schema names social tools 'social.create_post' /
+                            // 'social.schedule_post' and Sarah emits those ids verbatim; TaskService refused
+                            // them as UNMAPPED_ACTION ("that action isn't available yet", ws 999994). Strip
+                            // the engine prefix and resolve the capability-map alias (create_post →
+                            // social_create_post) before anything else looks at the action.
+                            if (is_string($taskAction) && str_contains($taskAction, '.')) {
+                                [$__engPrefix, $__bareAction] = explode('.', $taskAction, 2);
+                                if ($__bareAction !== '' && ! isset($createTask['engine'])) $createTask['engine'] = $__engPrefix;
+                                $taskAction = $__bareAction !== '' ? $__bareAction : $taskAction;
+                            }
+                            try {
+                                $__cm = app(\App\Core\EngineKernel\CapabilityMapService::class);
+                                if ($__cm->resolve($taskAction) === null) {
+                                    foreach (['social_' . $taskAction, $taskAction] as $__cand) {
+                                        if ($__cm->resolve($__cand) !== null) { $taskAction = $__cand; break; }
+                                    }
+                                }
+                            } catch (\Throwable) { /* leave as-is; TaskService reports unmapped actions truthfully */ }
                             $taskDesc = $createTask['description']
                                 ?? ($createTask['params']['title'] ?? $createTask['params']['topic'] ?? null)
                                 ?? ucfirst(str_replace('_', ' ', $taskAction));

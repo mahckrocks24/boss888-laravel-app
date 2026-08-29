@@ -77,26 +77,12 @@ class LaunchScopeRoutes
         'api/marketing/automations',
         'api/marketing/automations/*',
 
-        // ── Social: the entire engine surface ──
-        // Includes reads (/posts, /accounts, /calendar), writes, the AI
-        // surface (/ai/generate, /ai/hashtags, /ai/image), scheduling and
-        // publishing. The retained blog-article-share sliver does NOT live
-        // here — it is executed server-side by the article-distribution
-        // service and is rebuilt properly in W5.
-        'api/social',
-        'api/social/*',
-
-        // ── Social: OAuth connect + PUBLIC platform callbacks ──
-        // These sit outside auth.jwt because the platform redirects a browser
-        // to them. Left open they would still complete a connection and store
-        // access tokens for a product surface we do not ship.
-        'social/oauth/*',
-        'api/social/oauth/*',
-
-        // ── Studio: publish-to-social ──
-        // Studio itself is RETAINED (image + video generation). Only the
-        // distribute-to-social action is removed.
-        'api/studio/designs/*/publish-social',
+        // ── Social: RE-INCLUDED (DEC-0028, 2026-08-25; RISK-0099 fix 2026-08-29) ──
+        // Social automation is IN launch. This middleware was a fourth launch-scope layer
+        // nobody mirrored when DEC-0028 un-gated the kernel policy: every /api/social/*
+        // call (reads, AI, scheduling, publishing, OAuth connect) still answered
+        // 404 not_in_product, so the engine was dead for customers regardless of the
+        // kernel decision. Social entries removed; mentions + email marketing stay out.
 
         // ── Social listening / mentions (fully removed engine) ──
         'api/mentions',

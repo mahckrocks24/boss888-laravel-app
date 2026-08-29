@@ -235,7 +235,7 @@ class ActionAuthority
                          . 'plan|planning|outline|design)\b[^.!?]{0,40}'
                          . '\b(?:post|article|piece|copy|content|newsletter|campaign)\b/i',
             'label'     => 'sending a broadcast to your list',
-            'refusal'   => "Email and social broadcasting aren't part of the product, so I can't send to your list.",
+            'refusal'   => "Email broadcasting to your list isn't part of the product, so I can't send to it.",
         ],
     ];
 

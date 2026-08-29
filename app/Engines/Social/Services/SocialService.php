@@ -176,6 +176,13 @@ class SocialService
      *
      * Hands vs brain pattern: runtime generates, Laravel persists.
      */
+    /** The social copywriter framing (mirrors the runtime v2.37.10 'social_post' prompt). */
+    public const SOCIAL_SYSTEM_PROMPT = 'You are a senior social media copywriter. Write ONE on-brand post for the given platform. '
+        . 'Ground every choice in the supplied brand context (brand_name, brand_voice, colours, industry, audience) and any learned_patterns. '
+        . 'Honour platform norms: instagram 138-150 characters sweet spot with emojis welcome, facebook 40-80 characters organic, '
+        . 'linkedin 1300-3000 characters professional, twitter/x 280 characters hard limit, tiktok 100-300 characters. '
+        . 'Never mention LevelUp, AI, or that this was generated. Return ONLY JSON: {"content": "...", "hashtags": ["#tag", ...], "best_time": "e.g. Tue 6pm"}.';
+
     public function aiGeneratePost(int $wsId, array $params): array
     {
         // /* phase1-brand-aware */ — resolve workspace brand kit; params override
@@ -239,26 +246,38 @@ class SocialService
                         . implode("\n- ", $context['learned_patterns']);
         }
 
-        $result = $this->runtime->aiRun('social_post', $userPrompt, $context, 600);
+        // RISK-0099 (2026-08-29): the live runtime (v2.37.9) still refuses task 'social_post'
+        // (out_of_launch_scope — W3 removal never propagated after DEC-0028). Its generic
+        // chat_json task IS in scope, so generation runs through it with a social system prompt.
+        // This works against the deployed runtime today; the runtime package v2.37.10 restores
+        // 'social_post' for the agent/tool path as well.
+        $result = $this->runtime->chatJson(self::SOCIAL_SYSTEM_PROMPT, $userPrompt, $context, 600);
 
-        // Runtime returns text — try to parse as JSON if it looks like one
+        // Runtime returns parsed JSON (chatJson) or text — accept both
         $parsed = null;
-        if ($result['success'] && !empty($result['text'])) {
+        if ($result['success'] && !empty($result['parsed']) && is_array($result['parsed'])) {
+            $parsed = $result['parsed'];
+        } elseif ($result['success'] && !empty($result['text'])) {
             $maybe = json_decode($result['text'], true);
             if (is_array($maybe)) $parsed = $maybe;
         }
 
         if ($result['success'] && $parsed) {
-            $post = $this->createPost($wsId, [
-                'platform' => $platform,
-                'content'  => $parsed['content'] ?? '',
-                'hashtags' => $parsed['hashtags'] ?? [],
-            ]);
-            return array_merge($post, [
-                'ai_generated' => true,
+            $copy = [
+                'content'      => (string) ($parsed['content'] ?? ''),
+                'hashtags'     => array_values(array_filter((array) ($parsed['hashtags'] ?? []), 'is_string')),
                 'best_time'    => $parsed['best_time'] ?? null,
+                'platform'     => $platform,
+                'ai_generated' => true,
                 'source'       => 'runtime',
-            ]);
+            ];
+            // RISK-0099 (2026-08-29): the composer drafts INTO the form (persist=false) — the
+            // customer reviews before anything is saved. Sarah/agents keep the persisting default.
+            if (array_key_exists('persist', $params) && filter_var($params['persist'], FILTER_VALIDATE_BOOL) === false) {
+                return $copy + ['post_id' => null, 'status' => 'unsaved'];
+            }
+            $post = $this->createPost($wsId, ['platform' => $platform, 'content' => $copy['content'], 'hashtags' => $copy['hashtags']]);
+            return array_merge($post, $copy);
         }
 
         // Persist whatever we got even if JSON parsing failed — better than evaporating
@@ -309,10 +328,16 @@ class SocialService
                     . "Mix: popular (1M+ posts), medium (100K-1M), and niche (<100K).\n"
                     . "Output ONLY a JSON array of hashtag strings, nothing else. Example: [\"#example1\", \"#example2\"]";
 
-        $result = $this->runtime->aiRun('social_post', $userPrompt, $context, 300);
+        $result = $this->runtime->chatJson(
+            'You are a social media strategist. Return ONLY a JSON object of the shape {"hashtags": ["#tag", ...]} — no prose.',
+            $userPrompt, $context, 300
+        );
 
         $hashtags = [];
-        if ($result['success'] && !empty($result['text'])) {
+        if ($result['success'] && !empty($result['parsed']) && is_array($result['parsed'])) {
+            $list = $result['parsed']['hashtags'] ?? (array_is_list($result['parsed']) ? $result['parsed'] : []);
+            $hashtags = array_values(array_filter((array) $list, 'is_string'));
+        } elseif ($result['success'] && !empty($result['text'])) {
             // Try parsing as JSON array
             $maybe = json_decode($result['text'], true);
             if (is_array($maybe)) {

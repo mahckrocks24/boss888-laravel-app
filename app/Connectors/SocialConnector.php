@@ -96,9 +96,16 @@ class SocialConnector extends BaseConnector
                 'scheduled_at' => 'nullable|date|after:now',
                 'hashtags' => 'nullable|array',
             ],
+            // RISK-0099 (2026-08-29): the Orchestrator validates a TASK payload against these
+            // connector rules (CapabilityMapService::getValidationRules → ParameterResolverService).
+            // The platform's publish task carries post_id (EngineExecutionService dispatches
+            // SocialService::publishPost(post_id)), never draft_id/platform — so every approved
+            // social publish died with "Missing required parameters: draft_id, platform"
+            // (task 31822). Accept the platform's contract; draft_id stays for direct connector use.
             'publish_post' => [
-                'draft_id' => 'required|string',
-                'platform' => 'required|in:facebook,instagram,twitter,linkedin',
+                'post_id'  => 'required_without:draft_id|integer',
+                'draft_id' => 'required_without:post_id|string',
+                'platform' => 'nullable|in:facebook,instagram,twitter,linkedin',
             ],
             default => [],
         };

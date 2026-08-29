@@ -239,6 +239,21 @@ final class ApprovalPolicyRegistry
             return $map[$key] + ['capability_key' => $key];
         }
 
+        // RISK-0099 (2026-08-29): approvals carry the CAPABILITY-MAP key ('social_publish_post',
+        // task 31822 / approval 12314) while this registry is keyed by the runtime action
+        // ('social.publish_post'). RISK-0019 re-keyed the entry one way; the rows come the other
+        // way — so a single-owner workspace was still refused "self_approval_not_permitted" on its
+        // own social publish. Resolve the alias through the capability map before failing closed.
+        try {
+            $cap = app(\App\Core\EngineKernel\CapabilityMapService::class)->resolve(trim((string) $action));
+            if (is_array($cap) && ! empty($cap['action'])) {
+                $alias = trim((string) ($cap['engine'] ?? $engine)) . '.' . $cap['action'];
+                if ($alias !== $key && isset($map[$alias])) {
+                    return $map[$alias] + ['capability_key' => $alias, 'requested_key' => $key];
+                }
+            }
+        } catch (\Throwable) { /* fall through to the strict default */ }
+
         if ($approvalMode === 'protected') {
             // Fail closed: protected but unclassified.
             return self::STRICT_DEFAULT + ['capability_key' => $key];

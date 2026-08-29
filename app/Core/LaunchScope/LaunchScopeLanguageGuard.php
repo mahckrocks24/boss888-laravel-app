@@ -44,10 +44,11 @@ final class LaunchScopeLanguageGuard
     ];
 
     /** Subjects that are removed from the product. */
+    // DEC-0028 / RISK-0099 (2026-08-29): social posting/publishing and the platforms are IN the
+    // product again — "connect your Facebook account" is now a TRUE statement, not banned framing.
     private const REMOVED_SUBJECTS = [
-        'social media', 'social account', 'social channel', 'social posting',
-        'social publishing', 'social', 'instagram', 'facebook', 'tiktok', 'twitter',
-        'linkedin', 'email marketing', 'email campaign', 'newsletter', 'sequence',
+        'social listening', 'social monitoring',
+        'email marketing', 'email campaign', 'newsletter', 'sequence',
         'drip', 'campaign', 'ads', 'ad campaign', 'comment', 'inbox', 'engagement',
         // Bare 'email' last: it only reaches here when no PROTECTED_SUBJECT
         // matched, i.e. the sentence is not about transactional mail.
@@ -55,7 +56,7 @@ final class LaunchScopeLanguageGuard
     ];
 
     private const REMOVED_AGENTS = [
-        'marcus', 'jordan', 'tyler', 'zara', 'zoe', 'maya', 'vera', 'kai', 'chris', 'leo',
+        'jordan', 'tyler', 'zara', 'zoe', 'maya', 'vera', 'kai', 'chris', 'leo', // marcus restored (DEC-0028)
     ];
 
     /** Framing that must never describe a removed capability. */
@@ -78,10 +79,11 @@ final class LaunchScopeLanguageGuard
      * every retained integration (Search Console, WordPress, Stripe, domain) is
      * caught by PROTECTED_SUBJECTS, which is still evaluated first.
      */
+    // DEC-0028 / RISK-0099 (2026-08-29): "connect an account / connect your social" is TRUE product
+    // guidance now that social publishing is in launch — only email-marketing framing stays conclusive.
     private const SELF_SUFFICIENT_FRAMING = [
-        'connect an account', 'connect a social', 'connect your social',
-        'connect your facebook', 'connect your instagram', 'connect your page',
-        'start posting', 'begin posting', 'upgrade to unlock',
+        'connect an email service', 'connect your email service', 'connect your email provider',
+        'connect a mailing list', 'connect your mailing list', 'connect your newsletter',
     ];
 
     /**

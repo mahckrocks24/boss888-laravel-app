@@ -1187,6 +1187,21 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/posts/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(['account_id' => app($s)->addAccount($r->attributes->get('workspace_id'), $r->all())], 201));
+        // RISK-0099 (2026-08-29): the Social UI edits a post (content / platform / hashtags / schedule);
+        // this route never existed — every edit was a 404. Workspace-scoped; a schedule change
+        // moves the post to 'scheduled', clearing it returns it to 'draft'.
+        Route::put('/posts/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $svc = app($s);
+            if (! $svc->getPost($wsId, (int) $id)) return response()->json(['success' => false, 'error' => 'Post not found'], 404);
+            $svc->updatePost((int) $id, $r->only(['content', 'platform', 'hashtags', 'media']), $wsId);
+            if ($r->has('scheduled_at')) {
+                $when = $r->input('scheduled_at');
+                if ($when) $svc->schedulePost((int) $id, (string) $when, $wsId);
+                else \Illuminate\Support\Facades\DB::table('social_posts')->where('id', (int) $id)->where('workspace_id', $wsId)->whereIn('status', ['scheduled', 'draft'])->update(['status' => 'draft', 'scheduled_at' => null, 'updated_at' => now()]);
+            }
+            return response()->json(['success' => true, 'post' => $svc->getPost($wsId, (int) $id)]);
+        });
 
         // Platform settings
         Route::post("/settings/facebook", fn(\Illuminate\Http\Request $r) => response()->json(["message" => "Facebook settings saved", "configured" => false], 200));

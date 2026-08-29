@@ -187,8 +187,13 @@ class CapabilityMapService
         // v1.4.4 (2026-05-30) — repriced 3cr → 1cr to match write_article and
         // peer single-task AI ops. Social post generation is a single LLM call
         // producing one social post; 3× write_article (1cr) was unjustified.
-        'social_create_post'  => ['engine'=>'social',    'connector'=>'social',   'action'=>'create_post',         'approval_mode'=>'review',    'credit_cost'=>1],
-        'social_publish_post' => ['engine'=>'social',    'connector'=>'social',   'action'=>'publish_post',        'approval_mode'=>'protected', 'credit_cost'=>2],
+        // RISK-0099 (2026-08-29): connector=>'social' sent Marcus's tasks straight to SocialConnector::execute()
+        // — an HTTP call to SOCIAL_CONNECTOR_URL (empty) → "cURL error 6: Could not resolve host: api" (task
+        // 31828). Drafting is Laravel-native (SocialService::createPost); publishing goes through
+        // SocialService::publishPost, which calls the platform connector itself and refuses to mark a post
+        // published without a confirmed external id. Both are dispatched internally now.
+        'social_create_post'  => ['engine'=>'social',    'connector'=>null,       'action'=>'create_post',         'approval_mode'=>'review',    'credit_cost'=>1],
+        'social_publish_post' => ['engine'=>'social',    'connector'=>null,       'action'=>'publish_post',        'approval_mode'=>'protected', 'credit_cost'=>2],
         'social_schedule_post'=> ['engine'=>'social',    'connector'=>null,       'action'=>'schedule_post',       'approval_mode'=>'review',    'credit_cost'=>2],
 
         // ── Calendar Engine (internal) ───────────────────────────

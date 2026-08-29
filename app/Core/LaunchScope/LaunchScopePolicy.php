@@ -127,7 +127,7 @@ class LaunchScopePolicy
      * is the only place that matters for truth-in-advertising.
      */
     public const REMOVED_PLAN_FEATURES = [
-        'social', 'social_publishing', 'social_media', 'social_analytics',
+        // social* keys restored (DEC-0028) — they are customer-facing entitlements again.
         'marketing', 'email_campaigns', 'email_marketing', 'newsletters',
         'sequences', 'automation', 'marketing_automation',
         'mentions', 'social_listening', 'publisher', 'content_publisher',

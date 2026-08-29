@@ -231,6 +231,17 @@ class EngineExecutionService
             }
         }
 
+        // RISK-0099 / MONEY-1 (2026-08-29): a customer's OWN click is the review. 'review'-level
+        // work triggered directly from the app by a signed-in user runs; only 'protected'
+        // (publish / delete) still goes through the approval queue. Without this, POST
+        // /social/posts from the composer produced an ORPHAN approval (#12313, task_id NULL — the
+        // fallback path, because 'create_post' is not a capability-map key) and the customer saw
+        // "Action requires approval" for a draft they had just written.
+        $__directUserAction = $source === 'manual' && ! empty($context['user_id']) && empty($agentId);
+        if ($__directUserAction && $approvalLevel === 'review') {
+            $approvalLevel = 'auto';
+        }
+
         if ($approvalLevel !== 'auto') {
             /* b10-orphan-fix */
             // Use TaskService::create instead of ApprovalService::requestIfNeeded.
@@ -241,12 +252,29 @@ class EngineExecutionService
             // line 82 for the established pattern).
             $createdTask = null;
             $approval = null;
+            // RISK-0099 / MONEY-1 (2026-08-29): a customer's OWN click in the app is the
+            // authorisation. Outside a Sarah chat turn SpendContext has no turn and fails closed,
+            // so every paid 'review'-level action a customer triggered by hand (Social "Generate
+            // with AI", hashtags, …) was silently parked in the approval queue and the UI got
+            // AWAITING_APPROVAL for something the user had just asked for. Direct user actions
+            // authorise their own spend and auto-approve the review tier; 'protected' (publish,
+            // delete) still requires the explicit approval step.
+            $__directUserAction = $source === 'manual' && ! empty($context['user_id']) && empty($agentId);
+            if ($__directUserAction) {
+                try {
+                    app(\App\Core\Sarah888\SpendContext::class)->setTurn([
+                        'authorized' => true, 'specifies_action' => true,
+                        'reason' => 'direct user action in the app', 'classification' => 'authorisation',
+                    ], $wsId);
+                } catch (\Throwable) { /* fail closed: TaskService will hold the spend */ }
+            }
             try {
                 $createdTask = $this->taskService->create($wsId, [
                     'engine'          => $engine,
                     'action'          => $action,
                     'payload'         => $params,
                     'source'          => $source,
+                    'auto_approve'    => $__directUserAction ? true : ($params['auto_approve'] ?? null),
                     'priority'        => $priority,
                     'assigned_agents' => $agentId ? [$agentId] : null,
                     // INFRA888 Phase 1D — carry the REQUESTER through so the
