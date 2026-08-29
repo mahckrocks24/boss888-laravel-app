@@ -760,8 +760,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ->where('subscriptions.workspace_id', $wsId)
             ->where('subscriptions.status', 'active')
             ->value('plans.slug') ?? 'free';
-        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $credits = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0) /* CRED-1: pooled ledger balance */;
 
         return response()->json([
             'success'        => true,
@@ -5836,8 +5835,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             ->where('subscriptions.workspace_id', $wsId)
             ->where('subscriptions.status', 'active')
             ->value('plans.slug') ?? 'free';
-        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $credits = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0) /* CRED-1: pooled ledger balance */;
         return response()->json([
             'success'        => true,
             'workspace_id'   => $wsId,
@@ -5858,8 +5856,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
     Route::post('/generate-article', function (\Illuminate\Http\Request $r) {
         $wsId = (int) $r->attributes->get('workspace_id');
         $userId = $r->attributes->get('user_id'); // set by api.key middleware if available
-        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $credits = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0) /* CRED-1: pooled ledger balance */;
         if ($credits < 2) {
             return response()->json([
                 'error'            => 'insufficient_credits',
@@ -5991,16 +5988,14 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         // ── 4. Commit credits: 2cr bundle if image succeeded, 1cr if not ─
         if ($imageFailed) {
             $creditSvc->release($wsId, $reservationRef);
-            \Illuminate\Support\Facades\DB::table('credits')
-                ->where('workspace_id', $wsId)->decrement('balance', 1);
+            app(\App\Core\Billing\CreditService::class)->debit($wsId, (int) 1, 'connector'); /* CRED-1: ledger charge, not a raw decrement */
             $creditsUsed = 1;
         } else {
             // Wave 47 — bundle cost: 3cr when AEO enrichment ran, 2cr base.
             $finalCost = $aeoEnriched ? 3 : 2;
             // The reservation was for 2cr; if AEO ran, debit the extra 1cr.
             if ($aeoEnriched) {
-                \Illuminate\Support\Facades\DB::table('credits')
-                    ->where('workspace_id', $wsId)->decrement('balance', 1);
+                app(\App\Core\Billing\CreditService::class)->debit($wsId, (int) 1, 'connector'); /* CRED-1: ledger charge, not a raw decrement */
             }
             $creditSvc->commit($wsId, $reservationRef, 2);
             $creditsUsed = $finalCost;
@@ -6370,8 +6365,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         }
 
         // Credit pre-check + reserve
-        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $credits = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0) /* CRED-1: pooled ledger balance */;
         if ($credits < 1) {
             return response()->json([
                 'error' => 'insufficient_credits', 'required_credits' => 1,
@@ -6583,8 +6577,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             }
         }
 
-        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $credits = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0) /* CRED-1: pooled ledger balance */;
         if ($credits < 2) {
             return response()->json([
                 'success' => false, 'error' => 'insufficient_credits', 'code' => 'NO_CREDITS',
@@ -6619,8 +6612,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         if (!$optimized) {
             return response()->json(['success' => false, 'error' => 'optimization_failed'], 500);
         }
-        \Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->decrement('balance', 2);
+        app(\App\Core\Billing\CreditService::class)->debit($wsId, (int) 2, 'connector'); /* CRED-1: ledger charge, not a raw decrement */
         return response()->json([
             'success'           => true,
             'content'           => $optimized,
@@ -6813,8 +6805,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             }
         }
         $cost = count($posts);
-        $credits = (int) (\Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $credits = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0) /* CRED-1: pooled ledger balance */;
         if ($credits < $cost) {
             return response()->json([
                 'success' => false, 'error' => 'insufficient_credits', 'code' => 'NO_CREDITS',
@@ -6862,8 +6853,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
 
         $chargeCount = count($results);
         if ($chargeCount > 0) {
-            \Illuminate\Support\Facades\DB::table('credits')
-                ->where('workspace_id', $wsId)->decrement('balance', $chargeCount);
+            app(\App\Core\Billing\CreditService::class)->debit($wsId, (int) $chargeCount, 'connector'); /* CRED-1: ledger charge, not a raw decrement */
         }
 
         return response()->json([
@@ -7229,8 +7219,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         ]);
 
         $IMAGE_COST = 1;
-        $balance = (int) (\Illuminate\Support\Facades\DB::table('credits')
-            ->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $balance = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0) /* CRED-1: pooled ledger balance */;
         if ($balance < $IMAGE_COST) {
             return response()->json([
                 'success'         => false,
