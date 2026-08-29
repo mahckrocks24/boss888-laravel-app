@@ -6138,6 +6138,8 @@ async function _obGenerate() {
       industry:      _ob.industry,
       services:      Array.isArray(_ob.services) ? _ob.services.join(', ') : _ob.services,
       business_desc: _ob.goal,
+      // LEAD-2: the owner's zone — bookings and form times are parsed in it, not UTC.
+      timezone:      (function(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(_) { return ''; } })(),
     });
 
     // Page map by goal (task 2.2)

@@ -39,9 +39,12 @@ use Illuminate\Support\Facades\Route;
 
 // ==== CR-22B MODULE BODY BEGINS - verbatim from routes/api.php, do not edit ====
     // ── Workspace Onboarding ─────────────────────────────────────
-    Route::put('/workspace/settings', function (\Illuminate\Http\Request $r) {
+    Route::match(['put', 'post'], '/workspace/settings', function (\Illuminate\Http\Request $r) {
         // Alias for onboarding save — crm-engine.js and core.js call PUT /workspace/settings
         $ws = \App\Models\Workspace::findOrFail($r->attributes->get('workspace_id'));
+        // LEAD-2: the owner's browser zone (validated IANA id) so bookings/forms are parsed in local time.
+        $tz = (string) $r->input('timezone', '');
+        $tzOk = $tz !== '' && in_array($tz, \DateTimeZone::listIdentifiers(), true);
         $ws->update(array_filter([
             'business_name' => $r->input('business_name'),
             'industry' => $r->input('industry'),
@@ -49,7 +52,11 @@ use Illuminate\Support\Facades\Route;
             'goal' => $r->input('goal') ?: $r->input('business_desc'),
             'location' => $r->input('location'),
         ]));
-        return response()->json(['success' => true]);
+        if ($tzOk) {
+            // timezone is not in Workspace::$fillable — write it directly.
+            \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $ws->id)->update(['timezone' => $tz, 'updated_at' => now()]);
+        }
+        return response()->json(['success' => true, 'timezone' => $tzOk ? $tz : ($ws->timezone ?? 'UTC')]);
     });
 
         Route::post('/workspace/onboarding', function (\Illuminate\Http\Request $r) {

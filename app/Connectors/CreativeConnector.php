@@ -344,10 +344,13 @@ class CreativeConnector extends BaseConnector
                     'Authorization' => "Bearer {$apiKey}",
                     'Content-Type'  => 'application/json',
                 ])
-                ->post($url, [
-                    'model'  => $model,
-                    'prompt' => $prompt,
-                ]);
+                ->post($url, array_filter([
+                    'model'    => $model,
+                    'prompt'   => $prompt,
+                    // VIDEO-3: Hailuo-02 accepts duration 6|10 (seconds). Aspect ratio is NOT a T2V
+                    // parameter on this API — clips come back landscape; the asset keeps the request.
+                    'duration' => in_array((int) ($options['duration'] ?? 0), [6, 10], true) ? (int) $options['duration'] : null,
+                ]));
 
             if ($response->failed()) {
                 \Illuminate\Support\Facades\Log::warning('[MiniMax] Video generation failed', [

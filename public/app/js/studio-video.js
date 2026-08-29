@@ -4208,9 +4208,8 @@
       '<textarea id="sv-ai-prompt" rows="4" class="sv-ai-prompt" style="width:100%;box-sizing:border-box;background:#12151d;border:1px solid #2a2f3a;color:#fff;border-radius:8px;padding:10px;font:inherit;resize:vertical" placeholder="Describe the video, e.g. cinematic wide shot of a sunrise over calm ocean"></textarea>' +
       '<div class="sv-ai-row" style="display:flex;align-items:center;gap:8px;margin-top:10px">' +
         '<label style="min-width:64px;font-size:12px;color:rgba(255,255,255,.6)">Aspect</label>' +
-        '<select id="sv-ai-aspect" style="flex:1;background:#12151d;border:1px solid #2a2f3a;color:#fff;border-radius:6px;padding:7px">' +
-          '<option value="16:9">16:9 \u00b7 Landscape</option><option value="9:16">9:16 \u00b7 Vertical</option><option value="1:1">1:1 \u00b7 Square</option>' +
-        '</select></div>' +
+        '<input type="hidden" id="sv-ai-aspect" value="16:9">' +
+        '<div style="flex:1;font-size:12px;color:rgba(255,255,255,.7);line-height:1.4">16:9 landscape \u2014 what the AI produces. On a vertical or square canvas the clip is fitted to it.</div></div>' +
       '<div class="sv-ai-row" style="display:flex;align-items:center;gap:8px;margin-top:8px">' +
         '<label style="min-width:64px;font-size:12px;color:rgba(255,255,255,.6)">Duration</label>' +
         '<select id="sv-ai-dur" style="flex:1;background:#12151d;border:1px solid #2a2f3a;color:#fff;border-radius:6px;padding:7px">' +
@@ -4223,7 +4222,7 @@
     try {
       var __w = (VE.vd && VE.vd.canvas_width) || 1080, __h = (VE.vd && VE.vd.canvas_height) || 1920;
       var __asp = __w > __h ? '16:9' : (__w < __h ? '9:16' : '1:1');
-      var __sel = document.getElementById('sv-ai-aspect'); if (__sel) __sel.value = __asp;
+      var __sel = document.getElementById('sv-ai-aspect'); if (__sel) __sel.value = '16:9'; void __asp;
     } catch(_){}
     var btn = document.getElementById('sv-ai-generate');
     btn.onclick = function(){

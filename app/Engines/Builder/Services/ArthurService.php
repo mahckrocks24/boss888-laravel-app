@@ -4231,7 +4231,7 @@ PROMPT;
                     ?: ($coreService !== '' ? [$coreService] : []);
                 $bookingHeroSub  = $coreService !== ''
                     ? "Schedule your {$coreService} with {$businessName}."
-                    : "Pick a time that works for you. We'll confirm by email.";
+                    : "Pick a time that works for you and we'll confirm it with you.";
                 return [
                     ['type' => 'header'],
                     ['type' => 'hero',

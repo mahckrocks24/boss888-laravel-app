@@ -657,9 +657,9 @@ class ChatbotResponseService
             $when = $captured['date'] ?? '';
             $time = $captured['time'] ?? '';
             $whenStr = trim($when . ' ' . $time);
-            $msg = "Got it. Booking request for {$whenStr} received — we'll email to confirm.";
+            $msg = "Got it. Your booking request for {$whenStr} has been sent to the team — they'll confirm it with you directly.";
         } else {
-            $msg = ($result['message'] ?? "We've recorded your request. The team will email to confirm.");
+            $msg = ($result['message'] ?? "We've recorded your request and passed it to the team — they'll be in touch to confirm.");
         }
         return [[
             'success' => $result['success'] ?? false,
@@ -941,7 +941,7 @@ class ChatbotResponseService
             Log::warning('[chatbot] booking creation failed; lead persisted', [
                 'workspace_id' => $workspaceId, 'session_id' => $sessionId, 'error' => $e->getMessage(),
             ]);
-            return ['success' => false, 'error' => 'BOOKING_FAILED', 'lead_id' => $leadId, 'message' => 'We received your request and will email to confirm.'];
+            return ['success' => false, 'error' => 'BOOKING_FAILED', 'lead_id' => $leadId, 'message' => 'We received your request and passed it to the team — they will be in touch to confirm.'];
         }
     }
 
@@ -997,7 +997,11 @@ class ChatbotResponseService
     private function parseDateTime(?string $date, ?string $time, int $workspaceId): ?\Carbon\Carbon
     {
         if (empty($date)) return null;
-        $tz = DB::table('chatbot_settings')->where('workspace_id', $workspaceId)->value('timezone') ?: 'UTC';
+        // LEAD-2: the chatbot's own zone, else the workspace zone (set from the owner's browser at onboarding).
+        $tz = DB::table('chatbot_settings')->where('workspace_id', $workspaceId)->value('timezone');
+        if (!$tz || $tz === 'UTC') {
+            $tz = DB::table('workspaces')->where('id', $workspaceId)->value('timezone') ?: 'UTC';
+        }
         try {
             $dt = $time
                 ? \Carbon\Carbon::parse($date . ' ' . $time, $tz)
