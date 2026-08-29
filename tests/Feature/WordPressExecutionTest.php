@@ -110,7 +110,7 @@ class WordPressExecutionTest extends TestCase
     public function duplicate_submission_returns_cached_result()
     {
         $idemKey = hash('sha256', "{$this->testWorkspace->id}:create_post:" .
-            json_encode(['title' => 'Dup Test', 'content' => '<p>X</p>'], JSON_SORT_KEYS));
+            json_encode(['title' => 'Dup Test', 'content' => '<p>X</p>'], 0 /* cc: JSON_SORT_KEYS is not a PHP constant */));
 
         // Pre-create a completed task with this key
         $existing = $this->createTask([

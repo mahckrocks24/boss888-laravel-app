@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Route;
  * closed on every installation today.
  */
 
+// ==== CR-22B MODULE BODY BEGINS - verbatim from routes/api.php, do not edit ====
 Route::prefix('business-email')->group(function () {
 
     // ── read ─────────────────────────────────────────────────────────────────

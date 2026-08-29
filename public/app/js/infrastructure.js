@@ -2621,6 +2621,9 @@
     window.__infraDesiredTab = tab;
     if (typeof window.nav === 'function') { window.nav('infrastructure'); }
     else { window.infraLoad(); }
+    // pp (2026-08-30): when the Hosting view is already mounted, nav() does not call infraLoad() again and
+    // the requested tab was never applied — force a reload that consumes __infraDesiredTab.
+    setTimeout(function () { if (window.__infraDesiredTab && typeof window.infraLoad === 'function') { window.infraLoad(); } }, 250);
   };
 
   // Clean up timers if the SPA tears down the view.

@@ -4923,7 +4923,7 @@ use Illuminate\Support\Facades\Route;
             }
 
             // 2. Credit pre-check (0.5 per page)
-            $cost    = $optimizer->creditPerPage();
+            $cost    = max(1, (int) ceil((float) $optimizer->creditPerPage())); // ww: integer credits — 1 per page
             $credits = (float) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0); // AEO-1b: pooled balance
             if ($credits < $cost) {
                 return response()->json([
@@ -5016,7 +5016,10 @@ use Illuminate\Support\Facades\Route;
 
             // 7. Charge credit ONLY if AI executed (which it did — we're here)
             // AEO-1b: charge through the ledger (pooled workspace, credit_transactions row) — not a raw decrement.
-            app(\App\Core\Billing\CreditService::class)->debit($wsId, $cost, 'seo/meta_optimize');
+            // ww (2026-08-30): the ledger is integer credits; 0.5 cast to (int) charged 0 — the page was free.
+            // Charge the ceiling (1 credit per optimised page) and say so in the response.
+            $__charged = max(1, (int) ceil((float) $cost));
+            app(\App\Core\Billing\CreditService::class)->debit($wsId, $__charged, 'seo/meta_optimize');
 
             return response()->json([
                 'success'           => true,

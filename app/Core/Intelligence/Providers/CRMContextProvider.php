@@ -25,6 +25,12 @@ class CRMContextProvider
         $totalContacts = DB::table('contacts')
             ->where('workspace_id', $workspaceId)
             ->count();
+        // uu (2026-08-30): people captured as LEADS (chatbot, forms, Sarah) are contacts on file too —
+        // the brief used to say "0 total contacts but 4 new this month".
+        $totalLeads = (int) DB::table('leads')
+            ->where('workspace_id', $workspaceId)
+            ->whereNull('deleted_at')
+            ->count();
 
         $recentLeads = (int) DB::table('leads')
             ->where('workspace_id', $workspaceId)
@@ -33,7 +39,8 @@ class CRMContextProvider
 
         return [
             'leads_last_30d'    => $recentContacts + $recentLeads,
-            'total_contacts'    => $totalContacts,
+            'total_contacts'    => $totalContacts + $totalLeads,
+            'total_leads'       => $totalLeads,
             'recent_form_leads' => $recentContacts,
             'recent_crm_leads'  => $recentLeads,
         ];
