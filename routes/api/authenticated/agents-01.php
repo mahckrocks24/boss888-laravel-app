@@ -2465,6 +2465,7 @@ $withCorr = function (array $meta) use ($corr) {
                     }
 
                     $createdTaskIds = []; // Wave 35c — track by 1-based position for depends_on resolution
+                    $__batchWriteTaskId = null; // CONTENT-1 — the write task a same-batch publish offer binds to
                     // 2026-05-22 FIX 7 (Bug B) — buffer task creations into counters
                     // instead of appending a chat line per task. Replaces 30+ near-identical
                     // "Task #N created and assigned to Priya." lines with a single summary.
@@ -2728,6 +2729,26 @@ $withCorr = function (array $meta) use ($corr) {
                                 $__aid = (int) ($ctParams['article_id'] ?? 0);
                                 $__valid = $__aid > 0 && \Illuminate\Support\Facades\DB::table('articles')
                                     ->where('id', $__aid)->where('workspace_id', $wsId)->exists();
+                                // CONTENT-1 (2026-08-29): a VALID id is not a CORRECT id. "Now publish the
+                                // \"Best Croissants in Brighton\" article" came back as article_id 954 (a
+                                // different draft) — valid in the workspace, so the resolver below never ran
+                                // and the wrong article was offered. When the owner quotes a title that matches
+                                // exactly one of their articles, that article is the target, whatever id the
+                                // model guessed.
+                                if ($__valid && preg_match_all('/["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]{6,})["\x{201C}\x{201D}]/u', (string) $content, $__qm) && ! empty($__qm[1])) {
+                                    foreach ($__qm[1] as $__qt) {
+                                        $__qrows = \Illuminate\Support\Facades\DB::table('articles')
+                                            ->where('workspace_id', $wsId)->whereNull('deleted_at')
+                                            ->where('title', 'like', '%' . trim($__qt) . '%')->limit(2)->get(['id', 'title']);
+                                        if (count($__qrows) === 1 && (int) $__qrows[0]->id !== $__aid) {
+                                            \Illuminate\Support\Facades\Log::info('[SarahChat] publish_article: quoted title outranks the model\'s article_id', [
+                                                'workspace_id' => $wsId, 'claimed_id' => $__aid, 'resolved_id' => (int) $__qrows[0]->id, 'title' => $__qrows[0]->title,
+                                            ]);
+                                            $ctParams['article_id'] = $__aid = (int) $__qrows[0]->id;
+                                            break;
+                                        }
+                                    }
+                                }
                                 if (! $__valid) {
                                     // 2026-07-23 — the destructive two-turn flow puts the
                                     // title in turn 1 ("Publish the draft 'X'") and the
@@ -2803,7 +2824,14 @@ $withCorr = function (array $meta) use ($corr) {
                                     $__drop = "{$taskAction}: no valid workspace lead_id ({$__lid})";
                                 }
                             }
-                            if ($__drop === null && in_array($taskAction, ['publish_article', 'delete_article'], true) && (int) ($ctParams['article_id'] ?? 0) <= 0) {
+                            // CONTENT-1 (2026-08-29): "write X and publish it" — the publish offer in the same
+                            // batch has no article_id yet BY DEFINITION (the article is about to be written).
+                            // It is held as an offer bound to the batch's write task (see below); dropping it
+                            // here silently lost the second half of the customer's request.
+                            $__batchWritesArticle = ! empty($__batchWriteTaskId)
+                                || (is_array($newCreateTasks ?? null) && collect($newCreateTasks)->contains(fn ($t) => (($t['action'] ?? '') === 'write_article')));
+                            if ($__drop === null && in_array($taskAction, ['publish_article', 'delete_article'], true) && (int) ($ctParams['article_id'] ?? 0) <= 0
+                                && ! ($taskAction === 'publish_article' && $__batchWritesArticle)) {
                                 $__drop = "{$taskAction} with no valid article_id";
                             }
                             if ($__drop !== null) {
@@ -3069,6 +3097,17 @@ $withCorr = function (array $meta) use ($corr) {
                             // irreversible change to live state is held.
                             if (empty($createPayload['authorized_by_proposal'])
                                 && preg_match('/^(publish|unpublish|delete|remove|destroy|send)_/i', (string) $taskAction)) {
+                                // CONTENT-1 (2026-08-29, EV-0869): "write an SEO article … and publish it" — the
+                                // publish offer was proposed in the same batch as the write task, and the model
+                                // filled article_id with the only article it could see (a stale draft, #954).
+                                // On "yes" the replayed payload published the WRONG article while the new one
+                                // (#955) stayed a draft. When this batch wrote the article, the offer binds to
+                                // that task; the real article_id is resolved at approval time from its result.
+                                if ($taskAction === 'publish_article' && ! empty($__batchWriteTaskId)) {
+                                    $createPayload['payload'] = is_array($createPayload['payload'] ?? null) ? $createPayload['payload'] : [];
+                                    $createPayload['payload']['publish_of_task_id'] = (int) $__batchWriteTaskId;
+                                    unset($createPayload['payload']['article_id']);
+                                }
                                 $__held = app(\App\Core\Sarah888\ChatActionProposal::class)->propose(
                                     (int) $wsId,
                                     array_merge($createPayload, [
@@ -3090,6 +3129,7 @@ $withCorr = function (array $meta) use ($corr) {
                             $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, $createPayload);
                             // Record by position for downstream depends_on references.
                             $createdTaskIds[$ctIndex] = $newTask->id;
+                            if ($taskAction === 'write_article') $__batchWriteTaskId = (int) $newTask->id; // CONTENT-1
                             // progress_message isn't in the TaskService whitelist — set after.
                             $newTask->update(['progress_message' => $taskDesc]);
 

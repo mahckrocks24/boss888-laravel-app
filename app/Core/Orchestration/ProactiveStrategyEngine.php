@@ -171,9 +171,35 @@ class ProactiveStrategyEngine
             // The marker below is what tells the creation gate this is the
             // authorised second turn rather than a fresh unauthorised request;
             // without it the gate would correctly refuse its own proposal.
+            // CONTENT-1 (2026-08-29): a publish offer bound to a same-turn write task publishes THAT
+            // task's article. If the article is not written yet, say so and keep the offer pending.
+            $__boundTaskId = (int) ($payload['payload']['publish_of_task_id'] ?? 0);
+            if ($__boundTaskId > 0 && (($payload['action'] ?? '') === 'publish_article')) {
+                $__wt = DB::table('tasks')->where('id', $__boundTaskId)->where('workspace_id', $wsId)->first();
+                $__wr = $__wt ? json_decode((string) $__wt->result_json, true) : null;
+                $__aid = (int) ($__wr['data']['article_id'] ?? $__wr['article_id'] ?? 0);
+                if ($__aid <= 0 && $__wt && $__wt->status === 'completed') {
+                    $__aid = (int) (DB::table('articles')->where('workspace_id', $wsId)->where('task_id', $__boundTaskId)->value('id') ?? 0);
+                }
+                if ($__aid <= 0) {
+                    return ['success' => false, 'code' => 'ARTICLE_NOT_READY',
+                            'error' => 'The article from that request is not written yet — I will publish it once it is finished. Nothing has been published.'];
+                }
+                $payload['payload']['article_id'] = $__aid;
+                \Illuminate\Support\Facades\Log::info('[Sarah888] publish offer bound to the article it was made for', [
+                    'ws' => $wsId, 'proposal' => $proposalId, 'write_task' => $__boundTaskId, 'article_id' => $__aid,
+                ]);
+            }
+
             $payload['authorized_by_proposal'] = $proposalId;
             $payload['requires_approval']      = false;
             $payload['auto_approve']           = true;
+            // CONTENT-1 (2026-08-29): TaskService's publish category is a HARD gate except when the
+            // caller captured the owner's explicit confirmation for an ARTICLE publish
+            // (user_confirmed, 2026-07-23 Boss decision). This IS that confirmation — the owner's own
+            // "yes" bound to the offer they were shown. Without the flag the approved publish landed
+            // in the Review Queue a second time (task 31842 / approval 12318) and never ran.
+            if (($payload['action'] ?? '') === 'publish_article') $payload['user_confirmed'] = true;
 
             // Audit trail: which authorization produced this task. The flag
             // above is a control signal for the creation gate and never
@@ -194,6 +220,12 @@ class ProactiveStrategyEngine
 
             DB::table('strategy_proposals')->where('id', $proposalId)->update([
                 'status' => 'approved', 'approved_at' => now(), 'updated_at' => now(),
+            ]);
+            // CONTENT-1: the approval row the offer created stayed 'pending' forever (approval 12316) and
+            // showed in the Review Queue after the owner had already said yes in chat. Close it.
+            DB::table('approvals')->where('proposal_id', $proposalId)->where('status', 'pending')->update([
+                'status' => 'approved', 'decision_by' => $userId > 0 ? $userId : null, 'decided_at' => now(),
+                'decision_note' => 'approved in chat', 'task_id' => $task->id, 'updated_at' => now(),
             ]);
 
             return ['success' => true, 'type' => $type, 'task_id' => $task->id,
