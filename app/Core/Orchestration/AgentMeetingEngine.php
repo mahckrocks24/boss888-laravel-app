@@ -1020,12 +1020,19 @@ class AgentMeetingEngine
                 $parts[] = "SEO: no audit yet";
             }
 
-            if ($crm['leads_last_30d'] > 0 || $crm['total_contacts'] > 0) {
-                $parts[] = "CRM: {$crm['total_contacts']} total contacts, {$crm['leads_last_30d']} new in last 30 days";
+            $__leads30 = (int) ($crm['leads_last_30d'] ?? 0);
+            $__contacts = (int) ($crm['total_contacts'] ?? 0);
+            if ($__leads30 > 0 || $__contacts > 0) {
+                // MEET-2: say what the numbers are (contacts vs new leads) so "0 total contacts but 4 new" cannot read as a contradiction.
+                $parts[] = "CRM: {$__contacts} contacts on file, {$__leads30} new leads in last 30 days";
             }
 
-            if ($social['social_posts_30d'] > 0 || $social['social_published_total'] > 0) {
-                $parts[] = "Social: {$social['social_posts_30d']} posts in last 30 days, {$social['social_published_total']} published lifetime";
+            // MEET-2 (2026-08-29): the social provider can be absent/partial (launch scope, provider
+            // failure) — read defensively instead of aborting the whole aggregation on an undefined key.
+            $__sp30 = (int) ($social['social_posts_30d'] ?? 0);
+            $__spTot = (int) ($social['social_published_total'] ?? 0);
+            if ($__sp30 > 0 || $__spTot > 0) {
+                $parts[] = "Social: {$__sp30} posts in last 30 days, {$__spTot} published lifetime";
             }
 
             if ($content['published_articles'] > 0 || $content['published_websites'] > 0) {

@@ -130,7 +130,17 @@ use Illuminate\Support\Facades\Route;
             return response()->json($result);
         });
 
-        Route::post('/meeting/{id}/advance', function ($id) {
+        // MEET-1 (2026-08-29): id-addressed meeting routes are tenant-scoped. A meeting that is not this
+        // workspace's is answered as not found — never read, advanced, written to or ended.
+        $__ownMeeting = function (\Illuminate\Http\Request $r, $id): bool {
+            $ws = (int) $r->attributes->get('workspace_id');
+            $m  = \Illuminate\Support\Facades\DB::table('meetings')->where('id', (int) $id)->first(['workspace_id']);
+            return $m !== null && $ws > 0 && (int) $m->workspace_id === $ws;
+        };
+        $__meetingNotFound = fn() => response()->json(['success' => false, 'error' => 'Meeting not found.'], 404);
+
+        Route::post('/meeting/{id}/advance', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+            if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             return response()->json($engine->advanceMeeting($id));
         });
@@ -149,20 +159,23 @@ use Illuminate\Support\Facades\Route;
             ));
         });
 
-        Route::get('/meeting/{id}', function ($id) {
+        Route::get('/meeting/{id}', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+            if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             return response()->json($engine->getMeetingTranscript($id));
         });
 
         // User participates in meeting
-        Route::post('/meeting/{id}/message', function (\Illuminate\Http\Request $r, $id) {
+        Route::post('/meeting/{id}/message', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+            if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
             $r->validate(['message' => 'required|string']);
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             return response()->json($engine->userMessage($id, $r->user()->id, $r->input('message')));
         });
 
         // User ends meeting
-        Route::post('/meeting/{id}/end', function (\Illuminate\Http\Request $r, $id) {
+        Route::post('/meeting/{id}/end', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+            if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             return response()->json($engine->endMeeting($id, $r->user()->id));
         });

@@ -39,30 +39,52 @@ use Illuminate\Support\Facades\Route;
 
 // ==== CR-22B MODULE BODY BEGINS - verbatim from routes/api.php, do not edit ====
     // ── Meeting route aliases (JS calls /meeting/*, Laravel has /sarah/meeting/*) ──
+    // MEET-1b (2026-08-29): these aliases are the routes the SPA hits. Tenant-scope every id-addressed
+    // one (a meeting that is not this workspace's is "not found") and price the start like the canonical
+    // /sarah/meeting/start does (8 credits) — it was free through this alias.
+    $__ownMeeting = function (\Illuminate\Http\Request $r, $id): bool {
+        $ws = (int) $r->attributes->get('workspace_id');
+        $m  = \Illuminate\Support\Facades\DB::table('meetings')->where('id', (int) $id)->first(['workspace_id']);
+        return $m !== null && $ws > 0 && (int) $m->workspace_id === $ws;
+    };
+    $__meetingNotFound = fn() => response()->json(['success' => false, 'error' => 'Meeting not found.'], 404);
+
     Route::post('/meeting/start', function (\Illuminate\Http\Request $r) {
+        $_wsId = (int) $r->attributes->get('workspace_id');
+        $_credits = app(\App\Core\Billing\CreditService::class);
+        if (!$_credits->hasBalance($_wsId, 8)) {
+            return response()->json(['success' => false, 'error' => 'Not enough credits — a strategy meeting costs 8 credits.', 'required_credits' => 8], 402);
+        }
         $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
         $goal = $r->input('topic', $r->input('goal', 'Strategy discussion'));
-        return response()->json($engine->startMeeting(
-            $r->attributes->get('workspace_id'), $r->user()->id, $goal, $r->input('agents', [])
-        ));
+        $result = $engine->startMeeting($_wsId, $r->user()->id, $goal, $r->input('agents', []));
+        if (!empty($result['meeting_id']) && empty($result['error'])) {
+            $_credits->debit($_wsId, 8, 'sarah/strategy_meeting');
+            $result['credits_charged'] = 8;
+        }
+        return response()->json($result);
     });
-    Route::get('/meeting/{id}', function ($id) {
+    Route::get('/meeting/{id}', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+        if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
         $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
         return response()->json($engine->getMeetingTranscript($id));
     });
-    Route::post('/meeting/{id}/message', function (\Illuminate\Http\Request $r, $id) {
+    Route::post('/meeting/{id}/message', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+        if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
         $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
         $msg = $r->input('content', $r->input('message', ''));
         return response()->json($engine->userMessage($id, $r->user()->id, $msg));
     });
-    Route::post('/meeting/{id}/wrap', function (\Illuminate\Http\Request $r, $id) {
+    Route::post('/meeting/{id}/wrap', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+        if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
         $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
         return response()->json($engine->endMeeting($id, $r->user()->id));
     });
 
     // ── Meeting status (polled every 4s by frontend) ─────────────
     // Auto-advances meeting on each poll — gives progressive message delivery
-    Route::get('/meeting/{id}/status', function (\Illuminate\Http\Request $r, $id) {
+    Route::get('/meeting/{id}/status', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+        if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
         $meeting = \App\Models\Meeting::findOrFail($id);
         $meta = $meeting->metadata_json ? json_decode($meeting->metadata_json, true) : [];
 
@@ -150,7 +172,8 @@ use Illuminate\Support\Facades\Route;
     });
 
     // ── Meeting pending tasks (called after meeting ends) ────────
-    Route::get('/meeting/{id}/pending-tasks', function (\Illuminate\Http\Request $r, $id) {
+    Route::get('/meeting/{id}/pending-tasks', function (\Illuminate\Http\Request $r, $id) use ($__ownMeeting, $__meetingNotFound) {
+        if (!$__ownMeeting($r, $id)) return $__meetingNotFound();
         $meeting = \App\Models\Meeting::findOrFail($id);
         $wsId = $meeting->workspace_id;
 
