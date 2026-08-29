@@ -189,7 +189,10 @@ use Illuminate\Support\Facades\Route;
             if (! $article) {
                 return response()->json(['error' => 'article_not_found'], 404);
             }
-            if (! empty($article->wp_post_id)) {
+            // WP-3 (2026-08-29): wp_post_id alone is NOT proof of publication — the generation-time
+            // push creates a WordPress DRAFT and records its id. Only a published article with a
+            // WP post id is 'already published'; a draft is promoted below (upsert by article id).
+            if (! empty($article->wp_post_id) && $article->status === 'published') {
                 return response()->json([
                     'success'    => true,
                     'already'    => true,
@@ -279,6 +282,18 @@ use Illuminate\Support\Facades\Route;
                         'is_marketing_blog' => 1,
                         'updated_at'   => now(),
                     ]);
+
+                // WP-3 (2026-08-29): a workspace can run a Builder site AND a connected WordPress
+                // site (WordPress is part of the Websites ecosystem, not a separate product). The
+                // publish reaches both; the WordPress outcome is reported truthfully, never assumed.
+                $__wpSync = app(\App\Engines\Write\Services\WriteService::class)
+                    ->publishArticleToWordPressIfConnected($wsId, $articleId);
+                $__wpOut  = !empty($__wpSync['connected'])
+                    ? ['ok' => (bool) $__wpSync['ok'], 'wp_post_id' => $__wpSync['wp_post_id'], 'url' => $__wpSync['url'], 'error' => $__wpSync['error']]
+                    : null;
+                $__wpMsg  = $__wpOut === null ? ''
+                    : ($__wpOut['ok'] ? ' Also published to your WordPress site' . ($__wpOut['url'] ? ' at ' . $__wpOut['url'] : '') . '.'
+                                      : ' WordPress publish FAILED: ' . ($__wpOut['error'] ?: 'unknown error') . ' — the article is live on your website only.');
 
                 try {
                     $host = $laravelSite->custom_domain ?: $laravelSite->domain ?: $laravelSite->subdomain ?: '';
@@ -493,7 +508,8 @@ use Illuminate\Support\Facades\Route;
                             'article_id'    => $articleId,
                             'published_url' => $publishedUrl,
                             'website_id'    => $laravelSite->id,
-                            'message'       => 'Article published. It is live on your website at ' . $publishedUrl,
+                            'wordpress'     => $__wpOut,
+                            'message'       => 'Article published. It is live on your website at ' . $publishedUrl . $__wpMsg,
                         ]);
                     }
                 } catch (\Throwable $e) {
@@ -507,19 +523,21 @@ use Illuminate\Support\Facades\Route;
                     'success'    => true,
                     'platform'   => 'laravel',
                     'article_id' => $articleId,
-                    'message'    => 'Article published.',
+                    'wordpress'  => $__wpOut,
+                    'message'    => 'Article published.' . $__wpMsg,
                 ]);
             }
 
             // Step 1 — WP path. Site config check (fail fast before mutating state)
-            $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
-                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
-            $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
-                ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+            // WP-3: the connection row (plugin Test connection) is the source of truth; seo_settings
+            // is the pre-WP-1 fallback (resolved inside wpConnectionFor).
+            $__conn        = app(\App\Engines\Write\Services\WriteService::class)->wpConnectionFor($wsId);
+            $siteUrl       = $__conn['site_url'] ?? null;
+            $webhookSecret = $__conn['webhook_secret'] ?? null;
             if (! $siteUrl) {
                 return response()->json([
                     'error'   => 'site_not_configured',
-                    'message' => 'No WordPress site registered for this workspace, and no Laravel-rendered website found. Either connect a WP site in Settings or publish a Builder website first.',
+                    'message' => 'No WordPress site is connected to this workspace, and no published website was found. Connect a WordPress site (Websites → Connect WordPress) or publish a Builder website first.',
                 ], 422);
             }
 
@@ -534,65 +552,24 @@ use Illuminate\Support\Facades\Route;
                     'updated_at'   => now(),
                 ]);
 
-            // Step 3 — push to WordPress via lgsc/v1/create-post
-            $payload = [
-                'title'              => $article->title,
-                'content'            => $article->content,
-                'status'             => 'publish',
-                'meta_title'         => $article->meta_title ?? $article->title,
-                'meta_description'   => $article->meta_description ?? null,
-                'featured_image_url' => $article->featured_image_url ?? null,
-                'levelup_article_id' => $articleId,
-                'secret'             => $webhookSecret ?? '',
-            ];
-            $wpUrl = rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/create-post';
-            try {
-                $response = \Illuminate\Support\Facades\Http::timeout(30)
-                    ->withHeaders(['Content-Type' => 'application/json', 'X-LGSC-Secret' => $webhookSecret ?? ''])
-                    ->post($wpUrl, $payload);
-            } catch (\Throwable $e) {
+            // Step 3+4 (WP-3) — push through WriteService::publishArticleToWordPressIfConnected:
+            // upsert by article id (promotes a generation-time draft), records last_push_* on the
+            // connection row, persists wp_post_id and the seo_content_index row. Never claims success
+            // without a real WordPress post id.
+            $__wp = app(\App\Engines\Write\Services\WriteService::class)->publishArticleToWordPressIfConnected($wsId, $articleId);
+            if (empty($__wp['ok'])) {
+                $__err = (string) ($__wp['error'] ?? 'unknown error');
+                $__unreach = str_contains($__err, 'cURL') || str_contains($__err, 'Connection') || str_contains($__err, 'resolve');
                 return response()->json([
                     'success' => false,
-                    'error'   => 'wp_unreachable',
-                    'message' => 'Could not reach WordPress site: ' . $e->getMessage()
-                              . ' (article status set to published in your library; you can retry the WordPress push later)',
+                    'error'   => $__unreach ? 'wp_unreachable' : 'wp_publish_failed',
+                    'message' => ($__unreach ? 'Could not reach your WordPress site: ' : 'WordPress rejected the post: ') . $__err
+                              . ' (the article is marked published in your library; fix the connection and publish again to retry the WordPress push)',
                 ], 502);
             }
-
-            if (! $response->successful()) {
-                return response()->json([
-                    'success'   => false,
-                    'error'     => 'wp_publish_failed',
-                    'http'      => $response->status(),
-                    'wp_error'  => $response->json(),
-                    'message'   => "WordPress returned HTTP {$response->status()} — check your plugin connection or site logs.",
-                ], 502);
-            }
-
-            $wpResult = $response->json() ?? [];
-            $wpPostId = isset($wpResult['post_id']) && is_numeric($wpResult['post_id'])
-                ? (int) $wpResult['post_id'] : null;
-            $publicUrl = $wpResult['url'] ?? $wpResult['view'] ?? null;
-
-            // Step 4 — persist wp_post_id + sync SCI row to the WP URL
-            if ($wpPostId) {
-                \Illuminate\Support\Facades\DB::table('articles')
-                    ->where('id', $articleId)
-                    ->update(['wp_post_id' => $wpPostId]);
-            }
-            if ($publicUrl) {
-                try {
-                    \Illuminate\Support\Facades\DB::table('seo_content_index')->updateOrInsert(
-                        ['workspace_id' => $wsId, 'url_hash' => hash('sha256', $publicUrl)],
-                        [
-                            'url'        => $publicUrl,
-                            'title'      => $article->title,
-                            'wp_post_id' => $wpPostId,
-                            'updated_at' => now(),
-                        ]
-                    );
-                } catch (\Throwable $e) { /* non-fatal */ }
-            }
+            $wpPostId  = $__wp['wp_post_id'];
+            $publicUrl = $__wp['url'];
+            $wpResult  = ['post_id' => $wpPostId, 'url' => $publicUrl];
 
             // Step 5 — notify the user via the appropriate agent's chat
             // thread. Context-aware routing (Wave 9, 2026-05-18):

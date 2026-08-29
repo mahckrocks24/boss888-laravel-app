@@ -1,0 +1,256 @@
+/* LevelUp Growth SEO Connector — Meta Box. */
+
+.lgsc-panel {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	font-size: 13px;
+	color: #1f2937;
+	padding: 4px 0;
+}
+
+.lgsc-panel .lgsc-row {
+	margin-bottom: 14px;
+}
+
+.lgsc-panel .lgsc-row label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+	color: #374151;
+}
+
+.lgsc-panel .lgsc-input {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid #d1d5db;
+	border-radius: 4px;
+	font-size: 13px;
+	font-family: inherit;
+	box-sizing: border-box;
+	background: #fff;
+	color: #111827;
+}
+
+.lgsc-panel .lgsc-input:focus {
+	outline: none;
+	border-color: #6C5CE7;
+	box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+}
+
+.lgsc-panel .lgsc-counter {
+	font-size: 11px;
+	color: #6b7280;
+	margin-top: 4px;
+	text-align: right;
+}
+
+.lgsc-counter.lgsc-counter-ok    { color: #10b981; }
+.lgsc-counter.lgsc-counter-warn  { color: #f59e0b; }
+.lgsc-counter.lgsc-counter-bad   { color: #dc2626; }
+
+/* Score gauge */
+.lgsc-panel .lgsc-row-score {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 10px 0;
+	border-bottom: 1px solid #e5e7eb;
+	margin-bottom: 16px;
+}
+
+.lgsc-panel .lgsc-gauge {
+	flex: 0 0 auto;
+	width: 90px;
+	height: 90px;
+	border-radius: 50%;
+	background: conic-gradient(#9ca3af 0deg, rgba(0,0,0,0.06) 0deg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.3s ease;
+}
+
+.lgsc-panel .lgsc-gauge-inner {
+	width: 70px;
+	height: 70px;
+	border-radius: 50%;
+	background: #fff;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
+}
+
+.lgsc-panel .lgsc-gauge-value {
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1;
+	color: #111827;
+}
+
+.lgsc-panel .lgsc-gauge-label {
+	font-size: 10px;
+	color: #6b7280;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-top: 4px;
+}
+
+.lgsc-panel .lgsc-gauge-meta {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.lgsc-panel .lgsc-last-analyzed {
+	font-size: 11px;
+	color: #9ca3af;
+}
+
+.lgsc-panel .lgsc-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.lgsc-panel .lgsc-status {
+	font-size: 12px;
+	color: #6b7280;
+}
+
+.lgsc-panel .lgsc-status-ok  { color: #10b981; }
+.lgsc-panel .lgsc-status-err { color: #dc2626; }
+
+/* Section headings */
+.lgsc-panel .lgsc-section {
+	border-top: 1px solid #e5e7eb;
+	margin-top: 14px;
+	padding-top: 12px;
+}
+
+.lgsc-panel .lgsc-section h4 {
+	margin: 0 0 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #374151;
+}
+
+.lgsc-panel .lgsc-empty {
+	font-size: 12px;
+	color: #9ca3af;
+	font-style: italic;
+}
+
+/* Quick wins */
+.lgsc-panel .lgsc-quickwin {
+	border-left: 3px solid #6C5CE7;
+	padding: 6px 10px;
+	background: #f9fafb;
+	margin-bottom: 6px;
+	border-radius: 0 4px 4px 0;
+}
+
+.lgsc-panel .lgsc-quickwin-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+}
+
+.lgsc-panel .lgsc-quickwin-text {
+	font-size: 12px;
+	color: #1f2937;
+	flex: 1;
+}
+
+.lgsc-panel .lgsc-quickwin-fix {
+	font-size: 11px;
+	color: #6b7280;
+	margin-top: 2px;
+}
+
+.lgsc-panel .lgsc-impact {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 8px;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.3px;
+}
+
+/* Link suggestions */
+.lgsc-panel .lgsc-linksug {
+	background: #f9fafb;
+	padding: 8px 10px;
+	margin-bottom: 6px;
+	border-radius: 4px;
+	cursor: pointer;
+	border: 1px solid transparent;
+	transition: border-color 0.15s ease;
+}
+
+.lgsc-panel .lgsc-linksug:hover,
+.lgsc-panel .lgsc-linksug:focus {
+	border-color: #6C5CE7;
+	outline: none;
+}
+
+.lgsc-panel .lgsc-linksug-anchor {
+	font-weight: 600;
+	color: #1f2937;
+	font-size: 12px;
+}
+
+.lgsc-panel .lgsc-linksug-target {
+	font-size: 11px;
+	color: #6b7280;
+	margin-top: 2px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.lgsc-panel .lgsc-linksug-score {
+	font-size: 10px;
+	color: #9ca3af;
+	margin-top: 2px;
+}
+
+/* Setup prompt (not configured) */
+.lgsc-panel .lgsc-setup-prompt {
+	background: #fef3c7;
+	border: 1px solid #fde68a;
+	border-radius: 6px;
+	padding: 14px;
+	color: #78350f;
+}
+
+.lgsc-panel .lgsc-setup-prompt p {
+	margin: 0 0 10px;
+}
+
+/* Dark-mode aware (WP admin doesn't have native dark mode, but adapt to common
+   plugins like WP Dark Mode + system preference). */
+@media (prefers-color-scheme: dark) {
+	body.lgsc-dark .lgsc-panel,
+	body.lgsc-dark .lgsc-panel .lgsc-input {
+		color: #e5e7eb;
+		background: transparent;
+	}
+	body.lgsc-dark .lgsc-panel .lgsc-input {
+		background: #1a1d23;
+		border-color: rgba(255,255,255,.12);
+		color: #e5e7eb;
+	}
+	body.lgsc-dark .lgsc-panel .lgsc-quickwin,
+	body.lgsc-dark .lgsc-panel .lgsc-linksug {
+		background: #2d3748;
+	}
+	body.lgsc-dark .lgsc-panel .lgsc-gauge-inner {
+		background: #1a1d23;
+	}
+	body.lgsc-dark .lgsc-panel .lgsc-gauge-value {
+		color: #f3f4f6;
+	}
+}

@@ -891,7 +891,7 @@ async function _wrSaveContent(showToast) {
 
     _wr.saving = false;
 
-    if (saveBtn) { saveBtn.textContent = ''+window.icon("save",14)+' Save Content'; saveBtn.disabled = false; }
+    if (saveBtn) { saveBtn.innerHTML = ''+window.icon("save",14)+' Save Content'; saveBtn.disabled = false; }
 
     if (res && res.success) {
         _wr.currentItem = res.item;
@@ -936,7 +936,7 @@ async function _wrSaveVersionAction() {
     });
 
     _wr.savingVersion = false;
-    if (versionBtn) { versionBtn.textContent = ''+window.icon("tag",14)+' Save Version'; versionBtn.disabled = false; }
+    if (versionBtn) { versionBtn.innerHTML = ''+window.icon("tag",14)+' Save Version'; versionBtn.disabled = false; }
 
     if (res && res.success) {
         if (res.version) _wr.versions.unshift(res.version);

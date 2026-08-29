@@ -5820,6 +5820,10 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
     Route::get('/plugin/status', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         $apiKeyId = $r->attributes->get('api_key_id');
+        try { // WP-1 heartbeat
+            \Illuminate\Support\Facades\DB::table('wp_site_connections')->where('workspace_id', $wsId)->where('api_key_id', $apiKeyId)
+                ->update(['last_seen_at' => now(), 'plugin_version' => (string) ($r->header('X-LGSC-Version') ?: ''), 'updated_at' => now()]);
+        } catch (\Throwable) {}
         $userId = \Illuminate\Support\Facades\DB::table('api_keys')
             ->where('id', $apiKeyId)->value('user_id');
         $userEmail = $userId
@@ -7012,19 +7016,18 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         }
 
         $ws   = \Illuminate\Support\Facades\DB::table('workspaces')->find($wsId);
-        $plan = $ws ? \Illuminate\Support\Facades\DB::table('plans')
-            ->join('subscriptions', 'plans.id', '=', 'subscriptions.plan_id')
-            ->where('subscriptions.workspace_id', $wsId)
-            ->where('subscriptions.status', 'active')
-            ->select('plans.name', 'plans.slug')
-            ->first() : null;
+        // WP-2: the ENTITLED plan (active|trialing, pooled to the billing workspace) and the real
+        // available balance — the same resolvers the app uses. No separate WordPress ladder.
+        $plan = $ws ? \App\Models\Subscription::entitledPlanFor($wsId) : null;
+        try { $bal = app(\App\Core\Billing\CreditService::class)->getBalance($wsId); } catch (\Throwable) { $bal = ['available' => 0]; }
         $indexed = \Illuminate\Support\Facades\DB::table('seo_content_index')
             ->where('workspace_id', $wsId)->count();
         return response()->json([
             'success'           => true,
             'workspace_name'    => $ws->name ?? 'Unknown',
             'plan'              => $plan->slug ?? 'free',
-            'credits_remaining' => (int) (\Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0),
+            'plan_name'         => $plan->name ?? 'Free',
+            'credits_remaining' => (int) ($bal['available'] ?? 0),
             'seo_pages_indexed' => $indexed,
         ]);
     });
@@ -7314,7 +7317,51 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
                 ['value' => $data['site_name'], 'updated_at' => $now, 'created_at' => $now]
             );
         }
-        return response()->json(['success' => true, 'message' => 'Site registered successfully.']);
+        // WP-1 (2026-08-29, EV-0872): the connection is a first-class row now (wp_site_connections),
+        // bound to the api key that made this call and to the workspace's WordPress website row
+        // (created if the site was never "connected" from the app). seo_settings stays for the
+        // legacy readers above.
+        $__conn = null;
+        try {
+            $host = \App\Models\WpSiteConnection::hostOf($data['site_url']);
+            $websiteId = (int) (\Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')
+                ->where(function ($q) use ($host) { $q->where('external_url', 'like', '%' . $host . '%')->orWhere('custom_domain', $host)->orWhere('domain', $host); })
+                ->value('id') ?: 0);
+            if ($websiteId === 0) {
+                $websiteId = (int) \Illuminate\Support\Facades\DB::table('websites')->insertGetId([
+                    'workspace_id' => $wsId, 'name' => $data['site_name'] ?? $host, 'type' => 'external', 'platform' => 'wordpress',
+                    'external_url' => rtrim($data['site_url'], '/'), 'status' => 'published', 'connector_status' => 'connected',
+                    'created_by' => \Illuminate\Support\Facades\DB::table('api_keys')->where('id', (int) $r->attributes->get('api_key_id'))->value('user_id'),
+                    'created_at' => $now, 'updated_at' => $now,
+                ]);
+            } else {
+                \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['platform' => 'wordpress', 'connector_status' => 'connected', 'updated_at' => $now]);
+            }
+            $__conn = \App\Models\WpSiteConnection::updateOrCreate(
+                ['workspace_id' => (int) $wsId, 'site_host' => $host],
+                [
+                    'website_id'     => $websiteId ?: null,
+                    'api_key_id'     => (int) $r->attributes->get('api_key_id') ?: null,
+                    'site_url'       => rtrim($data['site_url'], '/'),
+                    'site_name'      => $data['site_name'] ?? null,
+                    'webhook_secret' => $data['webhook_secret'],
+                    'plugin_version' => (string) ($r->header('X-LGSC-Version') ?: $r->input('plugin_version') ?: ''),
+                    'wp_version'     => (string) ($r->input('wp_version') ?: ''),
+                    'status'         => \App\Models\WpSiteConnection::STATUS_ACTIVE,
+                    'last_seen_at'   => $now,
+                    'last_error'     => null,
+                ]
+            );
+            if (! empty($__conn->api_key_id)) {
+                \Illuminate\Support\Facades\DB::table('api_keys')->where('id', $__conn->api_key_id)->update(['site_connection_id' => $__conn->id, 'updated_at' => $now]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[connector] register-site connection row failed', ['ws' => $wsId, 'error' => $e->getMessage()]);
+        }
+        return response()->json([
+            'success' => true, 'message' => 'Site registered successfully.',
+            'connection_id' => $__conn?->id, 'website_id' => $__conn?->website_id, 'status' => $__conn?->status,
+        ]);
     });
 
     // Publish article to WP site via lgsc/v1/create-post callback
@@ -7348,17 +7395,27 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             'status' => $data['status'] ?? 'publish',
         ]);
         $wpUrl = rtrim($siteUrl, '/') . '/wp-json/lgsc/v1/create-post';
+        // WP-1: record every push on the connection row (truthful last_push_* for the app + admin).
+        $__pushNote = function (string $status, ?string $err = null) use ($wsId, $siteUrl) {
+            try {
+                \Illuminate\Support\Facades\DB::table('wp_site_connections')->where('workspace_id', $wsId)
+                    ->where('site_host', \App\Models\WpSiteConnection::hostOf((string) $siteUrl))
+                    ->update(['last_push_at' => now(), 'last_push_status' => $status, 'last_error' => $err, 'status' => $status === 'ok' ? 'active' : \Illuminate\Support\Facades\DB::raw("IF(status='billing_suspended','billing_suspended','failed')"), 'updated_at' => now()]);
+            } catch (\Throwable) {}
+        };
         try {
             $response = \Illuminate\Support\Facades\Http::timeout(30)
                 ->withHeaders(['Content-Type' => 'application/json', 'X-LGSC-Secret' => $webhookSecret ?? ''])
                 ->post($wpUrl, $payload);
         } catch (\Throwable $e) {
+            $__pushNote('unreachable', $e->getMessage());
             return response()->json([
                 'error'   => 'wp_unreachable',
                 'message' => 'Could not reach WordPress site: ' . $e->getMessage(),
             ], 502);
         }
         if (!$response->successful()) {
+            $__pushNote('failed', 'HTTP ' . $response->status() . ' ' . substr((string) $response->body(), 0, 300));
             return response()->json([
                 'error'    => 'wp_publish_failed',
                 'message'  => 'WordPress returned HTTP ' . $response->status(),
@@ -7366,6 +7423,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             ], 502);
         }
         $wpResult = $response->json();
+        $__pushNote('ok');
         // Track in seo_content_index
         if (!empty(($wpResult['url'] ?? $wpResult['view'] ?? null))) {
             \Illuminate\Support\Facades\DB::table('seo_content_index')->updateOrInsert(
@@ -7877,6 +7935,28 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
 Route::middleware(['auth.jwt'])->prefix('settings')->group(function () {
 
     // ── API Keys ────────────────────────────────────────────────────────
+    // WP-1 (2026-08-29): the plugin is DELIVERED from the app (the button used to toast "coming
+    // soon"), and the Websites card can show the real connection state.
+    Route::get('/connector-plugin/download', function (\Illuminate\Http\Request $r) {
+        $zip = storage_path('app/plugins/level-up-growth-seo-connector.zip');
+        if (! is_file($zip)) return response()->json(['success' => false, 'error' => 'plugin_not_built', 'message' => 'The plugin package is not available right now.'], 503);
+        return response()->download($zip, 'level-up-growth-seo-connector.zip', ['Content-Type' => 'application/zip']);
+    });
+    Route::get('/connector-plugin/info', function (\Illuminate\Http\Request $r) {
+        $zip = storage_path('app/plugins/level-up-growth-seo-connector.zip');
+        $manifest = storage_path('app/plugins/manifest.json');
+        $m = is_file($manifest) ? (json_decode((string) file_get_contents($manifest), true) ?: []) : [];
+        return response()->json(['success' => true, 'available' => is_file($zip), 'version' => $m['version'] ?? null, 'sha256' => $m['sha256'] ?? null, 'size' => is_file($zip) ? filesize($zip) : 0, 'api_url' => rtrim(config('app.url'), '/') . '/api']);
+    });
+    Route::get('/connector/connections', function (\Illuminate\Http\Request $r) {
+        $wsId = (int) $r->attributes->get('workspace_id');
+        $rows = \Illuminate\Support\Facades\Schema::hasTable('wp_site_connections')
+            ? \Illuminate\Support\Facades\DB::table('wp_site_connections')->where('workspace_id', $wsId)->orderByDesc('updated_at')
+                ->get(['id', 'website_id', 'site_url', 'site_host', 'site_name', 'plugin_version', 'wp_version', 'status', 'last_seen_at', 'last_push_at', 'last_push_status', 'last_error', 'created_at'])
+            : collect();
+        return response()->json(['success' => true, 'connections' => $rows]);
+    });
+
     Route::prefix('api-keys')->group(function () {
 
         // List active keys (no full key text — preview only)

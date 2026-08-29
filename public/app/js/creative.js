@@ -431,7 +431,7 @@ function _crBindGenerate() {
             var hint = document.getElementById('cr-balance-hint');
             if (hint && r.balance !== undefined) {
                 var affordable = r.balance >= totalCredits;
-                hint.textContent = affordable ? '(' + r.balance.toFixed(0) + ' available)' : ''+window.icon("warning",14)+' only ' + r.balance.toFixed(0) + ' available';
+                hint.innerHTML = affordable ? '(' + r.balance.toFixed(0) + ' available)' : ''+window.icon("warning",14)+' only ' + r.balance.toFixed(0) + ' available';
                 hint.style.color = affordable ? 'var(--t3)' : 'var(--rd)';
             }
         }).catch(function(){});
@@ -499,7 +499,7 @@ async function _crGenerate() {
         console.error('[LuCreative] generate:', e);
     } finally {
         _cr.generating = false;
-        if (btn) { btn.disabled = false; btn.textContent = ''+window.icon("ai",14)+' Generate'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = ''+window.icon("ai",14)+' Generate'; }
     }
 }
 
@@ -599,7 +599,7 @@ function _crOnDurationChange(val) {
     var hint = document.getElementById('cr-multi-scene-hint');
     if (hint) hint.style.display = (parseInt(val) > 10) ? 'block' : 'none';
     var btn  = document.getElementById('cr-vid-btn');
-    if (btn) btn.textContent = (parseInt(val) > 10) ? ''+window.icon("video",14)+' Generate Multi-Scene' : ''+window.icon("video",14)+' Generate Video';
+    if (btn) btn.innerHTML = (parseInt(val) > 10) ? ''+window.icon("video",14)+' Generate Multi-Scene' : ''+window.icon("video",14)+' Generate Video';
 }
 
 function _crBindVideo() {
@@ -1382,7 +1382,7 @@ async function _crSaveCreditSettings() {
         );
         var data = await res.json();
         var el = document.getElementById('cr-credit-save-result');
-        if (el) el.textContent = data.success ? ''+window.icon("check",14)+' Credit settings saved' : ''+window.icon("close",14)+' Save failed';
+        if (el) el.innerHTML = data.success ? ''+window.icon("check",14)+' Credit settings saved' : ''+window.icon("close",14)+' Save failed';
         if (data.success) _crToast('Credit settings saved ✓', 'success');
     } catch(e) { _crToast('Save failed: ' + e.message, 'error'); }
 }
@@ -2075,7 +2075,7 @@ window._bldCreativeRun = async function(refineAssetId, refineTweak) {
         console.error('[LuCreative Builder]', e);
     } finally {
         _bcmClearStages();
-        if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = ''+window.icon("ai",14)+' Generate 3 Variations'; }
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = ''+window.icon("ai",14)+' Generate 3 Variations'; }
     }
 };
 

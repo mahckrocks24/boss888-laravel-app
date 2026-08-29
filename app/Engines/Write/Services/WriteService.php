@@ -263,7 +263,18 @@ class WriteService
             \Log::warning('[SEO] Write updateArticle sync failed: ' . $e->getMessage());
         }
 
-        return ['article_id' => $articleId, 'updated' => true];
+        // WP-2 (2026-08-29) — first-time publish in a WordPress-connected workspace publishes INTO
+        // WordPress as well (upsert by article id). Result is returned truthfully; never fatal.
+        $wp = null;
+        if (isset($update['status']) && $update['status'] === 'published' && $article->status !== 'published') {
+            $wp = $this->publishArticleToWordPressIfConnected((int) $article->workspace_id, $articleId);
+        }
+
+        $out = ['article_id' => $articleId, 'updated' => true];
+        if ($wp !== null && !empty($wp['connected'])) {
+            $out['wordpress'] = ['ok' => (bool) $wp['ok'], 'wp_post_id' => $wp['wp_post_id'], 'url' => $wp['url'], 'error' => $wp['error']];
+        }
+        return $out;
     }
 
     public function getArticle(int $wsId, int $id): ?object
@@ -1625,6 +1636,133 @@ class WriteService
      * site not configured) — logs a warning and returns null. The article
      * stays in Laravel and can be re-pushed later via the publish flow.
      */
+    /**
+     * WP-2 (2026-08-29) — the WordPress connection for a workspace, or null when none is active.
+     * Prefers the wp_site_connections row written by the plugin's Test connection (WP-1); falls
+     * back to the legacy seo_settings site_url/webhook_secret pair for pre-WP-1 workspaces.
+     * A 'disconnected' / 'billing_suspended' connection is NOT usable — nothing is pushed.
+     */
+    public function wpConnectionFor(int $wsId): ?array
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('wp_site_connections')) {
+                $row = \Illuminate\Support\Facades\DB::table('wp_site_connections')
+                    ->where('workspace_id', $wsId)
+                    ->whereIn('status', [\App\Models\WpSiteConnection::STATUS_ACTIVE, \App\Models\WpSiteConnection::STATUS_FAILED])
+                    ->orderByDesc('last_seen_at')->orderByDesc('id')->first();
+                if ($row && $row->site_url && $row->webhook_secret) {
+                    return [
+                        'connection_id'  => (int) $row->id,
+                        'site_url'       => rtrim((string) $row->site_url, '/'),
+                        'site_host'      => (string) $row->site_host,
+                        'webhook_secret' => (string) $row->webhook_secret,
+                        'website_id'     => $row->website_id ? (int) $row->website_id : null,
+                    ];
+                }
+                $blocked = \Illuminate\Support\Facades\DB::table('wp_site_connections')->where('workspace_id', $wsId)->exists();
+                if ($blocked) {
+                    return null; // a suspended/disconnected row wins over stale seo_settings
+                }
+            }
+            $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+            $secret = \Illuminate\Support\Facades\DB::table('seo_settings')
+                ->where('workspace_id', $wsId)->where('key', 'webhook_secret')->value('value');
+            if ($siteUrl && $secret) {
+                return ['connection_id' => null, 'site_url' => rtrim((string) $siteUrl, '/'), 'site_host' => \App\Models\WpSiteConnection::hostOf((string) $siteUrl), 'webhook_secret' => (string) $secret, 'website_id' => null];
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[WriteService] wpConnectionFor failed: ' . $e->getMessage());
+        }
+        return null;
+    }
+
+    /** WP-2 — record the outcome of a push on the connection row (truthful status for the app + admin). */
+    private function wpNotePush(int $wsId, array $conn, string $status, ?string $err = null): void
+    {
+        if (empty($conn['connection_id'])) return;
+        try {
+            \Illuminate\Support\Facades\DB::table('wp_site_connections')->where('id', $conn['connection_id'])->update([
+                'last_push_at'     => now(),
+                'last_push_status' => $status,
+                'last_error'       => $err,
+                'status'           => $status === 'ok'
+                    ? \App\Models\WpSiteConnection::STATUS_ACTIVE
+                    : \Illuminate\Support\Facades\DB::raw("IF(status='billing_suspended','billing_suspended','failed')"),
+                'updated_at'       => now(),
+            ]);
+        } catch (\Throwable) {}
+    }
+
+    /**
+     * WP-2 (2026-08-29) — publish an article INTO the connected WordPress site.
+     * Called on the first-time status → 'published' transition (updateArticle), which is the single
+     * path every publish surface funnels through (Sarah chat approval, Review Queue, Write888 editor).
+     * Upserts by levelup_article_id (plugin >= 1.1.0 keeps `_lgsc_article_id`), so a draft pushed at
+     * generation time is promoted rather than duplicated. Returns ['ok'=>bool, 'wp_post_id'=>?int,
+     * 'url'=>?string, 'error'=>?string, 'connected'=>bool] and never throws — the Laravel article is
+     * already published; a WP failure is recorded on the connection row and surfaced truthfully.
+     */
+    public function publishArticleToWordPressIfConnected(int $wsId, int $articleId): array
+    {
+        $conn = $this->wpConnectionFor($wsId);
+        if (!$conn) {
+            return ['ok' => false, 'wp_post_id' => null, 'url' => null, 'error' => null, 'connected' => false];
+        }
+        try {
+            $a = \Illuminate\Support\Facades\DB::table('articles')->where('id', $articleId)->where('workspace_id', $wsId)->first();
+            if (!$a) return ['ok' => false, 'wp_post_id' => null, 'url' => null, 'error' => 'article_not_found', 'connected' => true];
+            $brief = json_decode($a->brief_json ?? '{}', true) ?: [];
+            $tags  = isset($brief['tags']) && is_array($brief['tags']) ? array_values(array_filter(array_map('strval', $brief['tags']))) : [];
+            $cats  = [];
+            if (!empty($a->blog_category)) $cats[] = (string) $a->blog_category;
+            elseif (!empty($brief['category'])) $cats[] = (string) $brief['category'];
+            $payload = [
+                'title'              => $a->title,
+                'content'            => $a->content,
+                'status'             => 'publish',
+                'meta_title'         => $a->meta_title ?: $a->title,
+                'meta_description'   => $a->meta_description ?: ($a->excerpt ?: ''),
+                'featured_image_url' => $a->featured_image_url ?: null,
+                'levelup_article_id' => $articleId,
+                'categories'         => $cats,
+                'tags'               => $tags,
+                'secret'             => $conn['webhook_secret'],
+            ];
+            $r = \Illuminate\Support\Facades\Http::withHeaders(['Content-Type' => 'application/json', 'X-LGSC-Secret' => $conn['webhook_secret']])
+                ->timeout(30)->post($conn['site_url'] . '/wp-json/lgsc/v1/create-post', $payload);
+            if (!$r->successful()) {
+                $err = 'HTTP ' . $r->status() . ' ' . mb_substr((string) $r->body(), 0, 300);
+                $this->wpNotePush($wsId, $conn, 'failed', $err);
+                \Illuminate\Support\Facades\Log::warning('[WriteService] WP publish HTTP error', ['workspace_id' => $wsId, 'article_id' => $articleId, 'error' => $err]);
+                return ['ok' => false, 'wp_post_id' => null, 'url' => null, 'error' => $err, 'connected' => true];
+            }
+            $body = $r->json() ?: [];
+            $wpPostId = isset($body['post_id']) && is_numeric($body['post_id']) ? (int) $body['post_id'] : null;
+            if (!$wpPostId) {
+                $this->wpNotePush($wsId, $conn, 'failed', 'no post_id in WP response');
+                return ['ok' => false, 'wp_post_id' => null, 'url' => null, 'error' => 'no post_id in WP response', 'connected' => true];
+            }
+            $this->wpNotePush($wsId, $conn, 'ok');
+            \Illuminate\Support\Facades\DB::table('articles')->where('id', $articleId)->update(['wp_post_id' => $wpPostId, 'updated_at' => now()]);
+            $url = isset($body['url']) ? (string) $body['url'] : null;
+            if ($url) {
+                try {
+                    \Illuminate\Support\Facades\DB::table('seo_content_index')->updateOrInsert(
+                        ['workspace_id' => $wsId, 'url_hash' => hash('sha256', $url)],
+                        ['url' => $url, 'title' => $a->title, 'updated_at' => now()]
+                    );
+                } catch (\Throwable) {}
+            }
+            \Illuminate\Support\Facades\Log::info('[WriteService] WP publish ok', ['workspace_id' => $wsId, 'article_id' => $articleId, 'wp_post_id' => $wpPostId, 'url' => $url]);
+            return ['ok' => true, 'wp_post_id' => $wpPostId, 'url' => $url, 'error' => null, 'connected' => true];
+        } catch (\Throwable $e) {
+            $this->wpNotePush($wsId, $conn, 'unreachable', $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('[WriteService] WP publish failed (non-fatal)', ['workspace_id' => $wsId, 'article_id' => $articleId, 'error' => $e->getMessage()]);
+            return ['ok' => false, 'wp_post_id' => null, 'url' => null, 'error' => $e->getMessage(), 'connected' => true];
+        }
+    }
+
     private function pushDraftToWordPressIfConnected(int $wsId, int $articleId): ?int
     {
         try {
@@ -1639,20 +1777,14 @@ class WriteService
                 return (int) $a->wp_post_id;
             }
 
-            $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
-                ->where('workspace_id', $wsId)
-                ->where('key', 'site_url')
-                ->value('value');
-            $webhookSecret = \Illuminate\Support\Facades\DB::table('seo_settings')
-                ->where('workspace_id', $wsId)
-                ->where('key', 'webhook_secret')
-                ->value('value');
-
-            // No WP connection configured — Laravel-platform site or unconnected
-            // workspace. Skip silently (no log noise).
-            if (!$siteUrl || !$webhookSecret) {
+            // WP-2 (2026-08-29): the connection row is the source of truth; seo_settings is the
+            // pre-WP-1 fallback. No connection — Laravel-platform site. Skip silently.
+            $conn = $this->wpConnectionFor($wsId);
+            if (!$conn) {
                 return null;
             }
+            $siteUrl       = $conn['site_url'];
+            $webhookSecret = $conn['webhook_secret'];
 
             $payload = [
                 'title'              => $a->title,
@@ -1673,6 +1805,7 @@ class WriteService
                 ->timeout(30)
                 ->post($wpUrl, $payload);
 
+            $this->wpNotePush($wsId, $conn, $r->successful() ? 'ok' : 'failed', $r->successful() ? null : 'HTTP ' . $r->status() . ' ' . mb_substr((string) $r->body(), 0, 300));
             if (!$r->successful()) {
                 \Illuminate\Support\Facades\Log::warning('[WriteService] WP draft push HTTP error', [
                     'workspace_id' => $wsId,

@@ -853,22 +853,60 @@ async function _wsExtSeoAudit(websiteId,url){
   }catch(e){showToast('Audit failed: '+e.message,'error');}
 }
 
-function _wsExtPluginInfo(){
+function _wsExtPluginInfo(siteId){
   var existing=document.getElementById('ws-plugin-modal');
   if(existing){existing.remove();return;}
+  // WP-1 (2026-08-29, EV-0872): this modal used to end in showToast('Plugin download coming soon').
+  // It now delivers the plugin, mints the connector key, and shows the real connection state.
   var ov=document.createElement('div');ov.id='ws-plugin-modal';
   ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center';
-  ov.innerHTML='<div style="background:var(--s1);border:1px solid var(--bd);border-radius:16px;width:90%;max-width:480px;padding:28px">'
-    +'<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:16px">'+window.icon("link",14)+' Install LevelUp WP Connector</div>'
-    +'<div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">Install the LevelUp WP Connector plugin on your WordPress site to enable:<br><br>'
-    +'<strong>'+window.icon("check",14)+' AI content publishing</strong> — Sarah can publish articles directly to your blog<br>'
-    +'<strong>'+window.icon("check",14)+' Full SEO management</strong> — Manage meta tags, schema, and sitemaps<br>'
-    +'<strong>'+window.icon("check",14)+' Real-time sync</strong> — Changes reflect immediately on your live site</div>'
-    +'<div style="background:var(--s2);border-radius:8px;padding:14px;font-size:12px;color:var(--t3);margin-bottom:16px"><strong>Installation:</strong><br>1. Download the plugin zip<br>2. WordPress Admin → Plugins → Add New → Upload Plugin<br>3. Activate and enter your LevelUp API key</div>'
-    +'<div style="display:flex;gap:8px"><button class="ct-btn primary" style="padding:8px 16px" onclick="showToast(\'Plugin download coming soon\',\'info\')">⬇ Download Plugin</button>'
-    +'<button class="ct-btn" style="padding:8px 16px" onclick="document.getElementById(\'ws-plugin-modal\').remove()">Close</button></div></div>';
+  ov.innerHTML='<div role="dialog" aria-label="Connect WordPress" style="background:var(--s1);border:1px solid var(--bd);border-radius:16px;width:92%;max-width:560px;padding:28px;max-height:90vh;overflow:auto">'
+    +'<div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:6px">'+window.icon("link",14)+' Connect your WordPress site</div>'
+    +'<div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:16px">Three steps. Sarah can then publish articles, manage meta and run the chatbot on your WordPress site.</div>'
+    +'<div id="wsp-status" style="font-size:12px;color:var(--t3);margin-bottom:14px">Checking connection…</div>'
+    +'<div style="display:grid;gap:12px">'
+    +'<div style="background:var(--s2);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:6px">1. Download the plugin</div><div style="font-size:12px;color:var(--t3);margin-bottom:10px" id="wsp-plugin-meta">…</div><button class="ct-btn primary" id="wsp-dl" style="padding:8px 16px">⬇ Download plugin (.zip)</button></div>'
+    +'<div style="background:var(--s2);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:6px">2. Create your connector key</div><div style="font-size:12px;color:var(--t3);margin-bottom:10px">Shown once. Paste it into WordPress → Settings → LevelUp Growth SEO → API Key, with Workspace ID <strong style="color:var(--t1)">'+bld_escH(String(localStorage.getItem('lu_workspace_id')||''))+'</strong>.</div><div style="display:flex;gap:8px;align-items:center"><button class="ct-btn" id="wsp-key" style="padding:8px 16px">Create key</button><code id="wsp-key-out" style="font-size:12px;color:var(--t1);word-break:break-all"></code></div></div>'
+    +'<div style="background:var(--s2);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:6px">3. Install and test</div><div style="font-size:12px;color:var(--t3)">WordPress Admin → Plugins → Add New → Upload Plugin → Activate → Settings → LevelUp Growth SEO → paste the key → <strong style="color:var(--t1)">Test connection</strong>. The site appears below as connected the moment the test passes.</div></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="ct-btn" id="wsp-refresh" style="padding:8px 16px">↺ Refresh status</button><button class="ct-btn" style="padding:8px 16px" onclick="document.getElementById(\'ws-plugin-modal\').remove()">Close</button></div></div>';
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
   document.body.appendChild(ov);
+  var H={ 'Authorization':'Bearer '+(localStorage.getItem('lu_token')||''), 'Accept':'application/json', 'Content-Type':'application/json' };
+  function loadStatus(){
+    var el=document.getElementById('wsp-status'); if(!el) return;
+    fetch('/api/settings/connector/connections',{headers:H}).then(function(r){return r.json();}).then(function(d){
+      var rows=(d&&d.connections)||[];
+      if(!rows.length){ el.innerHTML='<span style="color:var(--am)">No WordPress site is connected to this workspace yet.</span>'; return; }
+      el.innerHTML=rows.map(function(c){ var ok=c.status==='active'; return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-weight:700;color:'+(ok?'var(--gn)':'var(--rd)')+'">'+(ok?'● Connected':'● '+bld_escH(c.status))+'</span><span style="color:var(--t1)">'+bld_escH(c.site_url)+'</span><span>plugin '+bld_escH(c.plugin_version||'?')+'</span>'+(c.last_seen_at?'<span>last seen '+new Date(c.last_seen_at).toLocaleString()+'</span>':'')+(c.last_push_at?'<span>last publish '+bld_escH(c.last_push_status||'')+' '+new Date(c.last_push_at).toLocaleString()+'</span>':'<span>never published</span>')+(c.last_error?'<span style="color:var(--rd)">'+bld_escH(String(c.last_error).slice(0,120))+'</span>':'')+'</div>'; }).join('');
+    }).catch(function(){ el.textContent='Could not read the connection status.'; });
+    fetch('/api/settings/connector-plugin/info',{headers:H}).then(function(r){return r.json();}).then(function(d){
+      var m=document.getElementById('wsp-plugin-meta'); if(!m) return;
+      m.textContent = d && d.available ? ('level-up-growth-seo-connector v'+(d.version||'?')+' · '+Math.round((d.size||0)/1024)+' KB · API URL '+(d.api_url||'')) : 'The plugin package is not available right now.';
+      var b=document.getElementById('wsp-dl'); if(b && !(d&&d.available)) { b.disabled=true; b.style.opacity='.5'; }
+    }).catch(function(){});
+  }
+  document.getElementById('wsp-dl').onclick=async function(){
+    var b=this; b.disabled=true; b.textContent='Preparing…';
+    try {
+      var r=await fetch('/api/settings/connector-plugin/download',{headers:H});
+      if(!r.ok){ var j=await r.json().catch(function(){return {};}); throw new Error(j.message||('HTTP '+r.status)); }
+      var blob=await r.blob(); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='level-up-growth-seo-connector.zip'; document.body.appendChild(a); a.click(); a.remove();
+      showToast('Plugin downloaded.','success'); b.textContent='⬇ Download again';
+    } catch(e){ showToast('Download failed: '+e.message,'error'); b.textContent='⬇ Download plugin (.zip)'; }
+    b.disabled=false;
+  };
+  document.getElementById('wsp-key').onclick=async function(){
+    var b=this; b.disabled=true; b.textContent='Creating…';
+    try {
+      var r=await fetch('/api/settings/api-keys',{method:'POST',headers:H,body:JSON.stringify({name:'WP Connector',type:'connector'})});
+      var j=await r.json(); if(!r.ok||!j.key) throw new Error(j.message||j.error||('HTTP '+r.status));
+      document.getElementById('wsp-key-out').textContent=j.key; b.textContent='Key created — copy it now';
+      try { await navigator.clipboard.writeText(j.key); showToast('Connector key copied to your clipboard.','success'); } catch(e){ showToast('Copy the key now — it will not be shown again.','info'); }
+    } catch(e){ showToast('Could not create a key: '+e.message,'error'); b.disabled=false; b.textContent='Create key'; }
+  };
+  document.getElementById('wsp-refresh').onclick=loadStatus;
+  loadStatus();
 }
 
 
@@ -2143,12 +2181,12 @@ async function wsVerifyDomain(){
     var d=await r.json();
     var msg=document.getElementById('ws-pub-domain-msg');
     if(d.verified){
-      if(msg)msg.textContent=''+window.icon("check",14)+' Connected and verified!';
+      if(msg)msg.innerHTML = ''+window.icon("check",14)+' Connected and verified!';
       var s=wsSites.find(function(s){return s.id===wsPubTarget?.id;});
       if(s)s.domain_status='verified';
       showToast('Domain verified!','success');
     } else {
-      if(msg)msg.textContent=''+window.icon("close",14)+' '+( d.error||'DNS not yet propagated. Try again later.');
+      if(msg)msg.innerHTML = ''+window.icon("close",14)+' '+( d.error||'DNS not yet propagated. Try again later.');
       showToast(d.error||'Verification failed — DNS may still be propagating','warning');
     }
   }catch(e){showToast('Verify error: '+e.message,'error');}
@@ -2201,14 +2239,14 @@ async function wsDoPublish(){
       const pubStatus = document.getElementById('ws-pub-domain-status');
       if(pubStatus){ pubStatus.style.display='flex'; pubStatus.innerHTML='<span>✓</span><a href="'+liveUrl+'" target="_blank" style="color:var(--ac);text-decoration:underline">View Live Site →</a>'; }
       btn.textContent='Published ✓';
-      setTimeout(function(){ btn.textContent=''+window.icon("rocket",14)+' Publish Now'; btn.disabled=false; },3000);
+      setTimeout(function(){ btn.innerHTML = ''+window.icon("rocket",14)+' Publish Now'; btn.disabled=false; },3000);
       if(typeof wsUpdateStats==='function')wsUpdateStats();
       if(typeof wsRenderGrid==='function')wsRenderGrid();
     } else {
       showToast(d.error||'Publish failed','error');
-      btn.textContent=''+window.icon("rocket",14)+' Publish Now';btn.disabled=false;
+      btn.innerHTML = ''+window.icon("rocket",14)+' Publish Now';btn.disabled=false;
     }
-  }catch(e){showToast('Publish failed: '+e.message,'error');btn.textContent=''+window.icon("rocket",14)+' Publish Now';btn.disabled=false;}
+  }catch(e){showToast('Publish failed: '+e.message,'error');btn.innerHTML = ''+window.icon("rocket",14)+' Publish Now';btn.disabled=false;}
 }
 
 // ── SUBDOMAIN PICKER MODAL (publish-flow-fix, 2026-05-09) ─────────────
@@ -2495,7 +2533,7 @@ async function bldSave() {
         }
       }
     }
-    setTimeout(()=>{ btn.textContent=''+window.icon("save",14)+' Save'; btn.disabled=false; },2000);
+    setTimeout(()=>{ btn.innerHTML = ''+window.icon("save",14)+' Save'; btn.disabled=false; },2000);
     // PHASE 6: Write to sessionStorage for recovery on reload
     _bldSessionWrite();
   } catch(e) { btn.textContent='Save failed'; btn.disabled=false; }
@@ -2546,16 +2584,16 @@ async function bldPublish() {
       const badge = document.getElementById('bld-page-status-badge');
       if (badge) { badge.textContent = 'published'; badge.style.color = 'var(--ac)'; }
       btn.textContent = 'Published ✓';
-      setTimeout(function(){ btn.textContent = ''+window.icon("rocket",14)+' Publish'; btn.disabled = false; }, 3000);
+      setTimeout(function(){ btn.innerHTML = ''+window.icon("rocket",14)+' Publish'; btn.disabled = false; }, 3000);
       if (bldCurrentPage) bldCurrentPage.status = 'published';
       showToast('Changes published! Your site is updated.', 'success');
     } else {
       showToast(d.error || 'Publish failed', 'error');
-      btn.textContent = ''+window.icon("rocket",14)+' Publish'; btn.disabled = false;
+      btn.innerHTML = ''+window.icon("rocket",14)+' Publish'; btn.disabled = false;
     }
   } catch(e) {
     showToast('Publish failed: ' + e.message, 'error');
-    btn.textContent = ''+window.icon("rocket",14)+' Publish'; btn.disabled = false;
+    btn.innerHTML = ''+window.icon("rocket",14)+' Publish'; btn.disabled = false;
   }
 }
 

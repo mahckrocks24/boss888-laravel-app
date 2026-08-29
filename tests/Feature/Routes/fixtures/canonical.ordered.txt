@@ -377,13 +377,17 @@ POST|api/seo/competitors/gaps||Closure||api,auth.jwt,connector.brand,traffic.def
 POST|api/seo/competitors/compare||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/seo/equity/calculate||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/seo/scan-outbound||App\Engines\SEO\Http\Controllers\SeoController@checkOutbound||api,auth.jwt,connector.brand,traffic.defense
+POST|api/seo/scan-outbound/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/seo/assistant/accept-disclaimer||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/assistant/disclaimer-status||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/assistant/history||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/redirects||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/seo/redirects||Closure||api,auth.jwt,connector.brand,traffic.defense
 DELETE|api/seo/redirects/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
+PATCH|api/seo/redirects/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/404-log||Closure||api,auth.jwt,connector.brand,traffic.defense
+DELETE|api/seo/404-log/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
+DELETE|api/seo/404-log||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/settings||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/seo/settings||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/score-weights||Closure||api,auth.jwt,connector.brand,traffic.defense
@@ -408,6 +412,7 @@ POST|api/seo/image-issues/apply-alt||Closure||api,auth.jwt,connector.brand,traff
 GET,HEAD|api/seo/image-summary||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/serp-results||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/outbound||Closure||api,auth.jwt,connector.brand,traffic.defense
+PATCH|api/seo/outbound/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/ctr-analysis||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/quick-wins||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/seo/link-opportunities||Closure||api,auth.jwt,connector.brand,traffic.defense
@@ -607,6 +612,7 @@ POST|api/social/ai/image||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/social/posts/{id}/schedule||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/social/posts/{id}/publish||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/social/accounts||Closure||api,auth.jwt,connector.brand,traffic.defense
+PUT|api/social/posts/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/social/settings/facebook||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/social/settings/linkedin||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/social/oauth/facebook/connect||Closure||api,auth.jwt,connector.brand,traffic.defense
@@ -618,6 +624,8 @@ DELETE|api/social/accounts/{id}||Closure||api,auth.jwt,connector.brand,traffic.d
 GET,HEAD|api/social/oauth/tiktok/connect||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/calendar/events||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/calendar/events||Closure||api,auth.jwt,connector.brand,traffic.defense
+GET,HEAD|api/calendar/events/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
+POST|api/calendar/events/{id}/decision||Closure||api,auth.jwt,connector.brand,traffic.defense
 PUT|api/calendar/events/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
 DELETE|api/calendar/events/{id}||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/beforeafter/designs||Closure||api,auth.jwt,connector.brand,traffic.defense
@@ -886,9 +894,12 @@ GET,HEAD|api/blog/posts||App\Http\Controllers\BlogController@listPosts||api
 GET,HEAD|api/blog/posts/{slug}||App\Http\Controllers\BlogController@getPost||api
 GET,HEAD|api/blog/categories||App\Http\Controllers\BlogController@categories||api
 POST|api/public/contact/by-host||App\Http\Controllers\Api\PublicContactController@submitByHost||api,throttle:10,1
+POST|api/public/booking/by-host||App\Http\Controllers\Api\PublicBookingController@submitByHost||api,throttle:10,1
 POST|api/public/contact/{subdomain}||App\Http\Controllers\Api\PublicContactController@submit||api,throttle:10,1
 GET,HEAD|api/builder/websites/{id}/preview||Closure||api
 PUT|api/builder/websites/{id}/fields/{field}||Closure||api,auth.jwt
+GET,HEAD|api/builder/websites/{id}/history||Closure||api,auth.jwt
+POST|api/builder/websites/{id}/restore||Closure||api,auth.jwt
 POST|api/builder/websites/{id}/logo||Closure||api,auth.jwt
 POST|api/builder/websites/{id}/tier4-confirm||Closure||api,auth.jwt
 GET,HEAD|api/email/track/open/{token}||Closure||api
@@ -944,6 +955,9 @@ POST|api/connector/chatbot/knowledge/text||Closure||api,api.key,connector.brand
 DELETE|api/connector/chatbot/knowledge/{id}||Closure||api,api.key,connector.brand
 POST|api/connector/chatbot/knowledge/crawl-site||Closure||api,api.key,connector.brand
 GET,HEAD|api/connector/chatbot/knowledge/crawl-status||Closure||api,api.key,connector.brand
+GET,HEAD|api/settings/connector-plugin/download||Closure||api,auth.jwt
+GET,HEAD|api/settings/connector-plugin/info||Closure||api,auth.jwt
+GET,HEAD|api/settings/connector/connections||Closure||api,auth.jwt
 GET,HEAD|api/settings/api-keys||Closure||api,auth.jwt
 POST|api/settings/api-keys||Closure||api,auth.jwt
 DELETE|api/settings/api-keys/{id}||Closure||api,auth.jwt
