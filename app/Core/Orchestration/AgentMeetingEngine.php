@@ -626,6 +626,13 @@ class AgentMeetingEngine
         $meta = json_decode($meeting->metadata_json, true);
         $meta['plan'] = $plan;
         $meeting->update(['metadata_json' => json_encode($meta)]);
+
+        // MEET-3: if the customer already ended the meeting while this synthesis was running, the
+        // close happened without a plan — create the tasks now so the plan is never silently lost.
+        $fresh = Meeting::find($meeting->id);
+        if ($fresh && $fresh->status === 'closed') {
+            $this->createTasksFromPlan($fresh);
+        }
     }
 
     private function completeMeeting(Meeting $meeting): void
@@ -654,6 +661,22 @@ class AgentMeetingEngine
             'total_credits_used' => $creditCost,
         ]);
 
+        $this->createTasksFromPlan($meeting);
+    }
+
+    /**
+     * MEET-3 — turn the synthesis plan into real tasks exactly once (idempotent on meeting_tasks).
+     * Returns the number of tasks created in this call.
+     */
+    public function createTasksFromPlan(Meeting $meeting): int
+    {
+        $meeting = Meeting::find($meeting->id) ?: $meeting;
+        $meta = json_decode($meeting->metadata_json ?? '{}', true) ?: [];
+        $created = 0;
+        if (DB::table('meeting_tasks')->where('meeting_id', $meeting->id)->exists()) {
+            return 0;
+        }
+
         // ── Create tasks from synthesis plan ──
         $plan = $meta['plan'] ?? null;
         if (is_array($plan)) {
@@ -673,10 +696,38 @@ class AgentMeetingEngine
                 // only `description` + `from_meeting` were carried, so every
                 // engine threw "X required" on dispatch.
                 $extractedParams = (isset($planTask['params']) && is_array($planTask['params'])) ? $planTask['params'] : [];
+                // MEET-4: drop LLM placeholders ("new_lead_id", "sourdough_pre_order_url", "<url>", "TBD"…) —
+                // a placeholder is not a parameter. Ground URLs on the workspace's live site when missing.
+                $__isPlaceholder = function ($v): bool {
+                    if (!is_string($v)) return false;
+                    $t = trim($v);
+                    if ($t === '') return true;
+                    if (preg_match('/^(tbd|tba|n\/a|null|none|placeholder|<[^>]+>|\{\{[^}]+\}\}|\[[^\]]+\])$/i', $t)) return true;
+                    // snake/kebab token ending in _id/_url/_slug with no digits and no scheme: "new_lead_id"
+                    if (preg_match('/^[a-z][a-z_\-]*_(id|url|slug|email|phone)$/i', $t)) return true;
+                    return false;
+                };
+                foreach ($extractedParams as $__k => $__v) {
+                    if ($__isPlaceholder($__v)) unset($extractedParams[$__k]);
+                }
+                $__missing = [];
+                if (array_key_exists('url', $planTask['params'] ?? []) && empty($extractedParams['url'])) {
+                    $__site = DB::table('websites')->where('workspace_id', $meeting->workspace_id)->where('status', 'published')->whereNull('deleted_at')
+                        ->orderByDesc('id')->first(['custom_domain', 'domain', 'subdomain', 'external_url']);
+                    $__host = $__site ? ($__site->custom_domain ?: ($__site->domain ?: ($__site->subdomain ?: null))) : null;
+                    if ($__host) $extractedParams['url'] = 'https://' . preg_replace('#^https?://#', '', rtrim($__host, '/'));
+                    elseif ($__site && $__site->external_url) $extractedParams['url'] = $__site->external_url;
+                    else $__missing[] = 'website URL';
+                }
+                if (in_array((string) ($planTask['engine'] ?? ''), ['crm'], true)
+                    && empty($extractedParams['lead_id']) && empty($extractedParams['entity_id']) && empty($extractedParams['contact_id'])) {
+                    $__missing[] = 'which lead or contact this is for';
+                }
                 $payload = array_merge($extractedParams, [
-                    'description'  => $planTask['description'] ?? '',
+                    'description'  => ($planTask['description'] ?? '') . ($__missing ? ' — NEEDS: ' . implode('; ', $__missing) : ''),
                     'from_meeting' => $meeting->id,
                 ]);
+                if ($__missing) $planTask['requires_approval'] = true; // a human supplies the target before it runs
                 // 2026-05-26 — the tasks.priority enum is ('low','normal','high','urgent').
                 // LLMs commonly emit "medium" because the prompt examples use it.
                 // Map medium→normal so the insert doesn't get truncated and silently
@@ -729,10 +780,12 @@ class AgentMeetingEngine
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                $created++;
             }
 
-            Log::info("[Meeting] Created " . count($plan) . " tasks from synthesis", ['meeting_id' => $meeting->id]);
+            Log::info("[Meeting] Created {$created} of " . count($plan) . " planned tasks", ['meeting_id' => $meeting->id]);
         }
+        return $created;
     }
 
     // ═══════════════════════════════════════════════════════════

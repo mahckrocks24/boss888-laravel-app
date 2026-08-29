@@ -787,6 +787,13 @@ class CrmService
 
     public function logActivity(int $wsId, array $data): Activity
     {
+        // MEET-4 (2026-08-29): lead_id/contact_id are accepted as the entity; without any target the
+        // activity is refused with the reason instead of an "Undefined array key" crash.
+        if (empty($data['entity_id'])) {
+            if (!empty($data['lead_id']) && is_numeric($data['lead_id']))         { $data['entity_id'] = (int) $data['lead_id']; $data['entity_type'] = $data['entity_type'] ?? 'Lead'; }
+            elseif (!empty($data['contact_id']) && is_numeric($data['contact_id'])) { $data['entity_id'] = (int) $data['contact_id']; $data['entity_type'] = $data['entity_type'] ?? 'Contact'; }
+            else { throw new \InvalidArgumentException('log_activity needs a lead or contact (entity_id / lead_id) — none was given.'); }
+        }
         return Activity::create([
             'workspace_id' => $wsId,
             'activitable_type' => $data['entity_type'] ?? 'Lead',
