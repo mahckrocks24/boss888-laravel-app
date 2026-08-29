@@ -3824,8 +3824,15 @@ async function loadReports(){
       }).join('')+'</div>';
     }
     else if(rptTab==='tasks'){
-      var d=await get(API+'tasks?wsId=1');
-      var rows=(d.tasks||d||[]).slice(0,50);
+      // RES-2 (2026-08-30): the workspace comes from the session (the old ?wsId=1 was ignored server-side);
+      // tasks carry action/progress_message/assigned_agents_json, not title/agent_id — render those.
+      var d=await get(API+'tasks');
+      var rows=(d.tasks||d||[]).slice(0,50).map(function(r){
+        var agents=[]; try{ agents=Array.isArray(r.assigned_agents_json)?r.assigned_agents_json:JSON.parse(r.assigned_agents_json||'[]'); }catch(_e){}
+        r.title = r.title || ((typeof LU_humanize==='function'?LU_humanize(r.action||''):(r.action||'')) + (r.progress_message?' — '+String(r.progress_message).slice(0,90):''));
+        r.agent_id = r.agent_id || (agents[0]||'');
+        return r;
+      });
       if(!rows.length){box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon" style="color:var(--t3)">'+window.icon('more',32)+'</div><div class="rv-empty-text">No tasks yet.</div></div>';return;}
       box.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+rows.map(r=>{
         var st=r.status||'pending';var sc=st==='completed'?'var(--ac)':st==='failed'?'#F87171':st==='in_progress'?'var(--am)':'var(--t3)';

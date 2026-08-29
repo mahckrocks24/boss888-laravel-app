@@ -130,14 +130,19 @@ class DashboardController
         $proposalsGlobal = DB::table('strategy_proposals')->count();
 
         // ── STATS (all scoped to workspace, all from real DB) ──────────────
-        $auditTotal = DB::table('audit_logs')->where('workspace_id', $wsId)->count();
-        $auditWeek  = DB::table('audit_logs')->where('workspace_id', $wsId)->where('created_at', '>=', $weekAgo)->count();
-        $auditToday = DB::table('audit_logs')->where('workspace_id', $wsId)->whereDate('created_at', today())->count();
+        // RES-1 (2026-08-30): "Tasks done" must count COMPLETED TASKS, not audit-log rows. audit_logs holds
+        // every execution/audit event (11,347 rows vs 1,968 completed tasks on ws 2) — presenting it as
+        // "tasks done" turned execution records into a performance figure.
+        $doneQ = fn() => DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'completed');
+        $auditTotal = $doneQ()->count();
+        $auditWeek  = $doneQ()->where(DB::raw('COALESCE(completed_at, updated_at)'), '>=', $weekAgo)->count();
+        $auditToday = $doneQ()->whereDate(DB::raw('COALESCE(completed_at, updated_at)'), today())->count();
 
         $stats = [
             'tasks_completed'        => $auditTotal,
             'tasks_this_week'        => $auditWeek,
             'tasks_today'            => $auditToday,
+            'activity_events'        => DB::table('audit_logs')->where('workspace_id', $wsId)->count(),
             'articles_published'     => DB::table('articles')->where('workspace_id', $wsId)->where('status', 'published')->whereNull('deleted_at')->count(),
             'articles_total'         => DB::table('articles')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
             'leads_captured'         => DB::table('leads')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
