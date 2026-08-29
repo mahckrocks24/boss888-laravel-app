@@ -162,6 +162,9 @@ class PlanGatingService
             'create_scene_plan', 'stitch_video', 'generate_variations',
             'serp_analysis', 'ai_report', 'deep_audit', 'autonomous_goal',
             'ai_research', 'ai_brainstorm',
+            // SOCIAL-ENT (2026-08-29): AI social copy/hashtags are AI generation — a Free/Starter plan
+            // ("no ongoing AI") must not get them. Composing/publishing a post by hand stays allowed.
+            'social_ai_post', 'social_hashtag_pack', 'generate_hashtags', 'aeo_enrich',
         ];
         return in_array($action, $aiActions);
     }
