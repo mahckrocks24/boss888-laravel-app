@@ -37,8 +37,26 @@ class CRMContextProvider
             ->where('created_at', '>=', $thirtyDaysAgo)
             ->count();
 
+        // SARAH-LEADSRC (2026-08-30): where the recent leads came from and where they stand — the only
+        // measured "campaign" signal a workspace owns before analytics is connected.
+        $bySource = DB::table('leads')
+            ->where('workspace_id', $workspaceId)
+            ->whereNull('deleted_at')
+            ->where('created_at', '>=', $thirtyDaysAgo)
+            ->selectRaw("COALESCE(NULLIF(source, ''), 'unknown') AS src, COUNT(*) AS n")
+            ->groupBy('src')->orderByDesc('n')->limit(8)->pluck('n', 'src')
+            ->map(fn ($n) => (int) $n)->all();
+        $byStage = DB::table('leads')
+            ->where('workspace_id', $workspaceId)
+            ->whereNull('deleted_at')
+            ->selectRaw("COALESCE(NULLIF(status, ''), 'unknown') AS st, COUNT(*) AS n")
+            ->groupBy('st')->orderByDesc('n')->limit(8)->pluck('n', 'st')
+            ->map(fn ($n) => (int) $n)->all();
+
         return [
             'leads_last_30d'    => $recentContacts + $recentLeads,
+            'leads_by_source'   => $bySource,
+            'leads_by_stage'    => $byStage,
             'total_contacts'    => $totalContacts + $totalLeads,
             'total_leads'       => $totalLeads,
             'recent_form_leads' => $recentContacts,

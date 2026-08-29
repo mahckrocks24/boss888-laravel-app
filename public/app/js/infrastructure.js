@@ -1076,7 +1076,7 @@
         Array.prototype.forEach.call(slot2.querySelectorAll('.infra-restore-version'), function (b) {
           b.addEventListener('click', function () {
             var file = b.getAttribute('data-file');
-            var ask = window.luConfirm ? window.luConfirm('Put this saved version live now? Your current version stays in the list, so you can come back to it.', 'Restore version', 'Restore', 'Keep current')
+            var ask = window.luConfirm ? window.luConfirm('Restore version', 'Put this saved version live now? Your current version stays in the list, so you can come back to it.', { okLabel: 'Restore', cancelLabel: 'Keep current' })
                                        : Promise.resolve(window.confirm('Put this saved version live now?'));
             Promise.resolve(ask).then(function (ok) {
               if (!ok) { return; }

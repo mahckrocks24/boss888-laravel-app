@@ -385,7 +385,16 @@ class DashboardController
             'bella_chat'               => 'Bella assisted with admin',
         ];
         $key = $engine . '.' . $action;
-        if (isset($map[$key])) return $map[$key];
+        if (isset($map[$key])) {
+            $label = $map[$key];
+            // RES-3 (2026-08-30): the map carries a default first name per action; the feed already
+            // resolved the REAL agent (task assignment / metadata). Never name the wrong specialist.
+            if ($agentName && preg_match('/^(James|Alex|Priya|Elena|Ryan|Arthur|Marcus|Sarah)/', $label, $m)
+                && strcasecmp($m[1], $agentName) !== 0) {
+                $label = $agentName . substr($label, strlen($m[1]));
+            }
+            return $label;
+        }
         return ucfirst(str_replace('_', ' ', $action)) . ' · ' . $engine;
     }
 
