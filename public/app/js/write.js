@@ -661,6 +661,13 @@ function _wrViewEditor() {
                 '</button>' +
                 '<span style="font-size:11px;color:var(--t3,#666);margin-left:auto">Inserts as a new block</span>' +
             '</div>' +
+            // WRITE-2: a truthful notice when the body has formatting this text editor cannot keep.
+            (item.rich_body
+                ? '<div id="wr-rich-notice" style="margin:0 0 10px;padding:10px 12px;border:1px solid rgba(243,156,18,.45);background:rgba(243,156,18,.08);border-radius:8px;font-size:12px;color:var(--t2,#ccc);line-height:1.5">' +
+                  '\u26A0 This article has links, images or lists. Editing the text here keeps headings and paragraphs only \u2014 ' +
+                  'to edit <b>with</b> formatting use <a href="#" onclick="event.preventDefault();if(window.nav)nav(\'blog\')" style="color:var(--p,#6C5CE7)">the Blog editor</a>. ' +
+                  'Changing only the status or title here is safe.</div>'
+                : '') +
             '<div id="wr-block-renderer" style="flex:1;overflow-y:auto;min-height:400px;padding:0;"></div>' +
             '<textarea id="wr-editor-textarea" ' +
                 'placeholder="Start writing, or click \'Generate Draft\' to create AI-powered content…" ' +

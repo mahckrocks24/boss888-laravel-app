@@ -51,13 +51,18 @@ class WriteController extends BaseEngineController
         if (empty($a['content_type'])) {
             $a['content_type'] = $a['type'] ?? 'blog_article';
         }
+        // WRITE-2: tell the editor when the body carries formatting a plain-text edit would lose.
+        $a['rich_body'] = (bool) preg_match('#<(a|img|ul|ol|table|aside|blockquote|figure|iframe|video)\b#i', $content);
         return $a;
     }
 
     private function htmlToPlain(string $html): string
     {
         if ($html === '') return '';
-        $t = preg_replace('#<\s*(br|/p|/h[1-6]|/li|/div|/blockquote|/tr)\s*/?>#i', "$0\n", $html);
+        // WRITE-2 (gg): block-level boundaries become line breaks (incl. the AEO aside and its
+        // display:block <strong> label, which otherwise glue "TL;DR" onto the next sentence).
+        $t = preg_replace('#<strong\b[^>]*display\s*:\s*block[^>]*>(.*?)</strong>#is', '$1' . "\n", $html);
+        $t = preg_replace('#<\s*(br|/p|/h[1-6]|/li|/div|/blockquote|/tr|/aside|/section|/article|/ul|/ol|/table|/figure|/figcaption)\s*/?>#i', "$0\n", (string) $t);
         $t = html_entity_decode(strip_tags((string) $t), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $t = preg_replace("/[ \t]+\n/", "\n", (string) $t);
         $t = preg_replace("/\n{3,}/", "\n\n", (string) $t);
