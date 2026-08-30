@@ -86,9 +86,10 @@ class RefusalBoundaryGuard
      */
     private function rewrite(string $reply): string
     {
-        $text = preg_replace('/\n*✅ Queued [^\n]*\n?/u', '', $reply);
+        // P3-U2 (2026-08-30): the queued-summary line is customer-worded now; strip either generation.
+        $text = preg_replace('/\n*(?:✅ Queued [^\n]*|I\'ve (?:asked [^\n]*? to get started|got (?:the team|\d+ of \d+ things) started)[^\n]*)\n?/u', '', $reply);
 
-        $claim = '/\b(?:i\'?ve|i\s+have)\s+(?:already\s+)?queued\b'
+        $claim = '/\b(?:i\'?ve|i\s+have)\s+(?:already\s+)?(?:queued|asked\s+\w+(?:,?\s+(?:and\s+)?\w+)*\s+to\s+get\s+started|got\s+(?:the\s+team|\d+\s+of\s+\d+\s+things)\s+started)\b'
                . '|\bi\'?ll\s+proceed\s+with\s+(?:this|that)\b'
                . '|\bproceeding\s+now\b'
                . '|\bi\'?ll\s+(?:queue|create|set\s+up|start)\b/i';

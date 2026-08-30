@@ -419,7 +419,7 @@ MAP;
                 $cost = (int) $p->total_credits;
                 $out['decisions waiting on the owner'][] = 'Proposal #' . $p->id . ': '
                     . mb_substr((string) ($p->description ?: $p->title), 0, 90)
-                    . ($cost > 0 ? " - {$cost} credits if approved." : ' - no credit cost.');
+                    . ($cost > 0 ? " - uses {$cost} credit" . ($cost === 1 ? '' : 's') . " if you approve." : ' - no credits.');
             }
 
             $blocked = (int) DB::table('tasks')->where('workspace_id', $wsId)

@@ -262,21 +262,19 @@ class ChatActionProposal
         if (count($pending) === 1) {
             $p = $pending[0];
             $cost = (int) $p->total_credits;
-            return "\n\nAwaiting your approval: " . $p->description
-                 . ($cost > 0 ? " — {$cost} credit" . ($cost === 1 ? '' : 's') . '.'
-                              : ' — no credit cost.')
-                 . " Nothing has been created or charged yet. Say yes and I'll run it.";
+            return "\n\nWhenever you're ready: " . $p->description
+                 . ($cost > 0 ? " (uses {$cost} credit" . ($cost === 1 ? '' : 's') . ')' : ' (no credits)')
+                 . ". Nothing runs until you say yes — here, or under Needs attention.";
         }
 
         $lines = '';
         foreach ($pending as $p) {
             $c = (int) $p->total_credits;
-            $lines .= "\n  · " . $p->description . ($c > 0 ? " ({$c} credits)" : ' (free)');
+            $lines .= "\n  · " . $p->description . ($c > 0 ? " (uses {$c} credit" . ($c === 1 ? '' : 's') . ')' : ' (no credits)');
         }
-        return "\n\n" . count($pending) . " things are awaiting your approval"
-             . ($total > 0 ? ", {$total} credits in total" : '') . ':' . $lines
-             . "\n\nNothing has been created or charged yet. Tell me which one to run — "
-             . "a plain \"yes\" is ambiguous while more than one is pending.";
+        return "\n\n" . count($pending) . " things are waiting for your OK"
+             . ($total > 0 ? " ({$total} credits in total)" : '') . ':' . $lines
+             . "\n\nNothing runs until you say which — tell me here, or use Needs attention.";
     }
 
     /** The exact payload a proposal authorises. Never reconstructed from prose. */

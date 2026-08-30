@@ -3338,10 +3338,17 @@ $withCorr = function (array $meta) use ($corr) {
                         // the outer $agent Agent model (it carried the slug string
                         // forward), causing $agent->name to crash later in this
                         // route. Renamed loop key to $agentSlug.
+                        // P3-U2 (2026-08-30): names, not slugs and counts — "James and Priya", not "(james: 1, priya: 2)".
+                        $__names = ['sarah' => 'Sarah', 'dmm' => 'Sarah', 'james' => 'James', 'priya' => 'Priya', 'elena' => 'Elena', 'marcus' => 'Marcus', 'alex' => 'Alex', 'arthur' => 'Arthur', 'diana' => 'Diana', 'ryan' => 'Ryan', 'sofia' => 'Sofia'];
                         foreach ($taskSummaryByAgent as $agentSlug => $n) {
-                            $byAgentParts[] = "$agentSlug: $n";
+                            $byAgentParts[] = $__names[strtolower((string) $agentSlug)] ?? ucfirst((string) $agentSlug);
                         }
-                        $byAgentStr = !empty($byAgentParts) ? ' (' . implode(', ', $byAgentParts) . ')' : '';
+                        $byAgentParts = array_values(array_unique($byAgentParts));
+                        $byAgentStr = '';
+                        if (!empty($byAgentParts)) {
+                            $__last = array_pop($byAgentParts);
+                            $byAgentStr = $byAgentParts ? implode(', ', $byAgentParts) . ' and ' . $__last : $__last;
+                        }
                         // SARAH-COST (2026-08-29, RISK-0127 a): the credit figure the customer reads comes from
                         // the LEDGER of what was actually queued (tasks.credit_cost), not from the model's guess.
                         $__costLine = '';
@@ -3349,21 +3356,21 @@ $withCorr = function (array $meta) use ($corr) {
                             $__ids = array_values(array_filter(array_map('intval', $createdTaskIds ?? [])));
                             if ($__ids) {
                                 $__sum = (int) \Illuminate\Support\Facades\DB::table('tasks')->whereIn('id', $__ids)->sum('credit_cost');
-                                $__costLine = $__sum > 0 ? " · {$__sum} credit" . ($__sum === 1 ? '' : 's') . " reserved" : " · no credits charged";
+                                $__costLine = $__sum > 0 ? " This uses {$__sum} credit" . ($__sum === 1 ? '' : 's') . "." : " This doesn't use any credits.";
                             }
                         } catch (\Throwable) { $__costLine = ''; }
                         if ($taskSummaryCreated === 0 && $taskSummaryFailed > 0) {
                             // MONEY-1: nothing was queued — the reply must not read as "On it!"
-                            $reply .= "\n\n⛔ I could not queue this:";
+                            $reply .= "\n\nI couldn't start this:";
                             foreach ($taskSummaryFailReasons as $reason => $count) {
                                 $reply .= "\n  • " . ($count > 1 ? "({$count}x) " : '') . $reason;
                             }
                         } elseif ($taskSummaryCreated > 0 && $taskSummaryFailed === 0) {
-                            $reply .= "\n\n✅ Queued {$taskSummaryCreated} tasks{$byAgentStr}{$__costLine}.";
+                            $reply .= "\n\n" . ($byAgentStr !== '' ? "I've asked {$byAgentStr} to get started" : "I've got the team started") . ($taskSummaryCreated > 1 ? " on {$taskSummaryCreated} things" : '') . '.' . $__costLine;
                         } elseif ($taskSummaryCreated > 0) {
                             $total = $taskSummaryCreated + $taskSummaryFailed;
-                            $reply .= "\n\n✅ Queued {$taskSummaryCreated}/{$total} tasks{$byAgentStr}{$__costLine}.";
-                            $reply .= "\n⚠️ {$taskSummaryFailed} task(s) failed to create:";
+                            $reply .= "\n\n" . ($byAgentStr !== '' ? "I've asked {$byAgentStr} to get started on {$taskSummaryCreated} of {$total} things" : "I've got {$taskSummaryCreated} of {$total} things started") . '.' . $__costLine;
+                            $reply .= "\n" . ($taskSummaryFailed === 1 ? "One thing couldn't be started:" : "{$taskSummaryFailed} things couldn't be started:");
                             foreach ($taskSummaryFailReasons as $reason => $count) {
                                 $reply .= "\n  • ({$count}x) {$reason}";
                             }
