@@ -99,8 +99,17 @@
       /* ATTACH-1: the composer library inserts its own paperclip next to the textarea — Sarah has one attach control, the plus. */
       '.sh-compose .lu-att-paperclip{display:none !important}',
       '.sh-hint{max-width:920px;margin:6px auto 0;font-size:11.5px;color:var(--t2);text-align:center}',
-      '.sh-rail{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 0;max-height:38vh;overflow:auto}',
-      '.sh-rail-track{display:flex;flex-direction:column;gap:8px}',
+      '.sh-rail{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 0;max-height:none;overflow:visible}',
+      /* RAIL-3: one horizontal snap strip at every width — fixed-width cards, swipe/scroll for the rest. */
+      '.sh-rail-track{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;margin:0 -16px;padding:0 16px 8px;scroll-padding:0 16px}',
+      '.sh-rail-track::-webkit-scrollbar{height:6px}.sh-rail-track::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:99px}',
+      '.sh-rail-track>.sh-item{flex:0 0 calc((100% - 10px) / 1.5);min-width:380px;max-width:none;scroll-snap-align:start;box-sizing:border-box}',
+      '.sh-rail-track>.sh-item .d{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
+      '.sh-rail-track>.sh-item .acts{margin-top:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px}.sh-rail-track>.sh-item .acts::-webkit-scrollbar{display:none}',
+      '.sh-rail-track>.sh-item .acts .sh-btn{min-height:36px;padding:0 11px;font-size:12.5px;white-space:nowrap;flex:none}.sh-rail-track>.sh-item .who{margin-top:4px}',
+      /* after the strip mounts (or resizes), the thread keeps its place at the bottom */
+      '.sh-feed{scroll-padding-bottom:8px}',
+      '@media (prefers-reduced-motion:no-preference){.sh-rail-track{scroll-behavior:smooth}}',
       '.sh-rail-h{display:flex;align-items:center;justify-content:space-between;gap:8px}.sh-rail-h .pos{letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums;color:var(--t3)}',
       /* RAIL-2: minimise. The whole header is the button; the chevron shows the state. */
       '.sh-rail-h .tog{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 6px 0 2px;margin:-8px 0 -8px -2px;border:0;background:transparent;color:var(--t3);font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;border-radius:6px}',
@@ -109,8 +118,7 @@
       '.sh-rail.min .sh-rail-track{display:none}.sh-rail.min{padding-bottom:6px}.sh-rail.min .sh-rail-h .pos .swipe{display:none}',
       '@media (prefers-reduced-motion:reduce){.sh-rail-h .tog .chev{transition:none}}',
       /* RAIL-1: on small screens the rail is a horizontal snap strip — one card tall, swipe for the rest. */
-      '@media (max-width:767px){.sh-rail{max-height:none !important;overflow:visible;padding-bottom:0}.sh-rail-track{flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -12px;padding:0 12px 6px;scroll-padding:0 12px}.sh-rail-track::-webkit-scrollbar{display:none}.sh-rail-track>.sh-item{flex:0 0 86%;max-width:340px;scroll-snap-align:start;scroll-snap-stop:always;box-sizing:border-box}.sh-rail-track>.sh-item .d{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.sh-rail-track>.sh-item .acts{margin-top:8px}}',
-      '@media (max-width:767px) and (prefers-reduced-motion:no-preference){.sh-rail-track{scroll-behavior:smooth}}',
+      '@media (max-width:767px){.sh-rail{padding:8px 12px 0}.sh-rail-track{margin:0 -12px;padding:0 12px 6px;scroll-padding:0 12px;scrollbar-width:none;scroll-snap-stop:always}.sh-rail-track::-webkit-scrollbar{display:none}.sh-rail-track>.sh-item{flex-basis:86%;min-width:0;max-width:340px}}',
       '.sh-item{display:flex;gap:12px;align-items:flex-start;background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--am);border-radius:var(--rg);padding:12px 14px}',
       '.sh-item.gate{border-left-color:var(--bl)}.sh-item.book{border-left-color:var(--ac)}.sh-item.fail{border-left-color:var(--rd)}',
       '.sh-item .ic{flex:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--s2);font-size:14px}',
@@ -324,14 +332,15 @@
       if (fresh.length) { isMin = false; try { localStorage.setItem(minKey, '0'); localStorage.setItem(seenKey, JSON.stringify(seen.concat(fresh).slice(-50))); } catch (e) {} }
       function setMin(v) { isMin = !!v; rail.classList.toggle('min', isMin); var b = h.querySelector('.tog'); b.setAttribute('aria-expanded', isMin ? 'false' : 'true'); b.title = isMin ? 'Show' : 'Minimise'; try { localStorage.setItem(minKey, isMin ? '1' : '0'); } catch (e) {} if (typeof updPos === 'function') updPos(); }
       h.querySelector('.tog').addEventListener('click', function () { setMin(!isMin); });
-      if (!appr.length && items.length) { /* gates only: keep them quiet, below the fold of the conversation */ rail.style.maxHeight = '22vh'; } else { rail.style.maxHeight = ''; }
+      rail.style.maxHeight = ''; /* RAIL-3: the strip is one card tall at every width */
       /* RAIL-1: items live in a track — vertical list on desktop, horizontal snap strip on small screens. */
       var track = document.createElement('div'); track.className = 'sh-rail-track'; track.id = 'sh-rail-track'; track.setAttribute('role', 'list');
       items.forEach(function (i) { i.setAttribute('role', 'listitem'); track.appendChild(i); }); rail.appendChild(track); rail.hidden = false;
       var pos = h.querySelector('.pos');
-      function updPos() { if (!pos) return; var n = items.length; if (isMin) { pos.textContent = n + (n === 1 ? ' item' : ' items'); return; } var mobile = window.matchMedia && matchMedia('(max-width:767px)').matches; if (!mobile || n < 2) { pos.textContent = n > 1 ? n + ' items' : ''; return; } var w = (items[0].getBoundingClientRect().width || 1) + 10; var idx = Math.min(n, Math.round(track.scrollLeft / w) + 1); pos.innerHTML = idx + ' of ' + n + '<span class="swipe"> · swipe</span>'; }
+      function updPos() { if (!pos) return; var n = items.length; if (isMin) { pos.textContent = n + (n === 1 ? ' item' : ' items'); return; } if (n < 2) { pos.textContent = ''; return; } var w = (items[0].getBoundingClientRect().width || 1) + 10; var idx = Math.min(n, Math.round(track.scrollLeft / w) + 1); var mobile = window.matchMedia && matchMedia('(max-width:767px)').matches; pos.innerHTML = idx + ' of ' + n + '<span class="swipe"> · ' + (mobile ? 'swipe' : 'scroll') + '</span>'; }
       track.addEventListener('scroll', function () { if (track._t) return; track._t = setTimeout(function () { track._t = null; updPos(); }, 80); }, { passive: true });
       window.addEventListener('resize', updPos); setMin(isMin);
+      try { if (S.feed && S.feed.scrollHeight - S.feed.scrollTop - S.feed.clientHeight < 400) S.feed.scrollTop = S.feed.scrollHeight; } catch (e) {}
     });
   }
 
