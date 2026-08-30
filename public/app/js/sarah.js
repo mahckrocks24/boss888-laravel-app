@@ -203,7 +203,7 @@
     api('GET', 'workspaces').then(function (r) {
       var j = r.json || {}; var list = j.workspaces || j.data || (Array.isArray(j) ? j : []);
       if (!Array.isArray(list) || list.length < 1) { showToast("Couldn't load your workspaces — try again.", 'error'); return; }
-      var cur = 0; try { cur = parseInt(localStorage.getItem('lu_workspace_id') || (window.LU_CFG && window.LU_CFG.workspace_id) || 0, 10); } catch (e) {}
+      var cur = S.wsId || 0; /* WS-PICK-3 */
       var ov = document.createElement('div'); ov.className = 'sh-wsp-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Switch business');
       var box = document.createElement('div'); box.className = 'sh-wsp';
       box.innerHTML = '<h3>Which business?</h3><p>Each business has its own conversation with Sarah. Your other devices follow their own choice — pick the same one everywhere to see the same chat.</p>';
@@ -233,13 +233,18 @@
   function loadContext() {
     api('GET', 'workspace/status').then(function (r) {
       var w = r.json && (r.json.workspace || {}); var name = w.business_name || w.name || (window.LU_CFG && window.LU_CFG.bn) || '';
+      S.wsId = parseInt(w.id || 0, 10) || S.wsId || 0; /* WS-PICK-3: the server says which workspace this device is in */
       var el = document.getElementById('sh-ctx-name'); if (el) el.textContent = name || 'your business';
       var c = document.getElementById('sh-ctx'); if (c && !c._wsp) { c._wsp = 1; c.addEventListener('click', pickWorkspace); }
+      checkOtherDevice();
     }).catch(function () {});
-    /* WS-PICK-2: if my newest message (any device) lives in ANOTHER workspace, say so — loudly, with one tap to follow it. */
+  }
+
+  /* WS-PICK-2/3: if my newest message (any device) lives in ANOTHER workspace, say so — loudly, with one tap to follow it. */
+  function checkOtherDevice() {
     api('GET', 'user/last-chat-workspace').then(function (r) {
       var w = r.json && r.json.workspace; if (!w || !w.id) return;
-      var cur = 0; try { cur = parseInt(localStorage.getItem('lu_workspace_id') || (window.LU_CFG && window.LU_CFG.workspace_id) || 0, 10); } catch (e) {}
+      var cur = S.wsId || 0; /* WS-PICK-3: from workspace/status — localStorage is empty on a device that never switched */
       var old = document.getElementById('sh-ws-banner'); if (old) old.remove();
       if (!cur || parseInt(w.id, 10) === cur) return;
       var fresh = true; try { fresh = (Date.now() - new Date(String(w.last_at).replace(' ', 'T') + 'Z').getTime()) < 6 * 3600e3; } catch (e) {}
